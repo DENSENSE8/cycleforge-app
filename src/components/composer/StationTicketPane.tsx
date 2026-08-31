@@ -1,12 +1,17 @@
 'use client';
 
 /**
- * Ticket thread / claim surface that mounts ABOVE the station composer when
- * mode is Ticket. One textarea lives in {@link StationComposerHost}; this pane
- * never nests a second dock (`composerPlacement="host"`).
+ * Ticket thread / claim surface above the station composer. One textarea lives
+ * in {@link StationComposerHost}; this pane never nests a second dock
+ * (`composerPlacement="host"`).
+ *
+ * A filed ticket shows in EVERY composer mode (ruling 2026-08-31), so touching
+ * the thread hands the composer to Ticket and takes focus — see
+ * {@link useTicketThreadActivation}, which the Displays mount shares.
  */
 
 import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
+import { useTicketThreadActivation } from './useTicketThreadActivation';
 import { ReceivingClaimPanel } from '@/components/receiving/workspace/ReceivingClaimPanel';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ClaimModalMode } from '@/components/receiving/workspace/claim/claim-types';
@@ -34,9 +39,11 @@ export function StationTicketPane({
   className?: string;
 }) {
   const hasTicket = ticketId != null;
+  const onThreadActivate = useTicketThreadActivation(hasTicket);
 
   return (
     <div
+      onClick={onThreadActivate}
       className={cn(
         // A card in the well: the gutter above separates it, so no top rule.
         'flex min-h-0 flex-1 flex-col overflow-hidden bg-surface-card',

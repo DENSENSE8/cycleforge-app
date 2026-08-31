@@ -17,6 +17,7 @@ import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
 import { consumeBootSplash } from '@/lib/boot-flag';
 import { warmActiveView } from '@/lib/queries/dashboard-warm';
 import { DashboardSalesView } from '@/components/dashboard/DashboardSalesView';
+import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import {
   RedirectDashboardOutboundToShippingOrders,
 } from '@/components/outbound/orders/OutboundOrdersDesk';
@@ -70,12 +71,22 @@ function DashboardPageContent() {
     return <div className="flex h-full w-full bg-surface-canvas" aria-busy />;
   }
 
-  // Sales (`?mode=sales` | `?mode=pickup`) — front-desk transaction history.
+  // Sales (`?mode=sales` | `?mode=pickup` | `?mode=repairs`) — front-desk
+  // transaction history, wearing the one page frame
+  // (`@/design-system/components/DeskPageChrome` via `DeskPageLayout`): title
+  // "Sales" top-left and Counter · Sales Board · Local Pickup · Repair Service
+  // as its tab row, all four resolving back to this page.
+  //
+  // The frame wraps ONLY this branch. The others below are redirect shells —
+  // an `aria-busy` placeholder on its way somewhere else has no page to title,
+  // and a title flashing before a redirect is a page that never existed.
   if (domain === 'sales') {
     return (
-      <div className="flex min-h-0 w-full flex-1">
-        <DashboardSalesView />
-      </div>
+      <DeskPageLayout className="h-full">
+        <div className="flex min-h-0 w-full flex-1">
+          <DashboardSalesView />
+        </div>
+      </DeskPageLayout>
     );
   }
 

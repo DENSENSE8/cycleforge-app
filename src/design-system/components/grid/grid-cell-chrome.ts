@@ -15,9 +15,17 @@
 import { densityScaledRem } from './grid-column-geometry';
 
 /** Horizontal (+ optional vertical) cell inset for LedgerGrid tracks. */
-export const LEDGER_GRID_CELL_INSET = 'px-2';
-/** Grid-skin cell pad — horizontal + vertical so the row shell can be `p-0`. */
-const LEDGER_GRID_GRID_CELL_INSET = 'px-2 py-1.5';
+export const LEDGER_GRID_CELL_INSET = 'px-1.5';
+/**
+ * Grid-skin cell pad — horizontal + vertical so the row shell can be `p-0`.
+ *
+ * `px-1.5` since 2026-08-31 (operator ruling), down from `px-2`. Every track
+ * paid 16px of inset, so between two adjacent columns the operator read 32px of
+ * empty before the hairline — wide enough that the status columns looked
+ * gutter-separated rather than adjacent. 12px per pair still keeps a value off
+ * its rule at every density.
+ */
+const LEDGER_GRID_GRID_CELL_INSET = 'px-1.5 py-1.5';
 
 /**
  * Chrome that pins a frozen cell during horizontal scroll — sticky position, a z
@@ -65,7 +73,29 @@ export function ledgerGridCell(
  * `scrollMinContent`: every virtualized row shares ONE width via
  * {@link LEDGER_GRID_WIDTH_VAR} (published on the scrollport as
  * `max(100%, <content-min>rem[, <live-px>px])`). Never `w-max` per row.
+ *
+ * ## Why this is a hand-written class and not a Tailwind arbitrary value
+ *
+ * It used to be `` `w-[var(${LEDGER_GRID_WIDTH_VAR})] …` `` — a template
+ * literal. Tailwind extracts utilities by scanning source TEXT, so what its
+ * scanner saw was `w-[var(${LEDGER_GRID_WIDTH_VAR})]`, which is not a utility.
+ * It generated nothing. Every row shipped with the class NAME in its attribute
+ * and no rule behind it, so `width` fell back to `auto` and each row sized to
+ * its scrollport instead of to the shared track width.
+ *
+ * The consequence was the whole horizontal axis: tracks summing to 1280px were
+ * laid out in a 1150px row, so they overflowed a row whose own `overflow` is
+ * visible, the scrollport's `scrollWidth` never grew past its `clientWidth`,
+ * and the grid could not scroll sideways at all — the right-hand columns were
+ * simply unreachable outside fullscreen. Measured on `/shipping/orders` before
+ * the fix: port `scrollWidth 1150 === clientWidth 1150`, row tracks `1280`.
+ *
+ * `cf-grid-row-w` is a real rule in `globals.css`, so it cannot be optimized
+ * away by a scanner that never sees it. Never rebuild this as an interpolated
+ * arbitrary value.
  */
+export const LEDGER_GRID_ROW_WIDTH_CLASS = 'cf-grid-row-w';
+
 export function ledgerGridRowShellClass(
   isMobile: boolean,
   opts?: { scrollMinContent?: boolean },
@@ -75,9 +105,7 @@ export function ledgerGridRowShellClass(
     : [
         'grid items-stretch',
         LEDGER_GRID_ROW_CONTAIN,
-        opts?.scrollMinContent
-          ? `w-[var(${LEDGER_GRID_WIDTH_VAR})] min-w-[var(${LEDGER_GRID_WIDTH_VAR})]`
-          : 'w-full min-w-0',
+        opts?.scrollMinContent ? LEDGER_GRID_ROW_WIDTH_CLASS : 'w-full min-w-0',
       ].join(' ');
 }
 

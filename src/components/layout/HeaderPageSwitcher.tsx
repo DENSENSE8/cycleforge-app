@@ -1,18 +1,19 @@
 'use client';
 
 /**
- * House page identity + CHILD-PAGE / station-subgroup switcher for GlobalHeader.
+ * Identity + switcher for GlobalHeader.
  *
  * Closed face = icon + display name for the current page (or active child).
  * Compact {@link HEADER_PAGE_FACE_WIDTH} chip — same width as the open menu.
  * Find sits flush to its right. Never a beam-filling bar.
  * On modeful pages (≥2 children) the face opens an {@link AnchoredLayer} over
  * this page's {@link SIDEBAR_PAGE_NAV} children and navigates via
- * {@link useSidebarChildNav}. First-class Receiving benches compose peers from
- * {@link stationSubgroupMembers} (same SoT as MasterNav) — never the legacy
- * `receiving` children list. Other modeless pages (Packing, Scan out, Search, …)
- * render the same face as a static identity chip — never return null just
- * because there is nothing to switch.
+ * {@link useSidebarChildNav}. Scan Stations benches (Arrival · Unbox · Local
+ * Pickup · Repair Service · Quality Control · Ready to Pack · Packing · Scan
+ * out) compose peers from {@link floorStationPages} — the same flat map as
+ * MasterNav, with no Arrival/Unbox-only child drill. Other modeless pages
+ * (Search, …) render the same face as a static identity chip — never return
+ * null just because there is nothing to switch.
  *
  * Identity resolves from {@link SIDEBAR_PAGE_NAV}, falling back to
  * {@link APP_SIDEBAR_NAV} for top pins and other rows with no page-nav entry
@@ -35,17 +36,8 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActiveSidebarChild } from '@/components/sidebar/master-nav/useActiveSidebarChild';
 import { useSidebarChildNav } from '@/components/sidebar/master-nav/useSidebarChildNav';
-import {
-  APP_SIDEBAR_NAV,
-  filterPageChildren,
-  getSidebarPageNav,
-  getStationSubgroupDef,
-  hasDeskPageChrome,
-  stationSubgroupMembers,
-  stationSubgroupOfPage,
-  type SidebarIconComponent,
-  type SidebarPageNav,
-} from '@/lib/sidebar-navigation';
+import { type SidebarIconComponent } from '@/lib/sidebar-navigation';
+import { resolveHeaderPage } from './header-page-face';
 import { cn } from '@/utils/_cn';
 import {
   HeaderChromeMenu,
@@ -55,6 +47,7 @@ import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_BTN_OPEN_CLASS,
   HEADER_PAGE_FACE_WIDTH,
+  HEADER_PAGE_MENU_SCROLL_CLASS,
   TOP_CHROME_ICON_FACE,
 } from './header-shell';
 
@@ -106,93 +99,6 @@ function PageFaceContent({ Icon, label }: { Icon: SidebarIconComponent; label: s
       </span>
     </>
   );
-}
-
-type HeaderMenuRow = {
-  id: string;
-  label: string;
-  icon: SidebarIconComponent;
-};
-
-type HeaderPageFace = {
-  id: string;
-  label: string;
-  icon: SidebarIconComponent;
-  /** Modeful L2 children, or station-subgroup peers as menu rows. */
-  menuRows?: HeaderMenuRow[];
-  /** Active menu row id (child or first-class subgroup member). */
-  activeRowId?: string;
-  /** Menu aria-label (page label or subgroup name). */
-  menuAriaLabel?: string;
-  /**
-   * How menu selection navigates:
-   * - `child` — `navigate(pageId, childId)` for SIDEBAR_PAGE_NAV children
-   * - `page` — `navigate(memberPageId)` for first-class station peers
-   */
-  menuNav?: 'child' | 'page';
-};
-
-function pageVisible(
-  page: SidebarPageNav,
-  permissions: ReadonlySet<string> | undefined,
-): boolean {
-  return !page.requires || (permissions?.has(page.requires) ?? false);
-}
-
-function resolveHeaderPage(
-  pageId: string,
-  permissions: ReadonlySet<string> | undefined,
-): HeaderPageFace | null {
-  const raw = getSidebarPageNav(pageId);
-  if (raw) {
-    const filtered = filterPageChildren(raw, permissions);
-    const subgroup = stationSubgroupOfPage(filtered);
-    // First-class subgroup leaves (Arrival / Unbox / …) — not the legacy
-    // `receiving` family entry (which still has children for deep-links).
-    if (subgroup && !filtered.children?.length) {
-      const members = stationSubgroupMembers(subgroup).filter((p) =>
-        pageVisible(p, permissions),
-      );
-      const active = members.find((m) => m.id === pageId) ?? members[0];
-      const def = getStationSubgroupDef(subgroup);
-      if (members.length > 1 && active) {
-        return {
-          id: active.id,
-          label: active.label,
-          icon: active.icon,
-          menuRows: members.map((m) => ({
-            id: m.id,
-            label: m.label,
-            icon: m.icon,
-          })),
-          activeRowId: pageId,
-          menuAriaLabel: def ? `${def.label} stations` : `${active.label} pages`,
-          menuNav: 'page',
-        };
-      }
-    }
-
-    // A desk that draws its own children as in-page tabs keeps a plain identity
-    // face here — the switcher exists so a page's children stay reachable with
-    // the spine closed, and on those desks the tab band already is that door.
-    const children = hasDeskPageChrome(filtered) ? undefined : filtered.children;
-    return {
-      id: filtered.id,
-      label: filtered.label,
-      icon: filtered.icon,
-      menuRows:
-        children && children.length > 1
-          ? children.map((c) => ({ id: c.id, label: c.label, icon: c.icon }))
-          : undefined,
-      menuNav: children && children.length > 1 ? 'child' : undefined,
-      menuAriaLabel: `${filtered.label} pages`,
-    };
-  }
-  // Top pins + other APP_SIDEBAR_NAV-only rows (Search, Chat, …) have no
-  // SIDEBAR_PAGE_NAV entry — still show their icon + label in the header.
-  const nav = APP_SIDEBAR_NAV.find((item) => item.id === pageId);
-  if (!nav || pageId === 'unknown') return null;
-  return { id: nav.id, label: nav.label, icon: nav.icon };
 }
 
 export function HeaderPageSwitcher() {
@@ -267,7 +173,7 @@ export function HeaderPageSwitcher() {
       >
         <HeaderChromeMenu
           ariaLabel={page.menuAriaLabel ?? `${page.label} pages`}
-          className={cn(HEADER_PAGE_FACE_WIDTH, 'min-w-0')}
+          className={cn(HEADER_PAGE_FACE_WIDTH, 'min-w-0', HEADER_PAGE_MENU_SCROLL_CLASS)}
         >
           {menuRows!.map((item) => {
             const Icon = item.icon;

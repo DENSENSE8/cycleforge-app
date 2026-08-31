@@ -12,8 +12,18 @@
  * modes — the twin of the GlobalHeader control that `display/workbench.md`
  * forbids ("L2 Mode lives in GlobalHeader… never remount a full-width mode rail
  * as a twin"), and 60px of permanent vertical cost on the first screen an
- * operator opens. Home's modes are now registered in `SIDEBAR_PAGE_NAV`, so
- * `HeaderPageSwitcher` serves them exactly like Dashboard's and Operations'.
+ * operator opens.
+ *
+ * Home's modes are registered in `SIDEBAR_PAGE_NAV`, and since 2026-08-31 the
+ * page's own frame draws them: `app/page.tsx` mounts `DeskPageLayout`, so Daily
+ * · Today · Tasks ride the same tab row every desk and station wears. That is
+ * not a return of the banned rail — the ban was on a page-local full-width twin
+ * of the header control; this row is the product's ONE page chrome, sized to
+ * the stage.
+ *
+ * It also no longer paints its own surface. The frame's card owns that, and a
+ * `bg-surface-canvas` child inside a `bg-surface-card` card was the ground
+ * showing through the object sitting on it.
  *
  * Composition (do not rebuild):
  *   daily → `HomeDailyMode` (the daily checklist + the day's report) — DEFAULT
@@ -27,7 +37,6 @@
  */
 
 import { MyDayWorkspace } from '@/features/my-day/MyDayWorkspace';
-import { cn } from '@/utils/_cn';
 import { useHomeMode } from './useHomeMode';
 import { HomeDailyMode } from './HomeDailyMode';
 import { TasksWorkbench } from '@/features/tasks/TasksWorkbench';
@@ -36,12 +45,7 @@ export function HomeWorkspace() {
   const { mode } = useHomeMode();
 
   return (
-    <div
-      className={cn(
-        'flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden',
-        mode === 'daily' ? 'bg-surface-card' : 'bg-surface-canvas',
-      )}
-    >
+    <div className="flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden">
       <div className="min-h-0 w-full min-w-0 flex-1 overflow-hidden">
         {mode === 'daily' && <HomeDailyMode />}
         {mode === 'today' && <MyDayWorkspace />}

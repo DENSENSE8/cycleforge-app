@@ -4,6 +4,13 @@
  * Nav → {@link DeskPageChrome} adapter: a desk's page tabs ARE its former
  * `SIDEBAR_PAGE_NAV` children, and this is the one place that knows it.
  *
+ * It lives in the APP, not the design system, on purpose. `DeskPageChrome`
+ * moved into `@/design-system/components/desk` on 2026-08-31 as the one page
+ * frame; a design-system component that imported `sidebar-navigation`,
+ * `AuthContext` and `next/navigation` would have dragged the whole app spine
+ * into the system it is supposed to be independent of. So the system takes
+ * data, and this is the file that knows where the data comes from.
+ *
  * The chrome takes tabs as data and never reads the route; the nav entry keeps
  * owning the URL contract (`to()` writes it, `resolveChild()` reads it back).
  * Drawing the band from that same data is what stops the spine's idea of a
@@ -29,20 +36,24 @@ import {
   getSidebarPageNav,
   hasDeskPageChrome,
 } from '@/lib/sidebar-navigation';
-import type { DeskPageTab } from './DeskPageChrome';
+import type { DeskPageTab } from '@/design-system/components/DeskPageChrome';
 
 export interface DeskPageChromeTabs {
   /**
    * The desk's page title — the nav entry's own `label`, so the header and the
-   * spine row say the same word by construction. Empty when the current page
-   * has not opted into desk chrome.
+   * spine row say the same word by construction. Empty only when the path
+   * resolves to no nav page at all.
    *
    * The PAGE label ("Shipping"), not the active child's ("To ship"): the child
    * is already named on the tab directly underneath, and a title that reprints
    * the lit tab is a row spent saying nothing.
    */
   title: string;
-  /** Empty when the current page has not opted in — render the body bare. */
+  /**
+   * Empty when the current page has not opted into `deskChrome` — the frame
+   * then draws a header and a card with no tab row, which is the honest shape
+   * for a single-surface desk.
+   */
   tabs: DeskPageTab[];
   activeTab: string;
   onTabChange: (id: string) => void;
@@ -55,22 +66,40 @@ export function useDeskPageChromeTabs(): DeskPageChromeTabs {
   const router = useRouter();
   const { pageId, childId } = useActiveSidebarChild();
 
+  /**
+   * The page's own nav entry, permission-filtered. Resolved WITHOUT the
+   * desk-chrome gate, because the title and the tabs are two questions:
+   *
+   * - **Title** — every page has a name, tabs or not. A single-surface desk
+   *   (Inbound, Support, Studio, Reports) wears the same header as a multi-tab
+   *   one and simply draws no tab row, so gating the title on `deskChrome`
+   *   printed an empty `<h1>` on exactly the pages that most needed a name.
+   * - **Tabs** — only a page that opted in draws them, because opting in is
+   *   what withdraws the spine's drill-down. Drawing tabs for a page whose
+   *   children are still spine rows would state the same navigation twice.
+   */
   const page = useMemo(() => {
     const permissions = user?.permissions ? new Set(user.permissions) : undefined;
     const raw = getSidebarPageNav(pageId);
-    const filtered = raw ? filterPageChildren(raw, permissions) : null;
-    return filtered && hasDeskPageChrome(filtered) ? filtered : null;
+    return raw ? filterPageChildren(raw, permissions) : null;
   }, [user?.permissions, pageId]);
 
-  const tabs = useMemo<DeskPageTab[]>(
-    () => (page?.children ?? []).map((child) => ({ id: child.id, label: child.label })),
+  /** Null unless this page draws its children as in-page tabs. */
+  const tabbedPage = useMemo(
+    () => (page && hasDeskPageChrome(page) ? page : null),
     [page],
+  );
+
+  const tabs = useMemo<DeskPageTab[]>(
+    () =>
+      (tabbedPage?.children ?? []).map((child) => ({ id: child.id, label: child.label })),
+    [tabbedPage],
   );
 
   const onTabChange = useCallback(
     (id: string) => {
       if (id === childId) return;
-      const child = page?.children?.find((c) => c.id === id);
+      const child = tabbedPage?.children?.find((c) => c.id === id);
       if (!child) return;
       const { pathname: nextPath, search } = applyChildTarget(
         { pathname, params: searchParams },
@@ -78,7 +107,7 @@ export function useDeskPageChromeTabs(): DeskPageChromeTabs {
       );
       router.push(search ? `${nextPath}?${search}` : nextPath);
     },
-    [childId, page, pathname, router, searchParams],
+    [childId, tabbedPage, pathname, router, searchParams],
   );
 
   return {

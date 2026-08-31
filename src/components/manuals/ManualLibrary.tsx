@@ -2,12 +2,14 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { FileText, Loader2, ExternalLink, Pencil, Trash2, Plus } from '@/components/Icons';
+import { FileText, ExternalLink, Pencil, Trash2, Plus } from '@/components/Icons';
 import { microBadge, tableHeader } from '@/design-system/tokens/typography/presets';
 import { Button } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { toast } from '@/lib/toast';
 import { generatePdfThumbnail } from '@/lib/manuals/pdfThumbnail';
+import { productManualContentPath } from '@/lib/blob/vercel-blob-url';
+import { FetchedPdfFrame } from '@/design-system/components/FetchedPdfFrame';
 import { statusBadgeClass, typeBadgeClass } from './library/manuals-tree';
 import {
   EditManualModal,
@@ -34,8 +36,8 @@ interface ManualDetail {
   updated_at: string | null;
 }
 
-function manualHref(m: Pick<ManualDetail, 'source_url' | 'google_file_id'>): string | null {
-  if (m.source_url) return m.source_url;
+function manualHref(m: Pick<ManualDetail, 'id' | 'source_url' | 'google_file_id'>): string | null {
+  if (m.source_url) return productManualContentPath(m.id);
   if (m.google_file_id) return `https://docs.google.com/document/d/${m.google_file_id}`;
   return null;
 }
@@ -56,9 +58,10 @@ function appendCacheBust(href: string, version: string | number): string {
 export function ManualLibrary() {
   const searchParams = useSearchParams();
   const idParam = searchParams.get('id');
-  const id = idParam ? Number(idParam) : null;
+  const id = idParam && Number.isFinite(Number(idParam)) && Number(idParam) > 0
+    ? Number(idParam)
+    : null;
   const [manual, setManual] = useState<ManualDetail | null>(null);
-  const [loading, setLoading] = useState(false);
   const [reloadToken, setReloadToken] = useState(0);
 
   useEffect(() => {
@@ -67,7 +70,6 @@ export function ManualLibrary() {
       return;
     }
     let cancelled = false;
-    setLoading(true);
     fetch(`/api/product-manuals?id=${id}`, { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
@@ -78,9 +80,6 @@ export function ManualLibrary() {
       })
       .catch(() => {
         if (!cancelled) setManual(null);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
       });
 
     return () => {
@@ -110,7 +109,7 @@ export function ManualLibrary() {
     if (!manual || manual.thumbnail_url || !manual.source_url) return;
     let cancelled = false;
     (async () => {
-      const thumb = await generatePdfThumbnail(manual.source_url!);
+      const thumb = await generatePdfThumbnail(productManualContentPath(manual.id));
       if (cancelled || !thumb) return;
       const form = new FormData();
       form.append('id', String(manual.id));
@@ -138,30 +137,25 @@ export function ManualLibrary() {
 
   // Only render a row whose id matches ?id= — avoids one-frame flash of the
   // previous PDF when the operator switches manuals before the fetch lands.
-  const resolved = manual && id && manual.id === id ? manual : null;
+  const resolved =
+    manual && id && Number(manual.id) === id ? manual : null;
 
   if (!id) return <EmptyViewer />;
-  if (!resolved) {
-    if (loading || (manual != null && manual.id !== id)) {
-      return (
-        <div className="flex h-full w-full items-center justify-center bg-surface-canvas">
-          <Loader2 className="h-6 w-6 animate-spin text-text-faint" />
-        </div>
-      );
-    }
-    return (
-      <div className="flex h-full w-full flex-col items-center justify-center bg-surface-canvas px-8 text-center">
-        <FileText className="mb-3 h-10 w-10 text-text-faint" />
-        <p className={`${tableHeader} text-text-soft`}>Manual not found</p>
-      </div>
-    );
-  }
-  return <ManualViewer manual={resolved} />;
+  // Always paint the PDF from `id` — metadata GET is `sku_stock.view` + CRUD
+  // and can lag or 403 while `/content` still serves the file.
+  return <ManualViewer manual={resolved} id={id} />;
 }
 
-function ManualViewer({ manual }: { manual: ManualDetail }) {
-  const href = manualHref(manual);
-  const isBlobPdf = !!manual.source_url;
+function ManualViewer({
+  manual,
+  id,
+}: {
+  manual: ManualDetail | null;
+  id: number;
+}) {
+  const contentSrc = productManualContentPath(id);
+  const href = manual ? manualHref(manual) : contentSrc;
+  const isBlobPdf = manual ? Boolean(manual.source_url) : true;
   const router = useRouter();
   const searchParams = useSearchParams();
   const [editOpen, setEditOpen] = useState(false);
@@ -169,41 +163,41 @@ function ManualViewer({ manual }: { manual: ManualDetail }) {
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const editTarget: EditManualTarget = {
-    id: manual.id,
-    displayName: manual.display_name,
-    folderPath: manual.folder_path,
-    type: manual.type,
-    status: manual.status,
-    sku: manual.sku,
-    itemNumber: manual.item_number,
-  };
-  const replaceTarget: ReplaceTarget = {
-    id: manual.id,
-    displayName: manual.display_name,
-    folderPath: manual.folder_path,
-  };
+  const editTarget: EditManualTarget | null = manual
+    ? {
+        id: Number(manual.id),
+        displayName: manual.display_name,
+        folderPath: manual.folder_path,
+        type: manual.type,
+        status: manual.status,
+        sku: manual.sku,
+        itemNumber: manual.item_number,
+      }
+    : null;
+  const replaceTarget: ReplaceTarget | null = manual
+    ? {
+        id: Number(manual.id),
+        displayName: manual.display_name,
+        folderPath: manual.folder_path,
+      }
+    : null;
 
   const handleDelete = useCallback(async () => {
-    // No confirm dialog — the toast's Undo button is the safety net.
-    // Internal-tool ergonomic: destructive actions feel cheap, but a
-    // 10-second window to take it back means accidents don't bite.
     setDeleting(true);
     setDeleteError(null);
     try {
-      const res = await fetch(`/api/product-manuals?id=${manual.id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/product-manuals?id=${id}`, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data?.error || `HTTP ${res.status}`);
       }
       dispatchManualsUpdated();
-      // Clear the ?id= so the viewer falls back to its empty state.
       const params = new URLSearchParams(searchParams.toString());
       params.delete('id');
       const qs = params.toString();
       router.replace(qs ? `?${qs}` : window.location.pathname);
 
-      const label = manual.display_name || `Manual #${manual.id}`;
+      const label = manual?.display_name || `Manual #${id}`;
       toast.success(`Deleted “${label}”`, {
         duration: 10_000,
         action: {
@@ -213,14 +207,13 @@ function ManualViewer({ manual }: { manual: ManualDetail }) {
               const restoreRes = await fetch('/api/product-manuals', {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: manual.id, isActive: true }),
+                body: JSON.stringify({ id, isActive: true }),
               });
               if (!restoreRes.ok) throw new Error(`HTTP ${restoreRes.status}`);
               dispatchManualsUpdated();
               toast.success(`Restored “${label}”`);
-              // Re-open the manual in the viewer.
               const next = new URLSearchParams(searchParams.toString());
-              next.set('id', String(manual.id));
+              next.set('id', String(id));
               router.replace(`?${next.toString()}`);
             } catch (err) {
               toast.error(err instanceof Error ? err.message : 'Restore failed');
@@ -235,72 +228,80 @@ function ManualViewer({ manual }: { manual: ManualDetail }) {
     } finally {
       setDeleting(false);
     }
-  }, [manual.id, manual.display_name, router, searchParams]);
+  }, [id, manual?.display_name, router, searchParams]);
+
+  const title = manual?.display_name || manual?.file_name || `Manual #${id}`;
 
   return (
-    <div className="flex h-full w-full flex-col bg-surface-canvas">
+    <div className="flex h-full min-h-0 w-full flex-col bg-surface-canvas">
       <div className="flex shrink-0 items-start justify-between gap-4 border-b border-border-soft bg-surface-card px-6 py-4">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-text-default">
-            {manual.display_name || manual.file_name || `Manual #${manual.id}`}
-          </p>
-          {manual.product_title && (
+          <p className="truncate text-sm font-semibold text-text-default">{title}</p>
+          {manual?.product_title ? (
             <p className="mt-0.5 truncate text-role-caption font-medium text-text-soft">
               {manual.product_title}
             </p>
-          )}
-          {manual.folder_path && (
+          ) : null}
+          {manual?.folder_path ? (
             <p className="mt-1 truncate font-mono text-role-micro text-text-faint">{manual.folder_path}</p>
-          )}
-          {deleteError && (
+          ) : null}
+          {deleteError ? (
             <p className="mt-1 text-role-micro font-semibold text-red-600">{deleteError}</p>
-          )}
+          ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <span className={`${microBadge} rounded-full border px-2 py-1 ${statusBadgeClass(manual.status)}`}>
-            {manual.status}
-          </span>
-          {manual.type && (
+          {manual ? (
+            <span className={`${microBadge} rounded-full border px-2 py-1 ${statusBadgeClass(manual.status)}`}>
+              {manual.status}
+            </span>
+          ) : null}
+          {manual?.type ? (
             <span className={`${microBadge} rounded-full border px-2 py-1 ${typeBadgeClass(manual.type)}`}>
               {manual.type}
             </span>
-          )}
-          <HoverTooltip label="Edit manual metadata" asChild>
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<Pencil />}
-              onClick={() => setEditOpen(true)}
-              ariaLabel="Edit manual metadata"
-            >
-              Edit
-            </Button>
-          </HoverTooltip>
-          <HoverTooltip label="Replace the underlying file" asChild>
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<Plus />}
-              onClick={() => setReplaceOpen(true)}
-              ariaLabel="Replace the underlying file"
-            >
-              Replace
-            </Button>
-          </HoverTooltip>
-          <HoverTooltip label="Soft-delete this manual" asChild>
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={<Trash2 />}
-              loading={deleting}
-              onClick={handleDelete}
-              ariaLabel="Soft-delete this manual"
-              className="text-red-700 ring-red-200 hover:bg-red-50 hover:text-red-700"
-            >
-              Delete
-            </Button>
-          </HoverTooltip>
-          {href && (
+          ) : null}
+          {editTarget ? (
+            <HoverTooltip label="Edit manual metadata" asChild>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Pencil />}
+                onClick={() => setEditOpen(true)}
+                ariaLabel="Edit manual metadata"
+              >
+                Edit
+              </Button>
+            </HoverTooltip>
+          ) : null}
+          {replaceTarget ? (
+            <HoverTooltip label="Replace the underlying file" asChild>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Plus />}
+                onClick={() => setReplaceOpen(true)}
+                ariaLabel="Replace the underlying file"
+              >
+                Replace
+              </Button>
+            </HoverTooltip>
+          ) : null}
+          {manual ? (
+            <HoverTooltip label="Soft-delete this manual" asChild>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Trash2 />}
+                loading={deleting}
+                onClick={handleDelete}
+                ariaLabel="Soft-delete this manual"
+                className="text-red-700 ring-red-200 hover:bg-red-50 hover:text-red-700"
+              >
+                Delete
+              </Button>
+            </HoverTooltip>
+          ) : null}
+          {href ? (
             <a
               href={href}
               target="_blank"
@@ -310,30 +311,27 @@ function ManualViewer({ manual }: { manual: ManualDetail }) {
               <ExternalLink className="h-3 w-3" />
               Open
             </a>
-          )}
+          ) : null}
         </div>
       </div>
 
-      <EditManualModal open={editOpen} onClose={() => setEditOpen(false)} target={editTarget} />
-      <UploadManualModal
-        open={replaceOpen}
-        onClose={() => setReplaceOpen(false)}
-        replaceTarget={replaceTarget}
-      />
+      {editTarget ? (
+        <EditManualModal open={editOpen} onClose={() => setEditOpen(false)} target={editTarget} />
+      ) : null}
+      {replaceTarget ? (
+        <UploadManualModal
+          open={replaceOpen}
+          onClose={() => setReplaceOpen(false)}
+          replaceTarget={replaceTarget}
+        />
+      ) : null}
 
       <div className="min-h-0 flex-1 overflow-hidden bg-surface-sunken">
-        {isBlobPdf && href ? (
-          // Key on id + source_url so a Replace (new URL) forces a fresh mount.
-          // The cache-bust param on the URL itself handles the Edit-only case
-          // where the server renamed the blob to match a new display name —
-          // browsers cache iframes aggressively, so just changing the src
-          // attribute isn't always enough.
-          // ds-allow-title: iframe requires a native title for its accessible name
-          <iframe
-            key={`${manual.id}::${manual.source_url || ''}`}
-            src={appendCacheBust(href, manual.updated_at || String(manual.id))}
-            title={manual.display_name || `Manual ${manual.id}`}
-            className="h-full w-full border-0 bg-surface-card"
+        {isBlobPdf && contentSrc ? (
+          <FetchedPdfFrame
+            key={`${id}::${manual?.source_url || ''}`}
+            src={appendCacheBust(contentSrc, manual?.updated_at || String(id))}
+            title={title}
           />
         ) : href ? (
           <div className="flex h-full flex-col items-center justify-center px-8 text-center">

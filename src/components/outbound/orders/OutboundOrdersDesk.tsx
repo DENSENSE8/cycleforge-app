@@ -26,10 +26,15 @@ import { DashboardOrdersView } from '@/components/dashboard/DashboardOrdersView'
 import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDetails';
 import { OrdersViewChromeProvider } from '@/components/outbound/orders/orders-view-chrome-context';
 import { ToShipWmsShell } from '@/components/outbound/orders/to-ship/ToShipWmsShell';
-import { OrderIngestRail } from '@/components/outbound/orders/OrderIngestRail';
 import { OrderIntakeOverlay } from '@/components/outbound/orders/intake/OrderIntakeOverlay';
-import { OrdersDeskAddAction } from '@/components/outbound/orders/OrdersDeskAddAction';
+import {
+  OrdersDeskAddAction,
+  type OrderIntakeMethod,
+} from '@/components/outbound/orders/OrdersDeskAddAction';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
+import { useTableImportFilePicker } from '@/components/tables/import/TableImportFileButton';
+import { useOrdersSync } from '@/hooks/useOrdersSync';
+import { useAuth } from '@/contexts/AuthContext';
 import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import {
@@ -92,6 +97,40 @@ function OutboundOrdersDeskContent({
   // same courtesy the ingest rail has always paid (`ingestEnabled`), now
   // applied to the centered overlay so two intake surfaces never stack.
   const { active: importActive } = useTableImportParam(ORDER_IMPORT_DESCRIPTOR);
+
+  /**
+   * Ingest, run straight from the desk CTA.
+   *
+   * The Add-orders RAIL is gone (operator, 2026-08-31): every method it listed
+   * is already an item on the CTA, so the rail was a second front door whose
+   * only job was hosting a button per method. Each method now does its own work
+   * here — and each one needed no host to begin with:
+   *
+   * - **sync** — `useOrdersSync().handleTransfer()`. The CTA's own face reports
+   *   it (`syncing` → "Syncing…" + spinner), which is why that prop existed and
+   *   went unwired while the rail owned the progress.
+   * - **file** — the OS file picker; CSV staging then takes over the desk. The
+   *   rail leaf was one `Choose CSV` button in front of exactly this call.
+   *
+   * Hand entry is the centered `OrderIntakeOverlay` (`onAdd`), which has been
+   * the acknowledgment intake's front door since 2026-08-30 — so the rail's
+   * `manual` leaf was the SECOND hand-entry path, not the only one.
+   */
+  const csv = useTableImportFilePicker(ORDER_IMPORT_DESCRIPTOR);
+  const sync = useOrdersSync();
+  const { has } = useAuth();
+  const canImportOrders = has('orders.import');
+
+  const openIntakeMethod = useCallback(
+    (method: OrderIntakeMethod) => {
+      if (method === 'sync') {
+        void sync.handleTransfer();
+        return;
+      }
+      csv.open();
+    },
+    [csv, sync],
+  );
 
   const { selectionEnabled, selectMode, selectionOverlays } =
     useOrderRailSelection(orderView);
@@ -169,7 +208,14 @@ function OutboundOrdersDeskContent({
       */}
       {!isSupportContext ? (
         <>
-          <OrdersDeskAddAction onAdd={openTriageForNewOrder} />
+          <OrdersDeskAddAction
+            onAdd={openTriageForNewOrder}
+            onMethod={openIntakeMethod}
+            canImport={canImportOrders && csv.live}
+            syncing={sync.isTransferring}
+          />
+          {/* The picker's hidden <input>; `csv.open()` above clicks it. */}
+          {csv.input}
           {/*
             The intake session is a CENTERED overlay (operator override
             2026-08-30) — `?triage=` opens it in the middle of the desk. The
@@ -181,11 +227,6 @@ function OutboundOrdersDeskContent({
             orderId={triageOrderId}
             onClose={closeIntakeForm}
             onOrderCreated={bindTriageOrder}
-          />
-          <OrderIngestRail
-            open={showIngestRail && ingestLeaf !== 'triage'}
-            onClose={closeIntakeForm}
-            initialLeaf={ingestLeaf === 'triage' ? 'index' : ingestLeaf}
           />
         </>
       ) : null}

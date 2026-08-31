@@ -131,6 +131,48 @@ export function moveFieldBinding(
 }
 
 /**
+ * Move a bound field to an ABSOLUTE position within its own band.
+ *
+ * {@link moveFieldBinding} swaps with a neighbour, which is the right primitive
+ * for a pair of arrows and the wrong one for a drag: a drop names a
+ * destination, not a number of hops, and replaying hops re-enters the layout
+ * cascade once per step. This lands the binding in one write.
+ *
+ * A field can only be reordered inside the band it belongs to — dragging a
+ * status column into the subtitle line would be a BIND change, not a move, and
+ * `toggleFieldBinding` owns that.
+ */
+export function reorderFieldBinding(
+  layout: SlotLayout,
+  field: FieldDef,
+  toIndex: number,
+): ToggleBindingResult {
+  const band = bandFor(field);
+  if (!band) {
+    return { ok: false, reason: `'${field.label}' is not a bindable column` };
+  }
+  const bindings = band === 'status' ? layout.statusBindings : layout.subtitleBindings;
+  const at = bindings.findIndex((b) => b.fieldId === field.id);
+  if (at < 0) {
+    return { ok: false, reason: `'${field.label}' is not bound` };
+  }
+  // Clamp rather than refuse: a drop past the last track means "last", which is
+  // what the operator's pointer said even if the index overshoots.
+  const to = Math.max(0, Math.min(bindings.length - 1, toIndex));
+  if (to === at) return { ok: true, layout };
+  const next = [...bindings];
+  const [moved] = next.splice(at, 1);
+  next.splice(to, 0, moved);
+  return {
+    ok: true,
+    layout:
+      band === 'status'
+        ? { ...layout, statusBindings: next }
+        : { ...layout, subtitleBindings: next },
+  };
+}
+
+/**
  * The Fields picker's rows: every status/subtitle-bindable catalog field, with
  * its bound state and — when its band is full — the limit copy. Identity and
  * amount fields are omitted (locked / not free slots).

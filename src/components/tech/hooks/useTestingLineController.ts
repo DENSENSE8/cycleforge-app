@@ -933,6 +933,8 @@ export function useTestingLineController(
     labelEditorRequestId, requestLabelEditor,
     activeLabelFace, unitInput, applyUnitAndPrint,
     labelPayload, labelDraftDefaults, buildLabelPayload, applyAndPrintLabel,
+    setLabelCornerMode: cartonLabel.setCornerMode,
+    patchLabelOverride: cartonLabel.patchLabelOverride,
     labelOptions,
     isUnfound,
     prevLineNotes: '',

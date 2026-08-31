@@ -53,6 +53,8 @@ interface LineCartonContextSectionProps {
   onToggleClaimView?: () => void;
   /** True while the Claim push column is open. */
   claimViewActive?: boolean;
+  /** Draft ticket number badge — replaces the Claim verb while a claim is drafted. */
+  draftTicketNumber?: string | null;
   /**
    * Toggle the inline support-ticket editor (`?ticketView=1`). Passed through to
    * the carton card's reply-toggle button (unbox-only opt-in). Omit to hide it.
@@ -113,6 +115,7 @@ export function LineCartonContextSection({
   linkedOrderNumber = null,
   onToggleClaimView,
   claimViewActive = false,
+  draftTicketNumber = null,
   onToggleTicketView,
   ticketViewActive = false,
   expandClassifyWhenPending = true,
@@ -154,6 +157,7 @@ export function LineCartonContextSection({
       photoStage={photoStage}
       onMakeClaim={onToggleClaimView ?? (() => c.openClaimModal('create'))}
       claimViewActive={claimViewActive}
+      draftTicketNumber={draftTicketNumber}
       listingLink={c.listingLink}
       listingOpenHref={c.listingOpenHref}
       listingLinks={c.listingLinks}

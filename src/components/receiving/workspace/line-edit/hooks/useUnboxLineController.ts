@@ -1048,6 +1048,8 @@ export function useUnboxLineController(
     scanValue, labelPayload, runPrintLabel, runPrimaryPrint, printKind, handlePrintAndReceive,
     // custom label print (Edit on the label preview)
     labelDraftDefaults, buildLabelPayload, applyAndPrintLabel,
+    setLabelCornerMode: cartonLabel.setCornerMode,
+    patchLabelOverride: cartonLabel.patchLabelOverride,
     // workspace label kind selection (preview dropdown + dock pre-select)
     labelOptions, labelSelectOptions, selectedLabelKind, setSelectedLabelKind, activeLabelKind,
     labelEditorRequestId, requestLabelEditor,

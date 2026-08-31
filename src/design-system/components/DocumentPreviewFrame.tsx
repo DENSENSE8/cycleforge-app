@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { FileText } from '@/components/Icons';
 import { Spinner } from '@/design-system/primitives';
+import { FetchedPdfFrame } from '@/design-system/components/FetchedPdfFrame';
 import { cn } from '@/utils/_cn';
 import {
   resolveDocumentPreviewMime,
@@ -36,10 +37,6 @@ export function DocumentPreviewFrame({
   className,
 }: DocumentPreviewFrameProps) {
   const kind = resolveDocumentPreviewMime(src, mimeHint);
-  const iframeSrc =
-    src && kind === 'pdf' && !src.includes('#')
-      ? `${src}#toolbar=1&navpanes=0`
-      : src ?? undefined;
 
   return (
     <div className={cn('flex min-h-0 flex-1 flex-col overflow-hidden', className)}>
@@ -48,7 +45,12 @@ export function DocumentPreviewFrame({
           {meta}
         </div>
       ) : null}
-      <div className="flex min-h-0 flex-1 items-center justify-center bg-surface-canvas p-3">
+      <div
+        className={cn(
+          'flex min-h-0 flex-1 overflow-hidden bg-surface-canvas p-3',
+          src && kind === 'pdf' ? 'items-stretch' : 'items-center justify-center',
+        )}
+      >
         {src ? (
           kind === 'image' ? (
             // eslint-disable-next-line @next/next/no-img-element -- arbitrary document bytes, not a Next-optimizable asset
@@ -58,11 +60,7 @@ export function DocumentPreviewFrame({
               className="max-h-full max-w-full rounded-lg border border-border-soft bg-surface-card object-contain"
             />
           ) : (
-            <iframe
-              src={iframeSrc}
-              title={title}
-              className="h-full w-full rounded-lg border border-border-soft bg-surface-card"
-            />
+            <FetchedPdfFrame src={src} title={title} className="rounded-lg border border-border-soft" />
           )
         ) : loading ? (
           <div className="flex flex-col items-center gap-2 px-6 text-center">

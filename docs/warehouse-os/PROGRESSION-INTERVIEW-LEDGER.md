@@ -29,8 +29,6 @@ MOVES.
 
 ---
 
-## Rulings
-
 ## Pillar 1 — What progresses
 
 ### PG1 · Progression is ONE nested spine: stage above step
@@ -202,3 +200,219 @@ answerable from facts.
 > ruling and is not yet made.
 
 ---
+
+## Pillar 4 — How progression is drawn
+
+### PG10 · Progression is drawn on the SESSION TILE. The beam stays identity.
+**Ruled 2026-08-30.** Selected: *"Session tile only."* **B2** (*the beam reports
+identity, never verbs*) and **B16** (*the beam carries only what survives the
+absence of a session tile*) win over **P1**'s "summarized by the beam's pipeline
+strip".
+
+> **AMENDMENT — P1, 2026-08-30.** P1's three altitudes become **authored** (a
+> Procedures table) and **run** (the session tile's spine). The third —
+> *summarized by the beam's pipeline strip* — is **struck before it is built**.
+> Progression is a property of the work in front of you; **B18** already refuses
+> a beam fallback for session facts, and **B7** has committed the one
+> fixed-width header slot to `elapsed / target`.
+
+- Frees the beam from carrying a denominator that changes meaning per altitude
+  (**PG1**'s downstream constraint).
+- A manager watching N operators reads progression in the replay (**A5**, a
+  `table` tile), never in their own beam.
+
+### PG11 · Undo is always offered, and it WRITES a correcting event
+**Ruled 2026-08-30.** Selected: *"Undo is always offered; it writes a correcting
+event."* Closes **PG9-Q**. No window, no dialog, no timer — one keystroke, at
+any time.
+
+The operator's model stays *undo*; the ledger's model stays **append-only**
+(**PG9**). Nothing is un-written: the keystroke emits a new forward `ops_event`
+that supersedes its predecessor, so the replay shows both.
+
+- Rejected a timed window on the ground that it is a race the operator loses
+  exactly when they are busiest.
+- No **M5** timer is involved — there is no scheduled state change, only an
+  event on a keystroke.
+- The undo keystroke is a chord in the one registry (**I7**) and its collisions
+  are refused, never shadowed (**T21**).
+
+### PG12 · The progression mark — segmented squares + a `scaleX` fill
+Operator ruling: *"unban it you have full control to make an amazing
+application."*
+
+**No amendment was made, because none is required.** Pushed back with new
+evidence rather than recording a strike:
+
+- **M1 was already amended 2026-08-25** — `transform` struck from the ban
+  (*"composites off the main thread and moves no neighbour"*); **M2** now reads
+  *"the animatable set is the compositor set: colour, opacity, `transform`,
+  `filter`."* A continuously-filling bar animated as `transform: scaleX()` from
+  a motion value (**M6**) is **already legal**, runs at display refresh on the
+  compositor, and costs zero re-renders.
+- What is actually illegal is `ProgressBar.tsx:41`: `animate={{ width }}` over
+  **500 ms**. It reflows the document every frame. Unbanning layout would not
+  make the bar better — it would bless the janky implementation of it.
+- **Divergence found:** main's `docs/warehouse-os/LAWS.md` never received the
+  2026-08-25 M-amendments. They exist only in the `warehouse-os-refactor-8f2dc3`
+  worktree, so main's copy still bans `transform` outright and caps all motion
+  at 80 ms. Two law files disagree about what is legal.
+
+**Resolved 2026-08-30.** Operator selected: *"No strike needed — build it with
+scaleX."* **M1 stands unamended.** The mark is:
+
+- **Segmented squares, one per required step** (**F4**, **F5**) — a jumped-past
+  open step reads as a gap, which is how **PG6**'s open-behind requirement is
+  satisfied without a second component.
+- **A continuous stage fill animated as `transform: scaleX()`** with
+  `transform-origin: left`, driven by a motion value per **M6**, gated by
+  `useReducedMotion`. Legal under the amended M1/M2, composited, zero
+  re-renders.
+- **Debt named:** `ProgressBar.tsx:41` animates `width` over 500 ms and must be
+  ported to `scaleX`. It is a live M1 violation and the frame-dropping one.
+- **Debt named:** main's `LAWS.md` must receive the 2026-08-25 M-amendments, or
+  the two copies keep disagreeing about what is legal.
+
+---
+
+## Pillar 5 — Progression across people and time
+
+### PG13 · Progression stays on the assignment; ANY operator may resume it
+**Ruled 2026-08-30.** Selected: *"Progression stays on the assignment; anyone
+may resume."* Parking is lossless (**S4**) and progression already lives on the
+assignment (**PG2**), so the assignee clears while every capture stays intact.
+The next operator picks the stage up mid-flight.
+
+- **Ownership and authorship are different facts.** The assignment carries the
+  current owner; each `ops_event` carries the actor who captured that step
+  (**A1**). Two operators sharing a stage never blur into one in the trail.
+- Rejected manager-gated reassignment on the ground that a carton blocked
+  behind someone who went home gets a second assignment opened on the same box
+  — the drift **D12** warns about, created by the control meant to prevent it.
+
+### PG14 · Nothing ages on a clock — age is a QUEUE FACET
+**Ruled 2026-08-30.** Selected: *"Nothing automatic."* The spine never changes
+state because time passed. A three-day-old open stage is surfaced, not acted on.
+
+- Age becomes a sortable column and a filter facet on the queue table
+  (**Q1**, **Q3**) — visible on open, which meets the ≤1-interaction budget for
+  a status overview.
+- Consistent with **S8** (no absolute timeout ends a session) and **PG9** (the
+  spine is append-only; a rollback on a timer would destroy captured evidence
+  no human chose to discard).
+- No event is written that no human caused, so *"what happened here"* stays
+  answerable.
+
+---
+
+## Pillar 2 — The step contract (closed last, because PG3/PG6 defined it)
+
+### PG15 · A step declares a TYPED CAPTURE UNION, and `none` is explicit
+**Ruled 2026-08-30.** Selected: *"A typed capture union."* The evidence contract
+**PG3** demanded is:
+
+```
+scan(EntityKind) | photo | measurement | signature | none
+```
+
+- **`scan` names its `EntityKind`** — the same domain union the identity system
+  already derives picker labels, selector letters and disclosures from. A step
+  that wants a serial says so, which is what lets **PG6** route evidence to the
+  step that claims it rather than to the pointer.
+- **`none` is an explicit value, never an absence.** It marks an explicit-tick
+  step (**PG3**'s downstream constraint) so a tick-step can never be created by
+  forgetting to fill a field.
+- **`required` moves onto the contract**, superseding **P4**'s bare boolean —
+  a step is `{ capture, required }`, and a required `none` step is legal and
+  means "a human must assert this".
+- Authorable as org data per **K12**; no enum, no CHECK.
+
+### PG16 · Four progression verbs, one per ruled outcome
+**Ruled 2026-08-30.** Selected: *"Four verbs."* `ops_events.event_type` gains:
+
+| Verb | Written by |
+|---|---|
+| `STEP_SATISFIED` | evidence claims a step (**PG3**, **PG6**) |
+| `STEP_DEVIATED` | a required step is overridden, carrying the reason (**PG8**) |
+| `STAGE_COMMITTED` | the commit actuator fires (**PG7**) |
+| `PROGRESSION_CORRECTED` | undo, or any correction (**PG9**, **PG11**) |
+
+Closes **PB6**. Chosen over a single verb with the outcome in jsonb for the
+reason **D13** already gives: *"which required steps were skipped"* must be a
+`WHERE` on a column, not a payload probe that cannot tell absent from
+never-written. `entity_type` is untouched — it stays the deploy-time-fixed
+9-value business-object axis pinned byte-for-byte against the DB CHECK, which is
+machine vocabulary and therefore outside **K12** exactly as **PG5** draws the
+line.
+
+### PG17 · Procedures are authored in a TABLE TILE, edited in place
+**Ruled 2026-08-30.** Selected: *"A table tile."* Ratifies **P1**'s own word:
+steps are rows, the capture contract is a typed column, `required` is a column.
+
+- **F6** already makes tables grids with in-cell editing, and the `LedgerGrid`
+  work is that surface — so authoring adds no new surface, which is P1's whole
+  claim.
+- **P3** stands: the org row is the default, a staff edit is a delta in the same
+  three-state shape `keybindings` uses.
+- Rejected the rail tool on **K3** (a tool that grows a second step has become a
+  task session) and the settings tile on the ground that a procedure is a daily
+  floor artefact, not admin config.
+
+---
+
+## Summary — 17 rulings
+
+| # | Ruling |
+|---|---|
+| **PG1** | Progression is one nested spine: stage above step |
+| **PG2** | `work_assignments` carries progression |
+| **PG3** | Evidence advances the pointer; the tick is the fallback |
+| **PG4** | The queue is not a stage — progression begins at first touch |
+| **PG5** | Machine `status` and org `stage` are different fields, different owners |
+| **PG6** | Evidence claims its own step — progression is non-linear |
+| **PG7** | A stage closes on an explicit commit actuator |
+| **PG8** | A required step may be skipped as a recorded deviation |
+| **PG9** | The spine is append-only |
+| **PG10** | Progression draws on the session tile; the beam stays identity |
+| **PG11** | Undo is always offered, and writes a correcting event |
+| **PG12** | Segmented squares + a `scaleX` fill. M1 stands unamended |
+| **PG13** | Progression stays on the assignment; any operator may resume |
+| **PG14** | Nothing ages on a clock — age is a queue facet |
+| **PG15** | A step declares a typed capture union; `none` is explicit |
+| **PG16** | Four progression verbs |
+| **PG17** | Procedures are authored in a table tile |
+
+### Amendments made
+
+- **A6 · un-deferred for deviations only** (PG8). The every-mutation "why"
+  prompt stays dead.
+- **P1 · the beam pipeline strip struck** (PG10), before it was built. Two
+  altitudes remain: authored, run.
+- **P4 · superseded by PG15.** `required: boolean` becomes a field on the
+  capture contract.
+
+### Pushed back and held
+
+- **M1 was NOT struck** (PG12). The operator ruled *"unban it"*; the ban turned
+  out to be unnecessary — `transform` was already legal as of the 2026-08-25
+  amendment, and the compliant `scaleX` fill is strictly better than the width
+  tween an unban would have blessed. Operator confirmed no strike.
+
+### Debt named by this interview
+
+| | Item |
+|---|---|
+| **PD1** | `ProgressBar.tsx:41` animates `width` over 500 ms — a live M1 violation. Port to `transform: scaleX()` on a motion value (**M6**). |
+| **PD2** | Main's `docs/warehouse-os/LAWS.md` never received the 2026-08-25 M-amendments; they exist only in the `warehouse-os-refactor-8f2dc3` worktree. Two law files disagree about what is legal. |
+| **PD3** | Seven progression vocabularies (**PB1**). PG4 deleted two `WORKFLOW_STAGES` keys; the remaining nine and the other six vocabularies each need a verdict: org-authored stage, projection, or delete. |
+| **PD4** | `assignment_status_enum` keeps its four values but **PG5** adds `OPEN`; confirm the enum matches what the code already writes. |
+
+### Still open — not ruled
+
+| | Question |
+|---|---|
+| **PO1** | May a staff delta (**P3**) override a step's **capture contract**, or only its order and `required`? A staffer who can downgrade a `scan` step to `none` has deleted the evidence trail for their own shift. |
+| **PO2** | The undo chord itself — which chord, registered in the one registry (**I7**), collisions refused (**T21**). |
+| **PO3** | Migration sequence for `stage_key`, the org stage/procedure tables, the capture contract and the four verbs. Expand → code → contract per **D6**. |
+| **PO4** | Whether `PROGRESSION_CORRECTED` supersedes by pointing at the event it corrects, or by carrying the corrected value. Affects whether the replay can render a strikethrough. |
+

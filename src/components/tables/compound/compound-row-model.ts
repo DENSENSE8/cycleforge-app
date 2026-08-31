@@ -166,6 +166,16 @@ export interface CompoundSubtitlePart {
    * string only; the chrome matches keys, it never interprets them.
    */
   key?: string;
+  /**
+   * Reserve a fixed character width for this part.
+   *
+   * For facts whose LENGTH varies but whose column should not: a quantity is
+   * one digit on most rows and two on some, and letting it size to content
+   * moved every fact after it sideways from row to row, so the line stopped
+   * being scannable down the grid. The family names the reservation because
+   * only it knows the fact's realistic range.
+   */
+  widthCh?: number;
 }
 
 /** One row of a subtitle-select editor's menu. Strings and flags only. */
@@ -202,6 +212,55 @@ export interface CompoundSubtitleSelect {
   /** Present ⇒ the menu offers a clear row with this copy. */
   clearLabel?: string;
   onCommit: (value: string | null) => void;
+}
+
+/**
+ * A subtitle part the operator can retype in place.
+ *
+ * The sibling of {@link CompoundSubtitleSelect} for facts with no option list —
+ * a quantity, an item number, a note. Same law: the capability is declared by
+ * the family, the chrome renders it, and a part nobody claims stays read-only
+ * text. The row keeps Enter/Space, so the trigger is click-only (`tabIndex -1`)
+ * exactly as the select's is.
+ *
+ * `onCommit` receives the trimmed string, or `null` when the operator clears
+ * it. It is called only when the value actually changed — an editor that opens
+ * and closes untouched must not write.
+ */
+export interface CompoundSubtitleEdit {
+  /** The {@link CompoundSubtitlePart.key} this editor claims. */
+  partKey: string;
+  /** What the fact is called ("Item number") — the trigger's accessible name. */
+  label: string;
+  /** Seeds the field. The part's TEXT may be a formatted face, not the value. */
+  value: string;
+  /** `numeric` gets an inputMode + a numeric keypad on a tablet. */
+  kind?: 'text' | 'numeric';
+  placeholder?: string;
+  onCommit: (value: string | null) => void;
+}
+
+/**
+ * A subtitle part that paints as a copy chip instead of bare text.
+ *
+ * For the identifiers an operator retypes into another system — the item
+ * number off a shelf label. Click copies; the value is the fact, while the
+ * part's `text` stays whatever face the family resolved.
+ *
+ * Pair it with a {@link CompoundSubtitleEdit} on the same `partKey` when the
+ * fact is also editable: the chip owns the click (copy is the frequent verb)
+ * and the edit is offered from its menu, so one control never has to guess
+ * which of two verbs a click meant.
+ */
+export interface CompoundSubtitleCopy {
+  /** The {@link CompoundSubtitlePart.key} this chip claims. */
+  partKey: string;
+  /**
+   * The full value to place on the clipboard — never the truncated face. The
+   * chip shows its last 8 and copies this, the way every other identity chip
+   * on the desk behaves; clipboard-history kind comes from the chip's tone.
+   */
+  value: string;
 }
 
 /**

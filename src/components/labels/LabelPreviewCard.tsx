@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import {
   WorkspaceCard,
   WORKSPACE_NESTED_FIELD,
@@ -9,6 +9,7 @@ import {
 import { IconButton } from '@/design-system/primitives';
 import { Pencil } from '@/components/Icons';
 import { LabelFacePreview } from '@/components/labels/LabelFacePreview';
+import { useLabelFaceProductSlots } from '@/components/labels/LabelFaceProductSlots';
 import {
   ProductLabelEditPopover,
   type ProductLabelDraft,
@@ -86,8 +87,29 @@ export function LabelPreviewCard({
   const [editorOpen, setEditorOpen] = useState(false);
   const productTitle = (title ?? itemName ?? '').trim();
   const matrix = { value: dataMatrixValue, symbology: dataMatrixSymbology, scale: 4 } as const;
-  // A face override (e.g. the carton label) wins over the built-in unit face.
-  const face = faceOverride ?? unitLabelToFace({ sku, title: productTitle, condition, color, matrix });
+  const [productDraft, setProductDraft] = useState<ProductLabelDraft>(() => ({
+    title: productTitle || sku,
+    condition: (condition ?? '').trim(),
+    color: (color ?? '').trim(),
+  }));
+  useEffect(() => {
+    setProductDraft({
+      title: productTitle || sku,
+      condition: (condition ?? '').trim(),
+      color: (color ?? '').trim(),
+    });
+  }, [sku, productTitle, condition, color]);
+  const productSlots = useLabelFaceProductSlots(productDraft, setProductDraft);
+  const useProductHits = !faceOverride;
+  const face =
+    faceOverride ??
+    unitLabelToFace({
+      sku,
+      title: productDraft.title,
+      condition: productDraft.condition,
+      color: productDraft.color,
+      matrix,
+    });
   // Built-in unit editor: a unit face + an apply handler and no caller-owned editor.
   const builtInEditor = !faceOverride && Boolean(onApplyAndPrint);
   // The pencil shows whenever there's something to edit — a caller-owned editor
@@ -114,18 +136,19 @@ export function LabelPreviewCard({
         {/* Themed frame; the label face inside is theme-aware (dark card + inverted
             barcode in dark mode). Print output stays black-on-white. */}
         <div className={`${WORKSPACE_NESTED_FIELD} ${WORKSPACE_NESTED_FIELD_PAD}`}>
-          <LabelFacePreview model={face} embedded />
+          <LabelFacePreview
+            model={face}
+            embedded
+            slotHits={useProductHits ? productSlots.slotHits : undefined}
+          />
         </div>
       </WorkspaceCard>
 
+      {useProductHits ? productSlots.menus : null}
       {builtInEditor && !onEdit && onApplyAndPrint ? (
         <ProductLabelEditPopover
           open={editorOpen}
-          defaults={{
-            title: productTitle || sku,
-            condition: (condition ?? '').trim(),
-            color: (color ?? '').trim(),
-          }}
+          defaults={productDraft}
           sku={sku}
           matrix={matrix}
           onApplyAndPrint={onApplyAndPrint}

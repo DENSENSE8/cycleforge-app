@@ -25,7 +25,6 @@ import { OrdersViewControlsRail } from '@/components/outbound/orders/OrdersViewC
 import { useOrdersViewChrome } from '@/components/outbound/orders/orders-view-chrome-context';
 import { useRailActionSnapshot } from '@/components/dashboard/rail/OrderRailActions';
 import { CsvImportStagingHost } from '@/components/outbound/orders/CsvImportStagingHost';
-import { ToShipTodayStrip } from '@/components/outbound/orders/to-ship/ToShipTodayStrip';
 import { type DashboardOrderView } from '@/utils/dashboard-search-state';
 import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
 import {
@@ -111,12 +110,13 @@ export function DashboardOrdersView({
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
       {/*
-        Today strip — the desk's status overview, above the queue it summarises.
-        Not painted over the CSV staging draft: that surface is a different
-        collection, and a queue's counts printed above someone else's rows is a
-        number attached to the wrong table.
+        No status strip above the queue (operator ruling 2026-08-31). Open /
+        Must ship / Shipped today rode here as a band between the desk chrome
+        and the table; it was one more thing stacked above the first data row
+        on a desk whose job is reading rows. Must-ship survives as a filter
+        option in the table's own control, and Shipped today is the Shipped
+        tab — neither capability was in this band alone.
       */}
-      {showCsvStaging ? null : <ToShipTodayStrip />}
       {body}
       {overlays}
     </div>

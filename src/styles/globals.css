@@ -720,6 +720,14 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
   display: none;
   height: 0;
 }
+/* Same hook for the Y-visible port (`cf-grid-scrollbar`, 2026-08-31): this
+   gutter already paints its own always-on HORIZONTAL bar, so suppress the
+   native one on that axis only. The vertical bar stays — it is the row-position
+   report the operator asked for, and nothing else on screen gives it. */
+[data-grid-sticky-x] .cf-grid-scrollbar::-webkit-scrollbar:horizontal {
+  display: none;
+  height: 0;
+}
 
 /* Sticky column header — soft depth once rows scroll under the frozen band.
    Band stacks at `z-header` (LedgerGrid) so absolute body / sticky-left cells

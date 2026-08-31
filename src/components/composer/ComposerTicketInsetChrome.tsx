@@ -7,13 +7,19 @@
  *   │ @ Cc  cc@… [type email…]  ← Public only   │
  *   │ [📷 staged thumbs]                        │
  *   │  Message…                                 │
- *   │ [+] [Internal │ Public]        [↵ Send]   │
+ *   │ [+] [Internal │ Public]     [↵ File ticket]│
  *   └──────────────────────────────────────────┘
  *
  * Recipients and attachments DESCRIBE the message, so they sit above the text
  * they apply to. The channel is something you DO to the draft, so it lives on
  * the action bar beside `+` ({@link ComposerTicketChannelToggle}) — operator
  * ruling, 2026-08-30.
+ *
+ * The subject does NOT live here. A title slice at the top of the dock made the
+ * composer read as a form, and it duplicated the title the ticket display
+ * already carries. It moved into the display's own scroll port on 2026-08-31
+ * (operator ruling) — one title, in the thread, scrolled to like any other
+ * part of the record.
  *
  * There is no attached-context chip row. Product / “what happened” chips were
  * removed from `+` the same day, so nothing can create one.

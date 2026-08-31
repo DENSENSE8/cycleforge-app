@@ -33,8 +33,6 @@ const INSERT_URL =
 const INSERT_TITLE = 'E2E Warranty card (insert)';
 const PLAIN_PART_NAME = 'E2E Power cable (no insert)';
 
-const escapeRegExp = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-
 interface CreatedPart {
   id: number;
   component_name: string;
@@ -199,10 +197,9 @@ test.describe('Pack kit-part reference document', () => {
     const slideOver = page.getByRole('dialog', { name: 'Pack inserts preview' });
     await expect(slideOver).toBeVisible();
 
-    // It is showing THIS part's insert, from the Blob url — the permission
-    // constraint the column exists for (never /api/documents/:id/content).
+    // Same-origin kit-part document proxy — Blob CSP blanks a direct iframe.
     const frame = slideOver.locator(`iframe[title="${INSERT_TITLE}"]`);
     await expect(frame).toHaveCount(1);
-    await expect(frame).toHaveAttribute('src', new RegExp(`^${escapeRegExp(INSERT_URL)}`));
+    await expect.poll(async () => frame.getAttribute('src')).toMatch(/^blob:/);
   });
 });

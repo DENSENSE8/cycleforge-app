@@ -5,11 +5,13 @@
  *
  * What we use (in order):
  *   1. Opening comment ← support_tickets.created_by / ticket_links.created_by
- *      when that comment is not the customer requester.
- *   2. Later internal notes signed `— {staffName}` (composer sign-off) when
- *      that name uniquely matches one staff row in the org.
+ *      when the opener is ours (agent / internal), including tickets Zendesk
+ *      filed with the API user as requester ("Manager").
+ *   2. Later comments from that same Zendesk author: sign-off `— {staffName}`
+ *      when unique, otherwise the ticket's created_by.
  *
- * Customer comments and unsigned Zendesk-native agent comments are left alone.
+ * Customer comments and unsigned comments from a different Zendesk agent
+ * are left alone.
  *
  *   npx tsx scripts/backfill-helpdesk-comment-staff.ts            # dry run
  *   npx tsx scripts/backfill-helpdesk-comment-staff.ts --apply
@@ -38,9 +40,11 @@ const APPLY = args.includes('--apply');
 const daysArg = args.find((a) => a.startsWith('--days='));
 const limitArg = args.find((a) => a.startsWith('--limit='));
 const orgArg = args.find((a) => a.startsWith('--org='));
+const ticketArg = args.find((a) => a.startsWith('--ticket='));
 const DAYS = daysArg ? Number(daysArg.slice('--days='.length)) : 180;
 const LIMIT = limitArg ? Number(limitArg.slice('--limit='.length)) : 0;
 const ONLY_ORG = orgArg ? orgArg.slice('--org='.length) : null;
+const ONLY_TICKET = ticketArg ? ticketArg.slice('--ticket='.length) : null;
 
 async function sleep(ms: number) {
   await new Promise((r) => setTimeout(r, ms));
@@ -63,7 +67,7 @@ async function main() {
   const { recordHelpdeskCommentStaff } = await import(
     '@/lib/integrations/helpdesk/comment-staff'
   );
-  const { staffNameFromNoteSignature } = await import(
+  const { isAppFiledOpener, staffNameFromNoteSignature } = await import(
     '@/lib/integrations/helpdesk/comment-staff-identity'
   );
 
@@ -82,6 +86,10 @@ async function main() {
     params.push(ONLY_ORG);
     where.push(`st.organization_id = $${params.length}`);
   }
+  if (ONLY_TICKET) {
+    params.push(ONLY_TICKET);
+    where.push(`st.external_ticket_id = $${params.length}`);
+  }
   if (Number.isFinite(DAYS) && DAYS > 0) {
     params.push(DAYS);
     where.push(`st.created_at >= NOW() - ($${params.length}::int * INTERVAL '1 day')`);
@@ -91,7 +99,8 @@ async function main() {
     SELECT
       st.organization_id,
       st.external_ticket_id::bigint AS zendesk_ticket_id,
-      COALESCE(st.created_by, tl.created_by) AS staff_id
+      COALESCE(st.created_by, tl.created_by) AS staff_id,
+      st.created_by AS ticket_created_by
     FROM support_tickets st
     LEFT JOIN LATERAL (
       SELECT created_by
@@ -114,6 +123,7 @@ async function main() {
     organization_id: string;
     zendesk_ticket_id: string;
     staff_id: number;
+    ticket_created_by: number | null;
   }>(sql, params);
 
   console.log(
@@ -128,6 +138,7 @@ async function main() {
 
   const staffByOrg = new Map<string, Map<string, number>>();
   const helpdeskByOrg = new Map<string, Awaited<ReturnType<typeof getHelpdeskProvider>>>();
+  const agentIdsByOrg = new Map<string, Set<number>>();
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]!;
@@ -175,37 +186,55 @@ async function main() {
       }
       const names = staffByOrg.get(orgId)!;
 
+      if (!agentIdsByOrg.has(orgId)) {
+        const agents = await helpdesk.listAgents(false).catch(() => []);
+        agentIdsByOrg.set(
+          orgId,
+          new Set(agents.map((a) => a.id).filter((id): id is number => Number.isFinite(id))),
+        );
+      }
+      const agentIds = agentIdsByOrg.get(orgId)!;
+
       const opening = comments[0]!;
       let requesterId: number | null = null;
-      if (opening.public !== false) {
+      if (opening.public !== false && !agentIds.has(opening.author_id)) {
         const ticket = await helpdesk.getTicket(ticketId);
         requesterId = ticket?.requester_id ?? null;
       }
 
-      const plans: Array<{ commentId: number; staffId: number; reason: string }> = [];
-
-      if (opening.author_id !== requesterId) {
-        plans.push({
-          commentId: opening.id,
-          staffId,
-          reason: 'opening←created_by',
-        });
+      if (
+        row.ticket_created_by == null &&
+        !isAppFiledOpener({
+          openingAuthorId: opening.author_id,
+          requesterId,
+          openingPublic: opening.public !== false,
+          agentIds,
+        })
+      ) {
+        skipped += 1;
+        process.stdout.write(' skip (customer opener)\n');
+        continue;
       }
 
+      const plans: Array<{ commentId: number; staffId: number; reason: string }> = [];
       const apiAuthorId = opening.author_id;
-      for (const c of comments.slice(1)) {
-        if (requesterId != null && c.author_id === requesterId) continue;
+      for (const c of comments) {
         if (c.author_id !== apiAuthorId) continue;
         const signed = staffNameFromNoteSignature(c.body ?? '');
-        if (!signed) continue;
-        const mapped = names.get(signed.toLowerCase());
-        if (!mapped) continue;
-        plans.push({ commentId: c.id, staffId: mapped, reason: `sign-off←${signed}` });
+        const mapped = signed ? names.get(signed.toLowerCase()) : undefined;
+        const sid = mapped ?? staffId;
+        const reason =
+          c.id === opening.id
+            ? 'opening←created_by'
+            : mapped
+              ? `sign-off←${signed}`
+              : 'same-author←created_by';
+        plans.push({ commentId: c.id, staffId: sid, reason });
       }
 
       if (!plans.length) {
         skipped += 1;
-        process.stdout.write(' skip (customer opener)\n');
+        process.stdout.write(' skip (no matching comments)\n');
         continue;
       }
 

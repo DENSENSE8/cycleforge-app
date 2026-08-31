@@ -17,13 +17,20 @@
  * display layer forked the last time. One component, two mounts — not one
  * component per surface.
  *
- * ## Why tabs sit at the bottom
+ * ## The tab half is being retired (2026-08-31)
  *
- * They used to be the first of four chrome rows above the column header. A
- * spreadsheet puts its sheet tabs at the bottom and its status summary beside
- * them, and an operator who has used a spreadsheet already knows where to look.
- * The deep-link contract is unchanged — a tab still writes the URL and is still
- * one click — so the interaction budget (`AGENTS.md`) is identical.
+ * Tabs sat here on a spreadsheet argument: a sheet puts its tabs at the bottom
+ * with the status summary beside them, and an operator who has used a
+ * spreadsheet knows where to look. The operator overruled it. Page modes now
+ * ride the TOP row of {@link DeskPageChrome} — the design system's one page
+ * frame — on every desk AND every scan station, because two tab positions in
+ * one product is two vocabularies for one job.
+ *
+ * The `tabs` props stay for the surfaces still passing them (Labels, Photos,
+ * Locations, Support, Walk-in). **Do not wire a new one.** A page's modes
+ * belong to its frame; what this strip is genuinely for is the right half —
+ * shown / total / selected / copy, which is the one thing a table knows and a
+ * frame does not.
  */
 
 import { Copy } from '@/components/Icons';
@@ -41,14 +48,19 @@ export interface DataTableTab {
 }
 
 /**
- * A whole tab strip, as one value.
+ * {@link TableTabs}' own props.
  *
- * Station desks switch BODIES on a tab (Testing: All ⇄ History; Shipping:
- * Pending ⇄ All ⇄ History), so the strip cannot belong to any single table —
- * but it must still be drawn once, by whichever table is mounted. The desk
- * resolves the strip and threads this to the body it picks; the body spreads it
- * onto its table. The keys match the table's props exactly, so the spread is
- * the whole wiring.
+ * It used to be a value a DESK threaded down into whichever body it mounted —
+ * Testing: All ⇄ History, Shipping: Pending ⇄ All ⇄ History — because the strip
+ * belonged to the table while the desk swapped tables. That plumbing was
+ * deleted on 2026-08-31 when page modes moved to {@link DeskPageChrome}'s top
+ * row: a body carries no navigation now, and every `tabStrip` prop that rode
+ * through `TechAllTriageTable`, `TestingHistoryList` and `ReceivingGridHost`
+ * went with it.
+ *
+ * What survives is the SECOND level — sub-modes inside one page tab (Locations'
+ * Bin Tags / Racks / Rooms, Support's ticket statuses, Walk-in's per-mode
+ * lanes). Those are not page navigation and do not belong on the page frame.
  */
 export interface DataTableTabStrip {
   tabs: readonly DataTableTab[];
@@ -67,12 +79,39 @@ export interface TableStatusBarProps {
    * no number.
    */
   shown?: number;
-  /** Rows the collection holds before this view's narrowing. */
+  /**
+   * Rows behind the CURRENT narrowing — the denominator of {@link shown}.
+   *
+   * Omit it whenever no single number honestly describes what is on screen
+   * (two filters composing, a set the server cannot count), and the bar prints
+   * the row count alone. It used to be handed the collection's UNFILTERED
+   * total, so a facet-narrowed view read "12 of 922" — a denominator for a set
+   * the operator was not looking at.
+   */
   total?: number;
   /** Rows the operator has picked. Zero prints nothing — see below. */
   selected?: number;
   /** Offered only while a selection exists. */
   onCopySelection?: () => void;
+  /**
+   * Everything the selection can do, for the corner to advertise.
+   *
+   * Copy alone used to be the whole offer here while seven other bulk verbs
+   * lived in a rail that only registers at 3+ rows — so an operator who checked
+   * one row was told the product could copy and nothing else. The bar does not
+   * host the verbs (the rail owns them); it names how many there are, so the
+   * capability is visible from the first checkbox.
+   */
+  selectionActionCount?: number;
+  /**
+   * The next page, as part of the count sentence rather than a band under it.
+   *
+   * "Showing 200 of 847" used to be printed a second time by a footer below the
+   * bar, against a different denominator — two answers to "how many are left",
+   * neither matching the active filter. One sentence, one owner, and one fewer
+   * band inserted after first paint.
+   */
+  onLoadMore?: () => void;
 }
 
 /**
@@ -156,7 +195,12 @@ export function TableStatusBar({
   total,
   selected = 0,
   onCopySelection,
+  selectionActionCount = 0,
+  onLoadMore,
 }: TableStatusBarProps) {
+  // Copy is drawn here; the rest live in the rail. Name only the remainder, or
+  // the sentence claims the corner holds verbs it does not.
+  const moreActions = selected > 0 ? Math.max(0, selectionActionCount - 1) : 0;
 
   return (
     <div
@@ -199,12 +243,31 @@ export function TableStatusBar({
             Copy
           </button>
         ) : null}
+        {moreActions > 0 ? (
+          <span data-testid="data-table-selection-more" className="tabular-nums">
+            {moreActions} more {moreActions === 1 ? 'action' : 'actions'}
+          </span>
+        ) : null}
         {typeof shown === 'number' ? (
           <span className="tabular-nums" data-testid="data-table-row-count">
             {typeof total === 'number'
               ? `${shown.toLocaleString()} of ${total.toLocaleString()}`
               : `${shown.toLocaleString()} ${shown === 1 ? 'row' : 'rows'}`}
           </span>
+        ) : null}
+        {onLoadMore ? (
+          <button
+            type="button"
+            onClick={onLoadMore}
+            data-testid="data-table-load-more"
+            className={cn(
+              'ds-raw-button text-role-micro font-semibold text-text-accent',
+              focusRing('control'),
+              'hover:underline',
+            )}
+          >
+            Load more
+          </button>
         ) : null}
       </div>
     </div>

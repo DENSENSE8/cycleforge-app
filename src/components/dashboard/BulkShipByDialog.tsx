@@ -14,7 +14,7 @@
  */
 
 import { useState } from 'react';
-import { Calendar } from '@/design-system/components/Calendar';
+import { Calendar } from '@/components/ui/calendar';
 import {
   Dialog,
   DialogContent,

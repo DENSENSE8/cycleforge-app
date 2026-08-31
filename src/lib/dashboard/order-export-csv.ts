@@ -11,6 +11,7 @@
 
 import { conditionLabel } from '@/lib/conditions';
 import { formatDateTimePST, getCurrentPSTDateKey, parseDateKey } from '@/utils/date';
+import { resolveOrderLifecycleStage } from '@/lib/order-lifecycle';
 import { getOrderPlatformLabel } from '@/utils/order-platform';
 
 /**
@@ -38,14 +39,49 @@ export interface ExportableOrderRow {
   packed_by_name?: string | null;
   packer_name?: string | null;
   shipment_id?: number | string | null;
+  /*
+   * Lifecycle stamps — who did each step and when.
+   *
+   * Field aliases match the ones `orders-resolve.ts` reads for the status
+   * columns, so the CSV and the on-screen step cells answer from the same
+   * facts. The pick step still rides the legacy tester/test columns; that is
+   * the feed's shape, not a second vocabulary (see the `orders.picked` note in
+   * the field catalog).
+   */
+  tested_by_name?: string | null;
+  tester_name?: string | null;
+  test_date_time?: string | null;
+  test_activity_at?: string | null;
+  pack_activity_at?: string | null;
+  shipped_out_by_name?: string | null;
+  ship_confirmed_at?: string | null;
+  has_tech_scan?: boolean | null;
+  sale_amount?: string | number | null;
 }
 
+/*
+ * The export carries the STATUS story, not just the identity fields.
+ *
+ * A spreadsheet of orders with no stamps cannot answer the questions the export
+ * is taken to answer — who picked this, when was it packed, did it actually
+ * leave, what was it worth. Each step contributes a NAME and a TIME as separate
+ * columns rather than one "Picked by X on Y" sentence, because a sheet is
+ * sorted and filtered per column and a sentence is neither.
+ */
 export const ORDER_EXPORT_COLUMNS = [
   'order_id',
   'product_title',
   'sku',
   'condition',
   'qty',
+  'amount',
+  'status',
+  'picked_by',
+  'picked_at',
+  'packed_by',
+  'packed_at',
+  'scanned_out_by',
+  'scanned_out_at',
   'ship_by',
   'tracking',
   'serial',
@@ -86,14 +122,46 @@ function flag(value: boolean | null | undefined): string {
   return value ? 'true' : 'false';
 }
 
+/** First non-blank of the row's aliases for one fact. */
+function firstText(...values: Array<string | null | undefined>): string {
+  for (const value of values) {
+    const text = String(value ?? '').trim();
+    if (text) return text;
+  }
+  return '';
+}
+
 export function buildOrderExportRow(row: ExportableOrderRow): string[] {
   const orderId = String(row.order_id ?? '').trim();
+  const packedAt = firstText(row.packed_at, row.pack_activity_at);
+  const amount = (() => {
+    const value = Number(row.sale_amount);
+    // Blank, not `0.00`, when the row records no sale — the same honest-absence
+    // rule the amount cell paints by.
+    return Number.isFinite(value) ? value.toFixed(2) : '';
+  })();
+  const status = resolveOrderLifecycleStage({
+    shipmentId: row.shipment_id,
+    hasTechScan: Boolean(row.has_tech_scan),
+    packedAt: packedAt || null,
+    isOutOfStock: row.is_out_of_stock ?? null,
+  });
   return [
     orderId,
     row.product_title ?? '',
     row.sku ?? '',
     row.condition ?? '',
     row.quantity ?? '',
+    amount,
+    status,
+    // Stamps go through the export formatter the Packed sheet already uses —
+    // `MM/DD/YY HH:mm`, not a raw ISO instant a spreadsheet reads as text.
+    firstText(row.tested_by_name, row.tester_name),
+    formatExportDateTime24h(firstText(row.test_date_time, row.test_activity_at) || null),
+    firstText(row.packed_by_name, row.packer_name),
+    formatExportDateTime24h(packedAt || null),
+    firstText(row.shipped_out_by_name),
+    formatExportDateTime24h(firstText(row.ship_confirmed_at) || null),
     // The grid's `sla` track reads ship_by_date with deadline_at as the fallback.
     row.ship_by_date ?? row.deadline_at ?? '',
     row.shipping_tracking_number ?? row.tracking_number ?? '',

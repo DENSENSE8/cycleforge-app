@@ -23,6 +23,7 @@
  */
 
 import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
+import { useTicketThreadActivation } from '@/components/composer/useTicketThreadActivation';
 import { ReceivingClaimPanel } from '../ReceivingClaimPanel';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ClaimModalMode } from '../claim/claim-types';
@@ -53,9 +54,15 @@ export function TicketDisplayHost({
   showReplyPresets?: boolean;
 }) {
   const hasTicket = ticketId != null;
+  // This is the mount the operator actually clicks — the Displays column — so
+  // it carries the same activation as the centre pane. It used to only TELL
+  // them the composer was elsewhere; now touching a message points the
+  // composer at this ticket and puts the caret in it.
+  const onThreadActivate = useTicketThreadActivation(hasTicket);
 
   return (
     <div
+      onClick={onThreadActivate}
       className="flex h-full min-h-0 flex-col gap-0"
       data-testid="unbox-ticket-display"
     >
@@ -70,7 +77,7 @@ export function TicketDisplayHost({
               className="shrink-0 border-b border-border-hairline px-3 py-1.5 text-role-micro text-text-muted"
               data-testid="ticket-display-composer-cue"
             >
-              Reply from the Ticket composer in the centre.
+              Tap a message to reply from the Ticket composer.
             </p>
             <SupportTicketDetail
               ticketId={ticketId}

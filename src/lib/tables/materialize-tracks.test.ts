@@ -61,8 +61,8 @@ describe('materializeTracks — compound', () => {
     assert.equal(status1.slotIconKey, 'picked');
     assert.equal(status1.slotDisplayType, 'stage_event');
     assert.deepEqual(status1.slotStageLabels, { done: 'Picked', pending: 'Needed' });
-    // Step-track geometry (Slice 1's 9rem + the 28px actor mark).
-    assert.equal(status1.width, 'minmax(10rem, 10rem)');
+    // Step-track geometry — 8rem since the 2026-08-31 tightening (was 10).
+    assert.equal(status1.width, 'minmax(8rem, 8rem)');
     assert.equal(status1.resizable, true);
   });
 
@@ -158,8 +158,8 @@ describe('materializeTracks — sheet', () => {
 });
 
 describe('trackGeometryFor', () => {
-  it('gives money an end alignment and stage_event the 10rem step track', () => {
+  it('gives money an end alignment and stage_event the 8rem step track', () => {
     assert.equal(trackGeometryFor('money').align, 'end');
-    assert.equal(trackGeometryFor('stage_event').width, 'minmax(10rem, 10rem)');
+    assert.equal(trackGeometryFor('stage_event').width, 'minmax(8rem, 8rem)');
   });
 });

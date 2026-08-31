@@ -75,16 +75,19 @@ test.describe('Unshipped pagination + counts (Phase 2)', () => {
     await page.goto('/dashboard?unshipped', { waitUntil: 'domcontentloaded' });
     await page.locator('[data-order-row-id]').first().waitFor({ state: 'visible', timeout: 45_000 });
 
-    // Load-more footer visible, showing the first 200 of the counts total.
-    const loadMore = page.getByRole('button', { name: 'Load more' });
+    // Load more lives INSIDE the status bar's count sentence now — it used to be
+    // a footer band below the bar printing its own "Showing N of M" against a
+    // different denominator than the bar's. One sentence, one owner.
+    const rowCount = page.getByTestId('data-table-row-count');
+    const loadMore = page.getByTestId('data-table-load-more');
     await expect(loadMore).toBeVisible({ timeout: 20_000 });
-    await expect(page.getByText(`Showing 200 of ${TOTAL}`)).toBeVisible();
+    await expect(rowCount).toHaveText(`200 of ${TOTAL}`);
 
     // Bump → the page grows to 400.
     await loadMore.click();
-    await expect(page.getByText(`Showing 400 of ${TOTAL}`)).toBeVisible({ timeout: 20_000 });
+    await expect(rowCount).toHaveText(`400 of ${TOTAL}`, { timeout: 20_000 });
 
-    // Bump again → whole set loaded (rowLimit 600 ≥ 450) → the footer disappears.
+    // Bump again → whole set loaded (rowLimit 600 ≥ 450) → the control disappears.
     await loadMore.click();
     await expect(loadMore).toHaveCount(0, { timeout: 20_000 });
   });

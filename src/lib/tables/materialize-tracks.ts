@@ -92,9 +92,13 @@ export function trackGeometryFor(displayType: FieldDisplayType): {
 } {
   switch (displayType) {
     case 'stage_event':
-      // 10rem: the Slice 1 step was 9rem; the 28px actor mark + gap moved the
-      // text column right by ~2.2rem and the stamp line is the widest fact.
-      return { width: 'minmax(10rem, 10rem)', type: 'text', align: 'start', minTrackRem: 8, labelFitRem: 5, resizable: true };
+      // 8rem (operator ruling 2026-08-31, down from 10). The stamp line is the
+      // widest fact a step can hold, but it is the SECOND line and it truncates
+      // gracefully; three status columns at 10rem spent 30rem of a 72rem sheet
+      // on two words and a timestamp each, and the gaps between them read as
+      // gutters rather than as columns of one table. The floor drops with the
+      // default so a drag can still recover the old width per staffer.
+      return { width: 'minmax(8rem, 8rem)', type: 'text', align: 'start', minTrackRem: 6.5, labelFitRem: 5, resizable: true };
     case 'tag':
       return { width: 'minmax(5.5rem, 5.5rem)', type: 'tag', align: 'start', labelFitRem: 4.5, resizable: false };
     case 'date':

@@ -22,69 +22,78 @@ Rules for this audit:
 - Scope is `~/Projects/cycleforge-app` only. A sibling repo `~/Projects/Garisek-OS`
   has a *different* design-system MCP; do not conflate them or copy findings across.
 
-## 1. The commits
-
-```bash
-git log --oneline -2
-```
-
-Expect `437e8bb83` (primitive count correction) on top of `3877536a7` (the
-server). Confirm each diff does what its subject says:
-
-```bash
-git show --stat 3877536a7
-```
-
-Seven files: `.mcp.json`, and under `tools/design-mcp/` — `.gitignore`,
-`README.md`, `package.json`, `package-lock.json`, `run-mcp.sh`, `server.mjs`,
-`smoke.mjs`.
-
-**Trap:** `tools/design-mcp/node_modules/` must NOT be committed (~any size).
-`git ls-files tools/design-mcp | grep node_modules` must be empty.
-
-## 2. It actually boots and speaks JSON-RPC
+## 1. Smoke is the contract, not a commit SHA
 
 ```bash
 node tools/design-mcp/smoke.mjs
 ```
 
-Expect **11 assertions, all ok**, ending `smoke: all good`, exit 0.
+Expect **smoke: all good**, exit 0. Do **not** treat a historical SHA
+(`3877536a7`, `437e8bb83`) as HEAD — those were the first landing; the live
+server has grown. The first assertion — "every stdout line is valid JSON-RPC" —
+is the one that matters most. An MCP server that prints a diagnostic to stdout
+corrupts the stream.
 
-The first assertion — "every stdout line is valid JSON-RPC" — is the one that
-matters most. An MCP server that prints a diagnostic to stdout corrupts the
-stream and every client sees a dead server, while the handlers themselves test
-green. If that line ever fails, nothing else in this file is meaningful.
+**Trap:** `tools/design-mcp/node_modules/` must NOT be committed.
+`git ls-files tools/design-mcp | grep node_modules` must be empty.
+
+## 2. `ds_tokens` refuses a dump
+
+Smoke already covers this. Confirm by reading `smoke.mjs`: there are calls with
+no `axis` and with `axis: "all"`, and both must be `isError` with `requires axis`.
+A `ds_tokens` result whose `tokens` array mixes axes is a `FAIL`.
+
+Each advertised axis (`color`, `radius`, `spacing`, `typography`, `z-index`,
+`elevation`, `border`, `focus`) must return `count > 0`. A missing TypeScript
+file must throw, never `"0 tokens"`.
+
+Colour `value` fields must never contain a `#hex`. That check is **vacuous**
+unless a planted hex fails it. Smoke spawns a second server with
+`DESIGN_MCP_PLANT_HEX=1`, which injects `#1a1a1d` and skips the scrubber.
+Confirm `smoke.mjs` asserts both:
+
+- `colour values never include a hex` (production)
+- `a planted hex fails that same predicate` (the plant is visible)
+
+If the plant assertion is missing, mark P2 **FAIL** even when production values
+are clean. A CSS-only radius reader that returns 0 tokens is also a **FAIL** —
+radius lives in `src/design-system/tokens/radius.ts`. Smoke must show
+`radius.ts` in `sources` and a `COMPOSER_SHELL_CORNER` row. Composer inner
+corners are named literals (`VisibilityToggle` default), not `cornerClass()`.
+
+Radius rows must include `cornerClass('surface')`. Elevation rows must include
+`elevationClass('flat')` / `'raised'` / `'overlay'` and must **not** invent
+`elevationClass('soft')`.
 
 ## 3. Registered for auto-discovery
 
 ```bash
-python3 -c "import json;print(list(json.load(open('.mcp.json'))['mcpServers']))"
+python3 -c "import json; print(list(json.load(open('.cursor/mcp.json'))['mcpServers']))"
+ls -l .mcp.json
 ```
 
 Expect `design-mcp` present alongside `motion`, `motion-plus`, `code-graph`,
-`figma`. Its command must be `./tools/design-mcp/run-mcp.sh`.
+`figma`. `.mcp.json` is a **symlink to** `.cursor/mcp.json`. The `design-mcp`
+command is the **mise node shim** plus `tools/design-mcp/server.mjs` — not
+`run-mcp.sh`. Cursor spawns without a login shell; a PATH-dependent wrapper is
+how the catalog goes empty.
 
 ```bash
 ./tools/design-mcp/run-mcp.sh </dev/null 2>&1 | head -2
 ```
 
 Must print nothing on stdout and `cycleforge-design-mcp: ready` on stderr.
+(`run-mcp.sh` is still the smoke/CLI launcher.)
 
 ## 4. The variant extractor — plant a regression
 
 This is the part that has been wrong **twice**, in opposite directions, so verify
-it with exact numbers rather than "looks reasonable".
+it by **named variants**, not by a frozen count of 9.
 
-Ground truth, confirmed by reading source:
-
-| Component | Shape | Expected |
-|---|---|---|
-| `src/design-system/primitives/Button.tsx` | flat map in `button-variants.ts` | **9** variants: primary, primarySoft, brand, secondary, ghost, danger, warning, success, execute |
-| `src/components/ui/button.tsx` | cva | **6** variants × **4** sizes |
-
-The smoke test asserts both as exact counts. Confirm those assertions are real
-and not tautological — open `smoke.mjs` and check they compare to `9`, `6` and
-`4` literally, not to whatever the server returned.
+Open `smoke.mjs`. The Button check must require `primary`, `ghost`, and `danger`
+on the design-system Button, and `ghost` + size `sm` on the ui `button`. It must
+**not** compare to a literal `9` / `6` / `4` — those went stale and taught
+people to ignore the server.
 
 **Now plant a regression.** In `server.mjs`, change the declaration anchor regex
 so it matches `_VARIANTS` anywhere rather than at a declaration:
@@ -94,10 +103,9 @@ so it matches `_VARIANTS` anywhere rather than at a declaration:
 // break: const decl = variantSource.match(/_VARIANTS/)
 ```
 
-Re-run the smoke test. It **must fail** on "flat variant map read exactly (9)" —
-because that anchor also matches Button.tsx's own *import* line and sends the
-brace-matcher into the import braces, reporting zero variants. Restore the line
-and confirm 11/11 returns.
+Re-run the smoke test. It **must fail** on "flat variant map read" — because that
+anchor also matches Button.tsx's own *import* line and sends the brace-matcher
+into the import braces. Restore the line and confirm smoke is green again.
 
 If the smoke test still passes with that break in place, the assertion is
 vacuous and the whole extractor is unverified.
@@ -116,20 +124,26 @@ p.stdout.on('data',d=>process.stdout.write(d));
 
 The `ds_critique` response must be `isError: true` with "refusing to read outside
 the repo". Try two more: `/etc/passwd` and a symlink you create inside the repo
-pointing outward. All three must refuse.
+pointing outward. All three must refuse. Smoke already plants
+`src/shell/__ds_smoke_link.tsx` → `/etc/passwd`.
 
 ## 6. ds_critique finds something real, and stays quiet where it should
 
-Run it against `src/shell/AssistantFeed.tsx`. Expect at least one
-`forks-the-system` problem (a raw `<button>` where the design system has
-`Button`) with a **line number that actually contains a `<button`** — open the
-file at that line and confirm. A plausible line number that points at something
-else is a `FAIL`.
+Run it against `src/shell/SessionComposer.tsx` (not `AssistantFeed.tsx` — that
+file is gone). Expect at least one `forks-the-system` problem (a raw `<button>`
+where the design system has `Button`) with a **line number that actually
+contains a `<button`** — open the file at that line and confirm. A plausible
+line number that points at something else is a `FAIL`.
 
 Then run it against `src/design-system/primitives/Button.tsx`. Expect **zero**
 `forks-the-system` problems — fork detection is deliberately off inside the
 primitive homes, because a raw `<button>` there IS the primitive, not a fork of
 it. If it flags itself, the carve-out is broken.
+
+Plant `tools/design-mcp/fixtures/token-literal-violation.tsx` is already in
+tree. Critique it. Each problem must name its `axis` (`color`, `typography`,
+`radius`, `z-index`) and the **role call** (`var(--ds-color-…)`, `text-role-*`,
+`cornerClass`, `z-modal`). A generic `use var(--token)` fix is a `FAIL`.
 
 ## 7. Claims that should NOT verify
 
@@ -139,29 +153,38 @@ Confirm these are still true. If any now succeeds, the report is out of date:
   `ds_contract`, `ds_tokens`, `ds_critique`. This repo has no shared rule module
   for a verdict tool to borrow from, and a tool answering "allowed" while nothing
   enforces anything manufactures confidence. ESLint is the gate here.
-- **`src/design-system/pinned.json` does not exist**, so `ds_contract` returns
-  `curated_entries: 0` and no `useWhen` / `doNot` on any match. That absence
-  means *nobody has written the law yet* — NOT that anything is permitted. A
-  verifier reporting curated rules has found a file that should not be there.
-- **Two primitive homes both exist and are both reported** — 36 `.tsx` in
-  `src/design-system/primitives`, 16 in `src/components/ui`, including two
-  different Buttons with different variant surfaces. The server does not resolve
-  that duplication and must not claim to.
-- **Nothing here blocks a write.** All `ds_critique` output is heuristic text
-  matching. There is no PreToolUse hook in this repo.
-- **`tests/visual/shell-baseline.spec.ts` is UNCOMMITTED and has never run.**
-  It needs a signed-in `storageState` that does not exist. Do not report the
-  composer's ONE ROW law as enforced.
+- **`src/design-system/pinned.json` exists** and `ds_contract` returns
+  `curated_entries > 0`.   `TriageScrollLayout`, `TriageScrollKnobs`, `VisibilityToggle`, and
+  `useOptimisticMutation` must carry `useWhen` / `doNot`. The twelve shadcn
+  filename ids (`button`, `input`, `label`, `checkbox`, `badge`, `alert`,
+  `skeleton`, `separator`, `dialog`, `command`, `popover`, `calendar`) plus
+  `CopyChip` and `calendar-range-select` must also be pinned. A `"Badge"` key does **not** merge onto `badge.tsx`. Absence of an
+  *unlisted* id still means nobody has written that law — not that anything is
+  permitted. A verifier reporting `curated_entries: 0` is reading a stale prompt.
+- **Ops Button and shadcn `button` are both reported**, with different homes
+  (`design-system primitive` vs `shadcn primitive`). `ds_contract("shadcn dialog")`
+  ranks `dialog` first; `ds_contract("copy chip …")` ranks `CopyChip`. The server
+  does not import 21st.dev — those arrive one file at a time after they exist in
+  the repo.
+- **Nothing here blocks a UI write.** All `ds_critique` output is heuristic text
+  matching. `.claude/settings.json` **does** have PreToolUse hooks — they block
+  `.env` / credential paths, `db:push`, and `git push --force`. None of them
+  call this MCP or adjudicate design-system files. A verifier claiming "there
+  is no PreToolUse hook in this repo" is reading a stale prompt. A verifier
+  claiming those hooks *are* the design gate is also wrong.
+- **MCP resources are mirrors, not a second SoT.** `resources/list` returns
+  `design://tokens/<axis>` for each of the eight axes. Reading
+  `design://tokens/radius` must match `ds_tokens({ axis: "radius" })` roles.
+  There is no checked-in JSON token tree.
 
 ## 8. Things deliberately not done — confirm they are still not done
 
-- No CSS → Tailwind migration was performed. `src/shell/shell.css` should still
-  be ~1,077 lines. Confirm `git log --oneline -- src/shell/shell.css | head -3`
-  shows no migration commit from this work.
-- `sot-lookup` / `sot-manifest.json` remain absent from `main` — they exist only
-  in the worktree `.claude/worktrees/wf_febe0ee4-70c-1`, on an unmerged branch,
-  and `src/lib/sot-manifest/` in main is an empty directory. Verify rather than
-  assume; if they are now in main, someone merged that branch.
+- No fourth tool (`get_token`, `search_tokens`, DTCG alias resolver, design-only
+  knowledge graph). Polymorphism is inside `ds_tokens.axis` and inside each
+  critique problem's `axis` field.
+- Colour hex resolution is refused: `ds_tokens({ axis: "color" })` values are
+  `"per theme"` / `"per staff accent"`, never `#1a1a1d`.
+- Cloud agents still cannot see this stdio server. Do not report that as fixed.
 
 ## Final report
 

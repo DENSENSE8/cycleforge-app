@@ -110,6 +110,22 @@ describe('Collapse all — one control, not one per station', () => {
     assert.doesNotMatch(src, /unbox-band-placement/);
     assert.doesNotMatch(src, /UnboxPlacementSection/);
   });
+
+  it('Unbox and Testing do not auto-collapse the centre on scroll', () => {
+    // Scroll-collapse unmounted Items, remounted the serial input, and
+    // scrollIntoView yanked the label the operator was reading.
+    for (const path of [
+      'src/components/receiving/workspace/LineEditPanel.tsx',
+      'src/components/tech/TestingPanel.tsx',
+    ]) {
+      const src = readFileSync(path, 'utf8');
+      assert.doesNotMatch(
+        src,
+        /onScroll=\{bandCollapse\.onScroll\}/,
+        `${path} still collapses the centre on scroll`,
+      );
+    }
+  });
 });
 
 describe('Expand all — one control, on the first closed header', () => {

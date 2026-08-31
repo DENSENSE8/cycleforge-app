@@ -83,7 +83,7 @@ const SEED_PLATFORMS: Array<[slug: string, label: string, tone: string, sort: nu
   ['aliexpress', 'AliExpress', 'text-red-500', 40],
   ['walmart', 'Walmart', 'text-amber-700', 50],
   ['goodwill', 'Goodwill', 'text-sky-600', 60],
-  ['ecwid', 'ECWID-RS', 'text-blue-600', 70],
+  ['ecwid', 'Ecwid', 'text-blue-600', 70],
   ['other', 'Other', 'text-text-soft', 99],
 ];
 const SEED_TYPES: Array<[slug: string, label: string, kind: string, isReturn: boolean, sort: number]> = [

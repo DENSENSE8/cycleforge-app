@@ -518,7 +518,7 @@ export function ReceivingSidebarPanel() {
         {mode === 'incoming' ? (
           // Inbound desk is rail-less (Pattern E). Pipeline POS / Email / Removed
           // and Docked Triage / Unbox live in IncomingWorkspaceHeader facet chrome.
-          // Desktop never mounts this branch (`isDeskStageSurface`); mobile
+          // Desktop never mounts this branch (`isRaillessSurface`); mobile
           // Actions pane stays empty rather than resurrecting a Views rail twin.
           null
         ) : mode === 'repair' ? (

@@ -5,7 +5,6 @@ import { useGridRowFills } from '@/design-system/components/grid';
 import {
   DataTable,
   type DataTableSearch,
-  type DataTableTabStrip,
 } from '@/components/tables/DataTable';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
 import { useCustomFieldDefs } from '@/hooks/useCustomFieldDefs';
@@ -129,8 +128,6 @@ interface ReceivingGridHostProps {
   onCrosshairHover?: (receivingId: number | null) => void;
   /** The find field, as data — the surface above owns the URL it writes. */
   search: DataTableSearch;
-  /** The desk's mode strip, drawn on this table's own bottom bar. */
-  tabStrip?: DataTableTabStrip;
   /**
    * History View topics: never paint card-corner ▦ while the inspector host
    * is absent (same contract as To Ship).
@@ -187,7 +184,6 @@ export function ReceivingGridHost({
   linkedReceivingId = null,
   onCrosshairHover,
   search,
-  tabStrip,
 }: ReceivingGridHostProps) {
   // One fetch for the whole grid — History UNBOXED tips name the connected
   // inventory provider (falls back to capability title while loading).
@@ -316,7 +312,6 @@ export function ReceivingGridHost({
       loading={loading}
       emptyMessage={emptyMessage}
       search={search}
-      {...tabStrip}
       selectionScope={selectMode ? selectionScope : undefined}
       showDayHeaders={showDayHeaders}
       scrollRef={scrollRef}

@@ -8,7 +8,7 @@
 
 import type { PoolClient } from 'pg';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
-import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
+import { sqlOrderHasPackScan, sqlOrderHasShipConfirm } from '@/lib/orders/order-grain-sql';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { withTenantTransaction } from '@/lib/tenancy/db';
 import {
@@ -84,11 +84,8 @@ export function prepackMembershipSql(orderAlias = 'o'): string {
     AND COALESCE(TRIM(stn.tracking_number_raw), '') <> ''
     AND NOT ${SHIPPED_BY_CARRIER_SQL}
     AND COALESCE(${orderAlias}.fulfillment_channel, '') <> 'AFN'
-    AND NOT EXISTS (
-      SELECT 1 FROM station_activity_logs sal
-      WHERE sal.shipment_id IS NOT NULL AND sal.shipment_id = ${orderAlias}.shipment_id
-        AND sal.activity_type IN (${sqlInList(PACK_ACTIVITY_TYPES)})
-    )
+    AND NOT ${sqlOrderHasPackScan(orderAlias)}
+    AND NOT ${sqlOrderHasShipConfirm(orderAlias)}
   `;
 }
 

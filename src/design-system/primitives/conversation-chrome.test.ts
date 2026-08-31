@@ -5,15 +5,22 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   CONVERSATION_BODY,
+  CONVERSATION_CLOCK,
+  CONVERSATION_CLOCK_PAD,
+  CONVERSATION_COPY,
   CONVERSATION_COMPOSER_DOCK_INTERNAL,
   CONVERSATION_COMPOSER_PAD,
   CONVERSATION_DAY_HEADER,
+  CONVERSATION_DAY_LABEL,
   CONVERSATION_DETAIL_SURFACE,
   CONVERSATION_HEADER_ACTION_BTN,
+  CONVERSATION_INSET,
   CONVERSATION_MARK,
   CONVERSATION_MARK_BOX,
+  CONVERSATION_MARK_NODE,
   CONVERSATION_ROW,
   CONVERSATION_SPINE,
+  CONVERSATION_STREAM,
   conversationShell,
   formatConversationAge,
 } from './conversation-chrome';
@@ -86,15 +93,24 @@ describe('the timeline spine', () => {
     assert.match(CONVERSATION_MARK, /bg-surface-sunken/);
   });
 
-  it('centres the node on the thread and anchors it to the first line', () => {
-    // `justify-center` puts node and line on one axis; `pt-0.5` is the derived
-    // cross-axis anchor (body `py-1.5` + a 12px leading-none meta line → the
-    // line centre sits 12px down, where a 20px node centres at top: 2px).
+  it('does not paint sunken fill on the staff-node class — colour lives on StaffAvatar', () => {
+    assert.match(CONVERSATION_MARK_NODE, /z-10/);
+    assert.doesNotMatch(CONVERSATION_MARK_NODE, /bg-surface-sunken/);
+  });
+
+  it('top-aligns the avatar with the author row', () => {
     assert.match(CONVERSATION_MARK_BOX, /justify-center/);
-    assert.doesNotMatch(CONVERSATION_MARK_BOX, /justify-start/);
-    assert.match(CONVERSATION_MARK_BOX, /pt-0\.5/);
+    assert.match(CONVERSATION_MARK_BOX, /pt-1\.5/);
+    assert.doesNotMatch(CONVERSATION_MARK_BOX, /-mt-0\.5/);
     assert.match(CONVERSATION_ROW, /items-start/);
-    assert.match(CONVERSATION_ROW, /group/);
+  });
+});
+
+describe('conversation inset', () => {
+  it('matches station band / ticket-title px-3, not Displays px-4', () => {
+    assert.match(CONVERSATION_INSET, /px-3/);
+    assert.match(CONVERSATION_STREAM, /px-3/);
+    assert.doesNotMatch(CONVERSATION_STREAM, /px-4/);
   });
 });
 
@@ -115,12 +131,20 @@ describe('conversation plane + type', () => {
   });
 });
 
-describe('sticky day band', () => {
-  it('paints the conversation plane so rows cannot read through the docked date', () => {
-    assert.match(CONVERSATION_DAY_HEADER, /bg-surface-card/);
-    assert.doesNotMatch(CONVERSATION_DAY_HEADER, /bg-transparent/);
-    // Opacity/blur would let the card underneath ghost through the label.
-    assert.doesNotMatch(CONVERSATION_DAY_HEADER, /bg-surface-card\//);
+describe('the day divider', () => {
+  it('centres the civil date — clock lives in the message, not this row', () => {
+    assert.match(CONVERSATION_DAY_HEADER, /justify-center/);
+    assert.doesNotMatch(CONVERSATION_DAY_HEADER, /sticky/);
+    assert.match(CONVERSATION_DAY_LABEL, /text-role-micro/);
+  });
+});
+
+describe('in-card clock', () => {
+  it('reserves the last line with a float, and paints the clock over it', () => {
+    assert.match(CONVERSATION_CLOCK_PAD, /float-right/);
+    assert.match(CONVERSATION_CLOCK, /absolute/);
+    assert.match(CONVERSATION_COPY, /stack-row\]:contents/);
+    assert.match(CONVERSATION_COPY, /p:last-of-type\]:inline/);
   });
 });
 

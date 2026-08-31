@@ -7,6 +7,19 @@
  *
  * The trigger carries `role="combobox"` + `aria-expanded` exactly as the
  * upstream recipe does, which is also what the E2E-DS check asserts.
+ *
+ * ## Two modes, one control
+ *
+ * **Local** (default) — pass `options` and Command filters them itself.
+ *
+ * **Async** — additionally pass `onQueryChange`, and the caller owns the term:
+ * `shouldFilter` goes off, `options` are taken as already-matched server rows,
+ * and `loading` renders the pending state in the list. That mode exists because
+ * the order-exceptions catalog picker was a second hand-rolled
+ * Popover+Command+CommandInput with its own empty/loading/selected markup — a
+ * fork of this file that could drift from it on every axis. A combobox that
+ * fetches is still a combobox; the difference is who filters, and that is one
+ * prop, not a second component.
  */
 
 import * as React from 'react';
@@ -27,6 +40,10 @@ export interface IntakeComboboxOption {
   value: string;
   label: string;
   group?: string;
+  /** Second line under the label — a title beside a SKU, a hint beside a mode. */
+  meta?: string;
+  /** Render the label in the mono face (identifiers: SKUs, item numbers). */
+  mono?: boolean;
 }
 
 export function IntakeCombobox({
@@ -41,6 +58,12 @@ export function IntakeCombobox({
   testId,
   className,
   triggerId,
+  query,
+  onQueryChange,
+  loading = false,
+  footer,
+  optionTestId,
+  contentClassName,
 }: {
   value: string | null;
   onChange: (value: string) => void;
@@ -54,8 +77,26 @@ export function IntakeCombobox({
   className?: string;
   /** Id on the trigger button so a visible `<Label htmlFor>` associates. */
   triggerId?: string;
+  /** Async mode: the controlled search term. Requires `onQueryChange`. */
+  query?: string;
+  /** Async mode: hand the term back so the caller can fetch. Turns filtering off. */
+  onQueryChange?: (value: string) => void;
+  /** Async mode: results are in flight. */
+  loading?: boolean;
+  /** Pinned under the list — the "none of these" escape hatch. */
+  footer?: React.ReactNode;
+  /** `data-testid` per option, e.g. `(o) => \`hit-\${o.value}\``. */
+  optionTestId?: (option: IntakeComboboxOption) => string;
+  /**
+   * Extra classes for the dropdown panel. Pass a corner here whenever the
+   * trigger carries one: `Command` fills the panel with its own square
+   * background, so a radius on the panel alone paints under it. `overflow-hidden`
+   * on the panel is what makes the child take the corner.
+   */
+  contentClassName?: string;
 }) {
   const [open, setOpen] = React.useState(false);
+  const async = typeof onQueryChange === 'function';
   const selected = options.find((o) => o.value === value) ?? null;
 
   const groups = React.useMemo(() => {
@@ -95,24 +136,43 @@ export function IntakeCombobox({
         align="start"
         // Full var() form — the bare `--var` arbitrary-value shorthand does
         // not compile in this Tailwind setup, which left the panel widthless.
-        className="w-[var(--radix-popover-trigger-width)] p-0"
+        className={cn('w-[var(--radix-popover-trigger-width)] p-0', contentClassName)}
       >
-        <Command>
-          <CommandInput placeholder={searchPlaceholder} />
+        <Command shouldFilter={!async}>
+          <CommandInput
+            placeholder={searchPlaceholder}
+            {...(async ? { value: query ?? '', onValueChange: onQueryChange } : {})}
+          />
           <CommandList>
-            <CommandEmpty>{emptyMessage}</CommandEmpty>
+            {loading ? (
+              <div className="px-3 py-2 text-role-micro text-text-faint" role="status">
+                Searching…
+              </div>
+            ) : (
+              <CommandEmpty>{emptyMessage}</CommandEmpty>
+            )}
             {groups.map(({ heading, items }) => (
               <CommandGroup key={heading || '__ungrouped'} heading={heading || undefined}>
                 {items.map((opt) => (
                   <CommandItem
                     key={opt.value}
-                    value={`${opt.label} ${opt.value}`}
+                    value={async ? opt.value : `${opt.label} ${opt.value}`}
+                    data-testid={optionTestId?.(opt)}
                     onSelect={() => {
                       onChange(opt.value);
                       setOpen(false);
                     }}
                   >
-                    <span className="min-w-0 flex-1 truncate">{opt.label}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className={cn('block truncate', opt.mono && 'font-mono')}>
+                        {opt.label}
+                      </span>
+                      {opt.meta ? (
+                        <span className="block truncate text-role-micro text-text-soft">
+                          {opt.meta}
+                        </span>
+                      ) : null}
+                    </span>
                     {opt.value === value ? (
                       <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
                     ) : null}
@@ -121,6 +181,9 @@ export function IntakeCombobox({
               </CommandGroup>
             ))}
           </CommandList>
+          {footer ? (
+            <div className="border-t border-border-hairline p-1.5">{footer}</div>
+          ) : null}
         </Command>
       </PopoverContent>
     </Popover>

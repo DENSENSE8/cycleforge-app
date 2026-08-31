@@ -30,7 +30,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Calendar } from '@/design-system/components/Calendar';
+import { Calendar } from '@/components/ui/calendar';
 import { type HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import { CornerField } from '@/components/labels/CornerField';
 import { useLabelDraft } from '@/components/labels/useLabelDraft';
@@ -77,14 +77,17 @@ const FIELD_LABEL = `${microBadge} mb-1.5 block text-text-soft tracking-wider`;
 const TEXT_INPUT =
   cn('w-full rounded-lg border border-border-soft bg-surface-card inset-cozy text-role-caption text-text-default transition-colors', focusRing('field', 'accent'));
 
-// Label-face-only platform displays appended after the org's real platforms.
-const PLATFORM_SPECIALS = ['Unfound', 'Local pickup'];
+export const LABEL_PLATFORM_SPECIALS = ['Unfound', 'Local pickup'] as const;
 
-const CORNER_ITEMS: HorizontalSliderItem[] = [
+const PLATFORM_SPECIALS: readonly string[] = LABEL_PLATFORM_SPECIALS;
+
+export const LABEL_CORNER_ITEMS: HorizontalSliderItem[] = [
   { id: 'order', label: 'Order #' },
   { id: 'ticket', label: 'Ticket #' },
   { id: 'tracking', label: 'Tracking #' },
 ];
+
+const CORNER_ITEMS = LABEL_CORNER_ITEMS;
 
 /** Styled native select with a custom chevron, matching TEXT_INPUT chrome. */
 function SelectField({

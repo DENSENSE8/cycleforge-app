@@ -4,17 +4,33 @@ import { test } from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ComposerModeRow } from './ComposerModeRow';
 
-test('ComposerModeRow clusters Unbox | Ticket leftmost; Unbox blue; icons left of labels', () => {
+test('ComposerModeRow clusters Unbox | Ticket leftmost; only the SELECTED glyph carries colour', () => {
   const html = renderToStaticMarkup(
     <ComposerModeRow mode="unbox" onModeChange={() => {}} progressPercent={40} />,
   );
   assert.match(html, /data-testid="composer-mode-row"/);
+  assert.match(html, /bg-surface-card/);
+  assert.match(html, /rounded-2xl/);
+  assert.match(html, /z-base/);
+  assert.doesNotMatch(html, /shadow-elev/);
   assert.match(html, /data-testid="composer-mode-unbox"/);
   assert.match(html, /data-testid="composer-mode-ticket"/);
   assert.match(html, /Unbox/);
   assert.match(html, /Ticket/);
+  // Colour marks the SELECTION, not the mode (ruling 2026-08-31): on Unbox the
+  // blue glyph is lit and the Ticket glyph is dimmed, so the row has one loud
+  // thing on it instead of two.
   assert.match(html, /text-blue-600/);
-  assert.match(html, /text-orange-500/);
+  assert.doesNotMatch(html, /text-orange-500/);
+
+  const onTicket = renderToStaticMarkup(
+    <ComposerModeRow mode="ticket" onModeChange={() => {}} progressPercent={40} />,
+  );
+  assert.match(onTicket, /text-orange-500/);
+  assert.doesNotMatch(onTicket, /text-blue-600/);
+
+  // No hover wash on the unselected face — it competed with the selection.
+  assert.doesNotMatch(html, /hover:bg-surface-sunken/);
   assert.match(html, /data-testid="composer-procedure-ring"/);
   assert.doesNotMatch(html, /flex-row-reverse/);
   assert.doesNotMatch(html, /composer-mode-trigger/);
@@ -30,8 +46,9 @@ test('procedure ring and Unbox glyph share one toolbar item box', () => {
     html.indexOf('data-testid="composer-mode-ticket"'),
   );
   const ring = html.slice(html.indexOf('data-testid="composer-procedure-ring"'));
-  assert.match(unbox, /flex h-5 w-8 shrink-0 items-center justify-center/);
+  assert.match(unbox, /flex h-5 w-3\.5 shrink-0 items-center justify-center/);
   assert.match(unbox, /block h-3\.5 w-3\.5 shrink-0/);
+  assert.match(unbox, /gap-0\.5/);
   assert.match(ring, /flex h-5 w-8 shrink-0 items-center justify-center/);
   assert.match(ring, /block h-3\.5 w-3\.5 shrink-0/);
   assert.doesNotMatch(ring, /h-5 w-5/);

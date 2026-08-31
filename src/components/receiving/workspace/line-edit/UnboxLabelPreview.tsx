@@ -10,12 +10,19 @@
  * that row via {@link onReveal}.
  *
  * **No height tween** (AGENTS.md). The band unmounts this body instantly.
+ *
+ * Open sticker slots come from the labels SoT:
+ *   carton → {@link useLabelFaceReceivingSlots}
+ *   unit → {@link useLabelFaceProductSlots} (inside WorkspaceLabelPreviewCard)
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { WorkspaceLabelPreviewCard } from '@/components/labels/WorkspaceLabelPreviewCard';
 import { AsListedEditPopover } from '@/components/labels/AsListedEditPopover';
-import { LabelEditPopover } from './LabelEditPopover';
+import { useLabelFaceReceivingSlots } from '@/components/labels/LabelFaceReceivingSlots';
+import { useStationComposerMode } from '@/components/composer/useStationComposerMode';
+import { LabelEditPopover, type LabelCornerMode } from './LabelEditPopover';
+import { scheduleFocusUnboxComposer } from './focus-unbox-composer';
 import { deriveColorFromTitle } from '@/lib/print/printProductLabel';
 import type { WorkspaceLabelKind } from '@/lib/print/workspace-label-kinds';
 
@@ -44,12 +51,50 @@ export function UnboxLabelPreview({
   const [asListedEditorOpen, setAsListedEditorOpen] = useState(false);
   const [unitEditorOpen, setUnitEditorOpen] = useState(false);
   const hadNotesRef = useRef(false);
+  const { setMode: setComposerMode } = useStationComposerMode();
 
   const options = c.labelSelectOptions ?? [];
   const notesLive = String(c.itemNote ?? '').trim();
   const hasNotes = notesLive.length > 0;
 
-  // New carton / line → start with editors shut. The host closes the band.
+  const patchOverride =
+    typeof c.patchLabelOverride === 'function' ? c.patchLabelOverride : undefined;
+  const setCornerMode =
+    typeof c.setLabelCornerMode === 'function'
+      ? (next: LabelCornerMode) => c.setLabelCornerMode(next)
+      : undefined;
+
+  const receivingSlots = useLabelFaceReceivingSlots(
+    {
+      platform: String(c.labelDraftDefaults?.platform ?? ''),
+      receivingType: String(c.labelDraftDefaults?.receivingType ?? c.receivingType ?? ''),
+      date: String(c.labelDraftDefaults?.date ?? ''),
+      condition: String(c.cond ?? row.condition_grade ?? ''),
+      cornerMode: (c.labelDraftDefaults?.cornerMode ?? 'order') as LabelCornerMode,
+    },
+    {
+      onPlatformChange: ({ label }) => {
+        patchOverride?.({ platform: label });
+      },
+      onTypeChange: (slug) => {
+        c.setReceivingType?.(slug);
+        void c.saveType?.(slug);
+      },
+      onDateChange: (date) => {
+        patchOverride?.({ date });
+      },
+      onConditionChange: (grade) => {
+        c.setCond?.(grade);
+        void c.patch?.({ condition_grade: grade });
+      },
+      onCornerChange: setCornerMode,
+      onCenter: () => {
+        setComposerMode('unbox');
+        scheduleFocusUnboxComposer(50);
+      },
+    },
+  );
+
   useEffect(() => {
     setCartonEditorOpen(false);
     setAsListedEditorOpen(false);
@@ -57,8 +102,6 @@ export function UnboxLabelPreview({
     hadNotesRef.current = false;
   }, [row.id]);
 
-  // Empty → non-empty notes: open the Label row. Manual close while notes
-  // remain does not fight the operator on later keystrokes.
   useEffect(() => {
     if (hasNotes && !hadNotesRef.current) {
       onReveal?.();
@@ -66,7 +109,6 @@ export function UnboxLabelPreview({
     hadNotesRef.current = hasNotes;
   }, [hasNotes, onReveal]);
 
-  // Print · Receive dock "Edit label" — open the band and the editor.
   const labelEditorRequestId = c.labelEditorRequestId ?? 0;
   useEffect(() => {
     if (!labelEditorRequestId) return;
@@ -121,7 +163,9 @@ export function UnboxLabelPreview({
           onApplyAndPrint={showUnit ? c.applyUnitAndPrint : undefined}
           editorOpen={showUnit ? unitEditorOpen : undefined}
           onEditorOpenChange={showUnit ? setUnitEditorOpen : undefined}
+          slotHits={showCarton ? receivingSlots.slotHits : undefined}
         />
+        {showCarton ? receivingSlots.menus : null}
         {c.labelPayload && typeof c.buildLabelPayload === 'function' ? (
           <LabelEditPopover
             open={showCarton && cartonEditorOpen}
@@ -131,9 +175,6 @@ export function UnboxLabelPreview({
             onClose={() => setCartonEditorOpen(false)}
           />
         ) : null}
-        {/* Testing (and any station without As Listed) omits the builders —
-            AsListedEditPopover always calls buildPayload in useMemo, so
-            mounting without it throws "buildPayload is not a function". */}
         {typeof c.buildAsListedPayload === 'function' && c.asListedDraftDefaults ? (
           <AsListedEditPopover
             open={showAsListed && asListedEditorOpen}

@@ -89,4 +89,21 @@ describe('conversation timeline structure', () => {
     assert.match(html, /System/);
     assert.doesNotMatch(html, /w-px/);
   });
+
+  it('puts clock time inside the message card, not beside the author', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(
+        ConversationMessageCard,
+        { author: 'Kai', at: '2026-08-28T23:53:38.000Z' },
+        React.createElement('p', null, 'claim body'),
+      ),
+    );
+    const canvas = html.indexOf('bg-surface-canvas');
+    const clock = html.indexOf('data-conversation-clock');
+    const pad = html.indexOf('invisible');
+    const author = html.indexOf('Kai');
+    assert.ok(canvas >= 0 && clock > canvas, 'clock is inside the gray card');
+    assert.ok(pad > canvas, 'last-line spacer is inside the card');
+    assert.ok(author >= 0 && author < clock, 'author still leads; clock follows copy');
+  });
 });

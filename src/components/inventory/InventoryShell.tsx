@@ -9,9 +9,6 @@ import { ByFilterResultList } from './ByFilterResultList';
 import { useInventoryUrlState } from './useInventoryUrlState';
 import { InventoryDetailsOverlay } from './panels/InventoryDetailsOverlay';
 import { ReplenishWorkspace } from '@/components/replenish/ReplenishWorkspace';
-import { PageHeader } from '@/components/ui/pane-header';
-import { cn } from '@/utils/_cn';
-import { receivingHeaderHairlineClass } from '@/components/layout/header-shell';
 import { TriageWorkspace } from './TriageWorkspace';
 import { PulseWorkspace } from './PulseWorkspace';
 import { Button } from '@/design-system/primitives';
@@ -69,26 +66,36 @@ export function InventoryShell() {
     }
 
     return (
-        <div className="flex h-full min-h-0 flex-col bg-surface-canvas">
-            <PageHeader
-                className={cn('border-transparent bg-surface-card', receivingHeaderHairlineClass)}
-                maxWidth="5xl"
-                title="Inventory"
-                rightSlot={
-                    hasAnyTarget ? (
-                        <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={clearAll}
-                            className="px-0 text-xs text-text-soft underline hover:bg-transparent hover:text-text-default"
-                        >
-                            Back to recent activity
-                        </Button>
-                    ) : null
-                }
-            />
+        /*
+         * No title row and no measure of its own (2026-08-31).
+         *
+         * This drew a hand-rolled `PageHeader` reading "Inventory" at
+         * `max-w-5xl` — a second page-header primitive on a second measure,
+         * one level below the frame that already prints the page's name. The
+         * desk chrome (`@/design-system/components/DeskPageChrome`, mounted by
+         * `src/app/inventory/layout.tsx`) owns the title and the stage now, so
+         * what is left here is the body.
+         *
+         * "Back to recent activity" survives as a row above the list rather
+         * than a header slot: it is a state reset for THIS view, not a
+         * page-level action, and the header's right slot is the desk's primary
+         * CTA.
+         */
+        <div className="flex h-full min-h-0 flex-col">
+            {hasAnyTarget ? (
+                <div className="flex shrink-0 items-center justify-end px-2 py-1">
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={clearAll}
+                        className="px-0 text-xs text-text-soft underline hover:bg-transparent hover:text-text-default"
+                    >
+                        Back to recent activity
+                    </Button>
+                </div>
+            ) : null}
 
-            <div className="mx-auto w-full max-w-5xl flex-1 overflow-y-auto">
+            <div className="w-full flex-1 overflow-y-auto">
                 {state.view === 'by-sku' && state.sku ? (
                     <BySkuView sku={state.sku} />
                 ) : state.view === 'by-bin' && state.bin ? (

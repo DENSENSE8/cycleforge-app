@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
   LEDGER_GRID_CELL_INSET,
   LEDGER_GRID_FROZEN_CELL,
   LEDGER_GRID_ROW_CONTAIN,
   LEDGER_GRID_WIDTH_VAR,
+  LEDGER_GRID_ROW_WIDTH_CLASS,
   ledgerGridCell,
   ledgerGridRowShellClass,
   ledgerGridWidthVarValue,
@@ -63,15 +66,40 @@ describe('ledgerGridRowShellClass / frozen / width var', () => {
     );
   });
 
+  /**
+   * The guard the old assertion could not be.
+   *
+   * `assert.ok(cls.includes(LEDGER_GRID_WIDTH_VAR))` passed for the entire life
+   * of the bug: the class NAME was on every row while no CSS rule existed to
+   * give it a width, because it was built as a Tailwind arbitrary value inside
+   * a template literal and the scanner never emitted it. A class string is not
+   * a style. This reads the stylesheet and asserts the rule is really there.
+   */
+  it('the shared row width is a REAL css rule, not just a class name', () => {
+    const css = readFileSync(join(process.cwd(), 'src/app/globals.css'), 'utf8');
+    const rule = new RegExp(
+      `\\.${LEDGER_GRID_ROW_WIDTH_CLASS}\\s*\\{[^}]*width:\\s*var\\(${LEDGER_GRID_WIDTH_VAR}\\)`,
+    );
+    assert.match(
+      css.replace(/\s+/g, ' '),
+      new RegExp(rule.source.replace(/\\s\*/g, ' ?')),
+      `globals.css must define .${LEDGER_GRID_ROW_WIDTH_CLASS} { width: var(${LEDGER_GRID_WIDTH_VAR}) } — ` +
+        'without it every row falls back to width:auto and the grid loses horizontal scroll.',
+    );
+  });
+
   it('mobile shell stays a stacked flex column', () => {
     assert.ok(ledgerGridRowShellClass(true).includes('flex-col'), 'mobile stacks');
   });
 
   it('scrollMinContent row shell shares the grid width var (locked columns)', () => {
     const cls = ledgerGridRowShellClass(false, { scrollMinContent: true });
-    assert.ok(cls.includes(LEDGER_GRID_WIDTH_VAR), 'shared width var locks tracks across rows');
+    assert.ok(cls.includes(LEDGER_GRID_ROW_WIDTH_CLASS), 'shared width class locks tracks across rows');
     assert.ok(!cls.includes('w-max'), 'never w-max — that drifted columns per product title');
-    assert.ok(!ledgerGridRowShellClass(false).includes(LEDGER_GRID_WIDTH_VAR), 'board keeps w-full min-w-0');
+    assert.ok(
+      !ledgerGridRowShellClass(false).includes(LEDGER_GRID_ROW_WIDTH_CLASS),
+      'board keeps w-full min-w-0',
+    );
     assert.equal(
       ledgerGridWidthVarValue(41.25),
       'max(100%, calc(41.25rem * var(--cf-density, 1)))',

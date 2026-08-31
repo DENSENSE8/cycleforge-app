@@ -25,19 +25,25 @@ import {
   type ReactNode,
   type Ref,
 } from 'react';
-import { OmnichannelComposerDock } from '@/design-system/primitives';
-import { toast } from '@/lib/toast';
 import {
-  STATION_COMPOSER_SHIFT_TAB_REFUSAL,
+  OmnichannelComposerDock,
+  type OmnichannelComposerDockHandle,
+} from '@/design-system/primitives';
+import { COMPOSER_SHELL_CORNER } from '@/design-system/tokens/radius';
+import { CornerDownLeft, Link2 } from '@/components/Icons';
+import { cn } from '@/utils/_cn';
+import {
   classifyStationComposerModeKey,
   stationComposerModeAriaLabel,
   stationComposerModeKeepsTrailingAction,
   stationComposerModePlaceholder,
+  stationComposerTicketCommitLabel,
   type StationComposerMode,
 } from '@/lib/composer/station-composer-mode';
 import { ComposerModeRow } from './ComposerModeRow';
 import { ComposerDrillMenu, type ComposerDrillNode } from './ComposerDrillMenu';
 import { useStationComposerMode } from './useStationComposerMode';
+import { useStationComposerFocusRequests } from './station-composer-focus';
 import {
   NoteComposerInsertRail,
   type NoteComposerInsertAction,
@@ -151,6 +157,14 @@ export function StationComposerHost({
   // Ticket, and the hosts that react to Ticket (band collapse in LineEditPanel /
   // TestingPanel) never fired for a deep-linked operator.
   const lastMode = useRef<StationComposerMode | null>(null);
+  const dockRef = useRef<OmnichannelComposerDockHandle>(null);
+
+  // Mode-agnostic on purpose: there is ONE textarea and its `value` swaps with
+  // the mode, so the caret lands in the right field whether or not the mode
+  // flip that accompanied this request has committed yet.
+  useStationComposerFocusRequests(
+    useCallback(() => dockRef.current?.focus(), []),
+  );
 
   useEffect(() => {
     if (lastMode.current === mode) return;
@@ -182,24 +196,38 @@ export function StationComposerHost({
       : (labelPlaceholder ??
         stationComposerModePlaceholder(mode, { ticketLabel, hasTicket }));
 
+  // DOCUMENT-scoped, not textarea-scoped (2026-08-31). These chords hung off
+  // the composer's own onKeyDown, so they only fired while the field had focus
+  // — which is exactly when an operator is NOT reaching for them. Someone who
+  // just scanned a box, or who is reading the ticket thread, pressed ⌥2 and
+  // nothing happened.
+  //
+  // Bubble phase, so a control that legitimately owns the chord can stop it
+  // first. preventDefault is what takes Shift+Tab off reverse focus traversal
+  // for this surface — the deliberate trade the operator made for one toggle.
+  //
+  // Two mounted hosts both firing is harmless: `cycleMode` derives the next
+  // mode from the CURRENT one rather than toggling, so both compute the same
+  // target and the second call is a no-op write.
+  useEffect(() => {
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (!classifyStationComposerModeKey(e)) return;
+      e.preventDefault();
+      cycleMode();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [cycleMode]);
+
+  // The textarea still delegates to the host's ghost-autocomplete handler; the
+  // mode chords are no longer handled here — the document listener above owns
+  // them, and handling them twice would cycle twice.
   const handleModeKey = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
       if (onTextareaKeyDown?.(e)) return true;
-      const hit = classifyStationComposerModeKey(e);
-      if (!hit) return false;
-      e.preventDefault();
-      if (hit.kind === 'refuse-shift-tab') {
-        toast.message(STATION_COMPOSER_SHIFT_TAB_REFUSAL);
-        return true;
-      }
-      if (hit.kind === 'cycle') {
-        cycleMode();
-        return true;
-      }
-      setMode(hit.mode);
-      return true;
+      return false;
     },
-    [onTextareaKeyDown, cycleMode, setMode],
+    [onTextareaKeyDown],
   );
 
   // Ticket `+` drills; Unbox `+` keeps its flat coloured insert rail. Leaving
@@ -225,8 +253,21 @@ export function StationComposerHost({
     : labelCommitDisabled;
 
   return (
-    <div className={className} data-testid="station-composer-host" data-composer-mode={mode}>
+    <div
+      className={cn(
+        // Floor only — Unbox | Ticket live HERE, not inside the dock outline.
+        // Same white + COMPOSER_SHELL_CORNER; no overflow clip (that sheared
+        // the dock's raised shadow). isolate keeps z-raised dock above z-base
+        // modes so the shadow paints across the caption.
+        'flex min-w-0 isolate flex-col gap-1 bg-surface-card pb-[max(0.25rem,env(safe-area-inset-bottom))]',
+        weldTop ? `${COMPOSER_SHELL_CORNER} rounded-t-none` : COMPOSER_SHELL_CORNER,
+        className,
+      )}
+      data-testid="station-composer-host"
+      data-composer-mode={mode}
+    >
       <OmnichannelComposerDock
+        ref={dockRef}
         value={value}
         onChange={onChange}
         onCommit={onCommit}
@@ -234,7 +275,24 @@ export function StationComposerHost({
         onFocus={onFocus}
         density="compact"
         autoGrow
-        commitGlyph="enter"
+        // Ticket mode gets the LABELLED CTA; the note keeps the quiet return
+        // arrow. Saving a sticker note and filing a helpdesk ticket are not the
+        // same act and must not wear the same control.
+        commitGlyph={isTicket ? 'action' : 'enter'}
+        commitLabel={isTicket ? stationComposerTicketCommitLabel(hasTicket) : undefined}
+        commitIcon={
+          isTicket ? (
+            hasTicket ? (
+              <CornerDownLeft className="h-3.5 w-3.5" />
+            ) : (
+              <Link2 className="h-3.5 w-3.5" />
+            )
+          ) : undefined
+        }
+        // Filing a NEW ticket is the terminal, outward-facing act — same
+        // crimson the claim panel's own File ticket button carries. An update
+        // on an existing thread is ordinary primary work.
+        commitVariant={isTicket && !hasTicket ? 'danger' : 'primary'}
         showCommitWithTrailing={false}
         hideCommitButton={Boolean(printTrailing)}
         leadingStart={leadingPlus}
@@ -250,17 +308,13 @@ export function StationComposerHost({
         placeholder={placeholder}
         ariaLabel={stationComposerModeAriaLabel(mode, { ticketLabel, hasTicket })}
         commitAriaLabel={
-          isTicket
-            ? hasTicket
-              ? 'Send'
-              : 'Create ticket'
-            : labelCommitAriaLabel
+          isTicket ? stationComposerTicketCommitLabel(hasTicket) : labelCommitAriaLabel
         }
         commitTooltip={
           isTicket
             ? hasTicket
-              ? 'Send (Enter) · Shift+Enter for newline'
-              : 'Create ticket (Enter)'
+              ? 'Update ticket (Enter) · Shift+Enter for newline'
+              : 'File ticket (Enter)'
             : labelCommitTooltip
         }
         footerEnd={locationFooter}

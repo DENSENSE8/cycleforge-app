@@ -200,7 +200,6 @@ export function PoLineCaptureRow({
     autoFocusSerial,
     focusKey,
     focusNonce,
-    displayCondition,
     openPanel,
     condExpanded,
     disabled,

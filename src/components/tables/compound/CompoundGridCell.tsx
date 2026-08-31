@@ -58,6 +58,8 @@ import type {
   CompoundRowAction,
   CompoundRowView,
   CompoundSubtitleSelect,
+  CompoundSubtitleEdit,
+  CompoundSubtitleCopy,
 } from './compound-row-model';
 
 /**
@@ -124,6 +126,16 @@ export interface CompoundGridCellParams<C extends CompoundCellColumn> {
    * read-only. See {@link CompoundSubtitleSelect}.
    */
   subtitleSelects?: readonly CompoundSubtitleSelect[];
+  /** Free-text / numeric in-place editors, matched to parts by key. */
+  subtitleEdits?: readonly CompoundSubtitleEdit[];
+  /** Parts that paint as a copy chip, matched by key. */
+  subtitleCopies?: readonly CompoundSubtitleCopy[];
+  /** Part key of the NOTE fact — pinned right as a glyph. */
+  subtitleNoteKey?: string;
+  /** The note's full text. */
+  noteText?: string | null;
+  /** Present ⇒ the inline under-title facts drag to reorder. */
+  onReorderSubtitle?: (partKey: string, toIndex: number) => void;
 }
 
 /**
@@ -172,6 +184,11 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
   actions,
   select,
   subtitleSelects,
+  subtitleEdits,
+  subtitleCopies,
+  subtitleNoteKey,
+  noteText,
+  onReorderSubtitle,
   formatClass,
 }: CompoundGridCellParams<C>): ReactNode {
   // `select` is only ours when a COMPOUND model is mounted — see
@@ -301,7 +318,15 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
     case 'item':
       return (
         <div data-col="item" data-frozen-edge={frozenEdge} className={className} style={style}>
-          <CompoundItem view={view} subtitleSelects={subtitleSelects} />
+          <CompoundItem
+            view={view}
+            subtitleSelects={subtitleSelects}
+            subtitleEdits={subtitleEdits}
+            subtitleCopies={subtitleCopies}
+            subtitleNoteKey={subtitleNoteKey}
+            noteText={noteText}
+            onReorderSubtitle={onReorderSubtitle}
+          />
         </div>
       );
     case 'state':

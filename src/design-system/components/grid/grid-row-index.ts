@@ -31,6 +31,8 @@ interface CountGridRowsArgs<T> {
   daySections?: [string, T[]][];
   /** Day bands each occupy a row of their own when shown. */
   showDayHeaders?: boolean;
+  /** Band key → SECTION label; a named band always occupies a row of its own. */
+  sectionHeaders?: Record<string, string>;
 }
 
 /**
@@ -41,20 +43,27 @@ export function countGridRows<T>({
   orderGroupsByDate,
   daySections,
   showDayHeaders = false,
+  sectionHeaders,
 }: CountGridRowsArgs<T>): number {
   let total = GRID_HEADER_ROW_INDEX;
+  // A named SECTION band emits a header row of its own even when day banding is
+  // off, so it counts here too — `VirtualGroupedSections` advances `rowIndex`
+  // past it, and an `aria-rowcount` that ignored it would be one short of the
+  // largest `aria-rowindex` the grid actually renders.
+  const bandHeaderRows = (key: string) =>
+    showDayHeaders || sectionHeaders?.[key] !== undefined ? 1 : 0;
 
   if (orderGroupsByDate) {
-    for (const [, groups] of orderGroupsByDate) {
-      if (showDayHeaders) total += 1;
+    for (const [key, groups] of orderGroupsByDate) {
+      total += bandHeaderRows(key);
       for (const group of groups) total += groupRowSpan(group);
     }
     return total;
   }
 
   if (daySections) {
-    for (const [, rows] of daySections) {
-      if (showDayHeaders) total += 1;
+    for (const [key, rows] of daySections) {
+      total += bandHeaderRows(key);
       total += rows.length;
     }
   }

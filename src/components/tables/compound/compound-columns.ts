@@ -144,10 +144,12 @@ export const COMPOUND_TRACKS: readonly CompoundTrack[] = [
     key: 'thumb',
     frozen: true,
     width: GUTTER_TRACK,
-    label: 'Photo',
-    // Empty grid label: the column is a 48px square with no room for a word,
-    // and the photos themselves say what the track is.
-    gridLabel: '',
+    label: 'Image',
+    // Named, not blank (operator ruling 2026-08-31). The track is a 48px square
+    // so the word itself will not fit; `gridHeaderShowsLabel` falls back to the
+    // column's TYPE GLYPH, which is what "display image for the image column"
+    // buys — a header that identifies the track instead of a gap over it.
+    gridLabel: 'Image',
     align: 'start',
     sortable: false,
     // NOT resizable, and that is the point: `isGridColumnResizable` refuses

@@ -24,12 +24,15 @@ import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewe
 import { RequesterDetailBand } from '@/components/support/service-workspace/RequesterDetailBand';
 import { SupportChatHeader } from './SupportChatHeader';
 import { MergedRecordStream } from './MergedRecordStream';
-import { SupportChatComposer } from './SupportChatComposer';
+import { TicketComposer } from '@/components/composer/TicketComposer';
 import { useTicketComposerStaging } from './TicketComposerStagingContext';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 import { SupportContextDetailPanel } from '@/components/support/context/SupportContextDetailPanel';
 import { requesterFrom, requesterLabel } from './support-chat-utils';
-import { CONVERSATION_DETAIL_SURFACE } from '@/design-system/primitives/conversation-chrome';
+import {
+  CONVERSATION_COMPOSER_PAD,
+  CONVERSATION_DETAIL_SURFACE,
+} from '@/design-system/primitives/conversation-chrome';
 import { cn } from '@/utils/_cn';
 
 /** Image attachment urls on a single Zendesk comment (full-res `content_url`). */
@@ -102,7 +105,7 @@ export function SupportTicketDetail({
    */
   mergeFloorTimeline = false,
   /**
-   * Forwarded to {@link SupportChatComposer}. Unbox Ticket Displays passes
+   * Forwarded to {@link TicketComposer}. Unbox Ticket Displays passes
    * `false`; Testing · `/support` keep the default on.
    */
   showReplyPresets = true,
@@ -231,16 +234,21 @@ export function SupportTicketDetail({
       {...dz.rootProps}
       className={cn('relative flex h-full min-h-0 flex-col', CONVERSATION_DETAIL_SURFACE)}
     >
-      <SupportChatHeader
-        ticket={ticket}
-        onBack={onBack}
-        compact={embedded}
-        hideRequesterBand={hideRequester}
-        hideTitle={hideTitle}
-      />
       {/* `data-conversation-port` marks the scroll ancestor the stream measures
           against when the floating composer resizes. */}
       <div data-conversation-port className="min-h-0 flex-1 overflow-y-auto">
+        {/* The title rides INSIDE the port (operator ruling 2026-08-31): it is
+            the head of the record, not chrome bolted above it, so it scrolls
+            away with the oldest message the same way a subject line does at the
+            top of an email thread. Pinned, it cost a row of thread height on
+            every station line for a string the operator reads once. */}
+        <SupportChatHeader
+          ticket={ticket}
+          onBack={onBack}
+          compact={embedded}
+          hideRequesterBand={hideRequester}
+          hideTitle={hideTitle}
+        />
         {/* Context FOR the conversation, so it lives in the conversation's own
             port and scrolls away with it — not pinned chrome.
             Deliberately NOT `compact={embedded}`: `/support` passes `embedded`
@@ -272,13 +280,14 @@ export function SupportTicketDetail({
           className="pointer-events-none absolute inset-x-0 bottom-0 z-raised"
         >
           <div className="pointer-events-auto">
-            <SupportChatComposer
+            <TicketComposer
               ticketId={ticketId}
               requesterEmail={requester.email}
               staging={staging}
               receivingId={receivingId}
               onBridgeChange={onComposerBridgeChange}
               showReplyPresets={showReplyPresets}
+              className={CONVERSATION_COMPOSER_PAD}
             />
           </div>
         </div>

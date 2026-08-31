@@ -3,7 +3,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { createCacheLookupKey, getCachedJson, setCachedJson } from '@/lib/cache/upstash-cache';
 import { logRouteMetric } from '@/lib/route-metrics';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
-import { sqlOrderHasPackScan, sqlOrderHasTechScan } from '@/lib/orders/order-grain-sql';
+import { sqlOrderHasPackScan, sqlOrderHasShipConfirm, sqlOrderHasTechScan } from '@/lib/orders/order-grain-sql';
 import { withAuth } from '@/lib/auth/withAuth';
 import { countOpenPlacementsByLocation } from '@/lib/packing/pack-placement';
 
@@ -48,7 +48,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       // Bump when membership SQL / payload shape changes so stale tallies cannot outlive the fix.
       // Bumped for `shippedToday` (2026-08-30) — a cached payload without the
       // field would print 0 shipped today for a whole TTL on every desk.
-      queueScope: 'in_warehouse_order_grain_v3_shipped_today',
+      queueScope: 'in_warehouse_order_grain_v4_ship_confirm',
     });
 
     const CACHE_HEADERS = { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=30' };
@@ -133,12 +133,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
          * same predicate the fulfillmentScope feed applies, kept in lockstep
          * so the tab totals never exceed the rows on screen. */
         AND COALESCE(o.release_state, '') <> 'caged'
-        AND NOT EXISTS (
-          SELECT 1 FROM station_activity_logs sal_out
-          WHERE sal_out.shipment_id = o.shipment_id
-            AND sal_out.organization_id = o.organization_id
-            AND sal_out.activity_type = 'SHIP_CONFIRM'
-        )${staffClause}
+        AND NOT ${sqlOrderHasShipConfirm('o')}${staffClause}
       GROUP BY 1, 2, 3
     `;
 

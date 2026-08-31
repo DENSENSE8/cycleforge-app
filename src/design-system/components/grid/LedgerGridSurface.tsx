@@ -112,6 +112,13 @@ interface LedgerGridSurfaceProps<Row, K extends string, C extends LedgerGridColu
   isSearching?: boolean;
   /** Sticky day bands (Testing History). Auto-suppressed under a column sort. */
   showDayHeaders?: boolean;
+  /**
+   * Band key → SECTION label. Passed straight through: unlike `showDayHeaders`
+   * it is NOT suppressed under a column sort, because a column sort collapses
+   * the queue to one unnamed band and no key can match — the section disappears
+   * on its own, from the data, rather than by a second rule here.
+   */
+  sectionHeaders?: Record<string, string>;
   /** Mirror of the LedgerGrid scroll body (keyboard nav / scroll-to-top). */
   scrollRef?: RefObject<HTMLDivElement | null>;
   /**
@@ -177,6 +184,7 @@ export function LedgerGridSurface<Row, K extends string, C extends LedgerGridCol
   searchEmptyState,
   isSearching = false,
   showDayHeaders = false,
+  sectionHeaders,
   scrollRef,
   rowEstimate,
   scrollParentRef,
@@ -281,6 +289,7 @@ export function LedgerGridSurface<Row, K extends string, C extends LedgerGridCol
           // column model, never guessed here.
           rowEstimate={rowEstimate}
           showDayHeaders={dayHeadersActive}
+          sectionHeaders={sectionHeaders}
           aria-label={ariaLabel}
           data-testid={`${testId}-scroll`}
           bodyRef={scrollRef as RefObject<HTMLDivElement> | undefined}

@@ -21,7 +21,8 @@ export function detectListingPlatform(
 ): string {
   const src = (accountSource || '').trim().toLowerCase();
   if (src.startsWith('ebay')) return 'ebay';
-  if (src === 'ecwid') return 'ecwid';
+  // Sheet cells often say ECWID-RS (the old repair-service face). Same store.
+  if (src === 'ecwid' || src.startsWith('ecwid')) return 'ecwid';
   if (src === 'fba' || src === 'amazon_fba') return 'amazon_fba';
   if (src === 'shipstation') return 'shipstation';
   if (src.startsWith('amazon') || src.startsWith('amz')) return 'amazon';

@@ -110,6 +110,25 @@ export async function createOrderNote({
     );
     const row = rows[0];
 
+    /*
+     * Keep the denormalized latest-note column in step, in the SAME write.
+     *
+     * `orders.notes` is what every LIST read paints — the compound row's
+     * subtitle resolves `orders.notes` straight off the queue payload, and
+     * `ordersCompoundView` treats it as "the latest thing somebody said". The
+     * trail (`order_notes`) is the source of truth and stays append-only; this
+     * column is a cached face of its newest row.
+     *
+     * Without this the two disagreed the moment a note was written: the trail
+     * gained an entry and every queue kept showing the stale scalar, which is
+     * why an inline note editor could not be wired at all (it would display one
+     * value and change a different one). This is not the two-writers problem
+     * the assign route's `notes` branch was removed for — that was a SECOND
+     * independent author of the same field. Here there is one write path, and
+     * it maintains its own read column.
+     */
+    await client.query('UPDATE orders SET notes = $1 WHERE id = $2', [body, orderId]);
+
     // Resolve the author's name from the same transaction rather than trusting
     // the caller's session label — the list read joins `staff`, and the
     // optimistic row the client renders must match what a refetch will return.

@@ -10,6 +10,7 @@
 import { forwardRef, useRef, type CSSProperties, type ReactNode } from 'react';
 import { Copy, ExternalLink, Pencil, Ticket } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { cn } from '@/utils/_cn';
 import { ChipHoverMenuSurface } from '@/components/ui/ChipHoverMenuSurface';
 import { useHoverSurface } from '@/hooks/useHoverSurface';
 import { listingMenuRows } from './carton-bar-menu-rows';
@@ -148,6 +149,57 @@ export function StationContextListingCell({
     </div>
   );
 }
+
+/**
+ * The claim's DRAFT ticket number, in the slot the Claim button occupies.
+ *
+ * Shown while an unlinked carton has a claim body typed but not filed: it is
+ * the id the ticket is heading for, so the operator can say the number out loud
+ * to a seller before it exists.
+ *
+ * It FLASHES because it is not real yet. The pulse is `animate-pulse` —
+ * opacity only, which composites off the main thread and moves no neighbour
+ * (AGENTS.md: nothing may tween a property that triggers reflow). Pressing it
+ * does what Claim did: shows the draft.
+ *
+ * NEUTRAL chrome, not the Claim tone: once the number is showing, this corner
+ * is reading out an identifier like the listing cell beside it, not offering
+ * the Claim verb. The orange wash made a filed ticket and a draft one look the
+ * same weight.
+ *
+ * PREDICTED, NOT RESERVED. Zendesk mints ids on create, so another agent filing
+ * first shifts this number. The flash and the "not filed yet" label are the
+ * honesty — the number itself is bare so an operator can read it out — and the
+ * value is never persisted (see {@link predictNextTicketNumber}).
+ */
+export const StationContextDraftTicketCell = forwardRef<
+  HTMLButtonElement,
+  { active?: boolean; onClick: () => void; number: string }
+>(function StationContextDraftTicketCell({ active, onClick, number }, ref) {
+  const label = `Draft ticket ${number} — not filed yet`;
+  return (
+    <HoverTooltip label={label} asChild>
+      <button
+        ref={ref}
+        type="button"
+        onClick={onClick}
+        aria-label={label}
+        aria-pressed={active}
+        className={STATION_CONTEXT_LISTING_CHROME_CLASS}
+        data-testid="carton-context-draft-ticket"
+        data-draft-ticket={number}
+      >
+        <Ticket
+          className={cn(STATION_CHROME_GLYPH_CLASS, 'animate-pulse text-orange-500')}
+          aria-hidden
+        />
+        <span className="animate-pulse font-semibold leading-none tabular-nums">
+          {number}
+        </span>
+      </button>
+    </HoverTooltip>
+  );
+});
 
 export const StationContextClaimCell = forwardRef<
   HTMLButtonElement,

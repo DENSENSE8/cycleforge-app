@@ -58,6 +58,16 @@ test('receivingLabelPlatformDisplay keeps full Amazon name without a type', () =
   );
 });
 
+test('receivingLabelPlatformDisplay sentence-cases shouting platform + type', () => {
+  assert.equal(
+    receivingLabelPlatformDisplay({
+      platform: 'ebay',
+      receivingType: 'RETURN',
+    }),
+    'eBay - Return',
+  );
+});
+
 test('receivingLabelPlatformDisplay uses type alone when it already names the platform', () => {
   assert.equal(
     receivingLabelPlatformDisplay({

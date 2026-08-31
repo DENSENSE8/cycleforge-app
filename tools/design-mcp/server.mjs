@@ -21,12 +21,13 @@
  * that file exists — it is optional, starts empty, and grows one justified
  * entry at a time.
  *
- * ## The two primitive homes
+ * ## Primitive homes
  *
- * `src/design-system/primitives` (36 `.tsx`) and `src/components/ui` (16) both
- * hold primitives. That duplication is a real open question in this repo and
- * NOT something this server resolves — it reports both, labelled, so an agent
- * sees the choice instead of picking whichever it happened to grep first.
+ * `src/design-system/primitives` is ops chrome (the CTA Button). `src/components/ui`
+ * holds two kinds of file: the eleven shadcn/new-york primitives (house tokens)
+ * that new composed / 21st.dev work starts from, and house composites (CopyChip,
+ * FilterMenu, …). The server labels those separately. Two Buttons is two jobs,
+ * not a choice: ops CTA → design-system Button; shadcn-lane chrome → ui/button.
  *
  * ## Why no ds_adjudicate
  *
@@ -40,7 +41,13 @@
  */
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js'
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+  ListResourcesRequestSchema,
+  ListResourceTemplatesRequestSchema,
+  ReadResourceRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js'
 import { readFileSync, readdirSync, existsSync, realpathSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -70,44 +77,105 @@ const REPO = (() => {
 // parent would otherwise fail its own containment check.
 const REPO_REAL = realpathSync(REPO)
 
+/** Filenames in `src/components/ui` that ARE the shadcn/new-york primitives (house tokens). Everything else in that folder is a house composite. */
+const SHADCN_UI = /^(button|input|label|checkbox|badge|alert|skeleton|separator|dialog|command|popover|calendar)\.tsx$/
+
 /** Where primitives legitimately live. Order is reporting order, not preference. */
 const PRIMITIVE_HOMES = [
   { dir: 'src/design-system/primitives', label: 'design-system primitive', alias: '@/design-system/primitives' },
   { dir: 'src/design-system/components', label: 'design-system component', alias: '@/design-system/components' },
-  { dir: 'src/components/ui', label: 'ui primitive (shadcn lineage)', alias: '@/components/ui' },
-  // The composer is one surface, ruled once (I8: one composer, ever), and it
-  // is the surface agents most often rebuild by accident. It is indexed so the
-  // laws pinned to it are reachable by the question someone actually asks
-  // ("composer", "input", "command field") rather than only by reading it.
+  // New composed work (21st.dev imports, shadcn-lane chrome) starts HERE.
+  // Ops CTAs still take design-system/primitives/Button — two Buttons, two jobs.
+  {
+    dir: 'src/components/ui',
+    label: 'shadcn primitive (new-york, house tokens)',
+    alias: '@/components/ui',
+    match: SHADCN_UI,
+  },
+  {
+    dir: 'src/components/ui',
+    label: 'ui composite (house)',
+    alias: '@/components/ui',
+    match: { test: (file) => /\.tsx$/.test(file) && !SHADCN_UI.test(file) },
+  },
   { dir: 'src/components/composer', label: 'composer surface', alias: '@/components/composer' },
-  // Behaviour, not chrome. Indexed so ds_contract("edit") / ("save") hits the
-  // write primitive instead of a Form the agent invented.
+  // The ONE table. Added 2026-08-31 after an agent asked this catalog for "data
+  // table, spreadsheet, grid" and was answered with a composer, a calendar and
+  // an inline-edit field — because `src/components/tables` was not a home — and
+  // went on to hand-roll a per-family column model and row component for a
+  // surface the shared engine already served. A catalog that cannot name the
+  // biggest display in the product is not silent, it is misleading.
+  { dir: 'src/components/tables', label: 'table engine (house)', alias: '@/components/tables' },
+  // The slot KERNEL, by name. A column on this engine is a slot binding
+  // resolved from a field catalog, not a hand-written array, and an agent has
+  // to be able to find that out by asking.
+  {
+    dir: 'src/lib/tables',
+    label: 'table engine (slot kernel)',
+    alias: '@/lib/tables',
+    match: /^(materialize-tracks|slot-layout|table-definition)\.ts$/,
+  },
+  // The desk FRAME's app-side adapter. `DeskPageChrome` itself is catalogued
+  // from `src/design-system/components`, but the thing a page actually mounts is
+  // `DeskPageLayout` — it reads SIDEBAR_PAGE_NAV and AuthContext, which is
+  // exactly why it cannot live in the design system. Without this home the pin
+  // for it in `pinned.json` merges onto nothing and is law no agent can find:
+  // the same failure that put `src/components/tables` on this list.
+  {
+    dir: 'src/components/desk',
+    label: 'desk frame (app adapter)',
+    alias: '@/components/desk',
+    match: /^DeskPageLayout\.tsx$/,
+  },
+  // The print-faithful 2×1" sticker + pinpoint slot overlay. Added 2026-08-31
+  // after inline label edit lived only on Unbox and `ds_contract` answered
+  // "printed sticker" with the shadcn field `label`. Nested files in this
+  // folder are NOT catalogued — pin the FLAT face files only.
+  {
+    dir: 'src/components/labels',
+    label: 'label face (house)',
+    alias: '@/components/labels',
+    match:
+      /^(LabelFacePreview|LabelFaceSlotOverlay|LabelPlatformTypeMenu|LabelFaceReceivingSlots|LabelFaceProductSlots|WorkspaceLabelPreviewCard|LabelPreviewCard)\.tsx$/,
+  },
   { dir: 'src/lib/optimistic', label: 'write primitive', alias: '@/lib/optimistic', match: /^useOptimisticMutation\.ts$/ },
 ]
 
-// `src/shell/tokens.css` was in this list until 2026-08-30 and has not existed
-// since the Warehouse OS refactor. It cost nothing to leave (the reader skips a
-// missing file) and cost everything to trust: the radius axis answered "0
-// tokens", which a model reads as "no law exists".
-const TOKEN_CSS = ['src/styles/globals.css', 'src/app/globals.css']
+/**
+ * One slice per call. `all` / `other` were dump buckets — an agent shown every
+ * axis invents from the pile. Name the axis you are about to write.
+ *
+ * After you change a file in TOKEN_TS: run `node tools/design-mcp/smoke.mjs`
+ * and the axis unit test (radius.test.ts, shadows, …). Then code-graph
+ * `find_symbol` + `impact_analysis` on the role function (`cornerClass`,
+ * `elevationClass`, `focusRing`) so the next session sees real call sites.
+ */
+const TOKEN_AXES = ['color', 'radius', 'spacing', 'typography', 'z-index', 'elevation', 'border', 'focus']
 
 /**
- * The axes whose law is TypeScript, not CSS.
+ * The axes whose law is TypeScript (or Node-native `.mjs` twins), not CSS.
  *
  * Radius left CSS custom properties entirely — `globals.css` says corner radius
- * is deliberately NOT there — and colour never lived in the CSS files this
- * server greps: `themes/registry.ts` generates `<style id="app-theme-palettes">`
- * at runtime. A CSS-only reader is therefore blind to both, and blind here is
- * worse than absent, because the tool still answers confidently.
+ * is deliberately NOT there — and colour never lived in the CSS files a grep
+ * would see: `themes/registry.ts` generates palettes at runtime. A CSS-only
+ * reader is therefore blind, and blind here is worse than absent, because the
+ * tool still answers confidently.
  *
- * Read as text, never imported: this server boots on plain node without `tsx`
- * (see run-mcp.sh), and a token catalogue must not be breakable by a loader.
- * The regexes below match declarations only — the shapes are stable and any
- * miss shows up as a missing token in smoke, not as a wrong value.
+ * Read as text from DESIGN_MCP_REPO, never imported: this server boots on
+ * plain node without `tsx`, and a worktree override must not silently read
+ * the checkout the script sits in.
  */
 const TOKEN_TS = {
   radius: 'src/design-system/tokens/radius.ts',
   themes: 'src/design-system/themes/registry.ts',
+  spacing: 'src/design-system/tokens/spacing.mjs',
+  zIndex: 'src/design-system/tokens/z-index.mjs',
+  elevation: 'src/design-system/tokens/shadows.ts',
+  focus: 'src/design-system/tokens/focus-ring.ts',
+  border: 'src/design-system/tokens/borders.ts',
+  typePresets: 'src/design-system/tokens/typography/presets.ts',
+  typeSizes: 'src/design-system/tokens/typography/sizes.ts',
+  tailwind: 'tailwind.config.mjs',
 }
 const OVERRIDES = 'src/design-system/pinned.json'
 
@@ -311,6 +379,52 @@ function readTs(rel) {
   }
 }
 
+function quotedMap(src, anchor) {
+  const body = blockAfter(src, anchor)
+  if (!body) return []
+  return [...body.matchAll(/^\s*'?([A-Za-z0-9_.-]+)'?\s*:\s*'([^']*)'/gm)].map((m) => [m[1], m[2]])
+}
+
+function unionMembers(src, typeName) {
+  const m = src.match(new RegExp(`export type ${typeName}\\s*=\\s*([^;]+)`))
+  if (!m) return []
+  return [...m[1].matchAll(/'([a-z]+)'/g)].map((x) => x[1])
+}
+
+function row(axis, source, name, value, use) {
+  return { name, value, axis, source, use, duplicates: [] }
+}
+
+/**
+ * Curated prose for the named soft-corner constants. Absent = nobody has
+ * written that law yet (see README), so the generic sentence says what the
+ * constant IS without inventing a rule about where it may be used.
+ */
+const NAMED_CORNER_USE = {
+  COMPOSER_SHELL_CORNER:
+    'Named exemption for the composer-shell family only — not a CornerRole. ' +
+    'cornerClass() cannot express this: every ladder rung is rounded-none. ' +
+    'Inner controls take SEGMENTED_CONTROL_CORNER (16px dock - p-1.5 -> rounded-lg ' +
+    'track, then p-0.5 -> rounded-md faces). ' +
+    'Never a hand-written rounded-* and never appearance=flush inside the dock. ' +
+    'The station Unbox|Ticket caption uses the same constant on a FLAT plate; ' +
+    'elevationClass(raised) stays on OmnichannelComposerDock (z-raised over z-base).',
+  SEGMENTED_CONTROL_CORNER:
+    'Track of a pick-one segmented control inside a SOFT shell ' +
+    '(VisibilityToggle appearance=default). Concentric with COMPOSER_SHELL_CORNER: ' +
+    '16px - p-1.5 = 10 -> the 8px rung. An ops-chrome segmented control stays ' +
+    'square via appearance=flush instead.',
+  SEGMENTED_CONTROL_FACE_CORNER:
+    'The two faces inside SEGMENTED_CONTROL_CORNER: 8px track - p-0.5 = 6px. ' +
+    'Import it; never hand-write rounded-md on a segmented face.',
+}
+
+const GENERIC_CORNER_USE = (name) =>
+  `Named corner constant (${name}) — an exemption from the flush-square ladder, ` +
+  'not a CornerRole. cornerClass() cannot express it: every ladder rung is ' +
+  'rounded-none. Import the constant; never re-type its class. No curated law ' +
+  'for it yet — that means unwritten, not permitted.'
+
 /**
  * The radius law: the ROLE→class map an agent is meant to call, then the raw
  * scale. Roles come first deliberately — `cornerClass('card')` survives a scale
@@ -322,35 +436,26 @@ function loadRadiusTokens() {
   if (!src) return []
   const out = []
 
-  for (const [, role, cls] of (blockAfter(src, 'const CORNER_CLASS') ?? '').matchAll(/^\s*'?([a-z]+)'?\s*:\s*'([^']+)'/gim)) {
-    out.push({
-      name: `cornerClass('${role}')`,
-      value: cls,
-      axis: 'radius',
-      source: rel,
-      use: `cn(cornerClass('${role}')) — import { cornerClass } from '@/design-system/tokens/radius'`,
-    })
+  for (const [role, cls] of quotedMap(src, 'const CORNER_CLASS')) {
+    out.push(row('radius', rel, `cornerClass('${role}')`, cls,
+      `cn(cornerClass('${role}')) — import { cornerClass } from '@/design-system/tokens/radius'`))
   }
 
-  const composer = src.match(/export const COMPOSER_SHELL_CORNER = '([^']+)'/)
-  if (composer) {
-    out.push({
-      name: 'COMPOSER_SHELL_CORNER',
-      value: composer[1],
-      axis: 'radius',
-      source: rel,
-      use: "The ONE soft corner on an ops surface — the composer-shell family only. Not a CornerRole, and not a licence to round anything else.",
-    })
+  // EVERY named `*_CORNER` export, not just the composer shell. These are the
+  // escape hatch from the zero-radius ladder — a soft corner that ships has to
+  // be named here or `ds_critique` has nothing to check a call site against,
+  // and the primitive carrying it as a literal is invisible drift. Discovered
+  // by pattern so a new one surfaces the moment it is exported; prose is
+  // curated per constant, and an unknown one still gets a usable sentence
+  // rather than being dropped.
+  for (const m of src.matchAll(/export const ([A-Z0-9_]*_CORNER) = '([^']+)'/g)) {
+    const [, name, cls] = m
+    out.push(row('radius', rel, name, cls, NAMED_CORNER_USE[name] ?? GENERIC_CORNER_USE(name)))
   }
 
-  for (const [, key, value] of (blockAfter(src, 'export const radius =') ?? '').matchAll(/^\s*'?([A-Za-z0-9]+)'?\s*:\s*'([^']+)'/gm)) {
-    out.push({
-      name: `radius.${key}`,
-      value,
-      axis: 'radius',
-      source: rel,
-      use: 'Typed mirror of the px scale. Prefer a cornerClass role over this — a role survives a scale change.',
-    })
+  for (const [key, value] of quotedMap(src, 'export const radius =')) {
+    out.push(row('radius', rel, `radius.${key}`, value,
+      'Typed mirror of the px scale. Prefer a cornerClass role over this — a role survives a scale change.'))
   }
 
   return out
@@ -370,65 +475,227 @@ function loadThemeTokens() {
   const themes = arrayAfter(src, 'export const ACCENT_NAMES')
   const varKeys = arrayAfter(src, 'export const THEME_VAR_KEYS')
   for (const key of varKeys) {
-    out.push({
-      name: `--ds-color-${key}`,
-      value: 'per theme',
-      axis: 'color',
-      source: rel,
-      use: `var(--ds-color-${key})`,
-    })
+    out.push(row('color', rel, `--ds-color-${key}`, 'per theme', `var(--ds-color-${key})`))
   }
 
-  // Everything else the generator can emit, read from its own template strings
-  // rather than restated here — accent vars and the shadcn --background pair.
   const literals = new Set([...src.matchAll(/`\$\{indent\}(--[a-z-]+):/g)].map((m) => m[1]))
   for (const name of literals) {
     if (varKeys.some((k) => name === `--ds-color-${k}`)) continue
-    out.push({
+    out.push(row(
+      'color',
+      rel,
       name,
-      value: name.startsWith('--ds-color-accent') ? `per staff accent (${themes.length})` : 'per theme',
-      axis: 'color',
-      source: rel,
-      use: `var(${name})`,
-    })
+      name.startsWith('--ds-color-accent') ? `per staff accent (${themes.length})` : 'per theme',
+      `var(${name})`,
+    ))
+  }
+
+  if (process.env.DESIGN_MCP_PLANT_HEX === '1') {
+    out.push(row('color', rel, '--ds-color-__planted', '#1a1a1d', 'SMOKE PLANT — not a real token'))
   }
 
   return out
 }
 
-function loadTokens() {
-  const tokens = [...loadRadiusTokens(), ...loadThemeTokens()]
-  for (const rel of TOKEN_CSS) {
-    let css = ''
-    try {
-      css = readFileSync(path.join(REPO, rel), 'utf8')
-    } catch {
-      continue
-    }
-    for (const line of css.split('\n')) {
-      const d = line.match(/^\s*(--[a-z0-9-]+)\s*:\s*([^;]+);/i)
-      if (d) tokens.push({ name: d[1], value: d[2].trim(), source: rel })
-    }
+function loadSpacingTokens() {
+  const out = []
+  const twRel = TOKEN_TS.tailwind
+  const tw = readTs(twRel)
+  for (const [, name] of tw.matchAll(/^\s+'((?:inset|stack|row)-[a-z]+)'\s*,/gm)) {
+    out.push(row('spacing', twRel, name, 'intent',
+      `className="${name}" — padding/gap intent, not a raw p-* / gap-*. Density-aware.`))
   }
-  // Later files win, matching cascade order, but report the duplicate rather
-  // than hiding it: two definitions of one token is a real defect here.
-  const seen = new Map()
-  for (const t of tokens) {
-    if (seen.has(t.name)) seen.get(t.name).duplicates.push(t.source)
-    else seen.set(t.name, { ...t, duplicates: [] })
+
+  const rel = TOKEN_TS.spacing
+  const src = readTs(rel)
+  const body = blockAfter(src, 'export const spacingScale') ?? ''
+  for (const [, key] of body.matchAll(/^\s*([A-Za-z0-9.]+)\s*:/gm)) {
+    if (key === 'd') continue
+    out.push(row('spacing', rel, `spacingScale.${key}`, 'density-aware step',
+      `Tailwind p-${key} / gap-${key} / m-${key}. Prefer an inset-* / stack-* / row-* intent when the surface has a name.`))
   }
-  return [...seen.values()]
+  return out
 }
 
-function axisOf(name) {
-  if (/^--(c|color)-/.test(name)) return 'color'
-  if (/^--(r|radius)/.test(name)) return 'radius'
-  if (/^--(sp|space|spacing)-/.test(name)) return 'spacing'
-  if (/^--(sz|text|font|fs)-/.test(name)) return 'typography'
-  if (/^--z-/.test(name)) return 'z-index'
-  if (/^--(shadow|elevation)-/.test(name)) return 'elevation'
-  if (/^--(border|outline)/.test(name)) return 'border'
-  return 'other'
+function loadTypographyTokens() {
+  const out = []
+  const twRel = TOKEN_TS.tailwind
+  const tw = readTs(twRel)
+  for (const [, name] of tw.matchAll(/^\s+'(text-role-[a-z]+)'\s*,/gm)) {
+    out.push(row('typography', twRel, name, 'role',
+      `className="${name}" — type ROLE, not text-[Npx] or text-sm. Import nothing; it is a utility.`))
+  }
+
+  const presetRel = TOKEN_TS.typePresets
+  const presets = readTs(presetRel)
+  for (const [, name] of presets.matchAll(/^export const ([A-Za-z]+)\s*=/gm)) {
+    if (name === 'typographyPresets') continue
+    out.push(row('typography', presetRel, name, 'preset',
+      `import { ${name} } from '@/design-system/tokens/typography/presets' — composed face, not a hand-rolled size/weight/tracking stack.`))
+  }
+
+  const sizeRel = TOKEN_TS.typeSizes
+  const sizes = readTs(sizeRel)
+  for (const [key] of quotedMap(sizes, 'export const fontSizes')) {
+    out.push(row('typography', sizeRel, `fontSizes.${key}`, 'scale',
+      'Raw size scale. Prefer a text-role-* utility or a typography preset over this.'))
+  }
+  return out
+}
+
+function loadZIndexTokens() {
+  const rel = TOKEN_TS.zIndex
+  const src = readTs(rel)
+  const body = blockAfter(src, 'export const zIndex') ?? ''
+  const out = []
+  for (const [, key] of body.matchAll(/^\s*([A-Za-z]+)\s*:/gm)) {
+    out.push(row('z-index', rel, `z-${key}`, 'named band',
+      `className="z-${key}" — import nothing. Never z-[NNN]; if two layers share a band, zIndex.${key} + N in JS, not a new magic number.`))
+  }
+  return out
+}
+
+function loadElevationTokens() {
+  const rel = TOKEN_TS.elevation
+  const src = readTs(rel)
+  if (!src) return []
+  const out = []
+  const body = blockAfter(src, 'export const ELEVATION_CLASS') ?? ''
+  const raised = blockAfter(body, 'raised:') ?? ''
+  for (const [, intensity, cls] of raised.matchAll(/^\s*'?([a-z]+)'?\s*:\s*'([^']*)'/gm)) {
+    const call = intensity === 'default' ? "elevationClass('raised')" : `elevationClass('raised', '${intensity}')`
+    out.push(row('elevation', rel, call, cls,
+      `cn(${call}) — import { elevationClass } from '@/design-system/tokens/shadows'. Never hand-roll shadow-* / shadow-scrim.`))
+  }
+  // Depth-0 keys only — nested raised.soft / raised.default must not become roles.
+  for (const [, role, cls] of body.matchAll(/^  ([a-z]+):\s*'([^']*)'/gm)) {
+    out.push(row('elevation', rel, `elevationClass('${role}')`, cls || 'flat (no shadow)',
+      `cn(elevationClass('${role}')) — import { elevationClass } from '@/design-system/tokens/shadows'.`))
+  }
+  return out
+}
+
+function loadFocusTokens() {
+  const rel = TOKEN_TS.focus
+  const src = readTs(rel)
+  if (!src) return []
+  const archetypes = unionMembers(src, 'FocusArchetype')
+  const tones = unionMembers(src, 'FocusTone')
+  const out = []
+  for (const a of archetypes) {
+    out.push(row('focus', rel, `focusRing('${a}')`, 'recipe',
+      `cn(focusRing('${a}')) — import { focusRing } from '@/design-system/tokens/focus-ring'. Default tone accent. Other tones: ${tones.join(', ')}. Never hand-roll focus:ring-*.`))
+  }
+  return out
+}
+
+function loadBorderTokens() {
+  const rel = TOKEN_TS.border
+  const src = readTs(rel)
+  if (!src) return []
+  const out = []
+  for (const [key, value] of quotedMap(src, 'export const borderWidths')) {
+    out.push(row('border', rel, `borderWidths.${key}`, value,
+      "Prefer semantic utilities (border-border-soft, border-border-hairline) over a raw width. This is the typed scale."))
+  }
+  for (const [key, value] of quotedMap(src, 'export const borderStyles')) {
+    out.push(row('border', rel, `borderStyles.${key}`, value,
+      'Border style scale. Pair with a semantic border colour token, not a hex.'))
+  }
+  return out
+}
+
+const AXIS_LOADERS = {
+  color: loadThemeTokens,
+  radius: loadRadiusTokens,
+  spacing: loadSpacingTokens,
+  typography: loadTypographyTokens,
+  'z-index': loadZIndexTokens,
+  elevation: loadElevationTokens,
+  border: loadBorderTokens,
+  focus: loadFocusTokens,
+}
+
+const AXIS_NOTE = {
+  color:
+    'Colour values read "per theme" because they resolve at runtime from themes/registry.ts — write var(--ds-color-…), never a hex.',
+  radius:
+    "Prefer the ROLE (cornerClass('surface')) over the class it currently renders. " +
+    "The industrial ladder (flush…canvas) is rounded-none. Composer chrome is COMPOSER_SHELL_CORNER, " +
+    "a named literal, not a role — inner = outer − padding, but do not call cornerClass for that nest.",
+  spacing:
+    'Prefer an inset-* / stack-* / row-* intent over a raw p-* / gap-* when the surface has a name.',
+  typography:
+    'Prefer text-role-* or a typography preset over text-sm / text-[Npx].',
+  'z-index':
+    'Prefer z-panel / z-modal / z-tooltip over z-[NNN].',
+  elevation:
+    "Prefer elevationClass('flat'|'raised'|'overlay') over shadow-* / shadow-scrim.",
+  border:
+    'Prefer semantic border-border-* utilities over a hex or an arbitrary width.',
+  focus:
+    "Prefer focusRing(archetype, tone) over a hand-rolled focus:ring-* recipe.",
+}
+
+/**
+ * Colour values never leave this process as a hex. The parser writes
+ * "per theme" already; this scrubber is the last line of defence if a
+ * reader starts pulling CSS again. Smoke plants `#1a1a1d` with
+ * DESIGN_MCP_PLANT_HEX=1 (skips the scrubber) to prove the check is live.
+ */
+const COLOR_HEX_RE = /#[0-9a-fA-F]{3,8}\b|rgba?\(/i
+function scrubColorValue(value) {
+  return COLOR_HEX_RE.test(String(value)) ? 'per theme' : value
+}
+
+function requireAxis(raw) {
+  const axis = raw == null || raw === '' ? null : String(raw)
+  if (!axis || axis === 'all' || axis === 'other') {
+    throw new Error(
+      `ds_tokens requires axis — one of: ${TOKEN_AXES.join(', ')}. ` +
+        'A dump of every axis is not a lookup; name the axis you are about to write.',
+    )
+  }
+  if (!TOKEN_AXES.includes(axis)) {
+    throw new Error(`unknown axis "${axis}" — one of: ${TOKEN_AXES.join(', ')}`)
+  }
+  return axis
+}
+
+function loadAxis(axis) {
+  const loader = AXIS_LOADERS[axis]
+  const rows = loader ? loader() : []
+  if (axis === 'color' && process.env.DESIGN_MCP_PLANT_HEX !== '1') {
+    for (const t of rows) t.value = scrubColorValue(t.value)
+  }
+  return rows
+}
+
+function presentAxis(axis, filter) {
+  const needle = filter ? String(filter).toLowerCase() : null
+  const rows = loadAxis(axis)
+    .filter((t) => (needle ? t.name.toLowerCase().includes(needle) : true))
+    .map((t) => ({
+      token: t.name,
+      value: t.value,
+      axis,
+      source: t.source,
+      ...(t.use ? { use: t.use } : {}),
+      ...(t.duplicates?.length ? { alsoDefinedIn: t.duplicates } : {}),
+    }))
+  if (rows.length === 0) {
+    throw new Error(
+      `no tokens on axis "${axis}"${filter ? ` matching "${filter}"` : ''} — this is a reader fault, not a licence ` +
+        'to write a literal. Say so rather than inventing a value.',
+    )
+  }
+  return {
+    axis,
+    count: rows.length,
+    sources: [...new Set(rows.map((r) => r.source))],
+    tokens: rows,
+    note: `Use the token, not the literal. ${AXIS_NOTE[axis]}`,
+  }
 }
 
 // ── ranking ──────────────────────────────────────────────────────────────────
@@ -439,12 +706,14 @@ const terms = (s) => String(s).toLowerCase().split(/[^a-z0-9]+/).filter((t) => t
 function score(entry, q, override) {
   const id = entry.id.toLowerCase()
   const useWhen = terms(override?.useWhen ?? '').join(' ')
+  const home = String(entry.home ?? '').toLowerCase()
   let s = 0
   for (const t of q) {
     if (id === t) s += 12
     else if (id.includes(t)) s += 6
     if (useWhen.includes(t)) s += 10
     if (entry.file.toLowerCase().includes(t)) s += 2
+    if (home.includes('shadcn') && (t === 'shadcn' || t === '21st' || t === 'primitive')) s += 8
   }
   return s
 }
@@ -500,24 +769,54 @@ function resolveInRepo(input) {
 }
 
 const FORK_SIGNALS = [
-  { pin: 'Button', re: /<button[\s>]/, what: 'a raw <button>' },
-  { pin: 'Input', re: /<input[\s>]/, what: 'a raw <input>' },
-  { pin: 'Checkbox', re: /type=["']checkbox["']/, what: 'a raw checkbox input' },
-  { pin: 'Dialog', re: /role=["']dialog["']/, what: 'a hand-rolled dialog role' },
-  { pin: 'Tooltip', re: /role=["']tooltip["']/, what: 'a hand-rolled tooltip role' },
+  { pin: 'Button', also: ['button'], re: /<button[\s>]/, what: 'a raw <button>' },
+  { pin: 'TextField', also: ['input'], re: /<input[\s>]/, what: 'a raw <input>' },
+  { pin: 'Checkbox', also: ['checkbox'], re: /type=["']checkbox["']/, what: 'a raw checkbox input' },
+  { pin: 'Dialog', also: ['dialog'], re: /role=["']dialog["']/, what: 'a hand-rolled dialog role' },
+  { pin: 'HoverTooltip', also: ['popover'], re: /role=["']tooltip["']/, what: 'a hand-rolled tooltip role' },
 ]
 
+/**
+ * One problem per axis, matching ds_tokens slices. A single "use var(--token)"
+ * dump is how agents invent hexes on a radius file.
+ */
 const LITERAL_PATTERNS = [
-  { kind: 'arbitrary type size', re: /text-\[\d+(\.\d+)?(px|rem|em)\]/g },
-  { kind: 'arbitrary z-index', re: /z-\[\d+\]/g },
-  { kind: 'hardcoded hex', re: /#[0-9a-fA-F]{3,8}\b/g },
-  { kind: 'inline style object', re: /style=\{\{/g },
+  {
+    kind: 'arbitrary type size',
+    axis: 'typography',
+    re: /text-\[\d+(\.\d+)?(px|rem|em)\]/g,
+    fix: "ds_tokens({ axis: 'typography' }) — use text-role-* or a named preset, not text-[Npx].",
+  },
+  {
+    kind: 'arbitrary z-index',
+    axis: 'z-index',
+    re: /z-\[\d+\]/g,
+    fix: "ds_tokens({ axis: 'z-index' }) — use z-modal / z-tooltip / …, not z-[N].",
+  },
+  {
+    kind: 'hardcoded hex',
+    axis: 'color',
+    re: /#[0-9a-fA-F]{3,8}\b/g,
+    fix: "ds_tokens({ axis: 'color' }) — var(--ds-color-…); value is per theme, never a hex.",
+  },
+  {
+    kind: 'arbitrary radius',
+    axis: 'radius',
+    re: /rounded-\[\d+(\.\d+)?px\]/g,
+    fix: "ds_tokens({ axis: 'radius' }) — cornerClass('role'), not rounded-[Npx].",
+  },
+  {
+    kind: 'inline style object',
+    axis: null,
+    re: /style=\{\{/g,
+    fix: 'Tokens live in TypeScript roles (cornerClass, elevationClass, focusRing), not style={{}}.',
+  },
 ]
 
 const TRIAGE_LAYOUT_FILES = new Set([
   'src/design-system/components/TriageScrollLayout.tsx',
-  'src/design-system/components/TriageNav.tsx',
   'src/design-system/components/TriageSections.tsx',
+  'src/design-system/components/TriageScrollKnobs.tsx',
 ])
 
 function importsTriageScrollLayout(source) {
@@ -578,10 +877,10 @@ const TOOLS = [
       'Use this BEFORE writing any React component, to find the UI primitives that already exist (Buttons, ' +
       'Composers, chips, dialogs). Returns the exact import path, the real variant options, and the usage ' +
       'laws where a human has written them. ' +
-      'What this design system ALREADY has for a UI job — call before building anything. Describe the job ' +
-      'in plain words ("row of actions", "status chip", "confirm a destructive action") and this returns ' +
-      'the matching primitives that exist, where they live, their real variant options read from source, ' +
-      'and the interaction states they handle. If something here covers the job, building beside it is a fork.',
+      'New composed / 21st.dev work starts from the shadcn primitives in @/components/ui (home label ' +
+      '"shadcn primitive"). Ops CTAs still take Button from @/design-system/primitives/Button. ' +
+      'Describe the job in plain words ("row of actions", "status chip", "confirm a destructive action", ' +
+      '"shadcn dialog") and this returns the matching primitives. If something here covers the job, building beside it is a fork.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -594,21 +893,21 @@ const TOOLS = [
   {
     name: 'ds_tokens',
     description:
-      'Use this to look up the exact class or value for spacing, corner radius (`cornerClass`) and theme ' +
-      'colour before you type one. Never invent a raw Tailwind class or a hex for these axes. ' +
-      'The values this design system allows on a visual axis — colour, radius, spacing, typography, ' +
-      'z-index, border, elevation. Ask before writing any literal (a hex, a px radius, an arbitrary text ' +
-      'size): if a token covers it, the literal is drift.',
+      'Look up the exact class or value on ONE visual axis before you type a literal. ' +
+      'axis is required — a dump of every axis is not a lookup. Never invent a hex, a px radius, ' +
+      'or text-[Npx] if this returns a token. On radius call cornerClass(role); on colour write var(--ds-color-…); ' +
+      'on elevation call elevationClass; on focus call focusRing.',
     inputSchema: {
       type: 'object',
       properties: {
         axis: {
           type: 'string',
-          enum: ['color', 'radius', 'spacing', 'typography', 'z-index', 'elevation', 'border', 'other', 'all'],
-          default: 'all',
+          enum: TOKEN_AXES,
+          description: 'The axis you are about to write. Required. There is no "all".',
         },
         filter: { type: 'string', description: 'Substring match on the token name, e.g. "surface" or "sunken".' },
       },
+      required: ['axis'],
     },
   },
   {
@@ -616,8 +915,9 @@ const TOOLS = [
     description:
       'Use this AFTER writing or editing a UI file, on that file, before you call the work done. ' +
       'Ask "why is this component bad?" for one file and get the blunt answer: hand-rolled primitives that ' +
-      'fork something the system already has, arbitrary literals used where tokens exist, whether it uses ' +
-      'the design system at all, and its size. Reads the file from disk, so it sees the file as it is now.',
+      'fork something the system already has, arbitrary literals used where tokens exist (each problem names ' +
+      'the ds_tokens axis and the role call — cornerClass, text-role-*, var(--ds-color-…), never a generic ' +
+      'var(--token)), whether it uses the design system at all, and its size. Reads the file from disk.',
     inputSchema: {
       type: 'object',
       properties: { file_path: { type: 'string', description: 'Repo-relative path, e.g. "src/components/composer/StationComposerHost.tsx".' } },
@@ -626,8 +926,35 @@ const TOOLS = [
   },
 ]
 
-const server = new Server({ name: 'cycleforge-design-mcp', version: '0.1.0' }, { capabilities: { tools: {} } })
+const TOKEN_RESOURCE_PREFIX = 'design://tokens/'
+
+function tokenResources() {
+  return TOKEN_AXES.map((axis) => ({
+    uri: `${TOKEN_RESOURCE_PREFIX}${axis}`,
+    name: `tokens/${axis}`,
+    mimeType: 'application/json',
+    description: `Same payload as ds_tokens({ axis: "${axis}" }). Browse; the tool is the query with a filter.`,
+  }))
+}
+
+const server = new Server(
+  { name: 'cycleforge-design-mcp', version: '0.1.0' },
+  { capabilities: { tools: {}, resources: {} } },
+)
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }))
+server.setRequestHandler(ListResourcesRequestSchema, async () => ({ resources: tokenResources() }))
+server.setRequestHandler(ListResourceTemplatesRequestSchema, async () => ({ resourceTemplates: [] }))
+server.setRequestHandler(ReadResourceRequestSchema, async (req) => {
+  const uri = String(req.params?.uri ?? '')
+  if (!uri.startsWith(TOKEN_RESOURCE_PREFIX)) {
+    throw new Error(`unknown resource ${uri} — token slices live at ${TOKEN_RESOURCE_PREFIX}<axis>`)
+  }
+  const axis = requireAxis(uri.slice(TOKEN_RESOURCE_PREFIX.length))
+  const payload = presentAxis(axis)
+  return {
+    contents: [{ uri, mimeType: 'application/json', text: JSON.stringify(payload, null, 2) }],
+  }
+})
 
 const json = (obj) => ({ content: [{ type: 'text', text: JSON.stringify(obj, null, 2) }] })
 
@@ -660,44 +987,14 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
               'src/design-system/primitives directly.'
             : 'variant_axes and declares are read from the source, so they cannot disagree with the code. ' +
               'useWhen/doNot appear only where a human has curated them in src/design-system/pinned.json — ' +
-              'their absence means nobody has written the law yet, NOT that anything is permitted.',
+              'their absence means nobody has written the law yet, NOT that anything is permitted. ' +
+              'New composed / 21st.dev work starts from matches whose home is "shadcn primitive". ' +
+              'Ops CTAs still take design-system Button, not ui/button.',
       })
     }
 
     if (name === 'ds_tokens') {
-      const all = loadTokens()
-      // An explicit axis (TypeScript sources carry one) beats the name-shape
-      // guess: `cornerClass('card')` is radius law and reads as 'other'.
-      const axisOfToken = (t) => t.axis ?? axisOf(t.name)
-      const axis = args.axis ?? 'all'
-      const filter = args.filter ? String(args.filter).toLowerCase() : null
-      const rows = all
-        .filter((t) => (axis === 'all' ? true : axisOfToken(t) === axis))
-        .filter((t) => (filter ? t.name.toLowerCase().includes(filter) : true))
-        .map((t) => ({
-          token: t.name,
-          value: t.value,
-          axis: axisOfToken(t),
-          source: t.source,
-          ...(t.use ? { use: t.use } : {}),
-          ...(t.duplicates.length ? { alsoDefinedIn: t.duplicates } : {}),
-        }))
-      if (rows.length === 0) {
-        throw new Error(
-          `no tokens on axis "${axis}"${filter ? ` matching "${args.filter}"` : ''} — this is a reader fault, not a licence ` +
-            'to write a literal. Say so rather than inventing a value.',
-        )
-      }
-      return json({
-        count: rows.length,
-        sources: [...TOKEN_CSS, ...Object.values(TOKEN_TS)],
-        tokens: rows,
-        note:
-          'Use the token, not the literal — it survives a theme change and the literal does not. On radius, ' +
-          "prefer the ROLE (`cornerClass('card')`) over the class it currently renders: the role is the law, " +
-          'the class is this month\'s value. Colour values read "per theme" because they genuinely resolve at ' +
-          'runtime from themes/registry.ts — write var(--ds-color-…), never the hex you would have guessed.',
-      })
+      return json(presentAxis(requireAxis(args.axis), args.filter))
     }
 
     if (name === 'ds_critique') {
@@ -718,7 +1015,8 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       problems.push(...critiqueTriageLayout(source, rel))
       if (!isPrimitiveHome) {
         for (const s of FORK_SIGNALS) {
-          if (!s.re.test(source) || used.includes(s.pin)) continue
+          const alreadyUses = used.includes(s.pin) || (s.also ?? []).some((id) => used.includes(id))
+          if (!s.re.test(source) || alreadyUses) continue
           const e = byId.get(s.pin)
           problems.push({
             severity: 'forks-the-system',
@@ -730,18 +1028,18 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
         }
       }
 
-      const literals = []
-      for (const { kind, re } of LITERAL_PATTERNS) {
+      let literalTotal = 0
+      for (const { kind, axis, re, fix } of LITERAL_PATTERNS) {
         const hits = source.match(new RegExp(re.source, 'g')) ?? []
-        if (hits.length) literals.push({ kind, count: hits.length, examples: [...new Set(hits)].slice(0, 4) })
-      }
-      const literalTotal = literals.reduce((n, l) => n + l.count, 0)
-      if (literalTotal > 0) {
+        if (!hits.length) continue
+        literalTotal += hits.length
         problems.push({
           severity: 'drifts-from-tokens',
-          what: `${literalTotal} arbitrary literal${literalTotal === 1 ? '' : 's'} where tokens exist`,
-          detail: literals,
-          fix: 'Call ds_tokens for the axis and use var(--token).',
+          ...(axis ? { axis } : {}),
+          what: `${hits.length} ${kind} where the ${axis ?? 'token'} axis exists`,
+          detail: { examples: [...new Set(hits)].slice(0, 4) },
+          fix,
+          confidence: 'heuristic',
         })
       }
       if (!isPrimitiveHome && used.length === 0 && /<[A-Z]/.test(source)) {

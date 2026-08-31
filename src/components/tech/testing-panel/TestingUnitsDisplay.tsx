@@ -74,9 +74,6 @@ export function TestingUnitsDisplay({
       </header>
 
       <div className="min-w-0 flex-1">
-        <p className="border-b border-border-hairline px-3 py-2 text-role-eyebrow uppercase tracking-widest text-text-soft">
-          Units · verdict
-        </p>
         <TestingLineSlot
           c={c}
           lineId={row.id}

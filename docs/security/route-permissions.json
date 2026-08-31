@@ -1,10 +1,10 @@
 {
   "version": 1,
   "generatedAt": "2026-08-21T01:05:42Z",
-  "totalRoutes": 966,
+  "totalRoutes": 967,
   "summary": {
-    "permissionGated": 826,
-    "authenticatedNoPermission": 51,
+    "permissionGated": 825,
+    "authenticatedNoPermission": 53,
     "anonymousIntentional": 87,
     "serviceToService": 2,
     "ungatedRead": 0,
@@ -4783,8 +4783,8 @@
       "methods": [
         "GET"
       ],
-      "gate": "requireRoutePerm",
-      "permission": "orders.view",
+      "gate": "withAuth",
+      "permission": null,
       "exemptReason": null
     },
     {
@@ -6867,6 +6867,15 @@
       ],
       "gate": "withAuth",
       "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/sku-kit-parts/[id]/document/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": null,
       "exemptReason": null
     },
     {

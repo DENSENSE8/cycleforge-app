@@ -12,7 +12,6 @@
  * (`font-sans`) · circular header actions for thread chrome clusters.
  */
 import { cn } from '@/utils/_cn';
-import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { FLOATING_DOCK_BOTTOM_PAD } from '@/design-system/tokens/dock-clearance';
 import { formatLaneAgeCompact } from '@/utils/date';
 
@@ -43,16 +42,19 @@ export const CONVERSATION_HEADER_ACTION_BTN_ACTIVE =
 export const CONVERSATION_HEADER_ACTION_GLYPH = 'h-3.5 w-3.5 shrink-0';
 
 /**
- * Composer pad under a thread — Displays gutter + bottom clearance.
+ * Conversation column inset — same `px-3` as station band names and the
+ * ticket title, so avatars, title glyph, and Items/Label icons share one
+ * left edge. `DISPLAYS_BODY_INSET` (`px-4`) would sit the thread 4px inside
+ * that column.
  *
- * The pad paints no fill and no top-edge fade. The dock is a bordered card on
- * the conversation plane; dissolving the last row under it read as a shadow
- * strip on Totals / notes in every Ticket Displays and right-rail host.
+ * Composer pad uses the same inset: no fill, no top-edge fade. The dock is a
+ * bordered card on the conversation plane.
  */
+export const CONVERSATION_INSET = 'px-3';
+
 export const CONVERSATION_COMPOSER_PAD = cn(
-  DISPLAYS_BODY_INSET,
+  CONVERSATION_INSET,
   'relative min-w-0 shrink-0 bg-transparent pt-2 font-sans',
-  // Same floating-dock clearance as the Unbox notes dock on the centre column.
   FLOATING_DOCK_BOTTOM_PAD,
 );
 
@@ -69,19 +71,17 @@ export const CONVERSATION_COMPOSER_DOCK_INTERNAL =
   '!border-amber-300/80 focus-within:!ring-amber-500/20';
 
 /** Message stream list — owns the readable gutter. */
-export const CONVERSATION_STREAM = cn(DISPLAYS_BODY_INSET, 'stack-tight font-sans');
+export const CONVERSATION_STREAM = cn(CONVERSATION_INSET, 'stack-tight font-sans');
 
 /**
- * Day band — date · count as text, no table-band fill.
- *
- * OPAQUE plane fill (not transparent): the band is `sticky top-0` inside the
- * thread's scroll port, so a transparent band let message cards read straight
- * through the docked date while they scrolled under it. The fill is the
- * conversation's own white plane, so it stays invisible at rest and only shows
- * itself as the cover it is while a day scrolls past.
+ * Day divider — civil date, centred in the conversation column (Telegram),
+ * not a sticky table band. The clock lives IN the message card; this row
+ * only names the day.
  */
-export const CONVERSATION_DAY_HEADER =
-  'bg-surface-card px-0 py-1 backdrop-blur-none';
+export const CONVERSATION_DAY_HEADER = 'flex justify-center py-2';
+
+export const CONVERSATION_DAY_LABEL =
+  'font-sans text-role-micro font-semibold uppercase tracking-wide text-text-muted';
 
 /**
  * One row: node left, body right — never `flex-row-reverse`.
@@ -149,33 +149,51 @@ export function conversationShell(internal: boolean): string {
 }
 
 /**
- * The node itself. OPAQUE and `z-10` on purpose — it is what masks the spine
- * where the two cross, and an unfilled node lets the line run straight through
- * the avatar.
+ * Spine mask on the node. Staff faces compose {@link StaffAvatar} (`sm` +
+ * `colorRing`) and MUST NOT also take {@link CONVERSATION_MARK_PLACEHOLDER} —
+ * that fill is `!bg-surface-sunken` and would wipe the staffer's colour.
  */
-export const CONVERSATION_MARK = cn(
-  '!bg-surface-sunken !font-medium !text-text-soft ring-1 ring-border-hairline',
-  'relative z-10',
-);
+export const CONVERSATION_MARK_NODE = 'relative z-10';
 
 /**
- * Node box — centred on the spine, and top-aligned to the body's first line.
+ * Non-staff node (Zendesk / customer / system) — sunken canvas, not identity
+ * colour. Do not put this on {@link StaffAvatar}.
+ */
+export const CONVERSATION_MARK_PLACEHOLDER = cn(
+  '!bg-surface-sunken !font-medium !text-text-soft ring-1 ring-border-hairline',
+  CONVERSATION_MARK_NODE,
+);
+
+/** @deprecated Prefer {@link CONVERSATION_MARK_PLACEHOLDER} or {@link CONVERSATION_MARK_NODE}. */
+export const CONVERSATION_MARK = CONVERSATION_MARK_PLACEHOLDER;
+
+/**
+ * Node box — centred on the spine, top-aligned with the card's first line
+ * (author). Slot is 28px (`w-7`) to match {@link StaffAvatar} size `sm`.
  *
- * `justify-center`, not `justify-start`: the node has to sit ON the thread, and
- * the track is exactly the node's width, so centring is what puts the two on
- * one axis.
- *
- * `pt-0.5` is the cross-axis anchor and it is derived, not taste: the body
- * starts `py-1.5` (6px) down, its meta line is `text-role-caption` at
- * `leading-none` (12px), so that line's centre sits 12px below the row top. A
- * 20px node centres there at `top: 2px`. Move the body's padding or the meta's
- * leading and this moves with it.
+ * `pt-1.5` matches {@link CONVERSATION_SHELL} `py-1.5` so the avatar's top
+ * edge and the author row's top edge share one y — not the old `-mt-0.5`
+ * which centred a 20px node on the meta line.
  */
 export const CONVERSATION_MARK_BOX =
-  'flex w-5 shrink-0 justify-center pt-0.5';
+  'flex w-7 shrink-0 justify-center pt-1.5';
 
 export const CONVERSATION_BODY =
   'break-words font-sans text-role-caption leading-snug text-text-default';
+
+/**
+ * Copy + Telegram clock. The last paragraph is `inline` so a floated spacer
+ * can sit on that line; the visible clock overlays the spacer. A full last
+ * line wraps the spacer (one extra row) — that is the only case a new row
+ * is required. Attachments must NOT be children here.
+ */
+export const CONVERSATION_COPY = cn(
+  'relative min-w-0 font-sans text-role-caption leading-snug text-text-default [overflow-wrap:anywhere]',
+  // Markdown wraps blocks in `.stack-row`; hoist so the last <p> is a sibling
+  // of the clock pad (a wrapper would force the time onto its own row).
+  '[&>.stack-row]:contents',
+  '[&_p:last-of-type]:inline [&_h1:last-of-type]:inline [&_h2:last-of-type]:inline [&_h3:last-of-type]:inline',
+);
 
 export const CONVERSATION_META =
   'flex min-w-0 flex-wrap items-center gap-1 font-sans text-role-caption leading-none';
@@ -183,7 +201,25 @@ export const CONVERSATION_META =
 export const CONVERSATION_AUTHOR =
   'truncate font-semibold text-text-default';
 
-export const CONVERSATION_AGE = 'shrink-0 text-text-faint';
+const CONVERSATION_CLOCK_FACE =
+  'font-sans text-role-micro tabular-nums leading-none text-text-faint';
+
+/** Invisible last-line reservation — same face as {@link CONVERSATION_CLOCK}. */
+export const CONVERSATION_CLOCK_PAD = cn(
+  'float-right ml-1.5 inline-block select-none invisible',
+  CONVERSATION_CLOCK_FACE,
+);
+
+/**
+ * Visible clock — over the pad at the copy's bottom-right.
+ */
+export const CONVERSATION_CLOCK = cn(
+  'absolute bottom-0 right-0',
+  CONVERSATION_CLOCK_FACE,
+);
+
+/** @deprecated Use {@link CONVERSATION_CLOCK}. */
+export const CONVERSATION_AGE = CONVERSATION_CLOCK;
 
 export const CONVERSATION_INTERNAL_CHIP =
   'inline-flex shrink-0 items-center rounded px-1 py-px font-sans text-role-caption font-medium text-amber-700/80 bg-amber-100/50';

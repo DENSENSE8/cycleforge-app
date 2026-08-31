@@ -12,21 +12,27 @@
  * not know the spine exists — which is the point. A host that had to draw its
  * own connector would draw it at its own x, and two hosts would disagree about
  * where the thread runs.
+ *
+ * Clock time sits IN the message card (Telegram): floated onto the last line
+ * of copy. Civil date is a centred divider in the stream, not this row.
  */
 
 import type { ReactNode } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
+import { formatDateTimePST, formatStageClockTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import {
-  CONVERSATION_AGE,
   CONVERSATION_AUTHOR,
+  CONVERSATION_CLOCK,
+  CONVERSATION_CLOCK_PAD,
+  CONVERSATION_COPY,
   CONVERSATION_INTERNAL_CHIP,
   CONVERSATION_META,
   CONVERSATION_ROW,
   CONVERSATION_SPINE,
   CONVERSATION_SPINE_TRACK,
   conversationShell,
-  formatConversationAge,
 } from './conversation-chrome';
 
 export function ConversationMessageCard({
@@ -38,6 +44,7 @@ export function ConversationMessageCard({
   internalLabel = 'Internal note',
   metaTrailing,
   children,
+  footer,
   className,
   'data-testid': testId,
 }: {
@@ -49,25 +56,39 @@ export function ConversationMessageCard({
    */
   mark?: ReactNode;
   author?: string;
-  /** ISO / Date for relative age; absolute stays on hover when `atAbsolute` set. */
+  /** Instant for the in-card clock. Absolute stays on hover when `atAbsolute` set. */
   at?: string | Date | null;
   atAbsolute?: string | null;
   internalLabel?: string;
   /** Extra meta (edited · menu). */
   metaTrailing?: ReactNode;
   children: ReactNode;
+  /**
+   * Chips / thumbs BELOW copy. Keep them out of {@link children} so the
+   * last-line clock is not pushed onto its own row after a block of media.
+   */
+  footer?: ReactNode;
   className?: string;
   'data-testid'?: string;
 }) {
-  const age = at != null ? formatConversationAge(at) : null;
-  const ageNode =
-    age == null ? null : atAbsolute ? (
-      <HoverTooltip label={atAbsolute} focusable={false}>
-        <span className={CONVERSATION_AGE}>{age}</span>
+  useTimeFormat();
+  const clock = at != null ? formatStageClockTimePST(at) : null;
+  const clockLabel =
+    atAbsolute ?? (at != null ? formatDateTimePST(at) : null);
+  const showClock = Boolean(clock && clock !== '--:--');
+  const clockFace = showClock ? (
+    clockLabel ? (
+      <HoverTooltip label={clockLabel} focusable={false} asChild>
+        <span className={CONVERSATION_CLOCK} data-conversation-clock="">
+          {clock}
+        </span>
       </HoverTooltip>
     ) : (
-      <span className={CONVERSATION_AGE}>{age}</span>
-    );
+      <span className={CONVERSATION_CLOCK} data-conversation-clock="">
+        {clock}
+      </span>
+    )
+  ) : null;
 
   return (
     <div
@@ -84,29 +105,32 @@ export function ConversationMessageCard({
         </div>
       ) : null}
       <div className={conversationShell(internal)}>
-        {author || ageNode || internal || metaTrailing ? (
+        {author || internal || metaTrailing ? (
           <div className={CONVERSATION_META}>
             {author ? <span className={CONVERSATION_AUTHOR}>{author}</span> : null}
-            {author && ageNode ? (
-              <span aria-hidden className="text-text-faint">
-                ·
-              </span>
-            ) : null}
-            {ageNode}
             {internal ? (
               <>
-                {(author || ageNode) && (
+                {author ? (
                   <span aria-hidden className="text-text-faint">
                     ·
                   </span>
-                )}
+                ) : null}
                 <span className={CONVERSATION_INTERNAL_CHIP}>{internalLabel}</span>
               </>
             ) : null}
             {metaTrailing}
           </div>
         ) : null}
-        {children}
+        <div className={CONVERSATION_COPY}>
+          {children}
+          {showClock ? (
+            <span className={CONVERSATION_CLOCK_PAD} aria-hidden>
+              {clock}
+            </span>
+          ) : null}
+          {clockFace}
+        </div>
+        {footer}
       </div>
     </div>
   );

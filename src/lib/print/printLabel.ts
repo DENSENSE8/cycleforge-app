@@ -91,7 +91,7 @@ window.onafterprint=function(){setTimeout(function(){window.close();},80);};
   @page{size:${widthIn}in ${heightIn}in;margin:0}
   *,*::before,*::after{box-sizing:border-box}
   html,body{width:${widthIn}in;height:${heightIn}in;padding:0;margin:0;font-family:Arial,sans-serif;color:#111;background:#fff${preview ? ';overflow:hidden' : ''}}
-  .wrap{width:${widthIn}in;height:${heightIn}in;display:flex;align-items:stretch;gap:4px;padding:4px 5px${preview ? ';overflow:hidden' : ''}}
+  .wrap{width:${widthIn}in;height:${heightIn}in;display:flex;align-items:stretch;gap:4px;${preview ? 'padding:0;overflow:hidden' : 'padding:4px 5px'}}
   .info{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;justify-content:${infoAlign};height:100%;width:100%}
   .qrcol{flex:0 0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;margin-left:auto}
   .qr{width:${qrSize};height:${qrSize};display:flex;align-items:center;justify-content:center}

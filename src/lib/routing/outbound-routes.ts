@@ -16,7 +16,7 @@ import {
   type OutboundMode,
 } from '@/components/outbound/outbound-sidebar-shared';
 import { parseFbaModeWire } from '@/lib/fba/fba-modes';
-import { SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
+import { SHIPPING_EXCEPTIONS_PATH, SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
 import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
 import { parseShippedSearchFieldWire } from '@/lib/shipped-search';
 import { parseReadyWorkspaceTabWire } from '@/utils/ready-workspace-state';
@@ -197,6 +197,38 @@ const SHIPPED_ROUTE_PARAMS = defineRouteParams({
   carries: SHIPPING_CARRIES,
 });
 
+/**
+ * `/shipping/exceptions` — the held-order queue, on the outbound grid.
+ *
+ * It needs a spec because `useSurfaceParamHygiene` is mounted in the shipping
+ * LAYOUT, so this route is inside the boundary parse whether or not it declares
+ * anything. Without one it falls through to `stripCrossSurfaceParams`, which is
+ * a DENYLIST — it happens to keep `?order=` today only because this path is not
+ * a testing surface, which is luck rather than a contract. This desk has
+ * already paid twice for a param the hygiene pass dropped on the operator's
+ * next keystroke (`ingest`, `triage`).
+ *
+ * `order` is the link an operator sends a colleague ("this one is wrong,
+ * look"), and it is also the surface's own record/queue switch, so it is the
+ * one param here that must survive a paste.
+ *
+ * There is deliberately NO `scope`: the queue is fixed to `actionable`
+ * (operator ruling 2026-08-31 — `all` redefines the queue into a
+ * several-thousand-row backlog sweep rather than narrowing it, so it would be a
+ * mode, not a filter). Column sort rides `colsort`/`coldir` through
+ * {@link SHIPPING_CARRIES}, which is why neither is named here.
+ */
+const EXCEPTIONS_ROUTE_PARAMS = defineRouteParams({
+  route: SHIPPING_EXCEPTIONS_PATH,
+  owns: {
+    /** The open record. Present ⇒ the editor page; absent ⇒ the table. */
+    order: paramPositiveInt,
+    /** Find row (order # / item # / SKU / title). */
+    search: paramText,
+  },
+  carries: SHIPPING_CARRIES,
+});
+
 /** `/shipping/scan-out` — dock ship-confirm over the staged queue. */
 const SCAN_OUT_ROUTE_PARAMS = defineRouteParams({
   route: OUTBOUND_MODE_PATHS['scan-out'],
@@ -216,6 +248,7 @@ export const OUTBOUND_MODE_ROUTE_PARAMS = {
 /** Every shipping route spec. Resolution order is the registry's job. */
 export const OUTBOUND_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   ORDERS_ROUTE_PARAMS,
+  EXCEPTIONS_ROUTE_PARAMS,
   FBA_ROUTE_PARAMS,
   SHIPPED_ROUTE_PARAMS,
   SCAN_OUT_ROUTE_PARAMS,

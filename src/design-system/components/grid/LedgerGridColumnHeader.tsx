@@ -18,7 +18,7 @@
  * binding's columns — no page supplies header chrome.
  */
 
-import { type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import {
   GridRowCheckbox,
@@ -30,6 +30,14 @@ import { tableHeader } from '@/design-system/tokens/typography/presets';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { useTableSelection, useTableSelectionTotal } from '@/hooks/useTableSelection';
 import { cn } from '@/utils/_cn';
+
+/**
+ * Narrowest a drag-resize may make a column.
+ *
+ * Not zero: a track dragged to nothing is unrecoverable without a reset, since
+ * the grip lives on the edge that just disappeared.
+ */
+const MIN_RESIZE_PX = 48;
 
 /** Primary chrome row — LedgerGrid header / select / fact cells. One seam height. */
 const LEDGER_HEADER_ROW_FACE = PRIMARY_CHROME_ROW_FACE;
@@ -43,6 +51,7 @@ import {
   isGridColumnFillTrack,
   isGridColumnFlushTrack,
   isGridColumnPaintTrack,
+  isGridColumnResizable,
 } from './grid-column-editability';
 import { gridFrozenLeft, gridTemplate } from './grid-column-geometry';
 import { gridHeaderCellAlignClass, resolveGridColumnAlign } from './grid-header-align';
@@ -90,6 +99,17 @@ export type LedgerGridColumnHeaderProps<C extends LedgerGridColumnModel> = {
   activeSort?: string | null;
   sortDir?: GridSortDir | null;
   onSortColumn?: (key: string) => void;
+  /**
+   * Drop a dragged column before/at another column's position. Present ⇒ the
+   * header cells become draggable handles. The header does NOT own the column
+   * array — it reports the intent and the layout owner writes it.
+   */
+  onReorderColumn?: (dragKey: string, dropKey: string) => void;
+  /**
+   * Commit a drag-resized width in px for one column. Present ⇒ resizable
+   * columns grow a right-edge grip.
+   */
+  onResizeColumn?: (key: string, widthPx: number) => void;
   /** Runtime label override (e.g. Unbox stage → Unboxed / Scanned / Tested). */
   labelFor?: (column: C) => string | undefined;
   /**
@@ -110,6 +130,8 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
   activeSort = null,
   sortDir = null,
   onSortColumn,
+  onReorderColumn,
+  onResizeColumn,
   labelFor,
   leadingChrome,
 }: LedgerGridColumnHeaderProps<C>) {
@@ -242,6 +264,8 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
             isActiveSort={isActiveSort}
             sortDir={isActiveSort ? sortDir : null}
             onSort={sortable ? () => onSortColumn?.(column.key) : undefined}
+            onReorderColumn={onReorderColumn}
+            onResizeColumn={onResizeColumn}
           />
         );
       })}
@@ -258,6 +282,8 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   isActiveSort = false,
   sortDir = null,
   onSort,
+  onReorderColumn,
+  onResizeColumn,
 }: {
   column: C;
   last: boolean;
@@ -268,8 +294,30 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   isActiveSort?: boolean;
   sortDir?: GridSortDir | null;
   onSort?: () => void;
+  onReorderColumn?: (dragKey: string, dropKey: string) => void;
+  onResizeColumn?: (key: string, widthPx: number) => void;
 }) {
   const frozen = Boolean(column.frozen);
+  const cellRef = useRef<HTMLDivElement>(null);
+  const [dragOver, setDragOver] = useState(false);
+  /*
+   * A header is three affordances on one element, so each is claimed narrowly:
+   *
+   *  - CLICK sorts (unchanged),
+   *  - DRAG on the cell reorders,
+   *  - DRAG on the right-edge grip resizes.
+   *
+   * The grip stops propagation on pointer-down so a resize never starts a
+   * reorder, and the reorder's own drag suppresses the click that would
+   * otherwise fire a sort on drop. Structural tracks (`select`, `_fill`,
+   * paint) never reorder — they are chrome, not facts.
+   */
+  const reorderable =
+    Boolean(onReorderColumn) &&
+    !isGridColumnFillTrack(column) &&
+    !isGridColumnPaintTrack(column) &&
+    column.key !== 'select';
+  const resizable = Boolean(onResizeColumn) && isGridColumnResizable(column);
   const flushTrack = isGridColumnFlushTrack(column);
   const label = column.label ?? column.key;
   const ariaSort = gridHeaderAriaSort(isActiveSort, sortDir, sortActive);
@@ -282,6 +330,36 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
 
   const cell = (
     <div
+      ref={cellRef}
+      draggable={reorderable || undefined}
+      onDragStart={
+        reorderable
+          ? (event) => {
+              event.dataTransfer.effectAllowed = 'move';
+              event.dataTransfer.setData('text/plain', column.key);
+            }
+          : undefined
+      }
+      onDragOver={
+        reorderable
+          ? (event) => {
+              event.preventDefault();
+              event.dataTransfer.dropEffect = 'move';
+              setDragOver(true);
+            }
+          : undefined
+      }
+      onDragLeave={reorderable ? () => setDragOver(false) : undefined}
+      onDrop={
+        reorderable
+          ? (event) => {
+              event.preventDefault();
+              setDragOver(false);
+              const dragKey = event.dataTransfer.getData('text/plain');
+              if (dragKey && dragKey !== column.key) onReorderColumn?.(dragKey, column.key);
+            }
+          : undefined
+      }
       role="columnheader"
       data-col={column.key}
       data-frozen-edge={column.key === frozenEdgeKey ? true : undefined}
@@ -300,10 +378,44 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
         tableHeader,
         sortActive && 'cursor-pointer hover:text-text-default',
         isActiveSort && 'text-text-default',
+        // Colour only — a drop marker that inset or moved the cell would
+        // reflow the whole header row mid-drag (AGENTS.md: no layout tweens).
+        dragOver && 'bg-surface-sunken',
       )}
       style={frozen ? { left: gridFrozenLeft(columns, column.key) } : undefined}
     >
       <GridHeaderLabel column={column} sortDir={isActiveSort ? sortDir : null} />
+      {resizable ? (
+        <span
+          role="separator"
+          aria-orientation="vertical"
+          aria-label={`Resize ${label}`}
+          data-resize-grip
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => {
+            // Never let a resize start a sort or a reorder.
+            event.preventDefault();
+            event.stopPropagation();
+            const startX = event.clientX;
+            const startW = cellRef.current?.getBoundingClientRect().width ?? 0;
+            const move = (e: PointerEvent) => {
+              const next = Math.max(MIN_RESIZE_PX, startW + (e.clientX - startX));
+              onResizeColumn?.(column.key, Math.round(next));
+            };
+            const up = () => {
+              window.removeEventListener('pointermove', move);
+              window.removeEventListener('pointerup', up);
+            };
+            window.addEventListener('pointermove', move);
+            window.addEventListener('pointerup', up);
+          }}
+          className={cn(
+            'absolute inset-y-0 right-0 z-raised w-1 cursor-col-resize',
+            'opacity-0 transition-opacity group-hover/hcell:opacity-100',
+            'bg-border-default',
+          )}
+        />
+      ) : null}
     </div>
   );
 

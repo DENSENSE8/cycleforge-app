@@ -12,6 +12,10 @@ export interface DeferredQtyInputProps {
   disabled?: boolean;
   className?: string;
   onClick?: React.MouseEventHandler<HTMLInputElement>;
+  /** Id on the input so a visible `<Label htmlFor>` associates with it. */
+  id?: string;
+  /** Accessible name when there is no visible label to point at it. */
+  'aria-label'?: string;
 }
 
 /**
@@ -30,6 +34,8 @@ export function DeferredQtyInput({
   disabled,
   className,
   onClick,
+  id,
+  'aria-label': ariaLabel,
 }: DeferredQtyInputProps) {
   const [draft, setDraft] = useState(String(value));
   const focused = useRef(false);
@@ -59,6 +65,8 @@ export function DeferredQtyInput({
 
   return (
     <input
+      id={id}
+      aria-label={ariaLabel}
       type="number"
       min={min}
       max={max}

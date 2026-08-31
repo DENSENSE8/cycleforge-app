@@ -44,8 +44,12 @@ function unshippedCountsKey() {
 }
 
 async function fetchUnshippedRows(): Promise<ShippedOrder[]> {
+  // Must match `fetchUnshippedOrdersData` (inWarehouse), not fulfillmentScope.
+  // fulfillmentScope ignores dock SHIP_CONFIRM, so a seed of never-packed rows
+  // painted hundreds of already-scanned-out orders against a queue-counts
+  // denominator of the unlabeled leftovers ("171 of 2").
   const params = new URLSearchParams({
-    fulfillmentScope: 'true',
+    inWarehouse: 'true',
     listShape: 'queue',
     limit: String(UNSHIPPED_SEED_LIMIT),
   });

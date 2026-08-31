@@ -38,6 +38,7 @@ describe('detectListingPlatform', () => {
     assert.equal(detectListingPlatform('ebay-us'), 'ebay');
     assert.equal(detectListingPlatform('Amazon'), 'amazon');
     assert.equal(detectListingPlatform('ecwid'), 'ecwid');
+    assert.equal(detectListingPlatform('ECWID-RS'), 'ecwid');
     assert.equal(detectListingPlatform(''), 'unknown');
   });
 });

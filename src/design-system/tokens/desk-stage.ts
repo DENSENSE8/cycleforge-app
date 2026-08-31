@@ -53,6 +53,23 @@ export const DESK_STAGE_FULLSCREEN_CLASS = 'w-full';
 export const DESK_STAGE_GUTTER_CLASS = 'px-4';
 
 /**
+ * The **floor** under the card (operator ruling 2026-08-31).
+ *
+ * The stage used to end at the viewport, so the card's bottom edge was the
+ * screen's bottom edge: the table did not look like an object on a page, it
+ * looked welded to the chrome. A card detached at the top and flush at the
+ * bottom is only half-detached, and the missing half is the one an operator
+ * stares at while scrolling a queue.
+ *
+ * 16px, matching {@link DESK_STAGE_DETACH_CLASS} — the gap above the card and
+ * the gap below it are the same measurement, or the card reads as sliding off
+ * the screen rather than sitting on it.
+ *
+ * Not painted in fullscreen: flush is the entire point of that mode.
+ */
+export const DESK_STAGE_FLOOR_CLASS = 'pb-4';
+
+/**
  * Desk **corner + inset** grammar — the deliberate split from the scan-station
  * chrome (operator ruling 2026-08-30).
  *
@@ -93,6 +110,13 @@ export const DESK_PAGE_HEADER_ROW_CLASS = 'py-3';
  * The full-width hairline is load-bearing: it is what makes the active tab's
  * underline read as *the selected segment of a rule* rather than a dash
  * floating under a word.
+ *
+ * That only holds if the selection occupies THIS border's pixel. Each tab in
+ * `DeskPageChrome` carries its own `border-b` pulled down by `-mb-px` to land
+ * exactly here — so do not add an `overflow-*` to the tab row or its tablist,
+ * and do not give the row bottom padding: either one puts the tabs' borders a
+ * pixel above this rule and the selection goes back to reading as a second,
+ * floating line stacked on the hairline.
  */
 export const DESK_TAB_ROW_CLASS = 'h-9 border-b border-border-soft';
 
@@ -104,6 +128,10 @@ export const DESK_TAB_ROW_CLASS = 'h-9 border-b border-border-soft';
  * one continuous slab and an operator scanning down cannot tell where the page
  * furniture stops and the data starts. The gap is what turns the table into an
  * object sitting on the page rather than the bottom of its header.
+ *
+ * It carries more weight since the ground went white (2026-08-31): with no
+ * fill contrast left, this gap and the card's hairline are the whole of the
+ * detachment. Do not shrink it to buy a row back.
  */
 export const DESK_STAGE_DETACH_CLASS = 'mt-4';
 
@@ -114,16 +142,27 @@ export const DESK_STAGE_DETACH_CLASS = 'mt-4';
  * tab band that used to sit flush on it moved up onto the page's ground.
  * `overflow-hidden` is what clips the grid to the radius (and the toolbar's
  * own hairline to the card's shoulders), so it is not decoration.
+ *
+ * NO outer border or hairline (operator ruling 2026-08-31). With the ground
+ * white, a ring around the table drew a box the operator did not ask for; the
+ * card is now carried by the detachment gap and its own internal rules. Do not
+ * re-add `border-border-soft` here to "define" the edge.
  */
 export const DESK_CHROME_STAGE_BODY_CLASS =
-  'overflow-hidden rounded-lg border border-border-soft bg-surface-card';
+  'overflow-hidden rounded-lg bg-surface-card';
 
 /**
- * The page **ground** the card sits on. A card the same colour as what is
- * behind it is a border, not a card — the whole detachment reads off this
- * contrast, so the desk paints its own ground rather than inheriting the
- * shipping frame's `bg-surface-card`.
+ * The page **ground** the card sits on — WHITE (operator ruling 2026-08-31).
+ *
+ * This was `bg-surface-canvas`, a grey wash, on the argument that a card the
+ * same colour as its ground is a border and not a card. The operator's answer
+ * is that a warehouse desk is not a dashboard of widgets: the grey read as a
+ * gutter around a boxed-in table, and the page should read as one white sheet
+ * with the data sitting on it. Detachment now comes from the card's own EDGE —
+ * {@link DESK_CHROME_STAGE_BODY_CLASS} keeps its hairline and radius, and
+ * {@link DESK_STAGE_DETACH_CLASS} keeps the gap — which is the same separation
+ * carried by line rather than by fill.
  *
  * Not painted in fullscreen: there is no ground left to see.
  */
-export const DESK_STAGE_GROUND_CLASS = 'bg-surface-canvas';
+export const DESK_STAGE_GROUND_CLASS = 'bg-surface-card';

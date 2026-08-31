@@ -7,7 +7,11 @@ import { logRouteMetric } from '@/lib/route-metrics';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
 import { SHIPMENT_STATUS_CATEGORIES } from '@/lib/order-lifecycle';
 import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
-import { sqlOrderHasPackScan, sqlOrderHasTechScan } from '@/lib/orders/order-grain-sql';
+import {
+  sqlOrderHasPackScan,
+  sqlOrderHasShipConfirm,
+  sqlOrderHasTechScan,
+} from '@/lib/orders/order-grain-sql';
 import { withAuth } from '@/lib/auth/withAuth';
 import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
 import { parsePackedDateKey } from '@/lib/packed/packed-filters';
@@ -95,10 +99,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     /** awaitingOnly=true → only orders without shipment_id (Outbound Labels queue) */
     const awaitingOnly       = searchParams.get('awaitingOnly') === 'true';
     /**
-     * fulfillmentScope=true → labeled + tracked, not-yet-packed fulfillment queue
-     * (legacy Pending·Tested). Requires shipment_id with a non-empty tracking
-     * number (blank-tracking stays on Labels) and excludes PACK facts — the
-     * mirror of awaitingOnly (no label) and stagedOnly (already packed).
+     * fulfillmentScope=true → not-yet-packed fulfillment queue (legacy
+     * Pending·Tested), including unlabeled (Needs label). Excludes PACK facts
+     * and dock SHIP_CONFIRM — scan-out lives on the Shipped desk, never here.
      */
     const fulfillmentScope   = searchParams.get('fulfillmentScope') === 'true';
     /**
@@ -180,6 +183,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       stage:              stageFilter,
       pageLimit:          pageLimit ?? '',
       cursor:             cursorRaw || '',
+      inWarehouse,
+      membershipVersion:  'ship_confirm_v1',
       shipmentStatusRuleVersion: 'latest_status_relaxed_v2',
     });
 
@@ -614,6 +619,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       // Amazon-fulfilled (FBA/AFN) orders are read-only records — Amazon ships
       // them, so they never belong on the to-ship/pack to-do list.
       sql += ` AND COALESCE(o.fulfillment_channel, '') <> 'AFN'`;
+      // Dock scan-out is the Shipped desk. Without this, never-packed rows that
+      // already left still painted on To-ship / Ready-to-pack (fulfillmentScope
+      // used to stop at "not packed").
+      sql += ` AND NOT ${sqlOrderHasShipConfirm('o')}`;
     }
 
     if (packedOnly) {
@@ -656,6 +665,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       // predicate — a caged order that already has tracking is still not
       // released work. NULL release_state = released (legacy rows).
       sql += ` AND COALESCE(o.release_state, '') <> 'caged'`;
+      sql += ` AND NOT ${sqlOrderHasShipConfirm('o')}`;
     }
 
     if (inWarehouse) {
@@ -664,13 +674,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       // Same cage predicate as fulfillmentScope — the To-ship desk's
       // in-building set is live work, and caged is by definition not.
       sql += ` AND COALESCE(o.release_state, '') <> 'caged'`;
-      // Still here = no dock scan-out on this shipment.
-      sql += ` AND NOT EXISTS (
-        SELECT 1 FROM station_activity_logs sal_out
-        WHERE sal_out.shipment_id = o.shipment_id
-          AND sal_out.organization_id = o.organization_id
-          AND sal_out.activity_type = 'SHIP_CONFIRM'
-      )`;
+      sql += ` AND NOT ${sqlOrderHasShipConfirm('o')}`;
     }
 
     if (stagedOnly) {
@@ -680,11 +684,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           AND sal_pack.shipment_id = o.shipment_id
           AND sal_pack.activity_type IN (${sqlInList(PACK_ACTIVITY_TYPES)})
       )`;
-      sql += ` AND NOT EXISTS (
-        SELECT 1 FROM station_activity_logs sal_out
-        WHERE sal_out.shipment_id = o.shipment_id
-          AND sal_out.activity_type = 'SHIP_CONFIRM'
-      )`;
+      sql += ` AND NOT ${sqlOrderHasShipConfirm('o')}`;
       sql += ` AND NOT ${shippedByCarrierOrLatestStatusSql}`;
       sql += ` AND COALESCE(o.fulfillment_channel, '') <> 'AFN'`;
       if (packedDateFrom || packedDateTo) {

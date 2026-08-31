@@ -1,18 +1,24 @@
 'use client';
 
 /**
- * Unbox browse workbench — pinned three-band chrome over `ReceivingLinesTable`
- * or the TradingView-like compare host:
+ * Unbox browse workbench — the desk frame over `ReceivingLinesTable` or the
+ * all-lines triage table.
  *
- *   Band 1  tabs · Check · return-to-scan CTA
- *   Band 2  KPI canvas (snap-collapsible)
- *   Band 3  the LEAN row — find (refine in-field) · KPI collapse · inspector
+ * ## The tabs moved to the top (operator ruling 2026-08-31)
  *
- * **Band 3 hosts no `right` slot and no controls portal** (ruled 2026-08-08).
- * The layout chrome that portal existed for — compare panes, spreadsheet zoom,
- * ▦ column display, row paint, Drill|List — was deleted with the display layer
- * on 2026-08-29, and the portal host went with it. There is nothing left to
- * seat here, on this tab or any other.
+ * They footed the page in a {@link TableTabs} strip, on the spreadsheet
+ * argument: sheet tabs live at the bottom, so an operator already knows where
+ * to look. The operator overruled it — every station now wears the SAME frame
+ * the Shipping desk does ({@link DeskPageChrome}, the design system's page
+ * chrome): title top-left, primary action top-right, tabs on their own row
+ * underneath, and a detachment gap before the table.
+ *
+ * That is the whole point of the frame being the design system's. A station
+ * that kept its own tab strip would be the second page-chrome vocabulary in a
+ * product that just finished collapsing to one.
+ *
+ * The title is not written here — it is the nav entry's own label, threaded by
+ * `DeskPageLayout`, so the header and the spine cannot drift.
  *
  * Multi-select opens `ReceivingLineRailShell` on RightRailHost (no bottom
  * capsule). When the line workspace overlays browse, publishing + the shell
@@ -22,6 +28,7 @@
 import { Suspense, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
+import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { UnboxTableCardSkeleton } from '@/components/receiving/unbox/UnboxWorkbenchSkeleton';
@@ -34,7 +41,6 @@ import { useReceivingLineRailSelection } from '@/hooks/useReceivingLineRailSelec
 import { incomingDetailsTargetFromRow } from '@/lib/receiving/incoming-details-target';
 import { dispatchReceivingOpenIncomingDetails } from '@/utils/events';
 import { toast } from '@/lib/toast';
-import { TableTabs } from '@/components/tables/TableStatusBar';
 import {
   UNBOX_WORKSPACE_TABS,
   UNBOX_WORKSPACE_TAB_LABEL,
@@ -120,7 +126,23 @@ export function UnboxWorkspaceView(props: {
     });
   }, [isIncoming, selectedRows]);
 
+  const tabs = UNBOX_WORKSPACE_TABS.filter((id) => id !== 'queue').map((id) => ({
+    id,
+    label: UNBOX_WORKSPACE_TAB_LABEL[id],
+  }));
+
   return (
+    <DeskPageLayout
+      className="h-full"
+      tabs={tabs}
+      // `queue` is the default body, so it lights NO tab — `all` is the absence
+      // of a narrowing, not a control that means stop. Clicking the lit tab
+      // clears back to it, exactly as the foot strip behaved.
+      activeTab={unboxView === 'queue' ? '' : unboxView}
+      onTabChange={(id) =>
+        setUnboxView(id === unboxView ? 'queue' : (id as UnboxWorkspaceTab))
+      }
+    >
     <div className="relative flex h-full min-h-0 w-full flex-col">
       <DashboardScrollShell
         // Sheet grids self-scroll (sticky X gutter pins to the sheet floor).
@@ -141,19 +163,6 @@ export function UnboxWorkspaceView(props: {
           </Suspense>
         </div>
       </DashboardScrollShell>
-      {/* The desk switches BODY on a tab; each body foots its own strip. */}
-      <TableTabs
-        tabs={UNBOX_WORKSPACE_TABS.filter((id) => id !== 'queue').map((id) => ({
-          id,
-          label: UNBOX_WORKSPACE_TAB_LABEL[id],
-        }))}
-        activeTab={unboxView === 'queue' ? undefined : unboxView}
-        onTabChange={(id) =>
-          setUnboxView(id === unboxView ? 'queue' : (id as UnboxWorkspaceTab))
-        }
-        className="border-t border-border-soft bg-surface-card"
-      />
-
       <ReceivingLineRailShell
         surface={isIncoming ? 'incoming' : 'lines'}
         enabled={!lineWorkspaceOpen}
@@ -176,5 +185,6 @@ export function UnboxWorkspaceView(props: {
         />
       ) : null}
     </div>
+    </DeskPageLayout>
   );
 }

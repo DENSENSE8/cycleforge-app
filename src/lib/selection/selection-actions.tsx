@@ -19,6 +19,19 @@ export interface SelectionAction<T> {
   /** Marks the CTA. The first `primary` action becomes the big button; the
    *  remainder render in the overflow menu in declaration order. */
   primary?: boolean;
+  /**
+   * Which KIND of verb this is, as a heading in the rail.
+   *
+   * A lane can publish eight of these, and eight buttons in one wrap row is a
+   * wall an operator has to read end to end every time — they do not divide by
+   * what they DO (write a value onto the rows, produce something from them,
+   * destroy them), only by which happened to be declared first. Grouping is the
+   * cheapest way to make "where is print" a glance instead of a scan.
+   *
+   * Omit it and the action rides in the unlabelled leading group, so a lane
+   * that never sets it renders exactly as it did.
+   */
+  group?: string;
   /** Minimum selected rows for the action to fire. Defaults to 1. */
   minSelected?: number;
   /** Maximum selected rows — e.g. `1` for single-row flows like a claim. */

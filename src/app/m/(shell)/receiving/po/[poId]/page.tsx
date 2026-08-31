@@ -198,6 +198,7 @@ function ItemsList({ poId, items }: { poId: string; items: PoItem[] }) {
                     fill
                     sizes="56px"
                     className="object-cover"
+                    unoptimized
                   />
                 ) : (
                   <span className="absolute inset-0 grid place-items-center text-role-micro uppercase tracking-wider text-text-faint">

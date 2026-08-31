@@ -1,7 +1,7 @@
 'use client';
 
-import { motion } from '@/design-system/motion';
-import { motionBezier } from '@/design-system/foundations/motion-framer';
+import { motion, useReducedMotion } from '@/design-system/motion';
+import { motionBezier, framerDuration } from '@/design-system/foundations/motion-framer';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 
 interface ProgressBarProps {
@@ -23,6 +23,7 @@ export function ProgressBar({
   variant = 'default',
   className = '',
 }: ProgressBarProps) {
+  const reduceMotion = useReducedMotion();
   const percentage = Math.min((current / goal) * 100, 100);
   const remaining = Math.max(0, goal - current);
   const isComplete = current >= goal;
@@ -38,11 +39,23 @@ export function ProgressBar({
         </div>
       )}
       <div className="h-1.5 bg-surface-sunken rounded-full overflow-hidden">
+        {/*
+          Law M1: nothing animates layout. The fill is a `scaleX` transform, not
+          a `width` tween — it composites off the main thread and reflows
+          nothing, where animating width relaid out the document every frame.
+          `transform-origin: left` makes the scale read as a fill from the start
+          edge. `useReducedMotion` snaps to the value instead of easing to it.
+        */}
         <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${percentage}%` }}
-          transition={{ duration: 0.5, ease: motionBezier.easeOut }}
-          className={`h-full rounded-full ${barColor}`}
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: percentage / 100 }}
+          transition={
+            reduceMotion
+              ? { duration: 0 }
+              : { duration: framerDuration.progressFill, ease: motionBezier.easeOut }
+          }
+          style={{ transformOrigin: 'left' }}
+          className={`h-full w-full rounded-full ${barColor}`}
         />
       </div>
     </div>

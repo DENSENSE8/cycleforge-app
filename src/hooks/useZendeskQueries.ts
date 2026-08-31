@@ -11,6 +11,7 @@
 
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
+import type { NextTicketNumber } from '@/lib/support/next-ticket-number';
 import type {
   ZendeskTicket,
   ZendeskComment,
@@ -63,6 +64,8 @@ export const zendeskKeys = {
   photos: (id: number) => ['zendesk', 'ticket', id, 'photos'] as const,
   assignment: (id: number) => ['zendesk', 'ticket', id, 'assignment'] as const,
   agents: () => ['zendesk', 'agents'] as const,
+  /** Predicted next ticket id — the station's draft badge. */
+  nextTicketNumber: () => ['zendesk', 'next-ticket-number'] as const,
   users: (ids: number[]) => ['zendesk', 'users', [...ids].sort((a, b) => a - b)] as const,
 };
 
@@ -230,6 +233,32 @@ export function useTicketPhotos(id: number | null) {
     staleTime: ZENDESK_DETAIL_STALE_MS,
     refetchOnWindowFocus: false,
     retry: false,
+  });
+}
+
+/**
+ * The id a ticket filed right now would land on — the station's DRAFT ticket
+ * number. A prediction, not a reservation (see `predictNextTicketNumber`), so
+ * it refetches while a draft is open and is never written to the record.
+ *
+ * `enabled` is the caller's: only a surface actually showing a draft badge
+ * should pay for this, and it must not fire on every carton an operator opens.
+ */
+export function useZendeskNextTicketNumber(enabled: boolean) {
+  return useQuery<NextTicketNumber | null, HttpError>({
+    queryKey: zendeskKeys.nextTicketNumber(),
+    enabled,
+    // Short: another agent filing a ticket moves the number, and a stale
+    // prediction shown as "the number you are about to get" is worse than a
+    // brief spinner.
+    staleTime: 20_000,
+    queryFn: async () => {
+      const data = await getJson<{ next: NextTicketNumber | null }>(
+        '/api/zendesk/next-ticket-number',
+      );
+      return data.next ?? null;
+    },
+    ...zendeskReadDefaults,
   });
 }
 
@@ -429,6 +458,6 @@ export function useUpdateTicket() {
 // `CommentVars` + `useAddComment` were deleted 2026-08-02 with their only
 // consumer, `PackZendeskSection` — itself dead code inside the pack scan
 // column's unreachable standalone branch. Ticket replies go through the
-// composer waist (`SupportChatComposer` / `ThreadComposerBridge`), which is the
+// composer waist (`TicketComposer` / `ThreadComposerBridge`), which is the
 // one path that also owns visibility and draft-overwrite rules.
 

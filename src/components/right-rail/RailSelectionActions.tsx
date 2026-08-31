@@ -33,6 +33,24 @@ export function useRailActionSnapshot() {
 }
 
 /**
+ * How many verbs the CURRENT selection can actually run.
+ *
+ * For the table's status bar, which advertises the count from the first checked
+ * row. The rail that hosts these verbs only registers at 3+ rows, so an
+ * operator who checked one saw a corner offering Copy and had no way to learn
+ * that seven more existed — bulk label printing was discoverable only by
+ * guessing to select three things.
+ *
+ * Counts what would really fire (`resolveSelectionAction`), so a lane where
+ * half the verbs are out of scope advertises the half that work.
+ */
+export function useRailActionCount(): number {
+  const { scope, rows, actions } = useRailActionSnapshot();
+  if (!scope || rows.length === 0) return 0;
+  return actions.filter((action) => !resolveSelectionAction(action, rows).disabled).length;
+}
+
+/**
  * The live actions as **header icon** actions for `PaneHeaderActionBar` /
  * Desk chrome trailing slots.
  *
@@ -142,6 +160,16 @@ export function RailActionRegion({ className }: { className?: string }) {
   const danger = live.filter(({ action }) => action.tone === 'red');
   const ordinary = live.filter(({ action }) => action.tone !== 'red');
 
+  // Bands in declaration order; the unnamed one leads so an ungrouped lane is
+  // byte-identical to what it rendered before.
+  const ordinaryBands: { key: string; actions: typeof ordinary[number]['action'][] }[] = [];
+  for (const { action } of ordinary) {
+    const key = action.group ?? '';
+    const band = ordinaryBands.find((b) => b.key === key);
+    if (band) band.actions.push(action);
+    else ordinaryBands.push({ key, actions: [action] });
+  }
+
   return (
     <div
       className={cn(
@@ -149,23 +177,38 @@ export function RailActionRegion({ className }: { className?: string }) {
         className,
       )}
     >
-      <div className="flex flex-wrap items-center gap-2">
-        {ordinary.map(({ action }) => (
-          <Button
-            key={action.key}
-            type="button"
-            variant={action.primary ? 'primary' : 'secondary'}
-            size="sm"
-            icon={action.icon}
-            aria-label={action.label}
-            onClick={() => {
-              void action.run(rows);
-            }}
-          >
-            {action.label}
-          </Button>
-        ))}
-      </div>
+      {/*
+        Grouped by verb KIND when a lane names them (assign / output / …), so a
+        wall of eight buttons reads as three short shelves. Ungrouped actions
+        ride the leading band, which is what every lane that sets no `group`
+        gets — the render is unchanged for them.
+      */}
+      {ordinaryBands.map((band) => (
+        <div key={band.key || 'ungrouped'} className={band.key ? 'mt-2 first:mt-0' : undefined}>
+          {band.key ? (
+            <p className="pb-1 text-role-micro font-semibold uppercase tracking-widest text-text-faint">
+              {band.key}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {band.actions.map((action) => (
+              <Button
+                key={action.key}
+                type="button"
+                variant={action.primary ? 'primary' : 'secondary'}
+                size="sm"
+                icon={action.icon}
+                aria-label={action.label}
+                onClick={() => {
+                  void action.run(rows);
+                }}
+              >
+                {action.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      ))}
       {danger.length > 0 ? (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border-soft pt-3">
           {danger.map(({ action }) => (

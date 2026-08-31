@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import { useVirtualizer, defaultRangeExtractor, type Range } from '@tanstack/react-virtual';
 import { DateGroupHeader } from '@/components/ui/DateGroupHeader';
+import { GridSectionHeader } from '@/design-system/components/grid/GridSectionHeader';
+import { cn } from '@/utils/_cn';
 import { useAncestorScrollMargin } from '@/hooks/useAncestorScrollMargin';
 import type { RowGroup } from '@/lib/group-rows';
 import {
@@ -41,16 +43,40 @@ import {
  * position within that region (`scrollMargin`) — via {@link useAncestorScrollMargin}.
  */
 
+/**
+ * Where an item sits in a labelled section's outline. `undefined` = not in a
+ * section, which is every item on a surface that passes no `sectionHeaders`.
+ * The virtualizer positions each row absolutely, so a section cannot be a box —
+ * the edges are painted per item instead.
+ */
+type SectionEdge = 'inner' | 'last';
+
 type FlatItem<T> =
-  | { kind: 'header'; key: string; date: string; count: number; rowIndex: number }
+  | {
+      kind: 'header';
+      key: string;
+      date: string;
+      count: number;
+      rowIndex: number;
+      /** Set on a SECTION band — renders {@link GridSectionHeader}, not a date. */
+      label?: string;
+    }
   | {
       kind: 'group';
       key: string;
       group: RowGroup<T>;
       baseStripeIndex: number;
       rowIndex: number;
+      section?: SectionEdge;
     }
-  | { kind: 'row'; key: string; record: T; stripeIndex: number; rowIndex: number };
+  | {
+      kind: 'row';
+      key: string;
+      record: T;
+      stripeIndex: number;
+      rowIndex: number;
+      section?: SectionEdge;
+    };
 
 interface VirtualGroupedSectionsProps<T> {
   /** Date bands → folded order groups (grouped mode). Mutually exclusive with
@@ -97,6 +123,17 @@ interface VirtualGroupedSectionsProps<T> {
    * floating day chrome.
    */
   showDayHeaders?: boolean;
+  /**
+   * Band key → SECTION label. A band listed here renders a sticky
+   * {@link GridSectionHeader} and an outline around its rows, independent of
+   * `showDayHeaders` — that flag governs CIVIL DAY bands, and a surface with a
+   * per-row Date column (the outbound spreadsheet) keeps it off while still
+   * needing to fence off "Added today".
+   *
+   * Keys not present here are unaffected, so a surface can name one band and
+   * leave the rest of the table exactly as it was.
+   */
+  sectionHeaders?: Record<string, string>;
 }
 
 const HEADER_ESTIMATE = LEDGER_GRID_HEADER_ESTIMATE_PX;
@@ -116,6 +153,7 @@ export function VirtualGroupedSections<T>({
   scrollToKey,
   stickyHeaderTop = '0',
   showDayHeaders = true,
+  sectionHeaders,
 }: VirtualGroupedSectionsProps<T>) {
   const items = useMemo<FlatItem<T>[]>(() => {
     const flat: FlatItem<T>[] = [];
@@ -130,48 +168,84 @@ export function VirtualGroupedSections<T>({
       let stripeIndex = 0;
       for (const [date, groups] of orderGroupsByDate) {
         const dayTotal = groups.reduce((sum, g) => sum + g.rows.length, 0);
-        if (showDayHeaders) {
-          flat.push({ kind: 'header', key: `h:${date}`, date, count: dayTotal, rowIndex });
+        const sectionLabel = sectionHeaders?.[date];
+        const banded = sectionLabel !== undefined || showDayHeaders;
+        if (banded) {
+          flat.push({
+            kind: 'header',
+            key: `h:${date}`,
+            date,
+            count: dayTotal,
+            rowIndex,
+            ...(sectionLabel !== undefined ? { label: sectionLabel } : {}),
+          });
           rowIndex += 1;
         }
-        stripeIndex = stripeIndexForDateStart(stripeIndex, showDayHeaders);
-        for (const group of groups) {
+        // A named section starts a clean stripe run for the same reason a day
+        // band does — the outline makes it a visually separate block.
+        stripeIndex = stripeIndexForDateStart(stripeIndex, banded);
+        groups.forEach((group, groupIndex) => {
           flat.push({
             kind: 'group',
             key: `g:${date}:${group.key}`,
             group,
             baseStripeIndex: stripeIndex,
             rowIndex,
+            ...(sectionLabel !== undefined
+              ? { section: groupIndex === groups.length - 1 ? ('last' as const) : ('inner' as const) }
+              : {}),
           });
           rowIndex += groupRowSpan(group);
           stripeIndex = nextGroupStripeIndex(stripeIndex);
-        }
+        });
       }
     } else if (daySections) {
       let stripeIndex = 0;
       for (const [date, rows] of daySections) {
-        if (showDayHeaders) {
-          flat.push({ kind: 'header', key: `h:${date}`, date, count: rows.length, rowIndex });
+        const sectionLabel = sectionHeaders?.[date];
+        const banded = sectionLabel !== undefined || showDayHeaders;
+        if (banded) {
+          flat.push({
+            kind: 'header',
+            key: `h:${date}`,
+            date,
+            count: rows.length,
+            rowIndex,
+            ...(sectionLabel !== undefined ? { label: sectionLabel } : {}),
+          });
           rowIndex += 1;
         }
-        stripeIndex = stripeIndexForDateStart(stripeIndex, showDayHeaders);
+        stripeIndex = stripeIndexForDateStart(stripeIndex, banded);
         rows.forEach((record, dayIndex) => {
           const key = getRowKey ? `r:${getRowKey(record, dayIndex)}` : `r:${date}:${dayIndex}`;
-          flat.push({ kind: 'row', key, record, stripeIndex, rowIndex });
+          flat.push({
+            kind: 'row',
+            key,
+            record,
+            stripeIndex,
+            rowIndex,
+            ...(sectionLabel !== undefined
+              ? { section: dayIndex === rows.length - 1 ? ('last' as const) : ('inner' as const) }
+              : {}),
+          });
           rowIndex += 1;
         });
       }
     }
     return flat;
-  }, [orderGroupsByDate, daySections, getRowKey, showDayHeaders]);
+  }, [orderGroupsByDate, daySections, getRowKey, showDayHeaders, sectionHeaders]);
 
-  // Indices of the day-band headers — candidates for the sticky pin.
+  // Indices of the band headers — candidates for the sticky pin. Day bands and
+  // named sections both emit a `header` item, so this covers a surface that has
+  // only sections (`showDayHeaders={false}` + `sectionHeaders`) without the flag
+  // having to lie about day banding.
   const stickyIndexes = useMemo(
     () =>
-      showDayHeaders
-        ? items.reduce<number[]>((acc, it, i) => (it.kind === 'header' ? (acc.push(i), acc) : acc), [])
-        : [],
-    [items, showDayHeaders],
+      items.reduce<number[]>(
+        (acc, it, i) => (it.kind === 'header' ? (acc.push(i), acc) : acc),
+        [],
+      ),
+    [items],
   );
 
   // The header currently pinned to the top of the viewport, updated inside
@@ -195,7 +269,7 @@ export function VirtualGroupedSections<T>({
     getItemKey: (index) => items[index].key,
     rangeExtractor: useCallback(
       (range: Range) => {
-        if (!showDayHeaders || stickyIndexes.length === 0) {
+        if (stickyIndexes.length === 0) {
           return defaultRangeExtractor(range);
         }
         const active = [...stickyIndexes].reverse().find((i) => range.startIndex >= i) ?? 0;
@@ -203,7 +277,7 @@ export function VirtualGroupedSections<T>({
         const next = new Set([active, ...defaultRangeExtractor(range)]);
         return [...next].sort((a, b) => a - b);
       },
-      [stickyIndexes, showDayHeaders],
+      [stickyIndexes],
     ),
     scrollMargin,
   });
@@ -243,7 +317,15 @@ export function VirtualGroupedSections<T>({
             // Virtual's position mode uses top/left for the same reason. When
             // embedded in a shared ancestor scroll region, subtract `scrollMargin`
             // to lay out within this list's own wrapper.
-            className={`left-0 w-full ${pinned ? 'z-20' : header ? 'z-10' : 'z-0'}`}
+            className={cn(
+              'left-0 w-full',
+              pinned ? 'z-20' : header ? 'z-10' : 'z-0',
+              // A virtualized row cannot live inside a bordered box, so the
+              // section's outline is painted edge by edge: the header owns top
+              // + sides, every row continues the sides, the last closes it.
+              item.kind !== 'header' && item.section && 'border-x border-border-soft',
+              item.kind !== 'header' && item.section === 'last' && 'border-b border-border-soft',
+            )}
             data-sticky-day={pinned ? 'true' : undefined}
             style={
               pinned
@@ -252,12 +334,20 @@ export function VirtualGroupedSections<T>({
             }
           >
             {item.kind === 'header' ? (
-              <DateGroupHeader
-                date={item.date}
-                total={item.count}
-                sticky={false}
-                rowIndex={item.rowIndex}
-              />
+              item.label !== undefined ? (
+                <GridSectionHeader
+                  label={item.label}
+                  total={item.count}
+                  rowIndex={item.rowIndex}
+                />
+              ) : (
+                <DateGroupHeader
+                  date={item.date}
+                  total={item.count}
+                  sticky={false}
+                  rowIndex={item.rowIndex}
+                />
+              )
             ) : item.kind === 'group' ? (
               renderGroup?.(item.group, item.baseStripeIndex, item.rowIndex) ?? null
             ) : (

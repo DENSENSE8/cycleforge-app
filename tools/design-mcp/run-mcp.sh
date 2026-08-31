@@ -4,9 +4,8 @@
 # MCP clients spawn this without a login shell, so nvm's node is not on PATH —
 # resolved here rather than pinning a version into every client config.
 #
-# No `--import tsx` (unlike Garisek's): this server reads the contract from the
-# filesystem and from tokens.css, never by importing TypeScript, so it boots on
-# plain node and cannot be broken by a tsx/loader change.
+# No `--import tsx` (unlike Garisek's): this server reads TypeScript token
+# files as text, never by importing them, so it boots on plain node.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 pick_node() {

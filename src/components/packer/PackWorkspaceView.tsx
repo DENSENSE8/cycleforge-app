@@ -20,10 +20,13 @@ import { useOrderRailSelection } from '@/hooks/useOrderRailSelection';
 import { usePackWorkspaceTab } from '@/hooks/usePackWorkspaceTab';
 import { useNewOrderParam } from '@/hooks/useNewOrderParam';
 import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
+import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
+import { DeskActionSlotRegistrar } from '@/design-system/components/DeskActionSlot';
+import { Button } from '@/design-system/primitives';
+import { Plus } from '@/components/Icons';
 import { dispatchPackActiveOrder } from '@/components/packer/usePackerOrderPane';
 import { shippedOrderToPackPane } from '@/components/packer/shipped-order-to-pack-pane';
 import type { ShippedOrder } from '@/types/orders';
-import { TableStatusBar } from '@/components/tables/TableStatusBar';
 import type { PackWorkspaceTab } from '@/utils/pack-workspace-state';
 
 function TableFallback() {
@@ -38,7 +41,7 @@ const PACK_VIEW_TABS = [{ id: 'history', label: 'History' }] as const;
 
 export function PackWorkspaceView({ packerId }: { packerId: number }) {
   const { packView, setPackView } = usePackWorkspaceTab();
-  const { newOpen, closeNew } = useNewOrderParam();
+  const { newOpen, openNew, closeNew } = useNewOrderParam();
   const queueActive = packView === 'queue';
   const { selectionEnabled, selectMode, selectionOverlays } = useOrderRailSelection(
     'unshipped',
@@ -53,6 +56,29 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
   };
 
   return (
+    <DeskPageLayout
+      className="h-full"
+      tabs={PACK_VIEW_TABS}
+      activeTab={packView === 'queue' ? '' : packView}
+      onTabChange={(id) => setPackView(id === packView ? 'queue' : (id as PackWorkspaceTab))}
+    >
+      {/*
+        The bench's one page-level action, at page-header altitude. It already
+        existed as a URL state (`?new=true`) with an opener that lived off in
+        the rail; the frame gives it the place a primary action belongs, and the
+        overlay it opens is unchanged.
+      */}
+      <DeskActionSlotRegistrar>
+        <Button
+          variant="primary"
+          size="md"
+          radius="pill"
+          icon={<Plus aria-hidden />}
+          onClick={openNew}
+        >
+          New order
+        </Button>
+      </DeskActionSlotRegistrar>
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
       <DashboardScrollShell className="h-full bg-transparent">
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
@@ -92,12 +118,7 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
         ) : null}
       </DashboardScrollShell>
       <NewOrderEntryOverlay open={newOpen} onClose={closeNew} />
-      {/* The bench switches body on a tab; the table below foots its own strip. */}
-      <TableStatusBar
-        tabs={PACK_VIEW_TABS}
-        activeTab={packView === 'queue' ? undefined : packView}
-        onTabChange={(id) => setPackView(id === packView ? 'queue' : (id as PackWorkspaceTab))}
-      />
     </div>
+    </DeskPageLayout>
   );
 }

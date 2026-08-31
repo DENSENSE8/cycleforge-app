@@ -55,6 +55,21 @@ describe('evaluateTransferSheetRowEligibility', () => {
     assert.equal(evaluateTransferSheetRowEligibility(row({ platform: 'Ecwid' }), cols), 'ecwid');
   });
 
+  it('skips ECWID-RS / repair-service spellings as the same Ecwid API channel', () => {
+    assert.equal(evaluateTransferSheetRowEligibility(row({ platform: 'ECWID-RS' }), cols), 'ecwid');
+    assert.equal(
+      evaluateTransferSheetRowEligibility(row({ platform: 'Ecwid Repair Service' }), cols),
+      'ecwid',
+    );
+  });
+
+  it('skips a 4-digit Ecwid order id even when Platform is blank', () => {
+    assert.equal(
+      evaluateTransferSheetRowEligibility(row({ orderId: '5012', platform: '' }), cols),
+      'ecwid',
+    );
+  });
+
   it('reports an Ecwid row with a blank item number as ecwid, not noItemNumber', () => {
     // Attribution, not eligibility — the row is skipped either way. But an
     // Ecwid row arrives through the Ecwid API, so filing it under

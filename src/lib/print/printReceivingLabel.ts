@@ -6,6 +6,8 @@ import { conditionLabel } from '@/lib/conditions';
 // it is a pure presentation mapper; keeping it here made every consumer's
 // bundle inherit this module's print/bwip-js graph.
 import { receivingLabelTypeDisplay } from '@/lib/receiving/receiving-type-display';
+import { sourcePlatformMeta } from '@/lib/source-platform';
+import { sentenceCaseLabel } from '@/lib/text/sentence-case-label';
 
 export interface ReceivingLabelPayload {
   /** Numeric receiving id — used to build the QR URL when qrValue is not provided. */
@@ -48,12 +50,18 @@ export interface ReceivingLabelPayload {
  * "Unfound - Return" → "UNF - Return"). Without this the 2×1" `.tl` ellipsis
  * clips the type to "… - Re…".
  */
+function receivingLabelPlatformName(platform: string): string {
+  const meta = sourcePlatformMeta(platform);
+  if (meta.value) return meta.label;
+  return sentenceCaseLabel(platform);
+}
+
 function receivingLabelPlatformCompact(platform: string, type: string): string {
-  if (!type) return platform;
+  if (!type) return receivingLabelPlatformName(platform);
   const key = platform.trim().toLowerCase();
   if (key === 'amazon') return 'AMZ';
   if (key === 'unfound') return 'UNF';
-  return platform;
+  return receivingLabelPlatformName(platform);
 }
 
 /**
@@ -69,7 +77,9 @@ export function receivingLabelPlatformDisplay(
 ): string {
   const platform = String(payload.platform ?? '').trim();
   // Prefer the org-catalog label (custom / renamed types); else the built-in map.
-  const type = (payload.receivingTypeLabel ?? '').trim() || receivingLabelTypeDisplay(payload.receivingType);
+  const type = sentenceCaseLabel(
+    (payload.receivingTypeLabel ?? '').trim() || receivingLabelTypeDisplay(payload.receivingType),
+  );
   const compact = receivingLabelPlatformCompact(platform, type);
   if (!type) return compact;
   const typeU = type.toUpperCase();

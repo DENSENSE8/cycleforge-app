@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import type { StaffPreferences } from '@/lib/neon/staff-preferences-queries';
@@ -40,11 +40,38 @@ function mergePatchedPrefs(
   serverPrefs: StaffPreferences,
 ): StaffPreferences {
   const next: StaffPreferences = { ...(current ?? {}) };
+  let changed = false;
   for (const key of Object.keys(patch) as Array<keyof StaffPreferencesPutBody>) {
     if (patch[key] === undefined) continue;
-    (next as Record<string, unknown>)[key as string] = serverPrefs[key as keyof StaffPreferences];
+    const incoming = serverPrefs[key as keyof StaffPreferences];
+    if (!sameJson(current?.[key as keyof StaffPreferences], incoming)) changed = true;
+    (next as Record<string, unknown>)[key as string] = incoming;
   }
-  return next;
+  /*
+   * Identity is load-bearing, so confirming a value must not mint a new object.
+   *
+   * This returned `{...current}` unconditionally, which meant every successful
+   * PUT handed React Query a fresh prefs identity even when the server merely
+   * echoed what the optimistic write had already painted. Downstream, the table
+   * layout memos are keyed on that identity — `staffLayoutsRaw` →
+   * `staffLayout` → `effectiveLayout` → the materialized column model — so a
+   * single column toggle rebuilt the entire grid TWICE: once instantly, then
+   * again one round trip later. The second rebuild is the flash the operator
+   * sees, and it always arrives after they have moved on.
+   *
+   * Unchanged in ⇒ unchanged out.
+   */
+  return changed ? next : (current ?? next);
+}
+
+/** Structural equality for plain JSON prefs values (no cycles, API-shaped). */
+function sameJson(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  try {
+    return JSON.stringify(a) === JSON.stringify(b);
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -80,6 +107,9 @@ export function useStaffPreferences() {
     },
   });
 
+  // Monotonic write sequence — see onSuccess.
+  const pendingSeq = useRef(0);
+
   const mutation = useMutation({
     mutationFn: async (patch: StaffPreferencesPutBody): Promise<StaffPreferences> => {
       const res = await fetch('/api/staff-preferences', {
@@ -91,7 +121,22 @@ export function useStaffPreferences() {
       const data = (await res.json()) as { prefs: StaffPreferences };
       return data.prefs ?? {};
     },
-    onSuccess: (serverPrefs, patch) => {
+    onMutate: () => {
+      // Sequence every write so a slower earlier PUT cannot land last.
+      pendingSeq.current += 1;
+      return { seq: pendingSeq.current };
+    },
+    onSuccess: (serverPrefs, patch, context) => {
+      /*
+       * Drop a superseded response.
+       *
+       * There is no mutation scope here, so two quick column toggles issue two
+       * overlapping PUTs. Whichever RESPONSE arrives last used to win, and the
+       * first request carries a prefs body that is one edit stale — so a fast
+       * second click could snap the layout back a step. Only the newest write
+       * is allowed to confirm.
+       */
+      if (context && context.seq !== pendingSeq.current) return;
       queryClient.setQueryData<StaffPreferences>(QUERY_KEY, (current) =>
         mergePatchedPrefs(current, patch, serverPrefs),
       );

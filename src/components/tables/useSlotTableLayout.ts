@@ -35,6 +35,7 @@ import type { StaffPreferences } from '@/lib/neon/staff-preferences-queries';
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import {
   moveFieldBinding,
+  reorderFieldBinding,
   slotFieldOptions,
   toggleFieldBinding,
   type SlotFieldOption,
@@ -88,6 +89,14 @@ export interface SlotTableFieldsMenu {
 export interface SlotTableLayout {
   effectiveLayout: SlotLayout;
   subtitleFieldIds: readonly string[];
+  /**
+   * Land a bound field at an absolute position in its own band — the write
+   * behind an inline drag of the under-title facts. Organization-wide, like
+   * every other layout edit (ruling 2026-08-31).
+   */
+  onReorder: (fieldId: string, toIndex: number) => void;
+  /** Whether this staffer may change the organization's layout at all. */
+  canManage: boolean;
   /** Undefined until the cascade base settles — DataTable hides the + until then. */
   fields: SlotTableFieldsMenu | undefined;
 }
@@ -163,6 +172,65 @@ export function useSlotTableLayout(config: SlotTableLayoutConfig): SlotTableLayo
     [staffLayoutsRaw, tableId, queryClient, update],
   );
 
+  /**
+   * Persist a layout edit ORGANIZATION-WIDE (operator ruling 2026-08-31).
+   *
+   * Binding, unbinding and reordering used to write a PERSONAL override, with a
+   * separate "Save as org default" button to promote it. The operator's ruling
+   * is that a table's shape is a property of the table, not of whoever last
+   * touched it: "any add-in to the data table should function as an
+   * organization-wide edit". So the edit goes straight to the org document, and
+   * every staffer sees it.
+   *
+   * Two consequences worth stating. A personal override, if one already exists,
+   * is cleared on the same edit — otherwise the staffer who just changed the org
+   * default would be the one person who could not see it, shadowed by their own
+   * older copy. And a staffer without `canManage` cannot write the org layout,
+   * so the edit is refused with a reason rather than silently landing somewhere
+   * private and diverging from what their colleagues see.
+   */
+  const writeOrgLayout = useCallback(
+    (layout: SlotLayout) => {
+      if (!canManage) {
+        toast.info('Only a manager can change the columns for the organization');
+        return;
+      }
+      const previous = orgQuery.data?.layout ?? null;
+      queryClient.setQueryData<OrgLayoutResponse>(orgQueryKey, {
+        layout,
+        canManage: true,
+      });
+      if (staffLayout) writeStaffLayout(null);
+      void (async () => {
+        try {
+          const res = await fetch('/api/tables/layouts', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tableId, layout }),
+          });
+          if (!res.ok) throw new Error(`layout ${res.status}`);
+        } catch {
+          // Put the org document back — a failed write must not leave every
+          // other staffer's next read disagreeing with the server.
+          queryClient.setQueryData<OrgLayoutResponse>(orgQueryKey, {
+            layout: previous ?? layout,
+            canManage: true,
+          });
+          toast.error('Could not save the columns for the organization');
+        }
+      })();
+    },
+    [
+      canManage,
+      orgQuery.data,
+      orgQueryKey,
+      queryClient,
+      staffLayout,
+      writeStaffLayout,
+      tableId,
+    ],
+  );
+
   const onToggle = useCallback(
     (fieldId: string) => {
       const field = catalog.find((f) => f.id === fieldId);
@@ -172,9 +240,9 @@ export function useSlotTableLayout(config: SlotTableLayoutConfig): SlotTableLayo
         toast.info(result.reason);
         return;
       }
-      writeStaffLayout(result.layout);
+      writeOrgLayout(result.layout);
     },
-    [catalog, effectiveLayout, writeStaffLayout],
+    [catalog, effectiveLayout, writeOrgLayout],
   );
 
   const onMove = useCallback(
@@ -182,12 +250,23 @@ export function useSlotTableLayout(config: SlotTableLayoutConfig): SlotTableLayo
       const field = catalog.find((f) => f.id === fieldId);
       if (!field) return;
       const result = moveFieldBinding(effectiveLayout, field, direction);
-      // Edge moves come back ok-with-same-layout; skip the no-op write so a
-      // disabled-arrow race does not mint a pointless personal override.
+      // Edge moves come back ok-with-same-layout; skip the no-op write.
       if (!result.ok || result.layout === effectiveLayout) return;
-      writeStaffLayout(result.layout);
+      writeOrgLayout(result.layout);
     },
-    [catalog, effectiveLayout, writeStaffLayout],
+    [catalog, effectiveLayout, writeOrgLayout],
+  );
+
+  /** Drag-and-drop reorder — lands a bound field at an absolute band position. */
+  const onReorder = useCallback(
+    (fieldId: string, toIndex: number) => {
+      const field = catalog.find((f) => f.id === fieldId);
+      if (!field) return;
+      const result = reorderFieldBinding(effectiveLayout, field, toIndex);
+      if (!result.ok || result.layout === effectiveLayout) return;
+      writeOrgLayout(result.layout);
+    },
+    [catalog, effectiveLayout, writeOrgLayout],
   );
 
   const onSaveAsOrgDefault = useCallback(() => {
@@ -253,12 +332,15 @@ export function useSlotTableLayout(config: SlotTableLayoutConfig): SlotTableLayo
             onMove,
             identityLabel,
             ...(bandLabels ? { bandLabels } : null),
-            ...(canManage ? { onSaveAsOrgDefault } : null),
+            // No "Save as org default" button any more: every edit above IS an
+            // org edit (ruling 2026-08-31), so a button to promote one would be
+            // a no-op wearing a confirm step. Reset survives only to clear a
+            // PERSONAL override left over from before that ruling.
             ...(staffLayout ? { onResetToDefault } : null),
           }
         : undefined,
-    [fieldsReady, options, onToggle, onMove, identityLabel, bandLabels, canManage, onSaveAsOrgDefault, staffLayout, onResetToDefault],
+    [fieldsReady, options, onToggle, onMove, identityLabel, bandLabels, staffLayout, onResetToDefault],
   );
 
-  return { effectiveLayout, subtitleFieldIds, fields };
+  return { effectiveLayout, subtitleFieldIds, fields, onReorder, canManage };
 }

@@ -165,6 +165,22 @@ async function searchFromPlatform(
  * PO that references real Zoho items (not Ecwid listings). Matches on Zoho SKU
  * OR name; only active items with a SKU appear. Results are tagged with a
  * `zoho` platform chip so there's no Ecwid ambiguity.
+ *
+ * This reads the LOCAL mirror only. It never calls Zoho — a picker that blocks
+ * on a third-party round trip is a picker an operator abandons, and the mirror
+ * is already the row the rest of the app pairs against.
+ *
+ * ## The join is the hard link, not the SKU string
+ *
+ * `sku_catalog.provider_item_id` is the declared inventory-provider linkage
+ * (2026-07-22): "Join items on provider_item_id = zoho_item_id — never on SKU
+ * string", because `items` and `sku_catalog` are independent numbering schemes
+ * and two rows sharing a SKU string are routinely DIFFERENT products. So a
+ * stamped catalog row matches ONLY its linked Zoho item; the SKU-string join
+ * survives strictly as the fallback for rows sync has not stamped yet
+ * (`provider_item_id IS NULL`), which is what the guarded backfill leaves
+ * behind. Rows already linked in the database therefore win over a coincidence
+ * of characters.
  */
 async function searchFromZohoCatalog(
   q: string,
@@ -187,13 +203,15 @@ async function searchFromZohoCatalog(
   }
 
   if (excludeSkuSuffix) {
-    params.push(`%${excludeSkuSuffix}`);
+    params.push(`%${escapeLike(excludeSkuSuffix)}`);
     filterClauses.push(`BTRIM(i.sku) NOT ILIKE $${params.length}`);
   }
 
   let exactIdx: number | null = null;
   if (q) {
-    params.push(`%${q}%`);
+    // escapeLike, like every other branch in this file: an operator pasting a
+    // SKU that contains `_` or `%` was silently searching a wildcard.
+    params.push(`%${escapeLike(q)}%`);
     const likeIdx = params.length;
     params.push(q);
     exactIdx = params.length;
@@ -213,6 +231,7 @@ async function searchFromZohoCatalog(
        MAX(BTRIM(i.sku))      AS zoho_sku,
        MAX(i.name)            AS product_title,
        MAX(i.zoho_item_id)    AS zoho_item_id,
+       bool_or(sc.provider_item_id IS NOT NULL) AS provider_linked,
        MAX(sc.category)       AS category,
        MAX(i.upc)             AS upc,
        -- Zoho item photo only, served through our proxy when the Zoho item has an
@@ -227,7 +246,11 @@ async function searchFromZohoCatalog(
        END AS image_url,
        bool_or(sc.is_active)  AS is_active
      FROM items i
-     JOIN sku_catalog sc ON sc.sku = BTRIM(i.sku)${orgId ? ' AND sc.organization_id = i.organization_id' : ''}
+     JOIN sku_catalog sc
+       ON (
+            sc.provider_item_id = i.zoho_item_id
+            OR (sc.provider_item_id IS NULL AND sc.sku = BTRIM(i.sku))
+          )${orgId ? '\n        AND sc.organization_id = i.organization_id' : ''}
      WHERE ${filterClauses.join(' AND ')}
      GROUP BY sc.id
      ORDER BY ${orderBy}
@@ -244,6 +267,7 @@ async function searchFromZohoCatalog(
       zoho_sku: r.zoho_sku,
       product_title: r.product_title,
       zoho_item_id: r.zoho_item_id,
+      provider_linked: r.provider_linked,
       category: r.category,
       upc: r.upc,
       image_url: r.image_url,

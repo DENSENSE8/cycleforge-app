@@ -3,10 +3,17 @@
 /**
  * Triage (Arrival) browse workbench.
  *
- * The desk draws no header. Its four bodies are rail lists rather than tables,
- * so the one thing it still owns is which body is on screen — and that strip is
- * the same {@link TableStatusBar} every table foots itself with, minus a row
- * count it has no honest way to know.
+ * Its four bodies are rail lists rather than tables, so the one thing this desk
+ * owns is which body is on screen. That used to be a foot strip — the same
+ * {@link TableStatusBar} every table draws, minus a row count it had no honest
+ * way to know.
+ *
+ * **The tabs moved to the top (operator ruling 2026-08-31)** along with every
+ * other station's: the frame is now the design system's {@link DeskPageChrome},
+ * so Arrival wears the same title / CTA / tab row as the Shipping desk. The
+ * row count is still absent, and now honestly so — the chrome has no place to
+ * print one, which is better than a bar that exists to hold a number it cannot
+ * know.
  */
 
 import { useSearchParams } from 'next/navigation';
@@ -23,10 +30,7 @@ import {
   TRIAGE_WORKSPACE_TAB_LABEL,
   type TriageWorkspaceTab,
 } from '@/utils/triage-workspace-state';
-import {
-  TableStatusBar,
-  type DataTableTabStrip,
-} from '@/components/tables/TableStatusBar';
+import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 
 export function TriageWorkspaceView({
   selectedLine,
@@ -42,15 +46,10 @@ export function TriageWorkspaceView({
 
   // `triage` is the default view, so it IS the unfiltered body and lights no
   // tab — the same rule every other strip follows.
-  const tabStrip: DataTableTabStrip = {
-    tabs: (['found', 'unfound', 'done'] as const).map((id) => ({
-      id,
-      label: TRIAGE_WORKSPACE_TAB_LABEL[id],
-    })),
-    activeTab: triageView === 'triage' ? undefined : triageView,
-    onTabChange: (id) =>
-      setTriageView(id === triageView ? 'triage' : (id as TriageWorkspaceTab)),
-  };
+  const tabs = (['found', 'unfound', 'done'] as const).map((id) => ({
+    id,
+    label: TRIAGE_WORKSPACE_TAB_LABEL[id],
+  }));
 
   const selectedLineId = selectedLine?.id ?? null;
   const selectedRow =
@@ -85,6 +84,14 @@ export function TriageWorkspaceView({
       setMany={setManyRailSelected}
       toggleActive={toggleRailEditMode}
     >
+      <DeskPageLayout
+        className="h-full"
+        tabs={tabs}
+        activeTab={triageView === 'triage' ? '' : triageView}
+        onTabChange={(id) =>
+          setTriageView(id === triageView ? 'triage' : (id as TriageWorkspaceTab))
+        }
+      >
       <div className="relative flex h-full min-h-0 w-full flex-col">
         <TriageFeedBody
           key={triageView}
@@ -94,10 +101,6 @@ export function TriageWorkspaceView({
           leadingRow={triageView === 'triage' ? leadingRow : null}
           filterText={filterText}
         />
-        {/* The bodies here are rails, not tables, so the desk draws the strip
-            its tabs belong to. There is no row count to print. */}
-        <TableStatusBar {...tabStrip} />
-
         {railEditMode ? (
           <ReceivingBulkActionBar
             selectedIds={railSelectedIdList}
@@ -106,6 +109,7 @@ export function TriageWorkspaceView({
           />
         ) : null}
       </div>
+      </DeskPageLayout>
     </RailEditModeProvider>
   );
 }

@@ -4,8 +4,8 @@ import { useEffect, useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import type { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
-import { Calendar as CalendarPicker } from './Calendar';
-import { Calendar as CalendarIcon, X } from '@/components/Icons';
+import { CalendarRangeSelect } from '@/components/ui/calendar-range-select';
+import { Calendar as CalendarIcon, ChevronDown, X } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { computeWeekRange, dateKeyToLocalDate } from '@/utils/date';
 
@@ -162,32 +162,61 @@ export function DateRangePickerField({
 
       <Popover.Portal>
         <Popover.Content
-          align="start"
+          // Right-aligned with an inset (operator ruling 2026-08-31): the
+          // control sits near the sheet's right edge, so a start-aligned panel
+          // hung off it. The offset keeps the panel a few px inside the edge
+          // rather than flush against it.
+          align="end"
+          alignOffset={-8}
           sideOffset={6}
           className="z-dropdown rounded-xl border border-border-soft bg-surface-card shadow-lg ring-1 ring-black/5 focus:outline-none"
         >
           {presets.length > 0 ? (
-            <div className="flex flex-wrap items-center gap-1 border-b border-border-hairline p-2">
-              {presets.map((p) => (
-                <button
-                  key={p.label}
-                  type="button"
-                  onClick={() => {
-                    const r = p.range();
+            /*
+             * Presets as a DROPDOWN, not a row of chips (operator ruling
+             * 2026-08-31).
+             *
+             * Five uppercase labels laid side by side set the popover's width
+             * from the longest phrase rather than from the calendar under it,
+             * so the panel spilled wider than the control it hangs off and
+             * fought the toolbar's alignment. A select is one line at any
+             * label length, and the calendar below it becomes the widest thing
+             * in the panel — which is the thing the panel is actually for.
+             */
+            <div className="border-b border-border-hairline p-2">
+              <label className="sr-only" htmlFor="cf-date-preset">
+                Quick range
+              </label>
+              <div className="relative">
+                <select
+                  id="cf-date-preset"
+                  value=""
+                  onChange={(event) => {
+                    const preset = presets.find((p) => p.label === event.target.value);
+                    if (!preset) return;
+                    const r = preset.range();
                     setDraft(r);
                     onChange(r);
                     setOpen(false);
                   }}
-                  className="rounded-md px-2 py-1 text-role-eyebrow uppercase tracking-wider text-text-muted hover:bg-surface-sunken hover:text-text-default"
+                  className={cn(
+                    'h-8 w-full cursor-pointer appearance-none rounded-md border border-border-soft bg-surface-card pl-2.5 pr-7',
+                    'text-role-caption font-semibold text-text-default hover:border-blue-300',
+                  )}
                 >
-                  {p.label}
-                </button>
-              ))}
+                  <option value="">Quick range…</option>
+                  {presets.map((p) => (
+                    <option key={p.label} value={p.label}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint" />
+              </div>
             </div>
           ) : null}
 
-          <CalendarPicker
-            mode="range"
+          <CalendarRangeSelect
             selected={draft}
             onSelect={setDraft}
             numberOfMonths={1}

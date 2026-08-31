@@ -6,6 +6,7 @@ import {
   PACKED_EXPORT_COLUMNS,
   buildOrderExportCsv,
   buildOrderExportRow,
+  formatExportDateTime24h,
   buildPackedOrderExportCsv,
   buildPackedOrderExportRow,
   formatExportCivilDate,
@@ -33,6 +34,17 @@ test('a row maps onto the lane the operator can see', () => {
     account_source: null,
     is_urgent: true,
     is_out_of_stock: false,
+    // The lifecycle story the export exists to carry (2026-08-31): who did each
+    // step, when, what the order was worth, and the stage those add up to.
+    sale_amount: '129.5',
+    has_tech_scan: true,
+    tester_name: 'Tuan',
+    test_date_time: '2026-08-01T17:04:00.000Z',
+    packed_by_name: 'Sam',
+    packed_at: '2026-08-02T18:30:00.000Z',
+    shipped_out_by_name: 'Rae',
+    ship_confirmed_at: '2026-08-03T20:15:00.000Z',
+    shipment_id: 77,
   });
 
   assert.deepEqual(row, [
@@ -41,6 +53,16 @@ test('a row maps onto the lane the operator can see', () => {
     'BOSE-SLM2-BK',
     'USED_GOOD',
     '2',
+    // Two decimals always — a money column a spreadsheet can sum.
+    '129.50',
+    // The lifecycle SoT's own vocabulary — packed WITH a label staged.
+    'PACKED_STAGED',
+    'Tuan',
+    formatExportDateTime24h('2026-08-01T17:04:00.000Z'),
+    'Sam',
+    formatExportDateTime24h('2026-08-02T18:30:00.000Z'),
+    'Rae',
+    formatExportDateTime24h('2026-08-03T20:15:00.000Z'),
     '2026-08-03',
     '9400100000000000000199',
     'SN-1',

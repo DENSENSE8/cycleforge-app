@@ -7,6 +7,7 @@ import { SupportSidebarPanel } from '@/components/sidebar/SupportSidebarPanel';
 import { SupportWorkspace } from '@/components/support/zendesk/SupportWorkspace';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
+import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 
 /**
  * `/support` — the Support operator Station (promoted More → Stations).
@@ -26,7 +27,25 @@ function SupportPageContent() {
           actions={<SupportSidebarPanel />}
           history={(
             <RightPaneOverlayHost className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-              <SupportWorkspace />
+              {/*
+                The one page frame (2026-08-31) — inside the RouteShell's content
+                pane, not around it, so the ticket rail keeps its own column.
+
+                Tickets · To ship · Voicemail · Calls · Warranty · Issues are its
+                tab row, drawn from this page's own `SIDEBAR_PAGE_NAV` children.
+                To ship is the interesting one: it aliases
+                `/shipping/orders?context=support`, and because Support's
+                `resolveChild` claims that URL, the Shipping desk's frame draws
+                SUPPORT's title and tabs there with To ship lit — the strip does
+                not vanish on the one tab that leaves this route.
+
+                This file's docblock calls Support a Station; it is not a SCAN
+                station — no bench, no wedge, pointer-driven ticket triage on a
+                `kind: 'domain'` nav entry.
+              */}
+              <DeskPageLayout className="h-full">
+                <SupportWorkspace />
+              </DeskPageLayout>
             </RightPaneOverlayHost>
           )}
         />

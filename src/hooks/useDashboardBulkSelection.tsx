@@ -185,6 +185,31 @@ export function useDashboardBulkSelection(
     else toast.error('Copy is unavailable on this connection — select the text manually');
   }, []);
 
+  /*
+   * Scale confirmation for a write that fans out over a selection.
+   *
+   * Ship-by and Flag already open a picker, so they were never "one click with
+   * no dialog" — but the picker asks WHAT VALUE, never HOW MANY ROWS. An
+   * operator who picked a date saw a date, hit save, and moved the ship-by on
+   * every row they happened to still have checked, with a toast as the first
+   * mention of the count. On a desk whose whole job is meeting ship-by dates,
+   * that is the one number the dialog had to say out loud.
+   *
+   * Below the threshold it stays a single gesture: a confirm on three rows the
+   * operator can see is a click tax, and a dialog that always appears is a
+   * dialog nobody reads by the end of a shift. Delete keeps its own unscaled
+   * confirm — destruction is not a matter of degree.
+   */
+  const BULK_CONFIRM_THRESHOLD = 5;
+  const confirmBulkWrite = useCallback(async (count: number, verb: string) => {
+    if (count < BULK_CONFIRM_THRESHOLD) return true;
+    return requestConfirm({
+      description: `${verb} on ${count} orders?`,
+      confirmLabel: `Apply to ${count}`,
+      tone: 'primary',
+    });
+  }, []);
+
   // ─── Assign tester / packer ────────────────────────────────────────────────
   // Composes the existing multi-row carousel (prev/next + confirm→advance), NOT
   // a batch-edit "mixed values" panel: assignment is a per-order judgement, and
@@ -217,6 +242,7 @@ export function useDashboardBulkSelection(
     async (dateKey: string) => {
       const orderIds = selectedRows.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
       if (orderIds.length === 0) return;
+      if (!(await confirmBulkWrite(orderIds.length, `Set the ship-by date to ${dateKey}`))) return;
       setIsSavingShipBy(true);
       try {
         // One request for the whole set — the assign waist already takes orderIds[].
@@ -233,7 +259,7 @@ export function useDashboardBulkSelection(
         setIsSavingShipBy(false);
       }
     },
-    [assignOrder, clearSelection, selectedRows],
+    [assignOrder, clearSelection, confirmBulkWrite, selectedRows],
   );
 
   // ─── Bulk triage flag ──────────────────────────────────────────────────────
@@ -246,6 +272,8 @@ export function useDashboardBulkSelection(
     async (flag: OrderRowFlagId | null) => {
       const orderIds = selectedRows.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
       if (orderIds.length === 0) return;
+      if (!(await confirmBulkWrite(orderIds.length, flag === null ? 'Clear the flag' : 'Flag')))
+        return;
       setIsSavingFlag(true);
       try {
         // One request for the whole set. The server reports which ids it
@@ -273,7 +301,7 @@ export function useDashboardBulkSelection(
         setIsSavingFlag(false);
       }
     },
-    [clearSelection, selectedRows],
+    [clearSelection, confirmBulkWrite, selectedRows],
   );
 
   // ─── Print shipping labels (post-pack) ─────────────────────────────────────
@@ -405,11 +433,12 @@ export function useDashboardBulkSelection(
 
   const selectionActions = useMemo<SelectionAction<DashSelectableRow>[]>(
     () => [
-      { key: 'copy', label: 'Copy details', icon: <Copy className="h-4 w-4" />, tone: 'blue', primary: true, run: handleCopyDetails },
+      { key: 'copy', label: 'Copy details', icon: <Copy className="h-4 w-4" />, tone: 'blue', primary: true, group: 'Take away', run: handleCopyDetails },
       {
         key: 'assign',
         label: 'Assign tester / packer',
         icon: <User className="h-4 w-4" />,
+        group: 'Set on these orders',
         // Pre-pack only: assigning a tester to an order that already shipped is
         // not a thing an operator ever means to do.
         enabled: () => laneActionKeys.has('assign'),
@@ -419,6 +448,7 @@ export function useDashboardBulkSelection(
         key: 'ship-by',
         label: 'Set ship-by date',
         icon: <CalendarIcon className="h-4 w-4" />,
+        group: 'Set on these orders',
         enabled: () => laneActionKeys.has('ship-by'),
         run: handleSetShipBy,
       },
@@ -429,6 +459,7 @@ export function useDashboardBulkSelection(
         // used to be conflated under one "Print labels" button on every lane.
         label: 'Print product labels',
         icon: <Printer className="h-4 w-4" />,
+        group: 'Take away',
         enabled: () => laneActionKeys.has('print'),
         run: handlePrintLabels,
       },
@@ -436,6 +467,7 @@ export function useDashboardBulkSelection(
         key: 'print-shipping',
         label: 'Print shipping labels',
         icon: <FileText className="h-4 w-4" />,
+        group: 'Take away',
         enabled: () => laneActionKeys.has('print-shipping'),
         run: handlePrintShippingLabels,
       },
@@ -443,6 +475,7 @@ export function useDashboardBulkSelection(
         key: 'flag',
         label: 'Flag rows',
         icon: <Flag className="h-4 w-4" />,
+        group: 'Set on these orders',
         // Every lane: a shipped order can still be Damaged. The tag annotates
         // the record, it is not a step in the pipeline.
         enabled: () => laneActionKeys.has('flag'),
@@ -452,6 +485,7 @@ export function useDashboardBulkSelection(
         key: 'export',
         label: 'Export CSV',
         icon: <Download className="h-4 w-4" />,
+        group: 'Take away',
         // Reads the selected rows only — meaningful on every lane.
         enabled: () => laneActionKeys.has('export'),
         run: handleExportCsv,

@@ -95,10 +95,46 @@ test('G3 passes on a purchased label', () => {
   );
 });
 
-test('G3 fails with neither', () => {
-  const g = gate({ ...GREEN, shippingLabelLinked: false, shippingLabelPurchased: false }, 'G3');
+test('G3 passes on a linked TRACKING number with no label document', () => {
+  // Operator ruling 2026-08-31. A tracking number reaches an order through
+  // `shipment_id` because a label was bought or attached, so the paperwork not
+  // having been filed as a document is not a reason to hold the cage shut.
+  assert.equal(
+    gate(
+      { ...GREEN, shippingLabelLinked: false, shippingLabelPurchased: false },
+      'G3',
+    ).passed,
+    true,
+  );
+});
+
+test('G3 fails only when there is no label AND no tracking', () => {
+  const g = gate(
+    {
+      ...GREEN,
+      trackingNumber: null,
+      shippingLabelLinked: false,
+      shippingLabelPurchased: false,
+    },
+    'G3',
+  );
   assert.equal(g.passed, false);
   assert.match(g.reason ?? '', /buy one/);
+});
+
+test('G3 is implied by G1 — it can never be the only failure', () => {
+  // The stated consequence of the ruling, pinned so a later edit that makes G3
+  // independent again has to do it deliberately.
+  for (const facts of [
+    GREEN,
+    { ...GREEN, shippingLabelLinked: false, shippingLabelPurchased: false },
+    { ...GREEN, trackingNumber: null, shippingLabelLinked: false, shippingLabelPurchased: false },
+  ] as ReleaseGateFacts[]) {
+    const failing = evaluateReleaseGates(facts).failing.map((g) => g.id);
+    if (failing.includes('G3')) {
+      assert.ok(failing.includes('G1'), 'G3 failed without G1 — G3 is independent again');
+    }
+  }
 });
 
 // ── The matrix as a whole ───────────────────────────────────────────────────
@@ -111,15 +147,30 @@ test('an empty order fails all three and reports all three', () => {
 });
 
 test('one red gate is enough to hold the cage shut', () => {
+  // The label-only break used to be the third case here. It is not a break any
+  // more — see the test below — and that is the behaviour change of the
+  // 2026-08-31 ruling, stated rather than quietly dropped from this list.
   for (const broken of [
     { itemNumber: null },
     { linkedDocumentCount: 0, docsNotRequired: false },
-    { shippingLabelLinked: false, shippingLabelPurchased: false },
   ] satisfies Partial<ReleaseGateFacts>[]) {
     const result = evaluateReleaseGates({ ...GREEN, ...broken });
     assert.equal(result.canRelease, false, `${JSON.stringify(broken)} must not release`);
     assert.equal(result.failing.length, 1, 'exactly the broken gate is failing');
   }
+});
+
+test('a missing label alone no longer cages an order that HAS tracking', () => {
+  // Operator ruling 2026-08-31: the tracking number is the label. Before it,
+  // this exact fact set was caged on G3 while carrying a tracking number that
+  // only exists because a label was bought or attached.
+  const result = evaluateReleaseGates({
+    ...GREEN,
+    shippingLabelLinked: false,
+    shippingLabelPurchased: false,
+  });
+  assert.equal(result.canRelease, true, 'tracking present ⇒ G3 green ⇒ releasable');
+  assert.equal(result.failing.length, 0);
 });
 
 test('evaluation is pure — same facts, same verdict, input untouched', () => {

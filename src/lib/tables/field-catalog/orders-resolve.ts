@@ -222,6 +222,13 @@ export function ordersSubtitleParts(
         text: value.text,
         toneClass: orderRowQtyTone(Number.isFinite(qty) ? qty : 1),
         key: fieldId,
+        // Two digits, always. A quantity is 1 on most rows and 10–99 on a few,
+        // and sizing to content shifted every fact after it sideways on exactly
+        // those rows — the ones an operator most needs to notice. Reserving the
+        // wider case costs one character on the common row and keeps the line
+        // scannable straight down the grid. Three-digit quantities overflow the
+        // reservation rather than truncate, which is the right failure.
+        widthCh: 2,
       });
       continue;
     }

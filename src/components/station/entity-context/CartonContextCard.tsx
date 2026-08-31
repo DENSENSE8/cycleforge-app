@@ -25,6 +25,7 @@ import {
 import { ReceivingPhotoButton } from '@/components/receiving/workspace/line-edit/ReceivingPhotoButton';
 import {
   StationContextClaimCell,
+  StationContextDraftTicketCell,
   StationContextIconCell,
   StationContextListingCell,
 } from './StationContextActionCell';
@@ -165,6 +166,7 @@ export function CartonContextCard({
   showClassifyControls = true,
   classifyInteractive = true,
   onMakeClaim,
+  draftTicketNumber,
   claimViewActive = false,
   showStaffPhotoRow = true,
   photoStage,
@@ -253,6 +255,14 @@ export function CartonContextCard({
   classifyInteractive?: boolean;
   /** Opens / toggles the claim push panel. Omit (undefined) to hide the Claim button. */
   onMakeClaim?: () => void;
+  /**
+   * The DRAFT ticket number (`#12345`) while an unlinked carton has a claim
+   * body typed but not filed. When set it TAKES the Claim slot — the operator
+   * has already decided to claim, so the useful thing in that corner is the
+   * number the ticket is heading for, not the verb they just used.
+   * Predicted, never reserved — see `predictNextTicketNumber`.
+   */
+  draftTicketNumber?: string | null;
   /** True while the Unbox Claim push column is open — Claim pill reads pressed. */
   claimViewActive?: boolean;
   /** Photos + Claim row. Hidden in triage (unbox-only). */
@@ -734,12 +744,25 @@ export function CartonContextCard({
     />
   ) : null;
 
+  const draftNumberFace = (draftTicketNumber ?? '').trim();
+
   const claimIconButton =
     showStaffPhotoRow && !zendeskTrimmed && onMakeClaim && !overflowSet.has('claim') ? (
       <div className="flex min-h-0 self-stretch items-stretch">
-        <HoverTooltip label={claimViewActive ? 'Hide claim' : 'File claim'} asChild>
-          <StationContextClaimCell active={claimViewActive} onClick={onMakeClaim} />
-        </HoverTooltip>
+        {draftNumberFace ? (
+          // The draft number REPLACES the Claim verb rather than sitting beside
+          // it — the corner is one slot, and two ticket controls in it is the
+          // duplicate this card exists to avoid.
+          <StationContextDraftTicketCell
+            active={claimViewActive}
+            onClick={onMakeClaim}
+            number={draftNumberFace}
+          />
+        ) : (
+          <HoverTooltip label={claimViewActive ? 'Hide claim' : 'File claim'} asChild>
+            <StationContextClaimCell active={claimViewActive} onClick={onMakeClaim} />
+          </HoverTooltip>
+        )}
       </div>
     ) : null;
 
@@ -810,7 +833,11 @@ export function CartonContextCard({
   if (showStaffPhotoRow && !zendeskTrimmed && onMakeClaim && overflowSet.has('claim')) {
     overflowItems.push({
       id: 'claim',
-      label: claimViewActive ? 'Hide claim' : 'File claim',
+      label: draftNumberFace
+        ? `Draft ticket ~${draftNumberFace} — not filed yet`
+        : claimViewActive
+          ? 'Hide claim'
+          : 'File claim',
       icon: <Ticket className="h-3.5 w-3.5" />,
       onSelect: () => {
         onMakeClaim();
