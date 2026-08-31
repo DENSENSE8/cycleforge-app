@@ -1,0 +1,45 @@
+{
+  "_README": "Curated laws for ds_contract, merged onto the primitive it names. Absence of an entry means nobody has written the law yet — NOT that anything is permitted. Keep this small: a rule here is a rule an agent will follow, and a stale one is worse than none. Every entry cites where the decision was taken.",
+
+  "Button": {
+    "useWhen": "any button, CTA, action, submit, confirm, cancel, toolbar action, chrome action, icon button",
+    "doNot": "Do not hand-roll a <button>, and do not reach for @/components/ui/button on a new surface. This is the canonical Button (9 named variants, including the semantic `execute` and `success` intents) and it is what ~34 call sites import. Solid CTAs render flush: cornerClass('flush'), not a rounded-* literal.",
+    "law": "docs/roadmap/MASTER.md · docs/roadmap/LOOP_PROMPT.md · docs/operations-studio/Full Code Base Upgrade/03-DESIGN-LANGUAGE-2026.md — 'canonical Button ... never hand-roll'"
+  },
+
+  "button": {
+    "useWhen": "shadcn lineage base, existing shadcn-derived composite",
+    "doNot": "Not the house Button. This is the shadcn/new-york base (cva) that shadcn-derived composites were generated against, and it survives only inside them. New surfaces take `Button` from @/design-system/primitives/Button. Two Buttons in the catalogue is a migration in progress, not a choice offered to you.",
+    "law": "docs/design-system/2026-component-adoption-plan.md — consolidation target is the design-system primitive"
+  },
+
+  "OmnichannelComposerDock": {
+    "useWhen": "composer, text entry, prompt, message input, note, comment, ask the assistant, filter a queue",
+    "doNot": "Do not mount a second composer. Every text-entry job on every surface — notes, comments, questions, messages, queue filtering — enters through THIS composer; a tile or panel gets a display-only readout, never a mouth of its own. Its soft corner (COMPOSER_SHELL_CORNER, rounded-2xl) is a named exemption from the flush-square ops law and is not a licence to round anything else.",
+    "law": "Operator 2026-08-24: one composer, ever. Soft corner is COMPOSER_SHELL_CORNER only."
+  },
+
+  "StationComposerHost": {
+    "useWhen": "station composer, unbox composer, ticket composer, scan-station input, plus-button dock",
+    "doNot": "Do not invent a second station dock. Modes are Unbox and Ticket only, horizontal under the outline, not a dropdown. Plus is circular (composer shell radius). Do not square it. Do not add Notes or Location as modes — Location is an action inside the outline.",
+    "law": "StationComposerHost file header. Operator 2026-08-30: unbox + ticket, one row, rounded plus."
+  },
+
+  "Badge": {
+    "useWhen": "status chip, count chip, tag, pill label on a row",
+    "doNot": "Do not hand-roll a rounded-full span with a hex background. This is the chip. Glyph + text together — never colour alone.",
+    "law": "src/components/ui/badge.tsx — shadcn structure, house colour. The only Badge; there is no design-system/primitives/Badge."
+  },
+
+  "StatusBadge": {
+    "useWhen": "domain status on an entity (shipped, overdue, failed, hold) that already has a status string",
+    "doNot": "Do not use this for a generic chip. That is Badge. StatusBadge maps a status key through StatusText.",
+    "law": "src/design-system/components/StatusBadge.tsx"
+  },
+
+  "useOptimisticMutation": {
+    "useWhen": "edit, save, update, patch, rename, toggle, inline save, optimistic write, mutation after user edit, save a field",
+    "doNot": "Do not await the server before the UI changes. Do not call useMutation or useResourceMutation for an inline edit. Do not import toast from sonner. This hook paints the cache first, persists, and on failure rolls back and toast.error(why) via @/lib/toast (AppToaster, bottom-right). Creates / fire-and-forget with no cached row still use useResourceMutation.",
+    "law": "Operator 2026-08-30 — edits are optimistic; the paint is the feedback; failure is a bottom-right toast."
+  }
+}

@@ -105,6 +105,7 @@ scripts/.shipped-test-snapshot.json
 /lighthouse/
 /.next-perf/
 /.next-perf-si/
+/.next-perf-lh/
 
 # Desktop shell app-manifest deps (installed by `pnpm desktop:deps`)
 electron/node_modules/
@@ -122,7 +123,13 @@ vision/data/
 # ── Warehouse OS refactor (2026-08-21) ───────────────────────────────────────
 # The house-law corpus (rules, SoT manifest, design-law guards, Cursor tree)
 # was deleted on purpose. These paths must not silently return.
-.cursor/
+#
+# `.cursor/mcp.json` is the one carve-out (2026-08-30): it is MCP *wiring*, not
+# house law, and Cursor reads only from `.cursor/`. Tracking it is what lets
+# `.mcp.json` be a symlink to it — one file, both clients. A rules tree under
+# `.cursor/` stays banned.
+.cursor/*
+!.cursor/mcp.json
 .claude/rules/
 .claude/agents/
 .claude/hooks/

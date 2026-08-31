@@ -1,0 +1,3 @@
+{
+  "description": "Local overrides. The Impeccable design detector (PostToolUse + Stop) was removed 2026-08-30: it was a competing design oracle that never mentioned ds_contract. Design authority is the design-mcp server."
+}
