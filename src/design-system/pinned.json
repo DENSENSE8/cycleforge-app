@@ -37,6 +37,12 @@
     "law": "src/design-system/components/StatusBadge.tsx"
   },
 
+  "TriageScrollLayout": {
+    "useWhen": "triage form, scroll sections, dense update, Grok navigation, forms exceeding 100vh, quick-jump navigation, Catalog Pairing, Order Details, Release, exception editor, warehouse form with multiple operational sections",
+    "doNot": "Do not stack full-bleed squared sections in one overflowing column. Do not invent a second jump rail. Do not square the right-pane cards with rounded-none or a raw rounded-* / border-radius integer. Right-pane panels use cornerClass('surface'). Scroll highlighting is IntersectionObserver on the overflow pane, not a click-only active class.",
+    "law": "Operator 2026-08-30 — Grok-style sticky left nav + scrolling section cards for dense warehouse triage forms."
+  },
+
   "useOptimisticMutation": {
     "useWhen": "edit, save, update, patch, rename, toggle, inline save, optimistic write, mutation after user edit, save a field",
     "doNot": "Do not await the server before the UI changes. Do not call useMutation or useResourceMutation for an inline edit. Do not import toast from sonner. This hook paints the cache first, persists, and on failure rolls back and toast.error(why) via @/lib/toast (AppToaster, bottom-right). Creates / fire-and-forget with no cached row still use useResourceMutation.",

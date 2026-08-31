@@ -80,14 +80,20 @@ export type CornerRole =
   | 'card'
   /** Glass worksheets / large canvas containers */
   | 'canvas'
+  /**
+   * Grok-style triage panels — TriageScrollLayout right-pane cards only.
+   * Off the industrial ladder on purpose: remapping `card` would re-round every
+   * ops surface. Agents retrieve `cornerClass('surface')`, never a raw `rounded-*`.
+   */
+  | 'surface'
   /** Pills, dots, avatars */
   | 'pill';
 
-// Zero-radius industrial: ops chrome is flush-square. Every non-`pill` role
-// renders `rounded-none` (Wave 0b/0c/0d/0e). `pill` is the ONE surviving radius
-// — status dots · avatars · Switch tracks. CORNER_PX below is deliberately
-// UNTOUCHED so `nestedCorner`'s concentric ROLE math is unchanged (only the
-// rendered CLASS flushed); concentric nesting is a no-op under zero-radius.
+// Zero-radius industrial: ops chrome is flush-square. Every LADDER role
+// (flush…canvas) renders `rounded-none` (Wave 0b/0c/0d/0e). Two roles sit off
+// that ladder: `pill` (dots · avatars · Switch) and `surface` (TriageScrollLayout
+// right-pane panels). COMPOSER_SHELL_CORNER is a named constant, not a role.
+// CORNER_PX is untouched for ladder math; `surface` is 12px to match `rounded-xl`.
 const CORNER_CLASS: Record<CornerRole, string> = {
   flush: 'rounded-none',
   chip: 'rounded-none',
@@ -96,6 +102,7 @@ const CORNER_CLASS: Record<CornerRole, string> = {
   field: 'rounded-none',
   card: 'rounded-none',
   canvas: 'rounded-none',
+  surface: 'rounded-xl',
   pill: 'rounded-full',
 };
 
@@ -108,10 +115,11 @@ const CORNER_PX: Record<CornerRole, number> = {
   field: 12,
   card: 16,
   canvas: 24,
+  surface: 12,
   pill: 9999,
 };
 
-/** Roles that participate in the size ladder, smallest first (`pill` excluded). */
+/** Roles that participate in the size ladder, smallest first (`pill` + `surface` excluded). */
 const CORNER_LADDER: CornerRole[] = ['flush', 'chip', 'row', 'control', 'field', 'card', 'canvas'];
 
 /** The `rounded-*` class for a role. `cn()`-ready. */
@@ -135,9 +143,9 @@ export function cornerClass(role: CornerRole): string {
  * shell family, and a call site that reaches for it is claiming membership in
  * that family — which is checkable in review, unlike `rounded-2xl`.
  *
- * Law: `.claude/rules/kinetic-ledger.md` — ops chrome is flush-square; the
- * composer dock and the kiosk counter face are the exemptions, and neither is
- * a licence to round anything else.
+ * Law: ops chrome is flush-square; the composer dock, the kiosk counter face,
+ * and `cornerClass('surface')` (TriageScrollLayout panels only) are the
+ * exemptions. None of them is a licence to round anything else.
  */
 export const COMPOSER_SHELL_CORNER = 'rounded-2xl';
 

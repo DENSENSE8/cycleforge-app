@@ -12,9 +12,10 @@
  *
  * ## Why this is not a change to `cornerClass()`
  *
- * `cornerClass` renders `rounded-none` for every non-`pill` role, app-wide
- * (Waves 0b–0e). Remapping a role there would silently re-round every ops
- * surface in the product and break `radius.test.ts`. This module is a **sibling
+ * `cornerClass` renders `rounded-none` for every industrial ladder role
+ * (flush…canvas). `pill` and `surface` sit off that ladder (`surface` is the
+ * triage-panel exemption). Remapping a ladder role there would silently re-round
+ * every ops surface in the product and break `radius.test.ts`. This module is a **sibling
  * scale over the same role vocabulary** — same colors, same type roles, same
  * motion, different geometry. It is scoped to `/kiosk/**` by convention and by
  * the guard test beside it; importing it into a desk surface is the fork.
@@ -52,6 +53,7 @@ const COUNTER_CORNER_CLASS: Record<CounterCornerRole, string> = {
   cta: 'rounded-2xl',
   card: 'rounded-2xl',
   canvas: 'rounded-3xl',
+  surface: 'rounded-xl',
   pill: 'rounded-full',
 };
 
@@ -65,6 +67,7 @@ const COUNTER_CORNER_PX: Record<CounterCornerRole, number> = {
   cta: 16,
   card: 16,
   canvas: 24,
+  surface: 12,
   pill: 9999,
 };
 
