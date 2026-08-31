@@ -8,7 +8,7 @@ and must have `ds_contract` / `ds_tokens` / `ds_critique` in its tool catalog.
 | Question | Wrong answer it reaches for | Tool |
 |---|---|---|
 | What already exists for this job? | writes a new primitive | `ds_contract` |
-| What values may I use? | `#1a1a1d`, `text-[13px]` | `ds_tokens` |
+| What values may I use on **one** axis? | `#1a1a1d`, `text-[13px]`, `axis: "all"` | `ds_tokens` (`axis` required) |
 | Why is this component bad? | rewrites it from scratch | `ds_critique` |
 
 ## The contract is derived, not written
@@ -21,19 +21,45 @@ serving it with authority.
 
 So `ds_contract` reports what the repo can **prove**: every primitive that
 exists, where it lives, its real variant options read out of source, and the
-interaction states it declares. Curated prose layers on top from
-`src/design-system/pinned.json` when that file exists. It is optional, starts
-absent, and grows one justified entry at a time.
+interaction states it declares. Curated prose layers on from
+`src/design-system/pinned.json`. An absent key means **nobody has written that
+law yet** — not that anything is permitted. Do not invent a second constitution.
 
-An absent `useWhen` means **nobody has written the law yet** — not that anything
-is permitted.
+`ds_tokens` requires `axis` (`color` · `radius` · `spacing` · `typography` ·
+`z-index` · `elevation` · `border` · `focus`). There is no dump. The same slices
+are also MCP resources at `design://tokens/<axis>` — browse those; pass `filter`
+on the tool when you already know the name. After changing a token file, run
+smoke and the axis unit test, then `code-graph` `find_symbol` + `impact_analysis`
+on the role function (`cornerClass`, `elevationClass`, `focusRing`).
 
-## Two primitive homes
+## Primitive homes
 
-`src/design-system/primitives` (36 `.tsx`) and `src/components/ui` (16) both hold
-primitives — there are two Buttons. That duplication is a real open question and
-this server does **not** resolve it: it reports both, labelled, so an agent sees
-the choice instead of picking whichever it grepped first.
+`src/design-system/primitives` is ops chrome (the CTA Button). `src/components/ui`
+holds two kinds of file, labelled separately:
+
+- **shadcn primitive (new-york, house tokens)** — twelve files (`button`, `input`,
+  `label`, `checkbox`, `badge`, `alert`, `skeleton`, `separator`, `dialog`,
+  `command`, `popover`, `calendar`). New composed / 21st.dev work starts here.
+- **ui composite (house)** — CopyChip, FilterMenu, and the rest.
+
+Two Buttons is two jobs, not a choice: ops CTA → design-system `Button`;
+shadcn-lane chrome → `@/components/ui/button`. Pin keys are **filename ids**
+(`badge`, not `Badge`) or they never merge.
+
+Four homes sit outside those two because the thing an agent needs to find lives
+there: `src/components/tables` (the one table engine), `src/lib/tables` (its slot
+kernel, three files), `src/components/composer`, `src/components/desk` — the
+`DeskPageLayout` a page mounts to wear the desk frame — and `src/components/labels`
+(the print-faithful 2×1" sticker + slot overlay; matched files only, the walk
+is still non-recursive). The frame itself
+(`DeskPageChrome`) is catalogued from `src/design-system/components`; its adapter
+cannot live there because it reads `SIDEBAR_PAGE_NAV` and `AuthContext`, and the
+system must not import the app's spine.
+
+**The walk is a non-recursive `readdirSync` per home.** A component in a
+subdirectory is never catalogued, so it is law no agent can reach — which is why
+the desk chrome is flat in `components/` rather than in a `desk/` folder. If you
+add a nested primitive, either flatten it or the walk has to change.
 
 ## No ds_adjudicate, deliberately
 
@@ -48,10 +74,14 @@ Everything `ds_critique` reports is heuristic text matching, not AST proof.
 ## Verify
 
 ```bash
-node tools/design-mcp/smoke.mjs   # 11 assertions over real stdio JSON-RPC
+node tools/design-mcp/smoke.mjs   # stdio JSON-RPC: axes, resources, critique per-axis fixes
 ```
 
-The variant extractor has been wrong twice and both cases are pinned as exact
-counts: it once anchored on the `BUTTON_VARIANTS` **import** rather than its
-declaration (reporting the flagship primitive as having zero variants), and it
-once understood only the cva shape, missing flat maps entirely.
+The variant extractor has been wrong twice: it once anchored on the
+`BUTTON_VARIANTS` **import** rather than its declaration, and it once understood
+only the cva shape. Smoke asserts **named** variants (`primary`/`ghost`/`danger`),
+not a frozen count of 9.
+
+`ds_critique` names the `ds_tokens` axis on each literal (not a generic
+`var(--token)`). Plant `tools/design-mcp/fixtures/token-literal-violation.tsx`
+if that ever regresses.

@@ -19,6 +19,7 @@ import {
 import { uploadClaimPhotosToHelpdesk } from '@/lib/receiving-claim-attach';
 import { listAllReceivingPhotoIds } from '@/lib/photos/queries/receiving-list';
 import { createSharePack } from '@/lib/photos/share-packs';
+import { buildClaimSharePack, claimOpeningBody } from './claim-share-pack';
 import { linkPhoto } from '@/lib/photos/service';
 import { buildExternalId, linkTicket } from '@/lib/zendesk-links';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
@@ -215,6 +216,20 @@ export async function fileReceivingClaim(
     ? input.attachPhotoIds.map(Number).filter((n) => Number.isFinite(n) && n > 0)
     : [];
 
+  // Built BEFORE the ticket so its link can ride in the OPENING comment —
+  // Zendesk cannot edit a comment after the fact. Backfilled with the ticket id
+  // below. See {@link buildClaimSharePack} / {@link claimOpeningBody}.
+  const sharePack = await buildClaimSharePack({
+    orgId: input.orgId,
+    staffId: input.staffId,
+    receivingId,
+    photoIds: ids,
+    origin: input.sharePackOrigin,
+    createPack: deps.createSharePack,
+    listPhotos: deps.listPhotoIds,
+  });
+  const openingBody = claimOpeningBody(description, sharePack?.shareUrl ?? null);
+
   let uploads: string[] = [];
   try {
     uploads = await deps.uploadPhotos({
@@ -234,8 +249,8 @@ export async function fileReceivingClaim(
       {
         subject,
         comment: {
-          body: description,
-          html_body: claimBodyToHtml(description),
+          body: openingBody,
+          html_body: claimBodyToHtml(openingBody),
           public: notePublic,
           uploads: uploads.length ? uploads : undefined,
         },
@@ -367,50 +382,28 @@ export async function fileReceivingClaim(
     }
   }
 
-  let sharePackUrl: string | null = null;
-  if (input.sharePackOrigin && input.staffId != null) {
+  // The pack already shipped in the opening comment — all that is left is to
+  // tie it, and its photos, to the ticket that now has an id. No second comment.
+  const sharePackUrl: string | null = sharePack?.shareUrl ?? null;
+  if (sharePack) {
     try {
-      const sharePhotoIds =
-        ids.length > 0
-          ? ids
-          : await deps.listPhotoIds(input.orgId, receivingId);
-
-      if (sharePhotoIds.length > 0) {
-        const pack = await deps.createSharePack(
-          {
-            organizationId: input.orgId,
-            staffId: input.staffId,
-            photoIds: sharePhotoIds,
-            title: `Claim ${ticketNumber}`,
-            packType: 'claim',
-            receivingId,
-            zendeskTicketId: ticket.id,
-            filenamePrefix: `Claim_${ticket.id}`,
-          },
-          input.sharePackOrigin,
-        );
-        sharePackUrl = pack.shareUrl;
-        for (const photoId of sharePhotoIds) {
-          await deps.linkPhoto({
-            organizationId: input.orgId,
-            photoId,
-            entityType: 'ZENDESK_TICKET',
-            entityId: ticket.id,
-            linkRole: 'claim_evidence',
-          });
-        }
-        try {
-          await helpdesk.addComment(ticket.id, {
-            body: `Photo share pack: ${sharePackUrl}`,
-            html_body: `<p>Photo share pack: <a href="${sharePackUrl}">${sharePackUrl}</a></p>`,
-            public: false,
-          });
-        } catch (commentErr) {
-          console.warn('[fileReceivingClaim] share pack comment failed', commentErr);
-        }
+      await deps.query(
+        input.orgId,
+        `UPDATE photo_share_packs SET zendesk_ticket_id = $1
+          WHERE id = $2 AND organization_id = $3`,
+        [ticket.id, sharePack.packId, input.orgId],
+      );
+      for (const photoId of sharePack.photoIds) {
+        await deps.linkPhoto({
+          organizationId: input.orgId,
+          photoId,
+          entityType: 'ZENDESK_TICKET',
+          entityId: ticket.id,
+          linkRole: 'claim_evidence',
+        });
       }
     } catch (shareErr) {
-      console.warn('[fileReceivingClaim] share pack failed', shareErr);
+      console.warn('[fileReceivingClaim] share pack backfill failed', shareErr);
     }
   }
 

@@ -22,11 +22,13 @@
  * from the MOUNTED columns now, which every family already passes.
  */
 
+import { useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
   Check,
   ChevronRight,
+  FileText,
   MoreHorizontal,
   Package,
   PackageSearch,
@@ -38,6 +40,7 @@ import { StaffAvatar } from '@/components/identity';
 import { BrandIdentityDot, GridCellDash } from '@/components/ui/grid-cells';
 import { GridClickSelectFace, GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { CopyChip, getLast8 } from '@/components/ui/CopyChip';
 import { OrderNumberMenuChip } from '@/components/ui/OrderNumberMenuChip';
 import { TrackingNumberMenuChip } from '@/components/ui/TrackingNumberMenuChip';
 import { carrierBrandDotPaint, resolveCarrierBrand } from '@/lib/carrier-brand';
@@ -62,6 +65,8 @@ import {
   type CompoundStateTone,
   type CompoundSubtitlePart,
   type CompoundSubtitleSelect,
+  type CompoundSubtitleEdit,
+  type CompoundSubtitleCopy,
 } from './compound-row-model';
 
 /**
@@ -201,13 +206,278 @@ export function CompoundSelect({
  * and opens on click only — same law as the ⋮ actions button and the old
  * note-editor trigger before it.
  */
+/**
+ * A subtitle part being retyped.
+ *
+ * Opens on click, commits on Enter or blur, abandons on Escape — the shape an
+ * operator already knows from a spreadsheet, and the reason this is a bare
+ * input rather than the DS `InlineEditableValue` (which is a controlled
+ * per-keystroke component with no consumers, so adopting it here would mean
+ * owning its state anyway plus a second editing grammar on one line).
+ *
+ * It writes only on a real change. An editor that opens and closes untouched
+ * firing a mutation is how a queue gets audit rows nobody caused.
+ */
+function CompoundSubtitleTextEditor({
+  part,
+  edit,
+  face,
+}: {
+  part: CompoundSubtitlePart;
+  edit: CompoundSubtitleEdit;
+  face: ReactNode;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(edit.value);
+
+  const open = () => {
+    setDraft(edit.value);
+    setEditing(true);
+  };
+
+  const commit = () => {
+    setEditing(false);
+    const next = draft.trim();
+    if (next === edit.value.trim()) return;
+    edit.onCommit(next.length > 0 ? next : null);
+  };
+
+  if (editing) {
+    return (
+      <input
+        autoFocus
+        value={draft}
+        inputMode={edit.kind === 'numeric' ? 'numeric' : undefined}
+        placeholder={edit.placeholder}
+        aria-label={edit.label}
+        onChange={(event) => setDraft(event.target.value)}
+        onClick={(event) => event.stopPropagation()}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          event.stopPropagation();
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            commit();
+          } else if (event.key === 'Escape') {
+            event.preventDefault();
+            setEditing(false);
+          }
+        }}
+        className={cn(
+          'w-[7ch] min-w-0 rounded-sm border border-border-default bg-surface-card px-1',
+          'text-role-micro text-text-default',
+          focusRing('control'),
+        )}
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      tabIndex={-1}
+      aria-label={`Edit ${edit.label.toLowerCase()}: ${part.text}`}
+      onClick={(event) => {
+        event.stopPropagation();
+        open();
+      }}
+      className={cn(
+        'ds-raw-button inline-flex min-w-0 items-center text-left',
+        'hover:underline decoration-dotted underline-offset-2',
+        focusRing('control'),
+      )}
+    >
+      {face}
+    </button>
+  );
+}
+
+/**
+ * A subtitle part painted as a copy chip.
+ *
+ * Click copies — that is the frequent verb for an identifier an operator is
+ * retyping into a marketplace or a shelf lookup. When the same fact is also
+ * editable the edit rides in the chip's menu rather than competing for the
+ * click, so a single gesture never has to mean two things.
+ */
+/**
+ * A subtitle part painted as a copy chip — COPY ONLY, one click.
+ *
+ * No menu, no inline editor. An identifier an operator is transcribing wants
+ * exactly one verb under the pointer, and a chip that might copy or might open
+ * a menu makes them aim. Editing an item number is a record-plane job (click
+ * the row), not something a list cell should offer mid-scan.
+ */
+function CompoundSubtitleCopyChip({
+  copy,
+}: {
+  copy: CompoundSubtitleCopy;
+}) {
+  /*
+   * The HOUSE chip, not a subtitle-local one. `CopyChip` already owns the copy
+   * behaviour every identifier on this desk has — click to copy, tooltip with
+   * the full value, ⌘C, right-click, clipboard history — and `last8` is the
+   * same truncation the order and tracking chips use.
+   *
+   * `icon={null}`: the `sku` tone's pencil is the same 12px glyph the order and
+   * tracking chips carry, but those sit on their own line while this one shares
+   * a line with three short facts — at that scale the glyph read as the biggest
+   * mark on the row and said nothing the mono face did not. The value is the
+   * affordance.
+   *
+   * NO text override: order id, tracking and this must be one size, because
+   * they are one KIND of thing (an identifier you copy) and a size difference
+   * between them reads as a difference in importance. That size is `chipText`,
+   * the dense face every identity chip in the product already uses.
+   *
+   * Inside `[data-cf-grid]` the chip zeroes its own padding, so no `outerPad`.
+   */
+  return (
+    <span onClick={(event) => event.stopPropagation()}>
+      <CopyChip
+        value={copy.value}
+        display={getLast8(copy.value)}
+        tone="sku"
+        icon={null}
+        displayWidth="last8"
+        dense
+      />
+    </span>
+  );
+}
+
+/**
+ * The NOTE, as a glyph that never changes the line's size.
+ *
+ * A note is prose of unbounded length sharing a line with three short facts, so
+ * printing it inline made the subtitle's width a function of how much somebody
+ * typed — the line grew, the facts beside it shifted, and a long note pushed
+ * everything else out of the row. It rides as a fixed glyph at the END of the
+ * line instead: same width whether the note is empty, three words, or three
+ * sentences, and the operator reads it on demand.
+ *
+ * Editing opens over the row rather than inside the line, for the same reason:
+ * an in-line input would have to be either too small to type in or wide enough
+ * to reflow the facts next to it. The glyph itself never resizes and carries no
+ * box — filled when there is a note, faint when there is not.
+ */
+function CompoundSubtitleNote({
+  text,
+  edit,
+}: {
+  text: string;
+  edit?: CompoundSubtitleEdit;
+}) {
+  const [open, setOpen] = useState(false);
+  const [draft, setDraft] = useState(text);
+  const has = text.trim().length > 0;
+
+  const glyph = (
+    <FileText
+      className={cn('h-3 w-3 shrink-0', has ? 'text-text-muted' : 'text-text-faint')}
+      aria-hidden
+    />
+  );
+
+  if (!edit) {
+    return has ? (
+      <HoverTooltip label={text} asChild>
+        <span className="inline-flex shrink-0 items-center">{glyph}</span>
+      </HoverTooltip>
+    ) : (
+      <span className="inline-flex shrink-0 items-center">{glyph}</span>
+    );
+  }
+
+  const commit = () => {
+    setOpen(false);
+    const next = draft.trim();
+    if (next === text.trim()) return;
+    edit.onCommit(next.length > 0 ? next : null);
+  };
+
+  return (
+    <DropdownMenu
+      open={open}
+      onOpenChange={(next) => {
+        if (next) setDraft(text);
+        else commit();
+        setOpen(next);
+      }}
+    >
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          tabIndex={-1}
+          aria-label={has ? `Edit note: ${text}` : 'Add a note'}
+          title={has ? text : 'Add a note'}
+          onClick={(event) => event.stopPropagation()}
+          className={cn(
+            'ds-raw-button inline-flex shrink-0 items-center',
+            focusRing('control'),
+          )}
+        >
+          {glyph}
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="end"
+        className="w-64 p-1"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <textarea
+          autoFocus
+          rows={3}
+          value={draft}
+          aria-label={edit.label}
+          placeholder="Add a note…"
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={(event) => {
+            event.stopPropagation();
+            if (event.key === 'Enter' && !event.shiftKey) {
+              event.preventDefault();
+              setOpen(false);
+            } else if (event.key === 'Escape') {
+              event.preventDefault();
+              setDraft(text);
+              setOpen(false);
+            }
+          }}
+          className={cn(
+            'w-full resize-none bg-transparent px-1 py-0.5 text-role-caption text-text-default',
+            'outline-none',
+          )}
+        />
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 export function CompoundItem({
   view,
   subtitleSelects,
+  subtitleEdits,
+  subtitleCopies,
+  subtitleNoteKey,
+  noteText,
+  onReorderSubtitle,
 }: {
   view: CompoundRowView;
   /** Present ⇒ the parts these claim (by key) edit in place. */
   subtitleSelects?: readonly CompoundSubtitleSelect[];
+  /** Present ⇒ the parts these claim retype in place (free text / number). */
+  subtitleEdits?: readonly CompoundSubtitleEdit[];
+  /** Present ⇒ the parts these claim paint as a copy chip. */
+  subtitleCopies?: readonly CompoundSubtitleCopy[];
+  /** Part key of the NOTE fact — pinned right as a glyph instead of inline. */
+  subtitleNoteKey?: string;
+  /** The note's full text (the part's face may be truncated or a placeholder). */
+  noteText?: string | null;
+  /**
+   * Present ⇒ the inline facts can be dragged into a new order. Receives the
+   * dragged part key and the index it was dropped at, within the inline list.
+   */
+  onReorderSubtitle?: (partKey: string, toIndex: number) => void;
 }) {
   // Bound subtitles (an explicit org/staff layout choice) REPLACE the note
   // line: parts in binding order, ` · ` separated, each carrying the tone its
@@ -217,13 +487,87 @@ export function CompoundItem({
   const selectFor = (part: CompoundSubtitlePart): CompoundSubtitleSelect | undefined =>
     part.key ? subtitleSelects?.find((s) => s.partKey === part.key) : undefined;
 
+  const editFor = (part: CompoundSubtitlePart): CompoundSubtitleEdit | undefined =>
+    part.key ? subtitleEdits?.find((e) => e.partKey === part.key) : undefined;
+  const copyFor = (part: CompoundSubtitlePart): CompoundSubtitleCopy | undefined =>
+    part.key ? subtitleCopies?.find((c) => c.partKey === part.key) : undefined;
+
+  /*
+   * Inline reorder of the under-title facts.
+   *
+   * Native HTML5 drag rather than dnd-kit: the list is three or four inline
+   * spans inside one grid cell that is already inside a virtualized row, and a
+   * DndContext per row would mount a sensor tree 200 times over. `draggable`
+   * costs one attribute and two handlers, and the drop writes through the same
+   * `reorderFieldBinding` the arrows used to.
+   *
+   * `stopPropagation` on drag start keeps the row's own click/select from
+   * firing, and the drop index is the position within the INLINE list, which is
+   * the order the operator is looking at.
+   */
+  const [dragKey, setDragKey] = useState<string | null>(null);
+
   const renderPart = (part: CompoundSubtitlePart, i: number) => {
     const select = selectFor(part);
-    const face = <span className={part.toneClass}>{part.text}</span>;
+    const edit = editFor(part);
+    const copy = copyFor(part);
+    const face = (
+      <span
+        className={cn(part.toneClass, part.widthCh != null && 'inline-block text-left tabular-nums')}
+        style={part.widthCh != null ? { width: `${part.widthCh}ch` } : undefined}
+      >
+        {part.text}
+      </span>
+    );
+    const draggable = Boolean(onReorderSubtitle && part.key);
     return (
-      <span key={part.key ?? i}>
-        {i > 0 ? <span className="text-text-faint">{' · '}</span> : null}
-        {select ? (
+      <span
+        key={part.key ?? i}
+        draggable={draggable || undefined}
+        data-subtitle-part={part.key}
+        onDragStart={
+          draggable
+            ? (event) => {
+                event.stopPropagation();
+                event.dataTransfer.effectAllowed = 'move';
+                // Firefox refuses to start a drag with no payload.
+                event.dataTransfer.setData('text/plain', part.key ?? '');
+                setDragKey(part.key ?? null);
+              }
+            : undefined
+        }
+        onDragEnd={draggable ? () => setDragKey(null) : undefined}
+        onDragOver={
+          draggable && dragKey && dragKey !== part.key
+            ? (event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'move';
+              }
+            : undefined
+        }
+        onDrop={
+          draggable && dragKey
+            ? (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                const moved = dragKey;
+                setDragKey(null);
+                if (moved && moved !== part.key) onReorderSubtitle?.(moved, i);
+              }
+            : undefined
+        }
+        className={cn(
+          'inline-flex min-w-0 items-center',
+          draggable && 'cursor-grab',
+          dragKey === part.key && 'opacity-50',
+        )}
+      >
+        {i > 0 ? <span className="shrink-0 px-1 text-text-faint">·</span> : null}
+        {copy ? (
+          <CompoundSubtitleCopyChip copy={copy} />
+        ) : edit ? (
+          <CompoundSubtitleTextEditor part={part} edit={edit} face={face} />
+        ) : select ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
@@ -276,9 +620,44 @@ export function CompoundItem({
     );
   };
 
+  /*
+   * The note leaves the inline flow and pins to the RIGHT of the line.
+   *
+   * It is the one bound fact with no bounded width, so in binding order it
+   * decided where every fact after it started. As a trailing glyph the facts
+   * keep fixed positions an operator can scan straight down, and the note is
+   * still one click away. Its binding still controls WHETHER it appears — only
+   * its position is fixed.
+   */
+  const noteKey = subtitleNoteKey;
+  const inlineParts = parts?.filter((p) => p.key !== noteKey);
+  const notePart = noteKey ? parts?.find((p) => p.key === noteKey) : undefined;
+  const noteEdit = noteKey ? subtitleEdits?.find((e) => e.partKey === noteKey) : undefined;
+  const noteGlyph = notePart ? (
+    <CompoundSubtitleNote text={noteText ?? ''} edit={noteEdit} />
+  ) : null;
+
+  /*
+   * ONE row, everything on the same centre line.
+   *
+   * The facts, the chip and the note glyph are laid out as a single flex row
+   * with `items-center` rather than as inline text: a `CopyChip` is a bordered
+   * inline-flex box, and in a text flow it sits on the TEXT BASELINE, which
+   * left the chip riding visibly high against the digits either side of it.
+   * Centring the row lines the chip's box, the plain values and the glyph on
+   * one axis.
+   *
+   * `whitespace-nowrap` + `shrink-0` on the trailing glyph keep it to a single
+   * row — the facts truncate before the note is ever pushed to a second line.
+   */
   const noteLine = parts ? (
-    parts.length > 0 ? (
-      <CompoundLine>{parts.map(renderPart)}</CompoundLine>
+    inlineParts && (inlineParts.length > 0 || noteGlyph) ? (
+      <span className="flex min-w-0 items-center gap-1 whitespace-nowrap">
+        <span className="flex min-w-0 items-center truncate">
+          {inlineParts.map(renderPart)}
+        </span>
+        {noteGlyph ? <span className="ml-auto flex shrink-0 items-center">{noteGlyph}</span> : null}
+      </span>
     ) : null
   ) : view.note ? (
     <HoverTooltip label={view.note} asChild>
@@ -528,8 +907,11 @@ export function CompoundStageStep({
           alt={facts?.who ?? undefined}
         />
       ) : (
-        // Unclaimed: same 28px slot as the `sm` mark, dashed — "no owner yet",
-        // and the text column starts at the same x on every row.
+        // Unclaimed still shows the MARK (operator ruling 2026-08-31): the
+        // status band reads as one column of owners, and a step that dropped
+        // its circle when nobody had claimed it made the band ragged exactly
+        // where an operator scans for "who has this". Same 28px slot as the
+        // `sm` avatar, dashed to say "no owner yet" rather than naming one.
         <span
           aria-hidden
           className="h-7 w-7 shrink-0 rounded-full border border-dashed border-border-default"
@@ -688,8 +1070,11 @@ export function CompoundAmount({ view }: { view: CompoundRowView }) {
  * a family has, and keeps "Open" as its first item so nothing regressed.
  *
  * `tabIndex={-1}`: the ROW is already the keyboard target, so a focusable
- * control on every row would double the tab stops in a 500-row grid. The menu
- * is reachable from the row's own context menu and from the record plane.
+ * control on every row would double the tab stops in a 500-row grid. The
+ * keyboard path is the row's, not this button's — a focused row opens this menu
+ * with Shift+F10 or the Menu key, and a right-click opens it too, both through
+ * `compound-row-actions.ts`. (That module exists because this docblock used to
+ * claim the context-menu path as a fact while no row in the product bound one.)
  *
  * Renders nothing when a family passes neither an open handler nor actions — an
  * affordance that looks clickable and does nothing is worse than an empty track.
@@ -724,6 +1109,10 @@ export function CompoundActions({
             // ink competing with the data. Opacity composites off the main
             // thread, so this costs no layout on a scrolling grid.
             'opacity-0 transition-opacity group-hover/row:opacity-100',
+            // Opened from the keyboard or a right-click, the pointer is nowhere
+            // near this row — without this the menu would appear anchored to an
+            // invisible trigger.
+            'data-[state=open]:opacity-100',
             'hover:text-text-default focus-visible:opacity-100',
             focusRing('control'),
           )}

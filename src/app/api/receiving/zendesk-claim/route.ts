@@ -14,6 +14,9 @@ import {
 import { poReceivingLink } from '@/lib/receiving-claim-photos';
 import { readIdempotencyKey, withIdempotentResponse } from '@/lib/api-idempotency';
 import { fileReceivingClaim } from '@/lib/receiving/file-receiving-claim';
+import { buildClaimSharePack, claimOpeningBody } from '@/lib/receiving/claim-share-pack';
+import { createSharePack } from '@/lib/photos/share-packs';
+import { listAllReceivingPhotoIds } from '@/lib/photos/queries/receiving-list';
 import pool from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
@@ -43,8 +46,10 @@ interface ClaimRequest {
    */
   notePublic?: boolean;
   /**
-   * Operator "Test create": assemble the ticket exactly as it would be filed,
-   * but create nothing — no Zendesk ticket, no NAS archive, no DB writes.
+   * Operator "Test create": assemble the ticket exactly as it would be filed
+   * and BUILD THE PHOTO SHARE PACK, but create no Zendesk ticket, run no NAS
+   * archive, and write nothing to the receiving record. The pack is real
+   * because it is what the dry run exists to verify.
    */
   dryRun?: boolean;
 }
@@ -90,19 +95,38 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const description = editedDescription || template.description;
 
     if (body.dryRun === true) {
-      const attachCount = Array.isArray(body.attachPhotoIds)
-        ? body.attachPhotoIds.map(Number).filter((n) => Number.isFinite(n) && n > 0).length
-        : 0;
+      const attachPhotoIds = Array.isArray(body.attachPhotoIds)
+        ? body.attachPhotoIds.map(Number).filter((n) => Number.isFinite(n) && n > 0)
+        : [];
       const ccEmails = notePublic && Array.isArray(body.ccEmails)
         ? body.ccEmails.filter((e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(e).trim())).length
         : 0;
+
+      // The share pack IS built — it is the thing under test, and a dry run
+      // that skipped it would prove nothing about the link the vendor gets.
+      // It is a read-only public view of photos that already exist; no Zendesk
+      // ticket, no NAS archive, no receiving writes happen on this path.
+      const sharePack = await buildClaimSharePack({
+        orgId: ctx.organizationId,
+        staffId: ctx.staffId,
+        receivingId,
+        photoIds: attachPhotoIds,
+        origin: req.nextUrl.origin,
+        createPack: createSharePack,
+        listPhotos: listAllReceivingPhotoIds,
+      });
+
       return NextResponse.json({
         success: true,
         dryRun: true,
         ticketNumber: '#TEST',
         subject,
-        description,
-        attachCount,
+        // Exactly the body the real filer would open the ticket with — pack
+        // link folded in, one message.
+        description: claimOpeningBody(description, sharePack?.shareUrl ?? null),
+        sharePackUrl: sharePack?.shareUrl ?? null,
+        sharePackPhotoCount: sharePack?.photoIds.length ?? 0,
+        attachCount: attachPhotoIds.length,
         notePublic,
         ccCount: ccEmails,
       });

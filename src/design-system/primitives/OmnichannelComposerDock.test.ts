@@ -10,6 +10,7 @@ import {
   handleComposerKeyDown,
   resizeComposerTextarea,
   composerShowsCommit,
+  composerDockShellCorner,
 } from './OmnichannelComposerDock';
 
 test('handleComposerKeyDown: Enter commits; Shift+Enter does not', () => {
@@ -50,6 +51,14 @@ test('handleComposerKeyDown: Enter commits; Shift+Enter does not', () => {
     false,
   );
   assert.equal(commits, 1);
+});
+
+test('composerDockShellCorner: floor stays COMPOSER_SHELL_CORNER', () => {
+  assert.equal(composerDockShellCorner({}), 'rounded-2xl');
+  assert.equal(
+    composerDockShellCorner({ weldTop: true }),
+    'rounded-2xl rounded-t-none',
+  );
 });
 
 test('composerShowsCommit: a trailingAction replaces the Send button', () => {

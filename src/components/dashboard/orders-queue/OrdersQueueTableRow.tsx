@@ -3,12 +3,18 @@
 import { gridDataCellClass } from '@/design-system/components/grid';
 import { isCompoundColumnModel } from '@/components/tables/compound/compound-columns';
 import { renderCompoundGridCell } from '@/components/tables/compound/CompoundGridCell';
+import type { CompoundRowAction } from '@/components/tables/compound/compound-row-model';
+import { copyToClipboard } from '@/utils/_dom';
+import {
+  rowActionsContextMenu,
+  rowActionsKeyDown,
+} from '@/components/tables/compound/compound-row-actions';
 import { ordersCompoundView } from '@/lib/orders/orders-compound-view';
 import {
   ordersSlotValues,
   ordersSubtitleParts,
 } from '@/lib/tables/field-catalog/orders-resolve';
-import { Fragment, memo, useCallback, useRef, type ReactNode } from 'react';
+import { Fragment, memo, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { motion } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
@@ -57,7 +63,11 @@ import {
   isEmptyMetaDash,
   resolveConditionGrade,
 } from '@/lib/conditions';
-import type { CompoundSubtitleSelect } from '@/components/tables/compound/compound-row-model';
+import type {
+  CompoundSubtitleSelect,
+  CompoundSubtitleEdit,
+  CompoundSubtitleCopy,
+} from '@/components/tables/compound/compound-row-model';
 import {
   formatQueueRowDateCell,
   formatSalePrice,
@@ -187,6 +197,24 @@ export interface OrdersQueueTableRowProps {
    * the host's `useOrderAssignment`, never a lifecycle transition.
    */
   onCommitCondition?: (record: ShippedOrder, condition: string | null) => void;
+  /**
+   * Retype a subtitle fact in place — qty, item number, note.
+   *
+   * One handler keyed by catalog field id rather than three props: the bound
+   * subtitle line is a LAYOUT choice, so which facts appear there changes per
+   * org, and a prop per fact would need a new prop each time somebody binds a
+   * different one.
+   */
+  onCommitSubtitleField?: (
+    record: ShippedOrder,
+    fieldId: string,
+    value: string | null,
+  ) => void;
+  /**
+   * Reorder the under-title facts by dragging one. Writes the ORG layout, so
+   * it is handed down from the layout hook rather than owned per row.
+   */
+  onReorderSubtitle?: (partKey: string, toIndex: number) => void;
 }
 
 /** In-cell editors this row can host (one open at a time).
@@ -287,6 +315,7 @@ interface OrdersQueueRowShellProps {
   onClick: React.MouseEventHandler<HTMLDivElement>;
   onDoubleClick: React.MouseEventHandler<HTMLDivElement>;
   onMouseDown: React.MouseEventHandler<HTMLDivElement>;
+  onContextMenu: React.MouseEventHandler<HTMLDivElement>;
   onKeyDown: React.KeyboardEventHandler<HTMLDivElement>;
   children: ReactNode;
 }
@@ -904,6 +933,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   onRowOpen,
   onRequestReplaceTracking,
   onCommitCondition,
+  onCommitSubtitleField,
+  onReorderSubtitle,
 }: OrdersQueueTableRowProps) {
   /**
    * WHICH COLUMN MODEL is mounted — this row's one layout discriminant.
@@ -990,6 +1021,53 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         ]
       : undefined;
 
+  /*
+   * The rest of the under-title line, editable in place (operator ruling
+   * 2026-08-31): everything down there is a fact the desk owns, so everything
+   * down there can be retyped — EXCEPT the order number, the tracking number
+   * and the lifecycle statuses. Those three are identity and history: an order
+   * number is what the marketplace calls this row, a tracking number is what
+   * the carrier calls the parcel, and a status is a record of something that
+   * already happened. A queue may not rewrite any of them from a list view.
+   */
+  const editableSubtitle = Boolean(compoundLayout && onCommitSubtitleField);
+  const subtitleEdits: readonly CompoundSubtitleEdit[] | undefined =
+    editableSubtitle && onCommitSubtitleField
+      ? [
+          ...(subtitleFieldIds?.includes('orders.qty')
+            ? [{
+                partKey: 'orders.qty',
+                label: 'Quantity',
+                value: String(record.quantity ?? ''),
+                kind: 'numeric' as const,
+                onCommit: (value: string | null) =>
+                  onCommitSubtitleField(record, 'orders.qty', value),
+              }]
+            : []),
+          // Item number is COPY-ONLY in the list (operator ruling 2026-08-31).
+          // Editing it is a record-plane job — a chip that might copy or might
+          // open an editor makes the operator aim before a one-click verb.
+          ...(subtitleFieldIds?.includes('orders.notes')
+            ? [{
+                partKey: 'orders.notes',
+                label: 'Note',
+                value: String(record.notes ?? ''),
+                onCommit: (value: string | null) =>
+                  onCommitSubtitleField(record, 'orders.notes', value),
+              }]
+            : []),
+        ]
+      : undefined;
+
+  // The item number paints as a copy chip — it is the number an operator reads
+  // off a shelf label and retypes elsewhere, so the click is COPY and the edit
+  // rides in its menu.
+  const itemNumberValue = String(record.item_number ?? '').trim();
+  const subtitleCopies: readonly CompoundSubtitleCopy[] | undefined =
+    compoundLayout && itemNumberValue && subtitleFieldIds?.includes('orders.item_number')
+      ? [{ partKey: 'orders.item_number', value: itemNumberValue }]
+      : undefined;
+
   // One adapter call per row — the compound cells all read this. Built here
   // (not per cell) so a five-column row maps once, and from the SAME resolved
   // display strings the flat layout uses rather than re-deriving them.
@@ -1014,7 +1092,11 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                 testerDisplay,
                 packerDisplay,
                 // A blank editable condition keeps a faint `--` click target.
-                ...(conditionEditable ? { editableFieldIds: ['orders.condition'] } : null),
+                // Blank editable facts keep a faint `--` click target.
+                editableFieldIds: [
+                  ...(conditionEditable ? ['orders.condition'] : []),
+                  ...(subtitleEdits ? subtitleEdits.map((e) => e.partKey) : []),
+                ],
               })
             : undefined,
         flagMark: rowFlag
@@ -1033,6 +1115,47 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     : null;
 
   const inTable = rowIndex != null;
+
+  /*
+   * The row's ⋮ verbs.
+   *
+   * The menu used to hold "Open" alone — a duplicate of clicking the row, in a
+   * permanent 2.5rem track. Now that the row opens the menu from the keyboard
+   * and from a right-click, the track had to be worth reaching: these are the
+   * two identifiers an operator retypes into a marketplace or a carrier site,
+   * and until now they were only obtainable by hovering the exact chip that
+   * carries them. Reads, not writes — a row menu is not where a queue should
+   * offer to mutate an order it is not showing the consequences of.
+   */
+  const orderNumber = String(record.order_id || '').trim();
+  const trackingNumber = String(
+    record.shipping_tracking_number || record.tracking_number || '',
+  ).trim();
+  const rowMenuActions = useMemo(() => {
+    const items: CompoundRowAction[] = [];
+    if (orderNumber) {
+      items.push({
+        key: 'copy-order',
+        label: 'Copy order number',
+        onSelect: () => {
+          void copyToClipboard(orderNumber, { historyKind: 'order', historyDisplay: orderNumber });
+        },
+      });
+    }
+    if (trackingNumber) {
+      items.push({
+        key: 'copy-tracking',
+        label: 'Copy tracking number',
+        onSelect: () => {
+          void copyToClipboard(trackingNumber, {
+            historyKind: 'tracking',
+            historyDisplay: trackingNumber,
+          });
+        },
+      });
+    }
+    return items;
+  }, [orderNumber, trackingNumber]);
 
   // ── The cells — one shell, two column models ─────────────────────────────
   // Fragments (no DOM) keep every cell a DIRECT grid child — the airtable
@@ -1057,7 +1180,13 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         rule,
         view: compoundView,
         subtitleSelects,
+        subtitleEdits,
+        subtitleCopies,
+        subtitleNoteKey: 'orders.notes',
+        noteText: record.notes ?? null,
+        onReorderSubtitle,
         onOpen: onRowOpen ? () => onRowOpen(record) : undefined,
+        actions: rowMenuActions,
         // Bulk membership. The mobile stacked row keeps its own leading slot.
         select: {
           checked: isChecked,
@@ -1112,7 +1241,14 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     onMouseDown: (event) => {
       if ((selectMode || clickSelect) && event.shiftKey) event.preventDefault();
     },
+    onContextMenu: (event) => {
+      rowActionsContextMenu(event);
+    },
     onKeyDown: (event) => {
+      // Shift+F10 / Menu key → the row's ⋮ verbs. Checked before the grid's own
+      // chords so the platform gesture is never shadowed; a row whose family
+      // passes no verbs falls straight through to them.
+      if (rowActionsKeyDown(event)) return;
       if (clickSelect) {
         if (event.key === ' ') {
           event.preventDefault();

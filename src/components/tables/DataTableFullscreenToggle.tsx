@@ -16,7 +16,7 @@
  */
 
 import { Maximize2, Minimize2 } from '@/components/Icons';
-import { useDeskStageOptional } from '@/components/desk/desk-stage-context';
+import { useDeskStageOptional } from '@/design-system/components/DeskStageContext';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';

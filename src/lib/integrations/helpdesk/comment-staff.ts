@@ -117,3 +117,50 @@ export async function staffAuthorsByEmail(
   }
   return out;
 }
+
+/**
+ * Staff by NAME — the sign-off fallback.
+ *
+ * An app-written internal note ends `— {staffName}` ({@link signComposerInternalNote}),
+ * so a comment carries its author even when no `helpdesk_comment_staff` row was
+ * recorded: the ticket predates the mapping table, or the post-time stamp
+ * failed (it is best-effort and swallowed). Without this the thread falls back
+ * to the Zendesk API user and every app note reads "Manager".
+ *
+ * A name is weaker evidence than a comment id or an email, so it is only ever
+ * consulted last, and an ambiguous name (two staffers called Kai) is DROPPED
+ * rather than guessed — attributing a claim note to the wrong person is worse
+ * than leaving it unattributed.
+ */
+export async function staffAuthorsByName(
+  orgId: OrgId,
+  names: string[],
+): Promise<Map<string, StaffAuthorHit>> {
+  const cleaned = [...new Set(names.map((n) => n.trim().toLowerCase()).filter(Boolean))];
+  const out = new Map<string, StaffAuthorHit>();
+  if (!cleaned.length) return out;
+  try {
+    const { rows } = await tenantQuery<{ id: number; name: string }>(
+      orgId,
+      `SELECT id, name
+         FROM staff
+        WHERE organization_id = $1
+          AND lower(trim(name)) = ANY($2::text[])`,
+      [orgId, cleaned],
+    );
+    const ambiguous = new Set<string>();
+    for (const row of rows) {
+      const key = row.name.trim().toLowerCase();
+      if (!key) continue;
+      if (out.has(key)) {
+        ambiguous.add(key);
+        continue;
+      }
+      out.set(key, { staffId: Number(row.id), name: row.name });
+    }
+    for (const key of ambiguous) out.delete(key);
+  } catch (err) {
+    console.warn('[helpdesk] staff name lookup failed', err);
+  }
+  return out;
+}

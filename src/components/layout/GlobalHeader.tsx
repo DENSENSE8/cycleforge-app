@@ -25,8 +25,8 @@ import { cn } from '@/utils/_cn';
  *   - **Nav** — toggle · Pins · Recents · page chip in one
  *     {@link HEADER_ICON_CLUSTER} (`gap-0` — Recents abuts the page face).
  *     Page identity is a compact {@link HEADER_PAGE_FACE_WIDTH} chip matching
- *     its child menu. Modeful pages open a child menu; Receiving benches
- *     compose peers via {@link stationSubgroupMembers}. Data =
+ *     its child menu. Modeful pages open a child menu; Scan Stations benches
+ *     compose peers via {@link floorStationPages}. Data =
  *     {@link SIDEBAR_PAGE_NAV} (+ {@link APP_SIDEBAR_NAV} fallback) /
  *     `useQuickAccess`. Find is **not** here.
  *   - **Find** — {@link GlobalHeaderSearch} / {@link CommandBar} on the

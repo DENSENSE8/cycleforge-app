@@ -6,6 +6,7 @@ import {
   Download,
   History,
   Images,
+  Play,
   Receipt,
   Upload,
   User,
@@ -29,6 +30,8 @@ import {
 import type { StationComposerMode } from '@/lib/composer/station-composer-mode';
 import { buildTicketComposerInsertTree } from '@/lib/composer/ticket-composer-insert-tree';
 import { buildComposerReplyVars } from '@/lib/composer/ticket-reply-payload';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { useComposerTicketClaim } from './hooks/useComposerTicketClaim';
 import { useSupportReply } from '@/hooks/useSupportReply';
 import { zendeskKeys } from '@/hooks/useZendeskQueries';
 import { useTicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
@@ -85,6 +88,9 @@ import type { LineStatusExactSource } from '@/lib/receiving/unbox-notes-status';
  */
 
 export function LineNotesCard({
+  row,
+  onTicketCreated,
+  onNoteTyped,
   notes,
   overallZohoNotes,
   skuTitle,
@@ -110,10 +116,23 @@ export function LineNotesCard({
   headerAction,
   onComposerModeChange,
   onComposerFocus,
+  onTicketDraftFilledChange,
   progressPercent = 0,
   progressTone = 'idle',
   onProgressClick,
 }: {
+  /**
+   * The line the composer is on. Ticket mode reads it to build the CLAIM the
+   * dock files when nothing is linked yet — see {@link useComposerTicketClaim}.
+   */
+  row?: ReceivingLineRow | null;
+  /** A claim filed from the dock — same handler the claim form used. */
+  onTicketCreated?: (ticketNumber: string) => void;
+  /**
+   * The operator typed into the note field. Unbox opens the Label band on this
+   * so the sticker shows the note as it is written.
+   */
+  onNoteTyped?: () => void;
   /** The operator's durable item note (`receiving_line.notes`) — never printed. */
   notes: string;
   /** Overall Zoho PO header note (carton-level) — source for the push-to-PO action. */
@@ -196,6 +215,12 @@ export function LineNotesCard({
   onComposerModeChange?: (mode: StationComposerMode) => void;
   /** Auto-collapse engage — composer focus. */
   onComposerFocus?: () => void;
+  /**
+   * Whether the Ticket draft currently has a body. The host uses it to show the
+   * DRAFT ticket number in the carton-context corner — that badge only makes
+   * sense once there is something to file, and only this card knows the draft.
+   */
+  onTicketDraftFilledChange?: (filled: boolean) => void;
   /** Procedure fill for the composer bottom-right progress ring. */
   progressPercent?: number;
   progressTone?: 'idle' | 'selected';
@@ -396,7 +421,18 @@ export function LineNotesCard({
   const staffStamp = buildStaffStampText({ name: user?.name, staffId: user?.staffId });
   const numericTicketId = resolvedTicketId ? Number(resolvedTicketId) : null;
   const [ticketDraft, setTicketDraft] = useState('');
-  const [ticketPublic, setTicketPublic] = useState(false);
+  // PUBLIC by default (operator ruling 2026-08-31), for BOTH paths this dock
+  // drives — filing a new claim and replying on a linked ticket. The station's
+  // ticket work is outbound: a claim exists to reach the seller, and a reply
+  // typed at the bench is the answer to one. Defaulting to Internal meant the
+  // common case was the one that needed an extra tap, and a note written to be
+  // read by a seller sat private until someone noticed.
+  //
+  // It drives the claim too — `notePublic` / `ccEmails` below — so create and
+  // reply prefill identically: same channel, same visible Cc row, same body.
+  // The console composer keeps Internal-first; an agent triaging a queue is
+  // not doing the same job.
+  const [ticketPublic, setTicketPublic] = useState(true);
   // CC is an AUDIENCE control: chips + the address still being typed. The draft
   // is held here rather than inside the strip so send can fold a half-typed
   // address in instead of dropping it (see resolveComposerCcPayload).
@@ -405,6 +441,17 @@ export function LineNotesCard({
   const [photoLibraryOpen, setPhotoLibraryOpen] = useState(false);
   const reply = useSupportReply();
   const canPostTicket = !isLoaded || has('integrations.zendesk');
+
+  // No linked ticket → the Ticket tab IS the claim: the textarea holds the
+  // template body, the subject rides in the dock inset, and Enter files it.
+  // A linked ticket leaves this inert and the reply path below owns the draft.
+  const claim = useComposerTicketClaim({
+    row,
+    hasTicket,
+    notePublic: ticketPublic,
+    ccEmails: ticketCcs,
+    onTicketCreated,
+  });
   const canBrowsePhotoLibrary = isLoaded && has('photos.view');
   const staffName = user?.name?.trim() || '';
 
@@ -460,6 +507,15 @@ export function LineNotesCard({
     photoStaging,
   ]);
 
+  // Report the draft's filled-ness up so the carton-context corner can swap the
+  // Claim verb for the number the ticket is heading for. An effect, not a call
+  // inside onChange: the body also arrives from the claim template landing, and
+  // a change handler would miss that.
+  const ticketDraftFilled = claim.isClaim && claim.body.trim().length > 0;
+  useEffect(() => {
+    onTicketDraftFilledChange?.(ticketDraftFilled);
+  }, [ticketDraftFilled, onTicketDraftFilledChange]);
+
   // Reset the audience when the linked ticket identity changes — CCs belong to
   // the ticket that was on screen, never to whichever line loads next.
   useEffect(() => {
@@ -467,24 +523,42 @@ export function LineNotesCard({
     setTicketCcDraft('');
   }, [numericTicketId]);
 
-  const ticketDrillNodes = useMemo(
-    () =>
-      buildTicketComposerInsertTree({
-        photos: hasTicket
-          ? {
-              onBrowse: canBrowsePhotoLibrary
-                ? () => setPhotoLibraryOpen(true)
-                : undefined,
-              onUpload: photoPicker.openPicker,
-            }
-          : undefined,
-        icons: {
-          browse: <Images className={NOTE_OVERLAY_ICON} />,
-          upload: <Upload className={NOTE_OVERLAY_ICON} />,
-        },
-      }),
-    [hasTicket, canBrowsePhotoLibrary, photoPicker.openPicker],
-  );
+  const ticketDrillNodes = useMemo(() => {
+    const nodes = buildTicketComposerInsertTree({
+      photos: hasTicket
+        ? {
+            onBrowse: canBrowsePhotoLibrary
+              ? () => setPhotoLibraryOpen(true)
+              : undefined,
+            onUpload: photoPicker.openPicker,
+          }
+        : undefined,
+      icons: {
+        browse: <Images className={NOTE_OVERLAY_ICON} />,
+        upload: <Upload className={NOTE_OVERLAY_ICON} />,
+      },
+    });
+    // Developer tool, dev builds only: files nothing, but builds the real photo
+    // share pack and drops the exact opening message into the draft below.
+    if (claim.canTest) {
+      nodes.push({
+        type: 'action',
+        id: 'claim-test-create',
+        label: claim.testing ? 'Testing…' : 'Test create (no ticket)',
+        icon: <Play className={NOTE_OVERLAY_ICON} />,
+        disabled: claim.testing,
+        onSelect: claim.testCreate,
+      });
+    }
+    return nodes;
+  }, [
+    hasTicket,
+    canBrowsePhotoLibrary,
+    photoPicker.openPicker,
+    claim.canTest,
+    claim.testing,
+    claim.testCreate,
+  ]);
 
   const applyLastLabelNote = useCallback(() => {
     const phrase = recentPhrase;
@@ -587,7 +661,14 @@ export function LineNotesCard({
     <>
       <StationComposerHost
         labelValue={notes}
-        onLabelChange={onValueChange}
+        onLabelChange={(next) => {
+          onValueChange(next);
+          // Typing a note opens the Label band so the sticker shows what is
+          // being written — the dock draft live-drives the label centre, and
+          // an operator writing blind into a shut band cannot see that.
+          // Typing only: hydrating a saved note leaves the band as it was.
+          if (next.trim()) onNoteTyped?.();
+        }}
         onLabelCommit={handleCommit}
         onLabelBlur={handleBlur}
         // Receive CTA: Enter must fire even with an empty note (chat-send).
@@ -597,15 +678,17 @@ export function LineNotesCard({
         labelCommitTooltip={
           onPrimaryAction ? 'Receive (Enter) · Shift+Enter for newline' : 'Save notes (Enter)'
         }
-        ticketDraft={ticketDraft}
-        onTicketDraftChange={setTicketDraft}
-        onTicketCommit={handleTicketCommit}
+        ticketDraft={claim.isClaim ? claim.body : ticketDraft}
+        onTicketDraftChange={claim.isClaim ? claim.setBody : setTicketDraft}
+        onTicketCommit={claim.isClaim ? claim.file : handleTicketCommit}
         ticketCommitDisabled={
-          !hasTicket ||
-          !canPostTicket ||
-          reply.isPending ||
-          photoStaging.uploading ||
-          ticketDraft.trim().length === 0
+          claim.isClaim
+            ? !canPostTicket || !claim.canFile
+            : !hasTicket ||
+              !canPostTicket ||
+              reply.isPending ||
+              photoStaging.uploading ||
+              ticketDraft.trim().length === 0
         }
         ticketDrillNodes={ticketDrillNodes}
         ticketFooterStart={

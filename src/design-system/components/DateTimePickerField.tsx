@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { format } from 'date-fns';
-import { Calendar as CalendarPicker } from './Calendar';
+import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { Calendar as CalendarIcon } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 

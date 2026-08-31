@@ -20,13 +20,14 @@
 
 import type { DocumentPreviewMimeHint } from '@/design-system/components/document-preview-mime';
 
+export { kitPartDocumentContentPath } from '@/lib/blob/vercel-blob-url';
+
 /** What the bench needs to show and open one insert. */
 export interface KitPartDocument {
   /**
-   * Directly fetchable (Blob) url. NEVER an `/api/documents/:id/content` path:
-   * `packing.*` does not imply `orders.view`, so that proxy 403s the packer
-   * this surface exists for. Enforced at the column's docblock + this type's
-   * only producer.
+   * Stored Blob (or other http) url — the durable pointer on the row.
+   * Preview iframes must NOT use this directly: Vercel Blob CSP blanks PDFs
+   * on our origin. Use {@link kitPartDocumentContentPath} at the view.
    */
   url: string;
   /** Operator-facing name — the part's own name when the column is null. */

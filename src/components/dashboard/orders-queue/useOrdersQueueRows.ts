@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { toPSTDateKey } from '@/utils/date';
+import { getCurrentPSTDateKey, toPSTDateKey } from '@/utils/date';
 import { flattenRenderOrder, groupRowsBy, type RowGroup } from '@/lib/group-rows';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import {
@@ -17,6 +17,20 @@ import {
   type QueueRowRecord,
 } from './helpers';
 import { compareQueueColumnRows } from './queue-row-compare';
+
+/**
+ * Band key for the day's intake section.
+ *
+ * A key, not the label — band keys elsewhere in `orderGroupsByDate` are PST
+ * date keys, and a human string sitting among them is what let the old
+ * `'Just added'` band read as a date to anything that parsed keys. The label
+ * the operator sees is {@link ADDED_TODAY_LABEL}, supplied to the grid through
+ * `sectionHeaders`, so the key can stay opaque.
+ */
+export const ADDED_TODAY_BAND = '__added_today__';
+
+/** Section caption for {@link ADDED_TODAY_BAND}. Sentence case (operator, 2026-08-31). */
+export const ADDED_TODAY_LABEL = 'Added today';
 
 export interface OrdersQueueRows {
   /** Records still in the queue (already-shipped rows filtered out). */
@@ -90,23 +104,36 @@ export function useOrdersQueueRows({
   return useMemo(() => {
     const visibleRecords = records.filter((record) => !isShippedByLatestStatus(record));
 
-    const JUST_ADDED_MS = 30 * 60 * 1000;
-    const nowMs = Date.now();
-    const isJustAdded = (record: ShippedOrder) => {
-      const created = new Date(String(record.created_at || '')).getTime();
-      if (Number.isFinite(created) && created > 0 && nowMs - created <= JUST_ADDED_MS) {
-        return true;
+    // The day's intake, as its own section at the top of the queue. The window
+    // was 30 minutes and unlabelled — invisible, because the outbound
+    // spreadsheet renders no band keys (`showDayHeaders={false}`). A civil PST
+    // day is the window the operator actually asks for ("what came in today"),
+    // it survives a reload the way a rolling clock window cannot, and it reads
+    // the same whether the order arrived by Sheets sync, CSV or hand entry —
+    // one word covers every intake path, which is why this is not "imported".
+    const todayKey = getCurrentPSTDateKey();
+    const isAddedToday = (record: ShippedOrder) => {
+      if (record.created_at) {
+        try {
+          return toPSTDateKey(record.created_at) === todayKey;
+        } catch {
+          return false;
+        }
       }
-      return !record.created_at && !record.deadline_at && !record.ship_by_date;
+      // A row with NO date at all has no band to fall into — the banding walk
+      // below drops it when `queueRowBandDateSource` returns null. It rides
+      // here so it stays visible, as it did under the old window. In practice
+      // it is a just-inserted row whose `created_at` missed the projection.
+      return !record.deadline_at && !record.ship_by_date;
     };
 
-    const justAdded =
+    const addedToday =
       queueMode === 'fulfillment'
-        ? visibleRecords.filter(isJustAdded).sort((a, b) => Number(b.id) - Number(a.id))
+        ? visibleRecords.filter(isAddedToday).sort((a, b) => Number(b.id) - Number(a.id))
         : [];
     const bandRecords =
-      justAdded.length > 0
-        ? visibleRecords.filter((record) => !justAdded.some((row) => Number(row.id) === Number(record.id)))
+      addedToday.length > 0
+        ? visibleRecords.filter((record) => !addedToday.some((row) => Number(row.id) === Number(record.id)))
         : visibleRecords;
 
     // Column sorts: one flat global order (single synthetic band — LedgerGrid
@@ -175,11 +202,11 @@ export function useOrdersQueueRows({
     // single-line case stays a plain row. groupRowsBy preserves the per-day sort
     // order.
     const orderGroupsByDate: [string, RowGroup<ShippedOrder>[]][] = [
-      ...(justAdded.length > 0
+      ...(addedToday.length > 0
         ? ([
             [
-              'Just added',
-              groupRowsBy(justAdded, (r) => String(r.order_id || '').trim() || `id:${r.id}`),
+              ADDED_TODAY_BAND,
+              groupRowsBy(addedToday, (r) => String(r.order_id || '').trim() || `id:${r.id}`),
             ],
           ] as [string, RowGroup<ShippedOrder>[]][])
         : []),
@@ -195,7 +222,7 @@ export function useOrdersQueueRows({
     const displayedRecords = flattenRenderOrder(orderGroupsByDate);
 
     const totalCount =
-      justAdded.length +
+      addedToday.length +
       Object.values(groupedRecords).reduce((sum, dayRecords) => sum + dayRecords.length, 0);
 
     return { visibleRecords, orderGroupsByDate, displayedRecords, totalCount };

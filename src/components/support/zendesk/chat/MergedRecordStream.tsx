@@ -28,8 +28,8 @@
  * ## Scroll + gutter
  *
  * Host owns the scroll port (`SupportTicketDetail`). Chrome from
- * {@link ./ticket-bubble-chrome}: stream + composer share `DISPLAYS_BODY_INSET`.
- * Host stays flush (`DISPLAYS_FLUSH_HOST`).
+ * {@link ./ticket-bubble-chrome}: stream + composer share `px-3` inset
+ * (same as station band / ticket title). Host stays flush (`DISPLAYS_FLUSH_HOST`).
  */
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
@@ -46,14 +46,12 @@ import type { TimelineItem } from '@/lib/timeline/types';
 import { resolveTimelineGlyph } from '@/lib/timeline/timeline-glyphs';
 import { TIMELINE_GLYPH_ICONS } from '@/components/ui/timeline-glyph-icons';
 import { TimelineRefChip } from '@/components/ui/timeline-ref-chip';
-import { DateGroupHeader } from '@/components/ui/DateGroupHeader';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IdentityMark, StaffAvatar } from '@/components/identity';
 import { staffInitials } from '@/design-system/components/StaffBadge';
 import { Button, Spinner } from '@/design-system/primitives';
-import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
-import { formatDateTimePST, toPSTDateKey } from '@/utils/date';
-import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
+import { CONVERSATION_INSET } from '@/design-system/primitives/conversation-chrome';
+import { formatDateTimePST, formatDateWithOrdinal, toPSTDateKey } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import { renderBlockMarkdown } from '@/lib/support/markdown';
 import { ConversationMessageCard } from '@/design-system/primitives/ConversationMessageCard';
@@ -61,11 +59,11 @@ import { isConversationAtEnd, resolveAuthor } from './support-chat-utils';
 import {
   TICKET_BUBBLE_BODY,
   TICKET_BUBBLE_DAY_HEADER,
-  TICKET_BUBBLE_MARK,
+  TICKET_BUBBLE_DAY_LABEL,
+  TICKET_BUBBLE_MARK_NODE,
+  TICKET_BUBBLE_MARK_PLACEHOLDER,
   TICKET_BUBBLE_MARK_BOX,
-  TICKET_BUBBLE_META,
   TICKET_BUBBLE_STREAM,
-  formatTicketBubbleAge,
 } from './ticket-bubble-chrome';
 
 /**
@@ -111,67 +109,57 @@ function atMs(at: string | null): number {
   return Number.isFinite(t) ? t : 0;
 }
 
-/** Relative in the row (`N hrs`), absolute on hover — never `title=`. */
-function RowTime({ at }: { at: string | null }) {
-  useTimeFormat();
-  if (!at) return <span className="shrink-0 text-text-faint">—</span>;
-  return (
-    <HoverTooltip label={formatDateTimePST(at)} focusable={false}>
-      <span className="shrink-0 text-text-faint">{formatTicketBubbleAge(at) ?? '—'}</span>
-    </HoverTooltip>
-  );
-}
-
 /**
  * Leading mark — author's identity for a message, station glyph for an event.
  *
- * Messages use {@link StaffAvatar} when the comment maps to a Cycle Forge
- * staffer. Zendesk roster photos only appear when there is no staff id.
+ * Staff posts use {@link StaffAvatar} at size `sm` + `colorRing`, the same
+ * scoped mark as compound DataTable cells (staff colour fill, photo colour-ring).
+ * Zendesk roster photos only appear when there is no staff id.
  */
+function ThreadStaffMark({
+  staffId,
+  name,
+}: {
+  staffId: number | string;
+  name?: string | null;
+}) {
+  return (
+    <div className={TICKET_BUBBLE_MARK_BOX}>
+      <StaffAvatar
+        staffId={staffId}
+        name={name}
+        size="sm"
+        colorRing
+        className={TICKET_BUBBLE_MARK_NODE}
+        alt={name ?? undefined}
+      />
+    </div>
+  );
+}
+
 function RowMark({ item }: { item: MergedRecordItem }) {
   if (item.message) {
     const { authorName, authorPhoto, authorStaffId } = item.message;
     const staffId = authorStaffId ?? item.actorStaffId ?? null;
     if (staffId) {
-      return (
-        <div className={TICKET_BUBBLE_MARK_BOX}>
-          <StaffAvatar
-            staffId={staffId}
-            name={authorName}
-            size="xs"
-            ring={false}
-            className={TICKET_BUBBLE_MARK}
-            alt={authorName}
-          />
-        </div>
-      );
+      return <ThreadStaffMark staffId={staffId} name={authorName} />;
     }
     return (
       <div className={TICKET_BUBBLE_MARK_BOX}>
         <IdentityMark
           initials={staffInitials(authorName)}
           src={authorPhoto}
-          size="xs"
+          size="sm"
           ring={false}
           alt={authorName}
-          className={TICKET_BUBBLE_MARK}
+          className={TICKET_BUBBLE_MARK_PLACEHOLDER}
         />
       </div>
     );
   }
 
   if (item.actorStaffId) {
-    return (
-      <div className={TICKET_BUBBLE_MARK_BOX}>
-        <StaffAvatar
-          staffId={item.actorStaffId}
-          name={item.actor}
-          size="xs"
-          ring={false}
-          className={TICKET_BUBBLE_MARK}
-        />
-      </div>
-    );
+    return <ThreadStaffMark staffId={item.actorStaffId} name={item.actor} />;
   }
 
   const glyph = resolveTimelineGlyph(item.sourceEventType);
@@ -181,8 +169,8 @@ function RowMark({ item }: { item: MergedRecordItem }) {
       <HoverTooltip label={glyph.tooltip} focusable={false}>
         {/* A system event's node. Opaque + z-10 like an avatar, so the spine
             passes behind it rather than through it. */}
-        <span className="relative z-10 flex h-5 w-5 items-center justify-center rounded-full bg-surface-canvas text-text-soft ring-1 ring-border-hairline">
-          <Icon className="h-3 w-3" />
+        <span className="relative z-10 flex h-7 w-7 items-center justify-center rounded-full bg-surface-canvas text-text-soft ring-1 ring-border-hairline">
+          <Icon className="h-3.5 w-3.5" />
         </span>
       </HoverTooltip>
     </div>
@@ -219,27 +207,7 @@ function Attachments({
   );
 }
 
-function MetaLine({
-  item,
-  msg,
-}: {
-  item: MergedRecordItem;
-  msg: TicketMessageDetail | undefined;
-}) {
-  return (
-    <div className={TICKET_BUBBLE_META}>
-      <span className="truncate font-semibold text-text-default">
-        {msg ? msg.authorName : item.actor || ''}
-      </span>
-      <span aria-hidden className="text-text-faint">
-        ·
-      </span>
-      <RowTime at={item.at} />
-    </div>
-  );
-}
-
-function MessageBody({
+function MessageMedia({
   msg,
   item,
   onOpenPhoto,
@@ -251,19 +219,6 @@ function MessageBody({
   const refs = item.refs?.length ? item.refs : item.ref ? [item.ref] : [];
   return (
     <>
-      {msg ? (
-        <div className={TICKET_BUBBLE_BODY}>
-          {renderBlockMarkdown(msg.body, { onOpenPhoto })}
-        </div>
-      ) : (
-        <div className="stack-tight">
-          <p className={TICKET_BUBBLE_BODY}>{item.title}</p>
-          {item.subtitle ? (
-            <p className="text-role-caption text-text-soft">{item.subtitle}</p>
-          ) : null}
-        </div>
-      )}
-
       {refs.length ? (
         <div className="flex flex-wrap items-center gap-1">
           {refs.map((r, i) => (
@@ -271,9 +226,30 @@ function MessageBody({
           ))}
         </div>
       ) : null}
-
       {msg?.attachments.length ? (
         <Attachments atts={msg.attachments} onOpenPhoto={onOpenPhoto} />
+      ) : null}
+    </>
+  );
+}
+
+function MessageCopy({
+  msg,
+  item,
+  onOpenPhoto,
+}: {
+  msg: TicketMessageDetail | undefined;
+  item: MergedRecordItem;
+  onOpenPhoto?: (url: string) => void;
+}) {
+  if (msg) {
+    return <>{renderBlockMarkdown(msg.body, { onOpenPhoto })}</>;
+  }
+  return (
+    <>
+      <p className={TICKET_BUBBLE_BODY}>{item.title}</p>
+      {item.subtitle ? (
+        <p className="text-role-caption text-text-soft">{item.subtitle}</p>
       ) : null}
     </>
   );
@@ -299,21 +275,26 @@ function StreamRow({
         at={item.at}
         atAbsolute={item.at ? formatDateTimePST(item.at) : null}
         data-testid={ours ? 'ticket-message-ours' : 'ticket-message'}
+        footer={<MessageMedia msg={msg} item={item} onOpenPhoto={onOpenPhoto} />}
       >
-        <MessageBody msg={msg} item={item} onOpenPhoto={onOpenPhoto} />
+        <MessageCopy msg={msg} item={item} onOpenPhoto={onOpenPhoto} />
       </ConversationMessageCard>
     );
   }
 
-  // Floor / carrier events (optional merge) — quiet flat row, same mark density.
+  // Floor / carrier events — same node + card grammar as messages so the
+  // glyph top-aligns with the actor row (not a shorter `flex` fork).
   return (
-    <div data-stream-row="event" data-stream-shell="event" className="flex gap-1.5 py-1">
-      <RowMark item={item} />
-      <div className="min-w-0 flex-1 stack-tight">
-        <MetaLine item={item} msg={undefined} />
-        <MessageBody msg={undefined} item={item} onOpenPhoto={onOpenPhoto} />
-      </div>
-    </div>
+    <ConversationMessageCard
+      mark={<RowMark item={item} />}
+      author={item.actor || undefined}
+      at={item.at}
+      atAbsolute={item.at ? formatDateTimePST(item.at) : null}
+      data-testid="ticket-stream-event"
+      footer={<MessageMedia msg={undefined} item={item} onOpenPhoto={onOpenPhoto} />}
+    >
+      <MessageCopy msg={undefined} item={item} onOpenPhoto={onOpenPhoto} />
+    </ConversationMessageCard>
   );
 }
 
@@ -425,32 +406,26 @@ export function MergedRecordStream({
 
   if (isLoading) {
     return (
-      <div className={cn('flex items-center justify-center py-16', DISPLAYS_BODY_INSET)}>
+      <div className={cn('flex items-center justify-center py-16', CONVERSATION_INSET)}>
         <Spinner />
       </div>
     );
   }
   if (error) {
     return (
-      <p className={cn(DISPLAYS_BODY_INSET, 'py-4 text-center text-role-micro text-rose-600')}>
+      <p className={cn(CONVERSATION_INSET, 'py-4 text-center text-role-micro text-rose-600')}>
         Couldn’t load the conversation.
       </p>
     );
   }
   if (!rows.length) {
     return (
-      <div className={cn(DISPLAYS_BODY_INSET, 'py-10 text-center')}>
+      <div className={cn(CONVERSATION_INSET, 'py-10 text-center')}>
         <p className="text-role-micro text-text-faint">
           No messages yet — start the conversation below.
         </p>
       </div>
     );
-  }
-
-  const dayTotals = new Map<string, number>();
-  for (const r of visible) {
-    const key = toPSTDateKey(r.at);
-    dayTotals.set(key, (dayTotals.get(key) ?? 0) + 1);
   }
 
   let lastDay: string | null = null;
@@ -478,18 +453,15 @@ export function MergedRecordStream({
         const showDay = dayKey !== lastDay;
         lastDay = dayKey;
         return (
-          // Fragment, NOT a wrapper div: `DateGroupHeader` is `sticky top-0`,
-          // and a sticky element only travels inside its own containing block.
-          // Wrapped per-item, the docked date fell out of view as soon as the
-          // day's FIRST message scrolled past. As siblings of the rows, the
-          // band stays docked for the whole day it labels.
+          // Fragment, NOT a wrapper div: day dividers and rows stay siblings
+          // in the stream so the column can centre the date independently.
           <Fragment key={String(item.id)}>
             {showDay ? (
-              <DateGroupHeader
-                date={dayKey}
-                total={dayTotals.get(dayKey) ?? 0}
-                className={TICKET_BUBBLE_DAY_HEADER}
-              />
+              <div className={TICKET_BUBBLE_DAY_HEADER} data-date={dayKey}>
+                <span className={TICKET_BUBBLE_DAY_LABEL}>
+                  {formatDateWithOrdinal(dayKey)}
+                </span>
+              </div>
             ) : null}
             <StreamRow item={item} onOpenPhoto={onOpenPhoto} />
           </Fragment>

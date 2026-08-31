@@ -13,6 +13,7 @@
 import { queryOptions } from '@tanstack/react-query';
 import type { CagedOrderRecord } from '@/lib/orders/caged-orders';
 import type { ShippedOrder } from '@/types/orders';
+import type { OrderExceptionRow } from '@/lib/orders/order-exception-types';
 
 export const CAGED_ORDERS_QUERY_ROOT = 'caged-orders';
 
@@ -108,6 +109,59 @@ export function cagedRecordToQueueRow(record: CagedOrderRecord): ShippedOrder {
     packed_at: null,
     account_source: record.accountSource ?? null,
     created_at: record.createdAt ?? null,
+    has_tech_scan: false,
+    is_out_of_stock: false,
+    is_urgent: false,
+  } as unknown as ShippedOrder;
+}
+
+/**
+ * Order-exception row → the queue grid's row shape.
+ *
+ * The SECOND adapter of this kind, and it exists for the same reason as
+ * {@link cagedRecordToQueueRow} directly above it: the product has ONE outbound
+ * grid, and a queue that is a different QUESTION over the same orders renders
+ * in it rather than in a table of its own.
+ *
+ * Exceptions is that queue. It was very nearly built as its own binding —
+ * `outbound.order-exceptions`, its own column model, its own row component —
+ * on the reasoning that `blockers[]`, `siblingUnpairedCount` and the paired
+ * catalog entry have no column on `ShippedOrder`. That reasoning is wrong at
+ * the wrong altitude: a fact the grid does not yet print is a SLOT BINDING
+ * (`@/lib/tables/field-catalog/orders.ts` + the effective layout), not a
+ * licence to fork the display. Adding a field to the catalog gives every
+ * outbound lane the option of that column; forking the grid gives the operator
+ * a second table that drifts.
+ *
+ * So: adapt the row, mount the orders binding, and let the slot engine decide
+ * which facts are tracks. `sku` is carried (an exception usually has one, even
+ * when it is unpaired); tester / packer / bench / ship-by are null as a
+ * STATEMENT OF FACT — a held order has not started — and the grid prints an
+ * em-dash for each, which is the honest reading of that.
+ */
+export function exceptionRowToQueueRow(row: OrderExceptionRow): ShippedOrder {
+  return {
+    id: row.id,
+    order_id: row.orderNumber ?? '',
+    product_title: row.productTitle ?? '',
+    quantity: row.quantity ?? null,
+    item_number: row.itemNumber ?? null,
+    condition: row.condition ?? '',
+    sku: row.sku ?? '',
+    serial_number: '',
+    shipping_tracking_number: row.trackingNumber,
+    tracking_number: row.trackingNumber,
+    shipment_id: null,
+    deadline_at: null,
+    ship_by_date: null,
+    tester_id: null,
+    tested_by: null,
+    test_date_time: null,
+    packer_id: null,
+    packed_by: null,
+    packed_at: null,
+    account_source: row.accountSource ?? null,
+    created_at: null,
     has_tech_scan: false,
     is_out_of_stock: false,
     is_urgent: false,

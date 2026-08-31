@@ -1,0 +1,128 @@
+'use client';
+
+/**
+ * Spreadsheet ZOOM — a percentage with a menu, the way a spreadsheet does it.
+ *
+ * One magnifying glass to the LEFT of the current percentage, and the number
+ * itself is the control: click it, pick a zoom. That shape is deliberate rather
+ * than borrowed — a pair of +/− steppers makes the operator click repeatedly to
+ * cross a range and never tells them where they are, while the percentage is
+ * both the readout and the affordance.
+ *
+ * ## What it actually drives
+ *
+ * `--cf-density`, which was already load-bearing and had no dial: every track
+ * width, the row inset and the content-min width run through
+ * `calc(Nrem * var(--cf-density, 1))` in `grid-column-geometry`. Nothing ever
+ * set it, so every grid was pinned at 1.
+ *
+ * ## Why the root element, and why localStorage
+ *
+ * Density is a property of the OPERATOR (how far they sit from a 27" monitor),
+ * not of one table, so it lands on `documentElement` and every grid on screen
+ * agrees — the same reason the variable was declared with a global fallback.
+ * It persists per viewer rather than in staff prefs because the same staffer at
+ * a bench and at a desk wants different answers, and a server round trip to
+ * change text size is a worse control than an instant one. Access is wrapped:
+ * a private window throws rather than returning null.
+ */
+
+import { useCallback, useEffect, useState } from 'react';
+import { ChevronDown, Search } from '@/components/Icons';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/design-system/primitives/radix-popover';
+import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
+
+/**
+ * The rungs, as percentages. Coarse on purpose — a continuous slider on a WMS
+ * grid is a way to land on a half-pixel row box, and every step here is one an
+ * operator can tell apart across the room.
+ */
+const STEPS = [75, 90, 100, 115, 130] as const;
+const STORAGE_KEY = 'cf-grid-density';
+const DEFAULT_PERCENT = 100;
+
+function readStored(): number {
+  try {
+    const raw = Number(window.localStorage.getItem(STORAGE_KEY));
+    return STEPS.includes(raw as (typeof STEPS)[number]) ? raw : DEFAULT_PERCENT;
+  } catch {
+    return DEFAULT_PERCENT;
+  }
+}
+
+export function DataTableZoomToggle({ className }: { className?: string }) {
+  const [percent, setPercent] = useState<number>(DEFAULT_PERCENT);
+  const [open, setOpen] = useState(false);
+
+  // After mount only: the server has no localStorage, and painting the stored
+  // zoom during SSR would hydrate-mismatch every grid on the page.
+  useEffect(() => {
+    setPercent(readStored());
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.style.setProperty('--cf-density', String(percent / 100));
+    try {
+      window.localStorage.setItem(STORAGE_KEY, String(percent));
+    } catch {
+      // Site data blocked: the zoom still applies, it just will not survive a reload.
+    }
+  }, [percent]);
+
+  const pick = useCallback((next: number) => {
+    setPercent(next);
+    setOpen(false);
+  }, []);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          data-testid="data-table-zoom"
+          aria-label={`Zoom, ${percent}%`}
+          aria-expanded={open}
+          className={cn(
+            'ds-raw-button inline-flex shrink-0 items-center gap-1 px-1.5 text-role-caption',
+            'transition-colors duration-100 ease-out',
+            PRIMARY_CHROME_ROW_FACE,
+            cornerClass('flush'),
+            focusRing('control'),
+            'text-text-muted hover:bg-surface-hover hover:text-text-default',
+            className,
+          )}
+        >
+          <Search className="h-3.5 w-3.5 shrink-0" aria-hidden />
+          <span className="tabular-nums">{percent}%</span>
+          <ChevronDown className="h-3 w-3 shrink-0" aria-hidden />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="end" sideOffset={2} className="w-24 p-0.5">
+        {STEPS.map((step) => (
+          <button
+            key={step}
+            type="button"
+            onClick={() => pick(step)}
+            data-testid={`data-table-zoom-${step}`}
+            className={cn(
+              'ds-raw-button flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-role-caption tabular-nums',
+              focusRing('control'),
+              step === percent
+                ? 'bg-surface-sunken font-semibold text-text-default'
+                : 'text-text-soft hover:bg-surface-hover hover:text-text-default',
+            )}
+          >
+            {step}%
+          </button>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}

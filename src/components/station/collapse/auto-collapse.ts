@@ -2,11 +2,17 @@
  * Auto-collapse rules for a station centre's context blocks — pure, no React.
  *
  * The centre opens with its reference blocks (Items · Status &amp; Timeline)
- * EXPANDED, then yields that vertical space to the conversation the moment the
- * operator signals they are done reading it. Two signals, per the surface spec:
+ * EXPANDED, then yields that vertical space once the operator says they are
+ * done reading it. ONE automatic signal, plus the explicit ones:
  *
  *   1. they scroll down
- *   2. they focus the notes composer
+ *   2. Collapse all / a band toggle (`toggle`, `collapse-all`, `expand-all`)
+ *
+ * Composer FOCUS used to be signal 2, and `engage` / `disengage` are still here
+ * for it. No station calls them any more (operator ruling, 2026-08-30): a caret
+ * landing in the note field folded Items and Label away on the station whose
+ * whole job is the note, and in Ticket mode the operator is writing ABOUT the
+ * items. A click into a field is not a request to hide the page.
  *
  * The rules live here rather than inline in the view because the failure modes
  * are all about ORDER and INTENT, and neither is observable in JSX:

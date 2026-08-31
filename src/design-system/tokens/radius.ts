@@ -144,10 +144,63 @@ export function cornerClass(role: CornerRole): string {
  * that family — which is checkable in review, unlike `rounded-2xl`.
  *
  * Law: ops chrome is flush-square; the composer dock, the kiosk counter face,
- * and `cornerClass('surface')` (TriageScrollLayout panels only) are the
+ * `cornerClass('surface')` (TriageScrollLayout panels only) and
+ * {@link TRIAGE_PANEL_INNER_CORNER} (what sits inside those panels) are the
  * exemptions. None of them is a licence to round anything else.
  */
 export const COMPOSER_SHELL_CORNER = 'rounded-2xl';
+
+/**
+ * A segmented control's track and its two faces — the concentric pair for a
+ * pick-one toggle sitting inside a SOFT shell ({@link VisibilityToggle}'s
+ * default chrome; Internal │ Public on the composer dock, claim compose,
+ * Send-photos).
+ *
+ * These name pixels that already shipped. `VisibilityToggle` carried
+ * `rounded-lg` / `rounded-md` as literals inside the primitive, which meant the
+ * one place the house states its corners could not see them and `ds_critique`
+ * had nothing to check them against. Naming them changed no pixels.
+ *
+ * The values are the concentric result, not a preference. Inner = outer −
+ * padding: the composer dock is {@link COMPOSER_SHELL_CORNER} (16px) with
+ * `p-1.5` (6px), so the track wants 16 − 6 = 10 → the 8px rung → `rounded-lg`;
+ * the track's own `p-0.5` (2px) puts the faces at 8 − 2 = 6 → `rounded-md`.
+ * That is exactly {@link nestedCorner}('card', 1.5) then ('control', 0.5) —
+ * except {@link cornerClass} cannot express it, because every ladder rung
+ * renders `rounded-none` under the zero-radius law. Hence named constants,
+ * the same escape hatch {@link COMPOSER_SHELL_CORNER} uses.
+ *
+ * NOT a licence to round a control that is not inside a soft shell. Ops chrome
+ * segmented controls take `appearance="flush"` and stay square.
+ */
+export const SEGMENTED_CONTROL_CORNER = 'rounded-lg';
+
+/** The pressed/unpressed faces inside {@link SEGMENTED_CONTROL_CORNER}. */
+export const SEGMENTED_CONTROL_FACE_CORNER = 'rounded-md';
+
+/**
+ * Chrome INSIDE a `cornerClass('surface')` triage panel — the alerts, pickers,
+ * fields and buttons an operator works in the exception editor.
+ *
+ * Operator 2026-08-31, on the order-exceptions display: round it off. The
+ * ladder answer was flush, and flush is right where a control sits hard against
+ * its container's inside face — but nothing here does. {@link TriageSections}
+ * pads its panels `p-5`, so every control floats with 20px of clearance on all
+ * sides and is concentrically constrained by nothing. {@link nestedCorner}
+ * returns `flush` for that pair only because the arithmetic (12 − 20) goes
+ * negative, which is the formula reporting "not concentric", not a design
+ * finding. A square control inside a 12px panel it never touches reads as an
+ * unstyled control, not as industrial chrome.
+ *
+ * 8px, one rung under the panel's 12px — the same relationship, and the same
+ * value, as {@link SEGMENTED_CONTROL_CORNER} inside the composer shell.
+ *
+ * Like its two neighbours this is a NAMED exemption, not a `CornerRole`: the
+ * ladder stays zero-radius, and a call site reaching for this constant is
+ * claiming to be inside a triage panel — checkable in review, unlike a bare
+ * `rounded-lg`. It is not a licence to round ops chrome that is not.
+ */
+export const TRIAGE_PANEL_INNER_CORNER = 'rounded-lg';
 
 /**
  * Concentric inner corner: **inner = outer − padding**.

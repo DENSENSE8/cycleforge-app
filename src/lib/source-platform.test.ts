@@ -87,6 +87,13 @@ test('label lookup resolves to the same row as value lookup', () => {
   assert.equal(sourcePlatformMetaFromLabel('Amazon').hue, 'orange');
 });
 
+test('Ecwid is the channel face; ECWID-RS is a historic alias, not a second store', () => {
+  assert.equal(sourcePlatformMeta('ecwid').label, 'Ecwid');
+  assert.equal(sourcePlatformMetaFromLabel('ECWID-RS').value, 'ecwid');
+  assert.equal(sourcePlatformMetaFromLabel('ECWID-RS').label, 'Ecwid');
+  assert.equal(sourcePlatformMetaFromLabel('Ecwid').value, 'ecwid');
+});
+
 test('an org accent overrides the paint but never the pinned hue', () => {
   const meta: SourcePlatformMeta = { ...sourcePlatformMeta('ebay'), accentHex: '#3366ff' };
   assert.equal(meta.hue, 'yellow', 'the channel IS still yellow');

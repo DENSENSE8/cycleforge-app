@@ -19,13 +19,21 @@
  * {@link STATION_TERMINAL_SCROLL_CLEARANCE} (`pb-32`) when absolute.
  */
 
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { motion } from '@/design-system/motion';
 import { Check, ChevronDown, Loader2 } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { operatorAccentClasses } from '@/utils/operator-accent';
 import { FLOATING_DOCK_BOTTOM_PAD } from '@/design-system/tokens/dock-clearance';
+import { COMPOSER_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { Popover } from './Popover';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from './DropdownMenu';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -86,6 +94,22 @@ export interface SlicedActionDockProps {
   endAriaLabel?: string;
   /** Overlay inside the end segment (armed HID scan input). */
   endSegmentExtra?: ReactNode;
+  /**
+   * How the chevron's menu is rendered.
+   *
+   * `ops` (default) — the historic Popover list: ALL-CAPS ops chrome, flush
+   * square. Unbox's Print · Receive is this, and it stays this.
+   *
+   * `dropdown` — the house {@link DropdownMenu} (Radix, shadcn-shaped): items
+   * in **sentence case** at the same `text-role-caption` role as the CTA label,
+   * on a {@link COMPOSER_SHELL_CORNER} panel that matches the composer-pill
+   * track it hangs off. Operator direction (2026-08-31): "no caps lock" — the
+   * To-ship intake CTA reads as a page-header control, not station chrome.
+   *
+   * Only meaningful when the chevron is the menu anchor (`menuAnchor="end"`);
+   * a `primary`-anchored dock keeps the Popover.
+   */
+  menuChrome?: 'ops' | 'dropdown';
   /** aria-label for the chevron trigger. Defaults to "More actions". */
   menuLabel?: string;
   /** title attribute for the chevron trigger. */
@@ -110,6 +134,13 @@ export interface SlicedActionDockProps {
    * `pill` = rounded-2xl divided track for the Omnichannel composer footer.
    */
   embeddedChrome?: 'flush' | 'pill';
+  /**
+   * Which way the split menu opens. Defaults to `top` — correct for a
+   * bottom-docked terminal CTA, where the menu must rise off the dock. An
+   * `embedded` dock mounted in a TOP band (the To-ship intake CTA) needs
+   * `bottom`, or the menu opens above the viewport edge and is unreachable.
+   */
+  menuPlacement?: 'top' | 'bottom';
   /** Dock placement. Default `bottom`. */
   edge?: SlicedActionEdge;
   /**
@@ -247,6 +278,8 @@ export function SlicedActionDock({
   toneClasses,
   menu,
   menuAnchor = 'end',
+  menuChrome = 'ops',
+  menuPlacement = 'top',
   menuIcon,
   onEndClick,
   endAriaLabel,
@@ -312,7 +345,76 @@ export function SlicedActionDock({
     />
   );
 
-  const menuSegment = hasMenu ? (
+  // The chevron/scan cell's face, shared by both menu chromes.
+  const endSegmentClass = cn(
+    'flex items-center justify-center bg-transparent outline-none transition-[filter] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-60',
+    ink.text,
+    ink.focus,
+    menuOnEnd ? `border-l ${ink.divider}` : `border-r ${ink.divider}`,
+    segmentH,
+    menuOnEnd ? radiusR : radiusL,
+    composerPill ? 'px-2' : usePillChrome ? 'px-3' : 'px-2',
+  );
+
+  const useDropdownChrome = menuChrome === 'dropdown' && menuOpensFromEnd;
+
+  const renderDropdownMenuSegment = () => (
+    <div className="relative flex shrink-0 self-stretch">
+      <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          {/* ds-raw-button: split-menu chevron; Radix owns haspopup/expanded + dismissal */}
+          <button
+            type="button"
+            aria-label={menuLabel ?? 'More actions'}
+            title={menuTitle}
+            disabled={loading}
+            onClick={(e) => e.stopPropagation()}
+            className={endSegmentClass}
+          >
+            {endGlyph}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          side={menuPlacement === 'bottom' ? 'bottom' : 'top'}
+          align={menuOnEnd ? 'end' : 'start'}
+          sideOffset={6}
+          aria-label={menuLabel ?? 'More actions'}
+          // The panel matches the composer-pill track it hangs off: same
+          // COMPOSER_SHELL_CORNER, so control and menu read as one object.
+          className={cn('min-w-[14rem] p-1', COMPOSER_SHELL_CORNER)}
+        >
+          {menu!.map((item) => (
+            <Fragment key={item.label}>
+              {item.separatorBefore ? <DropdownMenuSeparator /> : null}
+              <DropdownMenuItem
+                disabled={item.disabled}
+                title={item.title}
+                onSelect={(event) => {
+                  if (item.keepOpen) event.preventDefault();
+                  item.onClick();
+                }}
+                // Sentence case at the CTA label's own type role — the menu is
+                // the same voice as the button, not station caps.
+                className={cn(
+                  'gap-2.5 px-3 py-2 text-role-caption',
+                  item.selected && 'bg-surface-canvas',
+                )}
+              >
+                <span className="flex h-4 w-4 shrink-0 items-center justify-center text-text-muted">
+                  {item.icon}
+                </span>
+                <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                {item.selected ? <Check aria-hidden /> : null}
+              </DropdownMenuItem>
+            </Fragment>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {endSegmentExtra}
+    </div>
+  );
+
+  const renderOpsMenuSegment = () => (
     <div className="relative flex shrink-0 self-stretch">
       {/* ds-raw-button: split-menu chevron or scan-end cell; Popover owns dismissal */}
       <button
@@ -336,15 +438,7 @@ export function SlicedActionDock({
           }
           onEndClick?.();
         }}
-        className={cn(
-          'flex items-center justify-center bg-transparent outline-none transition-[filter] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-60',
-          ink.text,
-          ink.focus,
-          menuOnEnd ? `border-l ${ink.divider}` : `border-r ${ink.divider}`,
-          segmentH,
-          menuOnEnd ? radiusR : radiusL,
-          composerPill ? 'px-2' : usePillChrome ? 'px-3' : 'px-2',
-        )}
+        className={endSegmentClass}
       >
         {endGlyph}
       </button>
@@ -353,7 +447,11 @@ export function SlicedActionDock({
         open={menuOpen}
         onClose={closeMenu}
         anchorRef={menuTriggerRef}
-        placement={menuOpensFromEnd && menuOnEnd ? 'top-end' : 'top-start'}
+        placement={
+          menuPlacement === 'bottom'
+            ? (menuOpensFromEnd && menuOnEnd ? 'bottom-end' : 'bottom-start')
+            : (menuOpensFromEnd && menuOnEnd ? 'top-end' : 'top-start')
+        }
         gap={6}
         padded={false}
         role="menu"
@@ -400,7 +498,15 @@ export function SlicedActionDock({
         ))}
       </Popover>
     </div>
-  ) : null;
+  );
+
+  // Built lazily: both branches dereference `menu`, which is absent on a
+  // single-segment dock.
+  const menuSegment = !hasMenu
+    ? null
+    : useDropdownChrome
+      ? renderDropdownMenuSegment()
+      : renderOpsMenuSegment();
 
   const primarySegment = hasMenu ? (
     <button

@@ -8,6 +8,7 @@ import {
   type MutableRefObject,
   type ReactNode,
   type RefObject,
+  type WheelEvent as ReactWheelEvent,
 } from 'react';
 import { VirtualGroupedSections } from '@/design-system/components/grid/VirtualGroupedSections';
 import { countGridRows, hasGridRows } from '@/design-system/components/grid/grid-row-index';
@@ -60,6 +61,12 @@ interface LedgerGridProps<T> {
    * Station / receiving feeds pass `true`.
    */
   showDayHeaders?: boolean;
+  /**
+   * Band key → SECTION label. Names one band with a sticky
+   * {@link GridSectionHeader} + outline WITHOUT turning on day banding —
+   * see {@link VirtualGroupedSections}.
+   */
+  sectionHeaders?: Record<string, string>;
   /** Horizontal scroll (flat spreadsheet). `false` clips overflow (vertical board). */
   scrollX?: boolean;
   /**
@@ -126,10 +133,14 @@ interface LedgerGridProps<T> {
   'data-testid'?: string;
 }
 
+/** Retired 2026-08-31 — see `stickyXEnabled`. Flip to restore the synthetic bar. */
+const STICKY_X_GUTTER_ENABLED = false;
+
 export function LedgerGrid<T>({
   orderGroupsByDate,
   daySections,
   showDayHeaders = false,
+  sectionHeaders,
   scrollX = false,
   contentMinWidthRem,
   contentMinWidthPx,
@@ -164,7 +175,7 @@ export function LedgerGrid<T>({
   // list) render its column headers over a void whenever it had nothing to show,
   // instead of the teaching box the caller passed in `emptyState`.
   const empty = !hasGridRows({ orderGroupsByDate, daySections });
-  const rowCount = countGridRows({ orderGroupsByDate, daySections, showDayHeaders });
+  const rowCount = countGridRows({ orderGroupsByDate, daySections, showDayHeaders, sectionHeaders });
   // Self-scrolling body owns the virtualizer scroll unless an ancestor is passed.
   const useAncestorScroll = Boolean(scrollParentRef);
   // Ancestor page scroll + h-scroll (Pending): the header band must dock to the
@@ -188,7 +199,22 @@ export function LedgerGrid<T>({
 
   // Real h-scroll source for the sticky gutter (and edge-shadow metrics).
   const hScrollSourceRef = splitX ? xScrollRef : scrollPortRef;
-  const stickyXEnabled = scrollX && !empty;
+  /*
+   * The custom bottom X gutter is RETIRED (operator ruling 2026-08-31).
+   *
+   * It existed because the scroll ports carried `no-scrollbar`, so a sheet with
+   * columns past the fold had no visible horizontal affordance and this painted
+   * a synthetic one. The ports now show a real scrollbar
+   * (`cf-grid-scrollbar`), which makes this a SECOND horizontal control for the
+   * same axis — and a full-width empty rounded track sitting under the last row
+   * does not read as a scrollbar at all: the operator read it as a stray search
+   * field, which is a fair description of what it looks like.
+   *
+   * Kept as a constant rather than deleting the component so the mount can be
+   * restored in one line if a surface turns out to need a synthetic bar (macOS
+   * overlay scrollbars fade out when idle).
+   */
+  const stickyXEnabled = STICKY_X_GUTTER_ENABLED && scrollX && !empty;
   const { gutterRef, spacerWidth, overflowX } = useSyncedHorizontalScrollbar(
     hScrollSourceRef,
     stickyXEnabled,
@@ -297,6 +323,29 @@ export function LedgerGrid<T>({
       : {}),
   };
 
+  /**
+   * Shift + wheel → horizontal scroll.
+   *
+   * Chrome only maps the shift modifier onto the X axis for some scrollers, and
+   * a dual-axis port that owns BOTH overflows is not reliably one of them —
+   * measured on `/shipping/orders`: a horizontal wheel moved the port 130px
+   * while shift + vertical wheel moved it 0. That left the operator with the
+   * sticky gutter drag as the only way sideways, which is a mouse-only path on
+   * a desk whose columns run past the fold.
+   *
+   * Only claims the event when the gesture is unambiguous: shift held, real
+   * vertical delta, and no horizontal delta of its own (a trackpad that already
+   * sends X is left alone). Everything else — plain wheel, pinch-zoom, a
+   * trackpad's native swipe — falls through untouched.
+   */
+  const onWheelShiftX = (event: ReactWheelEvent<HTMLElement>) => {
+    if (!event.shiftKey || event.deltaX !== 0 || event.deltaY === 0) return;
+    const el = event.currentTarget;
+    if (el.scrollWidth <= el.clientWidth) return;
+    el.scrollLeft += event.deltaY;
+    event.preventDefault();
+  };
+
   // Split mode: mirror the inner body's h-scroll onto the surface as the
   // `--cf-grid-sx` offset (header-row translation) + overflow edge shadows.
   const syncSplitScroll = (el: HTMLElement) => {
@@ -322,10 +371,13 @@ export function LedgerGrid<T>({
       headerEstimate={headerEstimate}
       rowEstimate={rowEstimate}
       showDayHeaders={showDayHeaders}
+      sectionHeaders={sectionHeaders}
       // Self-scroll keeps the column header OUTSIDE the Y port — day bands
       // dock at the port top, not under a co-scrolled sticky band height.
       stickyHeaderTop={
-        showDayHeaders && !selfScrollX ? 'var(--cf-grid-header-h, 0px)' : '0'
+        (showDayHeaders || sectionHeaders) && !selfScrollX
+          ? 'var(--cf-grid-header-h, 0px)'
+          : '0'
       }
     />
   );
@@ -406,7 +458,12 @@ export function LedgerGrid<T>({
               // port; gutter is a flex sibling.
               'h-full min-h-0 flex-1 overflow-hidden'
             : cn(
-                'h-full min-h-0 flex-1 overflow-y-auto overscroll-y-none no-scrollbar',
+                'h-full min-h-0 flex-1 overflow-y-auto overscroll-y-none cf-grid-scrollbar',
+                // Floor under the last row: the list used to stop exactly at the
+                // card's bottom edge, so the final order sat welded to the frame
+                // with no signal that it WAS the final one. The pad scrolls, so
+                // reaching air is how the queue says it has ended.
+                'pb-6',
                 'overflow-x-hidden',
               ),
         className,
@@ -423,7 +480,8 @@ export function LedgerGrid<T>({
           <div
             ref={xScrollRef}
             data-testid={dataTestId}
-            className="min-w-0 w-full overflow-x-auto overflow-y-clip overscroll-x-none no-scrollbar"
+            className="min-w-0 w-full overflow-x-auto overflow-y-clip overscroll-x-none cf-grid-scrollbar"
+            onWheel={onWheelShiftX}
             onScroll={(e) => syncSplitScroll(e.currentTarget)}
           >
             {body}
@@ -441,8 +499,12 @@ export function LedgerGrid<T>({
               // Dual-axis body port only — column header is a flex sibling above
               // so absolute rows cannot paint through it. H-scroll syncs the
               // header via `--cf-grid-sx` (data-grid-split-x).
-              'overflow-x-auto overflow-y-auto overscroll-x-none overscroll-y-none no-scrollbar',
+              'overflow-x-auto overflow-y-auto overscroll-x-none overscroll-y-none cf-grid-scrollbar',
+              // Floor under the last row — see the Y-only port above. Scrollable
+              // pad, so the operator can pull past the end of the queue.
+              'pb-6',
             )}
+            onWheel={onWheelShiftX}
             onScroll={(e) => {
               const el = e.currentTarget;
               syncSplitScroll(el);

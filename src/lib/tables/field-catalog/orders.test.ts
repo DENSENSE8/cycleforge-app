@@ -10,7 +10,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ShippedOrder } from '@/types/orders';
-import { ORDERS_FIELD_CATALOG, ORDERS_PRODUCT_LAYOUT } from './orders';
+import { ORDERS_FIELD_CATALOG, ORDERS_PRODUCT_LAYOUT, omitShippedOnlyBindings } from './orders';
 import {
   ordersSlotValues,
   ordersSubtitleParts,
@@ -52,17 +52,36 @@ describe('orders catalog', () => {
     }
   });
 
-  it('product default parses against the catalog (picked in status:1, qty · condition · notes under the title)', () => {
+  it('product default parses against the catalog (picked in status:1, qty · condition · item # · notes under the title)', () => {
     const parsed = parseSlotLayout(ORDERS_PRODUCT_LAYOUT, ORDERS_FIELD_CATALOG);
     assert.equal(parsed.morph, 'compound');
     assert.deepEqual(parsed.statusBindings, [{ fieldId: 'orders.picked' }]);
-    // Operator lock 2026-08-30: the default under-title line, IN THIS ORDER.
+    // Operator lock 2026-08-30, extended 2026-08-31 with the item number:
+    // the default under-title line, IN THIS ORDER.
     assert.deepEqual(parsed.subtitleBindings, [
       { fieldId: 'orders.qty' },
       { fieldId: 'orders.condition' },
+      { fieldId: 'orders.item_number' },
       { fieldId: 'orders.notes' },
     ]);
     assert.equal(parsed.identityFieldId, 'orders.order_id');
+  });
+
+  it('omitShippedOnlyBindings drops scanned_out and leaves other status slots', () => {
+    const withScanOut = {
+      ...ORDERS_PRODUCT_LAYOUT,
+      statusBindings: [
+        { fieldId: 'orders.picked' },
+        { fieldId: 'orders.packed' },
+        { fieldId: 'orders.scanned_out' },
+      ],
+    };
+    const stripped = omitShippedOnlyBindings(withScanOut);
+    assert.deepEqual(stripped.statusBindings, [
+      { fieldId: 'orders.picked' },
+      { fieldId: 'orders.packed' },
+    ]);
+    assert.equal(omitShippedOnlyBindings(ORDERS_PRODUCT_LAYOUT), ORDERS_PRODUCT_LAYOUT);
   });
 
   it('every stage_event field carries an iconKey and one-word verb faces', () => {
@@ -221,10 +240,16 @@ describe('ordersSlotValues', () => {
 
 describe('ordersSubtitleParts', () => {
   it('paints qty as the BARE number in the count tone (1 quiet, >1 warning)', () => {
+    // `widthCh: 2` reserves the two-digit case so a 10–99 quantity does not
+    // shift every fact after it (operator ruling 2026-08-31).
     const single = ordersSubtitleParts(row({ quantity: '1' }), ['orders.qty']);
-    assert.deepEqual(single, [{ text: '1', toneClass: 'text-text-muted', key: 'orders.qty' }]);
+    assert.deepEqual(single, [
+      { text: '1', toneClass: 'text-text-muted', key: 'orders.qty', widthCh: 2 },
+    ]);
     const multi = ordersSubtitleParts(row({ quantity: '3' }), ['orders.qty']);
-    assert.deepEqual(multi, [{ text: '3', toneClass: 'text-text-warning', key: 'orders.qty' }]);
+    assert.deepEqual(multi, [
+      { text: '3', toneClass: 'text-text-warning', key: 'orders.qty', widthCh: 2 },
+    ]);
   });
 
   it('paints condition in its grade tone and keeps notes quiet', () => {

@@ -1,8 +1,8 @@
 /**
- * Top-level mode for the tech sidebar body switch. L2 Quality Control / Ready
- * to Pack lives in GlobalHeader (`HeaderPageSwitcher` ← SIDEBAR_PAGE_NAV;
- * child labels Quality Control + Ready to Pack; wire ids still `testing` /
- * `shipping`).
+ * Top-level mode for the tech sidebar body switch. MasterNav lists Quality
+ * Control and Ready to Pack as Scan Stations L1 rows; the header switcher
+ * peers them via `stationSubgroup: 'testing'`. Wire ids still `testing` /
+ * `shipping`.
  *
  *   testing  → {@link TestingSidebarPanel}
  *   shipping → {@link ShippingSidebarPanel}

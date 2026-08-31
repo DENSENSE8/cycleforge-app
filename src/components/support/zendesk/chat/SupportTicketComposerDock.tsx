@@ -2,7 +2,7 @@
 
 /**
  * Floating ticket reply shell — Unbox overview compound for Support / Testing
- * ticket tabs: {@link OmnichannelComposerDock} via {@link SupportChatComposer}
+ * ticket tabs: {@link OmnichannelComposerDock} via {@link TicketComposer}
  * `variant="station-dock"` + embedded {@link StationTerminalDock} as trailingAction.
  */
 
@@ -13,7 +13,7 @@ import { StationTerminalDock } from '@/components/station/terminal';
 import type { TerminalActionVm } from '@/lib/station-terminal';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 import type { TicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
-import { SupportChatComposer } from './SupportChatComposer';
+import { TicketComposer } from '@/components/composer/TicketComposer';
 
 /** Staging + ticket meta the host needs to mount the floating composer. */
 type SupportTicketComposerHost = {
@@ -45,8 +45,7 @@ export function SupportTicketComposerDock({
             {terminalVm.disabledReason}
           </p>
         ) : null}
-        <SupportChatComposer
-          variant="station-dock"
+        <TicketComposer
           ticketId={host.ticketId}
           requesterEmail={host.requesterEmail}
           staging={host.staging}

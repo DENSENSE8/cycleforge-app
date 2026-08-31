@@ -45,6 +45,7 @@ import type { PhotoAspect } from '@/lib/photos/photo-aspects';
 import { LineCartonContextSection } from './line-edit/LineCartonContextSection';
 import { useSyncedPoNote } from './line-edit/hooks/useSyncedPoNote';
 import { useUnboxLineController } from './line-edit/hooks/useUnboxLineController';
+import { CLAIM_RENDERS_IN_BOTH } from './claim/claim-surfaces';
 import { useUnboxDisplayView } from './line-edit/hooks/useUnboxDisplayView';
 import { resolveUnboxTicketContextOpen } from './line-edit/unbox-ticket-context';
 import {
@@ -69,6 +70,7 @@ import {
   invalidateReceivingFeeds,
   patchReceivingRailTicketByCarton,
 } from '@/lib/queries/receiving-queries';
+import { stationComposerArrivalMode } from '@/lib/composer/station-composer-mode';
 import { StationContextBar } from '@/components/station/entity-context';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
 import {
@@ -86,6 +88,8 @@ import {
   preloadUnboxDisplayLeafChunks,
 } from './line-edit/terminal/unbox-tabs';
 import { WorkspaceNotesCard } from './line-edit/WorkspaceNotesCard';
+import { useZendeskNextTicketNumber } from '@/hooks/useZendeskQueries';
+import { formatDraftTicketNumber } from '@/lib/support/next-ticket-number';
 import { UnboxDisplaysActionFloor } from './line-edit/UnboxDisplaysActionFloor';
 import { useUnboxProcedureArrowKeys } from './line-edit/useUnboxProcedureArrowKeys';
 import { useUnboxProcedureSteps } from './line-edit/useUnboxProcedureSteps';
@@ -161,11 +165,22 @@ export function LineEditPanel({
   const ticketMode = composerMode === 'ticket';
   const [ticketClaimMode, setTicketClaimMode] = useState<'create' | 'link'>('link');
 
-  // Ticket mode engages auto-collapse even before the field focuses.
-  useEffect(() => {
-    if (ticketMode) bandCollapse.engage();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- engage is stable; only mode flips
-  }, [ticketMode]);
+  /*
+   * The composer no longer collapses the context blocks — operator ruling,
+   * 2026-08-30.
+   *
+   * Auto-collapse had three composer triggers: entering Ticket mode, the mode
+   * change callback, and FOCUS. Focus is the one that made it unusable: a click
+   * into the note field on Unbox — the station's whole job — folded Items and
+   * Label away and left the centre empty above the dock. Ticket mode is no
+   * better now that the dock holds the claim draft itself: the operator is
+   * writing ABOUT the items, so hiding them is backwards.
+   *
+   * Collapse-all and the band toggles still drive it. Scroll does NOT — a
+   * 24px nudge used to fold Items + Label, remount the serial field, and
+   * scrollIntoView the caret, which rubber-banded the label the operator was
+   * trying to read.
+   */
 
   // New line → sticker hidden again (the Label row starts shut).
   useEffect(() => {
@@ -174,21 +189,12 @@ export function LineEditPanel({
   }, [row.id]);
 
   /**
-   * TRANSITIONAL — filing a claim opens it in BOTH places (operator ruling,
-   * 2026-08-30).
-   *
-   * The claim used to live only in the right-rail Displays Ticket leaf; it now
-   * also renders in the centre Ticket pane, which is where it is going. Opening
-   * one and not the other would take the familiar surface away from the floor
-   * mid-shift, so for now the action lights both and the operator can work in
-   * whichever they reach for.
-   *
-   * **This is scaffolding with an end date.** When the floor is used to the
-   * centre, delete this constant and the `setRequestedSideTab` call below and
-   * the claim is centre-only. Nothing else depends on the pair.
+   * Filing a claim opens it in BOTH surfaces — the transitional rule and its
+   * end date live in {@link CLAIM_RENDERS_IN_BOTH}, shared with Testing so the
+   * two stations cannot drift. Open lights both in the same mode; CLOSING is
+   * centre-only (`closeClaimView`) — the rail is the surface the floor already
+   * trusts.
    */
-  const CLAIM_RENDERS_IN_BOTH = true;
-
   const onOpenClaim = useCallback(
     (mode: 'create' | 'link') => {
       // Centre — where the claim is going.
@@ -199,7 +205,7 @@ export function LineEditPanel({
         setRequestedSideTab('ticket', { ticketAction: 'claim', claimMode: mode });
       }
     },
-    [CLAIM_RENDERS_IN_BOTH, setComposerMode, setRequestedSideTab],
+    [setComposerMode, setRequestedSideTab],
   );
   const c = useUnboxLineController(row, staffId, { itemTotal, onOpenClaim });
   const [actionFeedback, setActionFeedback] = useState<InlineActionFeedbackPayload | null>(null);
@@ -270,14 +276,34 @@ export function LineEditPanel({
   const ticketViewActive = ticketMode && hasTicketId;
   const claimViewActive = ticketMode && !hasTicketId;
 
-  // Carton open → Ticket composer mode when linked (chat) or unfound (claim Link).
-  // Only on carton open — do not fight a manual Displays close.
+  // DRAFT TICKET NUMBER. Only `WorkspaceNotesCard` knows whether the claim body has
+  // been typed, so it reports up and the number is fetched only once there is
+  // something to file — never on every carton an operator merely opens.
+  const [ticketDraftFilled, setTicketDraftFilled] = useState(false);
+  const draftingClaim = claimViewActive && ticketDraftFilled;
+  const nextTicketNumber = useZendeskNextTicketNumber(draftingClaim);
+  const draftTicketNumber = draftingClaim
+    ? formatDraftTicketNumber(nextTicketNumber.data ?? null)
+    : null;
+
+  /**
+   * Carton open → the composer is on UNBOX. Always.
+   *
+   * This effect used to flip the composer to Ticket whenever the carton landed
+   * linked or unfound. Two things made that wrong: the mode is session-sticky,
+   * so a Ticket flip outlived the carton that justified it; and the Ticket tab
+   * is no longer a passive chat — on an unlinked carton it is now the CLAIM
+   * (`useComposerTicketClaim`), so auto-landing there pointed a claim body at
+   * an operator who had only walked up to scan a box. Ticket is one press away
+   * (⌥2 / the mode face). Scanning is the station's job and it gets the field.
+   *
+   * The claim MODE seed stays — it is what the rail's Ticket leaf opens on.
+   */
   useEffect(() => {
     const hasTicket = c.providerTicketId != null;
     const ctx = resolveUnboxTicketContextOpen(row, hasTicket);
-    if (!ctx.open) return;
-    setTicketClaimMode(ctx.claimMode);
-    setComposerMode('ticket');
+    if (ctx.open) setTicketClaimMode(ctx.claimMode);
+    setComposerMode(stationComposerArrivalMode());
     // eslint-disable-next-line react-hooks/exhaustive-deps -- carton gate
   }, [row.receiving_id ?? row.id]);
 
@@ -506,10 +532,10 @@ export function LineEditPanel({
 
     const ticketCtx = resolveUnboxTicketContextOpen(row, hasTicketId);
     if (ticketCtx.open) {
-      // Ticket owns the centre composer for this carton — not Displays.
-      if (cartonChanged) {
-        setComposerMode('ticket');
-      }
+      // Exception carton — leave the rail where the operator put it rather
+      // than driving it to this beat's reference. The composer is NOT flipped
+      // to Ticket here any more: arrival lands on Unbox (see the carton-open
+      // effect above), and this runs on every step advance besides.
       return;
     }
 
@@ -574,11 +600,20 @@ export function LineEditPanel({
     setComposerMode('ticket');
   }, [setComposerMode]);
 
-  /** Auto-match "Find ticket" → Ticket composer (claim · link in the centre pane). */
+  /**
+   * Auto-match "Find ticket" → the Ticket surface.
+   *
+   * Unlinked carton → this is a CLAIM, so it goes through `onOpenClaim` and
+   * lights both surfaces. Linked carton → the body is chat, which has never
+   * been paired; the centre opens alone.
+   */
   const openFindTicketDisplay = useCallback(() => {
-    if (!hasTicketId) setTicketClaimMode('link');
-    setComposerMode('ticket');
-  }, [hasTicketId, setComposerMode]);
+    if (hasTicketId) {
+      setComposerMode('ticket');
+      return;
+    }
+    onOpenClaim('link');
+  }, [hasTicketId, onOpenClaim, setComposerMode]);
 
   const closeClaimView = useCallback(() => {
     c.setReturnClaimPrefill(null);
@@ -943,13 +978,15 @@ export function LineEditPanel({
           onToggleTicketView={openTicketView}
           ticketViewActive={ticketViewActive}
           onToggleClaimView={() => {
+            // One door: `onOpenClaim` is what lights BOTH surfaces. Flipping
+            // the composer here directly is how this chip used to open the
+            // claim in the centre and leave the rail on whatever it was
+            // showing. Close stays centre-only.
             if (claimViewActive) closeClaimView();
-            else {
-              setTicketClaimMode('link');
-              setComposerMode('ticket');
-            }
+            else onOpenClaim('link');
           }}
           claimViewActive={claimViewActive}
+          draftTicketNumber={draftTicketNumber}
           onOpenMovePhotosExternal={openMovePhotosDisplay}
           onSendToTicketExternal={openSendPhotoNoteDisplay}
           // Hover = PhotoLauncher action dropdown (View · Upload · Move · …).
@@ -984,16 +1021,16 @@ export function LineEditPanel({
               <StationWorkbench
                 ambientWash={false}
                 className="relative z-0 flex-1 bg-transparent"
-                // Notes bubble + Print · Receive — shorter than the parked
-                // procedure pager floor; default clearance is enough.
-                reserveScrollClearance
+                // Notes bubble + Print · Receive, plus the Label band when it
+                // is open — pager clearance lets the sticker scroll above the
+                // dock instead of sitting under it.
+                reserveScrollClearance="pager"
                 // Identity is in-flow (`StationContextBar placement="flow"`)
                 // above this workbench — no guessed stacked pt clearance.
                 reserveIdentityClearance={false}
                 // Flat data floor — no vertical air between centre surfaces.
                 bodyGap="none"
                 bodyFill={ticketMode}
-                onScroll={bandCollapse.onScroll}
                 // `tabs` is deliberately EMPTY: the strip moved to the
                 // right-edge Displays column, so the carton owns the centre.
                 feedback={
@@ -1098,6 +1135,8 @@ export function LineEditPanel({
                       ) : null}
                       {terminalVm ? (
                         <WorkspaceNotesCard
+                          onTicketCreated={onClaimTicketCreated}
+                          onNoteTyped={() => bands.open('label')}
                           row={row}
                           c={c}
                           chrome="raised"
@@ -1113,11 +1152,8 @@ export function LineEditPanel({
                             nudgeUnboxPrintReceive('cta');
                           }}
                           primaryActionDisabled={Boolean(terminalVm.disabled)}
+                          onTicketDraftFilledChange={setTicketDraftFilled}
                           onOpenLocations={openLocationsDisplay}
-                          onComposerModeChange={(mode) => {
-                            if (mode === 'ticket') bandCollapse.engage();
-                          }}
-                          onComposerFocus={bandCollapse.engage}
                           progressPercent={procedurePercent}
                           progressTone={checklistSelected ? 'selected' : 'idle'}
                           onProgressClick={() => {
@@ -1152,7 +1188,22 @@ export function LineEditPanel({
                 <motion.div initial={false} animate="show" variants={revealContainer}>
                   <motion.div variants={revealItem}>{unboxOverview}</motion.div>
                 </motion.div>
-                {ticketMode ? (
+                {/*
+                  A FILED ticket is part of this carton's record, so it shows
+                  whenever one exists — Unbox mode included (operator ruling
+                  2026-08-31). It used to mount only in Ticket mode, which meant
+                  an operator taking a scan note could not see the conversation
+                  that explains why the carton is a claim without changing modes
+                  first. Mode picks what the COMPOSER writes to; it does not
+                  decide whether the record is visible.
+
+                  An unlinked carton still has no pane here: the composer's
+                  Ticket tab is the claim (template body in the field, Enter
+                  files it), and mounting the old form above it meant two
+                  editors for one message. The rail's Ticket leaf still carries
+                  the full claim form for the floor — see CLAIM_RENDERS_IN_BOTH.
+                */}
+                {hasTicketId ? (
                   <StationTicketPane
                     row={row}
                     ticketId={c.providerTicketId}
@@ -1201,11 +1252,23 @@ export function LineEditPanel({
                 }
                 const tab = id as UnboxSideTab;
                 if (tab === 'ticket') {
-                  // Displays Ticket is a jump into centre Ticket mode — not a
-                  // second primary editor in the right column.
+                  // TRANSITIONAL — Ticket renders in BOTH surfaces, so this row
+                  // OPENS the leaf instead of forwarding.
+                  //
+                  // It used to jump into centre Ticket mode and bounce the rail
+                  // straight back to the index ("not a second primary editor in
+                  // the right column"), which is why pressing Ticket out here
+                  // read as a dead row: the centre changed behind the open
+                  // Displays column and the rail never moved. Retire
+                  // {@link CLAIM_RENDERS_IN_BOTH} and it forwards again.
+                  if (!hasTicketId) {
+                    onOpenClaim('link');
+                    return;
+                  }
                   setComposerMode('ticket');
-                  if (!hasTicketId) setTicketClaimMode('link');
-                  setRequestedSideTab(UNBOX_DISPLAY_INDEX);
+                  setRequestedSideTab(
+                    CLAIM_RENDERS_IN_BOTH ? 'ticket' : UNBOX_DISPLAY_INDEX,
+                  );
                   return;
                 }
                 setRequestedSideTab(tab);

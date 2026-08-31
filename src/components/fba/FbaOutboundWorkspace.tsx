@@ -75,8 +75,14 @@ export function FbaOutboundWorkspace() {
 
   const modeFilter = useMemo(
     () => ({
+      // Banded, because these three are not peers of the status facets they
+      // merge with: a status narrows the rows in front of you, a mode swaps
+      // which collection you are looking at. Rendered as one flat column the
+      // operator could only learn that by picking one and watching the board
+      // change underneath them.
       options: FBA_MODE_OPTIONS.map((o) => ({
         id: o.id,
+        group: 'Board',
         label: o.label,
         active: activeMode === o.mode,
       })),

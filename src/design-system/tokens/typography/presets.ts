@@ -69,7 +69,12 @@ export const cardTitle = 'text-base font-semibold text-text-default leading-tigh
  * never CSS `uppercase` (eyebrows · chips · field/section labels keep that).
  * Guard: `table-header-casing.guard.test.ts`.
  */
-export const tableHeader = 'text-role-micro font-normal text-text-soft' as const;
+/**
+ * Column-header face. BLACK ink (operator ruling 2026-08-31, was
+ * `text-text-soft`): a header is the label an operator aims a sort or a resize
+ * at, and a grey one reads as disabled next to the values under it.
+ */
+export const tableHeader = 'text-role-micro font-normal text-text-default' as const;
 
 /** Table cell content */
 export const tableCell = 'text-sm font-semibold text-text-default' as const;

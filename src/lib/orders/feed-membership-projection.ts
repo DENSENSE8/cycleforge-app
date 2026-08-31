@@ -20,8 +20,9 @@
  *
  * Scope mirrors `/api/orders?fulfillmentScope=true` (and /api/orders/queue-counts):
  * labeled (shipment_id), not carrier-shipped, not Amazon-fulfilled, not yet
- * packed (no PACK event). Reconcile WITHOUT deletes: upsert the current in-queue
- * set, then flip existing rows to 'done' once their order leaves the queue.
+ * packed, not dock-scanned (SHIP_CONFIRM belongs on Shipped). Reconcile WITHOUT
+ * deletes: upsert the current in-queue set, then flip existing rows to 'done'
+ * once their order leaves the queue.
  * Hard-deleted orders are cleaned by the existing parent-delete trigger
  * (trg_delete_feed_memberships_on_order_delete, migration 2026-07-03j).
  *
@@ -35,6 +36,7 @@ import { db } from '@/lib/drizzle/db';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
 import { PACK_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
 import { deriveFulfillmentState, type FulfillmentState } from '@/lib/unshipped-state';
+import { sqlOrderHasShipConfirm } from '@/lib/orders/order-grain-sql';
 
 /** Lane → feed tone (FeedMembershipTone / TimelineTone). */
 const LANE_TONE: Record<FulfillmentState, 'default' | 'success' | 'danger'> = {
@@ -200,6 +202,7 @@ export async function projectOrdersUnshippedMemberships(
      WHERE o.shipment_id IS NOT NULL
        AND NOT ${sql.raw(SHIPPED_BY_CARRIER_SQL)}
        AND COALESCE(o.fulfillment_channel, '') <> 'AFN'
+       AND NOT ${sql.raw(sqlOrderHasShipConfirm('o'))}
        AND NOT EXISTS (
          SELECT 1 FROM station_activity_logs sal
          WHERE sal.organization_id = o.organization_id

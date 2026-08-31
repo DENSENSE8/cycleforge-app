@@ -181,7 +181,7 @@ export const SerialScanField = forwardRef<
     const t = window.setTimeout(() => {
       const el = inputRef.current;
       if (!el) return;
-      el.focus();
+        el.focus({ preventScroll: true });
       el.select();
     }, 0);
     return () => window.clearTimeout(t);

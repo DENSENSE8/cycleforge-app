@@ -1,35 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
+import { withAuth } from '@/lib/auth/withAuth';
 import { getProductManualById } from '@/lib/neon/product-manuals-queries';
+import { isVercelBlobUrl } from '@/lib/blob/vercel-blob-url';
+import { streamVercelBlobResponse } from '@/lib/blob/stream-vercel-blob';
 import type { OrgId } from '@/lib/tenancy/constants';
+
+export const runtime = 'nodejs';
+export const maxDuration = 60;
 
 /**
  * GET /api/product-manuals/[id]/content
  *
- * Same-origin content proxy for pack-bundle browser print fallback (Phase 2).
- * Redirects to source_url when present; 404 when the manual has no fetchable file.
+ * Same-origin bytes for iframe / embed preview (pack print, manuals library,
+ * testing slide-over). Vercel Blob's own CSP blanks PDFs framed on our origin,
+ * so we stream rather than 302.
+ *
+ * Session-only (no `orders.view`): testers and packers already receive
+ * `source_url` from their surfaces; this route must not 403 them.
  */
 
-function parseId(raw: string): number | null {
+function manualIdFromPath(pathname: string): number | null {
+  // /api/product-manuals/:id/content
+  const segs = pathname.split('/').filter(Boolean);
+  const contentIdx = segs.lastIndexOf('content');
+  const raw = segs[contentIdx - 1] || '';
   const id = Number(raw);
   return Number.isFinite(id) && id > 0 ? id : null;
 }
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ id: string }> },
-) {
-  const gate = await requireRoutePerm(req, 'orders.view');
-  if (gate.denied) return gate.denied;
-
-  const { id: rawId } = await params;
-  const manualId = parseId(rawId);
+export const GET = withAuth(async (req: NextRequest, ctx) => {
+  const manualId = manualIdFromPath(req.nextUrl.pathname);
   if (manualId === null) {
     return NextResponse.json({ error: 'Invalid manual id' }, { status: 400 });
   }
 
-  const orgId = gate.ctx.organizationId as OrgId;
-  const download = new URL(req.url).searchParams.get('download') === '1';
+  const orgId = ctx.organizationId as OrgId;
+  const download = req.nextUrl.searchParams.get('download') === '1';
 
   try {
     const manual = await getProductManualById(manualId, orgId);
@@ -42,22 +48,34 @@ export async function GET(
       return NextResponse.json({ error: 'Manual has no stored content' }, { status: 404 });
     }
 
+    const filename = manual.file_name || `${manual.display_name || `manual-${manualId}`}.pdf`;
+    const fallbackType = filename.toLowerCase().endsWith('.pdf')
+      ? 'application/pdf'
+      : 'application/octet-stream';
+
+    if (isVercelBlobUrl(url)) {
+      return streamVercelBlobResponse(url, {
+        filename,
+        download,
+        fallbackContentType: fallbackType,
+      });
+    }
+
     if (download) {
-      const res = await fetch(url, { redirect: 'follow' });
+      const res = await fetch(url, { redirect: 'follow', cache: 'no-store' });
       if (!res.ok) {
         return NextResponse.json({ error: 'Failed to fetch manual bytes' }, { status: 502 });
       }
       const bytes = Buffer.from(await res.arrayBuffer());
       const headerType = res.headers.get('content-type') || '';
       const mime =
-        headerType.includes('pdf') || manual.file_name?.toLowerCase().endsWith('.pdf')
+        headerType.includes('pdf') || filename.toLowerCase().endsWith('.pdf')
           ? 'application/pdf'
           : headerType || 'application/octet-stream';
-      const filename = manual.file_name || `${manual.display_name || `manual-${manualId}`}.pdf`;
       return new NextResponse(bytes, {
         headers: {
           'content-type': mime,
-          'content-disposition': `attachment; filename="${filename.replace(/"/g, '')}"`,
+          'content-disposition': `attachment; filename="${filename.replace(/[\r\n"]/g, '')}"`,
           'cache-control': 'private, max-age=300',
         },
       });
@@ -68,4 +86,4 @@ export async function GET(
     console.error('[GET /api/product-manuals/[id]/content]', err);
     return NextResponse.json({ error: 'Failed to load manual' }, { status: 500 });
   }
-}
+});

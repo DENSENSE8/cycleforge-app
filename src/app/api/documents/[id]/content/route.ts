@@ -5,6 +5,8 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import type { OutboundDocumentData } from '@/lib/documents/types';
 import { getStorageAdapter } from '@/lib/photos/storage/registry';
 import { normalizePhotoDisplayUrl } from '@/lib/nas-photo-url';
+import { isVercelBlobUrl } from '@/lib/blob/vercel-blob-url';
+import { streamVercelBlobResponse } from '@/lib/blob/stream-vercel-blob';
 
 export const dynamic = 'force-dynamic';
 
@@ -86,6 +88,13 @@ export async function GET(
     }
 
     const display = normalizePhotoDisplayUrl(url);
+    if (isVercelBlobUrl(display)) {
+      return streamVercelBlobResponse(display, {
+        filename,
+        download,
+        fallbackContentType: mimeType,
+      });
+    }
     if (display.startsWith('http') || display.startsWith('/')) {
       return NextResponse.redirect(display, { status: 302 });
     }

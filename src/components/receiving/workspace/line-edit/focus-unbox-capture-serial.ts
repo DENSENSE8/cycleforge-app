@@ -29,9 +29,14 @@ function listUnboxCaptureSerialInputs(): HTMLInputElement[] {
   );
 }
 
-function focusInput(el: HTMLInputElement): boolean {
+function focusInput(el: HTMLInputElement, opts?: { reveal?: boolean }): boolean {
+  // Never scroll on a programmatic caret park — that yanks the Unbox
+  // workbench back to the serial field while the operator is reading the
+  // label (rubber-band). Reveal only for an explicit ↑/↓ step.
   el.focus({ preventScroll: true });
-  el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  if (opts?.reveal) {
+    el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }
   return true;
 }
 
@@ -129,7 +134,7 @@ export function focusUnboxCaptureSerialRelative(delta: -1 | 1): boolean {
   const next = inputs.length > 0 && nextIdx !== idx ? inputs[nextIdx] : null;
   if (next) {
     selectLineOwningSerial(next);
-    return focusInput(next);
+    return focusInput(next, { reveal: true });
   }
   return stepSiblingLineCursor(delta);
 }

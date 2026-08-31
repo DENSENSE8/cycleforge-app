@@ -31,7 +31,7 @@ export function HeaderChromeMenu({
       role="menu"
       aria-label={ariaLabel}
       className={cn(
-        'min-w-[11rem] overflow-hidden rounded-none border border-border-default border-t-0 bg-surface-card p-0',
+        'min-w-[11rem] overflow-y-auto rounded-none border border-border-default border-t-0 bg-surface-card p-0',
         elevationClass('raised', 'soft'),
         className,
       )}

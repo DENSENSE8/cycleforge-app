@@ -13,6 +13,7 @@ import {
   deactivateProductManual,
   type ProductManual,
 } from '@/lib/neon/product-manuals-queries';
+import { isVercelBlobUrl } from '@/lib/blob/vercel-blob-url';
 
 /**
  * The CRUD config closures below run inside the request scope but don't
@@ -24,22 +25,6 @@ import {
 async function currentOrgId(): Promise<OrgId | undefined> {
   const user = await getCurrentUser();
   return user?.organizationId ?? undefined;
-}
-
-/**
- * Vercel Blob URLs all sit under a `*.public.blob.vercel-storage.com` host
- * (or `blob.vercel-storage.com` in some deployments). We only attempt blob
- * renames on URLs we recognize as ours — third-party `source_url`s (Google
- * Doc shares, customer-portal links) stay untouched.
- */
-function isVercelBlobUrl(url: string | null | undefined): boolean {
-  if (!url) return false;
-  try {
-    const host = new URL(url).hostname;
-    return host.endsWith('.blob.vercel-storage.com') || host === 'blob.vercel-storage.com';
-  } catch {
-    return false;
-  }
 }
 
 /**

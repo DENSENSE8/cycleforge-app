@@ -36,6 +36,14 @@ export const framerDuration = {
   captureStackFreshPulse: 1.8,
   /** Modal scrim fade — aligns with CSS `motionDurations.fast` */
   overlayScrim: 0.15,
+  /**
+   * Progress-meter fill settle — a VALUE changed, so it is a state transition
+   * and takes the shortest token the house ships (`motionDurations.micro`,
+   * 100ms), not a feedback-pulse budget. Was an inline 0.5 on `ProgressBar`
+   * animating `width`; the property is now `scaleX` (law M1 bans layout
+   * tweens, and permits transform since the 2026-08-25 amendment).
+   */
+  progressFill: 0.1,
   /*
    * `spineBodySwap` (0.12) is DELETED (2026-08-08) with its presence +
    * transition twins. It crossfaded the MasterNav body between the map, the

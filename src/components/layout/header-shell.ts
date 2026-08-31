@@ -327,6 +327,16 @@ export const TOP_CHROME_ICON_FACE = cn(TOP_CHROME_ICON_GLYPH, NAV_ICON_STROKE_CL
  */
 export const HEADER_PAGE_FACE_WIDTH = 'w-[11rem]';
 
+/**
+ * Scan Stations (and any other long page menu) — cap height to the viewport
+ * under the header. End clearance is scroll-padding, not layout padding:
+ * `pb-8` painted an empty row under short menus (Ready to Pack · Packing ·
+ * Scan out). `scroll-pb-8` still lets a tall list scroll the last row fully
+ * into view.
+ */
+export const HEADER_PAGE_MENU_SCROLL_CLASS =
+  'max-h-[calc(100dvh-theme(spacing.20))] overflow-y-auto overscroll-contain scroll-pb-8';
+
 export const HEADER_ICON_BTN_CLASS =
   'h-full min-h-8 w-full rounded-none text-text-default hover:bg-surface-sunken';
 

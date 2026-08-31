@@ -16,6 +16,8 @@ import {
   applyChildTarget,
   resolveSidebarChild,
   stationSubgroupMembers,
+  floorStationPages,
+  hasDeskPageChrome,
 } from '@/lib/sidebar-navigation';
 import { routeParamsFor } from '@/lib/routing/registry';
 
@@ -167,7 +169,8 @@ test('prod nav ships every unparked page; only redirect surfaces stay off', () =
     'incoming',
     'outbound',
     'scan-out',
-    'tech',
+    'testing',
+    'ready-to-pack',
     'packer',
     'products',
     'inventory',
@@ -176,6 +179,7 @@ test('prod nav ships every unparked page; only redirect surfaces stay off', () =
   }
   assert.equal(navIds.has('warehouse'), false, 'Locations folded under Inventory L2');
   assert.equal(navIds.has('receiving'), false, 'parent Receiving L1 is gone — modes are L1');
+  assert.equal(navIds.has('tech'), false, 'parent Testing L1 is gone — QC / Ready to Pack are L1');
   // Dashboard + the print hub dissolved into domain homes (D2 / D5): the routes
   // still resolve, the L1 rows do not exist.
   for (const id of ['dashboard', 'print-labels', 'print-documents']) {
@@ -335,10 +339,10 @@ test('mode ids are unique within each page', () => {
 
 // Every page id must be a real nav route OR one of the URL-only surfaces that
 // deliberately own no spine row: `fba` (a permanent redirect into Shipping,
-// which keeps its mode registry so legacy `?mode=` deep links still resolve)
-// and the legacy `receiving` family entry (modes only). Modeful pages carry a
-// resolver. Dogfood parking is retired — every other page ships on the spine.
-const URL_ONLY_PAGE_IDS = new Set(['fba', 'receiving']);
+// which keeps its mode registry so legacy `?mode=` deep links still resolve),
+// the legacy `receiving` family entry (modes only), and the legacy `tech`
+// family (QC / Ready to Pack stickers). Modeful pages carry a resolver.
+const URL_ONLY_PAGE_IDS = new Set(['fba', 'receiving', 'tech']);
 
 test('SIDEBAR_PAGE_NAV pages are prod-nav or URL-only, with resolvers when modeful', () => {
   const navIds = new Set(APP_SIDEBAR_NAV.map((item) => item.id));
@@ -560,6 +564,38 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.ok(
     getSidebarPageNav('operations')?.children?.some((c) => c.id === 'packing-review'),
   );
+
+  // Every non-scan desk that wears the page chrome (2026-08-31 port). The
+  // predicate needs >1 child, so a desk that loses its second tab silently
+  // stops drawing the band — this asserts the opt-in, not the flag.
+  for (const pageId of [
+    'home',
+    'outbound',
+    'products',
+    'inventory',
+    'sourcing',
+    'operations',
+    'sales',
+    'support',
+  ]) {
+    assert.equal(
+      hasDeskPageChrome(getSidebarPageNav(pageId)),
+      true,
+      `${pageId} wears DeskPageChrome`,
+    );
+  }
+  // Scan stations wear the FRAME (operator 2026-08-31) but must not opt in
+  // HERE: their tabs are body-switchers (`?testTab=`, `?triview=`), not nav
+  // children, so they pass tabs explicitly to `DeskPageLayout` and the spine
+  // keeps whatever rows it has. A `true` in this loop would mean someone made a
+  // bench's modes into spine drill-downs, which they are not.
+  for (const pageId of ['scan-out', 'packer', 'tech', 'receive', 'triage']) {
+    assert.equal(
+      hasDeskPageChrome(getSidebarPageNav(pageId)),
+      false,
+      `${pageId} draws its modes as explicit tabs, not nav children`,
+    );
+  }
   assert.equal(resolveSidebarChild('outbound', at('/dashboard')), 'orders');
   assert.equal(resolveSidebarChild('outbound', at('/shipping/orders')), 'orders');
   // Shipped lights its own tab. Without its clause the catch-all `return
@@ -604,6 +640,11 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarChild('tech', at('/test', 'view=testing')), 'testing');
   assert.equal(resolveSidebarChild('tech', at('/test', 'staffId=7')), 'shipping');
   assert.equal(resolveSidebarChild('tech', at('/tech', 'view=testing')), 'testing');
+  assert.equal(getSidebarNavPageId('/test', new URLSearchParams('view=testing')), 'testing');
+  assert.equal(getSidebarNavPageId('/test', new URLSearchParams('view=testing-history')), 'testing');
+  assert.equal(getSidebarNavPageId('/test'), 'ready-to-pack');
+  assert.equal(getSidebarNavPageId('/tech', new URLSearchParams('view=testing')), 'testing');
+  assert.equal(getSidebarNavPageId('/tech'), 'ready-to-pack');
 });
 
 // The Test surface + its legacy alias both resolve to the `tech` nav key so the
@@ -692,7 +733,7 @@ test('isSidebarTopPinActive: Plans and Home are separate paths, never both curre
   assert.equal(isSidebarTopPinActive(plans, { pathname: '/search', searchParams: live }), false);
 });
 
-test('stationSubgroupMembers still groups header-switcher peers after the spine flatten', () => {
+test('stationSubgroupMembers still groups receiving / walk-in / testing peers', () => {
   assert.deepEqual(
     stationSubgroupMembers('receiving').map((p) => p.id),
     ['triage', 'receive'],
@@ -701,9 +742,33 @@ test('stationSubgroupMembers still groups header-switcher peers after the spine 
     stationSubgroupMembers('walk-in').map((p) => p.id),
     ['pickup', 'repair'],
   );
+  assert.equal(getSidebarPageNav('repair')?.label, 'Repair Service');
 });
 
-test('Testing children stay Quality Control and Ready to Pack for the header switcher', () => {
+test('floorStationPages is the flat Scan Stations map for the header switcher', () => {
+  assert.deepEqual(
+    floorStationPages().map((p) => [p.id, p.label]),
+    [
+      ['triage', 'Arrival'],
+      ['receive', 'Unbox'],
+      ['pickup', 'Local Pickup'],
+      ['repair', 'Repair Service'],
+      ['testing', 'Quality Control'],
+      ['ready-to-pack', 'Ready to Pack'],
+      ['packer', 'Packing'],
+      ['scan-out', 'Scan out'],
+    ],
+  );
+});
+
+test('Testing L1 benches are Quality Control and Ready to Pack', () => {
+  assert.deepEqual(
+    stationSubgroupMembers('testing').map((p) => [p.id, p.label]),
+    [
+      ['testing', 'Quality Control'],
+      ['ready-to-pack', 'Ready to Pack'],
+    ],
+  );
   const tech = getSidebarPageNav('tech');
   assert.ok(tech?.children);
   assert.deepEqual(

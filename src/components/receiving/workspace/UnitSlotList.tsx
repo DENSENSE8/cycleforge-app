@@ -11,11 +11,12 @@ import {
   type Ref,
   type RefObject,
 } from "react";
-import { X, Trash2, ScanBarcode } from "@/components/Icons";
+import { X, Trash2, ScanBarcode, Copy, Check } from "@/components/Icons";
 import { TextField, IconButton } from "@/design-system/primitives";
 import { cornerClass } from "@/design-system/tokens/radius";
 import { HoverTooltip } from "@/components/ui/HoverTooltip";
 import { cn } from "@/utils/_cn";
+import { copyToClipboard } from "@/utils/_dom";
 import { ConditionBadge } from "./ConditionBadge";
 import { NoSerialOfferCheck } from "./line-edit/NoSerialOfferCheck";
 import {
@@ -542,6 +543,7 @@ function ExpandedRow({
   const [scan, setScan] = useState("");
   const [editing, setEditing] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [copied, setCopied] = useState(false);
   // When the row's whole purpose is grading (Unbox), keep the pills visible
   // instead of hiding them behind hover/serial-focus.
   const showMeta =
@@ -583,6 +585,10 @@ function ExpandedRow({
   useEffect(() => {
     if (editing && flush) setCondExpanded(false);
   }, [editing, flush]);
+
+  useEffect(() => {
+    setCopied(false);
+  }, [serial?.id, serial?.serial_number]);
 
   const flushConditionExpanded = Boolean(
     flush && renderMeta && (condExpanded || !hasGrade),
@@ -725,7 +731,7 @@ function ExpandedRow({
                 onChange={(next) => onUnitSerialAbsentChange(unitId, next)}
               />
             ) : showFilledReadout ? (
-              // ds-raw-button: serial readout handoff — click to edit; trailing Trash2 deletes
+              // ds-raw-button: serial readout handoff — click to edit; trailing copy · Trash2
               <button
                 type="button"
                 disabled={disabled}
@@ -809,31 +815,72 @@ function ExpandedRow({
             </HoverTooltip>
           </div>
         ) : showFilledReadout ? (
-          <div className={cn(joined && "flex h-11 w-11 shrink-0 self-stretch")}>
-            <HoverTooltip label="Remove serial" asChild>
-              <IconButton
-                onClick={() => {
-                  if (!serial) return;
-                  onDeleteSerial(serial);
-                }}
-                disabled={disabled}
-                ariaLabel="Remove serial"
-                data-unit-delete-serial
-                size={joined ? undefined : "touch"}
-                icon={<Trash2 className="h-4 w-4" />}
-                className={cn(
-                  "text-text-muted hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-60",
-                  joined
-                    ? cn(
-                        cornerClass("flush"),
-                        "flex h-full w-full items-center justify-center bg-surface-card p-0",
-                      )
-                    : "border border-border-soft bg-surface-card shadow-sm",
-                )}
-                // ds-allow-control-size — joined trailing cell fills h-11×w-11
-              />
-            </HoverTooltip>
-          </div>
+          <>
+            <div className={cn(joined && "flex h-11 w-11 shrink-0 self-stretch")}>
+              <HoverTooltip label={copied ? "Copied" : "Copy serial"} asChild>
+                <IconButton
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (!serial) return;
+                    void copyToClipboard(serial.serial_number, {
+                      historyKind: "serial",
+                      historyDisplay: serial.serial_number,
+                    }).then((ok) => {
+                      if (!ok) return;
+                      setCopied(true);
+                      window.setTimeout(() => setCopied(false), 1400);
+                    });
+                  }}
+                  disabled={disabled}
+                  ariaLabel={copied ? "Copied" : `Copy serial ${serial.serial_number}`}
+                  data-unit-copy-serial
+                  size={joined ? "fill" : "touch"}
+                  icon={
+                    copied ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )
+                  }
+                  className={cn(
+                    "text-text-muted hover:bg-surface-hover hover:text-text-default disabled:cursor-not-allowed disabled:opacity-60",
+                    joined
+                      ? cn(
+                          cornerClass("flush"),
+                          "flex h-full w-full items-center justify-center bg-surface-card p-0",
+                        )
+                      : "border border-border-soft bg-surface-card shadow-sm",
+                  )}
+                  // ds-allow-control-size — joined trailing cell fills h-11×w-11
+                />
+              </HoverTooltip>
+            </div>
+            <div className={cn(joined && "flex h-11 w-11 shrink-0 self-stretch")}>
+              <HoverTooltip label="Remove serial" asChild>
+                <IconButton
+                  onClick={() => {
+                    if (!serial) return;
+                    onDeleteSerial(serial);
+                  }}
+                  disabled={disabled}
+                  ariaLabel="Remove serial"
+                  data-unit-delete-serial
+                  size={joined ? "fill" : "touch"}
+                  icon={<Trash2 className="h-4 w-4" />}
+                  className={cn(
+                    "text-text-muted hover:bg-rose-50 hover:text-rose-600 disabled:cursor-not-allowed disabled:opacity-60",
+                    joined
+                      ? cn(
+                          cornerClass("flush"),
+                          "flex h-full w-full items-center justify-center bg-surface-card p-0",
+                        )
+                      : "border border-border-soft bg-surface-card shadow-sm",
+                  )}
+                  // ds-allow-control-size — joined trailing cell fills h-11×w-11
+                />
+              </HoverTooltip>
+            </div>
+          </>
         ) : canOfferNoSerial ? (
           // Replaces the greyed-out empty-field `+` entirely — one green check,
           // shared with the single-qty SerialCard (NoSerialOfferCheck).

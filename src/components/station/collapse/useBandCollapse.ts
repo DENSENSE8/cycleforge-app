@@ -27,7 +27,7 @@ export interface BandCollapseController {
   open: (bandId: string) => void;
   /** Close this band without touching siblings. No-op if it is already shut. */
   close: (bandId: string) => void;
-  /** Open everything again, clearing pins. */
+  /** Open every band, including ones seeded shut (Unbox Label). */
   expandAll: () => void;
 }
 
@@ -52,11 +52,14 @@ export function useBandCollapse(
       toggle: (bandId: string) => dispatch({ kind: 'toggle', bandId, allCollapsed }),
       open: (bandId: string) => dispatch({ kind: 'open', bandId, allCollapsed }),
       close: (bandId: string) => dispatch({ kind: 'close', bandId, allCollapsed }),
-      // Goes through the centre controller so the scroll rules see the change —
-      // a local pin sweep would leave `collapsed` true and the next scroll
-      // would slam everything shut again.
-      expandAll: centre.expandAll,
+      // Centre first so scroll/engage see the expanded pin; then drop band
+      // pins so a seeded-shut Label (Unbox / Testing) opens with Items.
+      expandAll: () => {
+        centre.expandAll();
+        dispatch({ kind: 'expand-all', allCollapsed: false });
+      },
     }),
     [state, allCollapsed, centre.expandAll],
+    // dispatch is stable; expandAll now also clears band pins.
   );
 }

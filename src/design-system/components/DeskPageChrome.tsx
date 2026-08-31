@@ -3,6 +3,18 @@
 /**
  * `DeskPageChrome` — the frame every **non-scan desk** wears.
  *
+ * **This is the design system's page chrome and the only one.** It lived in
+ * `src/components/desk/` while Shipping was its single tenant; it moved here on
+ * 2026-08-31 because a frame that four domains wear is a system component, and
+ * a page that hand-rolls its own title row beside this one is a fork. Ask
+ * `ds_contract` before building any page header — that is what the pin in
+ * `src/design-system/pinned.json` is for.
+ *
+ * It takes DATA and knows nothing about nav, routing or permissions: the
+ * app-level adapter (`@/components/desk/DeskPageLayout`) reads
+ * `SIDEBAR_PAGE_NAV` and hands the title, the tabs and the active id down. That
+ * split is deliberate — the design system must not import the app's spine.
+ *
  * ```text
  *      ┌ stage measure ─────────────────────────────────────────────┐
  *      │ Shipping                                    [ Add order ]  │  ← page header
@@ -22,8 +34,37 @@
  * the spine as nav children), a **detachment gap**, and a **card** capped at
  * {@link DESK_STAGE_MAX_PX}.
  *
- * **Scan stations must never mount this** (`docs/todo/desk-page-chrome-fixed-width-PLAN.md`
- * §0). They keep the edge-to-edge station shell with its 28px bands.
+ * The tab row is the only optional one. A single-surface page passes `tabs={[]}`
+ * and wears the other three — which is what lets a page with no modes still be
+ * this frame rather than a hand-rolled title over a bare table.
+ *
+ * **Scan stations wear it too, as of 2026-08-31.** The rule used to be the
+ * opposite — `docs/todo/desk-page-chrome-fixed-width-PLAN.md` §0 said a station
+ * must never mount this and must keep its edge-to-edge shell with 28px bands.
+ * The operator struck that: Unbox, Arrival, Testing, Packing and Scan out now
+ * wear the same frame as the Shipping desk, and their mode tabs moved off the
+ * foot strip onto this row. A bench that kept its own tab vocabulary would be
+ * the second page chrome in a product that just finished collapsing to one.
+ *
+ * A station passes its tabs EXPLICITLY (they are body-switchers — `?testTab=`,
+ * `?triview=` — not nav children), so `deskChrome: true` stays off its nav
+ * entry: the spine has nothing to withdraw.
+ *
+ * ## Where this frame stops
+ *
+ * It is the frame for **operator desks** — a page whose subject is a collection
+ * you triage. It is deliberately NOT the frame for:
+ *
+ * - **Settings / admin pages** (`/settings/*`, `/admin/inventory/*`). Those are
+ *   forms and short config tables; `PageHeader` from `@/components/ui/pane-header`
+ *   stays their primitive. A fixed-width stage, a detached card and a fullscreen
+ *   toggle answer questions a settings form does not ask, and the two-primitive
+ *   split here is the same "two jobs, two components" call the repo already
+ *   makes for `Button` vs `button`.
+ * - **Detail panels, flyouts and inspectors.** They also use `PageHeader`, and
+ *   that is a panel header, not a page header — a different altitude entirely.
+ * - **Full-canvas surfaces** (`/studio`'s pan/zoom graph). A canvas that is the
+ *   whole point of the page has nothing to gain from a card on a stage.
  *
  * ## The detachment is the point
  *
@@ -66,9 +107,9 @@
  */
 
 import { useEffect, type ReactNode } from 'react';
-import { cornerClass } from '@/design-system/tokens/radius';
-import { focusRing } from '@/design-system/tokens/focus-ring';
-import { DeskStageProvider } from '@/components/desk/desk-stage-context';
+import { cornerClass } from '../tokens/radius';
+import { focusRing } from '../tokens/focus-ring';
+import { DeskStageProvider } from './DeskStageContext';
 import {
   DESK_CHROME_STAGE_BODY_CLASS,
   DESK_PAGE_HEADER_ROW_CLASS,
@@ -76,9 +117,10 @@ import {
   DESK_STAGE_FIXED_CLASS,
   DESK_STAGE_FULLSCREEN_CLASS,
   DESK_STAGE_GROUND_CLASS,
+  DESK_STAGE_FLOOR_CLASS,
   DESK_STAGE_GUTTER_CLASS,
   DESK_TAB_ROW_CLASS,
-} from '@/lib/desk/desk-stage';
+} from '../tokens/desk-stage';
 import { cn } from '@/utils/_cn';
 
 export interface DeskPageTab {
@@ -101,7 +143,15 @@ export interface DeskPageChromeProps {
    * nothing true to say; a placeholder subtitle is worse than none.
    */
   subtitle?: ReactNode;
-  /** Desk modes, left to right. One active at a time; the URL is the SoT. */
+  /**
+   * Desk modes, left to right. One active at a time; the URL is the SoT.
+   *
+   * **Empty is a real answer.** A desk with one surface (or none declared yet)
+   * passes `[]` and the tab row is not rendered at all — it still gets the
+   * header, the stage and the detached card. A row drawn for zero tabs is a
+   * rule under nothing, and the same law that bans a placeholder subtitle bans
+   * a placeholder tab strip.
+   */
   tabs: readonly DeskPageTab[];
   activeTab: string;
   onTabChange: (id: string) => void;
@@ -154,6 +204,7 @@ export function DeskPageChrome({
           !fullscreen && DESK_STAGE_GUTTER_CLASS,
           !fullscreen && DESK_STAGE_GROUND_CLASS,
           !fullscreen && 'pt-2',
+          !fullscreen && DESK_STAGE_FLOOR_CLASS,
           className,
         )}
       >
@@ -189,6 +240,7 @@ export function DeskPageChrome({
             </div>
 
             {/* ── Tab row — tabs only, underline selection ───────────────── */}
+            {tabs.length === 0 ? null : (
             <div
               data-testid="desk-page-chrome-band"
               className={cn(
@@ -201,10 +253,16 @@ export function DeskPageChrome({
                 `-ml-3` cancels the first tab's own `px-3` so its LABEL — not its
                 hit area — starts on the same vertical line as the title and the
                 card's left edge. The padding stays for the pointer target.
+
+                No `overflow-x-auto`. It clipped at this tablist's CONTENT box,
+                one pixel above the row's rule, so the selection could never
+                reach the rule it is meant to be a segment of — and with four
+                short tabs on a stage that caps at 1152px it never scrolled
+                anything. Its removal is what lets `-mb-px` below land.
               */}
               <div
                 role="tablist"
-                className="-ml-3 flex min-w-0 flex-1 items-stretch gap-1 overflow-x-auto"
+                className="-ml-3 flex min-w-0 flex-1 items-stretch gap-1"
               >
                 {tabs.map((tab) => {
                   const active = tab.id === activeTab;
@@ -218,15 +276,28 @@ export function DeskPageChrome({
                       data-testid={`desk-tab-${tab.id}`}
                       data-active={active ? '' : undefined}
                       className={cn(
-                        'ds-raw-button relative inline-flex shrink-0 items-center gap-1 px-3 text-role-caption',
+                        'ds-raw-button inline-flex shrink-0 items-center gap-1 px-3 text-role-caption',
+                        /*
+                          Selection IS the rule, not a bar above it.
+                          `DESK_TAB_ROW_CLASS` draws the full-width hairline on
+                          this row's bottom border; `-mb-px` pulls each tab's own
+                          bottom border down onto that exact pixel, so the dark
+                          segment REPLACES the soft rule under the active tab
+                          instead of stacking a second line on top of it. That
+                          stack is what read as an underline floating off the
+                          hairline.
+                        */
+                        '-mb-px border-b',
                         // Colour only. A tab that slid or grew would move its
-                        // neighbours, which ops chrome forbids (AGENTS.md).
+                        // neighbours, which ops chrome forbids (AGENTS.md) —
+                        // every tab carries the border, inactive ones
+                        // transparent, so activating one changes no geometry.
                         'transition-colors duration-100 ease-out',
                         cornerClass('flush'),
                         focusRing('control'),
                         active
-                          ? 'font-semibold text-text-default'
-                          : 'text-text-muted hover:text-text-default',
+                          ? 'border-text-default font-semibold text-text-default'
+                          : 'border-transparent text-text-muted hover:text-text-default',
                       )}
                     >
                       <span className="truncate">{tab.label}</span>
@@ -240,24 +311,12 @@ export function DeskPageChrome({
                           {tab.count > 99 ? '99+' : tab.count}
                         </span>
                       ) : null}
-                      {/*
-                        Selection is a solid hairline UNDER the tab, sitting on
-                        the row's own rule — a selected SEGMENT of that rule,
-                        not a filled face, not a border box, not a dash floating
-                        under a word. It moves no neighbour and needs no second
-                        colour.
-                      */}
-                      {active ? (
-                        <span
-                          aria-hidden
-                          className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-text-default"
-                        />
-                      ) : null}
                     </button>
                   );
                 })}
               </div>
             </div>
+            )}
           </>
         )}
 

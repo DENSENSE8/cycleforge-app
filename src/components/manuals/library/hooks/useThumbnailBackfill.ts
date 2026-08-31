@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { generatePdfThumbnail } from '@/lib/manuals/pdfThumbnail';
+import { productManualContentPath } from '@/lib/blob/vercel-blob-url';
 import { saveManualThumbnail } from '../manuals-library-api';
 import type { ManualRow } from '../manuals-tree';
 
@@ -39,7 +40,7 @@ export function useThumbnailBackfill(
         if (cancelled) return;
         backfillAttemptedRef.current.add(file.id);
         try {
-          const thumb = await generatePdfThumbnail(file.source_url!);
+          const thumb = await generatePdfThumbnail(productManualContentPath(file.id));
           if (cancelled || !thumb) continue;
           const thumbnailUrl = await saveManualThumbnail(file.id, thumb.blob);
           if (cancelled) return;

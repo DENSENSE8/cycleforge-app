@@ -11,7 +11,7 @@ import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { useHasSidebarContext } from '@/components/sidebar/useHasSidebarContext';
-import { useIsDeskStageSurface } from '@/components/sidebar/useIsDeskStageSurface';
+import { useIsRaillessSurface } from '@/components/sidebar/useIsRaillessSurface';
 import {
   CONTEXT_PANEL_COLLAPSE,
   CONTEXT_PANEL_COLUMN_CLASS,
@@ -115,8 +115,8 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
   // routes (picker / feed) both mount their panel here now — EXCEPT surfaces
   // that already own their chrome, which run rail-less (Pattern E) so the
   // center reclaims the column. That is every desk-chrome page (the whole
-  // Shipping desk) plus `/incoming`. SoT: `isDeskStageSurface`.
-  const railless = useIsDeskStageSurface();
+  // Shipping desk) plus `/incoming`. SoT: `isRaillessSurface`.
+  const railless = useIsRaillessSurface();
   const hasPanel =
     (useHasSidebarContext() || isStationSurfaceRoute(pathname)) && !railless;
   const stationSurface = isStationSurfaceRoute(pathname);

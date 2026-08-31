@@ -72,7 +72,11 @@ export interface ToShipChrome {
     onToggle: (id: string) => void;
     onClearAll: () => void;
   };
-  /** Rows the queue holds before this view's narrowing. */
+  /**
+   * Rows behind the CURRENT narrowing — `undefined` when no server count
+   * describes it. See {@link useToShipChrome} for why that is the honest answer
+   * rather than falling back to the queue total.
+   */
   totalCount: number | undefined;
 }
 
@@ -91,6 +95,50 @@ export function useToShipChrome(): ToShipChrome {
   const activeFacet = getToShipTriageFacetFromSearch(searchParams);
   const stage = String(searchParams.get('stage') || '').toLowerCase();
 
+  /*
+   * The denominator, and when there isn't one.
+   *
+   * The bar was handed `queueCounts.total` unconditionally, so a facet-narrowed
+   * view read "12 of 922": a count of rows the operator had just filtered away.
+   * A footer underneath then printed a SECOND, stage-aware sentence against a
+   * different denominator, and neither described the set on screen.
+   *
+   * A denominator is published only when a server count actually answers for
+   * what is rendered — one facet alone, or one stage alone. Facets and stages
+   * COMPOSE (the whole reason they are banded apart in the menu), and no
+   * endpoint counts the intersection, so that case publishes nothing and the
+   * bar prints "N rows". Same law as the today strip and the tab counts: no
+   * number beats a number that is answering a different question.
+   */
+  const facetTotal =
+    activeFacet === 'must_ship'
+      ? queueCounts?.mustShip
+      : activeFacet === 'urgent'
+        ? queueCounts?.urgent
+        : activeFacet === 'blocked'
+          ? laneTotals.blocked
+          : activeFacet === 'caged'
+            ? cagedCount
+            : undefined;
+  const stageTotal =
+    stage === 'pending'
+      ? laneTotals.pending
+      : stage === 'tested'
+        ? laneTotals.tested
+        : stage === 'packed'
+          ? (queueCounts?.byStage as { packed?: number } | undefined)?.packed
+          : undefined;
+  const facetActive = activeFacet !== 'all';
+  const stageActive = stageTotal !== undefined;
+  const narrowedTotal =
+    facetActive && stageActive
+      ? undefined // two narrowings, no count for their intersection
+      : facetActive
+        ? facetTotal
+        : stageActive
+          ? stageTotal
+          : queueCounts?.total;
+
   const replaceParams = useCallback(
     (mutate: (params: URLSearchParams) => void) => {
       const next = new URLSearchParams(searchParams.toString());
@@ -105,10 +153,17 @@ export function useToShipChrome(): ToShipChrome {
   // "why does this need attention" vocabulary — the reason the control
   // exists), the lifecycle stages follow. Facet counts ride each option so
   // the overview the tab strip used to show is one click away, not rebuilt.
+  //
+  // The two axes are NAMED (`group`) because they do not behave alike: picking
+  // a facet replaces the current one (they are exclusive, and picking the
+  // active one clears to `all`), while a stage toggles on its own and composes
+  // with whatever facet is set. Eight identical rows made an operator learn
+  // that by trying it.
   const filterOptions = useMemo<DataTableFilterOption[]>(
     () => [
       ...TRIAGE_FACETS.map((id) => ({
         id,
+        group: 'Needs attention',
         label: TO_SHIP_TRIAGE_FACET_LABEL[id],
         count:
           id === 'must_ship'
@@ -124,6 +179,7 @@ export function useToShipChrome(): ToShipChrome {
       })),
       ...STAGE_OPTIONS.map((option) => ({
         id: option.id,
+        group: 'Stage',
         label: option.label,
         count:
           option.id === 'pending'
@@ -189,6 +245,6 @@ export function useToShipChrome(): ToShipChrome {
       onToggle: onToggleFilter,
       onClearAll: onClearAllFilters,
     },
-    totalCount: queueCounts?.total,
+    totalCount: narrowedTotal,
   };
 }

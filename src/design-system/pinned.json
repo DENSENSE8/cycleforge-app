@@ -1,51 +1,211 @@
 {
   "_README": "Curated laws for ds_contract, merged onto the primitive it names. Absence of an entry means nobody has written the law yet — NOT that anything is permitted. Keep this small: a rule here is a rule an agent will follow, and a stale one is worse than none. Every entry cites where the decision was taken.",
+  "DeskStageContext": {
+    "useWhen": "fullscreen, expand the table, stage state, is this table on a desk, desk stage, maximize the grid",
+    "doNot": "Do not add a second fullscreen state or a second toggle. DeskPageChrome OWNS the state and publishes it here; the control lives on the table's own toolbar row (DataTableFullscreenToggle), which renders NOTHING when useDeskStageOptional() is null \u2014 a station embed or a modal-hosted table has no stage to expand, and a dead control is worse than no control. Do not move the toggle up to the page header: in fullscreen that header is not rendered.",
+    "law": "src/design-system/components/DeskStageContext.tsx. Operator 2026-08-30: the fullscreen control belongs on the table's row, not the page's."
+  },
 
+  "DeskActionSlot": {
+    "useWhen": "page CTA, primary action on a desk, register an action into the page header, Add button on a workbench, desk action slot",
+    "doNot": "Do not pass a CTA down as a prop through the route-group layout \u2014 a shared frame that imports one desk's intake stops being shared. The active surface registers its node with DeskActionSlotRegistrar and the frame renders whatever it got; a desk with no CTA registers nothing and the slot stays empty. One occupant, last writer wins. Memoize the node \u2014 a fresh element identity every render re-registers every render, which loops through the provider.",
+    "law": "src/design-system/components/DeskActionSlot.tsx. Operator 2026-08-30: the CTA is page-level, top-right of the header."
+  },
+
+  "TableStatusBar": {
+    "useWhen": "row count, shown of total, selected count, copy selection, table foot strip, sub-mode tabs inside one page tab",
+    "doNot": "Do not wire NEW page modes into its `tabs` props. Page modes ride DeskPageChrome's TOP row on every desk AND every scan station (operator 2026-08-31) \u2014 the desk-threaded `tabStrip` plumbing was deleted the same day. What this strip is for is the right half (shown / total / selected / copy), which is the one thing a table knows and a frame does not; its tab half survives only for SECOND-level sub-modes inside a single page tab.",
+    "law": "src/components/tables/TableStatusBar.tsx. Operator 2026-08-31: tabs moved to the top; the foot strip keeps the counts."
+  },
+
+  "DeskPageChrome": {
+    "useWhen": "page header, page title, page-level primary action, in-page tabs, workbench frame, desk frame, non-scan desk, fixed-width stage, detached table card, table fullscreen",
+    "doNot": "Do not hand-roll a page title row, a tab strip, or a `max-w-*` stage on any non-scan desk. Scope: operator DESKS only — settings/admin pages and detail panels keep PageHeader from @/components/ui/pane-header, and a full-canvas surface (/studio) takes neither — this is the frame, and a second one is a fork. Scan stations mount it too (operator 2026-08-31) — /unbox, /pack, /test, /triage, /shipping/scan-out wear the same frame, and their mode tabs ride the TOP row, never a TableStatusBar foot strip. A station passes its tabs explicitly because they are body-switchers, not nav children. Do not pass a title literal — the title is nav data, threaded by @/components/desk/DeskPageLayout off the page's SIDEBAR_PAGE_NAV label, so the header cannot drift from the spine. Do not put the CTA back on the tab row, do not use role-display for the title (role-title, 18px/600), do not animate the tab underline between tabs, and do not add a second measure token: DESK_STAGE_MAX_PX is the one desk width. In fullscreen the header and tab row are NOT rendered — never re-parent the search or the fullscreen toggle, they already live on the table's own row in both states.",
+    "law": "src/design-system/components/desk/DeskPageChrome.tsx + src/design-system/tokens/desk-stage.ts. docs/todo/desk-page-header-industry-standard-HANDOFF.md — title · CTA · tabs · detached table. Operator 2026-08-31: the chrome is the design system's, and every other page ports onto it."
+  },
+  "DeskPageLayout": {
+    "useWhen": "desk route group layout, mount the desk frame, opt a page into desk chrome, workbench layout",
+    "doNot": "Not a design-system file (it reads SIDEBAR_PAGE_NAV / AuthContext, which the system must not import) — it lives at @/components/desk/DeskPageLayout. Do not copy its body into a domain layout: a domain gets `<DeskPageLayout>{children}</DeskPageLayout>` plus, at most, a `decorateTabs` callback for counts it can prove. Do not fetch through useQuery inside it — a route-group layout renders above the app QueryClientProvider.",
+    "law": "Operator 2026-08-31: one desk frame, ported to every non-scan page. Opt in with deskChrome: true on the page's SIDEBAR_PAGE_NAV entry."
+  },
   "Button": {
-    "useWhen": "any button, CTA, action, submit, confirm, cancel, toolbar action, chrome action, icon button",
-    "doNot": "Do not hand-roll a <button>, and do not reach for @/components/ui/button on a new surface. This is the canonical Button (9 named variants, including the semantic `execute` and `success` intents) and it is what ~34 call sites import. Solid CTAs render flush: cornerClass('flush'), not a rounded-* literal.",
-    "law": "docs/roadmap/MASTER.md · docs/roadmap/LOOP_PROMPT.md · docs/operations-studio/Full Code Base Upgrade/03-DESIGN-LANGUAGE-2026.md — 'canonical Button ... never hand-roll'"
+    "useWhen": "ops CTA, action, submit, confirm, cancel, toolbar action, execute, success intent, anything an operator would call a button",
+    "doNot": "Do not hand-roll a <button> for an operator action. Do not use this for 21st.dev / shadcn-lane chrome — that is `button` from @/components/ui/button. Solid CTAs render flush: cornerClass('flush'), not a rounded-* literal.",
+    "law": "docs/roadmap/MASTER.md · docs/roadmap/LOOP_PROMPT.md · docs/operations-studio/Full Code Base Upgrade/03-DESIGN-LANGUAGE-2026.md — 'canonical Button ... never hand-roll'. Operator 2026-08-31: two Buttons, two jobs."
   },
-
   "button": {
-    "useWhen": "shadcn lineage base, existing shadcn-derived composite",
-    "doNot": "Not the house Button. This is the shadcn/new-york base (cva) that shadcn-derived composites were generated against, and it survives only inside them. New surfaces take `Button` from @/design-system/primitives/Button. Two Buttons in the catalogue is a migration in progress, not a choice offered to you.",
-    "law": "docs/design-system/2026-component-adoption-plan.md — consolidation target is the design-system primitive"
+    "useWhen": "shadcn, 21st.dev, new composed chrome, asChild trigger, quiet bar control, overlay chrome, shadcn-lane, primitive button",
+    "doNot": "Not the house CTA. Ops actions take `Button` from @/design-system/primitives/Button. Compose new 21st.dev / shadcn-lane work from this file. House colour tokens, never bg-primary. Do not hand-roll the cva / Radix Slot structure.",
+    "law": "src/components/ui/button.tsx — shadcn/new-york structure, house colour. Operator 2026-08-31: shadcn primitives are the compose base for new 21st.dev work."
   },
-
   "OmnichannelComposerDock": {
     "useWhen": "composer, text entry, prompt, message input, note, comment, ask the assistant, filter a queue",
-    "doNot": "Do not mount a second composer. Every text-entry job on every surface — notes, comments, questions, messages, queue filtering — enters through THIS composer; a tile or panel gets a display-only readout, never a mouth of its own. Its soft corner (COMPOSER_SHELL_CORNER, rounded-2xl) is a named exemption from the flush-square ops law and is not a licence to round anything else.",
-    "law": "Operator 2026-08-24: one composer, ever. Soft corner is COMPOSER_SHELL_CORNER only."
+    "doNot": "Do not mount a second composer. Every text-entry job on every surface — notes, comments, questions, messages, queue filtering — enters through THIS composer; a tile or panel gets a display-only readout, never a mouth of its own. Soft corner is COMPOSER_SHELL_CORNER (named literal, not a CornerRole). Inner controls keep their component default (VisibilityToggle appearance=default) — do not pass flush, do not call cornerClass, do not hand-write rounded-lg/md. Those values are the default because 16px dock − p-1.5 → 8px track, then p-0.5 → 6px faces. Raised chrome owns elevationClass('raised') and stacks at z-raised — never flatten the floor to weld Unbox|Ticket into this card, never overflow-hidden a parent around this shell (that shears the drop shadow).",
+    "law": "Operator 2026-08-24: one composer, ever. Soft corner is COMPOSER_SHELL_CORNER only. Operator 2026-08-31: the dock is the raised card; the station mode row is a sibling under the outline, z-base, so the shadow paints across Unbox|Ticket."
   },
-
   "StationComposerHost": {
     "useWhen": "station composer, unbox composer, ticket composer, scan-station input, plus-button dock",
-    "doNot": "Do not invent a second station dock. Modes are Unbox and Ticket only, horizontal under the outline, not a dropdown. Plus is circular (composer shell radius). Do not square it. Do not add Notes or Location as modes — Location is an action inside the outline.",
-    "law": "StationComposerHost file header. Operator 2026-08-30: unbox + ticket, one row, rounded plus."
+    "doNot": "Do not invent a second station dock. Modes are Unbox and Ticket only, horizontal under the outline, not a dropdown. Plus is circular (composer shell radius). Do not square it. Do not add Notes or Location as modes — Location is an action inside the outline. Do not weld the caption into the dock (no weldBottom, no shared overflow-hidden silhouette). The host floor is bg-surface-card + COMPOSER_SHELL_CORNER with isolate and no overflow clip; elevation lives only on OmnichannelComposerDock.",
+    "law": "StationComposerHost file header. Operator 2026-08-30: unbox + ticket, one row, rounded plus. Operator 2026-08-31: white COMPOSER_SHELL_CORNER floor under the modes; dock z-raised over caption z-base."
   },
-
-  "Badge": {
-    "useWhen": "status chip, count chip, tag, pill label on a row",
-    "doNot": "Do not hand-roll a rounded-full span with a hex background. This is the chip. Glyph + text together — never colour alone.",
-    "law": "src/components/ui/badge.tsx — shadcn structure, house colour. The only Badge; there is no design-system/primitives/Badge."
+  "ComposerModeRow": {
+    "useWhen": "unbox ticket mode row, composer caption, station mode switcher, composer procedure ring",
+    "doNot": "Do not put Unbox|Ticket inside the dock outline. Do not give this row elevationClass — it is a flat bg-surface-card plate at z-base so the dock's raised shadow falls across the labels. Same COMPOSER_SHELL_CORNER as the dock. Do not invent a third mode.",
+    "law": "src/components/composer/ComposerModeRow.tsx. Operator 2026-08-31: caption is a sibling under the outline, white, rounded-2xl, below the shadow."
   },
-
+  "badge": {
+    "useWhen": "shadcn badge, 21st.dev badge, status chip, count chip, tag, pill label on a row, primitive badge",
+    "doNot": "Do not hand-roll a rounded-full span with a hex background. Glyph + text together — never colour alone. Copyable identifiers are CopyChip, not this. Domain status strings are StatusBadge. Compose new 21st.dev / shadcn-lane work from this file. House colour tokens, never bg-primary.",
+    "law": "src/components/ui/badge.tsx — shadcn structure, house colour. Pin key is the filename id (`badge`), not `Badge`."
+  },
+  "input": {
+    "useWhen": "shadcn input, 21st.dev input, labeled field, overlay field, primitive input",
+    "doNot": "Not the flush industrial bar cell — that is TextField from @/design-system/primitives/TextField. Pair with `label` from @/components/ui/label. House colour tokens, never bg-primary. Do not hand-roll a <input> on a shadcn-lane surface.",
+    "law": "src/components/ui/input.tsx — shadcn/new-york structure, house colour. Operator 2026-08-31: shadcn primitives are the compose base for new 21st.dev work."
+  },
+  "label": {
+    "useWhen": "shadcn label, 21st.dev label, field label, form label, primitive label",
+    "doNot": "Do not use the house eyebrow (11px caps) on this lane — sentence case, text-sm. Pair with `input`. House colour tokens. Do not hand-roll a <label> next to a shadcn Input.",
+    "law": "src/components/ui/label.tsx — shadcn lineage is sentence case, not the house eyebrow."
+  },
+  "checkbox": {
+    "useWhen": "shadcn checkbox, 21st.dev checkbox, primitive checkbox",
+    "doNot": "Ops ledger rows take Checkbox from @/design-system/primitives/Checkbox. Compose new 21st.dev / shadcn-lane work from this file. House colour tokens, never bg-primary. No indicator animation.",
+    "law": "src/components/ui/checkbox.tsx — shadcn/Radix structure, house colour."
+  },
+  "alert": {
+    "useWhen": "shadcn alert, 21st.dev alert, inline notice, banner warning, primitive alert",
+    "doNot": "Not a toast (that is @/lib/toast). Compose from Alert / AlertTitle / AlertDescription. House colour tokens, never bg-primary. Do not hand-roll a role=alert box.",
+    "law": "src/components/ui/alert.tsx — shadcn/new-york structure, house colour."
+  },
+  "skeleton": {
+    "useWhen": "shadcn skeleton, 21st.dev skeleton, loading placeholder, pulse placeholder, primitive skeleton",
+    "doNot": "Not SkeletonCard (house composite). Compose new 21st.dev / shadcn-lane loading chrome from this file. House colour tokens. Do not invent a pulse div.",
+    "law": "src/components/ui/skeleton.tsx — shadcn structure, house colour."
+  },
+  "separator": {
+    "useWhen": "shadcn separator, 21st.dev separator, divider, primitive separator",
+    "doNot": "Do not fake a divider with a 1px border on a wrapper. House colour tokens. Compose from this file on the shadcn lane.",
+    "law": "src/components/ui/separator.tsx — shadcn structure, house colour."
+  },
+  "dialog": {
+    "useWhen": "shadcn dialog, 21st.dev dialog, modal, overlay, command dialog, primitive dialog",
+    "doNot": "Ops ledger modals take Dialog from @/design-system/components/Dialog. Compose new 21st.dev / shadcn-lane work from this file. House tokens, z-modal, bg-scrim. No animate-in zoom/fade.",
+    "law": "src/components/ui/dialog.tsx — shadcn/new-york / Radix structure, house colour. Operator 2026-08-31: shadcn primitives are the compose base for new 21st.dev work."
+  },
+  "command": {
+    "useWhen": "shadcn command, 21st.dev command, cmdk, command palette, searchable list, primitive command",
+    "doNot": "Not the composer (that is OmnichannelComposerDock). Compose a find palette from this file. House colour tokens. Do not hand-roll a cmdk wrapper.",
+    "law": "src/components/ui/command.tsx — shadcn/new-york / cmdk, house colour."
+  },
+  "popover": {
+    "useWhen": "shadcn popover, 21st.dev popover, primitive popover",
+    "doNot": "Ops anchored menus take Popover from @/design-system/primitives/Popover. Hover-only copy is HoverTooltip. Compose new 21st.dev / shadcn-lane work from this file. House colour tokens.",
+    "law": "src/components/ui/popover.tsx — shadcn/Radix structure, house colour."
+  },
+  "CopyChip": {
+    "useWhen": "copy chip, last-8, order number, tracking, serial, purchase order, sku, identifier, clipboard, OrderIdChip, TrackingChip, SerialChip, PoChip",
+    "doNot": "Do not hand-roll a copyable id span. Use the named variant (OrderIdChip, TrackingChip, SerialChip, PoChip, …) when one exists. Tones live in CHIP_TONES — do not invent a hue. Last-8 via getLast8 / @/lib/copy-chip-format. Hover menu is CopyChipHoverMenu, not a fork. Not a status chip (that is badge or StatusBadge).",
+    "law": "src/components/ui/CopyChip.tsx — CHIP_TONES is the hue SoT. Operator 2026-08-31: pin the house copy-chip family."
+  },
   "StatusBadge": {
     "useWhen": "domain status on an entity (shipped, overdue, failed, hold) that already has a status string",
-    "doNot": "Do not use this for a generic chip. That is Badge. StatusBadge maps a status key through StatusText.",
+    "doNot": "Do not use this for a generic chip (that is `badge`) or a copyable identifier (that is CopyChip). StatusBadge maps a status key through StatusText.",
     "law": "src/design-system/components/StatusBadge.tsx"
   },
-
-  "TriageScrollLayout": {
-    "useWhen": "triage form, scroll sections, dense update, Grok navigation, forms exceeding 100vh, quick-jump navigation, Catalog Pairing, Order Details, Release, exception editor, warehouse form with multiple operational sections",
-    "doNot": "Do not stack full-bleed squared sections in one overflowing column. Do not invent a second jump rail. Do not square the right-pane cards with rounded-none or a raw rounded-* / border-radius integer. Right-pane panels use cornerClass('surface'). Scroll highlighting is IntersectionObserver on the overflow pane, not a click-only active class.",
-    "law": "Operator 2026-08-30 — Grok-style sticky left nav + scrolling section cards for dense warehouse triage forms."
+  "VisibilityToggle": {
+    "useWhen": "internal note vs public reply, ticket channel, composer visibility, helpdesk private vs emailed",
+    "doNot": "Inside OmnichannelComposerDock leave appearance at default. Do not pass flush — that is ops chrome. Do not hand-write rounded-lg or rounded-md; those are the default because the dock is COMPOSER_SHELL_CORNER (16px) with p-1.5 (6px) → 8px track, then the toggle's p-0.5 → 6px faces. cornerClass cannot express this: every ladder rung is rounded-none.",
+    "law": "ComposerTicketChannelToggle file header. Operator 2026-08-30 — console and station share this default so they stop diverging."
   },
-
+  "TriageScrollLayout": {
+    "useWhen": "triage form, scroll sections, dense update, Catalog Pairing, Order Details, Release, exception editor, warehouse form with multiple operational sections",
+    "doNot": "Do not invent a top button row or a second rail. Grouped section cards are the scan. Pass knobs only on a fixed-width pane worked repeatedly — that is TriageScrollKnobs (edge ticks, colour-only active). Do not square the cards with rounded-none or a raw rounded-* / border-radius integer. Panels use cornerClass('surface').",
+    "law": "Operator 2026-08-30 — grouping is the scan; the edge rail is opt-in for a fixed-width pane, never a display metric of its own."
+  },
+  "TriageScrollKnobs": {
+    "useWhen": "jump rail, edge knobs, section ticks, position readout, Grok-style nav, sticky section index",
+    "doNot": "Do not put a button row across the top of the form. Do not tween width or position when a tick becomes active — colour and weight only. Do not use bg-blue-600; the active tick is bg-accent-bg. Scroll with block:start, no behavior:smooth. Host is TriageScrollLayout knobs, not a fork.",
+    "law": "Operator 2026-08-30 — edge rail doubles as IntersectionObserver readout; vertical space is the scarce axis."
+  },
   "useOptimisticMutation": {
     "useWhen": "edit, save, update, patch, rename, toggle, inline save, optimistic write, mutation after user edit, save a field",
     "doNot": "Do not await the server before the UI changes. Do not call useMutation or useResourceMutation for an inline edit. Do not import toast from sonner. This hook paints the cache first, persists, and on failure rolls back and toast.error(why) via @/lib/toast (AppToaster, bottom-right). Creates / fire-and-forget with no cached row still use useResourceMutation.",
     "law": "Operator 2026-08-30 — edits are optimistic; the paint is the feedback; failure is a bottom-right toast."
+  },
+  "ProgressBar": {
+    "useWhen": "progress meter, completion bar, stage progress, percent done, N of M, goal against actual",
+    "doNot": "Do not animate width, height, or position — the fill is a scaleX transform with transformOrigin:'left' and w-full, gated by useReducedMotion. Law M1 bans layout tweens; transform was struck from that ban 2026-08-25, so the fill is legal only in that form. Duration is framerDuration.progressFill (100ms), never an inline literal. Progression is a COUNT, never a pointer position: pass satisfied-required-steps over total-required, so a pointer sitting on step 5 of 8 does not render 5/8.",
+    "law": "docs/warehouse-os/PROGRESSION-INTERVIEW-LEDGER.md — PG12 (segmented squares + a scaleX fill; M1 stands unamended), PG6 (percent-done is a count, never a position), PD1 (this file's width tween was the violation)."
+  },
+  "ProcedureDeck": {
+    "useWhen": "station work surface, procedure steps, step column, work list, guided procedure, unbox steps, the surface an operator works a station from",
+    "doNot": "Do not gate capture on the active step. Evidence claims the step it belongs to, so the pointer is a HINT about what to capture next, never an authority that rejects input — scanning what step 5 wants while the pointer sits on step 2 satisfies step 5, and steps 3-4 stay open and unticked. Do not auto-complete the steps in between. Every step stays mounted from the first frame (existing invariant 1) — that is what makes a jumped-past open step visible without a scroll, so do not virtualize or collapse the list.",
+    "law": "docs/warehouse-os/PROGRESSION-INTERVIEW-LEDGER.md — PG6 (evidence claims its own step; progression is non-linear), PG3 (evidence advances the pointer)."
+  },
+  "StepStateBadge": {
+    "useWhen": "step state mark, procedure step box, done/skipped/pending mark, checklist square",
+    "doNot": "Do not make it clickable and do not render a rounded-full dot. A step is evidence-derived — a square that clicks to tick reintroduces the banned hand-ticked checklist. `skipped` keeps the chevron and never the check: a skip is a recorded waiver that a person looked and moved past, not a claim the work happened, and a required step skipped this way carries a deviation reason. One mark serves both ProcedureChecklist and ProcedureDeck; do not fork it per view.",
+    "law": "File docblock (shape + evidence-derived). docs/warehouse-os/PROGRESSION-INTERVIEW-LEDGER.md — PG3 (evidence advances; tick is the fallback), PG8 (a skipped required step is a recorded deviation), PG1 (one derivation at two altitudes)."
+  },
+  "calendar": {
+    "useWhen": "calendar, date picker, day picker, month grid, pick a date, single date, due date, ship-by date, shadcn calendar, 21st.dev calendar, react-day-picker",
+    "doNot": "Do not import 'react-day-picker/style.css'. This file names EVERY key in react-day-picker's UI enum, so no rdp-* class is emitted and the stylesheet is dead weight — while it was imported, the keys the old component missed (root, weeks, chevron) inherited library styling and .rdp-chevron{fill:var(--rdp-accent-color)} filled the nav chevron's stroked path into a solid blue triangle. Do not write data-[range-start=true] / data-[range-end=true] / data-[range-middle=true] chains: this repo is on react-day-picker v10, which emits none of those attributes — that is v9, and most shadcn range snippets in circulation are v9 or v8. Do not put raw text-blue-* inside an arbitrary variant ([&>button]: or hover:); the dark-scheme remap in styles/globals.css only rewrites the BARE class, so it goes dark-on-dark — use a themed token. Do not drop relative or w-fit from the root, and do not simplify nav to inset-x-0 top-0: the p-3 root makes those offsets wrong by 12px vertically and 16px horizontally. Range picking is calendar-range-select, not this with mode=\"range\" hand-styled. A full field (trigger + popover + Apply) is DateRangePickerField or DateRangePickerPill, not this bare.",
+    "law": "src/components/ui/calendar.tsx — shadcn/new-york lineage on react-day-picker v10, house tokens. Operator 2026-08-31: one calendar primitive; src/design-system/components/Calendar.tsx was deleted and all six consumers moved here."
+  },
+  "calendar-range-select": {
+    "useWhen": "date range, range picker, from-to dates, period picker, week range, filter by date range, range calendar, start and end date",
+    "doNot": "Do not hand-style a range on `calendar` — this file is the only place the range track is defined. range_middle must keep Tailwind's `!` suffix: in v10 a middle day is BOTH selected and range_middle and the two class strings land on the same cell, so equal specificity would let stylesheet order pick the winner. Do not move the endpoint pill off `selected` onto range_start/range_end — a half-picked range (from set, to open) sets only `selected`, because v10 requires both endpoints before it marks the range. Do not add a preset row above it; the four period chips were removed 2026-08-31 for restating the calendar and forcing the popover wider than the grid. This is the bare calendar — the trigger + popover + Apply field is DateRangePickerField, and the workbench-chrome pill is DateRangePickerPill.",
+    "law": "src/components/ui/calendar-range-select.tsx — layers only range_start / range_end / range_middle over `calendar`. Operator 2026-08-31: ported from 21st.dev, retranslated from react-day-picker v9 to v10."
+  },
+  "DataTable": {
+    "useWhen": "data table, spreadsheet, grid, table, columns, column header, sortable column, fields picker, row selection, find row, filter a list, queue display, worklist, triage queue, desk queue, backlog, exceptions queue, port a table onto a page",
+    "doNot": "Do NOT hand-roll a per-family `*-grid-layout.ts` column array plus a `*GridRow.tsx` with a switch over column keys — that is a second table, and this repo has one. A column this grid does not print yet is a SLOT BINDING in a field catalog (@/lib/tables/field-catalog/*) resolved by the layout cascade and materialized by materializeTracks; add the field, do not fork the display. Do NOT register a new entityFamily / TableId / TableSurfaceBinding just because a row shape carries facts the current sheet lacks — adapt the row instead (see exceptionRowToQueueRow / cagedRecordToQueueRow) and mount the family's existing spreadsheet hook (useOrdersSpreadsheet for every outbound lane). No page supplies chrome: search, filter, tabs, counts and the fields picker are DATA props, never ReactNode slots, and there is no renderColumnHeader to fork with. renderRow / renderGroup stay render props only because a CELL is domain code. Selection tabs that merely narrow the same row set are FILTERS and belong in the one filter control; `all` is the absence of a filter, never a tab. The URL is the state — search, filter, active tab and sort are controlled by the caller and parked in the URL.",
+    "law": "src/components/tables/DataTable.tsx + src/components/tables/table-surface-binding.ts. docs/todo/one-table-sot-teardown-HANDOFF.md — thirty per-desk table displays were torn down on 2026-08-29 for exactly this. Operator 2026-08-31, after an agent hand-rolled a grid for /shipping/exceptions: \"You must use the one data table component, the slot table, the linear host.\""
+  },
+  "NonlinearTableHost": {
+    "useWhen": "mount a table, table host, grid host, render rows into a sheet, virtualized table body",
+    "doNot": "Do not mount this directly from a page. A page mounts DataTable, which owns the one chrome row above this host; reaching past it is how a desk grows its own toolbar. A family's glue (useOrdersSpreadsheet and its siblings) resolves the feed bag — records, groups, row renderers, sort — and the page spreads it.",
+    "law": "src/components/tables/NonlinearTableHost.tsx. One host, one chrome, every desk."
+  },
+  "materialize-tracks": {
+    "useWhen": "add a column, new column, show a field on the table, column model, grid tracks, slot layout, slot binding, fields menu, per-staff column preferences, organization column layout",
+    "doNot": "Do not write a column array by hand for a surface on this engine. Track keys are SLOT INDICES (`status:1`, `subtitle:2`), never field ids, so rebinding a slot keeps every width and staff preference keyed to that slot. Declare the FACT as a field in @/lib/tables/field-catalog/* and bind it; the materializer turns bindings into tracks. `makeDescriptor` must be a module-level reference, never an inline arrow — LedgerGridSurface memoizes on it and a fresh identity rebuilds the state engine's column list every render.",
+    "law": "src/lib/tables/materialize-tracks.ts + src/lib/tables/slot-layout.ts + src/components/tables/useSlotTableLayout.ts. docs/kill-list/07-slot-table-hand-models.md — layout encoded as a second product table is what the Wave-1 hand-model kill removed."
+  },
+  "LabelFacePreview": {
+    "useWhen": "printed sticker, label preview, 2x1 label, carton label, unit label, inline edit label face, sticker corners, platform type on label, scan-station label",
+    "doNot": "Do not hand-roll a second sticker preview or a per-station hit map. Mount LabelFacePreview (print-faithful iframe) and pass slotHits from useLabelFaceReceivingSlots (carton: platform·type, date, condition, corner) or useLabelFaceProductSlots (unit: title, condition, color). Overlay is LabelFaceSlotOverlay — flush to the paper, never a padded wrap. Platform / type menus are LabelPlatformTypeMenu (sentence case, catalogIdentityDot). WorkspaceLabelPreviewCard / LabelPreviewCard / UnboxLabelPreview are the hosts; a new scan station that shows a label uses those, not a fork. Do not use the shadcn `label` primitive for this job.",
+    "law": "src/components/labels/LabelFacePreview.tsx + LabelFaceSlotOverlay.tsx + LabelFaceReceivingSlots.tsx + LabelFaceProductSlots.tsx. Operator 2026-08-31: one sticker, pinpoint slots, every scan station."
+  },
+  "LabelFaceSlotOverlay": {
+    "useWhen": "label slot overlay, sticker hit map, click label corner, inline edit sticker",
+    "doNot": "Do not invent a second overlay. Corners are a short edge row (13%); notes are only the middle flex-1 band. Host is LabelFacePreview slotHits.",
+    "law": "src/components/labels/LabelFaceSlotOverlay.tsx. Operator 2026-08-31: flush hits on the print-faithful face."
+  },
+  "LabelPlatformTypeMenu": {
+    "useWhen": "label platform type menu, carton top-left, platform then type, classify dots on label",
+    "doNot": "Do not fork a second platform/type picker for the sticker. One popover, two lists; a pick does not dismiss. Sentence case via chipLabel + sentenceCaseLabel; dots via catalogIdentityDot. Click-off / Escape closes.",
+    "law": "src/components/labels/LabelPlatformTypeMenu.tsx. Operator 2026-08-31: SoT for the carton top-left."
+  },
+  "TicketComposer": {
+    "useWhen": "ticket reply, helpdesk reply, zendesk comment, internal note, public reply, claim body, file a ticket, support composer, cc a colleague, attach a photo to a ticket",
+    "doNot": "Do not hand-roll a ticket composer. This is the ONE mouth for a helpdesk comment on every surface — /support console, the station Ticket mode, any future ticket tab. It owns the whole grammar together: Internal|Public on the action bar right of `+` (never inside `+`), Cc above the draft on Public only, `+` = photo attach (Browse library · Upload file, flat and untitled), and a LABELLED commit (File ticket → / Update ticket) — never a bare return arrow, because this control files a helpdesk ticket or posts to a customer-visible thread. `@` means Cc and only Cc; it has never meant attach-context since 2026-08-30. Send through buildComposerReplyVars — never assemble SupportReplyVars by hand, or the station and the console drift on signing, emailCcs and photoIds again.",
+    "law": "src/components/composer/TicketComposer.tsx + useTicketComposer.ts. Operator 2026-08-31: one SoT composer, ported to /support; the hand-rolled SupportChatComposer was deleted with it."
+  },
+  "useTicketComposer": {
+    "useWhen": "ticket composer state, reply draft state, cc state, photo staging for a ticket, ticket send payload",
+    "doNot": "Do not re-derive this state in a host. It owns draft, channel, Cc chips + the half-typed address, photo staging, the `+` tree and the send. A host that keeps its own copy is how the console and the station diverged the first time.",
+    "law": "Operator 2026-08-31: the behaviour is the SoT, not just the chrome."
+  },
+  "ComposerTicketCcStrip": {
+    "useWhen": "cc, email cc, add a colleague to a reply, audience of a public reply",
+    "doNot": "Public replies only — an internal note is never emailed, so it has no audience to name. Never render it for an internal note, and never send emailCcs on one (resolveComposerCcPayload answers undefined, not []). The `@` button focuses the email field; it is not a context-attach menu.",
+    "law": "src/lib/composer/ticket-cc.ts is the rule set. Operator 2026-08-30: @ is audience, + is attach."
+  },
+  "ComposerDrillMenu": {
+    "useWhen": "composer plus menu, add to message, attach, drill menu, submenu in a composer",
+    "doNot": "No DropdownMenuSub flyouts on a station — a glove on a mounted screen has nothing to hover with; submenus PUSH into the same panel with a back control. No title row on the root page. No height tween between stack pages. Reset the stack on close.",
+    "law": "Operator 2026-08-30/31: in-panel stack, no root title."
   }
 }

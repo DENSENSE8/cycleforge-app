@@ -82,16 +82,18 @@
  */
 
 import { Fragment, useCallback, useMemo, useState, type ReactNode, type RefObject } from 'react';
-import * as Popover from '@radix-ui/react-popover';
 import {
-  Popover as FieldsPopover,
-  PopoverContent as FieldsPopoverContent,
-  PopoverTrigger as FieldsPopoverTrigger,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
 } from '@/design-system/primitives/radix-popover';
-import { Check, ChevronDown, ChevronUp, Filter, Plus } from '@/components/Icons';
+import { Check, Download, Filter, SlidersHorizontal } from '@/components/Icons';
 import type { SlotFieldOption } from '@/lib/tables/layout-edit';
 import { SearchField } from '@/design-system/primitives/SearchField';
+import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
+import type { DateRange } from 'react-day-picker';
 import { DataTableFullscreenToggle } from '@/components/tables/DataTableFullscreenToggle';
+import { DataTableZoomToggle } from '@/components/tables/DataTableZoomToggle';
 import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { LedgerGridColumnHeader } from '@/design-system/components/grid/LedgerGridColumnHeader';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid';
@@ -102,13 +104,32 @@ import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import {
   TableStatusBar,
   type DataTableTab,
-  type DataTableTabStrip,
 } from '@/components/tables/TableStatusBar';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import type { RowGroup } from '@/lib/group-rows';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
+
+/**
+ * The QUICK DATE control — a peer of the filter, not a second toolbar.
+ *
+ * Period is the one refinement an operator changes without wanting to think
+ * about anything else, so it sits beside the funnel as its own chip rather than
+ * two clicks inside it (operator ruling 2026-08-31).
+ *
+ * The contract is a RANGE, not a list of presets. Presets alone could not
+ * answer "the 14th to the 19th", and the house already owns the control that
+ * does both — {@link DateRangePickerField} is a preset row over an inline
+ * range calendar. The no-JSX-slots rule is intact: the caller passes a value
+ * and a setter, and the table picks the component, so there is still one date
+ * picker in the product rather than one per desk.
+ */
+export interface DataTableDateMenu {
+  /** The live range, or `undefined` for "any date". */
+  range: DateRange | undefined;
+  onRangeChange: (next: DateRange | undefined) => void;
+}
 
 /** One option in the single filter control. Data — the caller owns the meaning. */
 export interface DataTableFilterOption {
@@ -117,6 +138,22 @@ export interface DataTableFilterOption {
   /** How many rows carry it. Omit for honest absence — never print a fake 0. */
   count?: number;
   active: boolean;
+  /**
+   * Which QUESTION this option answers, as a heading.
+   *
+   * The 2026-08-30 ruling folded the row-narrowing tab strips into this one
+   * control, which was right — a tab that narrows rows is a filter. What it did
+   * not settle is that some surfaces then handed the control more than one
+   * axis: To-ship asks "why does this need attention" (exclusive facets that
+   * reset each other) and "where is it in the pipeline" (stages that compose);
+   * Amazon Prep adds "which body am I looking at" (three options that swap the
+   * dataset). Rendered as one flat column those read as eight interchangeable
+   * rows, so the operator has to remember which ones behave alike.
+   *
+   * Group them and the behaviour is legible before the click. Omit it and the
+   * menu draws exactly as it did — a single ungrouped list.
+   */
+  group?: string;
 }
 
 /**
@@ -130,6 +167,88 @@ export interface DataTableSearch {
   placeholder?: string;
 }
 
+
+/**
+ * The quick-date chip — the same popover primitive as the filter and the fields
+ * menu, so all three open one component rather than three lookalikes.
+ */
+function DataTableDateMenuControl({ range, onRangeChange }: DataTableDateMenu) {
+  const active = Boolean(range?.from);
+  return (
+    <DateRangePickerField
+      value={range}
+      onChange={onRangeChange}
+      placeholder=""
+      // Restyled from a full-width field into a chrome-row chip: same control,
+      // same calendar, same presets — it just has to sit on a 28px band beside
+      // the funnel instead of in a form. `cn` is tailwind-merge, so these win.
+      className={cn(
+        'h-6 w-auto shrink-0 gap-1 rounded-none border-0 bg-transparent px-1.5 text-role-caption',
+        'hover:border-0 hover:bg-surface-hover',
+        // No `focus:ring-0` here: overriding the picker's focus ring away would
+        // strip the only thing telling a keyboard operator where they are.
+        active ? 'text-text-default' : 'text-text-muted',
+      )}
+    />
+  );
+}
+
+/**
+ * Export the CURRENT view to a CSV file.
+ *
+ * The rows it writes are the ones on screen — after the search, the filter and
+ * the date range — because that is what an operator means by "export this".
+ * Selection-scoped export already exists as a bulk action in the rail; this is
+ * the whole narrowed set, which the rail cannot express without asking someone
+ * to select 800 rows first.
+ *
+ * Reuses the surface's existing `copyExport` shape rather than a second column
+ * contract: the clipboard and the file should not disagree about which fields
+ * an order has.
+ */
+function DataTableExportButton<Row>({
+  rows,
+  exportShape,
+  filename,
+}: {
+  rows: readonly Row[];
+  exportShape: DataTableExport<Row>;
+  filename: string;
+}) {
+  const onExport = useCallback(() => {
+    if (rows.length === 0) return;
+    const csv = toCsv(exportShape.columns, rows.map((row) => exportShape.toRow(row)));
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [rows, exportShape, filename]);
+
+  return (
+    <button
+      type="button"
+      onClick={onExport}
+      disabled={rows.length === 0}
+      data-testid="data-table-export"
+      aria-label={`Export ${rows.length} rows to CSV`}
+      title="Export to CSV"
+      className={cn(
+        'ds-raw-button inline-flex h-6 w-6 shrink-0 items-center justify-center',
+        'transition-colors duration-100 ease-out',
+        cornerClass('flush'),
+        focusRing('control'),
+        'text-text-muted hover:bg-surface-hover hover:text-text-default',
+        'disabled:cursor-default disabled:text-text-faint disabled:opacity-40 disabled:hover:bg-transparent',
+      )}
+    >
+      <Download className="h-3.5 w-3.5" aria-hidden />
+    </button>
+  );
+}
 
 /**
  * The Fields picker, as DATA — the slot-layout half of the toolbar.
@@ -221,10 +340,31 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
   activeTab?: string;
   onTabChange?: (id: string) => void;
   /**
-   * Rows the collection holds before this view's narrowing — prints
-   * "shown of total". Omit when the surface only knows what it rendered.
+   * Rows behind the CURRENT narrowing — prints "shown of total". Omit when no
+   * single number honestly describes the filtered set, and the bar prints the
+   * row count alone rather than a denominator for a different question.
    */
   totalCount?: number;
+  /**
+   * The next page, drawn inside the status bar's count sentence. A surface that
+   * pages passes this instead of stacking its own "Showing N of M" band under
+   * the table — see {@link TableStatusBarProps.onLoadMore}.
+   */
+  onLoadMore?: () => void;
+  /** How many verbs the current selection can run — see the status bar. */
+  selectionActionCount?: number;
+  /** Quick date refinement — drawn beside the filter. See {@link DataTableDateMenu}. */
+  dateMenu?: DataTableDateMenu;
+  /**
+   * Drag a column header onto another to reorder. Omit and headers do not drag.
+   * The DataTable does not own the column order — a surface whose columns are a
+   * SlotLayout materialization routes this to its layout writer.
+   */
+  onReorderColumn?: (dragKey: string, dropKey: string) => void;
+  /** Commit a drag-resized column width in px. Omit and headers do not resize. */
+  onResizeColumn?: (key: string, widthPx: number) => void;
+  /** Filename for the CSV export button. Defaults to `export.csv`. */
+  exportFilename?: string;
 
   // ── Selection ──────────────────────────────────────────────────────────────
   /**
@@ -279,6 +419,8 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
   // ── Grid geometry passthrough ──────────────────────────────────────────────
   /** Sticky day bands. Defaults to the definition's. */
   showDayHeaders?: boolean;
+  /** Band key → SECTION label (sticky caption + outline). See {@link LedgerGrid}. */
+  sectionHeaders?: Record<string, string>;
   /** Outer shell testid; the scroll body gets `${testId}-scroll`. */
   testId?: string;
   shellRef?: RefObject<HTMLDivElement | null>;
@@ -288,6 +430,26 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
   /** Accessible name override for a shared parametric grid. */
   ariaLabel?: string;
   className?: string;
+}
+
+/**
+ * Serialize rows as CSV — what a FILE download expects.
+ *
+ * Separate from {@link toTsv} on purpose: the clipboard wants tabs (a paste
+ * into a spreadsheet splits on them without an import dialog), a saved file
+ * wants commas and RFC-4180 quoting. One function trying to be both would have
+ * to pick a delimiter that is wrong in one of the two places.
+ */
+function toCsv(
+  columns: readonly string[],
+  rows: readonly (readonly (string | number | null | undefined)[])[],
+): string {
+  const cell = (v: string | number | null | undefined) => {
+    const raw = v == null ? '' : String(v);
+    // Quote when the value could otherwise break the row or the column.
+    return /[",\r\n]/.test(raw) ? `"${raw.replace(/"/g, '""')}"` : raw;
+  };
+  return [columns.map(cell).join(','), ...rows.map((r) => r.map(cell).join(','))].join('\r\n');
 }
 
 /** Serialize a selection as TSV — what a spreadsheet expects off the clipboard. */
@@ -313,16 +475,39 @@ export function DataTableFilterMenu({
   onClearAll,
 }: NonNullable<DataTableProps<unknown, string, LedgerGridColumnModel>['filter']>) {
   const [open, setOpen] = useState(false);
-  const activeCount = options.filter((o) => o.active).length;
+  const activeOptions = options.filter((o) => o.active);
+  const activeCount = activeOptions.length;
   const hot = activeCount > 0;
+  // One active filter names itself on the trigger. A bare `1` is the count of
+  // an answer, not the answer — it told the operator that they had filtered
+  // without telling them what to, so recalling their own narrowing cost
+  // reopening the menu. Two or more fall back to the count: there is no room
+  // for a list, and by then the operator is holding a compound state anyway.
+  const triggerLabel = activeCount === 1 ? activeOptions[0].label : null;
+
+  // Grouped in the caller's order, headings only when a caller asked for them.
+  const bands: { key: string; options: DataTableFilterOption[] }[] = [];
+  for (const option of options) {
+    const key = option.group ?? '';
+    const band = bands.find((b) => b.key === key);
+    if (band) band.options.push(option);
+    else bands.push({ key, options: [option] });
+  }
+  const grouped = bands.some((b) => b.key !== '');
 
   return (
-    <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger asChild>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
         <button
           type="button"
           data-testid="data-table-filter"
-          aria-label={hot ? `Filters, ${activeCount} active` : 'Filters'}
+          aria-label={
+            triggerLabel
+              ? `Filters, ${triggerLabel}`
+              : hot
+                ? `Filters, ${activeCount} active`
+                : 'Filters'
+          }
           aria-pressed={hot}
           aria-expanded={open}
           className={cn(
@@ -339,41 +524,65 @@ export function DataTableFilterMenu({
           )}
         >
           <Filter className="h-3.5 w-3.5 shrink-0" />
-          {hot ? <span className="tabular-nums">{activeCount}</span> : null}
+          {triggerLabel ? (
+            <span className="max-w-[9rem] truncate">{triggerLabel}</span>
+          ) : hot ? (
+            <span className="tabular-nums">{activeCount}</span>
+          ) : null}
         </button>
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
+      </PopoverTrigger>
+        <PopoverContent
           align="start"
           sideOffset={2}
           data-testid="data-table-filter-menu"
           className={cn(
-            'z-dropdown w-60 overflow-hidden rounded-lg border border-border-soft bg-surface-card p-0.5 shadow-md ring-1 ring-black/5',
+            // The SHARED popover face, not a second one. This used to add
+            // `rounded-lg` + its own border/shadow/ring on top of the
+            // primitive's flush chrome, so the filter menu and the fields menu
+            // — two controls a thumb-width apart — disagreed about whether a
+            // menu in this product has corners.
+            'w-60 overflow-hidden p-0.5',
             focusRing('field', 'accent'),
           )}
         >
-          {options.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => onToggle(option.id)}
-              data-testid={`data-table-filter-${option.id}`}
-              data-active={option.active ? '' : undefined}
-              className={cn(
-                'ds-raw-button flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-role-caption',
-                focusRing('control'),
-                option.active
-                  ? 'bg-surface-sunken font-semibold text-text-default'
-                  : 'text-text-soft hover:bg-surface-hover hover:text-text-default',
-              )}
-            >
-              <span className="truncate">{option.label}</span>
-              {typeof option.count === 'number' ? (
-                <span className="shrink-0 tabular-nums text-role-micro text-text-faint">
-                  {option.count}
-                </span>
+          {bands.map((band, bandIndex) => (
+            <Fragment key={band.key || `band-${bandIndex}`}>
+              {grouped && band.key ? (
+                <p
+                  className={cn(
+                    'px-2 pb-0.5 text-role-micro font-semibold uppercase tracking-widest text-text-faint',
+                    // Same heading treatment the fields menu next door already
+                    // uses — one banded-popover grammar, not two.
+                    bandIndex === 0 ? 'pt-1' : 'pt-2',
+                  )}
+                >
+                  {band.key}
+                </p>
               ) : null}
-            </button>
+              {band.options.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => onToggle(option.id)}
+                  data-testid={`data-table-filter-${option.id}`}
+                  data-active={option.active ? '' : undefined}
+                  className={cn(
+                    'ds-raw-button flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-role-caption',
+                    focusRing('control'),
+                    option.active
+                      ? 'bg-surface-sunken font-semibold text-text-default'
+                      : 'text-text-soft hover:bg-surface-hover hover:text-text-default',
+                  )}
+                >
+                  <span className="truncate">{option.label}</span>
+                  {typeof option.count === 'number' ? (
+                    <span className="shrink-0 tabular-nums text-role-micro text-text-faint">
+                      {option.count}
+                    </span>
+                  ) : null}
+                </button>
+              ))}
+            </Fragment>
           ))}
           {hot ? (
             <>
@@ -395,9 +604,8 @@ export function DataTableFilterMenu({
               </button>
             </>
           ) : null}
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
+        </PopoverContent>
+    </Popover>
   );
 }
 
@@ -415,7 +623,6 @@ export function DataTableFilterMenu({
 function DataTableFieldsMenu({
   options,
   onToggle,
-  onMove,
   identityLabel,
   bandLabels,
   onSaveAsOrgDefault,
@@ -435,32 +642,15 @@ function DataTableFieldsMenu({
   // binding order, so this is the reorder affordance the append-only bind
   // gesture lacked (unbind/rebind is not a reorder). Rendered as siblings of
   // the toggle, never inside it: nested buttons are invalid DOM.
-  const renderMoveArrow = (option: SlotFieldOption, direction: 'up' | 'down') => {
-    const enabled = direction === 'up' ? option.canMoveUp : option.canMoveDown;
-    const Icon = direction === 'up' ? ChevronUp : ChevronDown;
-    return (
-      <button
-        type="button"
-        disabled={!enabled}
-        onClick={() => onMove?.(option.fieldId, direction)}
-        data-testid={`data-table-field-${option.fieldId}-${direction}`}
-        aria-label={`Move ${option.label} ${direction}`}
-        className={cn(
-          'ds-raw-button inline-flex h-5 w-5 shrink-0 items-center justify-center rounded',
-          focusRing('control'),
-          enabled
-            ? 'text-text-muted hover:bg-surface-hover hover:text-text-default'
-            : 'cursor-default text-text-faint opacity-40',
-        )}
-      >
-        <Icon className="h-3.5 w-3.5" />
-      </button>
-    );
-  };
-
+  /*
+   * Bind / unbind only. The up-down arrow pair was removed 2026-08-31: ORDER is
+   * now edited by dragging the column header itself, where the operator can see
+   * what they are moving and what it lands between. Two arrows on a menu row
+   * asked them to reorder a list by reading it, then verify by looking
+   * somewhere else — and they cost two controls per row in a popover that is
+   * already the densest thing on the desk.
+   */
   const renderOption = (option: SlotFieldOption) => {
-    // Arrows appear only when the band actually has an order to edit.
-    const movable = Boolean(onMove && option.bound && (option.canMoveUp || option.canMoveDown));
     const toggle = (
       <button
         type="button"
@@ -485,16 +675,7 @@ function DataTableFieldsMenu({
         {option.bound ? <Check className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
       </button>
     );
-    if (!movable) {
-      return <Fragment key={option.fieldId}>{toggle}</Fragment>;
-    }
-    return (
-      <div key={option.fieldId} className="flex items-center gap-0.5">
-        {toggle}
-        {renderMoveArrow(option, 'up')}
-        {renderMoveArrow(option, 'down')}
-      </div>
-    );
+    return <Fragment key={option.fieldId}>{toggle}</Fragment>;
   };
 
   const bandHeading = (label: string) => (
@@ -506,8 +687,8 @@ function DataTableFieldsMenu({
   const fullBand = options.find((o) => o.disabledReason)?.disabledReason;
 
   return (
-    <FieldsPopover open={open} onOpenChange={handleOpenChange}>
-      <FieldsPopoverTrigger asChild>
+    <Popover open={open} onOpenChange={handleOpenChange}>
+      <PopoverTrigger asChild>
         <button
           type="button"
           data-testid="data-table-fields"
@@ -522,10 +703,10 @@ function DataTableFieldsMenu({
             'text-text-muted hover:bg-surface-hover hover:text-text-default',
           )}
         >
-          <Plus className="h-3.5 w-3.5 shrink-0" />
+          <SlidersHorizontal className="h-3.5 w-3.5 shrink-0" />
         </button>
-      </FieldsPopoverTrigger>
-      <FieldsPopoverContent
+      </PopoverTrigger>
+      <PopoverContent
         align="start"
         sideOffset={2}
         data-testid="data-table-fields-menu"
@@ -536,18 +717,29 @@ function DataTableFieldsMenu({
               {identityLabel} — identity, always shown
             </p>
           ) : null}
-          {statusOptions.length > 0 ? (
-            <>
-              {bandHeading(bandLabels?.status ?? 'Status columns')}
-              {statusOptions.map(renderOption)}
-            </>
-          ) : null}
-          {subtitleOptions.length > 0 ? (
-            <>
-              {bandHeading(bandLabels?.subtitle ?? 'Under the title')}
-              {subtitleOptions.map(renderOption)}
-            </>
-          ) : null}
+          {/*
+            ONE wrapper, and the subtitle band leads (operator ruling
+            2026-08-31). The bands used to be two sibling fragments with status
+            first, which read as two lists that happened to share a popover —
+            and it put the STATUS columns above the line that describes what
+            sits under the title, inverting the row an operator is actually
+            looking at. Order now mirrors the row: what is under the title
+            first, the status columns after it.
+          */}
+          <div className="flex flex-col">
+            {subtitleOptions.length > 0 ? (
+              <>
+                {bandHeading(bandLabels?.subtitle ?? 'Under the title')}
+                {subtitleOptions.map(renderOption)}
+              </>
+            ) : null}
+            {statusOptions.length > 0 ? (
+              <>
+                {bandHeading(bandLabels?.status ?? 'Status columns')}
+                {statusOptions.map(renderOption)}
+              </>
+            ) : null}
+          </div>
           {fullBand ? (
             <p
               data-testid="data-table-fields-limit"
@@ -602,12 +794,12 @@ function DataTableFieldsMenu({
                 : 'Save as organization default'}
             </button>
           ) : null}
-      </FieldsPopoverContent>
-    </FieldsPopover>
+      </PopoverContent>
+    </Popover>
   );
 }
 
-export type { DataTableTab, DataTableTabStrip };
+export type { DataTableTab };
 
 export function DataTable<Row, K extends string, C extends LedgerGridColumnModel>({
   binding,
@@ -627,6 +819,12 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   activeTab,
   onTabChange,
   totalCount,
+  dateMenu,
+  onReorderColumn,
+  onResizeColumn,
+  exportFilename,
+  onLoadMore,
+  selectionActionCount,
   selectionScope,
   copyExport,
   selectGutterChrome = 'always',
@@ -638,6 +836,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   renderRow,
   renderGroup,
   showDayHeaders,
+  sectionHeaders,
   testId,
   shellRef,
   scrollRef,
@@ -678,10 +877,22 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
         activeSort={sort}
         sortDir={dir}
         onSortColumn={(key) => api.toggleColumnSort(key as K)}
+        onReorderColumn={onReorderColumn}
+        onResizeColumn={onResizeColumn}
         labelFor={labelFor}
       />
     ),
-    [headerLayout, multiSelect, selectionScope, selectGutterChrome, sort, dir, labelFor],
+    [
+      headerLayout,
+      multiSelect,
+      selectionScope,
+      selectGutterChrome,
+      sort,
+      dir,
+      labelFor,
+      onReorderColumn,
+      onResizeColumn,
+    ],
   );
 
   const onCopySelection = useCallback(() => {
@@ -698,7 +909,10 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
       <div
         data-testid="data-table-toolbar"
         className={cn(
-          'flex min-w-0 items-center gap-2 border-b border-border-soft bg-surface-card px-2',
+          // `pr-0`: the trailing control sits ON the card's edge (operator
+          // ruling 2026-08-31) — a gap there reads as the row stopping short of
+          // the table it belongs to.
+          'flex min-w-0 items-center gap-2 border-b border-border-soft bg-surface-card pl-2 pr-0',
           PRIMARY_CHROME_ROW_FACE,
         )}
       >
@@ -712,15 +926,32 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           fillHost
         />
         {filter ? <DataTableFilterMenu {...filter} /> : null}
-        {fields && binding.definition.capabilities.fieldsMenu ? (
-          <DataTableFieldsMenu {...fields} />
-        ) : null}
+        {dateMenu ? <DataTableDateMenuControl {...dateMenu} /> : null}
         {/*
-          Fullscreen sits at the FAR RIGHT of this row (operator ruling
-          2026-08-30). `ml-auto` rather than a spacer div, and it renders
-          nothing at all off a desk stage — see `DataTableFullscreenToggle`.
+          The order, left to right (operator ruling 2026-08-31):
+          search · filter — gap — column configuration · zoom · fullscreen.
+
+          Reading and NARROWING live together on the left, next to the field
+          they narrow. The three on the right change how the sheet is DRAWN
+          rather than what it holds, so the `ml-auto` gap is the seam between
+          "what am I looking at" and "how am I looking at it" — the operator
+          reaches to one side or the other, never scans the row.
         */}
-        <DataTableFullscreenToggle className="ml-auto" />
+        <span className="ml-auto inline-flex shrink-0 items-center gap-1">
+          {copyExport ? (
+            <DataTableExportButton
+              rows={rows}
+              exportShape={copyExport}
+              filename={exportFilename ?? 'export.csv'}
+            />
+          ) : null}
+          {fields && binding.definition.capabilities.fieldsMenu ? (
+            <DataTableFieldsMenu {...fields} />
+          ) : null}
+          <DataTableZoomToggle />
+          {/* Renders nothing at all off a desk stage — see the component. */}
+          <DataTableFullscreenToggle />
+        </span>
       </div>
 
       {/* ── The grid ───────────────────────────────────────────────────────── */}
@@ -731,6 +962,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           columns={mounted}
           testId={testId}
           showDayHeaders={showDayHeaders}
+          sectionHeaders={sectionHeaders}
           shellRef={shellRef}
           rows={rows}
           orderGroupsByDate={orderGroupsByDate}
@@ -761,6 +993,8 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
         total={totalCount}
         selected={selectedCount}
         onCopySelection={copyExport ? onCopySelection : undefined}
+        selectionActionCount={selectionActionCount}
+        onLoadMore={onLoadMore}
       />
     </div>
   );

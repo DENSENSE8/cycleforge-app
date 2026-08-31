@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { applyStaffAuthor, staffNameFromNoteSignature } from './comment-staff-identity';
+import {
+  applyStaffAuthor,
+  isAppFiledOpener,
+  staffNameFromNoteSignature,
+} from './comment-staff-identity';
 
 test('applyStaffAuthor prefers a recorded app post over Zendesk email', () => {
   const byComment = new Map([[10, { staffId: 7, name: 'Kai' }]]);
@@ -51,4 +55,80 @@ test('applyStaffAuthor leaves Zendesk identity when no staff maps', () => {
 test('staffNameFromNoteSignature reads the app internal-note sign-off', () => {
   assert.equal(staffNameFromNoteSignature('Box crushed\n\n— Mel'), 'Mel');
   assert.equal(staffNameFromNoteSignature('No signature'), null);
+});
+
+test('isAppFiledOpener treats the Zendesk API agent-as-requester as ours', () => {
+  const agents = new Set([9001]);
+  assert.equal(
+    isAppFiledOpener({
+      openingAuthorId: 9001,
+      requesterId: 9001,
+      openingPublic: true,
+      agentIds: agents,
+    }),
+    true,
+  );
+  assert.equal(
+    isAppFiledOpener({
+      openingAuthorId: 44,
+      requesterId: 44,
+      openingPublic: true,
+      agentIds: agents,
+    }),
+    false,
+  );
+  assert.equal(
+    isAppFiledOpener({
+      openingAuthorId: 9001,
+      requesterId: 44,
+      openingPublic: false,
+      agentIds: agents,
+    }),
+    true,
+  );
+});
+
+test('applyStaffAuthor falls back to the note sign-off when nothing else knows', () => {
+  const byName = new Map([['kai', { staffId: 7, name: 'Kai' }]]);
+  const out = applyStaffAuthor(
+    { id: 1, body: 'PLUS DENT ON THE SHELL\n\n— Kai', author_name: 'Manager' },
+    new Map(),
+    new Map(),
+    byName,
+  );
+  assert.equal(out.author_staff_id, 7);
+  assert.equal(out.author_name, 'Kai', 'the thread stops reading "Manager"');
+  assert.equal(out.author_photo, null, 'the Zendesk roster photo yields to staff identity');
+});
+
+test('a recorded mapping OUTRANKS the sign-off', () => {
+  // The sign-off is a string in a body an operator could type by hand; the
+  // mapping row is what we recorded when we posted.
+  const out = applyStaffAuthor(
+    { id: 1, body: 'note\n\n— Kai', author_name: 'Manager' },
+    new Map([[1, { staffId: 1, name: 'Michael' }]]),
+    new Map(),
+    new Map([['kai', { staffId: 7, name: 'Kai' }]]),
+  );
+  assert.equal(out.author_staff_id, 1);
+  assert.equal(out.author_name, 'Michael');
+});
+
+test('an unsigned comment, or a sign-off naming nobody, stays unattributed', () => {
+  const untouched = applyStaffAuthor(
+    { id: 1, body: 'a customer reply', author_name: 'Manager' },
+    new Map(),
+    new Map(),
+    new Map([['kai', { staffId: 7, name: 'Kai' }]]),
+  );
+  assert.equal(untouched.author_staff_id, undefined);
+  assert.equal(untouched.author_name, 'Manager');
+
+  const stranger = applyStaffAuthor(
+    { id: 2, body: 'note\n\n— Someone Else', author_name: 'Manager' },
+    new Map(),
+    new Map(),
+    new Map([['kai', { staffId: 7, name: 'Kai' }]]),
+  );
+  assert.equal(stranger.author_staff_id, undefined);
 });

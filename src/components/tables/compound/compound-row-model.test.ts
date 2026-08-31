@@ -57,6 +57,11 @@ const FAMILIES = [
  * the product default binds `orders.picked` into `status:1`. Shared families
  * stay identical.
  */
+/**
+ * No `actions` — Orders drops the shared ⋮ track (operator ruling 2026-08-31).
+ * The other families keep it, which is why this list is not just
+ * `COMPOUND_TRACKS` plus the status band.
+ */
 const ORDERS_KEYS = [
   'select',
   'thumb',
@@ -65,7 +70,6 @@ const ORDERS_KEYS = [
   'state',
   'status:1',
   'amount',
-  'actions',
   '_fill',
 ] as const;
 

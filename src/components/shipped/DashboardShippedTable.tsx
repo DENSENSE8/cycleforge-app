@@ -28,9 +28,6 @@
 
 import { useCallback, useMemo } from 'react';
 import { Button } from '@/design-system/primitives';
-import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
-import { ShippedCarrierFilters } from '@/components/shipping/shipped-filter/ShippedCarrierFilters';
-import { formatWeekRangeCompact } from '@/utils/date';
 import type { DashboardSearchSectionProps } from '@/components/dashboard/DashboardSearchSectionProps';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { Loader2 } from '@/components/Icons';
@@ -43,6 +40,18 @@ import { useShippedPeriodControls } from '@/components/shipped/dashboard-table/u
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { ShippedTableEmptyState } from '@/components/shipped/dashboard-table/ShippedTableEmptyState';
 import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
+import type { DataTableFilterOption } from '@/components/tables/DataTable';
+import { useShippedFilterActions } from '@/components/shipping/shipped-filter/useShippedFilterActions';
+import {
+  CARRIERS,
+  STATUS_CATEGORIES,
+  TYPE_ITEMS,
+  type ShippedTypeFilter,
+} from '@/components/shipping/shipped-filter/shipped-filter-constants';
+import type {
+  CarrierCode,
+  ShipmentStatusCategory,
+} from '@/components/shipping/ShipmentStatusBadge';
 import {
   derivedPackerRecordToQueueRow,
 } from '@/components/shipped/shipped-record-mappers';
@@ -95,6 +104,7 @@ export function DashboardShippedTable({
   // mount does not bind a second ambient listener.
   useRecordCursorKeyboard({ enabled: !embedded, scope: 'record' });
 
+  const refine = useShippedFilterActions();
   const period = useShippedPeriodControls(filters);
   const periodRange = period.activeRange ?? filters.weekRange;
   const { weekOffset, setPeriodWeek } = filters;
@@ -163,37 +173,86 @@ export function DashboardShippedTable({
     </div>
   ) : null;
 
-  const historyWell = embedded ? null : (
-    <div
-      data-testid="shipped-history-well"
-      className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border-soft bg-surface-card px-2 py-1.5"
-    >
-      {/* Stepping stays week-shaped: an explicit range is stepped by picking
-          another one, not by nudging a window it does not describe. */}
-      <DateRangePickerPill
-        label={formatWeekRangeCompact(periodRange.startStr, periodRange.endStr)}
-        count={totalCount}
-        presets={period.presets}
-        onSelectCustomRange={period.onSelectCustomRange}
-        activeRange={period.activeRange}
-        onClear={period.onClear}
-        weekNav={
-          period.activeRange
-            ? undefined
-            : {
-                weekOffset,
-                onPrev: () => setPeriodWeek(weekOffset + 1),
-                onNext: () => setPeriodWeek(Math.max(0, weekOffset - 1)),
-              }
-        }
-      />
-      <ShippedCarrierFilters layout="inline" />
-    </div>
+  /*
+   * No second chrome row (operator ruling 2026-08-31).
+   *
+   * A period pill, a Needs-attention toggle and three selects used to sit on
+   * their own band above the table — a second toolbar for one surface, which is
+   * the fork the ONE `DataTable` toolbar exists to end. Every one of those
+   * refinements narrows the SAME row set, so by the 2026-08-30 ruling they are
+   * filters, and filters live in the one filter control.
+   *
+   * The period folds in as PRESETS rather than a picker: the menu takes data,
+   * never JSX, and "this week / last week / this month" is what the pill's
+   * stepper was actually being used for.
+   */
+  /*
+   * The date chip is the house range picker.
+   *
+   * `useShippedFilterActions` already owns `dateFrom`/`dateTo` as URL state and
+   * exposes them as a `DateRange`, so this is a straight hand-off — the control
+   * gets the live range and the setter, and free-form selection lands in the
+   * same two params a deep link uses.
+   */
+  const dateMenu = useMemo(
+    () => ({ range: refine.dateRange, onRangeChange: refine.setDateRange }),
+    [refine.dateRange, refine.setDateRange],
   );
+
+  const shippedFilter = useMemo(() => {
+    const options: DataTableFilterOption[] = [
+      {
+        id: 'attention',
+        group: 'Needs attention',
+        label: 'Exceptions only',
+        active: refine.exceptionsOnly,
+      },
+      ...TYPE_ITEMS.filter((t) => t.id !== 'all').map((t) => ({
+        id: `type:${t.id}`,
+        group: 'Type',
+        label: t.label,
+        active: refine.typeFilter === t.id,
+      })),
+      ...CARRIERS.map((c) => ({
+        id: `carrier:${c.value}`,
+        group: 'Carrier',
+        label: c.label,
+        active: refine.carrier === c.value,
+      })),
+      ...STATUS_CATEGORIES.map((c) => ({
+        id: `status:${c.value}`,
+        group: 'Status',
+        label: c.label,
+        active: refine.statusCategory === c.value,
+      })),
+    ];
+    return {
+      options,
+      onToggle: (id: string) => {
+        if (id === 'attention') return refine.toggleExceptions();
+        const [kind, value] = id.split(':');
+        if (kind === 'type') {
+          refine.setTypeFilter(
+            (refine.typeFilter === value ? 'all' : value) as ShippedTypeFilter,
+          );
+          return;
+        }
+        if (kind === 'carrier') {
+          refine.setCarrier(refine.carrier === value ? null : (value as CarrierCode));
+          return;
+        }
+        if (kind === 'status') {
+          refine.setStatus(
+            refine.statusCategory === value ? null : (value as ShipmentStatusCategory),
+          );
+        }
+      },
+      onClearAll: () => refine.clearAll(),
+    };
+  }, [refine]);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
-      {historyWell}
       {/* The period picker sits with the rows it scopes, not on a chrome row. */}
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col" data-testid="column-table-body">
         <OrdersGridHost
@@ -201,6 +260,9 @@ export function DashboardShippedTable({
           records={gridRecords}
           loading={query.isLoading}
           search={{ value: filters.search, onChange: filters.setSearch, placeholder: 'Filter shipped…' }}
+          filter={shippedFilter}
+          dateMenu={dateMenu}
+          exportFilename="shipped.csv"
           searchValue={filters.search}
           onClearSearch={filters.clearSearch}
           emptyMessage="No shipped orders"

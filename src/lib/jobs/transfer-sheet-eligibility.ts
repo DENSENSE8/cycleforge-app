@@ -3,6 +3,8 @@
  * Keeps import gates testable without Google auth or DB.
  */
 
+import { detectListingPlatform } from '@/lib/inventory/order-catalog-link-chore-gates';
+
 export type TransferSheetEligibilityCols = {
   orderNumber: number;
   tracking: number;
@@ -57,6 +59,11 @@ const FBA_SHIPMENT_ID = /^FBA[0-9A-Z]{6,}$/i;
 
 function isFbaShipmentOrderId(orderId: string): boolean {
   return FBA_SHIPMENT_ID.test(orderId.trim());
+}
+
+/** Sheet row the Ecwid API already owns — do not mint a second orders row. */
+function isEcwidOwnedSheetRow(platform: string, orderId: string): boolean {
+  return detectListingPlatform(platform, orderId) === 'ecwid';
 }
 
 /** One skipped sheet row, described well enough for an operator to go fix it. */
@@ -119,7 +126,13 @@ export function evaluateTransferSheetRowEligibility(
   // item-number problem. On the 2026-07-29 tab that misfiled 5 of the 23
   // "missing Item Number" rows, overstating a data-entry gap the operator
   // cannot act on. Ordering changes attribution only, never which rows import.
-  if (cell(row, colIndices.platform).toLowerCase() === 'ecwid') return 'ecwid';
+  //
+  // Match the channel, not one spelling: sheets often write ECWID-RS (the old
+  // repair-service face). A 4-digit order id with no other marketplace shape
+  // is also Ecwid (same gate as detectListingPlatform).
+  if (isEcwidOwnedSheetRow(cell(row, colIndices.platform), cell(row, colIndices.orderNumber))) {
+    return 'ecwid';
+  }
 
   // Require listing identity so orders can join sku_platform_ids / search / pairing.
   if (!cell(row, colIndices.itemNumber)) return 'noItemNumber';

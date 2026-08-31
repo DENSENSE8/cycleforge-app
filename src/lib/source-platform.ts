@@ -7,10 +7,10 @@
  *
  * Before this module the same platform read three different ways: the pill said
  * "AliExp" while the printed label said "AliExpress", the order-derived helper
- * returned a lowercase "ebay", and "ECWID" vs "ECWID-RS" drifted between
- * surfaces. Everything that turns a platform value into a name or a color now
- * derives from {@link SOURCE_PLATFORMS} so a platform can never present two
- * ways again.
+ * returned a lowercase "ebay", and Ecwid drifted between "ECWID" and the
+ * receiving repair-service face "ECWID-RS". Everything that turns a platform
+ * value into a name or a color now derives from {@link SOURCE_PLATFORMS} so a
+ * platform can never present two ways again.
  */
 
 import { platformPaintFromHex } from '@/lib/color-contrast';
@@ -113,9 +113,9 @@ export const SOURCE_PLATFORMS: SourcePlatformMeta[] = [
   { value: 'aliexpress', hue: 'red', label: 'AliExpress', mark: 'AE', text: 'text-red-500',    border: 'border-red-500',    dot: 'bg-red-500', icon: PLATFORM_BRAND_ICON_PATHS.aliexpress },
   { value: 'walmart', hue: 'amber',    label: 'Walmart',    mark: 'W',  text: 'text-amber-700',  border: 'border-amber-700',  dot: 'bg-amber-700', icon: PLATFORM_BRAND_ICON_PATHS.walmart },
   { value: 'goodwill', hue: 'sky',   label: 'Goodwill',   mark: 'Gw', text: 'text-sky-600',    border: 'border-sky-600',    dot: 'bg-sky-600', icon: PLATFORM_BRAND_ICON_PATHS.goodwill },
-  // ECWID-RS (not plain ECWID): today this pill only appears when the carton
-  // was paired with an Ecwid repair-service (-RS) order.
-  { value: 'ecwid', hue: 'blue',      label: 'ECWID-RS',   mark: 'Ec', text: 'text-blue-600',   border: 'border-blue-600',   dot: 'bg-blue-600', icon: PLATFORM_BRAND_ICON_PATHS.ecwid },
+  // Storefront channel. Repair-service cartons are a receiving *type*, not a
+  // second marketplace — the stored slug stays `ecwid`, the face is Ecwid.
+  { value: 'ecwid', hue: 'blue',      label: 'Ecwid',      mark: 'Ec', text: 'text-blue-600',   border: 'border-blue-600',   dot: 'bg-blue-600', icon: PLATFORM_BRAND_ICON_PATHS.ecwid },
   { value: 'square', hue: 'slate',     label: 'Square',     mark: 'Sq', text: 'text-text-muted',  border: 'border-slate-600',  dot: 'bg-slate-500', icon: PLATFORM_BRAND_ICON_PATHS.square }, // ds-allow-raw-neutral: identity/tone hue — Square's slate among platform brand hues, distinct from Other (= border-emphasis)
   { value: 'shopify', hue: 'green',    label: 'Shopify',    mark: 'Sh', text: 'text-green-600',  border: 'border-green-600',  dot: 'bg-green-600', icon: PLATFORM_BRAND_ICON_PATHS.shopify },
   // Order / Product Hub channels (not door-intake defaults) — still need a
@@ -237,7 +237,11 @@ const BY_LABEL = new Map(SOURCE_PLATFORMS.map((p) => [p.label.toLowerCase(), p])
 export function sourcePlatformMetaFromLabel(label: string | null | undefined): SourcePlatformMeta {
   const key = String(label ?? '').trim().toLowerCase();
   if (!key) return UNKNOWN_PLATFORM;
-  // Value match first (labels like "ebay"/"FBA" lowercase to the raw value —
-  // this also catches bare "ECWID" → the ECWID-RS entry), then canonical label.
+  // Historic faces: "ECWID-RS" / "ECWID RS" were the receiving repair-service
+  // name painted onto every Ecwid order. They still resolve to `ecwid`.
+  const slug = key.replace(/[\s_]+/g, '-');
+  if (slug === 'ecwid' || slug.startsWith('ecwid-')) return sourcePlatformMeta('ecwid');
+  // Value match first (labels like "ebay"/"FBA" lowercase to the raw value),
+  // then canonical label.
   return BY_VALUE.get(key) ?? BY_LABEL.get(key) ?? UNKNOWN_PLATFORM;
 }

@@ -15,7 +15,6 @@ import {
 import { ClaimModalHeader } from './claim/components/ClaimModalHeader';
 import { ClaimModeSelect } from './claim/components/ClaimModeSelect';
 import { ClaimEmptySeedCreateHelper } from './claim/components/ClaimEmptySeedCreateHelper';
-import { ClaimPhotosStep } from './claim/components/ClaimPhotosStep';
 import { ClaimComposeStep } from './claim/components/ClaimComposeStep';
 import { ClaimFiledStep } from './claim/components/ClaimFiledStep';
 import { ClaimSellerStep } from './claim/components/ClaimSellerStep';
@@ -29,9 +28,13 @@ import { cn } from '@/utils/_cn';
  * duplicate review preview). Backup note sits on the sticky footer (leading).
  * Dismiss via header X / Displays →| (no Cancel).
  *
- * Create and Link share Photos · Claim type · Subject · Body · Recipients.
- * Link adds the ticket picker above that stack. Mode is a body flush combobox
- * (never a leaf-header New·Link segment twin).
+ * Create and Link share Claim type · Subject · Body · Recipients. Link adds
+ * the ticket picker above that stack. Mode is a body flush combobox (never a
+ * leaf-header New·Link segment twin).
+ *
+ * No photo picker: attaching is the composer's job, and this panel mounts in
+ * both the rail and the centre — a grid here rendered (and re-fetched) once per
+ * surface.
  */
 export function ReceivingClaimPanel({
   className,
@@ -123,7 +126,7 @@ function claimMountedSteps(c: ReceivingClaimController): ClaimWizardStep[] {
   const all = claimWizardStepsForMode(c.mode, c.sellerStepApplicable).map((s) => s.key);
 
   if (c.mode === 'create') {
-    const draft: ClaimWizardStep[] = ['photos', 'compose'];
+    const draft: ClaimWizardStep[] = ['compose'];
     if (c.filedTicket) {
       draft.push('filed');
       if (c.sellerStepApplicable) draft.push('seller');
@@ -131,9 +134,9 @@ function claimMountedSteps(c: ReceivingClaimController): ClaimWizardStep[] {
     return draft.filter((s) => all.includes(s));
   }
 
-  // Link always shows picker + the same Photos · Compose stack as Create
-  // (template body is the linkage message). Filed/seller after send posts.
-  const out: ClaimWizardStep[] = ['find', 'photos', 'compose'];
+  // Link always shows picker + the same Compose stack as Create (template body
+  // is the linkage message). Filed/seller after send posts.
+  const out: ClaimWizardStep[] = ['find', 'compose'];
   if (c.linkUpdateStatus === 'posted') {
     out.push('filed');
     if (c.sellerStepApplicable) out.push('seller');
@@ -173,8 +176,6 @@ function ClaimSectionBody({
   switch (step) {
     case 'find':
       return <ClaimLinkFindStep c={c} />;
-    case 'photos':
-      return <ClaimPhotosStep c={c} />;
     case 'compose':
       return <ClaimComposeStep c={c} />;
     case 'filed':

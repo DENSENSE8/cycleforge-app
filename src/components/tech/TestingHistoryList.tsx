@@ -74,7 +74,6 @@ interface TestingHistoryListProps {
   onOpenLine?: (row: ReceivingLineRow) => void;
   /** Portal display controls into the Testing workspace chrome. */
   /** The desk's mode strip, drawn on this table's own bottom bar. */
-  tabStrip?: import('@/components/tables/DataTable').DataTableTabStrip;
 }
 
 /**
@@ -90,7 +89,6 @@ export function TestingHistoryList({
   mode = 'history',
   selectMode = false,
   onOpenLine,
-  tabStrip,
 }: TestingHistoryListProps) {
   const { isMobile } = useUIModeOptional();
   const pathname = usePathname();
@@ -286,7 +284,6 @@ export function TestingHistoryList({
         selectionScope={TESTING_SELECTION_SCOPE}
         testId="testing-grid-body"
         search={{ value: search, onChange: setSearch, placeholder: 'Filter tests…' }}
-        tabStrip={tabStrip}
       />
     </div>
   );

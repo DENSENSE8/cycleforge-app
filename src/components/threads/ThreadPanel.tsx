@@ -12,6 +12,7 @@ import {
   CONVERSATION_BODY,
   CONVERSATION_MARK,
   CONVERSATION_MARK_BOX,
+  CONVERSATION_MARK_NODE,
 } from '@/design-system/primitives/conversation-chrome';
 import { ThreadNoteComposer } from '@/components/threads/ThreadNoteComposer';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -150,11 +151,18 @@ function MessageBubble({
   const mark = (
     <div className={CONVERSATION_MARK_BOX}>
       {m.authorStaffId != null ? (
-        <StaffAvatar staffId={m.authorStaffId} name={name} size="xs" alt={name} />
+        <StaffAvatar
+          staffId={m.authorStaffId}
+          name={name}
+          size="sm"
+          colorRing
+          className={CONVERSATION_MARK_NODE}
+          alt={name}
+        />
       ) : (
         <span
           className={cn(
-            'flex h-5 w-5 items-center justify-center rounded-full text-role-micro',
+            'flex h-7 w-7 items-center justify-center rounded-full text-role-micro',
             CONVERSATION_MARK,
           )}
         >
@@ -217,7 +225,7 @@ function MessageBubble({
         atAbsolute={formatDateTimePST(m.createdAt)}
         metaTrailing={metaTrailing}
       >
-        <div className={CONVERSATION_BODY}>{renderInlineMarkdown(m.body)}</div>
+        <span className={CONVERSATION_BODY}>{renderInlineMarkdown(m.body)}</span>
       </ConversationMessageCard>
     </div>
   );

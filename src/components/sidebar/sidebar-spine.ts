@@ -133,6 +133,12 @@ export const SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS =
  * `HeaderPageSwitcher.tsx` so the two navigators keep reading as one size
  * system, not two. Regular weight (not title 18px/600).
  */
+/**
+ * End pad inside a spine drill (Scan Stations benches, page children) so the
+ * last row can scroll up past the sticky Back label and the account footer.
+ */
+export const SPINE_DRILL_SCROLL_END_CLASS = 'pb-32';
+
 export const SPINE_ROW_FACE_CLASS = 'h-10 shrink-0';
 export const SPINE_ROW_ICON_CLASS = 'h-4 w-4 shrink-0';
 /** Destination labels — `role-body` (14px), regular weight. */

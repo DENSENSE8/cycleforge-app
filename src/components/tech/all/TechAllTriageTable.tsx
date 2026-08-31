@@ -21,7 +21,6 @@ import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import type { ShippedOrder } from '@/types/orders';
 import { dispatchOpenShippedDetails } from '@/utils/events';
 import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
-import type { DataTableTabStrip } from '@/components/tables/DataTable';
 import {
   mergeTechAllTriageRows,
   type TechAllTriageRow,
@@ -68,7 +67,6 @@ interface TechAllTriageTableProps {
   /** Unbox: open focused line in UnboxLineWorkspace (preferred over testing). */
   onOpenUnboxLine?: (row: ReceivingLineRow) => void;
   /** The desk's mode strip, drawn on this table's own bottom bar. */
-  tabStrip?: DataTableTabStrip;
 }
 
 async function fetchNeedsTestLines(): Promise<ReceivingLineRow[]> {
@@ -118,7 +116,6 @@ export function TechAllTriageTable({
   scope,
   onOpenTestingLine,
   onOpenUnboxLine,
-  tabStrip,
 }: TechAllTriageTableProps) {
   const router = useRouter();
   const { searchQuery, setSearch } = useWorkbenchSearchParam();
@@ -264,7 +261,6 @@ export function TechAllTriageTable({
         </div>
       }
       search={{ value: searchQuery, onChange: setSearch, placeholder: 'Filter units…' }}
-      {...tabStrip}
       searchEmptyMessage="No matches for this search"
       scrollRef={scrollRef}
       renderGroup={(group, _stripe, { columns: visible }) => (

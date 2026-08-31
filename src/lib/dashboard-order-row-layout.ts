@@ -21,7 +21,11 @@
  */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
-import { ORDERS_FIELD_CATALOG, ORDERS_PRODUCT_LAYOUT } from '@/lib/tables/field-catalog/orders';
+import {
+  omitShippedOnlyBindings,
+  ORDERS_FIELD_CATALOG,
+  ORDERS_PRODUCT_LAYOUT,
+} from '@/lib/tables/field-catalog/orders';
 import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid-surface-descriptor';
@@ -101,11 +105,26 @@ export interface OrdersQueueColumn extends Omit<LedgerGridColumnModel, 'key'>, S
  */
 export function ordersCompoundColumnsFor(
   layout: SlotLayout,
+  options?: { queueMode?: 'fulfillment' | 'labels' | 'staged' | 'shipped' },
 ): readonly OrdersQueueColumn[] {
+  const resolved =
+    options?.queueMode === 'shipped' ? layout : omitShippedOnlyBindings(layout);
+  /*
+   * No `actions` track on Orders (operator ruling 2026-08-31 — "remove the
+   * three dots on the most right side").
+   *
+   * The ⋮ is the rightmost track and it is literally three dots. On this desk
+   * it never earned its 2.5rem: the row already opens on click, and the two
+   * verbs it grew (copy order / copy tracking) are the same copies the identity
+   * chips beside them already offer on one click. Other compound families keep
+   * the shared track — this drops it for the Orders mount only, which is why it
+   * is filtered here rather than removed from `COMPOUND_TRACKS`.
+   */
+  const base = compoundColumnsFor<OrdersQueueColumn>().filter((c) => c.key !== 'actions');
   return materializeTracks<OrdersQueueColumn>({
-    layout,
+    layout: resolved,
     catalog: ORDERS_FIELD_CATALOG,
-    base: compoundColumnsFor<OrdersQueueColumn>(),
+    base,
   });
 }
 

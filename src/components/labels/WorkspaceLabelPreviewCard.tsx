@@ -10,7 +10,10 @@
  *   label kind + Edit live on the Print · Receive dock split menu.
  */
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import { LabelFacePreview } from '@/components/labels/LabelFacePreview';
+import { useLabelFaceProductSlots } from '@/components/labels/LabelFaceProductSlots';
+import type { LabelFaceSlotHandlers } from '@/components/labels/LabelFaceSlotOverlay';
 import {
   WorkspaceCard,
   WORKSPACE_NESTED_FIELD,
@@ -20,7 +23,6 @@ import {
 import { Button } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { Pencil } from '@/components/Icons';
-import { LabelFacePreview } from '@/components/labels/LabelFacePreview';
 import {
   ProductLabelEditPopover,
   type ProductLabelDraft,
@@ -47,6 +49,7 @@ export function WorkspaceLabelPreviewCard({
   showHoverChrome,
   editorOpen: editorOpenControlled,
   onEditorOpenChange,
+  slotHits,
 }: {
   sku: string;
   title: string;
@@ -75,14 +78,37 @@ export function WorkspaceLabelPreviewCard({
   /** Controlled open for the built-in unit ProductLabelEditPopover. */
   editorOpen?: boolean;
   onEditorOpenChange?: (open: boolean) => void;
+  /** Pinpoint hits on the open sticker — omit when the Label band is shut. */
+  slotHits?: LabelFaceSlotHandlers;
 }) {
   const [editorOpenUncontrolled, setEditorOpenUncontrolled] = useState(false);
   const editorOpen = editorOpenControlled ?? editorOpenUncontrolled;
   const setEditorOpen = onEditorOpenChange ?? setEditorOpenUncontrolled;
   const productTitle = title.trim();
   const matrix = { value: dataMatrixValue, symbology: dataMatrixSymbology, scale: 4 } as const;
+  const [productDraft, setProductDraft] = useState<ProductLabelDraft>(() => ({
+    title: productTitle || sku,
+    condition: (condition ?? '').trim(),
+    color: (color ?? '').trim(),
+  }));
+  useEffect(() => {
+    setProductDraft({
+      title: productTitle || sku,
+      condition: (condition ?? '').trim(),
+      color: (color ?? '').trim(),
+    });
+  }, [sku, productTitle, condition, color]);
+  const productSlots = useLabelFaceProductSlots(productDraft, setProductDraft);
+  const useProductHits = !slotHits && !faceOverride;
   const face =
-    faceOverride ?? unitLabelToFace({ sku, title: productTitle, condition, color, matrix });
+    faceOverride ??
+    unitLabelToFace({
+      sku,
+      title: productDraft.title,
+      condition: productDraft.condition,
+      color: productDraft.color,
+      matrix,
+    });
   const builtInEditor = !faceOverride && Boolean(onApplyAndPrint);
   const canEdit = Boolean(onEdit) || builtInEditor;
   const procedure = chrome === 'procedure';
@@ -101,7 +127,12 @@ export function WorkspaceLabelPreviewCard({
           : `group relative ${WORKSPACE_NESTED_FIELD} ${WORKSPACE_NESTED_FIELD_PAD}`
       }
     >
-      <LabelFacePreview model={face} embedded fit={procedure ? 'host' : 'capped'} />
+      <LabelFacePreview
+        model={face}
+        embedded
+        fit={procedure ? 'host' : 'capped'}
+        slotHits={slotHits ?? (useProductHits ? productSlots.slotHits : undefined)}
+      />
       {typeSelect ? (
         <div className="pointer-events-none absolute left-0 top-0 opacity-0 transition-opacity duration-150 group-hover:pointer-events-auto group-hover:opacity-100 focus-within:pointer-events-auto focus-within:opacity-100">
           <div
@@ -147,14 +178,11 @@ export function WorkspaceLabelPreviewCard({
         </WorkspaceCard>
       )}
 
+      {useProductHits ? productSlots.menus : null}
       {builtInEditor && !onEdit && onApplyAndPrint ? (
         <ProductLabelEditPopover
           open={editorOpen}
-          defaults={{
-            title: productTitle || sku,
-            condition: (condition ?? '').trim(),
-            color: (color ?? '').trim(),
-          }}
+          defaults={productDraft}
           sku={sku}
           matrix={matrix}
           onApplyAndPrint={onApplyAndPrint}

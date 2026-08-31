@@ -1,82 +1,60 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
-import { TriageNav, type TriageNavItem } from './TriageNav';
 import { TriageSections, type TriageSectionSpec } from './TriageSections';
+import { TriageScrollKnobs } from './TriageScrollKnobs';
 
-export type { TriageNavItem, TriageSectionSpec };
+export type { TriageSectionSpec };
 
 /**
- * Two-column Grok-style triage host: sticky jump rail + independently scrolling
- * sections. Use when a dense warehouse form exceeds the pane and needs
- * quick-jump navigation across distinct operational blocks.
+ * Scroll host for a dense warehouse triage form. Distinct operational blocks
+ * are grouped as {@link TriageSections} cards (`cornerClass('surface')`).
  *
- * Right-pane cards are rounded through `cornerClass('surface')` inside
- * {@link TriageSections}. Do not square them off with `rounded-none`.
+ * ## The jump rail is opt-in
+ *
+ * The grouping alone IS the scan for a short form, so `knobs` defaults off and
+ * a three-section host stays a plain scroll. Pass `knobs` when the pane is
+ * fixed-width and the operator works it repeatedly — there the rail earns its
+ * column twice over, because {@link TriageScrollKnobs} is also a position
+ * readout (an `IntersectionObserver` marks the section under the reader), which
+ * a scroll with no rail cannot answer at all.
+ *
+ * It rides the EDGE, never a button row across the top: vertical space is the
+ * scarce axis in a dense form, and a top row either scrolls away or is made
+ * sticky and spends that space permanently.
  */
 export function TriageScrollLayout({
   header,
+  banner,
   sections,
+  knobs = false,
   className,
   'data-testid': testId,
 }: {
   header?: ReactNode;
+  /** Record-level notice above the first card — see {@link TriageSections}. */
+  banner?: ReactNode;
   sections: readonly TriageSectionSpec[];
+  /** Show the edge jump rail. Off by default — see the note above. */
+  knobs?: boolean;
   className?: string;
   'data-testid'?: string;
 }) {
-  const rootRef = useRef<HTMLDivElement>(null);
-  const [activeId, setActiveId] = useState(sections[0]?.id ?? '');
-
-  const jumpTo = useCallback((id: string) => {
-    const target = rootRef.current?.querySelector<HTMLElement>(`#${CSS.escape(id)}`);
-    target?.scrollIntoView({ block: 'start' });
-  }, []);
-
-  const sectionIds = sections.map((section) => section.id).join('|');
-
-  useEffect(() => {
-    const root = rootRef.current;
-    if (!root || !sectionIds) return;
-    const ids = sectionIds.split('|');
-
-    const nodes = ids
-      .map((id) => root.querySelector<HTMLElement>(`#${CSS.escape(id)}`))
-      .filter((node): node is HTMLElement => node != null);
-    if (nodes.length === 0) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const hit = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-        if (hit?.target.id) setActiveId(hit.target.id);
-      },
-      {
-        root,
-        rootMargin: '-12% 0px -55% 0px',
-        threshold: [0, 0.15, 0.35, 0.6, 1],
-      },
-    );
-    for (const node of nodes) observer.observe(node);
-    return () => observer.disconnect();
-  }, [sectionIds]);
-
-  const navItems: TriageNavItem[] = sections.map(({ id, label }) => ({ id, label }));
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
   return (
     <div className={cn('flex h-full min-h-0 flex-col', className)} data-testid={testId}>
       {header ? <div className="shrink-0">{header}</div> : null}
-      <div className="grid min-h-0 flex-1 grid-cols-[12rem_minmax(0,1fr)] grid-rows-[minmax(0,1fr)]">
-        <TriageNav items={navItems} activeId={activeId} onJump={jumpTo} />
+      <div className="flex min-h-0 flex-1">
         <div
-          ref={rootRef}
-          className="min-h-0 overflow-y-auto"
+          ref={scrollRef}
+          className="min-h-0 flex-1 overflow-y-auto"
           data-triage-scroll-root=""
         >
-          <TriageSections sections={sections} />
+          <TriageSections sections={sections} banner={banner} />
         </div>
+        {knobs ? <TriageScrollKnobs sections={sections} scrollRef={scrollRef} /> : null}
       </div>
     </div>
   );

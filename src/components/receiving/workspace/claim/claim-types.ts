@@ -5,17 +5,23 @@ import type { TicketCandidate } from '@/components/support/link/useTicketSearch'
 export type ClaimModalMode = 'create' | 'link';
 
 /**
- * Claim scroll sections. Create starts at `photos` (skips `find`);
+ * Claim scroll sections. Create starts at `compose` (skips `find`);
  * link starts at `find`. Ticket (`compose`) is editable details only.
- * Pre-file photo-backup copy lives on the sticky File footer (not a section).
  * Success is always `filed`.
+ *
+ * There was a `photos` section here until 2026-08-30 — a full attach picker
+ * that pulled the carton's photo list and painted a grid. Attaching moved to
+ * the composer, and the claim now renders in two places at once (rail +
+ * centre), so keeping it meant the same grid mounted and the same
+ * `/api/receiving-photos` request fired on EVERY claim surface. The NAS backup
+ * is unaffected: it archives the whole carton server-side and never read the
+ * picker's selection.
  */
-export type ClaimWizardStep = 'find' | 'photos' | 'compose' | 'filed' | 'seller';
+export type ClaimWizardStep = 'find' | 'compose' | 'filed' | 'seller';
 
 /** Full top-to-bottom order (create filters out `find`). */
 const CLAIM_WIZARD_STEP_ORDER: readonly ClaimWizardStep[] = [
   'find',
-  'photos',
   'compose',
   'filed',
   'seller',
@@ -23,7 +29,7 @@ const CLAIM_WIZARD_STEP_ORDER: readonly ClaimWizardStep[] = [
 
 /** Opening step for the given mode. */
 export function claimWizardStartStep(mode: ClaimModalMode): ClaimWizardStep {
-  return mode === 'link' ? 'find' : 'photos';
+  return mode === 'link' ? 'find' : 'compose';
 }
 
 /** Step order visible for the active mode (create omits Find). */
@@ -100,13 +106,11 @@ export function claimWizardStepsForMode(
     mode === 'link'
       ? [
           { key: 'find', label: 'Find' },
-          { key: 'photos', label: 'Photos' },
           { key: 'compose', label: 'Ticket' },
           { key: 'filed', label: filedLabel },
           { key: 'seller', label: 'Seller' },
         ]
       : [
-          { key: 'photos', label: 'Photos' },
           { key: 'compose', label: 'Ticket' },
           { key: 'filed', label: filedLabel },
           { key: 'seller', label: 'Seller' },
@@ -114,7 +118,7 @@ export function claimWizardStepsForMode(
   return steps.filter((s) => s.key !== 'seller' || sellerStepApplicable);
 }
 
-/** DOM id for a claim scroll section (`claim-section-photos`, …). */
+/** DOM id for a claim scroll section (`claim-section-compose`, …). */
 export function claimSectionDomId(step: ClaimWizardStep): string {
   return `claim-section-${step}`;
 }

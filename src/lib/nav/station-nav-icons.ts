@@ -60,7 +60,7 @@ export const RECEIVING_NAV_ICONS = {
   repair: ReceivingModeRepair,
 } as const satisfies Record<string, NavIconComponent>;
 
-/** Testing station child pages — Quality Control + Ready to Pack (`TechSidebarTopMode` in GlobalHeader). */
+/** Testing station benches — Quality Control + Ready to Pack (MasterNav L1 + header peers). */
 export const TECH_NAV_ICONS = {
   testing: TechModeTesting,
   shipping: TechModeShippingQueue,

@@ -11,7 +11,9 @@ import {
   applyStaffAuthor,
   staffAuthorsByCommentId,
   staffAuthorsByEmail,
+  staffAuthorsByName,
 } from './comment-staff';
+import { staffNameFromNoteSignature } from './comment-staff-identity';
 
 export async function enrichCommentAuthors(
   organizationId: OrgId,
@@ -41,7 +43,7 @@ export async function enrichCommentAuthors(
     } as ZendeskComment;
   });
 
-  const [byCommentId, byEmail] = await Promise.all([
+  const [byCommentId, byEmail, byName] = await Promise.all([
     staffAuthorsByCommentId(
       organizationId,
       enriched.map((c) => c.id),
@@ -51,6 +53,13 @@ export async function enrichCommentAuthors(
       enriched
         .map((c) => String((c as { author_email?: string | null }).author_email ?? ''))
         .filter(Boolean),
+    ),
+    // Only the names actually signed on this page — never the whole roster.
+    staffAuthorsByName(
+      organizationId,
+      enriched
+        .map((c) => staffNameFromNoteSignature(String(c.body ?? '')))
+        .filter((n): n is string => Boolean(n)),
     ),
   ]);
 
@@ -77,6 +86,7 @@ export async function enrichCommentAuthors(
         },
         byCommentId,
         byEmail,
+        byName,
       ) as ZendeskComment,
   );
 }

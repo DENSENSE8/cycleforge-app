@@ -2,7 +2,8 @@
 
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
-import { PageHeader } from '@/components/ui/pane-header';
+import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
+import { DeskActionSlotRegistrar } from '@/design-system/components/DeskActionSlot';
 import { Button } from '@/design-system/primitives';
 import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 
@@ -176,44 +177,42 @@ function ReportsPageInner() {
     load();
   }, [load]);
 
+  /*
+   * The desk frame, not a second one (2026-08-31).
+   *
+   * This drew a `PageHeader` plus its own segmented tab strip — a filled-face
+   * selection (`bg-surface-inverse text-white`) beside the underline row every
+   * other page uses. Two tab vocabularies on one product is the fork the chrome
+   * moved into the design system to end.
+   *
+   * The tabs are passed EXPLICITLY because Reports' modes are local view state,
+   * not nav children: `/reports` has no spine drill-down to withdraw, so there
+   * is nothing for `deskChrome` to opt into. The frame takes them as data
+   * either way — which is the point of it taking data.
+   *
+   * `title` is passed for the same reason: the spine does not name this page,
+   * so the default (its nav label) would be empty.
+   */
   return (
-    <div className="flex h-full min-h-0 w-full flex-col bg-surface-card">
-      <PageHeader
-        title="Reports"
-        rightSlot={
-          <Button variant="secondary" size="sm" type="button" onClick={load}>
-            Refresh
-          </Button>
-        }
-        belowSlot={
-          <div className="flex gap-2 border-t border-border-hairline px-3 py-2">
-            {TABS.map((t) => (
-              // ds-raw-button: segmented tab toggle (aria-pressed, conditional active fill), not a single DS variant
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                aria-pressed={tab === t.id}
-                className={`rounded-md px-3 py-1.5 text-xs font-semibold ${
-                  tab === t.id
-                    ? 'bg-surface-inverse text-white'
-                    : 'border border-border-default bg-surface-card text-text-muted'
-                }`}
-              >
-                {t.label}
-              </button>
-            ))}
-          </div>
-        }
-      />
-
+    <DeskPageLayout
+      title="Reports"
+      tabs={TABS}
+      activeTab={tab}
+      onTabChange={(id) => setTab(id as Tab)}
+      className="h-full"
+    >
+      <DeskActionSlotRegistrar>
+        <Button variant="secondary" size="md" type="button" onClick={load}>
+          Refresh
+        </Button>
+      </DeskActionSlotRegistrar>
       <main className="min-h-0 flex-1 overflow-auto px-3 py-3">
         {error && (
           <p className="px-3 py-6 text-center text-sm font-semibold text-rose-600">{error}</p>
         )}
         {!error && <ReportTable tab={tab} rows={rows} loading={loading} />}
       </main>
-    </div>
+    </DeskPageLayout>
   );
 }
 

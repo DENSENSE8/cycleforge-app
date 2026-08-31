@@ -33,10 +33,15 @@ import {
 } from './helpers';
 import { OrdersQueueTableRow } from './OrdersQueueTableRow';
 import { QueueGroupRow } from './QueueGroupRow';
-import { useOrdersQueueRows } from './useOrdersQueueRows';
+import {
+  ADDED_TODAY_BAND,
+  ADDED_TODAY_LABEL,
+  useOrdersQueueRows,
+} from './useOrdersQueueRows';
 import { useOrdersQueuePlane } from './useOrdersQueuePlane';
 import { AddTrackingPopover } from '@/components/outbound/labels/AddTrackingPopover';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
+import { refreshDomain } from '@/lib/refresh/bus';
 import { toast } from '@/lib/toast';
 
 /**
@@ -217,10 +222,10 @@ export function useOrdersSpreadsheet({
 
   // Effective slot layout (staff ?? org ?? product) → the mounted compound
   // model. Rebinding changes bindings, never keys, so slot-keyed prefs hold.
-  const { effectiveLayout, subtitleFieldIds, fields } = useOrdersTableLayout();
+  const { effectiveLayout, subtitleFieldIds, fields, onReorder } = useOrdersTableLayout();
   const compoundColumns = useMemo(
-    () => ordersCompoundColumnsFor(effectiveLayout),
-    [effectiveLayout],
+    () => ordersCompoundColumnsFor(effectiveLayout, { queueMode }),
+    [effectiveLayout, queueMode],
   );
 
   const { orderGroupsByDate, displayedRecords } = useOrdersQueueRows({
@@ -277,6 +282,113 @@ export function useOrdersSpreadsheet({
     },
     [assignMutate],
   );
+
+  /**
+   * The other under-title facts, written through the same waist.
+   *
+   * Keyed by catalog field id so the handler does not have to learn a new name
+   * every time an org binds a different fact under the title.
+   *
+   * `orders.notes` goes to the TRAIL, not through the assign waist. Notes are
+   * append-only: `POST /api/orders/[id]/notes` adds an entry and (since
+   * 2026-08-31) refreshes the denormalized `orders.notes` column the subtitle
+   * paints, so the glyph shows what was just written instead of a stale scalar.
+   * `/api/orders/assign` still has no `notes` branch, and must not grow one —
+   * that would be a second independent author of the same field.
+   */
+  const handleCommitSubtitleField = useCallback(
+    (record: ShippedOrder, fieldId: string, value: string | null) => {
+      const id = Number(record.id);
+      if (!Number.isFinite(id)) return;
+      if (fieldId === 'orders.notes') {
+        const noteText = (value ?? '').trim();
+        if (!noteText) return; // an append-only trail has no "clear"
+        void fetch(`/api/orders/${id}/notes`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ noteText }),
+        })
+          .then((res) => {
+            if (!res.ok) throw new Error(`note ${res.status}`);
+            refreshDomain('orders.outbound');
+          })
+          .catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to save the note'));
+        return;
+      }
+      const patch =
+        fieldId === 'orders.qty'
+          ? { orderId: id, quantity: value }
+          : fieldId === 'orders.item_number'
+            ? { orderId: id, itemNumber: value }
+            : null;
+      if (!patch) return;
+      assignMutate(patch, {
+        onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to save'),
+      });
+    },
+    [assignMutate],
+  );
+
+  /**
+   * Map an inline drop position back to a BINDING index.
+   *
+   * The note is pinned to the right of the line rather than sitting in binding
+   * order, so the list the operator drags within is the bindings MINUS the
+   * note. Landing at inline index 2 therefore means "after the second non-note
+   * fact", which is only the same number while the note is last.
+   */
+  const handleReorderSubtitle = useCallback(
+    (partKey: string, toInlineIndex: number) => {
+      const inline = subtitleFieldIds.filter((id) => id !== 'orders.notes');
+      const target = inline[Math.max(0, Math.min(inline.length - 1, toInlineIndex))];
+      if (!target || target === partKey) return;
+      const bindingIndex = subtitleFieldIds.indexOf(target);
+      if (bindingIndex < 0) return;
+      onReorder(partKey, bindingIndex);
+    },
+    [subtitleFieldIds, onReorder],
+  );
+
+  /**
+   * Header drag → the ORG layout.
+   *
+   * A header track only reorders within the band it materializes from: dragging
+   * a status column onto a subtitle track would be a BIND change, not a move,
+   * and the fields menu owns that. Structural tracks (`select`, `thumb`,
+   * `item`, `amount`, `_fill`) carry no `fieldId`, so they are ignored — their
+   * order is the compound row's geometry, not a preference.
+   */
+  const handleReorderColumn = useCallback(
+    (dragKey: string, dropKey: string) => {
+      const byKey = new Map(compoundColumns.map((c) => [c.key, c]));
+      const dragged = byKey.get(dragKey as OrdersQueueColumnKey);
+      const target = byKey.get(dropKey as OrdersQueueColumnKey);
+      if (!dragged?.fieldId || !target?.fieldId) return;
+      const band = (key: string) => (key.startsWith('status:') ? 'status' : key.startsWith('subtitle:') ? 'subtitle' : null);
+      if (band(dragKey) === null || band(dragKey) !== band(dropKey)) return;
+      const bindings =
+        band(dragKey) === 'status'
+          ? effectiveLayout.statusBindings
+          : effectiveLayout.subtitleBindings;
+      const toIndex = bindings.findIndex((b) => b.fieldId === target.fieldId);
+      if (toIndex < 0) return;
+      onReorder(dragged.fieldId, toIndex);
+    },
+    [compoundColumns, effectiveLayout, onReorder],
+  );
+
+  /**
+   * Header grip → a persisted per-track width.
+   *
+   * The width lands as a `--cf-col-<key>` custom property, which is exactly what
+   * `gridTemplate` already reads (`var(--cf-col-KEY, <rem floor>)`), so a drag
+   * needs no new geometry path — it fills in the override the template has
+   * always looked for. Scoped to the document so the header and every
+   * virtualized row agree without threading state through the row window.
+   */
+  const handleResizeColumn = useCallback((key: string, widthPx: number) => {
+    document.documentElement.style.setProperty(`--cf-col-${key.replace(/[^A-Za-z0-9_-]/g, '-')}`, `${widthPx}px`);
+  }, []);
 
   const handleSortChange = useCallback(
     (key: OrdersQueueColumnKey, nextDir: 'asc' | 'desc') => {
@@ -363,6 +475,7 @@ export function useOrdersSpreadsheet({
           queueMode={queueMode}
           columns={visible}
           subtitleFieldIds={subtitleFieldIds}
+          onReorderSubtitle={handleReorderSubtitle}
           capabilities={ORDERS_GRID_CAPABILITIES}
           trackingAction={
             queueMode === 'labels' ? <AddTrackingPopover record={record} /> : undefined
@@ -375,6 +488,7 @@ export function useOrdersSpreadsheet({
               : undefined
           }
           onCommitCondition={handleCommitCondition}
+            onCommitSubtitleField={handleCommitSubtitleField}
         />
       );
     },
@@ -394,6 +508,7 @@ export function useOrdersSpreadsheet({
       clickSelect,
       fillsById,
       subtitleFieldIds,
+      handleReorderSubtitle,
     ],
   );
 
@@ -408,8 +523,20 @@ export function useOrdersSpreadsheet({
     // Fields picker data — DataTable renders it when the definition declares
     // `fieldsMenu` (org/staff slot binding lives behind it).
     fields,
+    // Header drags — reorder writes the org layout, resize writes a per-track
+    // width override the grid template already reads.
+    onReorderColumn: handleReorderColumn,
+    onResizeColumn: handleResizeColumn,
     ariaLabel,
     orderGroupsByDate,
+    /**
+     * The ONE named band on this table. Day banding stays off — absolute civil
+     * date is a per-row column here — but the day's intake gets an outlined,
+     * sticky-captioned section at the top of the queue so "what came in today"
+     * is answered without a filter, a second tab, or a strip above the rows
+     * (the last of which the operator ruled out on 2026-08-31).
+     */
+    sectionHeaders: { [ADDED_TODAY_BAND]: ADDED_TODAY_LABEL },
     rows: displayedRecords,
     getRowId: getTableRowId,
     sort: columnSort && isQueueSortableColumnKey(columnSort) ? columnSort : null,

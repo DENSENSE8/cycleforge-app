@@ -32,6 +32,7 @@ import {
   type UseOrdersSpreadsheetOptions,
 } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
 import type { DataTableTab } from '@/components/tables/TableStatusBar';
+import type { DataTableDateMenu } from '@/components/tables/DataTable';
 import {
   ORDER_EXPORT_COLUMNS,
   buildOrderExportRow,
@@ -41,6 +42,10 @@ import type { ShippedOrder } from '@/lib/neon/orders-queries';
 export interface OrdersGridHostProps extends UseOrdersSpreadsheetOptions {
   /** The one find field, as data. */
   search: DataTableSearch;
+  /** Quick date refinement, drawn beside the filter. Omit where period is meaningless. */
+  dateMenu?: DataTableDateMenu;
+  /** Filename for the toolbar's CSV export. */
+  exportFilename?: string;
   /** The one filter control, as data. Omit on a lane with nothing to refine. */
   filter?: {
     options: readonly DataTableFilterOption[];
@@ -64,6 +69,8 @@ export function OrdersGridHost({
   totalCount,
   search,
   filter,
+  dateMenu,
+  exportFilename,
   tabs,
   activeTab,
   onTabChange,
@@ -88,6 +95,8 @@ export function OrdersGridHost({
       {...sheet}
       search={search}
       filter={filter}
+      dateMenu={dateMenu}
+      exportFilename={exportFilename}
       tabs={tabs}
       activeTab={activeTab}
       onTabChange={onTabChange}

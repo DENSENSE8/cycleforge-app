@@ -14,7 +14,7 @@ import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShel
 import { TestingHistoryList } from '@/components/tech/TestingHistoryList';
 import { TechAllTriageTable } from '@/components/tech/all/TechAllTriageTable';
 import { useTestingWorkspaceTab } from '@/hooks/useTestingWorkspaceTab';
-import type { DataTableTabStrip } from '@/components/tables/DataTable';
+import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 
 /**
  * The desk's modes. Each one mounts a different body over the same bench.
@@ -39,22 +39,28 @@ export function TestingWorkspaceView({
 }) {
   const { testTab, setTestTab } = useTestingWorkspaceTab();
 
-  const tabStrip: DataTableTabStrip = {
-    tabs: TESTING_TABS.map((t) => ({ id: t.id, label: t.label })),
-    activeTab: TESTING_LIT_TABS.has(testTab) ? testTab : undefined,
-    onTabChange: (id) => setTestTab((id === testTab ? 'all' : id) as typeof testTab),
-  };
-
+  /*
+   * The tabs moved to the TOP (operator ruling 2026-08-31).
+   *
+   * They used to ride down into whichever body was mounted as a `tabStrip`,
+   * because the foot strip belonged to the table and the desk swapped tables.
+   * With the frame owning the row, the desk states its own modes once and the
+   * bodies stop carrying navigation they never owned — `TechAllTriageTable` and
+   * `TestingHistoryList` still foot their own status bar, now for COUNTS only,
+   * which is the one thing a table actually knows.
+   */
   return (
+    <DeskPageLayout
+      className="h-full"
+      tabs={TESTING_TABS.map((t) => ({ id: t.id, label: t.label }))}
+      activeTab={TESTING_LIT_TABS.has(testTab) ? testTab : ''}
+      onTabChange={(id) => setTestTab((id === testTab ? 'all' : id) as typeof testTab)}
+    >
     <DashboardScrollShell className="h-full bg-transparent">
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <Suspense fallback={<div className="min-h-[240px] bg-surface-canvas" aria-hidden />}>
           {testTab === 'all' ? (
-            <TechAllTriageTable
-              scope="testing"
-              onOpenTestingLine={onOpenLine}
-              tabStrip={tabStrip}
-            />
+            <TechAllTriageTable scope="testing" onOpenTestingLine={onOpenLine} />
           ) : (
             <TestingHistoryList
               key={testTab}
@@ -62,11 +68,11 @@ export function TestingWorkspaceView({
               mode={testTab}
               selectMode={selectMode}
               onOpenLine={onOpenLine}
-              tabStrip={tabStrip}
             />
           )}
         </Suspense>
       </div>
     </DashboardScrollShell>
+    </DeskPageLayout>
   );
 }

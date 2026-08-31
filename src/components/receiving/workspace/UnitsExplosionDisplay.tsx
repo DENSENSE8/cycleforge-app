@@ -238,9 +238,6 @@ function ActiveLineExplosion({
       </header>
 
       <div className="min-w-0">
-        <p className="border-b border-border-hairline px-3 py-2 text-role-eyebrow uppercase tracking-widest text-text-soft">
-          Units · serials
-        </p>
         <ActiveLineConditionSerial
           serials={serials}
           lineId={line.id}

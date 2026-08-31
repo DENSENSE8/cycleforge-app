@@ -62,8 +62,12 @@ export function OrderIngestRail({
 }: {
   open: boolean;
   onClose: () => void;
-  /** `manual` lands on hand entry (`?new=true`); otherwise Root Index. */
-  initialLeaf?: 'index' | 'manual';
+  /**
+   * Which method to land on. The desk's Add-caret sends one of these directly,
+   * so a bulk import is two clicks (caret → method) instead of caret → Root
+   * Index → method. `index` still shows the full list.
+   */
+  initialLeaf?: 'index' | 'manual' | 'file' | 'sync' | 'backfill';
 }) {
   const { has } = useAuth();
   const canImportOrders = has('orders.import');
@@ -72,8 +76,13 @@ export function OrderIngestRail({
   const sync = useOrdersSync();
   const submitNewOrder = useShippedFormSubmit(onClose);
 
-  const resolveInitialLeaf = (leaf: 'index' | 'manual') =>
-    leaf === 'manual' ? MANUAL_LEAF : DESK_INSPECTOR_INDEX;
+  const resolveInitialLeaf = (leaf: 'index' | 'manual' | 'file' | 'sync' | 'backfill') => {
+    if (leaf === 'manual') return MANUAL_LEAF;
+    if (leaf === 'file') return FILE_LEAF;
+    if (leaf === 'sync') return SYNC_LEAF;
+    if (leaf === 'backfill') return BACKFILL_LEAF;
+    return DESK_INSPECTOR_INDEX;
+  };
 
   const [activeId, setActiveId] = useState(() => resolveInitialLeaf(initialLeaf));
 

@@ -105,7 +105,7 @@ function ClaimPhaseActions({
   const isCreate = c.mode === 'create';
 
   if (phase === 'ticket') {
-    const backupLeading = <ClaimBackupStep c={c} />;
+    const backupLeading = <ClaimBackupStep />;
     if (isCreate) {
       if (c.filedTicket) return null;
       const fileDisabled =

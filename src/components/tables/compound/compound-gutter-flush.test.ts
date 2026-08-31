@@ -67,7 +67,19 @@ describe('the compound gutters are flush', () => {
     it(`${key} KEEPS its inset — flush is for the gutters only`, () => {
       // Text that touches the column rule is unreadable. The operator asked for
       // the check and the photo to go edge to edge, not the whole row.
-      assert.match(paint(key), /\bpx-2\b/, `${key} must keep its text inset`);
+      //
+      // Asserts that SOME horizontal inset survives, not which one. Pinning the
+      // literal (`px-2`) made this fail the moment the shared inset was
+      // tightened to `px-1.5`, reporting a spacing preference as a broken
+      // invariant — the invariant is "these tracks are not flush".
+      // Scoped to the CELL's own class attribute — the full paint contains
+      // nested chip faces that legitimately zero their padding inside a grid.
+      const cellClass = paint(key).match(
+        new RegExp(`<div data-col="${key}"[^>]*class="([^"]*)"`),
+      )?.[1];
+      assert.ok(cellClass, `${key} must render a cell wrapper`);
+      assert.match(cellClass, /\bpx-[\d.]+\b/, `${key} must keep its text inset`);
+      assert.doesNotMatch(cellClass, /\bpx-0\b/, `${key} must not be flush`);
     });
   }
 });

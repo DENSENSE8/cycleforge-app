@@ -115,7 +115,7 @@ export default function MobilePurchaseOrderItemDetailPage(
             <div className="flex items-start gap-3">
               <div className="relative h-16 w-16 flex-none overflow-hidden rounded-none bg-surface-sunken">
                 {item.image_url ? (
-                  <Image src={item.image_url} alt="" fill sizes="64px" className="object-cover" />
+                  <Image src={item.image_url} alt="" fill sizes="64px" className="object-cover" unoptimized />
                 ) : (
                   <span className="absolute inset-0 grid place-items-center text-role-micro uppercase tracking-wider text-text-faint">
                     {item.sku?.slice(0, 4) || 'SKU'}

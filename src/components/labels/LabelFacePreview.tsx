@@ -29,6 +29,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { LabelFaceSlotOverlay, type LabelFaceSlotHandlers } from '@/components/labels/LabelFaceSlotOverlay';
 import {
   buildFaceInfoHtml,
   patchLabelFaceDocument,
@@ -51,6 +52,7 @@ export function LabelFacePreview({
   model,
   embedded,
   fit = 'capped',
+  slotHits,
 }: {
   model: LabelFaceModel;
   embedded?: boolean;
@@ -59,6 +61,8 @@ export function LabelFacePreview({
    * `host` — fill the measured host width (Unbox centre under PO lines).
    */
   fit?: 'capped' | 'host';
+  /** Pinpoint hits on the scaled sticker. Omit when the Label band is shut. */
+  slotHits?: LabelFaceSlotHandlers;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const iframeRef = useRef<HTMLIFrameElement>(null);
@@ -182,6 +186,7 @@ export function LabelFacePreview({
               aria-hidden
             />
           )}
+          <LabelFaceSlotOverlay {...slotHits} />
         </div>
       </div>
     </div>

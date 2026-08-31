@@ -111,6 +111,25 @@ export function sqlOrderHasPackScan(alias = 'o'): string {
 }
 
 /**
+ * Dock scan-out (SHIP_CONFIRM) on this order's shipment.
+ *
+ * Shipment-grain on purpose: scan-out is a package leaving the building, keyed
+ * on `shipment_id` the same way `/api/shipped/scan-out` writes it. Unlabeled
+ * rows (`shipment_id` NULL) do not match, so they stay on To-ship as Needs
+ * label. Callers that mean "still in the building" negate this fragment.
+ */
+export function sqlOrderHasShipConfirm(alias = 'o'): string {
+  const a = alias;
+  return `EXISTS (
+      SELECT 1 FROM station_activity_logs sal_out
+      WHERE sal_out.shipment_id IS NOT NULL
+        AND sal_out.shipment_id = ${a}.shipment_id
+        AND sal_out.organization_id = ${a}.organization_id
+        AND sal_out.activity_type = 'SHIP_CONFIRM'
+    )`;
+}
+
+/**
  * JOIN ON predicate: tech_serial_numbers (`tsn`) matches order (`o`).
  * Prefer order_id; dual-read sole-shipment when order_id is null (sunset).
  */

@@ -35,6 +35,8 @@ import {
   useSkuTestingData,
 } from '@/components/receiving/workspace/line-edit/LineTestingTabbedCard';
 import type { ClaimModalMode } from '@/components/receiving/workspace/claim/claim-types';
+import { stationComposerArrivalMode } from '@/lib/composer/station-composer-mode';
+import { CLAIM_RENDERS_IN_BOTH } from '@/components/receiving/workspace/claim/claim-surfaces';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchSelectLine, dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
 import { useTestingLineController } from '@/components/tech/hooks/useTestingLineController';
@@ -109,10 +111,20 @@ export function TestingPanel({
   const { mode: composerMode, setMode: setComposerMode } = useStationComposerMode();
   const ticketMode = composerMode === 'ticket';
 
-  useEffect(() => {
-    if (ticketMode) bandCollapse.engage();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- engage is stable
-  }, [ticketMode]);
+  /*
+   * The composer no longer collapses the context blocks — operator ruling,
+   * 2026-08-30.
+   *
+   * Auto-collapse had three composer triggers: entering Ticket mode, the mode
+   * change callback, and FOCUS. Focus is the one that made it unusable: a click
+   * into the note field on Unbox — the station's whole job — folded Items and
+   * Label away and left the centre empty above the dock. Ticket mode is no
+   * better now that the dock holds the claim draft itself: the operator is
+   * writing ABOUT the items, so hiding them is backwards.
+   *
+   * Collapse-all and the band toggles still drive it. Scroll does NOT — it
+   * remounted the serial field and yanked the workbench back to the caret.
+   */
   useEffect(() => {
     bands.close('label');
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only the line flips
@@ -141,9 +153,25 @@ export function TestingPanel({
     },
     [row.id, openDisplays],
   );
+  /**
+   * Filing a claim opens it in BOTH surfaces — Unbox grain, same switch
+   * ({@link CLAIM_RENDERS_IN_BOTH}), so a tech who learned the claim on one
+   * station finds it in the same two places on the other.
+   *
+   * `claimMode` is one piece of state feeding the centre pane AND the rail's
+   * Ticket leaf, so the pair cannot open disagreeing about Create vs Link.
+   * CLOSING stays centre-only (`openClaimView` / the pane's `onCloseClaim`) —
+   * the rail is the surface the floor already trusts.
+   *
+   * The line-open effect below re-parks Displays on `listing`, but it is
+   * `row.id`-gated, so it cannot yank a claim opened on the current line.
+   */
   const onOpenClaim = useCallback((mode: ClaimModalMode = 'create') => {
+    // Centre — where the claim is going.
     setClaimMode(mode);
     setComposerMode('ticket');
+    // Right rail — where the floor still looks for it.
+    if (CLAIM_RENDERS_IN_BOTH) setActiveSideTab('ticket');
   }, [setComposerMode]);
 
   const c = useTestingLineController(row, staffId, { onOpenClaim });
@@ -232,13 +260,13 @@ export function TestingPanel({
   useEffect(() => {
     const hasTicket = c.providerTicketId != null;
     const ctx = resolveTestingTicketContextOpen(row, hasTicket);
+    // Arrival lands on the station's own tab — Unbox grain. The claim MODE
+    // seed still rides along for the rail's Ticket leaf; only the composer
+    // flip is gone, because Ticket now opens a claim draft rather than a
+    // passive thread.
     setClaimMode(ctx.claimMode);
-    if (ctx.open) {
-      setComposerMode('ticket');
-      setActiveSideTab('listing');
-    } else {
-      setActiveSideTab('listing');
-    }
+    setComposerMode(stationComposerArrivalMode());
+    setActiveSideTab('listing');
     // Only on carton/line open — do not fight a manual Displays close.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- row.id gate
   }, [row.id]);
@@ -385,6 +413,7 @@ export function TestingPanel({
           </p>
         ) : null}
         <WorkspaceNotesCard
+          onTicketCreated={onClaimTicketCreated}
           row={row}
           c={c}
           chrome="raised"
@@ -392,10 +421,6 @@ export function TestingPanel({
           onPrimaryAction={terminalVm ? () => void terminalVm.onClick() : undefined}
           primaryActionDisabled={Boolean(terminalVm?.disabled)}
           onOpenStatusHistory={openTimelineDisplay}
-          onComposerModeChange={(mode) => {
-            if (mode === 'ticket') bandCollapse.engage();
-          }}
-          onComposerFocus={bandCollapse.engage}
         />
       </div>
     </div>
@@ -431,11 +456,10 @@ export function TestingPanel({
               <StationWorkbench
                 ambientWash={false}
                 className="relative z-0 flex-1 bg-transparent"
-                reserveScrollClearance
+                reserveScrollClearance="pager"
                 reserveIdentityClearance={false}
                 bodyGap="none"
                 bodyFill={ticketMode}
-                onScroll={bandCollapse.onScroll}
                 entityContext={
                   scanSessionForThisLine ? (
                     <TestingScanSessionFeedback session={scanSession} />
@@ -482,7 +506,8 @@ export function TestingPanel({
                     lineCollapse.collapseAll();
                   }}
                 />
-                {ticketMode ? (
+                {/* Linked thread only — the composer's Ticket tab is the claim. */}
+                {ticketMode && claimTicketId != null ? (
                   <StationTicketPane
                     row={row}
                     ticketId={claimTicketId}
@@ -521,8 +546,17 @@ export function TestingPanel({
                   return;
                 }
                 if (id === 'ticket') {
+                  // TRANSITIONAL — same pairing as Unbox: the row opens the
+                  // leaf as well as the centre instead of bouncing the rail
+                  // back to the index, which read as a dead row.
+                  if (claimTicketId == null) {
+                    onOpenClaim(claimMode);
+                    return;
+                  }
                   setComposerMode('ticket');
-                  setActiveSideTab(STATION_DISPLAY_INDEX);
+                  setActiveSideTab(
+                    CLAIM_RENDERS_IN_BOTH ? 'ticket' : STATION_DISPLAY_INDEX,
+                  );
                   return;
                 }
                 setActiveSideTab(id as TestingDisplayTab);

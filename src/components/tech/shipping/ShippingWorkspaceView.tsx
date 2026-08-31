@@ -21,7 +21,10 @@ import { useOrderRailSelection } from '@/hooks/useOrderRailSelection';
 import { useShippingWorkspaceTab } from '@/hooks/useShippingWorkspaceTab';
 import { useNewOrderParam } from '@/hooks/useNewOrderParam';
 import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
-import { TableStatusBar } from '@/components/tables/TableStatusBar';
+import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
+import { DeskActionSlotRegistrar } from '@/design-system/components/DeskActionSlot';
+import { Button } from '@/design-system/primitives';
+import { Plus } from '@/components/Icons';
 import type { ShippingWorkspaceTab } from '@/utils/shipping-workspace-state';
 
 function TableFallback() {
@@ -62,7 +65,7 @@ const SHIPPING_LIT_TABS: ReadonlySet<string> = new Set(
 
 export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
   const { shipTab, setShipTab } = useShippingWorkspaceTab();
-  const { newOpen, closeNew } = useNewOrderParam();
+  const { newOpen, openNew, closeNew } = useNewOrderParam();
   const parsedTechId = parseInt(techId, 10);
   const queueTab = shipTab === 'pending' || shipTab === 'urgent';
   // Pending / Urgent reuse the dashboard To Ship selection scope + rail actions.
@@ -75,6 +78,29 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
   const paneMotionProps = { ...presence, transition };
 
   return (
+    <DeskPageLayout
+      className="h-full"
+      tabs={SHIPPING_VIEW_TABS}
+      activeTab={SHIPPING_LIT_TABS.has(shipTab) ? shipTab : ''}
+      onTabChange={(id) => setShipTab(id === shipTab ? 'pending' : (id as ShippingWorkspaceTab))}
+    >
+      {/*
+        The bench's one page-level action, at page-header altitude. It already
+        existed as a URL state (`?new=true`) with an opener that lived off in
+        the rail; the frame gives it the place a primary action belongs, and the
+        overlay it opens is unchanged.
+      */}
+      <DeskActionSlotRegistrar>
+        <Button
+          variant="primary"
+          size="md"
+          radius="pill"
+          icon={<Plus aria-hidden />}
+          onClick={openNew}
+        >
+          New order
+        </Button>
+      </DeskActionSlotRegistrar>
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
       <DashboardScrollShell className="h-full bg-transparent">
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
@@ -113,14 +139,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
         ) : null}
       </DashboardScrollShell>
       <NewOrderEntryOverlay open={newOpen} onClose={closeNew} />
-      {/* The bench switches body on a tab; each body foots its own strip. */}
-      <TableStatusBar
-        tabs={SHIPPING_VIEW_TABS}
-        activeTab={SHIPPING_LIT_TABS.has(shipTab) ? shipTab : undefined}
-        onTabChange={(id) =>
-          setShipTab(id === shipTab ? 'pending' : (id as ShippingWorkspaceTab))
-        }
-      />
     </div>
+    </DeskPageLayout>
   );
 }

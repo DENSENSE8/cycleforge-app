@@ -22,6 +22,9 @@ import {
   cagedRecordToQueueRow,
 } from '@/lib/queries/caged-orders-queries';
 import { Button } from '@/design-system/primitives';
+import { GridDegradedBox } from '@/design-system/components/grid';
+import { RefreshCw } from '@/components/Icons';
+import { useRailActionCount } from '@/components/right-rail/RailSelectionActions';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
 import { deriveFulfillmentState, fulfillmentLaneTotals, type FulfillmentState } from '@/lib/unshipped-state';
@@ -242,6 +245,27 @@ export function UnshippedTable({
     () => (cagedQuery.data?.orders ?? []).map(cagedRecordToQueueRow),
     [cagedQuery.data],
   );
+
+  /*
+   * The fourth settled state (loading → absence → no-match → **degraded**).
+   *
+   * This feed read `data` / `isLoading` / `isSuccess` and never `isError`, so a
+   * failed queue read fell through to `EMPTY_UNSHIPPED_ROWS` and painted the
+   * settled-empty board: "your warehouse is clear" and "we could not reach the
+   * server" were the same screen. On the one surface where that answer decides
+   * whether an operator stops working, it has to be two screens.
+   *
+   * Two faces, per `GridDegradedBox`'s own contract: nothing to show ⇒ the
+   * rose box REPLACES the board; rows already painted (seed, cache, a prior
+   * page) ⇒ keep them and say the refresh failed. A background refetch error
+   * must never blank a surface the operator is mid-scan on.
+   */
+  const queueError = cagedOnly ? cagedQuery.isError : query.isError;
+  const { refetch: refetchQueue } = query;
+  const { refetch: refetchCaged } = cagedQuery;
+  const retryQueue = useCallback(() => {
+    void (cagedOnly ? refetchCaged() : refetchQueue());
+  }, [cagedOnly, refetchCaged, refetchQueue]);
 
   useEffect(() => {
     if (!onPrimaryPainted) return;
@@ -523,6 +547,11 @@ export function UnshippedTable({
     // An empty cage is not a brand-new org — showing "connect a sales channel"
     // there would answer a question nobody asked.
     !cagedOnly &&
+    // Neither is an unreachable server. This was the worst face of the missing
+    // error branch: a failed read on an established org taught it to set itself
+    // up. The degraded gate below catches it first; this keeps the teaching
+    // state honest on its own terms.
+    !queueError &&
     !query.isLoading &&
     allRecords.length === 0 &&
     !searchQuery &&
@@ -530,6 +559,19 @@ export function UnshippedTable({
     !urgentOnly &&
     stageFilter === 'all' &&
     staffId === undefined;
+
+  // Degraded outranks every absence state: with nothing to show and a failed
+  // read, the only honest screen is the one that says so and offers the retry.
+  if (queueError && records.length === 0) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-surface-card p-6">
+        <GridDegradedBox
+          message="Couldn't load the queue. This is not an empty queue — the orders could not be read."
+          onRetry={retryQueue}
+        />
+      </div>
+    );
+  }
 
   if (isFirstRunEmpty) {
     return (
@@ -563,17 +605,13 @@ export function UnshippedTable({
               : (queueCounts?.total ?? 0);
   // The caged endpoint returns the whole held set (bounded at 500) in one
   // read, so there is no second page to offer.
+  // The control moved INTO the status bar's count sentence. It used to be a
+  // band below the bar carrying its own "Showing N of M" against a different
+  // denominator than the bar's — two answers to "how many are left", stacked.
+  // It also mounted after first paint, shoving the last data row down while the
+  // operator was already reading.
   const showLoadMore = !cagedOnly && !searchQuery && stageTotal > rowLimit;
-  const footer = showLoadMore ? (
-    <div className="flex flex-col items-center gap-1 py-4">
-      <Button type="button" variant="secondary" onClick={() => setRowLimit((n) => n + 200)}>
-        Load more
-      </Button>
-      <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-        Showing {Math.min(rowLimit, stageTotal)} of {stageTotal}
-      </p>
-    </div>
-  ) : null;
+  const onLoadMore = showLoadMore ? () => setRowLimit((n) => n + 200) : undefined;
 
   return (
     <UnshippedSheet
@@ -587,9 +625,37 @@ export function UnshippedTable({
       searchEmptyTitle={searchEmptyTitle}
       searchResultLabel={searchResultLabel}
       clearSearchLabel={clearSearchLabel}
-      footer={footer}
+      onLoadMore={onLoadMore}
       copyExport={copyExport}
+      stale={queueError}
+      onRetryStale={retryQueue}
     />
+  );
+}
+
+/**
+ * Refresh failed while rows are already on screen — the non-blocking half of
+ * the degraded state.
+ *
+ * The rows stay. What changes is that the desk stops implying they are current:
+ * an operator reading a queue that quietly stopped updating is the same failure
+ * as the empty board, just slower. `role="status"` because it must reach a
+ * screen-reader operator who cannot see the band appear, and `polite` because
+ * it interrupts nothing — the rows below are still workable.
+ */
+function QueueStaleBand({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div
+      role="status"
+      data-testid="to-ship-stale-band"
+      className="flex shrink-0 flex-wrap items-center gap-x-2 gap-y-1 border-b border-border-danger bg-surface-danger px-2 py-1 text-role-caption text-text-danger"
+    >
+      <RefreshCw aria-hidden className="h-3.5 w-3.5 shrink-0" />
+      <span>Couldn&apos;t refresh — showing the last rows that loaded.</span>
+      <Button type="button" size="sm" variant="ghost" onClick={onRetry} className="text-text-danger">
+        Retry
+      </Button>
+    </div>
   );
 }
 
@@ -626,8 +692,10 @@ function UnshippedSheet({
   clearSearchLabel = 'Show All Pending Orders',
   selectMode = false,
   railSelection = false,
-  footer,
+  onLoadMore,
   copyExport,
+  stale = false,
+  onRetryStale,
 }: {
   records: ShippedOrder[];
   loading: boolean;
@@ -641,8 +709,12 @@ function UnshippedSheet({
   /** Rail-selection model: the check-set is the single selection SoT and drives
    *  the right-rail inspector (History / order-rail SoT). */
   railSelection?: boolean;
-  footer?: React.ReactNode;
+  /** Next page, drawn inside the status bar's count sentence. */
+  onLoadMore?: () => void;
   copyExport: DataTableExport<ShippedOrder>;
+  /** A read failed while these rows were already painted — see {@link QueueStaleBand}. */
+  stale?: boolean;
+  onRetryStale?: () => void;
 }) {
   const sheet = useOrdersSpreadsheet({
     ariaLabel: 'Shelved unshipped orders',
@@ -664,6 +736,10 @@ function UnshippedSheet({
     'data-testid': 'pending-grid-body',
   });
   const chrome = useToShipChrome();
+  // The corner names how many verbs the selection can run; the rail still owns
+  // running them. Without this the bar advertised Copy and nothing else until
+  // the operator happened to check a third row.
+  const selectionActionCount = useRailActionCount();
 
   // The spreadsheet hook publishes the cursor (it owns grouping + folds);
   // this lane only turns the keyboard on.
@@ -671,12 +747,14 @@ function UnshippedSheet({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      {stale && onRetryStale ? <QueueStaleBand onRetry={onRetryStale} /> : null}
       <DataTable<ShippedOrder, OrdersQueueColumnKey, OrdersQueueColumn>
         {...sheet}
         {...chrome}
         copyExport={copyExport}
+        selectionActionCount={selectionActionCount}
+        exportFilename="to-ship.csv"
       />
-      {footer}
     </div>
   );
 }

@@ -12,6 +12,7 @@ import { toast } from '@/lib/toast';
 import { unpairManual } from './sku-testing-api';
 import { EYEBROW, SECTION, type Bundle } from './sku-testing-types';
 import { ManualPicker } from './ManualPicker';
+import { productManualContentPath } from '@/lib/blob/vercel-blob-url';
 
 /**
  * Paired SKU manuals — view in DocumentSlideOver, unpair, and pair from library.
@@ -51,13 +52,15 @@ export function ManualsSection({
   const slideItems = useMemo((): DocumentSlideItem[] => {
     return manuals.map((m) => {
       const name = m.display_name || m.file_name || `Manual #${m.id}`;
-      // Prefer direct Blob URL (works for tech.qc_pass). Document content proxy
-      // requires orders.view — only fall back when source_url is missing.
+      // Same-origin content proxy — Vercel Blob CSP blanks PDFs in iframes.
+      // `/api/documents/:id/content` still needs orders.view; only use it when
+      // there is no product-manuals blob.
       const src =
-        m.source_url ||
-        (m.document_id != null && m.document_id > 0
-          ? `/api/documents/${m.document_id}/content`
-          : null);
+        m.source_url
+          ? productManualContentPath(m.id)
+          : m.document_id != null && m.document_id > 0
+            ? `/api/documents/${m.document_id}/content`
+            : null;
       return {
         id: `manual:${m.id}`,
         title: name,
@@ -158,7 +161,7 @@ export function ManualsSection({
                   {m.source_url ? (
                     <HoverTooltip label="Open in new tab" asChild>
                       <a
-                        href={m.source_url}
+                        href={productManualContentPath(m.id)}
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label="Open in new tab"

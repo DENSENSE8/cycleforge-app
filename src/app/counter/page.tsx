@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { RouteShell } from '@/design-system/components/RouteShell';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { CounterWorkspace } from '@/components/counter/CounterWorkspace';
+import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 
 /**
  * `/counter` — the desk side of the shared counter session.
@@ -31,7 +32,18 @@ function CounterPageContent() {
     <div className="hidden h-full w-full overflow-hidden bg-surface-card md:flex">
       <RouteShell
         actions={null}
-        history={<CounterWorkspace sessionId={sessionId} />}
+        history={(
+          /*
+            Counter is a SALES child, not a Scan Station — `getSidebarNavPageId`
+            answers `sales` for this path — so the frame here draws Sales' title
+            and its four tabs with Counter lit. Switching tabs lands on
+            `/dashboard?mode=…`, which wears the same frame: the strip does not
+            blink out from under the operator on the one tab that changes route.
+          */
+          <DeskPageLayout className="h-full">
+            <CounterWorkspace sessionId={sessionId} />
+          </DeskPageLayout>
+        )}
       />
     </div>
   );

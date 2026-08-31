@@ -78,6 +78,10 @@ export function ProductsWorkspace() {
     // Manuals (default) renders the PDF viewer in the main pane — selection
     // comes from the sidebar's LibraryBrowser (`?id=`).
     case 'manuals':
-      return <ManualLibrary />;
+      return (
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+          <ManualLibrary />
+        </div>
+      );
   }
 }

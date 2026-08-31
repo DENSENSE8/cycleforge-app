@@ -161,5 +161,23 @@ export function useCartonLabelEditor(
     ],
   );
 
-  return { draftDefaults, buildPayload, defaultPayload, applyAndPrint, derivedTicket, derivedPlatform, derivedDate };
+  const patchLabelOverride = useCallback((patch: Partial<LabelOverride>) => {
+    setLabelOverride((prev) => ({ ...prev, ...patch }));
+  }, []);
+
+  const setCornerMode = useCallback((next: LabelCornerMode) => {
+    patchLabelOverride({ cornerMode: next });
+  }, [patchLabelOverride]);
+
+  return {
+    draftDefaults,
+    buildPayload,
+    defaultPayload,
+    applyAndPrint,
+    patchLabelOverride,
+    setCornerMode,
+    derivedTicket,
+    derivedPlatform,
+    derivedDate,
+  };
 }

@@ -145,19 +145,20 @@ export const MAIN_GROUPS = [
 }>;
 
 /**
- * Peer groups for the header page switcher (Arrival · Unbox / Local Pickup ·
- * Repair). The Scan Stations drill lists those benches as a flat map — no
- * second dropdown. Spine list never renders these as nested headers.
+ * Optional peer tags on floor benches (Arrival · Unbox / Local Pickup ·
+ * Repair Service / Quality Control · Ready to Pack). The Scan Stations drill
+ * and the header page switcher list benches as a flat map — no nested
+ * Receiving / Walk-In / Testing headers.
  *
- * Two jobs, two parents (operator vocabulary):
- * - **Receiving** — carton / dock flow (Arrival · Unbox)
- * - **Walk-In** — front-desk counter (Local Pickup · Repair)
+ * Tags remain on the page rows for older callers; display uses
+ * {@link floorStationPages}.
  */
-export type StationSubgroupId = 'receiving' | 'walk-in';
+export type StationSubgroupId = 'receiving' | 'walk-in' | 'testing';
 
 export const STATION_SUBGROUPS = [
   { id: 'receiving', label: 'Receiving', icon: STATION_PAGE_ICONS.receiving },
   { id: 'walk-in', label: 'Walk-In', icon: StationWalkIn },
+  { id: 'testing', label: 'Testing', icon: STATION_PAGE_ICONS.tech },
 ] as const satisfies ReadonlyArray<{
   id: StationSubgroupId;
   label: string;
@@ -390,17 +391,16 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   { id: 'settings',          label: 'Settings',    href: '/settings',           icon: Settings,        kind: 'top', spineBand: false },
   // Monitor — TV / observe-only Operations Live (+ Analytics / History / …).
   { id: 'operations',        label: 'Operations',  href: '/operations',         icon: Monitor,         kind: 'main', mainGroup: 'monitor', requires: 'operations.view' },
-  // Scan Stations — scan-first benches (former Receiving modes + Testing /
-  // Packing / Scan out). Route key still resolves to 'receiving' for the
-  // receiving family so panels/station chrome stay shared.
+  // Scan Stations — scan-first benches (Arrival / Unbox / Pickup / Repair
+  // Service / Quality Control / Ready to Pack / Packing / Scan out).
   { id: 'triage',            label: 'Arrival',     href: '/triage',             icon: RECEIVING_NAV_ICONS.triage,  kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view' },
   { id: 'receive',           label: 'Unbox',       href: '/unbox',              icon: RECEIVING_NAV_ICONS.receive, kind: 'station', stationGroup: 'floor', stationSubgroup: 'receiving', requires: 'receiving.view' },
   { id: 'pickup',            label: 'Local Pickup', href: '/pickup',            icon: RECEIVING_NAV_ICONS.pickup,  kind: 'station', stationGroup: 'floor', stationSubgroup: 'walk-in', requires: 'receiving.view' },
-  { id: 'repair',            label: 'Repair', href: '/repair',          icon: RECEIVING_NAV_ICONS.repair,  kind: 'station', stationGroup: 'floor', stationSubgroup: 'walk-in', requires: 'receiving.view' },
-  // Points at the first-class Test surface (`/test`) so the primary nav lands on
-  // the canonical URL without a redirect hop. Route key still resolves to 'tech'
-  // (reuses the tech panel), so the item stays active on /test + /tech.
-  { id: 'tech',              label: 'Testing',     href: '/test',               icon: STATION_PAGE_ICONS.tech,      kind: 'station', stationGroup: 'floor', requires: 'tech.view' },
+  { id: 'repair',            label: 'Repair Service', href: '/repair',          icon: RECEIVING_NAV_ICONS.repair,  kind: 'station', stationGroup: 'floor', stationSubgroup: 'walk-in', requires: 'receiving.view' },
+  // Quality Control + Ready to Pack are first-class Scan Stations rows (no
+  // parent Testing). Route key still resolves to `tech` for the shared panel.
+  { id: 'testing',           label: 'Quality Control', href: '/test?view=testing', icon: TECH_NAV_ICONS.testing,  kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view' },
+  { id: 'ready-to-pack',     label: 'Ready to Pack',   href: '/test',               icon: TECH_NAV_ICONS.shipping, kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view' },
   // Points at the first-class Pack surface (`/pack`) so the primary nav lands on
   // the canonical URL without a redirect hop. Route key still resolves to
   // 'packer' (reuses the packer panel), so the item stays active on /pack + /packer.
@@ -513,55 +513,55 @@ export function isStationSurfaceRoute(pathname: string | null): boolean {
 /**
  * Surfaces that run **rail-less** — Pattern E, no left context column.
  *
- * Two families, one question: *does this surface already own its own chrome?*
+ * One question: *does this surface still need a left column to navigate itself?*
+ * A page that does not answers by declaring `railless: true`.
  *
- * 1. **Desk-stage surfaces** — anything on a page that opted into
- *    {@link DeskPageChrome} (`deskChrome: true`). Such a page draws its own tab
- *    band and puts its table on a fixed-width stage, so a 360px left column
- *    beside it is width the stage was explicitly measured to give back. Today
- *    that is the Shipping desk (`/shipping/orders` · `/shipping/fba`) and the
- *    `/dashboard` outbound domain.
+ * 1. **The Shipping desk** — its recents rail was retired when the desk stage
+ *    was measured to give that width back. A 360px column beside it is width
+ *    the measure already spent.
  * 2. **`/incoming`** — the Inbound desk, rail-less since before desk chrome
- *    existed. It has NOT opted into `deskChrome`, so it needs its own clause
- *    until it does; deriving it would silently hand its rail back.
+ *    existed. It used to need a hand-written path clause here because it shares
+ *    the `receiving` route key with the scan stations; it now declares
+ *    `railless: true` like everyone else, which is the same fact without the
+ *    exception.
  *
- * ## Why this is derived and not a list of paths
+ * ## Why this reads `railless` and no longer reads `deskChrome`
  *
- * This was `isRaillessOrderFeedSurface`, and its own docblock refused to widen
- * because it was "named for, and guarded as, the To-ship ORDER feed". That was
- * right while To-ship was the only rail-less desk. Once Amazon Prep and Labels
- * joined it, a literal path list would have made the name a lie AND charged a
- * fresh edit to this file for every future desk port. The desk-chrome opt-in is
- * already the fact being asked about, so this reads it instead of restating it:
- * a page that opts in is rail-less on the same commit, and one that does not
- * keeps its rail.
+ * It used to derive off the desk-chrome opt-in, and that was right while
+ * Shipping was the only desk wearing the chrome — the two were one commit, so
+ * one flag looked like one fact. The port to the other desks proved they are
+ * two: Products, Inventory, Sourcing and Operations wear the same page chrome
+ * and navigate BY their rail (the manual picker, the SKU picker and the
+ * exception list write the `?id=` / `?skuId=` / `?open=` their bodies read).
+ * Deriving would have deleted the navigator on the commit that gave them a
+ * title row (operator ruling 2026-08-31: keep the rail, decouple the flags).
+ *
+ * So a desk now says which it is. The cost of the split is one honest
+ * declaration per page; the cost of the derivation was four broken surfaces.
  *
  * **Scan stations fall out for free.** `/shipping/scan-out` resolves to its own
- * page id (`scan-out`, `kind: 'station'`), which never opts in — so the station
- * keeps its recents rail without this function naming it, and nobody has to
- * remember to exclude it when the next desk lands.
+ * page id (`scan-out`, `kind: 'station'`), which declares neither flag — so the
+ * station keeps its recents rail without this function naming it.
  *
  * Media Library (`/ops/photos`) is also rail-less but drops from
  * {@link CONTEXT_PANEL_ROUTE_KEYS} instead — it is not a desk-chrome page.
- * Frame consumer: `ContextPanelLayout` via `useIsDeskStageSurface`.
+ * Frame consumer: `ContextPanelLayout` via `useIsRaillessSurface`.
  */
-export function isDeskStageSurface(
+export function isRaillessSurface(
   pathname: string | null,
   searchParams?: Pick<URLSearchParams, 'get'> | null,
 ): boolean {
   if (!pathname) return false;
-  // Inbound desk — rail-less by hand until it opts into desk chrome.
-  // `/incoming` shares the `receiving` route key with scan stations, so without
-  // this `isStationSurfaceRoute` would keep reserving a column for a facet rail
-  // the chrome already owns.
-  if (pathname === '/incoming' || pathname.startsWith('/incoming/')) return true;
   // Params matter for `/dashboard`, which is multi-domain: the outbound domain
-  // resolves to the desk-chrome `outbound` page, while `?mode=sales` resolves to
-  // `sales` and keeps its walk-in picker.
-  return hasDeskPageChrome(
-    getSidebarPageNav(getSidebarNavPageId(pathname, searchParams ?? null)),
+  // resolves to the `outbound` page, while `?mode=sales` resolves to `sales`
+  // and keeps its walk-in picker.
+  return (
+    getSidebarPageNav(getSidebarNavPageId(pathname, searchParams ?? null))?.railless === true
   );
 }
+
+/** @deprecated Prefer {@link isRaillessSurface} — same predicate, old name. */
+export const isDeskStageSurface = isRaillessSurface;
 
 /**
  * Route keys whose sidebar spine carries a per-route **context panel** — a
@@ -616,7 +616,7 @@ const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
   // Band-1 tabs and the days ride the Band-2 refine popover, so nothing is left
   // for a left column to hold that the chrome cannot say. Removing the key is
   // the honest mechanism — the same one `/search` and `/reports` already use;
-  // `isDeskStageSurface` is not the lever here (the Media library is not a
+  // `isRaillessSurface` is not the lever here (the Media library is not a
   // desk-chrome page, so it has no opt-in to read). SoT:
   // `/search` is header find + browse/detail in main (no context rail)
   // when `?sel=` is set. See `SearchBrowseShell` / `SearchDetailWorkspace`.
@@ -687,7 +687,8 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
 
 /**
  * MasterNav L1 page id for the current path. Receiving-family routes resolve to
- * their promoted station pages (`triage` / `receive` / …); everything else
+ * their promoted station pages (`triage` / `receive` / …); Testing family
+ * routes resolve to `testing` / `ready-to-pack` from `?view=`. Everything else
  * matches {@link getSidebarRouteKey}.
  *
  * `/products?view=labels` resolves to **`products`** (Catalog). It used to
@@ -739,6 +740,18 @@ export function getSidebarNavPageId(
   if (outboundMode === 'scan-out') return 'scan-out';
   if (outboundMode) return 'outbound';
   if (pathname === '/shipping/orders' || pathname.startsWith('/shipping/orders/')) return 'outbound';
+  // Testing family promoted: Quality Control vs Ready to Pack share `/test`
+  // (`?view=testing`). Panel mount still uses route key `tech`.
+  if (
+    pathname === '/test' ||
+    pathname.startsWith('/test/') ||
+    pathname === '/tech' ||
+    pathname.startsWith('/tech/')
+  ) {
+    const view = String(searchParams?.get('view') ?? '').trim().toLowerCase();
+    if (view === 'testing' || view === 'testing-history') return 'testing';
+    return 'ready-to-pack';
+  }
   return getSidebarRouteKey(pathname);
 }
 
@@ -969,6 +982,27 @@ export type SidebarPageNav = SidebarNavItem & {
    */
   deskChrome?: true;
   /**
+   * Runs **rail-less** — Pattern E, no 360px left context column.
+   *
+   * Separate from {@link deskChrome} since 2026-08-31, and the split is the
+   * whole point. They were one flag while Shipping was the only desk wearing
+   * the chrome, and reading one off the other was defensible then: Shipping's
+   * rail had been retired, so "wears the chrome" and "has no rail" were the
+   * same commit.
+   *
+   * They are not the same fact. Products, Inventory, Sourcing and Operations
+   * wear the same page chrome and NAVIGATE BY THEIR RAIL — the manual picker,
+   * the SKU picker, the exception list all write the `?id=` / `?skuId=` /
+   * `?open=` their bodies read. Deriving rail-less from the chrome opt-in would
+   * have deleted the navigator on the commit that gave them a title row.
+   *
+   * The measures do not fight: {@link DESK_STAGE_MAX_PX} is a CAP, not a width,
+   * so beside a rail the stage simply never reaches it.
+   *
+   * Operator ruling 2026-08-31: keep the rail, decouple the flags.
+   */
+  railless?: true;
+  /**
    * Read the active child id from a location. Always returns an id present in
    * `children` (defaulting to the page's leftmost/default child). Only defined
    * for pages that have `children`.
@@ -1020,6 +1054,18 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // `HeaderRecentsSwitcher` now serve them like every other modeful page.
   {
     id: 'home', label: 'Home', href: '/', icon: Home, kind: 'top',
+    // Desk page chrome (2026-08-31): Daily · Today · Tasks are drawn as IN-PAGE
+    // tabs by the Home page itself, so the header switcher stops serving them.
+    //
+    // They moved once before, off a full-width `HorizontalButtonSlider` and
+    // into `HeaderPageSwitcher`, because a page-local mode rail that twins the
+    // GlobalHeader control is banned. This is not that: the frame's tab row is
+    // the ONE page chrome every desk and station now wears, sized to the stage
+    // rather than the canvas, and it is where a page's modes live product-wide.
+    //
+    // No `railless` — Home has no context panel to lose (`home` is absent from
+    // CONTEXT_PANEL_ROUTE_KEYS), so there is nothing to declare.
+    deskChrome: true,
     children: [
       // Daily is the LANDING (bare `/`, `mode: null`): the first screen of a
       // shift is the checklist you run plus the report of who has run theirs.
@@ -1055,6 +1101,18 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   {
     id: 'sales', label: 'Sales', href: `${DASHBOARD}?mode=${DASHBOARD_SALES_MODE}`, icon: SalesPrice,
     kind: 'domain', domainGroup: 'sales', requires: 'dashboard.view',
+    // Desk page chrome (2026-08-31): Counter · Sales Board · Local Pickup ·
+    // Repair Service are drawn as IN-PAGE tabs, so the spine row stays a flat
+    // leaf.
+    //
+    // Every child resolves to THIS page — three are `/dashboard?mode=` and
+    // `/counter` maps to `sales` in `getSidebarNavPageId` — so the tab row
+    // survives every switch. Local Pickup and Repair Service are the dashboard
+    // MODES, not the `/pickup` and `/repair` scan benches; those keep their own
+    // pages and their own frames.
+    //
+    // NOT `railless` — the walk-in picker is this desk's navigator.
+    deskChrome: true,
     children: [
       { id: 'counter', label: 'Counter', icon: SalesModeCounter, requires: 'walk_in.view', to: () => ({ pathname: '/counter', params: {} }) },
       { id: 'sales', label: 'Sales Board', icon: SalesPrice, requires: DASHBOARD_SALES_PERMISSION, to: () => ({ pathname: DASHBOARD, params: { mode: DASHBOARD_SALES_MODE } }) },
@@ -1079,6 +1137,10 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // opens clean — matches Inventory.
   {
     id: 'operations', label: 'Operations', href: OPERATIONS, icon: Monitor, kind: 'main', mainGroup: 'monitor', requires: 'operations.view',
+    // Desk page chrome (2026-08-31): the children below are drawn as IN-PAGE
+    // tabs by the Operations desk, so the spine row stays a flat leaf.
+    // NOT `railless` — this desk navigates by its context rail.
+    deskChrome: true,
     children: [
       // Each target used to null twelve sibling keys by hand — the largest of the
       // nine deleted denylists, re-stated once per mode. `/operations` declares
@@ -1131,8 +1193,16 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'walk-in', requires: 'receiving.view',
   },
   {
-    id: 'repair', label: 'Repair', href: REPAIR, icon: RECEIVING_NAV_ICONS.repair,
+    id: 'repair', label: 'Repair Service', href: REPAIR, icon: RECEIVING_NAV_ICONS.repair,
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'walk-in', requires: 'receiving.view',
+  },
+  {
+    id: 'testing', label: 'Quality Control', href: `${TECH}?view=testing`, icon: TECH_NAV_ICONS.testing,
+    kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view',
+  },
+  {
+    id: 'ready-to-pack', label: 'Ready to Pack', href: TECH, icon: TECH_NAV_ICONS.shipping,
+    kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view',
   },
   // ── Inbound (Manage Inbound) ──────────────────────────────────────────────
   // Single desk at `/incoming`: Pipeline (on the way) + Docked (landed activity,
@@ -1141,12 +1211,23 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   {
     id: 'incoming', label: 'Inbound', href: INCOMING, icon: RECEIVING_NAV_ICONS.incoming,
     kind: 'domain', domainGroup: 'inbound', requires: 'receiving.view',
+    // Rail-less since before desk chrome existed, and now DECLARED rather than
+    // special-cased inside `isRaillessSurface` (2026-08-31). It shares the
+    // `receiving` route key with the scan stations, so the predicate had to name
+    // it by path or `isStationSurfaceRoute` would keep reserving a column for a
+    // facet rail the chrome already owns. Saying it here is the same fact
+    // without the exception.
+    //
+    // No `deskChrome`: Inbound has no children to draw as tabs. It wears the
+    // frame with an empty tab row, which is the honest shape for a
+    // single-surface desk.
+    railless: true,
   },
   // Legacy family entry — deep-link / mode-resolution COMPATIBILITY ONLY.
   // Not in APP_SIDEBAR_NAV. Do NOT use as a display or header-family source:
   // MasterNav + HeaderPageSwitcher derive peers from `stationSubgroup` via
   // {@link stationSubgroupMembers} (Receiving = Arrival·Unbox; Walk-In =
-  // Local Pickup·Repair). The `incoming` child below is retained for old
+  // Local Pickup·Repair Service). The `incoming` child below is retained for old
   // `?mode=incoming` bookmarks; Inbound is a separate domain row above.
   // Pickup/Repair remain as children for legacy `?mode=` resolve only.
   {
@@ -1158,7 +1239,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       { id: 'triage',   label: 'Arrival',      icon: RECEIVING_NAV_ICONS.triage,   to: () => ({ pathname: TRIAGE, params: {} }) },
       { id: 'receive',  label: 'Unbox',        icon: RECEIVING_NAV_ICONS.receive,  to: () => ({ pathname: UNBOX, params: {} }) },
       { id: 'pickup',   label: 'Local Pickup', icon: RECEIVING_NAV_ICONS.pickup,   to: () => ({ pathname: PICKUP, params: {} }) },
-      { id: 'repair',   label: 'Repair',       icon: RECEIVING_NAV_ICONS.repair, to: () => ({ pathname: REPAIR, params: {} }) },
+      { id: 'repair',   label: 'Repair Service', icon: RECEIVING_NAV_ICONS.repair, to: () => ({ pathname: REPAIR, params: {} }) },
     ],
     resolveChild: ({ pathname, params }) => {
       if (pathname === UNBOX || pathname.startsWith(`${UNBOX}/`)) return 'receive';
@@ -1179,6 +1260,11 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // Legacy keys aliased: `alerts`→queue, `lookup`→scout.
   {
     id: 'sourcing', label: 'Sourcing', href: SOURCING, icon: Search, kind: 'domain', domainGroup: 'sourcing', requires: 'sourcing.view',
+    // Desk page chrome (2026-08-31): the children below are drawn as IN-PAGE
+    // tabs by the Sourcing desk, so the spine row stays a flat leaf.
+    // NOT `railless` — this desk navigates by its context rail: its pickers
+    // write the params this body reads.
+    deskChrome: true,
     children: [
       // Each target used to null `q` and `status` by hand — and forgot `by` and
       // `range`, so Scout's field toggle and the Analytics window leaked into
@@ -1249,6 +1335,11 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     // a process fork whose queue semantics To ship cannot express, not because
     // it is a marketplace.
     deskChrome: true,
+    // Rail-less, and now said out loud rather than derived from the line above
+    // (2026-08-31). Shipping's recents rail was retired when the desk stage was
+    // measured to give that width back; every other desk that wears this chrome
+    // still has a rail to keep.
+    railless: true,
     children: [
       { id: 'orders',   label: 'To ship',   icon: LayoutDashboard,              requires: 'orders.view', to: () => ({ pathname: SHIPPING_ORDERS_PATH, params: {} }) },
       { id: 'fba',      label: 'Amazon Prep', icon: SHIPPING_NAV_ICONS.fba,      to: () => ({ pathname: OUTBOUND_MODE_PATHS.fba }) },
@@ -1334,6 +1425,10 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // there is nothing left to remember to clear.
   {
     id: 'products', label: 'Products', href: PRODUCTS, icon: Tags, kind: 'domain', domainGroup: 'catalog', requires: 'sku_stock.view',
+    // Desk page chrome (2026-08-31): the children below are drawn as IN-PAGE
+    // tabs by the Products desk, so the spine row stays a flat leaf.
+    // NOT `railless` — this desk navigates by its context rail.
+    deskChrome: true,
     children: [
       // Mode id stays `catalog` (the `?view=` wire value + every bookmark); only
       // the LABEL changed, so the section and its browse mode stop answering to
@@ -1363,6 +1458,11 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // `?mode=triage|pulse` or `?section=replenish`; default `ledger`.
   {
     id: 'inventory', label: 'Inventory', href: INVENTORY, icon: ShelvingUnit, kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view',
+    // Desk page chrome (2026-08-31): the children below are drawn as IN-PAGE
+    // tabs by the Inventory desk, so the spine row stays a flat leaf.
+    // NOT `railless` — this desk navigates by its context rail: its pickers
+    // write the params this body reads.
+    deskChrome: true,
     children: [
       // `open: null` on every switch so a selection (exception/unit id) from one
       // mode never leaks into another's right pane.
@@ -1404,15 +1504,12 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return 'ledger';
     },
   },
-  // ── Testing ───────────────────────────────────────────────────────────────
-  // Top-mode switch — Quality Control / Ready to Pack. Mode id stays `testing`
-  // (`?view=testing`); only the LABEL is Quality Control so the station and its
-  // default mode don't answer to one word (D11, same pattern as Products →
-  // Reference). Wire id `shipping` stays for URL stability — the face is Ready
-  // to Pack (tech→packer handoff), never the outbound Shipping station.
-  // `?view=testing` → Quality Control (history browse when no line; panel when
-  // open); everything else is Ready to Pack (Pending · FBA | History workspace).
-  // Legacy `?view=testing-history` redirects to `?view=testing`.
+  // Legacy Testing family — deep-link / CMD-GO / mode-resolution COMPATIBILITY
+  // ONLY. Not in APP_SIDEBAR_NAV. MasterNav lists Quality Control and Ready to
+  // Pack as first-class floor rows (`testing` / `ready-to-pack`). Nav stickers
+  // still target these children so `isAlreadyAtNavCommand` can tell the two
+  // `/test` views apart. Wire id `shipping` stays for URL stability — the face
+  // is Ready to Pack, never the outbound Shipping station.
   {
     id: 'tech', label: 'Testing', href: TECH, icon: STATION_PAGE_ICONS.tech, kind: 'station', stationGroup: 'floor', requires: 'tech.view',
     children: [
@@ -1436,6 +1533,18 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // the /support param spec.
   {
     id: 'support', label: 'Support', href: SUPPORT, icon: AlertCircle, kind: 'domain', domainGroup: 'support', requires: 'integrations.zendesk',
+    // Desk page chrome (2026-08-31): Tickets · To ship · Voicemail · Calls ·
+    // Warranty · Issues are drawn as IN-PAGE tabs.
+    //
+    // **The To ship tab leaves the route on purpose.** It aliases
+    // `/shipping/orders?context=support`, and `resolveChild` below claims that
+    // URL — so `getSidebarNavPageId` answers `support` there and the Shipping
+    // desk's frame draws SUPPORT's title and tabs, with To ship lit. The tab
+    // strip does not vanish on the one tab that changes pathname, which is what
+    // made the alias worth having.
+    //
+    // NOT `railless` — the ticket rail is this desk's navigator.
+    deskChrome: true,
     children: [
       {
         id: 'tickets',
@@ -1543,6 +1652,32 @@ export function getSidebarPageNav(pageId: string): SidebarPageNav | undefined {
 }
 
 /**
+ * Ordered first-class Scan Stations benches — the same flat map MasterNav
+ * drills into and the header page switcher lists.
+ *
+ * Pass a pre-filtered page list (e.g. permission-scoped floor pages). When
+ * omitted, members are {@link SIDEBAR_PAGE_NAV} ∩ {@link APP_SIDEBAR_NAV} in
+ * {@link APP_SIDEBAR_NAV} order so the legacy deep-link `receiving` / `tech`
+ * family entries never appear. Packing and Scan out are included — they are
+ * floor benches, not a second family.
+ */
+export function floorStationPages(
+  pages?: readonly SidebarPageNav[],
+): SidebarPageNav[] {
+  const source =
+    pages ??
+    SIDEBAR_PAGE_NAV.filter((p) => APP_SIDEBAR_NAV.some((item) => item.id === p.id));
+  const byId = new Map(source.map((p) => [p.id, p]));
+  const out: SidebarPageNav[] = [];
+  for (const item of APP_SIDEBAR_NAV) {
+    if (item.kind !== 'station' || item.stationGroup !== 'floor') continue;
+    const page = byId.get(item.id);
+    if (page?.kind === 'station' && page.stationGroup === 'floor') out.push(page);
+  }
+  return out;
+}
+
+/**
  * Ordered first-class station pages that belong to a subgroup.
  *
  * Pass a pre-filtered page list (e.g. permission-scoped floor pages from the
@@ -1553,8 +1688,8 @@ export function getSidebarPageNav(pageId: string): SidebarPageNav | undefined {
  * Membership is `kind: 'station'` + `stationSubgroup` — so Inbound (`incoming`,
  * `kind: 'domain'`) is naturally excluded from Receiving / Walk-In.
  *
- * Consumers: GlobalHeader page switcher. The spine drill lists members as
- * ordinary floor rows — never a nested Receiving / Walk-In header. Never read
+ * The spine and header switcher list {@link floorStationPages} instead — never
+ * a nested Receiving / Walk-In / Testing menu. Never read
  * legacy `getSidebarPageNav('receiving').children` for display.
  */
 export function stationSubgroupMembers(

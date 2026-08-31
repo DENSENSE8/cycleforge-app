@@ -17,10 +17,27 @@ import {
 } from "@/lib/condition-tone";
 import { HoverTooltip } from "@/components/ui/HoverTooltip";
 import { useHorizontalWheelScroll } from "@/hooks/useHorizontalWheelScroll";
+import { TRIAGE_PANEL_SEGMENT_ENDS } from "@/design-system/tokens/triage-panel";
 import { cn } from "@/utils/_cn";
 
 /** Expanded strip layout — scroll (Units / compact hosts) vs full-width distribute. */
 type ConditionPillsLayout = "scroll" | "barDistribute";
+
+/**
+ * Which corner the expanded strip wears.
+ *
+ * `"flush"` is the scan-station face and the default: the strip is welded into
+ * the serial bar / capture row, so a radius there would break the weld and
+ * leave a lit sliver at each joint. `"panel"` is for a strip that FLOATS inside
+ * a `cornerClass('surface')` triage panel with clearance on every side, where
+ * square reads as unstyled rather than as industrial.
+ *
+ * Two faces, one component, chosen by the host — the fork the operator asked
+ * for, minus the second copy of the file that would have to be kept in step.
+ * Only the outer ends round: the seams between grades stay flush, which is what
+ * keeps it reading as one instrument rather than five separate buttons.
+ */
+type ConditionPillsCorner = "flush" | "panel";
 
 interface Props {
   value: string | null | undefined;
@@ -88,6 +105,11 @@ interface Props {
    * uses this to arm the serial field from the leading units/Tags face.
    */
   onCollapsedClick?: () => void;
+  /**
+   * Corner of the expanded strip. Defaults to `'flush'` — see
+   * {@link ConditionPillsCorner}. Triage panels pass `'panel'`.
+   */
+  corner?: ConditionPillsCorner;
 }
 
 // Collapsed / locked faces keep abbreviated pill labels for aria — long
@@ -221,6 +243,7 @@ export function ConditionPills({
   labelVariant = "pill",
   layout = "scroll",
   onCollapsedClick,
+  corner = "flush",
 }: Props) {
   const selected = String(value || "")
     .trim()
@@ -231,6 +254,13 @@ export function ConditionPills({
     PILL_GRADES.find((g) => g.value === selected) ??
     null;
   const distribute = layout === "barDistribute";
+  // Round the two END cells, not the container. Clipping the strip with
+  // `overflow-hidden` + a radius would trim each cell's `ring-inset` at the
+  // curve and leave the arc itself unstroked — a corner with no line on it.
+  // Addressing the first and last child instead lets each end cell draw its
+  // OWN rounded ring, in its own grade hue, and every seam between grades
+  // stays square so the strip still reads as one instrument.
+  const cornerClassName = corner === "panel" ? TRIAGE_PANEL_SEGMENT_ENDS : "";
   const pillDensity: ConditionPillDensity = distribute
     ? "barDistribute"
     : "pill";
@@ -369,6 +399,7 @@ export function ConditionPills({
         aria-label="Condition grade"
         className={cn(
           "flex min-w-0 flex-1 items-stretch gap-0",
+          cornerClassName,
           distribute
             ? // Full-name progressive bar: even share across the row — no
               // left-clump dead air.

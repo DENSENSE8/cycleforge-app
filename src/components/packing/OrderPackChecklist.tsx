@@ -11,6 +11,7 @@ import {
   type DocumentSlideItem,
 } from '@/design-system/components/DocumentSlideOver';
 import { PackChecklistLineRow } from './PackChecklistLineRow';
+import { kitPartDocumentContentPath } from '@/lib/blob/vercel-blob-url';
 
 interface OrderPackChecklistProps {
   lines: PackChecklistLineDto[];
@@ -117,9 +118,9 @@ export function OrderPackChecklist({
    * lists all types for a context in its switcher, so a packer comparing two
    * papers flips between them without going back to the list.
    *
-   * `src` is the part's own Blob url. It is NEVER `/api/documents/:id/content`:
-   * `packing.*` does not imply `orders.view`, so that proxy 403s the packer
-   * (see 2026-08-01d_kit_part_reference_document.sql).
+   * `src` is the same-origin kit-part document proxy (session + org), not
+   * `/api/documents/:id/content` (`orders.view` 403s packers) and not the raw
+   * Blob URL (Blob CSP blanks PDFs in iframes).
    */
   const documentItems: DocumentSlideItem[] = useMemo(
     () =>
@@ -129,7 +130,7 @@ export function OrderPackChecklist({
           .map((part) => ({
             id: `part-${part.id}`,
             title: part.document!.title,
-            src: part.document!.url,
+            src: kitPartDocumentContentPath(part.id),
             mimeHint: part.document!.mime,
             emptyTitle: 'Insert unavailable',
             emptyHint: 'This part has no readable document attached.',

@@ -15,7 +15,11 @@ test('getMobileAppTitle resolves receiving-family route labels', () => {
   // the sidebar page label.
   assert.equal(getMobileAppTitle('/incoming'), 'Inbound');
   assert.equal(getMobileAppTitle('/pickup'), 'Local Pickup');
-  assert.equal(getMobileAppTitle('/repair'), 'Repair');
+  // 'Repair Service', not 'Repair': the title mirrors the sidebar page label,
+  // and the walk-in bench was renamed there (Local Pickup · Repair Service) so
+  // the counter's two jobs read as two jobs. The label is the SoT; this
+  // assertion follows it rather than pinning the old word.
+  assert.equal(getMobileAppTitle('/repair'), 'Repair Service');
 });
 
 test('routeHasMobileContextRow includes receiving', () => {

@@ -11,5 +11,7 @@ export function resolveDocumentPreviewMime(
   if (/\.(png|jpe?g|gif|webp|bmp)(\?|#|$)/i.test(src)) return 'image';
   // Same-origin document content routes are almost always PDFs for outbound docs.
   if (/\/api\/documents\/\d+\/content/i.test(src)) return 'pdf';
+  if (/\/api\/product-manuals\/\d+\/content/i.test(src)) return 'pdf';
+  if (/\/api\/sku-kit-parts\/\d+\/document/i.test(src)) return 'pdf';
   return 'unknown';
 }

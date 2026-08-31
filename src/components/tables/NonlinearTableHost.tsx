@@ -58,6 +58,8 @@ export interface NonlinearTableHostProps<Row, K extends string, C extends Ledger
   ariaLabel?: string;
   /** Sticky day bands. Defaults to the definition's. */
   showDayHeaders?: boolean;
+  /** Band key → SECTION label (sticky caption + outline). See {@link LedgerGrid}. */
+  sectionHeaders?: Record<string, string>;
   /**
    * Narrowed column model (compare panes). Defaults to the binding's FULL
    * canonical list — never pre-narrow for visibility, which the surface
@@ -115,6 +117,7 @@ export function NonlinearTableHost<Row, K extends string, C extends LedgerGridCo
   testId,
   ariaLabel,
   showDayHeaders,
+  sectionHeaders,
   columns,
   orderGroupsByDate,
   rows,
@@ -166,6 +169,7 @@ export function NonlinearTableHost<Row, K extends string, C extends LedgerGridCo
       searchEmptyState={searchEmptyState}
       isSearching={isSearching}
       showDayHeaders={showDayHeaders ?? definition.showDayHeaders}
+      sectionHeaders={sectionHeaders}
       shellRef={shellRef}
       scrollParentRef={scrollParentRef}
       scrollToKey={scrollToKey}

@@ -38,7 +38,7 @@ function isOrdersDeskPath(pathname: string | null): boolean {
  *
  * The whole Shipping desk (To ship · Amazon Prep · Labels) is now desk-chrome,
  * and `ContextPanelLayout` collapses the left column outright for any
- * desk-stage surface (`isDeskStageSurface`), so on desktop this panel is not
+ * desk-stage surface (`isRaillessSurface`), so on desktop this panel is not
  * mounted on ANY of those three routes. It still renders in `RouteShell`'s
  * mobile `actions` pane, where it is a full pane the operator switches to —
  * not a column competing with the grid for width.

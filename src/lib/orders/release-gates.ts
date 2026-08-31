@@ -11,7 +11,24 @@
  * |---|---|---|
  * | G1 | Identity triangle | item number **and** order number **and** tracking number are all present and on the same record |
  * | G2 | Documents | ≥1 document linked to the item number, **or** staff asserted it needs none |
- * | G3 | Shipping | a label is linked to the order, **or** one was bought through the existing label path |
+ * | G3 | Shipping | a label is linked to the order, **or** one was bought through the existing
+ *   label path, **or** a tracking number is linked to the order |
+ *
+ * ## Why a tracking number satisfies G3 (operator ruling 2026-08-31)
+ *
+ * *"If the tracking number is linked to it, then it must release it as the
+ * shipping label."* In this warehouse a tracking number is not a fact that
+ * arrives on its own: it is a row in `shipping_tracking_numbers` reached
+ * through `orders.shipment_id`, and it gets there because a label was bought
+ * or attached. G3 asked the same question one indirection later — is there a
+ * `shipping_label` DOCUMENT — and a label whose paperwork was never filed as a
+ * document held the cage shut on an order that demonstrably has a label.
+ *
+ * The consequence, stated rather than discovered later: **G3 is now implied by
+ * G1.** G1 already requires a tracking number, so any order passing G1 passes
+ * G3, and G3 can only fail where G1 has already failed. It is kept as its own
+ * gate because it still names the right reason to an operator looking at an
+ * order with no tracking — but it is no longer an independent hold.
  *
  * ## Why this is a function and not a query
  *
@@ -133,11 +150,13 @@ export function evaluateReleaseGates(facts: ReleaseGateFacts): EvaluatedReleaseG
     {
       id: 'G3',
       label: RELEASE_GATE_LABEL.G3,
-      passed: labelLinked || labelPurchased,
+      // `hasTracking` is the operator's ruling, not a shortcut: a linked
+      // tracking number IS the label as far as this floor is concerned.
+      passed: labelLinked || labelPurchased || hasTracking,
       reason:
-        labelLinked || labelPurchased
+        labelLinked || labelPurchased || hasTracking
           ? null
-          : 'Link an existing shipping label, or buy one.',
+          : 'Link a tracking number or an existing shipping label, or buy one.',
     },
   ];
 

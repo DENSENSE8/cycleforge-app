@@ -85,17 +85,34 @@ test('Scan Stations lists benches as a flat map — no Receiving / Walk-In chrom
   );
 
   const ids = floor!.rows.filter((r) => r.type === 'page').map((r) => r.id);
-  assert.deepEqual(
-    ids.slice(0, 7),
-    ['triage', 'receive', 'pickup', 'repair', 'tech', 'packer', 'scan-out'],
-  );
+  assert.deepEqual(ids, [
+    'triage',
+    'receive',
+    'pickup',
+    'repair',
+    'testing',
+    'ready-to-pack',
+    'packer',
+    'scan-out',
+  ]);
 
   const arrival = floor!.rows.find((r) => r.type === 'page' && r.id === 'triage');
   assert.ok(arrival);
   const pickup = floor!.rows.find((r) => r.type === 'page' && r.id === 'pickup');
   assert.ok(pickup);
-  const testing = floor!.rows.find((r) => r.type === 'page' && r.id === 'tech');
-  assert.ok(testing);
+  const qc = floor!.rows.find((r) => r.type === 'page' && r.id === 'testing');
+  assert.ok(qc);
+  assert.equal(qc && qc.type === 'page' ? qc.label : null, 'Quality Control');
+  const rtp = floor!.rows.find((r) => r.type === 'page' && r.id === 'ready-to-pack');
+  assert.ok(rtp);
+  assert.equal(rtp && rtp.type === 'page' ? rtp.label : null, 'Ready to Pack');
+  assert.equal(
+    floor!.rows.some((r) => r.type === 'page' && r.id === 'tech'),
+    false,
+    'parent Testing must not appear on Scan Stations',
+  );
+  const repair = floor!.rows.find((r) => r.type === 'page' && r.id === 'repair');
+  assert.equal(repair && repair.type === 'page' ? repair.label : null, 'Repair Service');
 });
 
 test('domain bands own their pages; the desk / print grab-bags are gone', () => {
@@ -127,7 +144,7 @@ test('domain bands own their pages; the desk / print grab-bags are gone', () => 
     'sales',
     'support',
   ]) {
-    for (const bench of ['triage', 'receive', 'tech', 'packer', 'scan-out']) {
+    for (const bench of ['triage', 'receive', 'testing', 'ready-to-pack', 'packer', 'scan-out']) {
       assert.equal(idsIn(band).includes(bench), false, `${bench} leaked into ${band}`);
     }
   }

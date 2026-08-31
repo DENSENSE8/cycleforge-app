@@ -249,9 +249,12 @@ test.describe('sidebar spine — one grammar, a push column, no empty columns', 
     );
     await expect(page.getByRole('button', { name: 'Go to Unbox' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Arrival' })).toBeVisible();
-    // Testing is a flat bench (not Open Testing »); QC / Ready to Pack stay on the header.
-    await expect(page.getByRole('button', { name: 'Go to Testing' })).toBeVisible();
+    // QC and Ready to Pack are flat benches (no parent Testing drill).
+    await expect(page.getByRole('button', { name: 'Go to Quality Control' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Go to Ready to Pack' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Go to Testing' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Open Testing' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Go to Repair Service' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Packing' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Packing Review' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Back to pages' })).toBeVisible();

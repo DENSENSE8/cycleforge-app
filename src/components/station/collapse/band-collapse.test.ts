@@ -78,6 +78,39 @@ describe('band collapse — opening one band out of a collapsed stack', () => {
   });
 });
 
+describe('band collapse — Expand all opens every band', () => {
+  it('opens a Label that was seeded shut (Unbox / Testing start)', () => {
+    const seeded: BandCollapseState = { anchor: false, pinned: { label: false } };
+    assert.equal(isBandOpen(seeded, 'items', false), true);
+    assert.equal(isBandOpen(seeded, 'label', false), false);
+
+    const next = reduce(seeded, { kind: 'expand-all', allCollapsed: false });
+    for (const id of BANDS) assert.equal(isBandOpen(next, id, false), true);
+  });
+
+  it('opens bands the operator closed by hand without Collapse all', () => {
+    const shut = reduce(
+      BAND_COLLAPSE_INITIAL,
+      { kind: 'toggle', bandId: 'items', allCollapsed: false },
+      { kind: 'toggle', bandId: 'label', allCollapsed: false },
+      { kind: 'toggle', bandId: 'placement', allCollapsed: false },
+    );
+    for (const id of BANDS) assert.equal(isBandOpen(shut, id, false), false);
+
+    const next = reduce(shut, { kind: 'expand-all', allCollapsed: false });
+    for (const id of BANDS) assert.equal(isBandOpen(next, id, false), true);
+  });
+
+  it('survives Collapse all then Expand all — Label is not left pinned shut', () => {
+    const seeded: BandCollapseState = { anchor: false, pinned: { label: false } };
+    for (const id of BANDS) assert.equal(isBandOpen(seeded, id, true), false);
+
+    const next = reduce(seeded, { kind: 'expand-all', allCollapsed: false });
+    assert.equal(isBandOpen(next, 'items', false), true);
+    assert.equal(isBandOpen(next, 'label', false), true);
+  });
+});
+
 describe('band collapse — pins are spent when the centre moves', () => {
   it('Collapse all is not exempted by a band the operator opened earlier', () => {
     const opened = reduce(BAND_COLLAPSE_INITIAL, {

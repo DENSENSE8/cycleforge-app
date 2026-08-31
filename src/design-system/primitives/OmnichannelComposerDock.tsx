@@ -12,7 +12,7 @@
  *
  * ONE shell, every "type a message here" job in the app:
  *   - Unbox carton notes  (LineNotesCard / WorkspaceNotesCard)
- *   - Support ticket reply (SupportChatComposer / SupportTicketComposerDock)
+ *   - Ticket reply, every surface (TicketComposer — the ONE ticket composer)
  *
  * It was named `StationComposerDock` until 2026-08-01 — the name recorded where
  * it was BORN (the Unbox station dock), not who owns it. Renamed, not split.
@@ -85,6 +85,16 @@ export function composerShowsCommit(opts: {
   return true;
 }
 
+/**
+ * Dock outline radius. Always {@link COMPOSER_SHELL_CORNER} — never flatten
+ * the floor to weld Unbox | Ticket into the card. `weldTop` only squares the
+ * TOP so receive-feedback can share a silhouette; the bottom stays 2xl.
+ */
+export function composerDockShellCorner(opts: { weldTop?: boolean }): string {
+  if (opts.weldTop) return `${COMPOSER_SHELL_CORNER} rounded-t-none`;
+  return COMPOSER_SHELL_CORNER;
+}
+
 export function resizeComposerTextarea(
   el: HTMLTextAreaElement | null,
   opts: { minPx?: number; maxPx?: number } = {},
@@ -97,7 +107,7 @@ export function resizeComposerTextarea(
   el.style.height = `${next}px`;
 }
 
-interface OmnichannelComposerDockHandle {
+export interface OmnichannelComposerDockHandle {
   focus: () => void;
   blur: () => void;
   getTextarea: () => HTMLTextAreaElement | null;
@@ -136,10 +146,25 @@ interface OmnichannelComposerDockProps {
    */
   showCommitWithTrailing?: boolean;
   /**
-   * Commit face. `enter` = bare gray CornerDownLeft (station — no bubble).
-   * `send` = primary paper-plane pill (Support chat — default).
+   * Commit face.
+   * - `send` — primary paper-plane pill (Support chat — default).
+   * - `enter` — bare gray CornerDownLeft (station note; no bubble).
+   * - `action` — a LABELLED CTA (`File ticket →` / `Update ticket`), soft
+   *   corner via `Button radius="composer"`.
+   *
+   * `action` exists because the station's Ticket commit is not "save this
+   * text" — it FILES a helpdesk ticket, or posts to a customer-visible thread.
+   * A bare return arrow gave the most consequential control on the bench the
+   * quietest face on it, and the claim panel already had the loud one; this is
+   * that same button, moved into the dock rather than copied beside it.
    */
-  commitGlyph?: 'send' | 'enter';
+  commitGlyph?: 'send' | 'enter' | 'action';
+  /** `action` face only — the CTA's words. */
+  commitLabel?: string;
+  /** `action` face only — leading glyph. */
+  commitIcon?: ReactNode;
+  /** `action` face only — house variant. Default `primary`. */
+  commitVariant?: 'primary' | 'danger';
   /**
    * Leading chrome INSIDE the outline on the bottom action row (station: +).
    * Always left of the action bar — never beside the textarea.
@@ -156,11 +181,9 @@ interface OmnichannelComposerDockProps {
    */
   insetTop?: ReactNode;
   /**
-   * Outer chrome. `raised` (default) is the Support / standalone card — border +
-   * elevation. `bare` is the body zone inside a host shell that already
-   * paints the plane: no
-   * second raised card, host owns elevation. Never nest `raised` under another
-   * raised dock band.
+   * Outer chrome. `raised` (default) owns the outline, {@link COMPOSER_SHELL_CORNER},
+   * and elevation — the mode row under the dock is not part of this card.
+   * `bare` is a body zone inside a host that already paints the plane.
    */
   chrome?: 'raised' | 'bare';
   /**
@@ -231,6 +254,9 @@ export const OmnichannelComposerDock = forwardRef<
     trailingAction,
     showCommitWithTrailing = false,
     commitGlyph = 'send',
+    commitLabel,
+    commitIcon,
+    commitVariant = 'primary',
     leadingStart,
     insetTop,
     chrome = 'raised',
@@ -302,7 +328,22 @@ export const OmnichannelComposerDock = forwardRef<
         hasTrailingAction: trailingAction != null,
         showCommitWithTrailing,
       }) ? (
-        commitGlyph === 'enter' ? (
+        commitGlyph === 'action' ? (
+          <HoverTooltip label={commitTooltip} focusable={false}>
+            <Button
+              variant={commitVariant}
+              size="sm"
+              type="button"
+              radius="composer"
+              ariaLabel={commitAriaLabel}
+              disabled={disabled || !canCommit}
+              onClick={() => onCommit()}
+              icon={commitIcon}
+            >
+              {commitLabel ?? commitAriaLabel}
+            </Button>
+          </HoverTooltip>
+        ) : commitGlyph === 'enter' ? (
           <HoverTooltip label={commitTooltip} focusable={false}>
             <button
               type="button"
@@ -354,8 +395,8 @@ export const OmnichannelComposerDock = forwardRef<
         bare
           ? 'bg-transparent'
           : cn(
-              weldTop ? 'rounded-b-2xl rounded-t-none' : COMPOSER_SHELL_CORNER,
-              'border border-border-soft bg-surface-card',
+              composerDockShellCorner({ weldTop }),
+              'relative z-raised border border-border-soft bg-surface-card',
               !weldTop && elevationClass('raised'),
               // Focus ring on the SHELL — not a ring painted on the textarea.
               focusRing('wrapper', 'accent'),

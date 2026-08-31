@@ -20,7 +20,6 @@ import {
   type LinkCandidate,
 } from '../claim-types';
 import { normalizeReceivingTicketEntityRefs } from '@/lib/support/ticket-refs';
-import { useClaimPhotos } from './useClaimPhotos';
 import { useClaimTicketSearch } from './useClaimTicketSearch';
 import { useClaimTemplate } from './useClaimTemplate';
 import { useClaimSellerMessage } from './useClaimSellerMessage';
@@ -99,7 +98,7 @@ export interface ClaimModalProps {
 /**
  * The make-a-claim controller. Owns the wizard/mode state and the create/link
  * submit flows, and composes the four single-responsibility sub-hooks
- * ({@link useClaimPhotos}, {@link useClaimTicketSearch}, {@link useClaimTemplate},
+ * ({@link useClaimTicketSearch}, {@link useClaimTemplate},
  * {@link useClaimSellerMessage}). Returns one bag consumed by the presentational
  * sections so the modal file itself stays a thin composition layer.
  */
@@ -172,13 +171,12 @@ export function useReceivingClaimController({
   // ── Link-flow submit state ───────────────────────────────────────────────
   const [linkCommitStatus, setLinkCommitStatus] = useState<LinkCommitStatus>('idle');
   const [unlinking, setUnlinking] = useState(false);
-  // The Photos → Ticket → Review sub-flow that runs after a ticket is linked
-  // (mirrors the create flow's submit): posts the comment + attaches photos to
-  // the EXISTING ticket rather than filing a new one.
+  // The Ticket → Review sub-flow that runs after a ticket is linked (mirrors
+  // the create flow's submit): posts the comment to the EXISTING ticket rather
+  // than filing a new one.
   const [linkUpdateStatus, setLinkUpdateStatus] = useState<LinkUpdateStatus>('idle');
 
   // ── Composed sub-hooks ───────────────────────────────────────────────────
-  const photos = useClaimPhotos(open, receivingId);
   const trackingSeed =
     typeof row.tracking_number === 'string' ? row.tracking_number.trim() : '';
   const search = useClaimTicketSearch({
@@ -317,7 +315,7 @@ export function useReceivingClaimController({
 
   // ── Section navigation (scroll-spy) ──────────────────────────────────────
   // Create: filed/seller require a filed ticket.
-  // Link: photos+compose always reachable; filed/seller after update posted;
+  // Link: find+compose always reachable; filed/seller after update posted;
   // seller skipped for 'return'.
   const isStepDisabled = (key: string): boolean => {
     const target = key as ClaimWizardStep;
@@ -326,7 +324,7 @@ export function useReceivingClaimController({
       if (target === 'filed') return !filedTicket;
       return false;
     }
-    if (target === 'find' || target === 'photos' || target === 'compose') return false;
+    if (target === 'find' || target === 'compose') return false;
     if (target === 'filed') return linkUpdateStatus !== 'posted';
     if (target === 'seller') return linkUpdateStatus !== 'posted' || !sellerStepApplicable;
     return false;
@@ -350,7 +348,7 @@ export function useReceivingClaimController({
     setLinkUpdateStatus('idle');
     seller.resetBootstrap();
     seller.resetDraftState();
-    setStep(next === 'link' ? 'find' : 'photos');
+    setStep(next === 'link' ? 'find' : 'compose');
   };
 
   const handleStepClick = (key: string) => {
@@ -497,7 +495,6 @@ export function useReceivingClaimController({
           reason: reason.trim(),
           subject: template.readSubject().trim(),
           description: template.readDescription().trim(),
-          attachPhotoIds: [...photos.selectedPhotoIds],
           notePublic,
           ccEmails,
         }),
@@ -713,7 +710,6 @@ export function useReceivingClaimController({
           subject: template.readSubject().trim(),
           public: notePublic,
           emailCcs: notePublic && ccEmails.length ? ccEmails : undefined,
-          attachPhotoIds: [...photos.selectedPhotoIds],
         }),
       });
       const data = await res.json().catch(() => null);
@@ -752,7 +748,7 @@ export function useReceivingClaimController({
   };
 
   /**
-   * One Link CTA: attach the ticket, post the template body (+ photos), NAS
+   * One Link CTA: attach the ticket, post the template body, NAS
    * archive in the thread request, then flip Displays to Chat via
    * {@link onTicketCreated}. Never calls onTicketCreated after link-only.
    */
@@ -823,7 +819,6 @@ export function useReceivingClaimController({
     linkUpdateStatus,
     submitLinkUpdate,
     // sub-hooks
-    photos,
     template,
     search,
     seller,

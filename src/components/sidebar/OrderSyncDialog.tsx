@@ -12,9 +12,10 @@ import { Button } from '@/design-system/primitives';
 import { RIGHT_RAIL_HOST_CLOSE_SLOT_CLASS } from '@/components/right-rail/DeskRailChromeRow';
 import { sectionLabel, fieldLabel, microBadge, dataValue } from '@/design-system/tokens/typography/presets';
 import { TrackingChip, OrderIdChip, SkuScanRefChip, getLast8 } from '@/components/ui/CopyChip';
-import { PlatformMark } from '@/components/ui/PlatformMark';
+import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { StackedRowIdentity } from '@/components/ui/StackedRowIdentity';
-import { platformMetaIconTone, sourcePlatformMeta } from '@/lib/source-platform';
+import { carrierBrandDotPaint, resolveCarrierBrand } from '@/lib/carrier-brand';
+import { platformMetaBrandDot, sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import type {
   ExceptionsTabState,
   OrderExceptionResolutionDetail,
@@ -77,7 +78,8 @@ const SYNC_LIST_TITLE_CLASS =
 /**
  * Transfer / recovered / skipped list row — {@link StackedRowIdentity}: title
  * leads; order + tracking sit on the second line as typed CopyChips.
- * Channel face is {@link PlatformMark} (never typed platform prose).
+ * Channel face is {@link BrandIdentityDot} (platform / carrier paint), never
+ * a brand glyph or typed platform prose.
  */
 function SyncListRow({
   title,
@@ -89,18 +91,16 @@ function SyncListRow({
   title: ReactNode;
   orderId?: string | null;
   tracking?: string | null;
-  /** Stored / sheet channel slug — paints {@link PlatformMark}, never uppercase text. */
+  /** Stored / sheet channel slug — paints {@link BrandIdentityDot}, never a mark. */
   platform?: string | null;
   trailing?: ReactNode;
 }) {
-  const platformMeta = sourcePlatformMeta(platform);
+  const platformMeta = sourcePlatformMetaFromLabel(platform);
   const platformLabel = platformMeta.value ? platformMeta.label : null;
-  const iconTone = platformMeta.value ? platformMetaIconTone(platformMeta) : null;
-  const channelTrailing = platform != null && String(platform).trim() !== ''
-    ? <PlatformMark platformValue={platform} meta={platformMeta} />
-    : platform === undefined
-      ? null
-      : <PlatformMark empty />;
+  const platformDot = platformMeta.value ? platformMetaBrandDot(platformMeta) : null;
+  const trackingDot = tracking
+    ? carrierBrandDotPaint(resolveCarrierBrand(tracking, null))
+    : null;
 
   return (
     <li className="border-b border-border-hairline inset-field last:border-b-0">
@@ -109,25 +109,38 @@ function SyncListRow({
         keys={
           <>
             {orderId ? (
-              <OrderIdChip
-                value={orderId}
-                display={getLast8(orderId)}
-                dense
-                platformLabel={platformLabel}
-                iconClass={iconTone?.className}
-                iconStyle={iconTone?.style}
-              />
+              <span className="inline-flex min-w-0 items-center gap-1.5">
+                {platformDot ? (
+                  <BrandIdentityDot className={platformDot.className} style={platformDot.style} />
+                ) : null}
+                <OrderIdChip
+                  value={orderId}
+                  display={getLast8(orderId)}
+                  dense
+                  plain
+                  platformLabel={platformLabel}
+                />
+              </span>
             ) : (
               <span className="font-mono text-role-micro text-text-faint">—</span>
             )}
             {tracking ? (
-              <TrackingChip value={tracking} dense />
+              <span className="inline-flex min-w-0 items-center gap-1.5">
+                {trackingDot ? (
+                  <BrandIdentityDot
+                    className={trackingDot.className}
+                    style={trackingDot.style}
+                    variant="ring"
+                  />
+                ) : null}
+                <TrackingChip value={tracking} dense showIcon={false} />
+              </span>
             ) : (
               <span className="font-mono text-role-micro text-text-faint">—</span>
             )}
           </>
         }
-        trailing={trailing ?? channelTrailing}
+        trailing={trailing}
       />
     </li>
   );

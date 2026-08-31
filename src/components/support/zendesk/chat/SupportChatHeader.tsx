@@ -9,11 +9,10 @@ import { TicketSubjectField } from './TicketSubjectField';
 /**
  * Inline ticket title — one row, click-to-edit subject.
  *
- * Identity (requester, ticket #), Links / details / helpdesk-open used to live
- * here. Those facts already sit on the host pane, Connections rail, or
- * `/support` identity row, so restating them on an inlined claim thread was
- * duplicate chrome. `/support` still hides this entirely (`hideTitle` +
- * `hideRequesterBand`) because the split header owns the subject.
+ * Ticket # / opened date live on the host (carton context, `/support`
+ * identity). Restating them under this title duplicated that chrome.
+ * `/support` still hides this entirely (`hideTitle` + `hideRequesterBand`)
+ * because the split header owns the subject.
  */
 export function SupportChatHeader({
   ticket,
@@ -43,8 +42,8 @@ export function SupportChatHeader({
   return (
     <div
       className={cn(
-        'flex shrink-0 items-center gap-1.5 bg-surface-card',
-        compact ? 'px-2.5 py-1.5' : 'px-5 py-3.5',
+        'flex shrink-0 items-center gap-1 bg-surface-card',
+        compact ? 'min-h-8 px-3' : 'px-5 py-3.5',
       )}
     >
       {onBack ? (

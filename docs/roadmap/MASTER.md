@@ -190,7 +190,7 @@ Before touching any UI:
   ```
 - [ ] **Calendar page**: design and implement a staff scheduling and assignment calendar
   ```
-  (use `design-system/components/Calendar.tsx` as the base)
+  (use `components/ui/calendar.tsx` as the base)
   ```
 - [ ] **SOP generation**: once packing/testing/repair workflows are finalized, generate the
   ```

@@ -7,6 +7,8 @@ import { getPrimaryPhotoStorage } from '@/lib/photos/storage/resolve-primary';
 import { getStorageAdapter } from '@/lib/photos/storage/registry';
 import { generateThumbnail, readPhotoBytesById } from '@/lib/photos/read-bytes';
 import { normalizePhotoDisplayUrl } from '@/lib/nas-photo-url';
+import { isVercelBlobUrl } from '@/lib/blob/vercel-blob-url';
+import { streamVercelBlobResponse } from '@/lib/blob/stream-vercel-blob';
 import { resolveOrgIdFromRequest, NIL_ORG_ID } from '@/lib/tenancy/resolve-org-from-request';
 
 export const dynamic = 'force-dynamic';
@@ -191,8 +193,16 @@ export async function GET(
   const legacyUrl = storage?.legacyUrl;
   if (legacyUrl && !legacyUrl.startsWith('/api/photos/')) {
     const display = normalizePhotoDisplayUrl(legacyUrl);
+    if (isVercelBlobUrl(display)) {
+      // Stream — do not 302 onto Blob's CSP (breaks framed previews).
+      return streamVercelBlobResponse(display, {
+        filename: `photo-${photoId}.jpg`,
+        download,
+        fallbackContentType: storage?.contentType || 'image/jpeg',
+      });
+    }
     if (display.startsWith('http') || display.startsWith('/')) {
-      // Legacy targets (NAS proxy / blob) are stable URLs, so this redirect is
+      // Legacy targets (NAS proxy) are stable URLs, so this redirect is
       // safe to cache — immutable for thumbs, TTL-bounded for full.
       return NextResponse.redirect(display, {
         status: 302,

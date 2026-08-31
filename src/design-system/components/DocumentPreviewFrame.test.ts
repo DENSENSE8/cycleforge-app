@@ -16,5 +16,7 @@ describe('resolveDocumentPreviewMime', () => {
 
   it('treats document content routes as pdf', () => {
     assert.equal(resolveDocumentPreviewMime('/api/documents/42/content'), 'pdf');
+    assert.equal(resolveDocumentPreviewMime('/api/product-manuals/9/content'), 'pdf');
+    assert.equal(resolveDocumentPreviewMime('/api/sku-kit-parts/3/document'), 'pdf');
   });
 });

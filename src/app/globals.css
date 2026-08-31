@@ -106,6 +106,53 @@ body {
   scrollbar-width: none;
 }
 
+/*
+ * The shared row/header width under LedgerGrid `scrollX` — see
+ * `ledgerGridRowShellClass`. Hand-written because the Tailwind arbitrary value
+ * this replaced (`w-[var(--cf-orders-grid-w)]`, built with a template literal)
+ * was never generated: the scanner reads source text and saw an interpolation,
+ * not a utility. Rows therefore had no width rule, sized to the scrollport, and
+ * the grid lost its horizontal scroll entirely.
+ */
+.cf-grid-row-w {
+  width: var(--cf-orders-grid-w);
+  min-width: var(--cf-orders-grid-w);
+}
+
+/*
+ * The data grid's scroll port — a VISIBLE bar (operator ruling 2026-08-31).
+ *
+ * The grid ports used to carry `no-scrollbar`, so a table of 1,189 rows
+ * scrolled on the wheel and showed nothing that said so: no bar, no thumb, no
+ * indication that rows continued past the fold. The desk read as a page that
+ * would not scroll. A scrollbar on a queue is not chrome — it is the only thing
+ * on screen reporting how much work is left below, and how far in the operator
+ * currently is.
+ *
+ * Thin and neutral so it states position without competing with the rows, and
+ * it overlays nothing: the port already reserves its own gutter.
+ */
+.cf-grid-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ds-color-border-default, rgba(0, 0, 0, 0.25)) transparent;
+}
+.cf-grid-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.cf-grid-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cf-grid-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--ds-color-border-default, rgba(0, 0, 0, 0.25));
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 9999px;
+}
+.cf-grid-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--ds-color-text-faint, rgba(0, 0, 0, 0.4));
+}
+
 @layer base {
   * {
     @apply border-gray-200;

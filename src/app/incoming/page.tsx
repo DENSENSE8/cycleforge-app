@@ -2,6 +2,7 @@ import { IncomingBrowseShell } from '@/components/receiving/incoming/IncomingBro
 import { ReceivingSurfacePage } from '@/components/receiving/ReceivingSurfacePage';
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
+import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 
 /**
  * `/incoming` — the Incoming operator surface (POs Zoho says are issued but not
@@ -37,11 +38,22 @@ export default function IncomingPage() {
   return (
     <>
       <SurfaceParamHygiene />
-      <IncomingBrowseShell>
-        <SurfaceGate surfaceKey="incoming">
-          <ReceivingSurfacePage />
-        </SurfaceGate>
-      </IncomingBrowseShell>
+      {/*
+        The one page frame (2026-08-31) — `@/design-system/components/DeskPageChrome`
+        via {@link DeskPageLayout}. Inbound has no nav children, so no tab row is
+        drawn: it gets the title, the stage and the detached card, which is the
+        honest shape for a single-surface desk rather than a degraded one.
+
+        It was already rail-less; that is now declared on its nav entry
+        (`railless: true`) instead of special-cased inside `isRaillessSurface`.
+      */}
+      <DeskPageLayout className="h-full">
+        <IncomingBrowseShell>
+          <SurfaceGate surfaceKey="incoming">
+            <ReceivingSurfacePage />
+          </SurfaceGate>
+        </IncomingBrowseShell>
+      </DeskPageLayout>
     </>
   );
 }

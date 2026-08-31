@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
-import { Check, Loader2, X } from '@/components/Icons';
+import { Check, Copy, Loader2, X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
+import { copyToClipboard } from '@/utils/_dom';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence } from '@/design-system/foundations/motion-framer-hooks';
@@ -23,6 +24,7 @@ export function ShippingCapturedUnits({
   const rowPresence = useMotionPresence(framerPresence.stationSerialRow);
   const [lastAddedSerial, setLastAddedSerial] = useState<string | null>(null);
   const [removingKey, setRemovingKey] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [serialError, setSerialError] = useState<string | null>(null);
   const prevTrackingRef = useRef(activeOrder.tracking);
   const prevSerialCountRef = useRef(activeOrder.serialNumbers.length);
@@ -100,20 +102,48 @@ export function ShippingCapturedUnits({
                       </motion.span>
                     ) : null}
                   </AnimatePresence>
+                  <HoverTooltip label={copiedKey === `${sn}-${index}` ? 'Copied' : `Copy serial ${sn}`} asChild>
+                    <IconButton
+                      size="md"
+                      icon={
+                        copiedKey === `${sn}-${index}` ? (
+                          <Check className="h-3.5 w-3.5" />
+                        ) : (
+                          <Copy className="h-3.5 w-3.5" />
+                        )
+                      }
+                      onClick={() => {
+                        void copyToClipboard(sn, {
+                          historyKind: 'serial',
+                          historyDisplay: sn,
+                        }).then((ok) => {
+                          if (!ok) return;
+                          const key = `${sn}-${index}`;
+                          setCopiedKey(key);
+                          window.setTimeout(() => {
+                            setCopiedKey((current) => (current === key ? null : current));
+                          }, 1400);
+                        });
+                      }}
+                      ariaLabel={`Copy serial ${sn}`}
+                      className="text-text-muted hover:bg-surface-hover hover:text-text-default"
+                    />
+                  </HoverTooltip>
                   {onRemoveSerial ? (
                     <HoverTooltip label={`Remove serial ${sn}`} asChild>
                       <IconButton
+                        size="md"
                         icon={
                           isRemoving ? (
-                            <Loader2 className="h-3 w-3 animate-spin" />
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
                           ) : (
-                            <X className="h-3 w-3" />
+                            <X className="h-3.5 w-3.5" />
                           )
                         }
                         onClick={() => void handleRemoveSerial(sn, index)}
                         disabled={Boolean(removingKey)}
                         ariaLabel={`Remove serial ${sn}`}
-                        className="inline-flex h-6 w-6 items-center justify-center rounded-md text-emerald-500 hover:bg-red-50 hover:text-red-600"
+                        className="text-text-muted hover:bg-rose-50 hover:text-rose-600"
                       />
                     </HoverTooltip>
                   ) : null}

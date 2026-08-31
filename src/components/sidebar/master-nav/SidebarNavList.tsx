@@ -38,6 +38,7 @@ import {
   type SidebarPageNav,
 } from '@/lib/sidebar-navigation';
 import {
+  SPINE_DRILL_SCROLL_END_CLASS,
   SPINE_LABEL_CLASS,
   SPINE_ROW_FACE_CLASS,
   SPINE_ROW_ICON_CLASS,
@@ -256,8 +257,8 @@ export function SidebarNavList({
     opts?: { pinned?: boolean },
   ) => {
     const isPageActive = page.id === activePage.id;
-    // Floor benches (incl. Testing) stay flat — modes live on HeaderPageSwitcher,
-    // never a second drill inside Scan Stations. Desk-chrome pages stay flat too
+    // Floor benches stay flat — QC / Ready to Pack are L1 rows, not a Testing
+    // drill. Desk-chrome pages stay flat too
     // (`hasDeskPageChrome`): the desk draws those children as in-page tabs, so a
     // drill here would be the nav tabbing them a second time.
     const drills =
@@ -312,7 +313,7 @@ export function SidebarNavList({
   const renderPageDrill = (page: SidebarPageNav) => {
     const accent = spineAccentFor(spineSectionIdForPage(page));
     return (
-      <div>
+      <div className={SPINE_DRILL_SCROLL_END_CLASS}>
         {renderBackHeader(page.label, () => onDrillChange(null))}
         <div role="group" aria-label={page.label}>
           {page.children?.map((child) => renderDrillChild(page.id, child, accent))}
@@ -326,7 +327,7 @@ export function SidebarNavList({
     if (!stationsSection) return null;
     const accent = spineAccentFor('floor');
     return (
-      <div>
+      <div className={SPINE_DRILL_SCROLL_END_CLASS}>
         {renderBackHeader(stationsSection.label, () => onDrillChange(null))}
         <div id="spine-section-floor" role="group" aria-label={stationsSection.label}>
           {floorPages.map((page) => (

@@ -82,7 +82,14 @@ export function deriveOrderExceptionBlockers(facts: {
   if (!present(facts.trackingNumber)) blockers.push('no_tracking');
   const docCount = Number(facts.linkedDocumentCount ?? 0);
   if (!(docCount > 0) && facts.docsNotRequired !== true) blockers.push('no_docs');
-  if (facts.shippingLabelLinked !== true && facts.shippingLabelPurchased !== true) {
+  // A linked tracking number counts as the label (operator ruling 2026-08-31),
+  // exactly as it does for G3 in `release-gates.ts` — the two must agree or a
+  // row would print a `no_label` chip the Release control does not honour.
+  if (
+    facts.shippingLabelLinked !== true
+    && facts.shippingLabelPurchased !== true
+    && !present(facts.trackingNumber)
+  ) {
     blockers.push('no_label');
   }
   return blockers;

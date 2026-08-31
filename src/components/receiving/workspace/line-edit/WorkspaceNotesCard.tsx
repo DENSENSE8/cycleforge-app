@@ -96,11 +96,24 @@ interface WorkspaceNotesCardProps {
    */
   headerAction?: { label: string; onClick: () => void; pressed?: boolean };
   onComposerModeChange?: (mode: StationComposerMode) => void;
+  /** Ticket draft has a body — drives the carton-context draft number badge. */
+  onTicketDraftFilledChange?: (filled: boolean) => void;
   onComposerFocus?: () => void;
   /** Procedure fill for the composer bottom-right {@link ScanStationProgressRing}. */
   progressPercent?: number;
   progressTone?: 'idle' | 'selected';
   onProgressClick?: () => void;
+  /**
+   * A claim filed from the composer's Ticket tab. Same handler the claim form
+   * used — the dock now files on an unlinked carton, so the station still has
+   * to hear about the new ticket number.
+   */
+  onTicketCreated?: (ticketNumber: string) => void;
+  /**
+   * The operator typed into the note field. Unbox opens the Label band on this
+   * so the sticker face shows the note as it is being written.
+   */
+  onNoteTyped?: () => void;
 }
 
 export function WorkspaceNotesCard({
@@ -117,14 +130,20 @@ export function WorkspaceNotesCard({
   onOpenStatusHistory,
   headerAction,
   onComposerModeChange,
+  onTicketDraftFilledChange,
   onComposerFocus,
   progressPercent,
   progressTone,
   onProgressClick,
+  onTicketCreated,
+  onNoteTyped,
 }: WorkspaceNotesCardProps) {
   return (
     <div id="zoho-notes-card">
       <LineNotesCard
+        row={row}
+        onTicketCreated={onTicketCreated}
+        onNoteTyped={onNoteTyped}
         notes={c.itemNote}
         overallZohoNotes={row.receiving_zoho_notes ?? null}
         skuTitle={row.zoho_item_title || row.item_name || null}
@@ -161,6 +180,7 @@ export function WorkspaceNotesCard({
         onOpenStatusHistory={onOpenStatusHistory}
         headerAction={headerAction}
         onComposerModeChange={onComposerModeChange}
+        onTicketDraftFilledChange={onTicketDraftFilledChange}
         onComposerFocus={onComposerFocus}
         progressPercent={progressPercent}
         progressTone={progressTone}

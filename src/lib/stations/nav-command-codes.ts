@@ -56,8 +56,10 @@ export interface NavCommandDef {
  * The closed registry.
  *
  * Phase 1 ships the Testing pair only — Quality Control and Ready to Pack are
- * `SIDEBAR_PAGE_NAV` children `testing` / `shipping` of page `tech`, i.e.
- * `/test?view=testing` and `/test` with `view` cleared. The rest of the planned
+ * MasterNav L1 benches (`testing` / `ready-to-pack`). Stickers still target
+ * `SIDEBAR_PAGE_NAV` children `testing` / `shipping` of the URL-only `tech`
+ * family so `/test?view=testing` and `/test` (view cleared) stay distinguishable.
+ * The rest of the planned
  * vocabulary (`docs/todo/universal-scan-router-PLAN.md` §4) lands per surface,
  * each with its own host verification — a sticker whose destination has not
  * been checked is a jump into a page nobody armed.
@@ -73,7 +75,7 @@ export const NAV_COMMAND_CODES: readonly NavCommandDef[] = [
   { code: 'CMD-GO-PACK',    label: 'Go · Packing',         pageId: 'packer',   childId: null,       sortOrder: 50 },
   { code: 'CMD-GO-SCANOUT', label: 'Go · Scan out',        pageId: 'scan-out', childId: null,       sortOrder: 60 },
   { code: 'CMD-GO-PICKUP',  label: 'Go · Local Pickup',    pageId: 'pickup',   childId: null,       sortOrder: 70 },
-  { code: 'CMD-GO-REPAIR',  label: 'Go · Repair',          pageId: 'repair',   childId: null,       sortOrder: 80 },
+  { code: 'CMD-GO-REPAIR',  label: 'Go · Repair Service',  pageId: 'repair',   childId: null,       sortOrder: 80 },
   { code: 'CMD-GO-COUNTER', label: 'Go · Counter',         pageId: 'sales',    childId: 'counter',  sortOrder: 90 },
 
   // ── Desks the floor hands off to ──────────────────────────────────────────
