@@ -136,6 +136,29 @@ test('nothing staged on an internal note renders nothing', () => {
   assert.equal(html, '');
 });
 
+test('filing a ticket archives carton photos on the same create POST', () => {
+  // NAS archive is not a follow-up the operator has to remember. Composer
+  // create hits POST /api/receiving/zendesk-claim, which always runs
+  // fileReceivingClaim → archivePhotos. The ticket-chip Archive row is the
+  // retry, not the first copy.
+  const hook = src('../receiving/workspace/line-edit/hooks/useComposerTicketClaim.ts');
+  const fileBody = hook.slice(hook.indexOf('const file ='), hook.indexOf('  const testCreate ='));
+  assert.match(fileBody, /\/api\/receiving\/zendesk-claim/);
+  assert.doesNotMatch(fileBody, /dryRun:\s*true/);
+  assert.match(fileBody, /data\.archiveWarning/, 'failed NAS copy must surface on file');
+
+  const route = src('../../app/api/receiving/zendesk-claim/route.ts');
+  assert.match(route, /fileReceivingClaim/);
+  assert.match(route, /archiveOk: filed\.archiveOk/);
+
+  const filing = src('../../lib/receiving/file-receiving-claim.ts');
+  assert.equal(
+    filing.split('deps.archivePhotos({').length - 1,
+    2,
+    'create and reuse both archive carton photos',
+  );
+});
+
 test('Test create is a DEV tool — it never reaches a production dock', () => {
   const hook = src('../receiving/workspace/line-edit/hooks/useComposerTicketClaim.ts');
   assert.match(hook, /canTest: isClaim && process\.env\.NODE_ENV !== 'production'/);

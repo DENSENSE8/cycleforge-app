@@ -22,13 +22,9 @@ import { cn } from '@/utils/_cn';
  *
  * Zone contract (left → right) — facts drive chrome; empty middle is OK when
  * the station/workbench band below already owns surface context:
- *   - **Nav** — toggle · Pins · Recents · page chip in one
- *     {@link HEADER_ICON_CLUSTER} (`gap-0` — Recents abuts the page face).
- *     Page identity is a compact {@link HEADER_PAGE_FACE_WIDTH} chip matching
- *     its child menu. Modeful pages open a child menu; Scan Stations benches
- *     compose peers via {@link floorStationPages}. Data =
- *     {@link SIDEBAR_PAGE_NAV} (+ {@link APP_SIDEBAR_NAV} fallback) /
- *     `useQuickAccess`. Find is **not** here.
+ *   - **Nav** — toggle · Recents · Scan Stations page chip (floor benches
+ *     only) in one {@link HEADER_ICON_CLUSTER}. Desks do not get a page-name
+ *     chip; {@link DeskPageChrome} already owns the title. Find is **not** here.
  *   - **Find** — {@link GlobalHeaderSearch} / {@link CommandBar} on the
  *     right rail (⌘K). Icon opens a records popover.
  *   - **Scan** — {@link GlobalScanDock}: the persistent station scan input.

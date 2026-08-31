@@ -29,6 +29,7 @@ import { Suspense, useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
+import { UnboxDeskActions } from '@/components/receiving/unbox/UnboxDeskActions';
 import { RECEIVING_SELECTION_SCOPE } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { UnboxTableCardSkeleton } from '@/components/receiving/unbox/UnboxWorkbenchSkeleton';
@@ -143,6 +144,7 @@ export function UnboxWorkspaceView(props: {
         setUnboxView(id === unboxView ? 'queue' : (id as UnboxWorkspaceTab))
       }
     >
+      <UnboxDeskActions />
     <div className="relative flex h-full min-h-0 w-full flex-col">
       <DashboardScrollShell
         // Sheet grids self-scroll (sticky X gutter pins to the sheet floor).

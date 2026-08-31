@@ -53,6 +53,12 @@ test('Quality Control and Packing use the same flat Scan Stations menu', () => {
   assert.equal(pack?.activeRowId, 'packer');
 });
 
+test('desk and table pages do not get a header page chip', () => {
+  assert.equal(resolveHeaderPage('outbound'), null);
+  assert.equal(resolveHeaderPage('home'), null);
+  assert.equal(resolveHeaderPage('search'), null);
+});
+
 test('page menu end clearance is scroll-padding, not an empty layout row', () => {
   assert.match(HEADER_PAGE_MENU_SCROLL_CLASS, /scroll-pb-8/);
   assert.doesNotMatch(HEADER_PAGE_MENU_SCROLL_CLASS, /(?:^|\s)pb-8(?:\s|$)/);

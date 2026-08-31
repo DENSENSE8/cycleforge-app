@@ -149,6 +149,13 @@ export function useComposerTicketClaim({
         } else {
           toast.success('Claim filed');
         }
+        const archiveWarning =
+          typeof data.archiveWarning === 'string' && data.archiveWarning.trim()
+            ? data.archiveWarning.trim()
+            : null;
+        if (archiveWarning) {
+          toast.warning(archiveWarning, { duration: 8000 });
+        }
       } catch {
         toast.error('Could not file the claim');
       } finally {

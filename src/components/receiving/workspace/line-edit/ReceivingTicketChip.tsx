@@ -2,13 +2,14 @@
 
 import { useRef, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Loader2, MessageSquare, Send, Unlink } from '@/components/Icons';
+import { Archive, Loader2, MessageSquare, Send, Unlink } from '@/components/Icons';
 import { toast } from '@/lib/toast';
 import { IdentityLinkChip } from './IdentityLinkChip';
 import { SellerMessageAnchoredPanel } from './SellerMessageChip';
 import { threadKey } from '@/components/support/TicketThreadCard';
 import { invalidateSupportContextCaches } from '@/hooks';
 import { entitySupportTicketQueryKey } from '@/hooks/useEntitySupportTicket';
+import { useTicketNasArchive } from '@/hooks/useTicketNasArchive';
 import {
   invalidateReceivingFeeds,
   patchReceivingRailTicketByCarton,
@@ -40,10 +41,11 @@ function parseTicketId(raw: string): number | null {
  * Filed-ticket chip for the carton identity row. Renders the same
  * {@link IdentityLinkChip} primitive as PO#/tracking (orange `#` tone).
  * Menu drops flush-square under the chip (same grammar as Photos). Menu: Open →
- * Message (Ticket push column) → Seller → Unlink. Outside Unbox there is no
- * Message row. Seller opens the seller draft. Neither pulses the chip face —
- * the ticket id stays visible (no `editing` flash). NAS photo archive is
- * automatic after capture; it is not a chip action.
+ * Message (Ticket push column) → Seller → Archive → Unlink. Outside Unbox
+ * there is no Message row. Seller opens the seller draft. Neither pulses the
+ * chip face — the ticket id stays visible (no `editing` flash). Archive is the
+ * manual NAS claim-folder sync (same waist as Photos display / photo-library
+ * ticket leaf); auto-archive after capture does not replace this row.
  *
  * Row copy names WHAT OPENS, not the mechanism: the first row is the ticket's
  * message thread (it read "History", which described a log rather than the
@@ -68,7 +70,7 @@ export function ReceivingTicketChip({
   display: string;
   /** Zendesk deep link for the chip's external-link button. */
   openHref: string | null | undefined;
-  /** Provider-native id (Zendesk) for thread/unlink APIs. */
+  /** Provider-native id (Zendesk) for thread/unlink/archive APIs. */
   providerTicketId?: number | null;
   receivingId: number | null;
   /** Line the ticket is linked to (RECEIVING_LINE entity); null → carton. */
@@ -83,8 +85,13 @@ export function ReceivingTicketChip({
   const [sellerOpen, setSellerOpen] = useState(false);
   const anchorRef = useRef<HTMLDivElement>(null);
   const zendeskTicketId = providerTicketId ?? parseTicketId(value);
+  const ticketNumber =
+    zendeskTicketId != null
+      ? String(zendeskTicketId)
+      : display.replace(/^#/, '').trim() || '';
 
   const qc = useQueryClient();
+  const nasArchive = useTicketNasArchive();
 
   const unlink = useMutation<{ removed: boolean; shipmentUnpairWarning: string | null }, Error, void, {
     previousTicketQueries: Array<[readonly unknown[], unknown]>;
@@ -159,6 +166,15 @@ export function ReceivingTicketChip({
     onOpenTicketView?.();
   };
 
+  const runNasSync = () => {
+    if (!ticketNumber) return;
+    nasArchive.mutate({
+      ticketNumber,
+      receivingId,
+      lineId,
+    });
+  };
+
   return (
     // `items-stretch` + `h-full`, not `items-center`: the chip's own box is the
     // menu's anchor, so a centred (shorter) box opened the dropdown ABOVE the
@@ -204,6 +220,19 @@ export function ReceivingTicketChip({
                 },
               ]
             : []),
+          {
+            id: 'ticket-archive',
+            label: nasArchive.isPending ? 'Archiving…' : 'Archive',
+            icon: nasArchive.isPending ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Archive className="h-3.5 w-3.5" />
+            ),
+            ariaLabel: "Archive this ticket's photos to the NAS claim folder",
+            disabled: !ticketNumber || nasArchive.isPending,
+            seam: true,
+            onSelect: runNasSync,
+          },
           {
             id: 'ticket-unlink',
             label: 'Unlink',

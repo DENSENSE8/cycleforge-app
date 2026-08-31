@@ -60,6 +60,16 @@ test('the sticky footer still promises the backup, which never read the picker',
     /attachPhotoIds|photoIds/,
     'the NAS archive must stay independent of any attach selection',
   );
+
+  const createRoute = readFileSync(
+    resolve(here, '../../../../app/api/receiving/zendesk-claim/route.ts'),
+    'utf8',
+  );
+  assert.match(
+    createRoute,
+    /archiveOk: filed\.archiveOk/,
+    'create must return the auto-archive result so the filed step is not a false fail',
+  );
 });
 
 test('the shared photo picker survives for its non-claim hosts', () => {

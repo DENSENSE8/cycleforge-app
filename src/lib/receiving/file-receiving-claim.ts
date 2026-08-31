@@ -60,6 +60,10 @@ export interface FileReceivingClaimSuccess {
   reusedExisting: boolean;
   sharePackUrl?: string | null;
   archiveWarning?: string | null;
+  archiveOk: boolean;
+  archiveCopied: number;
+  archiveTotal: number;
+  archiveFolder: string | null;
 }
 
 export interface FileReceivingClaimFailure {
@@ -169,12 +173,31 @@ export async function fileReceivingClaim(
   if (lineId != null) {
     const existing = await findExistingLineClaimTicket(input.orgId, lineId, deps);
     if (existing) {
+      const archived = await deps.archivePhotos({
+        orgId: input.orgId,
+        receivingId,
+        ticketId: existing.ticketId,
+        logTag: 'zendesk-claim-reuse',
+        info: ({ photoIdCount, resolvedCount }) =>
+          [
+            `Zendesk Ticket: ${existing.ticketNumber}`,
+            'Mode: Reuse existing line ticket — NAS archive still runs',
+            `Photos on claim record: ${photoIdCount}`,
+            `Photos resolved for NAS archive: ${resolvedCount}`,
+          ].join('\n'),
+      });
+      const archiveFields = claimArchiveResponseFields(archived);
       return {
         success: true,
         ticketNumber: existing.ticketNumber,
         ticketUrl: zendeskTicketUrl(existing.ticketId),
         ticketId: existing.ticketId,
         reusedExisting: true,
+        archiveWarning: archiveFields.archiveWarning ?? null,
+        archiveOk: archiveFields.archiveOk,
+        archiveCopied: archiveFields.archiveCopied,
+        archiveTotal: archiveFields.archiveTotal,
+        archiveFolder: archiveFields.archiveFolder,
       };
     }
   }
@@ -415,5 +438,9 @@ export async function fileReceivingClaim(
     reusedExisting: false,
     sharePackUrl,
     archiveWarning: archiveFields.archiveWarning ?? null,
+    archiveOk: archiveFields.archiveOk,
+    archiveCopied: archiveFields.archiveCopied,
+    archiveTotal: archiveFields.archiveTotal,
+    archiveFolder: archiveFields.archiveFolder,
   };
 }

@@ -6,28 +6,23 @@
  * Closed face = icon + display name for the current page (or active child).
  * Compact {@link HEADER_PAGE_FACE_WIDTH} chip — same width as the open menu.
  * Find sits flush to its right. Never a beam-filling bar.
- * On modeful pages (≥2 children) the face opens an {@link AnchoredLayer} over
- * this page's {@link SIDEBAR_PAGE_NAV} children and navigates via
- * {@link useSidebarChildNav}. Scan Stations benches (Arrival · Unbox · Local
- * Pickup · Repair Service · Quality Control · Ready to Pack · Packing · Scan
- * out) compose peers from {@link floorStationPages} — the same flat map as
- * MasterNav, with no Arrival/Unbox-only child drill. Other modeless pages
- * (Search, …) render the same face as a static identity chip — never return
- * null just because there is nothing to switch.
- *
- * Identity resolves from {@link SIDEBAR_PAGE_NAV}, falling back to
- * {@link APP_SIDEBAR_NAV} for top pins and other rows with no page-nav entry
- * so every signed-in desktop route that has a nav id shows a name.
+ * On Scan Stations the face opens an {@link AnchoredLayer} over
+ * {@link floorStationPages} — Arrival · Unbox · Local Pickup · Repair Service ·
+ * Quality Control · Ready to Pack · Packing · Scan out — so a bench operator
+ * can triage with the spine closed. Desk / table pages do not get this chip:
+ * {@link DeskPageChrome} already owns the page title (operator 2026-08-31).
  *
  * Menu chrome = {@link HeaderChromeMenu} / {@link HeaderChromeMenuItem} (shared
  * with Recents + Pins).
  *
- * **It survives the spine flatten deliberately.** The flatten made a page's
- * children ordinary spine rows, so this is a second door onto the same
- * destinations — but `ResponsiveLayout` holds `navOpen` in an unpersisted
- * `useState(false)`, so the spine is CLOSED on every cold load. Deleting the
- * switcher half would leave a bench operator with no visible way to switch a
- * page's children until they open a column that does not remember being open.
+ * **It survives the spine flatten deliberately, on Scan Stations only.** The
+ * flatten made a page's children ordinary spine rows, so this is a second
+ * door onto the same destinations — but `ResponsiveLayout` holds `navOpen` in
+ * an unpersisted `useState(false)`, so the spine is CLOSED on every cold load.
+ * Deleting the switcher on the floor would leave a bench operator with no
+ * visible way to change stations until they open a column that does not
+ * remember being open. Desks do not need that door: their title and tabs live
+ * in the page chrome.
  */
 
 import { useMemo, useRef, useState } from 'react';
@@ -126,7 +121,7 @@ export function HeaderPageSwitcher() {
   const activeRow =
     menuRows?.find((r) => r.id === resolvedRowId) ?? menuRows?.[0];
 
-  if (!page) return null;
+  if (!page || !switchable) return null;
 
   const FaceIcon: SidebarIconComponent = activeRow?.icon ?? page.icon;
   const faceLabel = activeRow?.label ?? page.label;
@@ -140,16 +135,6 @@ export function HeaderPageSwitcher() {
     }
     navigate(page.id, nextId);
   };
-
-  if (!switchable) {
-    return (
-      <div className={PAGE_FACE_WRAP_CLASS}>
-        <span className={PAGE_FACE_CLASS} aria-label={page.label}>
-          <PageFaceContent Icon={FaceIcon} label={faceLabel} />
-        </span>
-      </div>
-    );
-  }
 
   return (
     <div ref={wrapRef} className={PAGE_FACE_WRAP_CLASS}>
