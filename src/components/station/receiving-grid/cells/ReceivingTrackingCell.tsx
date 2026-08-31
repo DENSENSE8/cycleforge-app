@@ -6,7 +6,7 @@ import { TrackingNumberMenuChip } from '@/components/ui/TrackingNumberMenuChip';
 import { carrierBrandDotPaint, resolveCarrierBrand } from '@/lib/carrier-brand';
 import {
   receivingDataCellClass,
-  receivingDataCellHighlightStyle,
+  receivingDataCellStyle,
   type ReceivingGridCellProps,
 } from './receiving-grid-cell-types';
 
@@ -23,7 +23,7 @@ export function ReceivingTrackingCell({ col, rule, ctx }: ReceivingGridCellProps
     <div
       data-col="tracking"
       className={receivingDataCellClass(col, rule, ctx)}
-      style={receivingDataCellHighlightStyle(col, ctx)}
+      style={receivingDataCellStyle(col, ctx)}
     >
       {isPickup && pickupLabel ? (
         <FulfillmentPickupPill dense />

@@ -11,6 +11,17 @@
 
 export const SHIPPING_ORDERS_PATH = '/shipping/orders';
 
+/**
+ * The order-exception workbench. A Shipping PEER, not a To-ship lens: caged and
+ * unpaired orders are excluded from the To-ship queue by predicate, so its
+ * queue semantics genuinely cannot express them.
+ *
+ * Deliberately NOT under the `(desk)` route group — that group's stage caps at
+ * `DESK_STAGE_MAX_PX` (1152px) and this is a master/detail workbench whose
+ * detail pane alone is wider than that.
+ */
+export const SHIPPING_EXCEPTIONS_PATH = '/shipping/exceptions';
+
 /** Wire value that selects Support Inquiries context on the shared desk. */
 export const ORDERS_DESK_SUPPORT_CONTEXT = 'support' as const;
 

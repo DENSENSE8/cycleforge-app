@@ -2,6 +2,7 @@ import { strict as assert } from 'node:assert';
 import { describe, it } from 'node:test';
 import {
   SEARCH_BY_SCOPES,
+  SEARCH_BY_METHOD_LABEL,
   filterHitsBySearchBy,
   parseSearchByScope,
   searchByPickerCount,
@@ -13,22 +14,37 @@ import {
 } from './search-by';
 
 describe('search-by scope', () => {
-  it('Internal ID is the first picker row, then order · tracking · serial · ticket', () => {
+  it('the common methods lead; Internal ID sits last', () => {
+    // Left-to-right pill order. Internal ID is the deliberate one — you reach
+    // for it holding a printed handle — so it does not take the nearest seat.
     assert.deepEqual(SEARCH_BY_SCOPES, [
-      'internal',
       'order',
       'tracking',
       'serial',
       'ticket',
+      'internal',
     ]);
   });
 
   it('picker index maps 1:1 to the five methods', () => {
     assert.equal(searchByPickerCount(), 5);
-    assert.equal(searchByPickerScope(0), 'internal');
-    assert.equal(searchByPickerScope(1), 'order');
+    assert.equal(searchByPickerScope(0), 'order');
+    assert.equal(searchByPickerScope(4), 'internal');
     assert.equal(searchByPickerScope(5), null);
-    assert.equal(searchByPickerValue(2), 'tracking');
+    assert.equal(searchByPickerValue(1), 'tracking');
+  });
+
+  it('pill labels are one word — no "number", no hash', () => {
+    // The field beside them already says an identifier goes here; the pill only
+    // has to name which kind.
+    assert.deepEqual(
+      SEARCH_BY_SCOPES.map((s) => SEARCH_BY_METHOD_LABEL[s]),
+      ['Order', 'Tracking', 'Serial', 'Ticket', 'ID'],
+    );
+    for (const label of Object.values(SEARCH_BY_METHOD_LABEL)) {
+      assert.ok(!label.includes('#'), `${label} must not carry a hash`);
+      assert.ok(!/number/i.test(label), `${label} must not spell "number"`);
+    }
   });
 
   it('parseSearchByScope accepts methods; unknown and legacy All become Internal ID', () => {
@@ -51,10 +67,11 @@ describe('search-by scope', () => {
 
   it('placeholder names the method', () => {
     assert.equal(searchByPlaceholder('internal'), 'R-id, shipment, QR…');
-    assert.equal(searchByPlaceholder('order'), 'Order number…');
-    assert.equal(searchByPlaceholder('serial'), 'Serial number…');
-    assert.equal(searchByPlaceholder('tracking'), 'Tracking number…');
-    assert.equal(searchByPlaceholder('ticket'), 'Ticket number…');
+    // The placeholder carries the descriptive hint, since the pill went short.
+    assert.equal(searchByPlaceholder('order'), 'Marketplace order #…');
+    assert.equal(searchByPlaceholder('serial'), 'Unit serial…');
+    assert.equal(searchByPlaceholder('tracking'), 'Carrier tracking…');
+    assert.equal(searchByPlaceholder('ticket'), 'Support or repair ticket…');
   });
 
   it('shortcut letter is unique — ticket is # so it does not steal tracking T', () => {

@@ -144,7 +144,7 @@
       "schedule": "*/30 * * * *"
     },
     {
-      "path": "/api/cron/integrations/sync?providers=ebay,square",
+      "path": "/api/cron/integrations/sync?providers=ebay,square,ecwid",
       "schedule": "*/15 * * * *"
     },
     {

@@ -61,6 +61,26 @@ import { QuickAccessSync } from '@/components/quick-access/QuickAccessSync';
 import { AuthenticatedAblyProvider } from '@/components/providers/AuthenticatedAblyProvider';
 import { AssistantProvider } from '@/components/assistant/AssistantProvider';
 import { InstallPrompt } from '@/components/station/InstallPrompt';
+/**
+ * The app-wide reduced-motion floor lives HERE, not in the root layout.
+ *
+ * `MotionConfig` is a framer component, so a static import of it in
+ * `app/layout.tsx` put the whole motion runtime (~104KB gz across 5 chunks) on
+ * the critical graph of EVERY route — including the public chrome family
+ * (`/signin`, `/signin/reset`, `/signup`, `/share/**`), none of which mounts a
+ * single framer component. Rendering it in one branch was not enough: the
+ * static import is what ships the bytes.
+ *
+ * `WarehouseShell` is already behind `next/dynamic` and is not downloaded for
+ * public chrome, so hosting the provider here gives the warehouse tree the
+ * identical floor and gives the public routes none of the weight. It wraps
+ * `InstallPrompt` too, exactly as the layout version did.
+ *
+ * Invariant this creates: **a public-chrome route may not use framer.** Import
+ * primitives by deep path there, never through `@/design-system/primitives`
+ * (the barrel re-exports seven engine-carrying primitives).
+ */
+import { ReducedMotionProvider } from '@/components/providers/ReducedMotionProvider';
 import { AppearanceApplier } from '@/components/settings/AppearanceApplier';
 import { ReceivingZohoSyncToaster } from '@/components/receiving/ReceivingZohoSyncToaster';
 import { UserIssueResolvedToaster } from '@/components/providers/UserIssueResolvedToaster';
@@ -81,7 +101,7 @@ export function WarehouseShell({
   children: ReactNode;
 }) {
   return (
-    <>
+    <ReducedMotionProvider>
       <div id="app-root" className="fixed inset-0 flex min-h-0 flex-col overflow-hidden">
         <PostHogProvider>
           <Providers>
@@ -129,6 +149,6 @@ export function WarehouseShell({
       </div>
       <InstallPrompt />
       <AppearanceApplier />
-    </>
+    </ReducedMotionProvider>
   );
 }

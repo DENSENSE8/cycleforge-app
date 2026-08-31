@@ -29,7 +29,7 @@ import {
 } from './ReceivingCompoundCells';
 import {
   receivingDataCellClass,
-  receivingDataCellHighlightStyle,
+  receivingDataCellStyle,
   type ReceivingGridCellCtx,
 } from './receiving-grid-cell-types';
 
@@ -84,7 +84,7 @@ export function renderReceivingGridCell(
             <div
               data-col="status"
               className={receivingDataCellClass(col, rule, ctx)}
-              style={receivingDataCellHighlightStyle(col, ctx)}
+              style={receivingDataCellStyle(col, ctx)}
             >
               <ReceivingDeliveryStatusCell row={ctx.row} />
             </div>
@@ -114,14 +114,13 @@ export function renderReceivingGridCell(
         return (
           <div
             className={receivingDataCellClass(col, rule, ctx)}
-            style={receivingDataCellHighlightStyle(col, ctx)}
+            style={receivingDataCellStyle(col, ctx)}
           >
             <CustomFieldCell
               column={col}
               values={ctx.row.customFields}
               fieldType={fieldType}
               className="px-0"
-              onCommit={ctx.onCustomFieldCommit}
             />
           </div>
         );
@@ -129,7 +128,7 @@ export function renderReceivingGridCell(
       return (
         <span
           className={receivingDataCellClass(col, rule, ctx)}
-          style={receivingDataCellHighlightStyle(col, ctx)}
+          style={receivingDataCellStyle(col, ctx)}
         />
       );
     }

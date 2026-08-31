@@ -9,19 +9,23 @@
  * whole difference between one table display and thirty
  * (`docs/todo/one-table-sot-teardown-HANDOFF.md` § 5).
  *
- * ## What the two axes are
+ * ## One filter control, both axes (operator ruling 2026-08-30)
  *
- * **Tabs are the triage facet** (`?late` / `?attention` / `?ustatus` /
- * `?rowFlag`, written through `applyToShipTriageFacet`). They are mutually
- * exclusive, so clicking the lit tab clears back to the unfiltered list —
- * there is no **All** tab, because "all" is the absence of a filter and a tab
- * for it is a control that means *stop* (§ 2.2).
+ * The bottom tab strip is GONE from this desk — the operator overruled the
+ * "a dropdown never replaces the strip" law in writing ("don't care what the
+ * standing rule is. Break it."): selection tabs ARE filters, so both axes now
+ * live in the ONE filter popover:
  *
- * **The filter is the lifecycle stage** (`?stage=pending|tested|packed`). It is
- * a genuinely different question from the triage facet — *where is this order
- * in the pipeline* rather than *why does it need attention* — and the two
- * compose. The old toolbar spent two controls (a funnel inside the find field
- * and another beside it) restating the tabs; one control, one job (§ 2.1).
+ * - **Triage facets** (`?late` / `?attention` / `?ustatus` / `?rowFlag` /
+ *   `?cage`, written through `applyToShipTriageFacet`) — mutually exclusive
+ *   among themselves, so picking one clears the others and picking the active
+ *   one clears back to the unfiltered list. There is still no **All** option:
+ *   "all" is the absence of a filter (§ 2.2). `caged` swaps the desk's data
+ *   source rather than narrowing it; the URL contract is unchanged, only the
+ *   control moved.
+ * - **Lifecycle stage** (`?stage=pending|tested|packed`) — *where is this
+ *   order in the pipeline* rather than *why does it need attention*. The two
+ *   axes still compose: a stage pick never clears the facet.
  */
 
 import { useCallback, useMemo } from 'react';
@@ -36,15 +40,23 @@ import {
 import { useDashboardSearchController } from '@/hooks/useDashboardSearchController';
 import { parseStaffParam } from '@/hooks/useStaffFilter';
 import { unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
+import { cagedOrdersCountQuery } from '@/lib/queries/caged-orders-queries';
 import { fulfillmentLaneTotals } from '@/lib/unshipped-state';
-import type { DataTableFilterOption, DataTableTab } from '@/components/tables/DataTable';
+import type { DataTableFilterOption } from '@/components/tables/DataTable';
 
-/** Facet order in the tab strip. `all` is deliberately absent — see above. */
-const TRIAGE_TABS = [
+/**
+ * Facet order in the filter menu. `all` is deliberately absent — see above.
+ *
+ * `caged` sits LAST because it is the only facet that swaps the desk's data
+ * source rather than narrowing it: everything left of it is a slice of the live
+ * queue, and caged is the set that is not in the queue at all.
+ */
+const TRIAGE_FACETS = [
   'must_ship',
   'urgent',
   'blocked',
   'awaiting_customer',
+  'caged',
 ] as const satisfies readonly ToShipTriageFacet[];
 
 const STAGE_OPTIONS = [
@@ -60,9 +72,6 @@ export interface ToShipChrome {
     onToggle: (id: string) => void;
     onClearAll: () => void;
   };
-  tabs: readonly DataTableTab[];
-  activeTab: string | undefined;
-  onTabChange: (id: string) => void;
   /** Rows the queue holds before this view's narrowing. */
   totalCount: number | undefined;
 }
@@ -74,6 +83,9 @@ export function useToShipChrome(): ToShipChrome {
   const { searchQuery, setSearch } = useDashboardSearchController();
   const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
   const { data: queueCounts } = useQuery(unshippedQueueCountsQuery({ staffId }));
+  // Its own cheap key — the facet must be able to LABEL itself on every desk
+  // paint without pulling the caged rows to count them.
+  const { data: cagedCount } = useQuery(cagedOrdersCountQuery());
 
   const laneTotals = fulfillmentLaneTotals(queueCounts);
   const activeFacet = getToShipTriageFacetFromSearch(searchParams);
@@ -89,9 +101,13 @@ export function useToShipChrome(): ToShipChrome {
     [pathname, router, searchParams],
   );
 
-  const tabs = useMemo<DataTableTab[]>(
-    () =>
-      TRIAGE_TABS.map((id) => ({
+  // ONE options list, two axes: the triage facets lead (they are the desk's
+  // "why does this need attention" vocabulary — the reason the control
+  // exists), the lifecycle stages follow. Facet counts ride each option so
+  // the overview the tab strip used to show is one click away, not rebuilt.
+  const filterOptions = useMemo<DataTableFilterOption[]>(
+    () => [
+      ...TRIAGE_FACETS.map((id) => ({
         id,
         label: TO_SHIP_TRIAGE_FACET_LABEL[id],
         count:
@@ -101,27 +117,12 @@ export function useToShipChrome(): ToShipChrome {
               ? queueCounts?.urgent || undefined
               : id === 'blocked'
                 ? laneTotals.blocked || undefined
-                : undefined,
+                : id === 'caged'
+                  ? cagedCount || undefined
+                  : undefined,
+        active: id === activeFacet,
       })),
-    [queueCounts?.mustShip, queueCounts?.urgent, laneTotals.blocked],
-  );
-
-  // Clicking the lit tab clears back to the unfiltered list. The facets are
-  // mutually exclusive in the URL, so this IS what "All" used to do — without
-  // spending a permanent control on it.
-  const onTabChange = useCallback(
-    (id: string) => {
-      const next: ToShipTriageFacet = id === activeFacet ? 'all' : (id as ToShipTriageFacet);
-      replaceParams((params) => {
-        applyToShipTriageFacet(params, next);
-      });
-    },
-    [activeFacet, replaceParams],
-  );
-
-  const filterOptions = useMemo<DataTableFilterOption[]>(
-    () =>
-      STAGE_OPTIONS.map((option) => ({
+      ...STAGE_OPTIONS.map((option) => ({
         id: option.id,
         label: option.label,
         count:
@@ -132,21 +133,47 @@ export function useToShipChrome(): ToShipChrome {
               : (queueCounts?.byStage as { packed?: number } | undefined)?.packed || undefined,
         active: stage === option.id,
       })),
-    [laneTotals.pending, laneTotals.tested, queueCounts?.byStage, stage],
+    ],
+    [
+      activeFacet,
+      queueCounts?.mustShip,
+      queueCounts?.urgent,
+      queueCounts?.byStage,
+      laneTotals.blocked,
+      laneTotals.pending,
+      laneTotals.tested,
+      cagedCount,
+      stage,
+    ],
   );
 
+  const isFacetId = useCallback(
+    (id: string): id is ToShipTriageFacet =>
+      (TRIAGE_FACETS as readonly string[]).includes(id),
+    [],
+  );
+
+  // Facet picks stay mutually exclusive (the URL writer clears siblings);
+  // picking the active facet clears back to unfiltered — what "All" used to
+  // do, without spending a permanent option on it. Stage picks toggle
+  // independently and never clear the facet: the two axes compose.
   const onToggleFilter = useCallback(
     (id: string) => {
       replaceParams((params) => {
+        if (isFacetId(id)) {
+          applyToShipTriageFacet(params, id === activeFacet ? 'all' : id);
+          return;
+        }
         if (params.get('stage') === id) params.delete('stage');
         else params.set('stage', id);
       });
     },
-    [replaceParams],
+    [replaceParams, isFacetId, activeFacet],
   );
 
   const onClearAllFilters = useCallback(() => {
     replaceParams((params) => {
+      applyToShipTriageFacet(params, 'all');
       params.delete('stage');
     });
   }, [replaceParams]);
@@ -162,10 +189,6 @@ export function useToShipChrome(): ToShipChrome {
       onToggle: onToggleFilter,
       onClearAll: onClearAllFilters,
     },
-    tabs,
-    // The unfiltered list lights no tab.
-    activeTab: activeFacet === 'all' ? undefined : activeFacet,
-    onTabChange,
     totalCount: queueCounts?.total,
   };
 }

@@ -14,7 +14,9 @@
 import { Suspense, useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { Button, Panel } from '@/design-system/primitives';
+// Deep paths, not the barrel — see the note in `src/app/signin/page.tsx`.
+import { Button } from '@/design-system/primitives/Button';
+import { Panel } from '@/design-system/primitives/Panel';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 

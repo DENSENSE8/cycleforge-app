@@ -3,7 +3,7 @@
 import { GridPlatformMarkValue } from '@/components/ui/grid-cells';
 import {
   receivingDataCellClass,
-  receivingDataCellHighlightStyle,
+  receivingDataCellStyle,
   type ReceivingGridCellProps,
 } from './receiving-grid-cell-types';
 
@@ -13,7 +13,7 @@ export function ReceivingPlatformCell({ col, rule, ctx }: ReceivingGridCellProps
     <div
       data-col="platform"
       className={receivingDataCellClass(col, rule, ctx)}
-      style={receivingDataCellHighlightStyle(col, ctx)}
+      style={receivingDataCellStyle(col, ctx)}
     >
       <GridPlatformMarkValue
         platformValue={ctx.platformMeta.value}

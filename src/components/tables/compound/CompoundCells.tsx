@@ -22,10 +22,19 @@
  * from the MOUNTED columns now, which every family already passes.
  */
 
-import { useState } from 'react';
 import Image from 'next/image';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { ChevronRight, MoreHorizontal, Package } from '@/components/Icons';
+import {
+  Check,
+  ChevronRight,
+  MoreHorizontal,
+  Package,
+  PackageSearch,
+  PackingModeStandard,
+  ShippingModeScanOut,
+} from '@/components/Icons';
+import type { FieldDisplayType } from '@/lib/tables/field-catalog/types';
+import { StaffAvatar } from '@/components/identity';
 import { BrandIdentityDot, GridCellDash } from '@/components/ui/grid-cells';
 import { GridClickSelectFace, GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -44,10 +53,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/design-system/primitives/DropdownMenu';
-import type {
-  CompoundRowAction,
-  CompoundRowView,
-  CompoundStateTone,
+import {
+  formatCompoundStageStepLine,
+  type CompoundRowAction,
+  type CompoundRowView,
+  type CompoundSlotValue,
+  type CompoundStageStepFacts,
+  type CompoundStateTone,
+  type CompoundSubtitlePart,
+  type CompoundSubtitleSelect,
 } from './compound-row-model';
 
 /**
@@ -160,39 +174,116 @@ export function CompoundSelect({
  * the IDS column two tracks away, whereas a note is the only place a row can
  * say something the schema has no field for.
  *
- * ## Inline editing is a CAPABILITY, not a mode
+ * ## The note line is READ-ONLY
  *
- * Pass `onCommitNote` and the note line becomes editable in place; omit it and
- * the same cell is read-only. Read-only-ness is the ABSENCE of the prop, never
- * a second component with the editor deleted — the house rule from
- * `pattern-evolution.md`.
+ * It used to edit in place when a family passed `onCommitNote`. The editor went
+ * with the display layer on 2026-08-29; the TRIGGER did not, and for a while
+ * this cell rendered a button with `hover:underline` and
+ * `aria-label="Edit note: …"` that set an `editing` flag nothing read. A
+ * control that looks live and does nothing is worse than a plain line of text,
+ * so the trigger is gone too.
  *
- * **This is why Orders does not pass it.** `order_notes` is a deliberately
- * append-only trail ("a note is a statement someone made at a time"), so an
- * in-place editor there would let the next staffer rewrite someone's statement
- * — the precise failure the append-only ruling exists to prevent. Receiving's
- * `receiving_line.notes` is a scalar working field with a real PATCH, so it
- * edits. Same cell, one prop, two correct behaviours.
+ * `commitReceivingLineNote` is still in the domain layer — the write survives,
+ * it just has no cell-level caller. Note editing belongs on the record plane
+ * now, like every other correction.
+ *
+ * ## A bound subtitle PART can edit in place — by capability, not by mode
+ *
+ * A family passes {@link CompoundSubtitleSelect} editors in `subtitleSelects`
+ * and the matching part (by `key`) becomes a click-only menu trigger over the
+ * options the family resolved from its own SoT; every other part — and the
+ * same part on a mount that passes no editor — is the identical read-only
+ * span. This is a scalar-field PATCH affordance (To-ship condition), not a
+ * lifecycle transition; picking an option commits, Esc closes without saving
+ * — the same contract the flat grid's condition editor had.
+ *
+ * The ROW owns Enter/Space (open / select), so the trigger is `tabIndex={-1}`
+ * and opens on click only — same law as the ⋮ actions button and the old
+ * note-editor trigger before it.
  */
 export function CompoundItem({
   view,
-  onCommitNote,
+  subtitleSelects,
 }: {
   view: CompoundRowView;
-  /** Present ⇒ the note line is editable in place. Absent ⇒ read-only. */
-  onCommitNote?: (next: string) => void;
+  /** Present ⇒ the parts these claim (by key) edit in place. */
+  subtitleSelects?: readonly CompoundSubtitleSelect[];
 }) {
-  const [editing, setEditing] = useState(false);
-  const editable = Boolean(onCommitNote);
+  // Bound subtitles (an explicit org/staff layout choice) REPLACE the note
+  // line: parts in binding order, ` · ` separated, each carrying the tone its
+  // family SoT resolved (qty count tone, condition grade tone). Absent ⇒ the
+  // legacy note fallback.
+  const parts = view.subtitleParts;
+  const selectFor = (part: CompoundSubtitlePart): CompoundSubtitleSelect | undefined =>
+    part.key ? subtitleSelects?.find((s) => s.partKey === part.key) : undefined;
 
-  const noteLine = view.note ? (
+  const renderPart = (part: CompoundSubtitlePart, i: number) => {
+    const select = selectFor(part);
+    const face = <span className={part.toneClass}>{part.text}</span>;
+    return (
+      <span key={part.key ?? i}>
+        {i > 0 ? <span className="text-text-faint">{' · '}</span> : null}
+        {select ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                tabIndex={-1}
+                aria-label={`Edit ${select.label.toLowerCase()}: ${part.text}`}
+                // The row's own click would select or open — this is "edit".
+                onClick={(event) => event.stopPropagation()}
+                className={cn(
+                  'ds-raw-button inline-flex min-w-0 items-center text-left',
+                  'hover:underline decoration-dotted underline-offset-2',
+                  focusRing('control'),
+                )}
+              >
+                {face}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" onClick={(event) => event.stopPropagation()}>
+              {select.options.map((option) => (
+                <DropdownMenuItem
+                  key={option.value}
+                  title={option.description}
+                  onSelect={() => select.onCommit(option.value)}
+                  className={cn(
+                    'font-semibold uppercase tracking-wide',
+                    option.toneClass,
+                    option.current && option.currentClass,
+                  )}
+                >
+                  <span className="flex w-full items-center justify-between gap-2">
+                    <span className="min-w-0 truncate">{option.label}</span>
+                    {option.current ? <Check className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
+                  </span>
+                </DropdownMenuItem>
+              ))}
+              {select.clearLabel ? (
+                <DropdownMenuItem
+                  onSelect={() => select.onCommit(null)}
+                  className="border-t border-border-hairline text-text-muted"
+                >
+                  {select.clearLabel}
+                </DropdownMenuItem>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : (
+          face
+        )}
+      </span>
+    );
+  };
+
+  const noteLine = parts ? (
+    parts.length > 0 ? (
+      <CompoundLine>{parts.map(renderPart)}</CompoundLine>
+    ) : null
+  ) : view.note ? (
     <HoverTooltip label={view.note} asChild>
       <CompoundLine>{view.note}</CompoundLine>
     </HoverTooltip>
-  ) : editable ? (
-    // An editable empty note needs a target to click. A bare blank line is
-    // invisible affordance; the placeholder is the hit area.
-    <CompoundLine className="text-text-faint italic">Add note…</CompoundLine>
   ) : null;
 
   const flagMark = view.flagMark ?? null;
@@ -220,30 +311,7 @@ export function CompoundItem({
           titleLine
         )
       }
-      secondary={
-        editable ? (
-          <button
-            type="button"
-            // The ROW owns Enter/Space (open / select), so the note opens on
-            // click only. Giving it those keys here would shadow the row's own
-            // contract on every focused row in the grid.
-            onClick={(event) => {
-              event.stopPropagation();
-              setEditing(true);
-            }}
-            className={cn(
-              'flex min-w-0 items-center text-left',
-              'hover:underline decoration-dotted underline-offset-2',
-              focusRing('control'),
-            )}
-            aria-label={view.note ? `Edit note: ${view.note}` : 'Add note'}
-          >
-            {noteLine}
-          </button>
-        ) : (
-          noteLine
-        )
-      }
+      secondary={noteLine}
     />
   );
 }
@@ -390,6 +458,181 @@ export function CompoundState({ view }: { view: CompoundRowView }) {
           delayNode
         )
       }
+    />
+  );
+}
+
+/**
+ * Lifecycle STEP column — the media-object row every dense person-tool uses:
+ * the ACTOR's mark on the left spanning both lines, the STATE VERB + stamp
+ * stacked to its right.
+ *
+ * ```text
+ * ( MG )  🔧 TESTED
+ *         Jul 13, 4:15 PM · Bench 2
+ * ```
+ *
+ * Three rules carry the design:
+ * - **Person is a MARK, state is a WORD.** The avatar (photo → initials on
+ *   the staffer's colour, {@link StaffAvatar}) is the identity channel; the
+ *   verb keeps the quiet state tones. Staff colour never repaints the verb —
+ *   a staffer who picks red must not make every row they test read as an
+ *   error. A colour ring keeps the assigned colour scannable once a photo
+ *   uploads. Round mark = person; the square edge-to-edge image stays the
+ *   product photo's alone.
+ * - **The verb marks what HAPPENED; nothing-yet is the ICON over a DASH.**
+ *   The done face ("Tested") paints once the event's timestamp lands. Before
+ *   that the line keeps the step's glyph (the column identity survives) with
+ *   the house blank-cell dash where the verb would be (operator ruling
+ *   2026-08-30: a step that has not happened is a blank, not an instruction).
+ *   The catalog's `pending` face survives as the dash's accessible name only,
+ *   so AT still hears the state. An assigned-but-undone row keeps the
+ *   assignee's mark beside it — "this is Michael's" is still the actionable
+ *   read.
+ * - **The name lives in the tooltip.** Names are ragged; the mark is 28px
+ *   always. The full `who · time · station` line rides the hover, and the
+ *   mark's `alt` names the actor for screen readers.
+ *
+ * The two text lines stay {@link CompoundCell}'s fixed tracks, so the verb
+ * baseline still locks to the state/item columns — the avatar is a leading
+ * flex sibling, never a third row.
+ *
+ * An unclaimed step paints a dashed empty circle in the mark's slot (the
+ * universal "no owner yet" face) so TEST and TESTED align identically.
+ */
+export function CompoundStageStep({
+  labels,
+  Icon,
+  facts,
+}: {
+  labels: Readonly<{ done: string; pending: string }>;
+  Icon: (props: { className?: string }) => JSX.Element;
+  facts: CompoundStageStepFacts | null;
+}) {
+  const tip = formatCompoundStageStepLine(facts);
+  const filled = Boolean(facts?.at);
+  const stampLine = [facts?.at, facts?.station]
+    .map((s) => String(s ?? '').trim())
+    .filter(Boolean)
+    .join(' · ');
+  const hasActor = Boolean(facts && (facts.whoStaffId || facts.who));
+
+  const body = (
+    <div className="flex h-full min-w-0 items-center gap-1.5">
+      {hasActor ? (
+        <StaffAvatar
+          staffId={facts?.whoStaffId ?? null}
+          name={facts?.who}
+          size="sm"
+          colorRing
+          alt={facts?.who ?? undefined}
+        />
+      ) : (
+        // Unclaimed: same 28px slot as the `sm` mark, dashed — "no owner yet",
+        // and the text column starts at the same x on every row.
+        <span
+          aria-hidden
+          className="h-7 w-7 shrink-0 rounded-full border border-dashed border-border-default"
+        />
+      )}
+      <CompoundCell
+        className="flex-1"
+        primary={
+          filled ? (
+            <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-text-default">
+              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <CompoundLine>{labels.done}</CompoundLine>
+            </span>
+          ) : (
+            // Not happened yet ⇒ the step's glyph over the house blank-cell
+            // dash, never a verb (operator ruling 2026-08-30: the icon keeps
+            // the column identity, the dash says nothing landed). The dash is
+            // aria-hidden, so the pending face carries the state for AT.
+            <span className="inline-flex min-w-0 items-center gap-1 text-text-muted">
+              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <GridCellDash />
+              <span className="sr-only">{labels.pending}</span>
+            </span>
+          )
+        }
+        // No stamp ⇒ a BLANK second line (operator ruling 2026-08-30) — the
+        // top row's dash already says nothing landed; a second dash under it
+        // was the same fact twice.
+        secondary={stampLine ? <CompoundLine>{stampLine}</CompoundLine> : null}
+      />
+    </div>
+  );
+
+  return tip ? (
+    <HoverTooltip label={tip} asChild>
+      {body}
+    </HoverTooltip>
+  ) : (
+    body
+  );
+}
+
+/**
+ * Slot glyphs by catalog `iconKey`. Semantic aliases on purpose: PackageSearch
+ * = pick from inventory, `PackingModeStandard` the pack bench,
+ * `ShippingModeScanOut` the carrier-handoff scan. Unknown keys fall back to
+ * the neutral carton.
+ */
+const SLOT_STEP_ICONS: Record<string, (props: { className?: string }) => JSX.Element> = {
+  picked: PackageSearch,
+  packed: PackingModeStandard,
+  scanned_out: ShippingModeScanOut,
+};
+
+/**
+ * The materialized SLOT cell body — one component for every bound track.
+ *
+ * Branches on the field's DISPLAY TYPE (never its id): `stage_event` paints
+ * the two-line step above; everything else paints the resolved value over an
+ * empty line (the header already labels the fact). The value arrives on
+ * `view.slots[trackKey]`, resolved once per row by the family adapter.
+ */
+export function CompoundSlotCell({
+  trackKey,
+  label,
+  iconKey,
+  displayType,
+  stageLabels,
+  view,
+}: {
+  trackKey: string;
+  label: string;
+  iconKey?: string;
+  displayType?: FieldDisplayType;
+  /** Verb faces from the catalog field; falls back to the header label. */
+  stageLabels?: Readonly<{ done: string; pending: string }>;
+  view: CompoundRowView;
+}) {
+  const value: CompoundSlotValue | undefined = view.slots?.[trackKey];
+  if (displayType === 'stage_event') {
+    const facts = value?.kind === 'stage_event' ? value : null;
+    const Icon = SLOT_STEP_ICONS[iconKey ?? ''] ?? Package;
+    return (
+      <CompoundStageStep
+        labels={stageLabels ?? { done: label, pending: label }}
+        Icon={Icon}
+        facts={facts}
+      />
+    );
+  }
+  const text = value?.kind === 'value' ? value.text : null;
+  return (
+    <CompoundCell
+      primary={
+        text ? (
+          <HoverTooltip label={text} asChild>
+            <CompoundLine>{text}</CompoundLine>
+          </HoverTooltip>
+        ) : (
+          <GridCellDash />
+        )
+      }
+      secondary={null}
     />
   );
 }

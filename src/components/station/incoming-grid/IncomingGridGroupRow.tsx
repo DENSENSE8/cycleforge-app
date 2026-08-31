@@ -25,7 +25,6 @@ interface IncomingGridGroupRowProps {
    * its `notes` is the same scalar working field Unbox edits — capability, not
    * a second cell.
    */
-  onCommitNote?: (row: ReceivingLineRow, next: string) => void;
 }
 
 /**
@@ -47,7 +46,6 @@ export function IncomingGridGroupRow({
   clickSelect = false,
   selectGutterChrome = 'always',
   columns,
-  onCommitNote,
 }: IncomingGridGroupRowProps) {
   const renderLeaf = (row: ReceivingLineRow, stripeIndex: number): ReactNode => (
     <IncomingGridRow
@@ -66,7 +64,6 @@ export function IncomingGridGroupRow({
       clickSelect={clickSelect}
       selectGutterChrome={selectGutterChrome}
       columns={columns}
-      onCommitNote={onCommitNote ? (next) => onCommitNote(row, next) : undefined}
     />
   );
 

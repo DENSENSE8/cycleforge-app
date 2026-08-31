@@ -61,6 +61,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         condition,
         typeSlug,
         isUrgent,
+        quantity,
       } = body;
 
       // Validate required fields
@@ -92,6 +93,21 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       }
       const saleAmountValue = saleAmount != null ? Number(saleAmount) : null;
       const currencyValue = (typeof currency === 'string' && currency.trim()) || 'USD';
+
+      // Quantity is optional (webhook/cron ingest rarely sends one); when
+      // supplied it must be a whole number ≥ 1. `orders.quantity` is text-ish,
+      // so it is normalized and stored as its canonical integer string.
+      let quantityValue: string | null = null;
+      if (quantity != null && String(quantity).trim() !== '') {
+        const parsed = Number(String(quantity).trim());
+        if (!Number.isInteger(parsed) || parsed < 1) {
+          return {
+            status: 400,
+            body: { error: 'quantity must be a whole number of at least 1 when provided' },
+          };
+        }
+        quantityValue = String(parsed);
+      }
 
       const orgId = ctx.organizationId;
 
@@ -194,9 +210,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             shipment_id,
             condition,
             type_id,
-            is_urgent
-          ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9::uuid, $10, $11, $12, $13)
-          RETURNING id, order_id, product_title, sku, shipment_id, condition, created_at`,
+            is_urgent,
+            quantity
+          ) VALUES ($1, $2, $3, $4, $5, NOW(), $6, $7, $8, $9::uuid, $10, $11, $12, $13, $14)
+          RETURNING id, order_id, product_title, sku, shipment_id, condition, quantity, created_at`,
           [
             orderId,
             productTitle,
@@ -211,6 +228,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             conditionValue,
             typeId,
             isUrgentValue,
+            quantityValue,
           ],
         );
         const orderPk = Number(inserted.rows[0].id);

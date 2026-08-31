@@ -67,8 +67,8 @@ const ClipboardHistoryHost = dynamic(
   { ssr: false },
 );
 // Owns the ⌘⇧U chord + the single throw-a-task panel mount, here for the same
-// reason as the clipboard host: the spine ⋯ row that also opens it does not
-// exist until the operator has opened the spine at least once.
+// reason as the clipboard host: binding the chord on a lazily-mounted trigger
+// would be dead on every fresh page load. Discovery is the header goal chip.
 const ThrowTaskHost = dynamic(
   () => import('@/components/quick-access/ThrowTaskHost').then((m) => m.ThrowTaskHost),
   { ssr: false },

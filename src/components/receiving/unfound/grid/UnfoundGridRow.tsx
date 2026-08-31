@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, memo, useCallback, useRef, useState, type ReactNode } from 'react';
+import { Fragment, memo, type ReactNode } from 'react';
 import { ExternalLink } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { PoChip, TrackingChip, SerialChip, CopyableCellValue, getLast8 } from '@/components/ui/CopyChip';
@@ -8,14 +8,8 @@ import { GridCellDash } from '@/components/ui/grid-cells';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import { gridCellAlignClass } from '@/design-system/components/grid';
 import { Button } from '@/design-system/primitives';
-import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
-import {
-  DEBOUNCE_MS,
-  splitPoContext,
-  type PatchBody,
-  type QueueRow,
-} from '../queue-table/unfound-queue-shared';
+import { splitPoContext, type PatchBody, type QueueRow } from '../queue-table/unfound-queue-shared';
 import { UNFOUND_GRID_CAPABILITIES } from './unfound-grid-descriptor';
 import {
   UNFOUND_GRID_COLUMNS,
@@ -29,8 +23,6 @@ import {
 
 const dataCell = (col: UnfoundGridColumn, rule = true) =>
   cn(unfoundGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
-
-type EditField = 'ticket' | 'usaNote' | 'vietnamNote';
 
 export function unfoundRowKey(row: QueueRow): string {
   return `${row.kind}:${row.source_id}`;
@@ -59,9 +51,10 @@ interface UnfoundGridRowProps {
 /**
  * One unfound-queue hit — CSS-grid columns matching {@link UNFOUND_GRID_COLUMNS}.
  *
- * In-cell edit via {@link LedgerCellEditor} (ticket + team notes). Check and
- * Push are row-scoped controls that stopPropagation so they never also open the
- * detail plane. Row click (outside those controls / editors) opens the panel.
+ * Read-only cells: ticket id and the two team notes are edited on the record
+ * plane, not in the grid. Check and Push are row-scoped controls that
+ * stopPropagation so they never also open the detail plane. Row click (outside
+ * those controls) opens the panel.
  */
 export const UnfoundGridRow = memo(function UnfoundGridRow({
   row,
@@ -73,58 +66,6 @@ export const UnfoundGridRow = memo(function UnfoundGridRow({
   justSaved,
   columns = UNFOUND_GRID_COLUMNS,
 }: UnfoundGridRowProps) {
-  const [editing, setEditing] = useState<EditField | null>(null);
-  const [editSeed, setEditSeed] = useState<string | null>(null);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const debouncedPatch = useCallback(
-    (patch: PatchBody) => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-      debounceRef.current = setTimeout(() => {
-        void onPatch(row, patch);
-      }, DEBOUNCE_MS);
-    },
-    [onPatch, row],
-  );
-
-  const openEditor = (field: EditField, seed: string | null = null) => {
-    setEditSeed(seed);
-    setEditing(field);
-  };
-  const closeEditor = () => {
-    setEditing(null);
-    setEditSeed(null);
-  };
-
-  const cellTriggerProps = (field: EditField, opts: { typing?: boolean; label: string }) => ({
-    tabIndex: 0 as const,
-    'aria-label': opts.label,
-    onClick: (e: React.MouseEvent) => {
-      e.stopPropagation();
-      openEditor(field);
-    },
-    onKeyDown: (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' || e.key === 'F2') {
-        e.preventDefault();
-        e.stopPropagation();
-        openEditor(field);
-      } else if (
-        opts.typing &&
-        e.key.length === 1 &&
-        !e.ctrlKey &&
-        !e.metaKey &&
-        !e.altKey
-      ) {
-        e.preventDefault();
-        e.stopPropagation();
-        openEditor(field, e.key);
-      } else if (e.key === 'Escape') {
-        e.stopPropagation();
-        (e.currentTarget as HTMLElement).blur();
-      }
-    },
-  });
-
   const renderTitleBody = (): ReactNode => {
     if (row.kind === 'email_po') {
       const { prefix, poNumbers } = splitPoContext(row.context);
@@ -211,8 +152,7 @@ export const UnfoundGridRow = memo(function UnfoundGridRow({
         return (
           <div
             data-col="ticket"
-            className={cn(dataCell(col, rule), 'relative', focusRing('cell'))}
-            {...cellTriggerProps('ticket', { typing: true, label: 'Edit ticket id' })}
+            className={dataCell(col, rule)}
           >
             {value ? (
               <CopyableCellValue
@@ -232,8 +172,7 @@ export const UnfoundGridRow = memo(function UnfoundGridRow({
         return (
           <div
             data-col="usaNote"
-            className={cn(dataCell(col, rule), 'relative', focusRing('cell'))}
-            {...cellTriggerProps('usaNote', { typing: true, label: 'Edit USA team note' })}
+            className={dataCell(col, rule)}
           >
             {value ? (
               <span className="min-w-0 truncate text-role-caption text-text-muted">{value}</span>
@@ -248,11 +187,7 @@ export const UnfoundGridRow = memo(function UnfoundGridRow({
         return (
           <div
             data-col="vietnamNote"
-            className={cn(dataCell(col, rule), 'relative', focusRing('cell'))}
-            {...cellTriggerProps('vietnamNote', {
-              typing: true,
-              label: 'Edit Vietnam team note',
-            })}
+            className={dataCell(col, rule)}
           >
             {value ? (
               <span className="min-w-0 truncate text-role-caption text-text-muted">{value}</span>

@@ -13,7 +13,11 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { StaffAvatar } from '@/components/identity';
-import { Panel, Button } from '@/design-system/primitives';
+// Deep paths, not the barrel — see the note in `src/app/signin/page.tsx`.
+// Lazy-loaded by `/signin` (public chrome, which mounts no `MotionConfig`), so
+// the barrel's engine-carrying primitives must not ride in on this chunk.
+import { Panel } from '@/design-system/primitives/Panel';
+import { Button } from '@/design-system/primitives/Button';
 import { getStaffTheme, type StationTheme } from '@/utils/staff-colors';
 import { SkeletonBase } from '@/design-system/components/Skeletons';
 

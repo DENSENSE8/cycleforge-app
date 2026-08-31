@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ShippedOrder } from '@/lib/neon/orders-queries';
 import { useDeleteOrderRow } from '@/hooks';
 import { useOrderFieldSave } from '@/hooks/useOrderFieldSave';
-import type { ShippedActiveSection } from '@/components/shipped/ShippedDetailsPanelContent';
+import type { ShippedActiveSection } from '@/components/shipped/stacks/types';
 import type { ShippedActiveInput } from '@/components/shipped/stacks/types';
 import { resolveDeleteRequest, toMonthDayYearCurrent } from '@/components/shipped/details-panel/shipped-details-logic';
 import {

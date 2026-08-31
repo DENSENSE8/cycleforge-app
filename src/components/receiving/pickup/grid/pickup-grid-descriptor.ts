@@ -1,9 +1,10 @@
 /**
- * Local Pickup grid surface descriptor — lifts the house
- * {@link PICKUP_GRID_COLUMNS} SoT into the TanStack defs `LedgerGridSurface`
- * mounts. Sorting stays inside the pickup sort vocabulary; row ORDER stays with
- * the house comparator in `PickupWorkspace` (state math only — grouping is
- * house `group-rows`, not TanStack).
+ * Local Pickup grid surface descriptor — lifts the MOUNTED column model (a
+ * `SlotLayout` materialization since the Wave-2 hand-model kill) into the
+ * TanStack defs `LedgerGridSurface` mounts. Sortability, default direction
+ * and locks all derive from the columns handed in — never a module constant.
+ * Row ORDER stays with the house comparator in `PickupWorkspace` (state math
+ * only — grouping is house `group-rows`, not TanStack).
  */
 
 import {
@@ -13,9 +14,8 @@ import {
 } from '@/design-system/components/grid';
 import type { PickupLine } from '../pickup-lines';
 import {
-  defaultDirForPickupGridSort,
-  isPickupGridFrozen,
-  isPickupGridSortable,
+  defaultDirForPickupColumn,
+  isPickupColumnSortable,
   type PickupGridColumn,
 } from './pickup-grid-layout';
 
@@ -29,9 +29,9 @@ export const PICKUP_GRID_CAPABILITIES: GridSurfaceCapabilities = {
 };
 
 /**
- * Build the descriptor from a RESOLVED column list (post-visibility), so
+ * Build the descriptor from the RESOLVED column list, so
  * `contentMinWidthRem` and the TanStack defs follow the tracks that actually
- * render — a hidden column loses its width, not just its content.
+ * render.
  */
 export function makePickupGridDescriptor(
   columns: readonly PickupGridColumn[],
@@ -40,16 +40,11 @@ export function makePickupGridDescriptor(
     'pickup.browse',
     columns,
     {
-      isSortable: isPickupGridSortable,
-      sortDescFirst: (key) => defaultDirForPickupGridSort(key) === 'desc',
-      isLocked: isPickupGridFrozen,
+      isSortable: (key) => isPickupColumnSortable(columns, key),
+      sortDescFirst: (key) => defaultDirForPickupColumn(columns, key) === 'desc',
+      // Locked = the mounted model's own frozen prefix (`select · title`).
+      isLocked: (key) => columns.some((c) => c.key === key && c.frozen === true),
     },
     PICKUP_GRID_CAPABILITIES,
   );
 }
-
-// No pre-built canonical descriptor: the column set is now resolved per staffer
-// by `useGridColumnVisibility`, so the pickup grid mount always builds from the
-// RESOLVED list (which also keeps `contentMinWidthRem` and the CSS grid template
-// honest when a track is hidden). A module-level constant built from the full
-// column list would have been wrong for every staffer with a delta.

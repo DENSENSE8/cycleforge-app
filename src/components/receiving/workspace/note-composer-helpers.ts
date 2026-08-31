@@ -92,6 +92,13 @@ export const NOTE_INSERT_TRIGGER_DOCK_BTN =
 export const NOTE_INSERT_TRIGGER_DOCK_BTN_ACTIVE =
   'bg-surface-card text-text-muted';
 
+/** Circular + for station composer bottom action bar (matches ComposerPlusButton). */
+export const NOTE_INSERT_TRIGGER_COMPOSER_BTN =
+  'ds-raw-button inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-text-faint transition hover:bg-surface-sunken hover:text-text-muted';
+
+export const NOTE_INSERT_TRIGGER_COMPOSER_BTN_ACTIVE =
+  'bg-surface-sunken text-text-default';
+
 export const NOTE_TAG_BTN = `${NOTE_OVERLAY_ICON_BTN} text-orange-500 transition hover:bg-orange-100/60 hover:text-orange-600 hover:shadow-sm hover:ring-1 hover:ring-orange-200/80`;
 
 export const NOTE_DOWNLOAD_INSERT_BTN = `${NOTE_OVERLAY_ICON_BTN} text-blue-600 transition hover:bg-blue-100/60 hover:text-blue-700 hover:shadow-sm hover:ring-1 hover:ring-blue-200/80`;
@@ -104,6 +111,24 @@ export const NOTE_SERIAL_INSERT_BTN = `${NOTE_OVERLAY_ICON_BTN} text-emerald-600
 
 /** Unit cost — emerald money tone in the insert menu. */
 export const NOTE_UNIT_PRICE_BTN = `${NOTE_OVERLAY_ICON_BTN} text-emerald-600 transition hover:bg-emerald-100/60 hover:text-emerald-700 hover:shadow-sm hover:ring-1 hover:ring-emerald-200/80`;
+
+/** Insert menu panel — soft corners matching composer chrome. */
+export const NOTE_INSERT_MENU_PANEL = 'rounded-xl border-border-soft';
+
+/** Shared composer + menu shell (Unbox inserts · Ticket tools · @ context). */
+export const NOTE_INSERT_MENU_PANEL_CLASS = 'w-56 overflow-hidden';
+
+/** Menu row — full-width hover wash, flush to the rounded panel edge. */
+export const NOTE_INSERT_MENU_ROW =
+  'ds-raw-button flex w-full items-center gap-2 rounded-none border-0 px-3 py-1.5 text-left text-role-caption font-semibold text-text-muted shadow-none outline-none transition-colors hover:bg-surface-hover hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50';
+
+export const NOTE_INSERT_MENU_ROW_SELECTED = 'bg-surface-hover text-text-default';
+
+/** Section seam only — no inset gutter around nested tools. */
+export const NOTE_INSERT_MENU_SECTION = 'border-t border-border-hairline';
+
+export const NOTE_INSERT_MENU_ICON_CELL =
+  'inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center';
 
 /** Menu leading-icon tones only (no chip ring/box — keeps rows hairline-free). */
 export const NOTE_INSERT_MENU_ICON_TONE: Record<string, string> = {

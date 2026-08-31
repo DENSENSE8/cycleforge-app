@@ -75,7 +75,16 @@ const SetPinPad = dynamic(
 );
 import { BootSplash } from '@/components/boot/BootSplash';
 import { armBootSplash } from '@/lib/boot-flag';
-import { Button, Checkbox, Panel } from '@/design-system/primitives';
+// Deep paths, NOT the `@/design-system/primitives` barrel. The barrel
+// re-exports every primitive, seven of which import the motion engine
+// (CardShell, StaggerReveal, ChevronToggle, SlicedActionDock, Popover,
+// OmnichannelComposerDock, ProgressBar) — and a local barrel is not covered by
+// `optimizePackageImports`, so the whole engine rode into the one public
+// route's critical graph behind three unrelated primitives. Deep imports are
+// the established house shape here (108 existing call sites).
+import { Button } from '@/design-system/primitives/Button';
+import { Checkbox } from '@/design-system/primitives/Checkbox';
+import { Panel } from '@/design-system/primitives/Panel';
 import {
   Dialog,
   DialogContent,
@@ -285,7 +294,12 @@ export default function SignInPage() {
         method: 'POST',
         credentials: 'include',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), password, ...(orgId ? { organizationId: orgId } : {}) }),
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          persistent: rememberMe,
+          ...(orgId ? { organizationId: orgId } : {}),
+        }),
       });
       const data = (await r.json().catch(() => ({}))) as {
         ok?: boolean;
@@ -321,7 +335,11 @@ export default function SignInPage() {
     } finally {
       setBusy(false);
     }
-  }, [email, password, finish]);
+    // `rememberMe` is a dependency, not decoration: exhaustive-deps is off in
+    // this repo, so a stale closure here silently sends the checkbox's DEFAULT
+    // (true) no matter what the user unchecked — the account form is the
+    // primary flow, so that is the whole feature quietly not working.
+  }, [email, password, finish, rememberMe]);
 
   // Advance email → password (the forward swipe). Validates presence only; the
   // real credential check happens on the password submit.
@@ -367,7 +385,7 @@ export default function SignInPage() {
       const finishRes = await fetch('/api/auth/account/passkey/authenticate/finish', {
         method: 'POST', credentials: 'include',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ response: assertion }),
+        body: JSON.stringify({ response: assertion, persistent: rememberMe }),
       });
       if (!finishRes.ok) {
         const data = await finishRes.json().catch(() => ({}));
@@ -380,22 +398,30 @@ export default function SignInPage() {
     } finally {
       setBusy(false);
     }
-  }, [finish]);
+  }, [finish, rememberMe]);
 
   // Redirect flows record on *attempt* — we navigate away before the outcome is
   // known, and this is only ever a display hint on the next visit.
   const startProvider = useCallback((p: PlatformProvider) => {
     writeLastSigninMethod(p);
-    const qs = next ? `?next=${encodeURIComponent(next)}` : '';
-    window.location.href = `/api/auth/oauth/${p}/start${qs}`;
-  }, [next]);
+    // The checkbox sits right next to these buttons, so it has to survive the
+    // provider round trip — /start stashes it in its httpOnly state cookie.
+    const qs = new URLSearchParams();
+    if (next) qs.set('next', next);
+    if (rememberMe) qs.set('persist', '1');
+    const query = qs.toString();
+    window.location.href = `/api/auth/oauth/${p}/start${query ? `?${query}` : ''}`;
+  }, [next, rememberMe]);
 
   const startSso = useCallback((slug: string) => {
     writeLastSigninMethod('sso');
     const qs = new URLSearchParams({ slug });
     if (next) qs.set('next', next);
+    // Carried on the sso_auth_state row — the only thing that survives the IdP
+    // redirect — so a federated sign-in honours the box like any other.
+    if (rememberMe) qs.set('persist', '1');
     window.location.href = `/api/auth/sso/start?${qs.toString()}`;
-  }, [next]);
+  }, [next, rememberMe]);
 
   // ── Station PIN handlers (reused bricks) ──────────────────────────────────
   const submitPin = useCallback(async (pin: string) => {
@@ -403,7 +429,11 @@ export default function SignInPage() {
     const r = await fetch('/api/auth/signin', {
       method: 'POST', credentials: 'include',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ staffId: picked.id, pin, deviceKind: rememberMe ? 'personal' : 'station' }),
+      body: JSON.stringify({
+        staffId: picked.id, pin,
+        deviceKind: rememberMe ? 'personal' : 'station',
+        persistent: rememberMe,
+      }),
     });
     if (!r.ok) {
       const data = await r.json().catch(() => ({}));
@@ -419,7 +449,11 @@ export default function SignInPage() {
     const r = await fetch('/api/auth/signin', {
       method: 'POST', credentials: 'include',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ staffId: row.id, deviceKind: rememberMe ? 'personal' : 'station' }),
+      body: JSON.stringify({
+        staffId: row.id,
+        deviceKind: rememberMe ? 'personal' : 'station',
+        persistent: rememberMe,
+      }),
     });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) {
@@ -439,7 +473,11 @@ export default function SignInPage() {
       const r = await fetch('/api/auth/act-as-staff', {
         method: 'POST', credentials: 'include',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ staffId: row.id, deviceKind: rememberMe ? 'personal' : 'station' }),
+        body: JSON.stringify({
+          staffId: row.id,
+          deviceKind: rememberMe ? 'personal' : 'station',
+          persistent: rememberMe,
+        }),
       });
       const data = (await r.json().catch(() => ({}))) as {
         error?: string; role?: string | null; defaultHomePath?: string | null; defaultHomePathMobile?: string | null;
@@ -468,7 +506,11 @@ export default function SignInPage() {
     const r = await fetch('/api/auth/pin/create', {
       method: 'POST', credentials: 'include',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ staffId: picked.id, pin, deviceKind: rememberMe ? 'personal' : 'station' }),
+      body: JSON.stringify({
+        staffId: picked.id, pin,
+        deviceKind: rememberMe ? 'personal' : 'station',
+        persistent: rememberMe,
+      }),
     });
     if (!r.ok) {
       const data = await r.json().catch(() => ({}));
@@ -493,7 +535,7 @@ export default function SignInPage() {
     const finishRes = await fetch('/api/auth/passkey/authenticate/finish', {
       method: 'POST', credentials: 'include',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ response: assertion, deviceKind: 'personal' }),
+      body: JSON.stringify({ response: assertion, deviceKind: 'personal', persistent: rememberMe }),
     });
     if (!finishRes.ok) {
       const data = await finishRes.json().catch(() => ({}));
@@ -502,7 +544,7 @@ export default function SignInPage() {
     const data = await finishRes.json().catch(() => ({}));
     const d = data as { defaultHomePath?: string | null; defaultHomePathMobile?: string | null };
     finish(picked.id, picked.role, d.defaultHomePath, d.defaultHomePathMobile);
-  }, [picked, finish]);
+  }, [picked, finish, rememberMe]);
 
   const workspaceName = useMemo(
     () => (workspace?.resolved ? workspace.name ?? null : null),
@@ -905,6 +947,11 @@ interface RememberMeFieldProps {
  * One shape for one job — the account form and the station PIN pad share this.
  * The shared-computer warning is the part that actually changes behavior, so it
  * ships with the control rather than only on one of the two surfaces.
+ *
+ * No duration in the copy, on purpose: checked means the session has no idle
+ * timeout and slides its absolute window forward on every visit, so there is no
+ * honest number to name. The old "30 days" was the absolute ceiling nobody
+ * reached — the 12-hour idle window revoked the session first.
  */
 function RememberMeField({ id, checked, onChange }: RememberMeFieldProps) {
   return (
@@ -918,7 +965,7 @@ function RememberMeField({ id, checked, onChange }: RememberMeFieldProps) {
       <label htmlFor={id} className="cursor-pointer leading-tight">
         <span className="block text-role-caption font-medium text-text-default">Keep me signed in</span>
         <span className="block text-role-micro font-normal normal-case tracking-normal text-text-soft">
-          30 days on this device — uncheck on shared computers
+          Uncheck on shared computers
         </span>
       </label>
     </div>

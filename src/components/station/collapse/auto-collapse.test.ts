@@ -84,3 +84,16 @@ test('a manual collapse also sticks against a scroll back to top', () => {
   // ...until the top edge releases it, which is the documented escape.
   assert.equal(run([{ kind: 'scroll', scrollTop: 0 }], s).collapsed, false);
 });
+
+test('collapse-all pins every band shut', () => {
+  const s = run([{ kind: 'collapse-all' }]);
+  assert.equal(s.collapsed, true);
+  assert.equal(s.pinned, true);
+});
+
+test('expand-all pins every band open against engage', () => {
+  const s = run([{ kind: 'expand-all' }, { kind: 'engage' }]);
+  assert.equal(s.collapsed, false);
+  assert.equal(s.pinned, true);
+  assert.equal(s.engaged, true);
+});

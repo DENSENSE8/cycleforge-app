@@ -398,11 +398,6 @@ test.describe('To-ship dense compound grid (mocked feed)', () => {
     await page.screenshot({ path: 'test-results/pending-grid-multi-line-flat.png', fullPage: false });
   });
 
-  test('F2–F6 / H1–H2: flat qty/condition editor contracts retired with ORDERS_QUEUE_COLUMNS', async () => {
-    // Dense compound To-ship has no qty / condition / force-hide tracks.
-    test.skip(true, 'flat ORDERS_QUEUE_COLUMNS editor matrix superseded by compound Sheets UX');
-  });
-
   test('I1/I2: virtual window stays bounded after Ready (?ustatus=TESTED) filter', async ({ page }) => {
     const many: MockRow[] = [];
     for (let i = 0; i < 400; i += 1) {

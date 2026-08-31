@@ -6,13 +6,15 @@
  *    so the user can jump to the full view for all the records.
  */
 
+import { SHIPPING_SHIPPED_PATH, shippingShippedHref } from '@/lib/shipping/shipped-desk';
+
 // Amazon-style (113-1234567-1234567) and USAV internal (#03-14727-23913) refs.
 const ORDER_REF_RE = /(#?)(\b\d{2,3}-\d{4,8}-\d{3,8}\b)/g;
 
 /**
  * Linkify order/tracking IDs in assistant Markdown, skipping fenced code and
  * lines that already contain inline code or markdown links (to avoid mangling
- * them). Each ref points at the dashboard shipped view filtered to that ID.
+ * them). Each ref points at the Shipped desk filtered to that ID.
  */
 export function linkifyOrderRefs(markdown: string): string {
   if (!markdown) return markdown;
@@ -24,7 +26,7 @@ export function linkifyOrderRefs(markdown: string): string {
       if (inFence) return line;
       if (line.includes('`') || line.includes('](')) return line;
       return line.replace(ORDER_REF_RE, (_m, hash: string, id: string) =>
-        `[${hash}${id}](/dashboard?shipped=&search=${encodeURIComponent(id)})`,
+        `[${hash}${id}](${shippingShippedHref({ search: id })})`,
       );
     })
     .join('\n');
@@ -67,7 +69,7 @@ export function inferDestination(question: string, answer: string): AiDestinatio
   if (/\b(fba)\b/.test(t)) return { label: 'Open FBA shipments', href: '/fba' };
   if (/\b(repair|ticket|rma)\b/.test(t)) return { label: 'Open repairs', href: '/repair' };
   if (/\b(receiv|incoming|unbox|purchase order|\bpo\b)/.test(t)) return { label: 'Open receiving', href: '/receiving' };
-  if (/\b(ship|shipped|order|packed|pack|tracking|deliver)/.test(t)) return { label: 'Open shipped orders', href: '/dashboard?shipped=' };
+  if (/\b(ship|shipped|order|packed|pack|tracking|deliver)/.test(t)) return { label: 'Open shipped orders', href: SHIPPING_SHIPPED_PATH };
   if (/\b(stock|inventory|sku|reorder|replenish)/.test(t)) return { label: 'Open inventory', href: '/inventory' };
   return null;
 }

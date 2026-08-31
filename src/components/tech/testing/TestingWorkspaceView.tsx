@@ -16,11 +16,17 @@ import { TechAllTriageTable } from '@/components/tech/all/TechAllTriageTable';
 import { useTestingWorkspaceTab } from '@/hooks/useTestingWorkspaceTab';
 import type { DataTableTabStrip } from '@/components/tables/DataTable';
 
-/** The desk's modes. Each one mounts a different body over the same bench. */
-const TESTING_TABS = [
-  { id: 'all', label: 'All' },
-  { id: 'history', label: 'History' },
-] as const;
+/**
+ * The desk's modes. Each one mounts a different body over the same bench.
+ *
+ * No **All** entry: `all` is the absence of a narrowing, so it is the unlit
+ * default body rather than a control that means *stop* (`DataTable`'s docblock,
+ * § "All" is not a tab). Clicking the lit tab clears back to it.
+ */
+const TESTING_TABS = [{ id: 'history', label: 'History' }] as const;
+
+/** Ids the strip can light. Anything else is the unlit default body. */
+const TESTING_LIT_TABS: ReadonlySet<string> = new Set(TESTING_TABS.map((t) => t.id));
 
 export function TestingWorkspaceView({
   techId,
@@ -35,8 +41,8 @@ export function TestingWorkspaceView({
 
   const tabStrip: DataTableTabStrip = {
     tabs: TESTING_TABS.map((t) => ({ id: t.id, label: t.label })),
-    activeTab: testTab,
-    onTabChange: (id) => setTestTab(id as typeof testTab),
+    activeTab: TESTING_LIT_TABS.has(testTab) ? testTab : undefined,
+    onTabChange: (id) => setTestTab((id === testTab ? 'all' : id) as typeof testTab),
   };
 
   return (

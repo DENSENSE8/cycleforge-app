@@ -1,7 +1,12 @@
 /**
  * POST /api/auth/signin
  *
- * Body: { staffId: number, pin?: string, deviceKind?: 'station' | 'personal', deviceLabel?: string }
+ * Body: { staffId: number, pin?: string, deviceKind?: 'station' | 'personal',
+ *         deviceLabel?: string, persistent?: boolean }
+ *
+ * `persistent` is the sign-in page's "Keep me signed in" checkbox. True keeps
+ * the session alive with no idle timeout on a sliding 1-year window, and makes
+ * it ignore shift-end expiry.
  *
  * Default: verifies the PIN, creates a session, sets the httpOnly `cf_sid`
  * cookie, audits the result.
@@ -18,6 +23,7 @@ import { verifyStaffPin, PinError } from '@/lib/auth/pin';
 import {
   createSession,
   cookieMaxAgeForSession,
+  asPersistentFlag,
   SESSION_COOKIE_NAME,
   LEGACY_SESSION_COOKIE_NAME,
   type DeviceKind,
@@ -73,6 +79,7 @@ export async function POST(req: NextRequest) {
     const pin = String((body as { pin?: unknown }).pin ?? '');
     const deviceKind = asDeviceKind((body as { deviceKind?: unknown }).deviceKind);
     const deviceLabel = ((body as { deviceLabel?: unknown }).deviceLabel ?? null) as string | null;
+    const persistent = asPersistentFlag((body as { persistent?: unknown }).persistent);
 
     if (!Number.isFinite(staffId) || staffId <= 0) {
       return NextResponse.json({ error: 'INVALID_REQUEST', field: 'staffId' }, { status: 400 });
@@ -156,7 +163,10 @@ export async function POST(req: NextRequest) {
       deviceLabel,
       ip,
       userAgent: ua,
+      persistent,
       // Only bind expiry to shift end when a shift is actually present.
+      // createSession ignores this for a persistent session — "keep me signed
+      // in" must outlive the shift, or the checkbox is a lie again.
       ...(activeShift ? { expiresAt: activeShift.ends_at } : {}),
     });
 
@@ -168,7 +178,7 @@ export async function POST(req: NextRequest) {
       staffId, sid: session.sid, event: pinless ? 'signin.pinless' : 'signin.pin', result: 'ok',
       ip, userAgent: ua,
       detail: {
-        deviceKind, deviceLabel, pinless,
+        deviceKind, deviceLabel, pinless, persistent,
         shiftId: activeShift?.id ?? null,
         punchId: punch?.id ?? null,
         unscheduled: !activeShift,

@@ -14,7 +14,7 @@
  *
  * Band 1 carries identity plus ONE primary CTA and one quiet exit. Ready /
  * Action-required is a facet that narrows ROWS, so it rides IN the find field
- * (`FilterMenu density="field"`), not as a chip band. `▦` is
+ * (the table's one {@link DataTable} filter control), not as a chip band. `▦` is
  * portal-or-nothing — it mounts into the Band-3 controls slot. Everything else
  * (row fix · column mapping · batch facts · selection verbs) lives on the right
  * rail (`CsvImportStagingRail`).
@@ -297,7 +297,7 @@ export function CsvImportStagingHost() {
         ) : null}
       </div>
 
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="min-h-0 flex-1 overflow-hidden" data-testid="intake-bulk-grid">
         <DataTable<
           OrderImportRowView,
           CsvImportStagingGridColumnKey,
@@ -361,7 +361,6 @@ function StagingLeaf({
   return (
     <CsvImportStagingGridRow
       row={row}
-      mapping={draft?.mapping ?? {}}
       checked={Boolean(draft?.selectedIndexes.has(row.index))}
       focused={draft?.focusRowIndex === row.index}
       onToggle={(index: number) => toggleTableImportSelected(SURFACE, index)}

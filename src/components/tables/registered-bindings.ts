@@ -37,10 +37,7 @@ import { INCOMING_TABLE_BINDING } from '@/components/station/incoming-grid/incom
 import { DAILY_TABLE_BINDING } from '@/features/home/grid/daily-table-definition';
 import { TASKS_TABLE_BINDING } from '@/features/tasks/grid/tasks-table-definition';
 import { RECEIVING_TABLE_BINDING } from '@/components/station/receiving-grid/receiving-table-definition';
-import {
-  ORDERS_DEFAULT_TABLE_BINDING,
-  ORDERS_TESTED_TABLE_BINDING,
-} from '@/components/dashboard/orders-queue/orders-table-definition';
+import { ORDERS_DEFAULT_TABLE_BINDING } from '@/components/dashboard/orders-queue/orders-table-definition';
 import { CATALOG_LINK_TABLE_BINDING } from '@/features/review/catalog-link/grid/catalog-link-table-definition';
 import { IMPORT_EXCEPTION_TABLE_BINDING } from '@/features/review/catalog-link/grid/import-exception-table-definition';
 import { UNITS_TABLE_BINDING } from '@/components/inventory/units-grid/units-table-definition';
@@ -55,7 +52,6 @@ import { TRACKING_EXCEPTIONS_TABLE_BINDING } from '@/components/tracking-excepti
 import { BINS_TABLE_BINDING } from '@/components/warehouse/bins-grid/bins-table-definition';
 import { WARRANTY_TABLE_BINDING } from '@/components/warranty/grid/warranty-table-definition';
 import { MY_DAY_TABLE_BINDING } from '@/features/my-day/grid/my-day-table-definition';
-import { FBA_BOARD_TABLE_BINDING } from '@/components/fba/fba-board-table-definition';
 
 
 export const REGISTERED_BINDINGS = [
@@ -66,13 +62,13 @@ export const REGISTERED_BINDINGS = [
   // survives because deleting it would mean cutting a branch out of the kept
   // surface, not removing a table.
   INCOMING_TABLE_BINDING,
-  // To-Ship / Packed / station queues share this parametric Orders grid.
-  // `UnshippedTable` → `useOrdersSpreadsheet` → `ordersTableBindingFor(mode)`
-  // → `NonlinearTableHost`. There
+  // To-Ship / Packed / station queues share this parametric Orders grid —
+  // ONE binding since the Wave-1 hand-model kill (`fulfillment.tested` was
+  // layout as a second definition; `?ustatus=TESTED` narrows rows instead).
+  // `UnshippedTable` → `useOrdersSpreadsheet` → `NonlinearTableHost`. There
   // is no desk-local `to-ship` family — that fork only isolated prefs while
   // painting the same cells, and it clipped ORDER identity.
   ORDERS_DEFAULT_TABLE_BINDING,
-  ORDERS_TESTED_TABLE_BINDING,
   // Home → Daily: the shift checklist as a real collection, not a prose list.
   DAILY_TABLE_BINDING,
   // Home → Tasks: one staffer's own `staff_todos`, ported off the hand-rolled
@@ -117,10 +113,4 @@ export const REGISTERED_BINDINGS = [
   // Home › Today. Sibling of `home.daily`, never a merge with it — two stores
   // answering two questions.
   MY_DAY_TABLE_BINDING,
-  // Amazon Prep › shipment board. The LAST surface to reach `LedgerGrid`
-  // without a definition — it hand-rolled its track template and its header
-  // spans until 2026-08-29, so a column model here would have been a stale
-  // second declaration. Now that both derive from `FBA_BOARD_GRID_COLUMNS`, the
-  // descriptor describes what renders and the board joins the waist.
-  FBA_BOARD_TABLE_BINDING,
 ] as const;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { FbaBoardItem } from '@/components/fba/FbaBoardTable';
+import type { FbaBoardItem } from '@/lib/fba/types';
 import { FBA_BOARD_SELECTION, FBA_PAIRED_SELECTION } from '@/lib/fba/events';
 
 function dedupeByItemId(items: FbaBoardItem[]): FbaBoardItem[] {

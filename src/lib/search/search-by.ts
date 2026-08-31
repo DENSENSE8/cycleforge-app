@@ -16,12 +16,22 @@
 import { looksLikeMarketplaceOrderNumber } from '@/lib/search/looks-like-marketplace-order-number';
 import { looksLikeIdentifier } from '@/lib/search/search-hit';
 
+/**
+ * Display order, left to right. Ordered by how often an operator reaches for
+ * each method, so the common ones are nearest the field: order, tracking,
+ * serial, ticket. Internal ID sits last because it is the one you use when you
+ * are holding a printed handle — deliberate, not exploratory.
+ *
+ * Index-addressed by `searchByPickerScope`, which no caller currently uses; if
+ * one ever persists an index, that becomes a migration and this order stops
+ * being free to change.
+ */
 export const SEARCH_BY_SCOPES = [
-  'internal',
   'order',
   'tracking',
   'serial',
   'ticket',
+  'internal',
 ] as const;
 export type SearchByScope = (typeof SEARCH_BY_SCOPES)[number];
 
@@ -40,12 +50,29 @@ export function searchByPickerValue(index: number): string {
 const SEARCH_BY_SCOPE_SET = new Set<string>(SEARCH_BY_SCOPES);
 
 /** Operator-facing method name — "Order number", not a plural kind word. */
+/**
+ * Method names as they appear on the pill and in the placeholder.
+ *
+ * "Number" is spelled `#`. These sit in a row of five pills in a 24rem palette,
+ * where the word costs more width than it carries meaning — every operator
+ * already reads `#` as "number", and the shorter label is what lets all five
+ * methods fit on one line instead of wrapping.
+ */
+/**
+ * Method names as they appear on the pill.
+ *
+ * One word each. These sit in a row of five under the search field, where
+ * "Order number #" spends width restating what the field beside it already
+ * says — the operator is typing an identifier; the pill only has to say WHICH
+ * KIND. The longer, genuinely useful phrasing lives in
+ * {@link SEARCH_BY_METHOD_HINT} and reaches the operator as the placeholder.
+ */
 export const SEARCH_BY_METHOD_LABEL: Readonly<Record<SearchByScope, string>> = {
-  internal: 'Internal ID',
-  order: 'Order number',
-  tracking: 'Tracking number',
-  serial: 'Serial number',
-  ticket: 'Ticket number',
+  internal: 'ID',
+  order: 'Order',
+  tracking: 'Tracking',
+  serial: 'Serial',
+  ticket: 'Ticket',
 };
 
 export const SEARCH_BY_METHOD_HINT: Readonly<Record<SearchByScope, string>> = {
@@ -65,9 +92,16 @@ const SEARCH_BY_SHORTCUT: Readonly<Record<SearchByScope, string | null>> = {
   ticket: '#',
 };
 
+/**
+ * Placeholder for the field once a method is chosen.
+ *
+ * Reads from the HINT, not the pill label: the pill had to be one word to fit
+ * five across, but the placeholder has the whole field and is the right place
+ * to say what shape of thing to type.
+ */
 export function searchByPlaceholder(scope: SearchByScope): string {
   if (scope === 'internal') return 'R-id, shipment, QR…';
-  return `${SEARCH_BY_METHOD_LABEL[scope]}…`;
+  return `${SEARCH_BY_METHOD_HINT[scope]}…`;
 }
 
 export function searchByShortcut(scope: SearchByScope): string | null {

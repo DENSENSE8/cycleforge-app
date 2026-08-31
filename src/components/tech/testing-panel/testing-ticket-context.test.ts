@@ -13,7 +13,7 @@ function row(partial: Partial<ReceivingLineRow> & { id: number }): ReceivingLine
 }
 
 describe('resolveTestingTicketContextOpen', () => {
-  it('opens Ticket Displays when a ticket is already linked', () => {
+  it('opens Ticket composer context when a ticket is already linked', () => {
     const r = resolveTestingTicketContextOpen(
       row({ id: 1, serials: [] }),
       true,

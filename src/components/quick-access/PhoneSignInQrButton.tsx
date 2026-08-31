@@ -22,9 +22,9 @@ import { HEADER_ICON_BTN_CLASS, TOP_CHROME_ICON_GLYPH } from '@/components/layou
  *
  * Split out from {@link PhoneSignInQrButton} 2026-08-01 so the two surfaces
  * that offer this action can share ONE dialog: the mobile header keeps the icon
- * trigger below, and the desktop account overflow (`StaffAccountFooter`) drives
- * this directly from a menu row. Re-typing the QR markup at the second call
- * site would have been the page-local fork the house rules ban.
+ * trigger below, and Settings → Workstation drives this from a "This device"
+ * row. Re-typing the QR markup at the second call site would have been the
+ * page-local fork the house rules ban.
  */
 export function PhoneSignInQrDialog({
   open,
@@ -71,9 +71,9 @@ export function PhoneSignInQrDialog({
  * Header phone icon + the scan overlay above.
  *
  * **Mobile chrome only** since the 2026-08-01 altitude pass — the desktop
- * top-right cluster is down to find · notifications · assistant, and this action
- * moved to the spine's account overflow. Mobile keeps the icon because it has no
- * MasterNav spine, so it has no account overflow to move it into.
+ * top-right cluster is down to find · add · goal · inbox · assistant, and this
+ * action lives on Settings → Workstation (this device). Mobile keeps the icon
+ * because it has no Settings workstation surface in the scan-first shell.
  */
 export function PhoneSignInQrButton({
   className,

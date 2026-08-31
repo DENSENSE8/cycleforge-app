@@ -1,10 +1,17 @@
 'use client';
 
 /**
- * Conversation message card — hard DS primitive for every chat / thread bubble.
+ * Conversation message row — hard DS primitive for every chat / thread entry.
  *
- * White-plane hosts paint gray public cards and amber internal washes via
- * {@link conversationShell}. Compose this; never a page-local bubble twin.
+ * A row on a connected activity timeline, not a bubble: the caller's `mark`
+ * becomes the NODE, this component threads the spine behind it, and the body
+ * sits beside it on the stream's own plane. Compose this; never a page-local
+ * twin.
+ *
+ * Callers hand in an already-boxed mark ({@link CONVERSATION_MARK_BOX}) and do
+ * not know the spine exists — which is the point. A host that had to draw its
+ * own connector would draw it at its own x, and two hosts would disagree about
+ * where the thread runs.
  */
 
 import type { ReactNode } from 'react';
@@ -16,6 +23,8 @@ import {
   CONVERSATION_INTERNAL_CHIP,
   CONVERSATION_META,
   CONVERSATION_ROW,
+  CONVERSATION_SPINE,
+  CONVERSATION_SPINE_TRACK,
   conversationShell,
   formatConversationAge,
 } from './conversation-chrome';
@@ -34,7 +43,10 @@ export function ConversationMessageCard({
 }: {
   /** Private / internal note — amber wash + chip. */
   internal?: boolean;
-  /** Leading mark column (avatar / glyph). Compose {@link CONVERSATION_MARK_BOX}. */
+  /**
+   * The timeline NODE (avatar / glyph). Compose {@link CONVERSATION_MARK_BOX};
+   * the spine is threaded behind it here, so it must stay opaque.
+   */
   mark?: ReactNode;
   author?: string;
   /** ISO / Date for relative age; absolute stays on hover when `atAbsolute` set. */
@@ -65,7 +77,12 @@ export function ConversationMessageCard({
       data-testid={testId}
       className={cn(CONVERSATION_ROW, className)}
     >
-      {mark != null ? mark : null}
+      {mark != null ? (
+        <div className={CONVERSATION_SPINE_TRACK}>
+          <span aria-hidden className={CONVERSATION_SPINE} />
+          {mark}
+        </div>
+      ) : null}
       <div className={conversationShell(internal)}>
         {author || ageNode || internal || metaTrailing ? (
           <div className={CONVERSATION_META}>

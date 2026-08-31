@@ -1,4 +1,4 @@
-import type { FbaBoardItem } from '../FbaBoardTable';
+import type { FbaBoardItem } from '@/lib/fba/types';
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 

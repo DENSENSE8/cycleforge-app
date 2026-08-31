@@ -70,6 +70,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
     await setStaffPin(enr.staffId, pin);
     await pool.query(`UPDATE staff SET status = 'active' WHERE id = $1 AND status = 'invited'`, [enr.staffId]);
 
+    // "Keep me signed in": NOT persistent, and deliberately so even though the
+    // other link-mint flows could arguably go either way — a 'phone' session is
+    // a 4-hour handoff window on purpose (it matches the Ably token TTL), and
+    // making it indefinite would contradict the device kind, not just the
+    // absent checkbox.
     const session = await createSession({
       staffId: enr.staffId,
       deviceKind: 'phone',

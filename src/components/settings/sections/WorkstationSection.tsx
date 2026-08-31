@@ -12,6 +12,12 @@ import {
 } from '@/lib/settings/workstation';
 import { packPlacementQuery } from '@/lib/queries/pack-placement-queries';
 import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
+import { Download, Monitor, Smartphone } from '@/components/Icons';
+import { PhoneSignInQrDialog } from '@/components/quick-access/PhoneSignInQrButton';
+import { useAuth } from '@/contexts/AuthContext';
+import { isDesktopHost } from '@/lib/desktop/desktop-host';
+import { DESKTOP_DOWNLOAD_URL } from '@/lib/desktop/desktop-download';
+import { openKioskShellPreview } from '@/lib/kiosk/preview-url';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { Panel } from '@/design-system/primitives';
@@ -31,6 +37,66 @@ const FIELD_CLS =
   'w-full rounded-xl border border-border-default bg-surface-card px-3 py-2 text-sm text-text-default ' +
   cn('placeholder:text-text-faint', focusRing('field', 'accent')) +
   focusRing('field', 'accent');
+
+const DEVICE_ACTION_CLS = cn(
+  'ds-raw-button inline-flex w-full items-center gap-2 rounded-xl border border-border-soft bg-surface-card px-4 py-2 text-left text-xs font-semibold text-text-default hover:bg-surface-canvas',
+  focusRing('control', 'accent'),
+);
+
+/**
+ * Once-per-bench setup that used to live in the account ⋯ menu. Workstation
+ * is "this station / this machine", so phone QR, kiosk preview, and the
+ * desktop installer belong here — not beside Settings / clipboard / sign-out.
+ */
+function ThisDevicePanel() {
+  const { user } = useAuth();
+  const [phoneQrOpen, setPhoneQrOpen] = useState(false);
+  const [inDesktopShell, setInDesktopShell] = useState(false);
+  useEffect(() => setInDesktopShell(isDesktopHost()), []);
+
+  return (
+    <>
+      <Panel radius="2xl" className="space-y-3">
+        <div>
+          <h3 className="text-base font-semibold text-text-default">This device</h3>
+          <p className="mt-1 text-xs text-text-soft">
+            Open this station on a phone, preview the kiosk shell, or install the desktop app.
+          </p>
+        </div>
+        <div className="flex flex-col gap-2">
+          <button
+            type="button"
+            className={DEVICE_ACTION_CLS}
+            onClick={() => setPhoneQrOpen(true)}
+          >
+            <Smartphone className="h-3.5 w-3.5 shrink-0 text-text-muted" />
+            Open on your phone
+          </button>
+          <button
+            type="button"
+            className={DEVICE_ACTION_CLS}
+            onClick={() => openKioskShellPreview(user?.organizationSlug ?? undefined)}
+          >
+            <Monitor className="h-3.5 w-3.5 shrink-0 text-text-muted" />
+            Kiosk shell preview
+          </button>
+          {!inDesktopShell ? (
+            <a
+              href={DESKTOP_DOWNLOAD_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={DEVICE_ACTION_CLS}
+            >
+              <Download className="h-3.5 w-3.5 shrink-0 text-text-muted" />
+              Download desktop app
+            </a>
+          ) : null}
+        </div>
+      </Panel>
+      <PhoneSignInQrDialog open={phoneQrOpen} onOpenChange={setPhoneQrOpen} />
+    </>
+  );
+}
 
 export function WorkstationSection() {
   const [settings, setSettings] = useState<WorkstationSettings>(DEFAULT_WORKSTATION);
@@ -134,6 +200,8 @@ export function WorkstationSection() {
 
         {status && <span className="block text-xs text-text-soft">{status}</span>}
       </Panel>
+
+      <ThisDevicePanel />
     </div>
   );
 }

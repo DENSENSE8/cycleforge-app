@@ -4,24 +4,43 @@ import { StationAmbientWash } from './StationAmbientWash';
 
 /**
  * Station panel root — **SoT for the Unbox-family outer shell**: the
- * `relative flex h-full min-h-0 flex-col bg-surface-sunken` column (sunken
- * center plane on the shared canvas host) plus the
- * {@link StationAmbientWash} depth backdrop. Compose this instead of
- * hand-rolling that recipe on every station right-pane (Unbox / Triage /
- * Testing …).
+ * `relative flex h-full min-h-0 flex-col` column that every station right-pane
+ * (Unbox / Triage / Testing / Pack / Review / `/search`) composes instead of
+ * hand-rolling the recipe.
  *
- * The panel root hosts the ambient wash so the gradient covers identity + body;
- * the child {@link StationWorkbench} then passes `ambientWash={false}` + a
- * transparent background. Overlays (photo peek, modals) compose as children
- * (or around the root), not inside `StationWorkbench`.
+ * ## The plane is FLAT WHITE — no grey anywhere (operator ruling, 2026-08-30)
  *
- * Guard: `station-workbench-chrome.guard.test.ts` (Guard C ratchets hand-rolled
- * panel-root strings in station paths down to this SoT).
+ * `bg-surface-card`, edge to edge, and separation inside it is **padding plus a
+ * hairline** — never a tone change.
+ *
+ * This shell went three ways in one day and the ruling is the last one, so the
+ * reasoning is worth keeping: it started `bg-surface-sunken` under a gradient
+ * while every child painted `bg-transparent`, which meant the grey was not a
+ * ground plane at all — it was a tint leaking through wherever content ran out.
+ * It was then tried as a proper sunken WELL (canvas ground, white band cards,
+ * an 8px gutter as the separator), which is the textbook pattern and did read
+ * as depth. The operator's call, looking at it on the floor: no grey. A station
+ * is one continuous work surface, and a gutter that shows ground is one more
+ * thing on screen that is not the job.
+ *
+ * So bands separate the flat way — a flush header bar, `px-3` on the names,
+ * and a `border-subtle` seam. `border-subtle` (`#e2e8f0`), never `border-hairline`
+ * (`#f1f5f9`): the hairline token is the same hex as `surface-sunken`, a line
+ * the colour of a fill, and it disappears at bench distance.
+ *
+ * `surface="well"` survives for a surface that genuinely wants a recessed
+ * ground. Nothing uses it. Read the paragraph above before you do.
+ *
+ * Overlays (photo peek, modals) compose as children (or around the root), not
+ * inside `StationWorkbench`.
  */
 export function StationPanelRoot({
   children,
-  /** Set false for a panel that supplies its own backdrop (rare). */
-  wash = true,
+  /**
+   * Ambient gradient over the well. OFF by default — the plane is one exact
+   * token, and a gradient across it is a second, drifting one.
+   */
+  wash = false,
   /**
    * Opt into scan-station **floor** density (`globals.css` →
    * `[data-density='floor']`): type holds at ~3ft, control hit-boxes lift to the
@@ -35,24 +54,20 @@ export function StationPanelRoot({
   /**
    * The column plane.
    *
-   * - `sunken` (default) — the scan-station recipe: a sunken centre reading as
-   *   a recessed plane on the shared canvas, with the ambient wash over it.
-   * - `card` — a flat white column (`--ds-color-surface-card`, `#ffffff` in the
-   *   light theme). Read surfaces that are ALL work-surface and carry no rails
-   *   of their own use this: on `/search` the three columns are meant to read as
-   *   one continuous sheet, and a sunken centre between two white rails paints
-   *   two seams that mean nothing there.
+   * - `card` (default) — flat white, edge to edge. Every station.
+   * - `well` — a recessed ground (`--ds-color-background-canvas`) for white
+   *   cards to float on. No callers; see the docblock before adding one.
    *
-   * Selecting `card` also drops the ambient wash — a gradient backdrop on a flat
-   * white plane is exactly the off-white cast it is supposed to remove.
+   * `card` also forces the wash off — a gradient on a flat white plane is
+   * exactly the off-white cast it is supposed to remove.
    */
-  surface = 'sunken',
+  surface = 'card',
   className,
 }: {
   children: ReactNode;
   wash?: boolean;
   density?: 'floor';
-  surface?: 'sunken' | 'card';
+  surface?: 'well' | 'card';
   className?: string;
 }) {
   const flat = surface === 'card';
@@ -62,7 +77,7 @@ export function StationPanelRoot({
       data-station-surface={surface}
       className={cn(
         'relative flex h-full min-h-0 flex-col',
-        flat ? 'bg-surface-card' : 'bg-surface-sunken',
+        flat ? 'bg-surface-card' : 'bg-surface-canvas',
         className,
       )}
     >

@@ -22,17 +22,17 @@ import {
  * Import staging — a triage queue whose whole job is picking N rows to commit.
  *
  * `multiSelect: true` is the load-bearing flag: Confirm acts on the selection ∩
- * Ready. `inCellEdit: true` — correcting an import is spreadsheet work, so a
- * mapped field is fixed where the operator is already looking; the rail's Row
- * leaf stays the *nuanced* plane (all six fields at once, with the missing-field
- * reason), not the only way in. `rowTriageFlags: false`: the `status` track
- * already carries this surface's one state, and a staff row colour beside it
- * would be a second story about the same row.
+ * Ready. `inCellEdit: false` — a value is corrected on the rail's Row leaf (all
+ * six fields at once, with the missing-field reason) or by re-mapping the source
+ * column; the cell shows what was parsed and does not pretend to accept a value.
+ * `rowTriageFlags: false`: the `status` track already carries this surface's one
+ * state, and a staff row colour beside it would be a second story about the same
+ * row.
  */
 export const CSV_IMPORT_STAGING_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
   multiSelect: true,
-  inCellEdit: true,
+  inCellEdit: false,
   fieldsMenu: true,
   dayBands: false,
 };

@@ -18,6 +18,7 @@ import { LinePoItemsSection } from './LinePoItemsSection';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { UnboxLineController } from './unbox-line-controller';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
+import type { LineCollapseController } from '@/components/station/collapse';
 
 interface POUnboxingSectionProps {
   row: ReceivingLineRow;
@@ -64,6 +65,11 @@ interface POUnboxingSectionProps {
   onViewAllUnits?: (line: ReceivingLineRow) => void;
   /** RETURN match → Displays Timeline. */
   onOpenReturnHistory?: () => void;
+  /**
+   * Per-line capture disclosure ({@link useLineCollapse}) — Unbox centre only.
+   * The Items band's "Collapse all" drives it alongside the band itself.
+   */
+  lineCollapse?: LineCollapseController;
 }
 
 export function POUnboxingSection({
@@ -85,6 +91,7 @@ export function POUnboxingSection({
   onEditFilledSerial,
   onViewAllUnits,
   onOpenReturnHistory,
+  lineCollapse,
 }: POUnboxingSectionProps) {
   const linkedPo = !c.isUnfound && !shouldUseUnmatchedItemsSurface(row);
   const showPoItems = poItems || (includeLinkedPoItems && matching && linkedPo);
@@ -107,6 +114,7 @@ export function POUnboxingSection({
         unitsChrome={unitsChrome}
         c={c}
         embedded
+        lineCollapse={lineCollapse}
         suppressHeader={suppressItemsHeader}
         accordionBootstrap={accordionBootstrap}
         onEditFilledSerial={unitsChrome ? onEditFilledSerial : undefined}

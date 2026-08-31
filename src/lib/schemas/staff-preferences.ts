@@ -13,6 +13,7 @@ import {
   type TimeFormat,
 } from '@/lib/schemas/staff-preferences-constants';
 import type { ThemeName } from '@/design-system/themes/registry';
+import { slotLayoutSchema } from '@/lib/tables/slot-layout';
 
 /**
  * The constants live in `staff-preferences-constants.ts` — a module with no
@@ -255,6 +256,22 @@ export const StaffPreferencesPutBody = z
       .nullable()
       .optional(),
     /**
+     * Per-staff SLOT LAYOUT override, keyed by TableId — the personal layer of
+     * the slot cascade (`resolveEffectiveLayout`: savedView ?? staff ?? org ??
+     * product). Sibling of `tableColumns` on purpose: widths stay keyed by
+     * SLOT ids (`status:1`) there, so rebinding a slot never thrashes them.
+     *
+     * Whole-map shallow JSONB merge like `tableColumns`: writers read-modify-
+     * write the entire record (a one-table write replaces the map). `null`
+     * clears every personal override. Structural validation only here —
+     * catalog staleness is dropped at read time by the cascade resolver.
+     */
+    tableLayouts: z
+      .record(z.string().max(64), slotLayoutSchema)
+      .refine((map) => Object.keys(map).length <= 32, 'too many table layouts')
+      .nullable()
+      .optional(),
+    /**
      * GlobalHeader pin stations (display label + exact href routing). `null`
      * clears pins; absent leaves them unchanged. Device visit-MRU stays local.
      */
@@ -288,6 +305,13 @@ export const StaffPreferencesPutBody = z
       .max(UNBOX_PINNED_EXTRA_TABS_MAX)
       .nullable()
       .optional(),
+    /**
+     * Per-staff MasterNav order — ordered `SidebarNavItem.id`s.
+     * `null` / absent = full catalog in registry order. Ids are intersected
+     * with the permission + org catalog on hydrate; unknown / unpermitted ids
+     * drop; new catalog ids append. Cap 40. See `src/lib/nav/spine-slots.ts`.
+     */
+    spineSlots: z.array(z.string().min(1).max(64)).max(40).nullable().optional(),
   })
   .strict();
 

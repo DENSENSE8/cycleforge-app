@@ -1,5 +1,5 @@
 import { toPSTDateKey } from '@/utils/date';
-import type { FbaBoardItem } from '@/components/fba/FbaBoardTable';
+import type { FbaBoardItem } from '@/lib/fba/types';
 
 export interface CombineData {
   pending: FbaBoardItem[];

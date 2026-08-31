@@ -7,7 +7,10 @@
  * against each other. They must resolve the same clearance from here — never a
  * page-local `pb-*` beside one of them.
  *
- * Safe-area aware: `max()` keeps the card off a device home indicator without
- * inflating the gap on a desktop bench.
+ * Kept tight on purpose (2026-08-30): the mode picker + procedure ring sit
+ * BELOW the composer outline as a caption row — a fat bottom pad left a dead
+ * band between that row and the screen edge. Safe-area still wins on a phone
+ * home indicator; desktop benches go nearly flush.
  */
-export const FLOATING_DOCK_BOTTOM_PAD = 'pb-[max(1rem,env(safe-area-inset-bottom))]';
+export const FLOATING_DOCK_BOTTOM_PAD =
+  'pb-[max(0.25rem,env(safe-area-inset-bottom))]';

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { usePanelActions } from '@/hooks/usePanelActions';
 import type { FnskuCatalogMeta } from '../FnskuCatalogInfoPanel';
-import type { FbaBoardItem } from '../FbaBoardTable';
+import type { FbaBoardItem } from '@/lib/fba/types';
 import type { PlanEntry, ScanLog } from './board-detail-shared';
 
 /**

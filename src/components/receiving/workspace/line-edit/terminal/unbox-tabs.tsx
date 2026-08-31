@@ -5,7 +5,6 @@ import dynamic from 'next/dynamic';
 import { UnitsDisplayHost } from '../UnitsDisplayHost';
 import { PreboxDisplayHost } from '../PreboxDisplayHost';
 import { UnboxLabelPreview } from '../UnboxLabelPreview';
-import { UnboxPlacementSection } from '../UnboxPlacementSection';
 import { POUnboxingSection } from '../POUnboxingSection';
 import { UnboxProcedureChecklist } from '../UnboxProcedureChecklist';
 import { LinkageDisplayHost } from '../LinkageDisplayHost';
@@ -22,6 +21,7 @@ import {
   MapPin,
   Boxes,
   Package,
+  Tag,
   Ticket,
 } from '@/components/Icons';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -36,6 +36,11 @@ import { ListingLinksTab } from '../ListingLinksTab';
 import { UnboxLocationsLeaf } from '../UnboxLocationsLeaf';
 import type { ClaimModalMode } from '../../claim/claim-types';
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
+import {
+  StationBandStack,
+  type BandCollapseController,
+  type LineCollapseController,
+} from '@/components/station/collapse';
 
 /**
  * P3 Displays bodies — deferred chunks. Topic strip labels stay in this module;
@@ -169,6 +174,22 @@ export function buildUnboxOverview(
      * acts, and the outline ties them — one pointer.
      */
     activeStep?: string | null;
+    /**
+     * When set, Items · Label render as one {@link StationBandStack} — a
+     * full-width accordion row each. Click the row to open or close it.
+     * The Label row IS show / hide for the sticker (no nested CTA).
+     */
+    collapse?: {
+      bands: BandCollapseController;
+      collapseAll?: () => void;
+    };
+    /**
+     * Per-LINE disclosure inside the Items band ({@link useLineCollapse}).
+     * "Collapse all" drives both altitudes in one press: the band gives the
+     * column back now, and every line is face-only when the band comes back.
+     * The same module owns both — no second disclosure mechanism for rows.
+     */
+    lineCollapse?: LineCollapseController;
   },
 ): ReactNode {
   const {
@@ -180,30 +201,79 @@ export function buildUnboxOverview(
     onViewAllUnits,
     onFocusCaptureStep,
     activeStep = null,
+    collapse,
+    lineCollapse,
   } = input;
 
+  const items = (
+    <POUnboxingSection
+      row={row}
+      staffId={staffId}
+      poItems
+      matching
+      openInUnbox={false}
+      editLines
+      serialScan
+      dockOwnsCapture
+      onFocusCaptureStep={onFocusCaptureStep}
+      activeStep={activeStep}
+      c={c}
+      suppressItemsHeader
+      accordionBootstrap={accordionBootstrap}
+      onEditFilledSerial={onEditFilledSerial}
+      onViewAllUnits={onViewAllUnits}
+      lineCollapse={lineCollapse}
+    />
+  );
+  const label = (
+    <UnboxLabelPreview
+      row={row}
+      c={c}
+      onReveal={collapse ? () => collapse.bands.open('label') : undefined}
+    />
+  );
+
+  if (!collapse) {
+    return (
+      <div className="space-y-0">
+        {items}
+        {label}
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-0">
-      <POUnboxingSection
-        row={row}
-        staffId={staffId}
-        poItems
-        matching
-        openInUnbox={false}
-        editLines
-        serialScan
-        dockOwnsCapture
-        onFocusCaptureStep={onFocusCaptureStep}
-        activeStep={activeStep}
-        c={c}
-        suppressItemsHeader
-        accordionBootstrap={accordionBootstrap}
-        onEditFilledSerial={onEditFilledSerial}
-        onViewAllUnits={onViewAllUnits}
-      />
-      <UnboxLabelPreview row={row} c={c} />
-      <UnboxPlacementSection row={row} />
-    </div>
+    <StationBandStack
+      collapse={collapse.bands}
+      // Declared order IS the reading order.
+      bands={[
+        {
+          id: 'items',
+          label: 'Items',
+          icon: Boxes,
+          body: items,
+          testId: 'unbox-band-items',
+        },
+        {
+          id: 'label',
+          label: 'Label',
+          icon: Tag,
+          body: label,
+          testId: 'unbox-band-label',
+        },
+      ]}
+      onCollapseAll={
+        collapse.collapseAll
+          ? () => {
+              // Both altitudes, one press. Collapsing only the bands would give
+              // the column back and then hand it straight back to N expanded
+              // capture bars the moment the operator re-opened Items.
+              collapse.collapseAll?.();
+              lineCollapse?.collapseAll();
+            }
+          : undefined
+      }
+    />
   );
 }
 

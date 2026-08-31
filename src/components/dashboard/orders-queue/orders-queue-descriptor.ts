@@ -1,106 +1,73 @@
 /**
- * Outbound Orders queue grid surface descriptor — lifts house
- * `ORDERS_QUEUE_*` columns into TanStack defs + declares surface capabilities
- * (triage flags + in-cell edit are Orders-only today).
+ * Outbound Orders queue grid surface descriptor — lifts the mounted column
+ * model into TanStack defs + declares surface capabilities (the triage wash is
+ * Orders-only today).
+ *
+ * ONE factory since the Wave-1 hand-model kill
+ * (`docs/kill-list/07-slot-table-hand-models.md`): the columns are always a
+ * `SlotLayout` materialization (`ordersCompoundColumnsFor`), never a static
+ * flat array, and there is no second "tested" mode — `?ustatus=TESTED` is row
+ * narrowing, not a column model.
+ *
+ * Locks and accessors derive from the RESOLVED columns handed in, never from a
+ * module constant — a key-only closure over a static list is exactly how the
+ * old flat pane math went stale when the mounted model moved (see
+ * `CompoundGridCell`'s file docblock for the same lesson on frozen offsets).
  */
 
 import { makeGridSurfaceDescriptor, type GridSurfaceCapabilities, type GridSurfaceDescriptor } from '@/design-system/components/grid';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import {
-  isOrdersQueueFrozen,
-  ordersQueueColumnsFor,
-  type OrdersQueueColumn,
-  type OrdersQueueColumnMode,
-} from '@/lib/dashboard-order-row-layout';
-import { getDaysLateNullable } from '@/utils/date';
+import type { OrdersQueueColumn } from '@/lib/dashboard-order-row-layout';
 import { isQueueSortableColumnKey } from '@/utils/queue-display-sort';
-import {
-  queueRowTestedAtRaw,
-  queueRowTesterNameRaw,
-  type QueueRowRecord,
-} from './helpers';
 
-/** Orders Workbench spreadsheet capabilities — triage wash + in-cell edit. */
+/** Orders Workbench spreadsheet capabilities — triage wash, read-only cells. */
 export const ORDERS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: true,
   multiSelect: true,
-  inCellEdit: true,
+  inCellEdit: false,
   fieldsMenu: true,
   dayBands: false,
 };
 
-/** State-math accessor per column key (sort/group value — NOT display markup). */
+/**
+ * State-math accessor per TRACK key (sort/group value — NOT display markup).
+ * The compound row's sortable tracks and their facts mirror
+ * `COMPOUND_TRACK_SORT_KEYS` (`item` → title, `fulfillment` → order id);
+ * every other track resolves null.
+ */
 function accessorFor(key: OrdersQueueColumn['key']): (row: ShippedOrder) => unknown {
   switch (key) {
-    case 'title':
+    case 'item':
       return (row) => String(row.product_title ?? '');
-    case 'age':
-      // Same derived days-late number the Late cell shows.
-      return (row) => getDaysLateNullable(row.deadline_at || row.ship_by_date);
-    case 'condition':
-      return (row) => String(row.condition ?? '');
-    case 'qty':
-      return (row) => Number(row.quantity) || 0;
-    case 'tester':
-      return (row) => queueRowTesterNameRaw(row as QueueRowRecord);
-    case 'testedAt':
-      return (row) => queueRowTestedAtRaw(row as QueueRowRecord);
-    case 'packStation':
-      return (row) =>
-        String((row as { pack_location_name?: string | null }).pack_location_name ?? '').trim() ||
-        null;
-    case 'order':
+    case 'fulfillment':
       return (row) => String(row.order_id ?? '');
-    case 'tracking':
-      return (row) => {
-        const r = row as QueueRowRecord;
-        return String((r.tracking_number as string | undefined) || row.shipping_tracking_number || '').trim();
-      };
     default:
       return () => null;
   }
 }
 
 /**
- * Build the descriptor from a RESOLVED column list (post-visibility / mode), so
+ * Build the descriptor from a RESOLVED column list (post-visibility), so
  * `contentMinWidthRem` and the TanStack defs follow the tracks that render.
+ * Stable exported reference on purpose: the surface memoizes the descriptor on
+ * `[makeDescriptor, visible]`, and an inline arrow would rebuild TanStack
+ * columnDefs every render (plumbing guard).
  */
 export function makeOrdersGridDescriptor(
-  mode: OrdersQueueColumnMode,
-  columns: readonly OrdersQueueColumn[] = ordersQueueColumnsFor(mode),
+  columns: readonly OrdersQueueColumn[],
 ): GridSurfaceDescriptor<ShippedOrder, OrdersQueueColumn> {
   return makeGridSurfaceDescriptor<ShippedOrder, OrdersQueueColumn>(
-    mode,
+    'fulfillment.default',
     columns,
     {
       // Compound-aware: the header's key is a TRACK, the sort vocabulary is in
       // FACTS. `isQueueColumnSort` alone answered false for every compound
       // track, so no header offered the affordance and none of them sorted.
       isSortable: isQueueSortableColumnKey,
-      // Late column activates most-overdue-first (desc); other facts stay asc.
-      // `age` is days-late: most overdue first. Nothing else is a magnitude
-      // where "biggest first" is the useful default.
-      sortDescFirst: (key) => key === 'age',
-      isLocked: isOrdersQueueFrozen,
+      // Locked = the mounted model's own frozen prefix, never a static list.
+      isLocked: (key) => columns.some((c) => c.key === key && c.frozen === true),
       accessorFor,
     },
     ORDERS_GRID_CAPABILITIES,
   );
-}
-
-/**
- * Stable `LedgerGridSurface` factories — one per column mode. The surface
- * memoizes the descriptor on `[makeDescriptor, visible]`; an inline arrow
- * would rebuild TanStack columnDefs every render (plumbing guard).
- */
-export function makeOrdersGridDescriptorDefault(
-  columns: readonly OrdersQueueColumn[],
-): GridSurfaceDescriptor<ShippedOrder, OrdersQueueColumn> {
-  return makeOrdersGridDescriptor('fulfillment.default', columns);
-}
-
-export function makeOrdersGridDescriptorTested(
-  columns: readonly OrdersQueueColumn[],
-): GridSurfaceDescriptor<ShippedOrder, OrdersQueueColumn> {
-  return makeOrdersGridDescriptor('fulfillment.tested', columns);
 }

@@ -169,14 +169,13 @@ export function UnboxLineWorkspace({
 
   return (
     /*
-      The history dock wraps BOTH the desk pane and the carton overlay.
+      The outer shell wraps BOTH the desk pane and the carton overlay.
 
-      It was briefly inside `UnboxWorkspaceView`, which is the pane below — and
-      that pane goes `visibility: hidden` whenever a carton is open, so the dock
-      disappeared exactly while an operator was unboxing. That is the one moment
-      "did that scan land?" is being asked, so a dock that hides then is worse
-      than none: it teaches the bench not to look there.
-      `station-history-dock.spec.ts` caught it.
+      Anything that must stay legible while a carton is open belongs HERE, not
+      inside `UnboxWorkspaceView` — that pane goes `visibility: hidden` whenever
+      a carton is open, so a status readout mounted in it would disappear at
+      exactly the moment "did that scan land?" is being asked. The station
+      history dock learned this the hard way before it was deleted.
     */
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
     <div className={cn(appWorkCanvasLayoutClass, 'h-full')}>

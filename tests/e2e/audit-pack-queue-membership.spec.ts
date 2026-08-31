@@ -52,7 +52,7 @@ test('Pack queue membership for a tested order', async ({ page }) => {
     await page.waitForTimeout(3500);
     searched = true;
   } else {
-    // Search is always-open TechRailSearchBar (chrome) — type into the field.
+    // Search is an always-open find field — type into it.
     const toggle = page.getByRole('button', { name: /search/i }).first();
     if (await toggle.count()) {
       await toggle.click();

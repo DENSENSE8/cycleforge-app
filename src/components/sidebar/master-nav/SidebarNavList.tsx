@@ -1,22 +1,41 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
-import { ChevronDown, ChevronLeft, ChevronsRight } from '@/components/Icons';
+import { useCallback, useMemo } from 'react';
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import { ChevronLeft, ChevronsRight } from '@/components/Icons';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import {
   spineAccentFor,
-  spineRailLineClass,
   type SpineAccentClasses,
 } from '@/lib/nav/spine-section-accent';
 import {
+  resolveSpineMapEntries,
+  spineStructuralTopPages,
+  SPINE_STATIONS_SLOT_ID,
+} from '@/lib/nav/spine-slots';
+import {
   SPINE_SECTIONS,
-  getStationSubgroupDef,
+  hasDeskPageChrome,
   isSpineMapTopRow,
   spineSectionIdForPage,
-  stationSubgroupMembers,
+  type SidebarIconComponent,
   type SidebarPageNav,
-  type SpineSectionId,
-  type StationSubgroupId,
 } from '@/lib/sidebar-navigation';
 import {
   SPINE_LABEL_CLASS,
@@ -28,131 +47,100 @@ import { cn } from '@/utils/_cn';
 import { StaffAccountFooter } from './StaffAccountFooter';
 
 /**
- * The page list inside the sidebar spine — **ONE flat scrolling map**.
+ * MasterNav page list — full catalog, hold-drag to reorder.
  *
- * The body is every reachable destination in {@link SPINE_SECTIONS} order —
- * **Home · Media Library first**, then **Scan Stations** and the domains —
- * grouped by spacing/order alone, no rule between sections (2026-08-16, the
- * map has zero horizontal hairlines top to bottom, matching the context rail
- * beside it — including no seam above the staff account footer). Record /
- * destination find is ⌘K (header Find) — the in-spine "Go to…" field was
- * removed 2026-08-28. Below the map: the footer band — Operations Studio ·
- * Admin · Settings — then {@link StaffAccountFooter}.
- *
- * ## The drill is gone (2026-08-02)
- *
- * Six of the eight sections held exactly one page, so drilling charged a click
- * to reveal a row carrying the section's own name — `Catalog › Catalog`. That
- * duplicate was the visible symptom of hierarchy with no content.
- *
- * **Scan Stations enters via a list-replace drill (2026-08-03), not an eyebrow.**
- * Other sections render pages directly — no clickable header ROW and never a
- * chevron: a header would re-create `Catalog › Catalog` everywhere a section
- * shares a name with a page beneath it, which is most of them.
- *
- * **Box to box, not spaced (2026-08-03).** Sections used to carry a soft
- * `mt-1` gap between blocks — the only thing left marking that the root axis
- * is deliberately mixed (Scan Stations is an INPUT MODEL among business
- * DOMAINS). That gap is gone: the spine matches the rest of the app's
- * squared-off, flush-box chrome (`ui-design-system.md` → Ops chrome is
- * flush-square), and every row in this column — L1, child, subgroup, drill
- * back header, search result — now abuts its neighbor with zero vertical
- * margin or padding. What marks the axis split now is the SHAPE difference
- * (Scan Stations alone carries a drill trailing chevron and a Back header),
- * not a gap. A row's own hover/active fill is what still shows where you are.
- *
- * ## Multi-child L1 discloses in place
- *
- * Click expands / collapses — it does not navigate. Destination is a child
- * row (or a leaf L1). Every nest opens through {@link renderNest} —
- * **instantly, with no animation**. Expanding every nest at once was measured
- * at **64 rows / ~1790px against a ~600px scrollport**, so it is an accordion:
- * opening one closes the others.
- *
- * ## Chrome
- *
- * **No badges of any kind (2026-08-03).** The trailing child-count pill is gone.
- * It meant structural cardinality — a number that never changes — in the shape
- * the whole industry uses for unread work, so it read as a notification and won
- * an attention contest it had no business entering. The count survives in each
- * row's accessible name. The vacated slot stays EMPTY: see `renderPageHeader`.
- *
- * **Nesting is a rail, not just an indent.** Child rows draw a left hairline
- * (`renderChildLikeRow`) that costs no vertical space — the one thing THIS
- * measurement (`sidebar-open-close.spec.ts` MEASURE tests) used to be short
- * of, before rows grew (see next). The row gets its height from an explicit
- * box, not from `py-*` — a box, not a padded label.
- *
- * **Monochrome, uniform, and STILL (2026-08-08).** There is no per-section hue
- * — {@link spineAccentFor} returns one treatment for every row at every
- * altitude (`src/lib/nav/spine-section-accent.ts` carries the ruling). Hierarchy
- * is INDENT + the nesting rail + weight; identity is grouping and order. Ink
- * is CONSTANT now (2026-08-16, see the accent module) — `spineAccentFor`
- * no longer dims idle rows. L1 / drill-back / nested children share
- * {@link SPINE_ROW_FACE_CLASS} (`h-10`, 40px — bumped from the shared
- * `PRIMARY_CHROME_ROW_FACE`'s 28px, settled here after a `h-14`/56px
- * overshoot; see the constant's own docblock above). Labels are
- * {@link SPINE_LABEL_CLASS} (`role-nav` + regular) — not `role-title`.
- *
- * Nothing on a row travels on hover: the glyph's 2px CSS lift stays deleted,
- * because a structural anchor in a 20-row column should not move under the
- * pointer, and the wash answers hover on its own. The older motion bans stand
- * and are about cost, not taste — a framer `whileHover` here would re-render
- * React on every mousemove across the list, a row-level `scale` breaks the
- * baseline every dense surface beside it aligns to, and a hover weight shift
- * reflows text mid-pointer.
- *
- * **Every row carries its glyph, at the same light page stroke and the same
- * ink as its own label.** A child / station-subgroup row is the switch between
- * one page's siblings, which is the job the GlobalHeader page switcher draws
- * with the same icon set — two doors onto one destination must not disagree
- * about whether it has a face. What child rows do NOT get is the heavier L2
- * weight: at 2.25 a child glyph out-draws its own parent at 1.5. Subordination
- * is the indent, the rail, and the ink step (soft vs muted) — never a second
- * type size, and never a colour.
- *
- * **This component has NO motion. None.** (2026-08-08.) It does not import the
- * motion barrel, and it should not start. Every state change — mounting the
- * map, selecting a row, opening a nest, entering the Scan Stations drill,
- * switching to ranked search results — happens on one frame.
- *
- * That is a navigator on a scan bench doing what it is for. Everything in this
- * column is a thing the operator has clicked a hundred times and is reaching
- * for by muscle memory; any duration at all is time inserted between the reach
- * and the target. Four treatments were tried and all four are gone:
- *
- *  - a **selection wash settle** (`spineActiveWash`, 150ms) — imperceptible
- *    once the fill became a few-percent plane step;
- *  - a **per-row nest cascade** (`spineRowStagger*`, 15ms × index) — reads as
- *    a wave travelling down-and-right rather than a disclosure;
- *  - a **one-block nest height expand** (`collapseHeight`) — no sweep, same
- *    delay;
- *  - a **body crossfade** (`spineBodySwap`, 120ms on `mode="wait"`) — the
- *    wait meant the outgoing list finished fading before the incoming one
- *    mounted, so entering Scan Stations cost ~240ms and flashed an empty
- *    column between two lists.
- *
- * `spineRowStagger*` survives in the catalog for ⌘K — a palette revealing
- * ranked results is a genuinely different job. Nothing else does.
+ * Home · Media Library stay fixed at the top. Scan Stations is one parent
+ * row that list-replaces into floor benches. Every other reachable L1 is a
+ * sortable row: short click navigates (or opens a child drill); hold ~180ms
+ * anywhere on the title row then drag reorders and persists to
+ * `prefs.spineSlots`. No grip chrome — the whole label row is the handle.
  */
 interface SidebarNavListProps {
   activePage: SidebarPageNav;
   activeChildId: string | null;
   otherPages: SidebarPageNav[];
   onNavigate: (pageId: string, childId?: string) => void;
-  /** Hover hook per page row — warms the destination's data (nav-data-prefetch). */
   onRowHover?: (page: SidebarPageNav) => void;
-  /** Scan Stations Vercel drill — list-replace for the floor section only. */
-  stationsDrillOpen: boolean;
-  onStationsDrillChange: (open: boolean) => void;
+  drillId: string | null;
+  onDrillChange: (id: string | null) => void;
+  spineOrder: string[];
+  onSpineOrderChange: (ids: string[]) => void;
   className?: string;
 }
 
-function pagesForSection(pages: SidebarPageNav[], sectionId: SpineSectionId): SidebarPageNav[] {
-  return pages.filter((p) => spineSectionIdForPage(p) === sectionId);
-}
+function SortableTitleRow({
+  id,
+  label,
+  icon: RowIcon,
+  active,
+  ariaLabel,
+  onActivate,
+  onMouseEnter,
+  accent,
+  drill,
+}: {
+  id: string;
+  label: string;
+  icon: SidebarIconComponent;
+  active: boolean;
+  ariaLabel: string;
+  onActivate: () => void;
+  onMouseEnter?: () => void;
+  accent: SpineAccentClasses;
+  drill?: boolean;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
 
-// Destination ranking lives in ⌘K (`searchNav` / CommandBar), not in this map.
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
+      className={cn('relative', isDragging && 'z-10 opacity-80')}
+    >
+      <button
+        type="button"
+        {...attributes}
+        {...listeners}
+        onClick={onActivate}
+        onMouseEnter={onMouseEnter}
+        aria-label={ariaLabel}
+        aria-current={active ? 'page' : undefined}
+        className={cn(
+          'ds-raw-button flex w-full items-center gap-2 px-2 text-left touch-none',
+          SPINE_ROW_SHELL_CLASS,
+          SPINE_ROW_FACE_CLASS,
+          active ? accent.activePage : accent.idlePage,
+          isDragging && 'cursor-grabbing ring-1 ring-inset ring-border-soft',
+        )}
+      >
+        <RowIcon
+          className={navIconStrokeClass(
+            cn(
+              SPINE_ROW_ICON_CLASS,
+              active ? accent.activePageIcon : accent.idlePageIcon,
+            ),
+          )}
+        />
+        <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)} title={label}>
+          {label}
+        </span>
+        {drill ? (
+          <ChevronsRight className={cn(SPINE_ROW_ICON_CLASS, 'text-text-faint')} aria-hidden />
+        ) : null}
+      </button>
+    </div>
+  );
+}
 
 export function SidebarNavList({
   activePage,
@@ -160,224 +148,57 @@ export function SidebarNavList({
   otherPages,
   onNavigate,
   onRowHover,
-  stationsDrillOpen,
-  onStationsDrillChange,
+  drillId,
+  onDrillChange,
+  spineOrder,
+  onSpineOrderChange,
   className,
 }: SidebarNavListProps) {
   const highlightedChildId = activeChildId ?? activePage.children?.[0]?.id ?? null;
-  // There is no motion state here, because there is no motion here. See the
-  // "this component has NO motion" note above for the four treatments that
-  // were tried and why each one lost.
-
-  const topPages = otherPages.filter(isSpineMapTopRow);
-  const bottomPages = otherPages.filter((p) => (p.kind ?? 'bottom') === 'bottom');
+  const topPages = spineStructuralTopPages(otherPages);
   const neutralAccent = spineAccentFor(null);
-
-  /**
-   * Station subgroups the operator has expanded (Receiving · Walk-In). Default
-   * is **collapsed** — opening one nest closes the others (accordion). Owning
-   * the active page still forces open so you cannot hide the bench you are on.
-   * Cleared on every in-app page jump so a manual expand cannot stack beside
-   * another page's children (Receiving open + Testing open).
-   */
-  const [expandedSubgroups, setExpandedSubgroups] = useState<ReadonlySet<StationSubgroupId>>(
-    () => new Set(),
+  const stationsSection = SPINE_SECTIONS.find((s) => s.id === 'floor');
+  const floorPages = useMemo(
+    () => otherPages.filter((p) => spineSectionIdForPage(p) === 'floor'),
+    [otherPages],
   );
-  /**
-   * Multi-child L1 pages the operator has expanded (Shipping · Locations · …).
-   * Same accordion + clear-on-jump contract as subgroups. Owning the active
-   * page still forces open. Click discloses only — never navigates.
-   */
-  const [expandedPages, setExpandedPages] = useState<ReadonlySet<string>>(() => new Set());
-  useEffect(() => {
-    setExpandedSubgroups(new Set());
-    setExpandedPages(new Set());
-  }, [activePage.id]);
 
-  const openSubgroup = (id: StationSubgroupId) => {
-    // Accordion: one subgroup at a time.
-    setExpandedSubgroups(new Set([id]));
-  };
-  const closeSubgroup = (id: StationSubgroupId) => {
-    setExpandedSubgroups((prev) => {
-      if (!prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  };
+  const mapEntries = useMemo(
+    () => resolveSpineMapEntries(spineOrder, otherPages),
+    [spineOrder, otherPages],
+  );
 
-  const openPage = (id: string) => {
-    setExpandedPages(new Set([id]));
-  };
-  const closePage = (id: string) => {
-    setExpandedPages((prev) => {
-      if (!prev.has(id)) return prev;
-      const next = new Set(prev);
-      next.delete(id);
-      return next;
-    });
-  };
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { delay: 180, tolerance: 8 },
+    }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
 
-  /**
-   * A child row — a page's child page, or a station inside a subgroup.
-   *
-   * **It keeps its glyph**, at the SAME light page stroke as its parent. These
-   * rows are the switch between siblings of one page (Reference ⇄ Manuals ⇄
-   * Labels), and that is the same job — and the same icon set — the GlobalHeader
-   * page switcher draws with glyphs. Dropping them here would leave the app's two
-   * doors onto one destination disagreeing about whether it has a face.
-   *
-   * Hierarchy is carried by the **nesting rail** plus the indent — never by a
-   * heavier stroke, never by a smaller type size, and never by a colour (ink
-   * is constant across idle/current now, 2026-08-16 — see
-   * `src/lib/nav/spine-section-accent.ts`). A child glyph at the L2 weight
-   * (2.25) would out-draw its own parent at 1.5, which inverts the ladder it
-   * was supposed to express.
-   *
-   * **Same {@link SPINE_ROW_FACE_CLASS} box (40px) and same
-   * {@link SPINE_LABEL_CLASS} as its parent.** Regular weight — the fill on
-   * `accent.child*` plus the rail line's darkened token (below)
-   * is what says "you are here".
-   *
-   * ## The rail (2026-08-03; centered 2026-08-03; width bumped 2026-08-16)
-   *
-   * A left line spanning the nested block, in place of relying on indent
-   * alone. Two properties earned it a place in a phase whose measurement ruled
-   * *against* the richer pattern it came from:
-   *
-   * 1. **It costs no vertical space.** It is a thin gutter line, so the
-   *    map's height is unchanged — which is the only currency the spine is
-   *    short of (measured: 732px of map against a 685px port on the widest page).
-   * 2. **It survives greyscale.** Same reason the section hues were deleted: the
-   *    channels this column may spend are shape and grouping, not colour.
-   *
-   * **Gutter under the parent glyph** via a token-only track: `ml-2` matches
-   * the parent's `px-2`, `w-4` matches the glyph. The line sits on the
-   * **trailing edge of that track** so it abuts the row fill — no air between
-   * the bar and the highlight, and no extra pad before the label. Width is
-   * `w-0.5` (2026-08-16, up from a `w-px` hairline) — the darkened active
-   * token needs enough width to read as a bar, not a barely-visible pixel;
-   * kept constant across idle/active (see {@link spineRailLineClass}) rather
-   * than only widening on select, so it is genuinely one element, not a line
-   * that swaps shape depending on state.
-   *
-   * It is drawn **per row, not per group**, and that is deliberate rather than
-   * lazy. Child pages arrive inside a `<ul>`, but station-subgroup members
-   * arrive as flat siblings of every other page in the section — there is no
-   * element wrapping just them to hang a group rail on. Adjacent rows carry no
-   * vertical margin, so per-row segments abut into one continuous line in both
-   * shapes, and the active row's own segment darkens to mark where you are —
-   * `spineRailLineClass(active)` on the SAME `<div>`, never a second element.
-   */
-  const renderChildLikeRow = (
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      const oldIndex = spineOrder.indexOf(String(active.id));
+      const newIndex = spineOrder.indexOf(String(over.id));
+      if (oldIndex < 0 || newIndex < 0) return;
+      onSpineOrderChange(arrayMove(spineOrder, oldIndex, newIndex));
+    },
+    [spineOrder, onSpineOrderChange],
+  );
+
+  const renderPageHeader = (
     opts: {
-      id: string;
       label: string;
       icon: SidebarPageNav['icon'];
       active: boolean;
+      ariaLabel: string;
       onClick: () => void;
       onMouseEnter?: () => void;
+      drill?: boolean;
     },
     accent: SpineAccentClasses,
   ) => {
-    const RowIcon = opts.icon;
-    return (
-      <div className="flex">
-        {/* Rail gutter: `ml-2` matches the parent's `px-2` and `w-4` matches
-            {@link SPINE_ROW_ICON_CLASS}. `justify-end` parks the line on the
-            fill's leading edge. ONE line, two tokens —
-            {@link spineRailLineClass} toggles this SAME element between the
-            structural guide (idle) and a darkened bar (active). Full row
-            height (`self-stretch`) is free from the face box. */}
-        <div className="ml-2 flex w-4 shrink-0 justify-end" aria-hidden>
-          <div className={spineRailLineClass(opts.active)} />
-        </div>
-        <button
-          type="button"
-          onClick={opts.onClick}
-          onMouseEnter={opts.onMouseEnter}
-          // The visual "you are here" signal (fill + spineRailLineClass's
-          // darkened bar) was purely visual until now — nothing told a
-          // screen reader which row is current. `aria-current="page"` is the
-          // WAI-ARIA APG signal for exactly this (a nav link to the page the
-          // user is already on).
-          aria-current={opts.active ? 'page' : undefined}
-          className={cn(
-            'ds-raw-button group flex min-w-0 flex-1 items-center gap-2 rounded-none pl-2 pr-2 text-left transition-colors duration-150',
-            SPINE_ROW_FACE_CLASS,
-            opts.active ? accent.childActive : accent.childIdle,
-          )}
-        >
-          {RowIcon ? (
-            <RowIcon
-              className={navIconStrokeClass(cn(
-                  SPINE_ROW_ICON_CLASS,
-                  opts.active ? accent.childActiveIcon : accent.childIdleIcon,
-                ),
-              )}
-            />
-          ) : null}
-          {/* Rail-matched title weight/ink (2026-08-16) — `font-semibold
-              text-text-default`, same as RailRowBody's title line, bumped to
-              `role-body` (14px) for nav-row legibility. Weight is constant
-              now (ink already is); active/idle reads from `accent.child*`
-              background + the rail line's token, not font weight. */}
-          {/* `title` — a long child label (a station name, a deep page) truncates
-              with no other way to reveal itself. RailRowBody does this
-              (`titleAttr`); the spine rows never had. */}
-          <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)} title={opts.label}>
-            {opts.label}
-          </span>
-        </button>
-      </div>
-    );
-  };
-
-  /**
-   * An L1 destination row.
-   *
-   * **No trailing count (2026-08-03).** A right-aligned pill of digits is the
-   * universal notification affordance — it promises unread work — and what this
-   * one meant was *structural cardinality*: how many child pages exist. That is
-   * a fact that never changes and that an operator learns once, so it was
-   * spending the most attention-grabbing slot in the column on the least urgent
-   * thing on the row. The operator's read ("it seems like a notification
-   * display — it's distracting") was the correct one.
-   *
-   * The cardinality is **not lost** — it stays in `ariaLabel` ("Catalog — 7
-   * pages"), which is where a screen reader needs it and where nothing competes
-   * for attention. Callers already pass that string themselves, which is why
-   * this signature no longer takes a `count` at all.
-   *
-   * **Do not fill the vacated slot with a live queue depth.** That is a separate
-   * ruling with a real cost — per-render I/O in a registry that is currently
-   * safe on every keystroke precisely because it does none — and it must not
-   * ride in on a presentation change. Queue depths live in `InboxQueueLinks`;
-   * see `source-of-truth.md` → *Per-staff queue depths*.
-   */
-  const renderPageHeader = (opts: {
-    label: string;
-    icon: SidebarPageNav['icon'];
-    active: boolean;
-    /**
-     * Lighter wash: this disclosure owns the current child. Never
-     * `aria-current` — the child row is the page.
-     */
-    ownsActive?: boolean;
-    ariaLabel: string;
-    onClick: () => void;
-    onMouseEnter?: () => void;
-    /**
-     * Trailing affordance — mutually exclusive:
-     * - `disclosure` — rotated `ChevronDown` for in-place nests (Receiving,
-     *   Locations). Collapsed it looks like ›; that is intentional for expand.
-     * - `drill` — `ChevronsRight` (») for list-replace enter (Scan Stations).
-     *   A single › would collide with disclosure; the double mark says "go in".
-     */
-    disclosure?: { expanded: boolean };
-    drill?: boolean;
-  }, accent: SpineAccentClasses) => {
     const PageIcon = opts.icon;
     return (
       <button
@@ -385,97 +206,47 @@ export function SidebarNavList({
         onClick={opts.onClick}
         onMouseEnter={opts.onMouseEnter}
         aria-label={opts.ariaLabel}
-        aria-expanded={opts.disclosure ? opts.disclosure.expanded : undefined}
-        // `aria-current="page"` only on the destination. A parent that owns
-        // the current child uses `ownsActive` wash without claiming the page.
         aria-current={opts.active ? 'page' : undefined}
         className={cn(
           SPINE_ROW_SHELL_CLASS,
           SPINE_ROW_FACE_CLASS,
-          opts.active
-            ? accent.activePage
-            : opts.ownsActive
-              ? accent.ownsActive
-              : accent.idlePage,
+          opts.active ? accent.activePage : accent.idlePage,
         )}
       >
         <PageIcon
-          className={navIconStrokeClass(cn(
+          className={navIconStrokeClass(
+            cn(
               SPINE_ROW_ICON_CLASS,
               opts.active ? accent.activePageIcon : accent.idlePageIcon,
             ),
           )}
         />
-        {/* Rail-matched title weight/ink (2026-08-16) — `font-semibold
-            text-text-default`, same as RailRowBody's title line, bumped to
-            `role-title` (18px, see the module docblock) for nav-row
-            legibility + fill. "You are here" reads from `accent.activePage`'s
-            canvas fill against chrome (`appChromeClass`) — an L1 row is
-            full-width, so that plane step is the whole signal (a nested
-            row's fill is narrower against its indent, which is why THAT row
-            also gets `spineRailLineClass`'s darkened rail token). `title` —
-            same truncation-tooltip reasoning as renderChildLikeRow. */}
-        <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)} title={opts.label}>{opts.label}</span>
+        <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)} title={opts.label}>
+          {opts.label}
+        </span>
         {opts.drill ? (
           <ChevronsRight className={cn(SPINE_ROW_ICON_CLASS, 'text-text-faint')} aria-hidden />
-        ) : opts.disclosure ? (
-          <ChevronDown
-            className={cn(
-              // No rotate transition (2026-08-08). It was the last moving
-              // thing on this interaction, and it was moving on the control
-              // the operator had just committed to — a 150ms tell that the
-              // click registered, on a click whose result (the nest) is
-              // already there instantly. Snap it.
-              SPINE_ROW_ICON_CLASS,
-              'text-text-faint',
-              !opts.disclosure.expanded && '-rotate-90',
-            )}
-          />
         ) : null}
       </button>
     );
   };
 
-  /**
-   * Nest body — every in-place dropdown (L1 children · Receiving benches).
-   *
-   * **It is INSTANT. There is no animation here at all** (ruled 2026-08-08),
-   * and the two things it replaced are worth recording so neither returns.
-   *
-   * First it cascaded: a 15ms-per-row stagger with each row fading in from a
-   * 2px offset. On a five-row nest that reads as a wave travelling
-   * down-and-right — a nav dropdown announcing its contents one at a time
-   * rather than disclosing them.
-   *
-   * Then it expanded as one block (height 0 → auto). Better, and still the
-   * wrong idea: this list is a navigator on a scan bench, and the operator
-   * clicking a nest already knows what is in it. Any duration at all is time
-   * between the click and the row they were reaching for. A disclosure whose
-   * contents are fixed and known does not need to be *shown* arriving — it
-   * needs to be there.
-   *
-   * So: a plain `<ul>`. No `motion.*`, no presence, no `overflow-hidden`
-   * (nothing clips), no transition. The rows and the rotated chevron paint on
-   * the same frame as the click.
-   */
-  const renderNest = (
-    nestKey: string,
-    ariaLabel: string,
-    rows: Array<{
-      id: string;
-      label: string;
-      icon: SidebarPageNav['icon'];
-      active: boolean;
-      onClick: () => void;
-      onMouseEnter?: () => void;
-    }>,
-    accent: SpineAccentClasses,
-  ) => (
-    <ul key={nestKey} role="group" aria-label={ariaLabel} className="list-none p-0">
-      {rows.map((row) => (
-        <li key={row.id}>{renderChildLikeRow(row, accent)}</li>
-      ))}
-    </ul>
+  const renderBackHeader = (title: string, onBack: () => void) => (
+    <button
+      type="button"
+      onClick={onBack}
+      aria-label="Back to pages"
+      className={cn(
+        'ds-raw-button grid w-full grid-cols-[1rem_1fr_1rem] items-center gap-2 rounded-none px-2 text-text-default transition-colors duration-150 hover:bg-surface-hover',
+        SPINE_ROW_FACE_CLASS,
+      )}
+    >
+      <ChevronLeft className={cn(SPINE_ROW_ICON_CLASS, 'justify-self-start')} aria-hidden />
+      <span className={cn('min-w-0 truncate text-center', SPINE_LABEL_CLASS)} title={title}>
+        {title}
+      </span>
+      <span className={SPINE_ROW_ICON_CLASS} aria-hidden />
+    </button>
   );
 
   const renderRow = (
@@ -484,322 +255,169 @@ export function SidebarNavList({
     accent: SpineAccentClasses,
     opts?: { pinned?: boolean },
   ) => {
-    const rowKey = `${keyPrefix}-${page.id}`;
-    // Membership + highlight come from the page id alone. There used to be a
-    // second, page-id-keyed "print alias" predicate here so a Print Stations row
-    // could light up while the operator was on someone else's URL; the domain
-    // split deleted those rows, and with them the only reason the spine ever
-    // had to know a specific page's name.
     const isPageActive = page.id === activePage.id;
-    const childCount = page.children?.length ?? 0;
-    /**
-     * Multi-child L1 discloses in place (2026-08-03). Click expands / collapses
-     * the nest — it does **not** navigate. Destination is a child row (or a
-     * leaf L1 with no children). Owning the active page still forces open so
-     * you cannot hide the children of the page you are on.
-     *
-     * Accordion: only one manual nest at a time (`expandedPages`), same as
-     * Receiving subgroups. Expanding every multi-child page at once was measured
-     * at **64 rows (~1790px)** against a ~600px scrollport — not a map.
-     */
-    const hasChildren = !opts?.pinned && childCount > 1;
-    const showChildren =
-      hasChildren && (isPageActive || expandedPages.has(page.id));
+    // Floor benches (incl. Testing) stay flat — modes live on HeaderPageSwitcher,
+    // never a second drill inside Scan Stations. Desk-chrome pages stay flat too
+    // (`hasDeskPageChrome`): the desk draws those children as in-page tabs, so a
+    // drill here would be the nav tabbing them a second time.
+    const drills =
+      !opts?.pinned &&
+      !isSpineMapTopRow(page) &&
+      page.kind !== 'station' &&
+      !hasDeskPageChrome(page) &&
+      (page.children?.length ?? 0) > 1;
     return (
-      <div key={rowKey}>
+      <div key={`${keyPrefix}-${page.id}`}>
         {renderPageHeader(
           {
             label: page.label,
             icon: page.icon,
-            // Leaf L1: full current fill. Multi-child parent: lighter
-            // `ownsActive` wash while a child carries `aria-current` + the
-            // canvas fill. A parent that is only expanded (not owning the
-            // URL) stays idle so two open nests do not both look selected.
-            active: isPageActive && !hasChildren,
-            ownsActive: isPageActive && hasChildren,
-            // Cardinality survives HERE and only here, for the same reason the
-            // badge was deleted: a screen reader benefits from "7 pages", and an
-            // accessible name competes with nothing for the operator's eye. It
-            // stays decoupled from expansion — the page has N children whether
-            // or not they happen to be drawn.
-            ariaLabel: hasChildren ? `${page.label} — ${childCount} pages` : `Go to ${page.label}`,
+            active: isPageActive,
+            ariaLabel: drills ? `Open ${page.label}` : `Go to ${page.label}`,
             onClick: () => {
-              if (!hasChildren) {
-                onNavigate(page.id);
+              if (drills) {
+                onDrillChange(page.id);
                 return;
               }
-              if (showChildren && !isPageActive) {
-                closePage(page.id);
-                return;
-              }
-              if (!showChildren) {
-                openPage(page.id);
-              }
-              // Expanded + owns active — stay open; never navigate from the parent.
+              onNavigate(page.id);
             },
             onMouseEnter: onRowHover ? () => onRowHover(page) : undefined,
-            // Disclosure chevron for in-place nests. Click toggles; it does not
-            // navigate. (Scan Stations uses `drill: true` / ChevronsRight.)
-            disclosure: hasChildren ? { expanded: showChildren } : undefined,
+            drill: drills,
           },
           accent,
         )}
-
-        {showChildren && page.children
-          ? renderNest(
-              `nest-${page.id}`,
-              `${page.label} pages`,
-              page.children.map((child) => ({
-                id: child.id,
-                label: child.label,
-                icon: child.icon,
-                active: isPageActive && highlightedChildId === child.id,
-                onClick: () => onNavigate(page.id, child.id),
-              })),
-              accent,
-            )
-          : null}
       </div>
     );
   };
 
-  /**
-   * Scan Stations root row — Vercel list-replace enter.
-   *
-   * Domains stay on the flat map. Scan Stations alone drills because it holds
-   * multiple categories (Receiving · Testing · Packing · Scan out). Click
-   * replaces the map with {@link renderStationsDrill}; it does not navigate.
-   */
-  const renderStationsEnterRow = (accent: SpineAccentClasses) => {
-    const section = SPINE_SECTIONS.find((s) => s.id === 'floor');
-    if (!section) return null;
-    const floorActive = spineSectionIdForPage(activePage) === 'floor';
-    // Same L1 chrome as every page row (`h-9` + renderPageHeader) so Scan
-    // Stations matches Shipping / Locations height; `drill` paints » not ›.
-    return renderPageHeader(
-      {
-        label: section.label,
-        icon: section.icon,
-        // The ONE surviving proxy fill, and it is not the ancestor case.
-        // Scan Stations list-REPLACES, so when the operator is on a bench the
-        // genuinely-current row is not rendered on this map at all — this row
-        // is its only representation. Dropping it would leave the root map
-        // showing no location whatsoever for seven of the app's pages.
-        // Everywhere else the current row is on screen, so its ancestor stays
-        // quiet.
-        active: floorActive,
-        ariaLabel: `Open ${section.label}`,
-        onClick: () => onStationsDrillChange(true),
-        drill: true,
-      },
-      accent,
-    );
-  };
+  const renderDrillChild = (
+    pageId: string,
+    child: NonNullable<SidebarPageNav['children']>[number],
+    accent: SpineAccentClasses,
+  ) => (
+    <div key={`${pageId}-${child.id}`}>
+      {renderPageHeader(
+        {
+          label: child.label,
+          icon: child.icon,
+          active: pageId === activePage.id && highlightedChildId === child.id,
+          ariaLabel: `Go to ${child.label}`,
+          onClick: () => onNavigate(pageId, child.id),
+        },
+        accent,
+      )}
+    </div>
+  );
 
-  /** Floor benches inside the Scan Stations drill (Receiving nest + peers). */
-  const renderFloorPages = (pages: SidebarPageNav[], accent: SpineAccentClasses) => {
-    const nodes: ReactNode[] = [];
-    let lastSubgroup: StationSubgroupId | undefined;
-
-    for (const page of pages) {
-      const subgroup = page.kind === 'station' ? page.stationSubgroup : undefined;
-
-      if (subgroup) {
-        // Emit the whole subgroup once, on its first member — members share one
-        // staggered nest so Receiving expand cascades like Shipping.
-        if (subgroup === lastSubgroup) continue;
-        lastSubgroup = subgroup;
-
-        const def = getStationSubgroupDef(subgroup);
-        const members = stationSubgroupMembers(subgroup, pages);
-        const subgroupActive = members.some((m) => m.id === activePage.id);
-        const firstMember = members[0];
-        const subgroupExpanded = subgroupActive || expandedSubgroups.has(subgroup);
-        if (!def || !firstMember) continue;
-
-        nodes.push(
-          <div key={`subgroup-${subgroup}`}>
-            {renderPageHeader(
-              {
-                label: def.label,
-                icon: def.icon,
-                // Destination stays on the member row. The subgroup header
-                // takes the lighter `ownsActive` wash when a member is current.
-                active: false,
-                ownsActive: subgroupActive,
-                // Disclosure only — never navigates. Same contract as
-                // multi-child L1 pages (Shipping · Locations): expand shows
-                // the benches; the operator picks Arrival / Unbox / etc.
-                ariaLabel: `${def.label} — ${members.length} stations`,
-                onClick: () => {
-                  if (subgroupExpanded && !subgroupActive) {
-                    closeSubgroup(subgroup);
-                    return;
-                  }
-                  if (!subgroupExpanded) {
-                    openSubgroup(subgroup);
-                  }
-                },
-                onMouseEnter: onRowHover ? () => onRowHover(firstMember) : undefined,
-                disclosure: { expanded: subgroupExpanded },
-              },
-              accent,
-            )}
-            {subgroupExpanded
-              ? renderNest(
-                  `nest-subgroup-${subgroup}`,
-                  `${def.label} stations`,
-                  members.map((member) => ({
-                    id: member.id,
-                    label: member.label,
-                    icon: member.icon,
-                    active: member.id === activePage.id,
-                    onClick: () => onNavigate(member.id),
-                    onMouseEnter: onRowHover ? () => onRowHover(member) : undefined,
-                  })),
-                  accent,
-                )
-              : null}
-          </div>,
-        );
-        continue;
-      }
-
-      lastSubgroup = undefined;
-      nodes.push(
-        <div key={page.id}>
-          {renderRow(page, 'floor', accent)}
-        </div>,
-      );
-    }
-
-    return nodes;
-  };
-
-  /**
-   * Vercel-style Scan Stations drill — Back + title + floor benches.
-   * Only altitude that list-replaces; domains never enter this shape.
-   */
-  const renderStationsDrill = () => {
-    const section = SPINE_SECTIONS.find((s) => s.id === 'floor');
-    if (!section) return null;
-    const accent = spineAccentFor('floor');
-    const pages = pagesForSection(otherPages, 'floor');
+  const renderPageDrill = (page: SidebarPageNav) => {
+    const accent = spineAccentFor(spineSectionIdForPage(page));
     return (
       <div>
-        <button
-          type="button"
-          onClick={() => onStationsDrillChange(false)}
-          aria-label="Back to pages"
-          className={cn(
-            'ds-raw-button grid w-full grid-cols-[1rem_1fr_1rem] items-center gap-2 rounded-none px-2 text-text-default transition-colors duration-150 hover:bg-surface-hover',
-            // Same SPINE_ROW_FACE_CLASS as every other row (see module docblock).
-            SPINE_ROW_FACE_CLASS,
-          )}
-        >
-          <ChevronLeft className={cn(SPINE_ROW_ICON_CLASS, 'justify-self-start')} aria-hidden />
-          {/* Rail-matched title role (2026-08-16) — see renderPageHeader.
-              `title` — same truncation-tooltip reasoning too. */}
-          <span className={cn('min-w-0 truncate text-center', SPINE_LABEL_CLASS)} title={section.label}>
-            {section.label}
-          </span>
-          <span className={SPINE_ROW_ICON_CLASS} aria-hidden />
-        </button>
-        <div id="spine-section-floor" role="group" aria-label={section.label}>
-          {pages.length === 0 ? (
-            <p className="px-2 py-1 text-role-caption text-text-soft">No matching pages</p>
-          ) : (
-            renderFloorPages(pages, accent)
-          )}
+        {renderBackHeader(page.label, () => onDrillChange(null))}
+        <div role="group" aria-label={page.label}>
+          {page.children?.map((child) => renderDrillChild(page.id, child, accent))}
         </div>
       </div>
     );
   };
 
-  /**
-   * THE map — flat domain list + Scan Stations enter row. There is no
-   * all-sections drill (2026-08-02); only Scan Stations list-replaces.
-   */
-  const renderMap = () => {
-    if (stationsDrillOpen) return renderStationsDrill();
+  /** Scan Stations list-replace — Back + flat benches (no nested drills). */
+  const renderStationsDrill = () => {
+    if (!stationsSection) return null;
+    const accent = spineAccentFor('floor');
+    return (
+      <div>
+        {renderBackHeader(stationsSection.label, () => onDrillChange(null))}
+        <div id="spine-section-floor" role="group" aria-label={stationsSection.label}>
+          {floorPages.map((page) => (
+            <div key={page.id}>{renderRow(page, 'floor', accent)}</div>
+          ))}
+        </div>
+      </div>
+    );
+  };
 
-    const groups = SPINE_SECTIONS.map((section) => ({
-      section,
-      pages: pagesForSection(otherPages, section.id),
-    })).filter((g) => g.pages.length > 0);
+  const renderMap = () => {
+    if (drillId === SPINE_STATIONS_SLOT_ID) {
+      return renderStationsDrill();
+    }
+
+    if (drillId != null) {
+      const drilledPage = otherPages.find(
+        (p) =>
+          p.id === drillId &&
+          p.kind !== 'station' &&
+          !hasDeskPageChrome(p) &&
+          (p.children?.length ?? 0) > 1,
+      );
+      if (drilledPage) return renderPageDrill(drilledPage);
+    }
 
     return (
-      <ul role="group" aria-label="Sections" className="list-none p-0">
+      <div>
         {topPages.length > 0 ? (
-          <li aria-label="Pinned">
-            <div id="spine-section-top">
-              {topPages.map((page) => (
-                <div key={page.id}>{renderRow(page, 'top', neutralAccent)}</div>
-              ))}
-            </div>
-          </li>
+          <div id="spine-section-top" role="group" aria-label="Pinned">
+            {topPages.map((page) => (
+              <div key={page.id}>{renderRow(page, 'top', neutralAccent, { pinned: true })}</div>
+            ))}
+          </div>
         ) : null}
-        {groups.map(({ section, pages }) => {
-          const accent = spineAccentFor(section.id);
-          /**
-           * Section boundary — NO hairline (2026-08-16, superseding the
-           * "hairline below every section" ruling this replaced). The rail
-           * beside this column (`RailRow` / recent activity) has no dividers
-           * between its rows either — grouping there reads from spacing and
-           * the day-band eyebrow alone, never a rule. Matching that removes
-           * the last horizontal line left in the spine now that ink is
-           * constant and the section hue is gone; the root axis split (Scan
-           * Stations as an INPUT MODEL among business DOMAINS) still reads
-           * from the drill's own Back-header shape, not from a rule.
-           */
-          const seam = '';
 
-          // Scan Stations — enter row only; benches live inside the drill.
-          if (section.id === 'floor') {
-            return (
-              <li key={section.id} aria-label={section.label} className={seam}>
-                {renderStationsEnterRow(accent)}
-              </li>
-            );
-          }
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={spineOrder} strategy={verticalListSortingStrategy}>
+            <div role="list" aria-label="Pages">
+              {mapEntries.map((entry) => {
+                if (entry.kind === 'stations') {
+                  if (!stationsSection) return null;
+                  const floorActive = spineSectionIdForPage(activePage) === 'floor';
+                  return (
+                    <SortableTitleRow
+                      key={SPINE_STATIONS_SLOT_ID}
+                      id={SPINE_STATIONS_SLOT_ID}
+                      label={stationsSection.label}
+                      icon={stationsSection.icon}
+                      active={floorActive}
+                      ariaLabel={`Open ${stationsSection.label}`}
+                      accent={spineAccentFor('floor')}
+                      drill
+                      onActivate={() => onDrillChange(SPINE_STATIONS_SLOT_ID)}
+                    />
+                  );
+                }
 
-          return (
-            <li key={section.id} aria-label={section.label} className={seam}>
-              <div id={`spine-section-${section.id}`}>
-                {pages.map((page) => (
-                  <div key={page.id}>{renderRow(page, section.id, accent)}</div>
-                ))}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
+                const page = entry.page;
+                const drills = !hasDeskPageChrome(page) && (page.children?.length ?? 0) > 1;
+                return (
+                  <SortableTitleRow
+                    key={page.id}
+                    id={page.id}
+                    label={page.label}
+                    icon={page.icon}
+                    active={page.id === activePage.id}
+                    ariaLabel={drills ? `Open ${page.label}` : `Go to ${page.label}`}
+                    accent={spineAccentFor(spineSectionIdForPage(page))}
+                    drill={drills}
+                    onActivate={() => {
+                      if (drills) onDrillChange(page.id);
+                      else onNavigate(page.id);
+                    }}
+                    onMouseEnter={onRowHover ? () => onRowHover(page) : undefined}
+                  />
+                );
+              })}
+            </div>
+          </SortableContext>
+        </DndContext>
+      </div>
     );
   };
 
   return (
     <div role="menu" aria-label="Pages" className={cn('flex h-full min-h-0 flex-col', className)}>
-      {/* Home / Media Library are ordinary L1 rows at the top of the map
-          (`isSpineMapTopRow`). Search / Plans / Chat stay `kind:'top'` with
-          `spineBand: false` so ⌘K still ranks them without painting rows. */}
-      {/* `data-spine-scrollport` is the geometry probe's handle. The map's
-          height against THIS box is the question every spine layout change has
-          to answer, and `.claude/rules/verify.md` requires that answer to come
-          from the real runner — so the port names itself rather than making a
-          spec guess at a class chain that will drift. */}
-      {/* The body swaps between the map and the Scan Stations drill INSTANTLY
-          (2026-08-08). Ranked dest search used to be a third body; that is ⌘K
-          now (2026-08-28). */}
       <div data-spine-scrollport className="min-h-0 flex-1 overflow-y-auto p-0">
         {renderMap()}
       </div>
-
       <div className="flex w-full shrink-0 flex-col">
-        {bottomPages.length > 0 ? (
-          <div className="w-full p-0">
-            {bottomPages.map((page) => renderRow(page, 'bottom', neutralAccent, { pinned: true }))}
-          </div>
-        ) : null}
         <StaffAccountFooter />
       </div>
     </div>

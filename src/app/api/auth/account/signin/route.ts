@@ -9,7 +9,10 @@
  *   • >1 memberships → 200 { needsOrgChoice, memberships } unless an
  *                      organizationId is supplied, then sign into that one.
  *
- * Body: { email, password, organizationId? }
+ * Body: { email, password, organizationId?, persistent? }
+ *
+ * `persistent` is the "Keep me signed in" checkbox — no idle timeout on a
+ * sliding 1-year window for this device.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -40,6 +43,7 @@ const Body = z.object({
   email: z.string().trim().email(),
   password: z.string().min(1).max(200),
   organizationId: z.string().trim().min(1).optional(),
+  persistent: z.boolean().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -120,6 +124,7 @@ export async function POST(req: NextRequest) {
     deviceKind: 'personal',
     ip,
     userAgent: ua,
+    persistent: parsed.persistent === true,
   });
 
   // Best-effort last-login stamp.
@@ -130,7 +135,7 @@ export async function POST(req: NextRequest) {
   await audit({
     staffId: target.staff_id, sid: session.sid,
     event: 'signin.account', result: 'ok', ip, userAgent: ua,
-    detail: { accountId: account.id, orgId: target.organization_id },
+    detail: { accountId: account.id, orgId: target.organization_id, persistent: parsed.persistent === true },
   });
   await logAuthEvent({ accountId: account.id, orgId: target.organization_id, event: 'login', ip, userAgent: ua });
 

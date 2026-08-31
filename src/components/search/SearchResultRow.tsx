@@ -51,6 +51,7 @@ import {
   CHIP_TONE_CLASSES,
   ENTITY_ICONS,
   ENTITY_TONE,
+  GLYPH_TONE_CLASSES as GLYPH_BY_TONE,
   orderStatusTone,
   type ChipTone,
 } from './search-result-chips';
@@ -63,8 +64,11 @@ import {
   orderIdFromHit,
   unitSerialFromHit,
 } from '@/lib/search/search-result-identity';
-import { useOrderChannelLabel } from '@/hooks/useCatalog';
+import { useOrderChannelLabel, usePlatformMeta } from '@/hooks/useCatalog';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
+import { PlatformMark } from '@/components/ui/PlatformMark';
+import { CarrierMark } from '@/components/ui/CarrierMark';
+import { resolveCarrierBrand } from '@/lib/carrier-brand';
 
 export type SearchRowDensity = 'compact' | 'comfortable' | 'dropdown';
 
@@ -124,13 +128,6 @@ function isNarrowDensity(density: SearchRowDensity): boolean {
 }
 
 // Comfortable glyph tone — colour on the icon only (no padded tile).
-const GLYPH_BY_TONE: Record<ChipTone, string> = {
-  gray: 'text-text-soft',
-  blue: 'text-blue-600',
-  emerald: 'text-emerald-600',
-  amber: 'text-amber-600',
-  rose: 'text-rose-600',
-};
 
 function Chip({ label, tone }: { label: string; tone: ChipTone | string }) {
   return (
@@ -139,6 +136,38 @@ function Chip({ label, tone }: { label: string; tone: ChipTone | string }) {
 }
 
 /** Title text — last-8 when identifier-shaped; full value on HoverTooltip. */
+/**
+ * The props every search row's `Link` carries — href, commit handling, and the
+ * listbox a11y contract.
+ *
+ * This was written out five times: once per renderer, including the same
+ * `preventDefault` comment four times over. The rows genuinely differ in what
+ * they PAINT — a unit leads with a serial badge, an order with a status dot —
+ * but none of them differs in how it commits or how it announces itself to a
+ * screen reader, and five copies of that is five chances for one row to quietly
+ * stop being an `option`.
+ */
+function searchRowLinkProps(
+  hit: AiSearchHit,
+  active: boolean | undefined,
+  optionId: string | undefined,
+  onNavigate: SearchResultRowProps['onNavigate'],
+) {
+  return {
+    href: hit.href,
+    onClick: (e: React.MouseEvent<HTMLAnchorElement>) => {
+      if (!onNavigate) return;
+      // Host owns commit (header stays put until hit, then router.push).
+      // Without preventDefault the Link href races and flips the URL first.
+      e.preventDefault();
+      onNavigate(hit, e);
+    },
+    role: 'option' as const,
+    id: optionId,
+    'aria-selected': active || undefined,
+  };
+}
+
 function SearchTitle({
   title,
   density,
@@ -208,7 +237,18 @@ function journeyActionFor(
   return <JourneyAction href={href} density={density} />;
 }
 
-/** Carrier + last-8 — always shown when tracking exists (density-gated, not md:). */
+/**
+ * Carrier + last-8 — always shown when tracking exists (density-gated, not md:).
+ *
+ * The carrier reads as its own brand mark rather than grey uppercase prose:
+ * UPS brown, FedEx purple, USPS blue. That is the whole point of the mark —
+ * an operator identifies a carrier in peripheral vision, without reading. Paint
+ * comes from `carrier-brand.ts`, the carrier SoT, which is a deliberately
+ * separate registry from the marketplace one in `source-platform.ts`.
+ *
+ * The carrier is resolved from the tracking number when the row carries no
+ * hint, so a hit whose facet is missing a carrier still gets the right mark.
+ */
 function TrackingMeta({
   tracking,
   carrier,
@@ -216,11 +256,14 @@ function TrackingMeta({
   tracking: string;
   carrier?: string | null;
 }) {
+  const brand = resolveCarrierBrand(tracking, carrier);
   return (
     <span className="inline-flex shrink-0 items-center gap-1">
-      {carrier && (
-        <span className="text-role-eyebrow uppercase text-text-faint">{carrier}</span>
-      )}
+      <HoverTooltip label={brand.label} focusable={false}>
+        <span className="inline-flex shrink-0 items-center">
+          <CarrierMark meta={brand} footprint="chip" />
+        </span>
+      </HoverTooltip>
       <TrackingChip value={tracking} display={getLast8(tracking)} dense />
     </span>
   );
@@ -234,12 +277,27 @@ function TrackingMeta({
  * tracks crushed titles into unreadable mash. Comfortable (/search feed) keeps
  * the aligned grid; the header picker is a name list.
  */
+/**
+ * The ⌘K palette row.
+ *
+ * Was title-only, which made every hit look the same: an operator scanning ten
+ * results could not tell an eBay order from an Amazon one, a shipped row from a
+ * returned one, or a unit from a carton, without opening something. It now
+ * carries the three facts that are free to render and expensive to go and find
+ * — entity type, order state, and channel — and nothing else, so the row still
+ * reads in one glance.
+ *
+ * Channel colour comes from {@link usePlatformMeta}, the same catalog-aware
+ * resolver the rails and grids use, so an org that recolours Amazon in its
+ * platform catalog recolours it here too. Search does not get its own palette.
+ */
 function TitleOnlyDropdownRow({
   hit,
   active,
   optionId,
   onNavigate,
 }: SearchResultRowProps) {
+  const platformMeta = usePlatformMeta();
   const marketplaceId =
     hit.entityType === 'receiving'
       ? (hit.facets?.source_order_id?.trim() || orderIdFromHit(hit))
@@ -263,30 +321,52 @@ function TitleOnlyDropdownRow({
         .map((s) => String(s ?? '').trim())
         .find((s) => s && s !== title) || ''
     : '';
+
+  const Glyph = ENTITY_ICONS[hit.entityType] || Search;
+  const entityTone = ENTITY_TONE[hit.entityType] ?? 'gray';
+  // Status only means something for an order here; other entities would paint a
+  // neutral dot that says nothing and costs a column.
+  const status = hit.entityType === 'order' ? orderStatusTone(hit.facets?.status) : null;
+  const channel = hit.facets?.source_platform?.trim() || null;
+  const channelMeta = channel ? platformMeta(channel) : null;
   return (
     <Link
-      href={hit.href}
-      onClick={(e) => {
-        if (!onNavigate) return;
-        e.preventDefault();
-        onNavigate(hit, e);
-      }}
-      role="option"
-      id={optionId}
-      aria-selected={active || undefined}
+      {...searchRowLinkProps(hit, active, optionId, onNavigate)}
       data-testid="global-find-hit"
       data-hit-title={title}
       data-hit-entity={hit.entityType}
       className={cn(
-        'group flex min-w-0 flex-col gap-0.5 px-3 py-2 text-left transition-colors hover:bg-surface-hover',
+        'group flex min-w-0 items-center gap-2 px-3 py-2 text-left transition-colors hover:bg-surface-hover',
         active && ROW_ACTIVE,
       )}
     >
-      <span className="min-w-0 truncate text-role-caption font-semibold text-text-default">
-        {title}
+      <HoverTooltip label={hit.entityType} focusable={false}>
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center">
+          <Glyph className={cn('h-3.5 w-3.5', GLYPH_BY_TONE[entityTone])} />
+        </span>
+      </HoverTooltip>
+
+      <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <span className="min-w-0 truncate text-role-caption font-semibold text-text-default">
+          {title}
+        </span>
+        {detail ? (
+          <span className="min-w-0 truncate text-role-micro text-text-muted">{detail}</span>
+        ) : null}
       </span>
-      {detail ? (
-        <span className="min-w-0 truncate text-role-micro text-text-muted">{detail}</span>
+
+      {status ? (
+        <HoverTooltip label={status.label} focusable={false}>
+          <span className={cn('h-2 w-2 shrink-0 rounded-full', status.dot)} />
+        </HoverTooltip>
+      ) : null}
+
+      {channelMeta ? (
+        <HoverTooltip label={channelMeta.label} focusable={false}>
+          <span className="flex shrink-0 items-center">
+            <PlatformMark meta={channelMeta} />
+          </span>
+        </HoverTooltip>
       ) : null}
     </Link>
   );
@@ -332,17 +412,7 @@ function AlignedRow({
 
   return (
     <Link
-      href={hit.href}
-      onClick={(e) => {
-        if (!onNavigate) return;
-        // Host owns commit (header stays put until hit, then router.push).
-        // Without preventDefault the Link href races and flips the URL first.
-        e.preventDefault();
-        onNavigate(hit, e);
-      }}
-      role="option"
-      id={optionId}
-      aria-selected={active || undefined}
+      {...searchRowLinkProps(hit, active, optionId, onNavigate)}
       className={cn(
         'group relative text-left transition-colors hover:bg-surface-hover',
         SEARCH_RESULT_GRID,
@@ -443,17 +513,7 @@ function OrderRow({
 
   return (
     <Link
-      href={hit.href}
-      onClick={(e) => {
-        if (!onNavigate) return;
-        // Host owns commit (header stays put until hit, then router.push).
-        // Without preventDefault the Link href races and flips the URL first.
-        e.preventDefault();
-        onNavigate(hit, e);
-      }}
-      role="option"
-      id={optionId}
-      aria-selected={active || undefined}
+      {...searchRowLinkProps(hit, active, optionId, onNavigate)}
       className={cn(ROW_BASE, ROW_BY_DENSITY[density], active && ROW_ACTIVE)}
     >
       <HoverTooltip label={status.label} focusable={false}>
@@ -524,17 +584,7 @@ function UnitRow({
 
   return (
     <Link
-      href={hit.href}
-      onClick={(e) => {
-        if (!onNavigate) return;
-        // Host owns commit (header stays put until hit, then router.push).
-        // Without preventDefault the Link href races and flips the URL first.
-        e.preventDefault();
-        onNavigate(hit, e);
-      }}
-      role="option"
-      id={optionId}
-      aria-selected={active || undefined}
+      {...searchRowLinkProps(hit, active, optionId, onNavigate)}
       className={cn(ROW_BASE, ROW_BY_DENSITY[density], active && ROW_ACTIVE)}
     >
       {badge ? (
@@ -649,17 +699,7 @@ function GenericRow({
 
   return (
     <Link
-      href={hit.href}
-      onClick={(e) => {
-        if (!onNavigate) return;
-        // Host owns commit (header stays put until hit, then router.push).
-        // Without preventDefault the Link href races and flips the URL first.
-        e.preventDefault();
-        onNavigate(hit, e);
-      }}
-      role="option"
-      id={optionId}
-      aria-selected={active || undefined}
+      {...searchRowLinkProps(hit, active, optionId, onNavigate)}
       className={cn(ROW_BASE, ROW_BY_DENSITY[density], active && ROW_ACTIVE)}
     >
       {narrow && status ? (

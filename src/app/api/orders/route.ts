@@ -628,17 +628,42 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
 
     if (fulfillmentScope) {
-      sql += ` AND o.shipment_id IS NOT NULL`;
-      // Pre-pack board = labeled + tracked; blank tracking_number_raw belongs on Labels.
-      sql += ` AND COALESCE(TRIM(stn.tracking_number_raw), '') <> ''`;
+      /*
+       * Pre-pack board = every order that has not been packed yet, INCLUDING
+       * the ones with no label (2026-08-30 operator ruling).
+       *
+       * This used to require `shipment_id IS NOT NULL` and a non-blank
+       * tracking number, on the rule "blank tracking belongs on Labels". That
+       * rule made needing a label a different TABLE instead of a different
+       * STATE, and the cost was a queue that silently swallowed its own
+       * intake: an order typed or synced without tracking vanished from the
+       * desk with no count, no status and no way back to it. It is now a
+       * lifecycle stage on this board — `resolveOrderLifecycleStage` returns
+       * AWAITING_LABEL for `shipment_id IS NULL`, which the row paints as
+       * "Needs label" beside Pending / Tested / Packed.
+       *
+       * A tracked-but-blank `tracking_number_raw` reads the same way: the
+       * shipment row exists but carries no number, so the order still needs a
+       * label and belongs in the same lane rather than nowhere.
+       */
       // CF-04: exclude only when THIS order has a pack fact — not when a sibling
       // sharing the carton was packed (shipment-grain NOT EXISTS was the vanish bug).
       sql += ` AND NOT ${sqlOrderHasPackScan('o')}`;
+      // CAGED stays out of the live working set (order-intake-acknowledgment
+      // ship). Under the old shipment_id requirement a caged order was
+      // invisible by accident (no tracking yet); now that label-less orders
+      // are a lifecycle stage on this board, the cage must be an explicit
+      // predicate — a caged order that already has tracking is still not
+      // released work. NULL release_state = released (legacy rows).
+      sql += ` AND COALESCE(o.release_state, '') <> 'caged'`;
     }
 
     if (inWarehouse) {
       sql += ` AND o.shipment_id IS NOT NULL`;
       sql += ` AND COALESCE(TRIM(stn.tracking_number_raw), '') <> ''`;
+      // Same cage predicate as fulfillmentScope — the To-ship desk's
+      // in-building set is live work, and caged is by definition not.
+      sql += ` AND COALESCE(o.release_state, '') <> 'caged'`;
       // Still here = no dock scan-out on this shipment.
       sql += ` AND NOT EXISTS (
         SELECT 1 FROM station_activity_logs sal_out

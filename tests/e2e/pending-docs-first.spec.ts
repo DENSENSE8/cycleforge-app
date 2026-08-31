@@ -37,7 +37,7 @@ test.describe('Pending / To Ship — docs-first inspector', () => {
     const target = (await fixture.count()) > 0 ? fixture.first() : rows.first();
     // Product is the identity anchor — the editable tracks (sla / qty /
     // condition) stopPropagation to open their own in-cell editor instead.
-    await target.locator('[data-col="title"]').click();
+    await target.locator('[data-col="item"]').click();
     await expect(inspectorFor(page)).toBeVisible({ timeout: 20_000 });
   }
 
@@ -102,7 +102,7 @@ test.describe('Pending / To Ship — docs-first inspector', () => {
     const rowOrderId = await row.getAttribute('data-order-row-id');
     expect(rowOrderId).toBeTruthy();
 
-    await row.locator('[data-col="title"]').click();
+    await row.locator('[data-col="item"]').click();
     const inspector = inspectorFor(page);
     await expect(inspector).toBeVisible({ timeout: 20_000 });
 
@@ -182,7 +182,7 @@ test.describe('Pending / To Ship — docs-first inspector', () => {
     await expect(rows.first()).toBeVisible({ timeout: 20_000 });
     test.skip((await rows.count()) < 2, 'needs at least two pending rows');
 
-    await rows.nth(0).locator('[data-col="title"]').click();
+    await rows.nth(0).locator('[data-col="item"]').click();
     const inspector = inspectorFor(page);
     await expect(inspector).toBeVisible({ timeout: 20_000 });
 

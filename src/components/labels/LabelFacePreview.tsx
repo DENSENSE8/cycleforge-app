@@ -148,7 +148,12 @@ export function LabelFacePreview({
       {/* Width host — measures available width; L/R gutters stay transparent. */}
       <div ref={hostRef} className="w-full min-w-0">
         <div
-          className="relative mx-auto overflow-hidden bg-white shadow-sm ring-1 ring-border-soft/60" // ds-allow-raw-neutral: print label paper face
+          className={cn(
+            'relative mx-auto overflow-hidden bg-white', // ds-allow-raw-neutral: print label paper face
+            // Host (Unbox/Testing centre): no ring/shadow floor — that hairline
+            // sat under the sticker whenever the Label band was open.
+            fit === 'host' ? null : 'shadow-sm ring-1 ring-border-soft/60',
+          )}
           style={{ width: scaledW, height: scaledH, maxWidth: '100%' }}
           data-label-sticker
         >

@@ -124,23 +124,69 @@ test.describe('Search & Details station layout', () => {
     expect(statusBox!.y, 'Status precedes Items').toBeLessThan(itemsBox!.y);
   });
 
-  test('Status and Items share one collapse controller', async ({ page }) => {
+  test('a scroll yields BOTH bands — each stays a closed accordion row', async ({ page }) => {
     await openOrder(page);
 
-    // They are the pair `auto-collapse.ts` was written for. Both must yield
+    // They are the pair `auto-collapse.ts` was written for: both must yield
     // together on centre scroll — that shared fold keeps the audit trail from
     // pushing Items below the fold.
-    const statusToggle = page.locator(`${STATUS} [data-collapse-toggle]`);
-    const itemsToggle = page.locator(`${ITEMS} [data-collapse-toggle]`);
-    await expect(statusToggle).toHaveAttribute('aria-expanded', 'true');
-    await expect(itemsToggle).toHaveAttribute('aria-expanded', 'true');
+    //
+    // What changed 2026-08-30: closed bands stay full-width accordion rows.
+    // "Both collapsed" is aria-expanded=false on each header — the rows stay
+    // put so a second click opens the same band, they do not vanish into a chip
+    // rail.
+    await expect(page.locator(`${STATUS} [data-collapse-toggle]`)).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    await expect(page.locator('[data-station-band-rail]')).toHaveCount(0);
 
     await page.locator(CENTRE).evaluate((el) => {
       el.scrollTop = el.scrollHeight;
       el.dispatchEvent(new Event('scroll', { bubbles: true }));
     });
-    await expect(statusToggle).toHaveAttribute('aria-expanded', 'false');
-    await expect(itemsToggle).toHaveAttribute('aria-expanded', 'false');
+
+    await expect(page.locator(`${STATUS} [data-collapse-toggle]`)).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    await expect(page.locator(`${ITEMS} [data-collapse-toggle]`)).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+  });
+
+  test('closing ONE band collapses only that band — the header stays put', async ({
+    page,
+  }) => {
+    await openOrder(page);
+
+    // Two bugs this replaced: both blocks read the single centre-wide
+    // `collapsed` flag (so shutting Status shut Items with it), and the centre
+    // swapped LAYOUTS on the all-closed boundary (headers became chips).
+    await page.locator(`${STATUS} [data-collapse-toggle]`).click();
+
+    await expect(page.locator(`${STATUS} [data-collapse-toggle]`)).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    await expect(page.locator(STATUS)).toBeVisible();
+    // …and Items did not move.
+    await expect(page.locator(`${ITEMS} [data-collapse-toggle]`)).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+
+    // Press the same row again: Status comes back, Items still untouched.
+    await page.locator(`${STATUS} [data-collapse-toggle]`).click();
+    await expect(page.locator(`${STATUS} [data-collapse-toggle]`)).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    await expect(page.locator(`${ITEMS} [data-collapse-toggle]`)).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
   });
 
   test('the Timeline leaf carries BOTH halves of Status — stepper and trail', async ({ page }) => {
@@ -198,14 +244,22 @@ test.describe('Search & Details station layout', () => {
   test('Items auto-collapses when the centre scrolls', async ({ page }) => {
     await openOrder(page);
 
-    const itemsToggle = page.locator(`${ITEMS} [data-collapse-toggle]`);
-    await expect(itemsToggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(page.locator(`${ITEMS} [data-collapse-toggle]`)).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
 
     await page.locator(CENTRE).evaluate((el) => {
       el.scrollTop = el.scrollHeight;
       el.dispatchEvent(new Event('scroll', { bubbles: true }));
     });
-    await expect(itemsToggle).toHaveAttribute('aria-expanded', 'false');
+
+    // Collapsed bands keep their header — see the band-stack test above.
+    // Items is closed when the toggle reports aria-expanded=false.
+    await expect(page.locator(`${ITEMS} [data-collapse-toggle]`)).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
   });
 
   // TWO bands, not three: the station scan band, and the recent rail. A third
@@ -234,9 +288,9 @@ test.describe('Search & Details station layout', () => {
    * The rail IS the Unbox scan station's rail (`ReceivingFeedRail feed="searchRecent"`),
    * so its band is the station scan band — no rail-footer collapse affordance.
    *
-   * `TechRailSearchBar variant="rail"` used to sit here: it resolves the column
-   * FOOTER face (`h-7` + `border-t`, a floor seam) at the HEAD of the column,
-   * and auto-mounts a "Hide sidebar" collapse button under
+   * A rail-variant find bar used to sit here: it resolved the column FOOTER
+   * face (`h-7` + `border-t`, a floor seam) at the HEAD of the column, and
+   * auto-mounted a "Hide sidebar" collapse button under
    * `ContextPanelCollapseProvider`. Unbox's band has neither, so the two
    * stations read as different surfaces at the one place they should match.
    */

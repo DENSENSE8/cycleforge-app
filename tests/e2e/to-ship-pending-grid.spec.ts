@@ -86,13 +86,20 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
       ).toHaveCount(1);
     }
 
-    // The flat model this file used to assert must not silently return.
-    for (const retired of ['title', 'age', 'order', 'tracking', 'qty', 'date', 'sla', 'status', 'platform', 'notes', 'stock'] as const) {
+    // The flat model this file used to assert must not silently return —
+    // `tested` included: the Slice 1 hand-spliced step is now the materialized
+    // `status:1` slot track (bound to `orders.picked` in the product default).
+    for (const retired of ['title', 'age', 'order', 'tracking', 'qty', 'date', 'sla', 'status', 'platform', 'notes', 'stock', 'tested'] as const) {
       await expect(
         row.locator(`[data-col="${retired}"]`),
         `retired flat track ${retired} stays gone`,
       ).toHaveCount(0);
     }
+
+    // The slot band is REAL on this desk: the product default binds the tested
+    // step into status:1, and both header and body paint it under the slot key.
+    await expect(headerRow.locator('[data-col="status:1"]')).toHaveCount(1);
+    await expect(row.locator('[data-col="status:1"]')).toHaveCount(1);
 
     // Grid skin: no drag grip on rows; the dense desk has no floating day bands.
     await expect(row.locator('.cursor-grab')).toHaveCount(0);

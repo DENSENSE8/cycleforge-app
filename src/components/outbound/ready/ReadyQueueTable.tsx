@@ -3,7 +3,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { RefreshCw } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { DataTable, type DataTableSearch } from '@/components/tables/DataTable';
+import {
+  DataTable,
+  type DataTableFilterOption,
+  type DataTableSearch,
+} from '@/components/tables/DataTable';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { AllocationHit } from '@/lib/channel-allocation';
@@ -32,6 +36,12 @@ interface ReadyQueueTableProps {
   isFiltered?: boolean;
   /** The find field, as data — the workspace above owns the URL it writes. */
   search: DataTableSearch;
+  /** The ONE filter control, as data (the FBA desk threads its mode options). */
+  filter?: {
+    options: readonly DataTableFilterOption[];
+    onToggle: (id: string) => void;
+    onClearAll: () => void;
+  };
 }
 
 /**
@@ -92,6 +102,7 @@ export function ReadyQueueTable({
   onRetry,
   isFiltered = false,
   search,
+  filter,
 }: ReadyQueueTableProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -162,6 +173,7 @@ export function ReadyQueueTable({
         emptyMessage="No tested units yet — completed verdicts appear here newest first."
         searchEmptyMessage="No tested units match this view. Clear the search or choose All tested."
         search={search}
+        filter={filter}
         scrollRef={scrollRef}
         renderGroup={(group, _stripe, { columns: visible }) => (
           <>{group.rows.map((hit) => renderLeaf(hit, visible))}</>

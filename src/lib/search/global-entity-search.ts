@@ -21,7 +21,6 @@ import {
 } from '@/lib/search/receiving-search-title';
 import { orderTrackingMatchKeys } from '@/lib/tracking-format';
 import {
-  sqlOrderHasMatchingTracking,
   sqlTrackingNumberMatches,
 } from '@/lib/search/order-tracking-match-sql';
 import type { SearchByScope } from '@/lib/search/search-by';
@@ -87,7 +86,12 @@ const ORDER_SEARCH_SELECT = `SELECT o.id,
             o.created_at,
             COALESCE(STRING_AGG(DISTINCT tsn.serial_number, ', '), '') AS serial_number,
             COALESCE(MAX(stn.tracking_number_raw), MAX(stn_link.tracking_number_raw)) AS tracking_number,
-            COALESCE(MAX(NULLIF(stn.carrier, 'UNKNOWN')), MAX(NULLIF(stn_link.carrier, 'UNKNOWN'))) AS carrier
+            COALESCE(MAX(NULLIF(stn.carrier, 'UNKNOWN')), MAX(NULLIF(stn_link.carrier, 'UNKNOWN'))) AS carrier,
+            -- Buyer identity, aggregated rather than grouped: the customers
+            -- table is 1:1 on orders.customer_id, so MAX() is the value itself
+            -- and every existing GROUP BY o.id in this file stays correct
+            -- without being touched.
+            MAX(COALESCE(c.display_name, c.customer_name)) AS customer_name
      FROM orders o
      LEFT JOIN tech_serial_numbers tsn       ON (
        tsn.organization_id = o.organization_id
@@ -106,6 +110,9 @@ const ORDER_SEARCH_SELECT = `SELECT o.id,
          )
        )
      )
+     LEFT JOIN customers c
+       ON c.id = o.customer_id
+      AND c.organization_id = o.organization_id
      LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
      LEFT JOIN shipment_links sl
        ON sl.owner_type = 'ORDER'
@@ -124,7 +131,9 @@ function mapOrderSearchRows(rows: any[]): GlobalSearchResult[] {
       id: Number(row.id),
       entityType: 'order' as const,
       title: String(row.product_title || `Order #${row.id}`),
-      subtitle: [row.order_id, row.serial_number, row.sku, row.account_source]
+      // Customer leads: a support call opens with a person's name, so that is
+      // what tells the operator "this is the row" without opening it.
+      subtitle: [row.customer_name, row.order_id, row.serial_number, row.sku, row.account_source]
         .filter(Boolean)
         .join(' · '),
       // Search feedback shell — kept in sync with searchHitHref('ORDER').
@@ -176,13 +185,6 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
   const last8 = digits.length >= 8 ? digits.slice(-8) : '';
   const keys = orderTrackingMatchKeys(query);
   const like = identifier ? query : `%${query}%`;
-  const trackingMatch = sqlOrderHasMatchingTracking({
-    orderAlias: 'o',
-    likeParam: '$2',
-    canonicalParam: '$6',
-    key18Param: '$7',
-    last8Param: '$4',
-  });
   const orderNumberExact = sqlIdentifierEqualsQuery('o.order_id', '$2');
 
   if (identifier) {
@@ -251,12 +253,27 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
     return merged;
   }
 
+  // Buyer identity is matched here as well as in the index, so a support call
+  // can be answered from a name the moment this ships rather than after the
+  // next reindex. Phone is deliberately absent: a typed "555-1234" does not
+  // ILIKE a stored "+15551234", and the honest place to solve that is the
+  // digit-folded text in entity_search_docs, which the hybrid arm reads.
+  // NO tracking predicate here, deliberately. This branch only runs for
+  // free-text — an actual tracking number takes the identifier path above,
+  // which resolves shipment ids FIRST and joins to orders (cheap). The
+  // correlated `EXISTS` over every order's shipment is the plan this file's
+  // own header warns "seq-scans every order's shipment and times out", and it
+  // did: on a 4.4k-order org this branch measured ~49s before it came out, and
+  // ~6s of that was the rest of the query. It went unnoticed only because the
+  // dead $3 bind made Postgres reject the statement before it could run.
   const broadMatch = `(
             o.order_id ILIKE $2
          OR o.product_title ILIKE $2
          OR o.sku ILIKE $2
          OR tsn.serial_number ILIKE $2
-         OR ${trackingMatch}
+         OR c.display_name ILIKE $2
+         OR c.customer_name ILIKE $2
+         OR c.email ILIKE $2
   )`;
   const result = await tenantQuery(
     orgId,
@@ -265,8 +282,8 @@ async function searchOrders(orgId: OrgId, query: string, limit: number): Promise
        AND ${broadMatch}
      GROUP BY o.id
      ORDER BY o.created_at DESC NULLS LAST
-     LIMIT $5`,
-    [orgId, like, query, last8, limit, keys.exact, keys.key18],
+     LIMIT $3`,
+    [orgId, like, limit],
   );
 
   return mapOrderSearchRows(result.rows);
@@ -734,7 +751,6 @@ async function searchInternalIds(
 ): Promise<GlobalSearchResult[]> {
   const keys = parseInternalIdQuery(query);
   if (!hasInternalIdKeys(keys)) return [];
-  const internalStartedAt = Date.now();
 
   let receivingIds = [...keys.receivingIds];
   if (keys.receivingLineIds.length > 0) {
@@ -850,24 +866,12 @@ async function searchInternalIds(
         ).catch(() => ({ rows: [] as Array<Record<string, unknown>> }))
       : Promise.resolve({ rows: [] as Array<Record<string, unknown>> });
 
-  const timed = async <T,>(name: string, promise: Promise<T>): Promise<{ name: string; ms: number; result: T }> => {
-    const t0 = Date.now();
-    const result = await promise;
-    return { name, ms: Date.now() - t0, result };
-  };
-  const [receivingTimed, ordersTimed, unitsTimed, boxUnitsTimed] = await Promise.all([
-    timed('receiving', receivingPromise),
-    timed('orders', orderPromise),
-    timed('units', unitPromise),
-    timed('box-units', boxUnitsPromise),
+  const [receiving, orders, units, boxUnits] = await Promise.all([
+    receivingPromise,
+    orderPromise,
+    unitPromise,
+    boxUnitsPromise,
   ]);
-  const receiving = receivingTimed.result;
-  const orders = ordersTimed.result;
-  const units = unitsTimed.result;
-  const boxUnits = boxUnitsTimed.result;
-  // #region agent log
-  fetch('http://127.0.0.1:7905/ingest/963a9b6c-b9e1-4ea4-8873-db315c94d962',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'05d676'},body:JSON.stringify({sessionId:'05d676',hypothesisId:'C',location:'global-entity-search.ts:searchInternalIds',message:'internal id queries finished',data:{totalMs:Date.now()-internalStartedAt,receivingMs:receivingTimed.ms,ordersMs:ordersTimed.ms,unitsMs:unitsTimed.ms,receivingRows:receiving.rows.length,orderRows:orders.rows.length,unitRows:units.rows.length,exactHandle:keys.exactHandle,receivingIds:keys.receivingIds.length,shipmentIds:keys.shipmentIds.length,orderPks:keys.orderPks.length,unitKeys:keys.unitKeys.length},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion
 
   const receivingHits: GlobalSearchResult[] = receiving.rows.map((row) => {
     const id = Number(row.id);
@@ -1069,31 +1073,12 @@ export async function searchAllEntities(
   limit: number,
   axis?: SearchByScope,
 ): Promise<GlobalSearchResult[]> {
-  const startedAt = Date.now();
   // One decode for the whole dispatch — same decoder the station scan bar uses.
   // `printed` follows the `decodedHandle` rule: a route WITH a redirect is a
   // genuine label decode; a redirect-less route is a guess (or, for `manifest`,
   // an anchored type with no URL of its own — handled explicitly below).
   const scanRoute = routeScan(query);
   const printed = Boolean(scanRoute?.redirect);
-  const branch =
-    printed || axis === 'internal'
-      ? 'internal'
-      : axis === 'ticket'
-        ? 'ticket'
-        : axis === 'order'
-          ? 'order'
-          : axis === 'serial'
-            ? 'serial'
-            : axis === 'tracking'
-              ? 'tracking'
-              : 'fanout';
-  const finish = (rows: GlobalSearchResult[]) => {
-    // #region agent log
-    fetch('http://127.0.0.1:7905/ingest/963a9b6c-b9e1-4ea4-8873-db315c94d962',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'05d676'},body:JSON.stringify({sessionId:'05d676',hypothesisId:'C,D',location:'global-entity-search.ts:searchAllEntities',message:'searchAllEntities finished',data:{branch,axis:axis ?? null,printed,qLen:query.length,limit,rowCount:rows.length,ms:Date.now()-startedAt},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion
-    return rows;
-  };
   // Printed classes that are NOT internal PK keys must be routed before the
   // Internal ID branch, which knows no ticket / repair / manifest keys and
   // would answer them with an empty list:
@@ -1106,56 +1091,70 @@ export async function searchAllEntities(
     const tickets = ticketId
       ? await searchSupportTickets(orgId, ticketId).catch(() => [])
       : [];
-    return finish(tickets.slice(0, limit));
+    return tickets.slice(0, limit);
   }
   const repairPk = printed
     ? /^\/m\/rs\/(\d+)/.exec(scanRoute?.redirect ?? '')?.[1]
     : undefined;
   if (repairPk) {
-    return finish(await searchRepairByPk(orgId, Number(repairPk), limit).catch(() => []));
+    return await searchRepairByPk(orgId, Number(repairPk), limit).catch(() => []);
   }
   if (scanRoute?.type === 'manifest') {
-    return finish(await searchManifestUnits(orgId, query, limit).catch(() => []));
+    return await searchManifestUnits(orgId, query, limit).catch(() => []);
   }
   if (printed || axis === 'internal') {
-    return searchInternalIds(orgId, query, limit).catch(() => []).then(finish);
+    return searchInternalIds(orgId, query, limit).catch(() => []);
   }
   if (axis === 'ticket') {
     const [tickets, repairs] = await Promise.all([
       searchSupportTickets(orgId, query).catch(() => []),
       searchRepairs(orgId, query, limit).catch(() => []),
     ]);
-    return finish([...tickets, ...repairs].slice(0, limit));
+    return [...tickets, ...repairs].slice(0, limit);
   }
   if (axis === 'order') {
     const [orders, receiving] = await Promise.all([
       searchOrders(orgId, query, limit).catch(() => []),
       searchReceiving(orgId, query, limit).catch(() => []),
     ]);
-    return finish([...orders, ...receiving].slice(0, limit));
+    return [...orders, ...receiving].slice(0, limit);
   }
   if (axis === 'serial') {
-    return finish(await searchSerialUnits(orgId, query, limit).catch(() => []));
+    return await searchSerialUnits(orgId, query, limit).catch(() => []);
   }
   if (axis === 'tracking') {
     const [orders, holds] = await Promise.all([
       searchOrders(orgId, query, limit).catch(() => []),
       searchTrackingHolds(orgId, query, limit).catch(() => []),
     ]);
-    return finish([...holds, ...orders].slice(0, limit));
+    return [...holds, ...orders].slice(0, limit);
   }
   if (looksLikeTicketScan(query)) {
     const tickets = await searchSupportTickets(orgId, query).catch(() => []);
-    if (tickets.length > 0) return finish(tickets.slice(0, limit));
+    if (tickets.length > 0) return tickets.slice(0, limit);
   }
   if (looksLikeIdentifier(query)) {
-    const [orders, units, holds, receiving] = await Promise.all([
+    // SKU and FBA belong here as much as orders do. A bare SKU ("00624",
+    // "00053-P-2") and an FBA shipment ref ("FBA-08/28/26") both satisfy
+    // `looksLikeIdentifier`, so they never reached the fan-out below — and this
+    // branch did not ask the catalog or the FBA table, so an operator typing a
+    // SKU they were holding in their hand got nothing back. The rows were
+    // always there; nothing queried them.
+    const [orders, units, holds, receiving, skus, fba, repairs] = await Promise.all([
       searchOrders(orgId, query, limit).catch(() => []),
       searchSerialUnits(orgId, query, limit).catch(() => []),
       searchTrackingHolds(orgId, query, limit).catch(() => []),
       searchReceiving(orgId, query, limit).catch(() => []),
+      searchSkus(orgId, query, limit).catch(() => []),
+      searchFba(orgId, query, limit).catch(() => []),
+      searchRepairs(orgId, query, limit).catch(() => []),
     ]);
-    return finish([...orders, ...receiving, ...holds, ...units].slice(0, limit));
+    // Order stays as it was — exact parent-table hits first — with the new
+    // sources appended so nothing that already ranked moves.
+    return [...orders, ...receiving, ...holds, ...units, ...skus, ...fba, ...repairs].slice(
+      0,
+      limit,
+    );
   }
   const perEntity = Math.ceil(limit / 7);
   const [orders, repairs, fba, receiving, skus, units, holds] = await Promise.all([
@@ -1167,5 +1166,5 @@ export async function searchAllEntities(
     searchSerialUnits(orgId, query, perEntity).catch(() => []),
     searchTrackingHolds(orgId, query, perEntity).catch(() => []),
   ]);
-  return finish([...orders, ...holds, ...repairs, ...fba, ...receiving, ...skus, ...units].slice(0, limit));
+  return [...orders, ...holds, ...repairs, ...fba, ...receiving, ...skus, ...units].slice(0, limit);
 }

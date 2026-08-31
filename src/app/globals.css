@@ -206,6 +206,17 @@ body {
 @media (pointer: coarse) {
   input[type='text'],
   input[type='search'],
+  /* email/password/tel/number/url zoom exactly the same way, and `/signin` —
+     the one public route — is built from email + password. They were missing
+     while `maximum-scale=1` in the viewport meta happened to mask them; that
+     lock is gone (it disabled pinch-zoom outright, failing WCAG 1.4.4 and
+     axe `meta-viewport`), so this floor is now the ONLY thing standing between
+     a focused field and an iOS auto-zoom. */
+  input[type='email'],
+  input[type='password'],
+  input[type='tel'],
+  input[type='number'],
+  input[type='url'],
   textarea {
     font-size: max(16px, 1rem);
   }

@@ -3,7 +3,7 @@
 import { GridAgeCellValue } from '@/components/ui/grid-cells';
 import {
   receivingDataCellClass,
-  receivingDataCellHighlightStyle,
+  receivingDataCellStyle,
   type ReceivingGridCellProps,
 } from './receiving-grid-cell-types';
 
@@ -13,7 +13,7 @@ export function ReceivingAgeCell({ col, rule, ctx }: ReceivingGridCellProps) {
     <div
       data-col="age"
       className={receivingDataCellClass(col, rule, ctx)}
-      style={receivingDataCellHighlightStyle(col, ctx)}
+      style={receivingDataCellStyle(col, ctx)}
     >
       <GridAgeCellValue
         daysLate={ctx.daysLate ?? null}

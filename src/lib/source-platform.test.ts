@@ -1,106 +1,118 @@
 import assert from 'node:assert/strict';
-import { test } from 'node:test';
+import test from 'node:test';
+
 import {
   SOURCE_PLATFORMS,
   UNKNOWN_PLATFORM,
-  formatPlatformTooltipLabel,
   platformMetaBrandDot,
   platformMetaIconTone,
-  sourcePlatformMark,
+  sourcePlatformHue,
   sourcePlatformMeta,
+  sourcePlatformMetaFromLabel,
+  type PlatformHue,
   type SourcePlatformMeta,
-} from './source-platform';
+} from '@/lib/source-platform';
 
-test('every platform has a fixed 1–2 char lettermark', () => {
-  for (const p of SOURCE_PLATFORMS) {
-    assert.ok(p.mark.length >= 1 && p.mark.length <= 2, `${p.value} mark length`);
+/**
+ * These tests pin the ONE definition of platform colour.
+ *
+ * The failure they exist to prevent is drift, not a crash: a second place that
+ * decides "Amazon is orange" will agree on the day it is written and disagree
+ * six months later, and nothing about the app breaks when it does — an operator
+ * simply learns two different colours for one channel. The rule enforced here
+ * is that `hue` is the definition and every painted class on a row has to name
+ * it.
+ */
+
+/** Hues that paint from semantic tokens rather than a Tailwind colour ramp. */
+const SEMANTIC_HUES: ReadonlySet<PlatformHue> = new Set(['neutral']);
+
+function classesOf(meta: SourcePlatformMeta): Array<[string, string]> {
+  return [
+    ['text', meta.text],
+    ['border', meta.border],
+    ['dot', meta.dot],
+  ];
+}
+
+test('every platform declares a hue', () => {
+  for (const meta of SOURCE_PLATFORMS) {
+    assert.ok(meta.hue, `${meta.value} must declare a hue`);
+  }
+  assert.equal(UNKNOWN_PLATFORM.hue, 'neutral');
+});
+
+test('every painted class names its row hue — no class may disagree with the definition', () => {
+  for (const meta of SOURCE_PLATFORMS) {
+    if (SEMANTIC_HUES.has(meta.hue)) continue;
+    for (const [field, value] of classesOf(meta)) {
+      if (!value) continue;
+      // A semantic token (text-text-muted) is an allowed opt-out from the ramp;
+      // a ramp class must be THIS row's ramp.
+      const isSemantic = /^(text-text-|border-border-|bg-border-|bg-surface-)/.test(value);
+      if (isSemantic) continue;
+      assert.ok(
+        value.includes(`-${meta.hue}-`),
+        `${meta.value}.${field} is "${value}" but the pinned hue is "${meta.hue}"`,
+      );
+    }
   }
 });
 
-test('every platform has an explicit brand-dot fill class', () => {
-  for (const p of SOURCE_PLATFORMS) {
-    assert.match(p.dot, /^bg-/, `${p.value} dot must be a bg-* class`);
+test('the two channels the operator names out loud are pinned', () => {
+  // Named explicitly because these are the two an operator will say aloud, and
+  // a silent change to either is the most expensive drift in the registry.
+  assert.equal(sourcePlatformHue('ebay'), 'yellow');
+  assert.equal(sourcePlatformHue('amazon'), 'orange');
+  assert.equal(sourcePlatformHue('fba'), 'orange', 'FBA is Amazon and paints as Amazon');
+});
+
+test('platform values are unique — two rows for one channel is two colours', () => {
+  const seen = new Set<string>();
+  for (const meta of SOURCE_PLATFORMS) {
+    assert.ok(!seen.has(meta.value), `duplicate platform row: ${meta.value}`);
+    seen.add(meta.value);
   }
-  assert.equal(UNKNOWN_PLATFORM.dot, 'bg-border-emphasis');
 });
 
-test('every platform has a monochrome brand icon path', () => {
-  for (const p of SOURCE_PLATFORMS) {
-    assert.ok(p.icon && p.icon.length > 20, `${p.value} missing icon path`);
-  }
+test('an unknown platform resolves to the neutral row, never to a borrowed colour', () => {
+  assert.equal(sourcePlatformMeta('not-a-platform').hue, 'neutral');
+  assert.equal(sourcePlatformMeta(null).value, '');
+  assert.equal(sourcePlatformHue(undefined), 'neutral');
 });
 
-test('sourcePlatformMark is stable width for known platforms', () => {
-  assert.equal(sourcePlatformMark('goodwill'), 'Gw');
-  assert.equal(sourcePlatformMark('amazon'), 'az');
-  assert.equal(sourcePlatformMark('aliexpress'), 'AE');
-  assert.equal(sourcePlatformMeta('goodwill').label, 'Goodwill');
+test('label lookup resolves to the same row as value lookup', () => {
+  // Order surfaces carry labels, not stored values. Both doors, one room.
+  assert.equal(sourcePlatformMetaFromLabel('eBay').hue, sourcePlatformMeta('ebay').hue);
+  assert.equal(sourcePlatformMetaFromLabel('Amazon').hue, 'orange');
 });
 
-test('unknown platform falls back to ? mark', () => {
-  assert.equal(sourcePlatformMark('not-a-platform'), '?');
+test('an org accent overrides the paint but never the pinned hue', () => {
+  const meta: SourcePlatformMeta = { ...sourcePlatformMeta('ebay'), accentHex: '#3366ff' };
+  assert.equal(meta.hue, 'yellow', 'the channel IS still yellow');
+  // …while the ink follows the org's chosen accent.
+  assert.ok(platformMetaIconTone(meta).style?.color, 'accent hex paints the mark');
+  assert.ok(platformMetaBrandDot(meta).style?.backgroundColor, 'accent hex paints the dot');
 });
 
-test('platformMetaIconTone uses builtin text class', () => {
-  const tone = platformMetaIconTone(sourcePlatformMeta('amazon'));
-  assert.equal(tone.className, 'text-orange-600');
-  assert.equal(tone.style, undefined);
+test('a platform with no accent paints from its own class, not a fallback', () => {
+  const ebay = sourcePlatformMeta('ebay');
+  assert.equal(platformMetaIconTone(ebay).className, ebay.text);
+  assert.equal(platformMetaBrandDot(ebay).className, ebay.dot);
 });
 
-test('platformMetaIconTone prefers accentHex style over text', () => {
-  const meta: SourcePlatformMeta = {
-    ...sourcePlatformMeta('ebay'),
-    text: '',
-    accentHex: '#FF9900',
-  };
-  const tone = platformMetaIconTone(meta);
-  assert.equal(tone.className, undefined);
-  assert.equal(tone.style?.color, '#ff9900');
-});
-
-test('platformMetaIconTone returns empty when no text and no valid hex', () => {
-  const meta: SourcePlatformMeta = {
-    ...sourcePlatformMeta('other'),
-    text: '',
-    accentHex: 'nope',
-  };
-  assert.deepEqual(platformMetaIconTone(meta), {});
-});
-
-test('platformMetaBrandDot uses registry dot class', () => {
-  const paint = platformMetaBrandDot(sourcePlatformMeta('ebay'));
-  assert.equal(paint.className, 'bg-yellow-500');
-  assert.equal(paint.style, undefined);
-});
-
-test('platformMetaBrandDot prefers accentHex fill over registry dot', () => {
-  const meta: SourcePlatformMeta = {
-    ...sourcePlatformMeta('ebay'),
-    accentHex: '#FF9900',
-  };
-  const paint = platformMetaBrandDot(meta);
-  assert.equal(paint.className, undefined);
-  assert.equal(paint.style?.backgroundColor, '#ff9900');
-});
-
-test('platformMetaBrandDot falls back to unknown neutral', () => {
-  assert.deepEqual(platformMetaBrandDot(UNKNOWN_PLATFORM), {
-    className: 'bg-border-emphasis',
-  });
-});
-
-test('formatPlatformTooltipLabel prefixes the platform display name', () => {
-  assert.equal(
-    formatPlatformTooltipLabel('08-14924-82211', 'eBay'),
-    'eBay 08-14924-82211',
-  );
-  assert.equal(
-    formatPlatformTooltipLabel('86-32124', 'Amazon'),
-    'Amazon 86-32124',
-  );
-  assert.equal(formatPlatformTooltipLabel('86-32124', null), '86-32124');
-  assert.equal(formatPlatformTooltipLabel('86-32124', 'Unknown'), '86-32124');
-  assert.equal(formatPlatformTooltipLabel('', 'eBay'), 'eBay');
-  assert.equal(formatPlatformTooltipLabel('', 'Unknown'), '');
-  assert.equal(formatPlatformTooltipLabel('', null), '');
+test('the slider tone vocabulary derives from the registry, not its own table', async () => {
+  const { platformSliderTone } = await import('@/components/ui/HorizontalButtonSlider');
+  // The two the operator names out loud must survive the translation.
+  assert.equal(platformSliderTone('ebay'), 'yellow');
+  assert.equal(platformSliderTone('amazon'), 'orange');
+  assert.equal(platformSliderTone('fba'), 'orange');
+  // The slider's palette is narrower than the registry's, so near hues are
+  // approximated to the closest one it can say — Walmart's amber lands on
+  // orange. The non-brand hues (Square's slate, Other, unknown) land on the
+  // neutral pill, which is the one case where borrowing would be wrong.
+  assert.equal(platformSliderTone('walmart'), 'orange');
+  assert.equal(platformSliderTone('square'), 'zinc');
+  assert.equal(platformSliderTone('other'), 'zinc');
+  assert.equal(platformSliderTone('not-a-platform'), 'zinc');
 });

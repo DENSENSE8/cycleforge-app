@@ -5,7 +5,7 @@
  * allocate-serial detail overlay. Uses existing allocate API + OrdersGridHost.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
@@ -28,7 +28,6 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
   const searchQuery = String(searchParams.get('search') || '').trim();
   const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
 
-  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
 
   const stagedQuery = useQuery({
     ...packedOrdersQuery({ searchQuery, staffId }),

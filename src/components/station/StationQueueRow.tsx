@@ -2,6 +2,7 @@
 
 import { SerialChip } from '@/components/ui/CopyChip';
 import { OrdersQueueTableRow } from '@/components/dashboard/orders-queue/OrdersQueueTableRow';
+import { STATION_HISTORY_COLUMNS } from '@/components/station/station-history-columns';
 import { STATION_HISTORY_GRID_CAPABILITIES } from '@/components/station/station-history-capabilities';
 import { resolveStationSource, SOURCE_DOT_BG, SOURCE_DOT_LABEL } from '@/utils/source-dot';
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
@@ -29,7 +30,7 @@ export function StationQueueRow({
   isChecked,
   isSelected,
   isMobile,
-  columns,
+  columns = STATION_HISTORY_COLUMNS,
   onToggleSelect,
   onRowClick,
 }: {
@@ -45,15 +46,11 @@ export function StationQueueRow({
   isSelected: boolean;
   isMobile: boolean;
   /**
-   * Visible column tracks, ALREADY resolved by the parent table through
-   * `useGridColumnVisibility` with its own `tableId` ('tech' | 'packer').
-   *
-   * The station benches are the one place `OrdersQueueTableRow` renders outside
-   * a LedgerGrid, and they DO have a live per-staff column config (the ⋮
-   * TableOptionsMenu writes `staff_preferences.tableColumns[tableId].hidden`).
-   * Resolving upstream is what keeps that working now that the row no longer
-   * asks `useIsColumnHidden()` per cell — and it removes the whole track rather
-   * than leaving the empty ruled band the old path produced.
+   * Visible column tracks — the bench-owned flat model
+   * (`STATION_HISTORY_COLUMNS`; per-staff hide/show went with the
+   * column-display rail, so the canonical list is what paints). The station
+   * benches are the one place `OrdersQueueTableRow` still renders the flat
+   * cell registry; the outbound desks all mount the compound slot model.
    */
   columns?: readonly OrdersQueueColumn[];
   /** Left-gutter checkbox — toggles selection without opening the row. */

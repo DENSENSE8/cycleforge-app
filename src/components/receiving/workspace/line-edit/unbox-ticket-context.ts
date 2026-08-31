@@ -1,5 +1,5 @@
 /**
- * When Unbox should auto-open Ticket Displays for contextual claim / chat —
+ * When Unbox should auto-open Ticket composer mode for contextual claim / chat —
  * never a centre advisory. Pure predicate; no UI.
  *
  * Arrival will port the same rules later; Unbox dogfoods first.
@@ -17,10 +17,10 @@ type UnboxTicketContextOpen = {
 };
 
 /**
- * Linked ticket → open Ticket Displays (chat).
- * Unfound carton → open Ticket Displays on Link so tracking-seeded search runs
+ * Linked ticket → open Ticket composer mode (chat above the dock).
+ * Unfound carton → Ticket mode on Link so tracking-seeded search runs
  * (empty seed may flip to Create inside the claim controller).
- * Otherwise leave Displays closed (ops-flow middle only).
+ * Otherwise leave Ticket mode closed (ops-flow middle only).
  */
 export function resolveUnboxTicketContextOpen(
   row: ReceivingLineRow,

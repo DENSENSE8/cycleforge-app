@@ -104,6 +104,11 @@ export async function POST(req: NextRequest) {
   }
 
   // Sign the new member in: mint a personal-device session for their profile.
+  // "Keep me signed in": NOT persistent. This flow shows no checkbox, so the
+  // session must not silently promise indefinite persistence — it gets the
+  // normal device-kind window, and the user opts in by signing in with the box
+  // checked. Deliberate default, not an oversight (see the persistent flag in
+  // src/lib/auth/session.ts).
   const session = await createSession({
     staffId: result.staffId,
     deviceKind: 'personal',

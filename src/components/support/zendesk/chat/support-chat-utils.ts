@@ -28,20 +28,22 @@ export function initials(name: string): string {
 }
 
 export interface ResolvedAuthor {
-  /** Best display name (agent/user name, or the email, or the requester label). */
+  /** Best display name (staff name, agent/user name, or the requester label). */
   name: string;
   /** The author's email when known (from the agent/user roster) — never an id. */
   email: string | null;
-  /** Avatar photo URL when the roster has one. */
+  /** Zendesk roster photo — used only when there is no Cycle Forge staff id. */
   photo: string | null;
+  /** Cycle Forge staff id when this comment was posted by (or maps to) our staff. */
+  staffId: number | null;
   /** True when this comment is one of OURS (agent reply or any internal note). */
   isOurs: boolean;
 }
 
 /**
- * Resolve a comment author to a name + email, never a bare "User #<id>".
- * Order: Zendesk agent roster → Zendesk user roster (requester / end users) →
- * the ticket requester identity → email-only → last-resort id.
+ * Resolve a comment author. Cycle Forge staff wins when we have a staff id
+ * (app-posted, or Zendesk agent email matching `staff.email`). Otherwise the
+ * Zendesk roster photo + name stay — comments typed only in Zendesk.
  *
  * `isOurs` drives bubble styling: a comment is ours if its author is an agent,
  * OR it's a non-public internal note, OR it's our optimistic echo.
@@ -67,32 +69,55 @@ export function resolveAuthor(
     author_email?: string | null;
     author_photo?: string | null;
     author_is_agent?: boolean;
+    author_staff_id?: number | null;
   };
+  const staffId =
+    typeof server.author_staff_id === 'number' && server.author_staff_id > 0
+      ? server.author_staff_id
+      : null;
+
   if (server.author_name) {
     return {
       name: server.author_name,
       email: server.author_email ?? null,
-      photo: server.author_photo ?? null,
-      isOurs: Boolean(server.author_is_agent) || c.public === false || optimisticOurs,
+      photo: staffId ? null : server.author_photo ?? null,
+      staffId,
+      isOurs: Boolean(server.author_is_agent) || Boolean(staffId) || c.public === false || optimisticOurs,
     };
   }
 
-  const isOurs = Boolean(agent) || c.public === false || optimisticOurs;
+  const isOurs = Boolean(agent) || Boolean(staffId) || c.public === false || optimisticOurs;
+
+  if (staffId) {
+    return {
+      name: agent?.name || user?.name || 'Staff',
+      email: agent?.email ?? user?.email ?? null,
+      photo: null,
+      staffId,
+      isOurs,
+    };
+  }
 
   if (agent) {
-    return { name: agent.name, email: agent.email, photo: agent.photo, isOurs };
+    return { name: agent.name, email: agent.email, photo: agent.photo, staffId: null, isOurs };
   }
   if (user) {
-    return { name: user.name || user.email || 'User', email: user.email, photo: user.photo, isOurs };
+    return {
+      name: user.name || user.email || 'User',
+      email: user.email,
+      photo: user.photo,
+      staffId: null,
+      isOurs,
+    };
   }
   if (maps.requesterId && c.author_id === maps.requesterId) {
     const name = maps.requesterName || maps.requesterEmail || 'Requester';
-    return { name, email: maps.requesterEmail ?? null, photo: null, isOurs };
+    return { name, email: maps.requesterEmail ?? null, photo: null, staffId: null, isOurs };
   }
   if (optimisticOurs) {
-    return { name: 'You', email: null, photo: null, isOurs };
+    return { name: 'You', email: null, photo: null, staffId: null, isOurs };
   }
-  return { name: `User #${c.author_id}`, email: null, photo: null, isOurs };
+  return { name: `User #${c.author_id}`, email: null, photo: null, staffId: null, isOurs };
 }
 
 /**

@@ -4,7 +4,7 @@ import { UnitPriceChip } from '@/components/ui/CopyChip';
 import { GridCellDash } from '@/components/ui/grid-cells';
 import {
   receivingDataCellClass,
-  receivingDataCellHighlightStyle,
+  receivingDataCellStyle,
   type ReceivingGridCellProps,
 } from './receiving-grid-cell-types';
 
@@ -24,7 +24,7 @@ export function ReceivingPriceCell({ col, rule, ctx }: ReceivingGridCellProps) {
     <div
       data-col="price"
       className={receivingDataCellClass(col, rule, ctx)}
-      style={receivingDataCellHighlightStyle(col, ctx)}
+      style={receivingDataCellStyle(col, ctx)}
     >
       {hasPositiveUnitPrice(amount) ? (
         <UnitPriceChip

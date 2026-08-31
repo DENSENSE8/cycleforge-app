@@ -1,5 +1,6 @@
 /**
- * ⌘K palette page buckets — Pin → SPINE_SECTIONS → Footer.
+ * ⌘K palette page buckets — Pin → SPINE_SECTIONS. A leftover `kind: 'bottom'`
+ * row (none on the default map) still lands in an Account band.
  *
  * Composes {@link APP_SIDEBAR_NAV} / {@link getSidebarNavItems} +
  * {@link spineSectionIdForPage} + {@link spineAccentFor}. Never invents a
@@ -18,12 +19,10 @@ import {
   getSidebarPageNav,
   isSidebarPageReachable,
   SPINE_SECTIONS,
-  STATION_SUBGROUPS,
   spineSectionIdForPage,
   type SidebarIconComponent,
   type SidebarNavItem,
   type SpineSectionId,
-  type StationSubgroupId,
 } from '@/lib/sidebar-navigation';
 
 export type CommandBarNavBandId = SpineSectionId | 'pin' | 'footer';
@@ -34,13 +33,11 @@ type CommandBarNavPageRow = {
   label: string;
   href: string;
   icon: SidebarIconComponent;
-  /** True for Receiving / Walk-In subgroup members under Scan Stations. */
-  indented?: boolean;
 };
 
 type CommandBarNavSubgroupRow = {
   type: 'subgroup';
-  id: StationSubgroupId;
+  id: string;
   label: string;
   icon: SidebarIconComponent;
 };
@@ -56,59 +53,20 @@ export type CommandBarNavGroup = {
   rows: CommandBarNavRow[];
 };
 
-function toPageRow(item: SidebarNavItem, indented = false): CommandBarNavPageRow {
+function toPageRow(item: SidebarNavItem): CommandBarNavPageRow {
   return {
     type: 'page',
     id: item.id,
     label: item.label,
     href: item.href,
     icon: item.desktopIcon ?? item.icon,
-    indented,
   };
 }
 
-/** Scan Stations: Receiving · Walk-In subgroup chrome + members, then other floor pages. */
-function buildFloorRows(items: readonly SidebarNavItem[]): CommandBarNavRow[] {
-  const rows: CommandBarNavRow[] = [];
-  const consumed = new Set<string>();
-  const emittedSubgroups = new Set<StationSubgroupId>();
-
-  for (const item of items) {
-    if (consumed.has(item.id)) continue;
-
-    if (item.kind === 'station' && item.stationSubgroup) {
-      const sg = item.stationSubgroup;
-      if (!emittedSubgroups.has(sg)) {
-        const def = STATION_SUBGROUPS.find((s) => s.id === sg);
-        if (def) {
-          rows.push({
-            type: 'subgroup',
-            id: def.id,
-            label: def.label,
-            icon: def.icon,
-          });
-        }
-        emittedSubgroups.add(sg);
-        for (const member of items) {
-          if (member.kind === 'station' && member.stationSubgroup === sg) {
-            rows.push(toPageRow(member, true));
-            consumed.add(member.id);
-          }
-        }
-      }
-      continue;
-    }
-
-    rows.push(toPageRow(item));
-    consumed.add(item.id);
-  }
-
-  return rows;
-}
-
 /**
- * Ordered palette groups mirroring MasterNav pin / sections / footer.
- * Empty groups (permission-filtered) are omitted.
+ * Ordered palette groups mirroring MasterNav pin / sections.
+ * Empty groups (permission-filtered) are omitted. A leftover
+ * `kind: 'bottom'` row still lands in an Account band (none on the default map).
  */
 export function buildCommandBarNavGroups(
   permissions?: ReadonlySet<string>,
@@ -146,10 +104,7 @@ export function buildCommandBarNavGroups(
       label: section.label,
       sectionIcon: section.icon,
       accent: spineAccentFor(section.id),
-      rows:
-        section.id === 'floor'
-          ? buildFloorRows(sectionItems)
-          : sectionItems.map((i) => toPageRow(i)),
+      rows: sectionItems.map((i) => toPageRow(i)),
     });
   }
 
@@ -168,8 +123,8 @@ export function buildCommandBarNavGroups(
 }
 
 /**
- * Filter page rows through the shared nav matcher. Subgroup chrome is dropped
- * while filtering (browse-time IA); matching Receiving pages stay indented.
+ * Filter page rows through the shared nav matcher. Subgroup chrome (none on
+ * the default map) is dropped while filtering.
  *
  * Ranking is applied WITHIN each band, not across them: the palette's bands are
  * the spine's sections, and re-sorting bands by best-hit would make the group

@@ -2,8 +2,10 @@
 
 /**
  * Per-staff LedgerGrid row fills (`tableColumns[tableId].rowFills`).
- * Sibling of {@link useGridColumnDisplay} — same optimistic staff-preferences
- * write; preserves hidden / shown / order / widths / display.
+ *
+ * Optimistic staff-preferences write: it patches only its own `rowFills` slot
+ * and spreads the rest of `tableColumns[tableId]` through untouched, so a
+ * legacy key it does not know about survives the round trip.
  */
 
 import { useCallback, useMemo } from 'react';

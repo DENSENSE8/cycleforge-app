@@ -37,6 +37,7 @@
 import type { ReactNode } from 'react';
 import { LineNotesCard } from './LineNotesCard';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import type { StationComposerMode } from '@/lib/composer/station-composer-mode';
 
 /**
  * Minimal notes contract — Unbox + Testing (+ Arrival) compose the same dock
@@ -94,6 +95,12 @@ interface WorkspaceNotesCardProps {
    * {@link onOpenStatusHistory} — see the prop's docblock on LineNotesCard.
    */
   headerAction?: { label: string; onClick: () => void; pressed?: boolean };
+  onComposerModeChange?: (mode: StationComposerMode) => void;
+  onComposerFocus?: () => void;
+  /** Procedure fill for the composer bottom-right {@link ScanStationProgressRing}. */
+  progressPercent?: number;
+  progressTone?: 'idle' | 'selected';
+  onProgressClick?: () => void;
 }
 
 export function WorkspaceNotesCard({
@@ -109,6 +116,11 @@ export function WorkspaceNotesCard({
   onOpenLocations,
   onOpenStatusHistory,
   headerAction,
+  onComposerModeChange,
+  onComposerFocus,
+  progressPercent,
+  progressTone,
+  onProgressClick,
 }: WorkspaceNotesCardProps) {
   return (
     <div id="zoho-notes-card">
@@ -122,6 +134,7 @@ export function WorkspaceNotesCard({
         zendeskTicketSubject={c.supportTicket?.subject ?? null}
         previousLineNotes={c.prevLineNotes}
         lineId={row.id}
+        receivingId={row.receiving_id ?? null}
         onNotesChange={c.setItemNote}
         onSaveNotes={(override) => {
           // Returns whether it actually persisted, so the card only flashes
@@ -147,6 +160,11 @@ export function WorkspaceNotesCard({
         onOpenLocations={onOpenLocations}
         onOpenStatusHistory={onOpenStatusHistory}
         headerAction={headerAction}
+        onComposerModeChange={onComposerModeChange}
+        onComposerFocus={onComposerFocus}
+        progressPercent={progressPercent}
+        progressTone={progressTone}
+        onProgressClick={onProgressClick}
         statusStamps={{
           received_at: row.received_at,
           received_by_name: row.received_by_name,

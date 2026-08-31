@@ -53,6 +53,12 @@ interface IdentityMarkProps {
   size?: IdentityMarkSize;
   /** Ring hairline around the mark. On by default (matches the staff footer). */
   ring?: boolean;
+  /**
+   * Identity-COLOUR ring, painted only while the PHOTO shows. On initials the
+   * colour is already the fill, so this keeps the assigned colour scannable
+   * after a staffer uploads a face — without doubling it when they have not.
+   */
+  ringHex?: string | null;
   className?: string;
   /** Accessible name. Omit ⇒ `aria-hidden` (the row already names the entity). */
   alt?: string;
@@ -64,6 +70,7 @@ export function IdentityMark({
   colorHex,
   size = 'sm',
   ring = true,
+  ringHex,
   className,
   alt,
 }: IdentityMarkProps) {
@@ -88,7 +95,12 @@ export function IdentityMark({
         !showPhoto && !colorHex && 'bg-surface-inverse',
         className,
       )}
-      style={!showPhoto && colorHex ? { backgroundColor: colorHex } : undefined}
+      style={{
+        ...(!showPhoto && colorHex ? { backgroundColor: colorHex } : null),
+        // box-shadow, not border: it paints outside the box, so the photo
+        // keeps its full diameter and nothing reflows between the two states.
+        ...(showPhoto && ringHex ? { boxShadow: `0 0 0 2px ${ringHex}` } : null),
+      }}
     >
       {showPhoto ? (
         // eslint-disable-next-line @next/next/no-img-element -- auth-gated photo

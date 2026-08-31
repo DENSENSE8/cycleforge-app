@@ -12,7 +12,12 @@
 
 import { useCallback, useState } from 'react';
 import { startAuthentication } from '@simplewebauthn/browser';
-import { Button } from '@/design-system/primitives';
+// Deep path, not the barrel. This modal is mounted by the ROOT LAYOUT, so a
+// barrel import here put seven motion-engine primitives (CardShell,
+// StaggerReveal, ChevronToggle, SlicedActionDock, Popover,
+// OmnichannelComposerDock, ProgressBar) on the critical graph of EVERY route
+// in the app — for one button.
+import { Button } from '@/design-system/primitives/Button';
 import {
   Dialog,
   DialogContent,

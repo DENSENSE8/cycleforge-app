@@ -17,7 +17,8 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { TextField } from '@/design-system/primitives';
+// Deep path, not the barrel — see the note in `src/app/signin/page.tsx`.
+import { TextField } from '@/design-system/primitives/TextField';
 
 export interface SignInAuthStepPanelsProps {
   authStep: 'email' | 'password';

@@ -62,6 +62,24 @@ interface BuyLabelSectionProps {
    * Unbox pinned chrome under Labels Documents.
    */
   flush?: boolean;
+  /**
+   * Parcel weight (oz) from the bound order/form — sent on the rate request so
+   * the quote reflects the operator's scale, not a stale stored weight.
+   */
+  weightOz?: number | null;
+  /** Parcel dimensions from the bound order/form (dim-weight pricing). */
+  dimensions?: {
+    length: number;
+    width: number;
+    height: number;
+    unit: 'inch' | 'centimeter';
+  } | null;
+  /**
+   * Rate-shop failure escape hatch: the host learns WHY rates failed (e.g.
+   * `SHIPSTATION_NOT_CONNECTED`) so it can flip its fulfillment channel to
+   * link-only instead of leaving the operator on a dead Buy path.
+   */
+  onRatesError?: (info: { code: string | null; message: string }) => void;
 }
 
 /**
@@ -76,6 +94,9 @@ export function BuyLabelSection({
   orderRef,
   onChange,
   flush = false,
+  weightOz = null,
+  dimensions = null,
+  onRatesError,
 }: BuyLabelSectionProps) {
   const face = flush ? 'rounded-none' : 'rounded-xl';
   const faceSm = flush ? 'rounded-none' : 'rounded-lg';
@@ -98,10 +119,19 @@ export function BuyLabelSection({
       const res = await fetch('/api/shipping/order-rates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderId }),
+        body: JSON.stringify({
+          orderId,
+          // Only claim a parcel opinion when the host actually has one — an
+          // absent key keeps the server's stored-parcel / ShipStation fallback.
+          ...(weightOz != null && weightOz > 0 ? { weightOz } : {}),
+          ...(dimensions ? { dimensions } : {}),
+        }),
       });
       const data = (await res.json()) as RatesResponse;
-      if (!res.ok || !data.ok) throw new Error(data.error || 'Could not fetch rates.');
+      if (!res.ok || !data.ok) {
+        onRatesError?.({ code: data.code ?? null, message: data.error || 'Could not fetch rates.' });
+        throw new Error(data.error || 'Could not fetch rates.');
+      }
       return data;
     },
     onSuccess: (data) => {

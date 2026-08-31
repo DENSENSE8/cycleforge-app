@@ -4,16 +4,16 @@ import path from 'path';
 /**
  * Throw a task — the `⌘⇧U` chord and the single panel it opens.
  *
- * Sibling of `clipboard-history-chord.spec.ts`. Same placement ruling (D5):
- * chord + spine ⋯ row, never a sixth header icon. What is worth testing is
- * the wiring that is easy to get wrong and invisible in review:
+ * Sibling of `clipboard-history-chord.spec.ts`. Chord + goal-chip discovery
+ * row, never a sixth header icon. What is worth testing is the wiring that is
+ * easy to get wrong and invisible in review:
  *
  *  1. **The chord works with the spine CLOSED** — binder lives on
  *     `ThrowTaskHost` (always mounted), not `StaffAccountFooter` (lazy).
  *  2. **The chord yields inside a text field** — autofocus would yank the
  *     caret out of a note mid-word.
  *  3. **A wedge cannot fire it** — bare digits + Enter never open the panel.
- *  4. **One panel** — the ⋯ row is a trigger, not a second mount.
+ *  4. **One panel** — the goal-chip Throw row is a trigger, not a second mount.
  *
  * Run against the tasks lane: `PW_BASE_URL=http://localhost:3160`.
  */
@@ -70,14 +70,12 @@ test.describe('Throw-task chord', () => {
     await expect(panel(page)).toHaveCount(0);
   });
 
-  test('the spine ⋯ row opens the SAME panel and advertises the chord', async ({ page }) => {
+  test('the goal-chip Throw row opens the SAME panel and advertises the chord', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Show sidebar' }).click();
-    await page.getByRole('button', { name: 'Account details' }).click();
+    await page.locator('[data-header-goal-chip]').getByRole('button').click();
 
-    const row = page.getByRole('button', { name: /Throw a task/ });
+    const row = page.getByRole('button', { name: /Throw a task/ }).filter({ hasText: '⌘⇧U' });
     await expect(row).toBeVisible();
-    await expect(row).toContainText('⌘⇧U');
 
     await row.click();
     await expect(panel(page)).toHaveCount(1);

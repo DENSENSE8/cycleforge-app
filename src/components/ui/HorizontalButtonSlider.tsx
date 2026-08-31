@@ -8,6 +8,7 @@ import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { appCanvasClass, appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
+import { sourcePlatformHue, type PlatformHue } from '@/lib/source-platform';
 
 export type HorizontalSliderTone = 'zinc' | 'yellow' | 'emerald' | 'red' | 'blue' | 'orange' | 'purple';
 
@@ -49,16 +50,47 @@ const FBA_TONE: Record<
   purple: { activeBg: 'bg-purple-100', activeText: 'text-black', ring: 'ring-purple-300' },
 };
 
-/* ── Preset filter items (single source of truth for tones) ── */
+/**
+ * Pinned-hue → slider tone. The slider's palette is narrower than the platform
+ * registry's, so near hues are approximated to the closest one it can say
+ * (Walmart's amber → orange, Goodwill's sky → blue). The NON-brand hues —
+ * Square's slate, Other, unknown — land on the neutral pill instead, because
+ * approximating those would mean handing a channel a brand colour it does not
+ * have, which is worse than showing it plain.
+ */
+const TONE_BY_PLATFORM_HUE: Record<PlatformHue, HorizontalSliderTone> = {
+  yellow: 'yellow',
+  orange: 'orange',
+  red: 'red',
+  blue: 'blue',
+  purple: 'purple',
+  green: 'emerald',
+  amber: 'orange',
+  sky: 'blue',
+  slate: 'zinc',
+  neutral: 'zinc',
+};
 
+/** A channel pill's tone, resolved from the platform registry — never typed here. */
+export function platformSliderTone(platformValue: string): HorizontalSliderTone {
+  return TONE_BY_PLATFORM_HUE[sourcePlatformHue(platformValue)];
+}
+
+/* ── Preset filter items ──
+ * NOT a tone source of truth. The workflow presets below (All / Must Go / …)
+ * own their own tones because they name a workflow, not a brand. Every CHANNEL
+ * preset derives from `source-platform.ts`, which is the one place a platform's
+ * colour is defined — this file used to spell "amazon: orange" out again, and a
+ * second spelling of a brand colour is a second colour waiting to happen.
+ */
 export const SLIDER_PRESETS = {
   all:        { id: 'all',      label: 'All',       tone: 'blue'    } as HorizontalSliderItem,
   mustGo:     { id: 'must_go',  label: 'Must Go',   tone: 'red'     } as HorizontalSliderItem,
   newest:     { id: 'newest',   label: 'Newest',    tone: 'emerald' } as HorizontalSliderItem,
   oldest:     { id: 'oldest',   label: 'Oldest',    tone: 'zinc'    } as HorizontalSliderItem,
-  amazon:     { id: 'amazon',   label: 'Amazon',    tone: 'orange'  } as HorizontalSliderItem,
-  ebay:       { id: 'ebay',     label: 'eBay',      tone: 'yellow'  } as HorizontalSliderItem,
-  ecwid:      { id: 'ecwid',    label: 'Ecwid',     tone: 'blue'    } as HorizontalSliderItem,
+  amazon:     { id: 'amazon',   label: 'Amazon',    tone: platformSliderTone('amazon') } as HorizontalSliderItem,
+  ebay:       { id: 'ebay',     label: 'eBay',      tone: platformSliderTone('ebay')   } as HorizontalSliderItem,
+  ecwid:      { id: 'ecwid',    label: 'Ecwid',     tone: platformSliderTone('ecwid')  } as HorizontalSliderItem,
   pending:    { id: 'all',      label: 'Pending',   tone: 'purple'  } as HorizontalSliderItem,
   repair:     { id: 'all',      label: 'All',       tone: 'orange'  } as HorizontalSliderItem,
   stock:      { id: 'all',      label: 'All',       tone: 'red'     } as HorizontalSliderItem,

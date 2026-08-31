@@ -67,6 +67,13 @@ test('composerShowsCommit: a trailingAction replaces the Send button', () => {
   );
 });
 
+test('composerShowsCommit: showCommitWithTrailing keeps Enter beside a terminal CTA', () => {
+  assert.equal(
+    composerShowsCommit({ hasTrailingAction: true, showCommitWithTrailing: true }),
+    true,
+  );
+});
+
 test('resizeComposerTextarea: clamps between min and max', () => {
   const el = {
     style: { height: '' } as { height: string },
@@ -74,21 +81,21 @@ test('resizeComposerTextarea: clamps between min and max', () => {
   };
   resizeComposerTextarea(el as unknown as HTMLTextAreaElement, {
     minPx: 40,
-    maxPx: 128,
+    maxPx: 192,
   });
-  assert.equal(el.style.height, '128px');
+  assert.equal(el.style.height, '192px');
 
   el.scrollHeight = 20;
   resizeComposerTextarea(el as unknown as HTMLTextAreaElement, {
     minPx: 40,
-    maxPx: 128,
+    maxPx: 192,
   });
   assert.equal(el.style.height, '40px');
 
   el.scrollHeight = 72;
   resizeComposerTextarea(el as unknown as HTMLTextAreaElement, {
     minPx: 40,
-    maxPx: 128,
+    maxPx: 192,
   });
   assert.equal(el.style.height, '72px');
 });

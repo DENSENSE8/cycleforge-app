@@ -39,7 +39,7 @@ test('PACKED_STAGED is the shared seam — identical dot hue across both kinds',
   const u = resolveLabel('unshipped', 'PACKED_STAGED');
   const o = resolveLabel('outbound', 'PACKED_STAGED');
   assert.equal(u.dot, o.dot); // same amber dot = the locked seam
-  assert.notEqual(u.label, o.label); // but distinct labels ('Packed · Staged' vs 'In Staging')
+  assert.notEqual(u.label, o.label); // but distinct labels ('Packed' vs 'In Staging')
 });
 
 test('no two status dots share a hue (except the PACKED_STAGED seam)', () => {

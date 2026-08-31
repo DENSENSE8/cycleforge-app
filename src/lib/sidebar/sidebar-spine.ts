@@ -57,9 +57,8 @@ export const SIDEBAR_SPINE_RESIZE = {
 /**
  * Chrome for MasterNav **identity menus** (org/workspace switch + staff ⋯ menu).
  *
- * Menus are a **child of the trigger**, not a second wider panel:
- * `AnchoredLayer` `*-stretch` against the trigger/row anchor (inset by the
- * band pad), so width ≤ {@link SIDEBAR_SPINE_WIDTH}. Flush industrial chrome
+ * The ⋯ panel is the shadcn/ui Popover (`radix-popover`), anchored to the
+ * footer row so width tracks the spine. Flush industrial chrome
  * (`rounded-none` · `shadow-md`) + caption type — peer of `HeaderChromeMenu`,
  * never a chunkier twin of the band. Never fork `w-[260px]` / `w-[280px]` (or
  * any wider literal) — guard: `header-mode.guard.test.ts`.

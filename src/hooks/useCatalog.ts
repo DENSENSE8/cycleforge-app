@@ -162,6 +162,10 @@ export function usePlatformMeta(): (value: string | null | undefined) => SourceP
       const accentHex = row.color_hex?.trim() || null;
       return {
         value: key,
+        // The hue is the pinned brand fact and stays the built-in's even when
+        // an org overrides the paint: `accentHex` changes the ink, not which
+        // colour this channel IS.
+        hue: builtin.hue,
         label: row.label,
         mark: builtin.mark || row.label.slice(0, 2),
         text: accentHex ? '' : (row.tone ?? builtin.text),

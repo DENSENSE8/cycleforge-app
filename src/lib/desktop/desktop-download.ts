@@ -1,8 +1,8 @@
 /**
  * Where an operator gets the desktop shell.
  *
- * One place, because more than one surface will want it — the staff account
- * overflow today, Settings → About and a `/desktop-app` landing page next
+ * One place, because more than one surface will want it — Settings →
+ * Workstation (this device) today, and a `/desktop-app` landing page next
  * (`docs/cycle-forge-branding-spec.md` §6.1) — and a download URL that drifts
  * between them sends half the floor to a stale installer.
  *

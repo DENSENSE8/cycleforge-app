@@ -230,6 +230,14 @@ export const Send = ({ className = "w-6 h-6" }: { className?: string }) => (
     </svg>
 );
 
+/** Enter / return key — unified commit glyph for the station composer (not a paper plane). */
+export const CornerDownLeft = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M9 10 4 15l5 5" />
+        <path d="M20 4v7a4 4 0 0 1-4 4H4" />
+    </svg>
+);
+
 export const Reply = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24">
         <path d="M9 17 4 12l5-5" />

@@ -3,14 +3,11 @@
 /**
  * Ticket subject — the ONE click-to-edit subject control.
  *
- * It exists because the subject had two renderers and the surface showed it
- * twice: `SupportChatHeader` drew an editable title, and on `/support` the
- * thread's split header ({@link SupportTicketPaneHeader} → `SupportTicketIdentity`)
- * drew the same string one row above it. Two components rendering one fact is a
- * fork whether or not they agree — and these did not even agree on affordance,
- * because only one of them could be edited.
+ * Click the title to edit; blur or Enter commits; Escape discards. No save /
+ * cancel buttons — those fought the inline affordance and duplicated the
+ * keyboard / click-off path.
  *
- * So: identity owns the subject on `/support`, the chat header suppresses it
+ * Identity owns the subject on `/support`, the chat header suppresses it
  * there (`hideTitle`), and BOTH compose this field, so the subject stays
  * editable wherever it is the one on screen.
  *
@@ -21,10 +18,8 @@
  * than wraps in both.
  */
 
-import { useState, type ReactNode } from 'react';
-import { Check, X } from '@/components/Icons';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { IconButton } from '@/design-system/primitives';
 import { useUpdateTicket } from '@/hooks/useZendeskQueries';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -57,22 +52,43 @@ export function TicketSubjectField({
   const update = useUpdateTicket();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState('');
+  const [optimistic, setOptimistic] = useState<string | null>(null);
+  const committedRef = useRef(false);
+  const ticketKey = ticketId ?? 0;
 
-  const current = subject || '';
+  const current = optimistic ?? subject ?? '';
   const typeClass = compact ? 'text-role-caption' : 'text-role-body';
 
+  useEffect(() => {
+    setOptimistic(null);
+  }, [ticketKey]);
+
   const startEdit = () => {
+    committedRef.current = false;
     setDraft(current);
     setEditing(true);
   };
 
   const save = () => {
+    if (committedRef.current) return;
+    committedRef.current = true;
     if (ticketId == null) {
       setEditing(false);
       return;
     }
     const next = draft.trim();
-    if (next && next !== current) update.mutate({ id: ticketId, patch: { subject: next } });
+    if (next && next !== current) {
+      setOptimistic(next);
+      update.mutate(
+        { id: ticketId, patch: { subject: next } },
+        { onError: () => setOptimistic(null) },
+      );
+    }
+    setEditing(false);
+  };
+
+  const cancel = () => {
+    committedRef.current = true;
     setEditing(false);
   };
 
@@ -83,36 +99,22 @@ export function TicketSubjectField({
           autoFocus
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
+          onBlur={save}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
               save();
             } else if (e.key === 'Escape') {
-              setEditing(false);
+              e.preventDefault();
+              cancel();
             }
           }}
           className={cn(
-            cn('min-w-0 flex-1 rounded-md border border-blue-300 bg-surface-card px-2 py-0.5 font-semibold tracking-tight text-text-default', focusRing('field', 'accent')),
+            'min-w-0 flex-1 rounded-md border border-blue-300 bg-surface-card px-2 py-0.5 font-semibold tracking-tight text-text-default',
+            focusRing('field', 'accent'),
             typeClass,
           )}
         />
-        <HoverTooltip label="Save title" asChild>
-          <IconButton
-            icon={<Check className="h-3.5 w-3.5 text-white" />}
-            onClick={save}
-            disabled={update.isPending}
-            ariaLabel="Save title"
-            className="shrink-0 rounded-md bg-blue-600 p-1 hover:bg-blue-700"
-          />
-        </HoverTooltip>
-        <HoverTooltip label="Cancel" asChild>
-          <IconButton
-            icon={<X className="h-3.5 w-3.5" />}
-            onClick={() => setEditing(false)}
-            ariaLabel="Cancel"
-            className="shrink-0 rounded-md p-1 hover:bg-surface-sunken"
-          />
-        </HoverTooltip>
       </div>
     );
   }
@@ -137,7 +139,7 @@ export function TicketSubjectField({
           onClick={startEdit}
           aria-label="Click to edit title"
           className={cn(
-            'min-w-0 flex-1 truncate text-left font-semibold tracking-tight text-text-default transition hover:text-blue-700',
+            'min-w-0 flex-1 truncate text-left font-semibold tracking-tight text-text-default',
             typeClass,
           )}
         >

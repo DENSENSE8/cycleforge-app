@@ -51,7 +51,6 @@ interface IncomingGridRowProps {
   selectGutterChrome?: GridSelectGutterChrome;
   columns?: readonly IncomingGridColumn[];
   /** Present ⇒ the compound note line edits in place. Absent ⇒ read-only. */
-  onCommitNote?: (next: string) => void;
 }
 
 /**
@@ -71,7 +70,6 @@ export const IncomingGridRow = memo(function IncomingGridRow({
   clickSelect = false,
   selectGutterChrome = 'always',
   columns = INCOMING_GRID_COLUMNS,
-  onCommitNote,
 }: IncomingGridRowProps) {
   const resolvePlatformMeta = usePlatformMeta();
   /** A gutter handler IS the signal that this surface split the two planes. */
@@ -178,7 +176,6 @@ export const IncomingGridRow = memo(function IncomingGridRow({
     // Compound-track capabilities. `onSelect` IS "open the record" on this
     // surface, so the chevron and the row body agree about what a click means.
     onOpenRecord: onSelect,
-    onCommitNote,
   };
 
   return (

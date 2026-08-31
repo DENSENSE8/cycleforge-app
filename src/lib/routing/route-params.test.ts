@@ -217,7 +217,7 @@ test('default-omit mode wires survive hygiene (review/pack/locations/sourcing/ho
   }
 });
 
-test('closed outbound vocabularies survive hygiene (fbaMode / ltab / rtab / etype)', () => {
+test('closed outbound vocabularies survive hygiene (fbaMode / rtab / etype)', () => {
   const fba = routeParamsFor('/shipping/fba');
   assert.ok(fba);
   for (const mode of ['ready', 'plan', 'combine', 'shipped']) {
@@ -235,15 +235,14 @@ test('closed outbound vocabularies survive hygiene (fbaMode / ltab / rtab / etyp
     null,
   );
 
-  const labels = routeParamsFor('/shipping/labels');
-  assert.ok(labels);
+  // `/shipping/labels` was DELETED (2026-08-30) — route and spec both. The
+  // assertion is kept and inverted rather than removed: the registry must find
+  // NO spec for it, which is what proves the spec went with the route instead
+  // of lingering as a boundary parse for a page that cannot be reached.
   assert.equal(
-    parseRouteParams(labels!, new URLSearchParams('ltab=recent')).get('ltab'),
-    'recent',
-  );
-  assert.equal(
-    parseRouteParams(labels!, new URLSearchParams('ltab=nonsense')).get('ltab'),
+    routeParamsFor('/shipping/labels'),
     null,
+    'a deleted route owns no params',
   );
 
   const search = routeParamsFor('/search');
@@ -351,7 +350,7 @@ test('/shipping/orders declares the params its own components read', () => {
   const parse = (qs: string) => parseRouteParams(spec, new URLSearchParams(qs)).get(qs.split('=')[0]!);
 
   // `searchScopeHref('ORDER')` hands off to `/shipping/orders?search=`, and
-  // PackedOrdersTable reads it — undeclared, it was dropped on arrival.
+  // the To-ship desk reads it — undeclared, it was dropped on arrival.
   assert.equal(parse('search=widget'), 'widget');
   // OutboundFilterStrip's two facets.
   assert.equal(parse('attention=1'), '1');

@@ -389,7 +389,6 @@ export function IncomingAttachTrackingPopover({
                     size="compact"
                     autoFocus
                     debounceMs={0}
-                    pasteOnlyTrailing
                     leadingIcon={<Truck className="h-[14px] w-[14px]" />}
                     isSearching={attaching}
                   />

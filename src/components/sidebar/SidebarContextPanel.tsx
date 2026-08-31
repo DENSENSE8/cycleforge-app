@@ -30,7 +30,6 @@ const TechSidebarPanel = dynamic(() => import('@/components/sidebar/TechSidebarP
 const PackerSidebarPanel = dynamic(() => import('@/components/sidebar/PackerSidebarPanel').then((m) => m.PackerSidebarPanel));
 const OutboundSidebarPanel = dynamic(() => import('@/components/sidebar/OutboundSidebarPanel').then((m) => m.OutboundSidebarPanel));
 const ReviewSidebarPanel = dynamic(() => import('@/components/sidebar/review/ReviewSidebarPanel').then((m) => m.ReviewSidebarPanel));
-const SearchSidebarPanel = dynamic(() => import('@/components/sidebar/search/SearchSidebarPanel').then((m) => m.SearchSidebarPanel));
 
 /**
  * Route-key dispatcher rendered inside the master-nav as the per-page context
@@ -87,10 +86,12 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
   if (routeKey === 'packer') return <PackerSidebarPanel />;
   if (routeKey === 'outbound') return <OutboundSidebarPanel />;
   if (routeKey === 'review') return <ReviewSidebarPanel />;
-  // `/search` — persistent find bar over Recently searched (Zone 1 of the
-  // Search & Details station layout). This is the documented exception to
-  // "find lives only in GlobalHeaderSearch": see display/search-station.md.
-  if (routeKey === 'search') return <SearchSidebarPanel />;
+  // `/search` has NO context rail. It used to carry a find bar over "Recently
+  // searched" — the documented exception to "find lives only in
+  // GlobalHeaderSearch". That exception stopped paying for itself once ⌘K grew
+  // its own Recent group: the same list, one keystroke away, on every route
+  // rather than only this one. Returning null here drops the key so the column
+  // collapses instead of reserving 360px for a duplicate.
 
   return null;
 }

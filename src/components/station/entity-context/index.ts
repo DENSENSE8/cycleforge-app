@@ -21,11 +21,7 @@
  *    `placement="flow"` above StationWorkbench with
  *    `reserveIdentityClearance={false}` so the identity hairline abuts the
  *    work surface (zero air). Do not put identity in the workbench
- *    `entityContext` / `toolbar` slots for Unbox-family stations. Mid-canvas
- *    secondary jumps use
- *    `StationRightEdgeAction` (import from
- *    `@/components/station/entity-context/StationRightEdgeAction`) on the panel
- *    root — not inside `moreDetails`.
+ *    `entityContext` / `toolbar` slots for Unbox-family stations.
  * 3. **Corner utilities** — Unbox / Arrival / Testing / Pack leave the slot
  *    empty (Pack exit is the card back chevron). Packer review may still mount
  *    pack-size controls via {@link StationMoreDetails}. Workspace mode

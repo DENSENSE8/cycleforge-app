@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { fbaPaths } from '@/lib/fba/api-paths';
 import { FBA_BOARD_INJECT_ITEM, FBA_SELECTION_ADJUSTED } from '@/lib/fba/events';
-import type { FbaBoardItem } from '@/components/fba/FbaBoardTable';
+import type { FbaBoardItem } from '@/lib/fba/types';
 import { useFbaBoardSelection } from '@/components/fba/hooks/useFbaBoardSelection';
 import { normalizeTrackingCanonical } from '@/lib/tracking-format';
 

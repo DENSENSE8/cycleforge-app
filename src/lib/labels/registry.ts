@@ -57,16 +57,25 @@ export const TONE_SVG_HEX: Record<LabelTone, string> = {
 
 /**
  * System‑default presentation per (kind, code). PACKED_STAGED appears in BOTH
- * kinds with different labels ('Packed · Staged' inbound seam vs 'In Staging'
- * outbound) — exactly why labels key on (kind, code), not code alone. The
+ * kinds with different labels ('Packed' inbound seam vs 'In Staging' outbound)
+ * — exactly why labels key on (kind, code), not code alone. The
  * no‑two‑dots‑share‑a‑hue invariant is preserved by the distinct tones.
+ *
+ * A state LABEL names what HAS happened (operator ruling 2026-08-30): the
+ * To‑ship pill reads 'Packed', never 'Packed · Staged' — the next step is the
+ * queue's job, and the staging detail stays in the description. The outbound
+ * kind's 'In Staging' is a different desk (the dock legend) and stays.
  */
 export const LABEL_DEFAULTS: Record<LabelKind, Record<string, LabelPresentation>> = {
   unshipped: {
-    AWAITING_LABEL: { label: 'Awaiting Label', description: 'Sold — no tracking or label attached yet.', tone: 'slate' },
+    // 'Needs label', not 'Awaiting Label': this state now sits IN the To-ship
+    // queue beside Pending / Tested / Packed (2026-08-30), where the pill has
+    // to say what the operator must DO about the row, not what has passively
+    // happened to it. Every neighbour on that pill names an act.
+    AWAITING_LABEL: { label: 'Needs label', description: 'Sold — no tracking or label attached yet. Buy or link a label to move it into the queue.', tone: 'slate' },
     PENDING: { label: 'Pending', description: 'Labeled and queued — waiting for test/pack.', tone: 'yellow' },
     TESTED: { label: 'Tested', description: 'Passed the tech scan — ready to pack.', tone: 'teal' },
-    PACKED_STAGED: { label: 'Packed · Staged', description: 'Packed and staged at the dock — awaiting scan‑out.', tone: 'amber' },
+    PACKED_STAGED: { label: 'Packed', description: 'Packed and staged at the dock — awaiting scan‑out.', tone: 'amber' },
     BLOCKED: { label: 'Out of stock', description: 'Can’t fulfill until restocked — needs attention.', tone: 'red' },
   },
   outbound: {

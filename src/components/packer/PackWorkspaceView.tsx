@@ -9,7 +9,7 @@
  * no bottom ContextualSelectionBar capsule.
  */
 
-import { Suspense, useState } from 'react';
+import { Suspense } from 'react';
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
 import { PackerTable } from '@/components/PackerTable';
@@ -39,7 +39,6 @@ const PACK_VIEW_TABS = [{ id: 'history', label: 'History' }] as const;
 export function PackWorkspaceView({ packerId }: { packerId: number }) {
   const { packView, setPackView } = usePackWorkspaceTab();
   const { newOpen, closeNew } = useNewOrderParam();
-  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
   const queueActive = packView === 'queue';
   const { selectionEnabled, selectMode, selectionOverlays } = useOrderRailSelection(
     'unshipped',

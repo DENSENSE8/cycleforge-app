@@ -1,6 +1,6 @@
 /**
  * My Day spreadsheet column model — the Today-native sibling of
- * {@link PICKUP_GRID_COLUMNS} / {@link RECEIVING_GRID_COLUMNS}.
+ * {@link RECEIVING_GRID_COLUMNS}.
  *
  * Composes the SAME shared geometry as every other station/workbench grid
  * (`ledgerGridCell` · `LEDGER_GRID_FROZEN_CELL`), so

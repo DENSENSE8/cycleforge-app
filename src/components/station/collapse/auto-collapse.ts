@@ -30,7 +30,9 @@ export type AutoCollapseEvent =
   | { kind: 'scroll'; scrollTop: number }
   | { kind: 'engage' }
   | { kind: 'disengage' }
-  | { kind: 'toggle' };
+  | { kind: 'toggle' }
+  | { kind: 'collapse-all' }
+  | { kind: 'expand-all' };
 
 export interface AutoCollapseState {
   collapsed: boolean;
@@ -54,6 +56,12 @@ export function autoCollapseReducer(
     case 'toggle':
       // Deliberate act — remember it, and stop the auto triggers overriding it.
       return { ...state, collapsed: !state.collapsed, pinned: true };
+
+    case 'collapse-all':
+      return { ...state, collapsed: true, pinned: true };
+
+    case 'expand-all':
+      return { ...state, collapsed: false, pinned: true };
 
     case 'engage': {
       if (state.pinned) return { ...state, engaged: true };

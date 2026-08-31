@@ -36,6 +36,11 @@ import {
  *
  * Overlays (photo peek, modals) compose around StationWorkbench, not inside it.
  */
+/** Flex-gap per {@link StationWorkbench} `bodyGap`. */
+const FLEX_GAP = { none: 'gap-0', default: 'gap-4' } as const;
+/** Same steps for the non-flex (content-sized) body. */
+const STACK_GAP = { none: 'space-y-0', default: 'space-y-4' } as const;
+
 export function StationWorkbench({
   toolbar,
   entityContext,
@@ -116,6 +121,14 @@ export function StationWorkbench({
    * Sibling spacing inside the scroll column.
    * `'none'` — flat scan-station floor (Unbox overview): zero vertical gap
    * between centre surfaces. `'default'` keeps `space-y-4` / `gap-4`.
+   */
+  /**
+   * Gap between the body's children.
+   *
+   * - `none` — flush children. The station default: the plane is one flat
+   *   sheet, and children separate with their own padding + seam rather than
+   *   with a gap that would show ground there is none of.
+   * - `default` — the 16px reading rhythm for a stack of unrelated blocks.
    */
   bodyGap?: 'default' | 'none';
   /**
@@ -198,18 +211,10 @@ export function StationWorkbench({
             // margin-bottom and collapses the Items↔procedure gap to zero
             // whenever free space runs out. `gap-4` survives `mb-auto`.
             bodyAlign === 'end'
-              ? cn(
-                  'flex min-h-full flex-col justify-end',
-                  bodyGap === 'none' ? 'gap-0' : 'gap-4',
-                )
+              ? cn('flex min-h-full flex-col justify-end', FLEX_GAP[bodyGap])
               : bodyFill
-                ? cn(
-                    'flex min-h-full flex-col',
-                    bodyGap === 'none' ? 'gap-0' : 'gap-4',
-                  )
-                : bodyGap === 'none'
-                  ? 'space-y-0'
-                  : 'space-y-4',
+                ? cn('flex min-h-full flex-col', FLEX_GAP[bodyGap])
+                : STACK_GAP[bodyGap],
             scrollClassName,
           )}
         >

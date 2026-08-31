@@ -117,7 +117,7 @@ export interface ComputedMetric {
   filterState?: OutboundState;
   /**
    * When set, the tile toggles the To Ship / Shipping Pending board's `?ustatus`
-   * (via `useToShipStatusFilter`). Maps ready → TESTED, pending → PENDING,
+   * URL facet (row narrowing — never a column swap). Maps ready → TESTED, pending → PENDING,
    * blocked → BLOCKED (Out of stock). Mutually exclusive with {@link filterState}
    * and {@link filterAttention}.
    */

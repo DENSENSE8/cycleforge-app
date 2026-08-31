@@ -107,11 +107,17 @@ export interface OAuthStatePayload {
   verifier: string;
   slug: string | null;
   next: string | null;
+  /**
+   * The sign-in page's "Keep me signed in" checkbox, carried across the
+   * provider round trip. The state cookie is httpOnly, so this is the choice
+   * the user actually made, not something a page can forge after the fact.
+   */
+  persistent: boolean;
 }
 
 export function newOAuthState(
   provider: PlatformProvider,
-  opts: { slug?: string | null; next?: string | null; verifier: string },
+  opts: { slug?: string | null; next?: string | null; verifier: string; persistent?: boolean },
 ): OAuthStatePayload {
   return {
     provider,
@@ -120,6 +126,7 @@ export function newOAuthState(
     verifier: opts.verifier,
     slug: opts.slug ?? null,
     next: opts.next ?? null,
+    persistent: opts.persistent === true,
   };
 }
 
@@ -134,7 +141,9 @@ export function decodeOAuthState(raw: string | undefined | null): OAuthStatePayl
     if (!obj.state || !obj.nonce || !obj.verifier || (obj.provider !== 'google' && obj.provider !== 'microsoft')) {
       return null;
     }
-    return obj;
+    // A cookie minted before this field existed decodes as undefined — read it
+    // as false rather than granting an indefinite session by accident.
+    return { ...obj, persistent: obj.persistent === true };
   } catch {
     return null;
   }

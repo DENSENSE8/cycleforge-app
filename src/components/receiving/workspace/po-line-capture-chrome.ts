@@ -29,18 +29,47 @@ export type CaptureSegmentKey = (typeof CAPTURE_SEGMENT_ORDER)[number];
 const PO_LINE_CAPTURE_ROW_HEIGHT = 'h-11';
 
 /**
- * The joined bar. Square cells, soft column seams, hairline top/bottom rules
- * against the PO meta above and any open panel below.
+ * The joined bar. Square cells, and since 2026-08-30 NO rules at all — no
+ * top/bottom hairline against the PO meta, and no column seams between the
+ * cells.
+ *
+ * The cells already separate themselves: Tags is a filled plate, Serial is a
+ * white field, the check is emerald and Photos is blue. A seam between two
+ * cells that are already different colours is a line drawn over a boundary
+ * that was never in question.
  */
 export const PO_LINE_CAPTURE_ROW_CLASS = cn(
   'flex w-full min-w-0 items-stretch overflow-hidden',
   PO_LINE_CAPTURE_ROW_HEIGHT,
-  'divide-x divide-border-soft border-y border-border-hairline bg-surface-card',
+  'bg-surface-card',
 );
 
 /** Condition host — flex-1 when expanded, shrink-0 Tags when collapsed. */
 export const PO_LINE_CAPTURE_CONDITION_CLASS =
   'flex min-w-0 items-stretch [&>*]:h-full';
+
+/**
+ * The FAR-RIGHT action cluster — exact/no-serial check, then Photos.
+ *
+ * The composer's anatomy is positional: the MIDDLE (Serial field, or the Photos
+ * strip) takes every pixel the leading Tags and this cluster do not, and every
+ * verification action lives here. One element, so the cells read as a group
+ * flush against the bar's right edge rather than strays the flex row happened
+ * to leave there. No seam inside it — the check is emerald and Photos is blue,
+ * and a rule between two differently-coloured plates separates nothing.
+ * Composed by {@link PoLineCaptureRow} and, for the joined field's own commit
+ * cell, by `SerialScanField`.
+ */
+export const PO_LINE_CAPTURE_ACTIONS_CLASS =
+  'flex h-full shrink-0 items-stretch';
+
+/**
+ * Trailing action cell width. The commit / waiver cell and the Photos segment
+ * are the SAME square (`w-11`, matching {@link PO_LINE_CAPTURE_SEGMENT_CLASS}) —
+ * a 56px check beside a 44px camera reads as two unrelated controls that
+ * happened to end up adjacent.
+ */
+export const PO_LINE_CAPTURE_ACTION_WIDTH = 'w-11';
 
 /**
  * A trailing segment: ICON ONLY, square, full-height, never `disabled`. No

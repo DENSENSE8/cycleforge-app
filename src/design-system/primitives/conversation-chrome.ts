@@ -5,15 +5,29 @@
  * Compose {@link ConversationMessageCard} + these tokens; never fork a
  * page-local bubble shell, blue/amber fill, or 75% chat bubble. Lookup:
  *
- * Face: white column plane · gray public cards · amber internal wash · Inter
- * sans (`font-sans`) · circular header actions for thread chrome clusters.
+ * Face: a CONNECTED ACTIVITY TIMELINE — white plane, a 1px spine down the node
+ * column, the author's avatar anchored on it as the node, and a gray card
+ * beside it holding the message (amber when internal), capped at a reading
+ * measure rather than running the column's full width. Inter sans
+ * (`font-sans`) · circular header actions for thread chrome clusters.
  */
 import { cn } from '@/utils/_cn';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { FLOATING_DOCK_BOTTOM_PAD } from '@/design-system/tokens/dock-clearance';
 import { formatLaneAgeCompact } from '@/utils/date';
 
-/** Conversation column plane — white so gray cards read as events. */
+/**
+ * Conversation column plane — white, so the gray message cards read as events
+ * sitting on it.
+ *
+ * The cards were briefly flattened into the plane (2026-08-30) on the theory
+ * that the spine alone could carry sequence. Reverted the same day: the spine
+ * says these happened IN ORDER, which is not the same claim as this is one
+ * message and that is another. On a wide centre column a message with no
+ * wrapper is a paragraph of loose text, and two consecutive replies from the
+ * same author become one block of prose. The card is the message boundary; the
+ * spine is the thread. Both, not either.
+ */
 export const CONVERSATION_DETAIL_SURFACE = 'bg-surface-card font-sans';
 
 /**
@@ -69,17 +83,64 @@ export const CONVERSATION_STREAM = cn(DISPLAYS_BODY_INSET, 'stack-tight font-san
 export const CONVERSATION_DAY_HEADER =
   'bg-surface-card px-0 py-1 backdrop-blur-none';
 
-/** One row: avatar left, card left — never `flex-row-reverse`. */
+/**
+ * One row: node left, body right — never `flex-row-reverse`.
+ *
+ * `group` so the spine can trim itself on the last row (`group-last:`), and
+ * `items-start` so the node anchors to the body's FIRST line rather than
+ * centring against a body of unknown height.
+ */
 export const CONVERSATION_ROW =
-  'flex min-w-0 flex-row justify-start gap-1.5 py-1';
+  'group relative flex min-w-0 flex-row items-start justify-start gap-2 py-1';
 
 /**
- * Message shell — full-width column card.
- * Public = gray canvas; {@link conversationShell}(true) for internal amber.
+ * The node column — the timeline track. Holds the spine behind the caller's
+ * mark, so the line and the node cannot drift apart horizontally.
+ */
+export const CONVERSATION_SPINE_TRACK = 'relative flex shrink-0';
+
+/**
+ * The vertical spine — one continuous 1px thread down the node column.
+ *
+ * `-bottom-1.5` bridges the stream's own row gap (`stack-tight`, 6px): without
+ * it the line breaks between every message and reads as a stack of tick marks
+ * rather than one thread. `group-last:bottom-0` stops it at the final node —
+ * a thread that runs past its last event is claiming there is more below.
+ *
+ * Behind the node (`z-0` vs the mark's `z-10`), which is what makes the node
+ * read as a bead ON the thread instead of a circle beside it.
+ */
+export const CONVERSATION_SPINE = cn(
+  'pointer-events-none absolute left-1/2 top-0 -bottom-1.5 z-0 w-px -translate-x-1/2',
+  'bg-border-subtle group-last:bottom-0',
+);
+
+/**
+ * Message card — gray canvas on the white plane. The card IS the message
+ * boundary; {@link conversationShell}(true) swaps the fill for internal amber.
+ *
+ * ## Capped, never edge to edge
+ *
+ * `max-w-2xl` (42rem) is the reading measure. The station centre floors at
+ * 720px and GROWS with the frame, so an uncapped `flex-1` card stretches its
+ * lines as wide as the operator's monitor — a claim body then runs 1,400px per
+ * line and the eye loses the return sweep. At the floor the card very nearly
+ * fills the column (672 + the 20px node + the 8px gap = 700 of 720); past that
+ * it stops and the column grows around it.
+ *
+ * The cap lives here rather than on the centre host so every conversation host
+ * shares one measure. In the narrow right-rail Displays it simply never binds.
+ *
+ * `py-1.5` also sets the node's baseline (see {@link CONVERSATION_MARK_BOX}) —
+ * change it and check both.
  */
 export const CONVERSATION_SHELL =
-  'min-w-0 flex-1 stack-tight rounded-lg border border-border-hairline bg-surface-canvas px-2.5 py-1.5';
+  'min-w-0 max-w-2xl flex-1 stack-tight rounded-lg border border-border-hairline bg-surface-canvas px-2.5 py-1.5';
 
+/**
+ * Internal note — same card, amber fill. The tint is SEMANTIC: it is the
+ * difference between something the customer can read and something they cannot.
+ */
 export const CONVERSATION_SHELL_INTERNAL =
   'border-amber-200/70 bg-amber-50';
 
@@ -87,11 +148,31 @@ export function conversationShell(internal: boolean): string {
   return cn(CONVERSATION_SHELL, internal && CONVERSATION_SHELL_INTERNAL);
 }
 
-export const CONVERSATION_MARK =
-  '!bg-surface-sunken !font-medium !text-text-soft ring-1 ring-border-hairline';
+/**
+ * The node itself. OPAQUE and `z-10` on purpose — it is what masks the spine
+ * where the two cross, and an unfilled node lets the line run straight through
+ * the avatar.
+ */
+export const CONVERSATION_MARK = cn(
+  '!bg-surface-sunken !font-medium !text-text-soft ring-1 ring-border-hairline',
+  'relative z-10',
+);
 
+/**
+ * Node box — centred on the spine, and top-aligned to the body's first line.
+ *
+ * `justify-center`, not `justify-start`: the node has to sit ON the thread, and
+ * the track is exactly the node's width, so centring is what puts the two on
+ * one axis.
+ *
+ * `pt-0.5` is the cross-axis anchor and it is derived, not taste: the body
+ * starts `py-1.5` (6px) down, its meta line is `text-role-caption` at
+ * `leading-none` (12px), so that line's centre sits 12px below the row top. A
+ * 20px node centres there at `top: 2px`. Move the body's padding or the meta's
+ * leading and this moves with it.
+ */
 export const CONVERSATION_MARK_BOX =
-  'flex w-5 shrink-0 justify-start pt-0.5';
+  'flex w-5 shrink-0 justify-center pt-0.5';
 
 export const CONVERSATION_BODY =
   'break-words font-sans text-role-caption leading-snug text-text-default';

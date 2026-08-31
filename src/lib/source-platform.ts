@@ -16,7 +16,37 @@
 import { platformPaintFromHex } from '@/lib/color-contrast';
 import { PLATFORM_BRAND_ICON_PATHS } from '@/lib/platform-brand-icons';
 
+/**
+ * The PINNED hue for a platform — the one place the sentence "eBay is yellow,
+ * Amazon is orange" is written down.
+ *
+ * `text` / `border` / `dot` below stay explicit rather than being generated
+ * from this, because their shades are tuned per platform for legibility
+ * (eBay reads at 500/400, Amazon at 600/600) and a uniform ladder would
+ * silently restyle half the registry. What this field buys is that the tuning
+ * can no longer DISAGREE with the hue: `source-platform.test.ts` asserts every
+ * class on a row names that row's hue, so a copy-paste that leaves an Amazon
+ * row painting yellow fails the suite instead of shipping.
+ *
+ * `slate` and `neutral` are the deliberate non-brand hues — Square's quiet
+ * slate, and Other/Unknown, which paint from semantic `text-text-*` /
+ * `border-border-*` tokens rather than a colour ramp.
+ */
+export type PlatformHue =
+  | 'yellow'
+  | 'orange'
+  | 'red'
+  | 'amber'
+  | 'sky'
+  | 'blue'
+  | 'green'
+  | 'purple'
+  | 'slate'
+  | 'neutral';
+
 export interface SourcePlatformMeta {
+  /** The pinned brand hue. See {@link PlatformHue} — this is the definition. */
+  hue: PlatformHue;
   /** Stored `source_platform` value (lowercase, what the DB holds). */
   value: string;
   /**
@@ -67,9 +97,10 @@ export interface SourcePlatformMeta {
  * from here. Add a platform once, in this list.
  */
 export const SOURCE_PLATFORMS: SourcePlatformMeta[] = [
-  { value: 'ebay',       label: 'eBay',       mark: 'eB', text: 'text-yellow-500', border: 'border-yellow-400', dot: 'bg-yellow-500', icon: PLATFORM_BRAND_ICON_PATHS.ebay },
+  { value: 'ebay', hue: 'yellow',       label: 'eBay',       mark: 'eB', text: 'text-yellow-500', border: 'border-yellow-400', dot: 'bg-yellow-500', icon: PLATFORM_BRAND_ICON_PATHS.ebay },
   {
     value: 'amazon',
+    hue: 'orange',
     label: 'Amazon',
     mark: 'az',
     text: 'text-orange-600',
@@ -78,25 +109,26 @@ export const SOURCE_PLATFORMS: SourcePlatformMeta[] = [
     icon: PLATFORM_BRAND_ICON_PATHS.amazon,
     tileSrc: '/icons/platforms/amazon.png',
   },
-  { value: 'fba',        label: 'Amazon',     mark: 'FB', text: 'text-orange-600', border: 'border-orange-600', dot: 'bg-orange-600', icon: PLATFORM_BRAND_ICON_PATHS.fba },
-  { value: 'aliexpress', label: 'AliExpress', mark: 'AE', text: 'text-red-500',    border: 'border-red-500',    dot: 'bg-red-500', icon: PLATFORM_BRAND_ICON_PATHS.aliexpress },
-  { value: 'walmart',    label: 'Walmart',    mark: 'W',  text: 'text-amber-700',  border: 'border-amber-700',  dot: 'bg-amber-700', icon: PLATFORM_BRAND_ICON_PATHS.walmart },
-  { value: 'goodwill',   label: 'Goodwill',   mark: 'Gw', text: 'text-sky-600',    border: 'border-sky-600',    dot: 'bg-sky-600', icon: PLATFORM_BRAND_ICON_PATHS.goodwill },
+  { value: 'fba', hue: 'orange',        label: 'Amazon',     mark: 'FB', text: 'text-orange-600', border: 'border-orange-600', dot: 'bg-orange-600', icon: PLATFORM_BRAND_ICON_PATHS.fba },
+  { value: 'aliexpress', hue: 'red', label: 'AliExpress', mark: 'AE', text: 'text-red-500',    border: 'border-red-500',    dot: 'bg-red-500', icon: PLATFORM_BRAND_ICON_PATHS.aliexpress },
+  { value: 'walmart', hue: 'amber',    label: 'Walmart',    mark: 'W',  text: 'text-amber-700',  border: 'border-amber-700',  dot: 'bg-amber-700', icon: PLATFORM_BRAND_ICON_PATHS.walmart },
+  { value: 'goodwill', hue: 'sky',   label: 'Goodwill',   mark: 'Gw', text: 'text-sky-600',    border: 'border-sky-600',    dot: 'bg-sky-600', icon: PLATFORM_BRAND_ICON_PATHS.goodwill },
   // ECWID-RS (not plain ECWID): today this pill only appears when the carton
   // was paired with an Ecwid repair-service (-RS) order.
-  { value: 'ecwid',      label: 'ECWID-RS',   mark: 'Ec', text: 'text-blue-600',   border: 'border-blue-600',   dot: 'bg-blue-600', icon: PLATFORM_BRAND_ICON_PATHS.ecwid },
-  { value: 'square',     label: 'Square',     mark: 'Sq', text: 'text-text-muted',  border: 'border-slate-600',  dot: 'bg-slate-500', icon: PLATFORM_BRAND_ICON_PATHS.square }, // ds-allow-raw-neutral: identity/tone hue — Square's slate among platform brand hues, distinct from Other (= border-emphasis)
-  { value: 'shopify',    label: 'Shopify',    mark: 'Sh', text: 'text-green-600',  border: 'border-green-600',  dot: 'bg-green-600', icon: PLATFORM_BRAND_ICON_PATHS.shopify },
+  { value: 'ecwid', hue: 'blue',      label: 'ECWID-RS',   mark: 'Ec', text: 'text-blue-600',   border: 'border-blue-600',   dot: 'bg-blue-600', icon: PLATFORM_BRAND_ICON_PATHS.ecwid },
+  { value: 'square', hue: 'slate',     label: 'Square',     mark: 'Sq', text: 'text-text-muted',  border: 'border-slate-600',  dot: 'bg-slate-500', icon: PLATFORM_BRAND_ICON_PATHS.square }, // ds-allow-raw-neutral: identity/tone hue — Square's slate among platform brand hues, distinct from Other (= border-emphasis)
+  { value: 'shopify', hue: 'green',    label: 'Shopify',    mark: 'Sh', text: 'text-green-600',  border: 'border-green-600',  dot: 'bg-green-600', icon: PLATFORM_BRAND_ICON_PATHS.shopify },
   // Order / Product Hub channels (not door-intake defaults) — still need a
   // mark + tone so PlatformMark never falls back to typed prose.
-  { value: 'zoho',       label: 'Zoho',       mark: 'Zo', text: 'text-red-600',    border: 'border-red-600',    dot: 'bg-red-600', icon: PLATFORM_BRAND_ICON_PATHS.zoho },
-  { value: 'mercari',    label: 'Mercari',    mark: 'Me', text: 'text-purple-600', border: 'border-purple-600', dot: 'bg-purple-600', icon: PLATFORM_BRAND_ICON_PATHS.mercari },
-  { value: 'other',      label: 'Other',      mark: '·',  text: 'text-text-soft',  border: 'border-border-emphasis', dot: 'bg-border-emphasis', icon: PLATFORM_BRAND_ICON_PATHS.other },
+  { value: 'zoho', hue: 'red',       label: 'Zoho',       mark: 'Zo', text: 'text-red-600',    border: 'border-red-600',    dot: 'bg-red-600', icon: PLATFORM_BRAND_ICON_PATHS.zoho },
+  { value: 'mercari', hue: 'purple',    label: 'Mercari',    mark: 'Me', text: 'text-purple-600', border: 'border-purple-600', dot: 'bg-purple-600', icon: PLATFORM_BRAND_ICON_PATHS.mercari },
+  { value: 'other', hue: 'neutral',      label: 'Other',      mark: '·',  text: 'text-text-soft',  border: 'border-border-emphasis', dot: 'bg-border-emphasis', icon: PLATFORM_BRAND_ICON_PATHS.other },
 ];
 
 /** Fallback tone/label for an empty/unknown platform value. */
 export const UNKNOWN_PLATFORM: SourcePlatformMeta = {
   value: '',
+  hue: 'neutral',
   label: 'Unknown',
   mark: '?',
   text: 'text-text-faint',
@@ -116,6 +148,16 @@ export function sourcePlatformMeta(value: string | null | undefined): SourcePlat
 /** Canonical display name for a `source_platform` value. */
 export function sourcePlatformLabel(value: string | null | undefined): string {
   return sourcePlatformMeta(value).label;
+}
+
+/**
+ * The pinned brand hue for a platform value. Any surface that needs a colour
+ * NAME (rather than a Tailwind class) reads it from here — a tone vocabulary
+ * that hardcodes its own "amazon is orange" row is exactly the drift this
+ * function exists to prevent.
+ */
+export function sourcePlatformHue(value: string | null | undefined): PlatformHue {
+  return sourcePlatformMeta(value).hue;
 }
 
 /** Fixed lettermark for icon-only listing chrome. */

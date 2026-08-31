@@ -32,6 +32,10 @@ export interface AutoCollapseController extends AutoCollapseState {
   disengage: () => void;
   /** An explicit operator toggle — outranks both automatic triggers. */
   toggle: () => void;
+  /** Force every band collapsed (pinned). */
+  collapseAll: () => void;
+  /** Force every band expanded (pinned). */
+  expandAll: () => void;
 }
 
 export function useAutoCollapse(): AutoCollapseController {
@@ -59,6 +63,8 @@ export function useAutoCollapse(): AutoCollapseController {
   const engage = useCallback(() => dispatch({ kind: 'engage' }), []);
   const disengage = useCallback(() => dispatch({ kind: 'disengage' }), []);
   const toggle = useCallback(() => dispatch({ kind: 'toggle' }), []);
+  const collapseAll = useCallback(() => dispatch({ kind: 'collapse-all' }), []);
+  const expandAll = useCallback(() => dispatch({ kind: 'expand-all' }), []);
 
-  return { ...state, onScroll, engage, disengage, toggle };
+  return { ...state, onScroll, engage, disengage, toggle, collapseAll, expandAll };
 }

@@ -11,6 +11,7 @@
  */
 
 import type { DisplayIndexRow } from '@/components/station/displays';
+import { displayIndexPhotosRow } from './search-display-index-rows';
 
 export interface SearchUnitDisplaySignals {
   /** A real serial (not a minted uid) — the journey spine keys on it. */
@@ -28,22 +29,8 @@ export function buildSearchUnitDisplayIndexRows(
 ): DisplayIndexRow[] {
   const { hasSerial, photoCount, photosSettled, hasOrder } = signals;
 
-  const photoSubtitle = !photosSettled
-    ? 'Loading…'
-    : photoCount && photoCount > 0
-      ? `${photoCount} photo${photoCount === 1 ? '' : 's'}`
-      : 'No photos';
-
   return [
-    {
-      id: 'photos',
-      label: 'Photos',
-      subtitle: photoSubtitle,
-      // Evidence presence is informational on a read surface — never `action`,
-      // which would tell an operator to go do something they cannot do here.
-      tone: photosSettled && photoCount && photoCount > 0 ? 'ok' : 'neutral',
-      group: 'assets',
-    },
+    displayIndexPhotosRow({ photoCount, photosSettled }),
     {
       id: 'journey',
       label: 'Journey',

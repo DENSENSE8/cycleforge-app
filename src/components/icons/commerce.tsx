@@ -5,6 +5,7 @@
 import {
   Box as LucideBox,
   PackageCheck as LucidePackageCheck,
+  PackageSearch as LucidePackageSearch,
   Receipt as LucideReceipt,
   Store as LucideStore,
 } from 'lucide-react';
@@ -62,6 +63,11 @@ export const ShoppingCart = ({ className = "w-6 h-6" }: { className?: string }) 
 /** Closed package + check — pack-cleared / Ready to Pack / received·delivered chips. */
 export const PackageCheck = ({ className = "w-6 h-6" }: { className?: string }) => (
     <LucidePackageCheck className={className} />
+);
+
+/** Package + search — pick from inventory (To-ship status slot `orders.picked`). */
+export const PackageSearch = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <LucidePackageSearch className={className} />
 );
 
 // 3D cube — standard box glyph from Lucide. Used by Packing and other box

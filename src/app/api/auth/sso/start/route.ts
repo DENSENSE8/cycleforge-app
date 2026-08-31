@@ -1,10 +1,14 @@
 /**
- * GET /api/auth/sso/start?slug=<tenant>
+ * GET /api/auth/sso/start?slug=<tenant>[&persist=1]
  *
  * Kicks off an OIDC PKCE flow for the tenant identified by `slug`.
  * Persists the state row, then 302s the browser to the IdP's authorize
  * endpoint. The callback at /api/auth/sso/callback consumes the state row
  * and creates the session.
+ *
+ * `persist=1` carries the sign-in page's "Keep me signed in" checkbox across
+ * the IdP redirect (stored on the state row, the only thing that survives it),
+ * so a federated sign-in honours the box exactly like a password sign-in.
  *
  * Gated by the tenant's `sso` entitlement (enterprise-plan-only by
  * default — see src/lib/billing/plans.ts).
@@ -67,6 +71,7 @@ export const GET = withAuth(async (req) => {
 
   const slug = req.nextUrl.searchParams.get('slug') || req.headers.get('x-tenant-slug');
   const nextPath = req.nextUrl.searchParams.get('next') || '/dashboard';
+  const persistent = req.nextUrl.searchParams.get('persist') === '1';
   if (!slug) {
     return NextResponse.json({ error: 'TENANT_REQUIRED' }, { status: 400 });
   }
@@ -108,9 +113,9 @@ export const GET = withAuth(async (req) => {
   const { verifier, challenge } = generatePkce();
   const state = generateState();
   await pool.query(
-    `INSERT INTO sso_auth_state (state, provider_id, organization_id, code_verifier, next_path)
-     VALUES ($1, $2, $3, $4, $5)`,
-    [state, mapped.id, mapped.organizationId, verifier, nextPath],
+    `INSERT INTO sso_auth_state (state, provider_id, organization_id, code_verifier, next_path, persistent)
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [state, mapped.id, mapped.organizationId, verifier, nextPath, persistent],
   );
 
   // Cheap GC of stale state rows older than 10 min — runs on every start.

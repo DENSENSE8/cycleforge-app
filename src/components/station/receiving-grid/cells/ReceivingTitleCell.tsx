@@ -3,7 +3,7 @@
 import { ledgerCell } from '@/design-system/tokens/typography/presets';
 import {
   receivingDataCellClass,
-  receivingDataCellHighlightStyle,
+  receivingDataCellStyle,
   type ReceivingGridCellProps,
 } from './receiving-grid-cell-types';
 
@@ -28,7 +28,7 @@ export function ReceivingTitleCell({ col, rule, ctx }: ReceivingGridCellProps) {
     <div
       data-col="title"
       className={receivingDataCellClass(col, rule, ctx)}
-      style={receivingDataCellHighlightStyle(col, ctx)}
+      style={receivingDataCellStyle(col, ctx)}
     >
       <span className={ledgerCell}>{ctx.productTitle}</span>
     </div>

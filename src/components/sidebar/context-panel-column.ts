@@ -1,4 +1,4 @@
-import { appCanvasClass } from '@/design-system/tokens/app-surface';
+import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -149,10 +149,13 @@ export const CONTEXT_PANEL_COLUMN_CLASS = cn(
  * Host for {@link CONTEXT_PANEL_COLUMN_CLASS} + the workspace inside the content
  * region: the **ground plane** the flush columns sit on.
  *
- * `appCanvasClass` is load-bearing, not decoration. Card white rails need a
- * real step below them so plane depth reads (see `tokens/shadows.ts` /
- * source-of-truth Depth elevation). The center work column may step further to
- * `bg-surface-sunken` (StationPanelRoot) while this host stays canvas.
+ * WHITE (operator ruling, 2026-08-30). It was `appCanvasClass` on the theory
+ * that card-white rails need a step below them for plane depth to read — but
+ * the rail column is only as wide as the operator drags it, so past its edge
+ * that step WAS the surface: a grey gutter running the height of the frame
+ * beside the thread, reading as a column of its own rather than as ground.
+ * Separation between the flush columns is their hairline and their padding,
+ * not a tone change.
  *
  * `overflow-hidden` stays on the host so the row never scrolls as a unit; both
  * children own their own internal scrollports.
@@ -164,5 +167,5 @@ export const CONTEXT_PANEL_HOST_CLASS = cn(
   // SIBLING of this host: without it the host's min-content width wins the row
   // and the pushing panel would overflow the frame instead of squeezing it.
   'flex min-h-0 min-w-0 flex-1 overflow-hidden',
-  appCanvasClass,
+  appChromeClass,
 );

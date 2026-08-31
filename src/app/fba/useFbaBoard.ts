@@ -15,7 +15,7 @@ import {
   FBA_BOARD_INJECT_ITEM,
   FBA_BOARD_REMOVE_ITEMS,
 } from '@/lib/fba/events';
-import type { FbaBoardItem } from '@/components/fba/FbaBoardTable';
+import type { FbaBoardItem } from '@/lib/fba/types';
 import type { CombineData } from './fba-page-helpers';
 import { useRefreshSignal } from '@/lib/refresh/bus';
 

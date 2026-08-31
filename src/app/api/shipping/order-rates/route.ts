@@ -11,6 +11,10 @@ import {
   ShipStationNotConnectedError,
 } from '@/lib/shipping/shipstation/config';
 import { ShipStationApiError } from '@/lib/shipping/shipstation/client';
+import {
+  OrderRateDimensionsSchema,
+  resolveOrderRateParcel,
+} from '@/lib/shipping/shipstation/order-parcel';
 import type { Parcel, ShipAddress, ShipmentSpec } from '@/lib/shipping/shipstation/types';
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +28,10 @@ export const dynamic = 'force-dynamic';
  * from the local customer + an explicit weight override. Read-only — no DB
  * mutation, no label purchased.
  *
- * Body: { orderId: number, carrierIds?: string[], weightOz?: number }
+ * Body: { orderId: number, carrierIds?: string[], weightOz?: number,
+ *         dimensions?: { length, width, height, unit: 'inch'|'centimeter' } }
+ * Parcel precedence: explicit body values → parcel stored on the order
+ * (`parcel_weight_oz` + `parcel_*_in`) → ShipStation-stored weight.
  * Returns the normalized RateQuoteResult (see src/lib/shipping/shipstation/types).
  */
 
@@ -35,16 +42,28 @@ type OrderRow = {
   order_id: string | null;
   account_source: string | null;
   customer_id: number | null;
+  parcel_weight_oz: string | number | null;
+  parcel_length_in: string | number | null;
+  parcel_width_in: string | number | null;
+  parcel_height_in: string | number | null;
 };
 
 async function loadOrder(orgId: OrgId, orderId: number): Promise<OrderRow | null> {
   const res = await tenantQuery<OrderRow>(
     orgId,
-    `SELECT id, order_id, account_source, customer_id
+    `SELECT id, order_id, account_source, customer_id,
+            parcel_weight_oz, parcel_length_in, parcel_width_in, parcel_height_in
        FROM orders WHERE id = $1 AND organization_id = $2 LIMIT 1`,
     [orderId, orgId],
   );
   return res.rows[0] ?? null;
+}
+
+/** pg returns `numeric` as text — normalize to a positive number or null. */
+function numericColumn(value: string | number | null): number | null {
+  if (value == null) return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? n : null;
 }
 
 async function loadCustomerShipTo(orgId: OrgId, customerId: number): Promise<ShipAddress | null> {
@@ -88,14 +107,13 @@ async function loadCustomerShipTo(orgId: OrgId, customerId: number): Promise<Shi
   };
 }
 
-/** Resolve ship-to + parcel weight, preferring ShipStation-stored data. */
-async function resolveShipToAndWeight(
+/** Resolve ship-to + the engine-side weight, preferring ShipStation data. */
+async function resolveShipToAndEngineWeight(
   orgId: OrgId,
   order: OrderRow,
-  weightOzOverride: number | null,
-): Promise<{ shipTo: ShipAddress | null; weight: Parcel['weight'] | null }> {
+): Promise<{ shipTo: ShipAddress | null; engineWeight: Parcel['weight'] | null }> {
   let shipTo: ShipAddress | null = null;
-  let weight: Parcel['weight'] | null = null;
+  let engineWeight: Parcel['weight'] | null = null;
 
   if (order.account_source === 'shipstation' && order.order_id) {
     const v1 = await getShipStationV1(orgId);
@@ -103,7 +121,7 @@ async function resolveShipToAndWeight(
       const ssOrder = await v1.getOrderByNumber(order.order_id);
       if (ssOrder) {
         shipTo = ssOrder.shipTo;
-        if (ssOrder.weight) weight = ssOrder.weight;
+        if (ssOrder.weight) engineWeight = ssOrder.weight;
       }
     }
   }
@@ -111,10 +129,8 @@ async function resolveShipToAndWeight(
   if (!shipTo && order.customer_id) {
     shipTo = await loadCustomerShipTo(orgId, order.customer_id);
   }
-  // An explicit override always wins (missing-weight fallback).
-  if (weightOzOverride) weight = { value: weightOzOverride, unit: 'ounce' };
 
-  return { shipTo, weight };
+  return { shipTo, engineWeight };
 }
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -130,19 +146,43 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       : undefined;
     const weightOzOverride =
       typeof body?.weightOz === 'number' && body.weightOz > 0 ? body.weightOz : null;
+    // Optional dimensions — the exact `ParcelSchema.dimensions` shape, so the
+    // triage form and the Labels workbench speak one parcel vocabulary.
+    let bodyDimensions = null;
+    if (body?.dimensions != null) {
+      const parsed = OrderRateDimensionsSchema.safeParse(body.dimensions);
+      if (!parsed.success) {
+        throw ApiError.badRequest(
+          'dimensions must be { length, width, height, unit: inch|centimeter } with positive numbers',
+        );
+      }
+      bodyDimensions = parsed.data;
+    }
 
     const order = await loadOrder(orgId, orderId);
     if (!order) throw ApiError.notFound('order', orderId);
 
-    const { shipTo, weight } = await resolveShipToAndWeight(orgId, order, weightOzOverride);
+    const { shipTo, engineWeight } = await resolveShipToAndEngineWeight(orgId, order);
     if (!shipTo) {
       throw ApiError.badRequest(
         'No ship-to address on this order. Add a customer shipping address (or sync it from ShipStation).',
       );
     }
-    if (!weight) {
+
+    const parcel = resolveOrderRateParcel({
+      stored: {
+        weightOz: numericColumn(order.parcel_weight_oz),
+        lengthIn: numericColumn(order.parcel_length_in),
+        widthIn: numericColumn(order.parcel_width_in),
+        heightIn: numericColumn(order.parcel_height_in),
+      },
+      bodyWeightOz: weightOzOverride,
+      bodyDimensions,
+      fallbackWeight: engineWeight,
+    });
+    if (!parcel) {
       throw ApiError.badRequest(
-        'No parcel weight available. Provide weightOz, or ensure the ShipStation order carries a weight.',
+        'No parcel weight available. Provide weightOz, set the parcel on the order, or ensure the ShipStation order carries a weight.',
       );
     }
 
@@ -150,14 +190,20 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     const spec: ShipmentSpec = {
       shipTo,
       shipFrom,
-      parcels: [{ weight }],
+      parcels: [parcel],
       carrierIds: carrierIds && carrierIds.length ? carrierIds : undefined,
     };
 
     const client = await getShipStationV2(orgId);
     const result = await client.getRates(spec);
 
-    return NextResponse.json({ ok: true, ...result, shipTo, weight });
+    return NextResponse.json({
+      ok: true,
+      ...result,
+      shipTo,
+      weight: parcel.weight,
+      dimensions: parcel.dimensions ?? null,
+    });
   } catch (error) {
     if (error instanceof ShipStationNotConnectedError) {
       return NextResponse.json(

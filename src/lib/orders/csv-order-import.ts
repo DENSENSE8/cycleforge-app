@@ -13,6 +13,8 @@
 
 export { parseCsv } from '@/lib/tables/import/parse-csv';
 
+import { inferMarketplaceFromOrderId } from '@/lib/marketplace-order-id';
+
 /**
  * The CSV lane's canonical vocabulary — deliberately the same field set the
  * Google-Sheet adapter binds (`sources/google-sheet-rows.ts`), because the two
@@ -32,6 +34,15 @@ export const CSV_ORDER_CANONICAL_FIELDS = [
   { key: 'tracking_number', label: 'Tracking number', required: false },
   { key: 'platform', label: 'Platform', required: false },
   { key: 'note', label: 'Note', required: false },
+  // Order Intake & Acknowledgment (2026-08-30): the parcel + assignment slice
+  // of `CanonicalOrderIntake`. Optional columns — a file without them stages
+  // exactly as before; a file with them carries the parcel onto the order.
+  { key: 'weight_oz', label: 'Weight (oz)', required: false },
+  { key: 'dim_l', label: 'Length (in)', required: false },
+  { key: 'dim_w', label: 'Width (in)', required: false },
+  { key: 'dim_h', label: 'Height (in)', required: false },
+  { key: 'assignee_tech', label: 'Fulfillment assignee', required: false },
+  { key: 'assignee_packer', label: 'Pack assignee', required: false },
 ] as const;
 
 export type CsvOrderCanonicalKey = (typeof CSV_ORDER_CANONICAL_FIELDS)[number]['key'];
@@ -72,6 +83,14 @@ export function autoMapCsvOrderHeaders(headers: string[]): Record<string, string
     tracking_number: ['trackingnumber', 'tracking', 'trackingno'],
     platform: ['platform', 'channel', 'source', 'marketplace'],
     note: ['note', 'notes', 'comment', 'comments', 'remarks'],
+    // Parcel: `weight`/`length`/`width`/`height` are the words operator sheets
+    // actually use; the `oz`/`in`-suffixed forms come from carrier exports.
+    weight_oz: ['weight', 'weightoz', 'weightounces', 'parcelweight', 'oz'],
+    dim_l: ['length', 'lengthin', 'diml', 'parcellength'],
+    dim_w: ['width', 'widthin', 'dimw', 'parcelwidth'],
+    dim_h: ['height', 'heightin', 'dimh', 'parcelheight'],
+    assignee_tech: ['tester', 'tech', 'technician', 'assignedto', 'assigneetech'],
+    assignee_packer: ['packer', 'assigneepacker', 'packedby'],
   };
   for (const field of CSV_ORDER_CANONICAL_FIELDS) {
     const want = aliases[field.key];
@@ -114,6 +133,18 @@ export function classifyCsvOrderStagingRow(
     Boolean(pickMapped(row, mapping.item_number)) || Boolean(pickMapped(row, mapping.item_title));
   if (mapping.sku && !pickMapped(row, mapping.sku) && !namesProduct) missing.push('sku');
 
+  // Platform acknowledgment (Order Intake & Acknowledgment ship): an Amazon
+  // 3-7-7 / eBay 2-5-5 order number names its own channel and stays Ready with
+  // no platform column at all. An unknown-shaped id with no mapped, non-blank
+  // platform value has no channel anyone can vouch for → Action required.
+  if (
+    orderNumber
+    && inferMarketplaceFromOrderId(orderNumber) === null
+    && !pickMapped(row, mapping.platform)
+  ) {
+    missing.push('platform');
+  }
+
   return {
     status: missing.length === 0 ? 'ready' : 'action_required',
     missing,
@@ -137,6 +168,12 @@ export function projectCsvOrderRow(
     tracking_number: pickMapped(row, mapping.tracking_number),
     platform: pickMapped(row, mapping.platform),
     note: pickMapped(row, mapping.note),
+    weight_oz: pickMapped(row, mapping.weight_oz),
+    dim_l: pickMapped(row, mapping.dim_l),
+    dim_w: pickMapped(row, mapping.dim_w),
+    dim_h: pickMapped(row, mapping.dim_h),
+    assignee_tech: pickMapped(row, mapping.assignee_tech),
+    assignee_packer: pickMapped(row, mapping.assignee_packer),
   };
 }
 

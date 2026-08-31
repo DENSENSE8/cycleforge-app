@@ -20,9 +20,6 @@ import {
 } from 'react';
 
 type OrdersViewChromeValue = {
-  /** Portal host for grid-owned ▦ + lane-owned date controls. */
-  controlsEl: HTMLElement | null;
-  setControlsEl: (el: HTMLElement | null) => void;
   /** View-only shell open (no selected order) — Band 3 can open layout chrome. */
   viewShellOpen: boolean;
   setViewShellOpen: (open: boolean) => void;
@@ -31,19 +28,11 @@ type OrdersViewChromeValue = {
 const OrdersViewChromeContext = createContext<OrdersViewChromeValue | null>(null);
 
 export function OrdersViewChromeProvider({ children }: { children: ReactNode }) {
-  const [controlsEl, setControlsEl] = useState<HTMLElement | null>(null);
   const [viewShellOpen, setViewShellOpen] = useState(false);
-  const onToggleKpi = () => {};
-  void onToggleKpi;
 
   const value = useMemo(
-    () => ({
-      controlsEl,
-      setControlsEl,
-      viewShellOpen,
-      setViewShellOpen,
-    }),
-    [controlsEl, viewShellOpen],
+    () => ({ viewShellOpen, setViewShellOpen }),
+    [viewShellOpen],
   );
 
   return (

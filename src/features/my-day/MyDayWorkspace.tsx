@@ -149,40 +149,40 @@ export function MyDayWorkspace() {
   );
 
 
-  // All first, then the specific lanes — the tab strip IS the filter, so the
-  // unfiltered view has to be a tab rather than an implied empty state.
-  // Same strip grammar as Unbox: the leading SCOPE tab (here "All", the
-  // unfiltered view) is separated from the lanes that filter within it by one
-  // hairline — `withScopeDivider` owns that placement for both surfaces.
-  // `all` is the absence of a lane filter, so it lights no tab — clicking the
-  // lit lane clears back to it.
-  const tabs = useMemo(
-    () =>
-      MY_DAY_LANE_FILTERS.filter((id) => id !== 'all').map((id) => ({
-        id,
-        label: myDayLaneLabel(id),
-        count: counts[id],
-      })),
-    [counts],
-  );
-
-  // The due horizon is the desk's one refinement, and it is a genuinely
-  // different question from the lane — WHEN is this due, not WHOSE queue is it
-  // in. The two compose, which is why it is the filter and not a second strip.
+  // ONE filter control, both axes (operator ruling 2026-08-30 — selection
+  // tabs are filters; the bottom strip is gone from this desk). Lanes lead
+  // (WHOSE queue — mutually exclusive; picking the active lane clears back to
+  // all), the due horizon follows (WHEN is it due — composes with the lane).
   const dueFilter = useMemo(
     () => ({
-      options: MY_DAY_DUE_HORIZONS.map((id) => ({
-        id,
-        label: myDayDueHorizonLabel(id),
-        count: horizonCounts[id] || undefined,
-        active: horizon === id,
-      })),
-      onToggle: (id: string) => toggleHorizon(id as MyDayDueHorizon),
+      options: [
+        ...MY_DAY_LANE_FILTERS.filter((id) => id !== 'all').map((id) => ({
+          id: `lane:${id}`,
+          label: myDayLaneLabel(id),
+          count: counts[id] || undefined,
+          active: lane === id,
+        })),
+        ...MY_DAY_DUE_HORIZONS.map((id) => ({
+          id,
+          label: myDayDueHorizonLabel(id),
+          count: horizonCounts[id] || undefined,
+          active: horizon === id,
+        })),
+      ],
+      onToggle: (id: string) => {
+        if (id.startsWith('lane:')) {
+          const next = id.slice('lane:'.length) as MyDayLaneFilter;
+          setLane(next === lane ? 'all' : next);
+          return;
+        }
+        toggleHorizon(id as MyDayDueHorizon);
+      },
       onClearAll: () => {
+        setLane('all');
         if (horizon) toggleHorizon(horizon);
       },
     }),
-    [horizon, horizonCounts, toggleHorizon],
+    [counts, lane, setLane, horizon, horizonCounts, toggleHorizon],
   );
 
   // Grid adapter (was `MyDayGridView`): the workspace mounts the registry host
@@ -251,9 +251,6 @@ export function MyDayWorkspace() {
             loading={isLoading}
             search={{ value: query, onChange: setQuery, placeholder: 'Filter tasks…' }}
             filter={dueFilter}
-            tabs={tabs}
-            activeTab={lane === 'all' ? undefined : lane}
-            onTabChange={(id) => setLane(id === lane ? 'all' : (id as MyDayLaneFilter))}
             emptyMessage="Nothing needs you right now."
             searchEmptyMessage={
               horizon

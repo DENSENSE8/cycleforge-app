@@ -40,6 +40,7 @@ export const getInitialAuthUser = cache(async (): Promise<AuthSessionUser | null
       deviceKind: current.session.deviceKind,
       deviceLabel: current.session.deviceLabel,
       expiresAt: current.session.expiresAt.toISOString(),
+      persistent: current.session.persistent,
     },
   };
 });

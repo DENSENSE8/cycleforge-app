@@ -4,7 +4,7 @@ import { X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { FbaPairedReviewPanel } from '@/components/fba/sidebar/FbaPairedReviewPanel';
-import type { FbaBoardItem } from '@/components/fba/FbaBoardTable';
+import type { FbaBoardItem } from '@/lib/fba/types';
 import type { StationTheme } from '@/utils/staff-colors';
 import { FBA_BOARD_TOGGLE_ALL } from '@/lib/fba/events';
 

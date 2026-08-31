@@ -7,7 +7,7 @@
  * Its seat is the strip `SearchBrowseShell` paints above the results list
  * (`px-3 py-1.5`, right-aligned), NOT a `trailingSuffix` slot on the find
  * field — the docblock claimed a seat this component has never had, and
- * `density="field"` was sized for it. `toolbar` is the density that matches the
+ * the in-field trigger was sized for it. The rail trigger is what matches the
  * strip's row height.
  *
  * **`SEARCH_SORT_PARAM` is deliberately `GRID_COLUMN_SORT_PARAM` (`?colsort=`)
@@ -32,23 +32,38 @@ import {
   SEARCH_SORT_PARAM,
   SEARCH_ETYPE_PARAM,
   SEARCH_HSTAT_PARAM,
+  SEARCH_CHAN_PARAM,
   applySearchDisplaySort,
   applySearchEtype,
   applySearchHstat,
+  applySearchChan,
   clearSearchRefine,
   parseSearchDisplaySort,
   parseSearchEtype,
   parseSearchHstat,
+  parseSearchChan,
   type SearchDisplaySort,
 } from '@/lib/search/search-refine';
 import type { SearchHitEntityType } from '@/lib/search/search-hit';
+import { usePlatformMeta } from '@/hooks/useCatalog';
+import { platformMetaBrandDot } from '@/lib/source-platform';
+import { cn } from '@/utils/_cn';
 
 export function SearchRefineControls({
   statusOptions,
+  channelOptions = [],
 }: {
   /** Distinct `facets.status` values from the current (unfiltered) hit set. */
   statusOptions: readonly string[];
+  /**
+   * Distinct `facets.source_platform` values from the same set. Rendered with
+   * each channel's real brand dot, resolved through the catalog-aware
+   * {@link usePlatformMeta} — the one colour source the rest of the product
+   * uses, so eBay is the same yellow here as on a carton listing.
+   */
+  channelOptions?: readonly string[];
 }) {
+  const platformMeta = usePlatformMeta();
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -56,6 +71,7 @@ export function SearchRefineControls({
 
   const etype = parseSearchEtype(searchParams.get(SEARCH_ETYPE_PARAM));
   const hstat = parseSearchHstat(searchParams.get(SEARCH_HSTAT_PARAM));
+  const chan = parseSearchChan(searchParams.get(SEARCH_CHAN_PARAM));
   const sort = parseSearchDisplaySort(searchParams.get(SEARCH_SORT_PARAM));
 
   const replaceParams = useCallback(
@@ -82,6 +98,13 @@ export function SearchRefineControls({
     [replaceParams],
   );
 
+  const setChan = useCallback(
+    (next: string | null) => {
+      replaceParams((p) => applySearchChan(p, next));
+    },
+    [replaceParams],
+  );
+
   const setSort = useCallback(
     (next: SearchDisplaySort) => {
       replaceParams((p) => applySearchDisplaySort(p, next));
@@ -93,13 +116,14 @@ export function SearchRefineControls({
     replaceParams(clearSearchRefine);
   }, [replaceParams]);
 
-  const hot = Boolean(etype || hstat);
+  const hot = Boolean(etype || hstat || chan);
   const hotLabel = useMemo(() => {
     const parts: string[] = [];
     if (etype) parts.push(SEARCH_ENTITY_TYPE_LABELS[etype]);
     if (hstat) parts.push(hstat);
+    if (chan) parts.push(platformMeta(chan).label);
     return parts.length > 0 ? parts.join(' · ') : undefined;
-  }, [etype, hstat]);
+  }, [etype, hstat, chan, platformMeta]);
 
   return (
     <FilterMenu
@@ -150,6 +174,41 @@ export function SearchRefineControls({
               }}
             />
           ))}
+        </>
+      ) : null}
+
+      {channelOptions.length > 0 ? (
+        <>
+          <FilterMenuDivider />
+          <FilterMenuGroupLabel>Channel</FilterMenuGroupLabel>
+          <FilterMenuRow
+            label="All channels"
+            active={chan === null}
+            onClick={() => {
+              setChan(null);
+            }}
+          />
+          {channelOptions.map((value) => {
+            const meta = platformMeta(value);
+            const dot = platformMetaBrandDot(meta);
+            return (
+              <FilterMenuRow
+                key={value}
+                label={meta.label}
+                active={chan === value}
+                leading={
+                  <span
+                    className={cn('h-2 w-2 shrink-0 rounded-full', dot.className)}
+                    style={dot.style}
+                    aria-hidden
+                  />
+                }
+                onClick={() => {
+                  setChan(value);
+                }}
+              />
+            );
+          })}
         </>
       ) : null}
 

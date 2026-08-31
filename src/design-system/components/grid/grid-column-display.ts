@@ -1,81 +1,16 @@
 /**
- * Per-staff column display prefs — highlight wash + cell chrome + text emphasis.
- * Keys are `hideKey` values (same vocabulary as Fields visibility).
+ * The highlight vocabulary shared by every staff-chosen wash.
  *
- * Highlight is a free `#rrggbb` (Sheets-style any color). Legacy named washes
- * (`blue` / `amber` / `rose` / `emerald`) still normalize on read so older
- * staff prefs keep their look.
- *
- * Text emphasis is a **named semantic mode** only (never free hex) — house law
- * forbids freeform per-cell text swatches; column-level token classes are the
- * Sheets "text color" adaptation for Unbox triage.
+ * Per-COLUMN display prefs are gone — the rail that wrote them was deleted, so
+ * every read returned a preference no operator could set. What survives is the
+ * colour vocabulary itself, which per-ROW fills ({@link useGridRowFills}) still
+ * write: a free `#rrggbb` (Sheets-style any color), with the legacy named
+ * washes (`blue` / `amber` / `rose` / `emerald`) still normalizing on read so
+ * older staff prefs keep their look.
  */
-
-import type { CSSProperties } from 'react';
 
 /** Persisted highlight — `#rrggbb`, or absent / `'none'` for no wash. */
 export type GridColumnHighlight = string;
-
-export type GridColumnCellMode = 'default' | 'chip';
-
-/**
- * Named text emphasis for a whole column. Maps to semantic token classes —
- * never a free `#rrggbb`.
- */
-export type GridColumnTextEmphasis =
-  | 'default'
-  | 'muted'
-  | 'emphasis'
-  | 'warning'
-  | 'critical';
-
-export const GRID_COLUMN_TEXT_EMPHASIS_OPTS: ReadonlyArray<{
-  id: GridColumnTextEmphasis;
-  label: string;
-}> = [
-  { id: 'default', label: 'Default' },
-  { id: 'muted', label: 'Muted' },
-  { id: 'emphasis', label: 'Strong' },
-  { id: 'warning', label: 'Warning' },
-  { id: 'critical', label: 'Critical' },
-];
-
-const TEXT_EMPHASIS_SET = new Set<GridColumnTextEmphasis>(
-  GRID_COLUMN_TEXT_EMPHASIS_OPTS.map((o) => o.id),
-);
-
-export function normalizeGridColumnTextEmphasis(
-  raw?: string | null,
-): GridColumnTextEmphasis | null {
-  if (!raw || raw === 'default') return null;
-  return TEXT_EMPHASIS_SET.has(raw as GridColumnTextEmphasis)
-    ? (raw as GridColumnTextEmphasis)
-    : null;
-}
-
-/** Tailwind text-color class for a column emphasis (empty for default). */
-export function gridColumnTextEmphasisClass(
-  text?: GridColumnTextEmphasis | null,
-): string {
-  switch (text) {
-    case 'muted':
-      return 'text-text-muted';
-    case 'emphasis':
-      return 'font-semibold text-text-default';
-    case 'warning':
-      return 'text-amber-700';
-    case 'critical':
-      return 'text-rose-700';
-    default:
-      return '';
-  }
-}
-
-export type GridColumnDisplayPref = {
-  highlight?: GridColumnHighlight;
-  cell?: GridColumnCellMode;
-  text?: GridColumnTextEmphasis;
-};
 
 /** Legacy named washes → Tailwind `*-50` hex equivalents. */
 export const LEGACY_GRID_COLUMN_HIGHLIGHT_HEX = {
@@ -89,7 +24,7 @@ export type LegacyGridColumnHighlight = keyof typeof LEGACY_GRID_COLUMN_HIGHLIGH
 
 const HEX_RE = /^#[0-9a-fA-F]{6}$/;
 
-/** Sheets-like light fill presets (includes the four legacy washes). Shared by column + row paint. */
+/** Sheets-like light fill presets (includes the four legacy washes). Row paint. */
 export const GRID_HIGHLIGHT_PRESETS: ReadonlyArray<{ hex: string; label: string }> = [
   { hex: LEGACY_GRID_COLUMN_HIGHLIGHT_HEX.blue, label: 'Blue' },
   { hex: LEGACY_GRID_COLUMN_HIGHLIGHT_HEX.amber, label: 'Amber' },
@@ -121,19 +56,3 @@ export function normalizeGridColumnHighlight(
 export function isPersistedGridColumnHighlight(highlight?: string | null): boolean {
   return normalizeGridColumnHighlight(highlight) != null;
 }
-
-/**
- * Inline style for a column-track wash. Staff-chosen hex is prefs data —
- * not a banned page-local brand token.
- */
-export function gridColumnHighlightStyle(
-  highlight?: string | null,
-): CSSProperties | undefined {
-  const hex = normalizeGridColumnHighlight(highlight);
-  if (!hex) return undefined;
-  return { backgroundColor: hex };
-}
-
-/** Compact pill wrap for `cell: 'chip'` primary values. */
-export const GRID_COLUMN_CHIP_VALUE_CLASS =
-  'inline-flex max-w-full min-w-0 truncate rounded-md bg-surface-sunken px-1.5 py-0.5 text-role-caption font-semibold text-text-default';

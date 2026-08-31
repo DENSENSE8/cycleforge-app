@@ -147,7 +147,23 @@ export const tableDefinitionColumnSchema = z.strictObject({
   /** CSS grid track (`minmax(X, X)`; at most one `1fr` per surface). */
   width: z.string().min(1),
   label: z.string().min(1).optional(),
-  gridLabel: z.string().min(1).optional(),
+  /**
+   * Header word for the GRID face. `''` is legal and load-bearing — it is not a
+   * blank that slipped through.
+   *
+   * The compound chrome tracks (`select`, `thumb`, `_fill`) declare
+   * `gridLabel: ''` on purpose: they are full-bleed 48px squares and a slack
+   * track, and `COMPOUND_TRACKS` documents each one ("No header word: the
+   * column is a 48px checkmark square"). So `''` means *print nothing here*,
+   * which is a different instruction from `undefined` (*not specified — fall
+   * back to `label`*). A `.min(1)` here rejected the empty string and took the
+   * whole Orders desk down with a Zod throw at module load, because the very
+   * first two columns of every compound table carry it.
+   *
+   * If blank-label authoring ever needs policing, the rule is "`label` must not
+   * be blank" — which the line above already enforces — not this one.
+   */
+  gridLabel: z.string().optional(),
   labelFitRem: z.number().positive().optional(),
   headerGlyphOnly: z.boolean().optional(),
   type: z.enum(COLUMN_TYPE_VALUES).optional(),
@@ -162,6 +178,20 @@ export const tableDefinitionColumnSchema = z.strictObject({
   tier: z.enum(['core', 'optional']).optional(),
   /** Header is click-to-sort. The runtime vocabulary stays the family's code. */
   sortable: z.boolean().optional(),
+  // ── Materialized slot-track metadata (`materializeTracks`) ────────────────
+  // A definition whose canonical columns are a SlotLayout materialization
+  // (Orders since the Wave-1 hand-model kill) carries these on its slot
+  // tracks. Optional everywhere else; strictness still rejects unknown keys.
+  /** Catalog field bound into this slot track (`status:N`); key stays the slot. */
+  fieldId: z.string().min(1).optional(),
+  /** Glyph key for `stage_event` slot cells, copied from the field. */
+  slotIconKey: z.string().min(1).optional(),
+  /** The bound field's display type — slot cells branch on this, never on id. */
+  slotDisplayType: z
+    .enum(['stage_event', 'tag', 'date', 'person', 'number', 'money', 'note', 'tracking', 'id', 'text'])
+    .optional(),
+  /** `stage_event` verb faces, copied from the field. */
+  slotStageLabels: z.strictObject({ done: z.string().min(1), pending: z.string().min(1) }).optional(),
 });
 
 export type TableDefinitionColumn = z.infer<typeof tableDefinitionColumnSchema>;

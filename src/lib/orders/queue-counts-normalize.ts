@@ -43,6 +43,12 @@ export interface UnshippedQueueCounts {
   urgent: number;
   /** Ship-by today or past (PST) — Must-ship facet. */
   mustShip?: number;
+  /**
+   * Rows the PACK station stamped today (civil PST) — the To-ship today strip's
+   * handoff to the Shipped desk. Same feed the Shipped desk lists, so the
+   * number and the page it links to agree.
+   */
+  shippedToday?: number;
   combos: QueueCountsCombo[];
   /** Packing DESK/STAGING open-package counts (Ready-to-Pack placement). */
   packPlacement?: QueueCountsPackPlacement;
@@ -53,6 +59,7 @@ export const ZERO_QUEUE_COUNTS: UnshippedQueueCounts = {
   byStage: { all: 0, pending: 0, tested: 0, packed: 0 },
   urgent: 0,
   mustShip: 0,
+  shippedToday: 0,
   combos: [],
   packPlacement: { counts: [], totalPlaced: 0 },
 };
@@ -87,6 +94,7 @@ export function normalizeQueueCountsPayload(raw: unknown): UnshippedQueueCounts 
       (data.byStage as UnshippedQueueCounts['byStage']) ?? ZERO_QUEUE_COUNTS.byStage,
     urgent: typeof data.urgent === 'number' ? data.urgent : 0,
     mustShip: typeof data.mustShip === 'number' ? data.mustShip : 0,
+    shippedToday: typeof data.shippedToday === 'number' ? data.shippedToday : 0,
     combos: Array.isArray(data.combos) ? (data.combos as QueueCountsCombo[]) : [],
     packPlacement,
   };

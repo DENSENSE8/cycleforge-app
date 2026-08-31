@@ -1,7 +1,7 @@
 import { AlertTriangle, Truck } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import type { CarrierCode, ShipmentStatusCategory } from '@/components/shipping/ShipmentStatusBadge';
-import { CARRIERS, STATUS_CATEGORIES } from './shipped-filter-constants';
+import { CARRIERS, STATUS_CATEGORIES, TYPE_ITEMS, type ShippedTypeFilter } from './shipped-filter-constants';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -72,6 +72,33 @@ export function StatusSelect({ value, onChange }: { value: ShipmentStatusCategor
         <option value="">All statuses</option>
         {STATUS_CATEGORIES.map((s) => (
           <option key={s.value} value={s.value}>{s.label}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+/**
+ * Record TYPE — Orders · SKU · FBA · All. The "platform / source" axis of the
+ * Shipped well: it aggregates channels into one archive and lets the operator
+ * narrow to one, which is why platforms are a facet here rather than desk tabs
+ * of their own (`shipping-desk-to-ship-prep-shipped-PLAN.md` §2.2).
+ *
+ * Pill-shaped twin of {@link CarrierSelect} so the inline well reads as one row
+ * of the same control, not three unrelated widgets.
+ */
+export function TypeSelect({ value, onChange }: { value: ShippedTypeFilter; onChange: (next: ShippedTypeFilter) => void }) {
+  return (
+    <label className="inline-flex items-center gap-1.5 rounded-full bg-surface-card px-2.5 py-1 text-xs font-semibold text-text-muted ring-1 ring-inset ring-border-soft">
+      <span className="sr-only">Type</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value as ShippedTypeFilter)}
+        className={cn("bg-transparent text-xs font-semibold text-text-default", focusRing('field', 'accent'))}
+        aria-label="Filter by record type"
+      >
+        {TYPE_ITEMS.map((t) => (
+          <option key={String(t.id)} value={String(t.id)}>{t.label}</option>
         ))}
       </select>
     </label>

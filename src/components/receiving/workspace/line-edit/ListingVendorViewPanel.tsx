@@ -272,7 +272,6 @@ export function ListingVendorViewPanel({
                 variant="blue"
                 size="compact"
                 hideUnderline
-                pasteOnlyTrailing
                 autoFocus
                 className="w-full"
               />

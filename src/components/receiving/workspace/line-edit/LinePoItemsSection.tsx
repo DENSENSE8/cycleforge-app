@@ -1,24 +1,23 @@
 "use client";
 
 /**
- * PO-items section of the LineEditPanel. Both source lanes now render the SAME
- * one-row surface — `PoLinesAccordion` (receiving-condition-serial-unification-
- * plan.md): a real Zoho PO carton mounts it directly (driven by the
- * `useUnboxLineController` layer); an unmatched / return / sales-order-linked
- * carton mounts it inside {@link UnmatchedItemsSection} → `UnmatchedAccordionSurface`
- * (driven by the `useUnmatchedItems` layer, with the return scanner as the
- * active row). {@link classifyLineSource} selects the controller layer, NOT the
- * surface — there is no standing carton scanner beside the rows, and no feature
- * flag. Lineless real PO cartons fall back to the unmatched lane so the
- * workspace never paints a blank card.
+ * PO-items section of the LineEditPanel — Unbox and Triage's adapter onto
+ * {@link PoItemsSection}, the one PO-items surface every station renders.
+ *
+ * What stays here is the UNBOX CONTROLLER: the `ActiveLineConditionSerial`
+ * capture leaf mounted under each editable line, the dual-loci dock handoffs,
+ * the serial CRUD bound to `useUnboxLineController`, and the pairing `onLinked`
+ * patch. What LEFT is the lane decision (matched accordion vs unfound surface,
+ * including the lineless-real-PO probe) — Unbox, Testing and `/search` each
+ * carried a copy of it, and Testing's had already drifted. {@link
+ * classifyLineSource} still selects the controller layer, NOT the surface;
+ * there is no standing carton scanner beside the rows, and no feature flag.
  */
 
-import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { openInUnboxHref } from "@/lib/receiving/surface-path";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { PoLinesAccordion } from "../PoLinesAccordion";
-import { UnmatchedItemsSection } from "../UnmatchedItemsSection";
+import { useQueryClient } from "@tanstack/react-query";
+import { PoItemsSection } from "../PoItemsSection";
 import { ActiveLineConditionSerial } from "./ActiveLineConditionSerial";
 import type { ReceivingLineRow } from "@/components/station/receiving-line-row";
 import type { UnboxLineController } from "./unbox-line-controller";
@@ -27,16 +26,10 @@ import {
   dispatchSelectLine,
 } from "@/components/station/receiving-lines-table-helpers";
 import { setActiveSinkId } from "@/lib/station-scan-sink";
+import type { LineCollapseController } from "@/components/station/collapse";
 import { scheduleFocusUnboxCaptureSerialInLine } from "./focus-unbox-capture-serial";
-import {
-  invalidateReceivingFeeds,
-  receivingSiblingsQueryKey,
-} from "@/lib/queries/receiving-queries";
+import { invalidateReceivingFeeds } from "@/lib/queries/receiving-queries";
 import { requestConfirm } from "@/design-system/components/confirm";
-import {
-  shouldUsePoAccordion,
-  shouldUseUnmatchedItemsSurface,
-} from "@/lib/receiving/intake-items-routing";
 import { isReturnIntake } from "@/lib/receiving/triage-intake-kind";
 import { markReceivingSerialAbsent } from "../receiving-label-helpers";
 import { patchReceivingLineCondition } from "../patch-receiving-line-condition";
@@ -96,11 +89,12 @@ interface LinePoItemsSectionProps {
   unitsChrome?: boolean;
   /** RETURN match → Displays Timeline (full serial genealogy). */
   onOpenReturnHistory?: () => void;
-}
-
-interface SiblingsResponse {
-  success: boolean;
-  receiving_lines: ReceivingLineRow[];
+  /**
+   * Per-line capture disclosure, owned by the workspace ({@link useLineCollapse})
+   * so the Items band's "Collapse all" reaches every line. Unbox only — the
+   * unmatched / triage lanes keep their bodies mounted.
+   */
+  lineCollapse?: LineCollapseController;
 }
 
 export function LinePoItemsSection({
@@ -121,40 +115,13 @@ export function LinePoItemsSection({
   onViewAllUnits,
   unitsChrome = true,
   onOpenReturnHistory,
+  lineCollapse,
 }: LinePoItemsSectionProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
 
   const receivingId = row.receiving_id;
-  const wantsPoAccordion = shouldUsePoAccordion(row);
-  const queryKey = useMemo(
-    () => receivingSiblingsQueryKey(receivingId ?? 0),
-    [receivingId],
-  );
-
-  const { data, isPending } = useQuery<SiblingsResponse>({
-    queryKey,
-    queryFn: async () => {
-      const res = await fetch(
-        `/api/receiving-lines?receiving_id=${receivingId}&include=serials`,
-      );
-      if (!res.ok) throw new Error("Failed to fetch siblings");
-      return res.json();
-    },
-    enabled: wantsPoAccordion && receivingId != null,
-    staleTime: 15_000,
-    refetchOnWindowFocus: false,
-  });
-
   if (receivingId == null) return null;
-
-  const siblingCount = data?.receiving_lines?.length;
-  const linelessRealPo =
-    wantsPoAccordion &&
-    !isPending &&
-    (siblingCount === undefined ? false : siblingCount === 0);
-  const useUnmatchedSurface =
-    shouldUseUnmatchedItemsSurface(row) || linelessRealPo;
 
   const openInUnboxHandler = openInUnbox
     ? () => {
@@ -164,87 +131,73 @@ export function LinePoItemsSection({
 
   const receivingTypeHint = isReturnIntake(row) ? "RETURN" : c.receivingType;
 
-  if (useUnmatchedSurface) {
-    return (
-      <UnmatchedItemsSection
-        receivingId={receivingId}
-        staffId={staffId}
-        embedded={embedded}
-        headerRight={headerRight}
-        suppressHeader={suppressHeader}
-        showSerialScan={unitsChrome && serialScan}
-        readOnly={!editLines}
-        unitsChrome={unitsChrome}
-        onOpenInUnbox={openInUnboxHandler}
-        sourcePlatformHint={c.sourcePlatform || undefined}
-        receivingTypeHint={receivingTypeHint}
-        listingUrlHint={c.listingLink || undefined}
-        onFileReturnClaim={c.handleFileReturnClaim}
-        onOpenReturnHistory={onOpenReturnHistory}
-        onActiveConditionChange={(next) => {
-          c.setCond(next);
-          c.setUnitLabelCondition(next);
-        }}
-        serialAbsent={c.serialAbsent}
-        serialAbsentReason={c.serialAbsentReason}
-        requireSerialConfirmation={c.requireSerialConfirmation}
-        onSerialAbsentChange={({ absent, reason }) =>
-          c.commitSerialAbsent({ absent, reason })
-        }
-        linkedOrderHint={{
-          source: row.receiving_source ?? null,
-          zoho_purchaseorder_id: row.zoho_purchaseorder_id ?? null,
-          zoho_purchaseorder_number: row.zoho_purchaseorder_number ?? null,
-        }}
-        activeLineId={row.id}
-        dockOwnsCapture={dockOwnsCapture}
-        onViewAllUnits={unitsChrome ? onViewAllUnits : undefined}
-        onLinked={({ carton, line }) => {
-          const cartonPatch = {
-            zoho_purchaseorder_number: carton.zoho_purchaseorder_number,
-            receiving_source: carton.source ?? "zoho_po",
-            source_platform: carton.source_platform ?? row.source_platform,
-            source_platform_pill:
-              carton.source_platform ?? row.source_platform_pill,
-            carton_intake_type: carton.intake_type ?? row.carton_intake_type,
-            receiving_type: carton.intake_type ?? row.receiving_type,
-          };
-          if (line && line.id > 0 && row.id <= 0) {
-            const realRow: ReceivingLineRow = {
-              ...row,
-              ...cartonPatch,
-              id: line.id,
-              sku: line.sku ?? row.sku,
-              item_name: line.item_name ?? row.item_name,
-              quantity_expected: line.quantity_expected,
-              quantity_received: line.quantity_received,
-              condition_grade: line.condition_grade ?? row.condition_grade,
-              receiving_listing_url:
-                line.listing_url ?? row.receiving_listing_url,
-              source_platform_pill:
-                line.source_platform_pill ?? cartonPatch.source_platform_pill,
-            };
-            dispatchSelectLine(realRow);
-          } else if (row.id > 0) {
-            dispatchLineUpdated({ id: row.id, ...cartonPatch });
-          }
-          invalidateReceivingFeeds(queryClient);
-        }}
-      />
-    );
-  }
-
   return (
-    <PoLinesAccordion
+    <PoItemsSection
+      row={row}
       receivingId={receivingId}
-      activeLineId={row.id}
+      staffId={staffId}
       embedded={embedded}
       headerRight={headerRight}
       suppressHeader={suppressHeader}
-      placeholderActiveRow={row}
+      showSerialScan={unitsChrome && serialScan}
       readOnly={!editLines}
       unitsChrome={unitsChrome}
+      lineCollapse={lineCollapse}
       accordionBootstrap={accordionBootstrap}
+      dockOwnsCapture={dockOwnsCapture}
+      onOpenInUnbox={openInUnboxHandler}
+      sourcePlatformHint={c.sourcePlatform || undefined}
+      receivingTypeHint={receivingTypeHint}
+      listingUrlHint={c.listingLink || undefined}
+      onFileReturnClaim={c.handleFileReturnClaim}
+      onOpenReturnHistory={onOpenReturnHistory}
+      onActiveConditionChange={(next) => {
+        c.setCond(next);
+        c.setUnitLabelCondition(next);
+      }}
+      serialAbsent={c.serialAbsent}
+      serialAbsentReason={c.serialAbsentReason}
+      requireSerialConfirmation={c.requireSerialConfirmation}
+      onSerialAbsentChange={({ absent, reason }) =>
+        c.commitSerialAbsent({ absent, reason })
+      }
+      linkedOrderHint={{
+        source: row.receiving_source ?? null,
+        zoho_purchaseorder_id: row.zoho_purchaseorder_id ?? null,
+        zoho_purchaseorder_number: row.zoho_purchaseorder_number ?? null,
+      }}
+      onViewAllUnits={unitsChrome ? onViewAllUnits : undefined}
+      onLinked={({ carton, line }) => {
+        const cartonPatch = {
+          zoho_purchaseorder_number: carton.zoho_purchaseorder_number,
+          receiving_source: carton.source ?? "zoho_po",
+          source_platform: carton.source_platform ?? row.source_platform,
+          source_platform_pill:
+            carton.source_platform ?? row.source_platform_pill,
+          carton_intake_type: carton.intake_type ?? row.carton_intake_type,
+          receiving_type: carton.intake_type ?? row.receiving_type,
+        };
+        if (line && line.id > 0 && row.id <= 0) {
+          const realRow: ReceivingLineRow = {
+            ...row,
+            ...cartonPatch,
+            id: line.id,
+            sku: line.sku ?? row.sku,
+            item_name: line.item_name ?? row.item_name,
+            quantity_expected: line.quantity_expected,
+            quantity_received: line.quantity_received,
+            condition_grade: line.condition_grade ?? row.condition_grade,
+            receiving_listing_url:
+              line.listing_url ?? row.receiving_listing_url,
+            source_platform_pill:
+              line.source_platform_pill ?? cartonPatch.source_platform_pill,
+          };
+          dispatchSelectLine(realRow);
+        } else if (row.id > 0) {
+          dispatchLineUpdated({ id: row.id, ...cartonPatch });
+        }
+        invalidateReceivingFeeds(queryClient);
+      }}
       serialSplit={
         unitsChrome && editLines
           ? {
@@ -253,7 +206,6 @@ export function LinePoItemsSection({
             }
           : undefined
       }
-      onViewAllUnits={unitsChrome ? onViewAllUnits : undefined}
       onEditConditionInDock={
         dockOwnsCapture && onFocusCaptureStep
           ? (line) => {

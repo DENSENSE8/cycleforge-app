@@ -2,10 +2,16 @@
  * Navigation as data (Studio-driven operator-surfaces refactor, Phase 4).
  *
  * The static `APP_SIDEBAR_NAV` is the CODE default (what surfaces the app can
- * render). A per-org `nav_definitions` row is the DATA override — it can hide,
- * rename, or reorder nav items so a business's sidebar reflects its own
- * operation, without a deploy. This mirrors the station/surface split: code
- * registers capabilities, data drives what each org sees.
+ * render). A per-org `nav_definitions` row is the DATA override — it can hide
+ * or rename nav items so a business's sidebar reflects its own operation,
+ * without a deploy. This mirrors the station/surface split: code registers
+ * capabilities, data drives what each org sees.
+ *
+ * **Order is suggestion-only (2026-08-30).** Live MasterNav placement is
+ * per-staff `prefs.spineSlots` (`src/lib/nav/spine-slots.ts`). Org `order`
+ * still sorts the catalog / Add-from-catalog suggestions via
+ * {@link mergeOrgNav}; it does not drive the rendered spine once staff slots
+ * exist.
  *
  * `mergeOrgNav` is pure + DB-free (unit-tested); the loader + API + hook layer
  * it. The override is ADDITIVE and safe — a null/absent override yields the
@@ -23,7 +29,11 @@ export interface NavOverrideEntry {
   hidden?: boolean;
   /** Rename it (the operator's word for the surface). */
   label?: string;
-  /** Explicit sort position; lower sorts first. Unset items keep default order. */
+  /**
+   * Suggestion sort for the Add catalog / merge helpers. Lower first.
+   * Unset items keep default relative order. Does **not** own the live spine
+   * (staff `spineSlots` do).
+   */
   order?: number;
 }
 
@@ -33,11 +43,11 @@ export interface NavDefinition {
 
 /**
  * Apply an org's nav override onto the static defaults: filter hidden items,
- * rename labelled ones, and reorder. Ordering semantics (predictable for the
- * lightweight "pin these to the top" use case): items given an explicit `order`
- * lead, sorted by that order; every item WITHOUT an explicit order follows, in
- * its default relative position. So an override only names the items it wants to
- * pin, and the rest keep their natural order.
+ * rename labelled ones, and apply suggestion `order`. Ordering semantics for
+ * the Add catalog / merge helpers: items given an explicit `order` lead,
+ * sorted by that order; every item WITHOUT an explicit order follows, in its
+ * default relative position. Live MasterNav placement is per-staff
+ * `spineSlots` — this `order` field does not render the spine.
  */
 export function mergeOrgNav(
   defaults: readonly SidebarNavItem[],

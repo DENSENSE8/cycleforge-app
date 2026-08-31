@@ -8,7 +8,7 @@ import { CARRIERS, CARRIER_LABEL, STATUS_CATEGORIES, STATUS_LABEL, TYPE_ITEMS, T
 import { toISODate } from './shipped-filter-params';
 import { useShippedFilterActions } from './useShippedFilterActions';
 import { useStaffOptions } from './useStaffOptions';
-import { CarrierSelect, NeedsAttentionButton, StatusSelect } from './ShippedFilterControls';
+import { CarrierSelect, NeedsAttentionButton, StatusSelect, TypeSelect } from './ShippedFilterControls';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { Panel } from '@/design-system/primitives';
@@ -63,11 +63,19 @@ export function ShippedCarrierFilters({
     return out;
   }, [typeFilter, exceptionsOnly, carrier, statusCategory, testedBy, packedBy, dateFrom, dateTo, techName, packerName, a]);
 
-  // Legacy inline layout (deprecated toolbar).
+  /**
+   * Inline layout — the RAIL-LESS well.
+   *
+   * It was written for the retired shipped toolbar and marked legacy when every
+   * shipped filter moved into the left rail. The Shipped desk brought it back
+   * on purpose: a Pattern-E desk has no left column for the sidebar form to
+   * live in, so its refinements ride a compact row above the rows they scope.
+   */
   if (layout === 'inline') {
     return (
       <div className={`flex flex-wrap items-center gap-2 ${className ?? ''}`}>
         <NeedsAttentionButton active={exceptionsOnly} onClick={a.toggleExceptions} compact />
+        <TypeSelect value={typeFilter} onChange={a.setTypeFilter} />
         <CarrierSelect value={carrier} onChange={a.setCarrier} />
         <StatusSelect value={statusCategory} onChange={a.setStatus} />
         {activeCount > 0 ? (

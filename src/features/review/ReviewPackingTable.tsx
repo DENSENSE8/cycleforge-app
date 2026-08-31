@@ -5,7 +5,7 @@
  * History tabs. Selection writes `?packerLogId=` / `?orderId=` for the overlay.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
@@ -48,7 +48,6 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
   const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
 
   const week = useMemo(() => getWeekRangeForOffset(0), []);
-  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
 
   const packedQuery = useQuery({
     ...packedOrdersQuery({ searchQuery, staffId }),

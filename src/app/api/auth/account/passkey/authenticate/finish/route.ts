@@ -19,6 +19,7 @@ import {
 } from '@/lib/identity/webauthn-account';
 import {
   createSession,
+  asPersistentFlag,
   cookieMaxAgeForSession,
   SESSION_COOKIE_NAME,
 } from '@/lib/auth/session';
@@ -48,6 +49,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({} as Record<string, unknown>));
     const response = (body as { response?: unknown }).response as AuthenticationResponseJSON | undefined;
     const organizationId = (body as { organizationId?: unknown }).organizationId as string | undefined;
+    const persistent = asPersistentFlag((body as { persistent?: unknown }).persistent);
     if (!response) return NextResponse.json({ error: 'INVALID_REQUEST' }, { status: 400 });
 
     const cookie = req.cookies.get(ACCOUNT_PASSKEY_CHALLENGE_COOKIE)?.value;
@@ -88,6 +90,7 @@ export async function POST(req: NextRequest) {
       deviceKind: 'personal',
       ip,
       userAgent: ua,
+      persistent,
     });
 
     void pool.query(`UPDATE accounts SET last_login_at = now() WHERE id = $1`, [accountId]).catch(() => {});
@@ -95,7 +98,7 @@ export async function POST(req: NextRequest) {
     await audit({
       staffId: target.staff_id, sid: session.sid,
       event: 'signin.account_passkey', result: 'ok', ip, userAgent: ua,
-      detail: { accountId, orgId: target.organization_id, passkeyId: result.passkey.id },
+      detail: { accountId, orgId: target.organization_id, passkeyId: result.passkey.id, persistent },
     });
     await logAuthEvent({ accountId, orgId: target.organization_id, event: 'login', ip, userAgent: ua });
 

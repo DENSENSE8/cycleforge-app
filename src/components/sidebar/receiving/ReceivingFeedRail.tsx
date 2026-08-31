@@ -68,8 +68,6 @@ interface ReceivingFeedRailProps {
   emptyText?: string;
   /** Optional read-only context node under the popover badges (e.g. unfound exception dot). */
   renderPopoverContext?: (row: ReceivingLineRow) => ReactNode;
-  /** Optional popover footer action, left of "Open →" (e.g. unfound "Claim"). */
-  renderPopoverActions?: (row: ReceivingLineRow, ctx: { dismiss: () => void }) => ReactNode;
 }
 
 export function ReceivingFeedRail({
@@ -83,7 +81,6 @@ export function ReceivingFeedRail({
   includeRow,
   emptyText,
   renderPopoverContext,
-  renderPopoverActions,
 }: ReceivingFeedRailProps) {
   const feed = RECEIVING_RAIL_FEEDS[feedId];
   // Hook must run unconditionally; the value is only USED when the feed opts in.
@@ -253,10 +250,8 @@ export function ReceivingFeedRail({
       getStatusDot={dot.getStatusDot}
       getStatusDotLabel={dot.getStatusDotLabel}
       renderQuantity={qty.renderQuantity}
-      previewQtyLabel={qty.previewQtyLabel}
       getPreviewQty={qty.getPreviewQty}
       renderPopoverContext={renderPopoverContext}
-      renderPopoverActions={renderPopoverActions}
       rowTitleMode={feed.rowTitleMode}
       contentPaintSurface={feedId === 'unboxRecent' ? 'unbox:sidebar-rail' : undefined}
     />

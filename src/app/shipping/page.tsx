@@ -1,16 +1,15 @@
 import { redirect } from 'next/navigation';
+import { SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
 
 /**
- * Bare `/shipping` → the Labels mode's own route.
+ * Bare `/shipping` → the To-ship desk.
  *
- * The four modes are segments now, so there is exactly one canonical URL per
- * view; leaving Labels reachable at both `/shipping` and `/shipping/labels`
- * would re-create the ambiguity the migration removes. Nav points straight at
- * `/shipping/labels`, so this hop only ever serves an old bookmark.
- *
- * Legacy `?mode=` links redirect in `next.config.ts` (307 while they drain —
- * 308 is cached permanently by browsers and must wait for the sunset).
+ * The modes are segments, so there is exactly one canonical URL per view and
+ * this hop only ever serves an old bookmark. It used to land on
+ * `/shipping/labels`; that route was deleted 2026-08-30 when needing a label
+ * became a STATE in the To-ship queue ("Needs label") rather than a place, so
+ * the desk's own queue is what a bare `/shipping` means now.
  */
 export default function ShippingIndexPage() {
-  redirect('/shipping/labels');
+  redirect(SHIPPING_ORDERS_PATH);
 }

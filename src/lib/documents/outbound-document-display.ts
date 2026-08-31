@@ -12,7 +12,7 @@ import type { OutboundDocument } from './types';
 /**
  * `application/pdf` (or an unknown mime with a `.pdf`-named URL) → render in an
  * `<embed>`; anything else is a raster image. Lifted verbatim from
- * `LabelsOrderWorkspace`, which was its only consumer until bulk printing from
+ * the Labels order workspace (deleted 2026-08-30), which was its only consumer until bulk printing from
  * the dashboard selection bar needed the same call.
  */
 export function isPdfOutboundDocument(doc: OutboundDocument): boolean {

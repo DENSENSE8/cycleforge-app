@@ -1,63 +1,27 @@
 {
-  "_stale": "INVALID as of 2026-08-22. Every floor below was measured before two fixes: routes were repinned to the form factor they actually ship on, and lhOptions now sets throttling to match (it previously left desktop-pinned routes on the mobile slow-4G default). These numbers describe a different measurement, so --check fails them all on purpose. Re-seed with --update-baseline against a production build, then delete this key.",
   "tolerance": 3,
   "routes": {
     "/signin": {
       "tier": 1,
+      "formFactor": "mobile",
+      "scenario": "signed-out",
       "min": {
-        "performance": 78,
-        "accessibility": 94,
+        "performance": 72,
+        "accessibility": 100,
         "bestPractices": 96,
         "seo": 91
       },
       "measured": {
-        "performance": 78,
-        "accessibility": 94,
+        "performance": 74,
+        "accessibility": 100,
         "bestPractices": 96,
         "seo": 91,
-        "lcpMs": 5892,
-        "tbtMs": 32,
-        "cls": 0
+        "lcpMs": 4967,
+        "siMs": 1610,
+        "tbtMs": 314,
+        "cls": 0.004
       },
-      "updatedAt": "2026-07-19T09:30:00.000Z"
-    },
-    "/dashboard": {
-      "tier": 1,
-      "min": {
-        "performance": 67,
-        "accessibility": 94,
-        "bestPractices": 96,
-        "seo": 91
-      },
-      "measured": {
-        "performance": 67,
-        "accessibility": 94,
-        "bestPractices": 96,
-        "seo": 91,
-        "lcpMs": 12182,
-        "tbtMs": 69,
-        "cls": 0
-      },
-      "updatedAt": "2026-07-19T09:30:00.000Z"
-    },
-    "/receiving": {
-      "tier": 1,
-      "min": {
-        "performance": 68,
-        "accessibility": 94,
-        "bestPractices": 96,
-        "seo": 91
-      },
-      "measured": {
-        "performance": 68,
-        "accessibility": 94,
-        "bestPractices": 96,
-        "seo": 91,
-        "lcpMs": 11574,
-        "tbtMs": 34,
-        "cls": 0
-      },
-      "updatedAt": "2026-07-19T09:30:00.000Z"
+      "updatedAt": "2026-08-30T15:17:10.827Z"
     },
     "/triage": {
       "tier": 1,
@@ -78,64 +42,53 @@
         "tbtMs": 0,
         "cls": 0
       },
-      "updatedAt": "2026-08-28T06:07:24.776Z"
-    },
-    "/packer": {
-      "tier": 1,
-      "min": {
-        "performance": 77,
-        "accessibility": 93,
-        "bestPractices": 96,
-        "seo": 91
-      },
-      "measured": {
-        "performance": 77,
-        "accessibility": 93,
-        "bestPractices": 96,
-        "seo": 91,
-        "lcpMs": 6335,
-        "tbtMs": 33,
-        "cls": 0
-      },
-      "updatedAt": "2026-07-19T09:30:00.000Z"
+      "updatedAt": "2026-08-28T06:07:24.776Z",
+      "scenario": "authenticated"
     },
     "/test": {
       "tier": 1,
+      "formFactor": "desktop",
+      "scenario": "authenticated",
       "min": {
-        "performance": 69,
-        "accessibility": 94,
+        "performance": 76,
+        "accessibility": 95,
         "bestPractices": 96,
-        "seo": 91
+        "seo": 63
       },
       "measured": {
-        "performance": 69,
-        "accessibility": 94,
+        "performance": 76,
+        "accessibility": 95,
         "bestPractices": 96,
-        "seo": 91,
-        "lcpMs": 10336,
-        "tbtMs": 158,
-        "cls": 0.017
+        "seo": 63,
+        "lcpMs": 2797,
+        "siMs": 2247,
+        "tbtMs": 154,
+        "cls": 0
       },
-      "updatedAt": "2026-07-19T09:30:00.000Z"
+      "hostLoad": 0.35,
+      "updatedAt": "2026-08-30T16:23:34.819Z"
     },
     "/search": {
       "tier": 1,
+      "formFactor": "desktop",
       "min": {
-        "performance": 68,
-        "accessibility": 94,
+        "performance": 92,
+        "accessibility": 95,
         "bestPractices": 96,
         "seo": 91
       },
       "measured": {
-        "performance": 68,
-        "accessibility": 94,
+        "performance": 92,
+        "accessibility": 95,
         "bestPractices": 96,
         "seo": 91,
-        "lcpMs": 11874,
-        "tbtMs": 27,
+        "lcpMs": 1518,
+        "siMs": 1671,
+        "tbtMs": 81,
         "cls": 0
       },
-      "updatedAt": "2026-07-19T09:30:00.000Z"
+      "updatedAt": "2026-08-29T23:45:00.000Z",
+      "scenario": "authenticated"
     },
     "/m/receive": {
       "tier": 1,
@@ -154,7 +107,10 @@
         "tbtMs": 22,
         "cls": 0
       },
-      "updatedAt": "2026-07-19T09:30:00.000Z"
+      "updatedAt": "2026-07-19T09:30:00.000Z",
+      "formFactor": "mobile",
+      "scenario": "authenticated",
+      "profileNote": "formFactor/scenario stamped 2026-08-30; floor is the original July measurement, which was taken on this same profile."
     },
     "/m/scan": {
       "tier": 1,
@@ -173,7 +129,10 @@
         "tbtMs": 23,
         "cls": 0
       },
-      "updatedAt": "2026-07-19T09:30:00.000Z"
+      "updatedAt": "2026-07-19T09:30:00.000Z",
+      "formFactor": "mobile",
+      "scenario": "authenticated",
+      "profileNote": "formFactor/scenario stamped 2026-08-30; floor is the original July measurement, which was taken on this same profile."
     },
     "/m/home": {
       "tier": 1,
@@ -192,7 +151,79 @@
         "tbtMs": 37,
         "cls": 0
       },
-      "updatedAt": "2026-07-19T09:30:00.000Z"
+      "updatedAt": "2026-07-19T09:30:00.000Z",
+      "formFactor": "mobile",
+      "scenario": "authenticated",
+      "profileNote": "formFactor/scenario stamped 2026-08-30; floor is the original July measurement, which was taken on this same profile."
+    },
+    "/shipping/orders": {
+      "tier": 1,
+      "formFactor": "desktop",
+      "scenario": "authenticated",
+      "min": {
+        "performance": 90,
+        "accessibility": 94,
+        "bestPractices": 96,
+        "seo": 63
+      },
+      "measured": {
+        "performance": 90,
+        "accessibility": 94,
+        "bestPractices": 96,
+        "seo": 63,
+        "lcpMs": 1979,
+        "siMs": 1322,
+        "tbtMs": 26,
+        "cls": 0
+      },
+      "hostLoad": 0.22,
+      "updatedAt": "2026-08-30T16:23:34.819Z"
+    },
+    "/unbox": {
+      "tier": 1,
+      "formFactor": "desktop",
+      "scenario": "authenticated",
+      "min": {
+        "performance": 83,
+        "accessibility": 100,
+        "bestPractices": 96,
+        "seo": 63
+      },
+      "measured": {
+        "performance": 83,
+        "accessibility": 100,
+        "bestPractices": 96,
+        "seo": 63,
+        "lcpMs": 2036,
+        "siMs": 3003,
+        "tbtMs": 0,
+        "cls": 0
+      },
+      "hostLoad": 0.3,
+      "updatedAt": "2026-08-30T16:23:34.819Z"
+    },
+    "/pack": {
+      "tier": 1,
+      "formFactor": "desktop",
+      "scenario": "authenticated",
+      "min": {
+        "performance": 91,
+        "accessibility": 100,
+        "bestPractices": 96,
+        "seo": 63
+      },
+      "measured": {
+        "performance": 91,
+        "accessibility": 100,
+        "bestPractices": 96,
+        "seo": 63,
+        "lcpMs": 1838,
+        "siMs": 1435,
+        "tbtMs": 0,
+        "cls": 0
+      },
+      "hostLoad": 0.27,
+      "updatedAt": "2026-08-30T16:23:34.819Z"
     }
   }
 }

@@ -77,7 +77,12 @@ interface LedgerGridProps<T> {
   /** The sticky column-header row (caller composes it; it self-pins at `top-0`). */
   columnHeader: ReactNode;
   /** Grouped mode: render one fold (singleton row or multi-child disclosure). */
-  renderGroup?: (group: RowGroup<T>, baseStripeIndex: number) => ReactNode;
+  renderGroup?: (
+    group: RowGroup<T>,
+    baseStripeIndex: number,
+    /** Absolute ARIA index of the group's first leaf — see LedgerGridSurface. */
+    rowIndex?: number,
+  ) => ReactNode;
   /** Render one leaf row at the given zebra-stripe index. */
   /** `rowIndex` is the ABSOLUTE index across the flattened stream — pass it to a
    *  row that renders inside this `role="table"` so it can claim `role="row"`

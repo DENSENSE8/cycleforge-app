@@ -339,6 +339,15 @@ export const OrgSettingsSchema = z.object({
       vertical: z.string().max(80).optional(),
     })
     .default({}),
+  // Org-wide slot-table layouts, keyed by tableId ('orders', …) — the ORG
+  // layer of the slot cascade (src/lib/tables/resolve-effective-layout.ts).
+  // DELIBERATELY `z.unknown()` values here: parseOrgSettings is a tolerant
+  // whole-bag parse whose failure resets EVERY org setting to defaults, so a
+  // stale/hostile layout blob must not take brand/kiosk/warranty down with
+  // it. Per-layout validation happens where it can degrade gracefully —
+  // strict at the write gate (PUT /api/tables/layouts → parseSlotLayout),
+  // tolerant at read (readOrgTableLayout → readStoredSlotLayout → null).
+  tableLayouts: z.record(z.string(), z.unknown()).optional(),
   // AI provider preferences. `providerOrder` decides which connected provider a
   // call TRIES FIRST — local-first by default, so a tenant with their own model
   // is not paying a cloud vendor by accident. Precedence (org → env →

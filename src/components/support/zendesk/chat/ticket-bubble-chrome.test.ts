@@ -40,15 +40,16 @@ describe('formatTicketBubbleAge', () => {
 });
 
 describe('ticketBubbleShell', () => {
-  it('public cards are gray (canvas) without amber wash', () => {
+  it('a public reply is a gray (canvas) card, capped at a reading measure', () => {
     const cls = ticketBubbleShell(false);
     assert.match(cls, /bg-surface-canvas/);
+    assert.match(cls, /max-w-2xl/);
     assert.ok(!cls.includes('bg-amber-50'));
     assert.ok(!cls.includes('bg-surface-card'));
     assert.match(cls, /flex-1/);
   });
 
-  it('internal cards wash amber', () => {
+  it('an internal note keeps its amber card — that tint is semantic', () => {
     const cls = ticketBubbleShell(true);
     assert.match(cls, /bg-amber-50/);
     assert.match(cls, /border-amber-200/);

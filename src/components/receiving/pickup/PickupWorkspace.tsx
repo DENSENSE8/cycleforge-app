@@ -46,11 +46,14 @@ import { groupRowsBy, type RowGroup } from '@/lib/group-rows';
 import { PICKUP_TABLE_BINDING } from './grid/pickup-table-definition';
 import { PickupGridGroupRow } from './grid/PickupGridGroupRow';
 import {
-  defaultDirForPickupGridSort,
-  isPickupGridSortable,
+  defaultDirForPickupColumn,
+  isPickupColumnSortable,
+  pickupSheetColumnsFor,
+  pickupSortFactFor,
   type PickupGridColumn,
   type PickupGridColumnKey,
 } from './grid/pickup-grid-layout';
+import { usePickupTableLayout } from './grid/usePickupTableLayout';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 /** Group flat pickup lines under their LCPU order (the one-to-many fold key). */
@@ -59,30 +62,38 @@ function pickupFoldKey(line: PickupLine): string {
   return po || `order:${line.order_id}`;
 }
 
+/**
+ * Row comparator keyed by SORT FACT — the structural facts (`title`/`order`)
+ * plus catalog field ids (`pickupSortFactFor` maps a mounted column to one).
+ * A `?colsort=` header key resolves through the mounted model, so rebinding a
+ * slot re-points the sort with it.
+ */
 function comparePickupRows(
   a: PickupLine,
   b: PickupLine,
-  key: PickupGridColumnKey,
+  fact: string,
   dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
-  switch (key) {
+  switch (fact) {
     case 'title':
       return sign * a.product_title.localeCompare(b.product_title);
-    case 'sku':
+    case 'pickup.sku':
       return sign * (a.sku || '').localeCompare(b.sku || '');
     case 'order':
       return sign * (a.po_number || '').localeCompare(b.po_number || '');
-    case 'date':
+    case 'pickup.date':
       return sign * (a.pickup_date || '').localeCompare(b.pickup_date || '');
-    case 'qty':
+    case 'pickup.qty':
       return sign * (a.quantity - b.quantity);
-    case 'condition':
+    case 'pickup.condition':
       return sign * (a.condition_grade || '').localeCompare(b.condition_grade || '');
-    case 'price':
+    case 'pickup.price':
       return sign * ((Number(a.total_price) || 0) - (Number(b.total_price) || 0));
-    case 'status':
+    case 'pickup.status':
       return sign * (a.order_status || '').localeCompare(b.order_status || '');
+    case 'pickup.customer':
+      return sign * (a.customer_name || '').localeCompare(b.customer_name || '');
     default:
       return 0;
   }
@@ -155,26 +166,37 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
     [statusRows, normalizedQuery],
   );
 
-  const tabs = useMemo(
-    () => [
-      { id: 'all', label: 'All', count: allRows.length },
-      {
-        id: 'process',
-        label: 'Need to process',
-        count: allRows.filter((l) => pickupLineNeedsProcess(l)).length,
-      },
-      {
-        id: 'draft',
-        label: 'Draft',
-        count: allRows.filter((l) => !pickupOrderIsDone(l.order_status)).length,
-      },
-      {
-        id: 'done',
-        label: 'Done',
-        count: allRows.filter((l) => pickupOrderIsDone(l.order_status)).length,
-      },
-    ],
-    [allRows],
+  // Status lives in the ONE filter control (operator ruling 2026-08-30 —
+  // selection tabs are filters; the bottom strip carries counts only). The
+  // options stay mutually exclusive on ?status; picking the active one clears
+  // — "all" is the absence of a filter, never an option.
+  const statusFilter = useMemo(
+    () => ({
+      options: [
+        {
+          id: 'process',
+          label: 'Need to process',
+          count: allRows.filter((l) => pickupLineNeedsProcess(l)).length || undefined,
+          active: statusTab === 'process',
+        },
+        {
+          id: 'draft',
+          label: 'Draft',
+          count: allRows.filter((l) => !pickupOrderIsDone(l.order_status)).length || undefined,
+          active: statusTab === 'draft',
+        },
+        {
+          id: 'done',
+          label: 'Done',
+          count: allRows.filter((l) => pickupOrderIsDone(l.order_status)).length || undefined,
+          active: statusTab === 'done',
+        },
+      ],
+      onToggle: (id: string) =>
+        setParam('status', id === statusTab ? null : (id as PickupStatusTab)),
+      onClearAll: () => setParam('status', null),
+    }),
+    [allRows, statusTab, setParam],
   );
 
   const openCreate = useCallback(() => {
@@ -225,14 +247,25 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
   // Grid adapter (was `PickupGridView`): the workspace mounts the registry host
   // directly, products condensed under their LCPU order number (one-to-many
   // fold). Column sort is DURABLE on `?colsort=`/`?coldir=`.
+  //
+  // The COLUMNS are the effective slot layout's materialization (staff ?? org
+  // ?? product — Wave-2 hand-model kill): the second family on the slot
+  // engine, sheet morph. Sort keys are the mounted track keys; each resolves
+  // to its bound field's fact through `pickupSortFactFor`.
+  const { effectiveLayout, fields } = usePickupTableLayout();
+  const columns = useMemo(() => pickupSheetColumnsFor(effectiveLayout), [effectiveLayout]);
+  const sortFactByKey = useMemo(
+    () => new Map(columns.map((c) => [c.key as string, pickupSortFactFor(c)])),
+    [columns],
+  );
   const scrollRef = useRef<HTMLDivElement>(null);
   const {
     sort: columnSort,
     dir: sortDir,
     setSort,
   } = useUrlColumnSort<PickupGridColumnKey>({
-    isColumn: isPickupGridSortable,
-    defaultDir: defaultDirForPickupGridSort,
+    isColumn: (raw) => isPickupColumnSortable(columns, raw),
+    defaultDir: (key) => defaultDirForPickupColumn(columns, key),
   });
 
   // One-shot "settle" re-render after the grid first has data — the virtualized
@@ -248,12 +281,13 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
   }, [isLoading, hasRows]);
 
   const orderGroupsByDate = useMemo<[string, RowGroup<PickupLine>[]][]>(() => {
+    const sortFact = columnSort ? (sortFactByKey.get(columnSort) ?? null) : null;
     const ordered =
-      columnSort && sortDir
-        ? [...visibleRows].sort((a, b) => comparePickupRows(a, b, columnSort, sortDir))
+      sortFact && sortDir
+        ? [...visibleRows].sort((a, b) => comparePickupRows(a, b, sortFact, sortDir))
         : visibleRows;
     return [['', groupRowsBy(ordered, pickupFoldKey)]];
-  }, [visibleRows, columnSort, sortDir]);
+  }, [visibleRows, columnSort, sortFactByKey, sortDir]);
 
   return (
     <>
@@ -261,6 +295,8 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           <DataTable<PickupLine, PickupGridColumnKey, PickupGridColumn>
             binding={PICKUP_TABLE_BINDING}
+            columns={columns}
+            fields={fields}
             orderGroupsByDate={orderGroupsByDate}
             rows={visibleRows}
             getRowId={(r) => String(r.id)}
@@ -275,11 +311,8 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
               onChange: (v) => setParam('q', v.trim() ? v : null),
               placeholder: 'Filter pickup items…',
             }}
-            tabs={tabs.filter((t) => t.id !== 'all')}
-            activeTab={statusTab === 'all' ? undefined : statusTab}
-            onTabChange={(id) =>
-              setParam('status', id === statusTab ? null : (id as PickupStatusTab))
-            }
+            filter={statusFilter}
+            totalCount={allRows.length}
             scrollRef={scrollRef}
             renderGroup={(group, baseStripeIndex, { columns: visible }) => (
               <PickupGridGroupRow

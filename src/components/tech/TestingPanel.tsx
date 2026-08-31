@@ -19,6 +19,17 @@ import { StationDisplaysUtilityRail } from '@/components/station/displays';
 import { UnboxLabelPreview } from '@/components/receiving/workspace/line-edit/UnboxLabelPreview';
 import { WorkspaceNotesCard } from '@/components/receiving/workspace/line-edit/WorkspaceNotesCard';
 import { StationContextBar } from '@/components/station/entity-context';
+import { Boxes, Tag } from '@/components/Icons';
+import {
+  StationBandStack,
+  useAutoCollapse,
+  useBandCollapse,
+  useLineCollapse,
+} from '@/components/station/collapse';
+import {
+  StationTicketPane,
+  useStationComposerMode,
+} from '@/components/composer';
 import {
   TESTING_OPEN_SKU_PAIRING_EVENT,
   useSkuTestingData,
@@ -60,8 +71,8 @@ import { useSellerClaimedCondition } from './testing-panel/useSellerClaimedCondi
  *
  * Centre = ops-flow only: flush PO lines + {@link UnboxLabelPreview}. The dock
  * is the Unbox floor — one raised {@link WorkspaceNotesCard} with Pass · Print
- * on its trailing edge. Never centre advisory banners — ticket history / claim /
- * listing verify open as Displays beside the middle.
+ * on its trailing edge. Ticket mode mounts the thread / claim above the dock
+ * (not a Displays-only editor).
  */
 
 export function TestingPanel({
@@ -88,6 +99,24 @@ export function TestingPanel({
   } | null>(null);
 
   const closeDisplays = useCallback(() => setActiveSideTab(null), []);
+  const bandCollapse = useAutoCollapse();
+  // Which BAND is open — same layering as Unbox, so a fully collapsed centre
+  // is a stack of closed accordion rows the operator expands in place.
+  const bands = useBandCollapse(bandCollapse, { label: false });
+  // Same controller family as Unbox, one altitude down — the line being tested
+  // is open, its siblings are identity faces, and "Collapse all" reaches both.
+  const lineCollapse = useLineCollapse(row?.id ?? null);
+  const { mode: composerMode, setMode: setComposerMode } = useStationComposerMode();
+  const ticketMode = composerMode === 'ticket';
+
+  useEffect(() => {
+    if (ticketMode) bandCollapse.engage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- engage is stable
+  }, [ticketMode]);
+  useEffect(() => {
+    bands.close('label');
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only the line flips
+  }, [row?.id]);
   useYieldStationDisplaysOnAssistantOpen(closeDisplays);
   const openDisplays = useCallback((tab: TestingDisplayTab) => setActiveSideTab(tab), []);
 
@@ -114,8 +143,8 @@ export function TestingPanel({
   );
   const onOpenClaim = useCallback((mode: ClaimModalMode = 'create') => {
     setClaimMode(mode);
-    setActiveSideTab('ticket');
-  }, []);
+    setComposerMode('ticket');
+  }, [setComposerMode]);
 
   const c = useTestingLineController(row, staffId, { onOpenClaim });
   const { primaryDisabled, primaryLabel, primaryTitle } = useTestingPrimaryAction(c, row);
@@ -158,13 +187,13 @@ export function TestingPanel({
     setPairingFocus((prev) => ({ tab: 'zoho_po', requestId: (prev?.requestId ?? 0) + 1 }));
   }, []);
   const toggleTicketView = useCallback(() => {
-    if (activeSideTab === 'ticket') closeDisplays();
-    else openDisplays('ticket');
-  }, [activeSideTab, closeDisplays, openDisplays]);
+    if (ticketMode) setComposerMode('unbox');
+    else setComposerMode('ticket');
+  }, [ticketMode, setComposerMode]);
   const openClaimView = useCallback(() => {
-    if (activeSideTab === 'ticket' && claimTicketId == null) closeDisplays();
+    if (ticketMode && claimTicketId == null) setComposerMode('unbox');
     else onOpenClaim('create');
-  }, [activeSideTab, claimTicketId, closeDisplays, onOpenClaim]);
+  }, [ticketMode, claimTicketId, setComposerMode, onOpenClaim]);
 
   /** Auto-match Find ticket → Ticket display (link existing). */
   const openFindTicketDisplay = useCallback(() => {
@@ -181,10 +210,10 @@ export function TestingPanel({
       }
       dispatchLineUpdated({ id: row.id, zendesk_ticket: ticketNumber, notes: row.notes });
       invalidateReceivingFeeds(qc);
-      // Presence-only: linked ticket → Chat in TicketDisplayHost.
-      openDisplays('ticket');
+      // Presence-only: linked ticket → centre Ticket composer.
+      setComposerMode('ticket');
     },
-    [c, qc, row.id, row.notes, row.receiving_id, openDisplays],
+    [c, qc, row.id, row.notes, row.receiving_id, setComposerMode],
   );
 
   const onClaimTicketUnlinked = useCallback(() => {
@@ -198,13 +227,18 @@ export function TestingPanel({
   }, [c, qc, row.id, row.notes, row.receiving_id]);
 
   // Line open → Listing reference for works-as-listed, unless Ticket context
-  // wins (linked ticket / already-failed unit — detail outranks). Never a
-  // centre "needs attention" strip — SoT: centre = ops-flow only.
+  // wins (linked ticket / already-failed unit — detail outranks). Ticket opens
+  // in the centre composer; Listing still uses Displays.
   useEffect(() => {
     const hasTicket = c.providerTicketId != null;
     const ctx = resolveTestingTicketContextOpen(row, hasTicket);
     setClaimMode(ctx.claimMode);
-    setActiveSideTab(ctx.open ? 'ticket' : 'listing');
+    if (ctx.open) {
+      setComposerMode('ticket');
+      setActiveSideTab('listing');
+    } else {
+      setActiveSideTab('listing');
+    }
     // Only on carton/line open — do not fight a manual Displays close.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- row.id gate
   }, [row.id]);
@@ -358,6 +392,10 @@ export function TestingPanel({
           onPrimaryAction={terminalVm ? () => void terminalVm.onClick() : undefined}
           primaryActionDisabled={Boolean(terminalVm?.disabled)}
           onOpenStatusHistory={openTimelineDisplay}
+          onComposerModeChange={(mode) => {
+            if (mode === 'ticket') bandCollapse.engage();
+          }}
+          onComposerFocus={bandCollapse.engage}
         />
       </div>
     </div>
@@ -383,9 +421,9 @@ export function TestingPanel({
                     onEditPo={openPoPairing}
                     poEditOpen={resolvedSideTab === 'linkage'}
                     onToggleClaimView={openClaimView}
-                    claimViewActive={resolvedSideTab === 'ticket' && claimTicketId == null}
+                    claimViewActive={ticketMode && claimTicketId == null}
                     onToggleTicketView={toggleTicketView}
-                    ticketViewActive={resolvedSideTab === 'ticket'}
+                    ticketViewActive={ticketMode && claimTicketId != null}
                     onExitToList={exitToList}
                   />
                 }
@@ -396,6 +434,8 @@ export function TestingPanel({
                 reserveScrollClearance
                 reserveIdentityClearance={false}
                 bodyGap="none"
+                bodyFill={ticketMode}
+                onScroll={bandCollapse.onScroll}
                 entityContext={
                   scanSessionForThisLine ? (
                     <TestingScanSessionFeedback session={scanSession} />
@@ -403,16 +443,56 @@ export function TestingPanel({
                 }
                 dock={dock}
               >
-                <div className="space-y-0">
-                  <TestingPoUnboxingSection
-                    c={c}
+                <StationBandStack
+                  collapse={bands}
+                  bands={[
+                    {
+                      id: 'items',
+                      label: 'Items',
+                      icon: Boxes,
+                      testId: 'testing-band-items',
+                      body: (
+                        <TestingPoUnboxingSection
+                          c={c}
+                          row={row}
+                          staffId={staffId}
+                          suppressItemsHeader
+                          lineCollapse={lineCollapse}
+                          onViewAllUnits={openUnits}
+                        />
+                      ),
+                    },
+                    {
+                      id: 'label',
+                      label: 'Label',
+                      icon: Tag,
+                      testId: 'testing-band-label',
+                      body: (
+                        <UnboxLabelPreview
+                          row={row}
+                          c={c}
+                          onReveal={() => bands.open('label')}
+                        />
+                      ),
+                    },
+                  ]}
+                  onCollapseAll={() => {
+                    // Both altitudes, one press — same control as Unbox.
+                    bandCollapse.collapseAll();
+                    lineCollapse.collapseAll();
+                  }}
+                />
+                {ticketMode ? (
+                  <StationTicketPane
                     row={row}
-                    staffId={staffId}
-                    suppressItemsHeader
-                    onViewAllUnits={openUnits}
+                    ticketId={claimTicketId}
+                    claimMode={claimMode}
+                    onCloseClaim={() => setComposerMode('unbox')}
+                    onClaimTicketCreated={onClaimTicketCreated}
+                    onClaimTicketUnlinked={onClaimTicketUnlinked}
+                    showReplyPresets
                   />
-                  <UnboxLabelPreview row={row} c={c} />
-                </div>
+                ) : null}
               </StationWorkbench>
             </div>
 
@@ -437,6 +517,11 @@ export function TestingPanel({
               activeTab={resolvedSideTab}
               onTabChange={(id) => {
                 if (id === STATION_DISPLAY_INDEX) {
+                  setActiveSideTab(STATION_DISPLAY_INDEX);
+                  return;
+                }
+                if (id === 'ticket') {
+                  setComposerMode('ticket');
                   setActiveSideTab(STATION_DISPLAY_INDEX);
                   return;
                 }

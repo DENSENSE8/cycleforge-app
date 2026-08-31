@@ -544,7 +544,6 @@ export function ListingLinksTab({
                 size="compact"
                 hideUnderline
                 leadingIcon={<Pencil className="h-3.5 w-3.5 text-text-soft" />}
-                pasteOnlyTrailing
                 className="w-full"
               />
               <div className={RECEIVING_SCAN_RULE_LINE_CLASS} aria-hidden />

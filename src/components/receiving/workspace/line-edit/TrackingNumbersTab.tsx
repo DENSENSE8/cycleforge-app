@@ -78,7 +78,6 @@ export function TrackingNumbersTab({
             variant="blue"
             size="compact"
             hideUnderline
-            pasteOnlyTrailing
             leadingIcon={<MapPin className="h-[14px] w-[14px]" />}
             className="w-full min-w-0"
           />
@@ -116,7 +115,6 @@ export function TrackingNumbersTab({
               size="compact"
               hideUnderline
               debounceMs={0}
-              pasteOnlyTrailing
               autoFocus={focusExtra && i === extraTrackings.length - 1}
               leadingIcon={<MapPin className="h-[14px] w-[14px]" />}
               className="w-full min-w-0"

@@ -6,6 +6,7 @@
  * POST { orderIds: string[] }  ->  { orders: AiOrderRow[] }
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { shippingShippedHref } from '@/lib/shipping/shipped-desk';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 
@@ -112,7 +113,9 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     deliveredAt: r.delivered_at ? String(r.delivered_at) : null,
     testerName: r.tester_name ? String(r.tester_name) : null,
     packerName: r.packer_name ? String(r.packer_name) : null,
-    href: `/dashboard?shipped=&search=${encodeURIComponent(String(r.order_id ?? ''))}`,
+    // The Shipped DESK, not the To-ship queue with a legacy presence flag on
+    // it: every row here has already left, which is that desk's whole subject.
+    href: shippingShippedHref({ search: String(r.order_id ?? '') }),
   }));
 
   return NextResponse.json({ orders });

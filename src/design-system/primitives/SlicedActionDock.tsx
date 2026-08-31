@@ -227,7 +227,9 @@ export function slicedActionDockWrapperClass(opts: {
   return opts.docked
     ? 'shrink-0 px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:px-6'
     : cn(
-        'pointer-events-none absolute inset-x-0 bottom-0 z-fab px-4 pt-2 sm:px-6',
+        // pt-1: hairline above the float — never a second band of air under the
+        // mode/ring caption (that used to be pt-2 + 1rem bottom pad).
+        'pointer-events-none absolute inset-x-0 bottom-0 z-fab px-4 pt-1 sm:px-6',
         FLOATING_DOCK_BOTTOM_PAD,
       );
 }

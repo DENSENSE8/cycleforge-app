@@ -1,5 +1,3 @@
-import { ShippedOrder } from '@/lib/neon/orders-queries';
-import type { PanelActionBarConfig } from '@/components/shipped/details-panel/PanelActionBar';
 // These two unions live here (the leaf) so the panels can import them downward.
 export type ShippedActiveSection =
   | 'shipping'
@@ -19,25 +17,4 @@ export type ShippedActiveInput =
 export interface DetailsStackDurationData {
   boxingDuration?: string;
   testingDuration?: string;
-}
-
-export interface DetailsStackProps {
-  shipped: ShippedOrder;
-  durationData: DetailsStackDurationData;
-  onUpdate?: () => void;
-  showShippingTimestamp?: boolean;
-  mode?: 'dashboard' | 'tech';
-  showAssignmentButton?: boolean;
-  actionBar?: PanelActionBarConfig;
-  /** Optional tab gating from ShippedDetailsPanel. Undefined keeps the legacy single-scroll layout. */
-  activeSection?: ShippedActiveSection;
-  /** Render the Warranty / Customer quick-link rows (slide-over tab replacement). */
-  showQuickLinks?: boolean;
-  /**
-   * One-shot auto-start for the primary tracking replace editor (queue
-   * "Replace tracking"). Forwarded to {@link ShippedDetailsPanelContent}.
-   */
-  replaceTrackingNonce?: number;
-  /** Desk inspector flush plane — no outer mx/px host pad. */
-  flush?: boolean;
 }

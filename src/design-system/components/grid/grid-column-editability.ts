@@ -2,9 +2,8 @@
  * Grid column identity pane — which tracks are frozen, and what that implies.
  *
  * The identity pane is the frozen prefix of a grid: pinned left while the fact
- * columns scroll, immovable under drag-reorder, and read-only in the collection
- * map (never mounts `LedgerCellEditor` — correction happens at the record
- * plane; see `display/workbench.md` → Action planes).
+ * columns scroll and immovable under drag-reorder. Every cell in the collection
+ * map is read-only — correction happens at the record plane.
  *
  * **Membership is declared on the column model** (`frozen: true`), not by a
  * house-wide key list, because the pane is a per-surface answer to "what does
@@ -30,26 +29,11 @@
  * layout guards.
  */
 
-/** House DEFAULT identity pane — frozen, immovable, never in-cell editable. */
+/** House DEFAULT identity pane — frozen and immovable. */
 export const GRID_IDENTITY_COLUMN_KEYS = ['select', 'title'] as const;
-
-export type GridIdentityColumnKey = (typeof GRID_IDENTITY_COLUMN_KEYS)[number];
 
 export function isGridIdentityColumn(key: string): boolean {
   return (GRID_IDENTITY_COLUMN_KEYS as readonly string[]).includes(key);
-}
-
-/**
- * May this column mount `LedgerCellEditor` / a cell focus ring on a collection
- * map? Identity columns always return false.
- *
- * Key-only by design: a cell renderer asks this without the column model in
- * hand. A surface that freezes MORE than the house default (Orders' `order`)
- * keeps its extra track read-only by simply not wiring an editor to it — the
- * check here is the floor, not the ceiling.
- */
-export function isGridColumnInCellEditable(key: string): boolean {
-  return !isGridIdentityColumn(key);
 }
 
 /**

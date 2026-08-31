@@ -10,24 +10,22 @@
  *
  * ## Why a chord and not a sixth header icon
  *
- * `GlobalHeaderActions` is rule-capped at five (find · goal · work order · inbox
- * · assistant), and the cap is not arbitrary: a persistent top-right icon is
+ * `GlobalHeaderActions` is rule-capped at five (find · add · goal · inbox ·
+ * assistant), and the cap is not arbitrary: a persistent top-right icon is
  * earned by FREQUENCY, and throwing a task is a handful of times a shift, not a
- * standing destination. The clipboard-history ruling (D5) already settled this
- * exact shape for this exact neighbourhood — menu-bar drawer for discovery, a
- * chord for the people who do it daily — so this follows it rather than
- * re-litigating it. The ⋯ row in `StaffAccountFooter` is the discovery entry;
- * the chord is what an operator with a label in their hand actually presses.
+ * standing destination. Discovery lives on {@link HeaderGoalChip} — the same
+ * panel as today's pace and next work order — because throw is a task verb,
+ * not an account-menu utility. The chord is what an operator with a label in
+ * their hand actually presses.
  *
- * ## Why the host, and not the footer button, owns the binding
+ * ## Why the host, and not the goal chip, owns the binding
  *
- * `StaffAccountFooter` mounts only from `SidebarNavList` inside
- * `SidebarNavColumn`, which mounts lazily on FIRST open over an unpersisted
- * `navOpen = useState(false)`. On a fresh page load that button does not exist,
- * so a chord bound there is dead exactly when it is most wanted. This host is
- * mounted unconditionally by `ResponsiveLayout`, owns the open state, and the
- * footer row *asks* it to open ({@link THROW_TASK_OPEN_EVENT}) — two triggers,
- * one mount, one state.
+ * The chip is the discovery door; this host is the chord + the single panel
+ * mount. Binding ⌘⇧U on the chip would die on any surface that does not paint
+ * it (signed-out, a role without `work_orders.claim` and no goal). This host
+ * is mounted unconditionally by `ResponsiveLayout`, owns the open state, and
+ * the chip row *asks* it to open ({@link THROW_TASK_OPEN_EVENT}) — two
+ * triggers, one mount, one state.
  *
  * ## Wedge safety
  *
@@ -47,10 +45,8 @@
  * scan field, so firing the chord takes the caret out of whatever the operator
  * was typing — a carton note, a ticket reply — and gives it to a popover. On a
  * bench that is a half-written note abandoned mid-word, and the cost of the
- * alternative is one click through the ⋯ menu. Yielding to the field the
+ * alternative is one click through the goal chip. Yielding to the field the
  * operator is already in is the cheaper mistake.
- *
- * Guard: `throw-task-hotkey-owner.guard.test.ts`.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -84,8 +80,9 @@ export function ThrowTaskHost() {
   const [open, setOpen] = useState(false);
   // An invisible bottom-left anchor, so AnchoredLayer keeps owning dismissal
   // (Escape + outside-click + overlay stacking) instead of this host forking it.
-  // Same corner as clipboard history: both are summoned from the spine ⋯, and
-  // both should land where that drawer sits whether the spine is open or not.
+  // Same corner as clipboard history: both are summoned overlays, not header
+  // popovers, so they land where the account drawer sits whether the spine is
+  // open or not.
   const anchorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

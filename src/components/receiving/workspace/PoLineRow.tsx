@@ -74,6 +74,25 @@ interface Props {
    * / honest empty serial. Defaults true.
    */
   unitsChrome?: boolean;
+  /**
+   * Per-line capture body. Omit (the default) and the capture body is
+   * always mounted — which is what Testing / Arrival / the unmatched surface
+   * still want. Given, a collapsed line paints only its identity face and
+   * UNMOUNTS the body; state belongs to the list, not to this row, so it comes
+   * in from the host's {@link useLineCollapse}.
+   *
+   * Selecting the line expands capture. There is no per-row chevron —
+   * "Collapse all" on the Items band is the close.
+   *
+   * `onExpand` is separate from `onToggle` on purpose: selecting a line, or a
+   * scan landing on it, ASKS for the capture bar — it must never close a line
+   * that already has one.
+   */
+  collapse?: {
+    expanded: boolean;
+    onToggle: () => void;
+    onExpand: () => void;
+  } | null;
 }
 
 /**
@@ -109,6 +128,7 @@ export function PoLineRow({
   onEditConditionInDock,
   onEditSerialInDock,
   unitsChrome = true,
+  collapse,
 }: Props) {
   const pulseTransition = useMotionTransition(motionRole.feedback.pulse.transition);
 
@@ -149,6 +169,9 @@ export function PoLineRow({
     if (readOnly) return;
     setActiveSinkId(`po-line:${line.id}`);
     if (!isActive) dispatchSelectLine(line);
+    // Asking for the serial on a collapsed line has to mount the bar first —
+    // otherwise the scheduled focus below queries a field that is not there.
+    collapse?.onExpand();
     // Capture face owns serial entry when mounted; dock wedge only as fallback.
     if (activeRowSlot) {
       scheduleFocusUnboxCaptureSerialInLine(line.id, 60);
@@ -208,6 +231,7 @@ export function PoLineRow({
               onClick: () => {
                 setActiveSinkId(`po-line:${line.id}`);
                 if (!isActive) dispatchSelectLine(line);
+                collapse?.onExpand();
                 onEditConditionInDock(line);
                 setTimeout(() => emitReceiving('receiving-focus-scan'), 60);
               },
@@ -228,6 +252,7 @@ export function PoLineRow({
               onClick: () => {
                 setActiveSinkId(`po-line:${line.id}`);
                 if (!isActive) dispatchSelectLine(line);
+                collapse?.onExpand();
                 // A FILLED serial edits in Units Displays for THIS line
                 // (promotes the sibling + opens the leaf). Never the
                 // controller-bound dock. A fresh line (no serial yet) arms the
@@ -269,21 +294,23 @@ export function PoLineRow({
       // face (no line to switch) but still mounts the same under-row capture
       // so the row's floor hairline sits below both — not between them.
       // Arrival (`unitsChrome={false}`) never mounts unit editors.
-      body={unitsChrome && activeRowSlot ? (
-        typeof activeRowSlot === 'function'
-          ? activeRowSlot({
-              line,
-              serials: line.serials ?? [],
-              units: line.units ?? [],
-            })
-          : activeRowSlot
-      ) : null}
-      // Unbox mounts PoLineUnitCaptureList here, whose first capture row
-      // already draws `border-y` flush at the top of this box — two hairlines
-      // with nothing between them read as one 2px rule. Yield our top seam to
-      // it. Scoped with `:has()` so the TESTING path (ReceivingUnitRows, which
-      // draws no top border of its own) keeps this border as its only boundary.
-      bodyClassName="[&:has([data-po-line-unit-capture])]:border-t-0"
+      //
+      // Expanding the PO item (row select) opens this editor. There is no
+      // second chevron on the line — Collapse all on the Items band is the
+      // way back.
+      body={
+        unitsChrome &&
+        activeRowSlot &&
+        (!collapse || collapse.expanded)
+          ? typeof activeRowSlot === 'function'
+            ? activeRowSlot({
+                line,
+                serials: line.serials ?? [],
+                units: line.units ?? [],
+              })
+            : activeRowSlot
+          : null
+      }
     />
   );
 }

@@ -1,0 +1,70 @@
+'use client';
+
+/**
+ * Thumbnails for photos staged against the next ticket comment — one strip for
+ * the Support console composer and the Unbox station Ticket composer.
+ *
+ * A staged photo is already uploaded and linked to the ticket; the strip is the
+ * only place an operator can see that and take it back off before sending.
+ */
+
+import { IconButton } from '@/design-system/primitives';
+import { X } from '@/components/Icons';
+import type { StagedPhoto } from '@/hooks/useTicketPhotoStaging';
+import { cn } from '@/utils/_cn';
+
+export function ComposerStagedPhotoStrip({
+  staged,
+  onRemove,
+  size = 'default',
+  className,
+}: {
+  staged: readonly StagedPhoto[];
+  onRemove: (tempId: string) => void;
+  /** `compact` — the station dock inset, where vertical space is the budget. */
+  size?: 'default' | 'compact';
+  className?: string;
+}) {
+  if (staged.length === 0) return null;
+  const box = size === 'compact' ? 'h-10 w-10' : 'h-14 w-14';
+  return (
+    <div
+      data-testid="composer-staged-photos"
+      className={cn('flex flex-wrap gap-1.5', className)}
+    >
+      {staged.map((s) => (
+        <div
+          key={s.tempId}
+          className={cn(
+            'relative overflow-hidden rounded-lg ring-1 ring-inset',
+            box,
+            s.status === 'error' ? 'ring-rose-300' : 'ring-border-soft',
+          )}
+        >
+          <img
+            src={s.thumbUrl || s.previewUrl}
+            alt={s.name}
+            className="h-full w-full object-cover"
+          />
+          {s.status === 'uploading' ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-scrim/30">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+            </div>
+          ) : null}
+          {s.status === 'error' ? (
+            <div className="absolute inset-0 flex items-center justify-center bg-rose-900/40 text-role-micro uppercase text-white">
+              Failed
+            </div>
+          ) : null}
+          <IconButton
+            onClick={() => onRemove(s.tempId)}
+            ariaLabel="Remove"
+            icon={<X className="h-2.5 w-2.5" />}
+            // ds-allow-raw-neutral: glass overlay pinned on an image thumbnail — photo doesn't theme, stays dark
+            className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-scrim/70 text-white hover:bg-gray-900"
+          />
+        </div>
+      ))}
+    </div>
+  );
+}

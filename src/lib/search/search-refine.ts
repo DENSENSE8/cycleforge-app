@@ -17,6 +17,13 @@ import { GRID_COLUMN_SORT_PARAM } from '@/lib/tables/grid-column-sort-params';
 
 export const SEARCH_ETYPE_PARAM = 'etype';
 export const SEARCH_HSTAT_PARAM = 'hstat';
+/**
+ * Client channel refine over the retrieved top-50 — the stored
+ * `source_platform` value (`ebay`, `amazon`, `ecwid`, …), NOT a display label,
+ * so the key survives a catalog rename. Deliberately `chan` and not `platform`:
+ * short, and unclaimed by any other surface's param registry.
+ */
+export const SEARCH_CHAN_PARAM = 'chan';
 export const SEARCH_SORT_PARAM = GRID_COLUMN_SORT_PARAM;
 
 export const SEARCH_ENTITY_TYPES = [
@@ -62,6 +69,11 @@ export function parseSearchHstat(raw: string | null | undefined): string | null 
   return v ? v : null;
 }
 
+export function parseSearchChan(raw: string | null | undefined): string | null {
+  const v = String(raw ?? '').trim().toLowerCase();
+  return v ? v : null;
+}
+
 export function parseSearchDisplaySort(raw: string | null | undefined): SearchDisplaySort {
   return String(raw ?? '').trim().toLowerCase() === 'date' ? 'date' : 'relevance';
 }
@@ -79,18 +91,40 @@ export function statusOptionsFromHits(hits: ReadonlyArray<AiSearchHit>): string[
   return out;
 }
 
+/** Unique non-empty `facets.source_platform` values in the hit set (stable order). */
+export function channelOptionsFromHits(hits: ReadonlyArray<AiSearchHit>): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const hit of hits) {
+    const channel = hit.facets?.source_platform?.trim().toLowerCase();
+    if (!channel || seen.has(channel)) continue;
+    seen.add(channel);
+    out.push(channel);
+  }
+  return out;
+}
+
 export function refineSearchHits(
   hits: ReadonlyArray<AiSearchHit>,
-  opts: { etype?: SearchHitEntityType | null; hstat?: string | null },
+  opts: {
+    etype?: SearchHitEntityType | null;
+    hstat?: string | null;
+    chan?: string | null;
+  },
 ): AiSearchHit[] {
   const etype = opts.etype ?? null;
   const hstat = opts.hstat?.trim() || null;
-  if (!etype && !hstat) return [...hits];
+  const chan = opts.chan?.trim().toLowerCase() || null;
+  if (!etype && !hstat && !chan) return [...hits];
   return hits.filter((hit) => {
     if (etype && hit.entityType !== etype) return false;
     if (hstat) {
       const status = hit.facets?.status?.trim() ?? '';
       if (status !== hstat) return false;
+    }
+    if (chan) {
+      const channel = hit.facets?.source_platform?.trim().toLowerCase() ?? '';
+      if (channel !== chan) return false;
     }
     return true;
   });
@@ -136,6 +170,12 @@ export function applySearchHstat(params: URLSearchParams, next: string | null): 
   else params.delete(SEARCH_HSTAT_PARAM);
 }
 
+export function applySearchChan(params: URLSearchParams, next: string | null): void {
+  const v = next?.trim().toLowerCase() || null;
+  if (v) params.set(SEARCH_CHAN_PARAM, v);
+  else params.delete(SEARCH_CHAN_PARAM);
+}
+
 export function applySearchDisplaySort(params: URLSearchParams, next: SearchDisplaySort): void {
   if (next === 'relevance') params.delete(SEARCH_SORT_PARAM);
   else params.set(SEARCH_SORT_PARAM, next);
@@ -144,4 +184,5 @@ export function applySearchDisplaySort(params: URLSearchParams, next: SearchDisp
 export function clearSearchRefine(params: URLSearchParams): void {
   params.delete(SEARCH_ETYPE_PARAM);
   params.delete(SEARCH_HSTAT_PARAM);
+  params.delete(SEARCH_CHAN_PARAM);
 }

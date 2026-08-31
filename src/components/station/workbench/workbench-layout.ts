@@ -55,8 +55,10 @@ export const STATION_WORKBENCH_COLUMN = 'w-full min-w-0';
 
 /**
  * Horizontal inset inside the workbench column — **zero** so identity, PO lines,
- * and cards abut the measure edges. Readable air lives inside row/card
- * components.
+ * and bands abut the measure edges. Readable air lives inside the row or band
+ * that needs it (a band brings its own `px-3`), never as a gutter here: on a
+ * flat white plane an outer inset separates nothing and only narrows the
+ * measure.
  */
 export const STATION_WORKBENCH_BODY_PAD_X = '';
 

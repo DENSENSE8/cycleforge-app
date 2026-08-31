@@ -29,33 +29,36 @@
  * ## What a family still passes
  *
  * Only per-surface facts the model cannot carry: the mounted `columns` (a
- * surface may hide tracks per staff), that staff's `columnDisplay` prefs, and
- * the two CAPABILITY handlers — `onCommitNote` (present ⇒ the note edits) and
- * `onOpen` (present ⇒ the chevron renders). Both are absence-means-read-only,
- * never a second component.
+ * surface may hide tracks per staff) and the one CAPABILITY handler, `onOpen`
+ * (present ⇒ the chevron renders). Absence means read-only, never a second
+ * component with the control deleted.
  */
 
 import type { ReactNode } from 'react';
 import {
   gridDataCellClass,
-  gridColumnHighlightStyle,
   LEDGER_GRID_FROZEN_CELL,
-  type GridColumnDisplayPref,
 } from '@/design-system/components/grid';
 import { gridFrozenLeft } from '@/design-system/components/grid/grid-column-geometry';
 import { cn } from '@/utils/_cn';
+import type { FieldDisplayType } from '@/lib/tables/field-catalog/types';
 import {
   CompoundFulfillment,
   CompoundItem,
   CompoundActions,
   CompoundAmount,
   CompoundSelect,
+  CompoundSlotCell,
   CompoundState,
   CompoundThumb,
 } from './CompoundCells';
 import { isCompoundColumnModel } from './compound-columns';
 import { COMPOUND_ROW_PX } from './compound-row-chrome';
-import type { CompoundRowAction, CompoundRowView } from './compound-row-model';
+import type {
+  CompoundRowAction,
+  CompoundRowView,
+  CompoundSubtitleSelect,
+} from './compound-row-model';
 
 /**
  * Structural, dependency-free by design — the same reason
@@ -68,6 +71,12 @@ interface CompoundCellColumn {
   frozen?: boolean;
   hideKey?: string;
   align?: 'start' | 'end';
+  /** Slot-track metadata (materialized `status:N` columns) — see
+   *  `materialize-tracks.ts`. Absent on the structural chrome tracks. */
+  label?: string;
+  slotIconKey?: string;
+  slotDisplayType?: FieldDisplayType;
+  slotStageLabels?: Readonly<{ done: string; pending: string }>;
 }
 
 export interface CompoundGridCellParams<C extends CompoundCellColumn> {
@@ -77,16 +86,12 @@ export interface CompoundGridCellParams<C extends CompoundCellColumn> {
   /** False on the last visible column (drops the trailing rule). */
   rule: boolean;
   view: CompoundRowView;
-  /** Per-staff column display prefs, keyed by `hideKey`. */
-  columnDisplay?: Readonly<Record<string, GridColumnDisplayPref>>;
   /**
    * Org-shared column formatting for THIS column, already resolved to classes
    * by `columnFormatClass`. Supplied by {@link CompoundRow} (a component, so it
    * can read the sheet's format context); this function stays pure.
    */
   formatClass?: string;
-  /** Present ⇒ the note line edits in place. Absent ⇒ read-only. */
-  onCommitNote?: (next: string) => void;
   /** Present ⇒ the ⋮ menu carries an "Open" item. */
   onOpen?: () => void;
   /**
@@ -113,6 +118,12 @@ export interface CompoundGridCellParams<C extends CompoundCellColumn> {
     label: string;
     disabled?: boolean;
   };
+  /**
+   * In-place SELECT editors for bound subtitle parts (matched by part key).
+   * Present ⇒ the claimed part edits in place; absent ⇒ the same part is
+   * read-only. See {@link CompoundSubtitleSelect}.
+   */
+  subtitleSelects?: readonly CompoundSubtitleSelect[];
 }
 
 /**
@@ -131,6 +142,8 @@ export function isCompoundCellKey(key: string): boolean {
     key === 'item' ||
     key === 'fulfillment' ||
     key === 'state' ||
+    // Materialized slot tracks (`status:1…N`) — the old hard-coded `tested`.
+    key.startsWith('status:') ||
     key === 'amount' ||
     key === 'actions'
   );
@@ -155,11 +168,10 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
   columns,
   rule,
   view,
-  columnDisplay,
-  onCommitNote,
   onOpen,
   actions,
   select,
+  subtitleSelects,
   formatClass,
 }: CompoundGridCellParams<C>): ReactNode {
   // `select` is only ours when a COMPOUND model is mounted — see
@@ -192,7 +204,6 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
     gridDataCellClass(col, {
       rule,
       inset: gutter ? 'none' : 'cell',
-      columnDisplay,
       frozenClass: LEDGER_GRID_FROZEN_CELL,
       formatClass,
     }),
@@ -209,14 +220,11 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
       ? true
       : undefined;
 
-  const pref = col.hideKey && columnDisplay ? columnDisplay[col.hideKey] : undefined;
-  const highlight = gridColumnHighlightStyle(pref?.highlight);
   const style = {
     // The ONE number. Border-box, so the cell's bottom rule is inside it and the
     // painted row measures exactly `COMPOUND_ROW_PX` — the same value
     // `compoundRowEstimateFor` hands the virtualizer.
     height: COMPOUND_ROW_PX,
-    ...highlight,
     // Derived from the MOUNTED array. A key-only closure over a family's flat
     // constant is what broke this before — see the file docblock.
     ...(col.frozen ? { left: gridFrozenLeft(columns, col.key) } : null),
@@ -259,6 +267,24 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
     );
   }
 
+  // Slot tracks are keyed by SLOT INDEX (`status:1`), so they dispatch on the
+  // prefix rather than the switch below; the cell body branches on the bound
+  // field's displayType, never on a field id.
+  if (col.key.startsWith('status:')) {
+    return (
+      <div data-col={col.key} data-frozen-edge={frozenEdge} className={className} style={style}>
+        <CompoundSlotCell
+          trackKey={col.key}
+          label={col.label ?? ''}
+          iconKey={col.slotIconKey}
+          displayType={col.slotDisplayType}
+          stageLabels={col.slotStageLabels}
+          view={view}
+        />
+      </div>
+    );
+  }
+
   switch (col.key) {
     case 'thumb':
       return (
@@ -275,7 +301,7 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
     case 'item':
       return (
         <div data-col="item" data-frozen-edge={frozenEdge} className={className} style={style}>
-          <CompoundItem view={view} onCommitNote={onCommitNote} />
+          <CompoundItem view={view} subtitleSelects={subtitleSelects} />
         </div>
       );
     case 'state':

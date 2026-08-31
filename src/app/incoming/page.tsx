@@ -1,10 +1,7 @@
-import { Suspense } from 'react';
-import { HydrationBoundary } from '@tanstack/react-query';
 import { IncomingBrowseShell } from '@/components/receiving/incoming/IncomingBrowseShell';
 import { ReceivingSurfacePage } from '@/components/receiving/ReceivingSurfacePage';
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
-import { seedIncomingLines } from '@/lib/queries/incoming-seed.server';
 
 /**
  * `/incoming` — the Incoming operator surface (POs Zoho says are issued but not
@@ -12,31 +9,39 @@ import { seedIncomingLines } from '@/lib/queries/incoming-seed.server';
  * select → edit), not a scan bench. Bare `/incoming` derives the `incoming` mode
  * path-first. Legacy `/receiving?mode=incoming` redirects here.
  *
- * Paint order: this page returns immediately. {@link IncomingBrowseShell}
- * puts a flush ledger stand-in in the first HTML (Speed Index). The full-list
- * seed runs in a nested Suspense so a slow `/api/receiving-lines` cannot hold
- * TTFB. Client still fetches if the seed bails.
+ * Paint order: this page returns immediately. {@link IncomingBrowseShell} puts a
+ * flush ledger stand-in in the first HTML (Speed Index), and the client fetches
+ * the list.
+ *
+ * ## There is no server seed here, deliberately (2026-08-30)
+ *
+ * There was one — `seedIncomingLines`, a `prefetchQuery` of the `full` phase
+ * behind a 400ms `AbortSignal.timeout` so a slow list could not hold the
+ * streamed segment. It never once landed. Measured against a production build:
+ * `/api/receiving-lines?view=incoming&limit=50` answers in **2.9–4.8s**, so the
+ * 400ms bound aborted every request, every time. The observable result was an
+ * empty `dehydrate()` in the payload, a cancelled DB query per page load, a
+ * `console.error` nobody read — and 400ms of delay before this surface streamed,
+ * bought with nothing.
+ *
+ * It also fails the RSC-seed gate on its own terms (see
+ * `.claude/skills/request-shape/SKILL.md`): `limit=1` costs 2.45s against
+ * `limit=50`'s 2.9s, so the answer set *is* the candidate set and pre-limiting
+ * buys nothing. Same verdict, same reason, as the `/triage` seed deleted on
+ * 2026-08-27.
+ *
+ * If Incoming's first paint is worth server-side work later, the prerequisite is
+ * a cheap ranking column on that query — not a shorter timeout.
  */
 export default function IncomingPage() {
   return (
     <>
       <SurfaceParamHygiene />
       <IncomingBrowseShell>
-        <Suspense fallback={null}>
-          <IncomingSeededSurface />
-        </Suspense>
+        <SurfaceGate surfaceKey="incoming">
+          <ReceivingSurfacePage />
+        </SurfaceGate>
       </IncomingBrowseShell>
     </>
-  );
-}
-
-async function IncomingSeededSurface() {
-  const seed = await seedIncomingLines();
-  return (
-    <HydrationBoundary state={seed.state}>
-      <SurfaceGate surfaceKey="incoming">
-        <ReceivingSurfacePage />
-      </SurfaceGate>
-    </HydrationBoundary>
   );
 }

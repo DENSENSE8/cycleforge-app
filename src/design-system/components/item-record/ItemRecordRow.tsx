@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Barcode } from '@/components/Icons';
+import { Barcode, ChevronDown } from '@/components/Icons';
 import {
   ConditionGradeChip,
   EmptySkuChipFace,
@@ -11,6 +11,7 @@ import {
   getLast8,
 } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { Button } from '@/components/ui/button';
 import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
 import { cn } from '@/utils/_cn';
 import { cornerClass } from '@/design-system/tokens/radius';
@@ -23,6 +24,31 @@ import type { ItemRecord } from './item-record-types';
 
 /** Max serials shown in the meta preview. */
 const SERIAL_PREVIEW_CAP = 2;
+
+/**
+ * Per-row disclosure for {@link ItemRecordRow}'s `body`.
+ *
+ * The row owns the FACE of this control (a far-right chevron on the title band)
+ * and the unmount; the host owns the state, because collapse is a property of
+ * the LIST — several rows answer to one "collapse all" — and a row that held its
+ * own flag could not participate in that. `station/collapse` → `useLineCollapse`
+ * is the state SoT this pairs with.
+ *
+ * Omit it entirely for a body that is always open. A row with a `body` and no
+ * disclosure renders exactly as it did before this existed.
+ *
+ * A row with NO body ignores this outright — see `canDisclose` below. That is
+ * what lets one host hand the same controller to every line list it owns
+ * (`useLineCollapse`) without first working out which of them render bodies:
+ * the ledger-only surfaces (Testing centre, `/search` Items, Arrival) simply do
+ * not paint a toggle.
+ */
+export interface ItemRecordDisclosure {
+  expanded: boolean;
+  onToggle: () => void;
+  /** Accessible name / tooltip. Defaults to Show|Hide + the row title. */
+  label?: string;
+}
 
 /**
  * An affordance on a meta cell: the cell's face is fixed by this component,
@@ -77,6 +103,7 @@ export function ItemRecordRow({
   overlay,
   body,
   bodyClassName,
+  disclosure,
   className,
 }: {
   item: ItemRecord;
@@ -108,11 +135,29 @@ export function ItemRecordRow({
   /** Slot under the row — capture editors, an expanded body. */
   body?: ReactNode;
   bodyClassName?: string;
+  /**
+   * Make {@link body} collapsible from the row's own face. Collapsed UNMOUNTS
+   * the body — no height tween, ever (operator rule, 2026-08-22; AGENTS.md). A
+   * collapse that animates still occupies the space for the length of the
+   * tween, which is backwards for a gesture whose only purpose is to hand the
+   * space back.
+   */
+  disclosure?: ItemRecordDisclosure | null;
   className?: string;
 }) {
   const serials = (item.serials ?? []).map((s) => String(s || '').trim()).filter(Boolean);
   const skuValue = String(item.sku || '').trim();
   const selectable = typeof onSelect === 'function';
+  /**
+   * A disclosure control with nothing to disclose is a lie — the same rule
+   * `StationBlockLabel` follows for a label-only header. Read-only ledgers pass
+   * no `body`, so they get no chevron no matter what the host hands in.
+   */
+  const canDisclose = disclosure != null && body != null;
+  const bodyOpen = body != null && (!canDisclose || disclosure.expanded);
+  const disclosureLabel =
+    disclosure?.label ??
+    `${disclosure?.expanded ? 'Hide' : 'Show'} details for ${item.title}`;
 
   /** The one serial face. Last-8, never truncated, never overridable. */
   const serialText =
@@ -159,9 +204,15 @@ export function ItemRecordRow({
       data-item-record-row
       data-item-record-id={item.id}
       data-item-record-active={active ? 'true' : undefined}
+      data-item-record-collapsed={
+        canDisclose && !disclosure.expanded ? 'true' : undefined
+      }
       className={cn(
-        // Flat data floor: hairline bottom only — no card radius / side borders.
-        'relative min-w-0 overflow-hidden rounded-none border-0 border-b border-border-soft transition-colors',
+        // Flat data floor, and since 2026-08-30 a hairline-free one: no bottom
+        // rule, no radius, no side borders. What separates one line from the
+        // next is the thumb's own height and the active row's fill — a station
+        // plane that carries no tone changes carries no rules either.
+        'relative min-w-0 overflow-hidden rounded-none border-0 transition-colors',
         active ? QUEUE_ROW.selectedStationClass : 'bg-surface-card',
         selectable && !active ? 'hover:bg-surface-hover' : null,
         className,
@@ -192,9 +243,9 @@ export function ItemRecordRow({
         )}
       >
         {/* Nested grid: size-20 thumb | title + boxed meta. The thumb sits in
-            the title + details band and expands that row; the structural
-            border-r separates media from data. Meta gutters are whitespace
-            (gap-x), not vertical hairlines. */}
+            the title + details band and expands that row. Media and data are
+            separated by the thumb's own width, not by a rule; meta gutters are
+            whitespace (gap-x). */}
         <div className={cn('grid min-w-0', ITEM_RECORD_FACE.minH, ITEM_RECORD_FACE.thumbGrid)}>
           <ItemRecordThumb imageUrl={item.imageUrl} />
           <div className="flex min-h-0 min-w-0 flex-col justify-between self-stretch">
@@ -203,6 +254,34 @@ export function ItemRecordRow({
                 {item.title}
               </p>
               {titleActions}
+              {canDisclose ? (
+                // Far right of the face, NOT a chevron beside the title: the
+                // title is a hit target for arming capture, and a disclosure
+                // there steals that press. Rotation only — a transform
+                // composites and moves no neighbour.
+                <HoverTooltip label={disclosureLabel} asChild>
+                  <Button
+                    variant="ghost"
+                    size="iconTight"
+                    data-item-record-disclosure
+                    aria-expanded={disclosure.expanded}
+                    aria-label={disclosureLabel}
+                    className="text-text-faint"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      disclosure.onToggle();
+                    }}
+                  >
+                    <ChevronDown
+                      aria-hidden
+                      className={cn(
+                        'h-3.5 w-3.5 shrink-0 transition-transform duration-150',
+                        disclosure.expanded && 'rotate-180',
+                      )}
+                    />
+                  </Button>
+                </HoverTooltip>
+              ) : null}
             </div>
             <ItemRecordMetaGrid
               qty={withAction(qtyAction, <ItemRecordQtyBadge quantity={item.quantity} />)}
@@ -255,14 +334,16 @@ export function ItemRecordRow({
           </div>
         </div>
       </div>
-      {body ? (
+      {bodyOpen ? (
         <div
           className={cn(
-            'min-w-0 overflow-hidden border-t border-border-hairline bg-surface-sunken',
+            // No frame and no fill: the capture body is a continuation of the
+            // line, not a panel nested inside it.
+            'min-w-0 overflow-hidden',
             bodyClassName,
           )}
         >
-          <div className="min-w-0 border border-border-soft border-t-0 bg-surface-card">{body}</div>
+          <div className="min-w-0">{body}</div>
         </div>
       ) : null}
     </li>

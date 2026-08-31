@@ -2,8 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Check, Download, History, Receipt, User, Tag, Pencil, Info } from '@/components/Icons';
-import { OmnichannelComposerDock } from '@/design-system/primitives';
+import {
+  Download,
+  History,
+  Images,
+  Receipt,
+  Upload,
+  User,
+  Tag,
+  Pencil,
+} from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
 import {
@@ -12,7 +20,21 @@ import {
   shouldRefreshRecentFace,
 } from '@/lib/receiving/recent-label-note';
 import { useReceivingEvents } from '@/hooks/useReceivingEvents';
-import { NoteComposerInsertRail, type NoteComposerInsertAction } from '../NoteComposerInsertRail';
+import {
+  ComposerStagedPhotoStrip,
+  ComposerTicketChannelToggle,
+  ComposerTicketInsetChrome,
+  StationComposerHost,
+} from '@/components/composer';
+import type { StationComposerMode } from '@/lib/composer/station-composer-mode';
+import { buildTicketComposerInsertTree } from '@/lib/composer/ticket-composer-insert-tree';
+import { buildComposerReplyVars } from '@/lib/composer/ticket-reply-payload';
+import { useSupportReply } from '@/hooks/useSupportReply';
+import { zendeskKeys } from '@/hooks/useZendeskQueries';
+import { useTicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
+import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
+import { SupportPhotoLibraryPicker } from '@/components/support/zendesk/chat/SupportPhotoLibraryPicker';
+import { type NoteComposerInsertAction } from '../NoteComposerInsertRail';
 import {
   appendNoteLine,
   buildStaffStampText,
@@ -58,7 +80,8 @@ import type { LineStatusExactSource } from '@/lib/receiving/unbox-notes-status';
  * string.
  *
  * Insert rail (staff stamp / ticket / price / synced PO / title) lives in
- * the composer footer. Location sits left of Print in the trailing slot.
+ * the composer + menu. Location save is the quiet pill left of Print inside
+ * the outline — not a mode face.
  */
 
 export function LineNotesCard({
@@ -71,6 +94,7 @@ export function LineNotesCard({
   zendeskTicketSubject,
   previousLineNotes,
   lineId,
+  receivingId,
   onNotesChange,
   onSaveNotes,
   showSyncToPo = true,
@@ -84,6 +108,11 @@ export function LineNotesCard({
   statusStamps,
   onOpenStatusHistory,
   headerAction,
+  onComposerModeChange,
+  onComposerFocus,
+  progressPercent = 0,
+  progressTone = 'idle',
+  onProgressClick,
 }: {
   /** The operator's durable item note (`receiving_line.notes`) — never printed. */
   notes: string;
@@ -103,6 +132,8 @@ export function LineNotesCard({
   previousLineNotes?: string;
   /** Current line id — excluded from the DB Recent lookup. */
   lineId?: number | null;
+  /** Carton id — ticket photo staging + library picker scope. */
+  receivingId?: number | null;
   onNotesChange: (next: string) => void;
   /**
    * Persist the note to `receiving_line.notes`. Optional `next` overrides the
@@ -161,12 +192,20 @@ export function LineNotesCard({
   statusStamps?: LineStatusExactSource & {
     staged_location_id?: number | null;
   };
+  /** Centre mounts the ticket pane when mode flips to Ticket. */
+  onComposerModeChange?: (mode: StationComposerMode) => void;
+  /** Auto-collapse engage — composer focus. */
+  onComposerFocus?: () => void;
+  /** Procedure fill for the composer bottom-right progress ring. */
+  progressPercent?: number;
+  progressTone?: 'idle' | 'selected';
+  onProgressClick?: () => void;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [savedFlash, setSavedFlash] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { user } = useAuth();
+  const { user, has, isLoaded } = useAuth();
 
   // DB SoT — sticker center from this operator's last scanned tracking (other
   // carton). Never the device-local MRU phrase bank.
@@ -355,6 +394,97 @@ export function LineNotesCard({
   const trimmedSyncNotes = (overallZohoNotes ?? '').trim();
   const hasTicket = Boolean(resolvedTicketId);
   const staffStamp = buildStaffStampText({ name: user?.name, staffId: user?.staffId });
+  const numericTicketId = resolvedTicketId ? Number(resolvedTicketId) : null;
+  const [ticketDraft, setTicketDraft] = useState('');
+  const [ticketPublic, setTicketPublic] = useState(false);
+  // CC is an AUDIENCE control: chips + the address still being typed. The draft
+  // is held here rather than inside the strip so send can fold a half-typed
+  // address in instead of dropping it (see resolveComposerCcPayload).
+  const [ticketCcs, setTicketCcs] = useState<string[]>([]);
+  const [ticketCcDraft, setTicketCcDraft] = useState('');
+  const [photoLibraryOpen, setPhotoLibraryOpen] = useState(false);
+  const reply = useSupportReply();
+  const canPostTicket = !isLoaded || has('integrations.zendesk');
+  const canBrowsePhotoLibrary = isLoaded && has('photos.view');
+  const staffName = user?.name?.trim() || '';
+
+  // Photos ride the same staging pipeline as the console composer: the upload
+  // lands under the ticket the instant it is picked, then attaches to the next
+  // comment as `photoIds`. Ticket id 0 is unreachable — the Photos rows only
+  // exist when this line has a ticket.
+  const photoStaging = useTicketPhotoStaging(numericTicketId ?? 0);
+  const photoPicker = usePhotoDropzone(photoStaging.addFiles);
+  const stagedDone = photoStaging.staged.filter(
+    (s) => s.status === 'done' && typeof s.photoId === 'number',
+  );
+  const stagedPhotoIds = useMemo(
+    () => new Set(stagedDone.map((s) => s.photoId!)),
+    [stagedDone],
+  );
+
+  const handleTicketCommit = useCallback(() => {
+    if (!hasTicket || numericTicketId == null) return;
+    if (reply.isPending || photoStaging.uploading || !canPostTicket) return;
+    const vars = buildComposerReplyVars({
+      ticketId: numericTicketId,
+      body: ticketDraft,
+      isPublic: ticketPublic,
+      staffName,
+      staffId: user?.staffId ?? null,
+      ccs: ticketCcs,
+      ccDraft: ticketCcDraft,
+      photoIds: stagedDone.map((s) => s.photoId!),
+      attachmentPreviews: stagedDone.map((s) => ({ url: s.url!, thumbUrl: s.thumbUrl })),
+    });
+    if (!vars) return;
+    reply.mutate(vars, {
+      onSuccess: () => {
+        setTicketDraft('');
+        setTicketCcs([]);
+        setTicketCcDraft('');
+        photoStaging.clear();
+      },
+    });
+  }, [
+    ticketDraft,
+    hasTicket,
+    numericTicketId,
+    reply,
+    canPostTicket,
+    ticketPublic,
+    staffName,
+    user?.staffId,
+    ticketCcs,
+    ticketCcDraft,
+    stagedDone,
+    photoStaging,
+  ]);
+
+  // Reset the audience when the linked ticket identity changes — CCs belong to
+  // the ticket that was on screen, never to whichever line loads next.
+  useEffect(() => {
+    setTicketCcs([]);
+    setTicketCcDraft('');
+  }, [numericTicketId]);
+
+  const ticketDrillNodes = useMemo(
+    () =>
+      buildTicketComposerInsertTree({
+        photos: hasTicket
+          ? {
+              onBrowse: canBrowsePhotoLibrary
+                ? () => setPhotoLibraryOpen(true)
+                : undefined,
+              onUpload: photoPicker.openPicker,
+            }
+          : undefined,
+        icons: {
+          browse: <Images className={NOTE_OVERLAY_ICON} />,
+          upload: <Upload className={NOTE_OVERLAY_ICON} />,
+        },
+      }),
+    [hasTicket, canBrowsePhotoLibrary, photoPicker.openPicker],
+  );
 
   const applyLastLabelNote = useCallback(() => {
     const phrase = recentPhrase;
@@ -379,17 +509,6 @@ export function LineNotesCard({
         icon: <User className={NOTE_OVERLAY_ICON} />,
         buttonClassName: NOTE_STAFF_STAMP_BTN,
         onClick: () => appendToNotes(staffStamp),
-      });
-    }
-
-    if (trimmedPreviousNotes) {
-      actions.push({
-        id: 'last-notes',
-        label: 'Add last notes',
-        ariaLabel: 'Add last notes',
-        icon: <History className={NOTE_OVERLAY_ICON} />,
-        buttonClassName: NOTE_OVERLAY_ICON_BTN,
-        onClick: () => appendToNotes(trimmedPreviousNotes),
       });
     }
 
@@ -439,6 +558,17 @@ export function LineNotesCard({
       });
     }
 
+    if (trimmedPreviousNotes) {
+      actions.push({
+        id: 'last-notes',
+        label: 'Add last notes',
+        ariaLabel: 'Add last notes',
+        icon: <History className={NOTE_OVERLAY_ICON} />,
+        buttonClassName: NOTE_OVERLAY_ICON_BTN,
+        onClick: () => appendToNotes(trimmedPreviousNotes),
+      });
+    }
+
     return actions;
   }, [
     staffStamp,
@@ -453,125 +583,135 @@ export function LineNotesCard({
     appendToNotes,
   ]);
 
-  const footerStart = (
-    <>
-      <NoteComposerInsertRail actions={insertActions} placement="inline" />
-      {/* Recent — hover paints DB note as field ghost only (no tooltip). */}
-      {/* ds-raw-button */}
-      <button
-        type="button"
-        onClick={applyLastLabelNote}
-        onMouseEnter={() => {
-          if (recentPhrase) setRecentHover(true);
-        }}
-        onMouseLeave={() => setRecentHover(false)}
-        onFocus={() => {
-          if (recentPhrase) setRecentHover(true);
-        }}
-        onBlur={() => setRecentHover(false)}
-          aria-label="Apply label note from last scanned carton with a note"
-        data-unbox-notes-recent
-        className={`${NOTE_OVERLAY_ICON_BTN} text-text-faint transition hover:bg-surface-sunken hover:text-text-muted`}
-      >
-        <History className={NOTE_OVERLAY_ICON} />
-      </button>
-      <div
-        aria-live="polite"
-        className={`flex items-center gap-1 text-role-micro font-semibold uppercase tracking-wide text-emerald-600 transition-opacity duration-300 ${
-          savedFlash ? 'opacity-100' : 'pointer-events-none opacity-0'
-        }`}
-      >
-        <Check className="h-3 w-3" /> Saved
-      </div>
-    </>
-  );
-
-  const footerEnd = (
-    <UnboxNotesLocationControl
-      lineId={lineId}
-      currentLocationId={statusStamps?.staged_location_id}
-      currentLocationName={statusStamps?.staged_location_name}
-      currentLocationBarcode={statusStamps?.staged_location_barcode}
-      currentLocationRoom={statusStamps?.staged_location_room}
-    />
-  );
-
   return (
     <>
-    <OmnichannelComposerDock
-      value={notes}
-      onChange={onValueChange}
-      onCommit={handleCommit}
-      onBlur={handleBlur}
-      // Receive CTA: Enter must fire even with an empty note (chat-send).
-      // Default composer still requires non-empty text before Save.
-      commitDisabled={onPrimaryAction ? primaryActionDisabled : undefined}
-      // Unbox overview: this draft live-drives the carton sticker center;
-      // durable save is still the item note (`notes`), not label_note.
-      placeholder={
-        showHoverGhost
-          ? ''
-          : 'Note for this item — shows on the sticker center'
-      }
-      ariaLabel="Item note"
-      commitAriaLabel="Save item note"
-      commitTooltip={
-        onPrimaryAction ? 'Receive (Enter) · Shift+Enter for newline' : 'Save notes (Enter)'
-      }
-      footerStart={footerStart}
-      footerEnd={footerEnd}
-      headerEnd={
-        // ds-raw-button — same overlay glyph as Recent, not a sized IconButton box.
-        <button
-          type="button"
-          aria-label={headerAction?.label ?? 'Item status history'}
-          aria-pressed={headerAction ? Boolean(headerAction.pressed) : undefined}
-          onClick={() => {
-            if (headerAction) {
-              headerAction.onClick();
-              return;
+      <StationComposerHost
+        labelValue={notes}
+        onLabelChange={onValueChange}
+        onLabelCommit={handleCommit}
+        onLabelBlur={handleBlur}
+        // Receive CTA: Enter must fire even with an empty note (chat-send).
+        labelCommitDisabled={onPrimaryAction ? primaryActionDisabled : undefined}
+        labelPlaceholder={showHoverGhost ? '' : null}
+        labelCommitAriaLabel="Save item note"
+        labelCommitTooltip={
+          onPrimaryAction ? 'Receive (Enter) · Shift+Enter for newline' : 'Save notes (Enter)'
+        }
+        ticketDraft={ticketDraft}
+        onTicketDraftChange={setTicketDraft}
+        onTicketCommit={handleTicketCommit}
+        ticketCommitDisabled={
+          !hasTicket ||
+          !canPostTicket ||
+          reply.isPending ||
+          photoStaging.uploading ||
+          ticketDraft.trim().length === 0
+        }
+        ticketDrillNodes={ticketDrillNodes}
+        ticketFooterStart={
+          <ComposerTicketChannelToggle
+            isPublic={ticketPublic}
+            onIsPublicChange={setTicketPublic}
+          />
+        }
+        ticketInsetTop={
+          <ComposerTicketInsetChrome
+            isPublic={ticketPublic}
+            ccs={ticketCcs}
+            onCcsChange={setTicketCcs}
+            ccDraft={ticketCcDraft}
+            onCcDraftChange={setTicketCcDraft}
+            ticketId={numericTicketId}
+            trailing={
+              photoStaging.staged.length > 0 ? (
+                <ComposerStagedPhotoStrip
+                  staged={photoStaging.staged}
+                  onRemove={photoStaging.remove}
+                  size="compact"
+                />
+              ) : null
             }
-            if (onOpenStatusHistory) {
-              onOpenStatusHistory();
-              return;
-            }
-            setStatusOpen(true);
+          />
+        }
+        locationAction={
+          <UnboxNotesLocationControl
+            lineId={lineId}
+            currentLocationId={statusStamps?.staged_location_id}
+            currentLocationName={statusStamps?.staged_location_name}
+            currentLocationBarcode={statusStamps?.staged_location_barcode}
+            currentLocationRoom={statusStamps?.staged_location_room}
+            onOpenLocations={onOpenLocations}
+          />
+        }
+        trailingAction={trailingAction}
+        chrome={chrome}
+        weldTop={weldTop}
+        animateMount={animateMount}
+        textareaRef={textareaRef}
+        ghostSuffix={paintGhostSuffix}
+        matchedPhrase={paintMatchedPhrase}
+        onAcceptGhost={
+          showHoverGhost
+            ? () => {
+                applyLastLabelNote();
+              }
+            : acceptGhost
+        }
+        onDismissGhost={
+          showHoverGhost
+            ? () => {
+                setRecentHover(false);
+              }
+            : dismissGhost
+        }
+        onTextareaKeyDown={handleGhostKeyDown}
+        onFocus={onComposerFocus}
+        insertActions={insertActions}
+        ticketLabel={zendeskTicket}
+        hasTicket={hasTicket}
+        onModeChange={onComposerModeChange}
+        progressPercent={progressPercent}
+        progressTone={progressTone}
+        onProgressClick={() => {
+          // Info folded into the procedure ring — same jobs the old ⓘ owned,
+          // then the Displays checklist / right rail.
+          if (headerAction) {
+            headerAction.onClick();
+            return;
+          }
+          if (onOpenStatusHistory) {
+            onOpenStatusHistory();
+            return;
+          }
+          if (onProgressClick) {
+            onProgressClick();
+            return;
+          }
+          setStatusOpen(true);
+        }}
+      />
+      {/* Upload picker for `+` → Photos → Upload file. */}
+      <input ref={photoPicker.inputRef} {...photoPicker.inputProps} />
+      {canBrowsePhotoLibrary && numericTicketId != null ? (
+        <SupportPhotoLibraryPicker
+          ticketId={numericTicketId}
+          receivingId={receivingId ?? undefined}
+          open={photoLibraryOpen}
+          onClose={() => setPhotoLibraryOpen(false)}
+          excludePhotoIds={stagedPhotoIds}
+          onSelect={(photos) => {
+            photoStaging.addLibraryPhotos(photos);
+            void queryClient.invalidateQueries({
+              queryKey: zendeskKeys.photos(numericTicketId),
+            });
           }}
-          className={`${NOTE_OVERLAY_ICON_BTN} transition hover:bg-surface-sunken hover:text-text-muted ${
-            headerAction?.pressed ? 'text-blue-600' : 'text-text-faint'
-          }`}
-        >
-          <Info className={NOTE_OVERLAY_ICON} />
-        </button>
-      }
-      trailingAction={trailingAction}
-      chrome={chrome}
-      weldTop={weldTop}
-      animateMount={animateMount}
-      textareaRef={textareaRef}
-      ghostSuffix={paintGhostSuffix}
-      matchedPhrase={paintMatchedPhrase}
-      onAcceptGhost={
-        showHoverGhost
-          ? () => {
-              applyLastLabelNote();
-            }
-          : acceptGhost
-      }
-      onDismissGhost={
-        showHoverGhost
-          ? () => {
-              setRecentHover(false);
-            }
-          : dismissGhost
-      }
-      onTextareaKeyDown={handleGhostKeyDown}
-    />
-    <UnboxNotesStatusDialog
-      open={statusOpen}
-      onOpenChange={setStatusOpen}
-      row={statusStamps ?? {}}
-    />
+        />
+      ) : null}
+      <UnboxNotesStatusDialog
+        open={statusOpen}
+        onOpenChange={setStatusOpen}
+        row={statusStamps ?? {}}
+      />
     </>
   );
 }

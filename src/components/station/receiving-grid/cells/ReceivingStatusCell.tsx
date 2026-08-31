@@ -4,7 +4,7 @@ import { GridStatusCellValue } from '@/components/ui/grid-cells';
 import { receivingHistoryStatusTooltip } from './receiving-grid-row-helpers';
 import {
   receivingDataCellClass,
-  receivingDataCellHighlightStyle,
+  receivingDataCellStyle,
   type ReceivingGridCellProps,
 } from './receiving-grid-cell-types';
 
@@ -69,7 +69,7 @@ export function ReceivingStatusCell({ col, rule, ctx }: ReceivingGridCellProps) 
     : stageTip || dateCell?.tooltip || stageLabel;
   return (
     <div data-col="status" className={receivingDataCellClass(col, rule, ctx)}
-      style={receivingDataCellHighlightStyle(col, ctx)}>
+      style={receivingDataCellStyle(col, ctx)}>
       {/* A stage with no stamp is still a fact worth showing; a row with no
           stage has nothing to say here and takes the honest em dash. */}
       <GridStatusCellValue

@@ -91,12 +91,6 @@ export function DeskRailChromeRow({
   cursor,
   /** Far-right twin of the Unbox scan-progress ring (e.g. Incoming Sync). */
   trailing,
-  /**
-   * Grid workbenches: Column display lives in the inspector, not Band 3.
-   * Renders ▦ after close so a record peek still has a door onto
-   * `detail:grid-column-details`.
-   */
-  columnDisplay = false,
   className,
 }: {
   /** Ignored — `RightRailHost` owns the singleton `→|`. Kept so callers compile. */
@@ -105,17 +99,12 @@ export function DeskRailChromeRow({
   actions?: ReactNode;
   cursor?: ReactNode;
   trailing?: ReactNode;
-  columnDisplay?: boolean;
   className?: string;
 }) {
   const hasTrail = Boolean(cursor || trailing);
 
   return (
     <div className={cn(DESK_RAIL_CHROME_ROW_CLASS, className)}>
-      {columnDisplay ? (
-        <div className="flex h-full shrink-0 items-stretch">
-        </div>
-      ) : null}
       {actions ? (
         <div
           className="flex h-full min-w-0 items-stretch overflow-x-auto"

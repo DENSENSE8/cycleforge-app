@@ -27,6 +27,10 @@ import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDeta
 import { OrdersViewChromeProvider } from '@/components/outbound/orders/orders-view-chrome-context';
 import { ToShipWmsShell } from '@/components/outbound/orders/to-ship/ToShipWmsShell';
 import { OrderIngestRail } from '@/components/outbound/orders/OrderIngestRail';
+import { OrderIntakeOverlay } from '@/components/outbound/orders/intake/OrderIntakeOverlay';
+import { OrdersDeskAddAction } from '@/components/outbound/orders/OrdersDeskAddAction';
+import { useTableImportParam } from '@/hooks/useTableImportParam';
+import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import {
   ORDERS_DESK_CONTEXT_KEY,
@@ -74,8 +78,20 @@ function OutboundOrdersDeskContent({
     setOrderView,
     showIngestRail,
     ingestLeaf,
+    triageOrderId,
     closeIntakeForm,
+    openTriage,
+    bindTriageOrder,
   } = useDashboardSearchController();
+
+  // Stable identity so `OrdersDeskAddAction` does not re-register its node on
+  // every desk render (the registrar keys on the node it is handed).
+  const openTriageForNewOrder = useCallback(() => openTriage(null), [openTriage]);
+
+  // CSV staging takes over the desk; intake steps aside while it runs — the
+  // same courtesy the ingest rail has always paid (`ingestEnabled`), now
+  // applied to the centered overlay so two intake surfaces never stack.
+  const { active: importActive } = useTableImportParam(ORDER_IMPORT_DESCRIPTOR);
 
   const { selectionEnabled, selectMode, selectionOverlays } =
     useOrderRailSelection(orderView);
@@ -147,12 +163,31 @@ function OutboundOrdersDeskContent({
         Pattern E (rail-less) does not mount OutboundSidebarPanel on desktop —
         desk owns Add / ingest / ?new=true so Band-1 Add always has a host.
       */}
+      {/*
+        Support › Inquiries aliases this desk; it is a ticket surface, not the
+        intake, so it gets neither the Add CTA nor the ingest rail.
+      */}
       {!isSupportContext ? (
-        <OrderIngestRail
-          open={showIngestRail}
-          onClose={closeIntakeForm}
-          initialLeaf={ingestLeaf}
-        />
+        <>
+          <OrdersDeskAddAction onAdd={openTriageForNewOrder} />
+          {/*
+            The intake session is a CENTERED overlay (operator override
+            2026-08-30) — `?triage=` opens it in the middle of the desk. The
+            rail keeps the other ingest methods (hand entry, CSV, sync,
+            backfill) and never hosts triage any more.
+          */}
+          <OrderIntakeOverlay
+            open={showIngestRail && ingestLeaf === 'triage' && !importActive}
+            orderId={triageOrderId}
+            onClose={closeIntakeForm}
+            onOrderCreated={bindTriageOrder}
+          />
+          <OrderIngestRail
+            open={showIngestRail && ingestLeaf !== 'triage'}
+            onClose={closeIntakeForm}
+            initialLeaf={ingestLeaf === 'triage' ? 'index' : ingestLeaf}
+          />
+        </>
       ) : null}
     </OrdersViewChromeProvider>
   );

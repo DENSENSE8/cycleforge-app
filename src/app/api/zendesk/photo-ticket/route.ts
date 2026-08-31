@@ -17,6 +17,7 @@ import {
   type RawAttachment,
 } from '@/lib/zendesk-attachments';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
+import { recordStaffForPostedComment } from '@/lib/integrations/helpdesk/comment-staff';
 
 export const dynamic = 'force-dynamic';
 
@@ -151,6 +152,18 @@ export const POST = withAuth(
           await linkLibraryPhotosToTicket(ctx.organizationId, ticket.id, photoIds);
         }
 
+        try {
+          await recordStaffForPostedComment({
+            orgId: ctx.organizationId,
+            ticketId: ticket.id,
+            staffId: ctx.staffId,
+            body: meta.description,
+            helpdesk,
+          });
+        } catch (err) {
+          console.warn('[photo-ticket] create comment staff stamp failed', err);
+        }
+
         return NextResponse.json(
           {
             success: true,
@@ -181,6 +194,18 @@ export const POST = withAuth(
         },
       );
       if (!updated) throw new ApiError(404, 'Ticket not found', `Ticket #${meta.ticketId} no longer exists.`);
+
+      try {
+        await recordStaffForPostedComment({
+          orgId: ctx.organizationId,
+          ticketId: meta.ticketId,
+          staffId: ctx.staffId,
+          body: meta.comment,
+          helpdesk,
+        });
+      } catch (err) {
+        console.warn('[photo-ticket] comment staff stamp failed', err);
+      }
 
       // Don't clobber an existing ticket_links mapping on update; just associate
       // the photos so they appear in the claims scope keyed to this ticket.

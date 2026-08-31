@@ -146,7 +146,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
     if (match) target = match;
   }
 
-  const session = await createSession({ staffId: target.staff_id, deviceKind: 'personal', ip, userAgent: ua });
+  // `persistent` is the "Keep me signed in" checkbox, carried through the
+  // provider round trip in the httpOnly state cookie set by /start.
+  const session = await createSession({
+    staffId: target.staff_id, deviceKind: 'personal', ip, userAgent: ua,
+    persistent: payload.persistent,
+  });
 
   await audit({
     staffId: target.staff_id, sid: session.sid, event: 'signin.account', result: 'ok', ip, userAgent: ua,

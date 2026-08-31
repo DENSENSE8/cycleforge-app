@@ -1,31 +1,25 @@
 'use client';
 
 /**
- * OmnichannelComposerDock — the ChatGPT/Gemini-style prompt composer: elevated
- * rounded shell, auto-grow textarea, utility footer strip (leading actions ·
- * trailing commit). Enter commits, Shift+Enter newlines.
+ * OmnichannelComposerDock — Claude / Cursor / ChatGPT-style prompt composer:
+ * elevated rounded shell, auto-grow textarea ABOVE a dedicated bottom action
+ * bar (+ · tools left · Location / Enter / Print right). Enter commits,
+ * Shift+Enter newlines.
+ *
+ * Structural lock (AI-first): the bordered shell is always `flex-col`. Never
+ * put + / textarea / CTAs on one `items-center` horizontal axis — multi-line
+ * growth must push the action bar down, not squeeze icons into the field row.
  *
  * ONE shell, every "type a message here" job in the app:
  *   - Unbox carton notes  (LineNotesCard / WorkspaceNotesCard)
  *   - Support ticket reply (SupportChatComposer / SupportTicketComposerDock)
  *
  * It was named `StationComposerDock` until 2026-08-01 — the name recorded where
- * it was BORN (the Unbox station dock), not who owns it. It was never Station-
- * contract property, and Support's `/support` is Workbench branch
- * `service-workspace`, so a
- * Station-prefixed name made a shared primitive read as borrowed. Renamed, not
- * split: a second `SupportComposerDock` beside this is the fork the SoT bans.
+ * it was BORN (the Unbox station dock), not who owns it. Renamed, not split.
  *
- * Motion: `framerPresence.composerDock` + `framerTransition.composerDockMount`,
- * consumed through {@link useMotionPresence} / {@link useMotionTransition}
- * (opacity + small y; never bounce/elastic; respects reduced motion).
- *
- * It is a named CATALOG pair, not `motionRole.swap.focus`, because this dock is
- * a card mount rather than a focus-surface swap AND it renders in two regions
- * from one shell (Station Unbox · Workbench Support) that no single role spans.
- * Full rationale lives on the `composerDock` presence docblock. Until 2026-08-01
- * this file rebuilt the pane transition inline and `void`ed the pane preset
- * names to satisfy a text-matching guard — do not reintroduce either.
+ * Motion: `framerPresence.composerDock` + `framerTransition.composerDockMount`
+ * via {@link useMotionPresence} / {@link useMotionTransition} (opacity + small
+ * y; never bounce/elastic; respects reduced motion).
  */
 
 import {
@@ -53,11 +47,14 @@ import {
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
 import { Button } from './Button';
-import { Send } from '@/components/Icons';
+import { CornerDownLeft, Send } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
 const TEXTAREA_MIN_PX = 40;
-const TEXTAREA_MAX_PX = 128;
+/** ~max-h-48 — scroll only after multi-line growth hits the ceiling. */
+const TEXTAREA_MAX_PX = 192;
+/** Compact single-line floor (action bar sits below, not beside). */
+const COMPACT_TEXTAREA_MIN_PX = 28;
 
 /** Pure key handler — Enter commits, Shift+Enter inserts newline. */
 export function handleComposerKeyDown(
@@ -73,16 +70,19 @@ export function handleComposerKeyDown(
 }
 
 /**
- * Whether the blue Send control renders. A `trailingAction` (e.g. the Unbox
- * overview receive split-CTA) OWNS the trailing slot — two primaries in one
- * footer read as two cards. Enter still fires `onCommit` (caller maps that
- * to the trailing primary — chat Send); blur is separate.
+ * Whether the commit control renders. A `trailingAction` (e.g. Unbox
+ * Print · Receive) OWNS the trailing slot — Enter is condensed into that
+ * CTA (keyboard still fires onCommit). Pass {@link showCommitWithTrailing}
+ * only when a face must show both (rare).
  */
 export function composerShowsCommit(opts: {
   hideCommitButton?: boolean;
   hasTrailingAction?: boolean;
+  showCommitWithTrailing?: boolean;
 }): boolean {
-  return !opts.hideCommitButton && !opts.hasTrailingAction;
+  if (opts.hideCommitButton) return false;
+  if (opts.hasTrailingAction && !opts.showCommitWithTrailing) return false;
+  return true;
 }
 
 export function resizeComposerTextarea(
@@ -125,12 +125,36 @@ interface OmnichannelComposerDockProps {
    */
   headerEnd?: ReactNode;
   /**
-   * Terminal control mounted at the footer's trailing edge. Replaces the blue
-   * Send button so the composer stays ONE shell. Caller should map Enter
-   * (`onCommit`) to the same primary as this control (chat Send); blur save
-   * stays on `onBlur`.
+   * Terminal control mounted at the footer's trailing edge. Historically
+   * replaced the Send button; pass {@link showCommitWithTrailing} to keep an
+   * Enter glyph beside it (station slim row).
    */
   trailingAction?: ReactNode;
+  /**
+   * Keep the commit glyph visible even when {@link trailingAction} is set.
+   * Station Notes keeps this off — Print · Receive is the condensed Enter.
+   */
+  showCommitWithTrailing?: boolean;
+  /**
+   * Commit face. `enter` = bare gray CornerDownLeft (station — no bubble).
+   * `send` = primary paper-plane pill (Support chat — default).
+   */
+  commitGlyph?: 'send' | 'enter';
+  /**
+   * Leading chrome INSIDE the outline on the bottom action row (station: +).
+   * Always left of the action bar — never beside the textarea.
+   */
+  leadingStart?: ReactNode;
+  /**
+   * Chrome INSIDE the outline, ABOVE the textarea, edge-to-edge (the shell's
+   * own pad is cancelled so a hairline here meets the border).
+   *
+   * It exists for controls that describe the message rather than compose it —
+   * the station Ticket channel / Cc / attached-context rows. Those have to be
+   * readable without opening a menu, and they belong to the draft, so they sit
+   * inside the same outline rather than floating above it as a second band.
+   */
+  insetTop?: ReactNode;
   /**
    * Outer chrome. `raised` (default) is the Support / standalone card — border +
    * elevation. `bare` is the body zone inside a host shell that already
@@ -144,23 +168,21 @@ interface OmnichannelComposerDockProps {
    * one silhouette with it (Unbox receive feedback — `WeldedFeedbackPanel`).
    *
    * It is a PROP because a welded top is a state of this shell, not a second
-   * shell: the alternative is a caller passing `className="rounded-t-none"`,
-   * which is a radius override on a primitive and exactly what the DS bans.
-   * Only `raised` + stacked density has top radius to flatten; `bare` and
-   * `compact` are already square, so this is a no-op for them.
+   * shell. Only `raised` has top radius to flatten; `bare` is a no-op.
    */
   weldTop?: boolean;
   /**
-   * `default` — stacked textarea over footer (chat / notes).
-   * `compact` — one short row: field + trailing action inline (paste docks).
+   * `default` — roomier padding (Support chat / notes).
+   * `compact` — tighter padding (station Unbox). Both are flex-col:
+   * textarea above, bottom action bar with `justify-between`.
    */
   density?: 'default' | 'compact';
-  /** Auto-grow between min/max. Default true. Ignored when `density="compact"` or `manualResize`. */
+  /** Auto-grow between min/max. Default true. Ignored when `manualResize`. */
   autoGrow?: boolean;
   /**
-   * CSS drag-resize on the textarea (`resize-y`). Disables auto-grow and
-   * compact single-row lock so the operator can pull the paste field taller
-   * inside a sidebar (e.g. Checking unreceived orders).
+   * CSS drag-resize on the textarea (`resize-y`). Disables auto-grow so the
+   * operator can pull the paste field taller inside a sidebar (e.g. Checking
+   * unreceived orders). Still uses the column shell.
    */
   manualResize?: boolean;
   /** Floor height in px when `manualResize` is on. Default 72. */
@@ -207,6 +229,10 @@ export const OmnichannelComposerDock = forwardRef<
     footerEnd,
     headerEnd,
     trailingAction,
+    showCommitWithTrailing = false,
+    commitGlyph = 'send',
+    leadingStart,
+    insetTop,
     chrome = 'raised',
     weldTop = false,
     density = 'default',
@@ -227,10 +253,8 @@ export const OmnichannelComposerDock = forwardRef<
   ref,
 ) {
   const localRef = useRef<HTMLTextAreaElement | null>(null);
-  // Manual resize needs a stacked field the operator can pull — never the
-  // compact single-row lock (that pins h-8 and fights the grip).
-  const compact = density === 'compact' && !manualResize;
-  const growEnabled = autoGrow && !compact && !manualResize;
+  const compact = density === 'compact';
+  const growEnabled = autoGrow && !manualResize;
   useImperativeHandle(ref, () => ({
     focus: () => localRef.current?.focus(),
     blur: () => localRef.current?.blur(),
@@ -252,8 +276,11 @@ export const OmnichannelComposerDock = forwardRef<
 
   const grow = useCallback(() => {
     if (!growEnabled) return;
-    resizeComposerTextarea(localRef.current);
-  }, [growEnabled]);
+    resizeComposerTextarea(localRef.current, {
+      minPx: compact ? COMPACT_TEXTAREA_MIN_PX : TEXTAREA_MIN_PX,
+      maxPx: TEXTAREA_MAX_PX,
+    });
+  }, [growEnabled, compact]);
 
   useEffect(() => {
     grow();
@@ -268,62 +295,71 @@ export const OmnichannelComposerDock = forwardRef<
   const bare = chrome === 'bare';
 
   const trailing = (
-    <div className="flex shrink-0 items-end gap-1">
+    <div className="flex shrink-0 items-center gap-1">
       {footerEnd}
       {composerShowsCommit({
         hideCommitButton,
         hasTrailingAction: trailingAction != null,
+        showCommitWithTrailing,
       }) ? (
-        <HoverTooltip label={commitTooltip} focusable={false}>
-          <Button
-            variant="primary"
-            size="sm"
-            type="button"
-            ariaLabel={commitAriaLabel}
-            disabled={disabled || !canCommit}
-            onClick={() => onCommit()}
-            className="h-7 w-7 rounded-full p-0"
-          >
-            <Send className="h-3.5 w-3.5" />
-          </Button>
-        </HoverTooltip>
+        commitGlyph === 'enter' ? (
+          <HoverTooltip label={commitTooltip} focusable={false}>
+            <button
+              type="button"
+              aria-label={commitAriaLabel}
+              disabled={disabled || !canCommit}
+              onClick={() => onCommit()}
+              className={cn(
+                'ds-raw-button inline-flex h-8 w-8 shrink-0 items-center justify-center',
+                'text-text-faint hover:text-text-muted',
+                'disabled:pointer-events-none disabled:opacity-40',
+                focusRing('control', 'accent'),
+              )}
+            >
+              <CornerDownLeft className="h-3.5 w-3.5" />
+            </button>
+          </HoverTooltip>
+        ) : (
+          <HoverTooltip label={commitTooltip} focusable={false}>
+            <Button
+              variant="primary"
+              size="sm"
+              type="button"
+              ariaLabel={commitAriaLabel}
+              disabled={disabled || !canCommit}
+              onClick={() => onCommit()}
+              className="h-7 w-7 rounded-full p-0"
+            >
+              <Send className="h-3.5 w-3.5" />
+            </Button>
+          </HoverTooltip>
+        )
       ) : null}
-      {trailingAction ? <div className="pl-0.5">{trailingAction}</div> : null}
+      {trailingAction ? <div className="min-w-0">{trailingAction}</div> : null}
     </div>
   );
+
+  const fieldPad = compact
+    ? 'px-1.5 py-1'
+    : headerEnd
+      ? 'px-3.5 pt-3 pb-1.5 pr-10'
+      : 'px-3.5 pt-3 pb-1.5';
 
   const shell = (
     <div
       className={cn(
-        'flex min-w-0 w-full transition-[border-color,box-shadow] duration-150',
-        compact ? 'flex-row items-center gap-1.5' : 'flex-col',
+        // AI-first column: field grows; action bar stays pinned to the bottom.
+        'flex min-h-14 min-w-0 w-full flex-col',
+        compact ? 'gap-0.5 p-1.5' : 'gap-0 p-0',
         bare
           ? 'bg-transparent'
           : cn(
-              compact
-                ? 'rounded-none border border-border-soft bg-surface-card'
-                : cn(
-                    // Welded: the panel above owns the top corners, so this
-                    // shell keeps only its bottom pair and the two boxes read
-                    // as one. `transition-[border-color,box-shadow]` above
-                    // deliberately does not list border-radius — the flatten
-                    // must land in the same frame the panel starts peeling,
-                    // not lag behind it.
-                    weldTop ? 'rounded-b-2xl rounded-t-none' : COMPOSER_SHELL_CORNER,
-                    'border border-border-soft bg-surface-card',
-                    // Elevation, like the halo below, belongs to the whole
-                    // silhouette: a welded pair whose bottom half alone casts
-                    // a shadow has a visible step at the joint. `WeldedStack`
-                    // owns it while welded.
-                    !weldTop && elevationClass('raised'),
-                  ),
+              weldTop ? 'rounded-b-2xl rounded-t-none' : COMPOSER_SHELL_CORNER,
+              'border border-border-soft bg-surface-card',
+              !weldTop && elevationClass('raised'),
+              // Focus ring on the SHELL — not a ring painted on the textarea.
               focusRing('wrapper', 'accent'),
-              // The halo belongs to the whole silhouette, so a welded dock
-              // hands it to `WeldedStack` — two rings would draw a seam
-              // straight through the shape the weld exists to make one. The
-              // BORDER stays: this is the focused field and its own edge
-              // should say so.
-              !weldTop && 'focus-within:ring-2 focus-within:ring-blue-500/20',
+              !weldTop && 'focus-within:ring-2 focus-within:ring-blue-500/25',
             ),
         disabled && 'opacity-60',
         className,
@@ -333,7 +369,24 @@ export const OmnichannelComposerDock = forwardRef<
       data-composer-density={density}
       data-composer-weld-top={weldTop ? 'true' : undefined}
     >
-      <div className={cn('relative min-w-0', compact ? 'flex-1' : 'w-full')}>
+      {insetTop ? (
+        <div
+          data-composer-inset-top=""
+          className={cn(
+            // Bleed through the shell's own padding so the slot's own rule
+            // lands ON the outline rather than a gutter inside it. `bare` and
+            // `default` density have no pad to cancel. Clip to the shell's own
+            // top corners — a filled row bled to the edge otherwise squares off
+            // the rounded outline it is sitting inside.
+            'min-w-0 overflow-hidden',
+            !bare && (weldTop ? 'rounded-t-none' : 'rounded-t-2xl'),
+            compact && '-mx-1.5 -mt-1.5 mb-0.5',
+          )}
+        >
+          {insetTop}
+        </div>
+      ) : null}
+      <div className="relative min-w-0 w-full flex-1">
         {headerEnd ? (
           <div className="pointer-events-none absolute right-1.5 top-1.5 z-10 flex h-auto w-auto items-start">
             <div className="pointer-events-auto">{headerEnd}</div>
@@ -344,12 +397,11 @@ export const OmnichannelComposerDock = forwardRef<
             aria-hidden
             className={cn(
               'pointer-events-none absolute inset-0 overflow-hidden text-role-caption leading-5',
-            compact ? 'px-2.5 py-1.5' : headerEnd ? 'px-3.5 pt-3 pb-1.5 pr-10' : 'px-3.5 pt-3 pb-1.5',
+              fieldPad,
             )}
           >
             <span className="whitespace-pre-wrap break-words">
               <span className="text-transparent">{value}</span>
-              {/* ds-raw-button */}
               <button
                 type="button"
                 tabIndex={-1}
@@ -392,35 +444,39 @@ export const OmnichannelComposerDock = forwardRef<
             });
           }}
           className={cn(
-            'relative block w-full bg-transparent text-role-caption leading-5 text-text-default placeholder:text-text-faint',
-            'focus:outline-none',
+            'relative block w-full flex-grow bg-transparent text-role-caption text-text-default',
+            'placeholder:text-text-faint outline-none focus:outline-none leading-5',
+            fieldPad,
             manualResize
-              ? 'max-h-64 overflow-y-auto px-3.5 pt-3 pb-1.5 resize-y'
-              : 'resize-none',
-            !manualResize && compact
-              ? 'h-8 min-h-8 max-h-8 w-full overflow-y-auto px-2.5 py-1.5 leading-5'
-              : null,
-            !manualResize && !compact
-              ? cn(
-                  headerEnd ? 'px-3.5 pt-3 pb-1.5 pr-10' : 'px-3.5 pt-3 pb-1.5',
-                  growEnabled ? 'max-h-32 min-h-[40px] overflow-y-auto' : 'min-h-[40px]',
-                )
-              : null,
+              ? 'max-h-64 overflow-y-auto resize-y'
+              : cn(
+                  'resize-none',
+                  growEnabled
+                    ? compact
+                      ? 'max-h-48 min-h-7 overflow-y-auto'
+                      : 'max-h-48 min-h-10 overflow-y-auto'
+                    : compact
+                      ? 'min-h-7'
+                      : 'min-h-10',
+                ),
           )}
           style={manualResize ? { minHeight: manualResizeMinPx } : undefined}
         />
       </div>
-      {compact ? (
-        <div className="flex shrink-0 items-center gap-1 pr-1.5">
-          {footerStart ? <div className="flex items-center gap-1">{footerStart}</div> : null}
-          {trailing}
+
+      {/* Persistent bottom action row — + left · Location / Enter / Print right */}
+      <div
+        className={cn(
+          'mt-auto flex w-full shrink-0 items-center justify-between gap-1',
+          compact ? 'pt-0.5' : 'px-2 pb-1.5 pt-0.5',
+        )}
+      >
+        <div className="flex min-w-0 items-center gap-0.5">
+          {leadingStart}
+          {footerStart}
         </div>
-      ) : (
-        <div className="flex min-w-0 flex-wrap items-end gap-1 px-2 pb-1.5 pt-0.5">
-          <div className="flex min-w-0 flex-1 items-center gap-0.5">{footerStart}</div>
-          {trailing}
-        </div>
-      )}
+        {trailing}
+      </div>
     </div>
   );
 

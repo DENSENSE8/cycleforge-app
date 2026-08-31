@@ -61,10 +61,17 @@ export function TicketDisplayHost({
     >
       <div className="min-h-0 flex-1">
         {hasTicket ? (
-          // Host stays flush (`DISPLAYS_FLUSH_HOST`). Stream rows + composer own
+          // Host stays flush (`DISPLAYS_FLUSH_HOST`). Stream rows own
           // `DISPLAYS_BODY_INSET` — never pad the whole detail (chrome plates
-          // must read edge-to-edge).
+          // must read edge-to-edge). Reply I/O lives in the centre Ticket
+          // composer (`composerPlacement="host"`) — one textarea law.
           <div className="flex h-full min-h-0 flex-col overflow-hidden">
+            <p
+              className="shrink-0 border-b border-border-hairline px-3 py-1.5 text-role-micro text-text-muted"
+              data-testid="ticket-display-composer-cue"
+            >
+              Reply from the Ticket composer in the centre.
+            </p>
             <SupportTicketDetail
               ticketId={ticketId}
               onBack={onCloseTicket}
@@ -73,6 +80,7 @@ export function TicketDisplayHost({
               hideRequesterBand={false}
               // Ticket chat is messages-only (no floor timeline merge).
               mergeFloorTimeline={false}
+              composerPlacement="host"
               showReplyPresets={showReplyPresets}
             />
           </div>

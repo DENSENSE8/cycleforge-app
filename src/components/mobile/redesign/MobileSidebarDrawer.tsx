@@ -377,9 +377,7 @@ export const MobileSidebarDrawer = ({
 
             {/*
               Footer — the DESKTOP spine footer component, mounted verbatim.
-              Identity · ⋯ (phone history · throw a task · clipboard · open on
-              your phone · kiosk preview · report an issue · quick-access
-              settings) · sign out.
+              Identity · ⋯ (Settings · clipboard · report an issue) · sign out.
 
               Notifications briefly rode along here in a `trailing` slot. They
               are a DESK surface — you triage an inbox sitting down, not with a
