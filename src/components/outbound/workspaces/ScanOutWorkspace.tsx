@@ -1,50 +1,108 @@
 'use client';
 
-import { useCallback } from 'react';
-import { AnimatePresence } from '@/design-system/motion';
-import { StagedQueueTable } from '@/components/outbound/scan-out/StagedQueueTable';
-import { StagedOrderDetail } from '@/components/outbound/shared/StagedOrderDetail';
-import { useOutboundUrlState } from '@/hooks/useOutboundUrlState';
-import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
-import type { ShippedOrder } from '@/lib/neon/orders-queries';
-
 /**
  * `/shipping/scan-out` — the dock ship-confirm surface.
  *
- * The scan bar itself lives in the sidebar (`ScanOutModeBody`'s footer); this
- * pane is the staged queue you scan out of.
+ * Idle = scan-await. A gun confirm (or rail select) opens the Pack-family
+ * carton workbench + Displays. The scan bar lives in the sidebar
+ * (`ScanOutModeBody`); recent ship-outs are the left rail.
  *
- * It wears the one page frame ({@link DeskPageChrome} via
- * {@link DeskPageLayout}) like every other station as of 2026-08-31. Single
- * lane, so it passes NO tabs and the frame draws no tab row: it gets the title
- * and the card, which is the honest shape rather than a strip holding one
- * entry.
+ * Wears {@link DeskPageLayout} like every other station (operator 2026-08-31) —
+ * single lane, no tabs.
  */
-export function ScanOutWorkspace() {
-  const { q, open, setOpen } = useOutboundUrlState();
 
-  const handleOpenOrder = useCallback(
-    (order: ShippedOrder) => setOpen(Number(order.id)),
-    [setOpen],
+import { useCallback, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import {
+  AnimatePresence,
+  motion,
+  motionRole,
+  useMotionRole,
+  useOverlaySwapHardCut,
+} from '@/design-system/motion';
+import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
+import { ScanOutIdleAwait } from '@/components/outbound/scan-out/ScanOutIdleAwait';
+import { ScanOutActivePanel } from '@/components/outbound/scan-out/ScanOutActivePanel';
+import { useScanOutActivePane } from '@/components/outbound/scan-out/useScanOutStation';
+import { dispatchScanOutActive } from '@/components/outbound/scan-out/scan-out-active';
+import { bustScanOutCaches } from '@/lib/outbound/outbound-cache-keys';
+import { zIndex } from '@/design-system/tokens/z-index';
+import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
+import { cn } from '@/utils/_cn';
+
+export function ScanOutWorkspace() {
+  const activePane = useScanOutActivePane();
+  const queryClient = useQueryClient();
+  const [isUndoing, setIsUndoing] = useState(false);
+
+  const { presence: panePresence, transition: paneTransition } = useMotionRole(
+    motionRole.swap.scan,
   );
-  const handleCloseDetail = useCallback(() => setOpen(null), [setOpen]);
+  const showOverlay = activePane != null && activePane.status !== 'miss';
+  const entitySwapHardCut = useOverlaySwapHardCut(showOverlay);
+
+  const overlayKey = activePane
+    ? activePane.scanDriven
+      ? `scan-${activePane.shipmentId ?? activePane.tracking}`
+      : `row-${activePane.orderRowId ?? activePane.tracking}`
+    : 'none';
+
+  const handleUndo = useCallback(() => {
+    const shipmentId = activePane?.shipmentId;
+    if (!shipmentId || isUndoing) return;
+    setIsUndoing(true);
+    void fetch('/api/shipped/scan-out', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ shipmentId }),
+    })
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`undo failed (${res.status})`);
+        dispatchScanOutActive(null);
+        bustScanOutCaches(queryClient);
+      })
+      .finally(() => setIsUndoing(false));
+  }, [activePane?.shipmentId, isUndoing, queryClient]);
 
   return (
     <DeskPageLayout className="h-full">
-    <div className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-        <StagedQueueTable
-          searchQuery={q}
-          onOpenOrder={handleOpenOrder}
-          onCloseOrder={handleCloseDetail}
-        />
+      <div className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+        <div
+          className={cn(
+            'flex h-full min-h-0 w-full flex-col',
+            showOverlay ? 'pointer-events-none' : '',
+          )}
+          aria-hidden={showOverlay ? true : undefined}
+          inert={showOverlay ? true : undefined}
+          style={{ visibility: showOverlay ? 'hidden' : 'visible' }}
+        >
+          <ScanOutIdleAwait />
+        </div>
+
+        <AnimatePresence initial={false} mode={entitySwapHardCut ? 'sync' : 'wait'}>
+          {showOverlay && activePane ? (
+            <motion.div
+              key={overlayKey}
+              initial={entitySwapHardCut ? false : panePresence.initial}
+              animate={panePresence.animate}
+              exit={panePresence.exit}
+              transition={paneTransition}
+              style={{ zIndex: zIndex.panel + (entitySwapHardCut ? 1 : 0) }}
+              className={cn(
+                'absolute inset-0 flex min-h-0 flex-col',
+                appSurfaceFillClass('canvas'),
+              )}
+            >
+              <ScanOutActivePanel
+                pane={activePane}
+                onUndo={handleUndo}
+                canUndo={activePane.status === 'ok' && Boolean(activePane.shipmentId)}
+                isUndoing={isUndoing}
+              />
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
-      <AnimatePresence>
-        {open ? (
-          <StagedOrderDetail key={open} orderId={open} onClose={handleCloseDetail} />
-        ) : null}
-      </AnimatePresence>
-    </div>
     </DeskPageLayout>
   );
 }

@@ -143,8 +143,14 @@ export const POST = withAuth(
       `SELECT stn.tracking_number_raw    AS tracking,
                 stn.latest_status_category AS latest_status_category,
                 stn.is_terminal            AS is_terminal,
+                o.id                    AS order_row_id,
                 o.order_id              AS order_id,
-                o.product_title         AS product_title
+                o.product_title         AS product_title,
+                o.sku                   AS sku,
+                o.item_number           AS item_number,
+                o.condition             AS condition,
+                o.quantity              AS quantity,
+                o.account_source        AS account_source
          FROM shipping_tracking_numbers stn
          LEFT JOIN orders o ON o.shipment_id = stn.id
          WHERE stn.id = $1
@@ -154,6 +160,19 @@ export const POST = withAuth(
     )
       .then((r) => r.rows[0] ?? null)
       .catch(() => null);
+
+    const cartonPayload = {
+      shipmentId,
+      tracking: (ctxRow?.tracking as string | null) ?? raw,
+      orderRowId: ctxRow?.order_row_id != null ? Number(ctxRow.order_row_id) : null,
+      orderId: (ctxRow?.order_id as string | null) ?? null,
+      productTitle: (ctxRow?.product_title as string | null) ?? null,
+      sku: (ctxRow?.sku as string | null) ?? null,
+      itemNumber: (ctxRow?.item_number as string | null) ?? null,
+      condition: (ctxRow?.condition as string | null) ?? null,
+      quantity: ctxRow?.quantity != null ? Number(ctxRow.quantity) : null,
+      accountSource: (ctxRow?.account_source as string | null) ?? null,
+    };
 
     // Exception: the carrier already reports this package DELIVERED. Scanning it
     // out at the dock is anomalous (wrong/returned package, or a data conflict),
@@ -168,10 +187,7 @@ export const POST = withAuth(
         ok: true,
         matched: true,
         alreadyDelivered: true,
-        shipmentId,
-        tracking: ctxRow?.tracking ?? raw,
-        orderId: ctxRow?.order_id ?? null,
-        productTitle: ctxRow?.product_title ?? null,
+        ...cartonPayload,
         message: 'Already delivered — scan-out blocked',
       });
     }
@@ -191,11 +207,8 @@ export const POST = withAuth(
         ok: true,
         matched: true,
         duplicate: true,
-        shipmentId,
         shipConfirmedAt: existing.rows[0].created_at,
-        tracking: ctxRow?.tracking ?? raw,
-        orderId: ctxRow?.order_id ?? null,
-        productTitle: ctxRow?.product_title ?? null,
+        ...cartonPayload,
       });
     }
 
@@ -246,11 +259,8 @@ export const POST = withAuth(
       ok: true,
       matched: true,
       duplicate: false,
-      shipmentId,
       activityId,
-      tracking: ctxRow?.tracking ?? raw,
-      orderId: ctxRow?.order_id ?? null,
-      productTitle: ctxRow?.product_title ?? null,
+      ...cartonPayload,
     });
   },
   { permission: 'shipping.mark_shipped' },

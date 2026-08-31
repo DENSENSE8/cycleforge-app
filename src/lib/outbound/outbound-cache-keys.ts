@@ -12,6 +12,9 @@ export const SCAN_OUT_INVALIDATION_KEYS = [
 export const OUTBOUND_QUERY_PREFIXES = [
   ['outbound', 'labels'],
   ['outbound', 'staged'],
+  /** Personal dock ship-out recent rail (`GET /api/orders/recent?staff=`). */
+  ['outbound', 'scan-out-recent'],
+  ['orders', 'recent'],
 ] as const;
 
 export function bustScanOutCaches(queryClient: QueryClient) {
