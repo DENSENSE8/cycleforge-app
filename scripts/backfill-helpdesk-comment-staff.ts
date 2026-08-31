@@ -22,12 +22,10 @@ import { config as loadEnv } from 'dotenv';
 
 // Next's `server-only` package throws outside a Server Component. This job is
 // a CLI that reuses those modules — stub the guard before they load.
-const origLoad = (Module as unknown as { _load: (...args: unknown[]) => unknown })._load;
-(Module as unknown as { _load: (...args: unknown[]) => unknown })._load = function (
-  request: string,
-  parent: unknown,
-  isMain: boolean,
-) {
+type ModuleLoad = (request: string, parent: unknown, isMain: boolean) => unknown;
+const moduleInternals = Module as unknown as { _load: ModuleLoad };
+const origLoad = moduleInternals._load;
+moduleInternals._load = function (request, parent, isMain) {
   if (request === 'server-only') return {};
   return origLoad.call(this, request, parent, isMain);
 };

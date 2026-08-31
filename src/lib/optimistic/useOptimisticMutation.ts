@@ -62,23 +62,26 @@ export function optimisticMutationOptions<TData, TVars>(
     ...rest,
     mutationFn,
     onMutate: (vars) => beginOptimisticUpdate(client, caches, vars),
-    onError: (err, vars, ctx) => {
+    // `mutationCtx` is react-query v5's trailing MutationFunctionContext. This
+    // wrapper owns none of it — it is forwarded untouched so a caller's own
+    // callback sees exactly what it would have seen without the wrapper.
+    onError: (err, vars, ctx, mutationCtx) => {
       if (ctx) restoreSnapshots(client, ctx);
       toast.error(errorCopy(err, errorToast));
-      onError?.(err, vars, ctx);
+      onError?.(err, vars, ctx, mutationCtx);
     },
-    onSuccess: (data, vars, ctx) => {
+    onSuccess: (data, vars, ctx, mutationCtx) => {
       if (successToast) toast.success(successToast);
-      onSuccess?.(data, vars, ctx);
+      onSuccess?.(data, vars, ctx, mutationCtx);
     },
-    onSettled: (data, err, vars, ctx) => {
+    onSettled: (data, err, vars, ctx, mutationCtx) => {
       for (const cache of caches) {
         void client.invalidateQueries({ queryKey: cache.queryKey });
       }
       invalidates?.forEach((queryKey) => {
         void client.invalidateQueries({ queryKey });
       });
-      onSettled?.(data, err, vars, ctx);
+      onSettled?.(data, err, vars, ctx, mutationCtx);
     },
   };
 }
