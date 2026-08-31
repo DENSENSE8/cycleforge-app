@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "motion": {
+      "type": "http",
+      "url": "https://mcp.motion.dev"
+    },
+    "motion-plus": {
+      "type": "http",
+      "url": "https://mcp.motion.dev/plus"
+    },
+    "code-graph": {
+      "type": "stdio",
+      "command": "/home/michaelgarisek/Projects/Garisek-OS/tools/code-graph/run-mcp.sh",
+      "args": [],
+      "env": {
+        "CODE_GRAPH_PROJECT": "cycleforge-app"
+      }
+    },
+    "figma": {
+      "type": "http",
+      "url": "https://mcp.figma.com/mcp"
+    },
+    "design-mcp": {
+      "type": "stdio",
+      "command": "/home/michaelgarisek/.local/share/mise/shims/node",
+      "args": ["/home/michaelgarisek/Projects/cycleforge-app/tools/design-mcp/server.mjs"]
+    }
+  }
+}

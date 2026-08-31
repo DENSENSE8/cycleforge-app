@@ -35,10 +35,11 @@ send({ jsonrpc: '2.0', method: 'notifications/initialized' })
 send({ jsonrpc: '2.0', id: 2, method: 'tools/list' })
 send({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'button', limit: 5 } } })
 send({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'ds_tokens', arguments: { axis: 'radius' } } })
-send({ jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'src/shell/AssistantFeed.tsx' } } })
+send({ jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'src/shell/SessionComposer.tsx' } } })
 send({ jsonrpc: '2.0', id: 6, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: '../Garisek-OS/package.json' } } })
 send({ jsonrpc: '2.0', id: 7, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'src/design-system/primitives/Button.tsx' } } })
 send({ jsonrpc: '2.0', id: 8, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: LINK_REL } } })
+send({ jsonrpc: '2.0', id: 9, method: 'tools/call', params: { name: 'ds_tokens', arguments: { axis: 'color' } } })
 
 await new Promise((r) => setTimeout(r, 6000))
 child.kill()
@@ -59,21 +60,36 @@ check('ds_contract finds primitives', (contract.matches ?? []).length > 0, `${co
 // Exact counts, because this extractor has already been wrong twice: it read
 // the IMPORT of BUTTON_VARIANTS instead of its declaration (0 variants), and
 // it understood only the cva shape (missing the flat map entirely).
+//
+// Asserted by KEY, never by count: the exact numbers (9 flat variants, 6v/4s
+// cva) went stale within days and a red smoke run is how developers learn to
+// ignore this server. A named variant disappearing is a real regression; a
+// tenth one appearing is a Tuesday.
 const dsButton = (contract.matches ?? []).find((m) => m.id === 'Button')
-check('flat variant map read exactly (9)', (dsButton?.variant_axes?.variant ?? []).length === 9,
-  (dsButton?.variant_axes?.variant ?? []).join('|'))
+const dsVariants = dsButton?.variant_axes?.variant ?? []
+check('flat variant map read', dsVariants.length > 0 && ['primary', 'ghost', 'danger'].every((v) => dsVariants.includes(v)),
+  dsVariants.join('|'))
 const uiButton = (contract.matches ?? []).find((m) => m.id === 'button')
-check('cva variant map still read (6 variants, 4 sizes)',
-  (uiButton?.variant_axes?.variant ?? []).length === 6 && (uiButton?.variant_axes?.size ?? []).length === 4,
-  `${(uiButton?.variant_axes?.variant ?? []).length}v / ${(uiButton?.variant_axes?.size ?? []).length}s`)
+const uiVariants = uiButton?.variant_axes?.variant ?? []
+const uiSizes = uiButton?.variant_axes?.size ?? []
+check('cva variant map still read',
+  uiVariants.length > 0 && uiSizes.length > 0 && uiVariants.includes('ghost') && uiSizes.includes('sm'),
+  `${uiVariants.length}v / ${uiSizes.length}s`)
 check('both primitive homes are reported', new Set((contract.matches ?? []).map((m) => m.home)).size > 1,
   [...new Set((contract.matches ?? []).map((m) => m.home))].join(' + '))
 
+// The radius law is TypeScript (`cornerClass`), not a CSS custom property, so
+// this asserts the ROLE map is reachable — a CSS-only reader answers "0 tokens"
+// here and a model reads that as "no law exists".
 const tokens = body(4)
-check('ds_tokens returns the radius axis', (tokens.tokens ?? []).length > 0, `${tokens.count} tokens`)
+const tokenNames = (tokens.tokens ?? []).map((t) => t.token)
+check('ds_tokens returns the radius axis', tokenNames.length > 0, `${tokens.count} tokens`)
+check('radius axis reaches the cornerClass role map',
+  tokenNames.some((n) => n.startsWith("cornerClass('")),
+  tokenNames.slice(0, 4).join(', '))
 
 const crit = body(5)
-check('ds_critique finds a real fork in AssistantFeed',
+check('ds_critique finds a real fork in SessionComposer',
   (crit.problems ?? []).some((p) => p.severity === 'forks-the-system'),
   (crit.problems ?? []).map((p) => p.severity).join(', '))
 
@@ -81,6 +97,11 @@ check('ds_critique refuses to read outside the repo', byId(6)?.result?.isError =
   byId(6)?.result?.content?.[0]?.text?.slice(0, 55))
 check('ds_critique refuses a symlink that leaves the repo', byId(8)?.result?.isError === true,
   byId(8)?.result?.content?.[0]?.text?.slice(0, 55))
+
+const colors = (body(9).tokens ?? []).map((t) => t.token)
+check('colour axis reaches the theme registry',
+  colors.some((n) => n.startsWith('--ds-color-')) && colors.some((n) => n.startsWith('--ds-color-accent-')),
+  `${colors.length} colour tokens`)
 
 const prim = body(7)
 check('fork detection is OFF where primitives are defined',

@@ -1,7 +1,9 @@
 # design-mcp — CycleForge
 
-Serves this repo's design system to any MCP-capable agent. Registered in
-`.mcp.json`, so the tools inject automatically when the workspace opens.
+Serves this repo's design system to any MCP-capable agent. Cursor reads
+`.cursor/mcp.json`; Claude Code reads `.mcp.json`, which is a symlink to the
+same file. A new agent session must show `design-mcp` green in Settings → MCP
+and must have `ds_contract` / `ds_tokens` / `ds_critique` in its tool catalog.
 
 | Question | Wrong answer it reaches for | Tool |
 |---|---|---|
