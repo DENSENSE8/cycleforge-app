@@ -73,7 +73,7 @@ describe('kiosk counter scale — radius', () => {
 
   it('every role maps to a real class and a real px value', () => {
     const roles: CounterCornerRole[] = [
-      'flush', 'chip', 'row', 'control', 'field', 'cta', 'card', 'canvas', 'pill',
+      'flush', 'chip', 'row', 'control', 'field', 'cta', 'card', 'canvas', 'surface', 'pill',
     ];
     for (const role of roles) {
       assert.match(counterCorner(role), /^rounded-/, `${role} class`);

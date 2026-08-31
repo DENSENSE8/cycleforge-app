@@ -50,6 +50,11 @@ describe('radius SoT', () => {
     );
   });
 
+  it('surface is the triage-panel exemption — not a licence to round the ladder', () => {
+    assert.equal(cornerClass('surface'), 'rounded-xl');
+    assert.equal(nestedCorner('surface', 0), 'field');
+  });
+
   describe('nestedCorner — concentric inner = outer − padding', () => {
     it('reproduces the one pairing the house already documents by hand', () => {
       // nestedCorner keys off CORNER_PX (untouched by the zero-radius staging),

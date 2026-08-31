@@ -514,6 +514,59 @@ const LITERAL_PATTERNS = [
   { kind: 'inline style object', re: /style=\{\{/g },
 ]
 
+const TRIAGE_LAYOUT_FILES = new Set([
+  'src/design-system/components/TriageScrollLayout.tsx',
+  'src/design-system/components/TriageNav.tsx',
+  'src/design-system/components/TriageSections.tsx',
+])
+
+function importsTriageScrollLayout(source) {
+  return /(?:from\s+['"][^'"]*TriageScrollLayout['"]|import\s*\{[^}]*TriageScrollLayout[^}]*\}\s*from)/.test(source)
+}
+
+/**
+ * Heuristic (not a TS AST): files that import TriageScrollLayout must not
+ * invent a raw flush or px radius on the right pane. The law is
+ * `cornerClass('surface')`.
+ */
+function critiqueTriageLayout(source, rel) {
+  if (TRIAGE_LAYOUT_FILES.has(rel.replaceAll('\\', '/'))) return []
+  if (!importsTriageScrollLayout(source)) return []
+  const problems = []
+  if (/\brounded-none\b/.test(source)) {
+    problems.push({
+      severity: 'drifts-from-tokens',
+      line: lineOf(source, 'rounded-none'),
+      what: 'raw rounded-none in a TriageScrollLayout consumer — right-pane panels must use cornerClass(\'surface\')',
+      fix: "Import { cornerClass } from '@/design-system/tokens/radius' and apply cornerClass('surface').",
+      confidence: 'heuristic',
+    })
+  }
+  const pxHit = source.match(/rounded-\[\d+(\.\d+)?px\]/)
+    ?? source.match(/borderRadius\s*:\s*\d+/)
+    ?? source.match(/border-radius\s*:\s*\d+px/)
+  if (pxHit) {
+    problems.push({
+      severity: 'drifts-from-tokens',
+      line: lineOf(source, pxHit[0]),
+      what: `hardcoded border-radius integer (${pxHit[0]}) in a TriageScrollLayout consumer`,
+      fix: "Import { cornerClass } from '@/design-system/tokens/radius' and apply cornerClass('surface').",
+      confidence: 'heuristic',
+    })
+  }
+  const rawRound = source.match(/\brounded-(sm|md|lg|xl|2xl|3xl)\b/)
+  if (rawRound) {
+    problems.push({
+      severity: 'drifts-from-tokens',
+      line: lineOf(source, rawRound[0]),
+      what: `raw ${rawRound[0]} in a TriageScrollLayout consumer — agents retrieve cornerClass('surface'), not a guessed rounded-* class`,
+      fix: "Import { cornerClass } from '@/design-system/tokens/radius' and apply cornerClass('surface').",
+      confidence: 'heuristic',
+    })
+  }
+  return problems
+}
+
 const lineOf = (text, needle) => (needle && text.includes(needle) ? text.slice(0, text.indexOf(needle)).split('\n').length : null)
 
 // ── tools ────────────────────────────────────────────────────────────────────
@@ -662,6 +715,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       const isPrimitiveHome = PRIMITIVE_HOMES.some((h) => rel.startsWith(h.dir))
 
       const problems = []
+      problems.push(...critiqueTriageLayout(source, rel))
       if (!isPrimitiveHome) {
         for (const s of FORK_SIGNALS) {
           if (!s.re.test(source) || used.includes(s.pin)) continue

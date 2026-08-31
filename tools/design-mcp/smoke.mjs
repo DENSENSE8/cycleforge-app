@@ -40,8 +40,11 @@ send({ jsonrpc: '2.0', id: 6, method: 'tools/call', params: { name: 'ds_critique
 send({ jsonrpc: '2.0', id: 7, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'src/design-system/primitives/Button.tsx' } } })
 send({ jsonrpc: '2.0', id: 8, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: LINK_REL } } })
 send({ jsonrpc: '2.0', id: 9, method: 'tools/call', params: { name: 'ds_tokens', arguments: { axis: 'color' } } })
+send({ jsonrpc: '2.0', id: 10, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'triage form', limit: 5 } } })
+send({ jsonrpc: '2.0', id: 11, method: 'tools/call', params: { name: 'ds_tokens', arguments: { axis: 'radius', filter: 'surface' } } })
+send({ jsonrpc: '2.0', id: 12, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'tools/design-mcp/fixtures/triage-layout-radius-violation.tsx' } } })
 
-await new Promise((r) => setTimeout(r, 6000))
+await new Promise((r) => setTimeout(r, 8000))
 child.kill()
 
 const msgs = out.split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l) } catch { return { RAW: l.slice(0, 120) } } })
@@ -107,6 +110,21 @@ const prim = body(7)
 check('fork detection is OFF where primitives are defined',
   !(prim.problems ?? []).some((p) => p.severity === 'forks-the-system'),
   `${(prim.problems ?? []).length} problems, none forks`)
+
+const triageContract = body(10)
+check('ds_contract ranks TriageScrollLayout for a triage form',
+  (triageContract.matches ?? []).some((m) => m.id === 'TriageScrollLayout'),
+  (triageContract.matches ?? []).map((m) => m.id).join(', '))
+
+const surfaceTokens = (body(11).tokens ?? []).map((t) => t.token)
+check('ds_tokens radius filter reaches cornerClass(\'surface\')',
+  surfaceTokens.includes("cornerClass('surface')"),
+  surfaceTokens.slice(0, 6).join(', '))
+
+const triageCrit = body(12)
+check('ds_critique flags rounded-none in a TriageScrollLayout consumer',
+  (triageCrit.problems ?? []).some((p) => /cornerClass\('surface'\)/.test(p.what + (p.fix ?? ''))),
+  (triageCrit.problems ?? []).map((p) => p.what).join(' | '))
 
 console.log(fails === 0 ? '\nsmoke: all good' : `\nsmoke: ${fails} failed`)
 process.exit(fails === 0 ? 0 : 1)
