@@ -250,19 +250,15 @@ export function DeskPageChrome({
               )}
             >
               {/*
-                `-ml-3` cancels the first tab's own `px-3` so its LABEL — not its
-                hit area — starts on the same vertical line as the title and the
-                card's left edge. The padding stays for the pointer target.
-
-                No `overflow-x-auto`. It clipped at this tablist's CONTENT box,
-                one pixel above the row's rule, so the selection could never
-                reach the rule it is meant to be a segment of — and with four
-                short tabs on a stage that caps at 1152px it never scrolled
-                anything. Its removal is what lets `-mb-px` below land.
+                First tab is `pl-0` so its LABEL shares the title's left edge
+                without pulling the tablist off the row. A `-ml-3` on this
+                tablist used to cancel `px-3`, but the active tab's `border-b`
+                is on the HIT box — so the selection hung 12px left of the
+                row's hairline (operator 2026-08-31).
               */}
               <div
                 role="tablist"
-                className="-ml-3 flex min-w-0 flex-1 items-stretch gap-1"
+                className="flex min-w-0 flex-1 items-stretch gap-1"
               >
                 {tabs.map((tab) => {
                   const active = tab.id === activeTab;
@@ -276,7 +272,7 @@ export function DeskPageChrome({
                       data-testid={`desk-tab-${tab.id}`}
                       data-active={active ? '' : undefined}
                       className={cn(
-                        'ds-raw-button inline-flex shrink-0 items-center gap-1 px-3 text-role-caption',
+                        'ds-raw-button inline-flex shrink-0 items-center gap-1 px-3 first:pl-0 text-role-caption',
                         /*
                           Selection IS the rule, not a bar above it.
                           `DESK_TAB_ROW_CLASS` draws the full-width hairline on

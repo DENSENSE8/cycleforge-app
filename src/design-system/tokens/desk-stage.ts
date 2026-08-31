@@ -114,9 +114,9 @@ export const DESK_PAGE_HEADER_ROW_CLASS = 'py-3';
  * That only holds if the selection occupies THIS border's pixel. Each tab in
  * `DeskPageChrome` carries its own `border-b` pulled down by `-mb-px` to land
  * exactly here — so do not add an `overflow-*` to the tab row or its tablist,
- * and do not give the row bottom padding: either one puts the tabs' borders a
- * pixel above this rule and the selection goes back to reading as a second,
- * floating line stacked on the hairline.
+ * do not pull the tablist with a negative margin (that hangs the selection
+ * past this rule), and do not give the row bottom padding: any of those puts
+ * the tabs' borders off this hairline.
  */
 export const DESK_TAB_ROW_CLASS = 'h-9 border-b border-border-soft';
 

@@ -88,6 +88,10 @@ describe('importReturnWithTicket', () => {
             ticketUrl: 'https://example.test/t/7777',
             ticketId: 7777,
             reusedExisting: true,
+            archiveOk: true,
+            archiveCopied: 0,
+            archiveTotal: 0,
+            archiveFolder: null,
           };
         },
       },
