@@ -45,7 +45,6 @@
  *                                  (no Ticket · Support) on `pack-displays-push`.
  *                                  Guard: `packer/pack-displays-push.guard.test.ts`.
  *                                  Still terminal-exempt (no sticky dock).
- *   - Labels  (`LabelsOrderWorkspace`) — StationPanelRoot + flush centre tabs
  *                                  (Print · Documents · Timeline stay mid-canvas;
  *                                  not Displays push). Guard: phase-f Labels
  *                                  flush assert.
@@ -116,8 +115,11 @@ export const AMBIENT_WASH_FINGERPRINT = 'bg-blue-400/[0.08]';
 export const AMBIENT_WASH_BASELINE = 1;
 
 // ── Guard C — panel-root hand-roll ────────────────────────────────────────────
-/** Exact panel-root className the SoT `StationPanelRoot` owns. */
-export const PANEL_ROOT_FINGERPRINT = 'relative flex h-full min-h-0 flex-col bg-surface-sunken';
+/**
+ * Exact panel-root className the SoT `StationPanelRoot` owns. The plane went
+ * white on 2026-08-30 (operator ruling) — see `StationPanelRoot`'s docblock.
+ */
+export const PANEL_ROOT_FINGERPRINT = 'relative flex h-full min-h-0 flex-col bg-surface-canvas';
 /**
  * Remaining station-family hand-rolls: none (Labels · Pack · Review compose
  * `StationPanelRoot`). Shrink-only — never raise.
@@ -134,7 +136,6 @@ export const STATION_WORKBENCH_REQUIRED = [
   'components/receiving/triage/TriagePanel.tsx',
   'components/tech/TestingPanel.tsx',
   'components/tech/ActiveOrderWorkspace.tsx',
-  'components/outbound/labels/LabelsOrderWorkspace.tsx',
   'features/review/packer/PackerReviewMode.tsx',
   'components/packer/PackOrderPanel.tsx',
   'components/support/orders/SupportOrdersFocusHost.tsx',
@@ -229,7 +230,6 @@ export const NON_STATION_COLUMN_SURFACES = [
 export const TERMINAL_HAND_VM_ALLOWLIST = [
   'features/review/packer/PackerReviewMode.tsx',
   'components/support/service-workspace/SupportTicketFocus.tsx',
-  'components/outbound/labels/LabelsOrderWorkspace.tsx',
 ] as const;
 
 // ── Documented identity fork (rules-only, see station-workbench.md) ───────────
@@ -284,7 +284,6 @@ export const SCAN_STATION_EDGE_MEASURE_PANELS = [
   'components/tech/ActiveOrderWorkspace.tsx',
   'components/packer/PackOrderPanel.tsx',
   'features/review/packer/PackerReviewMode.tsx',
-  'components/outbound/labels/LabelsOrderWorkspace.tsx',
 ] as const;
 
 /**

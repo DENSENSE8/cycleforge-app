@@ -89,11 +89,14 @@ describe('autoMapCsvOrderHeaders', () => {
 });
 
 describe('classifyCsvOrderStagingRow', () => {
-  const mapping = { order_number: 'Order', sku: 'SKU' };
+  // Platform column present in these fixtures so each test pins ONLY the SKU /
+  // order-number gate it is about — the platform-acknowledgment rule has its
+  // own describe below.
+  const mapping = { order_number: 'Order', sku: 'SKU', platform: 'Platform' };
 
   it('marks ready when order number and mapped SKU are present', () => {
     const { status, missing } = classifyCsvOrderStagingRow(
-      { Order: 'O1', SKU: 'S1' },
+      { Order: 'O1', SKU: 'S1', Platform: 'ebay' },
       mapping,
     );
     assert.equal(status, 'ready');
@@ -102,7 +105,7 @@ describe('classifyCsvOrderStagingRow', () => {
 
   it('requires order number', () => {
     const { status, missing } = classifyCsvOrderStagingRow(
-      { Order: '', SKU: 'S1' },
+      { Order: '', SKU: 'S1', Platform: 'ebay' },
       mapping,
     );
     assert.equal(status, 'action_required');
@@ -111,15 +114,15 @@ describe('classifyCsvOrderStagingRow', () => {
 
   it('requires SKU only when SKU column is mapped', () => {
     const blankSku = classifyCsvOrderStagingRow(
-      { Order: 'O1', SKU: '' },
+      { Order: 'O1', SKU: '', Platform: 'ebay' },
       mapping,
     );
     assert.equal(blankSku.status, 'action_required');
     assert.ok(blankSku.missing.includes('sku'));
 
     const noSkuMap = classifyCsvOrderStagingRow(
-      { Order: 'O1' },
-      { order_number: 'Order' },
+      { Order: 'O1', Platform: 'ebay' },
+      { order_number: 'Order', platform: 'Platform' },
     );
     assert.equal(noSkuMap.status, 'ready');
   });
@@ -129,16 +132,16 @@ describe('classifyCsvOrderStagingRow', () => {
     // this, mapping the SKU column at all would put every row in Action
     // required over an identifier the row does carry.
     const withItem = classifyCsvOrderStagingRow(
-      { Order: 'O1', SKU: '', Item: 'B07JJYMMHZ' },
-      { order_number: 'Order', sku: 'SKU', item_number: 'Item' },
+      { Order: 'O1', SKU: '', Item: 'B07JJYMMHZ', Platform: 'amazon' },
+      { order_number: 'Order', sku: 'SKU', item_number: 'Item', platform: 'Platform' },
     );
     assert.equal(withItem.status, 'ready');
     assert.deepEqual(withItem.missing, []);
 
     // Neither identifier ⇒ still Action required.
     const withNeither = classifyCsvOrderStagingRow(
-      { Order: 'O1', SKU: '', Item: '' },
-      { order_number: 'Order', sku: 'SKU', item_number: 'Item' },
+      { Order: 'O1', SKU: '', Item: '', Platform: 'amazon' },
+      { order_number: 'Order', sku: 'SKU', item_number: 'Item', platform: 'Platform' },
     );
     assert.equal(withNeither.status, 'action_required');
     assert.ok(withNeither.missing.includes('sku'));
@@ -148,10 +151,91 @@ describe('classifyCsvOrderStagingRow', () => {
     // The same file's eBay rows carry neither SKU nor ASIN; the writer resolves
     // those against the catalog by product_title, so the row is importable.
     const byTitle = classifyCsvOrderStagingRow(
-      { Order: 'O1', SKU: '', Item: '', Title: 'Bose Wave Music System IV' },
-      { order_number: 'Order', sku: 'SKU', item_number: 'Item', item_title: 'Title' },
+      { Order: 'O1', SKU: '', Item: '', Title: 'Bose Wave Music System IV', Platform: 'ebay' },
+      {
+        order_number: 'Order',
+        sku: 'SKU',
+        item_number: 'Item',
+        item_title: 'Title',
+        platform: 'Platform',
+      },
     );
     assert.equal(byTitle.status, 'ready');
+  });
+});
+
+describe('classifyCsvOrderStagingRow — platform acknowledgment', () => {
+  it('an Amazon-shaped order number is ready with NO platform column at all', () => {
+    const { status, missing } = classifyCsvOrderStagingRow(
+      { Order: '111-1234567-1234567' },
+      { order_number: 'Order' },
+    );
+    assert.equal(status, 'ready');
+    assert.deepEqual(missing, []);
+  });
+
+  it('an eBay-shaped order number is ready with a mapped but blank platform', () => {
+    const { status } = classifyCsvOrderStagingRow(
+      { Order: '03-15100-78272', Platform: '' },
+      { order_number: 'Order', platform: 'Platform' },
+    );
+    assert.equal(status, 'ready');
+  });
+
+  it('an unknown-shaped id with blank platform is action_required, missing platform', () => {
+    const { status, missing } = classifyCsvOrderStagingRow(
+      { Order: 'CFLOOP-abc123', Platform: '' },
+      { order_number: 'Order', platform: 'Platform' },
+    );
+    assert.equal(status, 'action_required');
+    assert.deepEqual(missing, ['platform']);
+  });
+
+  it('an unknown-shaped id with a platform value stays ready', () => {
+    const { status } = classifyCsvOrderStagingRow(
+      { Order: 'CFLOOP-abc123', Platform: 'ecwid' },
+      { order_number: 'Order', platform: 'Platform' },
+    );
+    assert.equal(status, 'ready');
+  });
+
+  it('a missing order number does not ALSO complain about platform', () => {
+    const { missing } = classifyCsvOrderStagingRow(
+      { Order: '' },
+      { order_number: 'Order' },
+    );
+    assert.deepEqual(missing, ['order_number']);
+  });
+});
+
+describe('parcel + assignee columns (Order Intake & Acknowledgment)', () => {
+  it('maps the weight / dimension / assignee aliases', () => {
+    const mapping = autoMapCsvOrderHeaders([
+      'Order Number', 'Weight', 'Length', 'Width', 'Height', 'Tester', 'Packer',
+    ]);
+    assert.equal(mapping.weight_oz, 'Weight');
+    assert.equal(mapping.dim_l, 'Length');
+    assert.equal(mapping.dim_w, 'Width');
+    assert.equal(mapping.dim_h, 'Height');
+    assert.equal(mapping.assignee_tech, 'Tester');
+    assert.equal(mapping.assignee_packer, 'Packer');
+  });
+
+  it('projects the new keys through the mapping', () => {
+    const projected = projectCsvOrderRow(
+      { Order: '111-1234567-1234567', Weight: '18', Length: '12', Width: '9', Height: '4' },
+      {
+        order_number: 'Order',
+        weight_oz: 'Weight',
+        dim_l: 'Length',
+        dim_w: 'Width',
+        dim_h: 'Height',
+      },
+    );
+    assert.equal(projected.weight_oz, '18');
+    assert.equal(projected.dim_l, '12');
+    assert.equal(projected.dim_w, '9');
+    assert.equal(projected.dim_h, '4');
   });
 });
 
@@ -192,10 +276,12 @@ describe('the four columns that used to be dropped', () => {
 
 describe('project + apply edits', () => {
   it('round-trips canonical edits onto raw headers', () => {
+    // Amazon-shaped order number: the classify below checks ONLY the SKU fix,
+    // not the platform-acknowledgment rule.
     const mapping = { order_number: 'Order', sku: 'SKU' };
-    const row = { Order: 'O1', SKU: '' };
+    const row = { Order: '111-1234567-1234567', SKU: '' };
     const projected = projectCsvOrderRow(row, mapping);
-    assert.equal(projected.order_number, 'O1');
+    assert.equal(projected.order_number, '111-1234567-1234567');
     assert.equal(projected.sku, '');
 
     const next = applyCsvOrderCanonicalEdits(row, mapping, { sku: ' FIXED ' });

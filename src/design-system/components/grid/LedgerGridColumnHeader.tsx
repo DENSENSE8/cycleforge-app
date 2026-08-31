@@ -156,6 +156,14 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
     >
       {hasSelect ? (
         <div
+          // A `role="row"` may only own cell-family roles. Without this the
+          // wrapper is a generic element, ARIA flattens it, and the
+          // `role="checkbox"` inside `GridRowCheckbox` becomes a direct child
+          // of the row — which is what failed axe `aria-required-children`
+          // ("Element has children which are not allowed: [role=checkbox]")
+          // and cost the To-ship desk 10 Accessibility points. This is the
+          // header row, so the select gutter is a `columnheader`.
+          role="columnheader"
           className={cn(
             ledgerGridCell({ inset: 'none', rule: true }),
             LEDGER_HEADER_ROW_FACE,

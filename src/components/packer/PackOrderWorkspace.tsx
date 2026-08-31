@@ -87,7 +87,7 @@ export function PackOrderWorkspace({
             exit={panePresence.exit}
             transition={paneTransition}
             style={{ zIndex: zIndex.panel + (entitySwapHardCut ? 1 : 0) }}
-            className="absolute inset-0 flex min-h-0 flex-col overflow-y-auto bg-surface-sunken"
+            className="absolute inset-0 flex min-h-0 flex-col overflow-y-auto bg-surface-canvas"
           >
             <PackFbaScanCard scan={activeFba} />
           </motion.div>

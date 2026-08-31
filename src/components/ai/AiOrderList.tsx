@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
 import { ShipmentStatusBadge } from '@/components/shipping/ShipmentStatusBadge';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { Panel } from '@/design-system/primitives';
@@ -77,7 +78,7 @@ export default function AiOrderList({ orderIds }: { orderIds: string[] }) {
       <div className="flex items-center justify-between border-b border-border-hairline bg-surface-canvas/60 px-3 py-2">
         <span className={sectionLabel}>{orders.length} order{orders.length !== 1 ? 's' : ''}</span>
         <a
-          href="/dashboard?shipped="
+          href={SHIPPING_SHIPPED_PATH}
           className="inline-flex items-center gap-1 rounded-md border border-blue-200 bg-blue-50 px-2 py-1 text-role-micro font-semibold text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100"
         >
           Take me there

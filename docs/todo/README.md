@@ -31,10 +31,11 @@ Refresh: `pnpm portfolio:sot`
 | WS-ROI | `highest-roi-ops-ui-execution-plan.md` |
 | WS-SAAS | `saas-commercialization-plan.md`, `saas-production-readiness-audit-2026-07-08.md` |
 | WS-SERIAL | `serial-label-pairing-split-combine-plan.md` |
+| WS-SHIP | **`order-intake-acknowledgment-PLAN.md`** + **`order-intake-acknowledgment-IMPLEMENTATION-PROMPT.md`** + **`order-intake-acknowledgment-VERIFY.md`** — unified Order Intake & Acknowledgment (single scroll form + bulk CSV); Fable 5 Ultra Code. Composes caged→released G1–G3; does not rebuild desk chrome. · **`shipping-desk-to-ship-prep-shipped-PLAN.md`** + **`shipping-desk-to-ship-prep-shipped-IMPLEMENTATION-PROMPT.md`** — Shipping IA: To ship (open work) · Amazon Prep (FBA process) · Shipped (history + later KPI); Waves 0–2 gate. · **`shipping-desk-fixed-width-FIX-IMPLEMENTATION-PROMPT.md`** — rails vs fixed stage fix. |
 | WS-SRC | `sourcing-hub-integration-plan.md` |
 | WS-STUDIO | `studio-driven-operator-surfaces-refactor-plan.md`, `studio-integrations-master-plan.md`, **`foh-boh-surface-split-plan.md`** (Walk-In station · Sales main · Receiving BOH · inbound History chrome) |
 | WS-SUB | `tech-substitution-wiring-plan.md` |
-| WS-UNBOX | `unbox-receive-ux-improvement-plan.md`, **`classify-option-icon-faces-handoff.md`** (banner identity faces shipped; Classify tab names list → icon+name pad later), **`station-workbench-sot-rules-BRIEFING.md`** (Gemini: harden Unbox-family Station Workbench SoT + CI ratchets) |
+| WS-UNBOX | `unbox-receive-ux-improvement-plan.md`, **`classify-option-icon-faces-handoff.md`** (banner identity faces shipped; Classify tab names list → icon+name pad later), **`station-workbench-sot-rules-BRIEFING.md`** (Gemini: harden Unbox-family Station Workbench SoT + CI ratchets), **`station-composer-HANDOFF-PROMPT.md`** (Unbox dock anatomy), **`station-composer-ticket-telegram-PLAN.md`** + **`station-composer-ticket-telegram-IMPLEMENTATION-PROMPT.md`** + **`station-composer-ticket-telegram-VERIFY.md`** (Ticket mode: Telegram inline editing · @ CC · + drill menu) |
 | WS-VOICE | `nextiva-voice-support-mode-plan.md` |
 | WS-WH | `warehouse-map-react-flow-plan.md` |
 

@@ -1,0 +1,219 @@
+{
+  "tolerance": 2,
+  "routes": {
+    "/unbox": {
+      "module": "src/lib/queries/unbox-spine-seed.server.ts",
+      "seeds": [
+        {
+          "label": "Unbox recents rail",
+          "keyPrefix": [
+            "receiving-lines-table",
+            "rail"
+          ],
+          "observedKey": [
+            "receiving-lines-table",
+            "rail",
+            "received",
+            "default",
+            "",
+            "all"
+          ],
+          "minRows": 50
+        },
+        {
+          "label": "Selected carton lines",
+          "keyPrefix": [
+            "receiving-siblings"
+          ],
+          "observedKey": [
+            "receiving-siblings",
+            51749
+          ],
+          "minRows": 1
+        }
+      ],
+      "updatedAt": "2026-08-30T15:58:21.907Z"
+    },
+    "/test": {
+      "module": "src/lib/queries/ready-to-pack-shell-seed.server.ts",
+      "seeds": [
+        {
+          "label": "Ready-to-pack queue",
+          "keyPrefix": [
+            "dashboard-table",
+            "unshipped"
+          ],
+          "observedKey": [
+            "dashboard-table",
+            "unshipped",
+            {
+              "searchQuery": "",
+              "packedBy": "$undefined",
+              "testedBy": "$undefined",
+              "staffId": "$undefined",
+              "strictSearchScope": true,
+              "stage": null,
+              "limit": 200
+            }
+          ],
+          "minRows": 82
+        },
+        {
+          "label": "Queue counts",
+          "keyPrefix": [
+            "dashboard-table",
+            "unshipped-counts"
+          ],
+          "observedKey": [
+            "dashboard-table",
+            "unshipped-counts",
+            {
+              "staffId": null
+            }
+          ],
+          "minRows": 2
+        },
+        {
+          "label": "Pack placement (orders)",
+          "keyPrefix": [
+            "orders",
+            "pack-placement"
+          ],
+          "observedKey": [
+            "orders",
+            "pack-placement",
+            null
+          ],
+          "minRows": 4
+        }
+      ],
+      "updatedAt": "2026-08-30T15:58:21.907Z"
+    },
+    "/shipping/orders": {
+      "module": "src/lib/queries/unshipped-queue-seed.server.ts",
+      "seeds": [
+        {
+          "label": "To-ship unshipped queue",
+          "keyPrefix": [
+            "dashboard-table",
+            "unshipped"
+          ],
+          "observedKey": [
+            "dashboard-table",
+            "unshipped",
+            {
+              "searchQuery": "",
+              "packedBy": "$undefined",
+              "testedBy": "$undefined",
+              "staffId": "$undefined",
+              "strictSearchScope": true,
+              "stage": null,
+              "limit": 200
+            }
+          ],
+          "minRows": 82
+        },
+        {
+          "label": "Queue counts",
+          "keyPrefix": [
+            "dashboard-table",
+            "unshipped-counts"
+          ],
+          "observedKey": [
+            "dashboard-table",
+            "unshipped-counts",
+            {
+              "staffId": null
+            }
+          ],
+          "minRows": 2
+        }
+      ],
+      "updatedAt": "2026-08-30T15:58:21.907Z"
+    },
+    "/pack": {
+      "module": "src/components/packer/PackerSurfacePage.tsx",
+      "seeds": [
+        {
+          "label": "Packer week logs",
+          "keyPrefix": [
+            "packer-logs"
+          ],
+          "observedKey": [
+            "packer-logs",
+            1,
+            {
+              "weekStart": "2026-08-30",
+              "weekEnd": "2026-09-05"
+            }
+          ],
+          "minRows": 0
+        }
+      ],
+      "updatedAt": "2026-08-30T15:58:21.907Z"
+    },
+    "/m/home": {
+      "module": "src/lib/queries/mobile-feed-seed.server.ts",
+      "seeds": [
+        {
+          "label": "Mobile Unbox feed",
+          "keyPrefix": [
+            "receiving-lines-table",
+            "rail",
+            "unbox-opened"
+          ],
+          "observedKey": [
+            "receiving-lines-table",
+            "rail",
+            "unbox-opened",
+            "mobile-unbox"
+          ],
+          "minRows": 20
+        }
+      ],
+      "updatedAt": "2026-08-30T15:58:21.907Z"
+    },
+    "/m/triage": {
+      "module": "src/lib/queries/mobile-feed-seed.server.ts",
+      "seeds": [
+        {
+          "label": "Mobile Arrival feed",
+          "keyPrefix": [
+            "receiving-lines-table",
+            "rail",
+            "scanned"
+          ],
+          "observedKey": [
+            "receiving-lines-table",
+            "rail",
+            "scanned",
+            "mobile-triage"
+          ],
+          "minRows": 20
+        }
+      ],
+      "updatedAt": "2026-08-30T15:58:21.907Z"
+    },
+    "/m/receive": {
+      "module": "src/lib/queries/mobile-feed-seed.server.ts",
+      "seeds": [
+        {
+          "label": "Mobile Arrival feed",
+          "keyPrefix": [
+            "receiving-lines-table",
+            "rail",
+            "scanned"
+          ],
+          "observedKey": [
+            "receiving-lines-table",
+            "rail",
+            "scanned",
+            "mobile-triage"
+          ],
+          "minRows": 20
+        }
+      ],
+      "updatedAt": "2026-08-30T15:58:21.907Z"
+    }
+  }
+}

@@ -1,7 +1,17 @@
 {
-  "generatedAt": "2026-08-29T23:13:06.167Z",
+  "generatedAt": "2026-08-30T16:15:03.826Z",
   "count": 198,
   "commits": [
+    {
+      "sha": "14fc42d865c20bec56b2063e42da853e41f4076a",
+      "shortSha": "14fc42d86",
+      "date": "2026-08-29T16:16:04-07:00",
+      "author": "DENSENSE8",
+      "subject": "checkpoint before checking out claude/warehouse-os-refactor-8f2dc3",
+      "body": "",
+      "type": "other",
+      "title": "checkpoint before checking out claude/warehouse-os-refactor-8f2dc3"
+    },
     {
       "sha": "baae7db21210f0e300bf66c8f437a424b73db971",
       "shortSha": "baae7db21",
@@ -1971,16 +1981,6 @@
       "body": "Thirteenth dead-code pass. tsc + eslint + 6667 tests green.\n\n- components/station/workbench/index.ts: dropped 8 re-exports nothing\n  reaches through the barrel (SectionTabsRightTrack/Pill,\n  StationUnitJourneys, mergeStationUnitJourneys, SectionTabDef,\n  SerialJourneyBucket, STATION_WORKBENCH_HEADER_COLUMN and _BODY_DOCKED).\n  All are live at their source paths; the barrel keeps its 19 real\n  consumers and the SoT docblock is unchanged.\n- neon/location-queries: deleted getBinsByRoom, getRowsForRoom,\n  getColsForRoomRow; getBinContents un-exported. BinContent and\n  LocationTransfer here shadow the Drizzle-inferred types in\n  drizzle/schema.ts, which are the live ones — un-exported.\n- order-lifecycle: isOutOfStock, hasLabel, DEFAULT_LIFECYCLE_STAGE,\n  CUSTODY_CATEGORIES un-exported. The big ext counts were a route's own\n  local variable and a PageHeader local const, not importers.\n- unshipped-state: deleted deriveUnshippedState (explicitly legacy,\n  superseded by resolveOrderLifecycleStage), countFulfillmentStates,\n  ZERO_UNSHIPPED_COUNTS, and the isUnshippedLate/UnshippedCounts they\n  kept alive; remaining types un-exported.\n\norder-lifecycle.test.ts named deriveUnshippedState in a test TITLE (a\nparity assertion, not a call). Retitled to \"the legacy unshipped-state\nderivation\" so the suite does not describe itself against a function\nthat no longer exists.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
       "type": "chore",
       "title": "trim the station-workbench barrel; prune location/lifecycle/unshipped"
-    },
-    {
-      "sha": "e10dfac0f5ebf2eb3fc91b8c6a4164af09c85ff3",
-      "shortSha": "e10dfac0f",
-      "date": "2026-08-08T12:07:56-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: delete the DS providers barrel and prune number/zoho/locations",
-      "body": "Twelfth dead-code pass. tsc + eslint + 6667 tests green.\n\n- design-system/providers/index.ts DELETED. Zero direct importers, and\n  its one referrer was `export * from './providers'` in the DS top\n  barrel — which no consumer of `@/design-system` used either. Every\n  real consumer imports @/design-system/providers/UIModeProvider by\n  path. Removed the top-barrel line in the same change.\n- utils/_number: deleted formatNumber, formatPercent, clamp, round,\n  formatBytes. Only formatCurrency is imported from this module\n  (HistoryCartonTriagePanel); parsePositiveInt stays live. The huge ext\n  counts on `clamp` (99) and `round` (755) were other modules' own\n  helpers and `Math.round` — a word-boundary grep still matches the\n  member name after a dot.\n- components/receiving/zoho-po-types: reduced to CONDITION_OPTIONS +\n  conditionLabel, the only two anything imports. The ZohoPO/ZohoPOLine/\n  POStatus shapes and the fmt*/statusColor helpers had no consumers.\n- lib/repositories/inventory/locations: deleted 5 bin/location readers\n  and ListBinsOptions.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "delete the DS providers barrel and prune number/zoho/locations"
     }
   ]
 }

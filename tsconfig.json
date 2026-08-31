@@ -40,7 +40,9 @@
     ".next-perf-si/types/**/*.ts",
     ".next-perf-si/dev/types/**/*.ts",
     ".next-crashfix/types/**/*.ts",
-    ".next-crashfix/dev/types/**/*.ts"
+    ".next-crashfix/dev/types/**/*.ts",
+    ".next-perf-lh/types/**/*.ts",
+    ".next-perf-lh/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

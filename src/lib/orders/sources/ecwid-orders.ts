@@ -121,16 +121,53 @@ export function mapEcwidOrdersToCanonicalLines(ecwidOrders: unknown[]): Canonica
   return lines;
 }
 
-async function fetchRecentEcwidOrders(storeId: string, token: string): Promise<unknown[]> {
-  const createdFrom = new Date(Date.now() - LOOKBACK_DAYS * 86_400_000).toISOString();
+/**
+ * Which slice of the store's order history to pull.
+ *
+ * The recurring sync wants "everything since last time" (a rolling window);
+ * a paced intake batch wants "the newest N regardless of age". Both are the
+ * same fetch with different bounds — expressed here rather than as a second
+ * fetcher, so there is one Ecwid orders reader in the codebase.
+ */
+export interface EcwidOrderWindow {
+  /**
+   * Days back to fetch. `null` removes the date filter entirely (full
+   * history). Defaults to {@link LOOKBACK_DAYS} — the recurring-sync window.
+   */
+  lookbackDays?: number | null;
+  /**
+   * Hard cap on orders returned, NEWEST FIRST. When set, the request is
+   * explicitly sorted `DATE_DESC` so "the last N orders" means the N most
+   * recently placed. Omitted → the API's default ordering and the page cap,
+   * which is byte-identical to the pre-existing recurring-sync behavior.
+   */
+  limit?: number | null;
+}
+
+async function fetchRecentEcwidOrders(
+  storeId: string,
+  token: string,
+  window: EcwidOrderWindow = {},
+): Promise<unknown[]> {
+  const lookbackDays = window.lookbackDays === undefined ? LOOKBACK_DAYS : window.lookbackDays;
+  const cap = window.limit != null && window.limit > 0 ? window.limit : null;
   const orders: unknown[] = [];
   let offset = 0;
 
   for (let page = 0; page < MAX_PAGES; page++) {
     const url = new URL(`${ECWID_BASE_URL}/${storeId}/orders`);
-    url.searchParams.set('createdFrom', createdFrom);
+    if (lookbackDays != null) {
+      url.searchParams.set(
+        'createdFrom',
+        new Date(Date.now() - lookbackDays * 86_400_000).toISOString(),
+      );
+    }
+    // Newest-first only when a cap is asked for — otherwise the request shape
+    // stays exactly what the recurring sync has always sent.
+    if (cap != null) url.searchParams.set('sortBy', 'DATE_DESC');
+    const pageSize = cap != null ? Math.min(PAGE_LIMIT, cap - orders.length) : PAGE_LIMIT;
     url.searchParams.set('offset', String(offset));
-    url.searchParams.set('limit', String(PAGE_LIMIT));
+    url.searchParams.set('limit', String(pageSize));
 
     const res = await fetch(url, {
       method: 'GET',
@@ -146,11 +183,12 @@ async function fetchRecentEcwidOrders(storeId: string, token: string): Promise<u
     const items = Array.isArray(data.items) ? data.items : [];
     orders.push(...items);
 
-    if (items.length < PAGE_LIMIT) break;
-    offset += PAGE_LIMIT;
+    if (cap != null && orders.length >= cap) break;
+    if (items.length < pageSize) break;
+    offset += pageSize;
   }
 
-  return orders;
+  return cap != null ? orders.slice(0, cap) : orders;
 }
 
 /**
@@ -163,7 +201,7 @@ async function fetchRecentEcwidOrders(storeId: string, token: string): Promise<u
  */
 export async function fetchEcwidCanonicalOrders(
   creds?: EcwidTransferCreds | null,
-  opts?: { allowEnvFallback?: boolean },
+  opts?: { allowEnvFallback?: boolean; window?: EcwidOrderWindow },
 ): Promise<CanonicalOrderLine[]> {
   if ((!creds?.storeId || !creds?.token) && !opts?.allowEnvFallback) {
     throw new Error(
@@ -182,5 +220,7 @@ export async function fetchEcwidCanonicalOrders(
       'NEXT_PUBLIC_ECWID_API_TOKEN',
     ]);
 
-  return mapEcwidOrdersToCanonicalLines(await fetchRecentEcwidOrders(storeId, token));
+  return mapEcwidOrdersToCanonicalLines(
+    await fetchRecentEcwidOrders(storeId, token, opts?.window),
+  );
 }

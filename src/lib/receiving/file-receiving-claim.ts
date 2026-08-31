@@ -304,6 +304,23 @@ export async function fileReceivingClaim(
     console.warn('[fileReceivingClaim] ticket link failed', linkErr);
   }
 
+  if (input.staffId) {
+    try {
+      const { recordStaffForPostedComment } = await import(
+        '@/lib/integrations/helpdesk/comment-staff'
+      );
+      await recordStaffForPostedComment({
+        orgId: input.orgId,
+        ticketId: ticket.id,
+        staffId: input.staffId,
+        body: description,
+        helpdesk,
+      });
+    } catch (stampErr) {
+      console.warn('[fileReceivingClaim] comment staff stamp failed', stampErr);
+    }
+  }
+
   try {
     await deps.pairShipment({
       orgId: input.orgId,

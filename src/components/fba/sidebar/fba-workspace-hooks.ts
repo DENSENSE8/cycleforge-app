@@ -9,7 +9,7 @@ import { getDbTableChannelName, safeChannelName } from '@/lib/realtime/channels'
 import { useAuth } from '@/contexts/AuthContext';
 import { useActiveStaffDirectory } from '@/components/sidebar/hooks';
 import { useStationTheme } from '@/hooks/useStationTheme';
-import type { FbaBoardItem } from '@/components/fba/FbaBoardTable';
+import type { FbaBoardItem } from '@/lib/fba/types';
 import type { FbaCombineRailView, FbaPlanRailView } from '@/components/fba/sidebar/FbaSidebarRails';
 import {
   FBA_COMBINE_STARTED,

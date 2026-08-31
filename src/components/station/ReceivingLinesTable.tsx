@@ -828,7 +828,6 @@ export default function ReceivingLinesTable({
                   clickSelect={incomingClickSelect}
                   selectGutterChrome={selectGutterChrome}
                   columns={visible}
-                  onCommitNote={handleIncomingCommitNote}
                 />
               )}
               renderRow={(row, stripeIndex, { columns: visible }) => (
@@ -844,7 +843,6 @@ export default function ReceivingLinesTable({
                   clickSelect={incomingClickSelect}
                   selectGutterChrome={selectGutterChrome}
                   columns={visible}
-                  onCommitNote={handleIncomingCommitNote}
                 />
               )}
             />
@@ -909,7 +907,6 @@ export default function ReceivingLinesTable({
                       clickSelect={incomingClickSelect}
                       selectGutterChrome={selectGutterChrome}
                       columns={visible}
-                      onCommitNote={handleIncomingCommitNote}
                     />
                   )}
                   renderRow={(row, stripeIndex, { columns: visible }) => (
@@ -925,7 +922,6 @@ export default function ReceivingLinesTable({
                       clickSelect={incomingClickSelect}
                       selectGutterChrome={selectGutterChrome}
                       columns={visible}
-                      onCommitNote={handleIncomingCommitNote}
                     />
                   )}
                 />

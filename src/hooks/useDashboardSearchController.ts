@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useOptimisticUrlParam } from '@/hooks/useOptimisticUrlParam';
 import {
@@ -20,8 +20,11 @@ import {
 import { normalizeShippedSearchField, type ShippedSearchField } from '@/lib/shipped-search';
 export type ShippedTypeFilter = 'all' | 'orders' | 'sku' | 'fba';
 
-/** Ship-desk ingest rail: closed, Root Index, or the manual-entry leaf (`?new=true`). */
-export type OutboundIngestMode = 'closed' | 'index' | 'manual';
+/**
+ * Ship-desk ingest rail: closed, Root Index, the manual-entry leaf (`?new=true`),
+ * or the caged→released triage form (`?triage=new|<orderId>`).
+ */
+export type OutboundIngestMode = 'closed' | 'index' | 'manual' | 'triage';
 
 export function useDashboardSearchController() {
   const pathname = usePathname();
@@ -62,9 +65,24 @@ export function useDashboardSearchController() {
   }, [deskPath, pathname, router, searchParams]);
 
   const urlIngestMode = useMemo((): OutboundIngestMode => {
+    if (searchParams.get('triage')) return 'triage';
     if (searchParams.get('new') === 'true') return 'manual';
     if (searchParams.get('ingest') === 'true') return 'index';
     return 'closed';
+  }, [searchParams]);
+
+  /**
+   * Which order the triage form is bound to. `?triage=new` is a form with no
+   * order yet, so it reads as `null` — the same value the form uses to mean
+   * "Identity has not created anything". A non-numeric value that is not `new`
+   * is treated as `new` rather than throwing: a mangled link should open the
+   * intake, not break the desk.
+   */
+  const triageOrderId = useMemo((): number | null => {
+    const raw = String(searchParams.get('triage') || '').trim();
+    if (!raw || raw === 'new') return null;
+    const id = Number(raw);
+    return Number.isFinite(id) && id > 0 ? id : null;
   }, [searchParams]);
 
   const replaceIngest = useCallback(
@@ -74,11 +92,21 @@ export function useDashboardSearchController() {
     [updateSearch],
   );
 
+  /**
+   * Which order a pending `triage` write should bind to. A ref, not state,
+   * because it is an ARGUMENT to the next write rather than something the UI
+   * renders — and because `writeIngest` must stay a stable callback (it is the
+   * optimistic hook's writer; re-creating it re-arms the paint channel).
+   */
+  const triageTargetRef = useRef<string>('new');
+
   const writeIngest = useCallback((params: URLSearchParams, next: OutboundIngestMode) => {
     params.delete('ingest');
     params.delete('new');
     if (next === 'index') params.set('ingest', 'true');
     if (next === 'manual') params.set('new', 'true');
+    if (next === 'triage') params.set('triage', triageTargetRef.current);
+    else params.delete('triage');
   }, []);
 
   const { value: ingestMode, setValue: setIngestMode } = useOptimisticUrlParam<OutboundIngestMode>({
@@ -132,11 +160,48 @@ export function useDashboardSearchController() {
 
   const showIntakeForm = ingestMode === 'manual';
   const showIngestRail = ingestMode !== 'closed';
-  const ingestLeaf: 'index' | 'manual' = ingestMode === 'manual' ? 'manual' : 'index';
+  const ingestLeaf: 'index' | 'manual' | 'triage' =
+    ingestMode === 'manual' ? 'manual' : ingestMode === 'triage' ? 'triage' : 'index';
 
   const openIntakeForm = useCallback(() => setIngestMode('manual'), [setIngestMode]);
   const openIngestIndex = useCallback(() => setIngestMode('index'), [setIngestMode]);
   const closeIntakeForm = useCallback(() => setIngestMode('closed'), [setIngestMode]);
+
+  /**
+   * Open the triage form — on a caged order, or on a blank one.
+   *
+   * Goes through `setIngestMode`, NOT a direct URL write. The optimistic
+   * channel only clears its pending value when the URL matches what it wrote,
+   * so a write that bypasses it while a `closed` (or `index`) write is still in
+   * flight leaves the rail painting the stale pending mode until something else
+   * moves it. Every other ingest mode already learned this — see the auto-close
+   * note on `OrderIngestRail`.
+   */
+  const openTriage = useCallback(
+    (orderId?: number | null) => {
+      triageTargetRef.current = orderId && orderId > 0 ? String(orderId) : 'new';
+      setIngestMode('triage');
+    },
+    [setIngestMode],
+  );
+
+  /**
+   * Re-point the open form at the order Identity just created, so a refresh or
+   * a shared link lands back on the same half-triaged order instead of a blank
+   * form. `replace`, not push — this is the same step, not a new one.
+   */
+  const bindTriageOrder = useCallback(
+    (orderId: number) => {
+      // Safe as a direct write: the rail is already open on `triage`, so the
+      // mode is not changing and there is no pending mode write to race. Only
+      // the bound id moves.
+      triageTargetRef.current = String(orderId);
+      updateSearch((params) => {
+        params.set('triage', String(orderId));
+      });
+    },
+    [updateSearch],
+  );
   useEffect(() => {
     writeShippedFilterPreference(shippedFilter);
   }, [shippedFilter]);
@@ -154,6 +219,7 @@ export function useDashboardSearchController() {
     showIntakeForm,
     showIngestRail,
     ingestLeaf,
+    triageOrderId,
     detailsEnabled,
     setSearch,
     setOrderView,
@@ -163,5 +229,7 @@ export function useDashboardSearchController() {
     openIntakeForm,
     openIngestIndex,
     closeIntakeForm,
+    openTriage,
+    bindTriageOrder,
   };
 }

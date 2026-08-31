@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { withAuth } from '@/lib/auth/withAuth';
 import pool from '@/lib/db';
 import { recordAudit, AUDIT_ENTITY } from '@/lib/audit-logs';
+import { inferMarketplaceFromOrderId } from '@/lib/marketplace-order-id';
 import { resolveSpreadsheetShipByDate } from '@/lib/orders/canonical-order';
 import { ingestCanonicalOrders } from '@/lib/orders/ingest-canonical-orders';
 
@@ -170,7 +171,13 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
           // and sets `orders.customer_id`.
           notes: canonical.note || '',
           customerName: canonical.customer_name || '',
-          accountSource: canonical.platform || '',
+          // Platform acknowledgment: an Amazon 3-7-7 / eBay 2-5-5 order number
+          // names its own channel, so a file with no platform column still
+          // stores the inferred slug instead of a blank `account_source`.
+          accountSource:
+            canonical.platform
+            || inferMarketplaceFromOrderId(canonical.order_number)
+            || '',
           trackings: canonical.tracking_number ? [canonical.tracking_number] : [],
           // END of the named warehouse civil day — a ship-by is a deadline, and
           // a blank/unparseable cell is unknown (null), never today. Shared

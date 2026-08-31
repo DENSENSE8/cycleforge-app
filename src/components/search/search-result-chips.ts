@@ -18,7 +18,7 @@
  * this one map, so they can never disagree (plan L8).
  */
 
-import { AlertTriangle, Tool, Package, PackageOpen, Box, PackageCheck, Boxes } from '@/components/Icons';
+import { AlertTriangle, Tool, Package, PackageOpen, Box, PackageCheck, Boxes, Search } from '@/components/Icons';
 
 type IconComponent = (props: { className?: string }) => JSX.Element;
 
@@ -64,6 +64,31 @@ export const CHIP_TONE_CLASSES: Record<string, string> = {
   amber: 'bg-amber-50 text-amber-700 ring-amber-200',
   rose: 'bg-rose-50 text-rose-700 ring-rose-200',
 };
+
+/**
+ * Entity-glyph ink per tone. Exported because three surfaces draw the same
+ * glyph — the /search feed, the compact rails, and the ⌘K palette's recents —
+ * and each one having its own copy is how the palette ended up painting every
+ * icon flat grey while the feed painted them by type.
+ */
+export const GLYPH_TONE_CLASSES: Record<ChipTone, string> = {
+  gray: 'text-text-soft',
+  blue: 'text-blue-600',
+  emerald: 'text-emerald-600',
+  amber: 'text-amber-600',
+  rose: 'text-rose-600',
+};
+
+/** The glyph + ink for an entity type, in one lookup. */
+export function entityGlyph(entityType: string | null | undefined): {
+  Icon: IconComponent;
+  tone: ChipTone;
+  className: string;
+} {
+  const key = String(entityType ?? '');
+  const tone = ENTITY_TONE[key] ?? 'gray';
+  return { Icon: ENTITY_ICONS[key] ?? Search, tone, className: GLYPH_TONE_CLASSES[tone] };
+}
 
 /** Status-dot bg class per tone (glanceable colour, paired with a tooltip). */
 const DOT_BY_TONE: Record<ChipTone, string> = {

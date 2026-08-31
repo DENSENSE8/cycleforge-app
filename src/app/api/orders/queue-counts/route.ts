@@ -46,7 +46,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       staff: staffId ?? '',
       shipmentStatusRuleVersion: 'latest_status_relaxed_v2',
       // Bump when membership SQL / payload shape changes so stale tallies cannot outlive the fix.
-      queueScope: 'in_warehouse_order_grain_v1',
+      // Bumped for `shippedToday` (2026-08-30) — a cached payload without the
+      // field would print 0 shipped today for a whole TTL on every desk.
+      queueScope: 'in_warehouse_order_grain_v3_shipped_today',
     });
 
     const CACHE_HEADERS = { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=30' };
@@ -117,10 +119,20 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         LIMIT 1
       ) wa_d ON true
       WHERE o.organization_id = $1
-        AND o.shipment_id IS NOT NULL
-        AND COALESCE(TRIM(stn.tracking_number_raw), '') <> ''
+        /*
+         * Scope MUST mirror /api/orders?fulfillmentScope=true -- these counts
+         * label that queue's tabs and drive its "Load more" ceiling, so a
+         * narrower scope here prints totals smaller than the rows on screen.
+         * The shipment_id IS NOT NULL + non-blank-tracking pair was dropped
+         * there on 2026-08-30 (needing a label became a STATE in the queue,
+         * not a separate table), and it is dropped here for the same reason.
+         */
         AND NOT ${SHIPPED_BY_CARRIER_SQL}
         AND COALESCE(o.fulfillment_channel, '') <> 'AFN'
+        /* CAGED stays out of the live queue (order-intake-acknowledgment) —
+         * same predicate the fulfillmentScope feed applies, kept in lockstep
+         * so the tab totals never exceed the rows on screen. */
+        AND COALESCE(o.release_state, '') <> 'caged'
         AND NOT EXISTS (
           SELECT 1 FROM station_activity_logs sal_out
           WHERE sal_out.shipment_id = o.shipment_id
@@ -130,7 +142,47 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       GROUP BY 1, 2, 3
     `;
 
-    const result = await tenantQuery(ctx.organizationId, sql, params);
+    /**
+     * "Shipped today" — the third number on To-ship's today strip, and the one
+     * that hands off to the Shipped desk.
+     *
+     * Counted off `station_activity_logs` at the PACK station, because that is
+     * exactly the feed the Shipped desk lists (`/api/packerlogs` →
+     * `packer-logs-week.ts`). Counting SHIP_CONFIRM instead would be a
+     * different, defensible truth — and it would print a number the operator
+     * cannot find when they click through to today's window, which is worse
+     * than either truth alone.
+     *
+     * Civil PST day, the same frame `getCurrentPSTDateKey` and the week ranges
+     * use, so "today" does not roll over at 5pm local.
+     *
+     * `?staff=` narrows to who PACKED it. The row feed's staff filter is
+     * packed-OR-tested, so a staff-scoped count can read low against a
+     * staff-scoped list; that is a known, documented narrowing rather than a
+     * second membership rule — the strip is org-wide on the default desk.
+     */
+    const shippedTodayParams: unknown[] = [ctx.organizationId];
+    let shippedTodayStaffClause = '';
+    if (staffId != null) {
+      shippedTodayParams.push(staffId);
+      shippedTodayStaffClause = ` AND sal.staff_id = $${shippedTodayParams.length}`;
+    }
+    const shippedTodaySql = `
+      SELECT COUNT(*)::int AS n
+      FROM station_activity_logs sal
+      WHERE sal.organization_id = $1
+        AND sal.station = 'PACK'
+        AND timezone('America/Los_Angeles', sal.created_at)::date
+          = timezone('America/Los_Angeles', NOW())::date${shippedTodayStaffClause}
+    `;
+
+    // Independent queries, so they run concurrently rather than stacking two
+    // round trips on the desk's first paint.
+    const [result, shippedTodayResult] = await Promise.all([
+      tenantQuery(ctx.organizationId, sql, params),
+      tenantQuery(ctx.organizationId, shippedTodaySql, shippedTodayParams),
+    ]);
+    const shippedToday = Number(shippedTodayResult.rows[0]?.n) || 0;
     // Lane combos stay pre-pack only (PENDING/TESTED/BLOCKED); packed-staged
     // is a separate stage counted via byStage.packed.
     const combos = result.rows
@@ -162,6 +214,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       },
       urgent,
       mustShip,
+      shippedToday,
       combos,
       packPlacement: {
         counts: packPlacementCounts,
@@ -184,6 +237,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         byStage: { all: 0, tested: 0, pending: 0, packed: 0 },
         urgent: 0,
         mustShip: 0,
+        shippedToday: 0,
         combos: [],
         packPlacement: { counts: [], totalPlaced: 0 },
         degraded: true,

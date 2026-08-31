@@ -17,10 +17,6 @@ import { appChromeClass } from '@/design-system/tokens/app-surface';
 // `UnshippedSidebar` deliberately stays a STATIC import: it is the branch this
 // panel paints on `/shipping/orders`, and deferring an on-path body would trade
 // bundle size for a network waterfall on the critical path.
-const LabelsModeBody = dynamic(
-  () => import('@/components/outbound/labels/LabelsModeBody').then((m) => m.LabelsModeBody),
-  { loading: () => <div className={`h-full w-full ${appChromeClass}`} /> },
-);
 const ScanOutModeBody = dynamic(
   () => import('@/components/outbound/scan-out/ScanOutModeBody').then((m) => m.ScanOutModeBody),
   { loading: () => <div className={`h-full w-full ${appChromeClass}`} /> },
@@ -38,24 +34,34 @@ function isOrdersDeskPath(pathname: string | null): boolean {
 }
 
 /**
- * Outbound sidebar bodies by mode. L2 Shipping modes live in GlobalHeader
- * (`HeaderPageSwitcher` ← SIDEBAR_PAGE_NAV) — no sidebar mode rail twin.
- * Ready is a stage inside FBA (`?fbaMode=ready`), not a sibling shipping mode.
+ * Outbound sidebar bodies by mode — **mobile only, as of 2026-08-30.**
  *
- * To-ship (`/shipping/orders`) is a desk, not a scan station — it mounts the
- * order-feed filter map ({@link UnshippedSidebar}), never Labels scan band /
- * "Labels printed". Labels · Scan-out · FBA keep their station rails.
+ * The whole Shipping desk (To ship · Amazon Prep · Labels) is now desk-chrome,
+ * and `ContextPanelLayout` collapses the left column outright for any
+ * desk-stage surface (`isDeskStageSurface`), so on desktop this panel is not
+ * mounted on ANY of those three routes. It still renders in `RouteShell`'s
+ * mobile `actions` pane, where it is a full pane the operator switches to —
+ * not a column competing with the grid for width.
  *
- * Add / `?new=true` intake is owned by {@link OutboundOrdersDesk}
- * (`OrderIngestRail`, `manual` leaf) — Pattern E rail-less does not mount this panel on
- * desktop, so the desk host is the SoT.
+ * That is what killed the operator's screenshot: `/shipping/labels` reserved
+ * 360px and painted {@link LabelsModeBody} (Labels scan band + "Labels
+ * printed" recents) beside a stage that had already been measured to give that
+ * width back.
+ *
+ * `/shipping/scan-out` is NOT desk chrome — it is a Scan Station, it keeps this
+ * rail on desktop, and {@link ScanOutModeBody} is why this dispatch still
+ * exists at all.
+ *
+ * Add / `?new=true` / `?triage=` intake is owned by {@link OutboundOrdersDesk}
+ * (`OrderIngestRail`) — the desk host is the SoT.
  */
 export function OutboundSidebarPanel() {
   const pathname = usePathname();
   const { mode } = useOutboundUrlState();
   const dashboardSearch = useDashboardSearchController();
 
-  // Desk To-ship — filter map only. Not LabelsModeBody.
+  // Desk To-ship — filter map only, and on MOBILE only (desktop collapses the
+  // column). Never LabelsModeBody.
   if (isOrdersDeskPath(pathname)) {
     return (
       <div className={`flex h-full min-h-0 flex-col ${appChromeClass}`}>
@@ -87,7 +93,13 @@ export function OutboundSidebarPanel() {
   return (
     <div className={`flex h-full flex-col overflow-hidden ${appChromeClass}`}>
       <div className="min-h-0 flex-1 overflow-hidden">
-        {mode === 'scan-out' ? <ScanOutModeBody /> : <LabelsModeBody />}
+        {/*
+          Scan out is the only body left. `LabelsModeBody` (scan band + "Labels
+          printed" recents) was deleted 2026-08-30 with the Labels route, and
+          FBA returns above — so a non-scan-out mode reaching here has no rail
+          of its own and renders an empty column rather than another desk's.
+        */}
+        {mode === 'scan-out' ? <ScanOutModeBody /> : null}
       </div>
     </div>
   );

@@ -104,7 +104,7 @@ export function TableTabs({
             data-testid={`data-table-tab-${tab.id}`}
             data-active={active ? '' : undefined}
             className={cn(
-              'ds-raw-button inline-flex shrink-0 items-center gap-1 px-3 text-role-caption',
+              'ds-raw-button relative inline-flex shrink-0 items-center gap-1 px-3 text-role-caption',
               // Colour only — a tab that slid or grew would move its
               // neighbours, which ops chrome forbids (AGENTS.md).
               'transition-colors duration-100 ease-out',
@@ -112,8 +112,8 @@ export function TableTabs({
               cornerClass('flush'),
               focusRing('control'),
               active
-                ? 'border-x border-border-soft bg-surface-card font-semibold text-text-default'
-                : 'text-text-muted hover:bg-surface-hover hover:text-text-default',
+                ? 'font-semibold text-text-default'
+                : 'text-text-muted hover:text-text-default',
             )}
           >
             <span className="truncate">{tab.label}</span>
@@ -126,6 +126,20 @@ export function TableTabs({
               >
                 {tab.count > 99 ? '99+' : tab.count}
               </span>
+            ) : null}
+            {/*
+              Selection is a solid hairline UNDER the tab (operator ruling
+              2026-08-30) — not a filled face inside a border box. The old
+              treatment painted `border-x` + a card fill, which drew a
+              three-sided box that read as a raised chip and made the strip
+              look like two nested surfaces. An underline is one mark, moves no
+              neighbour, and needs no second colour.
+            */}
+            {active ? (
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-text-default"
+              />
             ) : null}
           </button>
         );

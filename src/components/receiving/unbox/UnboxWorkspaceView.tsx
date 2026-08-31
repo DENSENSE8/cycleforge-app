@@ -9,11 +9,10 @@
  *   Band 3  the LEAN row — find (refine in-field) · KPI collapse · inspector
  *
  * **Band 3 hosts no `right` slot and no controls portal** (ruled 2026-08-08).
- * Layout chrome — compare panes, spreadsheet zoom, ▦ column display, row paint,
- * Drill|List — lives on the inspector View cluster
- * ({@link HistoryViewTopicsCluster}) on EVERY tab, not just History, which is
- * why `controlsEl` and `zoom` are read unconditionally from the view-chrome
- * context below rather than from a tab-dependent local.
+ * The layout chrome that portal existed for — compare panes, spreadsheet zoom,
+ * ▦ column display, row paint, Drill|List — was deleted with the display layer
+ * on 2026-08-29, and the portal host went with it. There is nothing left to
+ * seat here, on this tab or any other.
  *
  * Multi-select opens `ReceivingLineRailShell` on RightRailHost (no bottom
  * capsule). When the line workspace overlays browse, publishing + the shell

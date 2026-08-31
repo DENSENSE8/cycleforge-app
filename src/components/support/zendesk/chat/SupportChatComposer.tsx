@@ -2,16 +2,21 @@
 
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { Mail, Paperclip, Plus, X } from '@/components/Icons';
-import { IconButton, OmnichannelComposerDock } from '@/design-system/primitives';
+import { Paperclip, Plus } from '@/components/Icons';
+import { OmnichannelComposerDock } from '@/design-system/primitives';
 import { VisibilityToggle } from '@/components/ui/VisibilityToggle';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import {
+  ComposerStagedPhotoStrip,
+  ComposerTicketCcStrip,
+} from '@/components/composer';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
 import { useSupportReply } from '@/hooks/useSupportReply';
-import { useZendeskAgents, zendeskKeys } from '@/hooks/useZendeskQueries';
+import { zendeskKeys } from '@/hooks/useZendeskQueries';
 import type { TicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
 import { useAuth } from '@/contexts/AuthContext';
 import { markdownToHtml } from '@/lib/support/markdown';
+import { buildComposerReplyVars } from '@/lib/composer/ticket-reply-payload';
 import { cn } from '@/utils/_cn';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 import { seedComposerDraft } from '@/lib/threads/composer-draft';
@@ -28,8 +33,6 @@ import {
   CONVERSATION_COMPOSER_DOCK_INTERNAL,
   CONVERSATION_COMPOSER_PAD,
 } from '@/design-system/primitives/conversation-chrome';
-
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Chat composer — public reply / internal note channel, CC collaborators, photo
@@ -89,41 +92,15 @@ export function SupportChatComposer({
   const [libraryOpen, setLibraryOpen] = useState(false);
   const queryClient = useQueryClient();
   const reply = useSupportReply();
-  const { data: agents = [] } = useZendeskAgents();
   const { user, has, isLoaded } = useAuth();
   const canBrowseLibrary = isLoaded && has('photos.view');
   const canPost = !isLoaded || has('integrations.zendesk');
   const staffName = user?.name?.trim() || '';
+  const staffId = user?.staffId ?? null;
 
   // Reuse the dropzone hook purely for its file-picker plumbing (the ticket
   // panel owns the actual drag overlay, so we don't spread rootProps here).
   const picker = usePhotoDropzone(staging.addFiles);
-
-  // Type-ahead pool: the ticket requester + every agent email, minus the ones
-  // already added. Free entry is still allowed (any valid email).
-  const ccSuggestions = useMemo(() => {
-    const pool = [
-      ...(requesterEmail ? [requesterEmail] : []),
-      ...agents.map((a) => a.email).filter((e): e is string => Boolean(e)),
-    ];
-    return Array.from(new Set(pool)).filter((e) => !ccs.includes(e));
-  }, [agents, requesterEmail, ccs]);
-
-  const addCc = (raw: string) => {
-    const email = raw.trim().replace(/[,;]+$/, '');
-    if (!email) return;
-    if (!EMAIL_RE.test(email) || ccs.includes(email)) return;
-    setCcs((prev) => [...prev, email]);
-    setCcInput('');
-  };
-  const removeCc = (email: string) => setCcs((prev) => prev.filter((e) => e !== email));
-
-  /** Internal notes are signed with the staffer's name for exact attribution. */
-  const signNote = (text: string) => {
-    if (isPublic || !staffName) return text;
-    const sig = `— ${staffName}`;
-    return text.trimEnd().endsWith(sig) ? text : `${text}\n\n${sig}`;
-  };
 
   const stagedDone = staging.staged.filter((s) => s.status === 'done' && typeof s.photoId === 'number');
   const stagedPhotoIds = useMemo(
@@ -132,33 +109,27 @@ export function SupportChatComposer({
   );
 
   const submit = () => {
-    const text = body.trim();
-    if (!text || reply.isPending || staging.uploading) return;
-    const finalText = signNote(text);
-    // Fold a half-typed CC into the list so it isn't silently dropped.
-    const pendingCc = ccInput.trim();
-    const allCcs = isPublic
-      ? Array.from(new Set([...ccs, ...(pendingCc && EMAIL_RE.test(pendingCc) ? [pendingCc] : [])]))
-      : [];
-    reply.mutate(
-      {
-        ticketId,
-        body: finalText,
-        isPublic,
-        photoIds: stagedDone.map((s) => s.photoId!),
-        attachmentPreviews: stagedDone.map((s) => ({ url: s.url!, thumbUrl: s.thumbUrl })),
-        emailCcs: allCcs.length ? allCcs : undefined,
-        htmlBody: markdownToHtml(finalText),
+    if (reply.isPending || staging.uploading) return;
+    const vars = buildComposerReplyVars({
+      ticketId,
+      body,
+      isPublic,
+      staffName,
+      staffId,
+      ccs,
+      ccDraft: ccInput,
+      photoIds: stagedDone.map((s) => s.photoId!),
+      attachmentPreviews: stagedDone.map((s) => ({ url: s.url!, thumbUrl: s.thumbUrl })),
+    });
+    if (!vars) return;
+    reply.mutate(vars, {
+      onSuccess: () => {
+        setBody('');
+        setCcs([]);
+        setCcInput('');
+        staging.clear();
       },
-      {
-        onSuccess: () => {
-          setBody('');
-          setCcs([]);
-          setCcInput('');
-          staging.clear();
-        },
-      },
-    );
+    });
   };
 
   /** One-click presets — REST only (never VendorView DOM macros). */
@@ -174,6 +145,8 @@ export function SupportChatComposer({
       body: finalText,
       isPublic: preset.isPublic,
       htmlBody: markdownToHtml(finalText),
+      staffId,
+      staffName,
     });
   };
 
@@ -263,82 +236,23 @@ export function SupportChatComposer({
   );
 
   const ccStrip = isPublic ? (
-    <div className="mb-2 flex flex-wrap items-center gap-1.5 border-t border-border-hairline bg-surface-sunken px-2 py-1.5">
-      <span className="inline-flex items-center gap-1 text-role-micro uppercase tracking-widest text-text-faint">
-        <Mail className="h-3 w-3" /> Cc
-      </span>
-      {ccs.map((email) => (
-        <span
-          key={email}
-          className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-role-caption font-semibold text-blue-700 ring-1 ring-inset ring-blue-200"
-        >
-          {email}
-          <IconButton
-            onClick={() => removeCc(email)}
-            ariaLabel={`Remove ${email}`}
-            tone="accent"
-            icon={<X className="h-2.5 w-2.5" />}
-            className="rounded-full text-blue-400 hover:text-blue-700"
-          />
-        </span>
-      ))}
-      <input
-        list="support-cc-suggestions"
-        value={ccInput}
-        onChange={(e) => setCcInput(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ',' || e.key === ';') {
-            e.preventDefault();
-            addCc(ccInput);
-          } else if (e.key === 'Backspace' && !ccInput && ccs.length) {
-            removeCc(ccs[ccs.length - 1]);
-          }
-        }}
-        onBlur={() => addCc(ccInput)}
-        placeholder={ccs.length ? 'Add another…' : 'Add email to CC…'}
-        className="min-w-[8rem] flex-1 bg-transparent px-1 text-role-caption text-text-default outline-none placeholder:text-text-faint"
-      />
-      <datalist id="support-cc-suggestions">
-        {ccSuggestions.map((email) => (
-          <option key={email} value={email} />
-        ))}
-      </datalist>
-    </div>
+    <ComposerTicketCcStrip
+      ccs={ccs}
+      onCcsChange={setCcs}
+      draft={ccInput}
+      onDraftChange={setCcInput}
+      requesterEmail={requesterEmail ?? null}
+      className="mb-2 border-t border-border-hairline bg-surface-sunken px-2 py-1.5"
+    />
   ) : null;
 
-  const stagedThumbs =
-    staging.staged.length > 0 ? (
-      <div className="mb-2 flex flex-wrap gap-2">
-        {staging.staged.map((s) => (
-          <div
-            key={s.tempId}
-            className={cn(
-              'relative h-14 w-14 overflow-hidden rounded-lg ring-1 ring-inset',
-              s.status === 'error' ? 'ring-rose-300' : 'ring-border-soft',
-            )}
-          >
-            <img src={s.thumbUrl || s.previewUrl} alt={s.name} className="h-full w-full object-cover" />
-            {s.status === 'uploading' ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-scrim/30">
-                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-              </div>
-            ) : null}
-            {s.status === 'error' ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-rose-900/40 text-role-micro uppercase text-white">
-                Failed
-              </div>
-            ) : null}
-            <IconButton
-              onClick={() => staging.remove(s.tempId)}
-              ariaLabel="Remove"
-              icon={<X className="h-2.5 w-2.5" />}
-              // ds-allow-raw-neutral: glass overlay pinned on an image thumbnail — photo doesn't theme, stays dark
-              className="absolute right-0.5 top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-scrim/70 text-white hover:bg-gray-900"
-            />
-          </div>
-        ))}
-      </div>
-    ) : null;
+  const stagedThumbs = (
+    <ComposerStagedPhotoStrip
+      staged={staging.staged}
+      onRemove={staging.remove}
+      className="mb-2"
+    />
+  );
 
   const busy = !canPost || reply.isPending || staging.uploading;
 

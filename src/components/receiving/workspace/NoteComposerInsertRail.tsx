@@ -3,12 +3,18 @@
 import { type ReactNode, useRef, useState } from 'react';
 import { Loader2, Plus } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Popover } from '@/design-system/primitives/Popover';
 import { cn } from '@/utils/_cn';
 import {
+  ComposerPlusMenuPanel,
+} from '@/components/composer/ComposerPlusMenu';
+import {
+  NOTE_INSERT_MENU_ICON_CELL,
   NOTE_INSERT_MENU_ICON_TONE,
+  NOTE_INSERT_MENU_ROW,
   NOTE_INSERT_TRIGGER_BTN,
   NOTE_INSERT_TRIGGER_BTN_ACTIVE,
+  NOTE_INSERT_TRIGGER_COMPOSER_BTN,
+  NOTE_INSERT_TRIGGER_COMPOSER_BTN_ACTIVE,
   NOTE_INSERT_TRIGGER_DOCK_BTN,
   NOTE_INSERT_TRIGGER_DOCK_BTN_ACTIVE,
   NOTE_OVERLAY_ICON,
@@ -33,8 +39,8 @@ export type NoteComposerInsertAction = {
  *
  * @param placement — `overlay` (default) absolute corner; `inline` for
  *   OmnichannelComposerDock footer rows (no absolute positioning).
- * @param trigger — `chip` (default 22×22); `dock` = flush h-11 edge cell,
- *   transparent at rest · white only while open (Unbox dogfood label-note).
+ * @param trigger — `chip` (default 22×22); `dock` = flush h-11 edge cell;
+ *   `composer` = circular h-8 + in the station composer action bar.
  * @param className — absolute inset override when `placement="overlay"`.
  *   Default is {@link WORKSPACE_NESTED_OVERLAY_CORNER}.
  */
@@ -47,32 +53,46 @@ export function NoteComposerInsertRail({
   actions: NoteComposerInsertAction[];
   className?: string;
   placement?: 'overlay' | 'inline';
-  trigger?: 'chip' | 'dock';
+  trigger?: 'chip' | 'dock' | 'composer';
 }) {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  // Chip/overlay hide when empty; dock always paints the flush white `+`.
-  if (actions.length === 0 && triggerVariant !== 'dock') return null;
+  // Chip/overlay hide when empty; dock/composer always paint the + affordance.
+  if (actions.length === 0 && triggerVariant !== 'dock' && triggerVariant !== 'composer') {
+    return null;
+  }
 
   const triggerIdle =
-    triggerVariant === 'dock' ? NOTE_INSERT_TRIGGER_DOCK_BTN : NOTE_INSERT_TRIGGER_BTN;
+    triggerVariant === 'dock'
+      ? NOTE_INSERT_TRIGGER_DOCK_BTN
+      : triggerVariant === 'composer'
+        ? NOTE_INSERT_TRIGGER_COMPOSER_BTN
+        : NOTE_INSERT_TRIGGER_BTN;
   const triggerActive =
     triggerVariant === 'dock'
       ? NOTE_INSERT_TRIGGER_DOCK_BTN_ACTIVE
-      : NOTE_INSERT_TRIGGER_BTN_ACTIVE;
+      : triggerVariant === 'composer'
+        ? NOTE_INSERT_TRIGGER_COMPOSER_BTN_ACTIVE
+        : NOTE_INSERT_TRIGGER_BTN_ACTIVE;
   const hasActions = actions.length > 0;
 
   const trigger = (
-    <div className={cn('pointer-events-auto', triggerVariant === 'dock' && 'h-11 w-11')}>
+    <div
+      className={cn(
+        'pointer-events-auto',
+        triggerVariant === 'dock' && 'h-11 w-11',
+        triggerVariant === 'composer' && 'h-8 w-8',
+      )}
+    >
       <HoverTooltip label="Insert into note" asChild>
-        {/* ds-raw-button */}
         <button
           ref={triggerRef}
           type="button"
           aria-haspopup="menu"
           aria-expanded={menuOpen}
-          aria-label="Insert into note"
+          aria-label={triggerVariant === 'composer' ? 'Add context' : 'Insert into note'}
+          data-testid={triggerVariant === 'composer' ? 'composer-plus' : undefined}
           disabled={!hasActions}
           onClick={() => {
             if (!hasActions) return;
@@ -87,16 +107,17 @@ export function NoteComposerInsertRail({
           <Plus className={NOTE_OVERLAY_ICON} />
         </button>
       </HoverTooltip>
-      <Popover
+      <ComposerPlusMenuPanel
         open={menuOpen && hasActions}
         onClose={() => setMenuOpen(false)}
         anchorRef={triggerRef}
-        placement={placement === 'inline' || triggerVariant === 'dock' ? 'top-start' : 'bottom-end'}
-        level="panelOverlay"
-        role="menu"
-        aria-label="Insert into note"
-        padded={false}
-        className="w-56 p-1"
+        ariaLabel="Insert into note"
+        data-testid={triggerVariant === 'composer' ? 'composer-plus-menu' : undefined}
+        placement={
+          placement === 'inline' || triggerVariant === 'dock' || triggerVariant === 'composer'
+            ? 'top-start'
+            : 'bottom-end'
+        }
       >
         {actions.map((action) => (
           <button
@@ -108,11 +129,11 @@ export function NoteComposerInsertRail({
               action.onClick();
               setMenuOpen(false);
             }}
-            className="ds-raw-button flex w-full items-center gap-2 rounded-md border-0 px-2 py-1.5 text-left text-role-caption font-semibold text-text-muted shadow-none outline-none transition-colors hover:bg-surface-hover hover:text-text-default disabled:cursor-not-allowed disabled:opacity-50"
+            className={NOTE_INSERT_MENU_ROW}
           >
             <span
               className={cn(
-                'inline-flex h-[22px] w-[22px] shrink-0 items-center justify-center',
+                NOTE_INSERT_MENU_ICON_CELL,
                 NOTE_INSERT_MENU_ICON_TONE[action.id] ?? 'text-text-muted',
               )}
               aria-hidden
@@ -126,16 +147,17 @@ export function NoteComposerInsertRail({
             <span className="min-w-0 flex-1 truncate">{action.label}</span>
           </button>
         ))}
-      </Popover>
+      </ComposerPlusMenuPanel>
     </div>
   );
 
-  if (placement === 'inline' || triggerVariant === 'dock') {
+  if (placement === 'inline' || triggerVariant === 'dock' || triggerVariant === 'composer') {
     return (
       <div
         className={cn(
           'relative shrink-0',
           triggerVariant === 'dock' && 'h-11 w-11',
+          triggerVariant === 'composer' && 'h-8 w-8',
           className,
         )}
       >

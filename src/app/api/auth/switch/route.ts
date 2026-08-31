@@ -1,7 +1,12 @@
 /**
  * POST /api/auth/switch
  *
- * Body: { staffId: number, pin: string, deviceKind?: 'station' | 'personal' }
+ * Body: { staffId: number, pin: string, deviceKind?: 'station' | 'personal',
+ *         persistent?: boolean }
+ *
+ * `persistent` ("Keep me signed in") is omitted by the switch sheet, which has
+ * no checkbox — it then INHERITS the session being switched away from, because
+ * this is a re-mint on the same physical device.
  *
  * Like /signin, but the caller is already authenticated as some OTHER staff.
  * The current session is revoked first (clean audit trail; the prior sid
@@ -16,6 +21,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { verifyStaffPin, PinError } from '@/lib/auth/pin';
 import {
   createSession,
+  asPersistentFlag,
   cookieMaxAgeForSession,
   loadSession,
   revokeSession,
@@ -80,12 +86,17 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'ACCOUNT_NOT_ACTIVE', status: row.status }, { status: 403 });
     }
 
+    const persistent = (body as { persistent?: unknown }).persistent === undefined
+      ? (prev?.persistent ?? false)
+      : asPersistentFlag((body as { persistent?: unknown }).persistent);
+
     const session = await createSession({
       staffId,
       deviceKind,
       deviceLabel,
       ip,
       userAgent: ua,
+      persistent,
     });
 
     // Revoke the previous session AFTER the new one is created so a crash
@@ -100,6 +111,7 @@ export async function POST(req: NextRequest) {
       ip, userAgent: ua,
       detail: {
         deviceKind,
+        persistent,
         previousStaffId: prev?.staffId ?? null,
         previousSid: prev?.sid ?? null,
       },

@@ -11,7 +11,12 @@
  * Mirrors /api/auth/switch (revoke-prev-after-new, cookie overwrite, audit) but
  * replaces the PIN check with the org-flag + same-org gate in evaluateActAs.
  *
- * Body: { staffId: number, deviceKind?: 'personal' | 'station' }
+ * Body: { staffId: number, deviceKind?: 'personal' | 'station', persistent?: boolean }
+ *
+ * `persistent` is the sign-in page's "Keep me signed in" checkbox. Omitted, it
+ * INHERITS the caller's session — acting as a staff member is a re-mint on the
+ * same device, so the device's persistence choice carries over rather than
+ * silently downgrading to the idle window.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -43,6 +48,7 @@ function clientIp(req: NextRequest): string | null {
 const Body = z.object({
   staffId: z.number().int().positive(),
   deviceKind: z.enum(['personal', 'station']).optional(),
+  persistent: z.boolean().optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -118,7 +124,8 @@ export async function POST(req: NextRequest) {
   }
 
   const deviceKind: DeviceKind = parsed.deviceKind ?? 'personal';
-  const session = await createSession({ staffId: parsed.staffId, deviceKind, ip, userAgent: ua });
+  const persistent = parsed.persistent ?? prev.persistent;
+  const session = await createSession({ staffId: parsed.staffId, deviceKind, ip, userAgent: ua, persistent });
 
   // Revoke the previous (owner / prior act-as) session AFTER the new one exists.
   if (prev.staffId !== parsed.staffId) {
@@ -127,7 +134,7 @@ export async function POST(req: NextRequest) {
 
   await audit({
     staffId: parsed.staffId, sid: session.sid, event: 'signin.act_as', result: 'ok', ip, userAgent: ua,
-    detail: { previousStaffId: prev.staffId, previousSid: prev.sid, orgId: callerOrgId, deviceKind },
+    detail: { previousStaffId: prev.staffId, previousSid: prev.sid, orgId: callerOrgId, deviceKind, persistent },
   });
 
   const res = NextResponse.json({

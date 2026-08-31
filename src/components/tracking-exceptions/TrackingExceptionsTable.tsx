@@ -66,11 +66,11 @@ function compareTrackingExceptionRows(
 }
 
 /**
- * The status strip. `all` is deliberately absent: it is the ABSENCE of a status
- * filter, and a tab meaning "stop filtering" is a control that says nothing.
- * Clicking the lit tab clears back to it.
+ * The status vocabulary — lives in the ONE filter control (operator ruling
+ * 2026-08-30: selection tabs are filters). `all` is deliberately absent: it is
+ * the ABSENCE of a status filter; picking the active option clears back to it.
  */
-const STATUS_TABS: Array<{ id: TrackingExceptionStatusFilter; label: string }> = [
+const STATUS_OPTIONS: Array<{ id: TrackingExceptionStatusFilter; label: string }> = [
   { id: 'open', label: 'Open' },
   { id: 'resolved', label: 'Resolved' },
   { id: 'discarded', label: 'Discarded' },
@@ -194,13 +194,14 @@ export function TrackingExceptionsTable() {
           searchEmptyMessage="No exceptions match this search."
           scrollRef={scrollRef}
           search={{ value: search, onChange: setSearch, placeholder: 'Search tracking…' }}
-          tabs={STATUS_TABS}
-          activeTab={statusTab === 'all' ? undefined : statusTab}
-          onTabChange={(id) =>
-            setStatusTab(
-              id === statusTab ? 'all' : (id as TrackingExceptionStatusFilter),
-            )
-          }
+          filter={{
+            options: STATUS_OPTIONS.map((o) => ({ ...o, active: statusTab === o.id })),
+            onToggle: (id) =>
+              setStatusTab(
+                id === statusTab ? 'all' : (id as TrackingExceptionStatusFilter),
+              ),
+            onClearAll: () => setStatusTab('all'),
+          }}
           totalCount={total}
           renderGroup={(group, _stripe, { columns: visible }) => (
             <>{group.rows.map((row) => renderLeaf(row, visible))}</>

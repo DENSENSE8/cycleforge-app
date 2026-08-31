@@ -3,11 +3,9 @@
 import { GridCellDash } from '@/components/ui/grid-cells';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { triageLaneLabel } from '@/lib/receiving/triage-lane-policy';
-import { ReceivingChipValue } from './ReceivingChipValue';
 import {
-  receivingCellWantsChip,
   receivingDataCellClass,
-  receivingDataCellHighlightStyle,
+  receivingDataCellStyle,
   type ReceivingGridCellProps,
 } from './receiving-grid-cell-types';
 
@@ -28,17 +26,14 @@ export function ReceivingLocationCell({ col, rule, ctx }: ReceivingGridCellProps
       ? `${locLabel} · ${lane}`
       : locLabel
     : null;
-  const chip = receivingCellWantsChip(col, ctx);
   return (
     <div data-col="location" className={receivingDataCellClass(col, rule, ctx)}
-      style={receivingDataCellHighlightStyle(col, ctx)}>
+      style={receivingDataCellStyle(col, ctx)}>
       {locLabel ? (
         <HoverTooltip label={tip ?? locLabel} focusable={false}>
-          <ReceivingChipValue enabled={chip}>
-            <span className="min-w-0 truncate text-role-caption text-text-muted">
-              {locLabel}
-            </span>
-          </ReceivingChipValue>
+          <span className="min-w-0 truncate text-role-caption text-text-muted">
+            {locLabel}
+          </span>
         </HoverTooltip>
       ) : (
         <GridCellDash />

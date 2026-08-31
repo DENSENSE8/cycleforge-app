@@ -8,12 +8,29 @@
  * Rebuilt 2026-08-29 (Phase 4a, `docs/todo/one-sheet-table-sot-PLAN.md`). The
  * feed, the filters, the grouping and the empty state are the pre-teardown ones
  * — they were never the thing being rewritten. What changed is the mount: the
- * lane's period control now portals into the Sheets toolbar rather than a Band-1
- * strip, and the row count it used to print in a footer is the bottom bar's job.
+ * row count it used to print in a footer is the bottom bar's job.
+ *
+ * ## The history well
+ *
+ * Promoted to its own desk at `/shipping/shipped` on 2026-08-30, this lane is
+ * RAIL-LESS (Pattern E) — there is no left column for the shipped filter form
+ * to live in any more. So the period control and the refinements ride one
+ * compact row directly above the rows they scope: date/week · type · carrier ·
+ * status · needs-attention. Find stays on the table's own toolbar, because
+ * there is one find field per surface and {@link DataTable} owns it.
+ *
+ * The well is the WINDOW, and the window is the point: history opens on the
+ * current week, never on an unbounded archive.
+ *
+ * `embedded` (mobile tech / packer) keeps the bare table — those hosts draw
+ * their own chrome and scope the feed by props, not by URL.
  */
 
 import { useCallback, useMemo } from 'react';
 import { Button } from '@/design-system/primitives';
+import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
+import { ShippedCarrierFilters } from '@/components/shipping/shipped-filter/ShippedCarrierFilters';
+import { formatWeekRangeCompact } from '@/utils/date';
 import type { DashboardSearchSectionProps } from '@/components/dashboard/DashboardSearchSectionProps';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { Loader2 } from '@/components/Icons';
@@ -51,8 +68,7 @@ export interface DashboardShippedTableProps {
   toolbarPortalTarget?: HTMLElement | null;
   /**
    * Dashboard · Packed tab legacy lock — exact list for one outbound stage.
-   * Prefer {@link PackedOrdersTable} for the staged orders API; this remains for
-   * embedded callers that filter packer-log weeks by outbound state.
+   * Kept for embedded callers that filter packer-log weeks by outbound state.
    */
   lockedOutboundStatus?: OutboundState | null;
 }
@@ -81,6 +97,7 @@ export function DashboardShippedTable({
 
   const period = useShippedPeriodControls(filters);
   const periodRange = period.activeRange ?? filters.weekRange;
+  const { weekOffset, setPeriodWeek } = filters;
 
   const byId = useMemo(() => {
     const map = new Map<number, DerivedPackerRecord>();
@@ -146,8 +163,37 @@ export function DashboardShippedTable({
     </div>
   ) : null;
 
+  const historyWell = embedded ? null : (
+    <div
+      data-testid="shipped-history-well"
+      className="flex shrink-0 flex-wrap items-center gap-2 border-b border-border-soft bg-surface-card px-2 py-1.5"
+    >
+      {/* Stepping stays week-shaped: an explicit range is stepped by picking
+          another one, not by nudging a window it does not describe. */}
+      <DateRangePickerPill
+        label={formatWeekRangeCompact(periodRange.startStr, periodRange.endStr)}
+        count={totalCount}
+        presets={period.presets}
+        onSelectCustomRange={period.onSelectCustomRange}
+        activeRange={period.activeRange}
+        onClear={period.onClear}
+        weekNav={
+          period.activeRange
+            ? undefined
+            : {
+                weekOffset,
+                onPrev: () => setPeriodWeek(weekOffset + 1),
+                onNext: () => setPeriodWeek(Math.max(0, weekOffset - 1)),
+              }
+        }
+      />
+      <ShippedCarrierFilters layout="inline" />
+    </div>
+  );
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
+      {historyWell}
       {/* The period picker sits with the rows it scopes, not on a chrome row. */}
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col" data-testid="column-table-body">
         <OrdersGridHost

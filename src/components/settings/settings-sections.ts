@@ -20,7 +20,7 @@ export interface SettingsSectionOption {
 
 export const SETTINGS_SECTION_OPTIONS: SettingsSectionOption[] = [
   { id: 'hardware',      label: 'Hardware',      description: 'Printer, scanner, scale',                          group: 'Personal' },
-  { id: 'workstation',   label: 'Workstation',   description: 'Station, role, location',                          group: 'Personal' },
+  { id: 'workstation',   label: 'Workstation',   description: 'Station, role, this device',                       group: 'Personal' },
   { id: 'quick-access',  label: 'Quick Access',  description: 'Bottom-right shortcuts & pins',                    group: 'Personal' },
   { id: 'appearance',    label: 'Appearance',    description: 'Density, text size',                               group: 'Personal' },
   { id: 'keyboard',      label: 'Keyboard',      description: 'Focus-scan hotkey & shortcut policy',              group: 'Personal' },

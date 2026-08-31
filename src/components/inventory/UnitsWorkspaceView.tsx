@@ -94,7 +94,6 @@ export function UnitsWorkspaceView() {
 
   // ▦ column-display portal target — the header renders the portal div, the grid
   // portals its column-display trigger into it (Band-3 norm, minimal here).
-  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
 
   const onRowClick = useCallback(
     (row: UnitsOverviewRow) => {

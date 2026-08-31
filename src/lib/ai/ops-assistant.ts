@@ -1,4 +1,5 @@
 import { extractParams } from '@/lib/ai/intent-router';
+import { shippingShippedHref } from '@/lib/shipping/shipped-desk';
 import { getPackedOrdersForAi, type ShippedOrder } from '@/lib/neon/orders-queries';
 import { resolveAiTimeframe } from '@/lib/ai/date-range';
 import type {
@@ -18,13 +19,13 @@ export interface LocalAiResolution {
   analysis: AiStructuredAnswer;
 }
 
+/**
+ * "Take me there" for a shipped answer — the Shipped DESK, not the To-ship
+ * queue with a `?shipped=` flag on it. The assistant answers questions about
+ * what already left, and that surface has had its own door since 2026-08-30.
+ */
 function buildDashboardHref(timeframe: AiTimeframe): string {
-  const params = new URLSearchParams();
-  params.set('shipped', '');
-  if (typeof timeframe.weekOffset === 'number' && timeframe.weekOffset > 0) {
-    params.set('shippedWeekOffset', String(timeframe.weekOffset));
-  }
-  return `/shipping/orders?${params.toString()}`;
+  return shippingShippedHref({ weekOffset: timeframe.weekOffset ?? null });
 }
 
 function buildStaffHref(dimension: ShippingDimension, staffId: number | null): string | undefined {
@@ -116,7 +117,7 @@ function buildSampleRecords(records: ShippedOrder[]): AiSampleRecord[] {
       record.packed_by_name ? `Packer ${record.packed_by_name}` : null,
       record.tested_by_name ? `Tester ${record.tested_by_name}` : null,
     ].filter(Boolean).join(' | '),
-    href: `/shipping/orders?shipped=&search=${encodeURIComponent(String(record.order_id || record.id))}`,
+    href: shippingShippedHref({ search: String(record.order_id || record.id) }),
   }));
 }
 

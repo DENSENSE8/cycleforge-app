@@ -40,6 +40,7 @@ import {
   filterPageChildren,
   getSidebarPageNav,
   getStationSubgroupDef,
+  hasDeskPageChrome,
   stationSubgroupMembers,
   stationSubgroupOfPage,
   type SidebarIconComponent,
@@ -171,7 +172,10 @@ function resolveHeaderPage(
       }
     }
 
-    const children = filtered.children;
+    // A desk that draws its own children as in-page tabs keeps a plain identity
+    // face here — the switcher exists so a page's children stay reachable with
+    // the spine closed, and on those desks the tab band already is that door.
+    const children = hasDeskPageChrome(filtered) ? undefined : filtered.children;
     return {
       id: filtered.id,
       label: filtered.label,

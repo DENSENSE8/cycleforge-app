@@ -24,7 +24,15 @@ export type ToShipTriageFacet =
   | 'must_ship'
   | 'urgent'
   | 'blocked'
-  | 'awaiting_customer';
+  | 'awaiting_customer'
+  /**
+   * The CAGED set (`?cage=1`) — orders held out of the live queue until their
+   * release gates pass. It is a facet like the others because it answers the
+   * same kind of question ("why is this not normal work right now?"), and
+   * because being mutually exclusive with them is correct: a caged order has
+   * no lifecycle stage, no ship-by and no pack bench to filter on yet.
+   */
+  | 'caged';
 
 export const TO_SHIP_TRIAGE_FACET_LABEL: Record<ToShipTriageFacet, string> = {
   all: 'All',
@@ -32,6 +40,7 @@ export const TO_SHIP_TRIAGE_FACET_LABEL: Record<ToShipTriageFacet, string> = {
   urgent: 'Urgent',
   blocked: 'Out of stock',
   awaiting_customer: 'Awaiting customer',
+  caged: 'Caged',
 };
 
 export interface DashboardSelectionSnapshot {
@@ -122,6 +131,11 @@ export function isPrePackOrderView(view: DashboardOrderView): boolean {
 export function getToShipTriageFacetFromSearch(
   searchParams: Pick<URLSearchParams, 'get' | 'has'>,
 ): ToShipTriageFacet {
+  // Caged wins the precedence chain: it swaps the desk's whole data source, so
+  // a stray `?late=1` riding along in a pasted link must not out-rank it.
+  if (searchParams.get('cage') === '1' || searchParams.get('cage') === 'true') {
+    return 'caged';
+  }
   const rowFlag = String(searchParams.get('rowFlag') || '').trim().toLowerCase();
   if (rowFlag === 'awaiting_customer') return 'awaiting_customer';
   const ustatus = String(searchParams.get('ustatus') || '').trim().toUpperCase();
@@ -147,6 +161,7 @@ export function applyToShipTriageFacet(
   params.delete('attention');
   params.delete('ustatus');
   params.delete('rowFlag');
+  params.delete('cage');
   // Facets own the refine; clear lifecycle presence flags + stage tab leftovers.
   params.delete('tested');
   params.delete('packed');
@@ -165,6 +180,9 @@ export function applyToShipTriageFacet(
       break;
     case 'awaiting_customer':
       params.set('rowFlag', 'awaiting_customer');
+      break;
+    case 'caged':
+      params.set('cage', '1');
       break;
     case 'all':
     default:

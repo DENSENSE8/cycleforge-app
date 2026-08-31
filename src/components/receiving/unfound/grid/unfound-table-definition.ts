@@ -3,8 +3,8 @@
  *
  * Re-declares nothing: columns + capabilities are the family SoT by reference;
  * the shell recipe, aria name, testid and prefs bucket are the literals the
- * mount used to carry. Note `inCellEdit: true` rides through untouched — it is
- * a property of the family bag, and the host does not gate on it.
+ * mount used to carry. Capabilities ride through untouched — they are a property
+ * of the family bag, and the host does not gate on them.
  */
 
 import type { QueueRow } from '../queue-table/unfound-queue-shared';

@@ -91,7 +91,7 @@ function StaffTaskInspectorBody({
 
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="staff-task-inspector">
-      <DeskRailChromeRow onClose={onClose} columnDisplay />
+      <DeskRailChromeRow onClose={onClose} />
 
       <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4">
         <PaneHeaderLabel

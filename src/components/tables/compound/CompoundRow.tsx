@@ -17,7 +17,7 @@
  *
  * - a {@link CompoundRowView} — the row's facts, from a pure adapter;
  * - the mounted `columns`;
- * - the capabilities it actually has (`select`, `onOpen`, `onCommitNote`);
+ * - the capabilities it actually has (`select`, `onOpen`);
  * - whatever DOM hooks its own interaction needs, passed straight through.
  *
  * There is deliberately no per-family prop for geometry, template, cell class,
@@ -38,7 +38,6 @@ import type { HTMLAttributes, ReactNode } from 'react';
 import {
   gridDataCellClass,
   LedgerGridLeafRow,
-  type GridColumnDisplayPref,
   type GridSurfaceCapabilities,
 } from '@/design-system/components/grid';
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
@@ -62,8 +61,6 @@ export interface CompoundRowProps<C extends CompoundRowColumn>
   view: CompoundRowView;
   selected: boolean;
   capabilities: Pick<GridSurfaceCapabilities, 'rowTriageFlags'>;
-  /** Per-staff column display prefs, keyed by `hideKey`. */
-  columnDisplay?: Readonly<Record<string, GridColumnDisplayPref>>;
   /** Present ⇒ the leading gutter paints a checkmark. See `CompoundSelect`. */
   select?: {
     checked: boolean | 'mixed';
@@ -75,8 +72,6 @@ export interface CompoundRowProps<C extends CompoundRowColumn>
   onOpen?: () => void;
   /** Extra verbs for this row's ⋮ menu, after "Open". */
   actions?: readonly CompoundRowAction[];
-  /** Present ⇒ the note line edits in place. Absent ⇒ read-only. */
-  onCommitNote?: (next: string) => void;
   /** Override mobile stacking (almost always false under LedgerGrid). */
   isMobile?: boolean;
 }
@@ -86,11 +81,9 @@ export function CompoundRow<C extends CompoundRowColumn>({
   view,
   selected,
   capabilities,
-  columnDisplay,
   select,
   onOpen,
   actions,
-  onCommitNote,
   isMobile = false,
   className,
   ...rowProps
@@ -105,11 +98,9 @@ export function CompoundRow<C extends CompoundRowColumn>({
       columns,
       rule,
       view,
-      columnDisplay,
       select,
       onOpen,
       actions,
-      onCommitNote,
     });
     if (cell) return cell;
 

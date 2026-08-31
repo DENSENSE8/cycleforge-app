@@ -25,6 +25,7 @@ See [`04-parked-surfaces.md`](04-parked-surfaces.md).
 | [`04-parked-surfaces.md`](04-parked-surfaces.md) | Routes frozen pending port. Not delete candidates. | **~90 routes** |
 | [`05-toship-port-spec.md`](05-toship-port-spec.md) | `/shipping/orders` → Unbox frame. The first port. | 4 gaps (1 disproven) |
 | [`06-shadcn-ds-replacement.md`](06-shadcn-ds-replacement.md) | The DS-replacement decision + which house laws it breaks. | 1,677 parked call sites |
+| [`07-slot-table-hand-models.md`](07-slot-table-hand-models.md) | Hand column models the slot engine replaces — per-`tableId` **why**, verified 2026-08-30. Desks stay. | **20** tables · 2 Orders bindings → 1 · Ready `tested` track · StationListTable · `TABLE_COLUMNS` |
 | `tier1-unused-files.txt` | Raw knip file list (machine-readable). | 65 lines |
 | `tier2-dead-exports.tsv` | Raw `count \t file` (machine-readable). | 1,135 lines |
 
@@ -40,6 +41,7 @@ deletions — never to hide a finding.
 ## Relationship to the existing plans
 
 This directory **extends**, it does not replace:
+- [`docs/todo/slot-based-metadata-table-PLAN.md`](../todo/slot-based-metadata-table-PLAN.md) — slot engine; [`07`](07-slot-table-hand-models.md) is the per-`tableId` kill list (hand column models, not the desks).
 - [`docs/partial/DEAD_CODE_CLEANUP_PLAN.md`](../partial/DEAD_CODE_CLEANUP_PLAN.md) — 78% done, Phase 3 knip waves are the living backlog this feeds.
 - [`docs/todo/dead-exports-cleanup-HANDOFF.md`](../todo/dead-exports-cleanup-HANDOFF.md) — 15 batches landed; tier 2 here is the next tier.
 - [`docs/todo/pending-grid-dead-code-cleanup-PROMPT.md`](../todo/pending-grid-dead-code-cleanup-PROMPT.md) — grid-specific kill list, still valid.

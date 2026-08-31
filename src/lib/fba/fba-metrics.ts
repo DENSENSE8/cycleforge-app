@@ -19,6 +19,22 @@ export type FbaBoardStatusFilter =
   | 'LABEL_ASSIGNED'
   | 'OUT_OF_STOCK';
 
+/**
+ * The facets an operator can narrow BY, in lifecycle order. `ALL` is absent on
+ * purpose: it is the absence of a filter, not one of them — the filter menu's
+ * "Clear all" is how a narrowed board gets back to it, the same rule that keeps
+ * an "All" tab off a bottom strip.
+ */
+export const FBA_BOARD_STATUS_FACETS = [
+  'PLANNED',
+  'TESTED',
+  'PACKED',
+  'LABEL_ASSIGNED',
+  'OUT_OF_STOCK',
+] as const satisfies readonly FbaBoardStatusFilter[];
+
+export type FbaBoardStatusFacet = (typeof FBA_BOARD_STATUS_FACETS)[number];
+
 export interface FbaBoardStageCounts {
   lines: number;
   units: number;

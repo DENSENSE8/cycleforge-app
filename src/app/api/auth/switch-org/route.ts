@@ -86,12 +86,15 @@ export async function POST(req: NextRequest) {
 
     // Mint a session for the target-org profile (inherits its organization_id),
     // reusing the current device kind/label so session policy is unchanged.
+    // "Keep me signed in" rides along too — switching workspaces is a re-mint
+    // on the same device, not a fresh sign-in decision.
     const session = await createSession({
       staffId: target.staffId,
       deviceKind: prev.deviceKind,
       deviceLabel: prev.deviceLabel,
       ip,
       userAgent: ua,
+      persistent: prev.persistent,
     });
 
     // Revoke the old session AFTER minting the new one (crash-safe ordering).

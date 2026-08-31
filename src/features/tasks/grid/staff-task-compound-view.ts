@@ -71,9 +71,9 @@ export function staffTaskCompoundView(
     title: row.text,
     // The station is the task's QUALIFIER — the thing that says which list this
     // belongs to — so it takes the line a warehouse row gives to its note.
-    // `staff_todos` has no note column, which is also why no `onCommitNote` is
-    // wired: read-only-ness is the ABSENCE of the capability, never a second
-    // cell with the editor removed.
+    // `staff_todos` has no note column of its own, so the station is what the
+    // line carries. Nothing edits here — the compound note line is read-only on
+    // every family since the inline editor was removed.
     note: station,
     // A personal to-do has no order and no carrier. Honest nulls.
     orderId: null,

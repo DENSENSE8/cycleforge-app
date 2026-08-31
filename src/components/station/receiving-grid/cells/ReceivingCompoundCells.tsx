@@ -106,8 +106,6 @@ export function renderReceivingCompoundCell(
     // Only the five view tracks need the adapter run; the gutter does not, and
     // this is called once per visible cell.
     view: col.key === 'select' ? EMPTY_VIEW : viewFor(ctx),
-    columnDisplay: ctx.columnDisplay,
-    onCommitNote: ctx.onCommitNote,
     onOpen: ctx.onOpenRecord,
     select: selectFor(ctx),
   });

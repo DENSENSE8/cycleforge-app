@@ -108,7 +108,7 @@ test.describe('Import / Add Order — non-modal right rail', () => {
     await expect(table).toBeVisible({ timeout: 20_000 });
     const row = table.locator('[data-order-row-id]').first();
     await expect(row).toBeVisible({ timeout: 20_000 });
-    await row.locator('[data-col="title"]').click();
+    await row.locator('[data-col="item"]').click();
 
     const orderInspector = page.locator('aside[role="region"][aria-label^="Order "]');
     await expect(orderInspector).toBeVisible({ timeout: 20_000 });

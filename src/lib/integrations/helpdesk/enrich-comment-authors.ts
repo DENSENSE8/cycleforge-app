@@ -7,6 +7,11 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import type { ZendeskComment } from '@/lib/zendesk';
 import { getCachedUsers, upsertCachedUsers } from '@/lib/zendesk-users-cache';
 import type { HelpdeskProvider } from './types';
+import {
+  applyStaffAuthor,
+  staffAuthorsByCommentId,
+  staffAuthorsByEmail,
+} from './comment-staff';
 
 export async function enrichCommentAuthors(
   organizationId: OrgId,
@@ -36,6 +41,19 @@ export async function enrichCommentAuthors(
     } as ZendeskComment;
   });
 
+  const [byCommentId, byEmail] = await Promise.all([
+    staffAuthorsByCommentId(
+      organizationId,
+      enriched.map((c) => c.id),
+    ),
+    staffAuthorsByEmail(
+      organizationId,
+      enriched
+        .map((c) => String((c as { author_email?: string | null }).author_email ?? ''))
+        .filter(Boolean),
+    ),
+  ]);
+
   const missing = ids.filter((id) => !agentsById.has(id) && !cached.has(id));
   if (missing.length) {
     after(async () => {
@@ -48,5 +66,17 @@ export async function enrichCommentAuthors(
     });
   }
 
-  return enriched;
+  return enriched.map(
+    (c) =>
+      applyStaffAuthor(
+        c as ZendeskComment & {
+          author_email?: string | null;
+          author_name?: string;
+          author_photo?: string | null;
+          author_staff_id?: number | null;
+        },
+        byCommentId,
+        byEmail,
+      ) as ZendeskComment,
+  );
 }

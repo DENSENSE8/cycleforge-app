@@ -9,7 +9,7 @@
  * no bottom ContextualSelectionBar capsule.
  */
 
-import { Suspense, useState } from 'react';
+import { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
@@ -43,17 +43,26 @@ export interface ShippingWorkspaceViewProps {
 /**
  * The bench strip. `pending` is the default body, so it lights no tab — the
  * same rule every other strip follows.
+ *
+ * There is no **All** entry: `all` is the absence of a narrowing, and the
+ * unfiltered body is what shows when no tab is lit, so a tab for it is a
+ * control that means *stop* (`DataTable`'s docblock, § "All" is not a tab).
+ * Clicking the lit tab clears back to the default body — the same gesture
+ * `useToShipChrome` uses.
  */
 const SHIPPING_VIEW_TABS = [
   { id: 'urgent', label: 'Urgent' },
-  { id: 'all', label: 'All' },
   { id: 'history', label: 'History' },
 ] as const;
+
+/** Ids the strip can light. Anything else is the unlit default body. */
+const SHIPPING_LIT_TABS: ReadonlySet<string> = new Set(
+  SHIPPING_VIEW_TABS.map((t) => t.id),
+);
 
 export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
   const { shipTab, setShipTab } = useShippingWorkspaceTab();
   const { newOpen, closeNew } = useNewOrderParam();
-  const [controlsEl, setControlsEl] = useState<HTMLDivElement | null>(null);
   const parsedTechId = parseInt(techId, 10);
   const queueTab = shipTab === 'pending' || shipTab === 'urgent';
   // Pending / Urgent reuse the dashboard To Ship selection scope + rail actions.
@@ -107,7 +116,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
       {/* The bench switches body on a tab; each body foots its own strip. */}
       <TableStatusBar
         tabs={SHIPPING_VIEW_TABS}
-        activeTab={shipTab === 'pending' ? undefined : shipTab}
+        activeTab={SHIPPING_LIT_TABS.has(shipTab) ? shipTab : undefined}
         onTabChange={(id) =>
           setShipTab(id === shipTab ? 'pending' : (id as ShippingWorkspaceTab))
         }

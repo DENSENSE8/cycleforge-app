@@ -9,7 +9,8 @@
  *   stay separate (sign-in vs first-time set).
  */
 
-import { Button } from '@/design-system/primitives';
+// Deep path, not the barrel — see the note in `src/app/signin/page.tsx`.
+import { Button } from '@/design-system/primitives/Button';
 import { StaffAvatar } from '@/components/identity';
 import { numpadTheme } from '@/components/auth/theme-numpad';
 import type { StationTheme } from '@/utils/staff-colors';

@@ -87,6 +87,12 @@ export interface AuthSessionUser {
     deviceKind: 'station' | 'personal' | 'phone';
     deviceLabel: string | null;
     expiresAt: string;
+    /**
+     * "Keep me signed in" for THIS device. Surfaced so the feature is
+     * observable without a debug UI: open /api/auth/session and read it
+     * beside `expiresAt` (~1 year when true, the device window when false).
+     */
+    persistent: boolean;
   };
 }
 

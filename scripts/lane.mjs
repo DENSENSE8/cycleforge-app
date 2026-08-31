@@ -27,7 +27,9 @@
  * ## What this script will not do
  *
  * It never starts or stops `cycleforge-dev.service` (:3050) or
- * `cloudflared.service` (usav-dev). Those are the operator's, per AGENTS.md.
+ * `cloudflared.service` (usav-dev) — not because they are off-limits (that
+ * carve-out was struck 2026-08-30; see AGENTS.md), but because this script is
+ * about LANES. Restart main's two units directly with `systemctl --user`.
  * `lane up` / `lane down` touch only `cycleforge-lane*@<name>` units.
  *
  * Usage:

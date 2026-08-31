@@ -1,7 +1,7 @@
 /**
  * POST /api/auth/passkey/authenticate/finish
  *
- * Body: { response: AuthenticationResponseJSON, deviceKind?, deviceLabel? }
+ * Body: { response: AuthenticationResponseJSON, deviceKind?, deviceLabel?, persistent? }
  *
  * Verifies the assertion, bumps the credential counter, creates a session,
  * sets the cookie. Same downstream behaviour as PIN signin.
@@ -15,6 +15,7 @@ import {
 } from '@/lib/auth/webauthn';
 import {
   createSession,
+  asPersistentFlag,
   cookieMaxAgeForSession,
   SESSION_COOKIE_NAME,
   type DeviceKind,
@@ -52,6 +53,7 @@ export async function POST(req: NextRequest) {
     const response = (body as { response?: unknown }).response as AuthenticationResponseJSON | undefined;
     const deviceKind = asDeviceKind((body as { deviceKind?: unknown }).deviceKind);
     const deviceLabel = ((body as { deviceLabel?: unknown }).deviceLabel ?? null) as string | null;
+    const persistent = asPersistentFlag((body as { persistent?: unknown }).persistent);
     if (!response) {
       return NextResponse.json({ error: 'INVALID_REQUEST' }, { status: 400 });
     }
@@ -107,6 +109,8 @@ export async function POST(req: NextRequest) {
       deviceLabel,
       ip,
       userAgent: ua,
+      persistent,
+      // Ignored when persistent — see createSession.
       ...(activeShift ? { expiresAt: activeShift.ends_at } : {}),
     });
 
@@ -117,7 +121,7 @@ export async function POST(req: NextRequest) {
       event: 'signin.passkey', result: 'ok',
       ip, userAgent: ua,
       detail: {
-        deviceKind,
+        deviceKind, persistent,
         passkeyId: result.passkey.id,
         shiftId: activeShift?.id ?? null,
         punchId: punch?.id ?? null,

@@ -1,74 +1,77 @@
 'use client';
 
 /**
- * Zone 2 of `/search?sel=unit:` — the serial unit centre.
+ * `/search?sel=unit:{id}` centre — Status band, then Items band.
  *
- * Top to bottom, and it is a contract:
- *   1. Unit identity — pinned by `EntityStationPane` as a flex sibling above
- *      the scrollport, not `position: sticky`.
- *   2. Facts — the four things that identify a unit to an operator and which
- *      the identity BAR has no slot for: SKU, grade, status, location.
+ * This used to be a single `Unit` block of `OrderFactList` rows (SKU, Product,
+ * Status, Grade, Location). That demoted status from a band to a table cell and
+ * never showed the unit as an ITEM at all, so a unit read as a spec sheet while
+ * an order two keystrokes away read as a record. Both now compose
+ * {@link SearchEntityCentre}; only the contents differ, which is the one
+ * difference that was ever real.
  *
- * Preview search does not mount a warehouse thread.
- *
- * **This is where the identity VM's `lifecycle` half is consumed.**
- * `unitLifecycleFace` resolves a raw `current_status` through the unit-status
- * SoT (dot + pill + label) and shows an unknown status VERBATIM rather than
- * swallowing it into "Unknown".
- *
- * **No grade / hold controls.** Preview is the ABSENCE of the capability, never
- * a fork with the editors deleted: `UnitDetailsPanel` (the inventory overlay,
- * a WORK surface) still owns `GradeActionCard` and `HoldActionCard`.
- *
- * **Zero padding here** — `StationWorkbench` owns the column pad; rhythm is
- * flex `gap`.
+ * The facts the old list carried are not lost. SKU, product and grade are the
+ * item row's own ledger; status and location are the status band.
  */
 
-import { OrderFactList, OrderFactRow } from '@/components/order-record/order-record-card';
-import { StationCollapsibleBlock } from '@/components/station/collapse';
+import { SearchEntityCentre } from './SearchEntityCentre';
+import { SearchUnitItems } from './SearchUnitItems';
 import type { AutoCollapseController } from '@/components/station/collapse';
 import type { UnitStationIdentityVM } from '@/components/station/unit';
+import type { SerialUnitDetailPayload } from '@/components/inventory/types';
 import { GridStatusCellValue } from '@/components/ui/grid-cells';
 
+/**
+ * Where the unit IS — the lifecycle pill, and the bin it is sitting in.
+ *
+ * A unit's status is a state, not a pipeline: it has no tested → packed →
+ * shipped spine of its own to draw. So the band paints the state face directly
+ * rather than borrowing `OrderPipelineSection`, which is typed to a
+ * `ShippedOrder` and would be a wrong answer rendered confidently.
+ */
+function UnitStatusBand({ vm }: { vm: UnitStationIdentityVM }) {
+  const location = vm.location?.trim() || '';
+  return (
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2">
+      {vm.lifecycle ? (
+        <GridStatusCellValue
+          label={vm.lifecycle.label}
+          toneClass={vm.lifecycle.pillClass}
+          dotClass={vm.lifecycle.dotClass}
+          tooltip={vm.lifecycle.tip}
+        />
+      ) : (
+        <span className="text-role-caption text-text-faint">No status</span>
+      )}
+      <span className="flex items-baseline gap-2">
+        <span className="text-role-eyebrow uppercase tracking-wide text-text-faint">
+          Location
+        </span>
+        <span className="font-mono text-role-caption text-text-default">
+          {location || '—'}
+        </span>
+      </span>
+    </div>
+  );
+}
+
 export function SearchUnitCentre({
-  unitId,
+  unit,
   vm,
   collapse,
+  imageUrl = null,
 }: {
-  unitId: number;
+  unit: SerialUnitDetailPayload['serial_unit'];
   vm: UnitStationIdentityVM;
-  /** Shared controller — blocks collapse on ONE signal, not per-block state. */
   collapse: AutoCollapseController;
+  imageUrl?: string | null;
 }) {
-  void unitId;
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <StationCollapsibleBlock
-        label="Unit"
-        collapsed={collapse.collapsed}
-        onToggle={collapse.toggle}
-        testId="search-unit-facts-block"
-      >
-        <OrderFactList cols={2}>
-          <OrderFactRow label="SKU" value={vm.sku} mono omitWhenEmpty />
-          <OrderFactRow label="Product" value={vm.productTitle} span omitWhenEmpty />
-          <OrderFactRow
-            label="Status"
-            value={
-              vm.lifecycle ? (
-                <GridStatusCellValue
-                  label={vm.lifecycle.label}
-                  toneClass={vm.lifecycle.pillClass}
-                  dotClass={vm.lifecycle.dotClass}
-                  tooltip={vm.lifecycle.tip}
-                />
-              ) : null
-            }
-          />
-          <OrderFactRow label="Grade" value={vm.conditionText} />
-          <OrderFactRow label="Location" value={vm.location} mono omitWhenEmpty />
-        </OrderFactList>
-      </StationCollapsibleBlock>
-    </div>
+    <SearchEntityCentre
+      entity="unit"
+      collapse={collapse}
+      status={<UnitStatusBand vm={vm} />}
+      items={<SearchUnitItems unit={unit} imageUrl={imageUrl} />}
+    />
   );
 }

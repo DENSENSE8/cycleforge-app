@@ -61,5 +61,4 @@ export const PRODUCT_TABLES: readonly ProductTable[] = [
   { tableId: 'bins', label: 'Warehouse bins' },
   { tableId: 'warranty', label: 'Warranty claims' },
   { tableId: 'my-day', label: 'Home · Today' },
-  { tableId: 'fba', label: 'Amazon Prep board' },
 ] as const;

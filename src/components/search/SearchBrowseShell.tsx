@@ -26,10 +26,12 @@ import {
 } from '@/lib/search/search-order-resolve-query';
 import {
   SEARCH_ETYPE_PARAM,
+  SEARCH_CHAN_PARAM,
   SEARCH_HSTAT_PARAM,
   SEARCH_SORT_PARAM,
   parseSearchDisplaySort,
   parseSearchEtype,
+  parseSearchChan,
   parseSearchHstat,
 } from '@/lib/search/search-refine';
 import {
@@ -65,12 +67,17 @@ export function SearchBrowseShell({
     () => parseSearchHstat(searchParams.get(SEARCH_HSTAT_PARAM)),
     [searchParams],
   );
+  const chan = useMemo(
+    () => parseSearchChan(searchParams.get(SEARCH_CHAN_PARAM)),
+    [searchParams],
+  );
   const sort = useMemo(
     () => parseSearchDisplaySort(searchParams.get(SEARCH_SORT_PARAM)),
     [searchParams],
   );
 
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
+  const [channelOptions, setChannelOptions] = useState<string[]>([]);
   const [needRetrieve, setNeedRetrieve] = useState(false);
   const [retrieveLoading, setRetrieveLoading] = useState(false);
   const [retrieveSettled, setRetrieveSettled] = useState(false);
@@ -258,7 +265,10 @@ export function SearchBrowseShell({
         <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden">
           {showRefineChrome ? (
             <div className="flex shrink-0 items-center justify-end gap-2 border-b border-border-hairline bg-surface-card px-3 py-1.5">
-              <SearchRefineControls statusOptions={statusOptions} />
+              <SearchRefineControls
+                statusOptions={statusOptions}
+                channelOptions={channelOptions}
+              />
             </div>
           ) : null}
           <SearchResultsSurface
@@ -267,6 +277,7 @@ export function SearchBrowseShell({
             query={q}
             etype={etype}
             hstat={hstat}
+            chan={chan}
             sort={sort}
             density="comfortable"
             showJourneyAction={false}
@@ -276,6 +287,7 @@ export function SearchBrowseShell({
             onLoadingChange={handleLoadingChange}
             onSettle={handleRetrieveSettle}
             onStatusOptions={setStatusOptions}
+            onChannelOptions={setChannelOptions}
           />
         </div>
       ) : (

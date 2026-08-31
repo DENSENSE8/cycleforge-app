@@ -5,11 +5,10 @@ import {
   DISPLAYS_FLUSH_HOST,
 } from '@/design-system/shells/detail-stack/layout';
 import { ShippedOrder } from '@/lib/neon/orders-queries';
-import { DashboardDetailsStack } from '@/components/shipped/stacks/DashboardDetailsStack';
-import { TechDetailsStack } from '@/components/shipped/stacks/TechDetailsStack';
-import { PackerDetailsStack } from '@/components/shipped/stacks/PackerDetailsStack';
-import type { DetailsStackDurationData, ShippedActiveInput } from '@/components/shipped/stacks/types';
-import { ShippedDetailsPanelContent, type ShippedActiveSection } from '@/components/shipped/ShippedDetailsPanelContent';
+import type {
+  ShippedActiveInput,
+  ShippedActiveSection,
+} from '@/components/shipped/stacks/types';
 import { OrderTimelineSection } from '@/components/shipped/OrderTimelineSection';
 import { SerialJourneySection } from '@/components/serial/SerialJourneySection';
 import { OrderDocumentsSection } from '@/components/shipped/OrderDocumentsSection';
@@ -24,28 +23,6 @@ import {
 } from '@/lib/shipping/order-inspector-topics';
 import { cn } from '@/utils/_cn';
 
-export interface ShippedStackActionBar {
-  onClose: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-  onAssign?: () => void;
-}
-
-export interface ShippedEditableFields {
-  orderNumber: string;
-  itemNumber: string;
-  trackingNumber: string;
-  shipByDate: string;
-  isSavingInlineFields: boolean;
-  isSavingShipByDate: boolean;
-  setOrderNumber: (v: string) => void;
-  setItemNumber: (v: string) => void;
-  setTrackingNumber: (v: string) => void;
-  setShipByDate: (v: string) => void;
-  onSaveInline: () => void | Promise<void>;
-  onSaveShipByDate: (shipByDate: string) => void | Promise<void>;
-}
-
 export interface ShippedDetailsBodyProps {
   context: NonNullable<'dashboard' | 'queue' | 'fulfillment' | 'labels' | 'staged' | 'shipped' | 'station' | 'packer' | 'packed'>;
   /**
@@ -56,22 +33,14 @@ export interface ShippedDetailsBodyProps {
    * different way. `resolveOrderInspectorContext` owns that decision now.
    */
   inspectorContext: OrderInspectorContext;
-  /** Slide-over: render Warranty/Customer quick-link rows instead of tabs. */
-  showQuickLinks?: boolean;
-  /**
-   * Body section for non-Order topics. Order leaf stacks Shipping + Product
-   * (undefined → both sections in {@link ShippedDetailsPanelContent}).
-   */
+  /** Body section for non-Order topics. */
   activeSection: ShippedActiveSection | undefined;
   /** Parent Display topic — Order leaf is one stacked dossier (no nested tabs). */
   displayTopic: OrderInspectorDisplayTopic;
   shipped: ShippedOrder;
-  durationData: DetailsStackDurationData;
   onUpdate: () => void;
   activeInput: ShippedActiveInput;
   setActiveInput: React.Dispatch<React.SetStateAction<ShippedActiveInput>>;
-  stackActionBar: ShippedStackActionBar;
-  editableFields: ShippedEditableFields;
   isOutOfStock: boolean;
   isSavingOutOfStock: boolean;
   onSaveOutOfStock: (checked: boolean) => void | Promise<void>;
@@ -82,31 +51,27 @@ export interface ShippedDetailsBodyProps {
   /** Order-tab bottom update CTAs (Assign · urgent · notes · …). */
   updateActions: ReadonlyArray<{ key: OrderInspectorUpdateActionKey; label: string }>;
   onUpdateAction: (key: OrderInspectorUpdateActionKey) => void;
-  /**
-   * One-shot auto-start for the primary tracking replace editor (queue
-   * "Replace tracking"). Forwarded into the dispatch details stack.
-   */
-  replaceTrackingNonce?: number;
 }
 
 /**
- * The scrollable body of the shipped details panel. Detail stacks render in the
+ * The scrollable body of the shipped details panel. Topic content renders in the
  * upper scroll region; header-action editors live in {@link ShippedPanelEditorDock}.
  * Host is flush — content rows own their inset (Unbox Displays grammar).
+ *
+ * The Order leaf is intentionally empty: the dossier stack it used to render
+ * (`ShippedDetailsPanelContent` and its dashboard/tech/packer wrappers) was
+ * retired 2026-08-30. The Order topic keeps only its update dock until a
+ * replacement body lands.
  */
 export function ShippedDetailsBody({
   context,
   inspectorContext,
-  showQuickLinks,
   activeSection,
   displayTopic,
   shipped,
-  durationData,
   onUpdate,
   activeInput,
   setActiveInput,
-  stackActionBar,
-  editableFields,
   isOutOfStock,
   isSavingOutOfStock,
   onSaveOutOfStock,
@@ -116,7 +81,6 @@ export function ShippedDetailsBody({
   onDeleteOrder,
   updateActions,
   onUpdateAction,
-  replaceTrackingNonce = 0,
 }: ShippedDetailsBodyProps) {
   const { documentsMode, recordCtas, showDispatchExtras, showDelete, showEditorDock } =
     inspectorContext;
@@ -129,10 +93,6 @@ export function ShippedDetailsBody({
         .filter(Boolean),
     ),
   ];
-
-  /** Order leaf = stacked Shipping + Product; other topics keep exclusive section. */
-  const stackSection =
-    displayTopic === 'order' ? undefined : (activeSection as ShippedActiveSection | undefined);
 
   const scrollContent = (() => {
     if (displayTopic === 'documents' && shipped?.id) {
@@ -182,86 +142,9 @@ export function ShippedDetailsBody({
       );
     }
 
-    // Order leaf — Shipping + Product stacked (no nested Shipping · Product tabs).
-    if (showDispatchExtras) {
-      return (
-        <DashboardDetailsStack
-          shipped={shipped}
-          durationData={durationData}
-          onUpdate={onUpdate}
-          showShippingTimestamp={false}
-          activeSection={stackSection}
-          showQuickLinks={showQuickLinks}
-          replaceTrackingNonce={replaceTrackingNonce}
-          flush
-        />
-      );
-    }
-
-    if (context === 'station') {
-      return (
-        <TechDetailsStack
-          shipped={shipped}
-          durationData={durationData}
-          onUpdate={onUpdate}
-          showShippingTimestamp={false}
-          actionBar={stackActionBar}
-          activeSection={stackSection}
-          showQuickLinks={showQuickLinks}
-          flush
-        />
-      );
-    }
-
-    if (context === 'packer') {
-      return (
-        <PackerDetailsStack
-          shipped={shipped}
-          durationData={durationData}
-          onUpdate={onUpdate}
-          showShippingTimestamp={false}
-          actionBar={stackActionBar}
-          activeSection={stackSection}
-          showQuickLinks={showQuickLinks}
-          flush
-        />
-      );
-    }
-
-    return (
-      <div className={cn('flex min-h-full flex-col', DISPLAYS_BODY_INSET, 'pb-6 pt-3')}>
-        <div className="flex-1 space-y-4">
-          <ShippedDetailsPanelContent
-            activeSection={stackSection}
-            shipped={{
-              ...shipped,
-              order_id: editableFields.orderNumber,
-              item_number: editableFields.itemNumber,
-              shipping_tracking_number: editableFields.trackingNumber,
-            }}
-            durationData={durationData}
-            onUpdate={onUpdate}
-            editableShippingFields={{
-              orderNumber: editableFields.orderNumber,
-              itemNumber: editableFields.itemNumber,
-              trackingNumber: editableFields.trackingNumber,
-              shipByDate: editableFields.shipByDate,
-              isSaving: editableFields.isSavingInlineFields,
-              isSavingShipByDate: editableFields.isSavingShipByDate,
-              onOrderNumberChange: editableFields.setOrderNumber,
-              onItemNumberChange: editableFields.setItemNumber,
-              onTrackingNumberChange: editableFields.setTrackingNumber,
-              onShipByDateChange: editableFields.setShipByDate,
-              onBlur: () => { void editableFields.onSaveInline(); },
-              onShipByDateBlur: () => { void editableFields.onSaveShipByDate(editableFields.shipByDate); },
-            }}
-            showShippingTimestamp={false}
-            showQuickLinks={showQuickLinks}
-            flush
-          />
-        </div>
-      </div>
-    );
+    // Order leaf — no body. The dossier stack was retired; the update dock below
+    // is all that remains of this topic.
+    return null;
   })();
 
   const showOrderUpdateDock = displayTopic === 'order';
@@ -284,7 +167,7 @@ export function ShippedDetailsBody({
           isOutOfStock={isOutOfStock}
           isSavingOutOfStock={isSavingOutOfStock}
           onSaveOutOfStock={onSaveOutOfStock}
-          shippingTrackingNumber={editableFields.trackingNumber}
+          shippingTrackingNumber={shipped.shipping_tracking_number || ''}
           onMarkShippedSuccess={onMarkShippedSuccess}
           onAssigned={onUpdate}
           showDelete={showDeleteInDock}

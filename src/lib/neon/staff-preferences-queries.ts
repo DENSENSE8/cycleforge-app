@@ -154,6 +154,14 @@ export interface StaffPreferences {
     }
   > | null;
   /**
+   * Per-staff SLOT LAYOUT override keyed by TableId — the personal layer of
+   * the slot-table cascade (see `src/lib/tables/resolve-effective-layout.ts`).
+   * Values are structural `SlotLayout` documents; readers hydrate through
+   * `readStoredSlotLayout` (never trust the stored blob raw). Same shallow
+   * whole-map merge semantics as `tableColumns`.
+   */
+  tableLayouts?: Record<string, unknown> | null;
+  /**
    * GlobalHeader pin stations — ordered bookmarks with display label + exact
    * href. Mirrored to `cf.quickAccess` for flash-free chrome; this key is the
    * durable cross-device SoT. Visit MRU stays device-local.
@@ -180,6 +188,11 @@ export interface StaffPreferences {
    * `[]` = the staffer explicitly cleared their strip (never re-inherits).
    */
   unboxPinnedExtraTabs?: Array<'incoming'> | null;
+  /**
+   * Per-staff MasterNav order — ordered nav item ids. Absent/`null` = full
+   * catalog in registry order. Hydrated in `src/lib/nav/spine-slots.ts`.
+   */
+  spineSlots?: string[] | null;
 }
 
 /** Read one staffer's prefs bag (empty object when no row yet). */

@@ -22,7 +22,7 @@ const SECTION_MAP = `${NAV_COLUMN} [role="group"][aria-label="Sections"]`;
 const RESULTS = `${NAV_COLUMN} [role="listbox"][aria-label="Matching destinations"]`;
 const FILTER = `${NAV_COLUMN} input`;
 
-/** `TechRailSearchBar` debounces at 250ms before it lifts the value. */
+/** The spine's filter field debounces at 250ms before it lifts the value. */
 const FILTER_DEBOUNCE_MS = 250;
 
 async function openSpine(page: Page) {
@@ -37,7 +37,7 @@ async function openSpine(page: Page) {
 /**
  * Type, then wait for the BODY to settle rather than for a duration.
  *
- * `TechRailSearchBar` debounces, so the results the operator (and the Enter
+ * The filter field debounces, so the results the operator (and the Enter
  * handler) act on lag the keystrokes. Sleeping past the debounce is a race —
  * it failed on Enter while passing on the slower assertions in the same file.
  * Waiting on the rendered outcome is the deterministic form.

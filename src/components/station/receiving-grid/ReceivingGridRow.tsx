@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, memo, useState } from 'react';
+import { Fragment, memo } from 'react';
 import {
   conditionGradeTableLabel,
   getStatusDotBg,
@@ -15,7 +15,7 @@ import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRo
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import { RECEIVING_GRID_CAPABILITIES } from '@/components/station/receiving-grid/receiving-grid-descriptor';
 import { usePlatformMeta } from '@/hooks/useCatalog';
-import type { CustomFieldDef, CustomFieldValueMap } from '@/lib/custom-fields/types';
+import type { CustomFieldDef } from '@/lib/custom-fields/types';
 import {
   displayTrackingNumber,
   fulfillmentModeLabel,
@@ -36,7 +36,6 @@ import {
 import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import { formatOpsStageTime } from '@/utils/date';
 import { cn } from '@/utils/_cn';
-import type { GridColumnDisplayPref } from '@/design-system/components/grid';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import {
   displayReceivingProductTitle,
@@ -84,7 +83,6 @@ interface ReceivingGridRowProps {
   /** Connected inventory provider label for History UNBOXED tips. */
   inventoryProviderLabel?: string;
   columns?: readonly ReceivingGridColumn[];
-  columnDisplay?: Readonly<Record<string, GridColumnDisplayPref>>;
   /**
    * Unbox History click-select: body click toggles bulk; double-click / Enter
    * opens. When false, legacy split planes (body opens, gutter toggles) or
@@ -102,9 +100,7 @@ interface ReceivingGridRowProps {
   rowFillHex?: string | null;
   selectGutterChrome?: GridSelectGutterChrome;
   customFieldDefs?: readonly CustomFieldDef[];
-  onCustomFieldCommit?: (entityId: number, defKey: string, next: string) => void;
   /** Inline note edit. Absent ⇒ the note line is read-only on this surface. */
-  onCommitNote?: (lineId: number, next: string) => void;
 }
 
 /**
@@ -131,19 +127,15 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
   statusVocabulary = 'fine',
   inventoryProviderLabel = 'Inventory',
   columns = RECEIVING_GRID_COLUMNS,
-  columnDisplay,
   clickSelect = false,
   onOpenWorkspace,
   historyTriageMenu = false,
   rowFillHex = null,
   selectGutterChrome = 'always',
   customFieldDefs,
-  onCustomFieldCommit,
-  onCommitNote,
 }: ReceivingGridRowProps) {
   useTimeFormat();
   const resolvePlatformMeta = usePlatformMeta();
-  const [customOverlay, setCustomOverlay] = useState<CustomFieldValueMap>({});
   /** A gutter handler IS the signal that this surface split the two planes. */
   const splitPlanes = Boolean(onToggle) && !clickSelect;
 
@@ -180,14 +172,9 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
       ? receivingCoarseStatusPaint(row, inventoryProviderLabel)
       : null;
 
-  const customValues: CustomFieldValueMap = {
-    ...(row.customFields ?? {}),
-    ...customOverlay,
-  };
-  const rowForCells: ReceivingLineRow = {
-    ...row,
-    customFields: Object.keys(customValues).length > 0 ? customValues : row.customFields,
-  };
+  // No optimistic overlay: the cells are read-only, so the only writer for
+  // `customFields` is the fetch that produced the row.
+  const rowForCells: ReceivingLineRow = row;
 
   const ctx: ReceivingGridCellCtx = {
     row: rowForCells,
@@ -219,7 +206,6 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
     onEditOrder: onSelect,
     // Double-click's destination, reused by the compound chevron.
     onOpenRecord: onOpenWorkspace,
-    onCommitNote: onCommitNote ? (next: string) => onCommitNote(row.id, next) : undefined,
     serialsCsv: resolveReceivingLineSerialsCsv(row),
     statusDot:
       coarsePaint?.dot
@@ -229,16 +215,9 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
         row.quantity_expected,
       ),
     inventoryProviderLabel,
-    columnDisplay,
     selectGutterChrome,
     clickSelect,
     customFieldDefs,
-    onCustomFieldCommit: onCustomFieldCommit
-      ? (defKey, next) => {
-          setCustomOverlay((prev) => ({ ...prev, [defKey]: next }));
-          onCustomFieldCommit(row.id, defKey, next);
-        }
-      : undefined,
   };
 
   const selected = isOpen || isChecked;

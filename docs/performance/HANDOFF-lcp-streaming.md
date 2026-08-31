@@ -1,3 +1,127 @@
+## Progress log — 2026-08-29 (/search 80 → 92-94; two measurement bugs found)
+
+**Shipped: `/search` shell seed. 80 → 94, then 92 on a re-run — both clear the
+92 target.** SI 3529→1533-1671ms, LCP 2275→1319-1518ms. Floor ratcheted to 92.
+
+`seedSearchRecentRail` (`src/lib/queries/search-recent-shell-seed.server.ts`),
+dispatched from `maybeSeedShell`. Bare `/search` painted nothing data-shaped
+until a **two-hop** client chain landed: hydrate → fetch the `searchRecent` rail
+→ auto-select `rows[0]` (writes `?sel=`) → fetch the record → paint. The rail is
+a SHELL sibling of the page, so a page-level `HydrationBoundary` can never reach
+it — same ordering fact that put `/unbox` on this path.
+
+Passes both RSC-seed gate clauses: ranks on `receiving_line_views`
+(`idx_receiving_line_views_staff_recent`, a single index probe) and then
+pre-limits the display laterals via `receiving_id_in`. Verified landing, not
+assumed: the served `/search` HTML carries the dehydrated
+`['receiving-lines-table','rail','search-recent',…]` key with **20 rows**.
+The centre pane is deliberately NOT seeded — `/api/receiving/[id]` is a
+300-line route-inline SELECT with no extracted builder, so seeding it would
+mean a `serverSelfFetch` on TTFB, the trade the removed `/triage` seed lost.
+
+---
+
+### Measurement bug 1 — the `/signin` baseline measures the wrong page
+
+`scripts/lighthouse-audit.mjs` exports one `LH_COOKIE` for the whole run, so
+`/signin` is audited **signed in**. `layout.tsx` gates public chrome on
+`!initialUser`, so with a cookie the sign-in page renders the entire warehouse
+client: the LHR shows `/api/staff`, `/api/staff-messages`, `/api/inbox/support`,
+`/api/staff-preferences`, `/api/realtime/token` and a live **Ably** connection
+on the public login page. Every `/signin` figure in `lighthouse-baseline.json`
+(73-78 since July) describes a scenario a real visitor never hits.
+
+Measured both ways on the same build: **signed-in 72, signed-out 78**
+(SI 2931→1608ms, TBT 425→297ms).
+
+**Fixed 2026-08-29.** `cookieFor` now honours the manifest's `auth: false`, so a
+public route is audited without a cookie even when `LH_COOKIE` is exported. The
+scenario is recorded per route in the baseline (`scenario: "signed-out"`) and
+`--check` enforces it exactly like `formFactor` — a mismatch prints
+`STALE BASELINE` and exits 1 (verified by flipping the field: it failed, then
+passed once re-seeded). `/signin`'s floor was re-seeded through the tool against
+the correct scenario: measured 78, floor 75 (the lowest of four median-of-3 runs
+— 75/77/78/78 — so the nightly gate catches a real regression like the 72
+signed-in variant without flagging run-to-run noise).
+
+### Measurement bug 3 — the cookie header did not survive redirects
+
+`extraHeaders` becomes `Network.setExtraHTTPHeaders`, which Chrome does NOT
+re-apply when it follows a cross-document redirect: it recomputes `Cookie` from
+the jar, and the jar was empty. Every redirecting route therefore arrived signed
+out. `/dashboard` path-redirects to `/shipping/orders`, whose next hop bounced to
+`/signin?next=%2Fshipping%2Forders`, so the audit scored the SIGN-IN PAGE as
+`/dashboard` — Perf 99, LCP 987ms — and `--check` skips routes flagged
+redirected, so this Tier-1 entry gated nothing. `curl` with the same cookie
+followed the same chain to a 200, which is exactly why it read as an expired
+mint rather than a harness bug.
+
+Fixed with `seedCookieJar`: before each run the session is written into Chrome's
+jar over CDP (`Storage.setCookies`, no new dependency — Node's global
+`WebSocket`), so it is sent on every hop like a real browser. Header injection
+stays as a fallback, and is skipped when seeding succeeds so the two cannot
+conflict. `/dashboard` now resolves `307 → /shipping/orders → 200` and was
+re-seeded on the real page: **Perf 90-96, LCP 1.2-1.8s, SI ~1.3s** (the old
+entry claimed Perf 67 / LCP 12182ms and described a different page).
+
+Two things this surfaced, both real rather than artifacts:
+
+- **`/dashboard` Accessibility is 89**, under the ≥90 floor. Invisible while the
+  route was scoring the sign-in page (94). Needs a fix on the To-ship desk.
+- **SEO on signed-in routes is ~63, not 91.** `robots.txt` is `Disallow: /` —
+  correct for a private WMS — but it is itself behind auth, so Lighthouse's
+  unauthenticated fetch used to be redirected and it never read the file. With
+  the jar seeded it does. `--check` now enforces `seo` only for
+  `scenario: "signed-out"` routes, which is what the runbook's target table
+  said all along; the `seo: 91` floors on authenticated entries are stale
+  informational values until those routes are re-seeded.
+
+### Measurement bug 2 — `next/dynamic` in a Server Component does not split (Turbopack)
+
+`app/layout.tsx` documented `WarehouseShell` as code-split, and it was not.
+The public branch rendered correctly (sign-in card in the HTML, no `MasterNav`,
+no `InstallPrompt`) while the page still shipped
+`<script src=".../db436df3b2340e81.js">` — the warehouse chunk — and the framer
+runtime with it. **155KB gz of `/signin`'s 518KB (29%) was operator client it
+never renders.**
+
+Fixed by moving the branch into a client component (`AppShellSwitch`), where
+`dynamic()` is the ordinary supported lazy case. No `ssr: false` anywhere; the
+warehouse branch still server-renders. Result: **518 → 365KB gz, 36 → 25
+chunks.**
+
+**It did not move the score** (LCP 4520 → 4519ms). Recording that plainly: on
+the mobile profile Lantern charges simulated LCP against the script graph, and
+365KB is still far past the point where that dominates — consistent with the
+"Simulated LCP is not observed LCP" section of `LIGHTHOUSE.md`. The bytes are
+genuinely gone for real signed-out visitors; the *score* needs either a much
+deeper JS cut or an honest environment (preview deploy — operator's call, it
+ships the dirty tree).
+
+### Barrel altitude — `@/design-system/primitives` carries the motion engine
+
+The barrel re-exports seven engine-importing primitives (`CardShell`,
+`StaggerReveal`, `ChevronToggle`, `SlicedActionDock`, `Popover`,
+`OmnichannelComposerDock`, `ProgressBar`), and a LOCAL barrel is not covered by
+`optimizePackageImports`. So `import { Button } from '@/design-system/primitives'`
+put the whole engine on the importer's graph. Switched to deep paths on the
+public-chrome family + `StepUpModal` (root layout, so it taxed every route):
+signin page graph 106 → 28 modules, root layout 240 → 172, engine importers
+14 → 0. Deep imports are already the house shape (108 pre-existing call sites).
+
+Also: `Button` (989 call sites, every route) statically imported the engine for
+one `whileTap` scale. Now CSS `enabled:active:scale-[0.96]`, compositor-only.
+`ReducedMotionProvider` moved out of the root layout into `WarehouseShell`,
+which creates the invariant **public-chrome routes may not use framer** —
+import primitives by deep path there.
+
+**Next lever for `/signin`** (in order): fix the harness cookie scoping; then
+the remaining 365KB — 68KB react-dom, ~59KB engine still arriving via lazily
+loaded components that pull the top-level `@/design-system` barrel, 32KB of the
+`motion-framer` preset catalog, 29KB server actions.
+
+---
+
 ## Progress log — 2026-08-11 (Unbox LCP = MRU middle carton)
 
 **Shipped:** LCP stand-in is the **MRU carton middle** (identity + PO lines from

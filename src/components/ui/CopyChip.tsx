@@ -90,6 +90,12 @@ export const HashIcon = () => (
 // from — one tone SoT, no parallel dot map.
 export const CHIP_TONES = {
   id: {
+    // The `#` is the id chip's glyph, and it is the CHANNEL SIGNAL as well:
+    // `resolveMarketplaceChipIdentity` tints it from the number's own shape —
+    // eBay 2-5-5 paints it yellow, Amazon 3-7-7 orange — so one small mark
+    // carries both "this is an id" and "this is whose". A brand glyph in this
+    // slot was tried and pulled: it read as an icon competing with the mono
+    // digits, where the tinted hash reads as part of them.
     icon: <HashIcon />,
     iconClass: 'text-text-soft',
     dot: 'bg-border-emphasis',

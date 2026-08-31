@@ -25,7 +25,7 @@ test.describe('Pending → Testing hand-off', () => {
     const row = table.locator('[data-order-row-id]').first();
     await expect(row).toBeVisible({ timeout: 20_000 });
 
-    await row.locator('[data-col="title"]').click();
+    await row.locator('[data-col="item"]').click();
     await expect(page.locator('aside[role="region"]')).toBeVisible({ timeout: 20_000 });
     // Opens docs-first, and the hand-off sits under the paperwork it gates.
     await expect(page.getByRole('tab', { name: 'Documents' })).toHaveAttribute(

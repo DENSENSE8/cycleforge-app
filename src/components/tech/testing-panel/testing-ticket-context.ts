@@ -1,5 +1,5 @@
 /**
- * When QC should auto-open Ticket Displays for contextual detail (history /
+ * When QC should auto-open Ticket composer mode for contextual detail (history /
  * claim) — never a centre "needs attention" banner. Pure predicate; no UI.
  */
 
@@ -13,9 +13,9 @@ type TestingTicketContextOpen = {
 };
 
 /**
- * Linked ticket → open Ticket Displays (history/chat).
- * Failed / retest with no ticket → open Ticket Displays on claim create.
- * Otherwise leave Displays closed (ops-flow middle only).
+ * Linked ticket → open Ticket composer mode (history/chat above the dock).
+ * Failed / retest with no ticket → Ticket mode on claim create.
+ * Otherwise leave Ticket mode closed (ops-flow middle only).
  */
 export function resolveTestingTicketContextOpen(
   row: ReceivingLineRow,

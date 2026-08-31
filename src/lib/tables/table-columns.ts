@@ -131,10 +131,8 @@ export type TableId =
    */
   | 'tasks'
   /**
-   * Amazon Prep › shipment board (`FBA_BOARD_GRID_COLUMNS`).
-   *
-   * Registered 2026-08-29 with the board's column model. The bucket exists but
-   * its `TABLE_COLUMNS` entry is deliberately EMPTY — see the note there.
+   * Amazon Prep › shipment board. The KEY stays because `TableId`'s runtime
+   * vocabulary derives from this record — the display is being rebuilt.
    */
   | 'fba';
 
@@ -207,11 +205,20 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
   // passes `tableId="incoming_embed"` to the provider + IncomingGridView so its
   // Fields deltas persist under this key, not `incoming`.
   incoming_embed: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING],
-  orders: [META_STATUS, META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING],
-  shipped: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],
-  tech: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],
-  testing: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING, CHIP_SERIAL],
-  packer: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING],
+  /**
+   * Orders + its station twins — **deliberately empty** (Wave-1 hand-model
+   * kill, `docs/kill-list/07-slot-table-hand-models.md` §3). Hide-by-field-id
+   * is the deleted `useGridColumnVisibility` feature living in a hashmap; on
+   * the slot-materialized Orders desk "hide Pick" is "unbind `orders.picked`"
+   * in the Fields + popover. The KEYS stay because `TableId`'s runtime
+   * vocabulary derives from this record (the `fba: []` precedent) and the
+   * kept Orders binding parses `tableId: 'orders'` at module scope.
+   */
+  orders: [],
+  shipped: [],
+  tech: [],
+  testing: [],
+  packer: [],
   // Grid-native: keys are the `hideKey`s in `src/lib/products/catalog-grid-layout.ts`.
   catalog: [
     GRID_COL('sku', 'SKU', 'id'),
@@ -222,16 +229,13 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
     GRID_COL('orders', 'Orders', 'number'),
     GRID_COL('status', 'Status', 'tag'),
   ],
-  // Keys are the `hideKey`s in `src/components/receiving/pickup/grid/pickup-grid-layout.ts`.
-  pickup: [
-    GRID_COL('sku', 'SKU', 'id'),
-    GRID_COL('order', 'Order', 'id'),
-    GRID_COL('date', 'Date', 'date'),
-    GRID_COL('qty', 'Qty', 'number'),
-    GRID_COL('condition', 'Cond', 'tag'),
-    GRID_COL('price', 'Price', 'price'),
-    GRID_COL('status', 'Status', 'tag'),
-  ],
+  /**
+   * Pickup — **deliberately empty** (Wave-2 hand-model kill, kill-list 07 §4):
+   * the columns are a slot materialization now, so "hide SKU" is "unbind
+   * `pickup.sku`" in the Fields + popover. The KEY stays (fba/orders
+   * precedent — `TableId`'s runtime vocabulary derives from this record).
+   */
+  pickup: [],
   // Keys are the `hideKey`s in `src/lib/repair/repair-grid-layout.ts`.
   repair: [
     GRID_COL('date', 'Created', 'date'),
@@ -257,14 +261,9 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
   // `src/components/outbound/ready/grid/ready-grid-layout.ts`. The `action`
   // track (Stage FBA) has no `hideKey` — structural, never offered.
   /**
-   * Amazon Prep board — **deliberately empty**.
-   *
-   * This registry is the FIELDS-MENU vocabulary: which tracks a staffer may
-   * hide. `FBA_BOARD_GRID_CAPABILITIES` declares `fieldsMenu: false`, so the
-   * board has no menu and every one of its ten tracks is structural. Listing
-   * columns here would offer hides that nothing renders a door for — and an
-   * entry is still required, because `TableId`'s runtime vocabulary is derived
-   * from this record's keys.
+   * Amazon Prep board — **deliberately empty**. The KEY stays because
+   * `TableId`'s runtime vocabulary derives from this record's keys. The
+   * display that materialised catalog facts was torn out 2026-08-30.
    */
   fba: [],
   ready: [

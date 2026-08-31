@@ -9,6 +9,42 @@ const QA_STORAGE = path.join(AUTH_DIR, 'qa-admin.json');
 
 const TENANT_HEADER = 'x-tenant-slug';
 
+/**
+ * Write the signed-in storage state, dropping `Secure` from its cookies when the
+ * lane is plain HTTP.
+ *
+ * `next start` runs with `NODE_ENV=production`, and every `/api/auth/*` route
+ * sets the session cookie `secure: process.env.NODE_ENV === 'production'`. A
+ * BROWSER still sends a Secure cookie to `localhost` / `127.0.0.1` — loopback is
+ * a trustworthy origin — so pages render signed in and nothing looks wrong.
+ * Playwright's `APIRequestContext` (`request`, `page.request`) applies the flag
+ * literally and drops the cookie on an `http://` request, so a spec that reads
+ * an authenticated endpoint that way gets 401 while the page beside it is fine.
+ *
+ * That asymmetry is expensive to debug because it does not look like an auth
+ * problem: `GET /api/my-day → 401` next to a fully rendered My Day desk reads as
+ * a broken route. {@link probeSession} is one of those callers too, which is why
+ * a built lane re-signed on EVERY run — the probe could never pass.
+ *
+ * Under `next dev` the flag is already false and this is a no-op, so a spec
+ * behaves identically against a dev server and a built lane. That equivalence is
+ * the point: the lane you run on must not change what a test can see.
+ */
+async function persistStorageState(
+  request: APIRequestContext,
+  storagePath: string,
+  baseURL: string,
+): Promise<void> {
+  await request.storageState({ path: storagePath });
+  if (new URL(baseURL).protocol !== 'http:') return;
+  const state = JSON.parse(fs.readFileSync(storagePath, 'utf8')) as {
+    cookies?: { secure?: boolean }[];
+  };
+  if (!state.cookies?.length) return;
+  for (const cookie of state.cookies) cookie.secure = false;
+  fs.writeFileSync(storagePath, JSON.stringify(state, null, 2));
+}
+
 type StaffRow = { id: number; name: string };
 
 async function probeSession(baseURL: string, storagePath: string): Promise<boolean> {
@@ -65,7 +101,7 @@ async function signInPinless(
       const body = await signin.text();
       throw new Error(`POST /api/auth/signin failed (${signin.status()}): ${body}`);
     }
-    await request.storageState({ path: storagePath });
+    await persistStorageState(request, storagePath, baseURL);
   } finally {
     await request.dispose();
   }
@@ -121,7 +157,7 @@ async function signInOwnerActAs(
       throw new Error('account signin returned neither ok nor needsStaffChoice');
     }
 
-    await request.storageState({ path: storagePath });
+    await persistStorageState(request, storagePath, baseURL);
   } finally {
     await request.dispose();
   }

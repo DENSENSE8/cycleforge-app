@@ -1,17 +1,14 @@
 'use client';
 
-import { PoLinesAccordion } from '@/components/receiving/workspace/PoLinesAccordion';
-import { UnmatchedItemsSection } from '@/components/receiving/workspace/UnmatchedItemsSection';
+import { PoItemsSection } from '@/components/receiving/workspace/PoItemsSection';
 import { InlineNotice } from '@/design-system/components';
 import { type UnitSlotSerial } from '@/components/tech/TestingUnitSlots';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { TestingController } from './testing-panel-types';
 import { TestingLineSlot } from './TestingLineSlot';
 import { dispatchTestingLineUpdated } from '@/components/tech/testing-line-events';
-import {
-  shouldUseUnmatchedItemsSurface,
-} from '@/lib/receiving/intake-items-routing';
 import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
+import type { LineCollapseController } from '@/components/station/collapse';
 
 interface Props {
   row: ReceivingLineRow;
@@ -28,16 +25,30 @@ interface Props {
    * preview), matching Unbox. See TestingPanel `openUnits`.
    */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
+  /**
+   * The Items band's line-collapse controller ({@link useLineCollapse}), shared
+   * so "Collapse all" reaches the lines and not just the band — the same wiring
+   * Unbox has. On the MATCHED lane Testing's centre rows are a pure ledger with
+   * no capture body, so they paint no toggle; on the unfound / return lane,
+   * where Testing does mount capture under a line, they collapse like Unbox.
+   */
+  lineCollapse?: LineCollapseController;
 }
 
 /**
- * PO-items block for the testing workspace — the same accordion / unmatched
- * surface as Unbox, rendered as a **pure ledger row**. The per-unit verdict
- * surface ({@link TestingLineSlot}) no longer mounts under the row in the
- * centre; the serials cell opens the right-edge Units Display via
- * {@link onViewAllUnits} (Unbox parity). Composed inside
- * {@link TestingPoUnboxingSection} in embedded mode so the wrapper owns the card
- * chrome and the single package-pairing pencil (no CartonAddPopover modal).
+ * PO-items block for the testing workspace — {@link PoItemsSection}, the same
+ * one Unbox and `/search` render, with Testing's controller in the slots. It is
+ * a **pure ledger row** here: the per-unit verdict surface
+ * ({@link TestingLineSlot}) no longer mounts under the row in the centre; the
+ * serials cell opens the right-edge Units Display via {@link onViewAllUnits}
+ * (Unbox parity). Composed inside {@link TestingPoUnboxingSection} in embedded
+ * mode so the wrapper owns the card chrome and the single package-pairing pencil
+ * (no CartonAddPopover modal).
+ *
+ * This file used to route the matched / unfound lanes itself and skipped the
+ * lineless-real-PO probe the other two stations did — so a real PO carton whose
+ * lines had not landed yet was a dead end here and workable everywhere else.
+ * The shared section owns that decision now.
  */
 export function TestingPoItemsSection({
   row,
@@ -47,6 +58,7 @@ export function TestingPoItemsSection({
   headerRight,
   suppressHeader = false,
   onViewAllUnits,
+  lineCollapse,
 }: Props) {
   if (row.receiving_id == null) {
     // Not linked to a carton yet — no longer a dead end. A REAL line (positive
@@ -80,46 +92,25 @@ export function TestingPoItemsSection({
     );
   }
 
-  if (shouldUseUnmatchedItemsSurface(row)) {
-    // Freshly-scanned unfound carton with no line yet — the synthetic stub row
-    // carries a negative id (buildUnmatchedStubRow). Teach the next action so the
-    // empty carton isn't a dead end. UI-only; no extra fetch.
-    const linelessUnfound = row.receiving_source === 'unmatched' && row.id < 0;
-    return (
-      <div className="space-y-2">
-        {linelessUnfound ? (
-          <InlineNotice tone="info" size="sm" title="No items yet">
-            Add the product via Package Pairing → Purchase Order (Acknowledge by Inventory SKU),
-            or scan a unit serial below.
-          </InlineNotice>
-        ) : null}
-        <UnmatchedItemsSection
-          receivingId={row.receiving_id}
-          staffId={staffId}
-          embedded={embedded}
-          headerRight={headerRight}
-          suppressHeader={suppressHeader}
-          sourcePlatformHint={c.sourcePlatform || undefined}
-          receivingTypeHint={isReturnIntake(row) ? 'RETURN' : c.receivingType}
-          listingUrlHint={c.listingLink || undefined}
-          activeLineId={row.id}
-          placeholderActiveRow={row.id > 0 ? row : undefined}
-          hideNoTestLines
-          onViewAllUnits={onViewAllUnits}
-        />
-      </div>
-    );
-  }
+  // Freshly-scanned unfound carton with no line yet — the synthetic stub row
+  // carries a negative id (buildUnmatchedStubRow). Teach the next action so the
+  // empty carton isn't a dead end. UI-only; no extra fetch.
+  const linelessUnfound = row.receiving_source === 'unmatched' && row.id < 0;
 
   return (
-    <PoLinesAccordion
+    <PoItemsSection
+      row={row}
       receivingId={row.receiving_id}
-      activeLineId={row.id}
+      staffId={staffId}
       embedded={embedded}
       headerRight={headerRight}
       suppressHeader={suppressHeader}
-      placeholderActiveRow={row}
       hideNoTestLines
+      lineCollapse={lineCollapse}
+      onViewAllUnits={onViewAllUnits}
+      sourcePlatformHint={c.sourcePlatform || undefined}
+      receivingTypeHint={isReturnIntake(row) ? 'RETURN' : c.receivingType}
+      listingUrlHint={c.listingLink || undefined}
       serialSplit={{
         staffId,
         cartonSource: row.receiving_source,
@@ -127,7 +118,14 @@ export function TestingPoItemsSection({
           dispatchTestingLineUpdated({ id: line.id, serials: line.serials ?? [] });
         },
       }}
-      onViewAllUnits={onViewAllUnits}
+      laneNotice={
+        linelessUnfound ? (
+          <InlineNotice tone="info" size="sm" title="No items yet">
+            Add the product via Package Pairing → Purchase Order (Acknowledge by Inventory SKU),
+            or scan a unit serial below.
+          </InlineNotice>
+        ) : null
+      }
     />
   );
 }

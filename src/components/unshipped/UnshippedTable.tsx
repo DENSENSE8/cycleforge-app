@@ -17,6 +17,10 @@ import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
 import { dispatchCloseShippedDetails, dispatchOpenShippedDetails } from '@/utils/events';
 import { unshippedOrdersQuery, unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
+import {
+  cagedOrdersQuery,
+  cagedRecordToQueueRow,
+} from '@/lib/queries/caged-orders-queries';
 import { Button } from '@/design-system/primitives';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
@@ -31,6 +35,7 @@ import {
   insertUnshippedOrderIntoCache,
 } from '@/lib/queries/dashboard-cache-patch';
 import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
+import { SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
 import type { ShippedOrder } from '@/types/orders';
 import type {
   OrdersQueueColumn,
@@ -169,6 +174,15 @@ export function UnshippedTable({
     searchParams.get('late') === '1' || searchParams.get('late') === 'true';
   /** Exception row flag refine (`?rowFlag=awaiting_customer`). */
   const rowFlagFilter = String(searchParams.get('rowFlag') || '').trim().toLowerCase();
+  /**
+   * CAGED facet (`?cage=1`). Unlike every other facet this swaps the DATA
+   * SOURCE rather than narrowing the queue: `/api/orders?fulfillmentScope=true`
+   * requires a shipment and a tracking number, so a caged order — caged
+   * precisely because facts like tracking are still missing — is not in that
+   * payload at all and no client-side predicate could find it.
+   */
+  const cagedOnly =
+    searchParams.get('cage') === '1' || searchParams.get('cage') === 'true';
   /** Packing-station placement: any placed package or one bench id. */
   const packPlacedOnly =
     searchParams.get(PACK_PLACED_PARAM) === '1' ||
@@ -196,6 +210,7 @@ export function UnshippedTable({
     rowFlagFilter,
     packPlacedOnly,
     packStationId,
+    cagedOnly,
   ]);
 
   const query = useQuery({
@@ -217,7 +232,16 @@ export function UnshippedTable({
       if (prev?.staffId !== staffId) return undefined;
       return previousData;
     },
+    // The live queue is not what the Caged facet shows, so do not pay for it.
+    // The key stays cached, so switching back repaints from cache.
+    enabled: !cagedOnly,
   });
+
+  const cagedQuery = useQuery({ ...cagedOrdersQuery(), enabled: cagedOnly });
+  const cagedRows = useMemo(
+    () => (cagedQuery.data?.orders ?? []).map(cagedRecordToQueueRow),
+    [cagedQuery.data],
+  );
 
   useEffect(() => {
     if (!onPrimaryPainted) return;
@@ -352,12 +376,24 @@ export function UnshippedTable({
         onOpenRecord(record);
         return;
       }
+      // A caged row has no shipped detail to show — the panel would paint an
+      // order with no tracking, no bench and no lifecycle. Its detail IS the
+      // triage form, so opening the row opens the gates it is waiting on.
+      if (cagedOnly) {
+        const next = new URLSearchParams(searchParams.toString());
+        next.set('triage', String(record.id));
+        const qs = next.toString();
+        router.replace(qs ? `${SHIPPING_ORDERS_PATH}?${qs}` : SHIPPING_ORDERS_PATH, {
+          scroll: false,
+        });
+        return;
+      }
       dispatchOpenShippedDetails(record, 'queue');
     },
-    [onOpenRecord],
+    [cagedOnly, onOpenRecord, router, searchParams],
   );
 
-  const allRecords = query.data ?? EMPTY_UNSHIPPED_ROWS;
+  const allRecords = cagedOnly ? cagedRows : (query.data ?? EMPTY_UNSHIPPED_ROWS);
   // `?stage` is filtered SERVER-side; dashboard tabs no longer force a lane —
   // stage is a row fact. Optional `fulfillmentLane` remains for station embeds.
   // Facets: `?attention=1` (urgent), `?late=1` (must ship), `?ustatus`, `?rowFlag`.
@@ -367,7 +403,13 @@ export function UnshippedTable({
   const todayKey = getCurrentPSTDateKey();
   const laneRecords = useMemo(
     () =>
-      allRecords.filter((r) => {
+      // The caged set is already the answer — the server returned exactly the
+      // held rows. Running the queue's predicates over it would drop every one
+      // of them on the first line (`if (!tracking) return false`), which is the
+      // very reason they are invisible today.
+      cagedOnly
+        ? allRecords
+        : allRecords.filter((r) => {
         const row = r as {
           has_tech_scan?: boolean;
           is_out_of_stock?: boolean;
@@ -382,10 +424,16 @@ export function UnshippedTable({
           ship_by_date?: string | null;
           row_flag?: string | null;
         };
-        // Pre-pack / in-warehouse board is labeled + tracked only.
-        const tracking = String(row.tracking_number || row.shipping_tracking_number || '').trim();
-        if (!tracking) return false;
-
+        /*
+         * NO tracking gate (2026-08-30). This line used to drop every untracked
+         * row — `if (!tracking) return false` — which is what made "needs a
+         * label" a separate table instead of a state. Those rows now ride the
+         * queue and paint the `Needs label` pill (AWAITING_LABEL), so the
+         * operator sees their own intake instead of it disappearing.
+         *
+         * `tracking` is still read below by nothing here: the lifecycle stage
+         * derives from `shipment_id`, which is the fact the pill needs.
+         */
         const packedAt = row.packed_at || row.pack_activity_at || null;
         const lifecycle = resolveOrderLifecycleStage({
           shipmentId: row.shipment_id,
@@ -446,6 +494,7 @@ export function UnshippedTable({
       packStationId,
       packPlacedOnly,
       todayKey,
+      cagedOnly,
     ],
   );
   const records = useMemo(
@@ -471,6 +520,9 @@ export function UnshippedTable({
   // empty lanes that read as broken. Any active search/status/staff filter falls
   // through to the board, which owns its own typed "no matches" empty per lane.
   const isFirstRunEmpty =
+    // An empty cage is not a brand-new org — showing "connect a sales channel"
+    // there would answer a question nobody asked.
+    !cagedOnly &&
     !query.isLoading &&
     allRecords.length === 0 &&
     !searchQuery &&
@@ -509,7 +561,9 @@ export function UnshippedTable({
               ? (queueCounts?.byStage as { packed?: number } | undefined)?.packed ??
                 records.length
               : (queueCounts?.total ?? 0);
-  const showLoadMore = !searchQuery && stageTotal > rowLimit;
+  // The caged endpoint returns the whole held set (bounded at 500) in one
+  // read, so there is no second page to offer.
+  const showLoadMore = !cagedOnly && !searchQuery && stageTotal > rowLimit;
   const footer = showLoadMore ? (
     <div className="flex flex-col items-center gap-1 py-4">
       <Button type="button" variant="secondary" onClick={() => setRowLimit((n) => n + 200)}>
@@ -524,7 +578,7 @@ export function UnshippedTable({
   return (
     <UnshippedSheet
       records={records}
-      loading={query.isLoading}
+      loading={cagedOnly ? cagedQuery.isLoading : query.isLoading}
       searchValue={searchQuery}
       selectMode={selectMode}
       railSelection={railSelection}

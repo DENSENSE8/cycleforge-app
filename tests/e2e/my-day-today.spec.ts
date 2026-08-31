@@ -39,8 +39,18 @@ const DUE_TODAY = QA_FIXTURE_MY_DAY.dueToday.title;
 const UPCOMING = QA_FIXTURE_MY_DAY.upcoming.title;
 const INTERRUPT = QA_FIXTURE_MY_DAY.interruptTitle;
 
+/**
+ * Open the My Day desk.
+ *
+ * `?mode=today` is not optional: Home routes on `?mode=` and `daily` is the
+ * default, so a bare `/` mounts `HomeDailyMode` and this file's grid never
+ * appears. Merged into whatever the caller passes rather than prefixed, so a
+ * deep-link case keeps its own params AND lands on the right body.
+ */
 async function openToday(page: Page, search = '') {
-  await page.goto(`/${search}`);
+  const params = new URLSearchParams(search.replace(/^\?/, ''));
+  params.set('mode', 'today');
+  await page.goto(`/?${params.toString()}`);
   await expect(page.locator(GRID).first()).toBeVisible({ timeout: 30_000 });
 }
 
@@ -92,15 +102,19 @@ test.describe('Home → Today workbench', () => {
     ).toHaveCount(1);
   });
 
-  test('lane tab writes ?scope= and changes the row count', async ({ page }) => {
+  test('a lane pick writes ?scope= and changes the row count', async ({ page }) => {
     await openToday(page);
     await expect(row(page, OVERDUE)).toBeVisible();
     await expect(row(page, INTERRUPT)).toBeVisible();
 
-    await page.getByRole('button', { name: /^Needs attention\b/ }).first().click();
+    // Lanes live in the ONE filter control (ruling 2026-08-30 — selection
+    // tabs are filters).
+    await page.getByTestId('data-table-filter').click();
+    await page.getByTestId('data-table-filter-lane:attention').click();
+    await page.keyboard.press('Escape');
     await expect(page).toHaveURL(/[?&]scope=attention\b/);
 
-    // The lane is a real filter, not just a lit tab.
+    // The lane is a real filter, not just a lit option.
     await expect(row(page, INTERRUPT)).toBeVisible();
     await expect(row(page, OVERDUE)).toHaveCount(0);
   });
@@ -222,52 +236,29 @@ test.describe('Home → Today workbench', () => {
     await expect(chip(/^Overdue\b/)).toHaveAttribute('aria-pressed', 'false');
   });
 
-  test('column display opens from the grid’s own header — no chrome Fields survives', async ({
+  test('no column control survives — the grid draws its binding’s columns', async ({
     page,
   }) => {
     await openToday(page);
 
-    // Retargeted 2026-08-02 (chrome Fields deleted), then again 2026-08-08:
-    // the card-corner hover-reveal float is DELETED codebase-wide. ▦ is now
-    // portal-or-nothing, and My Day portals it into its Band-3 controls slot
-    // (`MyDayWorkspace` controlsSlotRef → columnTriggerPortalTarget), so the
-    // control is RESIDENT — there is nothing to hover.
-    const triggerHost = page.locator('[data-grid-column-details-trigger]');
-    const lip = triggerHost.getByRole('button', { name: 'Column display' });
-    const rail = page.getByRole('region', { name: 'Column display' });
-
-    // **Scope: the DOOR, not the mechanics.** Toggling a track and asserting
-    // the header gains/loses it is `grid-column-fields-lip.spec.ts`'s job, and
-    // it does it properly — with a `restoreDefaults` in both hooks, because
-    // those toggles persist a per-staff delta to the DATABASE and leak into
-    // every later spec that asserts default columns. Re-running the mechanics
-    // here would buy no new information about the lip and would need that same
-    // cleanup apparatus to avoid poisoning Today's other tests. What is
-    // Today-specific — and what this pass changed — is which door exists.
+    /*
+      Retargeted 2026-08-29: the Band-3 column display (▦) rail was deleted with
+      the rest of the display layer, and so were the per-staff prefs it wrote.
+      What used to be "which door opens the column rail" is now "there is no
+      door" — My Day's grid renders the column set its binding declares, the
+      same set every staffer sees.
+    */
     await expect(page.getByRole('button', { name: /^Fields/ })).toHaveCount(0);
-    // Resident, not revealed: visible with the pointer parked off the grid.
-    await page.mouse.move(0, 0);
-    await expect(triggerHost).toBeVisible();
+    await expect(page.locator('[data-grid-column-details-trigger]')).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Column display' })).toHaveCount(0);
+    await expect(page.getByRole('region', { name: 'Column display' })).toHaveCount(0);
 
-    await lip.click();
-    await expect(rail).toBeVisible();
-    // The rail knows it is Today's grid, not some other surface's.
-    await expect(
-      rail.locator('[role="option"][data-column-details-key="queue"]'),
-    ).toHaveCount(1);
-
-    // Leave no delta behind: this test never toggles, so Reset should not even
-    // render — but if an earlier run died mid-toggle, clear it rather than
-    // letting Today's default-column assumptions rot.
-    const reset = rail.getByRole('button', { name: /Reset/i });
-    if (await reset.count()) {
-      await reset.click();
-      await page.waitForTimeout(250);
-    }
-
-    await rail.getByRole('button', { name: 'Done' }).click();
-    await expect(rail).toHaveCount(0);
-    await expect(page.locator('[role="columnheader"][data-col="queue"]')).toHaveCount(0);
+    // …and the grid is still a grid. `queue` is the proof: the old spec ended
+    // by asserting it ABSENT, because the rail had just been used to hide it.
+    // It is declared by My Day's binding, so with no per-staff delta left it
+    // renders — for this staffer and every other one.
+    await expect(page.locator('[role="columnheader"]').first()).toBeVisible();
+    await expect(page.locator('[role="columnheader"][data-col="queue"]')).toHaveCount(1);
   });
 
   test('home is rail-less; saved views live on Band 3', async ({ page }) => {
@@ -299,8 +290,10 @@ test.describe('Home → Today workbench', () => {
     await expect(view).toBeVisible({ timeout: 15_000 });
 
     // Walk away from the view, then apply it: the params must come back.
-    // Lane tabs close the Views popover — reopen before applying / deleting.
-    await page.getByRole('button', { name: /^All\b/ }).first().click();
+    // Picking the ACTIVE lane option clears it (there is no All control).
+    await page.getByTestId('data-table-filter').click();
+    await page.getByTestId('data-table-filter-lane:assigned').click();
+    await page.keyboard.press('Escape');
     await expect(page).not.toHaveURL(/[?&]scope=assigned\b/);
 
     await page.getByRole('button', { name: /Saved views/i }).click();
@@ -379,15 +372,16 @@ test.describe('Home → Today workbench', () => {
     const add = page.getByRole('button', { name: 'Watch a ticket or tracking number' });
     await expect(add).toBeVisible();
 
-    // Shares the chrome band row with All (trailing cluster, top-right).
-    const allTab = page.locator('main').getByRole('button', { name: /^All\b/ }).first();
-    const allBox = (await allTab.boundingBox())!;
+    // Shares the chrome band row with the filter control (trailing cluster,
+    // top-right) — the lane strip is gone, lanes live in the filter menu.
+    const filterBtn = page.getByTestId('data-table-filter').first();
+    const filterBox = (await filterBtn.boundingBox())!;
     const addBox = (await add.boundingBox())!;
     const sharesBandRow =
-      addBox.y < allBox.y + allBox.height &&
-      addBox.y + addBox.height > allBox.y;
+      addBox.y < filterBox.y + filterBox.height &&
+      addBox.y + addBox.height > filterBox.y;
     expect(sharesBandRow, 'Add CTA must sit on the chrome band row').toBe(true);
-    expect(addBox.x > allBox.x, 'Add CTA must be trailing (right of tabs)').toBe(true);
+    expect(addBox.x > filterBox.x, 'Add CTA must be trailing (right of the filter)').toBe(true);
 
     await add.click();
     await expect(page).toHaveURL(/[?&]watch=1\b/);

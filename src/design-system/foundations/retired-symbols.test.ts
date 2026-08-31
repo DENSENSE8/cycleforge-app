@@ -102,6 +102,111 @@ const RETIRED: RetiredSymbol[] = [
     retiredBy:
       'AGENTS.md → Order warranty card — compose OrderWarrantySummary (density="pane" for the exclusive order tab).',
   },
+  // ── Slot-table Wave-1 hand-model kill (docs/kill-list/07-slot-table-hand-models.md) ──
+  {
+    symbol: 'ORDERS_QUEUE_COLUMNS',
+    since: '2026-08-30',
+    retiredBy:
+      'kill-list 07 §1 — the Orders flat fact-track array; mount ordersCompoundColumnsFor(SlotLayout). The benches keep their own STATION_HISTORY_COLUMNS until the station-history kill.',
+  },
+  {
+    symbol: 'ORDERS_QUEUE_TESTED_COLUMNS',
+    since: '2026-08-30',
+    retiredBy:
+      'kill-list 07 §2 — the tested-mode alias; ?ustatus=TESTED narrows rows, "show pick" is the orders.picked slot binding.',
+  },
+  {
+    symbol: 'ordersTableBindingFor',
+    since: '2026-08-30',
+    retiredBy:
+      'kill-list 07 §2 — the two-binding mode switch; there is ONE Orders binding (ORDERS_DEFAULT_TABLE_BINDING).',
+  },
+  {
+    symbol: 'makeOrdersGridDescriptorTested',
+    since: '2026-08-30',
+    retiredBy:
+      'kill-list 07 §2 — the second descriptor factory; makeOrdersGridDescriptor derives everything from the mounted columns.',
+  },
+  {
+    symbol: 'useToShipStatusFilter',
+    since: '2026-08-30',
+    retiredBy:
+      'kill-list 07 §2 — existed only to swap the tested column mode; ?ustatus reads/writes go through dashboard-search-state / useOutboundSidebarScope.',
+  },
+  // ── Slot-table Wave-2 pickup kill (docs/kill-list/07-slot-table-hand-models.md §4) ──
+  {
+    symbol: 'PICKUP_GRID_COLUMNS',
+    since: '2026-08-30',
+    retiredBy:
+      'kill-list 07 §4 — the pickup flat fact-track array; mount pickupSheetColumnsFor(SlotLayout) over PICKUP_FIELD_CATALOG.',
+  },
+  {
+    symbol: 'isPickupGridSortable',
+    since: '2026-08-30',
+    retiredBy:
+      'kill-list 07 §4 — static-list sortability; isPickupColumnSortable derives from the mounted model.',
+  },
+  {
+    symbol: 'isPickupGridFrozen',
+    since: '2026-08-30',
+    retiredBy:
+      'kill-list 07 §4 — static-list lock check; the descriptor derives locks from the mounted columns’ frozen flags.',
+  },
+  {
+    symbol: 'pickupGridFrozenLeft',
+    since: '2026-08-30',
+    retiredBy:
+      'kill-list 07 §4 — offsets from a static list; use gridFrozenLeft(columns, key) over the mounted model.',
+  },
+  {
+    symbol: 'defaultDirForPickupGridSort',
+    since: '2026-08-30',
+    retiredBy:
+      'kill-list 07 §4 — per-flat-key sort dirs; defaultDirForPickupColumn derives from the bound field’s display type.',
+  },
+  // ── Slot-table FBA fork kill (kill-list 07, Wave-3 `fba` row, executed early) ──
+  {
+    symbol: 'FBA_BOARD_GRID_COLUMNS',
+    since: '2026-08-30',
+    retiredBy:
+      'kill-list 07 Wave-3 fba row — the board’s hand fact-track array. The display that replaced it was torn out the same day (hanging Amazon Prep); do not resurrect a forever-track list.',
+  },
+  {
+    symbol: 'isFbaBoardGridSortable',
+    since: '2026-08-30',
+    retiredBy:
+      'kill-list 07 Wave-3 fba row — static-list sortability. Do not reintroduce a per-key sortability table beside the catalog.',
+  },
+  {
+    symbol: 'fbaSheetColumnsFor',
+    since: '2026-08-30',
+    retiredBy:
+      'Amazon Prep board display torn out 2026-08-30 — the slot materializer lived only to feed FbaBoardTable. Rebuild the display; do not resurrect this helper as a second column SoT.',
+  },
+  {
+    symbol: 'FBA_SHEET_COLUMNS',
+    since: '2026-08-30',
+    retiredBy:
+      'Amazon Prep board display torn out 2026-08-30 — product-default materialization of the torn-out table.',
+  },
+  {
+    symbol: 'FBA_BOARD_TABLE_BINDING',
+    since: '2026-08-30',
+    retiredBy:
+      'Amazon Prep board display torn out 2026-08-30 — re-register a binding only with the rebuilt display.',
+  },
+  {
+    symbol: 'useFbaTableLayout',
+    since: '2026-08-30',
+    retiredBy:
+      'Amazon Prep board display torn out 2026-08-30 — the slot-layout hook was the hanging table’s config. Recreate it with the rebuilt mount.',
+  },
+  {
+    symbol: 'FbaShipmentTracePanel',
+    since: '2026-08-30',
+    retiredBy:
+      'Amazon Prep shipped-table orphan — only consumer was FbaShippedTable, deleted with the display teardown.',
+  },
 ];
 
 /** Recursively collect shipped `.ts`/`.tsx` under src (skip tests + node_modules). */

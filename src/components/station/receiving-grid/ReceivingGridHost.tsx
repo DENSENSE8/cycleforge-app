@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, type RefObject } from 'react';
-import { useGridColumnDisplay, useGridRowFills } from '@/design-system/components/grid';
+import { useGridRowFills } from '@/design-system/components/grid';
 import {
   DataTable,
   type DataTableSearch,
@@ -30,7 +30,6 @@ import { RECEIVING_TABLE_BINDING } from './receiving-table-definition';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import { ReceivingGridGroupRow } from './ReceivingGridGroupRow';
 import { mergeCustomFieldColumns } from '@/lib/custom-fields/column-model';
-import { commitCustomFieldValueClient } from '@/lib/custom-fields/commit-value-client';
 import { toast } from '@/lib/toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { commitReceivingLineNote } from '@/lib/receiving/commit-receiving-line-note';
@@ -204,22 +203,10 @@ export function ReceivingGridHost({
   const allColumns = mergeCustomFieldColumns(systemColumns, customDefs);
   const prefsTableId = tableId ?? RECEIVING_TABLE_BINDING.definition.tableId;
 
-  const handleCustomFieldCommit = useCallback(
-    (entityId: number, defKey: string, next: string) => {
-      const def = customDefs.find((d) => d.key === defKey);
-      if (!def || entityId <= 0) return;
-      void commitCustomFieldValueClient({
-        fieldId: def.id,
-        entityType: 'RECEIVING',
-        entityId,
-        value: next,
-      }).catch((err: unknown) => {
-        toast.error(err instanceof Error ? err.message : 'Failed to save field');
-      });
-    },
-    [customDefs],
-  );
-
+  // No custom-field commit handler: every receiving descriptor declares
+  // `inCellEdit: false`, so nothing on this grid can originate a cell write.
+  // `commitCustomFieldValueClient` stays in the domain layer for whoever puts
+  // a real editor on the record plane.
 
   // Column sort is DURABLE: `?colsort=`/`?coldir=` (workbench URL-as-state law),
   // so a reload or a shared link reproduces the operator's view. Mode switches
@@ -258,7 +245,6 @@ export function ReceivingGridHost({
     ?? clearSort;
 
   const queryClient = useQueryClient();
-  const { displayByKey } = useGridColumnDisplay(prefsTableId);
   const { fillsById } = useGridRowFills(prefsTableId);
 
   const { orderGroupsByDate, flatRows } = useMemo(() => {
@@ -351,15 +337,12 @@ export function ReceivingGridHost({
           statusVocabulary={statusVocabulary}
           inventoryProviderLabel={inventoryProviderLabel}
           columns={visible}
-          columnDisplay={displayByKey}
           selectGutterChrome={selectGutterChrome}
           clickSelect={clickSelect}
           rowFillsById={clickSelect ? fillsById : undefined}
           linkedReceivingId={linkedReceivingId}
           onCrosshairHover={onCrosshairHover}
           customFieldDefs={customDefs}
-          onCustomFieldCommit={handleCustomFieldCommit}
-          onCommitNote={handleCommitNote}
         />
       )}
       renderRow={(row, stripeIndex, { columns: visible }) => (
@@ -377,7 +360,6 @@ export function ReceivingGridHost({
           statusVocabulary={statusVocabulary}
           inventoryProviderLabel={inventoryProviderLabel}
           columns={visible}
-          columnDisplay={displayByKey}
           selectGutterChrome={selectGutterChrome}
           clickSelect={clickSelect}
           onOpenWorkspace={onOpenWorkspace}
@@ -386,8 +368,6 @@ export function ReceivingGridHost({
           linkedReceivingId={linkedReceivingId}
           onCrosshairHover={onCrosshairHover}
           customFieldDefs={customDefs}
-          onCustomFieldCommit={handleCustomFieldCommit}
-          onCommitNote={handleCommitNote}
         />
       )}
     />

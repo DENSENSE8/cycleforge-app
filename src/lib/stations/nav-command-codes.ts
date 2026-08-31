@@ -78,7 +78,6 @@ export const NAV_COMMAND_CODES: readonly NavCommandDef[] = [
 
   // ── Desks the floor hands off to ──────────────────────────────────────────
   { code: 'CMD-GO-INBOUND',  label: 'Go · Inbound',    pageId: 'incoming',  childId: null,      sortOrder: 110 },
-  { code: 'CMD-GO-LABELS',   label: 'Go · Labels',     pageId: 'outbound',  childId: 'labels',  sortOrder: 120 },
   { code: 'CMD-GO-ORDERS',   label: 'Go · Orders',     pageId: 'outbound',  childId: 'orders',  sortOrder: 130 },
   { code: 'CMD-GO-FBA',      label: 'Go · Amazon prep',pageId: 'outbound',  childId: 'fba',     sortOrder: 140 },
   { code: 'CMD-GO-INVENTORY',label: 'Go · Inventory',  pageId: 'inventory', childId: 'ledger',  sortOrder: 150 },
@@ -98,6 +97,13 @@ export const NAV_COMMAND_CODES: readonly NavCommandDef[] = [
 //     the nav would route around that decision.
 //   • `/studio`, `/settings`, `/admin` — build/configure surfaces. Nothing about
 //     them is hands-full work, which is the only thing a sticker is for.
+//   • `CMD-GO-LABELS` — RETIRED 2026-08-30 with the Labels tab. Needing a label
+//     is a STATE in the To-ship queue now ("Needs label"), not a destination, so
+//     there is nothing left for the sticker to jump TO. Repointing it at the
+//     page would have landed the operator on To ship under a label that says
+//     Labels, which is worse than a code that no longer scans. If a printed
+//     sticker with this code is still on the floor, it now reads as an unknown
+//     code — which is the honest answer.
 
 /**
  * Canonical lookup form: upper-case, every non-alphanumeric dropped.

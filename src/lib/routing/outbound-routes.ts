@@ -2,7 +2,7 @@
  * Param ownership for the Shipping (Outbound) mode routes.
  *
  * Slice 3 of the nav/routing refactor: the mode moved from `?mode=` onto the
- * path (`/shipping/labels|fba|scan-out`), and each of those routes now
+ * path (`/shipping/fba|scan-out`), and each of those routes now
  * declares what it owns. Ready lives as `?fbaMode=ready` on `/shipping/fba`
  * (not its own path). To-ship desk lives at `/shipping/orders` (former
  * `/dashboard` outbound board).
@@ -17,8 +17,8 @@ import {
 } from '@/components/outbound/outbound-sidebar-shared';
 import { parseFbaModeWire } from '@/lib/fba/fba-modes';
 import { SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
+import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
 import { parseShippedSearchFieldWire } from '@/lib/shipped-search';
-import { parseLabelsWorkspaceTabWire } from '@/utils/labels-workspace-state';
 import { parseReadyWorkspaceTabWire } from '@/utils/ready-workspace-state';
 import {
   defineRouteParams,
@@ -87,6 +87,15 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
      * tick — the rail opened and closed itself before the operator could type.
      */
     ingest: paramEnum(['true'] as const),
+    /**
+     * Caged → released intake session (`OrderIntakeOverlay`, centered).
+     * `new` starts an order; a numeric id re-opens that caged order's
+     * session. Declared for the same reason `ingest` is — an undeclared param
+     * on this route is stripped on the operator's next keystroke.
+     */
+    triage: paramText,
+    /** Caged facet on the To-ship queue — shows the held set instead of the live one. */
+    cage: paramFlag,
     /** CSV import staging surface on the To-Ship desk (session draft in memory). */
     import: paramEnum(['csv'] as const),
     shippedFilter: paramEnum(['all', 'orders', 'sku', 'fba'] as const),
@@ -119,22 +128,12 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
   carries: SHIPPING_CARRIES,
 });
 
-/** `/shipping/labels` — the Queue/Recent workbench and the label flow. */
-const LABELS_ROUTE_PARAMS = defineRouteParams({
-  route: OUTBOUND_MODE_PATHS.labels,
-  owns: {
-    ...SHIPPING_COMMON,
-    /** Focused order — opens the label / packing-slip workspace over the queue. */
-    open: paramPositiveInt,
-    /** New-order intake slide-over. */
-    new: paramEnum(['true'] as const),
-    /** Queue vs Recent tab. */
-    ltab: paramRoundTrip(parseLabelsWorkspaceTabWire),
-    rtab: paramText,
-  },
-  carries: SHIPPING_CARRIES,
-});
-
+/*
+ * `/shipping/labels` — DELETED 2026-08-30 along with its route. Its params
+ * (`ltab`, `open`, `new`, `rtab`, `q`, `sort`) died with the surface that owned
+ * them; a spec for a route that does not exist would be a boundary parse for
+ * nothing, and `routeParamsFor('/shipping/labels')` now correctly finds none.
+ */
 /** `/shipping/fba` — Ready · Plan · Combine · Shipped inbound workbench. */
 const FBA_ROUTE_PARAMS = defineRouteParams({
   route: OUTBOUND_MODE_PATHS.fba,
@@ -154,6 +153,50 @@ const FBA_ROUTE_PARAMS = defineRouteParams({
   carries: SHIPPING_CARRIES,
 });
 
+/**
+ * `/shipping/shipped` — the Shipped desk: shipment history + lookup.
+ *
+ * Owns the whole existing shipped vocabulary, unchanged, because that is what
+ * makes the promotion a MOVE rather than a rewrite: `resolveShippedQueryArgs`
+ * is still the only resolver, and a `?carrier=UPS&shippedWeekOffset=2` bookmark
+ * that used to hang off the orders desk reads identically here.
+ *
+ * The open-queue keys are deliberately absent. `stage`, `cage`, `ustatus`,
+ * `late` and `attention` are questions about work still in the warehouse; on an
+ * archive they would be filters that can only ever return nothing, and the
+ * boundary parse dropping them is what stops a forwarded To-ship URL from
+ * landing here wearing a queue's refinements.
+ */
+const SHIPPED_ROUTE_PARAMS = defineRouteParams({
+  route: SHIPPING_SHIPPED_PATH,
+  owns: {
+    /** Find by order number / tracking / SKU. */
+    search: paramText,
+    /** Open row — the details panel's deep-link, same key as the To-ship desk. */
+    openOrderId: paramPositiveInt,
+    shippedFilter: paramEnum(['all', 'orders', 'sku', 'fba'] as const),
+    shippedSearchField: paramRoundTrip(parseShippedSearchFieldWire),
+    /** Week window (0 = current). The default paint, never "all time". */
+    shippedWeekOffset: paramPositiveInt,
+    /** Explicit day window — wins over the week in `resolveShippedQueryArgs`. */
+    dateFrom: paramDateKey,
+    dateTo: paramDateKey,
+    /** Intentional "no date window" (Packed's dismissable seed). */
+    allDates: paramFlag,
+    /** Outbound-state facet off the status legend (e.g. `PACKED_STAGED`). */
+    ostatus: paramText,
+    exceptions: paramFlag,
+    carrier: paramText,
+    statusCategory: paramText,
+    packedBy: paramPositiveInt,
+    testedBy: paramPositiveInt,
+    /** Grid display sort — column/server ids, same alphabet as the desk. */
+    sort: paramText,
+    dir: paramEnum(['asc', 'desc'] as const),
+  },
+  carries: SHIPPING_CARRIES,
+});
+
 /** `/shipping/scan-out` — dock ship-confirm over the staged queue. */
 const SCAN_OUT_ROUTE_PARAMS = defineRouteParams({
   route: OUTBOUND_MODE_PATHS['scan-out'],
@@ -166,7 +209,6 @@ const SCAN_OUT_ROUTE_PARAMS = defineRouteParams({
 
 /** Sidebar mode id → the spec for the route that mode lands on. */
 export const OUTBOUND_MODE_ROUTE_PARAMS = {
-  labels: LABELS_ROUTE_PARAMS,
   fba: FBA_ROUTE_PARAMS,
   'scan-out': SCAN_OUT_ROUTE_PARAMS,
 } as const satisfies Record<OutboundMode, RouteParamsSpec>;
@@ -174,7 +216,7 @@ export const OUTBOUND_MODE_ROUTE_PARAMS = {
 /** Every shipping route spec. Resolution order is the registry's job. */
 export const OUTBOUND_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   ORDERS_ROUTE_PARAMS,
-  LABELS_ROUTE_PARAMS,
   FBA_ROUTE_PARAMS,
+  SHIPPED_ROUTE_PARAMS,
   SCAN_OUT_ROUTE_PARAMS,
 ];

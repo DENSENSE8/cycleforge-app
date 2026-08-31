@@ -23,7 +23,10 @@
  *
  * Hand entry is one leaf (Add order manually). Replacement and platform
  * catalog entry were removed from this index — they were a second mode
- * control under the same ingest rail.
+ * control under the same ingest rail. The TRIAGE leaf moved out on
+ * 2026-08-30 (operator override): the acknowledgment intake is now the
+ * centered `OrderIntakeOverlay`, opened by the desk's Add / `?triage=`, so
+ * this rail carries only the secondary ingest methods.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -69,13 +72,17 @@ export function OrderIngestRail({
   const sync = useOrdersSync();
   const submitNewOrder = useShippedFormSubmit(onClose);
 
-  const [activeId, setActiveId] = useState(() =>
-    initialLeaf === 'manual' ? MANUAL_LEAF : DESK_INSPECTOR_INDEX,
-  );
+  const resolveInitialLeaf = (leaf: 'index' | 'manual') =>
+    leaf === 'manual' ? MANUAL_LEAF : DESK_INSPECTOR_INDEX;
+
+  const [activeId, setActiveId] = useState(() => resolveInitialLeaf(initialLeaf));
 
   useEffect(() => {
     if (!open) return;
-    setActiveId(initialLeaf === 'manual' ? MANUAL_LEAF : DESK_INSPECTOR_INDEX);
+    setActiveId(resolveInitialLeaf(initialLeaf));
+    // `resolveInitialLeaf` is a pure local mapper over the two values already
+    // in this list; including it would only re-run the effect on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialLeaf]);
 
   // CSV staging takes over the desk; the rail steps aside while it runs.

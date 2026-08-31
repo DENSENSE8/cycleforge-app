@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import QRCode from 'react-qr-code';
-import { Button } from '@/design-system/primitives';
+// Deep path, not the barrel — see the note in `src/app/signin/page.tsx`. This
+// is public chrome (`/share/**`), where the layout skips `MotionConfig`.
+import { Button } from '@/design-system/primitives/Button';
 import { toast } from '@/lib/toast';
 
 interface SharePhoto {

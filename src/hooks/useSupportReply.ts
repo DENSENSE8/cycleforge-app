@@ -25,6 +25,9 @@ export interface SupportReplyVars {
   photoIds?: number[];
   /** Preview urls for the staged photos, used only for the optimistic echo. */
   attachmentPreviews?: { url: string; thumbUrl?: string }[];
+  /** Cycle Forge staffer posting this comment — stamps the optimistic echo. */
+  staffId?: number | null;
+  staffName?: string | null;
   /** CC collaborator emails (public replies only). */
   emailCcs?: string[];
   /** Formatted HTML for the customer email (rendered from the markdown body). */
@@ -63,12 +66,14 @@ export function useSupportReply() {
       }
       return { attached: data.attached ?? 0 };
     },
-    onMutate: async ({ ticketId, body, isPublic, htmlBody, attachmentPreviews }) => {
+    onMutate: async ({ ticketId, body, isPublic, htmlBody, attachmentPreviews, staffId, staffName }) => {
       await qc.cancelQueries({ queryKey: zendeskKeys.comments(ticketId) });
       const prev = qc.getQueryData<CommentsResult>(zendeskKeys.comments(ticketId));
       const tempId = -Date.now();
+      const staff = staffId != null && staffId > 0 ? staffId : null;
       // `__ours` marks our optimistic echo for bubble styling until the server
-      // row replaces it.
+      // row replaces it. `author_staff_id` is the Cycle Forge identity — not
+      // the Zendesk API user the comment will round-trip as.
       const optimistic = {
         id: tempId,
         author_id: 0,
@@ -78,6 +83,9 @@ export function useSupportReply() {
         created_at: new Date().toISOString(),
         __ours: true,
         __optimistic: true,
+        author_staff_id: staff,
+        author_name: (staffName || '').trim() || (staff ? 'You' : undefined),
+        author_is_agent: true,
         attachments: (attachmentPreviews ?? []).map((p, i) => ({
           id: tempId - i,
           file_name: 'photo',

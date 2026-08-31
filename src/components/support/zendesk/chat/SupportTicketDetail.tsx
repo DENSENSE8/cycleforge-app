@@ -15,7 +15,6 @@ import {
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
 import { useMeasuredHeight } from '@/hooks/useMeasuredHeight';
 import { useSupportContext } from '@/hooks/useSupportContext';
-import type { SupportContextBundle } from '@/lib/support/context-types';
 import { capabilityTitle } from '@/lib/integrations/capability-labels';
 import type { ZendeskComment } from '@/lib/zendesk';
 import { EmptyState, Spinner } from '@/design-system/primitives';
@@ -29,7 +28,6 @@ import { SupportChatComposer } from './SupportChatComposer';
 import { useTicketComposerStaging } from './TicketComposerStagingContext';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
 import { SupportContextDetailPanel } from '@/components/support/context/SupportContextDetailPanel';
-import { supportOrdersHref } from '@/components/sidebar/support/support-sidebar-shared';
 import { requesterFrom, requesterLabel } from './support-chat-utils';
 import { CONVERSATION_DETAIL_SURFACE } from '@/design-system/primitives/conversation-chrome';
 import { cn } from '@/utils/_cn';
@@ -48,31 +46,11 @@ function commentImageUrls(c: ZendeskComment): string[] {
     .filter((u): u is string => Boolean(u));
 }
 
-/** Compact linked-state label for the header Links control. */
-function contextBadgeFromBundle(bundle: SupportContextBundle | undefined): string {
-  if (!bundle) return 'Links';
-  const order = bundle.linkage.order?.orderId?.trim();
-  if (order) {
-    return order.length > 8 ? `…${order.slice(-8)}` : order;
-  }
-  const tracking =
-    bundle.linkage.trackings.find((t) => t.isPrimary)?.tracking ??
-    bundle.linkage.trackings[0]?.tracking ??
-    bundle.linkable?.trackingNumber ??
-    null;
-  if (tracking?.trim()) {
-    const t = tracking.trim();
-    return t.length > 8 ? `…${t.slice(-8)}` : t;
-  }
-  return 'Unlinked';
-}
-
 /**
- * Chat-style ticket detail: sticky header (requester + Zendesk pickers + staff
- * assignment) → scrollable conversation → sticky composer (or host-owned dock).
+ * Chat-style ticket detail: lean inline title → scrollable conversation →
+ * sticky composer (or host-owned dock).
  *
- * Support Context (Linkage + Team + Activity) lives in the global detail-stack
- * slide-over ({@link SupportContextDetailPanel}) opened from the header.
+ * Linkage / Connections live on the host rail, not restated in this header.
  *
  * Owns ONE photo gallery aggregated across all message attachments + linked
  * photos, so clicking any photo opens the shared in-app PhotoViewerModal (no new
@@ -81,13 +59,11 @@ function contextBadgeFromBundle(bundle: SupportContextBundle | undefined): strin
 export function SupportTicketDetail({
   ticketId,
   onBack,
-  hideExternalLink = false,
   /** Station / Unbox rail — denser chrome, no AI panel. */
   embedded = false,
   /**
-   * Drop the avatar/requester identity band. Defaults to `embedded` (station
-   * Ticket tabs hide it — identity lives in SupportTicketIdentity). Unbox
-   * push rail passes `false` so a denser requester line stays visible.
+   * With {@link hideTitle}, hide this strip entirely (`/support`). The header
+   * is title-only; this flag no longer draws a requester band.
    */
   hideRequesterBand,
   /**
@@ -171,10 +147,6 @@ export function SupportTicketDetail({
   // `mergeFloorTimeline` is on — station Ticket keeps them on Timeline Displays.
   const { data: contextBundle } = useSupportContext(contextAnchor, true);
   const [contextOpen, setContextOpen] = useState(false);
-  const contextBadge = contextBadgeFromBundle(contextBundle);
-  const linkedOrderPk = contextBundle?.linkage.order?.id ?? null;
-  const ordersHref =
-    linkedOrderPk != null && linkedOrderPk > 0 ? supportOrdersHref(linkedOrderPk) : null;
 
   const photoUrls = useMemo(() => {
     const urls: string[] = [];
@@ -262,14 +234,9 @@ export function SupportTicketDetail({
       <SupportChatHeader
         ticket={ticket}
         onBack={onBack}
-        hideExternalLink={hideExternalLink}
         compact={embedded}
         hideRequesterBand={hideRequester}
         hideTitle={hideTitle}
-        onOpenContext={showContext ? () => setContextOpen(true) : undefined}
-        contextOpen={contextOpen}
-        contextBadge={showContext ? contextBadge : null}
-        ordersHref={ordersHref}
       />
       {/* `data-conversation-port` marks the scroll ancestor the stream measures
           against when the floating composer resizes. */}

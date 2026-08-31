@@ -127,6 +127,7 @@ export async function GET() {
           deviceKind: session.deviceKind,
           deviceLabel: session.deviceLabel,
           expiresAt: slidExpiresAt,
+          persistent: session.persistent,
         },
       },
     },

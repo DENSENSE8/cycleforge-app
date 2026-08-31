@@ -12,17 +12,17 @@ import {
 } from '@/lib/nav/command-bar-nav-groups';
 import { SPINE_SECTIONS } from '@/lib/sidebar-navigation';
 
-test('buildCommandBarNavGroups order is Pin → SPINE_SECTIONS → Account', () => {
+test('buildCommandBarNavGroups order is Pin → SPINE_SECTIONS', () => {
   const groups = buildCommandBarNavGroups();
   const ids = groups.map((g) => String(g.id));
 
   assert.equal(ids[0], 'pin');
-  assert.equal(ids[ids.length - 1], 'footer');
+  assert.equal(ids.includes('footer'), false, 'account pin band is gone from the default map');
 
   // Section bands are a SUBSEQUENCE of SPINE_SECTIONS, not a copy of it: a
   // section with no visible page is omitted (the hollow-domain ban), so
   // asserting equality would make the palette contract depend on permissions.
-  const sectionIds = ids.slice(1, -1);
+  const sectionIds = ids.slice(1);
   const order = SPINE_SECTIONS.map((s) => String(s.id));
   assert.deepEqual(
     sectionIds,
@@ -40,74 +40,62 @@ test('every spine section with pages emits a band whose label + icon come from t
     assert.equal(group.label, section.label);
     assert.equal(group.sectionIcon, section.icon);
   }
-  // The eight locked sections all ship pages by default.
+  // Every spine section with pages ships a band by default.
   for (const section of SPINE_SECTIONS) {
     assert.ok(emitted.has(String(section.id)), `${section.id} band missing by default`);
   }
 });
 
-test('pin contains Home Search Media Plans Chat; footer contains Studio Admin Settings', () => {
+test('pin contains Home Search Media Plans Chat Settings; Studio and Admin are map bands', () => {
   const groups = buildCommandBarNavGroups();
   const pin = groups.find((g) => g.id === 'pin');
   const footer = groups.find((g) => g.id === 'footer');
   assert.ok(pin);
-  assert.ok(footer);
+  assert.equal(footer, undefined);
 
   assert.deepEqual(
     pin!.rows.filter((r) => r.type === 'page').map((r) => r.id),
-    ['home', 'search', 'ops-photos', 'plans-live', 'ai-chat'],
+    ['home', 'search', 'ops-photos', 'plans-live', 'ai-chat', 'settings'],
   );
-  // Workflow Studio joined the footer band 2026-08-02 — it left SPINE_SECTIONS,
-  // so the palette must find it here rather than dropping it entirely.
   assert.deepEqual(
-    footer!.rows.filter((r) => r.type === 'page').map((r) => r.id),
-    ['studio', 'admin', 'settings'],
+    groups
+      .find((g) => g.id === 'studio')
+      ?.rows.filter((r) => r.type === 'page')
+      .map((r) => r.id),
+    ['studio'],
+  );
+  assert.deepEqual(
+    groups
+      .find((g) => g.id === 'admin')
+      ?.rows.filter((r) => r.type === 'page')
+      .map((r) => r.id),
+    ['admin'],
   );
 });
 
-test('Scan Stations emits Receiving then Walk-In subgroup chrome before leaves', () => {
+test('Scan Stations lists benches as a flat map — no Receiving / Walk-In chrome', () => {
   const groups = buildCommandBarNavGroups();
   const floor = groups.find((g) => g.id === 'floor');
   assert.ok(floor);
 
-  const subgroupRows = floor!.rows.filter((r) => r.type === 'subgroup');
+  assert.equal(
+    floor!.rows.some((r) => r.type === 'subgroup'),
+    false,
+    'subgroup headers left the palette when the spine flattened',
+  );
+
+  const ids = floor!.rows.filter((r) => r.type === 'page').map((r) => r.id);
   assert.deepEqual(
-    subgroupRows.map((r) => (r.type === 'subgroup' ? r.id : null)),
-    ['receiving', 'walk-in'],
+    ids.slice(0, 7),
+    ['triage', 'receive', 'pickup', 'repair', 'tech', 'packer', 'scan-out'],
   );
-  assert.equal(subgroupRows[0]?.type, 'subgroup');
-  if (subgroupRows[0]?.type === 'subgroup') {
-    assert.equal(subgroupRows[0].label, 'Receiving');
-  }
-  assert.equal(subgroupRows[1]?.type, 'subgroup');
-  if (subgroupRows[1]?.type === 'subgroup') {
-    assert.equal(subgroupRows[1].label, 'Walk-In');
-  }
 
-  const arrival = floor!.rows.find(
-    (r) => r.type === 'page' && r.id === 'triage',
-  );
+  const arrival = floor!.rows.find((r) => r.type === 'page' && r.id === 'triage');
   assert.ok(arrival);
-  assert.equal(arrival!.type, 'page');
-  if (arrival!.type === 'page') {
-    assert.equal(arrival.indented, true);
-  }
-
-  const pickup = floor!.rows.find(
-    (r) => r.type === 'page' && r.id === 'pickup',
-  );
+  const pickup = floor!.rows.find((r) => r.type === 'page' && r.id === 'pickup');
   assert.ok(pickup);
-  if (pickup!.type === 'page') {
-    assert.equal(pickup.indented, true);
-  }
-
-  const testing = floor!.rows.find(
-    (r) => r.type === 'page' && r.id === 'tech',
-  );
+  const testing = floor!.rows.find((r) => r.type === 'page' && r.id === 'tech');
   assert.ok(testing);
-  if (testing!.type === 'page') {
-    assert.equal(testing.indented ?? false, false);
-  }
 });
 
 test('domain bands own their pages; the desk / print grab-bags are gone', () => {

@@ -26,25 +26,15 @@ export type {
   GridSurfaceDescriptor,
   LedgerGridColumnModel,
 } from './grid-surface-descriptor';
-export { useGridColumnDisplay } from './useGridColumnDisplay';
 export { useGridRowFills } from './useGridRowFills';
-export { GridRowPaintTrigger } from './GridRowPaintTrigger';
 export {
-  GRID_COLUMN_CHIP_VALUE_CLASS,
   GRID_HIGHLIGHT_PRESETS,
-  GRID_COLUMN_TEXT_EMPHASIS_OPTS,
   LEGACY_GRID_COLUMN_HIGHLIGHT_HEX,
-  gridColumnHighlightStyle,
-  gridColumnTextEmphasisClass,
   isPersistedGridColumnHighlight,
   normalizeGridColumnHighlight,
-  normalizeGridColumnTextEmphasis,
 } from './grid-column-display';
 export type {
-  GridColumnCellMode,
-  GridColumnDisplayPref,
   GridColumnHighlight,
-  GridColumnTextEmphasis,
   LegacyGridColumnHighlight,
 } from './grid-column-display';
 export {
@@ -65,12 +55,7 @@ export {
   GRID_IDENTITY_COLUMN_KEYS,
   gridFrozenKeys,
   isGridColumnFillTrack,
-  isGridColumnPaintTrack,
-  isGridColumnInCellEditable,
-  isGridColumnResizable,
-  isGridIdentityColumn,
 } from './grid-column-editability';
-export type { GridIdentityColumnKey } from './grid-column-editability';
 export {
   LEDGER_GRID_CELL_INSET,
   LEDGER_GRID_FROZEN_CELL,

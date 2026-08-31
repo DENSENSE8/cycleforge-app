@@ -14,9 +14,6 @@
  * under the header. {@link STATION_IDENTITY_INSET_RIGHT} (`right-2`) keeps the
  * trailing utility cluster off the right edge. Never stack host `py-*` under
  * this float. Inner pad is zero — content abuts the band edges.
- *
- * Mid-canvas right-edge jumps live on `StationRightEdgeAction` (sibling module)
- * — flush-right sliced tab, not the top identity strip.
  */
 import {
   HEADER_ICON_GAP,

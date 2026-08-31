@@ -25,6 +25,7 @@ import { OrdersViewControlsRail } from '@/components/outbound/orders/OrdersViewC
 import { useOrdersViewChrome } from '@/components/outbound/orders/orders-view-chrome-context';
 import { useRailActionSnapshot } from '@/components/dashboard/rail/OrderRailActions';
 import { CsvImportStagingHost } from '@/components/outbound/orders/CsvImportStagingHost';
+import { ToShipTodayStrip } from '@/components/outbound/orders/to-ship/ToShipTodayStrip';
 import { type DashboardOrderView } from '@/utils/dashboard-search-state';
 import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
 import {
@@ -109,6 +110,13 @@ export function DashboardOrdersView({
 
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+      {/*
+        Today strip — the desk's status overview, above the queue it summarises.
+        Not painted over the CSV staging draft: that surface is a different
+        collection, and a queue's counts printed above someone else's rows is a
+        number attached to the wrong table.
+      */}
+      {showCsvStaging ? null : <ToShipTodayStrip />}
       {body}
       {overlays}
     </div>

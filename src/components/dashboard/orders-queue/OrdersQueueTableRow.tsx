@@ -4,17 +4,19 @@ import { gridDataCellClass } from '@/design-system/components/grid';
 import { isCompoundColumnModel } from '@/components/tables/compound/compound-columns';
 import { renderCompoundGridCell } from '@/components/tables/compound/CompoundGridCell';
 import { ordersCompoundView } from '@/lib/orders/orders-compound-view';
-import type { GridColumnDisplayPref } from '@/design-system/components/grid/grid-column-display';
-import { Fragment, memo, useCallback, useRef, useState, type ReactNode } from 'react';
+import {
+  ordersSlotValues,
+  ordersSubtitleParts,
+} from '@/lib/tables/field-catalog/orders-resolve';
+import { Fragment, memo, useCallback, useRef, type ReactNode } from 'react';
 import { motion } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
-import { ChevronDown, Plus } from '@/components/Icons';
+import { Plus } from '@/components/Icons';
 import { useRouter } from 'next/navigation';
 import { useOrderIdentityCellNodes, OrderIdentityChips } from '@/components/ui/OrderIdentityChips';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { ConditionSelectPopover } from './cell-editors';
 import {
   RowTitle,
   RowMetaColumns,
@@ -39,18 +41,23 @@ import {
 } from '@/utils/date';
 import { isSkuSourceRecord } from '@/utils/source-dot';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
+import type { OrdersQueueColumn } from '@/lib/dashboard-order-row-layout';
 import {
-  ORDERS_QUEUE_COLUMNS,
-  ORDERS_QUEUE_FROZEN_CELL,
-  ordersQueueFrozenLeft,
-  ordersQueueGridCell,
-  ordersQueueGridTemplateFor,
-  ordersQueueRowShellClass,
-  type OrdersQueueColumn,
-} from '@/lib/dashboard-order-row-layout';
-import { conditionGradeTextClass, orderRowQtyTone } from '@/lib/condition-tone';
+  LEDGER_GRID_FROZEN_CELL,
+  ledgerGridCell,
+  ledgerGridRowShellClass,
+} from '@/design-system/components/grid';
+import { gridFrozenLeft, gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
+import { conditionGradeTextClass, conditionGradeTone, orderRowQtyTone } from '@/lib/condition-tone';
 import { resolveOrderRowFlag } from '@/lib/orders/order-row-flags';
-import { conditionGradeTableLabel, isEmptyMetaDash } from '@/lib/conditions';
+import {
+  conditionDescription,
+  conditionGradeTableLabel,
+  conditionOptions,
+  isEmptyMetaDash,
+  resolveConditionGrade,
+} from '@/lib/conditions';
+import type { CompoundSubtitleSelect } from '@/components/tables/compound/compound-row-model';
 import {
   formatQueueRowDateCell,
   formatSalePrice,
@@ -72,7 +79,7 @@ import {
   PACK_BENCH_CHIP_TONE,
   packBenchShortLabel,
 } from '@/lib/packing/pack-bench-display';
-import { useOrderAssignment, type OrderAssignPayload } from '@/hooks/useOrderAssignment';
+import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 
@@ -88,7 +95,8 @@ export interface OrdersQueueTableRowProps {
   packerDisplay: string;
   testerId: number | null;
   packerId: number | null;
-  rowStatus: RowStatusMeta;
+  /** `null` on queues whose rows share one status — see `resolveRowStatus`. */
+  rowStatus: RowStatusMeta | null;
   trackingAction?: React.ReactNode;
   serialChip?: React.ReactNode;
   daysLate: number | null;
@@ -133,16 +141,17 @@ export interface OrdersQueueTableRowProps {
   onToggleSelect?: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
   queueMode?: OrdersQueueMode;
   /** Ordered VISIBLE column models (already sanitized + visibility-resolved).
-   *  Default = canonical order. Header + rows + group summaries must receive
-   *  the SAME list. */
-  columns?: readonly OrdersQueueColumn[];
+   *  REQUIRED — there is no canonical fallback since the Wave-1 hand-model
+   *  kill: the outbound desks pass the compound slot materialization, the
+   *  station benches pass their own `STATION_HISTORY_COLUMNS`. Header + rows +
+   *  group summaries must receive the SAME list. */
+  columns: readonly OrdersQueueColumn[];
   /**
-   * Per-staff column display prefs, resolved once by the host. Orders had no
-   * access to these, so `gridColumnTextEmphasisClass` — a shared SoT — had
-   * exactly one consuming family and a staffer's column emphasis stopped at
-   * the edge of Unbox History.
+   * Bound subtitle field ids from the effective slot layout (compound morph
+   * paints them inside the item cell's secondary line). Absent/empty keeps the
+   * legacy note/identity fallback line.
    */
-  columnDisplay?: Readonly<Record<string, GridColumnDisplayPref>>;
+  subtitleFieldIds?: readonly string[];
   /**
    * The MOUNTING SURFACE's declared capabilities — required, never defaulted.
    *
@@ -171,13 +180,19 @@ export interface OrdersQueueTableRowProps {
    * menu row (non–fulfillment/labels modes).
    */
   onRequestReplaceTracking?: (record: ShippedOrder) => void;
+  /**
+   * Present ⇒ the compound item cell's bound CONDITION subtitle part edits in
+   * place (grade menu over the condition SoT, `null` = clear). Absent ⇒ the
+   * same part is read-only — the house capability law. A scalar PATCH through
+   * the host's `useOrderAssignment`, never a lifecycle transition.
+   */
+  onCommitCondition?: (record: ShippedOrder, condition: string | null) => void;
 }
 
 /** In-cell editors this row can host (one open at a time).
  *  `title` is deliberately absent — the product title is a read-only identity
  *  anchor in the collection map; correction lives at the record plane.
  *  Notes · listing link · OOS are record-plane only. */
-type RowEditField = 'qty' | 'condition';
 
 /** The identity payload {@link useOrderIdentityCellNodes} consumes. */
 type OrderIdentityCellProps = Parameters<typeof useOrderIdentityCellNodes>[0];
@@ -187,6 +202,19 @@ function rowScanRef(record: QueueRowRecord): string | null {
   const raw = (record as QueueRowRecord & { scan_ref?: unknown }).scan_ref;
   return typeof raw === 'string' && raw ? raw : null;
 }
+
+/**
+ * The 7 grade rows of the condition subtitle editor, resolved ONCE from the
+ * condition SoTs (labels, tones, descriptions) — only the `current` flag is
+ * per-row. Table-variant labels: the same face the flat Cond column painted.
+ */
+const CONDITION_SELECT_BASE = conditionOptions('table').map((opt) => ({
+  value: opt.value as string,
+  label: opt.label,
+  toneClass: conditionGradeTextClass(opt.value),
+  currentClass: conditionGradeTone(opt.value).badge,
+  description: conditionDescription(opt.value),
+}));
 
 /**
  * The tracks that carry no fact — the structural slack column, and any key a
@@ -230,7 +258,7 @@ const ROW_GRID_TEMPLATE_CACHE = new WeakMap<readonly OrdersQueueColumn[], string
 function rowGridTemplate(columns: readonly OrdersQueueColumn[]): string {
   const cached = ROW_GRID_TEMPLATE_CACHE.get(columns);
   if (cached !== undefined) return cached;
-  const template = ordersQueueGridTemplateFor(columns);
+  const template = gridTemplate(columns);
   ROW_GRID_TEMPLATE_CACHE.set(columns, template);
   return template;
 }
@@ -342,7 +370,8 @@ interface OrdersQueueFlatRowCellsProps {
   selectGutterChrome: GridSelectGutterChrome;
   isChecked: boolean;
   queueMode: OrdersQueueMode;
-  rowStatus: RowStatusMeta;
+  /** `null` on queues whose rows share one status — see `resolveRowStatus`. */
+  rowStatus: RowStatusMeta | null;
   /** Already capability-gated by the row — `null` means "surface says no". */
   rowFlag: ReturnType<typeof resolveOrderRowFlag>;
   daysLate: number | null;
@@ -376,8 +405,6 @@ function OrdersQueueFlatRowCells({
   const orderChannelLabel = useOrderChannelLabel();
   const router = useRouter();
   const assignOrder = useOrderAssignment();
-  const [editing, setEditing] = useState<RowEditField | null>(null);
-  const [editSeed, setEditSeed] = useState<string | null>(null);
   const conditionCellRef = useRef<HTMLDivElement | null>(null);
 
   const qty = parseInt(String(record.quantity || '1'), 10) || 1;
@@ -386,38 +413,10 @@ function OrdersQueueFlatRowCells({
     record.shipping_tracking_number ||
     '';
 
-  // In-cell editing is a Pending-grid affordance: board/Packed/station rows
-  // stay display-only. Selection no longer competes with editing — the grid's
-  // left gutter is always-on (checkbox toggles; row body opens), so editors
-  // stay armed regardless of `selectMode`.
+  // In-cell editing was deleted with the display layer on 2026-08-29
+  // (`docs/todo/one-table-sot-teardown-HANDOFF.md` § 4.2). `gridSkin` still
+  // decides the airtable CELL PAINT; it no longer arms an editor.
   const gridEditable = gridSkin && !isMobile;
-
-  const closeEditor = useCallback(() => {
-    setEditing(null);
-    setEditSeed(null);
-  }, []);
-
-  const openEditor = useCallback((field: RowEditField, seed: string | null = null) => {
-    setEditSeed(seed);
-    setEditing(field);
-  }, []);
-
-  // One mutation waist for every editor — optimistic patch + rollback live in
-  // useOrderAssignment; editors never add their own mutation hooks.
-  const commitAssign = useCallback(
-    (payload: Omit<OrderAssignPayload, 'orderId'>, okMessage: string, failMessage: string) => {
-      const id = Number(record.id);
-      if (!Number.isFinite(id)) return;
-      assignOrder.mutate(
-        { orderId: id, ...payload },
-        {
-          onSuccess: () => toast.success(okMessage),
-          onError: (e) => toast.error(e instanceof Error ? e.message : failMessage),
-        },
-      );
-    },
-    [assignOrder, record.id],
-  );
 
   const onPasteTracking = useCallback(
     (value: string) => {
@@ -548,43 +547,6 @@ function OrdersQueueFlatRowCells({
     />
   ) : null;
 
-  // ── Navigate-mode cell trigger (the adopted Sheets keyboard contract) ────
-  // Click → edit (stopPropagation so the row doesn't open); Enter/F2 → edit
-  // preserving content; a printable char → edit REPLACING content; Esc clears
-  // cell focus. Absent when the surface isn't grid-editable, so clicks fall
-  // through to the row (open / select-toggle).
-  const cellTriggerProps = (field: RowEditField, opts: { typing?: boolean; label: string }) =>
-    gridEditable
-      ? {
-          tabIndex: 0,
-          'aria-label': opts.label,
-          onClick: (e: React.MouseEvent) => {
-            e.stopPropagation();
-            openEditor(field);
-          },
-          onKeyDown: (e: React.KeyboardEvent) => {
-            if (e.key === 'Enter' || e.key === 'F2') {
-              e.preventDefault();
-              e.stopPropagation();
-              openEditor(field);
-            } else if (
-              opts.typing &&
-              e.key.length === 1 &&
-              !e.ctrlKey &&
-              !e.metaKey &&
-              !e.altKey
-            ) {
-              e.preventDefault();
-              e.stopPropagation();
-              openEditor(field, e.key);
-            } else if (e.key === 'Escape') {
-              e.stopPropagation();
-              (e.currentTarget as HTMLElement).blur();
-            }
-          },
-        }
-      : {};
-
   /**
    * The flag's dot — the tint's non-colour carrier.
    *
@@ -615,12 +577,20 @@ function OrdersQueueFlatRowCells({
   const leadControls = (
     <div
       data-select-gutter
+      // Cell role for the same reason the header gutter carries `columnheader`
+      // (see `LedgerGridColumnHeader`): a `role="row"` may only own cell-family
+      // roles, so without this the `role="checkbox"` below is owned by the row
+      // and axe `aria-required-children` fails. `cell` — not `gridcell` — because
+      // the container is `role="table"`, not `role="grid"`.
+      role="cell"
       className={cn(
-        ordersQueueGridCell({ inset: 'none', rule: true }),
+        ledgerGridCell({ inset: 'none', rule: true }),
         isEmptyGutterChrome(selectGutterChrome) ? 'items-stretch p-0' : 'justify-center',
-        ORDERS_QUEUE_FROZEN_CELL,
+        LEDGER_GRID_FROZEN_CELL,
       )}
-      style={{ left: ordersQueueFrozenLeft('select') }}
+      // Offset from the MOUNTED model, never a static list — the bench mounts
+      // its own flat array now (`STATION_HISTORY_COLUMNS`).
+      style={{ left: gridFrozenLeft(columns, 'select') }}
       onClick={(e) => (selectMode || gridSkin || clickSelect) && e.stopPropagation()}
     >
       {gridSkin || selectMode || clickSelect ? (
@@ -661,19 +631,20 @@ function OrdersQueueFlatRowCells({
           <div
             data-col="title"
             // Identity column — collection-map read-only
-            // (`isGridColumnInCellEditable` / GRID_IDENTITY_COLUMN_KEYS). The
+            // (`GRID_IDENTITY_COLUMN_KEYS`). The
             // product title is a catalog fact + this row's identity anchor; a
             // text caret (click / Enter / F2 / printable) put a destructive
             // typo one keystroke away. Correction happens at the record plane.
             // No focus ring on the title itself: the ring is the tell that a
             // cell edits, and clicks must fall through to the row (open record).
-            className={cn(dataCell(col, rule), ORDERS_QUEUE_FROZEN_CELL, 'gap-1.5')}
-            style={{ left: ordersQueueFrozenLeft('title') }}
+            className={cn(dataCell(col, rule), LEDGER_GRID_FROZEN_CELL, 'gap-1.5')}
+            style={{ left: gridFrozenLeft(columns, 'title') }}
             data-frozen-edge
           >
             {flagIndicator}
-            {/* Status chip lives in the Status column on gridSkin; board/mobile keep the title-dot. */}
-            {!gridSkin ? (
+            {/* Status chip lives in the Status column on gridSkin; board/mobile keep the title-dot.
+                No dot at all when the queue has no per-row status (Labels). */}
+            {!gridSkin && rowStatus ? (
               <HoverTooltip label={`${rowStatus.label} — ${rowStatus.description}`} focusable={false}>
                 <span className={cn('h-2 w-2 shrink-0 rounded-full', rowStatus.dot)} />
               </HoverTooltip>
@@ -685,7 +656,6 @@ function OrdersQueueFlatRowCells({
         );
       case 'condition': {
         // Unbox flush grade face — uppercase table label + conditionGradeTextClass.
-        // Editable → ConditionSelectPopover (same editor as the old Product chip).
         const gradeFace = conditionEmpty ? (
           <GridCellDash />
         ) : (
@@ -702,36 +672,9 @@ function OrdersQueueFlatRowCells({
           <div
             data-col="condition"
             ref={conditionCellRef}
-            className={cn(dataCell(col, rule), gridEditable && 'group/cond')}
+            className={dataCell(col, rule)}
           >
-            {gridEditable ? (
-              <button
-                type="button"
-                aria-label={
-                  conditionEmpty
-                    ? 'Set condition'
-                    : `Change condition — ${conditionLabel}`
-                }
-                aria-haspopup="listbox"
-                aria-expanded={editing === 'condition'}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  openEditor('condition');
-                }}
-                className={cn(
-                  'ds-raw-button inline-flex min-w-0 max-w-full items-center gap-0.5 rounded transition-colors',
-                  focusRing('cell'),
-                )}
-              >
-                {gradeFace}
-                <ChevronDown
-                  className="h-3 w-3 shrink-0 text-text-faint opacity-0 transition-opacity group-hover/row:opacity-100 group-focus-visible/cond:opacity-100 group-hover/cond:opacity-100"
-                  aria-hidden
-                />
-              </button>
-            ) : (
-              gradeFace
-            )}
+            {gradeFace}
           </div>
         );
       }
@@ -741,8 +684,8 @@ function OrdersQueueFlatRowCells({
         return (
           <div
             data-col="age"
-            className={cn(dataCell(col, rule), ORDERS_QUEUE_FROZEN_CELL)}
-            style={{ left: ordersQueueFrozenLeft('age') }}
+            className={cn(dataCell(col, rule), LEDGER_GRID_FROZEN_CELL)}
+            style={{ left: gridFrozenLeft(columns, 'age') }}
           >
             <GridAgeCellValue
               daysLate={daysLate}
@@ -802,7 +745,6 @@ function OrdersQueueFlatRowCells({
           <div
             data-col="qty"
             className={cn(dataCell(col, rule), gridEditable && cn('relative', focusRing('cell')))}
-            {...cellTriggerProps('qty', { typing: true, label: `Edit quantity (${qty})` })}
           >
             {/* Same type scale as the Date / Age cells — numerals must not
                 read a step smaller than their neighbor facts. */}
@@ -824,8 +766,8 @@ function OrdersQueueFlatRowCells({
         return (
           <div
             data-col="order"
-            className={cn(dataCell(col, rule), ORDERS_QUEUE_FROZEN_CELL)}
-            style={{ left: ordersQueueFrozenLeft('order') }}
+            className={cn(dataCell(col, rule), LEDGER_GRID_FROZEN_CELL)}
+            style={{ left: gridFrozenLeft(columns, 'order') }}
           >
             {identityNodes.order}
           </div>
@@ -877,8 +819,12 @@ function OrdersQueueFlatRowCells({
           <div className="flex min-w-0 flex-col">
             <RowTitle
               leading={selectMode ? leadControls : undefined}
-              dot={rowStatus.dot}
-              dotTitle={`${rowStatus.label} — ${rowStatus.description}`}
+              // Empty dot keeps the leading track (so titles stay aligned down
+              // the list) while saying nothing, which is the point.
+              dot={rowStatus?.dot ?? ''}
+              dotTitle={
+                rowStatus ? `${rowStatus.label} — ${rowStatus.description}` : undefined
+              }
               title={record.product_title || 'Unknown Product'}
             />
             <RowMetaColumns
@@ -906,21 +852,6 @@ function OrdersQueueFlatRowCells({
         ))
       )}
 
-      {/* Cell-anchored editor popovers (body-portaled — never clipped). */}
-      {editing === 'condition' && gridEditable ? (
-        <ConditionSelectPopover
-          anchorRef={conditionCellRef}
-          current={conditionValue || null}
-          onSelect={(value) =>
-            commitAssign(
-              { condition: value },
-              value ? 'Condition updated' : 'Condition cleared',
-              'Failed to update condition',
-            )
-          }
-          onDone={closeEditor}
-        />
-      ) : null}
     </>
   );
 }
@@ -966,22 +897,24 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   rowIndex,
   onToggleSelect,
   queueMode = 'fulfillment',
-  columns = ORDERS_QUEUE_COLUMNS,
-  columnDisplay,
+  columns,
+  subtitleFieldIds,
   capabilities,
   onRowClick,
   onRowOpen,
   onRequestReplaceTracking,
+  onCommitCondition,
 }: OrdersQueueTableRowProps) {
   /**
    * WHICH COLUMN MODEL is mounted — this row's one layout discriminant.
    *
-   * `columns` arrives as either the FLAT spreadsheet model
-   * (`ORDERS_QUEUE_COLUMNS` / `…_TESTED_COLUMNS`) or its COMPOUND two-row
-   * sibling (`ORDERS_COMPOUND_COLUMNS`). They are sibling ARRAYS, never a mix,
-   * so one `isCompoundColumnModel` probe answers it. Mobile never maps `columns` at
-   * all — it paints the chip cluster + meta row — so it is FLAT by definition
-   * whatever model the host happened to pass.
+   * `columns` arrives as either the COMPOUND slot materialization
+   * (`ordersCompoundColumnsFor` — every outbound desk) or the station benches'
+   * FLAT legacy model (`STATION_HISTORY_COLUMNS` — the last flat mount,
+   * pending the station-history kill item). They are sibling ARRAYS, never a
+   * mix, so one `isCompoundColumnModel` probe answers it. Mobile never maps
+   * `columns` at all — it paints the chip cluster + meta row — so it is FLAT
+   * by definition whatever model the host happened to pass.
    *
    * The two models paint DISJOINT payloads, and everything below is derived per
    * row per render. To-ship mounts COMPOUND, so the whole flat identity payload
@@ -1030,7 +963,32 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const gridTemplate = isMobile ? undefined : rowGridTemplate(columns);
   const cellInset = gridSkin ? ('grid' as const) : ('cell' as const);
   const dataCell = (col: OrdersQueueColumn, rule = true) =>
-    gridDataCellClass(col, { rule, inset: cellInset, columnDisplay });
+    gridDataCellClass(col, { rule, inset: cellInset });
+
+  // The condition subtitle part edits in place only when the surface passed
+  // the commit capability AND the layout actually binds the fact. Editors are
+  // matched to parts by key, so an org that unbinds condition sheds the
+  // affordance with the part.
+  const conditionEditable = Boolean(
+    onCommitCondition && subtitleFieldIds?.includes('orders.condition'),
+  );
+  const subtitleSelects: readonly CompoundSubtitleSelect[] | undefined =
+    compoundLayout && conditionEditable && onCommitCondition
+      ? [
+          {
+            partKey: 'orders.condition',
+            label: 'Condition',
+            options: CONDITION_SELECT_BASE.map((opt) => ({
+              ...opt,
+              // Alias-aware ("NEW" → BRAND_NEW) so a marketplace-string row
+              // highlights its grade as current — the deleted flat editor's rule.
+              current: resolveConditionGrade(record.condition) === opt.value,
+            })),
+            clearLabel: 'Clear condition',
+            onCommit: (value) => onCommitCondition(record, value),
+          },
+        ]
+      : undefined;
 
   // One adapter call per row — the compound cells all read this. Built here
   // (not per cell) so a five-column row maps once, and from the SAME resolved
@@ -1039,14 +997,26 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // map a row nothing can paint.
   const compoundView = compoundLayout
     ? ordersCompoundView(record, {
-        stateLabel: rowStatus.label,
+        stateLabel: rowStatus?.label ?? null,
         // `daysLate` is already the resolved lateness for this lane's deadline —
         // the same number the flat Late column shows, so the two layouts can never
         // disagree about whether a row is behind.
         delayDays: daysLate,
-        delayTip: rowStatus.description,
+        delayTip: rowStatus?.description,
         testerDisplay,
         packerDisplay,
+        // One resolve per row for every mounted slot track — the compound
+        // cells read these by TRACK key, so the row never re-resolves per cell.
+        slots: ordersSlotValues(record, columns, { testerDisplay, packerDisplay }),
+        subtitleParts:
+          subtitleFieldIds && subtitleFieldIds.length > 0
+            ? ordersSubtitleParts(record, subtitleFieldIds, {
+                testerDisplay,
+                packerDisplay,
+                // A blank editable condition keeps a faint `--` click target.
+                ...(conditionEditable ? { editableFieldIds: ['orders.condition'] } : null),
+              })
+            : undefined,
         flagMark: rowFlag
           ? {
               label: rowFlag.label,
@@ -1074,9 +1044,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // sticky class), which is why the box around a compound cell is no longer a
   // family's job.
   //
-  // No `onCommitNote`: `order_notes` is an append-only trail, so the note line
-  // is read-only here — the capability is the ABSENCE of the prop, never a
-  // second component with the editor deleted.
+  // The note line is read-only, here and everywhere: the compound cell's inline
+  // note editor came down with the display layer. `order_notes` was never going
+  // to edit in place anyway — it is an append-only trail, and rewriting
+  // someone's statement is the failure that ruling exists to prevent.
   const cells = compoundView ? (
     columns.map((col, i) => {
       const rule = i !== columns.length - 1;
@@ -1085,7 +1056,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         columns,
         rule,
         view: compoundView,
-        columnDisplay,
+        subtitleSelects,
         onOpen: onRowOpen ? () => onRowOpen(record) : undefined,
         // Bulk membership. The mobile stacked row keeps its own leading slot.
         select: {
@@ -1178,7 +1149,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     'data-marketplace-order-id': String(record.order_id || ''),
     className: cn(
       'group/row relative',
-      ordersQueueRowShellClass(isMobile, { scrollMinContent: gridSkin }),
+      ledgerGridRowShellClass(isMobile, { scrollMinContent: gridSkin }),
       // Airtable LedgerGrid: capability-gated fill SoT (selection → triage
       // flag → card). List/board keeps zebra + inset-ring selected chrome.
       gridSkin
@@ -1259,15 +1230,9 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.selectGutterChrome !== next.selectGutterChrome) return false;
   if (prev.rowFillHex !== next.rowFillHex) return false;
   if (prev.columns !== next.columns) return false;
-  // Per-staff column display prefs paint through `dataCell` on every cell. The
-  // host memoizes `displayByKey` on its CONTENT, so this compares as a stable
-  // reference — omitting it meant a staffer's emphasis change reached the row
-  // as a new prop and was then discarded here, one step after the host's
-  // `renderLeaf` had already dropped it from its dependency list.
-  if (prev.columnDisplay !== next.columnDisplay) return false;
-  if (prev.rowStatus.dot !== next.rowStatus.dot) return false;
-  if (prev.rowStatus.label !== next.rowStatus.label) return false;
-  if (prev.rowStatus.pill !== next.rowStatus.pill) return false;
+  if (prev.rowStatus?.dot !== next.rowStatus?.dot) return false;
+  if (prev.rowStatus?.label !== next.rowStatus?.label) return false;
+  if (prev.rowStatus?.pill !== next.rowStatus?.pill) return false;
   if (prev.daysLate !== next.daysLate) return false;
   if (prev.record.product_title !== next.record.product_title) return false;
   if (prev.record.condition !== next.record.condition) return false;
@@ -1289,6 +1254,17 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.record.pack_activity_at !== next.record.pack_activity_at) return false;
   if (prev.record.pack_location_name !== next.record.pack_location_name) return false;
   if (prev.record.pack_location_kind !== next.record.pack_location_kind) return false;
+  // A bound Scanned-out slot paints these (dash today — the To-ship feed does
+  // not project them yet); compared now so the column goes live the moment the
+  // projection does, instead of going stale.
+  if (prev.record.ship_confirmed_at !== next.record.ship_confirmed_at) return false;
+  if (prev.record.shipped_out_by_name !== next.record.shipped_out_by_name) return false;
+  // Bound subtitle ids arrive as a memoized array from the layout hook.
+  if (prev.subtitleFieldIds !== next.subtitleFieldIds) return false;
+  // The condition-edit capability arming/disarming changes what the item cell
+  // renders; the host's callback is a stable useCallback, so this only fires
+  // on a real capability change (record.condition is compared above).
+  if (prev.onCommitCondition !== next.onCommitCondition) return false;
   // Live fields the COMPOUND `fulfillment` / `item` tracks paint. A label
   // landing on an open To-ship desk changes `shipping_tracking_number` and
   // nothing else on this list — compared nowhere, the row kept the empty

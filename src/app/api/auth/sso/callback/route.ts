@@ -40,6 +40,8 @@ interface StateRow {
   code_verifier: string;
   next_path: string | null;
   created_at: Date;
+  /** "Keep me signed in", carried from /api/auth/sso/start. */
+  persistent: boolean;
 }
 
 interface ProviderDbRow {
@@ -291,6 +293,9 @@ export const GET = withAuth(async (req) => {
     deviceLabel: 'sso',
     ip,
     userAgent,
+    // The checkbox the user ticked before being redirected to the IdP. A row
+    // written before the column existed reads as null → false.
+    persistent: stateRow.persistent === true,
   });
 
   const target = new URL(stateRow.next_path || '/dashboard', origin(req));

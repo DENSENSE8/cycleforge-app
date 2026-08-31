@@ -2,17 +2,14 @@
 
 import { useCallback, type ReactNode } from 'react';
 import type { PaintSurface } from '@/lib/observability/paint-timing';
-import { motion } from '@/design-system/motion';
-import { motionBezier } from '@/design-system/foundations/motion-framer';
 import { getStaffName } from '@/utils/staff';
 import { getStaffThemeById, stationThemeColors } from '@/utils/staff-colors';
 import { Camera, Ticket } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Button } from '@/design-system/primitives';
 import { conditionGradeTableLabel, workflowStatusTableLabel, WORKFLOW_BADGE } from '@/components/station/receiving-constants';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import { railRelativeTime, type SidebarRailRowContext } from '@/components/sidebar/SidebarRailShell';
+import type { SidebarRailRowContext } from '@/components/sidebar/SidebarRailShell';
 import { SidebarRecentRailBase } from '@/components/sidebar/rail-shell/SidebarRecentRailBase';
 import type { SidebarRailShellProps } from '@/components/sidebar/rail-shell/sidebar-rail-shared';
 import { RailRowBody } from '@/components/sidebar/rail-shell/RailRowBody';
@@ -30,7 +27,6 @@ import {
 } from '@/components/sidebar/rail-shell/RailPeekIdentityFacts';
 import {
   RAIL_PEEK_PAD_CLASS,
-  RAIL_PEEK_SECTION_CLASS,
 } from '@/components/sidebar/rail-shell/rail-peek-chrome';
 import { usePlatformMeta } from '@/hooks/useCatalog';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
@@ -134,7 +130,6 @@ export interface RecentActivityRailBaseProps {
   getStatusDot: (row: ReceivingLineRow) => string;
   getStatusDotLabel?: (row: ReceivingLineRow) => string;
   renderQuantity: (row: ReceivingLineRow) => ReactNode;
-  previewQtyLabel: string;
   getPreviewQty: (row: ReceivingLineRow) => { current: number; total: number | null };
   /**
    * Optional read-only context node rendered inside the hover popover, beneath
@@ -142,12 +137,6 @@ export interface RecentActivityRailBaseProps {
    * rails that don't pass it render exactly as before.
    */
   renderPopoverContext?: (row: ReceivingLineRow) => ReactNode;
-  /**
-   * Optional action node rendered in the popover footer, left of "Open →" (e.g.
-   * the unfound triage "File claim" button). `dismiss` closes the popover.
-   * Additive — unset = today's footer.
-   */
-  renderPopoverActions?: (row: ReceivingLineRow, ctx: { dismiss: () => void }) => ReactNode;
   /** Row title axis — default `line`; unbox Recent uses `po-group`. */
   rowTitleMode?: ReceivingRailRowTitleMode;
   /**
@@ -291,10 +280,8 @@ export function RecentActivityRailBase({
   getStatusDot,
   getStatusDotLabel,
   renderQuantity,
-  previewQtyLabel,
   getPreviewQty,
   renderPopoverContext,
-  renderPopoverActions,
   rowTitleMode = 'line',
   showTicketFlag = true,
 }: RecentActivityRailBaseProps) {
@@ -379,15 +366,11 @@ export function RecentActivityRailBase({
           row={row}
           title={rowTitle(row)}
           groupSize={p.groupSize}
-          qtyLabel={previewQtyLabel}
           getQty={getPreviewQty}
-          activityAt={getActivityAt(row) ?? null}
           statusDot={getStatusDot(row)}
           statusLabel={shortStatusLabel(row)}
-          onOpenWorkspace={() => { p.openWorkspace(); p.dismiss(); }}
           ticket={showTicketFlag ? railTicketNumber(row) : null}
           contextSlot={renderPopoverContext?.(row)}
-          actionsSlot={renderPopoverActions?.(row, { dismiss: p.dismiss })}
         />
       )}
     />
@@ -436,31 +419,23 @@ function ReceivingRowMain({
 }
 
 function ReceivingPopoverContent({
-  row, title, groupSize, qtyLabel, getQty, activityAt, statusDot, statusLabel, onOpenWorkspace, ticket, contextSlot, actionsSlot,
+  row, title, groupSize, getQty, statusDot, statusLabel, ticket, contextSlot,
 }: {
   row: ReceivingLineRow;
   title: string;
   groupSize: number;
-  qtyLabel: string;
   getQty: (row: ReceivingLineRow) => { current: number; total: number | null };
-  /** Same timestamp the row's relative-time label shows (the feed's sort axis). */
-  activityAt: string | null;
   /** Feed-scoped status dot class — drives the popover badge tone. */
   statusDot: string;
   /** Feed-scoped status label — replaces raw workflow_status in the badge. */
   statusLabel: string;
-  onOpenWorkspace: () => void;
   /** Filed claim/ticket label (`#NNNN`) when this line has one; null hides the badge. */
   ticket: string | null;
   /** Optional read-only context (e.g. unfound exception dot) under the badges. */
   contextSlot?: ReactNode;
-  /** Optional footer action (e.g. "File claim"), left of "Open →". */
-  actionsSlot?: ReactNode;
 }) {
   const { current: qtyCurrent, total: qtyTotal } = getQty(row);
   const isComplete = qtyTotal != null && qtyTotal > 0 && qtyCurrent >= qtyTotal;
-  const progressPct =
-    qtyTotal != null && qtyTotal > 0 ? Math.min(100, Math.round((qtyCurrent / qtyTotal) * 100)) : qtyCurrent > 0 ? 100 : 0;
 
   const condGrade = (row.condition_grade || '').trim().toUpperCase();
   const conditionLabel = conditionGradeTableLabel(row.condition_grade);
@@ -497,6 +472,9 @@ function ReceivingPopoverContent({
           ) : null}
         </div>
         <div className="mt-1.5 flex flex-wrap items-center gap-1">
+          <span className={`shrink-0 text-role-caption font-semibold tabular-nums ${isComplete ? 'text-emerald-600' : 'text-text-muted'}`}>
+            {qtyCurrent}<span className="text-text-faint mx-0.5">/</span><span className="text-text-faint">{qtyTotal ?? '?'}</span>
+          </span>
           <span className={`rounded inset-chip text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${conditionTone}`}>{conditionLabel}</span>
           <span className={`rounded inset-chip text-role-eyebrow uppercase tracking-widest ${workflowTone}`}>{workflowLabel}</span>
           {/* Unfound cartons have no Zoho PO — their RECEIVED state is local-only
@@ -544,18 +522,6 @@ function ReceivingPopoverContent({
 
       {contextSlot ? <div className="mt-2.5">{contextSlot}</div> : null}
 
-      <div className="mt-2.5">
-        <div className="flex items-baseline justify-between">
-          <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">{qtyLabel}</span>
-          <span className={`text-role-caption font-semibold tabular-nums ${isComplete ? 'text-emerald-600' : 'text-text-muted'}`}>
-            {qtyCurrent}<span className="text-text-faint mx-0.5">/</span><span className="text-text-faint">{qtyTotal ?? '?'}</span>
-          </span>
-        </div>
-        <div className="mt-1 h-1 w-full overflow-hidden rounded-full bg-surface-sunken">
-          <motion.div initial={{ width: 0 }} animate={{ width: `${progressPct}%` }} transition={{ duration: 0.35, ease: motionBezier.easeOut }} className={`h-full ${isComplete ? 'bg-emerald-500' : 'bg-blue-500'}`} />
-        </div>
-      </div>
-
       {/* Identity: order · tracking header + stacked sku / serial / ticket.
           Shared SoT with RailPeekCard — never a local flex-wrap twin. */}
       <RailPeekIdentityFacts
@@ -584,26 +550,6 @@ function ReceivingPopoverContent({
         ] satisfies RailPeekFact[])}
         headerRight={isPickup ? <FulfillmentPickupPill /> : undefined}
       />
-
-      <div className={`flex items-center justify-between ${RAIL_PEEK_SECTION_CLASS}`}>
-        <span className="text-role-eyebrow uppercase tracking-widest text-text-faint">
-          {activityAt
-            ? `${railRelativeTime(activityAt)} ago`
-            : '—'}
-          {row.assigned_tech_id ? ` · ${getStaffName(row.assigned_tech_id)}` : ''}
-        </span>
-        <div className="flex items-center gap-1.5">
-          {actionsSlot}
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={onOpenWorkspace}
-            className="h-auto rounded-md px-2.5 py-1 text-role-micro uppercase tracking-widest"
-          >
-            Open →
-          </Button>
-        </div>
-      </div>
     </div>
   );
 }

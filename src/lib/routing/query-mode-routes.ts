@@ -392,6 +392,11 @@ export const TEST_ROUTE_PARAMS = defineRouteParams({
     packStation: paramPositiveInt,
     /** Any packing-station placement filter. */
     packPlaced: paramFlag,
+    /**
+     * Station composer destination — `label` (default, omitted) · `ticket`.
+     * Shared with Unbox / Arrival (`SHARED_OWNED_KEYS.composerMode`).
+     */
+    composerMode: paramEnum(['unbox', 'ticket', 'label'] as const),
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -633,6 +638,14 @@ const SEARCH_ROUTE_PARAMS = defineRouteParams({
      * Deliberately NOT `status` — `/support` (and others) already own that key.
      */
     hstat: paramText,
+    /**
+     * Client channel refine against `facets.source_platform`, holding the
+     * STORED value (`ebay` / `amazon` / `ecwid`) rather than a display label so
+     * a deep link survives a catalog rename. Deliberately NOT `platform` —
+     * short key, and it keeps the search surface's params in one short family
+     * (etype · hstat · chan).
+     */
+    chan: paramText,
   },
   carries: ['staff', 'colsort', 'coldir'],
 });

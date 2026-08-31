@@ -32,6 +32,7 @@ import {
   refineSearchHits,
   sortSearchHits,
   statusOptionsFromHits,
+  channelOptionsFromHits,
   type SearchDisplaySort,
 } from '@/lib/search/search-refine';
 import type { SearchHitEntityType } from '@/lib/search/search-hit';
@@ -48,6 +49,8 @@ export interface SearchResultsSurfaceProps {
   scope?: 'global';
   /** Client entity-type refine (`?etype=`). */
   etype?: SearchHitEntityType | null;
+  /** Client channel refine (`?chan=`) — stored `source_platform` value. */
+  chan?: string | null;
   /** Client status refine (`?hstat=` → `facets.status`). */
   hstat?: string | null;
   /** Display sort (`?colsort=` — relevance default | date). */
@@ -82,6 +85,7 @@ export interface SearchResultsSurfaceProps {
   onResults?: (hits: AiSearchHit[]) => void;
   /** Distinct `facets.status` values for a host-owned refine chrome. */
   onStatusOptions?: (options: string[]) => void;
+  onChannelOptions?: (options: string[]) => void;
   /**
    * Durable selection from `?sel=` — highlights any matching entity row.
    * Prefer this over `activeHitId` on the search workbench.
@@ -105,6 +109,7 @@ interface FetchState {
 export function SearchResultsSurface({
   query,
   etype = null,
+  chan = null,
   hstat = null,
   sort = 'relevance',
   density = 'comfortable',
@@ -115,6 +120,7 @@ export function SearchResultsSurface({
   onSettle,
   onResults,
   onStatusOptions,
+  onChannelOptions,
   activeSel = null,
   activeHitId,
   packoutById,
@@ -137,8 +143,8 @@ export function SearchResultsSurface({
 
   const displayHits = useMemo(() => {
     if (state.status !== 'done') return [];
-    return sortSearchHits(refineSearchHits(state.hits, { etype, hstat }), sort);
-  }, [state.status, state.hits, etype, hstat, sort]);
+    return sortSearchHits(refineSearchHits(state.hits, { etype, hstat, chan }), sort);
+  }, [state.status, state.hits, etype, hstat, chan, sort]);
 
   // Classic cross-entity find — GET /api/global-search.
   useEffect(() => {
@@ -152,7 +158,10 @@ export function SearchResultsSurface({
     abortRef.current = controller;
     setState((prev) => ({ ...prev, status: 'loading', forKey: key }));
 
-    fetch(`/api/global-search?q=${encodeURIComponent(q)}&limit=50`, {
+    // `surface` splits this page's telemetry from the palette's. The two have
+    // different affordances — this one has filters and a full result list — so
+    // their zero-result rates are not comparable and must not be pooled.
+    fetch(`/api/global-search?q=${encodeURIComponent(q)}&limit=50&surface=search-page`, {
       signal: controller.signal,
     })
       .then(async (res) => {
@@ -191,6 +200,14 @@ export function SearchResultsSurface({
   useEffect(() => {
     onStatusOptions?.(statusOptions);
   }, [statusOptions, onStatusOptions]);
+
+  const channelOptions = useMemo(
+    () => (state.status === 'done' ? channelOptionsFromHits(state.hits) : []),
+    [state.status, state.hits],
+  );
+  useEffect(() => {
+    onChannelOptions?.(channelOptions);
+  }, [channelOptions, onChannelOptions]);
 
   const hasRefine = Boolean(etype || hstat);
   const showResults = state.status === 'done' && displayHits.length > 0;

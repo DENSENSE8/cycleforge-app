@@ -2,8 +2,13 @@
  * GET /api/auth/oauth/[provider]/start  (PUBLIC)  — provider ∈ google | microsoft
  *
  * Begins platform social login. Sets a short-lived httpOnly state cookie
- * (PKCE verifier + CSRF state + nonce + workspace slug) and redirects the user
- * to the provider's consent screen. Never touches Drive/Gmail scopes.
+ * (PKCE verifier + CSRF state + nonce + workspace slug + the "Keep me signed
+ * in" choice) and redirects the user to the provider's consent screen. Never
+ * touches Drive/Gmail scopes.
+ *
+ * `?persist=1` carries the sign-in page's checkbox through the redirect — the
+ * button sits next to that checkbox, so the flag has to survive the round trip
+ * or checking the box would silently do nothing for federated sign-in.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -50,7 +55,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   const { verifier, challenge } = generatePkce();
   const slug = req.headers.get('x-tenant-slug') || req.nextUrl.searchParams.get('slug');
   const next = req.nextUrl.searchParams.get('next');
-  const payload = newOAuthState(provider as PlatformProvider, { slug, next, verifier });
+  const persistent = req.nextUrl.searchParams.get('persist') === '1';
+  const payload = newOAuthState(provider as PlatformProvider, { slug, next, verifier, persistent });
 
   const authUrl = new URL(cfg.authorizeUrl);
   authUrl.searchParams.set('response_type', 'code');

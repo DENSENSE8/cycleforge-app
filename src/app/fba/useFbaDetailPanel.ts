@@ -7,7 +7,7 @@
  */
 
 import { useCallback, useState } from 'react';
-import type { FbaBoardItem } from '@/components/fba/FbaBoardTable';
+import type { FbaBoardItem } from '@/lib/fba/types';
 
 export interface FbaDetailPanel {
   detailItem: FbaBoardItem | null;

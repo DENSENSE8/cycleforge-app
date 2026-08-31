@@ -19,6 +19,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+// Dependency-free by construction (see its docblock) — safe in an edge bundle.
+import {
+  SHIPPING_SHIPPED_PATH,
+  buildShippedDeskSearch,
+  isLegacyShippedDeskUrl,
+} from '@/lib/shipping/shipped-desk';
 import {
   isBareKioskPlatformHost,
   isKioskHost,
@@ -303,6 +309,29 @@ function resolveDashboardInboundRedirect(url: NextRequest['nextUrl']): NextReque
   next.pathname = '/incoming';
   next.searchParams.delete('mode');
   next.searchParams.set('lane', 'docked');
+  return next;
+}
+
+/**
+ * Legacy shipment-history doors → the Shipped desk.
+ *
+ * `/shipping/orders?shipped=` and `/dashboard?shipped=` both used to mean "show
+ * me what already left" on a page whose job is now open work only. This is the
+ * one hop that keeps those bookmarks alive: the shipped vocabulary
+ * (`shippedWeekOffset`, `carrier`, `dateFrom`, …) rides across unchanged and is
+ * read by the same `resolveShippedQueryArgs` on the other side, while the
+ * open-queue keys are dropped — a history page wearing a queue's filters is a
+ * page that can only render nothing.
+ *
+ * Ordered BEFORE `resolveDashboardOutboundRedirect` on purpose: that rule would
+ * otherwise claim `/dashboard?shipped=` for To ship and cost a second hop to
+ * get here.
+ */
+function resolveShippedDeskRedirect(url: NextRequest['nextUrl']): NextRequest['nextUrl'] | null {
+  if (!isLegacyShippedDeskUrl(url.pathname, url.searchParams)) return null;
+  const next = url.clone();
+  next.pathname = SHIPPING_SHIPPED_PATH;
+  next.search = buildShippedDeskSearch(url.searchParams).toString();
   return next;
 }
 
@@ -693,6 +722,7 @@ export function proxy(req: NextRequest): NextResponse {
       resolveReceivingSurfaceRedirect(req.nextUrl) ??
       resolveReceivingHistoryRedirect(req.nextUrl) ??
       resolveDashboardInboundRedirect(req.nextUrl) ??
+      resolveShippedDeskRedirect(req.nextUrl) ??
       resolveDashboardOutboundRedirect(req.nextUrl) ??
       resolveSupportOrdersRedirect(req.nextUrl) ??
       resolveWalkInJobRedirect(req.nextUrl) ??

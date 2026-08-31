@@ -1,18 +1,22 @@
 /**
- * Outbound Orders table definitions (plan Phase 1, wave 5).
+ * Outbound Orders table definition — ONE binding for the whole desk.
  *
  * Orders is the one **shared parametric grid**: `useOrdersSpreadsheet` resolves
- * it onto `NonlinearTableHost` for every outbound consumer (To-ship, compare
- * pane, drill host today; Packed / Shipped / Staged / Labels / Review once their
- * displays are rebuilt). What varies is TWO things, on two different axes:
+ * it onto `NonlinearTableHost` for every outbound consumer (To-ship, Packed,
+ * Labels, Staged, Review, Shipped). What varies per mount is **instance
+ * identity** only — `ariaLabel` / `testId` differ per lane ("Packed orders",
+ * "Labels queue", …) and stay consumer overrides on the host.
  *
- * - **Column mode** — `fulfillment.default` vs `fulfillment.tested` (tester +
- *   tested-at layout). This is the definition axis: two column models, two
- *   descriptor ids, so TWO definitions/bindings, picked by the adapter.
- * - **Instance identity** — `ariaLabel` / `testId` differ per lane ("Packed
- *   orders", "Labels queue", …). These are genuinely per-mount and stay consumer
- *   overrides on the host; unlike the shell recipe, a lane's screen-reader name
- *   is not a property of the column model.
+ * The second `fulfillment.tested` definition/binding died with the Wave-1
+ * hand-model kill (`docs/kill-list/07-slot-table-hand-models.md`): layout
+ * encoded as a second product table. `?ustatus=TESTED` is row NARROWING
+ * (`UnshippedTable`'s lane predicate) and "show tester + tested-at" is a slot
+ * binding (`orders.picked` in `status:1`), so nothing swaps column models.
+ *
+ * The canonical columns are the PRODUCT-DEFAULT materialization
+ * (`ORDERS_COMPOUND_COLUMNS` = `ordersCompoundColumnsFor(ORDERS_PRODUCT_LAYOUT)`)
+ * — never a hand array. The live mount overrides them with the effective
+ * layout's materialization (staff ?? org ?? product) via the host's `columns`.
  *
  * `queueMode` (fulfillment / staged / shipped / labels) is row-CHROME only — it
  * changes status dots and tracking affordances on the row, not the columns or
@@ -25,18 +29,16 @@
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import {
-  ORDERS_QUEUE_COLUMNS,
-  ORDERS_QUEUE_TESTED_COLUMNS,
+  ORDERS_COMPOUND_COLUMNS,
   type OrdersQueueColumn,
 } from '@/lib/dashboard-order-row-layout';
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import {
   ORDERS_GRID_CAPABILITIES,
-  makeOrdersGridDescriptorDefault,
-  makeOrdersGridDescriptorTested,
+  makeOrdersGridDescriptor,
 } from './orders-queue-descriptor';
 
-const ORDERS_DEFAULT_TABLE_DEFINITION = parseTableDefinition({
+const ORDERS_TABLE_DEFINITION = parseTableDefinition({
   id: 'fulfillment.default',
   tableId: 'orders',
   entityFamily: 'orders',
@@ -48,43 +50,14 @@ const ORDERS_DEFAULT_TABLE_DEFINITION = parseTableDefinition({
   surface: 'sheet',
   showDayHeaders: false,
   capabilities: ORDERS_GRID_CAPABILITIES,
-  columns: ORDERS_QUEUE_COLUMNS,
-});
-
-const ORDERS_TESTED_TABLE_DEFINITION = parseTableDefinition({
-  id: 'fulfillment.tested',
-  tableId: 'orders',
-  entityFamily: 'orders',
-  cellMapKey: 'orders',
-  ariaLabel: 'Outbound orders — tested',
-  testId: 'orders-grid-body',
-  surface: 'sheet',
-  showDayHeaders: false,
-  capabilities: ORDERS_GRID_CAPABILITIES,
-  columns: ORDERS_QUEUE_TESTED_COLUMNS,
+  columns: ORDERS_COMPOUND_COLUMNS,
 });
 
 export const ORDERS_DEFAULT_TABLE_BINDING: TableSurfaceBinding<ShippedOrder, OrdersQueueColumn> = {
-  definition: ORDERS_DEFAULT_TABLE_DEFINITION,
-  columns: ORDERS_QUEUE_COLUMNS,
-  makeDescriptor: makeOrdersGridDescriptorDefault,
+  definition: ORDERS_TABLE_DEFINITION,
+  columns: ORDERS_COMPOUND_COLUMNS,
+  makeDescriptor: makeOrdersGridDescriptor,
   // Stable id on purpose: To-ship is walked record-by-record, and a per-order
   // id would play exit → empty → enter on every ↑↓ step.
   recordPlane: { kind: 'inspector', occupantId: 'detail:order' },
 };
-
-export const ORDERS_TESTED_TABLE_BINDING: TableSurfaceBinding<ShippedOrder, OrdersQueueColumn> = {
-  definition: ORDERS_TESTED_TABLE_DEFINITION,
-  columns: ORDERS_QUEUE_TESTED_COLUMNS,
-  makeDescriptor: makeOrdersGridDescriptorTested,
-  recordPlane: { kind: 'inspector', occupantId: 'detail:order' },
-};
-
-/** Pick the binding for the resolved column mode (the adapter's one branch). */
-export function ordersTableBindingFor(
-  columnMode: 'fulfillment.default' | 'fulfillment.tested',
-): TableSurfaceBinding<ShippedOrder, OrdersQueueColumn> {
-  return columnMode === 'fulfillment.tested'
-    ? ORDERS_TESTED_TABLE_BINDING
-    : ORDERS_DEFAULT_TABLE_BINDING;
-}

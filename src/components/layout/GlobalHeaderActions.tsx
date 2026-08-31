@@ -21,10 +21,11 @@ const HEADER_RAIL_WIDTH = 'min-w-[420px]';
  * Desktop order (left → right): **find · add · goal · inbox · assistant**.
  * Find is {@link GlobalHeaderSearch} / {@link CommandBar} (⌘K).
  *
- * Clipboard history, phone sign-in QR, and kiosk preview stay in the spine
- * account overflow ({@link StaffAccountFooter} ⋯) — earned by frequency, not
- * existence. Goal / work-order are session glanceables on desktop only; mobile
- * keeps goal on {@link MobileTopBar} and does not remount them here.
+ * Clipboard history stays in the spine account overflow
+ * ({@link StaffAccountFooter} ⋯) — earned by frequency, not existence. Phone
+ * sign-in QR and kiosk preview live on Settings → Workstation. Goal / work-order
+ * / throw are session glanceables on desktop only; mobile keeps goal on
+ * {@link MobileTopBar} and does not remount them here.
  *
  * **Desktop only.** This used to carry a `variant="mobile"` branch — a compact
  * utility cluster (clipboard · phone QR · inbox · account avatar) for the phone

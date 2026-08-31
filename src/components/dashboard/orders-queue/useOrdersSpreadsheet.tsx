@@ -1,7 +1,6 @@
 'use client';
 
-import { useCallback, useRef, type ReactNode, type RefObject } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useCallback, useMemo, useRef, type ReactNode, type RefObject } from 'react';
 import { getCurrentPSTDateKey, getDaysLateNullable } from '@/utils/date';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
@@ -10,16 +9,14 @@ import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import type { DataTableProps } from '@/components/tables/DataTable';
 import type { TableId } from '@/lib/tables/table-columns';
 import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
-import { useToShipStatusFilter } from '@/components/unshipped/useToShipStatusFilter';
-import { getDashboardOrderViewFromSearch } from '@/utils/dashboard-search-state';
 import {
-  ORDERS_COMPOUND_COLUMNS,
+  ordersCompoundColumnsFor,
   type OrdersQueueColumn,
   type OrdersQueueColumnKey,
-  type OrdersQueueColumnMode,
 } from '@/lib/dashboard-order-row-layout';
+import { useOrdersTableLayout } from './useOrdersTableLayout';
 import { ORDERS_GRID_CAPABILITIES } from '@/components/dashboard/orders-queue/orders-queue-descriptor';
-import { ordersTableBindingFor } from './orders-table-definition';
+import { ORDERS_DEFAULT_TABLE_BINDING } from './orders-table-definition';
 import {
   COMPOUND_TRACK_SORT_KEYS,
   isQueueColumnSort,
@@ -39,7 +36,8 @@ import { QueueGroupRow } from './QueueGroupRow';
 import { useOrdersQueueRows } from './useOrdersQueueRows';
 import { useOrdersQueuePlane } from './useOrdersQueuePlane';
 import { AddTrackingPopover } from '@/components/outbound/labels/AddTrackingPopover';
-import { useGridColumnDisplay } from '@/design-system/components/grid/useGridColumnDisplay';
+import { useOrderAssignment } from '@/hooks/useOrderAssignment';
+import { toast } from '@/lib/toast';
 
 /**
  * `getDaysLateNullable`, memoized on `(today, deadline)`.
@@ -110,9 +108,9 @@ export interface UseOrdersSpreadsheetOptions {
    * order), i.e. `staff_preferences.tableColumns[tableId]`.
    *
    * Default `'orders'` for EVERY outbound lane — Pending, Tested, Packed,
-   * Labels, Staged, Review, and Shipped all render the SAME column SoT
-   * (`ORDERS_QUEUE_COLUMNS` / `ORDERS_QUEUE_TESTED_COLUMNS`) and already shared
-   * one persisted column ORDER under `'orders'`. Splitting visibility per lane
+   * Labels, Staged, Review, and Shipped all render the SAME column SoT (the
+   * compound slot materialization) and already shared one persisted column
+   * ORDER under `'orders'`. Splitting visibility per lane
    * while order stayed global is the surprising outcome (curate Fields on
    * Pending, drag a column on Shipped, and the two prefs disagree), so both now
    * resolve under this one id. A host that genuinely wants an independent
@@ -160,25 +158,22 @@ export type OrdersSpreadsheetFeed = Omit<
 
 /**
  * **Outbound orders spreadsheet** — the family glue that resolves a
- * `NonlinearTableHost` prop bag for every outbound lane. Spread it onto the
+ * {@link DataTable} feed bag for every outbound lane. Spread it onto the
  * host; there is no second table component.
  *
  * ```tsx
  * const sheet = useOrdersSpreadsheet({ ... });
- * return <div className={WORKBENCH_SHEET_HOST}><NonlinearTableHost {...sheet} /></div>;
+ * return <DataTable {...sheet} search={search} tabs={tabs} />;
  * ```
  *
  * Plan: `docs/todo/one-table-engine-orders-host-PLAN.md` §4.2 — the shape
  * Incoming (`ReceivingLinesTable`) already mounts without a family GridHost.
  *
- * Shared by Pending, Packed, Labels, Staged, Review, and Shipped. Two column-mode
- * bindings (`fulfillment.default` / `.tested`) are picked by
- * {@link ordersTableBindingFor}; the selection / cursor / inspector plane lives
- * in {@link useOrdersQueuePlane} (it encodes documented race bug-fixes). This
- * hook keeps only what family glue owns: mode resolution, the feed, URL sort,
- * viewport force-hide geometry, and the row / header renderers. The allowlisted
- * `OrdersQueueColumnHeader` fork keeps drag-reorder UI; fat `OrdersQueueTableRow`
- * keeps triage + in-cell edit.
+ * Shared by Pending, Packed, Labels, Staged, Review, and Shipped — ONE
+ * binding ({@link ORDERS_DEFAULT_TABLE_BINDING}); the selection / cursor /
+ * inspector plane lives in {@link useOrdersQueuePlane} (it encodes documented
+ * race bug-fixes). This hook keeps only what family glue owns: the feed, URL
+ * sort, and the row / header renderers.
  */
 export function useOrdersSpreadsheet({
   records,
@@ -203,12 +198,10 @@ export function useOrdersSpreadsheet({
   'data-testid': dataTestId = 'orders-grid-body',
   scrollParentRef,
 }: UseOrdersSpreadsheetOptions): OrdersSpreadsheetFeed {
-  const { displayByKey: columnDisplay } = useGridColumnDisplay(tableId);
   // Resolved ONCE per table render and threaded into every row's lateness
   // lookup — see `daysLateOn`. Reading it per row is what made the civil-date
   // formatter a per-row cost.
   const todayKey = getCurrentPSTDateKey();
-  const searchParams = useSearchParams();
   const { isMobile } = useUIModeOptional();
   const { getStaffName } = useStaffNameMap();
   const { sort: urlSort, dir: urlDir, setSort } = useQueueDisplaySort();
@@ -217,16 +210,18 @@ export function useOrdersSpreadsheet({
   const sort = sortProp ?? urlSort;
   const dir: QueueDisplaySortDir | null = urlDriven ? urlDir : null;
 
-  // Mode column set (plan Phase A): the Tested lifecycle tab (or legacy
-  // `?ustatus=TESTED` on station embeds) swaps to tester + tested-at layout.
-  const orderView = getDashboardOrderViewFromSearch(searchParams);
-  const { active: ustatus } = useToShipStatusFilter();
-  const columnMode: OrdersQueueColumnMode =
-    queueMode === 'fulfillment' && (orderView === 'tested' || ustatus === 'TESTED')
-      ? 'fulfillment.tested'
-      : 'fulfillment.default';
-  // Two column-mode bindings — the definition/host resolve columns + descriptor.
-  const binding = ordersTableBindingFor(columnMode);
+  // ONE Orders binding (Wave-1 hand-model kill). `?ustatus=TESTED` narrows
+  // ROWS (`UnshippedTable`'s lane predicate) — it never swaps column models;
+  // "show who + when for pick" is the `orders.picked` slot binding.
+  const binding = ORDERS_DEFAULT_TABLE_BINDING;
+
+  // Effective slot layout (staff ?? org ?? product) → the mounted compound
+  // model. Rebinding changes bindings, never keys, so slot-keyed prefs hold.
+  const { effectiveLayout, subtitleFieldIds, fields } = useOrdersTableLayout();
+  const compoundColumns = useMemo(
+    () => ordersCompoundColumnsFor(effectiveLayout),
+    [effectiveLayout],
+  );
 
   const { orderGroupsByDate, displayedRecords } = useOrdersQueueRows({
     records,
@@ -261,6 +256,27 @@ export function useOrdersSpreadsheet({
   });
 
   const shellRef = useRef<HTMLDivElement>(null);
+
+  // ONE mutation hook for the whole table (not one per row): the compound
+  // item cell's in-place condition edit commits through the same
+  // `useOrderAssignment` waist the flat in-cell editors used — a scalar field
+  // PATCH with the optimistic row update and rollback that hook already owns.
+  const assignOrder = useOrderAssignment();
+  const assignMutate = assignOrder.mutate;
+  const handleCommitCondition = useCallback(
+    (record: ShippedOrder, condition: string | null) => {
+      const id = Number(record.id);
+      if (!Number.isFinite(id)) return;
+      assignMutate(
+        { orderId: id, condition },
+        {
+          onError: (e) =>
+            toast.error(e instanceof Error ? e.message : 'Failed to save condition'),
+        },
+      );
+    },
+    [assignMutate],
+  );
 
   const handleSortChange = useCallback(
     (key: OrdersQueueColumnKey, nextDir: 'asc' | 'desc') => {
@@ -319,11 +335,6 @@ export function useOrdersSpreadsheet({
       return (
         <OrdersQueueTableRow
           key={record.id}
-          // Per-staff column display, resolved ONCE in the host and threaded —
-          // the same shape Receiving uses. Orders had no `columnDisplay` in
-          // scope at all, so a staffer's muted/emphasis/warning column was
-          // honoured on Unbox History and silently dropped here.
-          columnDisplay={columnDisplay}
           disableEnterAnimation
           disableLayoutAnimation
           opaqueStripe
@@ -351,6 +362,7 @@ export function useOrdersSpreadsheet({
           )}
           queueMode={queueMode}
           columns={visible}
+          subtitleFieldIds={subtitleFieldIds}
           capabilities={ORDERS_GRID_CAPABILITIES}
           trackingAction={
             queueMode === 'labels' ? <AddTrackingPopover record={record} /> : undefined
@@ -362,16 +374,11 @@ export function useOrdersSpreadsheet({
               ? handleRequestReplaceTracking
               : undefined
           }
+          onCommitCondition={handleCommitCondition}
         />
       );
     },
     [
-      // `columnDisplay` is READ in the body (threaded to every row) — omitting
-      // it froze this closure on the prefs that happened to be resolved at
-      // first render, so a staffer who changed a column's emphasis saw the
-      // Fields menu update and the grid keep the old paint until something
-      // unrelated (a selection, a sort) happened to rebuild the callback.
-      columnDisplay,
       todayKey,
       getStaffName,
       selectMode,
@@ -382,19 +389,25 @@ export function useOrdersSpreadsheet({
       handleRowOpen,
       handleToggleSelect,
       handleRequestReplaceTracking,
+      handleCommitCondition,
       queueMode,
       clickSelect,
       fillsById,
+      subtitleFieldIds,
     ],
   );
 
   return {
     binding,
-    // COMPOUND (two-row) layout — the one row shape across every table. Passed
-    // as the host's column override rather than swapped into the binding so the
-    // definition (prefs bucket, testid, shell recipe) is untouched; only the
-    // presentation model moves.
-    columns: ORDERS_COMPOUND_COLUMNS,
+    // COMPOUND (two-row) layout — the one row shape across every table,
+    // MATERIALIZED from the effective slot layout (staff ?? org ?? product).
+    // Passed as the host's column override rather than swapped into the
+    // binding so the definition (prefs bucket, testid, shell recipe) is
+    // untouched; only the presentation model moves.
+    columns: compoundColumns,
+    // Fields picker data — DataTable renders it when the definition declares
+    // `fieldsMenu` (org/staff slot binding lives behind it).
+    fields,
     ariaLabel,
     orderGroupsByDate,
     rows: displayedRecords,
@@ -424,12 +437,17 @@ export function useOrdersSpreadsheet({
     // keeps the header offering the sorts the engine will actually perform.
     isSortable: isQueueSortableColumnKey,
     selectGutterChrome: 'always' as const,
-    renderGroup: (group, baseStripeIndex, { columns: visible }) => (
+    // `rowIndex` is the group's first-leaf ARIA index and MUST be forwarded:
+    // `OrdersQueueTableRow` derives `inTable` from it, so without it every
+    // grouped row claims `role="checkbox"` instead of `role="row"` and the
+    // grid announces as a table with no rows.
+    renderGroup: (group, baseStripeIndex, { columns: visible }, rowIndex) => (
       <QueueGroupRow
         group={group}
         baseStripeIndex={baseStripeIndex}
-        renderRow={(record, stripeIndex, rowIndex) =>
-          renderLeaf(record, stripeIndex, visible, rowIndex)
+        rowIndex={rowIndex}
+        renderRow={(record, stripeIndex, leafRowIndex) =>
+          renderLeaf(record, stripeIndex, visible, leafRowIndex)
         }
       />
     ),

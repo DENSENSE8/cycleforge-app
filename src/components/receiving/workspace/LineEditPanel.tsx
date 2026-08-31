@@ -106,6 +106,15 @@ import {
 } from './line-edit/unbox-side-tabs';
 import { buildUnboxDisplayIndexRows } from './line-edit/unbox-display-index';
 import { StationDisplaysUtilityRail } from '@/components/station/displays';
+import {
+  useAutoCollapse,
+  useBandCollapse,
+  useLineCollapse,
+} from '@/components/station/collapse';
+import {
+  StationTicketPane,
+  useStationComposerMode,
+} from '@/components/composer';
 
 export function LineEditPanel({
   row,
@@ -139,11 +148,58 @@ export function LineEditPanel({
     // column (the right-rail flash). A genuinely different carton still clears it.
   } = useUnboxDisplayView(row.receiving_id ?? row.id ?? null);
 
+  const bandCollapse = useAutoCollapse();
+  // Which BAND is open, layered on the centre-wide rule above — so the operator
+  // can open Items alone out of a fully collapsed stack. Label starts shut:
+  // the row IS show / hide for the sticker.
+  const bands = useBandCollapse(bandCollapse, { label: false });
+  // Per-LINE disclosure inside the Items band. Same module as the band rules,
+  // one altitude down: the line the operator is working is open, its siblings
+  // are identity faces, and "Collapse all" reaches both.
+  const lineCollapse = useLineCollapse(row.id ?? null);
+  const { mode: composerMode, setMode: setComposerMode } = useStationComposerMode();
+  const ticketMode = composerMode === 'ticket';
+  const [ticketClaimMode, setTicketClaimMode] = useState<'create' | 'link'>('link');
+
+  // Ticket mode engages auto-collapse even before the field focuses.
+  useEffect(() => {
+    if (ticketMode) bandCollapse.engage();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- engage is stable; only mode flips
+  }, [ticketMode]);
+
+  // New line → sticker hidden again (the Label row starts shut).
+  useEffect(() => {
+    bands.close('label');
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- close is stable enough; only the line flips
+  }, [row.id]);
+
+  /**
+   * TRANSITIONAL — filing a claim opens it in BOTH places (operator ruling,
+   * 2026-08-30).
+   *
+   * The claim used to live only in the right-rail Displays Ticket leaf; it now
+   * also renders in the centre Ticket pane, which is where it is going. Opening
+   * one and not the other would take the familiar surface away from the floor
+   * mid-shift, so for now the action lights both and the operator can work in
+   * whichever they reach for.
+   *
+   * **This is scaffolding with an end date.** When the floor is used to the
+   * centre, delete this constant and the `setRequestedSideTab` call below and
+   * the claim is centre-only. Nothing else depends on the pair.
+   */
+  const CLAIM_RENDERS_IN_BOTH = true;
+
   const onOpenClaim = useCallback(
     (mode: 'create' | 'link') => {
-      setRequestedSideTab('ticket', { ticketAction: 'claim', claimMode: mode });
+      // Centre — where the claim is going.
+      setTicketClaimMode(mode);
+      setComposerMode('ticket');
+      // Right rail — where the floor still looks for it.
+      if (CLAIM_RENDERS_IN_BOTH) {
+        setRequestedSideTab('ticket', { ticketAction: 'claim', claimMode: mode });
+      }
     },
-    [setRequestedSideTab],
+    [CLAIM_RENDERS_IN_BOTH, setComposerMode, setRequestedSideTab],
   );
   const c = useUnboxLineController(row, staffId, { itemTotal, onOpenClaim });
   const [actionFeedback, setActionFeedback] = useState<InlineActionFeedbackPayload | null>(null);
@@ -153,8 +209,15 @@ export function LineEditPanel({
     activeKey,
     railLeaf,
     settled: procedureSettled,
+    steps: procedureSteps,
   } = useUnboxProcedureSteps(row);
   useUnboxProcedureArrowKeys(row);
+  const procedurePercent = useMemo(() => {
+    const total = procedureSteps.length;
+    if (total === 0) return 0;
+    const done = procedureSteps.reduce((n, s) => n + (s.state === 'done' ? 1 : 0), 0);
+    return Math.round((done / total) * 100);
+  }, [procedureSteps]);
   const rowSerials = Array.isArray(row.serials) ? row.serials : [];
   const serialCount = rowSerials.length;
   const latestRowSerial = String(rowSerials[rowSerials.length - 1]?.serial_number ?? '').trim();
@@ -191,6 +254,7 @@ export function LineEditPanel({
     requestedSideTab,
     sideGates,
   );
+  const checklistSelected = showDisplays && activeSideTab === 'checklist';
 
   // Warm deferred Photos / Ticket chunks while the
   // operator is on the index — cold dynamic() otherwise paints leaf ← with an
@@ -203,19 +267,17 @@ export function LineEditPanel({
   const linkageAction = resolveLinkageAction(sideGates);
   const hasTicketId = c.providerTicketId != null;
   const ticketAction = resolveTicketAction(hasTicketId);
-  const ticketViewActive = activeSideTab === 'ticket';
-  const claimViewActive = ticketViewActive && ticketAction === 'claim';
+  const ticketViewActive = ticketMode && hasTicketId;
+  const claimViewActive = ticketMode && !hasTicketId;
 
-  // Carton open → Ticket Displays when linked (chat) or unfound (claim Link).
+  // Carton open → Ticket composer mode when linked (chat) or unfound (claim Link).
   // Only on carton open — do not fight a manual Displays close.
   useEffect(() => {
     const hasTicket = c.providerTicketId != null;
     const ctx = resolveUnboxTicketContextOpen(row, hasTicket);
     if (!ctx.open) return;
-    setRequestedSideTab('ticket', {
-      ticketAction: ctx.ticketAction,
-      claimMode: ctx.claimMode,
-    });
+    setTicketClaimMode(ctx.claimMode);
+    setComposerMode('ticket');
     // eslint-disable-next-line react-hooks/exhaustive-deps -- carton gate
   }, [row.receiving_id ?? row.id]);
 
@@ -444,14 +506,9 @@ export function LineEditPanel({
 
     const ticketCtx = resolveUnboxTicketContextOpen(row, hasTicketId);
     if (ticketCtx.open) {
-      // Ticket owns Displays for this carton. Open/re-open Ticket on carton
-      // change or when the column is still closed; never auto-follow classify.
-      // If the operator already picked another leaf, leave them alone.
-      if (cartonChanged || !showDisplays) {
-        openDisplays('ticket', {
-          ticketAction: ticketCtx.ticketAction,
-          claimMode: ticketCtx.claimMode,
-        });
+      // Ticket owns the centre composer for this carton — not Displays.
+      if (cartonChanged) {
+        setComposerMode('ticket');
       }
       return;
     }
@@ -482,6 +539,7 @@ export function LineEditPanel({
     row,
     hasTicketId,
     requestedSideTab,
+    setComposerMode,
   ]);
 
   const onLinkageActionChange = useCallback(
@@ -513,21 +571,20 @@ export function LineEditPanel({
    * and never closes).
    */
   const openTicketView = useCallback(() => {
-    openDisplays('ticket', { ticketAction: hasTicketId ? 'chat' : 'claim' });
-  }, [hasTicketId, openDisplays]);
+    setComposerMode('ticket');
+  }, [setComposerMode]);
 
-  /** Auto-match "Find ticket" → Ticket display as the main surface (claim · link). */
+  /** Auto-match "Find ticket" → Ticket composer (claim · link in the centre pane). */
   const openFindTicketDisplay = useCallback(() => {
-    if (hasTicketId) openDisplays('ticket', { ticketAction: 'chat' });
-    else openDisplays('ticket', { ticketAction: 'claim', claimMode: 'link' });
-  }, [hasTicketId, openDisplays]);
+    if (!hasTicketId) setTicketClaimMode('link');
+    setComposerMode('ticket');
+  }, [hasTicketId, setComposerMode]);
 
   const closeClaimView = useCallback(() => {
     c.setReturnClaimPrefill(null);
-    // Stay on Ticket → Chat when a ticket exists; otherwise Displays index.
-    if (hasTicketId) openDisplays('ticket', { ticketAction: 'chat' });
-    else openDisplays(UNBOX_DISPLAY_INDEX);
-  }, [c, hasTicketId, openDisplays]);
+    if (hasTicketId) setComposerMode('ticket');
+    else setComposerMode('unbox');
+  }, [c, hasTicketId, setComposerMode]);
 
   const onClaimTicketCreated = useCallback(
     (ticketNumber: string) => {
@@ -542,10 +599,9 @@ export function LineEditPanel({
         notes: row.notes,
       });
       invalidateReceivingFeeds(qc);
-      // Presence-only: linked ticket → Chat (no sticky Claim / Chat·Claim tabs).
-      openDisplays('ticket', { ticketAction: 'chat' });
+      setComposerMode('ticket');
     },
-    [c, qc, row.id, row.notes, row.receiving_id, openDisplays],
+    [c, qc, row.id, row.notes, row.receiving_id, setComposerMode],
   );
 
   const onClaimTicketUnlinked = useCallback(() => {
@@ -752,6 +808,11 @@ export function LineEditPanel({
           }
           openDisplays('units');
         },
+        collapse: {
+          bands,
+          collapseAll: bandCollapse.collapseAll,
+        },
+        lineCollapse,
       }),
     [
       row,
@@ -761,6 +822,9 @@ export function LineEditPanel({
       activeKey,
       onFocusCaptureStep,
       openDisplays,
+      bands,
+      bandCollapse.collapseAll,
+      lineCollapse,
     ],
   );
 
@@ -880,7 +944,10 @@ export function LineEditPanel({
           ticketViewActive={ticketViewActive}
           onToggleClaimView={() => {
             if (claimViewActive) closeClaimView();
-            else openDisplays('ticket', { ticketAction: 'claim', claimMode: 'link' });
+            else {
+              setTicketClaimMode('link');
+              setComposerMode('ticket');
+            }
           }}
           claimViewActive={claimViewActive}
           onOpenMovePhotosExternal={openMovePhotosDisplay}
@@ -925,6 +992,8 @@ export function LineEditPanel({
                 reserveIdentityClearance={false}
                 // Flat data floor — no vertical air between centre surfaces.
                 bodyGap="none"
+                bodyFill={ticketMode}
+                onScroll={bandCollapse.onScroll}
                 // `tabs` is deliberately EMPTY: the strip moved to the
                 // right-edge Displays column, so the carton owns the centre.
                 feedback={
@@ -1045,6 +1114,19 @@ export function LineEditPanel({
                           }}
                           primaryActionDisabled={Boolean(terminalVm.disabled)}
                           onOpenLocations={openLocationsDisplay}
+                          onComposerModeChange={(mode) => {
+                            if (mode === 'ticket') bandCollapse.engage();
+                          }}
+                          onComposerFocus={bandCollapse.engage}
+                          progressPercent={procedurePercent}
+                          progressTone={checklistSelected ? 'selected' : 'idle'}
+                          onProgressClick={() => {
+                            if (checklistSelected) {
+                              closeDisplays();
+                              return;
+                            }
+                            openDisplays('checklist');
+                          }}
                           // The corner is ONE slot. When this line has a
                           // receive to re-read, the glyph offers it; otherwise
                           // ⓘ opens the local status stamps dialog. Never both, and
@@ -1070,6 +1152,18 @@ export function LineEditPanel({
                 <motion.div initial={false} animate="show" variants={revealContainer}>
                   <motion.div variants={revealItem}>{unboxOverview}</motion.div>
                 </motion.div>
+                {ticketMode ? (
+                  <StationTicketPane
+                    row={row}
+                    ticketId={c.providerTicketId}
+                    claimMode={ticketClaimMode}
+                    onCloseClaim={() => setComposerMode('unbox')}
+                    onClaimTicketCreated={onClaimTicketCreated}
+                    onClaimTicketUnlinked={onClaimTicketUnlinked}
+                    returnClaimPrefill={c.returnClaimPrefill}
+                    showReplyPresets={false}
+                  />
+                ) : null}
               </StationWorkbench>
             </div>
 
@@ -1107,9 +1201,11 @@ export function LineEditPanel({
                 }
                 const tab = id as UnboxSideTab;
                 if (tab === 'ticket') {
-                  setRequestedSideTab('ticket', {
-                    ticketAction: hasTicketId ? 'chat' : 'claim',
-                  });
+                  // Displays Ticket is a jump into centre Ticket mode — not a
+                  // second primary editor in the right column.
+                  setComposerMode('ticket');
+                  if (!hasTicketId) setTicketClaimMode('link');
+                  setRequestedSideTab(UNBOX_DISPLAY_INDEX);
                   return;
                 }
                 setRequestedSideTab(tab);

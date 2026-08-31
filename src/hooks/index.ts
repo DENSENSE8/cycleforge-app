@@ -11,7 +11,7 @@
  *   _auth.ts       useAuthToken, usePermissions
  *   _cache.ts      useCache
  *   _form.ts       useAutoSaveForm, useUnsavedWarning
- *   _mutations.ts  useResourceMutation, useConfirmedAction, jsonOrThrow, HttpError (TanStack)
+ *   _mutations.ts  useOptimisticMutation, useResourceMutation, useConfirmedAction, jsonOrThrow, HttpError
  *   _events.ts     useEventBridge, emitAppEvent (window CustomEvent bus)
  *
  * ## Domain hooks import from their own module, not from here

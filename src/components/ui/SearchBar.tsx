@@ -25,20 +25,6 @@ export interface SearchBarProps {
   hideClear?: boolean;
   /** Hide the leading search glyph when a parent draws its own affordance. */
   hideLeadingIcon?: boolean;
-  /** Passed through to {@link SearchField}; pairs with {@link rightElement} for paste-after-remove rows. */
-  customTrailingSlot?: React.ReactNode;
-  /** Full-height in-field status (passed to {@link SearchField}). */
-  /** Stable key so the field re-measures when the in-field label changes. */
-  /** Icons / actions rendered just left of paste inside the field (passed to SearchField). */
-  /** Icons / actions after paste/clear in the same trailing row (passed to SearchField). */
-  /** Trailing slot shows clipboard paste only (no clear X when filled). */
-  pasteOnlyTrailing?: boolean;
-  /**
-   * `hover` (default) — paste reveals on hover/focus of an empty field.
-   * `always` — paste holds a fixed, opaque slot whatever the field contains.
-   * Passed through to {@link SearchField}; chrome-band find bars use `always`.
-   */
-  pasteVisibility?: SearchFieldProps['pasteVisibility'];
   fillHost?: SearchFieldProps['fillHost'];
 }
 
@@ -82,9 +68,6 @@ export function SearchBar({
   hideUnderline = false,
   hideClear = false,
   hideLeadingIcon = false,
-  customTrailingSlot,
-  pasteOnlyTrailing,
-  pasteVisibility,
   fillHost,
 }: SearchBarProps) {
   const isMobile = useIsMobile();
@@ -123,9 +106,6 @@ export function SearchBar({
         hideUnderline={hideUnderline}
         hideClear={hideClear}
         hideLeadingIcon={hideLeadingIcon}
-        customTrailingSlot={customTrailingSlot}
-        pasteOnlyTrailing={pasteOnlyTrailing}
-        pasteVisibility={pasteVisibility}
         fillHost={fillHost}
       />
     </div>

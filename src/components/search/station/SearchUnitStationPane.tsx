@@ -143,8 +143,8 @@ export function SearchUnitStationPane({
 
   const centre = useMemo(
     () =>
-      vm ? <SearchUnitCentre unitId={unitId} vm={vm} collapse={collapse} /> : null,
-    [vm, unitId, collapse],
+      vm && unit ? <SearchUnitCentre unit={unit} vm={vm} collapse={collapse} /> : null,
+    [vm, unit, collapse],
   );
 
   const displayTabs = useMemo(

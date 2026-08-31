@@ -8,15 +8,20 @@
  * {@link SearchUnitStationPane} — the real scan-station composition in preview
  * stance, not a desk inspector and no longer a hand-rolled `order-feedback`
  * twin (retired 2026-08-20). RECEIVING uses the same preview station chrome.
- * SKU still embeds its inspector.
- * Repair / FBA show an in-pane preview + deep-link CTA. `/o` is retired.
  *
- * **`sku` is deliberately still `SkuDetailView variant="page"`** (2026-08-21):
- * that surface is a full EDITING page here today — stock adjust, location,
- * deactivate — and its cards carry no capability prop, so moving it to
- * `preview` would either strip an operator's writes silently or produce the
- * lobotomized work chrome `pattern-evolution.md` #5 bans. It needs a required
- * `stance` threaded through `useSkuDetailView` + its four cards first.
+ * **Every entity paints the same two bands** (2026-08-30): Status, then Items,
+ * through {@link SearchEntityCentre}. What differs is only what goes IN them.
+ * Order / Unit / Receiving compose it from their station panes; Repair, FBA and
+ * SKU compose it here, since none of the three has a station pane of its own.
+ *
+ * SKU used to mount `SkuDetailView variant="page"` instead, and the note here
+ * defended that: the products surface is a full EDITING page (stock adjust,
+ * location, deactivate) whose cards carry no capability prop, so previewing it
+ * would either strip writes silently or produce lobotomized work chrome. That
+ * reasoning was right about the danger and wrong about the remedy — the answer
+ * is not to embed the editor in a find pane, it is to show the record and send
+ * the operator to the editor deliberately. Which is what every other preview
+ * here already does: read-only bands, plus an explicit "Open full record".
  *
  * **Chrome is the house primitives, never a page-local twin** (2026-08-21): the
  * three shapes this file used to hand-roll — a dashed teach card, a spinner row
@@ -35,7 +40,6 @@
  */
 
 import { useEffect, useState, type ReactNode } from 'react';
-import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import {
   AnimatePresence,
@@ -59,12 +63,18 @@ import { ENTITY_ICONS } from '@/components/search/search-result-chips';
 import { useSearchPrimaryPaintOptional } from '@/components/search/search-primary-paint-context';
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import { Button, EmptyState } from '@/design-system/primitives';
+import { SearchEntityCentre } from '@/components/search/station/SearchEntityCentre';
+import { ItemRecordCard } from '@/design-system/components/item-record';
+import { repairToItemRecords } from '@/lib/item-record/repair-item-record';
+import { fbaItemToItemRecords } from '@/lib/item-record/fba-item-record';
+import {
+  skuCatalogToItemRecords,
+  type SkuCatalogRecordSource,
+} from '@/lib/item-record/sku-catalog-item-record';
+import { useAutoCollapse } from '@/components/station/collapse';
+import type { RSRecord } from '@/lib/neon/repair-service-queries';
+import type { FbaBoardItem } from '@/lib/fba/types';
 import { zIndex } from '@/design-system/tokens/z-index';
-
-const SkuDetailView = dynamic(
-  () => import('@/components/sku/SkuDetailView'),
-  { ssr: false },
-);
 
 /** Centred host so a body-sized `EmptyState` sits in the middle of the pane. */
 function PaneCentre({ children }: { children: ReactNode }) {
@@ -104,9 +114,17 @@ function OpenRecordAction({
   );
 }
 
+/**
+ * `/search?sel=sku:{id}` — a catalog entry in the same two bands as every other
+ * entity. It used to mount `SkuDetailView` (the whole products-page surface)
+ * inside the find pane, so a SKU was the one identifier whose answer arrived in
+ * a different layout.
+ */
 function SkuByIdDetail({ id }: { id: number }) {
   const [sku, setSku] = useState<string | null>(null);
+  const [catalog, setCatalog] = useState<SkuCatalogRecordSource | null>(null);
   const [missing, setMissing] = useState(false);
+  const collapse = useAutoCollapse();
 
   useEffect(() => {
     let cancelled = false;
@@ -120,10 +138,13 @@ function SkuByIdDetail({ id }: { id: number }) {
           return;
         }
         const data = await res.json();
-        const code = String(data?.catalog?.sku ?? data?.sku ?? '').trim();
+        const row = (data?.catalog ?? data) as SkuCatalogRecordSource | null;
+        const code = String(row?.sku ?? '').trim();
         if (!cancelled) {
-          if (code) setSku(code);
-          else setMissing(true);
+          if (code) {
+            setCatalog(row);
+            setSku(code);
+          } else setMissing(true);
         }
       } catch {
         if (!cancelled) setMissing(true);
@@ -145,8 +166,31 @@ function SkuByIdDetail({ id }: { id: number }) {
       </PaneCentre>
     );
   }
-  if (!sku) return <PaneLoading label="Loading SKU" />;
-  return <SkuDetailView sku={sku} variant="page" />;
+  if (!sku || !catalog) return <PaneLoading label="Loading SKU" />;
+  return (
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2">
+        <span className="font-mono text-role-body font-semibold text-text-default">{sku}</span>
+        <span className="ml-auto">
+          <OpenRecordAction entityType="sku" id={id} />
+        </span>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto">
+        <SearchEntityCentre
+          entity="sku"
+          collapse={collapse}
+          status={
+            <div className="px-4 py-2 text-role-caption text-text-default">
+              {catalog.category?.trim() || 'Catalog entry'}
+            </div>
+          }
+          items={
+            <ItemRecordCard items={skuCatalogToItemRecords(catalog)} topRule={false} />
+          }
+        />
+      </div>
+    </div>
+  );
 }
 
 /**
@@ -168,6 +212,12 @@ function DetailStackPreview({
   const [subtitle, setSubtitle] = useState<string | undefined>();
   const [loading, setLoading] = useState(true);
   const [missing, setMissing] = useState(false);
+  // The RECORD, not just the strings pulled off it. This pane used to keep only
+  // a title and a subtitle and render them in an EmptyState with a button to go
+  // and open the record elsewhere — a search result that answered nothing.
+  const [claim, setClaim] = useState<RSRecord | null>(null);
+  const [plan, setPlan] = useState<FbaBoardItem | null>(null);
+  const collapse = useAutoCollapse();
 
   useEffect(() => {
     let cancelled = false;
@@ -182,6 +232,7 @@ function DetailStackPreview({
           return;
         }
         const r = result.repair;
+        setClaim(r);
         setTitle(r.ticket_number?.trim() || `Repair #${r.id}`);
         setSubtitle([r.status, r.customer_name].filter(Boolean).join(' · ') || undefined);
         return;
@@ -191,6 +242,7 @@ function DetailStackPreview({
         return;
       }
       const item = result.item;
+      setPlan(item);
       setTitle(item.display_title?.trim() || item.fnsku || `Shipment #${id}`);
       setSubtitle([item.fnsku, item.shipment_ref].filter(Boolean).join(' · ') || undefined);
     });
@@ -215,15 +267,58 @@ function DetailStackPreview({
     );
   }
 
+  const record = claim ?? plan;
+  if (!record) {
+    return (
+      <PaneCentre>
+        <EmptyState
+          icon={<Icon className="h-6 w-6 text-text-faint" />}
+          title={title || `${label} #${id}`}
+          description={subtitle}
+          action={<OpenRecordAction entityType={entityType} id={id} />}
+        />
+      </PaneCentre>
+    );
+  }
+
+  // Same two bands every other entity paints. The status face is the record's
+  // own state string rather than a pipeline — neither a repair nor an FBA line
+  // has an order spine to draw — and the items come through the shared card,
+  // so a repair's device and a shipment's line read exactly like an order's.
   return (
-    <PaneCentre>
-      <EmptyState
-        icon={<Icon className="h-6 w-6 text-text-faint" />}
-        title={title || `${label} #${id}`}
-        description={subtitle}
-        action={<OpenRecordAction entityType={entityType} id={id} />}
-      />
-    </PaneCentre>
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-4 py-2">
+        <span className="text-role-body font-semibold text-text-default">
+          {title || `${label} #${id}`}
+        </span>
+        {subtitle ? (
+          <span className="text-role-caption text-text-muted">{subtitle}</span>
+        ) : null}
+        <span className="ml-auto">
+          <OpenRecordAction entityType={entityType} id={id} />
+        </span>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto">
+        <SearchEntityCentre
+          entity={entityType === 'repair' ? 'repair' : 'fba'}
+          collapse={collapse}
+          status={
+            <div className="px-4 py-2 text-role-caption text-text-default">
+              {claim
+                ? String(claim.status ?? '').trim() || 'No status'
+                : String(plan?.item_status ?? '').trim() || 'No status'}
+            </div>
+          }
+          items={
+            claim ? (
+              <ItemRecordCard items={repairToItemRecords(claim)} topRule={false} />
+            ) : (
+              <ItemRecordCard items={fbaItemToItemRecords(plan!)} topRule={false} />
+            )
+          }
+        />
+      </div>
+    </div>
   );
 }
 

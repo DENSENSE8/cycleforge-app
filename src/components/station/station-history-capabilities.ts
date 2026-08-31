@@ -16,12 +16,14 @@
  * is outbound dispatch vocabulary (`order-row-flags`), and a Tech/Packer history
  * row is a log of work already done — there is nothing to triage on it.
  *
- * **No `GridSurfaceDescriptor` yet, deliberately.** These benches have no column
- * model of their own — they resolve `ORDERS_QUEUE_COLUMNS` through
- * `useGridColumnVisibility` with their own `tableId`. A descriptor here would
- * have to invent a second column declaration that nothing renders from, which is
- * the stale-twin failure `makeGridSurfaceDescriptor`'s own docblock warns about.
- * The descriptor lands when/if the benches adopt `LedgerGridSurface`.
+ * **No `GridSurfaceDescriptor` yet, deliberately.** The benches mount the
+ * bench-owned flat model (`STATION_HISTORY_COLUMNS` — the old Orders hand
+ * array, rehomed here by the slot plan's Wave 1 kill) with no per-staff
+ * visibility layer. A descriptor here would have to invent a second column
+ * declaration that nothing renders from, which is the stale-twin failure
+ * `makeGridSurfaceDescriptor`'s own docblock warns about. The whole stack is
+ * the kill list's separate station-history item: it takes the binding waist +
+ * a catalog, or it stops pretending to be a spreadsheet.
  */
 
 import type { GridSurfaceCapabilities } from '@/design-system/components/grid';

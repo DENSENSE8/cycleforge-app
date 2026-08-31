@@ -1,6 +1,6 @@
 /**
  * Warranty claims spreadsheet column model — the warranty-native sibling of
- * {@link PICKUP_GRID_COLUMNS}.
+ * {@link RECEIVING_GRID_COLUMNS}.
  *
  * A claim row is a support record, not a station line: no unbox/serial/receive
  * lifecycle, no in-cell edit, no fold. So this is a small, read-only column set

@@ -6,8 +6,11 @@
  * Optimistic — no await; call after paint / soft-replace.
  *
  * Arrow ↑/↓ while typing in a serial field steps between every mounted
- * capture serial in document order (PO lines + unfound stub). Ambient
- * `useRecordCursorKeyboard` refuses-in-input, so this owns that chord.
+ * capture serial in document order (PO lines + unfound stub), and falls back to
+ * the sibling record cursor when there is no NEXT mounted field — which is the
+ * normal case once per-line collapse is on, because only the line being worked
+ * has a capture bar at all. Ambient `useRecordCursorKeyboard` refuses-in-input,
+ * so this owns that chord.
  */
 
 import { getRecordCursorTop } from '@/lib/record-cursor/store';
@@ -85,12 +88,36 @@ function focusUnboxCaptureSerialInLine(lineId: number): boolean {
 }
 
 /**
+ * Step the sibling (PO-line) cursor itself.
+ *
+ * The fallback for ↑/↓ when the DOM has no neighbouring capture field to jump
+ * to. That is not an edge case: with per-line collapse the operator is meant to
+ * see exactly one capture bar, so "the next mounted input" is almost always
+ * nothing. The keystroke means "next PO LINE" either way — the surface's `open`
+ * selects the line, expands it and schedules focus into its own serial, so the
+ * caret lands in the same place it would have.
+ */
+function stepSiblingLineCursor(delta: -1 | 1): boolean {
+  const top = getRecordCursorTop('sibling');
+  if (!top) return false;
+  const target =
+    top.cursor.position === null
+      ? top.cursor.first
+      : delta > 0
+        ? top.cursor.next
+        : top.cursor.prev;
+  if (!target) return false;
+  // Intent `step` so we do not clear scanMatchedRows the way a row click does.
+  top.open(target.id, { intent: 'step', revealFoldKey: target.revealFoldKey });
+  return true;
+}
+
+/**
  * Step ↑/↓ across every open capture serial. Used from SerialScanField while
  * the ambient record cursor stands down (typing target).
  */
 export function focusUnboxCaptureSerialRelative(delta: -1 | 1): boolean {
   const inputs = listUnboxCaptureSerialInputs();
-  if (inputs.length === 0) return false;
   const active = document.activeElement;
   const idx = inputs.findIndex((el) => el === active);
   const nextIdx =
@@ -99,11 +126,12 @@ export function focusUnboxCaptureSerialRelative(delta: -1 | 1): boolean {
         ? 0
         : inputs.length - 1
       : Math.max(0, Math.min(inputs.length - 1, idx + delta));
-  if (nextIdx === idx) return false;
-  const next = inputs[nextIdx];
-  if (!next) return false;
-  selectLineOwningSerial(next);
-  return focusInput(next);
+  const next = inputs.length > 0 && nextIdx !== idx ? inputs[nextIdx] : null;
+  if (next) {
+    selectLineOwningSerial(next);
+    return focusInput(next);
+  }
+  return stepSiblingLineCursor(delta);
 }
 
 /** Soft delay so mount / soft-replace paint can land before focus. */

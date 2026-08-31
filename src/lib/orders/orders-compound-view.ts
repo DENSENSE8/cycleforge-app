@@ -43,8 +43,12 @@ export function ordersStateTone(stateLabel: string | null | undefined): Compound
 }
 
 export interface OrdersCompoundParts {
-  /** Lane label already resolved by `resolveRowStatus` for this queueMode. */
-  stateLabel: string;
+  /**
+   * Lane label already resolved by `resolveRowStatus` for this queueMode.
+   * `null` when the queue has no per-row status (every row would read the
+   * same) — the state cell then paints nothing instead of a repeated word.
+   */
+  stateLabel: string | null;
   /** Whole days past ship-by; null when the order has no deadline. */
   delayDays: number | null;
   delayTip?: string;
@@ -57,6 +61,19 @@ export interface OrdersCompoundParts {
    * non-colour carrier on the dense compound grid (selection still wins fill).
    */
   flagMark?: CompoundRowView['flagMark'];
+  /**
+   * Resolved slot values keyed by mounted TRACK key (`status:1`, …) — built
+   * once per row from the materialized columns (`ordersSlotValues`).
+   */
+  slots?: CompoundRowView['slots'];
+  /**
+   * Bound-subtitle parts for the item cell (`ordersSubtitleParts`).
+   * `undefined` = the layout binds no subtitles, keep the legacy note/identity
+   * fallback; an array (even empty) = the org chose what rides under the
+   * title, and that choice is final — a blank line, never the implicit
+   * identity filler.
+   */
+  subtitleParts?: CompoundRowView['subtitleParts'];
 }
 
 /**
@@ -118,8 +135,11 @@ export function ordersCompoundView(
   const tracking = String(row.shipping_tracking_number || row.tracking_number || '').trim();
   const opNote = firstNote([record.notes]);
   const identity = ordersIdentityLine(record, parts);
-  // Operator note wins the secondary line; identity fills it when the note is empty.
-  // When both exist, identity rides the state tip so nothing is lost.
+  // The item secondary: bound subtitle PARTS (an explicit org choice) are
+  // final — the cell paints them and ignores `note`. Otherwise the operator
+  // note wins and identity fills an empty note line. When both note and
+  // identity exist, identity rides the state tip so nothing is lost.
+  const secondary = parts.subtitleParts !== undefined ? null : (opNote ?? identity);
   const stateTipParts = [parts.delayTip, opNote && identity ? identity : null].filter(Boolean);
 
   return {
@@ -130,14 +150,19 @@ export function ordersCompoundView(
     // column is an honest empty rather than a fabricated thumbnail.
     thumbUrl: null,
     title: record.product_title || '',
-    note: opNote ?? identity,
+    note: secondary,
     flagMark: parts.flagMark ?? null,
     orderId: String(record.order_id || '').trim() || null,
     tracking: tracking || null,
     // Marketplace/channel the order came from — the platform SoT resolves the mark.
     platformValue: row.account_source || null,
     carrier: row.carrier || null,
-    stateLabel: parts.stateLabel,
+    // `''`, not null: the shared compound row model takes a string and
+    // `CompoundCells` renders it directly, so an empty label paints an empty
+    // state cell — the same "nothing to say" the receiving grid already uses.
+    // Widening the shared model to null would ripple through every compound
+    // surface to say what `''` already says here.
+    stateLabel: parts.stateLabel ?? '',
     stateTone: ordersStateTone(parts.stateLabel),
     stateTip: stateTipParts.length > 0 ? stateTipParts.join(' · ') : undefined,
     delay:
@@ -150,5 +175,7 @@ export function ordersCompoundView(
       const sale = Number(record.sale_amount);
       return Number.isFinite(sale) ? formatCurrency(sale) : null;
     })(),
+    slots: parts.slots,
+    subtitleParts: parts.subtitleParts,
   };
 }

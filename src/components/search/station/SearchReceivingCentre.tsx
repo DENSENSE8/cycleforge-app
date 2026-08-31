@@ -1,17 +1,18 @@
 'use client';
 
 /**
- * Zone 2 of `/search?sel=receiving:` — Status first, then Items.
- * Preview search does not mount a warehouse thread.
+ * `/search?sel=receiving:{id}` centre — Status band, then Items band.
  *
- * Edge-to-edge of the centre column. The status pipeline owns its inset
- * (`OrderPipelineSection` / inbound wrapper); items sit flush.
+ * Composes {@link SearchEntityCentre} like every other entity pane. The status
+ * CONTENT is conditional and always was: a carton linked to a marketplace order
+ * shows that order's pipeline, an unmatched one shows the carton's own. That is
+ * data varying, not shape — the bands are identical either way.
  */
 
 import { OrderPipelineSection } from '@/components/shipped/details-panel/OrderPipelineSection';
-import { StationCollapsibleBlock } from '@/components/station/collapse/StationCollapsibleBlock';
-import type { AutoCollapseController } from '@/components/station/collapse';
+import { SearchEntityCentre } from './SearchEntityCentre';
 import { ReceivingCartonPipeline } from '@/components/station/receiving/ReceivingCartonPipeline';
+import type { AutoCollapseController } from '@/components/station/collapse';
 import type {
   CartonInspectorLine,
   CartonInspectorReceiving,
@@ -37,34 +38,25 @@ export function SearchReceivingCentre({
   const readiness = deriveCartonReadiness(log, lines);
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <StationCollapsibleBlock
-        label="Status"
-        collapsed={collapse.collapsed}
-        onToggle={collapse.toggle}
-        testId="search-receiving-status-block"
-      >
-        {linkedOrder ? (
+    <SearchEntityCentre
+      entity="receiving"
+      collapse={collapse}
+      status={
+        linkedOrder ? (
           <OrderPipelineSection shipped={linkedOrder} />
         ) : (
           <div className="px-4 py-1">
             <ReceivingCartonPipeline log={log} readiness={readiness} />
           </div>
-        )}
-      </StationCollapsibleBlock>
-
-      <StationCollapsibleBlock
-        label="Items"
-        collapsed={collapse.collapsed}
-        onToggle={collapse.toggle}
-        testId="search-receiving-items-block"
-      >
-        {linkedOrder ? (
+        )
+      }
+      items={
+        linkedOrder ? (
           <SearchOrderItems order={linkedOrder} />
         ) : (
           <SearchReceivingPoItems receiving={receiving} lines={lines} />
-        )}
-      </StationCollapsibleBlock>
-    </div>
+        )
+      }
+    />
   );
 }

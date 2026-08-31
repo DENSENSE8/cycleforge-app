@@ -7,10 +7,6 @@ import { gridDataCellClass } from '@/design-system/components/grid';
 import type { CSSProperties, ReactNode } from 'react';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
-import {
-  gridColumnHighlightStyle,
-  type GridColumnDisplayPref,
-} from '@/design-system/components/grid';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import { gridFrozenLeft } from '@/design-system/components/grid/grid-column-geometry';
 import {
@@ -91,11 +87,6 @@ export type ReceivingGridCellCtx = {
    * the chevron cell must render nothing rather than a dead control.
    */
   onOpenRecord?: () => void;
-  /**
-   * Commit an inline NOTE edit for this row. Present ⇒ the compound title
-   * cell's note line is editable; absent ⇒ read-only. Capability, not mode.
-   */
-  onCommitNote?: (next: string) => void;
   serialsCsv: string;
   statusDot: string;
   /**
@@ -103,8 +94,6 @@ export type ReceivingGridCellCtx = {
    * generic capability title. Used for History UNBOXED sync tooltips.
    */
   inventoryProviderLabel: string;
-  /** Per-hideKey display prefs from staff column-display panel. */
-  columnDisplay?: Readonly<Record<string, GridColumnDisplayPref>>;
   /** Select-gutter face visibility. Defaults to `'always'` at call sites. */
   selectGutterChrome?: GridSelectGutterChrome;
   /**
@@ -114,8 +103,6 @@ export type ReceivingGridCellCtx = {
   clickSelect?: boolean;
   /** Live defs for `custom:*` columns — type lookup for {@link CustomFieldCell}. */
   customFieldDefs?: readonly CustomFieldDef[];
-  /** Persist one custom cell (def key + next string). */
-  onCustomFieldCommit?: (defKey: string, next: string) => void;
   /**
    * Incoming POS is `'expected'` (delivery_state status, Age / Platform /
    * Removed / attach-tracking). History / Unbox / Testing omit or pass
@@ -140,43 +127,27 @@ export type ReceivingGridCellProps = {
   ctx: ReceivingGridCellCtx;
 };
 
-export function receivingDataCellClass(col: ReceivingGridCellColumn, rule = true, ctx?: ReceivingGridCellCtx): string {
-  // Delegates to the shared composition — this file assembled the four
-  // concerns by hand, and Orders assembled a different two, which is how the
-  // per-staff text emphasis ended up honoured on one family only.
+export function receivingDataCellClass(col: ReceivingGridCellColumn, rule = true, _ctx?: ReceivingGridCellCtx): string {
+  // Delegates to the shared composition — this file assembled the concerns by
+  // hand and Orders assembled a different subset, which is how the two families
+  // drifted apart.
   return gridDataCellClass(col, {
     rule,
     inset: 'grid',
-    columnDisplay: ctx?.columnDisplay,
     frozenClass: RECEIVING_GRID_FROZEN_CELL,
   });
 }
 
 /**
- * Inline cell style — staff highlight wash + sticky-left for frozen identity
- * tracks. One helper so leaf cells never hand-roll `left` past the SoT offset.
+ * Inline cell style — sticky-left for frozen identity tracks. One helper so
+ * leaf cells never hand-roll `left` past the SoT offset.
  */
 export function receivingDataCellStyle(
   col: ReceivingGridCellColumn,
   ctx?: ReceivingGridCellCtx,
 ): CSSProperties | undefined {
-  const pref = col.hideKey && ctx?.columnDisplay ? ctx.columnDisplay[col.hideKey] : undefined;
-  const highlight = gridColumnHighlightStyle(pref?.highlight);
-  if (!col.frozen && !highlight) return undefined;
-  return {
-    ...highlight,
-    ...(col.frozen
-      ? { left: gridFrozenLeft(ctx?.columns ?? RECEIVING_GRID_COLUMNS, col.key) }
-      : null),
-  };
-}
-
-/** @deprecated Prefer {@link receivingDataCellStyle} (folds frozen `left`). */
-export function receivingDataCellHighlightStyle(
-  col: ReceivingGridCellColumn,
-  ctx?: ReceivingGridCellCtx,
-): CSSProperties | undefined {
-  return receivingDataCellStyle(col, ctx);
+  if (!col.frozen) return undefined;
+  return { left: gridFrozenLeft(ctx?.columns ?? RECEIVING_GRID_COLUMNS, col.key) };
 }
 
 /** `data-frozen-edge` only on the trailing frozen identity cell. */
@@ -186,10 +157,4 @@ export function receivingFrozenEdgeProps(
   return col.frozen && col.key === RECEIVING_GRID_FROZEN_EDGE_KEY
     ? { 'data-frozen-edge': true }
     : {};
-}
-
-/** True when this column should wrap its primary value in chip chrome. */
-export function receivingCellWantsChip(col: ReceivingGridCellColumn, ctx: ReceivingGridCellCtx): boolean {
-  if (!col.hideKey || col.frozen) return false;
-  return ctx.columnDisplay?.[col.hideKey]?.cell === 'chip';
 }

@@ -3,8 +3,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShippedOrder } from '@/lib/neon/orders-queries';
-import { dispatchNavigateShippedDetails } from '@/utils/events';
-import { useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import {
   DESK_INSPECTOR_INDEX,
@@ -18,10 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/design-system/primitives/DropdownMenu';
-import type {
-  DetailsStackDurationData,
-  ShippedActiveInput,
-} from './stacks/types';
+import type { ShippedActiveInput } from './stacks/types';
 import { deriveShippedHeaderMeta } from './details-panel/shipped-details-logic';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { toast } from '@/lib/toast';
@@ -43,10 +38,6 @@ import {
   type OrderInspectorDisplayTopic,
   type OrderInspectorUpdateActionKey,
 } from '@/lib/shipping/order-inspector-topics';
-import {
-  consumeReplaceTrackingIntent,
-  subscribeReplaceTrackingIntent,
-} from '@/lib/order-inspector/replace-tracking-intent';
 
 export type { ShippedActiveInput };
 
@@ -80,25 +71,11 @@ export function ShippedDetailsPanel({
     meta.canEditAssignment &&
     inspectorContext.recordCtas.includes('assign');
 
-  const [durationData] = useState<DetailsStackDurationData>({});
-
   const {
     shipped,
     setShipped,
-    orderNumber,
-    setOrderNumber,
-    itemNumber,
-    setItemNumber,
-    shippingTrackingNumber,
-    setShippingTrackingNumber,
     isOutOfStock,
-    shipByDate,
-    setShipByDate,
-    isSavingInlineFields,
     isSavingOutOfStock,
-    isSavingShipByDate,
-    saveInlineFields,
-    saveShipByDate,
     handleSaveOutOfStock,
   } = useShippedDetailState(initialShipped, onUpdate);
 
@@ -107,7 +84,6 @@ export function ShippedDetailsPanel({
   const {
     setDisplayTopic,
     orderChild,
-    setActiveSection,
     activeInput,
     setActiveInput,
   } = useShippedPanelViewState({
@@ -130,19 +106,6 @@ export function ShippedDetailsPanel({
     const seed = resolveOrderInspectorTopicState(defaultTab);
     setNavId(resolveOrderInspectorDisplayTopic(seed.topic, { showDocumentsTab }));
   }, [initialShipped.id, defaultTab, openOnIndex, showDocumentsTab]);
-
-  const [replaceTrackingNonce, setReplaceTrackingNonce] = useState(0);
-  useEffect(() => {
-    const applyIntent = () => {
-      const orderId = Number(initialShipped.id);
-      if (!consumeReplaceTrackingIntent(orderId)) return;
-      setActiveSection('shipping');
-      setNavId('order');
-      setReplaceTrackingNonce((n) => n + 1);
-    };
-    applyIntent();
-    return subscribeReplaceTrackingIntent(applyIntent);
-  }, [initialShipped.id, setActiveSection]);
 
   const { isDeleteArmed, isDeleting, handleDelete } = useShippedDeletion(shipped, onUpdate);
   const assignOrder = useOrderAssignment();
@@ -236,37 +199,6 @@ export function ShippedDetailsPanel({
     [router, shipped.order_id],
   );
 
-  const cursor = useRecordCursor('record');
-
-  const handleMoveUp = useCallback(() => {
-    if (cursor.available) {
-      cursor.onPrev?.();
-      return;
-    }
-    dispatchNavigateShippedDetails('up');
-  }, [cursor]);
-
-  const handleMoveDown = useCallback(() => {
-    if (cursor.available) {
-      cursor.onNext?.();
-      return;
-    }
-    dispatchNavigateShippedDetails('down');
-  }, [cursor]);
-
-  const stackActionBar = {
-    onClose,
-    onMoveUp: handleMoveUp,
-    onMoveDown: handleMoveDown,
-    onAssign: showAssign
-      ? () => {
-          setDisplayTopic('order');
-          setNavId('order');
-          setActiveInput('assign');
-        }
-      : undefined,
-  };
-
   const renderTopicBody = (topic: OrderInspectorDisplayTopic): ReactNode => {
     const activeSection =
       topic === 'order' ? undefined : orderInspectorActiveSection(topic, orderChild);
@@ -275,29 +207,12 @@ export function ShippedDetailsPanel({
       <ShippedDetailsBody
         context={context}
         inspectorContext={inspectorContext}
-        showQuickLinks
         activeSection={activeSection}
         displayTopic={topic}
         shipped={shipped}
-        durationData={durationData}
         onUpdate={onUpdate}
         activeInput={activeInput}
         setActiveInput={setActiveInput}
-        stackActionBar={stackActionBar}
-        editableFields={{
-          orderNumber,
-          itemNumber,
-          trackingNumber: shippingTrackingNumber,
-          shipByDate,
-          isSavingInlineFields,
-          isSavingShipByDate,
-          setOrderNumber,
-          setItemNumber,
-          setTrackingNumber: setShippingTrackingNumber,
-          setShipByDate,
-          onSaveInline: saveInlineFields,
-          onSaveShipByDate: saveShipByDate,
-        }}
         isOutOfStock={isOutOfStock}
         isSavingOutOfStock={isSavingOutOfStock}
         onSaveOutOfStock={(checked) => {
@@ -312,7 +227,6 @@ export function ShippedDetailsPanel({
         onDeleteOrder={handleDelete}
         updateActions={updateActions}
         onUpdateAction={onUpdateAction}
-        replaceTrackingNonce={replaceTrackingNonce}
       />
     );
   };

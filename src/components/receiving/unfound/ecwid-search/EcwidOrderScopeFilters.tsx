@@ -4,7 +4,7 @@
  * Store order-scope filter — All orders vs Repair (-RS).
  *
  * Lives in the SearchField trailing cluster (`trailingSuffix`, after paste)
- * via {@link FilterMenu} `density="field"`. Paste leads the icon
+ * via {@link FilterMenu}, beside the field rather than inside it. Paste leads the icon
  * cluster (hover-reveal). Replaces the old HorizontalButtonSlider tab row
  * under the search field.
  *

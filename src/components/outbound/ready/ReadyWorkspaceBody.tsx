@@ -11,11 +11,21 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ReadyQueueTable } from '@/components/outbound/ready/ReadyQueueTable';
 import { fetchReadyHistory, readyHistoryQueryKey } from '@/components/outbound/ready/ready-history';
+import type { DataTableFilterOption } from '@/components/tables/DataTable';
 import { useOutboundUrlState } from '@/hooks/useOutboundUrlState';
 import { useReadyWorkspaceTab } from '@/hooks/useReadyWorkspaceTab';
 import { readyTabDisposition } from '@/utils/ready-workspace-state';
 
-export function ReadyWorkspaceBody() {
+export function ReadyWorkspaceBody({
+  modeFilter,
+}: {
+  /** The FBA desk's mode options — threaded into the table's ONE filter. */
+  modeFilter?: {
+    options: readonly DataTableFilterOption[];
+    onToggle: (id: string) => void;
+    onClearAll: () => void;
+  };
+}) {
   const { q, setQ } = useOutboundUrlState();
   const { readyTab } = useReadyWorkspaceTab();
   const query = useQuery({
@@ -43,6 +53,7 @@ export function ReadyWorkspaceBody() {
       // from "nothing tested yet" to "nothing matches this view".
       isFiltered={Boolean(q.trim()) || readyTab !== 'all'}
       search={{ value: q, onChange: setQ, placeholder: 'Filter tested units…' }}
+      filter={modeFilter}
     />
   );
 }

@@ -4,27 +4,24 @@ import {
   GRID_IDENTITY_COLUMN_KEYS,
   isGridColumnFillTrack,
   isGridColumnPaintTrack,
-  isGridColumnInCellEditable,
   isGridColumnResizable,
   isGridIdentityColumn,
 } from './grid-column-editability';
 
-describe('grid column editability SoT', () => {
+describe('grid column identity SoT', () => {
   it('pins select · title as the identity pane', () => {
     assert.deepEqual([...GRID_IDENTITY_COLUMN_KEYS], ['select', 'title']);
   });
 
-  it('treats identity keys as non-editable in the collection map', () => {
+  it('treats every identity key as part of the pane', () => {
     for (const key of GRID_IDENTITY_COLUMN_KEYS) {
       assert.equal(isGridIdentityColumn(key), true);
-      assert.equal(isGridColumnInCellEditable(key), false);
     }
   });
 
-  it('allows fact columns to opt into in-cell editing', () => {
+  it('leaves fact columns out of the identity pane', () => {
     for (const key of ['qty', 'date', 'condition', 'note', 'link', 'sku']) {
       assert.equal(isGridIdentityColumn(key), false);
-      assert.equal(isGridColumnInCellEditable(key), true);
     }
   });
 

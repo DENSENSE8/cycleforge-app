@@ -1,14 +1,27 @@
 'use client';
 
 /**
- * Unbox PO-line capture face — condition + Serial / Photos on one row.
+ * Unbox PO-line capture composer — one joined bar under the active line.
  *
- * Always collapsed Tags + open serial (optimistic mobile-app grammar):
- *   [ Tags (USED_A) | SerialScanField (focused) | Photos ]
- * Hover Tags → expand pills in the SAME row — Serial + Photos stay as compact
- * icon buttons on the right (not the wide serial field); grade click selects
- * (never clears), collapses, re-opens + focuses serial. Click Tags / the row
- * (outside Photos) focuses serial. ↑/↓ in the serial field steps PO lines.
+ * ## Anatomy: left is the JOB, right is the VERIFICATION
+ *
+ *   [ Tags (USED_A) ][ Serial ………………… grows ][ ✓ exact │ 📷 photos ]
+ *   └ leading segment └ field takes the slack  └ trailing action cluster
+ *
+ * The three parts are positional, not incidental. Identity of the work being
+ * done (which grade, which identifier) is on the LEFT and grows; the actions
+ * that verify it are ONE group flush against the bar's right edge. They never
+ * swap and an action never lands mid-field — which is what happens the moment
+ * the commit cell and Photos are two independent flex children and the commit
+ * cell drops out (a waived line). {@link SerialScanField} owns that grouping
+ * via its `actionsSlot`, so Photos joins the same cluster as the check.
+ *
+ * Always collapsed Tags + open serial (optimistic mobile-app grammar). Hover
+ * Tags → expand pills in the SAME row — Serial + Photos stay as compact icon
+ * buttons in the trailing cluster (not the wide serial field); grade click
+ * selects (never clears), collapses, re-opens + focuses serial. Click Tags /
+ * the row (outside Photos) focuses serial. ↑/↓ in the serial field steps PO
+ * lines.
  *
  * Same face for found, lined unfound, and empty stub.
  */
@@ -19,6 +32,8 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 import {
   CAPTURE_SEGMENT_ORDER,
+  PO_LINE_CAPTURE_ACTION_WIDTH,
+  PO_LINE_CAPTURE_ACTIONS_CLASS,
   PO_LINE_CAPTURE_CONDITION_CLASS,
   PO_LINE_CAPTURE_COUNT_CLASS,
   PO_LINE_CAPTURE_GLYPH_CLASS,
@@ -129,6 +144,11 @@ export function PoLineCaptureRow({
   // Always start collapsed — hover Tags to expand; pick collapses again.
   const [condExpanded, setCondExpanded] = useState(false);
   const [focusNonce, setFocusNonce] = useState(0);
+  // Dupe-scan notice. Owned HERE, not left to the field's own fallback: that
+  // one renders as a `basis-full` sibling of the input, which inside a joined
+  // `h-11 overflow-hidden` bar squeezes the field instead of speaking. Under
+  // the bar it is legible and the composer geometry never moves.
+  const [scanNotice, setScanNotice] = useState<string | null>(null);
   const rowRef = useRef<HTMLDivElement | null>(null);
   const displayCondition =
     String(condition || '').trim() || CAPTURE_DEFAULT_GRADE;
@@ -289,30 +309,40 @@ export function PoLineCaptureRow({
     );
   };
 
+  /**
+   * Field + trailing actions. Rendered as DIRECT children of the joined bar
+   * (the field host is `flex-1`, the action cluster `shrink-0`), so the row's
+   * cluster sits flush against the bar's right edge, with no seam between the
+   * cells. Photos rides in via `actionsSlot` — it is a
+   * verification action, and it belongs to the same group as the check.
+   */
   const serialField = showSerialField ? (
-    <div className="flex min-w-0 flex-1 items-stretch" data-capture-serial>
-      <SerialScanField
-        saved={saved}
-        onAdd={onAddSerial}
-        disabled={disabled}
-        onReplaceSerial={onReplaceSerial}
-        onMarkNoSerial={onMarkNoSerial}
-        noSerialActive={noSerialActive}
-        noSerialSlot={noSerialSlot}
-        lookupBusy={lookupBusy}
-        appearance="flush"
-        autoFocusInput={autoFocusSerial || focusNonce > 0}
-        focusKey={
-          focusKey != null
-            ? `${focusKey}-${focusNonce}`
-            : `serial-open-${focusNonce}`
-        }
-        editingSerial={editingSerial}
-        onEditingSerialChange={onEditingSerialChange}
-      />
-    </div>
+    <SerialScanField
+      saved={saved}
+      onAdd={onAddSerial}
+      disabled={disabled}
+      onReplaceSerial={onReplaceSerial}
+      onMarkNoSerial={onMarkNoSerial}
+      noSerialActive={noSerialActive}
+      noSerialSlot={noSerialSlot}
+      lookupBusy={lookupBusy}
+      appearance="flush"
+      actionWidth={PO_LINE_CAPTURE_ACTION_WIDTH}
+      actionsSlot={segmentFor('photos')}
+      onInlineNoticeChange={setScanNotice}
+      autoFocusInput={autoFocusSerial || focusNonce > 0}
+      focusKey={
+        focusKey != null
+          ? `${focusKey}-${focusNonce}`
+          : `serial-open-${focusNonce}`
+      }
+      editingSerial={editingSerial}
+      onEditingSerialChange={onEditingSerialChange}
+    />
   ) : null;
 
+  // Already `flex-1` in its own chrome (PhotoStepDockStrip), so it takes the
+  // middle exactly as the Serial field does — see PO_LINE_CAPTURE_FIELD_CLASS.
   const photosStrip = showPhotosStrip ? (
     <ItemPhotoCaptureStrip
       receivingId={receivingId!}
@@ -326,22 +356,24 @@ export function PoLineCaptureRow({
   ) : null;
 
   // Collapsed Tags + serial field, or expanded pills + icon segments.
-  // Condition hover never drops the Serial / Photos icon buttons.
+  // Condition hover never drops the Serial / Photos icon buttons — they just
+  // move from beside the field into the same trailing cluster.
   const midAndSegments = showSerialField
-    ? (
-        <>
-          {serialField}
-          {CAPTURE_SEGMENT_ORDER.map(segmentFor)}
-        </>
-      )
+    ? serialField
     : showPhotosStrip
       ? (
           <>
-            {segmentFor('serial')}
             {photosStrip}
+            <div className={PO_LINE_CAPTURE_ACTIONS_CLASS}>
+              {segmentFor('serial')}
+            </div>
           </>
         )
-      : CAPTURE_SEGMENT_ORDER.map(segmentFor);
+      : (
+          <div className={PO_LINE_CAPTURE_ACTIONS_CLASS}>
+            {CAPTURE_SEGMENT_ORDER.map(segmentFor)}
+          </div>
+        );
 
   return (
     <div
@@ -354,7 +386,7 @@ export function PoLineCaptureRow({
       data-active-step={activeStep ?? undefined}
       onMouseDown={onRowMouseDown}
     >
-      <div className={PO_LINE_CAPTURE_ROW_CLASS}>
+      <div className={PO_LINE_CAPTURE_ROW_CLASS} data-capture-composer>
         <div
           className={cn(
             PO_LINE_CAPTURE_CONDITION_CLASS,
@@ -380,6 +412,14 @@ export function PoLineCaptureRow({
         </div>
         {midAndSegments}
       </div>
+      {scanNotice ? (
+        <p
+          role="status"
+          className="bg-surface-card px-3 py-1 text-role-caption font-semibold text-rose-600"
+        >
+          {scanNotice}
+        </p>
+      ) : null}
     </div>
   );
 }

@@ -99,6 +99,18 @@ test('the header bar paints a full-width bottom hairline', () => {
   assert.match(html, /after:inset-x-0/, html);
 });
 
+test('hairline face uses the whole header row as the disclose hit target', () => {
+  const html = render({ face: 'hairline', collapsed: false });
+  assert.match(html, /data-block-face="hairline"/);
+  assert.match(html, /aria-label="Collapse Status &amp; timeline"/);
+  assert.match(html, /absolute inset-0/);
+  assert.match(html, /AUDIT_BODY_MARKER/);
+  assert.doesNotMatch(
+    render({ face: 'hairline', collapsed: true }),
+    /AUDIT_BODY_MARKER/,
+  );
+});
+
 test('the block composes the label — one header face, not two', () => {
   // If these ever diverge, the promotion has been undone again.
   const blockHeader = render({ collapsed: false, count: 7 });
@@ -108,3 +120,4 @@ test('the block composes the label — one header face, not two', () => {
     'StationCollapsibleBlock must RENDER StationBlockLabel, not re-implement its markup',
   );
 });
+

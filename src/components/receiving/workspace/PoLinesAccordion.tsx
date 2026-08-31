@@ -18,6 +18,7 @@ import { singleBand } from '@/lib/group-rows';
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { setActiveSinkId } from '@/lib/station-scan-sink';
+import { useLineCollapse, type LineCollapseController } from '@/components/station/collapse';
 import { scheduleFocusUnboxCaptureSerialInLine } from './line-edit/focus-unbox-capture-serial';
 
 // Type re-exports — ActiveLineConditionSerial / Units hosts import from here.
@@ -108,6 +109,17 @@ interface Props {
    * (Arrival door flow). Defaults true (Unbox / Testing).
    */
   unitsChrome?: boolean;
+  /**
+   * SHARE the host's line-collapse controller instead of the accordion's own.
+   *
+   * Optional because this component owns one by default — every PO-line list in
+   * the app discloses the same way without its host re-deriving the rule. Pass
+   * one only when a control ABOVE the list has to reach the lines: the Unbox and
+   * Testing Items bands both carry "Collapse all", and a band that collapsed
+   * itself while the lines underneath stayed open would hand the column back and
+   * then take it again the moment the band re-opened.
+   */
+  lineCollapse?: LineCollapseController;
 }
 
 /**
@@ -144,7 +156,13 @@ export function PoLinesAccordion({
   onEditConditionInDock,
   onEditSerialInDock,
   unitsChrome = true,
+  lineCollapse,
 }: Props) {
+  // The list is the owner: one controller for every row it renders, replaced by
+  // the host's when the host has a Collapse all to drive it from.
+  const ownLineCollapse = useLineCollapse(activeLineId);
+  const lines = lineCollapse ?? ownLineCollapse;
+
   const { rows, cartonUnitIds, serialsLoading } = usePoLinesData({
     receivingId,
     activeLineId,
@@ -166,13 +184,20 @@ export function PoLinesAccordion({
 
   const siblingOrder = useMemo(() => singleBand(paintRows), [paintRows]);
 
-  const openSiblingLine = useCallback((line: ReceivingLineRow) => {
-    setActiveSinkId(`po-line:${line.id}`);
-    dispatchSelectLine(line);
-    // Focus THIS line's capture serial — not active-step (lags a paint) and
-    // not the dock wedge. Same target as qty click / in-field ↑↓.
-    scheduleFocusUnboxCaptureSerialInLine(line.id, 60);
-  }, []);
+  const openSiblingLine = useCallback(
+    (line: ReceivingLineRow) => {
+      setActiveSinkId(`po-line:${line.id}`);
+      dispatchSelectLine(line);
+      // Stepping onto a line asks for its capture bar. Selecting it usually
+      // expands it by the default rule anyway; this covers the case where the
+      // operator had pinned it shut.
+      lines.expand(line.id);
+      // Focus THIS line's capture serial — not active-step (lags a paint) and
+      // not the dock wedge. Same target as qty click / in-field ↑↓.
+      scheduleFocusUnboxCaptureSerialInLine(line.id, 60);
+    },
+    [lines],
+  );
 
   const handleSiblingCursorOpen = useCallback(
     (line: ReceivingLineRow) => {
@@ -264,6 +289,14 @@ export function PoLinesAccordion({
               }
               onEditSerialInDock={unitsChrome ? onEditSerialInDock : undefined}
               unitsChrome={unitsChrome}
+              // Unconditional: a row with no capture body drops the control
+              // itself (ItemRecordRow → `canDisclose`), so a read-only ledger
+              // never grows a toggle and no caller has to know which is which.
+              collapse={{
+                expanded: lines.isExpanded(line.id),
+                onToggle: () => lines.toggle(line.id),
+                onExpand: () => lines.expand(line.id),
+              }}
             />
           ))}
         </ul>

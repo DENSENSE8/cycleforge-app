@@ -1,37 +1,39 @@
 /**
- * Local Pickup spreadsheet column model — the pickup-native sibling of
- * {@link RECEIVING_GRID_COLUMNS}. Pickup rows are LCPU order *items* (read-only:
- * no unbox/serial/receive lifecycle, no inline title PATCH), so this is a
- * deliberately smaller column set than receiving — Product · SKU · Order · Date ·
- * Qty · Cond · Price · Status — but it composes the SAME shared geometry
- * (`receivingGridCell` / `RECEIVING_GRID_FROZEN_CELL`) so a
- * pickup grid lines up pixel-for-pixel with every other station spreadsheet.
+ * Local Pickup sheet column model — MATERIALIZED from a {@link SlotLayout},
+ * never a hand array.
  *
- * Frozen pane = `select` (empty gutter, keeps the station left rhythm) + `title`
- * (the flexing product cell). `order` is the LCPU PO# — the one-to-many fold key.
- * Title is identity — never in-cell editable ({@link GRID_IDENTITY_COLUMN_KEYS}).
+ * The static `PICKUP_GRID_COLUMNS` died with the Wave-2 hand-model kill
+ * (`docs/kill-list/07-slot-table-hand-models.md` §4): a track whose key IS a
+ * field (`sku`, `date`, `price`) was a frozen layout no org could capture.
+ * What remains structural is the SHEET SKELETON — the frozen `select · title`
+ * pane and the `order` identity track (the LCPU PO#, the one-to-many fold
+ * key) — and everything else is a catalog fact an org/staffer binds:
+ * status band (`status:1…N`) after the subtitle band, subtitle band
+ * (`subtitle:1…N`) directly after Order. Pickup is the first live consumer of
+ * the materializer's SHEET morph path.
+ *
+ * Sort and frozen-offset helpers derive from the MOUNTED model, never a
+ * module constant — the Wave-1 lesson (`CompoundGridCell`'s docblock): a
+ * key-only closure over a static list is how offsets and sortability go stale
+ * the moment the mounted model moves.
  */
 
-import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
-import {
-  gridFrozenLeft,
-  gridTemplate,
-} from '@/design-system/components/grid/grid-column-geometry';
+import { PICKUP_FIELD_CATALOG, PICKUP_PRODUCT_LAYOUT } from '@/lib/tables/field-catalog/pickup';
+import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
+import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 export type PickupGridColumnKey =
   | 'select'
   | 'title'
-  | 'sku'
+  /** The LCPU PO# — structural identity track; `pickup.order` resolves it. */
   | 'order'
-  | 'date'
-  | 'qty'
-  | 'condition'
-  | 'price'
-  | 'status';
+  /** Materialized slot tracks — keys are slot indices, never field ids. */
+  | `status:${number}`
+  | `subtitle:${number}`;
 
-export interface PickupGridColumn {
+export interface PickupGridColumn extends SlotTrackFields {
   key: PickupGridColumnKey;
   width: string;
   label?: string;
@@ -42,24 +44,18 @@ export interface PickupGridColumn {
   align?: 'start' | 'end';
   /** Part of the frozen identity pane — see {@link LedgerGridColumnModel.frozen}. */
   frozen?: boolean;
-  /** Staff-preference key (`staff_preferences.tableColumns.pickup`). */
-  hideKey?: string;
-  /** `core` ships ON (opt-out); `optional` ships OFF (opt-in via Fields). */
-  tier?: 'core' | 'optional';
+  minTrackRem?: number;
+  resizable?: boolean;
   /** When false, header is not click-to-sort (select gutter only). Default true. */
   sortable?: boolean;
 }
 
 /**
- * Canonical Local Pickup columns. Only `title` flexes; facts are content-hard.
- *
- * DEFAULT VIEW (tier `core`) is `select · title · order · date · status` — the
- * counter operator's four questions: what, which LCPU order, when it's being
- * picked up, and is it still Draft. `sku` / `qty` / `condition` / `price` are
- * line detail that the group summary already rolls up and the detail pane shows
- * in full, so they ship `optional` rather than widening every first load.
+ * The structural sheet skeleton — what pickup paints with ZERO bindings.
+ * `title` is the only flex track; the frozen pane is `select · title`; Order
+ * rides unfrozen beside it as the fold key. Slot bands insert after `order`.
  */
-export const PICKUP_GRID_COLUMNS: readonly PickupGridColumn[] = [
+const PICKUP_SHEET_BASE: readonly PickupGridColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
   {
     key: 'title',
@@ -70,60 +66,73 @@ export const PICKUP_GRID_COLUMNS: readonly PickupGridColumn[] = [
     type: 'text',
     labelFitRem: 8,
   },
-  { key: 'sku', width: 'minmax(7rem, 7rem)', label: 'SKU', type: 'id', hideKey: 'sku', tier: 'optional', labelFitRem: 4.5 },
-  { key: 'order', width: 'minmax(9rem, 9rem)', label: 'Order', type: 'id', hideKey: 'order', labelFitRem: 4.5 },
-  { key: 'date', width: 'minmax(5.5rem, 5.5rem)', label: 'Date', type: 'date', hideKey: 'date', labelFitRem: 4.5 },
-  // 3.5rem / fit 3.5 matches Pending, Unbox and Incoming so the header reads `Qty`
-  // rather than a bare `#` — the type registry maps both `number` and `id` to the
-  // hash mark, so a label-less numeric column is indistinguishable from an id one.
-  { key: 'qty', width: 'minmax(3.5rem, 3.5rem)', label: 'Qty', type: 'number', hideKey: 'qty', tier: 'optional', labelFitRem: 3.5 },
-  { key: 'condition', width: 'minmax(5.5rem, 5.5rem)', label: 'Cond', type: 'tag', hideKey: 'condition', tier: 'optional', labelFitRem: 4.5 },
-  { key: 'price', width: 'minmax(5rem, 5rem)', label: 'Price', type: 'price', hideKey: 'price', tier: 'optional', labelFitRem: 4.5 },
-  { key: 'status', width: 'minmax(5rem, 5rem)', label: 'Status', type: 'tag', hideKey: 'status', labelFitRem: 4.5 },
-] as const;
+  {
+    key: 'order',
+    width: 'minmax(9rem, 9rem)',
+    label: 'Order',
+    gridLabel: 'Order',
+    type: 'id',
+    labelFitRem: 4.5,
+  },
+];
 
 /**
- * Frozen identity pane — `select · title`. Derived from the column model's
- * `frozen` flag (one declaration for freeze + immovability + offset math), not
- * from the house key list: the pane is a per-surface answer, and Orders already
- * freezes a third track. See `grid-column-editability.ts`.
+ * Materialize the mounted pickup columns from an effective layout. Both bands
+ * anchor on `order`: subtitles land directly after it (they are line detail —
+ * the old sku/qty/cond/price optionals), the status band after those (date ·
+ * status close the row, as the hand model's core view did).
  */
-const PICKUP_GRID_LOCKED_KEYS: readonly PickupGridColumnKey[] = gridFrozenKeys(PICKUP_GRID_COLUMNS);
-
-const PICKUP_GRID_SORTABLE_KEYS: readonly PickupGridColumnKey[] = PICKUP_GRID_COLUMNS.filter(
-  (c) => c.sortable !== false && c.key !== 'select',
-).map((c) => c.key);
-
-export function isPickupGridSortable(key: string): key is PickupGridColumnKey {
-  return (PICKUP_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
-}
-
-export function isPickupGridFrozen(key: string): boolean {
-  return PICKUP_GRID_LOCKED_KEYS.includes(key as PickupGridColumnKey);
-}
-
-
-/** CSS grid template — one `var(--cf-col-<key>, <width>)` track per column. */
-export function pickupGridTemplate(
-  columns: readonly PickupGridColumn[] = PICKUP_GRID_COLUMNS,
-): string {
-  return gridTemplate(columns);
+export function pickupSheetColumnsFor(layout: SlotLayout): readonly PickupGridColumn[] {
+  return materializeTracks<PickupGridColumn>({
+    layout,
+    catalog: PICKUP_FIELD_CATALOG,
+    base: PICKUP_SHEET_BASE,
+    statusAnchorKey: 'order',
+    subtitleAnchorKey: 'order',
+  });
 }
 
 /**
- * Sticky offset for a frozen cell — row px + the summed widths of the locked
- * columns that precede it — bound to {@link PICKUP_GRID_COLUMNS}, so this
- * surface's own pane and widths drive the offset.
+ * The PRODUCT-DEFAULT materialization — what an org with no override mounts
+ * (`select · title · order · date · status`, the retired hand model's core
+ * view), the canonical columns of the pickup binding, and the guard SoT.
  */
-export function pickupGridFrozenLeft(key: PickupGridColumnKey): string {
-  return gridFrozenLeft(PICKUP_GRID_COLUMNS, key);
+export const PICKUP_SHEET_COLUMNS: readonly PickupGridColumn[] =
+  pickupSheetColumnsFor(PICKUP_PRODUCT_LAYOUT);
+
+/**
+ * The FACT a column sorts by, or null when it offers no sort: base tracks map
+ * to their structural facts, slot tracks to their bound field id. Positional
+ * `?colsort=` keys stay meaningful because widths/prefs are slot-keyed by the
+ * same law.
+ */
+export function pickupSortFactFor(col: PickupGridColumn): string | null {
+  if (col.sortable === false || col.key === 'select') return null;
+  if (col.key === 'title') return 'title';
+  if (col.key === 'order') return 'order';
+  return col.fieldId ?? null;
 }
 
+/** Model-derived sortability — the descriptor's and the URL guard's one answer. */
+export function isPickupColumnSortable(
+  columns: readonly PickupGridColumn[],
+  key: string,
+): key is PickupGridColumnKey {
+  return columns.some((c) => c.key === key && pickupSortFactFor(c) !== null);
+}
 
-/** Default direction when first activating a column sort (date/price → desc). */
-export function defaultDirForPickupGridSort(key: PickupGridColumnKey): GridSortDir {
-  if (key === 'date' || key === 'price' || key === 'qty') return 'desc';
-  return 'asc';
+/**
+ * Default direction when first activating a column sort: magnitudes and dates
+ * read newest/biggest first (`date` / `money` / `number` display types), names
+ * and ids alphabetically.
+ */
+export function defaultDirForPickupColumn(
+  columns: readonly PickupGridColumn[],
+  key: string,
+): GridSortDir {
+  const col = columns.find((c) => c.key === key);
+  const dt = col?.slotDisplayType;
+  return dt === 'date' || dt === 'money' || dt === 'number' ? 'desc' : 'asc';
 }
 
 // Shared spreadsheet chrome — @/design-system/components/grid ledgerGridCell.

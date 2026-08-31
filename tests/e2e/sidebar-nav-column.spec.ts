@@ -237,51 +237,73 @@ test.describe('sidebar spine — one grammar, a push column, no empty columns', 
     await expect(page.locator(NAV_COLUMN)).toHaveAttribute('data-open', 'true');
   });
 
-  test('/unbox: opening the spine pre-expands the page you are on', async ({ page }) => {
+  test('/unbox: Scan Stations drills; hold-drag reorders the root map', async ({ page }) => {
     await gotoSurface(page, '/unbox');
     await toggleSpine(page);
     await expect(page.locator(PAGES_MENU)).toBeVisible();
 
-    const expanded = page.locator(`${NAV_COLUMN} [aria-expanded="true"]`).first();
-    await expect(expanded).toHaveAttribute('aria-label', /Receiving — \d+ modes/);
+    // Floor benches live behind the Scan Stations parent drill (not root L1s).
+    await expect(page.getByRole('button', { name: 'Open Scan Stations' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    await expect(page.getByRole('button', { name: 'Go to Unbox' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Go to Arrival' })).toBeVisible();
+    // Testing is a flat bench (not Open Testing »); QC / Ready to Pack stay on the header.
+    await expect(page.getByRole('button', { name: 'Go to Testing' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Open Testing' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Go to Packing' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Go to Packing Review' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Back to pages' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Back to pages' }).click();
+    await expect(page.getByRole('button', { name: 'Open Scan Stations' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Open Shipping' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Go to Unbox' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Add to spine' })).toHaveCount(0);
   });
 
-  test('/unbox: clicking a modeful row expands it instead of navigating', async ({ page }) => {
-    await gotoSurface(page, '/unbox');
+  test('/products: opening a multi-child page list-replaces instead of navigating', async ({ page }) => {
+    await gotoSurface(page, '/products');
     await toggleSpine(page);
     await expect(page.locator(PAGES_MENU)).toBeVisible();
     const before = page.url();
 
-    await page.getByRole('button', { name: /^Shipping — \d+ modes$/ }).click();
+    await page.getByRole('button', { name: 'Open Shipping' }).click();
 
-    // The modes ARE the destinations — jumping to a default the operator did
-    // not pick is a worse guess than showing the choice.
-    expect(page.url(), 'row click must not navigate').toBe(before);
-    await expect(
-      page.locator(`${NAV_COLUMN} [aria-expanded="true"]`).first(),
-    ).toHaveAttribute('aria-label', /Shipping — \d+ modes/);
+    expect(page.url(), 'Open Shipping must not navigate').toBe(before);
+    await expect(page.getByRole('button', { name: 'Go to Labels' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Go to To ship' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Go to Amazon Prep' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Go to Packing Review' })).toHaveCount(0);
   });
 
-  /**
-   * One bar, one control. The row used to be two buttons — label on the left,
-   * mode-count + chevron on the right — that fired the same handler, so it read
-   * as a page parked beside an unrelated counter widget and gave a keyboard
-   * user two stops to one place.
-   */
-  test('/unbox: a page row is a single control, count and caret included', async ({ page }) => {
-    await gotoSurface(page, '/unbox');
+  test('/products: Operations drill lists Packing Review', async ({ page }) => {
+    await gotoSurface(page, '/products');
     await toggleSpine(page);
     await expect(page.locator(PAGES_MENU)).toBeVisible();
 
-    const row = page.getByRole('button', { name: /^Shipping — \d+ modes$/ });
+    await page.getByRole('button', { name: 'Open Operations' }).click();
+    await expect(page.getByRole('button', { name: 'Go to Packing Review' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Go to Live' })).toBeVisible();
+  });
+
+  /**
+   * One bar, one control — the row spans the list (hover lights the whole row).
+   */
+  test('/products: a page row is a single control, caret included', async ({ page }) => {
+    await gotoSurface(page, '/products');
+    await toggleSpine(page);
+    await expect(page.locator(PAGES_MENU)).toBeVisible();
+
+    const row = page.getByRole('button', { name: 'Open Shipping' });
     await expect(row, 'exactly one control per page row').toHaveCount(1);
-    // The count/caret cluster is inside that button, not a sibling of it.
     const rowBox = (await row.boundingBox())!;
     const listBox = (await page.locator(PAGES_MENU).boundingBox())!;
     expect(
       Math.round(rowBox.width),
       'the bar spans the list, so hover lights the whole row',
-    ).toBeGreaterThan(Math.round(listBox.width) - 24);
+    ).toBeGreaterThan(Math.round(listBox.width) - 48);
   });
 
   test('/unbox: L2 mode control lives in GlobalHeader, not the sidebar rail', async ({ page }) => {

@@ -3,6 +3,7 @@ import type {
   ActiveRowSlot,
   PoLineSerialActions,
 } from '@/components/receiving/workspace/po-lines-accordion-types';
+import type { LineCollapseController } from '@/components/station/collapse';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
 export interface UnfoundLine {
@@ -71,6 +72,12 @@ export interface UnmatchedItemsSectionProps {
    * Testing only: hide needs_test=false lines (matched accordion parity).
    */
   hideNoTestLines?: boolean;
+  /**
+   * Share the host's per-line collapse controller (`useLineCollapse`) so an
+   * Items-band "Collapse all" reaches the unfound lane's lines too. Omit and the
+   * accordion owns its own — the lines still collapse, just not from above.
+   */
+  lineCollapse?: LineCollapseController;
   /**
    * Optional header serial chip actions. When omitted and unit chrome is on,
    * the surface wires unfound scan-serial CRUD. Testing passes its controller.

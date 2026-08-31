@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react';
 import type { RowGroup } from '@/lib/group-rows';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import type { GridColumnDisplayPref } from '@/design-system/components/grid';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import type { ReceivingGridColumn } from '@/lib/receiving/receiving-grid-layout';
 import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
@@ -31,8 +30,6 @@ interface ReceivingGridGroupRowProps {
   /** Connected inventory provider label for History UNBOXED tips. */
   inventoryProviderLabel?: string;
   columns?: readonly ReceivingGridColumn[];
-  /** Per-hideKey display prefs (highlight / chip). */
-  columnDisplay?: Readonly<Record<string, GridColumnDisplayPref>>;
   selectGutterChrome?: GridSelectGutterChrome;
   /** Unbox History: click toggles select; double-click opens. */
   clickSelect?: boolean;
@@ -47,8 +44,6 @@ interface ReceivingGridGroupRowProps {
   onCrosshairHover?: (receivingId: number | null) => void;
   /** Live custom_field_defs for `custom:*` columns. */
   customFieldDefs?: readonly CustomFieldDef[];
-  onCustomFieldCommit?: (entityId: number, defKey: string, next: string) => void;
-  onCommitNote?: (lineId: number, next: string) => void;
 }
 
 /**
@@ -73,7 +68,6 @@ export function ReceivingGridGroupRow({
   statusVocabulary = 'fine',
   inventoryProviderLabel = 'Inventory',
   columns,
-  columnDisplay,
   selectGutterChrome = 'always',
   clickSelect = false,
   onOpenWorkspace,
@@ -82,8 +76,6 @@ export function ReceivingGridGroupRow({
   linkedReceivingId = null,
   onCrosshairHover,
   customFieldDefs,
-  onCustomFieldCommit,
-  onCommitNote,
 }: ReceivingGridGroupRowProps) {
   const renderLeaf = (row: ReceivingLineRow, stripeIndex: number): ReactNode => {
     const isOpen = handleToggleRow
@@ -121,13 +113,10 @@ export function ReceivingGridGroupRow({
         statusVocabulary={statusVocabulary}
         inventoryProviderLabel={inventoryProviderLabel}
         columns={columns}
-        columnDisplay={columnDisplay}
         selectGutterChrome={selectGutterChrome}
         clickSelect={clickSelect}
         rowFillHex={rowFillsById?.[String(row.id)] ?? null}
         customFieldDefs={customFieldDefs}
-        onCustomFieldCommit={onCustomFieldCommit}
-        onCommitNote={onCommitNote}
       />
     );
   };

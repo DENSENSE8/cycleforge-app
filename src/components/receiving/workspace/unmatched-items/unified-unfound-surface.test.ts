@@ -30,6 +30,12 @@ const TESTING_ITEMS = readFileSync(
   join(DIR, '../../../tech/testing-panel/TestingPoItemsSection.tsx'),
   'utf8',
 );
+/**
+ * The lane router every station composes since 2026-08-30. `activeLineId` and
+ * the `placeholderActiveRow` seed moved HERE from each station's own file — the
+ * claims below still hold, they are just no longer three copies.
+ */
+const PO_ITEMS_SECTION = read('../PoItemsSection.tsx');
 
 test('UnmatchedItemsSection routes every carton to the unified accordion surface', () => {
   assert.ok(
@@ -143,13 +149,21 @@ test('Testing centre is a pure ledger row — no per-unit activeRowSlot list', (
     /onViewAllUnits=\{onViewAllUnits\}/.test(TESTING_ITEMS),
     'the serials cell must open the right-edge Units Display via onViewAllUnits',
   );
+  // Testing composes the shared lane router, which supplies both of these for
+  // every station. The claims are unchanged; the evidence moved with the code.
   assert.ok(
-    /activeLineId=\{row\.id\}/.test(TESTING_ITEMS),
-    'Testing unfound must pass activeLineId for focus / never-blank',
+    /<PoItemsSection\b/.test(TESTING_ITEMS),
+    'Testing routes through the shared PO-items section, not its own lane branch',
   );
   assert.ok(
-    /placeholderActiveRow=\{row\.id > 0 \? row : undefined\}/.test(TESTING_ITEMS),
-    'Testing unfound must seed placeholderActiveRow when a real line is selected',
+    /const activeLineId = shared\.activeLineId \?\? row\.id;/.test(PO_ITEMS_SECTION),
+    'unfound lane must get an activeLineId for focus / never-blank',
+  );
+  assert.ok(
+    /shared\.placeholderActiveRow \?\? \(row\.id > 0 \? row : undefined\)/.test(
+      PO_ITEMS_SECTION,
+    ),
+    'unfound lane must seed placeholderActiveRow when a real line is selected',
   );
 });
 

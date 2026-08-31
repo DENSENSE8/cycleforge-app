@@ -12,6 +12,9 @@ import {
   refineSearchHits,
   sortSearchHits,
   statusOptionsFromHits,
+  parseSearchChan,
+  applySearchChan,
+  channelOptionsFromHits,
 } from '@/lib/search/search-refine';
 
 function hit(
@@ -104,4 +107,72 @@ test('URL mutators write etype/hstat/colsort correctly', () => {
   assert.equal(params.get('etype'), null);
   assert.equal(params.get('hstat'), null);
   assert.equal(params.get('q'), 'bose');
+});
+
+// ── channel refine (?chan=) ─────────────────────────────────────────────────
+
+test('parseSearchChan lowercases the stored value; empty → null', () => {
+  assert.equal(parseSearchChan('  eBay '), 'ebay');
+  assert.equal(parseSearchChan('AMAZON'), 'amazon');
+  assert.equal(parseSearchChan(''), null);
+  assert.equal(parseSearchChan(null), null);
+});
+
+test('channelOptionsFromHits lists each channel once, in first-seen order', () => {
+  const hits = [
+    hit({ id: 1, entityType: 'order', facets: { source_platform: 'ebay' } }),
+    hit({ id: 2, entityType: 'order', facets: { source_platform: 'amazon' } }),
+    hit({ id: 3, entityType: 'order', facets: { source_platform: 'eBay' } }),
+    hit({ id: 4, entityType: 'sku', facets: { source_platform: null } }),
+    hit({ id: 5, entityType: 'repair' }),
+  ];
+  assert.deepEqual(channelOptionsFromHits(hits), ['ebay', 'amazon']);
+});
+
+test('refineSearchHits filters by channel, case-insensitively', () => {
+  const hits = [
+    hit({ id: 1, entityType: 'order', facets: { source_platform: 'ebay' } }),
+    hit({ id: 2, entityType: 'order', facets: { source_platform: 'Amazon' } }),
+  ];
+  assert.deepEqual(refineSearchHits(hits, { chan: 'amazon' }).map((h) => h.id), [2]);
+});
+
+test('a hit with no channel is excluded once a channel filter is on', () => {
+  const hits = [
+    hit({ id: 1, entityType: 'order', facets: { source_platform: 'ebay' } }),
+    hit({ id: 2, entityType: 'repair' }),
+  ];
+  assert.deepEqual(refineSearchHits(hits, { chan: 'ebay' }).map((h) => h.id), [1]);
+});
+
+test('channel composes with type and status rather than replacing them', () => {
+  const hits = [
+    hit({ id: 1, entityType: 'order', facets: { source_platform: 'ebay', status: 'Shipped' } }),
+    hit({ id: 2, entityType: 'order', facets: { source_platform: 'ebay', status: 'Returned' } }),
+    hit({ id: 3, entityType: 'unit', facets: { source_platform: 'ebay', status: 'Shipped' } }),
+  ];
+  const out = refineSearchHits(hits, { etype: 'order', hstat: 'Shipped', chan: 'ebay' });
+  assert.deepEqual(out.map((h) => h.id), [1]);
+});
+
+test('no channel filter leaves the set untouched', () => {
+  const hits = [hit({ id: 1, entityType: 'order' })];
+  assert.equal(refineSearchHits(hits, { chan: null }).length, 1);
+});
+
+test('applySearchChan sets and clears the key', () => {
+  const p = new URLSearchParams();
+  applySearchChan(p, 'eBay');
+  assert.equal(p.get('chan'), 'ebay', 'stored lowercase so a deep link is stable');
+  applySearchChan(p, null);
+  assert.equal(p.get('chan'), null);
+});
+
+test('clearSearchRefine drops the channel too — "Clear filters" must clear all', () => {
+  const p = new URLSearchParams('etype=order&hstat=Shipped&chan=ebay&q=keep');
+  clearSearchRefine(p);
+  assert.equal(p.get('chan'), null);
+  assert.equal(p.get('etype'), null);
+  assert.equal(p.get('hstat'), null);
+  assert.equal(p.get('q'), 'keep', 'the query itself is not a refine');
 });

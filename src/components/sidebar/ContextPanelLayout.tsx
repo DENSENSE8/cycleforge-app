@@ -11,7 +11,7 @@ import dynamic from 'next/dynamic';
 import { usePathname } from 'next/navigation';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { useHasSidebarContext } from '@/components/sidebar/useHasSidebarContext';
-import { useIsRaillessOrderFeed } from '@/components/sidebar/useIsRaillessOrderFeed';
+import { useIsDeskStageSurface } from '@/components/sidebar/useIsDeskStageSurface';
 import {
   CONTEXT_PANEL_COLLAPSE,
   CONTEXT_PANEL_COLUMN_CLASS,
@@ -112,10 +112,11 @@ const SidebarContextPanel = dynamic(
 export function ContextPanelLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   // Two families, one question: station benches (scan bar + rail) and classic
-  // routes (picker / feed) both mount their panel here now — EXCEPT the To-ship
-  // order feed, which runs rail-less (Pattern E) so the center reclaims the
-  // column. `isRaillessOrderFeedSurface` / `outbound-rail-dedup.guard.test.ts`.
-  const railless = useIsRaillessOrderFeed();
+  // routes (picker / feed) both mount their panel here now — EXCEPT surfaces
+  // that already own their chrome, which run rail-less (Pattern E) so the
+  // center reclaims the column. That is every desk-chrome page (the whole
+  // Shipping desk) plus `/incoming`. SoT: `isDeskStageSurface`.
+  const railless = useIsDeskStageSurface();
   const hasPanel =
     (useHasSidebarContext() || isStationSurfaceRoute(pathname)) && !railless;
   const stationSurface = isStationSurfaceRoute(pathname);

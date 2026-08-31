@@ -17,26 +17,23 @@ import {
   pickupOrderStatusDot,
   pickupOrderStatusLabel,
 } from '@/lib/local-pickup/order-status';
+import { resolvePickupSlotValue } from '@/lib/tables/field-catalog/pickup-resolve';
+import { isSlotTrackKey } from '@/lib/tables/materialize-tracks';
 import { formatDateKeyShort } from '@/utils/date';
 import { gridCellAlignClass } from '@/design-system/components/grid';
+import { gridFrozenLeft, gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import { cn } from '@/utils/_cn';
 import { pickupMoney, type PickupLine } from '../pickup-lines';
 import {
-  PICKUP_GRID_COLUMNS,
   PICKUP_GRID_FROZEN_CELL,
+  PICKUP_SHEET_COLUMNS,
   pickupGridCell,
-  pickupGridFrozenLeft,
   pickupGridRowShellClass,
-  pickupGridTemplate,
   type PickupGridColumn,
 } from './pickup-grid-layout';
 
 const dataCell = (col: PickupGridColumn, rule = true) =>
   cn(pickupGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
-
-function pickupDateLabel(dateKey: string | null): string | null {
-  return dateKey ? formatDateKeyShort(dateKey) : null;
-}
 
 /**
  * The order's state — dot + chip through the house {@link GridStatusCellValue}
@@ -62,14 +59,19 @@ function PickupStatusChip({
 }
 
 /**
- * One pickup product line — CSS-grid columns matching {@link PICKUP_GRID_COLUMNS}.
- * Read-only: no inline editor, no serial/stage clock (those are receiving-only).
+ * One pickup product line — CSS-grid columns matching the MOUNTED slot
+ * materialization (`pickupSheetColumnsFor`; Wave-2 hand-model kill). The
+ * structural tracks (`select · title · order`) keep their bespoke faces;
+ * every slot track paints by its BOUND FIELD through the family cell map
+ * below — a cell is domain code, per family, and the catalog is the
+ * vocabulary of what can appear here. Read-only: no inline editor, no
+ * serial/stage clock (those are receiving-only).
  */
 const PickupGridLeafRow = memo(function PickupGridLeafRow({
   line,
   isSelected,
   onSelectOrder,
-  columns = PICKUP_GRID_COLUMNS,
+  columns = PICKUP_SHEET_COLUMNS,
 }: {
   line: PickupLine;
   isSelected: boolean;
@@ -77,10 +79,79 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
   columns?: readonly PickupGridColumn[];
 }) {
   const condGrade = (line.condition_grade || '').toUpperCase();
-  const dateLabel = pickupDateLabel(line.pickup_date);
+
+  /** The family cell map for slot tracks — keyed by the BOUND field. */
+  const renderSlotCellBody = (fieldId: string | undefined): ReactNode => {
+    switch (fieldId) {
+      case 'pickup.sku':
+        return line.sku ? (
+          <span className="min-w-0 truncate font-mono text-role-caption text-text-soft">
+            {line.sku}
+          </span>
+        ) : (
+          <GridCellDash />
+        );
+      case 'pickup.date':
+        return (
+          <GridDateCellValue
+            label={line.pickup_date ? formatDateKeyShort(line.pickup_date) : null}
+            tooltip={line.pickup_date}
+            className="text-role-caption"
+          />
+        );
+      case 'pickup.qty':
+        return (
+          <span className="min-w-0 truncate tabular-nums text-role-caption text-text-muted">
+            {line.quantity}
+          </span>
+        );
+      case 'pickup.condition':
+        return (
+          <span
+            className={cn(
+              'min-w-0 truncate text-role-eyebrow uppercase',
+              conditionGradeTextClass(condGrade),
+            )}
+          >
+            {conditionLabel(line.condition_grade, 'compact')}
+          </span>
+        );
+      case 'pickup.price':
+        return (
+          <span className="tabular-nums text-role-caption font-semibold text-emerald-700">
+            {pickupMoney(line.total_price)}
+          </span>
+        );
+      case 'pickup.status':
+        return (
+          <PickupStatusChip
+            orderStatus={line.order_status}
+            receivingId={line.receiving_id}
+          />
+        );
+      default: {
+        // A catalog field with no bespoke face paints its resolved text — a
+        // new bindable fact needs a resolver case, never a new column file.
+        const value = fieldId ? resolvePickupSlotValue(line, fieldId) : null;
+        const text = value?.kind === 'value' ? value.text : null;
+        return text ? (
+          <span className="min-w-0 truncate text-role-caption text-text-soft">{text}</span>
+        ) : (
+          <GridCellDash />
+        );
+      }
+    }
+  };
 
   const renderCell = (col: PickupGridColumn, last: boolean): ReactNode => {
     const rule = !last;
+    if (isSlotTrackKey(col.key)) {
+      return (
+        <div data-col={col.key} className={dataCell(col, rule)}>
+          {renderSlotCellBody(col.fieldId)}
+        </div>
+      );
+    }
     switch (col.key) {
       case 'select':
         return (
@@ -90,7 +161,8 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
               PICKUP_GRID_FROZEN_CELL,
               'justify-center',
             )}
-            style={{ left: pickupGridFrozenLeft('select') }}
+            // Offsets from the MOUNTED model, never a static list.
+            style={{ left: gridFrozenLeft(columns, 'select') }}
           >
             <span className="h-4 w-4 shrink-0" aria-hidden />
           </div>
@@ -100,24 +172,12 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
           <div
             data-col="title"
             className={cn(dataCell(col, rule), PICKUP_GRID_FROZEN_CELL)}
-            style={{ left: pickupGridFrozenLeft('title') }}
+            style={{ left: gridFrozenLeft(columns, 'title') }}
             data-frozen-edge
           >
             <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
               {line.product_title}
             </span>
-          </div>
-        );
-      case 'sku':
-        return (
-          <div data-col="sku" className={dataCell(col, rule)}>
-            {line.sku ? (
-              <span className="min-w-0 truncate font-mono text-role-caption text-text-soft">
-                {line.sku}
-              </span>
-            ) : (
-              <GridCellDash />
-            )}
           </div>
         );
       case 'order':
@@ -129,50 +189,6 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
               plain
               truncateDisplay={false}
               fitDisplayWidth
-            />
-          </div>
-        );
-      case 'date':
-        return (
-          <div data-col="date" className={dataCell(col, rule)}>
-            <GridDateCellValue label={dateLabel} tooltip={line.pickup_date} className="text-role-caption" />
-          </div>
-        );
-      case 'qty':
-        return (
-          <div data-col="qty" className={dataCell(col, rule)}>
-            <span className="min-w-0 truncate tabular-nums text-role-caption text-text-muted">
-              {line.quantity}
-            </span>
-          </div>
-        );
-      case 'condition':
-        return (
-          <div data-col="condition" className={dataCell(col, rule)}>
-            <span
-              className={cn(
-                'min-w-0 truncate text-role-eyebrow uppercase',
-                conditionGradeTextClass(condGrade),
-              )}
-            >
-              {conditionLabel(line.condition_grade, 'compact')}
-            </span>
-          </div>
-        );
-      case 'price':
-        return (
-          <div data-col="price" className={dataCell(col, rule)}>
-            <span className="tabular-nums text-role-caption font-semibold text-emerald-700">
-              {pickupMoney(line.total_price)}
-            </span>
-          </div>
-        );
-      case 'status':
-        return (
-          <div data-col="status" className={dataCell(col, rule)}>
-            <PickupStatusChip
-              orderStatus={line.order_status}
-              receivingId={line.receiving_id}
             />
           </div>
         );
@@ -202,7 +218,7 @@ const PickupGridLeafRow = memo(function PickupGridLeafRow({
           capabilities: PICKUP_GRID_CAPABILITIES,
         }),
       )}
-      style={{ gridTemplateColumns: pickupGridTemplate(columns) }}
+      style={{ gridTemplateColumns: gridTemplate(columns) }}
     >
       {columns.map((col, i) => (
         <Fragment key={col.key}>{renderCell(col, i === columns.length - 1)}</Fragment>
@@ -224,7 +240,7 @@ export function PickupGridGroupRow({
   baseStripeIndex: _baseStripeIndex,
   selectedOrderId,
   onSelectOrder,
-  columns = PICKUP_GRID_COLUMNS,
+  columns = PICKUP_SHEET_COLUMNS,
 }: {
   group: RowGroup<PickupLine>;
   /** Kept for LedgerGrid `renderGroup` signature parity (unused — flat leaves). */

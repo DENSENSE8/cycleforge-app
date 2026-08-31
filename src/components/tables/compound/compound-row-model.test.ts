@@ -45,7 +45,6 @@ const widths = (c: readonly { key: string; width?: string }[]) =>
  */
 const FAMILIES = [
   ['Receiving (Unbox · History · Testing)', RECEIVING_COMPOUND_COLUMNS],
-  ['Orders / To-Ship', ORDERS_COMPOUND_COLUMNS],
   ['Incoming', INCOMING_COMPOUND_COLUMNS],
   ['Tasks', TASKS_COMPOUND_COLUMNS],
   ['Daily', DAILY_COMPOUND_COLUMNS],
@@ -53,8 +52,25 @@ const FAMILIES = [
   ['Review · Missing item number', IMPORT_EXCEPTION_COMPOUND_COLUMNS],
 ] as const;
 
+/**
+ * Orders MATERIALIZES its status band after `state` (`materializeTracks`);
+ * the product default binds `orders.picked` into `status:1`. Shared families
+ * stay identical.
+ */
+const ORDERS_KEYS = [
+  'select',
+  'thumb',
+  'fulfillment',
+  'item',
+  'state',
+  'status:1',
+  'amount',
+  'actions',
+  '_fill',
+] as const;
+
 describe('compound layout is shared, not forked', () => {
-  it('every family declares the SAME tracks, in the same order', () => {
+  it('every shared family declares the SAME tracks, in the same order', () => {
     // HARD RULE: image · ids · title · status · open. The photo is leftmost.
     assert.deepEqual(keys(COMPOUND_TRACKS), [
       'select',
@@ -69,6 +85,16 @@ describe('compound layout is shared, not forked', () => {
     for (const [name, model] of FAMILIES) {
       assert.deepEqual(keys(model), keys(COMPOUND_TRACKS), name);
     }
+  });
+
+  it('Orders derives the shared tracks plus a materialized status band after state', () => {
+    assert.deepEqual(keys(ORDERS_COMPOUND_COLUMNS), [...ORDERS_KEYS]);
+    const stateIdx = ORDERS_COMPOUND_COLUMNS.findIndex((c) => c.key === 'state');
+    const status1 = ORDERS_COMPOUND_COLUMNS[stateIdx + 1];
+    assert.equal(status1?.key, 'status:1');
+    // The track KEY is the slot; the FIELD is the product default binding.
+    assert.equal(status1?.fieldId, 'orders.picked');
+    assert.equal(status1?.label, 'Pick');
   });
 
   it('and the same geometry — the tables must read as one product', () => {
@@ -86,6 +112,14 @@ describe('compound layout is shared, not forked', () => {
     }
   });
 
+  it('Orders still mounts every shared track (prefix + suffix around the status band)', () => {
+    const sharedKeys = new Set(keys(COMPOUND_TRACKS));
+    for (const col of ORDERS_COMPOUND_COLUMNS) {
+      if (col.key.startsWith('status:')) continue;
+      assert.ok(sharedKeys.has(col.key), `Orders lost shared track ${col.key}`);
+    }
+  });
+
   it('exports the key list the families narrow against', () => {
     assert.deepEqual([...COMPOUND_COLUMN_KEYS], keys(COMPOUND_TRACKS));
   });
@@ -95,17 +129,26 @@ describe('compound layout is shared, not forked', () => {
       assert.equal(model[model.length - 1].key, '_fill', name);
       assert.equal(model.filter((c) => String(c.width).includes('1fr')).length, 1, name);
     }
+    assert.equal(ORDERS_COMPOUND_COLUMNS[ORDERS_COMPOUND_COLUMNS.length - 1].key, '_fill');
+    assert.equal(
+      ORDERS_COMPOUND_COLUMNS.filter((c) => String(c.width).includes('1fr')).length,
+      1,
+    );
   });
 
   it('pins the IMAGE — the hard rule says it is always leftmost', () => {
     for (const [name, model] of FAMILIES) {
       assert.deepEqual(model.filter((c) => c.frozen).map((c) => c.key), ['select', 'thumb'], name);
     }
+    assert.deepEqual(
+      ORDERS_COMPOUND_COLUMNS.filter((c) => c.frozen).map((c) => c.key),
+      ['select', 'thumb'],
+    );
   });
 
   it('freezes a contiguous prefix in every family', () => {
     // gridFrozenLeft sums preceding frozen widths; a gap mis-positions the pane.
-    for (const [name, model] of FAMILIES) {
+    for (const [name, model] of [...FAMILIES, ['Orders / To-Ship', ORDERS_COMPOUND_COLUMNS] as const]) {
       const frozen = model.map((c) => Boolean(c.frozen));
       const firstFalse = frozen.indexOf(false);
       assert.ok(firstFalse > 0, name);

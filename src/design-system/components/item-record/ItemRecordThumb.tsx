@@ -19,7 +19,7 @@ export function ItemRecordThumb({
   return (
     <span
       className={cn(
-        'relative flex w-20 shrink-0 items-center justify-center self-stretch overflow-hidden border-r border-border-soft p-0',
+        'relative flex w-20 shrink-0 items-center justify-center self-stretch overflow-hidden p-0',
         ITEM_RECORD_FACE.minH,
         cornerClass('flush'),
         'bg-surface-card',

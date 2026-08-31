@@ -35,7 +35,6 @@ import 'server-only';
 import type { DehydratedState } from '@tanstack/react-query';
 import { seedUnboxStation } from '@/lib/queries/unbox-spine-seed.server';
 import { seedReadyToPackStation } from '@/lib/queries/ready-to-pack-shell-seed.server';
-import { seedSearchRecentRail } from '@/lib/queries/search-recent-shell-seed.server';
 import { shouldSeedReadyToPackQueue } from '@/lib/queries/unshipped-seed-gate';
 import { UNBOX_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 
@@ -93,15 +92,11 @@ export async function maybeSeedShell(
   pathname: string,
   search: string,
 ): Promise<DehydratedState | null> {
-  if (pathname === '/search') {
-    try {
-      const seed = await seedSearchRecentRail();
-      return seed.mruReceivingId == null ? null : seed.state;
-    } catch (error) {
-      console.error('maybeSeedShell(search) failed; client will fetch', error);
-      return null;
-    }
-  }
+  // `/search` is deliberately unseeded. The seed existed to warm the
+  // "Recently searched" context rail; that rail was removed once ⌘K grew its
+  // own Recent group, and it was the only reader of the `search-recent` rail
+  // key. Hydrating a key nothing reads is server work on the LCP path buying
+  // nothing, so the seed goes with the surface it fed.
   if (TESTING_SURFACE_ROUTES.has(pathname)) {
     const params = Object.fromEntries(new URLSearchParams(search));
     if (!shouldSeedReadyToPackQueue(params)) return null;

@@ -38,6 +38,13 @@ interface StaffAvatarProps {
   colorHex?: string | null;
   size?: IdentityMarkSize;
   ring?: boolean;
+  /**
+   * Keep the staffer's assigned COLOUR visible when their photo shows, as a
+   * 2px ring (see {@link IdentityMark.ringHex}). For colour-coded scanning
+   * surfaces (the compound stage cells) where the colour is a channel, not
+   * decoration.
+   */
+  colorRing?: boolean;
   className?: string;
   /** Accessible name. Omit on rows that already name the staffer in text. */
   alt?: string;
@@ -50,6 +57,7 @@ export function StaffAvatar({
   colorHex,
   size = 'sm',
   ring = true,
+  colorRing = false,
   className,
   alt,
 }: StaffAvatarProps) {
@@ -58,14 +66,16 @@ export function StaffAvatar({
 
   const photoId = avatarPhotoId === undefined ? getStaffAvatarPhotoId(staffId) : avatarPhotoId;
   const trimmed = (name ?? '').trim();
+  const resolvedColor = colorHex ?? getStaffColorHex({ id: staffId ?? null, color_hex: colorHex });
 
   return (
     <IdentityMark
       initials={trimmed ? staffInitials(trimmed) : '·'}
       src={photoId && photoId > 0 ? photoContentUrl(photoId, 'thumb') : null}
-      colorHex={colorHex ?? getStaffColorHex({ id: staffId ?? null, color_hex: colorHex })}
+      colorHex={resolvedColor}
       size={size}
       ring={ring}
+      ringHex={colorRing ? resolvedColor : null}
       className={className}
       alt={alt}
     />

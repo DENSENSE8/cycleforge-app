@@ -28,10 +28,11 @@ import { cn } from '@/utils/_cn';
  * with the trigger), matching {@link FilterMenu} lane filters.
  * Do not pass `align="start"` in right-side chrome slots.
  *
- * **Band 3 hosts this in-field, not on the right.** Pass `density="field"` and
- * seat it in `TechRailSearchBar` `trailingSuffix` so the find bar keeps the
- * whole row (find-only Band 3 — SoT: source-of-truth.md). The `toolbar` density
- * stays for rail footers and non-Band-3 chrome clusters.
+ * **It sits BESIDE the find field, never inside it.** The in-field density was
+ * deleted on 2026-08-29 with the rest of the display layer: a control that
+ * narrows rows belongs next to the query it refines, not in the input
+ * (`docs/todo/one-table-sot-teardown-HANDOFF.md` § 2.1). Prefer
+ * {@link StaffFilterRows} inside a table's one filter menu.
  */
 export function StaffFilterButton({
   iconOnly = false,
@@ -64,7 +65,7 @@ export function StaffFilterButton({
    * for Band 3 / View-topic clusters. Soft `rounded-lg` stays; height matches
    * {@link WorkbenchBandControl}.
    * `field` — paste-sized glyph for a `SearchField` `trailingSuffix` slot, the
-   * same trigger geometry {@link FilterMenu} `density="field"` uses.
+   * same trigger geometry {@link FilterMenu} uses.
    */
   density?: 'toolbar' | 'field';
   className?: string;
@@ -177,17 +178,16 @@ export function StaffFilterButton({
  * The staff facet as MENU ROWS, for hosting inside the find field's one
  * {@link FilterMenu} — no trigger, no glyph, no popover of its own.
  *
- * **Why this exists.** `density="field"` gave the facet its own 24px cell with a
- * `User` glyph in it, so a find bar that also had a refine funnel showed two
- * marks, and Incoming showed four. A field glyph answers one question — *does
- * anything narrow these rows?* — and it is the funnel that answers it. A facet
- * is a GROUP inside that answer, not a second question beside it.
+ * **Why this exists.** The in-field trigger gave the facet its own 24px cell
+ * with a `User` glyph in it, so a find bar that also had a refine funnel showed
+ * two marks, and Incoming showed four. A field glyph answers one question —
+ * *does anything narrow these rows?* — and it is the funnel that answers it. A
+ * facet is a GROUP inside that answer, not a second question beside it.
  *
- * The `density="field"` trigger stays for the moment (Pack and Shipping's
- * History tabs have no find field at all, so they have no funnel to fold into —
- * the documented `RIGHT_ZONE_FACET_RESIDENTS` carve-out). Every surface that
- * HAS a find field uses these rows. When those two grow a find field, the
- * trigger's field density goes.
+ * The in-field density is gone entirely now (2026-08-29). Surfaces with a find
+ * field fold the facet into the table's one filter menu as these rows; the
+ * standalone {@link StaffFilterButton} remains for rail footers, which have no
+ * find field to fold into.
  */
 export function StaffFilterRows({
   allLabel = 'All staff',

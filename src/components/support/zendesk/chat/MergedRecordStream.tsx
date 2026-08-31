@@ -125,12 +125,27 @@ function RowTime({ at }: { at: string | null }) {
 /**
  * Leading mark — author's identity for a message, station glyph for an event.
  *
- * Messages use {@link IdentityMark} with the helpdesk roster photo rather than
- * {@link StaffAvatar}: a helpdesk comment carries an agent id, not a `staff.id`.
+ * Messages use {@link StaffAvatar} when the comment maps to a Cycle Forge
+ * staffer. Zendesk roster photos only appear when there is no staff id.
  */
 function RowMark({ item }: { item: MergedRecordItem }) {
   if (item.message) {
-    const { authorName, authorPhoto } = item.message;
+    const { authorName, authorPhoto, authorStaffId } = item.message;
+    const staffId = authorStaffId ?? item.actorStaffId ?? null;
+    if (staffId) {
+      return (
+        <div className={TICKET_BUBBLE_MARK_BOX}>
+          <StaffAvatar
+            staffId={staffId}
+            name={authorName}
+            size="xs"
+            ring={false}
+            className={TICKET_BUBBLE_MARK}
+            alt={authorName}
+          />
+        </div>
+      );
+    }
     return (
       <div className={TICKET_BUBBLE_MARK_BOX}>
         <IdentityMark
@@ -164,7 +179,9 @@ function RowMark({ item }: { item: MergedRecordItem }) {
   return (
     <div className={TICKET_BUBBLE_MARK_BOX}>
       <HoverTooltip label={glyph.tooltip} focusable={false}>
-        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-canvas text-text-soft">
+        {/* A system event's node. Opaque + z-10 like an avatar, so the spine
+            passes behind it rather than through it. */}
+        <span className="relative z-10 flex h-5 w-5 items-center justify-center rounded-full bg-surface-canvas text-text-soft ring-1 ring-border-hairline">
           <Icon className="h-3 w-3" />
         </span>
       </HoverTooltip>
@@ -372,6 +389,7 @@ export function MergedRecordStream({
         authorName: a.name,
         authorEmail: a.email,
         authorPhoto: a.photo,
+        authorStaffId: a.staffId,
         ours: a.isOurs,
         attachments: imageAttachments(c),
       };

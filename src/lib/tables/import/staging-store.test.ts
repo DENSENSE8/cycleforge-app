@@ -23,15 +23,19 @@ const D = ORDER_IMPORT_DESCRIPTOR;
 const SURFACE = ORDER_IMPORT_SURFACE_ID;
 
 function seed() {
+  // Channel column present so these tests pin the STORE mechanics (filter /
+  // selection / re-classify in place) rather than the orders vocabulary's
+  // platform-acknowledgment rule, which has its own tests in
+  // csv-order-import.test.ts.
   const outcome = loadTableImportDraft(D, {
     fileName: 't.csv',
-    headers: ['Order', 'SKU'],
+    headers: ['Order', 'SKU', 'Channel'],
     rows: [
-      { Order: 'O1', SKU: 'S1' },
-      { Order: 'O2', SKU: '' },
-      { Order: '', SKU: 'S3' },
+      { Order: 'O1', SKU: 'S1', Channel: 'ebay' },
+      { Order: 'O2', SKU: '', Channel: 'ebay' },
+      { Order: '', SKU: 'S3', Channel: 'ebay' },
     ],
-    mapping: { order_number: 'Order', sku: 'SKU' },
+    mapping: { order_number: 'Order', sku: 'SKU', platform: 'Channel' },
   });
   assert.equal(outcome.ok, true);
 }

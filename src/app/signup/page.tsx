@@ -15,7 +15,10 @@
 
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/design-system/primitives';
+// Deep path, not the barrel — see the note in `src/app/signin/page.tsx`. Public
+// chrome routes must stay motion-engine-free; the layout skips `MotionConfig`
+// for them, so a barrel import here would silently re-add ~104KB gz.
+import { Button } from '@/design-system/primitives/Button';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 

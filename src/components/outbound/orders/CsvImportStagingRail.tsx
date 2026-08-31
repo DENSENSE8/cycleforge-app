@@ -25,7 +25,7 @@
  * beside the one primary CTA.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
 import { DeskInspectorIndexShell } from '@/components/right-rail/DeskInspectorIndexShell';
 import {
@@ -37,12 +37,16 @@ import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDele
 import { Button } from '@/design-system/primitives';
 import { ClipboardList, ColumnsThree, Pencil, X } from '@/components/Icons';
 import { setDetailInspectorCollapsed } from '@/design-system/shells/detail-stack';
+import { OrderIntakeForm } from '@/components/outbound/orders/intake/OrderIntakeForm';
+import {
+  canonicalIntakeToCsvEdits,
+  projectCsvRowToCanonicalIntake,
+  type CanonicalOrderIntake,
+} from '@/lib/orders/canonical-order-intake';
 import {
   CSV_ORDER_CANONICAL_FIELDS,
-  applyCsvOrderCanonicalEdits,
   classifyCsvOrderStagingRow,
   projectCsvOrderRow,
-  type CsvOrderCanonicalKey,
 } from '@/lib/orders/csv-order-import';
 import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
 import {
@@ -65,39 +69,79 @@ const ROW_LEAF = 'row';
 const MAP_LEAF = 'map';
 const BATCH_LEAF = 'batch';
 
-/**
- * Derived, not hand-listed: a hardcoded literal here is a second declaration of
- * the vocabulary that goes stale the moment a canonical field is added (it did,
- * for `item_title` · `condition` · `ship_by_date` · `note`).
- */
-const EMPTY_LOCAL = Object.fromEntries(
-  CSV_ORDER_CANONICAL_FIELDS.map((f) => [f.key, ''] as const),
-) as Record<CsvOrderCanonicalKey, string>;
-
-const FIELD_LABEL = new Map(
-  CSV_ORDER_CANONICAL_FIELDS.map((f) => [f.key, f.label] as const),
-);
-
 /* -------------------------------------------------------------------------- */
 /* Leaves                                                                     */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * The row inspector IS the intake form — the same `OrderIntakeForm` (same
+ * `data-testid`s) the single density mounts, prefilled from the staged row
+ * projected onto `CanonicalOrderIntake`. Canonical edits write straight back
+ * onto the staged row through the mapping (unmapped columns are ignored by
+ * `applyCsvOrderCanonicalEdits`, exactly as before), so the classify loop —
+ * fix a cell, watch Action required flip to Ready — still runs live.
+ *
+ * "Start triage" here creates a CAGED order from this one row (the operator
+ * then discards the staged twin); the bulk Confirm path is untouched and
+ * still lands uncaged live-queue rows. A duplicate order number binds the
+ * form to the EXISTING order instead of inserting a second one.
+ */
 function StagingRowLeaf({
   draft,
   index,
+  boundByOrderNumber,
 }: {
   draft: TableImportDraft;
   index: number | null;
+  /**
+   * Rail-lifetime memory of "this staged row already became order <pk>",
+   * keyed by the row's ORDER NUMBER (stable across the index shifts a
+   * discard causes). Without it, focusing away and back forgot the binding
+   * and re-offered Start triage for a row that already has a caged order —
+   * only the duplicate lookup / server 409 stood between that and a twin.
+   */
+  boundByOrderNumber: Map<string, number>;
 }) {
   const row = index == null ? undefined : draft.rows[index];
-  const [local, setLocal] = useState<Record<CsvOrderCanonicalKey, string>>(EMPTY_LOCAL);
+  // The prefill is read once on the form's mount; skip echoing it straight
+  // back into the store as a no-op edit. Tracked per index so a remount race
+  // can never mistake a new row's mount echo for an operator edit.
+  const echoSeenForIndex = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (!row) return;
-    setLocal(projectCsvOrderRow(row, draft.mapping));
-  }, [index, row, draft.mapping]);
+  const initialDraft = useMemo(() => {
+    if (!row) return null;
+    return projectCsvRowToCanonicalIntake(projectCsvOrderRow(row, draft.mapping));
+    // Mapping edits reproject on next focus; the form owns the draft after mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index]);
 
-  if (!row || index == null) {
+  // Bound per row; the leaf is keyed on the focused index at its call site,
+  // so this state re-seeds from the rail-level map when focus moves.
+  const orderNumberKey = initialDraft?.orderNumber ?? '';
+  const [boundOrderId, setBoundOrderId] = useState<number | null>(
+    () => (orderNumberKey ? boundByOrderNumber.get(orderNumberKey) ?? null : null),
+  );
+  const handleBound = useCallback(
+    (id: number) => {
+      if (orderNumberKey) boundByOrderNumber.set(orderNumberKey, id);
+      setBoundOrderId(id);
+    },
+    [boundByOrderNumber, orderNumberKey],
+  );
+
+  const handleDraftChange = useCallback(
+    (next: CanonicalOrderIntake) => {
+      if (index == null) return;
+      if (echoSeenForIndex.current !== index) {
+        echoSeenForIndex.current = index;
+        return;
+      }
+      updateTableImportRow(ORDER_IMPORT_DESCRIPTOR, index, canonicalIntakeToCsvEdits(next));
+    },
+    [index],
+  );
+
+  if (!row || index == null || !initialDraft) {
     return (
       <div className="px-4 py-6 text-center text-role-caption text-text-soft">
         Pick a row in the sheet to correct it here.
@@ -105,93 +149,15 @@ function StagingRowLeaf({
     );
   }
 
-  const preview = applyCsvOrderCanonicalEdits(row, draft.mapping, local);
-  const { status, missing } = classifyCsvOrderStagingRow(preview, draft.mapping);
-  const dirty = CSV_ORDER_CANONICAL_FIELDS.some(
-    (f) => (preview[f.key] ?? '') !== (projectCsvOrderRow(row, draft.mapping)[f.key] ?? ''),
-  );
-
   return (
     <div className="flex h-full min-h-0 flex-col">
-      <div className="shrink-0 border-b border-border-hairline px-4 py-3">
-        <p className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-          Staging row {index + 1}
-        </p>
-        <p className="mt-1 truncate text-role-caption font-semibold text-text-default">
-          {local.order_number || 'Missing order number'}
-        </p>
-        <span
-          className={cn(
-            'mt-2 inline-flex px-1.5 py-0.5 text-role-eyebrow font-semibold uppercase tracking-wider',
-            cornerClass('flush'),
-            status === 'ready'
-              ? 'bg-emerald-50 text-emerald-700'
-              : 'bg-amber-50 text-amber-800',
-          )}
-        >
-          {status === 'ready' ? 'Ready' : 'Action required'}
-        </span>
-        {missing.length > 0 ? (
-          <p className="mt-1.5 text-role-micro text-text-soft">
-            Missing: {missing.map((k) => FIELD_LABEL.get(k) ?? k).join(', ')}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
-        {CSV_ORDER_CANONICAL_FIELDS.map((field) => {
-          const header = draft.mapping[field.key];
-          // No mapped source column ⇒ nowhere to write the value back to. Say so
-          // and point at the mapping rather than rendering a dead input.
-          if (!header) {
-            return (
-              <div key={field.key} className="space-y-1">
-                <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-                  {field.label}
-                </span>
-                <p className="text-role-micro text-text-faint">
-                  Not mapped — set a column on Map columns to edit this.
-                </p>
-              </div>
-            );
-          }
-          const isMissing = missing.includes(field.key);
-          return (
-            <label key={field.key} className="block space-y-1">
-              <span className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-                {field.label}
-                {(field.required || (field.key === 'sku' && Boolean(draft.mapping.sku))) && (
-                  <span className="ml-1 text-rose-600">*</span>
-                )}
-              </span>
-              <input
-                value={local[field.key]}
-                onChange={(e) =>
-                  setLocal((prev) => ({ ...prev, [field.key]: e.target.value }))
-                }
-                className={cn(
-                  'h-9 w-full border bg-surface-card px-2.5 text-role-caption text-text-default',
-                  isMissing
-                    ? cn('border-rose-400 bg-rose-50', focusRing('field', 'danger'))
-                    : cn('border-border-soft', focusRing('field', 'accent')),
-                )}
-              />
-            </label>
-          );
-        })}
-      </div>
-
-      <div className="shrink-0 border-t border-border-hairline px-4 py-3">
-        <Button
-          variant="primary"
-          size="sm"
-          className="w-full"
-          disabled={!dirty}
-          onClick={() => updateTableImportRow(ORDER_IMPORT_DESCRIPTOR, index, local)}
-        >
-          Apply to staging row
-        </Button>
-      </div>
+      <OrderIntakeForm
+        key={index}
+        orderId={boundOrderId}
+        initialDraft={initialDraft}
+        onDraftChange={handleDraftChange}
+        onOrderCreated={handleBound}
+      />
     </div>
   );
 }
@@ -407,6 +373,8 @@ export function CsvImportStagingRail({
 }) {
   const draft = useTableImportDraft(SURFACE);
   const focus = draft?.focusRowIndex ?? null;
+  // Which staged rows already became caged orders, surviving focus changes.
+  const boundByOrderNumber = useRef(new Map<string, number>());
   const mapped = Boolean(draft?.mapping.order_number);
 
   // Land on the blocking gate when the file cannot commit at all; otherwise the
@@ -449,7 +417,14 @@ export function CsvImportStagingRail({
             : focusedStatus === 'ready'
               ? `Row ${focus + 1} · Ready`
               : `Row ${focus + 1} · Action required`,
-        content: <StagingRowLeaf draft={draft} index={focus} />,
+        content: (
+          <StagingRowLeaf
+            key={focus ?? -1}
+            draft={draft}
+            index={focus}
+            boundByOrderNumber={boundByOrderNumber.current}
+          />
+        ),
       },
       {
         id: MAP_LEAF,

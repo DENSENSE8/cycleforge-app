@@ -1,12 +1,21 @@
 import { test, expect, type Page } from '@playwright/test';
 
 /**
- * The station history dock — `docs/todo/one-sheet-table-sot-PLAN.md` Phase 7.
+ * The station history dock is GONE — and the budget it existed for still holds.
  *
- * The dock's whole justification is the interaction budget: a status overview
- * costs **≤ 1 interaction**, and opening the page is the one. So the assertions
- * are about it being THERE and being LEFTMOST on load — not about its contents,
- * which are the station's data and change every shift.
+ * `StationDeck`, `StationHistoryDock`, `ShippingHistoryDock`, `PackHistoryDock`
+ * and `UnboxHistoryDock` were deleted with the display layer on 2026-08-29
+ * (`docs/todo/one-table-sot-teardown-HANDOFF.md` § 4.4). This file used to
+ * assert the dock was present and leftmost; it now asserts the opposite, plus
+ * the thing the dock was justified by, which did NOT go away:
+ *
+ *   **a status overview costs ≤ 1 interaction** (`AGENTS.md`) — opening the
+ *   page is the one, so the station's own list has to be on screen without a
+ *   second click.
+ *
+ * Keeping the budget assertion is the point of rewriting rather than deleting:
+ * "the dock is gone" alone would pass just as well on a station that now shows
+ * nothing at all, which is the regression worth catching.
  */
 
 const STATIONS: { name: string; route: string }[] = [
@@ -15,58 +24,75 @@ const STATIONS: { name: string; route: string }[] = [
   { name: 'Shipping', route: '/test?mode=shipping' },
 ];
 
-const dock = (page: Page) => page.locator('[data-station-history-dock]').first();
+/** Any binding-backed grid body — every station foots one. */
+const stationBody = (page: Page) => page.locator('[data-testid$="-grid-body"]').first();
 
-test.describe('scan-station history dock', () => {
+/**
+ * Wait for the desk to have MOUNTED its list.
+ *
+ * Attachment, not visibility: Unbox's desk pane goes `visibility: hidden` while
+ * a carton overlay owns the middle, and a station can legitimately restore a
+ * carton on load — so a visibility gate here would make every assertion below
+ * depend on whether the fixture happens to have one open.
+ */
+const settled = async (page: Page) => {
+  await expect(stationBody(page)).toHaveCount(1, { timeout: 25_000 });
+};
+
+test.describe('scan-station history dock — deleted', () => {
   test.skip(({ browserName }) => browserName === 'webkit', 'stations are a desktop layout');
 
   for (const station of STATIONS) {
-    test(`${station.name}: history is visible on load — zero interactions`, async ({ page }) => {
+    test(`${station.name}: the dock and its scroll port are gone`, async ({ page }) => {
       await page.goto(station.route);
-      await expect(dock(page)).toBeVisible({ timeout: 20_000 });
+      await settled(page);
+      await expect(page.locator('[data-station-history-dock]')).toHaveCount(0);
+      await expect(page.getByTestId('station-history-dock-scroll')).toHaveCount(0);
     });
 
-    test(`${station.name}: the dock is the LEFTMOST column`, async ({ page }) => {
+    test(`${station.name}: the list is mounted on load — zero interactions`, async ({
+      page,
+    }) => {
+      /*
+        The dock's whole justification, re-pinned against what replaced it. The
+        station's own list IS the status overview now, so it must be THERE
+        without a tab, a filter or an expand — no second fetch, no second click.
+      */
       await page.goto(station.route);
-      const d = dock(page);
-      await expect(d).toBeVisible({ timeout: 20_000 });
-
-      const dockBox = await d.boundingBox();
-      if (!dockBox) throw new Error('no dock bounding box');
-
-      // Nothing inside the station's own body may start left of the dock. The
-      // grid's frozen identity pane is the thing that must not be covered — an
-      // operator matching a scan against the list needs both at once.
-      const body = page.locator('[data-sheet-toolbar], [data-testid$="-grid-body"]').first();
-      if (await body.count()) {
-        const bodyBox = await body.boundingBox();
-        if (bodyBox) expect(bodyBox.x).toBeGreaterThanOrEqual(dockBox.x);
-      }
-    });
-
-    test(`${station.name}: the dock is not collapsible chrome`, async ({ page }) => {
-      await page.goto(station.route);
-      const d = dock(page);
-      await expect(d).toBeVisible({ timeout: 20_000 });
-      // No toggle inside it. A rail an operator can collapse is a rail the next
-      // operator inherits collapsed, which puts the glance back over budget.
-      await expect(d.locator('button[aria-expanded]')).toHaveCount(0);
+      await settled(page);
+      await expect(page.locator('[role="columnheader"]').first()).toHaveCount(1);
     });
   }
 
-  test('the dock scrolls independently of the sheet', async ({ page }) => {
+  test('Unbox hides its desk pane by VISIBILITY, never by unmounting it', async ({ page }) => {
+    /*
+      `UnboxLineWorkspace` toggles `visibility` on the desk pane while a carton
+      overlay owns the middle (handoff § 7.4 — deliberately untouched). The
+      mechanism matters: `visibility: hidden` keeps the list mounted, scrolled
+      and warm, so closing the carton is a repaint rather than a refetch. That
+      is exactly why a status readout could not live inside that pane — it
+      disappeared at the one moment "did that scan land?" was being asked, which
+      is what the deleted dock was for.
+
+      So this pins the mechanism, not a fixture: the pane is present either way,
+      and if it is hidden it is hidden by `visibility` on a mounted ancestor.
+    */
     await page.goto('/unbox');
-    const d = dock(page);
-    await expect(d).toBeVisible({ timeout: 20_000 });
-    // Its own port: scrolling back through the morning's scans must not move
-    // the row the operator is about to act on.
-    //
-    // Located by testid, not by `div:nth(1)`. The positional form passed or
-    // failed on the dock's internal markup rather than on the property being
-    // asserted — it broke the moment the header gained a wrapper.
-    const port = d.locator('[data-testid="station-history-dock-scroll"]');
-    await expect(port).toHaveCount(1);
-    const overflow = await port.evaluate((el) => getComputedStyle(el).overflowY);
-    expect(['auto', 'scroll']).toContain(overflow);
+    await settled(page);
+    const body = stationBody(page);
+    await expect(body).toHaveCount(1);
+
+    const how = await body.evaluate((el) => {
+      let node: HTMLElement | null = el as HTMLElement;
+      while (node) {
+        if (getComputedStyle(node).display === 'none') return 'display-none';
+        if (node.style.visibility === 'hidden') return 'visibility-hidden';
+        node = node.parentElement;
+      }
+      return 'visible';
+    });
+    // `display: none` would drop the pane out of layout and cost a re-measure
+    // on every carton close — the thing the visibility trick exists to avoid.
+    expect(['visible', 'visibility-hidden']).toContain(how);
   });
 });

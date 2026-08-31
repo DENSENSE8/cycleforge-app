@@ -11,6 +11,7 @@
  */
 
 import type { DisplayIndexRow } from '@/components/station/displays';
+import { displayIndexPhotosRow } from './search-display-index-rows';
 
 export interface SearchOrderDisplaySignals {
   /** Order # present — the anchor Support/Ticket leaves resolve against. */
@@ -34,22 +35,8 @@ export function buildSearchOrderDisplayIndexRows(
   const { hasOrderNumber, photoCount, photosSettled, hasWarrantyOrReturns, serialCount } =
     signals;
 
-  const photoSubtitle = !photosSettled
-    ? 'Loading…'
-    : photoCount && photoCount > 0
-      ? `${photoCount} photo${photoCount === 1 ? '' : 's'}`
-      : 'No photos';
-
   return [
-    {
-      id: 'photos',
-      label: 'Photos',
-      subtitle: photoSubtitle,
-      // Evidence presence is informational on a read surface — never `action`,
-      // which would tell an operator to go do something they cannot do here.
-      tone: photosSettled && photoCount && photoCount > 0 ? 'ok' : 'neutral',
-      group: 'assets',
-    },
+    displayIndexPhotosRow({ photoCount, photosSettled }),
     {
       id: 'status',
       label: 'Status info',

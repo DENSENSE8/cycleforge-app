@@ -131,6 +131,123 @@ export interface CompoundRowView {
    * carries it too. Deliberately not a colour name — the cell owns the paint.
    */
   amountCredit?: boolean;
+
+  /**
+   * Materialized SLOT cells, keyed by TRACK key (`status:1`, `status:2`, …).
+   *
+   * A family that mounts slot tracks (Orders / To-ship) resolves one value per
+   * bound slot per row — the track's `fieldId` says WHAT, this record says the
+   * resolved facts. Optional so Receiving / Tasks / Incoming never carry it.
+   * Replaced the hard-coded `steps.tested` union: the cell now branches on the
+   * value's `kind`, never on a field name.
+   */
+  slots?: Readonly<Record<string, CompoundSlotValue>>;
+
+  /**
+   * BOUND subtitle parts for the item cell's second line — the org-configured
+   * replacement for {@link note}. Present (even empty) ⇒ the layout binds
+   * subtitles and this list IS the line, in binding order, parts joined by
+   * ` · `; absent ⇒ the legacy note fallback paints. Each part may carry a
+   * tone CLASS resolved by the family adapter from its own SoT (qty count
+   * tone, condition grade tone) — same precedent as `flagMark.dotClass`: the
+   * view model names the paint, the adapter names the meaning.
+   */
+  subtitleParts?: readonly CompoundSubtitlePart[];
+}
+
+/** One toned fragment of the item cell's bound subtitle line. */
+export interface CompoundSubtitlePart {
+  text: string;
+  /** Text tone class from the family's SoT; absent = the quiet line default. */
+  toneClass?: string;
+  /**
+   * Stable part key (the family's field id) — how a subtitle-select editor
+   * (see {@link CompoundSubtitleSelect}) claims its part. Presentational
+   * string only; the chrome matches keys, it never interprets them.
+   */
+  key?: string;
+}
+
+/** One row of a subtitle-select editor's menu. Strings and flags only. */
+export interface CompoundSubtitleSelectOption {
+  value: string;
+  label: string;
+  /** Text tone for the option row, from the family's SoT. */
+  toneClass?: string;
+  /** Wash class painted when {@link current}; from the family's SoT. */
+  currentClass?: string;
+  /** One-line meaning (title attr) — teaches the vocabulary in place. */
+  description?: string;
+  /** This option matches the row's current value. */
+  current?: boolean;
+}
+
+/**
+ * An in-place SELECT editor for one subtitle part — the capability object a
+ * family passes when a bound subtitle fact is a scalar with a real PATCH
+ * (To-ship condition). Same law as `onCommitNote` before it and `onOpen`
+ * still: presence of the handler makes the part editable, absence leaves the
+ * identical part read-only — never a second component.
+ *
+ * Options arrive resolved (labels, tones, current) so the chrome never
+ * imports a family SoT; it renders what it is handed and reports the picked
+ * `value` (or `null` for the clear row) through {@link onCommit}.
+ */
+export interface CompoundSubtitleSelect {
+  /** The {@link CompoundSubtitlePart.key} this editor claims. */
+  partKey: string;
+  /** What the fact is called ("Condition") — the trigger's accessible name. */
+  label: string;
+  options: readonly CompoundSubtitleSelectOption[];
+  /** Present ⇒ the menu offers a clear row with this copy. */
+  clearLabel?: string;
+  onCommit: (value: string | null) => void;
+}
+
+/**
+ * One resolved slot cell, discriminated by paint kind.
+ *
+ * `stage_event` is the two-row lifecycle step (icon + label over
+ * who · time · station); `value` is the plain single-fact face every other
+ * display type shares on the compound row (the label lives in the header).
+ * Strings only, by the same anti-fork law as the rest of this view-model.
+ */
+export type CompoundSlotValue =
+  | ({ kind: 'stage_event' } & CompoundStageStepFacts)
+  | { kind: 'value'; text: string | null };
+
+/**
+ * Facts for one lifecycle step column (`tested`, later `packed` / `scannedOut`).
+ * Strings only — the cell joins the non-blank parts; a missing part is omitted,
+ * never rendered as an empty `·` gap.
+ */
+export interface CompoundStageStepFacts {
+  who: string | null;
+  /**
+   * The actor's staff id — resolves the AVATAR (photo → initials on the
+   * staffer's colour) through the identity cache. The cell paints the person
+   * as a mark and moves the name to the tooltip, so the visible line keeps a
+   * fixed width. `null` with a `who` still shows initials; both null shows
+   * the unclaimed placeholder.
+   */
+  whoStaffId?: number | null;
+  at: string | null;
+  station: string | null;
+}
+
+/**
+ * Secondary line for a stage-step cell: `who · time · station`, blanks dropped.
+ * Returns `null` when nothing landed — the cell drops the tooltip and leaves
+ * its second line blank.
+ */
+export function formatCompoundStageStepLine(
+  step: CompoundStageStepFacts | null | undefined,
+): string | null {
+  if (!step) return null;
+  const bits = [step.who, step.at, step.station]
+    .map((s) => String(s ?? '').trim())
+    .filter(Boolean);
+  return bits.length > 0 ? bits.join(' · ') : null;
 }
 
 /**

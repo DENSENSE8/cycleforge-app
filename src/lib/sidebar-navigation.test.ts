@@ -15,6 +15,7 @@ import {
   hasSidebarContextPanel,
   applyChildTarget,
   resolveSidebarChild,
+  stationSubgroupMembers,
 } from '@/lib/sidebar-navigation';
 import { routeParamsFor } from '@/lib/routing/registry';
 
@@ -27,7 +28,7 @@ test('getSidebarNavItems returns the full sidebar list by default', () => {
 test('Home is top-pinned; Operations in Monitor; Sourcing under Inventory; Plans between Media and Chat', () => {
   const items = getSidebarNavItems();
   const topIds = items.filter((item) => item.kind === 'top').map((item) => item.id);
-  assert.deepEqual(topIds, ['home', 'search', 'ops-photos', 'plans-live', 'ai-chat']);
+  assert.deepEqual(topIds, ['home', 'search', 'ops-photos', 'plans-live', 'ai-chat', 'settings']);
 
   const home = items.find((item) => item.id === 'home');
   assert.ok(home, 'home should ship on prod nav');
@@ -52,6 +53,16 @@ test('Home is top-pinned; Operations in Monitor; Sourcing under Inventory; Plans
     'monitor',
     'operations belongs to the Monitor drill',
   );
+
+  const studio = items.find((item) => item.id === 'studio');
+  assert.ok(studio, 'studio should ship on prod nav');
+  assert.equal(studio.kind, 'main', 'studio is a map L1, not a footer pin');
+  assert.equal(studio.kind === 'main' ? studio.mainGroup : null, 'studio');
+
+  const admin = items.find((item) => item.id === 'admin');
+  assert.ok(admin, 'admin should ship on prod nav');
+  assert.equal(admin.kind, 'main', 'admin is a map L1, not a footer pin');
+  assert.equal(admin.kind === 'main' ? admin.mainGroup : null, 'admin');
 
   // Sourcing is its own spine domain section (not nested under Inventory).
   const sourcing = items.find((item) => item.id === 'sourcing');
@@ -82,7 +93,7 @@ test('plans-live pin requires operations.plans.view', () => {
   );
 });
 
-test('Search, Plans, and Chat stay in the registry but stay off the spine map', () => {
+test('Search, Plans, Chat, and Settings stay in the registry but stay off the spine map', () => {
   const items = getSidebarNavItems();
   const mapTopIds = items.filter(isSpineMapTopRow).map((item) => item.id);
   assert.deepEqual(mapTopIds, ['home', 'ops-photos']);
@@ -90,14 +101,18 @@ test('Search, Plans, and Chat stay in the registry but stay off the spine map', 
   const search = items.find((item) => item.id === 'search');
   const plans = items.find((item) => item.id === 'plans-live');
   const chat = items.find((item) => item.id === 'ai-chat');
-  assert.ok(search && plans && chat);
+  const settings = items.find((item) => item.id === 'settings');
+  assert.ok(search && plans && chat && settings);
   assert.equal(search.kind, 'top');
   assert.equal(search.spineBand, false);
   assert.equal(plans.spineBand, false);
   assert.equal(chat.spineBand, false);
+  assert.equal(settings.kind, 'top');
+  assert.equal(settings.spineBand, false);
   assert.equal(isSpineMapTopRow(search), false);
   assert.equal(isSpineMapTopRow(plans), false);
   assert.equal(isSpineMapTopRow(chat), false);
+  assert.equal(isSpineMapTopRow(settings), false);
 
   const media = items.find((item) => item.id === 'ops-photos');
   assert.equal(media?.label, 'Media Library');
@@ -128,15 +143,14 @@ test('prod nav ships every unparked page; only redirect surfaces stay off', () =
   assert.equal(navIds.has('plans-live'), true, 'plans-live stays in the nav registry');
   assert.equal(navIds.has('ai-chat'), true, 'ai-chat stays in the nav registry');
   assert.equal(navIds.has('fba'), false, 'fba redirects into Shipping — no spine row');
-  // Studio was promoted out of the parked set — it is a live page, footer-pinned
-  // above Admin since 2026-08-02, so it must be present on prod nav.
+  // Studio and Admin are map L1 rows (2026-08-29); Settings is parked in the
+  // account ⋯ menu. Studio must still be present on prod nav.
   assert.equal(navIds.has('studio'), true, 'studio ships as a live nav page');
+  assert.equal(navIds.has('admin'), true, 'admin ships as a live nav page');
   // Home is top-pinned; Operations stays an Overview page.
   assert.equal(navIds.has('home'), true, 'home ships as a top-pinned page');
   assert.equal(navIds.has('operations'), true, 'operations ships as a live Overview page');
-  // Its Catalog sub-route rides along as an L2 MODE, not a second flat row — a
-  // pinned footer row never draws children, so two rows there would have put
-  // `/studio/catalog` in the footer beside its own parent.
+  // Its Catalog sub-route rides along as an L2 MODE, not a second flat row.
   assert.equal(navIds.has('studio-catalog'), false, 'studio-catalog owns no spine row');
   assert.equal(
     getSidebarPageNav('studio')?.children?.some((m) => m.id === 'catalog'),
@@ -463,11 +477,17 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(resolveSidebarChild('fba', at('/shipping', 'mode=fba')), 'combine');
   assert.equal(resolveSidebarChild('fba', at('/shipping', 'mode=fba&fbaMode=plan')), 'plan');
   assert.equal(resolveSidebarChild('fba', at('/fba', 'mode=plan')), 'plan');
-  // Desk Shipping children: Labels / FBA. Ready is an FBA stage tab. Scan out is its own floor L1.
-  assert.equal(resolveSidebarChild('outbound', at('/shipping')), 'labels');
+  // Desk Shipping children: To ship / Amazon Prep. Ready is an FBA stage tab.
+  // Scan out is its own floor L1. Labels stopped being a tab on 2026-08-30 —
+  // needing a label became a STATE in the To-ship queue.
+  assert.equal(resolveSidebarChild('outbound', at('/shipping')), 'orders');
   assert.equal(resolveSidebarChild('outbound', at('/shipping', 'mode=ready')), 'fba');
   assert.equal(resolveSidebarChild('outbound', at('/shipping', 'mode=fba')), 'fba');
-  assert.equal(resolveSidebarChild('outbound', at('/shipping/labels')), 'labels');
+  // `/shipping/labels` is GONE (route deleted 2026-08-30). A stale bookmark
+  // 404s at the route layer; if anything still asks this resolver about the
+  // path it answers `orders`, the desk's default, rather than a child that no
+  // longer exists.
+  assert.equal(resolveSidebarChild('outbound', at('/shipping/labels')), 'orders');
   assert.equal(resolveSidebarChild('outbound', at('/shipping/ready')), 'fba');
   assert.equal(resolveSidebarChild('outbound', at('/shipping/fba')), 'fba');
   assert.equal(resolveSidebarChild('outbound', at('/shipping/fba', 'fbaMode=ready')), 'fba');
@@ -506,22 +526,56 @@ test('resolver matches existing panel derivations for known deep-links', () => {
     'support',
   );
   assert.equal(getSidebarPageNav('dashboard'), undefined, 'no dashboard L1 page nav');
-  // Review split (D10): packing QA is Fulfillment, pairing / catalog-link are
-  // Catalog. Every `/review` URL still resolves — the page never moved.
+  // Review split (D10): packing QA is Operations › Packing Review; pairing /
+  // catalog-link are Catalog. Every `/review` URL still resolves — the page never moved.
   const reviewPage = (search = '') =>
     getSidebarNavPageId('/review', new URLSearchParams(search));
-  assert.equal(reviewPage(), 'outbound');
-  assert.equal(reviewPage('rtab=flagged'), 'outbound');
+  assert.equal(reviewPage(), 'operations');
+  assert.equal(reviewPage('rtab=flagged'), 'operations');
   assert.equal(reviewPage('mode=pairing'), 'products');
   assert.equal(reviewPage('mode=catalog-link'), 'products');
-  assert.equal(getSidebarPageNav('review'), undefined, 'no review L1 page nav');
-  assert.equal(resolveSidebarChild('outbound', at('/review')), 'review');
+  assert.equal(getSidebarPageNav('review'), undefined, 'no review L1 — lives under Operations');
+  assert.equal(resolveSidebarChild('outbound', at('/review')), null);
+  assert.equal(resolveSidebarChild('operations', at('/review')), 'packing-review');
   assert.equal(resolveSidebarChild('products', at('/review', 'mode=pairing')), 'pairing');
   assert.equal(resolveSidebarChild('products', at('/review', 'mode=catalog-link')), 'catalog-link');
   // The route key is untouched, so the Review surface still mounts its own panel.
   assert.equal(getSidebarRouteKey('/review'), 'review');
+  // The desk's tab band, in order. Labels left on 2026-08-30 and Shipped
+  // arrived the same day — this list IS the band, so the assertion is what
+  // keeps a tab from appearing without a decision behind it. Platforms
+  // (Amazon DTC, eBay, Shopify) belong in the FACETS of To ship and Shipped,
+  // never here.
+  //
+  // **Exceptions joined 2026-08-31**, and it passes the same test FBA passes:
+  // a process fork whose queue semantics To ship cannot express. Caged and
+  // unpaired orders are excluded from that queue by an explicit predicate
+  // (`/api/orders` fulfillmentScope), and the work on them — pair a SKU, fix
+  // an item number — is not the work To ship does. It is NOT a facet, because
+  // a facet narrows a queue and these rows are not in the queue at all.
+  assert.deepEqual(
+    getSidebarPageNav('outbound')?.children?.map((c) => c.id),
+    ['orders', 'fba', 'shipped', 'exceptions'],
+  );
+  assert.ok(
+    getSidebarPageNav('operations')?.children?.some((c) => c.id === 'packing-review'),
+  );
   assert.equal(resolveSidebarChild('outbound', at('/dashboard')), 'orders');
   assert.equal(resolveSidebarChild('outbound', at('/shipping/orders')), 'orders');
+  // Shipped lights its own tab. Without its clause the catch-all `return
+  // 'orders'` would light To ship on the history desk — a tab claiming to be
+  // somewhere the operator is not.
+  assert.equal(resolveSidebarChild('outbound', at('/shipping/shipped')), 'shipped');
+  assert.equal(resolveSidebarChild('outbound', at('/shipping/fba')), 'fba');
+  // Exceptions needs its own clause for the same reason Shipped does: it is a
+  // path, and without it the catch-all would light To ship on the workbench.
+  assert.equal(resolveSidebarChild('outbound', at('/shipping/exceptions')), 'exceptions');
+  // Support alias is unaffected: `?context=support` is a ticket surface on the
+  // orders desk and neither tab may claim it.
+  assert.equal(
+    resolveSidebarChild('outbound', at('/shipping/orders', 'context=support')),
+    null,
+  );
   // Inbound is a leaf desk — no L2 children; dashboard inbound bookmarks still
   // resolve the page id to `incoming` until the proxy redirects them.
   assert.equal(resolveSidebarChild('incoming', at('/dashboard', 'mode=inbound')), null);
@@ -576,12 +630,13 @@ test('Home is rail-less — no context column for Today', () => {
   assert.equal(hasSidebarContextPanel('/'), false);
 });
 
-test('/search declares its own route key and reserves a context column', () => {
+test('/search declares its own route key and is rail-less', () => {
   assert.equal(getSidebarRouteKey('/search'), 'search');
   assert.equal(getSidebarRouteKey('/search/anything'), 'search');
-  // Rail-ful since 2026-08-20 (order station port): the middle paints the scan
-  // station, so the left column holds recent finds — `SearchRecentRail`.
-  assert.equal(hasSidebarContextPanel('/search'), true);
+  // Rail-less again as of 2026-08-30 (Pattern E). The column held recent finds;
+  // ⌘K's own Recent group is that list, one chord away on every route, so the
+  // key would now reserve 360px for a duplicate.
+  assert.equal(hasSidebarContextPanel('/search'), false);
   // Spine top pin so MasterNav selects Search instead of falling through to Dashboard.
   const searchNav = APP_SIDEBAR_NAV.find((item) => item.id === 'search');
   assert.ok(searchNav, 'search must be in APP_SIDEBAR_NAV');
@@ -635,4 +690,27 @@ test('isSidebarTopPinActive: Plans and Home are separate paths, never both curre
   // Off both, neither pin is current.
   assert.equal(isSidebarTopPinActive(home, { pathname: '/search', searchParams: today }), false);
   assert.equal(isSidebarTopPinActive(plans, { pathname: '/search', searchParams: live }), false);
+});
+
+test('stationSubgroupMembers still groups header-switcher peers after the spine flatten', () => {
+  assert.deepEqual(
+    stationSubgroupMembers('receiving').map((p) => p.id),
+    ['triage', 'receive'],
+  );
+  assert.deepEqual(
+    stationSubgroupMembers('walk-in').map((p) => p.id),
+    ['pickup', 'repair'],
+  );
+});
+
+test('Testing children stay Quality Control and Ready to Pack for the header switcher', () => {
+  const tech = getSidebarPageNav('tech');
+  assert.ok(tech?.children);
+  assert.deepEqual(
+    tech.children.map((child) => [child.id, child.label]),
+    [
+      ['testing', 'Quality Control'],
+      ['shipping', 'Ready to Pack'],
+    ],
+  );
 });

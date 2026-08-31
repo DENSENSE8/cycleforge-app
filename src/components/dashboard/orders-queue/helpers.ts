@@ -162,12 +162,28 @@ export function normalizePersonName(value: unknown): string {
   return text;
 }
 
-/** Resolve the status dot/label/description for a row given the owning surface. */
-export function resolveRowStatus(record: QueueRowRecord, queueMode: OrdersQueueMode): RowStatusMeta {
-  if (queueMode === 'labels') {
-    const meta = UNSHIPPED_STATE_META.AWAITING_LABEL;
-    return { dot: meta.dot, label: meta.label, description: meta.description, pill: meta.pill };
-  }
+/**
+ * Resolve the status dot/label/description for a row given the owning surface.
+ *
+ * `null` means **this queue has no per-row status to show**, and the row paints
+ * no dot, no chip and no tooltip rather than a placeholder.
+ *
+ * That is the honest answer for the Labels queue. It is fed by
+ * `awaitingLabelsQuery` — `awaitingOnly=true`, i.e. `shipment_id IS NULL` — so
+ * every row in it is awaiting a label by construction. Stamping "Awaiting
+ * Label" on each one spent a status track, a colour and a tooltip to restate
+ * the table's own name, on a fixed-width stage where every track is contested.
+ * A column that reads the same on every row is not a status; it is a title.
+ *
+ * (`staged` has the same shape — a constant `PACKED_STAGED` — and is left as-is
+ * here on purpose: it was not part of this change and its surface has not been
+ * measured for the desk stage yet.)
+ */
+export function resolveRowStatus(
+  record: QueueRowRecord,
+  queueMode: OrdersQueueMode,
+): RowStatusMeta | null {
+  if (queueMode === 'labels') return null;
   if (queueMode === 'staged') {
     const meta = OUTBOUND_STATE_META.PACKED_STAGED;
     return { dot: meta.dot, label: meta.label, description: meta.description, pill: meta.pill };

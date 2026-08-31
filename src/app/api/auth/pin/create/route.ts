@@ -6,7 +6,8 @@
  * overwrite an existing PIN. After setting the PIN, mints a session and sets
  * the cf_sid session cookie so the user lands authenticated.
  *
- * Body: { staffId: number, pin: string, deviceKind?: 'station' | 'phone' | 'personal', deviceLabel?: string }
+ * Body: { staffId: number, pin: string, deviceKind?: 'station' | 'phone' | 'personal',
+ *         deviceLabel?: string, persistent?: boolean }
  *
  * Security trade-off (intentional, small-shop UX): anyone at the kiosk can
  * pick an unenrolled staff and set their PIN. Once set, only the owner of
@@ -21,6 +22,7 @@ import { hashPin, isObviousPin, PinError } from '@/lib/auth/pin';
 import {
   createSession,
   cookieMaxAgeForSession,
+  asPersistentFlag,
   SESSION_COOKIE_NAME,
   type DeviceKind,
 } from '@/lib/auth/session';
@@ -51,6 +53,7 @@ export async function POST(req: NextRequest) {
     const pin = String((body as { pin?: unknown }).pin ?? '');
     const deviceKind = asDeviceKind((body as { deviceKind?: unknown }).deviceKind);
     const deviceLabel = ((body as { deviceLabel?: unknown }).deviceLabel ?? null) as string | null;
+    const persistent = asPersistentFlag((body as { persistent?: unknown }).persistent);
 
     if (!Number.isFinite(staffId) || staffId <= 0) {
       return NextResponse.json({ error: 'INVALID_REQUEST', field: 'staffId' }, { status: 400 });
@@ -133,6 +136,7 @@ export async function POST(req: NextRequest) {
       deviceLabel,
       ip,
       userAgent: ua,
+      persistent,
     });
 
     await audit({
@@ -142,7 +146,7 @@ export async function POST(req: NextRequest) {
       result: 'ok',
       ip,
       userAgent: ua,
-      detail: { deviceKind },
+      detail: { deviceKind, persistent },
     });
 
     const role = await getStaffRole(row.id);

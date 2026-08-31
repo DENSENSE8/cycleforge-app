@@ -22,6 +22,7 @@ import { TextField, IconButton } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { getLast8Serial } from '@/lib/copy-chip-format';
 import { cn } from '@/utils/_cn';
+import { PO_LINE_CAPTURE_ACTIONS_CLASS } from './po-line-capture-chrome';
 import { NoSerialOfferCheck } from './line-edit/NoSerialOfferCheck';
 import { focusUnboxCaptureSerialRelative } from './line-edit/focus-unbox-capture-serial';
 
@@ -56,6 +57,24 @@ type SerialScanFieldProps = {
   onEditingSerialChange?: (serial: SavedSerial | null) => void;
   /** When set, parent owns the dupe notice (SerialCard renders under the bar). */
   onInlineNoticeChange?: (notice: string | null) => void;
+  /**
+   * The HOST's own trailing controls, joined into this field's action column
+   * (Unbox capture: Photos, after the exact / no-serial check).
+   *
+   * A slot rather than a second row child, because the whole point of the
+   * composer's anatomy is that verification actions are ONE right-hand cluster:
+   * text left, actions right. Rendered by a host as a sibling instead, the
+   * commit cell and the host's own action are two independent flex children the
+   * row is free to separate — which is how a camera ends up mid-bar the moment
+   * the waiver cell disappears.
+   */
+  actionsSlot?: ReactNode;
+  /**
+   * Width of each trailing action cell. `w-14` (default) beside a standalone
+   * single-qty input; `w-11` in the flush Unbox composer, where the cluster has
+   * to be square with the Photos segment beside it.
+   */
+  actionWidth?: 'w-11' | 'w-14';
 };
 
 export const SerialScanField = forwardRef<
@@ -78,6 +97,8 @@ export const SerialScanField = forwardRef<
     editingSerial = null,
     onEditingSerialChange,
     onInlineNoticeChange,
+    actionsSlot,
+    actionWidth = 'w-14',
   },
   ref,
 ) {
@@ -228,9 +249,77 @@ export const SerialScanField = forwardRef<
 
   const showOwnNotice = !onInlineNoticeChange && inlineNotice;
 
+  /**
+   * The commit / waiver / lookup cell — ONE slot that swaps face with state
+   * (waiting → green check offer · typing → commit + · looking up → spinner),
+   * never three cells that appear and disappear beside each other.
+   */
+  const actionCell = noSerialActive ? null : lookupBusy && !scan.trim() && !editing ? (
+    <div
+      role="status"
+      aria-label="Checking serial"
+      className={cn(
+        'inline-flex h-11 shrink-0 items-center justify-center text-emerald-600',
+        actionWidth,
+        embedded
+          ? cn(cornerClass('flush'), 'bg-emerald-50')
+          : cn(
+              cornerClass('field'),
+              'border border-emerald-300 bg-emerald-50 shadow-sm',
+            ),
+      )}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        className="h-5 w-5 animate-spin"
+        aria-hidden
+      >
+        <circle cx="12" cy="12" r="9" className="opacity-25" />
+        <path d="M21 12a9 9 0 0 1-9 9" strokeLinecap="round" />
+      </svg>
+    </div>
+  ) : !scan.trim() && !editing && onMarkNoSerial ? (
+    <NoSerialOfferCheck
+      onClick={onMarkNoSerial}
+      label="Mark this item as having no serial number"
+      width={actionWidth}
+      appearance={embedded ? 'flush' : 'default'}
+    />
+  ) : (
+    <button
+      type="button"
+      onClick={submit}
+      disabled={!scan.trim() || disabled}
+      className={cn(
+        'ds-raw-button inline-flex h-11 shrink-0 items-center justify-center text-role-caption font-semibold uppercase tracking-wider text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-surface-strong',
+        embedded
+          ? cn(cornerClass('flush'), 'bg-emerald-600')
+          : 'rounded-xl bg-emerald-600 shadow-sm',
+        editing ? 'px-4' : actionWidth,
+      )}
+    >
+      {editing ? (
+        'Save'
+      ) : (
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3"
+          className="h-5 w-5"
+        >
+          <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+        </svg>
+      )}
+    </button>
+  );
+
   return (
     <>
-      <div className="flex min-w-0 flex-1 items-stretch">
+      <div className="flex min-w-0 flex-1 items-stretch" data-serial-field>
         {noSerialActive && noSerialSlot ? (
           noSerialSlot
         ) : (
@@ -238,6 +327,10 @@ export const SerialScanField = forwardRef<
             ref={setInputRef}
             label="Serial"
             data-unbox-serial-input
+            // The open field IS the serial segment: while it is mounted there
+            // is no icon segment to carry the Unbox moving outline, so the dock
+            // asking for `serial` would light nothing at all.
+            data-capture-segment="serial"
             appearance={embedded ? 'flush' : 'default'}
             value={scan}
             onChange={(next) => {
@@ -284,67 +377,23 @@ export const SerialScanField = forwardRef<
         )}
       </div>
 
-      {noSerialActive ? null : lookupBusy && !scan.trim() && !editing ? (
+      {/* Trailing actions — ALWAYS after the field in document order, always a
+          group. A waived line drops the commit cell but keeps the host's own
+          actions here, so the cluster stays pinned to the bar's right edge
+          instead of the camera sliding into the middle. */}
+      {actionCell || actionsSlot ? (
         <div
-          role="status"
-          aria-label="Checking serial"
-          className={cn(
-            'inline-flex h-11 w-14 shrink-0 items-center justify-center text-emerald-600',
+          data-serial-actions
+          className={
             embedded
-              ? cn(cornerClass('flush'), 'bg-emerald-50')
-              : cn(
-                  cornerClass('field'),
-                  'border border-emerald-300 bg-emerald-50 shadow-sm',
-                ),
-          )}
+              ? PO_LINE_CAPTURE_ACTIONS_CLASS
+              : 'flex shrink-0 items-center gap-2'
+          }
         >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            className="h-5 w-5 animate-spin"
-            aria-hidden
-          >
-            <circle cx="12" cy="12" r="9" className="opacity-25" />
-            <path d="M21 12a9 9 0 0 1-9 9" strokeLinecap="round" />
-          </svg>
+          {actionCell}
+          {actionsSlot}
         </div>
-      ) : !scan.trim() && !editing && onMarkNoSerial ? (
-        <NoSerialOfferCheck
-          onClick={onMarkNoSerial}
-          label="Mark this item as having no serial number"
-          width="w-14"
-          appearance={embedded ? 'flush' : 'default'}
-        />
-      ) : (
-        <button
-          type="button"
-          onClick={submit}
-          disabled={!scan.trim() || disabled}
-          className={cn(
-            'ds-raw-button inline-flex h-11 shrink-0 items-center justify-center text-role-caption font-semibold uppercase tracking-wider text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-surface-strong',
-            embedded
-              ? cn(cornerClass('flush'), 'bg-emerald-600')
-              : 'rounded-xl bg-emerald-600 shadow-sm',
-            editing ? 'px-4' : 'w-14',
-          )}
-        >
-          {editing ? (
-            'Save'
-          ) : (
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="3"
-              className="h-5 w-5"
-            >
-              <path d="M12 5v14M5 12h14" strokeLinecap="round" />
-            </svg>
-          )}
-        </button>
-      )}
+      ) : null}
 
       {showOwnNotice ? (
         <p

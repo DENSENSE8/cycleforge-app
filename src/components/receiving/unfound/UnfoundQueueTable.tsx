@@ -1,16 +1,16 @@
 'use client';
 
 /**
- * Unfound queue — the data host that mounts the Workbench spreadsheet SoT
- * (`NonlinearTableHost` + the unfound table definition) directly. Flat queue:
- * no fold, no day band. In-cell edit is on (`LedgerCellEditor` for ticket +
- * notes); selection highlights the open detail-plane row.
+ * Unfound queue — the data host that mounts the one table display
+ * (`DataTable` + the unfound table definition). Flat queue: no fold, no day
+ * band. Every cell is READ-ONLY (`inCellEdit: false`): ticket id and the two
+ * team notes are corrected on the record plane, and selection highlights the
+ * open detail-plane row.
  *
  * Toolbar (filter pills, search, Refresh) lives in the sidebar via
  * UnfoundQueueSidebarToolbar. Filter state is URL-backed (`uf_kind` / `uf_q`)
  * so both share one source of truth. Data + mutations live in
- * {@link useUnfoundQueueTable}; in-cell edit PATCHes through `LedgerCellEditor`
- * inside the grid row. Column sort is DURABLE on `?colsort=`/`?coldir=`.
+ * {@link useUnfoundQueueTable}. Column sort is DURABLE on `?colsort=`/`?coldir=`.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

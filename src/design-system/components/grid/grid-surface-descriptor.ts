@@ -193,7 +193,7 @@ export interface GridSurfaceCapabilities {
   rowTriageFlags: boolean;
   /** Checkbox multi-select + right-rail selection / select-all wiring. */
   multiSelect: boolean;
-  /** In-cell editors via LedgerCellEditor / isGridColumnInCellEditable. */
+  /** Reserved: no surface mounts a cell editor — every grid cell is read-only. */
   inCellEdit: boolean;
   /** Fields menu / staff column prefs (`hideKey` + `tier`). */
   fieldsMenu: boolean;

@@ -117,13 +117,26 @@ function subtitleOf(parts: unknown[]): string | null {
  *   notes, order_date, created_at, serials (STRING_AGG of
  *   tech_serial_numbers.serial_number), tracking_number (primary STN raw),
  *   linked_trackings (shipment_links STNs, space-joined), carrier
- *   (stn.carrier, UNKNOWN→null).
+ *   (stn.carrier, UNKNOWN→null), customer_name / customer_email /
+ *   customer_phone (LEFT JOIN customers ON orders.customer_id).
+ *
+ * BUYER IDENTITY IN THE SUBTITLE
+ *   The customer leads the subtitle when there is one. A support call opens
+ *   with a person's name, so that is the field which tells the operator "this
+ *   is the row you want" at a glance — and putting it first is what keeps the
+ *   answer at interaction two instead of three.
  */
 function buildOrderDoc(row: SearchSourceRow): BuiltSearchDoc {
   const title = str(row.product_title) || `Order #${str(row.id)}`;
   return {
     title,
-    subtitle: subtitleOf([row.order_id, row.serials, row.sku, row.account_source]),
+    subtitle: subtitleOf([
+      row.customer_name,
+      row.order_id,
+      row.serials,
+      row.sku,
+      row.account_source,
+    ]),
     searchText: joinSearchText([
       row.order_id,
       row.product_title,
@@ -135,6 +148,12 @@ function buildOrderDoc(row: SearchSourceRow): BuiltSearchDoc {
       row.status,
       row.condition,
       row.notes,
+      // Buyer identity, last: it is real recall (a name, an email, a phone are
+      // exactly what a support call supplies) but it must never outweigh the
+      // product and identifier terms above it when the trigram arm ranks.
+      row.customer_name,
+      row.customer_email,
+      row.customer_phone,
     ]),
     facets: {
       status: strOrNull(row.status),

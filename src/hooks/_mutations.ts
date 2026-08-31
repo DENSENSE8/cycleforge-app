@@ -18,15 +18,13 @@
  * refetch instead of targeted invalidation, and a window event instead of the
  * shared query cache.
  *
- * `useResourceMutation` collapses all of that to one call. It is a thin wrapper
- * over TanStack's `useMutation` (already wired in Providers.tsx) that:
- *   - parses the server's `{ error }` envelope into a thrown `HttpError`;
- *   - invalidates a declared list of query keys on success;
- *   - otherwise behaves exactly like `useMutation` (isPending, mutate,
- *     mutateAsync, onError, …).
+ * Two write primitives:
+ *   - `useOptimisticMutation` — **edits**. Paints the cache first, persists,
+ *     rolls back and `toast.error`s on failure. That is the house edit path.
+ *   - `useResourceMutation` — creates / fire-and-forget with no cached row to
+ *     patch. Invalidates on success. Do not use it for an inline edit.
  *
- * Prefer `useResourceMutation` for new server mutations — TanStack is the
- * house mutation SoT (isPending, targeted invalidation, HttpError envelope).
+ * `jsonOrThrow` / `HttpError` parse the server `{ error }` envelope for both.
  */
 
 import { useCallback } from 'react';
@@ -143,3 +141,8 @@ export function useConfirmedAction<Args extends unknown[]>(
     [action, message],
   );
 }
+
+export {
+  useOptimisticMutation,
+  optimisticMutationOptions,
+} from '@/lib/optimistic/useOptimisticMutation';

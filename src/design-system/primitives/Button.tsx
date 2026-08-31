@@ -1,7 +1,6 @@
 'use client';
 
 import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from 'react';
-import { motion, type HTMLMotionProps } from '@/design-system/motion';
 import { Loader2 } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '../tokens/focus-ring';
@@ -101,7 +100,23 @@ const iconBox: Record<ButtonSize, string> = {
   lg: 'h-4 w-4',
 };
 
-const spring = { type: 'spring', stiffness: 520, damping: 36 } as const;
+/**
+ * Press feedback is CSS, not the motion engine.
+ *
+ * This primitive is on the critical JS graph of EVERY route (989 call sites),
+ * so a static `@/design-system/motion` import here put the whole engine
+ * (~48KB gz) in front of first paint on routes that animate nothing —
+ * `/signin`, the one public route, most of all. A `whileTap` scale is a
+ * transform on a single element with no orchestration, no presence and no
+ * shared layout: exactly the case CSS already does, on the compositor, for
+ * zero bytes. Duration/curve are the perceptual match for the old
+ * `{ stiffness: 520, damping: 36 }` spring — a spring that stiff reads as a
+ * fast ease, not a bounce.
+ *
+ * `enabled:` mirrors the old `whileTap={isDisabled ? undefined : …}` guard.
+ */
+const PRESS_FEEDBACK =
+  'enabled:active:scale-[0.96] motion-reduce:transform-none';
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
@@ -115,7 +130,7 @@ const spring = { type: 'spring', stiffness: 520, damping: 36 } as const;
  * - Corner SoT: `radius` prop, default `flush` → `rounded-none`. The one soft
  *   opt-in is `radius="composer"` (the `OmnichannelComposerDock` shell family).
  * - Children-based API: `<Button variant="brand" icon={<Plus />}>Save</Button>`
- * - Spring press feedback (framer-motion `whileTap`) on every variant
+ * - CSS press feedback (`active:scale`) on every variant — no motion engine
  * - Mode-aware: promotes to 44px+ touch targets on mobile via `UIModeProvider`
  * - Built-in `loading` (spinner swap) and `iconOnly` (mobile square) states
  */
@@ -154,17 +169,16 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   );
 
   return (
-    <motion.button
+    <button
       ref={ref}
       type={type}
       disabled={isDisabled}
       aria-label={isIconOnly ? ariaLabel ?? (typeof children === 'string' ? children : undefined) : ariaLabel}
       aria-busy={loading || undefined}
-      whileTap={isDisabled ? undefined : { scale: 0.96 }}
-      transition={spring}
       className={cn(
         'inline-flex select-none items-center justify-center font-semibold',
-        'transition-colors duration-150 ease-out',
+        'transition-[color,background-color,border-color,transform] duration-150 ease-out',
+        PRESS_FEEDBACK,
         // Focus affordance from the SoT (byte-identical to the old literal).
         focusRing('control', 'accent'),
         'disabled:cursor-not-allowed disabled:opacity-60',
@@ -173,7 +187,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         BUTTON_RADIUS[radius],
         className,
       )}
-      {...(rest as HTMLMotionProps<'button'>)}
+      {...rest}
     >
       {loading ? (
         <>
@@ -187,6 +201,6 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
           {iconRight && !isIconOnly && renderIcon(iconRight)}
         </>
       )}
-    </motion.button>
+    </button>
   );
 });

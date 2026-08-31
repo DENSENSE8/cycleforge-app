@@ -1,5 +1,5 @@
 /**
- * Unit coverage for column-display highlight normalize / style helpers.
+ * Unit coverage for the shared highlight normalize helpers (row fills).
  *
  * Run: `npx tsx --test src/design-system/components/grid/grid-column-display.test.ts`
  */
@@ -8,11 +8,8 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   LEGACY_GRID_COLUMN_HIGHLIGHT_HEX,
-  gridColumnHighlightStyle,
-  gridColumnTextEmphasisClass,
   isPersistedGridColumnHighlight,
   normalizeGridColumnHighlight,
-  normalizeGridColumnTextEmphasis,
 } from './grid-column-display';
 
 describe('normalizeGridColumnHighlight', () => {
@@ -42,34 +39,11 @@ describe('normalizeGridColumnHighlight', () => {
   });
 });
 
-describe('gridColumnHighlightStyle / isPersisted', () => {
-  it('returns backgroundColor for a wash and undefined for none', () => {
-    assert.deepEqual(gridColumnHighlightStyle('blue'), {
-      backgroundColor: LEGACY_GRID_COLUMN_HIGHLIGHT_HEX.blue,
-    });
-    assert.equal(gridColumnHighlightStyle('none'), undefined);
-    assert.equal(gridColumnHighlightStyle(null), undefined);
-  });
-
+describe('isPersistedGridColumnHighlight', () => {
   it('persists only real washes', () => {
     assert.equal(isPersistedGridColumnHighlight('blue'), true);
     assert.equal(isPersistedGridColumnHighlight('#eff6ff'), true);
     assert.equal(isPersistedGridColumnHighlight('none'), false);
     assert.equal(isPersistedGridColumnHighlight(null), false);
-  });
-});
-
-describe('text emphasis', () => {
-  it('normalizes named modes and rejects free hex', () => {
-    assert.equal(normalizeGridColumnTextEmphasis('muted'), 'muted');
-    assert.equal(normalizeGridColumnTextEmphasis('critical'), 'critical');
-    assert.equal(normalizeGridColumnTextEmphasis('default'), null);
-    assert.equal(normalizeGridColumnTextEmphasis('#ff0000'), null);
-  });
-
-  it('maps to semantic classes', () => {
-    assert.equal(gridColumnTextEmphasisClass('muted'), 'text-text-muted');
-    assert.equal(gridColumnTextEmphasisClass('warning'), 'text-amber-700');
-    assert.equal(gridColumnTextEmphasisClass(null), '');
   });
 });

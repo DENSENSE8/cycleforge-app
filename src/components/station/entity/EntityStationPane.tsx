@@ -110,7 +110,7 @@ export interface EntityStationPaneProps {
    * Centre plane. `card` gives the flat white column a read surface wants, and
    * drops the ambient wash with it. Default keeps the scan-station sunken plane.
    */
-  surface?: 'sunken' | 'card';
+  surface?: 'well' | 'card';
   /**
    * The centre claims the port height rather than being sized by its content.
    * Pass this when the centre's last block is a conversation whose composer
@@ -137,7 +137,7 @@ export function EntityStationPane({
   displaysResizeTestId,
   scrollClassName,
   onCentreScroll,
-  surface = 'sunken',
+  surface = 'card',
   centreFill = false,
 }: EntityStationPaneProps) {
   const { presence: paneMotion, transition: paneTransition } = useMotionRole(

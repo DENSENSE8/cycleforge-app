@@ -17,6 +17,7 @@
  *   • Phase 4 — an on-demand "Retry pair" action (§7 Q4) re-running the same
  *     tracking search the (previously untriggered) cron sweep does, via
  *     `POST /api/receiving/unfound-queue/retry-pair`.
+ * Both actions live in the popover context block below the badge row.
  */
 
 import { useState } from 'react';
@@ -88,7 +89,6 @@ export function TriageUnfoundList({
           // B3: open Zoho-sync exception state for this carton (read-only).
           const ctx = row.receiving_id != null ? exceptionMap?.get(row.receiving_id) : undefined;
           const staging = row.receiving_id != null ? stagingMap.get(row.receiving_id) : undefined;
-          if (!ctx && !staging) return null;
           return (
             <>
               {ctx ? (
@@ -104,43 +104,37 @@ export function TriageUnfoundList({
                 </div>
               ) : null}
               <TriageStagingChips ctx={staging} />
+              <div className="flex items-center gap-1 pt-2">
+                {row.receiving_id != null ? (
+                  <HoverTooltip label="Re-check inventory for a PO match right now" asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      loading={retryingId === row.receiving_id}
+                      disabled={retryingId != null && retryingId !== row.receiving_id}
+                      onClick={() => void retryPair(row.receiving_id!)}
+                      className="h-auto gap-1 rounded-md px-2 py-1 text-role-micro uppercase tracking-widest text-blue-600 hover:bg-blue-50"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Retry pair
+                    </Button>
+                  </HoverTooltip>
+                ) : null}
+                <HoverTooltip label="File a missing-carton / unfound claim for this package" asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => openClaim(row)}
+                    className="h-auto gap-1 rounded-md px-2 py-1 text-role-micro uppercase tracking-widest text-orange-600 hover:bg-orange-50"
+                  >
+                    <Flag className="h-3.5 w-3.5" />
+                    Claim
+                  </Button>
+                </HoverTooltip>
+              </div>
             </>
           );
         }}
-        renderPopoverActions={(row, { dismiss }) => (
-          <div className="flex items-center gap-1">
-            {row.receiving_id != null ? (
-              <HoverTooltip label="Re-check inventory for a PO match right now" asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  loading={retryingId === row.receiving_id}
-                  disabled={retryingId != null && retryingId !== row.receiving_id}
-                  onClick={() => void retryPair(row.receiving_id!)}
-                  className="h-auto gap-1 rounded-md px-2 py-1 text-role-micro uppercase tracking-widest text-blue-600 hover:bg-blue-50"
-                >
-                  <RotateCcw className="h-3.5 w-3.5" />
-                  Retry pair
-                </Button>
-              </HoverTooltip>
-            ) : null}
-            {/* B2: file a Zendesk claim for this unfound carton straight from triage. */}
-            <HoverTooltip label="File a missing-carton / unfound claim for this package" asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  openClaim(row);
-                  dismiss();
-                }}
-                className="h-auto gap-1 rounded-md px-2 py-1 text-role-micro uppercase tracking-widest text-orange-600 hover:bg-orange-50"
-              >
-                <Flag className="h-3.5 w-3.5" />
-                Claim
-              </Button>
-            </HoverTooltip>
-          </div>
-        )}
       />
 
       {claimRow ? (

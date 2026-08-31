@@ -44,6 +44,10 @@ export type OrderImportRowView = {
   customerName: string;
   trackingNumber: string;
   platform: string;
+  /** Intake vocabulary (2026-08-30) — find-bar targets, not grid tracks. */
+  weightOz: string;
+  assigneeTech: string;
+  assigneePacker: string;
 };
 
 /**
@@ -79,6 +83,9 @@ export const ORDER_IMPORT_DESCRIPTOR: TableImportDescriptor<
       customerName: projected.customer_name,
       trackingNumber: projected.tracking_number,
       platform: projected.platform,
+      weightOz: projected.weight_oz,
+      assigneeTech: projected.assignee_tech,
+      assigneePacker: projected.assignee_packer,
     };
   },
   searchValues(view) {
@@ -91,6 +98,9 @@ export const ORDER_IMPORT_DESCRIPTOR: TableImportDescriptor<
       view.customerName,
       view.trackingNumber,
       view.platform,
+      view.weightOz,
+      view.assigneeTech,
+      view.assigneePacker,
     ];
   },
   async commit({ rows, mapping }) {

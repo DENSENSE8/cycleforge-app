@@ -4,7 +4,7 @@
  * Pipeline purchasing-source filter — All / Zoho / eBay / Amazon / Manual.
  *
  * Lives in the Band-3 search field trailing cluster (`trailingSuffix`, after
- * paste) via {@link FilterMenu} `density="field"`.
+ * paste) via {@link FilterMenu}, beside the field rather than inside it.
  *
  * Default is All (`?inbound=` omitted). Sources write `?inbound=<slug>`.
  */
@@ -39,7 +39,7 @@ function sourceLabel(source: IncomingSource): string {
 
 /**
  * The source facet as MENU ROWS, for the Pipeline find field's ONE refine
- * funnel. Pipeline used to seat three `density="field"` popovers side by side —
+ * funnel. Pipeline used to seat three in-field popovers side by side —
  * Source, Kind and Filters — each painting the SAME funnel glyph, so the field
  * showed three identical marks and none of them said which was which. A facet
  * is a group inside the one funnel, never a second funnel beside it.

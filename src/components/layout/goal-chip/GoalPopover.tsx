@@ -9,6 +9,7 @@ import { TaskList } from './TaskList';
 import { TaskListMenu } from './TaskListMenu';
 import { NextWorkOrderRow } from './NextWorkOrderRow';
 import { GoalPanelHomeCta } from './GoalPanelHomeCta';
+import { ThrowTaskRow } from './ThrowTaskRow';
 import type { NextWorkOrder } from './useNextWorkOrder';
 import type { HeaderGoalChipController } from './useHeaderGoalChip';
 
@@ -17,13 +18,13 @@ type Tone = ReturnType<typeof toneFor>;
 interface ChipCount { value: number; total: number; unit: string }
 
 /**
- * The pace-and-next panel: next work order → goal header → station switcher →
- * the 3 mode panels, closing on the one door out: Home.
+ * The pace-and-next panel: throw → next work order → goal header → station
+ * switcher → the 3 mode panels, closing on the one door out: Home.
  *
- * **The work order leads.** It is the one row here that is a *thing to do next*;
- * everything under it is *how today is going*. An operator opening this button
- * mid-shift is answering the first question far more often than the second, and
- * the goal header directly beneath keeps the pacing a glance away.
+ * **Throw is a verb, the work order is a fact.** Throw opens its own panel
+ * (scan · pick colleague · send) and is not "Add a task" on the personal
+ * to-do list. The work order is the one row here that is a *thing to do next*;
+ * everything under it is *how today is going*.
  */
 export function GoalPopover({
   g,
@@ -32,6 +33,7 @@ export function GoalPopover({
   chipCount,
   hasSwitch,
   workOrder,
+  canThrow,
   onNavigate,
   surface,
 }: {
@@ -42,6 +44,8 @@ export function GoalPopover({
   hasSwitch: boolean;
   /** Absent when there is none, or when the operator is already on its record. */
   workOrder?: NextWorkOrder | null;
+  /** `work_orders.claim` — same gate as `POST /api/tasks`. */
+  canThrow?: boolean;
   onNavigate?: () => void;
   /**
    * WHICH host is rendering this — required, no default. `popover` is the
@@ -64,6 +68,7 @@ export function GoalPopover({
       transition={{ type: 'spring', stiffness: 420, damping: 32 }}
       className={touch ? 'w-full' : GOAL_PANEL_SHELL_CLASS}
     >
+      {canThrow ? <ThrowTaskRow onOpen={onNavigate} /> : null}
       {workOrder ? <NextWorkOrderRow top={workOrder} onNavigate={onNavigate} /> : null}
 
       {/* header: title + Switch (only when there are secondary stations) */}

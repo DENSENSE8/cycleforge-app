@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { FbaBoardItem } from '@/components/fba/FbaBoardTable';
+import type { FbaBoardItem } from '@/lib/fba/types';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { useFbaDragAndDrop } from '@/components/fba/sidebar/useFbaDragAndDrop';
 import type { StationTheme } from '@/utils/staff-colors';

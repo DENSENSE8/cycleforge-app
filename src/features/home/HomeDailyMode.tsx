@@ -44,10 +44,11 @@ import {
 import { useDailyChecks, useItemActions, useToggleCheck } from './useDailyChecks';
 
 /**
- * The day strip. `checks` (open) is the default, so it IS the unfiltered list
- * and lights no tab — see {@link DataTable}.
+ * The one status refinement — lives in the filter control (operator ruling
+ * 2026-08-30: selection tabs are filters). `checks` (open) is the default, so
+ * it IS the unfiltered list and no option is active for it.
  */
-const DAILY_STATUS_TABS = [{ id: 'completed', label: 'Completed' }] as const;
+const DAILY_STATUS_OPTIONS = [{ id: 'completed', label: 'Completed' }] as const;
 
 export function HomeDailyMode() {
   const router = useRouter();
@@ -215,9 +216,11 @@ export function HomeDailyMode() {
         onSortChange={setSort}
         loading={isLoading}
         search={{ value: query, onChange: setQuery, placeholder: 'Filter checks…' }}
-        tabs={DAILY_STATUS_TABS}
-        activeTab={status === 'done' ? 'completed' : undefined}
-        onTabChange={(id) => setStatus(id === 'completed' && status !== 'done' ? 'done' : 'open')}
+        filter={{
+          options: DAILY_STATUS_OPTIONS.map((o) => ({ ...o, active: status === 'done' })),
+          onToggle: (id) => setStatus(id === 'completed' && status !== 'done' ? 'done' : 'open'),
+          onClearAll: () => setStatus('open'),
+        }}
         emptyMessage={
           isError
             ? 'Could not load the checklist.'

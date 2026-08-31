@@ -29,7 +29,6 @@ import { OrderStationIdentity } from '@/components/station/order';
 import { EntityStationPane } from '@/components/station/entity';
 import { buildSupportOrdersDisplayIndexRows } from '@/components/support/orders/support-orders-display-index';
 import { SupportContextHub } from '@/components/support/context';
-import { ShippedDetailsPanelContent } from '@/components/shipped/ShippedDetailsPanelContent';
 import { ShippedPanelEditorDock } from '@/components/shipped/details-panel/ShippedPanelEditorDock';
 import {
   useShippedDetailState,
@@ -76,20 +75,9 @@ function SupportOrderFocus({
 
   const {
     shipped,
-    orderNumber,
-    setOrderNumber,
-    itemNumber,
-    setItemNumber,
     shippingTrackingNumber,
-    setShippingTrackingNumber,
     isOutOfStock,
-    shipByDate,
-    setShipByDate,
-    isSavingInlineFields,
     isSavingOutOfStock,
-    isSavingShipByDate,
-    saveInlineFields,
-    saveShipByDate,
     handleSaveOutOfStock,
   } = useShippedDetailState(order, onReload);
 
@@ -114,62 +102,6 @@ function SupportOrderFocus({
       tracking: String(shipped.shipping_tracking_number || '').trim() || undefined,
     }),
     [shipped.id, shipped.order_id, shipped.shipping_tracking_number],
-  );
-
-  /** Centre stays ops-flow only — the order's own editable fields, never a tab strip. */
-  const orderContent = useMemo(
-    () => (
-      <div className="space-y-3 pb-4">
-        <ShippedDetailsPanelContent
-          shipped={shipped}
-          durationData={{}}
-          onUpdate={onReload}
-          showPackingPhotos
-          showSerialNumber
-          onReportIssue={
-            canCreateTicket
-              ? () => openCreateTicket({ type: 'order', orderId: Number(shipped.id) })
-              : undefined
-          }
-          editableShippingFields={{
-            orderNumber,
-            itemNumber,
-            trackingNumber: shippingTrackingNumber,
-            shipByDate,
-            isSaving: isSavingInlineFields,
-            isSavingShipByDate,
-            onOrderNumberChange: setOrderNumber,
-            onItemNumberChange: setItemNumber,
-            onTrackingNumberChange: setShippingTrackingNumber,
-            onShipByDateChange: setShipByDate,
-            onBlur: () => {
-              void saveInlineFields();
-            },
-            onShipByDateBlur: () => {
-              void saveShipByDate(shipByDate);
-            },
-          }}
-        />
-      </div>
-    ),
-    [
-      shipped,
-      onReload,
-      orderNumber,
-      itemNumber,
-      shippingTrackingNumber,
-      shipByDate,
-      isSavingInlineFields,
-      isSavingShipByDate,
-      setOrderNumber,
-      setItemNumber,
-      setShippingTrackingNumber,
-      setShipByDate,
-      saveInlineFields,
-      saveShipByDate,
-      canCreateTicket,
-      openCreateTicket,
-    ],
   );
 
   /**
@@ -280,7 +212,10 @@ function SupportOrderFocus({
             </HoverTooltip>
           </StationMoreDetails>
         }
-        centre={orderContent}
+        /* The order dossier stack was retired 2026-08-30; this bench keeps its
+           identity band, editor dock and Displays leaves until a replacement
+           centre lands. */
+        centre={null}
         scrollClassName="pb-28"
         dock={
           <ShippedPanelEditorDock

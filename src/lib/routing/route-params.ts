@@ -222,6 +222,8 @@ export const SHARED_OWNED_KEYS: Readonly<Record<string, string>> = {
   c1: 'Compare pane-1 recipe; shares its owner set with `clayout`.',
   c2: 'Compare pane-2 recipe; shares its owner set with `clayout`.',
   c3: 'Compare pane-3 recipe; shares its owner set with `clayout`.',
+  composerMode:
+    'Station composer destination (unbox|ticket). Same question on Unbox, Arrival, and Testing — independent scan stations that cannot both be current. Legacy `label` aliases to unbox.',
 };
 
 /** One route's param contract. */

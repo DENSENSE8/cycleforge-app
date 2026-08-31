@@ -342,15 +342,40 @@ export function useAssignTicket() {
   });
 }
 
+function applyTicketPatchToCaches(qc: QueryClient, id: number, patch: TicketPatch) {
+  qc.setQueryData<ZendeskTicket>(zendeskKeys.ticket(id), (old) =>
+    old ? { ...old, ...patch } : old,
+  );
+  qc.setQueryData<ZendeskTicketBundle>(zendeskKeys.bundle(id), (old) =>
+    old ? { ...old, ticket: { ...old.ticket, ...patch } } : old,
+  );
+}
+
+function writeTicketToCaches(qc: QueryClient, id: number, ticket: ZendeskTicket) {
+  qc.setQueryData(zendeskKeys.ticket(id), ticket);
+  qc.setQueryData<ZendeskTicketBundle>(zendeskKeys.bundle(id), (old) =>
+    old ? { ...old, ticket: { ...old.ticket, ...ticket } } : old,
+  );
+}
+
 interface UpdateVars {
   id: number;
   patch: TicketPatch;
 }
 
-/** Optimistically patch status/priority/assignee across the detail + list caches. */
+/** Optimistically patch status/priority/assignee/subject across detail + bundle + list. */
 export function useUpdateTicket() {
   const qc = useQueryClient();
-  return useMutation<ZendeskTicket, HttpError, UpdateVars, { prevDetail?: ZendeskTicket; listSnaps: [readonly unknown[], unknown][] }>({
+  return useMutation<
+    ZendeskTicket,
+    HttpError,
+    UpdateVars,
+    {
+      prevDetail?: ZendeskTicket;
+      prevBundle?: ZendeskTicketBundle;
+      listSnaps: [readonly unknown[], unknown][];
+    }
+  >({
     mutationFn: async ({ id, patch }) => {
       const res = await fetch(`/api/zendesk/tickets/${id}`, {
         method: 'PATCH',
@@ -363,28 +388,40 @@ export function useUpdateTicket() {
     },
     onMutate: async ({ id, patch }) => {
       await qc.cancelQueries({ queryKey: zendeskKeys.ticket(id) });
+      await qc.cancelQueries({ queryKey: zendeskKeys.bundle(id) });
       await qc.cancelQueries({ queryKey: ['zendesk', 'tickets'] });
       const prevDetail = qc.getQueryData<ZendeskTicket>(zendeskKeys.ticket(id));
+      const prevBundle = qc.getQueryData<ZendeskTicketBundle>(zendeskKeys.bundle(id));
       const listSnaps = qc.getQueriesData({ queryKey: ['zendesk', 'tickets'] });
-      if (prevDetail) qc.setQueryData<ZendeskTicket>(zendeskKeys.ticket(id), { ...prevDetail, ...patch });
+      applyTicketPatchToCaches(qc, id, patch);
+      if (typeof patch.subject === 'string') {
+        qc.setQueryData(['zendesk-ticket-subject', id], patch.subject);
+      }
       qc.setQueriesData<TicketListResult>({ queryKey: ['zendesk', 'tickets'] }, (old) => {
         if (!old?.tickets) return old;
         return { ...old, tickets: old.tickets.map((t) => (t.id === id ? { ...t, ...patch } : t)) };
       });
-      return { prevDetail, listSnaps };
+      return { prevDetail, prevBundle, listSnaps };
     },
     onError: (_err, { id }, ctx) => {
       if (ctx?.prevDetail) qc.setQueryData(zendeskKeys.ticket(id), ctx.prevDetail);
+      if (ctx?.prevBundle) qc.setQueryData(zendeskKeys.bundle(id), ctx.prevBundle);
       ctx?.listSnaps?.forEach(([key, data]) => qc.setQueryData(key, data));
       toast.error('Could not update the ticket');
     },
-    onSuccess: () => {
+    onSuccess: (ticket, { id }) => {
+      writeTicketToCaches(qc, id, ticket);
       toast.success('Ticket updated');
     },
-    onSettled: (_d, _e, { id }) => {
+    onSettled: (_d, _e, { id, patch }) => {
+      void qc.invalidateQueries({ queryKey: ['zendesk', 'tickets'] });
+      if (typeof patch.subject === 'string') {
+        // The PATCH body already wrote ticket + bundle. Refetching the 90s
+        // Redis bundle here is what snapped the title back to the old subject.
+        return;
+      }
       void qc.invalidateQueries({ queryKey: zendeskKeys.ticket(id) });
       void qc.invalidateQueries({ queryKey: zendeskKeys.bundle(id) });
-      void qc.invalidateQueries({ queryKey: ['zendesk', 'tickets'] });
     },
   });
 }

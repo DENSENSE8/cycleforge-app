@@ -1,21 +1,19 @@
 import "./globals.css";
-import Providers from "../components/Providers";
-import dynamic from "next/dynamic";
-
 /**
- * The warehouse client, code-split. A STATIC import here would put every
- * provider in the bundle of every route this layout renders — including the
- * signed-out `/signin` card, which renders none of them. This is a code-split,
- * not `ssr: false`: the shell still server-renders.
+ * The shell branch (public chrome vs the warehouse client) lives in a CLIENT
+ * component on purpose: `next/dynamic` called from a Server Component does not
+ * create a lazy client boundary under Turbopack, so the warehouse chunk shipped
+ * to `/signin` even though the public branch rendered. See `AppShellSwitch`.
  */
-const WarehouseShell = dynamic(() =>
-  import("@/components/layout/WarehouseShell").then((m) => m.WarehouseShell),
-);
+import { AppShellSwitch } from "@/components/layout/AppShellSwitch";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme/theme";
 import { BOOT_SPLASH_SCRIPT } from "@/lib/boot-splash-script";
 import { designTokenStyleText } from '@/styles/tokens';
 import { themePaletteStyleText } from '@/design-system/themes/registry';
-import { ReducedMotionProvider } from "../components/providers/ReducedMotionProvider";
+// NOTE: `ReducedMotionProvider` is deliberately NOT imported here. It renders
+// `MotionConfig`, so a static import in this file shipped the framer runtime
+// (~104KB gz) to every route, public chrome included. It now lives inside
+// `WarehouseShell`, which is already behind `next/dynamic` — see the note there.
 import { getInitialAuthUser } from "@/lib/auth/server-session";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -100,8 +98,15 @@ export default async function RootLayout({
                 <meta name="apple-mobile-web-app-title" content={PRODUCT_NAME} />
                 <meta name="theme-color" content="#ffffff" />
                 <meta name="mobile-web-app-capable" content="yes" />
-                {/* Viewport — cover notch, prevent zoom on input focus */}
-                <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1" />
+                {/* Viewport — cover the notch. NO `maximum-scale`: pinning it
+                    to 1 disables pinch-zoom entirely, which fails WCAG 1.4.4
+                    (Resize Text) and axe `meta-viewport` on EVERY route — 10
+                    points of the Accessibility score app-wide. It was there to
+                    stop iOS auto-zooming on input focus, but that is already
+                    handled properly by the `pointer: coarse` 16px font floor in
+                    globals.css (iOS only zooms a field under 16px), so the lock
+                    was redundant belt-and-braces that cost real users zoom. */}
+                <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
                 <style id="app-design-tokens">{designTokenStyleText}</style>
                 {/* Generated theme palettes (light/dark/mono/slate + staff
                     accents) from the theme registry — the single owner of every
@@ -130,36 +135,15 @@ export default async function RootLayout({
                   vs dvh) and clipped the mobile header when nested shells also used
                   100dvh / h-full. Safe areas live on mobile chrome instead.
                 */}
-                {/*
-                  App-wide reduced-motion floor. framer itself honors
-                  prefers-reduced-motion for every motion.* below this point, so
-                  compliance is the default rather than a per-call-site opt-in.
-                  Wraps InstallPrompt too — it animates and sits outside Providers.
-                */}
-                <ReducedMotionProvider>
-                {publicChrome ? (
-                  /*
-                    PUBLIC CHROME — signed-out entry surfaces only. `Providers`
-                    is the floor the card genuinely uses (query client, toaster,
-                    confirm host, tooltips); the whole warehouse client below is
-                    skipped, and because it is behind `next/dynamic` it is not
-                    downloaded either. The `<div id="app-root">` box is identical,
-                    so the page's own layout is unchanged.
-                  */
-                  <div id="app-root" className="fixed inset-0 flex min-h-0 flex-col overflow-hidden">
-                    <Providers publicChrome>{children}</Providers>
-                  </div>
-                ) : (
-                  <WarehouseShell
-                    initialUser={initialUser}
-                    kioskHost={kioskHost}
-                    mobileTree={mobileTree}
-                    shellSeed={shellSeed}
-                  >
-                    {children}
-                  </WarehouseShell>
-                )}
-                </ReducedMotionProvider>
+                <AppShellSwitch
+                  publicChrome={publicChrome}
+                  initialUser={initialUser}
+                  kioskHost={kioskHost}
+                  mobileTree={mobileTree}
+                  shellSeed={shellSeed}
+                >
+                  {children}
+                </AppShellSwitch>
                 <DeferredWebTelemetry />
                 <PaintTimingHud />
             </body>

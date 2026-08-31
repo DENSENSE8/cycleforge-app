@@ -11,7 +11,7 @@ import { Copy, X } from '@/components/Icons';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
-import { ORDERS_QUEUE_COLUMNS } from '@/lib/dashboard-order-row-layout';
+import { STATION_HISTORY_COLUMNS } from '@/components/station/station-history-columns';
 import { toTsvBlock } from '@/lib/station/format-station-copy-row';
 import { getStationSourceRecord, type StationSourceKind } from '@/lib/station/record-to-queue-row';
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
@@ -117,7 +117,9 @@ export function StationHistoryTable<T>({
 
   // The canonical model IS what paints — per-staff hide/show went with the
   // column-display rail, so there is no delta between the model and the grid.
-  const visibleColumns = ORDERS_QUEUE_COLUMNS;
+  // Bench-owned flat model (the Orders desk is slot-materialized now); dies
+  // with the station-history kill item.
+  const visibleColumns = STATION_HISTORY_COLUMNS;
 
   // Reconnect-only broad invalidate (the hot path is Ably/local cache patches).
   useStationReconnectSync();

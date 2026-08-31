@@ -458,6 +458,7 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
     hideNoTestLines = false,
     activeSerialActions: activeSerialActionsProp,
     dockOwnsCapture = false,
+    lineCollapse,
   } = props;
   // Legacy callers tied interactivity to showSerialScan; Arrival passes
   // readOnly from editLines so unit capture can stay off independently.
@@ -589,6 +590,7 @@ export function UnmatchedAccordionSurface(props: UnmatchedItemsSectionProps) {
           suppressHeader
           readOnly={readOnly}
           unitsChrome={unitsChrome}
+          lineCollapse={lineCollapse}
           activeConditionOverride={
             unitsChrome ? (resolvedActiveLine?.condition_grade ?? null) : undefined
           }

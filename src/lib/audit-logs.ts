@@ -541,6 +541,13 @@ export const AUDIT_ACTION = {
   ORDER_SUBSTITUTE_UNIT:   'order.substitute_unit',
   ORDER_AMENDMENT_APPROVE: 'order.amendment.approve',
   ORDER_AMENDMENT_REJECT:  'order.amendment.reject',
+  /**
+   * Caged → released (To-ship intake gate, 2026-08-30c). RELEASE is the moment
+   * an order becomes floor work, so it records WHO opened the cage and the
+   * G1/G2/G3 snapshot that was green when they did.
+   */
+  ORDER_CAGE: 'order.cage',
+  ORDER_RELEASE: 'order.release',
   /** Ready-to-pack packing-station place / move / clear (order_pack_placements). */
   ORDER_PACK_PLACE: 'order.pack_place',
   ORDER_PACK_MOVE: 'order.pack_move',

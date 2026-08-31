@@ -8,7 +8,7 @@
 
 import { useMemo, useState } from 'react';
 import { getCurrentPSTDateKey } from '@/utils/date';
-import type { FbaBoardItem } from '@/components/fba/FbaBoardTable';
+import type { FbaBoardItem } from '@/lib/fba/types';
 import type { FbaMode } from '@/lib/fba/fba-modes';
 import { getWeekRange, isItemInWeek } from './fba-page-helpers';
 

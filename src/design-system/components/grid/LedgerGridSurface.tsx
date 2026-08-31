@@ -70,6 +70,16 @@ interface LedgerGridSurfaceProps<Row, K extends string, C extends LedgerGridColu
     group: RowGroup<Row>,
     baseStripeIndex: number,
     api: { columns: readonly C[] },
+    /**
+     * Absolute ARIA index of the group's FIRST leaf, same stream as
+     * `renderRow`'s. Dropping it is not cosmetic: a leaf row decides whether it
+     * is inside a table from `rowIndex != null`, so a grouped body that never
+     * receives one renders every row as `role="checkbox"` instead of
+     * `role="row"` — a `role="table"` with no rows at all, and the
+     * `aria-required-children` failure that cost the To-ship desk its
+     * Accessibility score.
+     */
+    rowIndex?: number,
   ) => ReactNode;
   /**
    * `rowIndex` is the absolute ARIA index across the flattened stream — Orders
@@ -276,7 +286,9 @@ export function LedgerGridSurface<Row, K extends string, C extends LedgerGridCol
           bodyRef={scrollRef as RefObject<HTMLDivElement> | undefined}
           orderGroupsByDate={orderGroupsByDate}
           columnHeader={renderColumnHeader(headerApi)}
-          renderGroup={(group, baseStripeIndex) => renderGroup(group, baseStripeIndex, rowApi)}
+          renderGroup={(group, baseStripeIndex, rowIndex) =>
+            renderGroup(group, baseStripeIndex, rowApi, rowIndex)
+          }
           renderRow={(row, stripeIndex, rowIndex) =>
             renderRow(row, stripeIndex, rowApi, rowIndex)
           }

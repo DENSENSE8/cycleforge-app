@@ -51,6 +51,20 @@
  * controls, one job. There is exactly one filter control and it lives outside
  * the field.
  *
+ * ## Selection tabs are FILTERS (operator ruling 2026-08-30)
+ *
+ * The operator overruled the old "a dropdown never replaces the strip" law in
+ * writing: a bottom tab whose only job was narrowing the SAME row set
+ * (To-ship's triage facets, Pickup's statuses, My Day's lanes, Tracking
+ * Exceptions' states, Daily's Completed) is a filter wearing tab chrome, and
+ * it now lives in the ONE filter control — and so do dataset-swapping mode
+ * options where the operator ordered the strip gone entirely (To-ship's
+ * `caged`, the FBA desk's Ready/Plan/Shipped): the URL contract is unchanged,
+ * only the control moved. {@link DataTableProps.tabs} remains ONLY for the
+ * strips not yet folded (Review's Packed/Shipped/History, Catalog's platform
+ * sources, the station History bodies). Do not add a row-narrowing tab here
+ * again.
+ *
  * ## "All" is not a tab
  *
  * `all` is the absence of a filter, not a filter: the unfiltered list is what
@@ -67,10 +81,17 @@
  * the interaction budget (`AGENTS.md`).
  */
 
-import { useCallback, useMemo, useState, type ReactNode, type RefObject } from 'react';
+import { Fragment, useCallback, useMemo, useState, type ReactNode, type RefObject } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Filter } from '@/components/Icons';
+import {
+  Popover as FieldsPopover,
+  PopoverContent as FieldsPopoverContent,
+  PopoverTrigger as FieldsPopoverTrigger,
+} from '@/design-system/primitives/radix-popover';
+import { Check, ChevronDown, ChevronUp, Filter, Plus } from '@/components/Icons';
+import type { SlotFieldOption } from '@/lib/tables/layout-edit';
 import { SearchField } from '@/design-system/primitives/SearchField';
+import { DataTableFullscreenToggle } from '@/components/tables/DataTableFullscreenToggle';
 import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
 import { LedgerGridColumnHeader } from '@/design-system/components/grid/LedgerGridColumnHeader';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid';
@@ -109,6 +130,39 @@ export interface DataTableSearch {
   placeholder?: string;
 }
 
+
+/**
+ * The Fields picker, as DATA — the slot-layout half of the toolbar.
+ *
+ * A surface whose columns are materialized from a `SlotLayout`
+ * (`src/lib/tables/`) passes its catalog options + a toggle; the menu itself
+ * is drawn once, here, like the filter control beside it. No `ReactNode`
+ * slots: what the picker lists and what a click does are both data, so thirty
+ * desks cannot each draw a different picker.
+ */
+export interface DataTableFieldsMenuData {
+  options: readonly SlotFieldOption[];
+  /** Bind (unbound row) or unbind (bound row) — one gesture. */
+  onToggle: (fieldId: string) => void;
+  /**
+   * Present ⇒ bound rows carry ↑/↓ arrows that rewrite the band's BINDING
+   * order (display order = binding order). One click per step, inside the
+   * already-open popover — no drag.
+   */
+  onMove?: (fieldId: string, direction: 'up' | 'down') => void;
+  /** Locked identity row copy (e.g. "Order"). */
+  identityLabel?: string;
+  /**
+   * Band headings. Defaults fit the compound morph ("Status columns" /
+   * "Under the title"); a sheet mount, whose subtitle bindings open real
+   * columns, names them for what they are.
+   */
+  bandLabels?: { status?: string; subtitle?: string };
+  /** Present ⇒ admin: offers "Save as organization default" with confirm. */
+  onSaveAsOrgDefault?: () => void;
+  /** Present ⇒ a personal override exists; offers reset to the shared default. */
+  onResetToDefault?: () => void;
+}
 
 /**
  * How a surface's rows copy out. Declared as DATA so the copy control can act
@@ -157,6 +211,9 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
     onToggle: (id: string) => void;
     onClearAll: () => void;
   };
+
+  // ── The Fields picker (data, not a node) — slot-layout surfaces only ───────
+  fields?: DataTableFieldsMenuData;
 
   // ── Bottom strip ───────────────────────────────────────────────────────────
   tabs?: readonly DataTableTab[];
@@ -207,6 +264,13 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
     group: RowGroup<Row>,
     baseStripeIndex: number,
     api: { columns: readonly C[] },
+    /**
+     * Absolute ARIA index of the group's first leaf — the same stream
+     * `renderRow` gets. Grouped bodies must forward it: a leaf row reads
+     * `rowIndex != null` to know it is inside a table, so dropping it makes
+     * every grouped row claim `role="checkbox"` instead of `role="row"`.
+     */
+    rowIndex?: number,
   ) => ReactNode;
 
   /** Runtime label override (Unbox `stage` → Unboxed / Scanned / Tested). */
@@ -237,7 +301,13 @@ function toTsv(
 }
 
 /** The single filter control. Lit and counted — never a bare dot (WCAG 1.4.1). */
-function DataTableFilterMenu({
+/**
+ * EXPORTED for the one sanctioned off-table use: a desk body that is not yet
+ * binding-backed (FBA's Shipped list) still owes its operators the same mode
+ * filter the sibling bodies carry — one control, drawn from one
+ * implementation, never a desk-local funnel fork.
+ */
+export function DataTableFilterMenu({
   options,
   onToggle,
   onClearAll,
@@ -331,6 +401,212 @@ function DataTableFilterMenu({
   );
 }
 
+/**
+ * The **+** Fields picker — bind/unbind catalog facts into the surface's slot
+ * bands, via the house shadcn Popover (`@/design-system/primitives/radix-popover`).
+ *
+ * One click binds or unbinds (open + → click → done, inside the interaction
+ * budget); binding ORDER is click order — the layout stores an ordered array,
+ * so an org that wants `qty · condition · note` under the title binds them in
+ * that order. The org capture is deliberately TWO clicks (button → confirm):
+ * it changes what every staffer in the org sees, which earns the one extra
+ * confirmation the budget allows for the primary action.
+ */
+function DataTableFieldsMenu({
+  options,
+  onToggle,
+  onMove,
+  identityLabel,
+  bandLabels,
+  onSaveAsOrgDefault,
+  onResetToDefault,
+}: DataTableFieldsMenuData) {
+  const [open, setOpen] = useState(false);
+  const [confirmingOrgSave, setConfirmingOrgSave] = useState(false);
+  const statusOptions = options.filter((o) => o.band === 'status');
+  const subtitleOptions = options.filter((o) => o.band === 'subtitle');
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next) setConfirmingOrgSave(false);
+  };
+
+  // ↑/↓ on a bound row rewrites its band's BINDING order — display order IS
+  // binding order, so this is the reorder affordance the append-only bind
+  // gesture lacked (unbind/rebind is not a reorder). Rendered as siblings of
+  // the toggle, never inside it: nested buttons are invalid DOM.
+  const renderMoveArrow = (option: SlotFieldOption, direction: 'up' | 'down') => {
+    const enabled = direction === 'up' ? option.canMoveUp : option.canMoveDown;
+    const Icon = direction === 'up' ? ChevronUp : ChevronDown;
+    return (
+      <button
+        type="button"
+        disabled={!enabled}
+        onClick={() => onMove?.(option.fieldId, direction)}
+        data-testid={`data-table-field-${option.fieldId}-${direction}`}
+        aria-label={`Move ${option.label} ${direction}`}
+        className={cn(
+          'ds-raw-button inline-flex h-5 w-5 shrink-0 items-center justify-center rounded',
+          focusRing('control'),
+          enabled
+            ? 'text-text-muted hover:bg-surface-hover hover:text-text-default'
+            : 'cursor-default text-text-faint opacity-40',
+        )}
+      >
+        <Icon className="h-3.5 w-3.5" />
+      </button>
+    );
+  };
+
+  const renderOption = (option: SlotFieldOption) => {
+    // Arrows appear only when the band actually has an order to edit.
+    const movable = Boolean(onMove && option.bound && (option.canMoveUp || option.canMoveDown));
+    const toggle = (
+      <button
+        type="button"
+        disabled={Boolean(option.disabledReason)}
+        title={option.disabledReason}
+        onClick={() => onToggle(option.fieldId)}
+        data-testid={`data-table-field-${option.fieldId}`}
+        data-bound={option.bound ? '' : undefined}
+        // A bind/unbind row is a TOGGLE — without pressed state a screen reader
+        // announces six identical buttons and the check glyph says nothing.
+        aria-pressed={option.bound}
+        className={cn(
+          'ds-raw-button flex w-full min-w-0 flex-1 items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-role-caption',
+          focusRing('control'),
+          option.bound
+            ? 'bg-surface-sunken font-semibold text-text-default'
+            : 'text-text-soft hover:bg-surface-hover hover:text-text-default',
+          option.disabledReason && 'cursor-not-allowed opacity-50',
+        )}
+      >
+        <span className="truncate">{option.label}</span>
+        {option.bound ? <Check className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
+      </button>
+    );
+    if (!movable) {
+      return <Fragment key={option.fieldId}>{toggle}</Fragment>;
+    }
+    return (
+      <div key={option.fieldId} className="flex items-center gap-0.5">
+        {toggle}
+        {renderMoveArrow(option, 'up')}
+        {renderMoveArrow(option, 'down')}
+      </div>
+    );
+  };
+
+  const bandHeading = (label: string) => (
+    <p className="px-2 pb-0.5 pt-1.5 text-role-micro font-semibold uppercase tracking-widest text-text-faint">
+      {label}
+    </p>
+  );
+
+  const fullBand = options.find((o) => o.disabledReason)?.disabledReason;
+
+  return (
+    <FieldsPopover open={open} onOpenChange={handleOpenChange}>
+      <FieldsPopoverTrigger asChild>
+        <button
+          type="button"
+          data-testid="data-table-fields"
+          aria-label="Add or remove columns"
+          aria-expanded={open}
+          className={cn(
+            'ds-raw-button inline-flex shrink-0 items-center justify-center gap-1 px-1.5 text-role-caption',
+            'transition-colors duration-100 ease-out',
+            PRIMARY_CHROME_ROW_FACE,
+            cornerClass('flush'),
+            focusRing('control'),
+            'text-text-muted hover:bg-surface-hover hover:text-text-default',
+          )}
+        >
+          <Plus className="h-3.5 w-3.5 shrink-0" />
+        </button>
+      </FieldsPopoverTrigger>
+      <FieldsPopoverContent
+        align="start"
+        sideOffset={2}
+        data-testid="data-table-fields-menu"
+        className="w-64 overflow-hidden p-0.5"
+      >
+          {identityLabel ? (
+            <p className="px-2 py-1.5 text-role-caption text-text-faint">
+              {identityLabel} — identity, always shown
+            </p>
+          ) : null}
+          {statusOptions.length > 0 ? (
+            <>
+              {bandHeading(bandLabels?.status ?? 'Status columns')}
+              {statusOptions.map(renderOption)}
+            </>
+          ) : null}
+          {subtitleOptions.length > 0 ? (
+            <>
+              {bandHeading(bandLabels?.subtitle ?? 'Under the title')}
+              {subtitleOptions.map(renderOption)}
+            </>
+          ) : null}
+          {fullBand ? (
+            <p
+              data-testid="data-table-fields-limit"
+              className="px-2 py-1.5 text-role-micro text-text-faint"
+            >
+              {fullBand}
+            </p>
+          ) : null}
+          {onResetToDefault || onSaveAsOrgDefault ? (
+            <div className="my-0.5 h-px bg-border-soft" aria-hidden />
+          ) : null}
+          {onResetToDefault ? (
+            <button
+              type="button"
+              data-testid="data-table-fields-reset"
+              onClick={() => {
+                onResetToDefault();
+                setOpen(false);
+              }}
+              className={cn(
+                'ds-raw-button w-full rounded px-2 py-1.5 text-left text-role-caption text-text-soft',
+                focusRing('control'),
+                'hover:bg-surface-hover hover:text-text-default',
+              )}
+            >
+              Reset to shared default
+            </button>
+          ) : null}
+          {onSaveAsOrgDefault ? (
+            <button
+              type="button"
+              data-testid="data-table-fields-save-org"
+              onClick={() => {
+                if (!confirmingOrgSave) {
+                  setConfirmingOrgSave(true);
+                  return;
+                }
+                onSaveAsOrgDefault();
+                setConfirmingOrgSave(false);
+                setOpen(false);
+              }}
+              className={cn(
+                'ds-raw-button w-full rounded px-2 py-1.5 text-left text-role-caption',
+                focusRing('control'),
+                confirmingOrgSave
+                  ? 'bg-blue-600 font-semibold text-white hover:bg-blue-600'
+                  : 'text-text-soft hover:bg-surface-hover hover:text-text-default',
+              )}
+            >
+              {confirmingOrgSave
+                ? 'Confirm: set for the whole organization'
+                : 'Save as organization default'}
+            </button>
+          ) : null}
+      </FieldsPopoverContent>
+    </FieldsPopover>
+  );
+}
+
 export type { DataTableTab, DataTableTabStrip };
 
 export function DataTable<Row, K extends string, C extends LedgerGridColumnModel>({
@@ -346,6 +622,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   searchEmptyState,
   search,
   filter,
+  fields,
   tabs,
   activeTab,
   onTabChange,
@@ -435,6 +712,15 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           fillHost
         />
         {filter ? <DataTableFilterMenu {...filter} /> : null}
+        {fields && binding.definition.capabilities.fieldsMenu ? (
+          <DataTableFieldsMenu {...fields} />
+        ) : null}
+        {/*
+          Fullscreen sits at the FAR RIGHT of this row (operator ruling
+          2026-08-30). `ml-auto` rather than a spacer div, and it renders
+          nothing at all off a desk stage — see `DataTableFullscreenToggle`.
+        */}
+        <DataTableFullscreenToggle className="ml-auto" />
       </div>
 
       {/* ── The grid ───────────────────────────────────────────────────────── */}

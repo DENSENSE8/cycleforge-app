@@ -197,7 +197,7 @@ export function SerialCard({
 
   // Embedded (Unbox PO accordion): one joined flush bar — condition · SERIAL ·
   // trailing, gap-0, square cells. Soft divide-x cell seams + top/bottom
-  // hairlines separating the bar from the PO meta above and Show label below
+  // hairlines separating the bar from the PO meta above and the Label row below
   // (unless a flush leading shell already owns those rules). Standalone keeps
   // soft gaps.
   const rowClass = embedded

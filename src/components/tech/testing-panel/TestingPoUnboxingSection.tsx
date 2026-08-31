@@ -3,6 +3,7 @@
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { TestingController } from './testing-panel-types';
 import { TestingPoItemsSection } from './TestingPoItemsSection';
+import type { LineCollapseController } from '@/components/station/collapse';
 
 /**
  * Testing centre PO line list — the carton's lines (`TestingPoItemsSection`).
@@ -20,6 +21,7 @@ export function TestingPoUnboxingSection({
   c,
   suppressItemsHeader = false,
   onViewAllUnits,
+  lineCollapse,
 }: {
   row: ReceivingLineRow;
   staffId: string;
@@ -28,6 +30,8 @@ export function TestingPoUnboxingSection({
   suppressItemsHeader?: boolean;
   /** Serials-cell / edit click → open the right-edge Units Display. */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
+  /** Items-band line collapse, shared with "Collapse all" (Unbox parity). */
+  lineCollapse?: LineCollapseController;
 }) {
   return (
     <div className="min-w-0">
@@ -37,6 +41,7 @@ export function TestingPoUnboxingSection({
         c={c}
         embedded
         suppressHeader={suppressItemsHeader}
+        lineCollapse={lineCollapse}
         onViewAllUnits={onViewAllUnits}
       />
     </div>

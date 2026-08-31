@@ -23,9 +23,11 @@ import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { zohoReceiptFace } from '@/lib/receiving/zoho-receipt-face';
 import { formatDateTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
-import { ReceivingChipValue } from './ReceivingChipValue';
-import { receivingDataCellClass,
-  receivingDataCellHighlightStyle, type ReceivingGridCellProps } from './receiving-grid-cell-types';
+import {
+  receivingDataCellClass,
+  receivingDataCellStyle,
+  type ReceivingGridCellProps,
+} from './receiving-grid-cell-types';
 
 /**
  * The display atom, shared by BOTH inbound grid families (Unbox/History rows
@@ -35,13 +37,10 @@ import { receivingDataCellClass,
 export function ZohoReceiptChip({
   status,
   syncedAt,
-  chip = false,
 }: {
   status: string | null | undefined;
   /** `zoho_po_mirror.last_synced_at` — when WE polled, never a transition time. */
   syncedAt?: string | null;
-  /** Column display mode is `chip`. */
-  chip?: boolean;
 }) {
   const face = zohoReceiptFace(status);
   if (!face) return <GridCellDash />;
@@ -53,16 +52,14 @@ export function ZohoReceiptChip({
   return (
     <HoverTooltip label={tip} focusable={false}>
       <span className="min-w-0">
-        <ReceivingChipValue enabled={chip}>
-          <span
-            className={cn(
-              'inset-chip rounded text-role-micro uppercase tracking-widest ring-1 ring-inset',
-              face.className,
-            )}
-          >
-            {face.label}
-          </span>
-        </ReceivingChipValue>
+        <span
+          className={cn(
+            'inset-chip rounded text-role-micro uppercase tracking-widest ring-1 ring-inset',
+            face.className,
+          )}
+        >
+          {face.label}
+        </span>
       </span>
     </HoverTooltip>
   );
@@ -72,11 +69,10 @@ export function ZohoReceiptChip({
 export function ReceivingZohoCell({ col, rule, ctx }: ReceivingGridCellProps) {
   return (
     <div data-col="zoho" className={receivingDataCellClass(col, rule, ctx)}
-      style={receivingDataCellHighlightStyle(col, ctx)}>
+      style={receivingDataCellStyle(col, ctx)}>
       <ZohoReceiptChip
         status={ctx.row.zoho_status}
         syncedAt={ctx.row.zoho_status_synced_at}
-        chip={ctx.columnDisplay?.zoho?.cell === 'chip'}
       />
     </div>
   );

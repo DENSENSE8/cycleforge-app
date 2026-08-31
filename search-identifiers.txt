@@ -1,0 +1,34 @@
+# 30 search identifiers — verified against the dev DB (org …0001)
+# 2026-08-30 10:32 · every row run through live findRecords()
+
+HIT    Order #          113-3463904-6165001                    order #12938 · Bose Wave Radio IV - Platinum Silv
+HIT    Order #          111-2155094-3973057                    order #12939 · USAV Wall Mount Brackets for White
+HIT    Order #          112-4984499-1990656                    order #12941 · USAV Wall Mount Brackets for Bose 
+HIT    Order #          114-8311884-5985002                    order #12942 · USAV Bluetooth Adapter for Bose Wa
+HIT    Order #          111-2562571-1045803                    order #12940 · USAV Wall Mount Brackets for White
+HIT    Order #          5009                                   order #12936 · Bose CineMate Interface Module for
+HIT    Tracking         9621091390006094377900383435373520     order #12939 · USAV Wall Mount Brackets for White
+HIT    Tracking         9300110990513565737132                 order #12940 · USAV Wall Mount Brackets for White
+HIT    Tracking         9400150206217895690718                 order #12935 · OEM Wireless Stereo Receiver with 
+HIT    Tracking         9434650206217278262282                 order #12937 · Replacement CD drive for Bose Musi
+MISS   Tracking         9400108106244493355031                 —
+MISS   Tracking last-8   93355031                               —
+HIT    Serial           024644912010195BC                      unit #2451 · 024644912010195BC
+HIT    Serial           024644912010195AC                      unit #2450 · 024644912010195AC
+HIT    Serial           024644923230171BC                      unit #2449 · 024644923230171BC
+HIT    Serial           070213922071007AE                      unit #2447 · 070213922071007AE
+HIT    Serial           024644922380127bc                      unit #2446 · 024644922380127bc
+HIT    SKU              00053-P-2                              sku #2439 · Bose Lifestyle V35 Home Entertainm
+HIT    SKU              00624                                  sku #2438 · HQRP 9-pin Male to 9-pin Male (M/M
+HIT    SKU              04757-B                                sku #2436 · Bose 251 Environmental Outdoor Spe
+HIT    SKU              01342                                  sku #2435 · Bose Wave Music System with Blueto
+HIT    SKU              01798                                  sku #2434 · Bose Wave Music System (Graphite G
+HIT    SKU              00980                                  sku #2433 · Wall Mount Brackets Black (Pair) f
+HIT    Carton R-id      R-52232                                receiving #52232 · R-52232
+HIT    Carton R-id      R-52231                                receiving #52231 · R-52231
+HIT    Carton R-id      R-52220                                receiving #52220 · R-52220
+HIT    Repair           REP-3365                               repair #3365 · Bose Wave® music system REPAIR SER
+MISS   Ticket           T-9735                                 —
+HIT    Repair ref       RS-0102                                repair #102 · REPAIR SERVICE  for Bose Wave® mus
+HIT    Repair ticket    #9735                                  repair #3365 · Bose Wave® music system REPAIR SER
+HIT    FBA              FBA-08/28/26                           fba #75 · FBA-08/28/26

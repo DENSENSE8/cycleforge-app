@@ -1,7 +1,7 @@
 import { DndContext, DragOverlay, closestCenter } from '@dnd-kit/core';
 import { AnimatePresence } from '@/design-system/motion';
 import { Check, ChevronUp, Loader2, Plus } from '@/components/Icons';
-import type { FbaBoardItem } from '@/components/fba/FbaBoardTable';
+import type { FbaBoardItem } from '@/lib/fba/types';
 import { FbaSelectedLineRow } from '@/components/fba/sidebar/FbaSelectedLineRow';
 import { FbaUnallocatedBucket } from '@/components/fba/sidebar/FbaUnallocatedBucket';
 import { FbaTrackingBucket } from '@/components/fba/sidebar/FbaTrackingBucket';

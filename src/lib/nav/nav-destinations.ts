@@ -39,7 +39,7 @@ export interface NavDestination {
   label: string;
   /**
    * Where it lives: the section for a page, the parent page for a child. Null
-   * for top/footer pins, which belong to no section and read fine alone.
+   * for top pins and parked registry rows, which belong to no section.
    */
   context: string | null;
   icon: SidebarIconComponent;

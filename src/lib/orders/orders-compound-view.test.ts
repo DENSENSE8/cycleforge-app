@@ -9,6 +9,8 @@ import {
   ordersIdentityLine,
   ordersStateTone,
 } from '@/lib/orders/orders-compound-view';
+import { formatCompoundStageStepLine } from '@/components/tables/compound/compound-row-model';
+import { resolveOrdersSlotValue } from '@/lib/tables/field-catalog/orders-resolve';
 import type { ShippedOrder } from '@/types/orders';
 
 function baseOrder(over: Partial<ShippedOrder> = {}): ShippedOrder {
@@ -30,7 +32,7 @@ describe('ordersStateTone', () => {
   });
   it('marks tested / packed / ready as done', () => {
     assert.equal(ordersStateTone('Tested'), 'done');
-    assert.equal(ordersStateTone('Packed · Staged'), 'done');
+    assert.equal(ordersStateTone('Packed'), 'done');
   });
   it('keeps ordinary queue states neutral', () => {
     assert.equal(ordersStateTone('Awaiting test'), 'neutral');
@@ -60,6 +62,38 @@ describe('ordersIdentityLine', () => {
   });
 });
 
+describe('the tested step (absorbed into the slot resolver)', () => {
+  // `ordersTestedStep` became `resolveOrdersSlotValue(row, 'orders.picked')` —
+  // same facts, resolved by binding rather than by a hard-coded step. The
+  // resolver's own suite lives beside the catalog; these two pin the seam this
+  // file always pinned: the step line the compound cell paints.
+  it('is empty when nobody has tested', () => {
+    const step = resolveOrdersSlotValue(baseOrder(), 'orders.picked', { testerDisplay: '---' });
+    assert.equal(step?.kind, 'stage_event');
+    if (step?.kind !== 'stage_event') return;
+    assert.equal(step.who, null);
+    assert.equal(step.at, null);
+    assert.equal(step.station, null);
+    assert.equal(formatCompoundStageStepLine(step), null);
+  });
+
+  it('fills who and time when a tech scan exists; station stays null until stamped', () => {
+    const step = resolveOrdersSlotValue(
+      baseOrder({ test_date_time: '2026-08-20T18:00:00.000Z' }),
+      'orders.picked',
+      { testerDisplay: 'Alex' },
+    );
+    if (step?.kind !== 'stage_event') return assert.fail('expected stage_event');
+    assert.equal(step.who, 'Alex');
+    assert.ok(step.at);
+    assert.equal(step.station, null);
+    const line = formatCompoundStageStepLine(step);
+    assert.ok(line);
+    assert.match(line!, /^Alex · /);
+    assert.doesNotMatch(line!, / · $/);
+  });
+});
+
 describe('ordersCompoundView', () => {
   it('puts identity on the note line when there is no operator note', () => {
     const view = ordersCompoundView(
@@ -78,6 +112,39 @@ describe('ordersCompoundView', () => {
     assert.match(view.note!, /Alex/);
     assert.match(view.note!, /Staging A/);
     assert.equal(view.flagMark, null);
+  });
+
+  it('carries resolved SLOT values through to the view by track key', () => {
+    const record = baseOrder({ test_date_time: '2026-08-20T18:00:00.000Z' });
+    const tested = resolveOrdersSlotValue(record, 'orders.picked', { testerDisplay: 'Alex' })!;
+    const view = ordersCompoundView(record, {
+      stateLabel: 'Tested',
+      delayDays: 0,
+      testerDisplay: 'Alex',
+      packerDisplay: '---',
+      slots: { 'status:1': tested },
+    });
+    const slot = view.slots?.['status:1'];
+    assert.equal(slot?.kind, 'stage_event');
+    if (slot?.kind !== 'stage_event') return;
+    assert.equal(slot.who, 'Alex');
+    assert.ok(slot.at);
+    assert.equal(slot.station, null);
+  });
+
+  it('bound subtitle parts REPLACE the implicit identity line — an org choice is final', () => {
+    const view = ordersCompoundView(
+      baseOrder({ pack_location_name: 'Staging A', pack_location_kind: 'STAGING' }),
+      {
+        stateLabel: 'Tested',
+        delayDays: 0,
+        testerDisplay: 'Alex',
+        packerDisplay: '---',
+        subtitleParts: [{ text: '3', toneClass: 'text-text-warning' }],
+      },
+    );
+    assert.equal(view.note, null);
+    assert.deepEqual(view.subtitleParts, [{ text: '3', toneClass: 'text-text-warning' }]);
   });
 
   it('keeps the operator note on the secondary and parks identity in the state tip', () => {

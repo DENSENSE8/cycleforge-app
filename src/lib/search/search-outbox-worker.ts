@@ -83,6 +83,14 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
   ORDER: `
     SELECT o.id, o.order_id, o.product_title, o.sku, o.account_source,
            o.status, o.condition, o.notes, o.order_date, o.created_at,
+           -- Buyer identity. An operator answering a "where is my order" call
+           -- holds a NAME, not an order number, and until this join existed the
+           -- console could not turn one into the other. COALESCE order follows
+           -- the customers table's own precedence: display_name is the Zoho
+           -- contact's canonical label, customer_name the raw imported string.
+           COALESCE(c.display_name, c.customer_name)         AS customer_name,
+           c.email                                           AS customer_email,
+           COALESCE(NULLIF(c.phone, ''), NULLIF(c.mobile, '')) AS customer_phone,
            COALESCE(STRING_AGG(DISTINCT tsn.serial_number, ' '), '') AS serials,
            COALESCE(MAX(stn.tracking_number_raw), MAX(stn_link.tracking_number_raw)) AS tracking_number,
            COALESCE(STRING_AGG(DISTINCT stn_link.tracking_number_raw, ' ')
@@ -113,8 +121,11 @@ const LOADER_SQL: Record<SearchEntityType, string> = {
      AND sl.owner_id = o.id
      AND sl.organization_id = o.organization_id
     LEFT JOIN shipping_tracking_numbers stn_link ON stn_link.id = sl.shipment_id
+    LEFT JOIN customers c
+      ON c.id = o.customer_id
+     AND c.organization_id = o.organization_id
     WHERE o.organization_id = $1 AND o.id = ANY($2::bigint[])
-    GROUP BY o.id`,
+    GROUP BY o.id, c.display_name, c.customer_name, c.email, c.phone, c.mobile`,
   SERIAL_UNIT: `
     SELECT su.id, su.serial_number, su.unit_uid, su.sku,
            su.current_status::text  AS current_status,
