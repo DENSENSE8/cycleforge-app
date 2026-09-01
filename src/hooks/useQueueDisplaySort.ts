@@ -4,10 +4,15 @@
  * URL-backed `?sort=` (+ optional `?dir=`) for queue display order
  * (Pending / Testing). Default `priority` omits the param; column sorts may
  * carry `dir` (omitted when that column’s default).
+ *
+ * Header clicks paint pending before App Router's soft-replace lands, so the
+ * list reorders in the same tick as the click.
  */
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useOptimisticUrlParams } from '@/hooks/useOptimisticUrlParam';
+import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 import {
   applyQueueDisplaySortParam,
   defaultDirForQueueSort,
@@ -19,6 +24,11 @@ import {
   type QueueDisplaySortColumn,
   type QueueDisplaySortDir,
 } from '@/utils/queue-display-sort';
+
+type QueueSortPair = {
+  sort: QueueDisplaySort;
+  dir: QueueDisplaySortDir | null;
+};
 
 export function useQueueDisplaySort(): {
   sort: QueueDisplaySort;
@@ -32,47 +42,71 @@ export function useQueueDisplaySort(): {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const sort = useMemo(
+  const urlSort = useMemo(
     () => parseQueueDisplaySort(searchParams.get('sort')),
     [searchParams],
   );
 
-  const dir = useMemo(
-    () => parseQueueDisplaySortDir(searchParams.get('dir'), sort),
-    [searchParams, sort],
+  const urlDir = useMemo(
+    () => parseQueueDisplaySortDir(searchParams.get('dir'), urlSort),
+    [searchParams, urlSort],
   );
 
-  const replaceParams = useCallback(
-    (nextSort: QueueDisplaySort, nextDir?: QueueDisplaySortDir | null) => {
-      const params = new URLSearchParams(searchParams.toString());
-      applyQueueDisplaySortParam(params, nextSort, nextDir);
+  const replace = useCallback(
+    (mutate: (params: URLSearchParams) => void) => {
+      const params = readLiveSearchParams(searchParams.toString());
+      mutate(params);
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname || '/', { scroll: false });
     },
     [pathname, router, searchParams],
   );
 
+  const write = useCallback((params: URLSearchParams, next: QueueSortPair) => {
+    applyQueueDisplaySortParam(params, next.sort, next.dir);
+  }, []);
+
+  const { value, paint } = useOptimisticUrlParams<QueueSortPair>({
+    urlValues: { sort: urlSort, dir: urlDir },
+    replace,
+    write,
+  });
+
+  const commit = useCallback(
+    (next: QueueSortPair) => {
+      paint(next);
+      replace((params) => write(params, next));
+    },
+    [paint, replace, write],
+  );
+
   const setSort = useCallback(
     (next: QueueDisplaySort, nextDir?: QueueDisplaySortDir | null) => {
-      if (isQueueColumnSort(next)) {
-        replaceParams(next, nextDir ?? defaultDirForQueueSort(next));
+      // `carrier:Amazon` is the Order-column pin (`channel:Amazon`) — rewrite
+      // on write so the URL and the comparator cannot disagree.
+      const resolved = parseQueueDisplaySort(next);
+      if (isQueueColumnSort(resolved)) {
+        commit({
+          sort: resolved,
+          dir: nextDir ?? defaultDirForQueueSort(resolved),
+        });
       } else {
-        replaceParams(next, null);
+        commit({ sort: resolved, dir: null });
       }
     },
-    [replaceParams],
+    [commit],
   );
 
   const toggleColumnSort = useCallback(
     (column: QueueDisplaySortColumn) => {
-      if (sort === column && dir) {
-        replaceParams(column, flipQueueDisplaySortDir(dir));
+      if (value.sort === column && value.dir) {
+        commit({ sort: column, dir: flipQueueDisplaySortDir(value.dir) });
       } else {
-        replaceParams(column, defaultDirForQueueSort(column));
+        commit({ sort: column, dir: defaultDirForQueueSort(column) });
       }
     },
-    [dir, replaceParams, sort],
+    [value.sort, value.dir, commit],
   );
 
-  return { sort, dir, setSort, toggleColumnSort };
+  return { sort: value.sort, dir: value.dir, setSort, toggleColumnSort };
 }

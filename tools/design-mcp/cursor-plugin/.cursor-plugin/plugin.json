@@ -1,0 +1,18 @@
+{
+  "name": "cycleforge-design-mcp",
+  "displayName": "CycleForge Design System",
+  "version": "0.2.0",
+  "description": "Exposes ds_contract, ds_tokens, and ds_critique for Cycle Forge UI work. Prefer this over inventing composers, buttons, or token literals.",
+  "author": {
+    "name": "Cycle Forge"
+  },
+  "license": "UNLICENSED",
+  "keywords": [
+    "design-system",
+    "mcp",
+    "cycleforge",
+    "composer",
+    "station"
+  ],
+  "mcpServers": "./mcp.json"
+}

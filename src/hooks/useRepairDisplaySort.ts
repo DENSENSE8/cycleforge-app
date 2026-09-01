@@ -5,10 +5,14 @@
  * the twin of {@link useQueueDisplaySort} (Pending / Testing). `newest`
  * (created_at DESC, the server default) omits the param; column sorts may carry
  * `dir`. The workbench sort dropdown and the grid header clicks both drive it.
+ *
+ * Header clicks paint pending before App Router's soft-replace lands.
  */
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useOptimisticUrlParams } from '@/hooks/useOptimisticUrlParam';
+import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 import {
   applyRepairDisplaySortParam,
   defaultDirForRepairDisplaySort,
@@ -20,6 +24,11 @@ import {
   type RepairDisplaySortColumn,
   type RepairDisplaySortDir,
 } from '@/lib/repair/repair-display-sort';
+
+type RepairSortPair = {
+  sort: RepairDisplaySort;
+  dir: RepairDisplaySortDir | null;
+};
 
 export function useRepairDisplaySort(): {
   sort: RepairDisplaySort;
@@ -33,47 +42,68 @@ export function useRepairDisplaySort(): {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const sort = useMemo(
+  const urlSort = useMemo(
     () => parseRepairDisplaySort(searchParams.get('sort')),
     [searchParams],
   );
 
-  const dir = useMemo(
-    () => parseRepairDisplaySortDir(searchParams.get('dir'), sort),
-    [searchParams, sort],
+  const urlDir = useMemo(
+    () => parseRepairDisplaySortDir(searchParams.get('dir'), urlSort),
+    [searchParams, urlSort],
   );
 
-  const replaceParams = useCallback(
-    (nextSort: RepairDisplaySort, nextDir?: RepairDisplaySortDir | null) => {
-      const params = new URLSearchParams(searchParams.toString());
-      applyRepairDisplaySortParam(params, nextSort, nextDir);
+  const replace = useCallback(
+    (mutate: (params: URLSearchParams) => void) => {
+      const params = readLiveSearchParams(searchParams.toString());
+      mutate(params);
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname || '/repair', { scroll: false });
     },
     [pathname, router, searchParams],
   );
 
+  const write = useCallback((params: URLSearchParams, next: RepairSortPair) => {
+    applyRepairDisplaySortParam(params, next.sort, next.dir);
+  }, []);
+
+  const { value, paint } = useOptimisticUrlParams<RepairSortPair>({
+    urlValues: { sort: urlSort, dir: urlDir },
+    replace,
+    write,
+  });
+
+  const commit = useCallback(
+    (next: RepairSortPair) => {
+      paint(next);
+      replace((params) => write(params, next));
+    },
+    [paint, replace, write],
+  );
+
   const setSort = useCallback(
     (next: RepairDisplaySort, nextDir?: RepairDisplaySortDir | null) => {
       if (isRepairColumnSort(next)) {
-        replaceParams(next, nextDir ?? defaultDirForRepairDisplaySort(next));
+        commit({
+          sort: next,
+          dir: nextDir ?? defaultDirForRepairDisplaySort(next),
+        });
       } else {
-        replaceParams(next, null);
+        commit({ sort: next, dir: null });
       }
     },
-    [replaceParams],
+    [commit],
   );
 
   const toggleColumnSort = useCallback(
     (column: RepairDisplaySortColumn) => {
-      if (sort === column && dir) {
-        replaceParams(column, flipRepairDisplaySortDir(dir));
+      if (value.sort === column && value.dir) {
+        commit({ sort: column, dir: flipRepairDisplaySortDir(value.dir) });
       } else {
-        replaceParams(column, defaultDirForRepairDisplaySort(column));
+        commit({ sort: column, dir: defaultDirForRepairDisplaySort(column) });
       }
     },
-    [dir, replaceParams, sort],
+    [value.sort, value.dir, commit],
   );
 
-  return { sort, dir, setSort, toggleColumnSort };
+  return { sort: value.sort, dir: value.dir, setSort, toggleColumnSort };
 }

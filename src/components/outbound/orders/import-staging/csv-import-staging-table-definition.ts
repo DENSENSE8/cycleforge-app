@@ -11,7 +11,7 @@ import type { TableSurfaceBinding } from '@/components/tables/table-surface-bind
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import type { OrderImportRowView } from '@/lib/orders/order-import-descriptor';
 import {
-  CSV_IMPORT_STAGING_GRID_COLUMNS,
+  CSV_IMPORT_STAGING_SHEET_COLUMNS,
   type CsvImportStagingGridColumn,
 } from './csv-import-staging-grid-layout';
 import {
@@ -29,7 +29,7 @@ export const CSV_IMPORT_STAGING_TABLE_DEFINITION = parseTableDefinition({
   surface: 'sheet',
   showDayHeaders: false,
   capabilities: CSV_IMPORT_STAGING_GRID_CAPABILITIES,
-  columns: CSV_IMPORT_STAGING_GRID_COLUMNS,
+  columns: CSV_IMPORT_STAGING_SHEET_COLUMNS,
 });
 
 export const CSV_IMPORT_STAGING_TABLE_BINDING: TableSurfaceBinding<
@@ -37,7 +37,7 @@ export const CSV_IMPORT_STAGING_TABLE_BINDING: TableSurfaceBinding<
   CsvImportStagingGridColumn
 > = {
   definition: CSV_IMPORT_STAGING_TABLE_DEFINITION,
-  columns: CSV_IMPORT_STAGING_GRID_COLUMNS,
+  columns: CSV_IMPORT_STAGING_SHEET_COLUMNS,
   makeDescriptor: makeCsvImportStagingGridDescriptor,
   recordPlane: { kind: 'inspector', occupantId: 'detail:order-import-staging' },
 };

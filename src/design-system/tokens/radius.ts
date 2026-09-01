@@ -151,6 +151,18 @@ export function cornerClass(role: CornerRole): string {
 export const COMPOSER_SHELL_CORNER = 'rounded-2xl';
 
 /**
+ * Menu rows inside a {@link COMPOSER_SHELL_CORNER} drop panel padded `p-1`.
+ *
+ * Inner = outer − padding: 16px − 4px = 12px (`rounded-xl`). A square
+ * highlight (`rounded-none`) inside that shell leaves a white sliver at each
+ * corner; equal radii (`rounded-2xl` on the row) read as too round. The
+ * ladder cannot express this pair — `nestedCornerClass('card', 1)` returns
+ * flush — so it is a named exemption, same hatch as
+ * {@link SEGMENTED_CONTROL_FACE_CORNER}.
+ */
+export const COMPOSER_MENU_ITEM_CORNER = 'rounded-xl';
+
+/**
  * A segmented control's track and its two faces — the concentric pair for a
  * pick-one toggle sitting inside a SOFT shell ({@link VisibilityToggle}'s
  * default chrome; Internal │ Public on the composer dock, claim compose,
@@ -177,6 +189,21 @@ export const SEGMENTED_CONTROL_CORNER = 'rounded-lg';
 
 /** The pressed/unpressed faces inside {@link SEGMENTED_CONTROL_CORNER}. */
 export const SEGMENTED_CONTROL_FACE_CORNER = 'rounded-md';
+
+/**
+ * Floating menu / dropdown / popover panel — the 8px control rung the scale
+ * already names for "soft menus / dropdown chrome".
+ *
+ * Named exemption, same hatch as {@link COMPOSER_SHELL_CORNER}: the ops ladder
+ * stays flush-square (kiosk + desk surfaces), and a call site that reaches for
+ * this constant is claiming to be a **drop panel**, which is checkable in
+ * review. FilterMenu already shipped `rounded-lg` as a literal; this is that
+ * face, once, so DropdownMenu / ContextMenu / the table chrome popovers cannot
+ * disagree about whether a menu in this product has corners.
+ *
+ * Not a licence to round a table, a toolbar, or a workbench card.
+ */
+export const DROPDOWN_SHELL_CORNER = 'rounded-lg';
 
 /**
  * Chrome INSIDE a `cornerClass('surface')` triage panel — the alerts, pickers,

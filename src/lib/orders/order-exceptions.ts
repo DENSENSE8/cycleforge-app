@@ -8,14 +8,19 @@
  *
  * ## Blockers, not gates
  *
- * G1–G3 (`evaluateReleaseGates`) answer "may this be released"; they are the
+ * G1–G4 (`evaluateReleaseGates`) answer "may this be released"; they are the
  * release contract and stay exactly as they are — this module never re-derives
  * them, it calls them. But the gates are coarse for triage: G1 fails as one
- * unit whether the item number or the tracking is missing, and PAIRING is not
- * a gate at all (an order can be perfectly releasable while its SKU resolves
- * to nothing, which is precisely the state 19 of the operator's 22 caged
- * orders were in). So a blocker is the finer-grained, actionable phrasing:
- * each one names a single missing fact and maps to a single control.
+ * unit whether the item number or the tracking is missing. So a blocker is
+ * the finer-grained, actionable phrasing: each one names a single missing
+ * fact and maps to a single control.
+ *
+ * ~~PAIRING is not a gate at all~~ — struck 2026-08-31 by the order-flow
+ * ruling (R-FLOW-1, `docs/warehouse-os/PLAN-order-flow-spine-3h.md` §2):
+ * pairing is now gate **G4**, and `unpaired` is its blocker twin. The
+ * observation that motivated the strike stands: 19 of the operator's 22 caged
+ * orders were unpaired, and under the old reading they were "perfectly
+ * releasable" while their SKU resolved to nothing.
  *
  * ## Pairing is item-number grain; the list is order grain
  *
@@ -166,6 +171,7 @@ function mapRow(row: RawExceptionRow): OrderExceptionRow {
       docsNotRequired: row.docs_not_required === true,
       shippingLabelLinked: row.shipping_label_linked === true,
       shippingLabelPurchased: row.shipping_label_purchased === true,
+      skuCatalogId,
     }),
   };
 }

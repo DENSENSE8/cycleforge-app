@@ -208,13 +208,12 @@ export function ItemRecordRow({
         canDisclose && !disclosure.expanded ? 'true' : undefined
       }
       className={cn(
-        // Flat data floor, and since 2026-08-30 a hairline-free one: no bottom
-        // rule, no radius, no side borders. What separates one line from the
-        // next is the thumb's own height and the active row's fill — a station
-        // plane that carries no tone changes carries no rules either.
-        'relative min-w-0 overflow-hidden rounded-none border-0 transition-colors',
-        active ? QUEUE_ROW.selectedStationClass : 'bg-surface-card',
-        selectable && !active ? 'hover:bg-surface-hover' : null,
+        // Idle rows are transparent in the well. The active row is the raised
+        // plate (`selectedStationClass`). No radius, no drop shadow — bevel
+        // lives on the active class.
+        'relative min-w-0 overflow-hidden rounded-none transition-colors',
+        active ? QUEUE_ROW.selectedStationClass : 'border-0 bg-transparent',
+        selectable && !active ? 'hover:bg-surface-station-row-hover' : null,
         className,
       )}
     >

@@ -22,14 +22,15 @@ test('TrackingChip paints the full last-8 and locks width — no CSS truncate', 
   const html = renderToStaticMarkup(<TrackingChip value={LONG_TRACKING} dense />);
   const face = LONG_TRACKING.slice(-8);
   assert.match(html, new RegExp(face));
-  assert.match(html, /w-\[8ch\]/, 'last8 displayWidth is the Unbox lock');
+  assert.match(html, /w-\[8\.25ch\]/, 'last8 displayWidth is the Unbox lock');
   // The value span must not use Tailwind `truncate` (ellipsis from the wrong end).
   assert.doesNotMatch(
     html,
-    /class="[^"]*\btruncate\b[^"]*w-\[8ch\]|class="[^"]*w-\[8ch\][^"]*\btruncate\b/,
+    /class="[^"]*\btruncate\b[^"]*w-\[8\.25ch\]|class="[^"]*w-\[8\.25ch\][^"]*\btruncate\b/,
     'truncate + last8 lock reintroduces Arrival mid–last-8 ellipsis',
   );
   assert.match(html, /whitespace-nowrap/);
+  assert.doesNotMatch(html, /<svg/, 'tracking last-8 has no MapPin');
 });
 
 test('TrackingChip never paints the leading digits of a long tracking', () => {

@@ -53,3 +53,27 @@ test('procedure ring and Unbox glyph share one toolbar item box', () => {
   assert.match(ring, /block h-3\.5 w-3\.5 shrink-0/);
   assert.doesNotMatch(ring, /h-5 w-5/);
 });
+
+test('showModeFaces=false keeps bottom-right context ring only', () => {
+  const html = renderToStaticMarkup(
+    <ComposerModeRow
+      mode="unbox"
+      onModeChange={() => {}}
+      showModeFaces={false}
+      progressPercent={100}
+      progressTone="selected"
+      onProgressClick={() => {}}
+    />,
+  );
+  assert.match(html, /data-composer-mode-faces="false"/);
+  assert.match(html, /aria-label="Composer context"/);
+  assert.doesNotMatch(html, /data-testid="composer-mode-unbox"/);
+  assert.doesNotMatch(html, /data-testid="composer-mode-ticket"/);
+  assert.doesNotMatch(html, />Unbox</);
+  assert.doesNotMatch(html, />Ticket</);
+  assert.match(html, /data-testid="composer-procedure-ring"/);
+  assert.match(html, /aria-pressed="true"/);
+  // Ring trails a flex spacer so it sits bottom-right of the row plate.
+  const beforeRing = html.slice(0, html.indexOf('data-testid="composer-procedure-ring"'));
+  assert.match(beforeRing, /min-w-0 flex-1/);
+});

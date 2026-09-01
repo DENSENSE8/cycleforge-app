@@ -14,6 +14,8 @@ import {
   isIncomingGridSortable,
 } from '@/lib/receiving/receiving-grid-layout';
 import { TABLE_COLUMNS } from '@/lib/tables/table-columns';
+import { INCOMING_FIELD_CATALOG } from '@/lib/tables/field-catalog/incoming';
+import { RECEIVING_FIELD_CATALOG } from '@/lib/tables/field-catalog/receiving';
 import { compareIncomingGridRows } from '@/lib/receiving/incoming-grid-compare';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 
@@ -128,23 +130,42 @@ describe('INCOMING_GRID_COLUMNS — matches Pending SoT scan order', () => {
 
   it('owns a distinct incoming TableId (not shared with receiving)', () => {
     // Split 2026-07-30 — Incoming and Unbox/History no longer share prefs.
-    // Tiers may diverge; the old key-for-key lockstep is retired.
-    assert.ok(TABLE_COLUMNS.incoming);
-    assert.ok(TABLE_COLUMNS.receiving);
+    //
+    // This used to assert the distinction against `TABLE_COLUMNS`: incoming's
+    // hide-key list had no `serial`, receiving's did. Both buckets are `[]`
+    // since the wave 1.3 slot port — hiding a fact is unbinding it from a slot
+    // — so the two entries are still separate but no longer CARRY the
+    // difference. It lives in the two field catalogs now, which is where a
+    // porter would look for it, so that is what this pins.
+    assert.ok(TABLE_COLUMNS.incoming, 'incoming must stay a TableId');
+    assert.ok(TABLE_COLUMNS.receiving, 'receiving must stay a TableId');
     assert.notEqual(
       TABLE_COLUMNS.incoming,
       TABLE_COLUMNS.receiving,
       'incoming and receiving must be separate registry entries',
     );
-    // Incoming has no serial track in its Fields vocabulary.
+
+    const incomingIds = INCOMING_FIELD_CATALOG.map((f) => f.id);
+    const receivingIds = RECEIVING_FIELD_CATALOG.map((f) => f.id);
+
+    // A serial is read during unbox, which is a RECEIVING act — an inbound POS
+    // line has not been opened yet, so it has no serial to bind.
     assert.equal(
-      TABLE_COLUMNS.incoming.some((c) => c.key === 'serial'),
-      false,
-    );
-    assert.equal(
-      TABLE_COLUMNS.receiving.some((c) => c.key === 'serial'),
+      receivingIds.includes('receiving.serial'),
       true,
+      'receiving must carry a bindable serial fact',
     );
+    assert.equal(
+      incomingIds.some((id) => id.endsWith('.serial')),
+      false,
+      'incoming must not carry a serial fact',
+    );
+
+    // The two catalogs share no field id at all: one row, two questions
+    // (`delivery_state` vs `workflow_status`), and a shared id would let a
+    // rebind on one desk move a track on the other.
+    const shared = incomingIds.filter((id) => receivingIds.includes(id));
+    assert.deepEqual(shared, [], 'the two catalogs must share no field id');
   });
 
   it('never marks a column optional without a hideKey', () => {

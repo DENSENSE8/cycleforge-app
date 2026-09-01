@@ -3,16 +3,20 @@ import {
   ACCENT_HEX_RE,
   DEFAULT_FOCUS_SCAN_HOTKEY,
   DEFAULT_THEME,
+  DEFAULT_STATION_SKIN_PREF,
   DEFAULT_TIME_FORMAT,
   FOCUS_SCAN_ALWAYS_AVAILABLE_RE,
   FOCUS_SCAN_HOTKEY_OPTIONS,
   isBindableFocusScanHotkey,
   STAFF_THEMES,
+  STAFF_STATION_SKINS,
   TIME_FORMAT_VALUES,
   type StaffTheme,
+  type StaffStationSkin,
   type TimeFormat,
 } from '@/lib/schemas/staff-preferences-constants';
 import type { ThemeName } from '@/design-system/themes/registry';
+import type { StationSkinName } from '@/design-system/themes/station-skins';
 import { slotLayoutSchema } from '@/lib/tables/slot-layout';
 
 /**
@@ -25,14 +29,16 @@ export {
   ACCENT_HEX_RE,
   DEFAULT_FOCUS_SCAN_HOTKEY,
   DEFAULT_THEME,
+  DEFAULT_STATION_SKIN_PREF,
   DEFAULT_TIME_FORMAT,
   FOCUS_SCAN_ALWAYS_AVAILABLE_RE,
   FOCUS_SCAN_HOTKEY_OPTIONS,
   isBindableFocusScanHotkey,
   STAFF_THEMES,
+  STAFF_STATION_SKINS,
   TIME_FORMAT_VALUES,
 };
-export type { StaffTheme, TimeFormat };
+export type { StaffTheme, StaffStationSkin, TimeFormat };
 import { MAX_PINS } from '@/lib/quick-access/types';
 import { UNBOX_PINNED_EXTRA_TABS_MAX } from '@/lib/receiving/unbox-extra-tabs';
 
@@ -116,6 +122,15 @@ export const StaffPreferencesPutBody = z
       .nullable()
       .optional(),
     theme: z.enum(STAFF_THEMES as [ThemeName, ...ThemeName[]]).nullable().optional(),
+    /**
+     * Scan-station skin (industrial mill, packing bench, coal, catalog
+     * materials). `null` resets to industrial. Independent of the app colour
+     * theme — every scan station reads the same `--ds-station-*` tokens.
+     */
+    stationSkin: z
+      .enum(STAFF_STATION_SKINS as [StationSkinName, ...StationSkinName[]])
+      .nullable()
+      .optional(),
     /**
      * Clock display format for all rendered timestamps. `null` resets to the
      * default (`12h`). Display-only — never affects stored/API timestamps.

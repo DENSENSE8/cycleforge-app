@@ -2,7 +2,17 @@
 
 /**
  * Ready LedgerGrid cell registry — one switch, edit the matching case.
- * Row shell builds {@link ReadyGridCellCtx}; domain values stay here.
+ *
+ * Since the wave 1.1 slot port the fact tracks are MATERIALIZED
+ * (`status:1…N` / `subtitle:1…N`), so the switch runs on the bound FIELD ID,
+ * not on a hardcoded column key. Structural tracks (`select · title · action`)
+ * keep their own cases. A new bindable fact needs a catalog entry, a resolver
+ * case and — only if it wants a face richer than text — a case here; it never
+ * needs a new column file.
+ *
+ * Row shell builds {@link ReadyGridCellCtx}; domain values stay here. Pure
+ * label functions live in the resolver leaf (`ready-resolve.ts`) so the row
+ * comparator can sort without importing a client module.
  */
 
 import Link from 'next/link';
@@ -17,12 +27,18 @@ import {
   CHANNEL_DISPOSITION_LABELS,
   type AllocationHit,
   type ChannelDisposition,
-  type ReadyAllocationState,
 } from '@/lib/channel-allocation';
 import { conditionLabel } from '@/lib/conditions';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { fbaOutboundHref } from '@/lib/fba/fba-modes';
-import { serialStatusDot, serialStatusLabel } from '@/lib/inventory/serial-status-display';
+import { serialStatusDot } from '@/lib/inventory/serial-status-display';
+import {
+  readyFallbackStateLabel,
+  readyHitTitle,
+  readyVerdictLabel,
+  resolveReadySlotValue,
+} from '@/lib/tables/field-catalog/ready-resolve';
+import { isSlotTrackKey } from '@/lib/tables/materialize-tracks';
 import type { VelocityTierMeta } from '@/lib/velocity-tier-tone';
 import { cn } from '@/utils/_cn';
 import {
@@ -43,29 +59,10 @@ const DISPOSITION_CLASS: Record<ChannelDisposition, string> = {
   HOLD: 'bg-amber-50 text-amber-800',
 };
 
-const ALLOCATION_STATE_LABEL: Record<ReadyAllocationState, string> = {
-  READY: 'Ready',
-  FBA_STAGED: 'In FBA',
-  ORDER_ALLOCATED: 'Order allocated',
-  NOT_READY: 'Not ready',
-};
-
-export function readyVerdictLabel(verdict: string | null): string {
-  if (verdict === 'PASS') return 'Passed';
-  if (verdict === 'TEST_AGAIN') return 'Retest';
-  if (verdict === 'TESTING_FAILED') return 'Failed';
-  return 'Recorded';
-}
-
 function verdictClass(verdict: string | null): string {
   if (verdict === 'PASS') return 'bg-emerald-50 text-emerald-700';
   if (verdict === 'TESTING_FAILED') return 'bg-rose-50 text-rose-700';
   return 'bg-amber-50 text-amber-800';
-}
-
-/** The unit a hit is about — title, else SKU, else the bare entity id. */
-export function readyHitTitle(hit: AllocationHit): string {
-  return hit.title || hit.sku || `Unit #${hit.entityId}`;
 }
 
 /** Identifier trail tokens under the title (SKU · serial · FNSKU · ASIN). */
@@ -98,144 +95,93 @@ function ReadyHitMetaTrail({ hit }: { hit: AllocationHit }) {
   );
 }
 
-/** Destination label when a hit has no channel-allocation disposition. */
-export function readyFallbackStateLabel(hit: AllocationHit): string {
-  return hit.allocationState === 'NOT_READY'
-    ? serialStatusLabel(hit.unitStatus)
-    : ALLOCATION_STATE_LABEL[hit.allocationState];
-}
-
 export interface ReadyGridCellCtx {
   hit: AllocationHit;
   tierMeta: VelocityTierMeta | null;
   condGrade: string;
+  /** The MOUNTED model — frozen offsets derive from it, never a static list. */
+  columns: readonly ReadyGridColumn[];
 }
 
 function dataCell(col: ReadyGridColumn, rule = true) {
   return cn(readyGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
 }
 
-export function renderReadyGridCell(
-  col: ReadyGridColumn,
-  rule: boolean,
-  ctx: ReadyGridCellCtx,
-): ReactNode {
+/** The body of one materialized slot track, chosen by the BOUND FIELD. */
+function renderReadySlotBody(fieldId: string | undefined, ctx: ReadyGridCellCtx): ReactNode {
   const { hit, tierMeta, condGrade } = ctx;
-  switch (col.key) {
-    case 'select':
+  switch (fieldId) {
+    case 'ready.verdict':
       return (
-        <div
-          className={cn(
-            readyGridCell({ inset: 'none', rule: true }),
-            READY_GRID_FROZEN_CELL,
-            'justify-center',
-          )}
-          style={{ left: readyGridFrozenLeft('select') }}
-        >
-          <span className="h-4 w-4 shrink-0" aria-hidden />
-        </div>
+        <GridStatusCellValue
+          label={readyVerdictLabel(hit.verdict)}
+          toneClass={verdictClass(hit.verdict)}
+        />
       );
-    case 'title':
-      return (
-        <div
-          data-col="title"
-          className={cn(dataCell(col, rule), READY_GRID_FROZEN_CELL, 'gap-1.5')}
-          style={{ left: readyGridFrozenLeft('title') }}
-          data-frozen-edge
-        >
-          <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
-            {readyHitTitle(hit)}
-          </span>
-          <ReadyHitMetaTrail hit={hit} />
-        </div>
-      );
-    case 'verdict':
-      return (
-        <div data-col="verdict" className={dataCell(col, rule)}>
-          <GridStatusCellValue
-            label={readyVerdictLabel(hit.verdict)}
-            toneClass={verdictClass(hit.verdict)}
+    case 'ready.destination':
+      return hit.disposition ? (
+        <GridStatusCellValue
+          label={CHANNEL_DISPOSITION_LABELS[hit.disposition]}
+          toneClass={DISPOSITION_CLASS[hit.disposition]}
+        />
+      ) : (
+        <span className="inline-flex min-w-0 items-center gap-1.5 text-role-caption text-text-muted">
+          <span
+            className={cn('h-2 w-2 shrink-0 rounded-full', serialStatusDot(hit.unitStatus))}
+            aria-hidden
           />
-        </div>
+          <span className="min-w-0 truncate">{readyFallbackStateLabel(hit)}</span>
+        </span>
       );
-    case 'destination':
-      return (
-        <div data-col="destination" className={dataCell(col, rule)}>
-          {hit.disposition ? (
-            <GridStatusCellValue
-              label={CHANNEL_DISPOSITION_LABELS[hit.disposition]}
-              toneClass={DISPOSITION_CLASS[hit.disposition]}
-            />
-          ) : (
-            <span className="inline-flex min-w-0 items-center gap-1.5 text-role-caption text-text-muted">
-              <span
-                className={cn('h-2 w-2 shrink-0 rounded-full', serialStatusDot(hit.unitStatus))}
-                aria-hidden
-              />
-              <span className="min-w-0 truncate">{readyFallbackStateLabel(hit)}</span>
-            </span>
-          )}
-        </div>
-      );
-    case 'reasons':
-      return (
-        <div data-col="reasons" className={cn(dataCell(col, rule), 'min-w-0 gap-1')}>
-          {hit.reasons.length > 0 ? (
-            <span className="inline-flex min-w-0 max-w-full flex-nowrap items-center gap-1 overflow-hidden">
-              {hit.reasons.slice(0, 2).map((reason) => (
-                <span
-                  key={reason}
-                  className={cn(CHIP, 'bg-surface-sunken text-text-muted ring-border-soft')}
-                >
-                  {ALLOCATION_REASON_LABELS[reason]}
-                </span>
-              ))}
-              {hit.reasons.length > 2 ? (
-                <HoverTooltip
-                  label={hit.reasons.map((r) => ALLOCATION_REASON_LABELS[r]).join(' · ')}
-                  focusable={false}
-                >
-                  <span className="shrink-0 text-role-micro text-text-soft">
-                    +{hit.reasons.length - 2}
-                  </span>
-                </HoverTooltip>
-              ) : null}
-            </span>
-          ) : (
-            <GridCellDash />
-          )}
-        </div>
-      );
-    case 'velocity':
-      return (
-        <div data-col="velocity" className={dataCell(col, rule)}>
-          {tierMeta ? (
-            <span className={cn(CHIP, 'ring-border-soft', tierMeta.ring)}>{tierMeta.label}</span>
-          ) : (
-            <GridCellDash />
-          )}
-        </div>
-      );
-    case 'condition':
-      return (
-        <div data-col="condition" className={dataCell(col, rule)}>
-          {hit.conditionGrade ? (
+    case 'ready.reasons':
+      return hit.reasons.length > 0 ? (
+        <span className="inline-flex min-w-0 max-w-full flex-nowrap items-center gap-1 overflow-hidden">
+          {hit.reasons.slice(0, 2).map((reason) => (
             <span
-              className={cn(
-                'min-w-0 truncate text-role-eyebrow uppercase',
-                conditionGradeTextClass(condGrade),
-              )}
+              key={reason}
+              className={cn(CHIP, 'bg-surface-sunken text-text-muted ring-border-soft')}
             >
-              {conditionLabel(hit.conditionGrade, 'compact')}
+              {ALLOCATION_REASON_LABELS[reason]}
             </span>
-          ) : (
-            <GridCellDash />
-          )}
-        </div>
+          ))}
+          {hit.reasons.length > 2 ? (
+            <HoverTooltip
+              label={hit.reasons.map((r) => ALLOCATION_REASON_LABELS[r]).join(' · ')}
+              focusable={false}
+            >
+              <span className="shrink-0 text-role-micro text-text-soft">
+                +{hit.reasons.length - 2}
+              </span>
+            </HoverTooltip>
+          ) : null}
+        </span>
+      ) : (
+        <GridCellDash />
       );
-    case 'tested':
+    case 'ready.velocity':
+      return tierMeta ? (
+        <span className={cn(CHIP, 'ring-border-soft', tierMeta.ring)}>{tierMeta.label}</span>
+      ) : (
+        <GridCellDash />
+      );
+    case 'ready.condition':
+      return hit.conditionGrade ? (
+        <span
+          className={cn(
+            'min-w-0 truncate text-role-eyebrow uppercase',
+            conditionGradeTextClass(condGrade),
+          )}
+        >
+          {conditionLabel(hit.conditionGrade, 'compact')}
+        </span>
+      ) : (
+        <GridCellDash />
+      );
+    case 'ready.tested':
+      // Two lines, one fact: WHEN the test landed and WHO ran it. The tester is
+      // the stamp's second half, not a separate bindable column.
       return (
-        <div data-col="tested" className={cn(dataCell(col, rule), 'flex-col items-end gap-0')}>
+        <span className="flex min-w-0 flex-col items-end gap-0">
           {hit.testedAt ? (
             <GridDateTimeCellValue raw={hit.testedAt} className="text-role-caption text-text-soft" />
           ) : (
@@ -246,6 +192,62 @@ export function renderReadyGridCell(
               {hit.testedByName}
             </span>
           ) : null}
+        </span>
+      );
+    default: {
+      // A catalog field with no bespoke face paints its resolved text — a new
+      // bindable fact needs a resolver case, never a new column file.
+      const value = fieldId ? resolveReadySlotValue(hit, fieldId) : null;
+      const text = value?.kind === 'value' ? value.text : null;
+      return text ? (
+        <span className="min-w-0 truncate text-role-caption text-text-soft">{text}</span>
+      ) : (
+        <GridCellDash />
+      );
+    }
+  }
+}
+
+export function renderReadyGridCell(
+  col: ReadyGridColumn,
+  rule: boolean,
+  ctx: ReadyGridCellCtx,
+): ReactNode {
+  const { hit, columns } = ctx;
+  if (isSlotTrackKey(col.key)) {
+    return (
+      <div data-col={col.key} className={dataCell(col, rule)}>
+        {renderReadySlotBody(col.fieldId, ctx)}
+      </div>
+    );
+  }
+  switch (col.key) {
+    case 'select':
+      return (
+        <div
+          className={cn(
+            readyGridCell({ inset: 'none', rule: true }),
+            READY_GRID_FROZEN_CELL,
+            'justify-center',
+          )}
+          // Offsets from the MOUNTED model, never a static list.
+          style={{ left: readyGridFrozenLeft(columns, 'select') }}
+        >
+          <span className="h-4 w-4 shrink-0" aria-hidden />
+        </div>
+      );
+    case 'title':
+      return (
+        <div
+          data-col="title"
+          className={cn(dataCell(col, rule), READY_GRID_FROZEN_CELL, 'gap-1.5')}
+          style={{ left: readyGridFrozenLeft(columns, 'title') }}
+          data-frozen-edge
+        >
+          <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
+            {readyHitTitle(hit)}
+          </span>
+          <ReadyHitMetaTrail hit={hit} />
         </div>
       );
     case 'action':

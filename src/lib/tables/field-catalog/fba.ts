@@ -14,6 +14,13 @@
  * are line-detail facts after Title; status bindings close the row. The
  * board display that materialised these tracks was torn out 2026-08-30
  * (hanging the Amazon Prep desk) and is being rebuilt.
+ *
+ * NOT REGISTERED in `SLOT_LAYOUT_TABLES` while that is true (operator ruling
+ * 2026-08-31, seller-table-program wave 1.2): opt-in is per-MOUNT, not
+ * per-catalog. A registered id whose table renders nothing let
+ * `/api/tables/layouts` accept and store an organization column layout into a
+ * void — a manager saving columns nobody would ever see, with no error
+ * anywhere. This file is kept intact so the rebuild is one registry line.
  */
 
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
@@ -110,5 +117,5 @@ export const FBA_PRODUCT_LAYOUT: SlotLayout = {
   amountFieldId: null,
 };
 
-/** The one tableId this catalog serves — Amazon Prep, kept for org layouts. */
+/** The one tableId this catalog will serve when the board display returns. */
 export const FBA_TABLE_LAYOUT_ID = 'fba';

@@ -1,9 +1,9 @@
 {
   "version": 1,
   "generatedAt": "2026-08-21T01:05:42Z",
-  "totalRoutes": 967,
+  "totalRoutes": 969,
   "summary": {
-    "permissionGated": 825,
+    "permissionGated": 827,
     "authenticatedNoPermission": 53,
     "anonymousIntentional": 87,
     "serviceToService": 2,
@@ -1152,6 +1152,37 @@
       "gate": "NONE",
       "permission": null,
       "exemptReason": "auth-flow (sign-in / passkey / pin)"
+    },
+    {
+      "path": "/api/automations/listing-assign/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "work_orders.claim",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/automations/rules/[id]/route.ts",
+      "methods": [
+        "DELETE",
+        "GET",
+        "PATCH"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "admin.manage_features",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/automations/rules/route.ts",
+      "methods": [
+        "GET",
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "admin.manage_features",
+      "exemptReason": null
     },
     {
       "path": "/api/beta/applications/route.ts",

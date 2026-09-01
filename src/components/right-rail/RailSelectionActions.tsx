@@ -19,6 +19,11 @@ import { Button } from '@/design-system/primitives';
 import {
   type PaneHeaderActionBarAction,
 } from '@/components/ui/pane-header';
+import type { TableStatusSelectionAction } from '@/components/tables/TableStatusBar';
+import {
+  SELECTION_STATUS_BAR_META,
+  SELECTION_STATUS_BAR_ORDER,
+} from '@/hooks/useSelectionStatusBarHotkeys';
 import { cn } from '@/utils/_cn';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { resolveSelectionAction } from '@/lib/selection/selection-actions';
@@ -74,6 +79,40 @@ export function useRailHeaderActions(): PaneHeaderActionBarAction[] {
         void action.run(rows);
       },
     }));
+}
+
+/**
+ * Live selection CTAs for {@link TableStatusBar}'s left cluster.
+ *
+ * Assign / Copy / … from the first checked row. Export is omitted — the table
+ * toolbar already owns CSV. Delete is kept (danger). Labels / fills / hotkeys
+ * come from {@link SELECTION_STATUS_BAR_META} — add a row there for a new verb.
+ */
+export function useRailStatusBarActions(): TableStatusSelectionAction[] {
+  const { scope, rows, actions } = useRailActionSnapshot();
+  if (!scope || rows.length === 0) return [];
+  return actions
+    .filter((action) => action.key !== 'export')
+    .map((action) => ({ action, resolved: resolveSelectionAction(action, rows) }))
+    .filter(({ resolved }) => !resolved.disabled)
+    .map(({ action }) => {
+      const meta = SELECTION_STATUS_BAR_META[action.key];
+      return {
+        key: action.key,
+        label: meta?.label ?? action.label,
+        icon: action.icon,
+        variant: meta?.variant ?? 'secondary',
+        hotkey: meta?.hotkey,
+        onClick: () => {
+          void action.run(rows);
+        },
+      };
+    })
+    .sort((a, b) => {
+      const ai = SELECTION_STATUS_BAR_ORDER.indexOf(a.key);
+      const bi = SELECTION_STATUS_BAR_ORDER.indexOf(b.key);
+      return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+    });
 }
 
 /**

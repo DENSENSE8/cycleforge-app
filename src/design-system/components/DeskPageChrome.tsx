@@ -17,7 +17,7 @@
  *
  * ```text
  *      ┌ stage measure ─────────────────────────────────────────────┐
- *      │ Shipping                                    [ Add order ]  │  ← page header
+ *      │ Shipping                         [ Export ] [ Add order ]  │  ← page header
  *      │ To ship   Amazon Prep                                      │  ← tab row
  *      │ ───────                                                    │     underline = active
  *      │                     ↕ detachment gap                       │
@@ -156,9 +156,9 @@ export interface DeskPageChromeProps {
   activeTab: string;
   onTabChange: (id: string) => void;
   /**
-   * Primary CTA, top-right of the page header (To ship: **Add order**). A node
-   * rather than an `onAdd` callback so a desk can hand over whatever its intake
-   * needs.
+   * Header action cluster, top-right (overall actions such as **Export**, then
+   * the primary CTA). Composed by {@link useDeskActionSlotNode}. A node rather
+   * than an `onAdd` callback so a desk can hand over whatever its intake needs.
    */
   addSlot?: ReactNode;
   /**
@@ -252,10 +252,10 @@ export function DeskPageChrome({
                 ) : null}
               </div>
               {/*
-                The CTA's home. It sat in the 28px tab band only because that
-                band could not hold a real button; at page-header altitude that
-                constraint is gone and a page-level primary action gets a
-                page-level control.
+                Overall actions (Export) then the primary CTA. It sat in the
+                28px tab band only because that band could not hold a real
+                button; at page-header altitude that constraint is gone and a
+                page-level action gets a page-level control.
               */}
               {addSlot}
             </div>

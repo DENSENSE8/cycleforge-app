@@ -308,7 +308,7 @@ function isUnboxKpiFilterable(metricId: string, mode: UnboxWorkspaceTab): boolea
  * (`queue-depth`, `oldest-wait`) never write the param — keep them out of the
  * hygiene allowlist so a hand-typed id cannot stick.
  */
-const UNBOX_KPI_FILTER_WIRE_IDS = [
+export const UNBOX_KPI_FILTER_WIRE_IDS = [
   'opened-today',
   'awaiting-test',
   'stuck',
@@ -316,6 +316,20 @@ const UNBOX_KPI_FILTER_WIRE_IDS = [
   'viewed-today',
   'unfinished',
 ] as const;
+
+const UNBOX_KPI_FILTER_LABELS: Record<(typeof UNBOX_KPI_FILTER_WIRE_IDS)[number], string> = {
+  'opened-today': 'Opened today',
+  'awaiting-test': 'Awaiting test',
+  stuck: 'Stuck / error',
+  priority: 'Priority',
+  'viewed-today': 'Viewed today',
+  unfinished: 'Unfinished',
+};
+
+/** Face for a `?ukpi=` facet in the DataTable funnel. */
+export function unboxKpiFilterLabel(id: string): string {
+  return UNBOX_KPI_FILTER_LABELS[id as keyof typeof UNBOX_KPI_FILTER_LABELS] ?? id;
+}
 
 /** Wire tokens `?ukpi=` may carry (route-param hygiene). */
 export function parseUnboxKpiFilterWire(raw: string): string | null {

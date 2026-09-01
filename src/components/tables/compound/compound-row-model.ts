@@ -21,13 +21,22 @@
  */
 
 /**
- * How late a row is. `days` is whole days past its deadline; `overdue` false
- * means it still has time, so the row shows an on-time face rather than a
- * number the operator has to parse to discover it means "fine".
+ * How late a row is, and WHEN the deadline is.
+ *
+ * `days` / `overdue` are relative urgency. `dateLabel` is the civil day the
+ * operator actually needs ("Aug 17") — "On time" / "1d late" hide that fact.
+ * Families without a warehouse deadline omit `dateLabel` and the cell falls
+ * back to the relative face.
  */
 export interface CompoundDelay {
   days: number;
   overdue: boolean;
+  /** Compact civil face ("Aug 17"). Null/absent = no deadline to show. */
+  dateLabel?: string | null;
+  /** `YYYY-MM-DD` for DateRangePickerField when the delay is editable. */
+  dateKey?: string | null;
+  /** True when `dateKey` is warehouse-today — due today, not merely on time. */
+  dueToday?: boolean;
 }
 
 /** Lifecycle tone — deliberately small, and deliberately not a colour. */
@@ -47,6 +56,14 @@ export interface CompoundRowView {
 
   /** TITLE column, top — what the thing is. */
   title: string;
+  /**
+   * TITLE column hyperlink — the listing this row sells.
+   *
+   * Present ⇒ the title is an `<a>` to this href (new tab). Absent ⇒ the title
+   * stays plain text. A join, not a second field: Orders derives it from the
+   * item number (`getExternalUrlByItemNumber`). Other families omit it.
+   */
+  titleHref?: string | null;
   /**
    * TITLE column, bottom — the operator note on this row.
    *
@@ -94,10 +111,10 @@ export interface CompoundRowView {
   /**
    * STATUS column, bottom — the DELAY, not a generic timestamp.
    *
-   * A WMS row's second status line answers "is this late, and by how much" —
-   * the question that decides what an operator picks up next. A creation or
-   * transition stamp answers "when did this happen", which nobody triages on.
-   * `null` means on time and renders as the on-time face, never as blank.
+   * When {@link CompoundDelay.dateLabel} is present the cell paints that civil
+   * day (lateness is tone + a "Nd late" suffix). Families that only know
+   * relative urgency omit the date and keep the on-time / Nd-late face.
+   * `null` with no editor is the on-time face, never a blank line.
    */
   delay: CompoundDelay | null;
   /** Hover detail for the delay (the actual deadline instant). */
@@ -241,26 +258,41 @@ export interface CompoundSubtitleEdit {
 }
 
 /**
+ * In-place editor for the STATUS column's ship-by date.
+ *
+ * Present ⇒ the delay line mounts DateRangePickerField `variant="compact"`
+ * (one civil day, calendar only, click commits). Always paints a face (`MMM d`
+ * or `--`); never clears. Absent ⇒ the same line is read-only.
+ */
+export interface CompoundShipByEdit {
+  /** Civil key currently on the row (`YYYY-MM-DD`); empty when missing. */
+  value: string;
+  onCommit: (dateKey: string | null) => void;
+}
+
+/**
  * A subtitle part that paints as a copy chip instead of bare text.
  *
- * For the identifiers an operator retypes into another system — the item
- * number off a shelf label. Click copies; the value is the fact, while the
- * part's `text` stays whatever face the family resolved.
- *
- * Pair it with a {@link CompoundSubtitleEdit} on the same `partKey` when the
- * fact is also editable: the chip owns the click (copy is the frequent verb)
- * and the edit is offered from its menu, so one control never has to guess
- * which of two verbs a click meant.
+ * The face is always the listing glyph — never {@link value}. Live
+ * {@link openHref} ⇒ info-blue, click opens. Missing URL or missing handle ⇒
+ * faint (grayed-out) icon. Hover copies {@link value} only when a handle exists.
  */
 export interface CompoundSubtitleCopy {
   /** The {@link CompoundSubtitlePart.key} this chip claims. */
   partKey: string;
   /**
-   * The full value to place on the clipboard — never the truncated face. The
-   * chip shows its last 8 and copies this, the way every other identity chip
-   * on the desk behaves; clipboard-history kind comes from the chip's tone.
+   * The full value to place on the clipboard. Never painted — the face is
+   * the listing icon.
    */
   value: string;
+  /** Unused. Kept so older call sites that passed a last-8 face still type-check. */
+  display?: string;
+  /**
+   * Listing URL. Present ⇒ click opens this href (info-blue icon). Absent ⇒
+   * grayed-out icon (missing item number or unjoinable listing). Hover copies
+   * {@link value} only when a handle exists.
+   */
+  openHref?: string | null;
 }
 
 /**
@@ -307,6 +339,40 @@ export function formatCompoundStageStepLine(
     .map((s) => String(s ?? '').trim())
     .filter(Boolean);
   return bits.length > 0 ? bits.join(' · ') : null;
+}
+
+/**
+ * STATUS-column second line. The civil date is the face when the family
+ * supplied one; lateness is tone (and a suffix when overdue). Families that
+ * only know relative urgency keep "On time" / "Nd late". An editable blank
+ * is `--`, never a fake "On time".
+ */
+export function formatCompoundDelayFace(
+  delay: CompoundDelay | null,
+  options: { editable?: boolean; missingText?: string } = {},
+): { text: string; toneClass: string } {
+  const missing = options.missingText ?? '--';
+  if (delay?.dateLabel) {
+    const late = delay.overdue && delay.days > 0;
+    return {
+      text: late ? `${delay.dateLabel} · ${delay.days}d late` : delay.dateLabel,
+      toneClass: delay.overdue
+        ? 'font-semibold text-text-danger'
+        : delay.dueToday
+          ? 'text-text-default'
+          : 'text-text-faint',
+    };
+  }
+  if (delay?.overdue) {
+    return {
+      text: `${delay.days}d late`,
+      toneClass: 'font-semibold text-text-danger',
+    };
+  }
+  if (options.editable) {
+    return { text: missing, toneClass: 'text-text-faint' };
+  }
+  return { text: 'On time', toneClass: 'text-text-faint' };
 }
 
 /**

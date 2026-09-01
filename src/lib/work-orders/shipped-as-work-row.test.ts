@@ -1,0 +1,63 @@
+/**
+ *   npx tsx --test src/lib/work-orders/shipped-as-work-row.test.ts
+ */
+
+import assert from 'node:assert/strict';
+import { describe, it } from 'node:test';
+import type { ShippedOrder } from '@/types/orders';
+import { shippedOrderAsWorkRow } from './shipped-as-work-row';
+
+function order(over: Partial<ShippedOrder> & Pick<ShippedOrder, 'id'>): ShippedOrder {
+  return {
+    order_id: 'CF-1001',
+    product_title: 'Trail bike',
+    condition: 'Used',
+    serial_number: '',
+    sku: 'SKU-1',
+    tester_id: null,
+    tested_by: null,
+    test_date_time: null,
+    packer_id: null,
+    packed_by: null,
+    packed_at: null,
+    packer_photos_url: null,
+    tracking_type: null,
+    account_source: null,
+    notes: '',
+    is_shipped: false,
+    is_out_of_stock: false,
+    created_at: null,
+    status_history: null,
+    ...over,
+  } as ShippedOrder;
+}
+
+describe('shippedOrderAsWorkRow', () => {
+  it('prefers ship-by date as the deadline and marketplace order id as the href key', () => {
+    const row = shippedOrderAsWorkRow(
+      order({
+        id: 7,
+        ship_by_date: '2026-09-02',
+        deadline_at: '2026-08-01',
+      }),
+    );
+    assert.equal(row.entityType, 'ORDER');
+    assert.equal(row.entityId, 7);
+    assert.equal(row.deadlineAt, '2026-09-02');
+    assert.equal(row.orderId, 'CF-1001');
+    assert.equal(row.recordLabel, 'CF-1001');
+    assert.equal(row.title, 'Trail bike');
+    assert.equal(row.status, 'OPEN');
+    assert.equal(row.outOfStock, null);
+  });
+
+  it('maps is_out_of_stock onto the work-row outOfStock face', () => {
+    const row = shippedOrderAsWorkRow(order({ id: 3, is_out_of_stock: true }));
+    assert.equal(row.outOfStock, 'Out of stock');
+  });
+
+  it('marks packer or tech assignment as ASSIGNED', () => {
+    assert.equal(shippedOrderAsWorkRow(order({ id: 1, packer_id: 9 })).status, 'ASSIGNED');
+    assert.equal(shippedOrderAsWorkRow(order({ id: 2, tester_id: 3 })).status, 'ASSIGNED');
+  });
+});

@@ -61,9 +61,12 @@ export function makeOrdersGridDescriptor(
     columns,
     {
       // Compound-aware: the header's key is a TRACK, the sort vocabulary is in
-      // FACTS. `isQueueColumnSort` alone answered false for every compound
-      // track, so no header offered the affordance and none of them sorted.
-      isSortable: isQueueSortableColumnKey,
+      // FACTS. Slot tracks (`status:N`) resolve through the bound field id so
+      // a rebind of Pick still sorts.
+      isSortable: (key) => {
+        const col = columns.find((c) => c.key === key);
+        return isQueueSortableColumnKey(key, col?.fieldId);
+      },
       // Locked = the mounted model's own frozen prefix, never a static list.
       isLocked: (key) => columns.some((c) => c.key === key && c.frozen === true),
       accessorFor,

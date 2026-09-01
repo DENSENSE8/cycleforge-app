@@ -19,8 +19,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { ClipboardList, ReceivingModeUnbox } from '@/components/Icons';
-import { DeskActionSlotRegistrar } from '@/design-system/components/DeskActionSlot';
-import { Button } from '@/design-system/primitives';
+import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import {
   IncomingDeskRightRail,
   type IncomingDeskRailTool,
@@ -66,27 +65,25 @@ export function UnboxDeskActions() {
   const control = useMemo(
     () => (
       <div className="flex shrink-0 items-center gap-2" data-testid="unbox-desk-actions">
-        <Button
+        <DeskHeaderAction
           variant="execute"
           size="md"
-          radius="pill"
           icon={<ClipboardList />}
           ariaLabel="Check unreceived orders"
           onClick={handleCheck}
           data-testid="receiving-box-check"
         >
           Check
-        </Button>
-        <Button
+        </DeskHeaderAction>
+        <DeskHeaderAction
           variant="primary"
           size="md"
-          radius="pill"
           icon={<ReceivingModeUnbox />}
           onClick={handleUnbox}
           data-testid="receiving-box-resume"
         >
           Unbox
-        </Button>
+        </DeskHeaderAction>
       </div>
     ),
     [handleCheck, handleUnbox],

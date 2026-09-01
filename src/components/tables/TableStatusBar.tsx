@@ -1,12 +1,15 @@
 'use client';
 
 /**
- * The one status strip a table paints at its foot: tabs left, counts right.
+ * The one status strip a table paints at its foot: selection CTAs left,
+ * counts right (legacy sub-mode tabs still optional).
  *
  * ```text
  * ┌────────────────────────────────────────────┬─────────────────────────────┐
- * │ [ Must ship ] [ Urgent ] [ Out of stock ]  │  12 selected · 200 of 922   │
+ * │ [ Assign ] [ Copy ] [ Listing ]            │  12 selected · 200 of 922   │
  * └────────────────────────────────────────────┴─────────────────────────────┘
+ *   after keyboard `?` ({@link KeyboardKey} overlay, right-aligned INSIDE the face):
+ * │ [ Assign A] [ Copy C] [ Listing L]         │
  * ```
  *
  * ## Why it is its own component
@@ -28,15 +31,28 @@
  *
  * The `tabs` props stay for the surfaces still passing them (Labels, Photos,
  * Locations, Support, Walk-in). **Do not wire a new one.** A page's modes
- * belong to its frame; what this strip is genuinely for is the right half —
- * shown / total / selected / copy, which is the one thing a table knows and a
- * frame does not.
+ * belong to its frame; what this strip is genuinely for is selection verbs +
+ * shown / total / selected, which is the one thing a table knows and a frame
+ * does not.
+ *
+ * ## Selection CTAs + keyboard `?` (2026-09-01)
+ *
+ * Live verbs paint as compact pill Buttons flush-left. Hotkeys stay **bound**
+ * and `?` reveal lives in {@link useSelectionStatusBarHotkeys} — one hook.
+ * Faces stay clean until keyboard `?`; then {@link KeyboardKey} overlays the
+ * face, right-aligned inside (`absolute right-1.5`) — gray sunken face, black
+ * letter. Zero layout change. Never a white slab, never a foot `?`, never
+ * key-repeat flash.
  */
 
+import type { ReactNode } from 'react';
 import { Copy } from '@/components/Icons';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
+import { Button, type ButtonVariant } from '@/design-system/primitives/Button';
+import { KeyboardKey } from '@/design-system/primitives/KeyboardKey';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { useSelectionStatusBarHotkeys } from '@/hooks/useSelectionStatusBarHotkeys';
 import { cn } from '@/utils/_cn';
 
 /** One tab in the strip. Never an `all` entry — see {@link DataTable}. */
@@ -69,6 +85,18 @@ export interface DataTableTabStrip {
   onTabChange: (id: string) => void;
 }
 
+/** One selection verb painted on the status bar's left (Copy, Assign, …). */
+export interface TableStatusSelectionAction {
+  key: string;
+  label: string;
+  icon?: ReactNode;
+  onClick: () => void;
+  /** Design-system Button fill. Defaults to `secondary`. */
+  variant?: ButtonVariant;
+  /** Single-letter hotkey (bound while selected; revealed inline after `?`). */
+  hotkey?: string;
+}
+
 export interface TableStatusBarProps {
   tabs?: readonly DataTableTab[];
   activeTab?: string;
@@ -91,16 +119,19 @@ export interface TableStatusBarProps {
   total?: number;
   /** Rows the operator has picked. Zero prints nothing — see below. */
   selected?: number;
-  /** Offered only while a selection exists. */
+  /**
+   * Legacy Copy affordance when the surface does not pass {@link selectionActions}.
+   * Prefer putting Copy in `selectionActions` so every verb shares one left cluster.
+   */
   onCopySelection?: () => void;
   /**
-   * Everything the selection can do, for the corner to advertise.
-   *
-   * Copy alone used to be the whole offer here while seven other bulk verbs
-   * lived in a rail that only registers at 3+ rows — so an operator who checked
-   * one row was told the product could copy and nothing else. The bar does not
-   * host the verbs (the rail owns them); it names how many there are, so the
-   * capability is visible from the first checkbox.
+   * Live selection CTAs (Assign, Copy, Listing → staff, …). Painted flush
+   * left when a selection exists. Prefer this over {@link selectionActionCount}.
+   */
+  selectionActions?: readonly TableStatusSelectionAction[];
+  /**
+   * @deprecated Prefer {@link selectionActions}. Kept so older mounts that only
+   * advertise a count still compile; ignored when `selectionActions` is set.
    */
   selectionActionCount?: number;
   /**
@@ -187,6 +218,58 @@ export function TableTabs({
   );
 }
 
+/**
+ * Teaching keycap — {@link KeyboardKey} SoT, overlaid right-inside the Button.
+ * Zero layout shift.
+ */
+function HotkeyGlyph({ letter }: { letter: string }) {
+  return (
+    <KeyboardKey
+      aria-hidden
+      size="sm"
+      data-testid="data-table-selection-hotkey-cap"
+      className="pointer-events-none absolute right-1.5 top-1/2 z-raised -translate-y-1/2"
+    >
+      {letter}
+    </KeyboardKey>
+  );
+}
+
+function StatusActionButton({
+  action,
+  showHotkey,
+}: {
+  action: TableStatusSelectionAction;
+  showHotkey: boolean;
+}) {
+  const variant = action.variant ?? 'secondary';
+  const hotkey = action.hotkey?.trim().toLowerCase();
+  const hasHotkey = !!hotkey && hotkey.length === 1;
+  const showGlyph = Boolean(showHotkey && hasHotkey);
+  const aria = hasHotkey
+    ? `${action.label} (press ${hotkey.toUpperCase()})`
+    : action.label;
+
+  return (
+    <span className="relative inline-flex shrink-0" data-testid="data-table-selection-action-wrap">
+      <Button
+        type="button"
+        variant={variant}
+        size="sm"
+        radius="pill"
+        icon={action.icon}
+        onClick={action.onClick}
+        aria-label={aria}
+        aria-keyshortcuts={hasHotkey ? hotkey.toUpperCase() : undefined}
+        data-testid={`data-table-selection-action-${action.key}`}
+      >
+        {action.label}
+      </Button>
+      {showGlyph && hotkey ? <HotkeyGlyph letter={hotkey} /> : null}
+    </span>
+  );
+}
+
 export function TableStatusBar({
   tabs,
   activeTab,
@@ -195,12 +278,42 @@ export function TableStatusBar({
   total,
   selected = 0,
   onCopySelection,
+  selectionActions,
   selectionActionCount = 0,
   onLoadMore,
 }: TableStatusBarProps) {
-  // Copy is drawn here; the rest live in the rail. Name only the remainder, or
-  // the sentence claims the corner holds verbs it does not.
-  const moreActions = selected > 0 ? Math.max(0, selectionActionCount - 1) : 0;
+  const hasSelection = selected > 0;
+
+  // Prefer explicit verbs. Fall back to legacy Copy-only + "N more" count.
+  const leftActions: TableStatusSelectionAction[] = [];
+  if (hasSelection && selectionActions && selectionActions.length > 0) {
+    leftActions.push(...selectionActions);
+  } else if (hasSelection && onCopySelection) {
+    leftActions.push({
+      key: 'copy',
+      label: 'Copy',
+      icon: <Copy className="h-4 w-4 shrink-0" />,
+      variant: 'primary',
+      hotkey: 'c',
+      onClick: onCopySelection,
+    });
+  }
+
+  const hasCtas = leftActions.length > 0;
+  // Keyboard `?` only — no foot question-mark control (operator 2026-09-01).
+  const { showHotkeys: inlineHotkeys } = useSelectionStatusBarHotkeys(
+    leftActions,
+    hasCtas,
+  );
+
+  const moreActions =
+    hasSelection && !(selectionActions && selectionActions.length > 0)
+      ? Math.max(0, selectionActionCount - (onCopySelection ? 1 : 0))
+      : 0;
+
+  const tabList = tabs ?? [];
+  const showTabs = tabList.length > 0;
+  const showLeftCluster = hasCtas;
 
   return (
     <div
@@ -209,9 +322,36 @@ export function TableStatusBar({
         'sticky bottom-0 z-raised flex min-w-0 items-stretch justify-between gap-0',
         'border-t border-border-soft bg-surface-card',
         PRIMARY_CHROME_ROW_FACE,
+        showLeftCluster ? 'min-h-11' : undefined,
       )}
     >
-      <TableTabs tabs={tabs ?? []} activeTab={activeTab} onTabChange={onTabChange ?? (() => {})} />
+      {/*
+        LEFT: pill CTAs. Keyboard `?` overlays Linear keycaps on the face
+        (right-aligned) — zero layout shift.
+      */}
+      <div className="flex min-w-0 flex-1 items-stretch gap-0 overflow-x-auto">
+        {showLeftCluster ? (
+          <div
+            className="flex shrink-0 items-center gap-1.5 px-2 py-1"
+            role="toolbar"
+            aria-label="Selection actions"
+            data-testid="data-table-selection-actions"
+          >
+            {leftActions.map((action) => (
+              <StatusActionButton
+                key={action.key}
+                action={action}
+                showHotkey={inlineHotkeys}
+              />
+            ))}
+          </div>
+        ) : null}
+        {showTabs ? (
+          <TableTabs tabs={tabList} activeTab={activeTab} onTabChange={onTabChange ?? (() => {})} />
+        ) : !showLeftCluster ? (
+          <div className="min-w-0 flex-1" />
+        ) : null}
+      </div>
 
       <div className="flex shrink-0 items-center gap-2 px-3 text-role-micro text-text-soft">
         {/*
@@ -226,22 +366,6 @@ export function TableStatusBar({
           >
             {selected.toLocaleString()} selected
           </span>
-        ) : null}
-        {selected > 0 && onCopySelection ? (
-          <button
-            type="button"
-            onClick={onCopySelection}
-            data-testid="data-table-copy-selection"
-            aria-label={`Copy ${selected} selected rows`}
-            className={cn(
-              'ds-raw-button inline-flex items-center gap-1 text-role-micro font-semibold text-text-accent',
-              focusRing('control'),
-              'hover:underline',
-            )}
-          >
-            <Copy className="h-3 w-3 shrink-0" />
-            Copy
-          </button>
         ) : null}
         {moreActions > 0 ? (
           <span data-testid="data-table-selection-more" className="tabular-nums">

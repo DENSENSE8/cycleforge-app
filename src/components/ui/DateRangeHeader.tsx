@@ -13,6 +13,7 @@ import { IconButton } from '@/design-system/primitives/IconButton';
 import { ToolbarButton } from '@/components/ui/ToolbarButton';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { dateKeyToLocalDate, formatWeekRangeCompact, localDateToDateKey } from '@/utils/date';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 
@@ -137,7 +138,11 @@ export function DateRangePickerPill({
         <Popover.Content
           align="end"
           sideOffset={6}
-          className={cn("z-dropdown w-auto min-w-[14rem] rounded-xl border border-border-soft bg-surface-card shadow-lg ring-1 ring-black/5", focusRing('field', 'accent'))}
+          className={cn(
+            'z-dropdown w-auto min-w-[14rem] border border-border-soft bg-surface-card shadow-lg ring-1 ring-black/5',
+            DROPDOWN_SHELL_CORNER,
+            focusRing('field', 'accent'),
+          )}
         >
           {/* Period title + week steppers. Suppressed whenever the calendar is
               shown: it restates the period the calendar already displays and

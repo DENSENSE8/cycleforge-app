@@ -325,28 +325,44 @@ export function IntegrationCard({
           <span className="text-role-caption text-text-faint">Read-only — requires elevated access</span>
         ) : (
           <>
-            {connected ? (
+            {def.connect === 'ebay' && (
+              <div className="flex min-w-0 flex-col gap-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    ref={sellerConnectRef}
+                    variant="primary"
+                    size="sm"
+                    icon={<Link2 />}
+                    onClick={() => setEbayOpen('seller')}
+                  >
+                    {connected ? 'Add selling' : 'Connect'}
+                  </Button>
+                  <Button
+                    ref={buyerConnectRef}
+                    variant="secondary"
+                    size="sm"
+                    icon={<Link2 />}
+                    onClick={() => setEbayOpen('buyer')}
+                  >
+                    Add purchasing
+                  </Button>
+                </div>
+                <p className="text-role-micro leading-snug text-text-faint">
+                  Add purchasing is required for eBay purchase orders on Incoming.
+                </p>
+              </div>
+            )}
+            {connected && def.connect !== 'ebay' ? (
               <Link
                 href={detailHref}
                 className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-role-caption font-medium text-white shadow-sm shadow-blue-600/25 hover:bg-blue-500"
               >
                 Manage
               </Link>
-            ) : (
+            ) : !connected && def.connect !== 'ebay' ? (
               <>
                 {def.connect === 'amazon' && (
                   <Button variant="primary" size="sm" icon={<Link2 />} onClick={() => setAmazonOpen(true)}>Connect</Button>
-                )}
-                {def.connect === 'ebay' && (
-                  <div className="flex min-w-0 flex-col gap-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Button ref={sellerConnectRef} variant="primary" size="sm" icon={<Link2 />} onClick={() => setEbayOpen('seller')}>Connect</Button>
-                      <Button ref={buyerConnectRef} variant="secondary" size="sm" icon={<Link2 />} onClick={() => setEbayOpen('buyer')}>Add purchasing</Button>
-                    </div>
-                    <p className="text-role-micro leading-snug text-text-faint">
-                      Add purchasing is required for eBay purchase orders on Incoming.
-                    </p>
-                  </div>
                 )}
                 {def.connect === 'oauth' && (
                   <Button variant="primary" size="sm" icon={<Link2 />} onClick={oauthConnect}>Connect</Button>
@@ -362,7 +378,7 @@ export function IntegrationCard({
                   )
                 )}
               </>
-            )}
+            ) : null}
 
             {def.healthPath && (
               <Button variant="secondary" size="sm" icon={<RefreshCw />} loading={busy} onClick={runHealth}>Check</Button>

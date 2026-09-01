@@ -42,8 +42,8 @@ type OpenMenu = 'none' | 'more' | 'feedback';
 
 /**
  * Spine footer — staff identity, ⋯ overflow, and sign-out. The map's pin band
- * is gone: Settings is the first row in this menu; Studio and Admin are
- * ordinary L1 rows.
+ * is gone: Studio and Admin are ordinary L1 rows. This menu is report →
+ * clipboard → Settings last.
  *
  * The ⋯ panel is the shadcn/ui Popover (Radix), imported from
  * `src/design-system/primitives/radix-popover.ts` — same altitude as
@@ -51,8 +51,8 @@ type OpenMenu = 'none' | 'more' | 'feedback';
  * geometry). `modal={false}` so the HUD is not focus-trapped. Report-an-issue
  * still opens as a sibling layer because it is a panel, not a menu row.
  *
- * Daily account actions only: Settings, clipboard history (⌘⇧V), report an
- * issue. Throw lives on {@link HeaderGoalChip}; phone QR / kiosk preview /
+ * Daily account actions only: report an issue, clipboard history (⌘⇧V),
+ * Settings. Throw lives on {@link HeaderGoalChip}; phone QR / kiosk preview /
  * desktop download live on Settings → Workstation. Phone scan history is not
  * an account-menu row.
  *
@@ -171,15 +171,17 @@ export function StaffAccountFooter({ className }: { className?: string }) {
             </div>
           </div>
           <div className="space-y-0 p-0">
-            <Link
-              href="/settings"
+            <button
+              type="button"
               role="menuitem"
-              onClick={() => setMenu('none')}
-              className={SIDEBAR_SPINE_MENU_ACTION_CLASS}
+              onClick={() => setMenu('feedback')}
+              className={cn('ds-raw-button', SIDEBAR_SPINE_MENU_ACTION_CLASS)}
             >
-              <Settings className="h-3 w-3 shrink-0 text-text-muted" />
-              <span className={SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS}>Settings</span>
-            </Link>
+              <MessageSquare className="h-3 w-3 shrink-0 text-text-muted" />
+              <span className={SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS}>
+                Report an issue
+              </span>
+            </button>
             {/* The panel itself is owned by `ClipboardHistoryHost` — this row
                 only asks it to open. The host is mounted app-wide, so the chord
                 still works on a page where this footer does not exist (the spine
@@ -201,17 +203,15 @@ export function StaffAccountFooter({ className }: { className?: string }) {
                 {CLIPBOARD_HISTORY_HOTKEY_LABEL}
               </kbd>
             </button>
-            <button
-              type="button"
+            <Link
+              href="/settings"
               role="menuitem"
-              onClick={() => setMenu('feedback')}
-              className={cn('ds-raw-button', SIDEBAR_SPINE_MENU_ACTION_CLASS)}
+              onClick={() => setMenu('none')}
+              className={SIDEBAR_SPINE_MENU_ACTION_CLASS}
             >
-              <MessageSquare className="h-3 w-3 shrink-0 text-text-muted" />
-              <span className={SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS}>
-                Report an issue
-              </span>
-            </button>
+              <Settings className="h-3 w-3 shrink-0 text-text-muted" />
+              <span className={SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS}>Settings</span>
+            </Link>
           </div>
         </PopoverContent>
       </Popover>

@@ -97,7 +97,7 @@ type NavItem = LeafItem | GroupItem;
 // door to one destination — the operator learns whichever they happen to hit
 // first, and the corner stops being the answer.
 const NAV_ITEMS: NavItem[] = [
-  { kind: 'leaf', id: 'home', label: 'Recent', href: '/m/home' },
+  { kind: 'leaf', id: 'home', label: 'Home', href: '/m/home' },
   { kind: 'leaf', id: 'picks', label: 'Picks', href: '/m/pick' },
   {
     kind: 'group',

@@ -4,12 +4,16 @@ import type { QueryClient } from '@tanstack/react-query';
  * Cache surgery for optimistic writes. `useOptimisticMutation` is the call
  * site; these helpers are the part a test can drive without React.
  *
- * Snapshot → patch → (on failure) restore. Exact query keys, not prefixes —
- * prefix surgery lives in station-cache-patch and is a different job.
+ * Snapshot → patch → (on failure) restore. Default is one exact key.
+ * `match: 'prefix'` patches every live query whose key starts with `queryKey`
+ * — parameterized list caches (orders assign). Station-shaped prefix surgery
+ * still lives in station-cache-patch.
  */
 
 export type OptimisticCache<TVars, TCached = unknown> = {
   queryKey: readonly unknown[];
+  /** `prefix` = every query under `queryKey`. Default is a single exact key. */
+  match?: 'exact' | 'prefix';
   update: (current: TCached | undefined, vars: TVars) => TCached | undefined;
 };
 
@@ -18,6 +22,16 @@ export type CacheSnapshot = {
   previous: unknown;
 };
 
+function cacheEntries(
+  client: QueryClient,
+  cache: OptimisticCache<unknown>,
+): ReadonlyArray<readonly [readonly unknown[], unknown]> {
+  if (cache.match === 'prefix') {
+    return client.getQueriesData({ queryKey: cache.queryKey });
+  }
+  return [[cache.queryKey, client.getQueryData(cache.queryKey)]];
+}
+
 export function snapshotAndPatch<TVars>(
   client: QueryClient,
   caches: readonly OptimisticCache<TVars>[],
@@ -25,9 +39,10 @@ export function snapshotAndPatch<TVars>(
 ): CacheSnapshot[] {
   const snaps: CacheSnapshot[] = [];
   for (const cache of caches) {
-    const previous = client.getQueryData(cache.queryKey);
-    snaps.push({ queryKey: cache.queryKey, previous });
-    client.setQueryData(cache.queryKey, cache.update(previous as never, vars));
+    for (const [queryKey, previous] of cacheEntries(client, cache as OptimisticCache<unknown>)) {
+      snaps.push({ queryKey, previous });
+      client.setQueryData(queryKey, cache.update(previous as never, vars));
+    }
   }
   return snaps;
 }

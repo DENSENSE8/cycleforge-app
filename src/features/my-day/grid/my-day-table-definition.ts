@@ -9,7 +9,7 @@
 
 import type { MyDayTask } from '@/lib/my-day/my-day-tasks';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
-import { MY_DAY_GRID_COLUMNS, type MyDayGridColumn } from '@/lib/my-day/my-day-grid-layout';
+import { MY_DAY_SHEET_COLUMNS, type MyDayGridColumn } from '@/lib/my-day/my-day-grid-layout';
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import { MY_DAY_GRID_CAPABILITIES, makeMyDayGridDescriptor } from './my-day-grid-descriptor';
 
@@ -23,12 +23,12 @@ export const MY_DAY_TABLE_DEFINITION = parseTableDefinition({
   surface: 'sheet',
   showDayHeaders: false,
   capabilities: MY_DAY_GRID_CAPABILITIES,
-  columns: MY_DAY_GRID_COLUMNS,
+  columns: MY_DAY_SHEET_COLUMNS,
 });
 
 export const MY_DAY_TABLE_BINDING: TableSurfaceBinding<MyDayTask, MyDayGridColumn> = {
   definition: MY_DAY_TABLE_DEFINITION,
-  columns: MY_DAY_GRID_COLUMNS,
+  columns: MY_DAY_SHEET_COLUMNS,
   makeDescriptor: makeMyDayGridDescriptor,
   // A task IS its row: the title edits in cell, the checkbox completes it, and
   // the watch action opens its own popover. There is nothing behind a task to

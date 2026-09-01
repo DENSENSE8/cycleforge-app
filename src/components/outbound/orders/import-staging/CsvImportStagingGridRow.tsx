@@ -29,14 +29,11 @@ import {
 import { cn } from '@/utils/_cn';
 import { CSV_IMPORT_STAGING_GRID_CAPABILITIES } from './csv-import-staging-grid-descriptor';
 import {
-  CSV_IMPORT_STAGING_GRID_COLUMNS,
   CSV_IMPORT_STAGING_GRID_FROZEN_CELL,
   csvImportStagingGridCell,
   csvImportStagingGridFrozenLeft,
   csvImportStagingGridTemplate,
-  isCsvImportStagingGridFrozen,
   type CsvImportStagingGridColumn,
-  type CsvImportStagingGridColumnKey,
 } from './csv-import-staging-grid-layout';
 
 /** Stable row key — the draft index is the row's identity in a session draft. */
@@ -65,7 +62,7 @@ interface CsvImportStagingGridRowProps {
   focused: boolean;
   onToggle: (index: number) => void;
   onOpen: (index: number) => void;
-  columns?: readonly CsvImportStagingGridColumn[];
+  columns: readonly CsvImportStagingGridColumn[];
 }
 
 export const CsvImportStagingGridRow = memo(function CsvImportStagingGridRow({
@@ -74,31 +71,31 @@ export const CsvImportStagingGridRow = memo(function CsvImportStagingGridRow({
   focused,
   onToggle,
   onOpen,
-  columns = CSV_IMPORT_STAGING_GRID_COLUMNS,
+  columns,
 }: CsvImportStagingGridRowProps) {
   const missingLabel = csvImportStagingMissingLabel(row);
-  const cellValue = (key: CsvImportStagingGridColumnKey): string => {
+  const cellValue = (key: string): string => {
     switch (key) {
-      case 'order':
+      case 'orders-import.order':
         return row.orderNumber;
-      case 'sku':
+      case 'orders-import.sku':
         return row.sku;
-      case 'qty':
+      case 'orders-import.qty':
         return row.quantity;
-      case 'customer':
+      case 'orders-import.customer':
         return row.customerName;
-      case 'tracking':
+      case 'orders-import.tracking':
         return row.trackingNumber;
-      case 'platform':
+      case 'orders-import.platform':
         return row.platform;
       default:
         return '';
     }
   };
 
-  const renderValue = (key: CsvImportStagingGridColumnKey) => {
+  const renderValue = (key: string) => {
     switch (key) {
-      case 'order':
+      case 'orders-import.order':
         return row.orderNumber ? (
           <CopyableCellValue value={row.orderNumber} dense />
         ) : (
@@ -117,27 +114,27 @@ export const CsvImportStagingGridRow = memo(function CsvImportStagingGridRow({
             tooltip={missingLabel}
           />
         );
-      case 'sku':
+      case 'orders-import.sku':
         return row.sku ? <CopyableCellValue value={row.sku} dense /> : <GridCellDash />;
-      case 'qty':
+      case 'orders-import.qty':
         return row.quantity ? (
           <span className="truncate tabular-nums">{row.quantity}</span>
         ) : (
           <GridCellDash />
         );
-      case 'customer':
+      case 'orders-import.customer':
         return row.customerName ? (
           <span className="truncate">{row.customerName}</span>
         ) : (
           <GridCellDash />
         );
-      case 'tracking':
+      case 'orders-import.tracking':
         return row.trackingNumber ? (
           <CopyableCellValue value={row.trackingNumber} dense />
         ) : (
           <GridCellDash />
         );
-      case 'platform': {
+      case 'orders-import.platform': {
         const platform = sourcePlatformMeta(row.platform);
         return platform.value || row.platform ? (
           <GridPlatformMarkValue
@@ -174,10 +171,10 @@ export const CsvImportStagingGridRow = memo(function CsvImportStagingGridRow({
             <div
               className={cn(
                 csvImportStagingGridCell({ inset: 'none', rule }),
-                isCsvImportStagingGridFrozen(col.key) && CSV_IMPORT_STAGING_GRID_FROZEN_CELL,
+                col.frozen === true && CSV_IMPORT_STAGING_GRID_FROZEN_CELL,
                 'justify-center',
               )}
-              style={{ left: csvImportStagingGridFrozenLeft('select') }}
+              style={{ left: csvImportStagingGridFrozenLeft(columns, 'select') }}
             >
               <GridRowCheckbox
                 checked={checked}
@@ -188,11 +185,15 @@ export const CsvImportStagingGridRow = memo(function CsvImportStagingGridRow({
           );
         }
 
-        const key = col.key;
-        const frozen = isCsvImportStagingGridFrozen(key);
+        // Cells speak in FIELD ids since the wave 1.4 slot port; the two
+        // structural fact tracks map onto theirs so one switch serves both.
+        const key =
+          col.fieldId ??
+          (col.key === 'order' ? 'orders-import.order' : col.key === 'status' ? 'status' : col.key);
+        const frozen = col.frozen === true;
         const missing =
-          (key === 'order' && row.missing.includes('order_number')) ||
-          (key === 'sku' && row.missing.includes('sku'));
+          (key === 'orders-import.order' && row.missing.includes('order_number')) ||
+          (key === 'orders-import.sku' && row.missing.includes('sku'));
 
         return (
           <div
@@ -203,7 +204,7 @@ export const CsvImportStagingGridRow = memo(function CsvImportStagingGridRow({
               'text-role-caption text-text-default',
               missing && MISSING_CELL_CLASS,
             )}
-            style={frozen ? { left: csvImportStagingGridFrozenLeft(key) } : undefined}
+            style={frozen ? { left: csvImportStagingGridFrozenLeft(columns, col.key) } : undefined}
           >
             {renderValue(key)}
           </div>

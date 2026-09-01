@@ -11,7 +11,7 @@
 import type { TrackingExceptionRow } from '../types';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import {
-  TRACKING_EXCEPTIONS_GRID_COLUMNS,
+  TRACKING_EXCEPTIONS_SHEET_COLUMNS,
   type TrackingExceptionsGridColumn,
 } from './tracking-exceptions-grid-layout';
 import { parseTableDefinition } from '@/lib/tables/table-definition';
@@ -30,7 +30,7 @@ export const TRACKING_EXCEPTIONS_TABLE_DEFINITION = parseTableDefinition({
   surface: 'sheet',
   showDayHeaders: false,
   capabilities: TRACKING_EXCEPTIONS_GRID_CAPABILITIES,
-  columns: TRACKING_EXCEPTIONS_GRID_COLUMNS,
+  columns: TRACKING_EXCEPTIONS_SHEET_COLUMNS,
 });
 
 export const TRACKING_EXCEPTIONS_TABLE_BINDING: TableSurfaceBinding<
@@ -38,7 +38,7 @@ export const TRACKING_EXCEPTIONS_TABLE_BINDING: TableSurfaceBinding<
   TrackingExceptionsGridColumn
 > = {
   definition: TRACKING_EXCEPTIONS_TABLE_DEFINITION,
-  columns: TRACKING_EXCEPTIONS_GRID_COLUMNS,
+  columns: TRACKING_EXCEPTIONS_SHEET_COLUMNS,
   makeDescriptor: makeTrackingExceptionsGridDescriptor,
   // Correcting an exception is a short, complete form with a commit — a modal,
   // not a peek an operator reads alongside the queue.

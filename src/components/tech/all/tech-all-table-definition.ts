@@ -8,7 +8,7 @@
 
 import type { TechAllTriageRow } from '@/lib/tech/tech-all-triage';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
-import { TECH_ALL_GRID_COLUMNS, type TechAllGridColumn } from '@/lib/tech/tech-all-grid-layout';
+import { TECH_ALL_SHEET_COLUMNS, type TechAllGridColumn } from '@/lib/tech/tech-all-grid-layout';
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import { TECH_ALL_GRID_CAPABILITIES, makeTechAllGridDescriptor } from './tech-all-grid-descriptor';
 
@@ -22,12 +22,12 @@ export const TECH_ALL_TABLE_DEFINITION = parseTableDefinition({
   surface: 'sheet',
   showDayHeaders: false,
   capabilities: TECH_ALL_GRID_CAPABILITIES,
-  columns: TECH_ALL_GRID_COLUMNS,
+  columns: TECH_ALL_SHEET_COLUMNS,
 });
 
 export const TECH_ALL_TABLE_BINDING: TableSurfaceBinding<TechAllTriageRow, TechAllGridColumn> = {
   definition: TECH_ALL_TABLE_DEFINITION,
-  columns: TECH_ALL_GRID_COLUMNS,
+  columns: TECH_ALL_SHEET_COLUMNS,
   makeDescriptor: makeTechAllGridDescriptor,
   // A triage row is a POINTER at work living somewhere else: a receiving line
   // hands off to its station bench, a repair or a pickup navigates to its own

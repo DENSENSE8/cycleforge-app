@@ -82,6 +82,8 @@ export interface ShippedOrder {
   status_history: any;
   /** Derived from shipping_tracking_numbers carrier status — not stored on orders */
   is_shipped?: boolean;
+  /** Operator blocked the line — `orders.is_out_of_stock`. */
+  is_out_of_stock?: boolean;
   shipment_status?: string | null;
   latest_status_code?: string | null;
   latest_status_label?: string | null;

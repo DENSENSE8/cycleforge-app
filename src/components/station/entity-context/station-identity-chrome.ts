@@ -88,7 +88,7 @@ export const STATION_CHROME_ROW_FACE = 'h-7 max-h-7 min-h-0 shrink-0';
  * as Displays top band · identity row 1 · leaf eyebrows.
  */
 export const STATION_CHROME_SEAM_HAIRLINE =
-  'relative after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-border-hairline';
+  'relative after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-border-subtle';
 
 /**
  * Square hit cell on the Displays top band — same 28px as

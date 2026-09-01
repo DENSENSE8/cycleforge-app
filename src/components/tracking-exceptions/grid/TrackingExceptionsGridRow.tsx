@@ -7,6 +7,8 @@ import { TrackingChip, getLast8 } from '@/components/ui/CopyChip';
 import { GridCellDash, GridDateTimeCellValue, GridStatusCellValue } from '@/components/ui/grid-cells';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import { gridCellAlignClass } from '@/design-system/components/grid';
+import { resolveTrackingExceptionSlotValue } from '@/lib/tables/field-catalog/tracking-exceptions-resolve';
+import { isSlotTrackKey } from '@/lib/tables/materialize-tracks';
 import { cn } from '@/utils/_cn';
 import {
   trackingExceptionCarrier,
@@ -15,7 +17,6 @@ import {
 } from '../types';
 import { TRACKING_EXCEPTIONS_GRID_CAPABILITIES } from './tracking-exceptions-grid-descriptor';
 import {
-  TRACKING_EXCEPTIONS_GRID_COLUMNS,
   TRACKING_EXCEPTIONS_GRID_FROZEN_CELL,
   trackingExceptionsGridCell,
   trackingExceptionsGridFrozenLeft,
@@ -47,20 +48,88 @@ export const TrackingExceptionsGridRow = memo(function TrackingExceptionsGridRow
   refreshing,
   onOpenEdit,
   onRefresh,
-  columns = TRACKING_EXCEPTIONS_GRID_COLUMNS,
+  columns,
 }: {
   row: TrackingExceptionRow;
   isSelected: boolean;
   refreshing: boolean;
   onOpenEdit: (row: TrackingExceptionRow) => void;
   onRefresh: (row: TrackingExceptionRow) => void;
-  columns?: readonly TrackingExceptionsGridColumn[];
+  columns: readonly TrackingExceptionsGridColumn[];
 }) {
   const staff = trackingExceptionStaffLabel(row);
   const carrier = trackingExceptionCarrier(row);
 
+  /** The body of one materialized slot track, chosen by the BOUND FIELD. */
+  const renderSlotBody = (fieldId: string | undefined): ReactNode => {
+    switch (fieldId) {
+      case 'tracking-exceptions.carrier':
+        return (
+          <span className="min-w-0 truncate text-role-caption font-semibold text-text-muted">
+            {carrier}
+          </span>
+        );
+      case 'tracking-exceptions.reason':
+        return (
+          <span className="min-w-0 truncate text-role-caption font-semibold text-text-muted">
+            {row.exception_reason}
+          </span>
+        );
+      case 'tracking-exceptions.status':
+        return <GridStatusCellValue label={row.status} toneClass={STATUS_TONE[row.status]} />;
+      case 'tracking-exceptions.retries':
+        return (
+          <span className="font-mono text-role-caption text-text-muted">
+            {row.zoho_check_count}
+          </span>
+        );
+      case 'tracking-exceptions.last_check':
+        return row.last_zoho_check_at ? (
+          <GridDateTimeCellValue
+            raw={row.last_zoho_check_at}
+            className="text-role-caption text-text-muted"
+          />
+        ) : (
+          <GridCellDash />
+        );
+      case 'tracking-exceptions.created':
+        return (
+          <GridDateTimeCellValue
+            raw={row.created_at}
+            className="text-role-caption text-text-muted"
+          />
+        );
+      case 'tracking-exceptions.notes':
+        return row.notes ? (
+          <HoverTooltip label={row.notes} focusable={false}>
+            <span className="min-w-0 truncate text-role-caption text-text-muted">{row.notes}</span>
+          </HoverTooltip>
+        ) : (
+          <GridCellDash />
+        );
+      default: {
+        // A catalog field with no bespoke face paints its resolved text — a new
+        // bindable fact needs a resolver case, never a new column file.
+        const value = fieldId ? resolveTrackingExceptionSlotValue(row, fieldId) : null;
+        const text = value?.kind === 'value' ? value.text : null;
+        return text ? (
+          <span className="min-w-0 truncate text-role-caption text-text-muted">{text}</span>
+        ) : (
+          <GridCellDash />
+        );
+      }
+    }
+  };
+
   const renderCell = (col: TrackingExceptionsGridColumn, last: boolean): ReactNode => {
     const rule = !last;
+    if (isSlotTrackKey(col.key)) {
+      return (
+        <div data-col={col.key} className={cn(dataCell(col, rule), 'min-w-0')}>
+          {renderSlotBody(col.fieldId)}
+        </div>
+      );
+    }
     switch (col.key) {
       case 'select':
         return (
@@ -70,7 +139,7 @@ export const TrackingExceptionsGridRow = memo(function TrackingExceptionsGridRow
               TRACKING_EXCEPTIONS_GRID_FROZEN_CELL,
               'justify-center',
             )}
-            style={{ left: trackingExceptionsGridFrozenLeft('select') }}
+            style={{ left: trackingExceptionsGridFrozenLeft(columns, 'select') }}
           >
             <span className="h-4 w-4 shrink-0" aria-hidden />
           </div>
@@ -80,7 +149,7 @@ export const TrackingExceptionsGridRow = memo(function TrackingExceptionsGridRow
           <div
             data-col="title"
             className={cn(dataCell(col, rule), TRACKING_EXCEPTIONS_GRID_FROZEN_CELL)}
-            style={{ left: trackingExceptionsGridFrozenLeft('title') }}
+            style={{ left: trackingExceptionsGridFrozenLeft(columns, 'title') }}
             data-frozen-edge
           >
             {/* TrackingChip stopPropagates its own copy click — the cell itself
@@ -90,97 +159,6 @@ export const TrackingExceptionsGridRow = memo(function TrackingExceptionsGridRow
               value={row.tracking_number}
               display={getLast8(row.tracking_number) || row.tracking_number.slice(-8)}
             />
-          </div>
-        );
-      case 'carrier':
-        return (
-          <div data-col="carrier" className={dataCell(col, rule)}>
-            <span className="min-w-0 truncate text-role-caption font-semibold text-text-muted">
-              {carrier}
-            </span>
-          </div>
-        );
-      case 'source':
-        return (
-          <div data-col="source" className={dataCell(col, rule)}>
-            {row.source_station ? (
-              <span className="min-w-0 truncate text-role-caption text-text-muted">
-                {row.source_station}
-              </span>
-            ) : (
-              <GridCellDash />
-            )}
-          </div>
-        );
-      case 'staff':
-        return (
-          <div data-col="staff" className={dataCell(col, rule)}>
-            {staff ? (
-              <span className="min-w-0 truncate text-role-caption text-text-muted">{staff}</span>
-            ) : (
-              <GridCellDash />
-            )}
-          </div>
-        );
-      case 'reason':
-        return (
-          <div data-col="reason" className={dataCell(col, rule)}>
-            <span className="min-w-0 truncate text-role-caption font-semibold text-text-muted">
-              {row.exception_reason}
-            </span>
-          </div>
-        );
-      case 'status':
-        return (
-          <div data-col="status" className={dataCell(col, rule)}>
-            <GridStatusCellValue
-              label={row.status}
-              toneClass={STATUS_TONE[row.status]}
-            />
-          </div>
-        );
-      case 'retries':
-        return (
-          <div data-col="retries" className={dataCell(col, rule)}>
-            <span className="font-mono text-role-caption text-text-muted">
-              {row.zoho_check_count}
-            </span>
-          </div>
-        );
-      case 'lastCheck':
-        return (
-          <div data-col="lastCheck" className={dataCell(col, rule)}>
-            {row.last_zoho_check_at ? (
-              <GridDateTimeCellValue
-                raw={row.last_zoho_check_at}
-                className="text-role-caption text-text-muted"
-              />
-            ) : (
-              <GridCellDash />
-            )}
-          </div>
-        );
-      case 'created':
-        return (
-          <div data-col="created" className={dataCell(col, rule)}>
-            <GridDateTimeCellValue
-              raw={row.created_at}
-              className="text-role-caption text-text-muted"
-            />
-          </div>
-        );
-      case 'notes':
-        return (
-          <div data-col="notes" className={cn(dataCell(col, rule), 'min-w-0')}>
-            {row.notes ? (
-              <HoverTooltip label={row.notes} focusable={false}>
-                <span className="min-w-0 truncate text-role-caption text-text-muted">
-                  {row.notes}
-                </span>
-              </HoverTooltip>
-            ) : (
-              <GridCellDash />
-            )}
           </div>
         );
       case 'actions':

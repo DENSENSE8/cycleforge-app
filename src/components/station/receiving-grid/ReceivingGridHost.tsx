@@ -4,6 +4,7 @@ import { useCallback, useMemo, type RefObject } from 'react';
 import { useGridRowFills } from '@/design-system/components/grid';
 import {
   DataTable,
+  type DataTableFilterChrome,
   type DataTableSearch,
 } from '@/components/tables/DataTable';
 import { useCapabilityProviderLabel } from '@/hooks/useCapabilityProviderLabel';
@@ -25,6 +26,7 @@ import {
   type ReceivingGridColumn,
   type ReceivingGridColumnKey,
 } from '@/lib/receiving/receiving-grid-layout';
+import type { DataTableFieldsMenuData } from '@/components/tables/DataTable';
 import { RECEIVING_TABLE_BINDING } from './receiving-table-definition';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import { ReceivingGridGroupRow } from './ReceivingGridGroupRow';
@@ -70,8 +72,24 @@ interface ReceivingGridHostProps {
   statusVocabulary?: 'fine' | 'coarse';
   /** Selection bus scope (defaults to receiving). */
   selectionScope?: string;
-  /** FULL canonical column list — `LedgerGridSurface` resolves visibility. */
+  /**
+   * FULL canonical column list — `LedgerGridSurface` resolves visibility.
+   *
+   * The Unbox / History / Testing rails pass the MATERIALIZED compound model
+   * (`receivingCompoundColumnsFor`, wave 1.3); omitting it falls back to the
+   * definition's flat canonical list, which is what the `/test` history desk
+   * still mounts. Those are two different mounts of one definition, so the
+   * slot layout is threaded in by the caller rather than resolved here — a
+   * host that materialized unconditionally would swap the flat desk's model
+   * out from under it.
+   */
   columns?: readonly ReceivingGridColumn[];
+  /**
+   * Fields-picker DATA for the toolbar `+` popover, from the caller's slot
+   * layout hook. Absent ⇒ no picker, which is the honest face for a mount
+   * with no catalog behind it.
+   */
+  fields?: DataTableFieldsMenuData;
   /**
    * Staff-prefs identity for per-staff column config. Unbox / History are
    * `receiving`; Testing History passes `testing` so the two keep independent
@@ -129,6 +147,11 @@ interface ReceivingGridHostProps {
   /** The find field, as data — the surface above owns the URL it writes. */
   search: DataTableSearch;
   /**
+   * Funnel beside search. Omit and DataTable mounts idle chrome so the icon
+   * still paints. Unbox Queue/Viewed/History pass `useReceivingTableChrome`.
+   */
+  filter?: DataTableFilterChrome;
+  /**
    * History View topics: never paint card-corner ▦ while the inspector host
    * is absent (same contract as To Ship).
    */
@@ -167,6 +190,7 @@ export function ReceivingGridHost({
   statusVocabulary = 'fine',
   selectionScope = RECEIVING_SELECTION_SCOPE,
   columns,
+  fields,
   tableId,
   showDayHeaders,
   scrollRef,
@@ -184,6 +208,7 @@ export function ReceivingGridHost({
   linkedReceivingId = null,
   onCrosshairHover,
   search,
+  filter,
 }: ReceivingGridHostProps) {
   // One fetch for the whole grid — History UNBOXED tips name the connected
   // inventory provider (falls back to capability title while loading).
@@ -304,6 +329,7 @@ export function ReceivingGridHost({
     <DataTable<ReceivingLineRow, ReceivingGridColumnKey, ReceivingGridColumn>
       binding={RECEIVING_TABLE_BINDING}
       columns={allColumns}
+      fields={fields}
       orderGroupsByDate={orderGroupsByDate}
       rows={flatRows}
       sort={columnSort}
@@ -312,6 +338,7 @@ export function ReceivingGridHost({
       loading={loading}
       emptyMessage={emptyMessage}
       search={search}
+      filter={filter}
       selectionScope={selectMode ? selectionScope : undefined}
       showDayHeaders={showDayHeaders}
       scrollRef={scrollRef}

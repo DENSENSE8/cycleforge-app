@@ -12,7 +12,7 @@ import {
 import { createPortal } from 'react-dom';
 import { X, Pencil } from '@/components/Icons';
 import { SerialChip } from '@/components/ui/CopyChip';
-import { cornerClass } from '@/design-system/tokens/radius';
+import { cornerClass, DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { ConditionPills } from './ConditionPills';
 import { ConditionBadge } from './ReceivingUnitRows';
@@ -450,8 +450,11 @@ export function SerialChipWithMenu({
               left: pos?.left ?? -9999,
               visibility: pos ? 'visible' : 'hidden',
             }}
-            // eslint-disable-next-line no-restricted-syntax
-            className={`fixed z-panelPopover overflow-hidden rounded-lg border border-border-soft bg-surface-card shadow-lg ${onSetCondition ? 'min-w-[200px]' : 'min-w-[112px]'}`}
+            className={cn(
+              'fixed z-panelPopover overflow-hidden border border-border-soft bg-surface-card shadow-lg',
+              DROPDOWN_SHELL_CORNER,
+              onSetCondition ? 'min-w-[200px]' : 'min-w-[112px]',
+            )}
           >
             {onSetCondition ? (
               <div className="border-b border-border-hairline px-2 py-1.5">

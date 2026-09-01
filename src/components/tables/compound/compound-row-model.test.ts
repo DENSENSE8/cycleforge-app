@@ -11,7 +11,7 @@
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { firstNote } from '@/components/tables/compound/compound-row-model';
+import { firstNote, formatCompoundDelayFace } from '@/components/tables/compound/compound-row-model';
 import {
   COMPOUND_COLUMN_KEYS,
   COMPOUND_TRACKS,
@@ -148,6 +148,10 @@ describe('compound layout is shared, not forked', () => {
       ORDERS_COMPOUND_COLUMNS.filter((c) => c.frozen).map((c) => c.key),
       ['select', 'thumb'],
     );
+    const thumb = COMPOUND_TRACKS.find((c) => c.key === 'thumb');
+    assert.equal(thumb?.gridLabel, 'Image');
+    assert.equal(thumb?.headerForceLabel, true);
+    assert.equal(thumb?.headerGlyphOnly, undefined);
   });
 
   it('freezes a contiguous prefix in every family', () => {
@@ -244,6 +248,58 @@ describe('firstNote', () => {
   it('treats whitespace as absent', () => {
     assert.equal(firstNote(['   ', null, undefined]), null);
     assert.equal(firstNote(['  hi  ']), 'hi');
+  });
+});
+
+describe('formatCompoundDelayFace', () => {
+  it('paints the civil date, not On time, when a date is present', () => {
+    const face = formatCompoundDelayFace({
+      days: 0,
+      overdue: false,
+      dateLabel: 'Aug 17',
+      dateKey: '2026-08-17',
+    });
+    assert.equal(face.text, 'Aug 17');
+    assert.match(face.toneClass, /text-text-faint/);
+  });
+
+  it('uses default ink for due-today', () => {
+    const face = formatCompoundDelayFace({
+      days: 0,
+      overdue: false,
+      dateLabel: 'Aug 17',
+      dateKey: '2026-08-17',
+      dueToday: true,
+    });
+    assert.equal(face.text, 'Aug 17');
+    assert.match(face.toneClass, /text-text-default/);
+  });
+
+  it('keeps the date and suffixes lateness when overdue', () => {
+    const face = formatCompoundDelayFace({
+      days: 15,
+      overdue: true,
+      dateLabel: 'Aug 14',
+      dateKey: '2026-08-14',
+    });
+    assert.equal(face.text, 'Aug 14 · 15d late');
+    assert.match(face.toneClass, /text-text-danger/);
+  });
+
+  it('falls back to relative faces when the family has no civil date', () => {
+    assert.equal(
+      formatCompoundDelayFace({ days: 1, overdue: true }).text,
+      '1d late',
+    );
+    assert.equal(formatCompoundDelayFace({ days: 0, overdue: false }).text, 'On time');
+    assert.equal(formatCompoundDelayFace(null).text, 'On time');
+  });
+
+  it('an editable missing date is a dash, never a fake On time', () => {
+    assert.equal(
+      formatCompoundDelayFace(null, { editable: true, missingText: '--' }).text,
+      '--',
+    );
   });
 });
 

@@ -12,7 +12,7 @@
 import { useRef, type CSSProperties, type ReactNode } from 'react';
 import { Copy, ChevronDown, ExternalLink, Pencil, Info } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
-import { CarrierMark } from '@/components/ui/CarrierMark';
+import { BrandIdentityDot } from '@/components/ui/grid-cells';
 import { CopyChip, type ChipTone } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useHoverSurface } from '@/hooks/useHoverSurface';
@@ -21,7 +21,7 @@ import {
   type ChipHoverMenuRow,
 } from '@/components/ui/ChipHoverMenuSurface';
 import { RECEIVING_CHIP_EDIT_BTN_CLASS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
-import { hasCarrierBrandPaint, resolveCarrierBrand } from '@/lib/carrier-brand';
+import { carrierBrandDotPaint, resolveCarrierBrand } from '@/lib/carrier-brand';
 import { normalizeCopyText } from '@/lib/copy-chip-format';
 import { recordCopy } from '@/lib/clipboard-history';
 import { buildOpenLinksHubHref } from '@/lib/receiving/listing-links';
@@ -73,8 +73,8 @@ export function IdentityLinkChip({
   iconStyle?: CSSProperties;
   /**
    * Authoritative carrier from the shipment / line (same ladder as Open URL).
-   * With {@link showCarrierBrand}, known carriers tint the leading MapPin via
-   * {@link CarrierMark} instead of the house-blue tracking tone.
+   * With {@link showCarrierBrand}, the leading mark is the carrier ring
+   * {@link BrandIdentityDot} instead of a MapPin.
    */
   carrierHint?: string | null;
   /**
@@ -83,7 +83,7 @@ export function IdentityLinkChip({
    */
   platformLabel?: string | null;
   /**
-   * Opt into carrier-colored MapPin (carton identity). Grids omit this.
+   * Opt into the carrier ring identity dot (carton identity). Grids omit this.
    */
   showCarrierBrand?: boolean;
   disableCopy?: boolean;
@@ -148,7 +148,7 @@ export function IdentityLinkChip({
     tone === 'tracking' && showCarrierBrand
       ? resolveCarrierBrand(value, carrierHint)
       : null;
-  const carrierBrandPaint = carrierBrand != null && hasCarrierBrandPaint(carrierBrand);
+  const carrierDot = carrierBrand ? carrierBrandDotPaint(carrierBrand) : null;
   const openExternal = () => {
     if (openHref) window.open(openHref, '_blank', 'noopener,noreferrer');
   };
@@ -282,28 +282,32 @@ export function IdentityLinkChip({
             </HoverTooltip>
           </>
         ) : (
-          <CopyChip
+          <>
+            {carrierDot ? (
+              <BrandIdentityDot
+                variant="ring"
+                className={carrierDot.className}
+                style={carrierDot.style}
+              />
+            ) : null}
+            <CopyChip
             value={value}
             display={display}
             tone={tone}
             editing={isEditing}
-            // Tone SoT (# / MapPin / …) wins; ExternalLink is listing-only.
-            // Carton tracking may tint the MapPin via CarrierMark (showCarrierBrand).
+            // Tone SoT wins; ExternalLink is listing-only.
+            // Carton tracking leads with the carrier ring identity dot.
             icon={
-              carrierBrandPaint && carrierBrand ? (
-                <CarrierMark meta={carrierBrand} footprint="chip" />
+              tone === 'tracking' ? (
+                null
               ) : tone ? (
                 undefined
               ) : showExternalIcon ? (
                 <ExternalLink className="h-4 w-4 shrink-0" />
               ) : undefined
             }
-            iconClass={
-              carrierBrandPaint
-                ? 'text-inherit'
-                : iconClass
-            }
-            iconStyle={carrierBrandPaint ? undefined : iconStyle}
+            iconClass={iconClass}
+            iconStyle={iconStyle}
             width={grow ? 'min-w-0 flex-1 max-w-full' : 'w-auto'}
             // Default chip outerPad (`px-1.5`) — row stays gap-0 flush abut;
             // breathing lives on each face so listing text never jams the
@@ -315,6 +319,7 @@ export function IdentityLinkChip({
             // faces may truncate; identity locks do not.
             displayWidth={lockLast8Width ? 'last8' : 'content'}
             truncateDisplay={lockLast8Width ? false : grow}
+            outerPad={tone === 'tracking' ? 'flush' : undefined}
             carrierHint={tone === 'tracking' ? carrierHint : null}
             platformLabel={tone === 'id' ? platformLabel : null}
             // Hover shows the full value via the site tooltip above. Open/Edit
@@ -340,6 +345,7 @@ export function IdentityLinkChip({
                 : chipAction === 'open' && !openHref && !onEdit
             }
           />
+          </>
         )}
         {multiLinks ? (
           <ChevronDown className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />

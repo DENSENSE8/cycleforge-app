@@ -10,9 +10,8 @@ import {
 } from '@/design-system/components/grid';
 import type { TechAllTriageRow } from '@/lib/tech/tech-all-triage';
 import {
-  defaultDirForTechAllGridSort,
-  isTechAllGridFrozen,
-  isTechAllGridSortable,
+  defaultDirForTechAllColumn,
+  isTechAllColumnSortable,
   type TechAllGridColumn,
 } from '@/lib/tech/tech-all-grid-layout';
 
@@ -35,9 +34,10 @@ export function makeTechAllGridDescriptor(
     'tech.all',
     columns,
     {
-      isSortable: isTechAllGridSortable,
-      sortDescFirst: (key) => defaultDirForTechAllGridSort(key as never) === 'desc',
-      isLocked: isTechAllGridFrozen,
+      isSortable: (key) => isTechAllColumnSortable(columns, key),
+      sortDescFirst: (key) => defaultDirForTechAllColumn(columns, key) === 'desc',
+      // Locked = the mounted model's own frozen prefix (`select · identity`).
+      isLocked: (key) => columns.some((c) => c.key === key && c.frozen === true),
     },
     TECH_ALL_GRID_CAPABILITIES,
   );

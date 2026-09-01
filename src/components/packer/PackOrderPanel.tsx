@@ -18,6 +18,7 @@ import {
   StationWorkbench,
   WorkspaceTimelineTab,
 } from '@/components/station/workbench';
+import { STATION_SCAN_WELL_CLASS } from '@/components/station/scan-depth';
 import { OrderPackChecklist } from '@/components/packing/OrderPackChecklist';
 import { ListingLinksTab } from '@/components/receiving/workspace/line-edit/ListingLinksTab';
 import { useOrderPackChecklist } from '@/hooks/useOrderPackChecklist';
@@ -32,6 +33,7 @@ import {
   StationDisplaysUtilityRail,
   StationDisplaysPushStack,
   STATION_DISPLAY_INDEX,
+  resolveDisplaysActiveTab,
   useYieldStationDisplaysOnAssistantOpen,
 } from '@/components/station/displays';
 import { PackLocationsLeaf } from '@/components/tech/shipping/PackLocationsLeaf';
@@ -190,15 +192,14 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
     ],
   );
 
-  const resolvedSideTab: PackDisplayNav | null = useMemo(() => {
-    if (!activeSideTab) return null;
-    if (activeSideTab === STATION_DISPLAY_INDEX) return STATION_DISPLAY_INDEX;
-    if (displayTabs.some((t) => t.id === activeSideTab)) return activeSideTab;
-    // A requested leaf that gated away falls back to the INDEX, never to
-    // `displayTabs[0]` — silently swapping in an unrelated display is the
-    // failure the index exists to make impossible.
-    return STATION_DISPLAY_INDEX;
-  }, [activeSideTab, displayTabs]);
+  const resolvedSideTab = useMemo(
+    () =>
+      resolveDisplaysActiveTab(
+        activeSideTab,
+        displayTabs.map((t) => t.id),
+      ),
+    [activeSideTab, displayTabs],
+  );
 
   const packedCount = checklist?.progress.packedLines ?? 0;
   const totalCount = checklist?.progress.total ?? 0;
@@ -270,6 +271,7 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
                   <PackPapersStatusCard orderRowId={activeOrder.orderRowId} />
                 }
               >
+                <div className={STATION_SCAN_WELL_CLASS}>
                 {isUnitScan ? (
                   <div className="space-y-3">
                     <p className="text-role-caption font-semibold text-text-muted">
@@ -296,6 +298,7 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
                     unknownCondition={activeOrder.condition}
                   />
                 )}
+                </div>
               </StationWorkbench>
             </div>
           </StationPanelRoot>

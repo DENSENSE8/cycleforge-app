@@ -23,6 +23,17 @@
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useLiveValueChange } from '@/design-system/motion';
 import { PlatformMark } from '@/components/ui/PlatformMark';
+import {
+  CARRIER_BRANDS,
+  carrierBrandDotPaint,
+  displayCarrierFromHint,
+} from '@/lib/carrier-brand';
+import {
+  platformMetaBrandDot,
+  sourcePlatformMeta,
+  sourcePlatformMetaFromLabel,
+  type SourcePlatformMeta,
+} from '@/lib/source-platform';
 import { useTimeFormat } from '@/lib/time-format/useTimeFormat';
 import {
   formatDateTimePST,
@@ -320,7 +331,7 @@ const BRAND_DOT_RING = {
 
 /**
  * Dense Sheets brand-identity micro-dot — platform / carrier paint beside a
- * quiet last-8 face when `#` / MapPin are omitted. Same size as the lifecycle
+ * quiet last-8 face when type glyphs are omitted. Same size as the lifecycle
  * dot inside {@link GridStatusCellValue}, different meaning: paint comes only
  * from `platformMetaBrandDot` / `carrierBrandDotPaint`, never a status map.
  *
@@ -354,10 +365,59 @@ export function BrandIdentityDot({
 }) {
   return (
     <span
-      className={cn('h-1.5 w-1.5 shrink-0 rounded-full', className)}
+      className={cn('inline-block h-1.5 w-1.5 shrink-0 rounded-full', className)}
       style={variant === 'ring' ? { ...style, ...BRAND_DOT_RING } : style}
       aria-hidden
     />
+  );
+}
+
+/**
+ * Dropdown / menu face for a platform or carrier — the SAME marks the Order
+ * column paints ({@link BrandIdentityDot} filled vs ring). Colour comes only
+ * from `platformMetaBrandDot` and `carrierBrandDotPaint`. No brand SVG.
+ * Compact is accepted for call-site stability; both kinds are the dot alone.
+ */
+export function MenuBrandIdentity({
+  kind,
+  label,
+  value,
+  meta: metaOverride,
+}: {
+  kind: 'platform' | 'carrier';
+  label: string;
+  /** Stored slug when known — more precise than a display label. */
+  value?: string;
+  /** Catalog-aware platform meta (org `color_hex`). */
+  meta?: SourcePlatformMeta;
+  compact?: boolean;
+}) {
+  if (kind === 'carrier') {
+    const carrier = displayCarrierFromHint(value ?? label);
+    const brand = carrier ? CARRIER_BRANDS[carrier] : CARRIER_BRANDS.Unknown;
+    const paint = carrierBrandDotPaint(brand);
+    return (
+      <span
+        data-brand-identity="carrier"
+        className="inline-flex shrink-0 items-center"
+        title={label}
+        aria-hidden
+      >
+        <BrandIdentityDot variant="ring" className={paint.className} style={paint.style} />
+      </span>
+    );
+  }
+  const resolved = metaOverride ?? (value ? sourcePlatformMeta(value) : sourcePlatformMetaFromLabel(label));
+  const paint = platformMetaBrandDot(resolved);
+  return (
+    <span
+      data-brand-identity="platform"
+      className="inline-flex shrink-0 items-center"
+      title={label}
+      aria-hidden
+    >
+      <BrandIdentityDot className={paint.className} style={paint.style} />
+    </span>
   );
 }
 

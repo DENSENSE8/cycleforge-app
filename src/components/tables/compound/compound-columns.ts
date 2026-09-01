@@ -83,6 +83,8 @@ export interface CompoundTrack {
   gridLabel?: string;
   labelFitRem?: number;
   type?: ColumnType;
+  headerGlyphOnly?: boolean;
+  headerForceLabel?: boolean;
   align?: 'start' | 'end';
   frozen?: boolean;
   sortable?: boolean;
@@ -145,11 +147,12 @@ export const COMPOUND_TRACKS: readonly CompoundTrack[] = [
     frozen: true,
     width: GUTTER_TRACK,
     label: 'Image',
-    // Named, not blank (operator ruling 2026-08-31). The track is a 48px square
-    // so the word itself will not fit; `gridHeaderShowsLabel` falls back to the
-    // column's TYPE GLYPH, which is what "display image for the image column"
-    // buys — a header that identifies the track instead of a gap over it.
+    // The word, not a glyph (operator 2026-09-01). The track is a 48px square;
+    // `headerForceLabel` is the declared intent so the fit test cannot degrade
+    // it back to a type mark.
     gridLabel: 'Image',
+    type: 'image',
+    headerForceLabel: true,
     align: 'start',
     sortable: false,
     // NOT resizable, and that is the point: `isGridColumnResizable` refuses

@@ -56,9 +56,9 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
     return box.x;
   };
 
-  /** The sticky header row — located by a track the compound model declares. */
+  /** The sticky header row — a row of `columnheader`s, never a body row. */
   const headerRowIn = (table: Locator) =>
-    table.locator('[role="row"]:has([data-col="item"])').first();
+    table.locator('[role="row"]:has([role="columnheader"][data-col="item"])').first();
 
   const gridIn = (page: Page) => page.locator('[data-testid="pending-grid-body"]').first();
 
@@ -169,17 +169,58 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
    */
   test('a sortable header round-trips through the URL', async ({ page }) => {
     const { headerRow } = await openGrid(page);
-    const header = headerRow.locator('[data-col="item"]');
+    const header = headerRow.locator('[role="columnheader"][data-col="item"]');
     await expect(header).toBeVisible();
 
     await header.click();
+    await expect(header).toHaveAttribute('aria-sort', 'ascending');
+    await expect(header.locator('[data-sort-affordance="asc"]')).toBeVisible();
     // `item` carries the product title, so it writes `?sort=title`.
     await expect(page).toHaveURL(/sort=title/);
-    await expect(header).toHaveAttribute('aria-sort', 'ascending');
 
     await header.click();
-    await expect(page).toHaveURL(/dir=desc/);
     await expect(header).toHaveAttribute('aria-sort', 'descending');
+    await expect(header.locator('[data-sort-affordance="desc"]')).toBeVisible();
+    await expect(page).toHaveURL(/dir=desc/);
+  });
+
+  test('the sort arrow sits to the right of the title, and only appears when sorted', async ({
+    page,
+  }) => {
+    const { headerRow } = await openGrid(page);
+    const header = headerRow.locator('[role="columnheader"][data-col="item"]');
+    await expect(header.locator('[data-sort-affordance]')).toHaveCount(0);
+
+    await header.click();
+    await expect(header.locator('[data-sort-affordance="asc"]')).toBeVisible();
+
+    const order = await header.evaluate((el) => {
+      const title = [...el.querySelectorAll('span')].find(
+        (s) => s.textContent?.trim() === 'Item' && !s.classList.contains('sr-only'),
+      );
+      const arrow = el.querySelector('[data-sort-affordance]');
+      if (!title || !arrow) return { ok: false, reason: 'missing title or arrow' };
+      const titleBox = title.getBoundingClientRect();
+      const arrowBox = arrow.getBoundingClientRect();
+      return {
+        ok: true,
+        arrowRightOfTitle: arrowBox.left >= titleBox.right - 1,
+        titleClass: title.className,
+      };
+    });
+    expect(order.ok, 'Item header has a title and a sort arrow').toBe(true);
+    expect(order.arrowRightOfTitle, 'arrow is to the right of Item').toBe(true);
+    expect(order.titleClass, 'title is black ink, not muted chrome').toContain(
+      'text-text-default',
+    );
+  });
+
+  test('the image column header is the word Image, not a glyph', async ({ page }) => {
+    const { headerRow } = await openGrid(page);
+    const thumb = headerRow.locator('[role="columnheader"][data-col="thumb"]');
+    await expect(thumb).toBeVisible();
+    await expect(thumb).toContainText('Image');
+    await expect(thumb.locator('svg')).toHaveCount(0);
   });
 
   test('a track with no sortable fact does not pretend to sort', async ({ page }) => {

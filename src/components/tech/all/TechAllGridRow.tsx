@@ -2,11 +2,13 @@
 
 import { Fragment, memo, type ReactNode } from 'react';
 import { CopyableCellValue } from '@/components/ui/CopyChip';
+import { GridCellDash } from '@/components/ui/grid-cells';
+import { resolveTechAllSlotValue } from '@/lib/tables/field-catalog/tech-all-resolve';
+import { isSlotTrackKey } from '@/lib/tables/materialize-tracks';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import { gridCellAlignClass } from '@/design-system/components/grid';
 import type { TechAllTriageRow } from '@/lib/tech/tech-all-triage';
 import {
-  TECH_ALL_GRID_COLUMNS,
   TECH_ALL_GRID_FROZEN_CELL,
   techAllGridCell,
   techAllGridFrozenLeft,
@@ -26,14 +28,50 @@ const dataCell = (col: TechAllGridColumn, rule = true) =>
 export const TechAllGridRow = memo(function TechAllGridRow({
   row,
   onOpen,
-  columns = TECH_ALL_GRID_COLUMNS,
+  columns,
 }: {
   row: TechAllTriageRow;
   onOpen: (row: TechAllTriageRow) => void;
-  columns?: readonly TechAllGridColumn[];
+  columns: readonly TechAllGridColumn[];
 }) {
+  /** The body of one materialized slot track, chosen by the BOUND FIELD. */
+  const renderSlotBody = (fieldId: string | undefined): ReactNode => {
+    switch (fieldId) {
+      case 'tech-all.type':
+        return (
+          <span className="min-w-0 truncate text-role-caption font-medium text-text-soft">
+            {row.typeLabel}
+          </span>
+        );
+      case 'tech-all.stage':
+        return <span className="min-w-0 truncate text-role-caption text-text-soft">{row.stage}</span>;
+      case 'tech-all.urgency':
+        return (
+          <span className="tabular-nums text-role-caption text-text-faint">{row.urgencyRank}</span>
+        );
+      default: {
+        // A catalog field with no bespoke face paints its resolved text — a new
+        // bindable fact needs a resolver case, never a new column file.
+        const value = fieldId ? resolveTechAllSlotValue(row, fieldId) : null;
+        const text = value?.kind === 'value' ? value.text : null;
+        return text ? (
+          <span className="min-w-0 truncate text-role-caption text-text-soft">{text}</span>
+        ) : (
+          <GridCellDash />
+        );
+      }
+    }
+  };
+
   const renderCell = (col: TechAllGridColumn, last: boolean): ReactNode => {
     const rule = !last;
+    if (isSlotTrackKey(col.key)) {
+      return (
+        <div data-col={col.key} className={dataCell(col, rule)}>
+          {renderSlotBody(col.fieldId)}
+        </div>
+      );
+    }
     switch (col.key) {
       case 'select':
         return (
@@ -43,7 +81,7 @@ export const TechAllGridRow = memo(function TechAllGridRow({
               TECH_ALL_GRID_FROZEN_CELL,
               'justify-center',
             )}
-            style={{ left: techAllGridFrozenLeft('select') }}
+            style={{ left: techAllGridFrozenLeft(columns, 'select') }}
           >
             <span className="h-4 w-4 shrink-0" aria-hidden />
           </div>
@@ -53,7 +91,7 @@ export const TechAllGridRow = memo(function TechAllGridRow({
           <div
             data-col="identity"
             className={cn(dataCell(col, rule), TECH_ALL_GRID_FROZEN_CELL, 'gap-1.5')}
-            style={{ left: techAllGridFrozenLeft('identity') }}
+            style={{ left: techAllGridFrozenLeft(columns, 'identity') }}
             data-frozen-edge
           >
             <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
@@ -66,28 +104,6 @@ export const TechAllGridRow = memo(function TechAllGridRow({
                 dense
               />
             ) : null}
-          </div>
-        );
-      case 'type':
-        return (
-          <div data-col="type" className={dataCell(col, rule)}>
-            <span className="min-w-0 truncate text-role-caption font-medium text-text-soft">
-              {row.typeLabel}
-            </span>
-          </div>
-        );
-      case 'stage':
-        return (
-          <div data-col="stage" className={dataCell(col, rule)}>
-            <span className="min-w-0 truncate text-role-caption text-text-soft">{row.stage}</span>
-          </div>
-        );
-      case 'urgency':
-        return (
-          <div data-col="urgency" className={dataCell(col, rule)}>
-            <span className="tabular-nums text-role-caption text-text-faint">
-              {row.urgencyRank}
-            </span>
           </div>
         );
       default:

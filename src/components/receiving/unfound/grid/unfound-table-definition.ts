@@ -9,7 +9,7 @@
 
 import type { QueueRow } from '../queue-table/unfound-queue-shared';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
-import { UNFOUND_GRID_COLUMNS, type UnfoundGridColumn } from './unfound-grid-layout';
+import { UNFOUND_SHEET_COLUMNS, type UnfoundGridColumn } from './unfound-grid-layout';
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import { UNFOUND_GRID_CAPABILITIES, makeUnfoundGridDescriptor } from './unfound-grid-descriptor';
 
@@ -23,12 +23,12 @@ export const UNFOUND_TABLE_DEFINITION = parseTableDefinition({
   surface: 'sheet',
   showDayHeaders: false,
   capabilities: UNFOUND_GRID_CAPABILITIES,
-  columns: UNFOUND_GRID_COLUMNS,
+  columns: UNFOUND_SHEET_COLUMNS,
 });
 
 export const UNFOUND_TABLE_BINDING: TableSurfaceBinding<QueueRow, UnfoundGridColumn> = {
   definition: UNFOUND_TABLE_DEFINITION,
-  columns: UNFOUND_GRID_COLUMNS,
+  columns: UNFOUND_SHEET_COLUMNS,
   makeDescriptor: makeUnfoundGridDescriptor,
   // Triage happens IN the cell (`LedgerCellEditor` PATCHes ticket + note), and
   // the row's open gesture goes to the SOURCE the line came from. There is no

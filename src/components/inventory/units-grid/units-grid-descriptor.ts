@@ -1,6 +1,8 @@
 /**
- * Inventory › Units grid surface descriptor — lifts {@link UNITS_GRID_COLUMNS}
- * into the TanStack defs `LedgerGridSurface` mounts. Row ORDER stays with the
+ * Inventory › Units grid surface descriptor — lifts the MOUNTED column model
+ * (a `SlotLayout` materialization since the wave 1.4 hand-model kill) into the
+ * TanStack defs `LedgerGridSurface` mounts. Sortability, default direction and
+ * locks all derive from the columns handed in — never a module constant. Row ORDER stays with the
  * house comparator in `UnitsWorkspaceView` (state math only).
  */
 
@@ -11,9 +13,8 @@ import {
 } from '@/design-system/components/grid';
 import type { UnitsOverviewRow } from '@/hooks/useUnitsOverview';
 import {
-  defaultDirForUnitsGridSort,
-  isUnitsGridFrozen,
-  isUnitsGridSortable,
+  defaultDirForUnitsColumn,
+  isUnitsColumnSortable,
   type UnitsGridColumn,
 } from './units-grid-layout';
 
@@ -24,7 +25,8 @@ import {
  * plane (unit dossier), not a bulk-action queue yet — no left checkbox gutter.
  * `inCellEdit: false` (correction at the record plane), `dayBands: false` (flat
  * map), `rowTriageFlags: false` (no staff wash). Fields (▦) stays on so staff
- * can opt columns in/out.
+ * can opt columns in/out — and since the wave 1.4 port that flag is HONEST:
+ * `UNITS_FIELD_CATALOG` is what it offers.
  */
 export const UNITS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
   rowTriageFlags: false,
@@ -45,9 +47,10 @@ export function makeUnitsGridDescriptor(
     'inventory.units',
     columns,
     {
-      isSortable: isUnitsGridSortable,
-      sortDescFirst: (key) => defaultDirForUnitsGridSort(key) === 'desc',
-      isLocked: isUnitsGridFrozen,
+      isSortable: (key) => isUnitsColumnSortable(columns, key),
+      sortDescFirst: (key) => defaultDirForUnitsColumn(columns, key) === 'desc',
+      // Locked = the mounted model's own frozen prefix (`serial`).
+      isLocked: (key) => columns.some((c) => c.key === key && c.frozen === true),
     },
     UNITS_GRID_CAPABILITIES,
   );

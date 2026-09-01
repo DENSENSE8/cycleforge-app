@@ -12,8 +12,8 @@ import {
   repairOrderValue,
   repairPriceSortValue,
   repairTicketValue,
-  type RepairGridColumnKey,
 } from '@/lib/repair/repair-grid-layout';
+import type { RepairDisplaySortColumn } from '@/lib/repair/repair-display-sort';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 function titleValue(repair: RSRecord): string {
@@ -29,11 +29,16 @@ function createdTime(repair: RSRecord): number {
  * Compare two repair rows for a column sort. Negative ⇒ `a` before `b` under
  * the given direction (ASC: smaller first). Empty identifier values (walk-in
  * order, missing ticket) always sort last in BOTH directions.
+ *
+ * Keyed by the queue's URL SORT WORD, not by a mounted track key: repair shares
+ * `?sort=`/`?dir=` with a chrome dropdown, so the vocabulary a bookmark carries
+ * is the one thing here that must not move (wave 1.4 slot port —
+ * `repairSortFactFor` maps a mounted column onto one of these words).
  */
 export function compareRepairGridRows(
   a: RSRecord,
   b: RSRecord,
-  column: RepairGridColumnKey,
+  column: RepairDisplaySortColumn,
   dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
@@ -79,7 +84,6 @@ export function compareRepairGridRows(
       else primary = ta.localeCompare(tb, undefined, { numeric: true, sensitivity: 'base' });
       break;
     }
-    case 'select':
     default:
       primary = 0;
       break;

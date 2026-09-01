@@ -1,0 +1,22 @@
+---
+description: Route all UI work through design-mcp (native MCP or ds.mjs CLI). Encode Omni Composer = StationComposerHost and dumb-station showModeFaces law.
+alwaysApply: true
+---
+
+When writing, modifying, or reviewing UI code, you MUST call `ds_contract`,
+`ds_tokens`, and `ds_critique` before implementation.
+
+- Prefer native MCP tools when `GetDynamicTools` lists `ds_*`.
+- If the catalog is empty, run `node tools/design-mcp/ds.mjs …` (same server).
+- Do not guess Tailwind classes, corner radii, or component paths.
+- Hooks deny UI writes without a fresh `.cursor/design-mcp-session.json` stamp.
+
+Naming: "Omni Composer" / station mouth = `StationComposerHost`, not raw
+`OmnichannelComposerDock`. Dumb / gun stations keep `showModeRow` and set
+`showModeFaces={false}` so the context ring stays bottom-right — never delete
+the mode row to hide Unbox|Ticket. Floor stations clone Pack/Unbox; no invented
+rails or second mouths unless explicitly asked.
+
+Scan-station materials: `ds_tokens({ axis: "station-skin" })` (catalog =
+`src/design-system/themes/station-skins.ts`). Call `applyStationSkin(name)`.
+Do not hex-fill a well or fork a packing-bench class on one station.

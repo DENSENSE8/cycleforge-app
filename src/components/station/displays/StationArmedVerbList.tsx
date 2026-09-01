@@ -10,6 +10,7 @@
 
 import {
   useCallback,
+  useEffect,
   useId,
   useMemo,
   useRef,
@@ -47,11 +48,17 @@ export function StationArmedVerbList({
   onCommit,
   listLabel,
   testId,
+  activeId = null,
+  onArm,
 }: {
   verbs: readonly StationArmedVerb[];
   onCommit: (id: string) => void;
   listLabel: string;
   testId: string;
+  /** Last committed id — seeds the armed cursor (Look live-preview). */
+  activeId?: string | null;
+  /** Fires when the armed cursor moves — live preview, not a second commit path. */
+  onArm?: (id: string) => void;
 }) {
   const orderedIds = useMemo(() => verbs.map((v) => v.id), [verbs]);
   const verbById = useMemo(() => new Map(verbs.map((v) => [v.id, v])), [verbs]);
@@ -74,11 +81,17 @@ export function StationArmedVerbList({
     handleNavKeyDown,
   } = useArmedCursorList({
     orderedIds,
-    activeId: null,
+    activeId,
     rootRef,
     rowRefs,
     regionActive: rightOwnsKeyboard,
   });
+
+  const onArmRef = useRef(onArm);
+  onArmRef.current = onArm;
+  useEffect(() => {
+    if (cursorId) onArmRef.current?.(cursorId);
+  }, [cursorId]);
 
   const run = useCallback(
     (id: string) => {

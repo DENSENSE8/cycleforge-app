@@ -30,6 +30,10 @@ export const darkPalette: ThemePalette = {
     'surface-sunken': '#1e293b',
     'surface-hover': '#1e293b', // hover lightens on dark (mirrors the old remap)
     'surface-strong': '#334155',
+    'surface-bench': '#2a2118',
+    'surface-trough': '#1a140f',
+    'surface-plate': '#3a2c20',
+    'surface-slot': '#120e0b',
     // Inverted chrome stays DISTINCT from the card on dark: mid-slate, exactly
     // what the compatibility remap rewrote gray-900/800 fills to.
     'surface-inverse': '#334155',
@@ -42,6 +46,8 @@ export const darkPalette: ThemePalette = {
     'border-default': '#334155',
     'border-hairline': '#1e293b',
     'border-emphasis': '#94a3b8',
+    'border-stain': '#0a0806',
+    'border-ply': '#a8947a',
     'border-strong': '#cbd5e1', // selection outlines flip light on dark
     'border-inverse': '#475569',
     // Functional tones — text lightens to -400; surfaces/borders become

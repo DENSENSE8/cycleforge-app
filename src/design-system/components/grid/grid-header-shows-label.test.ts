@@ -54,4 +54,15 @@ describe('gridHeaderShowsLabel — flex-track label rule', () => {
     };
     assert.equal(gridHeaderShowsLabel(fixedWide), true);
   });
+
+  it('an image gutter keeps the word Image, even in a 3rem square', () => {
+    const thumb = {
+      key: 'thumb',
+      width: 'minmax(3rem, 3rem)',
+      gridLabel: 'Image',
+      labelFitRem: 2,
+      headerForceLabel: true,
+    };
+    assert.equal(gridHeaderShowsLabel(thumb), true);
+  });
 });

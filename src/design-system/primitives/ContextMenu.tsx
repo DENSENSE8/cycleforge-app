@@ -10,6 +10,7 @@ import * as ContextMenuPrimitive from '@radix-ui/react-context-menu';
 import { ChevronRight } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { elevationClass } from '@/design-system/tokens/shadows';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 
 const ContextMenu = ContextMenuPrimitive.Root;
 const ContextMenuTrigger = ContextMenuPrimitive.Trigger;
@@ -24,7 +25,8 @@ const ContextMenuContent = React.forwardRef<
     <ContextMenuPrimitive.Content
       ref={ref}
       className={cn(
-        'z-popover max-h-[var(--radix-context-menu-content-available-height)] min-w-[10rem] overflow-y-auto overflow-x-hidden rounded-none border border-border-soft bg-surface-card p-1 text-text-default',
+        'z-popover max-h-[var(--radix-context-menu-content-available-height)] min-w-[10rem] overflow-y-auto overflow-x-hidden border border-border-soft bg-surface-card p-1 text-text-default',
+        DROPDOWN_SHELL_CORNER,
         elevationClass('overlay'),
         className,
       )}
@@ -119,7 +121,8 @@ const ContextMenuSubContent = React.forwardRef<
   <ContextMenuPrimitive.SubContent
     ref={ref}
     className={cn(
-      'z-popover min-w-[8rem] overflow-hidden rounded-none border border-border-soft bg-surface-card p-1 text-text-default',
+        'z-popover min-w-[8rem] overflow-hidden border border-border-soft bg-surface-card p-1 text-text-default',
+        DROPDOWN_SHELL_CORNER,
       elevationClass('overlay'),
       className,
     )}

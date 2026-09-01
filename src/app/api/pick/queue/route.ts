@@ -2,28 +2,19 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { PickQueueRow } from '@/lib/picking/queue';
+import { resolvePickQueueStaffId } from '@/lib/picking/pick-queue-scope';
 
 /**
  * GET /api/pick/queue
  *
- * Returns the picker landing queue: every order that has at least one
- * allocation in state ALLOCATED or PICKING, sorted by earliest deadline.
+ * Returns the picker landing queue for the signed-in staffer: orders that have
+ * at least one allocation in ALLOCATED|PICKING AND whose PACK work_assignment
+ * is assigned to this staffer OR is unassigned (same visibility pattern as
+ * GET /api/orders/next for TEST). Sorted by earliest deadline.
  *
- * Tenant isolation: the shared `loadPickQueue()` helper in
- * `@/lib/picking/queue` runs its aggregate against the raw pool (no orgId
- * seam yet), so it can't be GUC-scoped from here. To keep this route
- * tenant-safe without editing that shared module, the query is run inline via
- * `tenantQuery(orgId, …)` with explicit `organization_id` predicates on every
- * tenant-owned table (and string/cross-table joins aligned on org). The
- * row → PickQueueRow mapping is identical to the helper so the response shape
- * is preserved.
+ * Admin.view_logs holders may pass ?staffId=N to inspect another picker's queue.
  */
 
-// Inline copy of the helper's SQL, scoped to the request's org. order_unit_allocations,
-// orders, customers and work_assignments are all tenant-owned, so each carries an
-// explicit organization_id filter / join alignment. picking_sessions has no
-// organization_id column (child-scoped); it is scoped via its parent order
-// (ps.order_id = o.id), which is itself org-bound.
 const QUEUE_SQL = `
   SELECT
     o.id                                          AS order_id,
@@ -50,13 +41,44 @@ const QUEUE_SQL = `
   LEFT JOIN customers c ON c.id = o.customer_id AND c.organization_id = o.organization_id
   WHERE oua.organization_id = $1
     AND oua.state IN ('ALLOCATED', 'PICKING')
+    AND (
+      EXISTS (
+        SELECT 1 FROM work_assignments wa_pack
+         WHERE wa_pack.entity_type = 'ORDER'
+           AND wa_pack.entity_id = o.id
+           AND wa_pack.work_type = 'PACK'
+           AND wa_pack.organization_id = o.organization_id
+           AND wa_pack.status IN ('ASSIGNED', 'IN_PROGRESS')
+           AND wa_pack.assigned_packer_id = $2
+      )
+      OR NOT EXISTS (
+        SELECT 1 FROM work_assignments wa_pack
+         WHERE wa_pack.entity_type = 'ORDER'
+           AND wa_pack.entity_id = o.id
+           AND wa_pack.work_type = 'PACK'
+           AND wa_pack.organization_id = o.organization_id
+           AND wa_pack.status IN ('ASSIGNED', 'IN_PROGRESS')
+           AND wa_pack.assigned_packer_id IS NOT NULL
+      )
+    )
   GROUP BY o.id, o.order_id, c.first_name, c.last_name, o.account_source
   ORDER BY deadline_at ASC NULLS LAST, o.id ASC
   LIMIT 200
 `;
 
-export const GET = withAuth(async (_request, ctx) => {
+export const GET = withAuth(async (request, ctx) => {
   try {
+    const { searchParams } = new URL(request.url);
+    const scoped = resolvePickQueueStaffId({
+      sessionStaffId: ctx.staffId,
+      staffIdParam: searchParams.get('staffId'),
+      canInspectOther: ctx.permissions.has('admin.view_logs'),
+    });
+    if (!scoped.ok) {
+      return NextResponse.json({ ok: false, error: scoped.error }, { status: 400 });
+    }
+    const staffId = scoped.staffId;
+
     const q = await tenantQuery<{
       order_id: number;
       order_label: string | null;
@@ -68,7 +90,7 @@ export const GET = withAuth(async (_request, ctx) => {
       in_progress_count: number;
       total_count: number;
       active_picker_id: number | null;
-    }>(ctx.organizationId, QUEUE_SQL, [ctx.organizationId]);
+    }>(ctx.organizationId, QUEUE_SQL, [ctx.organizationId, staffId]);
 
     const rows: PickQueueRow[] = q.rows.map((r) => {
       const first = (r.first_name || '').trim();
@@ -89,7 +111,7 @@ export const GET = withAuth(async (_request, ctx) => {
       };
     });
 
-    return NextResponse.json({ ok: true, count: rows.length, queue: rows });
+    return NextResponse.json({ ok: true, count: rows.length, queue: rows, staffId });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'queue load failed';
     console.error('[GET /api/pick/queue] error:', err);

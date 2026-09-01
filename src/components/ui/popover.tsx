@@ -9,6 +9,7 @@ import * as React from 'react';
 import * as PopoverPrimitive from '@radix-ui/react-popover';
 import { cn } from '@/utils/_cn';
 import { elevationClass } from '@/design-system/tokens/shadows';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 
 const Popover = PopoverPrimitive.Root;
 const PopoverTrigger = PopoverPrimitive.Trigger;
@@ -24,7 +25,8 @@ const PopoverContent = React.forwardRef<
       align={align}
       sideOffset={sideOffset}
       className={cn(
-        'z-command w-72 rounded-none border border-border-default bg-surface-card text-text-default outline-none',
+        'z-command w-72 border border-border-default bg-surface-card text-text-default outline-none',
+        DROPDOWN_SHELL_CORNER,
         elevationClass('raised', 'soft'),
         className,
       )}

@@ -45,6 +45,9 @@ export function useAppendOrderNote(orderId: number) {
 
   return useMutation({
     mutationFn: async (noteText: string) => {
+      if (!Number.isFinite(orderId) || orderId <= 0) {
+        throw new Error('order id required');
+      }
       const res = await fetch(`/api/orders/${orderId}/notes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

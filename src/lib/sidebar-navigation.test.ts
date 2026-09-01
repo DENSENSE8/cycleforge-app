@@ -622,11 +622,15 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   assert.equal(getSidebarNavPageId('/counter'), 'sales');
   assert.equal(resolveSidebarChild('sales', at('/counter')), 'counter');
   assert.equal(resolveSidebarChild('support', at('/support', 'mode=warranty')), 'warranty');
-  assert.equal(resolveSidebarChild('support', at('/support', 'mode=orders')), 'orders');
-  // Support › Inquiries aliases the To-ship desk — Support owns the pin.
+  // To ship was REMOVED from Support (operator ruling 2026-08-31). It was the
+  // one tab that left the route — an alias onto `/shipping/orders?context=support`
+  // that made two desks disagree about whose page you were on. Legacy
+  // `?mode=orders` deep links now land on Tickets rather than a tab that is
+  // gone, and Support no longer claims the Shipping URL.
+  assert.equal(resolveSidebarChild('support', at('/support', 'mode=orders')), 'tickets');
   assert.equal(
     resolveSidebarChild('support', at('/shipping/orders', 'context=support')),
-    'orders',
+    'tickets',
   );
   assert.equal(
     resolveSidebarChild('outbound', at('/shipping/orders', 'context=support')),

@@ -144,8 +144,9 @@ export const STATION_WORKBENCH_REQUIRED = [
 /**
  * Identity adapters that compose `CartonContextCard`. Each takes a required
  * `onExitToList` — the host closer must clear that station's selection SoT
- * (not overlay React state alone). Pickup / Repair / Scan-out do not mount
- * CartonContextCard.
+ * (not overlay React state alone). Pickup / Repair do not mount
+ * CartonContextCard. Scan-out mounts the shipping adapter
+ * (`ShippingEntityContextHeader`) via `EntityStationPane`.
  */
 export const STATION_CARTON_IDENTITY_ADAPTERS = [
   'components/receiving/workspace/line-edit/LineCartonContextSection.tsx',

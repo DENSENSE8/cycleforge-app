@@ -1,7 +1,8 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { bustFulfillmentCaches, bustLabelsCaches } from '@/lib/outbound/outbound-cache-keys';
+import { useOptimisticMutation } from '@/lib/optimistic/useOptimisticMutation';
 
 export type OrderAssignPayload = {
   orderId?: number;
@@ -28,106 +29,108 @@ export type OrderAssignPayload = {
   performedByStaffId?: number | null;
 };
 
+function applyOptimisticUpdate(current: unknown, payload: OrderAssignPayload): unknown {
+  if (!current) return current;
+
+  const idsToUpdate = new Set(
+    (payload.orderId ? [payload.orderId] : payload.orderIds || []).filter((id): id is number => Number.isFinite(id)),
+  );
+  if (idsToUpdate.size === 0) return current;
+
+  const patchRow = (row: Record<string, unknown> | null | undefined) => {
+    if (!row || !idsToUpdate.has(Number(row.id))) return row;
+    const next: Record<string, unknown> = { ...row };
+
+    if (payload.testerId !== undefined) {
+      next.tester_id = payload.testerId;
+      next.tested_by = payload.testerId;
+      next.testerId = payload.testerId;
+      if (payload.testerName !== undefined) {
+        next.tested_by_name = payload.testerName;
+        next.tester_name = payload.testerName;
+      }
+    }
+    if (payload.packerId !== undefined) {
+      next.packer_id = payload.packerId;
+      next.packed_by = payload.packerId;
+      next.packerId = payload.packerId;
+      if (payload.packerName !== undefined) {
+        next.packed_by_name = payload.packerName;
+        next.packer_name = payload.packerName;
+      }
+    }
+    if (payload.shipByDate !== undefined) {
+      next.ship_by_date = payload.shipByDate;
+      next.shipByDate = payload.shipByDate;
+      // The Late / STATUS date reads deadline_at first. Patching only
+      // ship_by_date left the old deadline winning until refetch.
+      next.deadline_at = payload.shipByDate;
+    }
+    if (payload.orderNumber !== undefined) {
+      next.order_id = payload.orderNumber;
+      next.orderId = payload.orderNumber;
+    }
+    if (payload.outOfStock !== undefined || payload.isOutOfStock !== undefined) {
+      const boolValue =
+        payload.isOutOfStock !== undefined
+          ? payload.isOutOfStock
+          : Boolean(String(payload.outOfStock || '').trim());
+      next.is_out_of_stock = boolValue;
+      next.isOutOfStock = boolValue;
+      next.out_of_stock = payload.outOfStock;
+      next.outOfStock = payload.outOfStock;
+    }
+    if (payload.isUrgent !== undefined) {
+      next.is_urgent = payload.isUrgent;
+      next.isUrgent = payload.isUrgent;
+    }
+    if (payload.shippingTrackingNumber !== undefined) {
+      next.shipping_tracking_number = payload.shippingTrackingNumber;
+      next.shippingTrackingNumber = payload.shippingTrackingNumber;
+    }
+    if (payload.itemNumber !== undefined) {
+      next.item_number = payload.itemNumber;
+      next.itemNumber = payload.itemNumber;
+    }
+    if (payload.condition !== undefined) {
+      next.condition = payload.condition;
+    }
+    if (payload.quantity !== undefined) {
+      next.quantity = payload.quantity;
+    }
+    if (payload.productTitle !== undefined) {
+      next.product_title = payload.productTitle;
+      next.productTitle = payload.productTitle;
+    }
+    if (payload.sku !== undefined) {
+      next.sku = payload.sku;
+    }
+
+    return next;
+  };
+
+  if (Array.isArray(current)) {
+    return current.map(patchRow);
+  }
+
+  const bag = current as Record<string, unknown>;
+  if (Array.isArray(bag.orders)) {
+    return { ...bag, orders: bag.orders.map(patchRow) };
+  }
+  if (Array.isArray(bag.results)) {
+    return { ...bag, results: bag.results.map(patchRow) };
+  }
+  if (Array.isArray(bag.shipped)) {
+    return { ...bag, shipped: bag.shipped.map(patchRow) };
+  }
+
+  return current;
+}
+
 export function useOrderAssignment() {
   const queryClient = useQueryClient();
 
-  const applyOptimisticUpdate = (current: any, payload: OrderAssignPayload) => {
-    if (!current) return current;
-
-    const idsToUpdate = new Set(
-      (payload.orderId ? [payload.orderId] : payload.orderIds || []).filter((id): id is number => Number.isFinite(id))
-    );
-    if (idsToUpdate.size === 0) return current;
-
-    const patchRow = (row: any) => {
-      if (!row || !idsToUpdate.has(Number(row.id))) return row;
-      const next = { ...row };
-
-      if (payload.testerId !== undefined) {
-        next.tester_id = payload.testerId;
-        next.tested_by = payload.testerId;
-        next.testerId = payload.testerId;
-        if (payload.testerName !== undefined) {
-          next.tested_by_name = payload.testerName;
-          next.tester_name = payload.testerName;
-        }
-      }
-      if (payload.packerId !== undefined) {
-        next.packer_id = payload.packerId;
-        next.packed_by = payload.packerId;
-        next.packerId = payload.packerId;
-        if (payload.packerName !== undefined) {
-          next.packed_by_name = payload.packerName;
-          next.packer_name = payload.packerName;
-        }
-      }
-      if (payload.shipByDate !== undefined) {
-        next.ship_by_date = payload.shipByDate;
-        next.shipByDate = payload.shipByDate;
-      }
-      if (payload.orderNumber !== undefined) {
-        next.order_id = payload.orderNumber;
-        next.orderId = payload.orderNumber;
-      }
-      if (payload.outOfStock !== undefined || payload.isOutOfStock !== undefined) {
-        const boolValue = payload.isOutOfStock !== undefined 
-          ? payload.isOutOfStock 
-          : Boolean(String(payload.outOfStock || '').trim());
-        next.is_out_of_stock = boolValue;
-        next.isOutOfStock = boolValue;
-        // Keep legacy alias for backward compatibility
-        next.out_of_stock = payload.outOfStock;
-        next.outOfStock = payload.outOfStock;
-      }
-      if (payload.isUrgent !== undefined) {
-        next.is_urgent = payload.isUrgent;
-        next.isUrgent = payload.isUrgent;
-      }
-      if (payload.shippingTrackingNumber !== undefined) {
-        next.shipping_tracking_number = payload.shippingTrackingNumber;
-        next.shippingTrackingNumber = payload.shippingTrackingNumber;
-      }
-      if (payload.itemNumber !== undefined) {
-        next.item_number = payload.itemNumber;
-        next.itemNumber = payload.itemNumber;
-      }
-      if (payload.condition !== undefined) {
-        next.condition = payload.condition;
-      }
-      if (payload.quantity !== undefined) {
-        next.quantity = payload.quantity;
-      }
-      if (payload.productTitle !== undefined) {
-        next.product_title = payload.productTitle;
-        next.productTitle = payload.productTitle;
-      }
-      if (payload.sku !== undefined) {
-        next.sku = payload.sku;
-      }
-
-      return next;
-    };
-
-    if (Array.isArray(current)) {
-      return current.map(patchRow);
-    }
-
-    if (Array.isArray(current?.orders)) {
-      return { ...current, orders: current.orders.map(patchRow) };
-    }
-
-    if (Array.isArray(current?.results)) {
-      return { ...current, results: current.results.map(patchRow) };
-    }
-
-    if (Array.isArray(current?.shipped)) {
-      return { ...current, shipped: current.shipped.map(patchRow) };
-    }
-
-    return current;
-  };
-
-  return useMutation({
+  return useOptimisticMutation({
     mutationFn: async (payload: OrderAssignPayload) => {
       const res = await fetch('/api/orders/assign', {
         method: 'POST',
@@ -137,29 +140,15 @@ export function useOrderAssignment() {
 
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        throw new Error(data?.error || 'Failed to update order assignment');
+        throw new Error((data as { error?: string })?.error || 'Failed to update order assignment');
       }
       return data;
     },
-    onMutate: async (payload) => {
-      const keysToPatch = [['orders'], ['shipped'], ['dashboard-table']];
-      const snapshots: Array<{ key: readonly unknown[]; data: any }> = [];
-
-      keysToPatch.forEach((key) => {
-        const existing = queryClient.getQueriesData({ queryKey: key });
-        existing.forEach(([queryKey, data]) => {
-          snapshots.push({ key: queryKey, data });
-          queryClient.setQueryData(queryKey, (current: any) => applyOptimisticUpdate(current, payload));
-        });
-      });
-
-      return { snapshots, payload };
-    },
-    onError: (_error, _payload, context) => {
-      context?.snapshots?.forEach((snapshot) => {
-        queryClient.setQueryData(snapshot.key, snapshot.data);
-      });
-    },
+    caches: [
+      { queryKey: ['orders'], match: 'prefix', update: applyOptimisticUpdate },
+      { queryKey: ['shipped'], match: 'prefix', update: applyOptimisticUpdate },
+      { queryKey: ['dashboard-table'], match: 'prefix', update: applyOptimisticUpdate },
+    ],
     onSuccess: (_data, payload) => {
       if (payload.shippingTrackingNumber !== undefined) {
         bustLabelsCaches(queryClient);
@@ -185,7 +174,7 @@ export function useOrderAssignment() {
             condition: payload.condition,
             productTitle: payload.productTitle,
           },
-        })
+        }),
       );
     },
   });

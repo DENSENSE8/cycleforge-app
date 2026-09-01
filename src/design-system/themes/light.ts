@@ -31,6 +31,10 @@ export const lightPalette: ThemePalette = {
     'surface-sunken': '#f1f5f9',
     'surface-hover': '#f8fafc', // row/interaction wash (≈ the classic gray-50 hover wash)
     'surface-strong': '#e2e8f0', // tracks, skeletons, avatar placeholders (≈ gray-200)
+    'surface-bench': '#efe4cf', // birch header strip
+    'surface-trough': '#dcc9a8', // oiled routed well
+    'surface-plate': '#f4ead6', // maple / aluminum working row
+    'surface-slot': '#b8956c', // felt-lined serial / cube pocket
     'surface-inverse': '#0f172a', // dark pills / action bars (≈ gray-900 fill)
     'surface-inverse-hover': '#1e293b', // hover on inverted chrome (≈ gray-800 fill)
     'surface-inverse-raised': '#334155', // chip resting ON an inverse bar (≈ gray-700 fill)
@@ -41,6 +45,8 @@ export const lightPalette: ThemePalette = {
     'border-default': '#cbd5e1',
     'border-hairline': '#f1f5f9', // near-invisible hairlines (≈ gray-100 hairline)
     'border-emphasis': '#94a3b8', // dashed drop-zones, dotted underlines (≈ gray-400 rule)
+    'border-stain': '#6e4e2e', // trough shadow lip (top/left)
+    'border-ply': '#e8d5b5', // raw-ply highlight lip (bottom/right; reads on white)
     'border-strong': '#0f172a', // max-emphasis selection outlines (≈ gray-900 border)
     'border-inverse': '#334155', // hairlines on inverted chrome (≈ gray-700 border)
     // Functional tones — text -600 / pastel -50 surface / -400 border

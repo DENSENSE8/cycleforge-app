@@ -4,7 +4,7 @@
  * Plan: `docs/todo/non-scan-desk-chrome-caged-release-PLAN.md` §4.2 (v1 locked).
  *
  * An order sits **CAGED** until every gate below is green; only then may staff
- * **RELEASE** it into the live To-ship working set. The three gates are the
+ * **RELEASE** it into the live To-ship working set. The gates are the
  * operator's own sentence for "we know enough to work this":
  *
  * | # | Gate | Green when |
@@ -13,6 +13,17 @@
  * | G2 | Documents | ≥1 document linked to the item number, **or** staff asserted it needs none |
  * | G3 | Shipping | a label is linked to the order, **or** one was bought through the existing
  *   label path, **or** a tracking number is linked to the order |
+ * | G4 | SKU pairing | the order's item resolves to a `sku_catalog` row (`orders.sku_catalog_id`) |
+ *
+ * ## Why pairing became a gate (operator ruling 2026-08-31, R-FLOW-1)
+ *
+ * The order-flow interview ruled that an exception is not cleared until its
+ * item number is paired to the inventory SoT — an unpaired order that reaches
+ * the floor is a pick against a product the system cannot name. This
+ * supersedes the earlier note that pairing "is NOT a gate at all"
+ * (`order-exceptions.ts` / `order-exception-types.ts`); the evidence already
+ * agreed — 19 of the operator's 22 caged orders were unpaired. Plan of record:
+ * `docs/warehouse-os/PLAN-order-flow-spine-3h.md` §2.
  *
  * ## Why a tracking number satisfies G3 (operator ruling 2026-08-31)
  *
@@ -51,13 +62,14 @@
  */
 
 /** Gate ids, in the order they are presented to the operator. */
-export const RELEASE_GATE_IDS = ['G1', 'G2', 'G3'] as const;
+export const RELEASE_GATE_IDS = ['G1', 'G2', 'G3', 'G4'] as const;
 export type ReleaseGateId = (typeof RELEASE_GATE_IDS)[number];
 
 export const RELEASE_GATE_LABEL: Record<ReleaseGateId, string> = {
   G1: 'Identity triangle',
   G2: 'Documents',
   G3: 'Shipping label',
+  G4: 'SKU pairing',
 };
 
 /**
@@ -80,6 +92,11 @@ export interface ReleaseGateFacts {
   shippingLabelLinked?: boolean | null;
   /** A label was purchased through the existing buy path. */
   shippingLabelPurchased?: boolean | null;
+  /**
+   * `orders.sku_catalog_id` — the pairing to the inventory SoT. Absent/null
+   * reads as unpaired (G4 red), same absence-is-failure posture as the rest.
+   */
+  skuCatalogId?: number | null;
 }
 
 export interface EvaluatedReleaseGate {
@@ -128,6 +145,9 @@ export function evaluateReleaseGates(facts: ReleaseGateFacts): EvaluatedReleaseG
   const labelLinked = facts.shippingLabelLinked === true;
   const labelPurchased = facts.shippingLabelPurchased === true;
 
+  const paired =
+    typeof facts.skuCatalogId === 'number' && Number.isFinite(facts.skuCatalogId);
+
   const gates: EvaluatedReleaseGate[] = [
     {
       id: 'G1',
@@ -157,6 +177,14 @@ export function evaluateReleaseGates(facts: ReleaseGateFacts): EvaluatedReleaseG
         labelLinked || labelPurchased || hasTracking
           ? null
           : 'Link a tracking number or an existing shipping label, or buy one.',
+    },
+    {
+      id: 'G4',
+      label: RELEASE_GATE_LABEL.G4,
+      passed: paired,
+      reason: paired
+        ? null
+        : 'Pair the item number to a catalog SKU (the Zoho inventory record).',
     },
   ];
 

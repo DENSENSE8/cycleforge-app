@@ -34,14 +34,13 @@ const PO_LINE_CAPTURE_ROW_HEIGHT = 'h-11';
  * cells.
  *
  * The cells already separate themselves: Tags is a filled plate, Serial is a
- * white field, the check is emerald and Photos is blue. A seam between two
- * cells that are already different colours is a line drawn over a boundary
- * that was never in question.
+ * recessed field (STATION_SCAN_FIELD_WELL_CLASS on the flush input), the check
+ * is emerald and Photos is blue. Recess the field, not this bar.
  */
 export const PO_LINE_CAPTURE_ROW_CLASS = cn(
   'flex w-full min-w-0 items-stretch overflow-hidden',
   PO_LINE_CAPTURE_ROW_HEIGHT,
-  'bg-surface-card',
+  'bg-surface-station-bar',
 );
 
 /** Condition host — flex-1 when expanded, shrink-0 Tags when collapsed. */

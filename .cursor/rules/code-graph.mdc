@@ -1,0 +1,25 @@
+---
+description: Garisek code-graph workflow for Cursor agents editing Cycle Forge.
+alwaysApply: true
+---
+
+# Code graph (Garisek-OS)
+
+Before non-trivial edits to shared components, hooks, or table infrastructure:
+
+1. Prefer MCP tools `find_symbol` → `impact_analysis` (or `get_call_graph` callers).
+2. If the catalog is empty: `node "$GARISEK_OS_ROOT/tools/code-graph/cg.mjs" …`
+3. Default project: `cycleforge-app` (`CODE_GRAPH_PROJECT` in `.cursor/mcp.json`).
+4. **Scan-station overlay:** blast radius is cohort-wide
+   (`SCAN_STATION_OVERLAY_COHORT`). Impact the edited station **and** a peer,
+   or run `pnpm run eval:station <id>`. Display eval is slot-table only.
+5. **Slot-table engine:** blast radius is cohort-wide (`slot-table-cohort.ts` —
+   engine + PRODUCT_TABLES). Impact `CompoundItem` / `useSlotTableLayout` (etc.),
+   not a single desk row, or run `pnpm run eval:cohort slot-table`. Before
+   deleting a hand `*_GRID_COLUMNS`, `eval:discover` names KEEP vs DELETE.
+6. **Shortcut display:** blast radius is `shortcut-display-cohort.ts`. Impact
+   `KeyboardShortcutsCheatSheet` / `TableStatusBar`, or run
+   `pnpm run eval:cohort shortcuts`. Staff `?` reveals letters inline on
+   Buttons. Never paint standing keycaps; never open a cheat sheet from `?`.
+
+Do not guess blast radius — consult the graph first.

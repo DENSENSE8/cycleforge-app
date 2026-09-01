@@ -46,6 +46,7 @@ export type OrderInspectorRecordCta = 'assign' | 'open_testing' | 'open_pack' | 
 export type OrderBulkActionKey =
   | 'copy'
   | 'assign'
+  | 'listing-rule'
   | 'ship-by'
   | 'print'
   | 'print-shipping'
@@ -209,7 +210,7 @@ export function orderBulkActionKeys(orderView: DashboardOrderView): readonly Ord
   const isPostPack = orderView === 'packed' || orderView === 'shipped';
   return isPostPack
     ? ['copy', 'print-shipping', 'flag', 'export', 'delete']
-    : ['copy', 'assign', 'ship-by', 'print', 'flag', 'export', 'delete'];
+    : ['copy', 'assign', 'listing-rule', 'ship-by', 'print', 'flag', 'export', 'delete'];
 }
 
 /** Pending / To Ship — named so specs assert against the registry, not a literal. */

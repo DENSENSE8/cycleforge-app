@@ -46,6 +46,13 @@ test('slicedActionDockSegmentOrder: composer pill puts the chevron on the far ri
   );
 });
 
+test('slicedActionDockSegmentOrder: desk header puts the chevron on the far right', () => {
+  assert.equal(
+    slicedActionDockSegmentOrder({ embedded: true, embeddedChrome: 'header' }),
+    'primary,menu',
+  );
+});
+
 test('slicedActionDockSegmentOrder: flush and floating docks keep the left chevron', () => {
   assert.equal(
     slicedActionDockSegmentOrder({ embedded: true, embeddedChrome: 'flush' }),
@@ -97,4 +104,11 @@ test('embedded flush chrome stays square and flat', () => {
   const flush = slicedActionDockTrackClass({ embedded: true, embeddedChrome: 'flush' });
   assert.match(flush, /rounded-none/);
   assert.match(flush, /shadow-none/);
+});
+
+test('desk header split CTA uses the pill corner token, not the composer 2xl', () => {
+  const header = slicedActionDockTrackClass({ embedded: true, embeddedChrome: 'header' });
+  assert.match(header, /rounded-full/);
+  assert.doesNotMatch(header, /rounded-2xl/);
+  assert.match(header, /shadow-none/);
 });

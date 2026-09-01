@@ -273,6 +273,19 @@ export interface OrderDocumentsSectionProps {
    * Labels centre Documents tab. Desk inspectors keep the default inset.
    */
   flush?: boolean;
+  /**
+   * Mount the embedded {@link BuyLabelSection}. Default true (the historical
+   * manage-mode tray). `OrderShippingPanel` passes false because it mounts
+   * the SAME buy engine itself, fed the live parcel fields — two mounted buy
+   * sections on one surface would be two mouths for one purchase.
+   */
+  showBuySection?: boolean;
+  /**
+   * Fired alongside the internal cache invalidation after any tray write
+   * (upload, delete, fetch, buy/void) — a host that reads gate facts re-reads
+   * them here (the `useOrderTriage` discipline).
+   */
+  onChanged?: () => void;
 }
 
 /**
@@ -288,6 +301,8 @@ export function OrderDocumentsSection({
   readOnly = false,
   showPreview = false,
   flush = false,
+  showBuySection = true,
+  onChanged,
 }: OrderDocumentsSectionProps) {
   const queryClient = useQueryClient();
   const queryKey = ['order-documents', orderId];
@@ -340,7 +355,13 @@ export function OrderDocumentsSection({
     queryClient.invalidateQueries({ queryKey });
     queryClient.invalidateQueries({ queryKey: ['order-timeline', orderId] });
     queryClient.invalidateQueries({ queryKey: ['photo-library'] });
+    onChanged?.();
   };
+
+  // The upload path is browser→NAS PUT: without a configured base URL every
+  // attempt hard-fails at the first byte. Say so up front rather than letting
+  // the drop zone teach it one failed drag at a time.
+  const nasMissing = !readOnly && !isLoading && data != null && !data.nasBaseUrl;
 
   return (
     <section
@@ -369,7 +390,7 @@ export function OrderDocumentsSection({
           Open in Media
         </Link>
       </div>
-      {!readOnly ? (
+      {!readOnly && showBuySection ? (
         <div className={`border-b border-border-hairline ${flush ? 'px-3 py-2.5' : 'pb-4'}`}>
           <BuyLabelSection
             orderId={orderId}
@@ -377,6 +398,23 @@ export function OrderDocumentsSection({
             onChange={onChange}
             flush={flush}
           />
+        </div>
+      ) : null}
+      {nasMissing ? (
+        <div
+          role="status"
+          data-testid="order-documents-nas-missing"
+          className={`border border-dashed border-border-danger bg-surface-danger px-3 py-2 ${
+            flush ? 'mx-3 my-2.5 rounded-none' : 'rounded-lg'
+          }`}
+        >
+          <p className="text-role-caption font-semibold text-text-danger">
+            Uploads are off — no NAS base URL is configured for this organization.
+          </p>
+          <p className="text-role-eyebrow text-text-danger">
+            Every browser→NAS upload will fail until an admin sets it in Settings →
+            Organization. Attach-by-URL and marketplace fetch still work.
+          </p>
         </div>
       ) : null}
       <div className={flush ? 'space-y-0 border-b border-border-hairline px-3 py-2.5' : undefined}>

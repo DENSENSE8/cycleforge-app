@@ -15,6 +15,7 @@
  * for a quiet rail (the blue wash overloads "working this row").
  */
 
+import { STATION_SCAN_ACTIVE_WELL_CLASS } from '@/components/station/scan-depth';
 import type { GridSurfaceCapabilities } from '@/design-system/components/grid';
 
 /** Default / wide tracks mirror META_COL.indent / indentWide. */
@@ -40,20 +41,14 @@ export const QUEUE_ROW = {
    */
   selectedClass: 'bg-blue-50 ring-1 ring-inset ring-blue-400',
   /**
-   * Selected chrome for a list/accordion row on a **sunken station canvas**
-   * (Unbox/Triage/Testing `StationPanelRoot` → `bg-surface-sunken`).
+   * Selected chrome for a list/accordion row on a **scan-station well**
+   * (Unbox Items band body → `STATION_BAND_BODY_WELL_CLASS`).
    *
-   * The working row is the operator's current context, so it needs an opaque
-   * **white face** (`bg-surface-card`) to lift the title, meta chips, and the
-   * expanded condition/serial evidence off the ground plane. Selection is the
-   * face — not a blue inset glow (that stacked with row `border-b` and read as
-   * chrome noise on the flat unit floor). The plain
-   * {@link QUEUE_ROW.selectedClass} `bg-blue-50` wash is ~the same luminance as
-   * `bg-surface-sunken`, so on a station floor it reads as *no* face (the input
-   * appears to float on empty canvas). Flat geometry is unchanged — the row
-   * keeps `rounded-none` + hairline `border-b`; this only supplies the fill.
+   * The working row is a raised plate with a dual-edge bevel — not a white
+   * card (that erased the pit) and not `bg-blue-50`. Idle rows stay transparent
+   * so the well shows through. Fill follows the active station skin.
    */
-  selectedStationClass: 'bg-surface-card',
+  selectedStationClass: STATION_SCAN_ACTIVE_WELL_CLASS,
   /**
    * Selected chrome for **airtable LedgerGrid** rows — fill only.
    *

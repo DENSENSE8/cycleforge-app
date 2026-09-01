@@ -61,6 +61,18 @@ test('a request gated off falls back to first visible strip leaf', () => {
   assert.equal(resolveUnboxSideTab('tracking', SPARSE), 'linkage');
 });
 
+test('unknown Displays ids stay on the index — never fall through to Linkage', () => {
+  assert.deepEqual(resolveUnboxDisplayNav('look', MATCHED), {
+    open: true,
+    leaf: null,
+  });
+  assert.deepEqual(resolveUnboxDisplayNav('look', SPARSE), {
+    open: true,
+    leaf: null,
+  });
+  assert.equal(parseUnboxDisplayNav('look'), 'look');
+});
+
 test('ticket · photos · prebox · checklist survive every gate', () => {
   const nothing: UnboxSideTabGates = {
     hasLinkageTab: false,

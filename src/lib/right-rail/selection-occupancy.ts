@@ -3,10 +3,11 @@
  *
  * On the dashboard orders grid the right rail IS the selection plane: the bottom
  * `ContextualSelectionBar` capsule is gone, and selecting rows is what mounts the
- * rail. **Cardinality decides the body** — one record inspects, two compare, more
- * stage for a batch action. That is the whole rule, and it lives here as a pure
- * function so the registrar, the shared rail shell, the specs, and the guard all
- * read one answer instead of four copies of `ids.length === 2`.
+ * rail. **Cardinality decides the body** — one record inspects, two compare;
+ * three or more keep the selection on the table foot strip (no roster rail).
+ * That is the whole rule, and it lives here as a pure function so the registrar,
+ * the compare shell, the specs, and the guard all read one answer instead of
+ * four copies of `ids.length === 2`.
  *
  * WHY A MODULE AND NOT AN INLINE TERNARY
  * The grid carried two independent selection channels — `?openOrderId=` (row-body
@@ -41,7 +42,7 @@ export const RAIL_OCCUPANT_ID = {
   inspect: 'detail:order',
   /** Exactly two — the divergence-first compare pane. */
   compare: 'detail:order-compare',
-  /** Three or more — the staged roster + batch actions. */
+  /** Three or more — retired; resolver returns `none` (foot-strip CTAs only). */
   attention: 'detail:order-batch',
 } as const;
 
@@ -113,10 +114,15 @@ export function normalizeRailSelection(
  * | 0 | `none` — the rail does not mount |
  * | 1 | `inspect` |
  * | 2 | `compare` |
- * | 3+ | `attention` |
+ * | 3+ | `none` — batch verbs live on the table foot strip; no roster rail |
  *
  * Callers pass the raw selection; normalization happens here so a caller cannot
  * skip it. Safe to call on every render — pure, allocation-light, no I/O.
+ *
+ * Operator 2026-08-31: the 3+ `attention` roster (`detail:order-batch`) was
+ * retired — it duplicated the status-bar CTAs. The kind / occupant id stay in
+ * the type map so old docs and dead registrars do not invent a fourth id; this
+ * resolver simply never returns that kind.
  */
 export function resolveRailOccupancy(
   ids: readonly (number | string | null | undefined)[],
@@ -142,11 +148,8 @@ export function resolveRailOccupancy(
     };
   }
 
-  return {
-    kind: 'attention',
-    occupantId: RAIL_OCCUPANT_ID.attention,
-    orderIds,
-  };
+  // 3+: selection stays on the table; no rail body.
+  return { kind: 'none' };
 }
 
 /**

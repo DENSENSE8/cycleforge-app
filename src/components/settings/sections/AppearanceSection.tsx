@@ -18,12 +18,22 @@ import { setTimeFormat } from '@/lib/time-format/store';
 import { TIME_FORMAT_VALUES, type TimeFormat } from '@/lib/schemas/staff-preferences-constants';
 import { formatTime12hPST } from '@/utils/date';
 import { applyTheme, applyAccentTheme, type ThemeName } from '@/lib/theme/theme';
+import { applyStationSkin } from '@/lib/theme/station-skin';
 import {
   THEME_NAMES,
   THEME_PALETTES,
   resolveTheme,
   type ThemePalette,
 } from '@/design-system/themes/registry';
+import {
+  STATION_SKIN_GROUP_LABEL,
+  STATION_SKIN_GROUP_ORDER,
+  STATION_SKIN_NAMES,
+  STATION_SKINS,
+  resolveStationSkin,
+  type StationSkin,
+  type StationSkinName,
+} from '@/design-system/themes/station-skins';
 import { useAuth } from '@/contexts/AuthContext';
 import { RoleColorPicker } from '@/components/admin/roles/RoleColorPicker';
 import { getStaffColorHex, themeFromHex } from '@/utils/staff-colors';
@@ -64,6 +74,25 @@ function ThemePreviewMini({ palette }: { palette: ThemePalette }) {
           <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: vars['fill-success'] }} />
           <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: vars['fill-warning'] }} />
           <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: vars['fill-danger'] }} />
+        </span>
+      </span>
+    </span>
+  );
+}
+
+/** Scan-station miniature — header strip, well, plate, slot. */
+function StationSkinPreviewMini({ skin }: { skin: StationSkin }) {
+  const { preview } = skin;
+  return (
+    <span
+      aria-hidden
+      className="block h-16 w-full overflow-hidden rounded-lg border border-border-soft"
+      style={{ backgroundColor: preview.header }}
+    >
+      <span className="mx-1.5 mt-5 block p-1" style={{ backgroundColor: preview.well }}>
+        <span className="flex items-stretch gap-1">
+          <span className="h-6 w-6 shrink-0" style={{ backgroundColor: preview.slot }} />
+          <span className="min-w-0 flex-1" style={{ backgroundColor: preview.plate }} />
         </span>
       </span>
     </span>
@@ -150,6 +179,7 @@ export function AppearanceSection() {
   // Unknown/stale stored names resolve to light, so the switcher never shows
   // an impossible selection.
   const currentTheme: ThemeName = resolveTheme(prefs?.theme).name;
+  const currentStationSkin: StationSkinName = resolveStationSkin(prefs?.stationSkin).name;
   const useStaffAccent = resolvesUseStaffAccent(prefs);
   const staffColorHex = user?.staffId
     ? getStaffColorHex({ id: user.staffId })
@@ -163,6 +193,11 @@ export function AppearanceSection() {
   function updateTheme(t: ThemeName) {
     applyTheme(t); // instant local feedback
     update({ theme: t }); // durable, cross-device via staff_preferences
+  }
+
+  function updateStationSkin(skin: StationSkinName) {
+    applyStationSkin(skin);
+    update({ stationSkin: skin });
   }
 
   function updateTimeFormat(tf: TimeFormat) {
@@ -372,6 +407,63 @@ export function AppearanceSection() {
         </div>
         <p className="mt-3 text-role-caption text-text-soft">
           Saved on this device. Theme still owns the absolute colors.
+        </p>
+      </div>
+
+      <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
+        <h3 className="mb-3 text-sm font-semibold text-text-default">Scan station</h3>
+        <p className="mb-3 text-role-caption text-text-soft">
+          How Unbox, Arrival, Pack, Testing, Scan-out, and Search paint their
+          wells — one skin for every floor station.
+        </p>
+        <div className="space-y-4">
+          {STATION_SKIN_GROUP_ORDER.map((group) => {
+            const names = STATION_SKIN_NAMES.filter(
+              (name) => STATION_SKINS[name].group === group,
+            );
+            if (names.length === 0) return null;
+            return (
+              <div key={group}>
+                <p className="mb-2 text-role-eyebrow uppercase tracking-widest text-text-soft">
+                  {STATION_SKIN_GROUP_LABEL[group]}
+                </p>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  {names.map((name) => {
+                    const skin = STATION_SKINS[name];
+                    const isActive = currentStationSkin === name;
+                    return (
+                      <button
+                        key={name}
+                        type="button"
+                        onClick={() => updateStationSkin(name)}
+                        className={`ds-raw-button rounded-none border p-2 text-left transition ${
+                          isActive
+                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500/20'
+                            : 'border-border-soft bg-surface-card hover:border-border-default hover:bg-surface-canvas'
+                        }`}
+                        aria-pressed={isActive}
+                      >
+                        <StationSkinPreviewMini skin={skin} />
+                        <span className="mt-2 flex items-center justify-between px-0.5">
+                          <span className="text-role-caption font-semibold text-text-default">{skin.label}</span>
+                          {isActive ? (
+                            <span className="h-2 w-2 rounded-full bg-blue-500" aria-hidden />
+                          ) : null}
+                        </span>
+                        <span className="mt-0.5 block truncate px-0.5 text-role-micro text-text-soft">
+                          {skin.hint}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-3 text-role-caption text-text-soft">
+          Saved to your account — follows you across devices. Theme still owns
+          the rest of the app.
         </p>
       </div>
 

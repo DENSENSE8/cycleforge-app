@@ -12,27 +12,31 @@
  * second width system (mirrors Incoming's re-export block).
  */
 
-import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
+import {
+  REPAIR_FIELD_CATALOG,
+  REPAIR_PRODUCT_LAYOUT,
+} from '@/lib/tables/field-catalog/repair';
+import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
+import type { SlotLayout } from '@/lib/tables/slot-layout-core';
+import {
+  defaultDirForRepairDisplaySort,
+  type RepairDisplaySortColumn,
+} from '@/lib/repair/repair-display-sort';
 import {
   gridFrozenLeft,
   gridTemplate,
 } from '@/design-system/components/grid/grid-column-geometry';
-import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import type { ColumnType } from '@/lib/tables/table-columns';
-import { formatPhoneNumber } from '@/utils/phone';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 export type RepairGridColumnKey =
   | 'select'
   | 'title'
-  | 'date'
-  | 'customer'
-  | 'phone'
-  | 'price'
-  | 'order'
-  | 'ticket';
+  /** Materialized slot tracks — keys are slot indices, never field ids. */
+  | `status:${number}`
+  | `subtitle:${number}`;
 
-export interface RepairGridColumn {
+export interface RepairGridColumn extends SlotTrackFields {
   key: RepairGridColumnKey;
   width: string;
   label?: string;
@@ -52,142 +56,138 @@ export interface RepairGridColumn {
 }
 
 /**
- * Canonical repair columns, in strict scan order. Fact tracks are content-hard
- * `minmax(X,X)`; only `title` flexes. `order` shows WALK-IN when the ticket has
- * no linked source order.
- *
- * DEFAULT VIEW (tier `core`) is `select · title · date · customer · ticket` —
- * what came in, when, whose it is, and the RS-#### the desk quotes on the phone.
- * `phone` is contact detail (and PII) that only matters once you open the
- * ticket; `price` is a quote the detail pane owns; `order` reads "Walk-in" on
- * the overwhelming majority of rows, so as a default track it is a near-constant
- * column. All three ship `optional`.
+ * The structural sheet skeleton — what Repair paints with ZERO bindings.
+ * `title` is the only flex track; the frozen pane is `select · title`.
  */
-export const REPAIR_GRID_COLUMNS: readonly RepairGridColumn[] = [
+const REPAIR_SHEET_BASE: readonly RepairGridColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
   {
     key: 'title',
     frozen: true,
     width: 'minmax(12rem, 1fr)',
     label: 'Product',
+    gridLabel: 'Product',
     type: 'text',
     labelFitRem: 8,
   },
-  // Civil day the repair service was created (newest-first default). Wide
-  // enough to show the full "Created" header label (not truncated "Crea…").
-  { key: 'date', width: 'minmax(6rem, 6rem)', label: 'Created', type: 'date', hideKey: 'date', labelFitRem: 4.5 },
-  { key: 'customer', width: 'minmax(7rem, 7rem)', label: 'Customer', type: 'text', hideKey: 'customer', labelFitRem: 4.5 },
-  { key: 'phone', width: 'minmax(6.5rem, 6.5rem)', label: 'Phone', type: 'text', hideKey: 'phone', tier: 'optional', labelFitRem: 4.5 },
-  { key: 'price', width: 'minmax(4.5rem, 4.5rem)', label: 'Price', type: 'price', hideKey: 'price', tier: 'optional', labelFitRem: 4.5 },
-  // Walk-in vs linked source order — WALK-IN label needs the wider track.
-  { key: 'order', width: 'minmax(5.5rem, 5.5rem)', label: 'Walk-in / Order', gridLabel: 'Order', type: 'id', hideKey: 'order', tier: 'optional', labelFitRem: 4.5 },
-  { key: 'ticket', width: 'minmax(5rem, 5rem)', label: 'Ticket', type: 'id', hideKey: 'ticket', labelFitRem: 4.5 },
-] as const;
+];
 
 /**
- * Frozen identity pane — `select · title`. Derived from the column model's
- * `frozen` flag (one declaration for freeze + immovability + offset math), not
- * from the house key list: the pane is a per-surface answer, and Orders already
- * freezes a third track. See `grid-column-editability.ts`.
+ * Materialize the mounted repair columns from an effective layout. Both bands
+ * anchor on `title`, so the default plate reads created · customer · ticket —
+ * the retired hand model's core view.
  */
-const REPAIR_GRID_LOCKED_KEYS: readonly RepairGridColumnKey[] = gridFrozenKeys(REPAIR_GRID_COLUMNS);
-
-/** Data columns that support click-to-sort (excludes the select gutter). */
-const REPAIR_GRID_SORTABLE_KEYS: readonly RepairGridColumnKey[] = REPAIR_GRID_COLUMNS.filter(
-  (c) => c.sortable !== false && c.key !== 'select',
-).map((c) => c.key);
-
-export function isRepairGridSortable(key: string): key is RepairGridColumnKey {
-  return (REPAIR_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
+export function repairSheetColumnsFor(layout: SlotLayout): readonly RepairGridColumn[] {
+  return materializeTracks<RepairGridColumn>({
+    layout,
+    catalog: REPAIR_FIELD_CATALOG,
+    base: REPAIR_SHEET_BASE,
+    statusAnchorKey: 'title',
+    subtitleAnchorKey: 'title',
+  });
 }
 
+/**
+ * The PRODUCT-DEFAULT materialization — what an org with no override mounts,
+ * the canonical columns of the repair binding, and the guard SoT.
+ */
+export const REPAIR_SHEET_COLUMNS: readonly RepairGridColumn[] =
+  repairSheetColumnsFor(REPAIR_PRODUCT_LAYOUT);
+
+/**
+ * Bound field → the queue's URL SORT WORD.
+ *
+ * Repair is the one ported family whose sort does NOT ride `?colsort=`: it
+ * shares `?sort=`/`?dir=` with a chrome dropdown, and
+ * `repair-display-sort.ts` keeps that vocabulary deliberately local so a
+ * rewritten display cannot silently change the meaning of a bookmarked URL.
+ * Its docblock says to re-derive in ONE direction when the grid returns — this
+ * map is that direction: a mounted track resolves to a word the URL already
+ * understands, and the word never learns about the track.
+ *
+ * A field with no word here is simply not sortable from a header. That is the
+ * honest outcome for `repair.service` (a row handle nobody sorts by) and
+ * `repair.status` (a fact the hand model never printed): admitting them would
+ * mean minting new `?sort=` values, which is a URL change, not a layout one.
+ */
+const REPAIR_SORT_WORD_BY_FIELD: Readonly<Record<string, RepairDisplaySortColumn>> = {
+  'repair.created': 'date',
+  'repair.customer': 'customer',
+  'repair.phone': 'phone',
+  'repair.price': 'price',
+  'repair.order': 'order',
+  'repair.ticket': 'ticket',
+};
+
+/** The URL sort word a column sorts by, or null when it offers no sort. */
+export function repairSortFactFor(col: RepairGridColumn): RepairDisplaySortColumn | null {
+  if (col.sortable === false || col.key === 'select') return null;
+  if (col.key === 'title') return 'title';
+  return col.fieldId ? (REPAIR_SORT_WORD_BY_FIELD[col.fieldId] ?? null) : null;
+}
+
+/** Model-derived sortability — the descriptor's and the URL guard's one answer. */
+export function isRepairColumnSortable(
+  columns: readonly RepairGridColumn[],
+  key: string,
+): key is RepairGridColumnKey {
+  return columns.some((c) => c.key === key && repairSortFactFor(c) !== null);
+}
+
+/** The mounted track carrying a URL sort word, so `?sort=` lights a header. */
+export function repairColumnKeyForSort(
+  columns: readonly RepairGridColumn[],
+  sort: RepairDisplaySortColumn | null,
+): RepairGridColumnKey | null {
+  if (!sort) return null;
+  return columns.find((c) => repairSortFactFor(c) === sort)?.key ?? null;
+}
 
 export function repairGridTemplate(
-  columns: readonly RepairGridColumn[] = REPAIR_GRID_COLUMNS,
+  columns: readonly RepairGridColumn[] = REPAIR_SHEET_COLUMNS,
 ): string {
   return gridTemplate(columns);
 }
 
-export function isRepairGridFrozen(key: string): boolean {
-  return REPAIR_GRID_LOCKED_KEYS.includes(key as RepairGridColumnKey);
+/** Sticky offset for a frozen cell, derived from the MOUNTED model. */
+export function repairGridFrozenLeft(
+  columns: readonly RepairGridColumn[],
+  key: string,
+): string {
+  return gridFrozenLeft(columns, key);
 }
 
 /**
- * Sticky-left offset for a frozen cell, bound to THIS surface's pane.
- *
- * This was `ordersQueueFrozenLeft` under an alias until 2026-08-02, so Repair
- * computed its offsets from ORDERS' `select · order · title` pane at ORDERS'
- * widths. See {@link gridFrozenLeft}.
+ * Default direction when a column sort is first activated — the created date
+ * scans newest-first; everything else A→Z / low→high.
  */
-export function repairGridFrozenLeft(key: string): string {
-  return gridFrozenLeft(REPAIR_GRID_COLUMNS, key);
+export function defaultDirForRepairColumn(
+  columns: readonly RepairGridColumn[],
+  key: string,
+): GridSortDir {
+  const col = columns.find((c) => c.key === key);
+  const word = col ? repairSortFactFor(col) : null;
+  // Defer to the URL vocabulary's own answer so a header click and a dropdown
+  // pick open the same way — that shared `?sort=` state is the whole point.
+  return word ? (defaultDirForRepairDisplaySort(word) ?? 'asc') : 'asc';
 }
 
-
-/** Default direction when a column sort is first activated. */
-export function defaultDirForRepairGridSort(key: RepairGridColumnKey): GridSortDir {
-  // Created date scans newest-first by default; everything else A→Z / low→high.
-  return key === 'date' ? 'desc' : 'asc';
-}
-
-/* ── Field-source helpers (display ↔ sort SoT) ─────────────────────────────
- * The row cells and the comparators both read these so a column always sorts
- * by exactly what it shows. contact_info is the legacy free-text fallback:
- * "Name, Phone, Email" comma-segments when the normalized customer_* columns
- * are empty. */
-
-function contactSegment(contactInfo: string | null | undefined, index: number): string {
-  if (!contactInfo) return '';
-  const parts = contactInfo.split(',').map((p) => p.trim());
-  return parts[index] || '';
-}
-
-/** Customer name — normalized column, else the first contact_info segment. */
-export function repairCustomerName(repair: RSRecord): string {
-  return (repair.customer_name || '').trim() || contactSegment(repair.contact_info, 0);
-}
-
-/** Raw customer phone — normalized column, else the second contact_info segment. */
-export function repairCustomerPhone(repair: RSRecord): string {
-  return (repair.customer_phone || '').trim() || contactSegment(repair.contact_info, 1);
-}
-
-/** Formatted phone for display (000-000-0000). */
-export function repairPhoneDisplay(repair: RSRecord): string {
-  return formatPhoneNumber(repairCustomerPhone(repair));
-}
-
-/** Linked source order id (empty = walk-in). */
-export function repairOrderValue(repair: RSRecord): string {
-  return String(repair.source_order_id || '').trim();
-}
-
-/** Ticket number (RS-#### fallback lives server-side on create). */
-export function repairTicketValue(repair: RSRecord): string {
-  return String(repair.ticket_number || '').trim();
-}
-
-/** Created-at instant for the Date column / sort (empty → null). */
-export function repairCreatedAtSource(repair: RSRecord): string | null {
-  return (repair.created_at || '').trim() || null;
-}
-
-/**
- * Price display — the free-text `price` string prefixed with `$` (unless it
- * already carries one). Empty → null so the cell renders the em-dash.
+/*
+ * Field-source helpers (display ↔ sort SoT) moved to the resolver leaf with the
+ * wave 1.4 slot port: the row cells, the comparators and a bound column all
+ * read one answer, so a track always sorts by exactly what it shows. Re-exported
+ * here because every existing call site imports them from this module.
  */
-export function repairPriceDisplay(repair: RSRecord): string | null {
-  const raw = String(repair.price || '').trim();
-  if (!raw) return null;
-  return raw.startsWith('$') ? raw : `$${raw}`;
-}
-
-/** Numeric price for sorting (parsed from the free-text value; 0 when absent). */
-export function repairPriceSortValue(repair: RSRecord): number {
-  const cleaned = String(repair.price || '').replace(/[^0-9.-]/g, '');
-  const n = Number(cleaned);
-  return Number.isFinite(n) ? n : 0;
-}
+export {
+  repairCreatedAtSource,
+  repairCustomerName,
+  repairCustomerPhone,
+  repairOrderValue,
+  repairPhoneDisplay,
+  repairPriceDisplay,
+  repairPriceSortValue,
+  repairTicketValue,
+} from '@/lib/tables/field-catalog/repair-resolve';
 
 // Shared spreadsheet chrome — @/design-system/components/grid ledgerGridCell.
 export {

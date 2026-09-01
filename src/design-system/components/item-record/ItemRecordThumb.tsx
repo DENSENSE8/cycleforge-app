@@ -1,5 +1,6 @@
 'use client';
 
+import { STATION_SCAN_FIELD_WELL_CLASS } from '@/components/station/scan-depth';
 import { Package } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { cornerClass } from '@/design-system/tokens/radius';
@@ -18,12 +19,16 @@ export function ItemRecordThumb({
 }) {
   return (
     <span
+      data-item-record-thumb
       className={cn(
         'relative flex w-20 shrink-0 items-center justify-center self-stretch overflow-hidden p-0',
         ITEM_RECORD_FACE.minH,
         cornerClass('flush'),
-        'bg-surface-card',
-        imageUrl ? null : 'text-text-faint',
+        // Empty cube is a deeper slot on the working plate. A photo covers
+        // this fill edge-to-edge (`object-cover`).
+        imageUrl
+          ? null
+          : cn(STATION_SCAN_FIELD_WELL_CLASS, 'text-text-faint'),
         className,
       )}
       aria-hidden={!imageUrl}

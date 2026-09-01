@@ -54,6 +54,12 @@ export const THEME_VAR_KEYS = [
   'surface-sunken',
   'surface-hover',
   'surface-strong',
+  // Scan-station packing bench (Unbox-family wells). Birch/ash on light,
+  // warm coal on Ember/dark. Not cool slate.
+  'surface-bench',
+  'surface-trough',
+  'surface-plate',
+  'surface-slot',
   // Inverted chrome (dark pills / action bars / headers) + text on it.
   // Ladder: inverse (darkest) → inverse-hover → inverse-raised (chip resting
   // ON an inverse bar) → inverse-soft (muted standalone dark fill ≈ gray-600).
@@ -67,6 +73,8 @@ export const THEME_VAR_KEYS = [
   'border-default',
   'border-hairline',
   'border-emphasis',
+  'border-stain',
+  'border-ply',
   'border-strong',
   'border-inverse',
   // Functional tones — pastel pill trio (bg-surface-x + text-text-x + border-border-x)

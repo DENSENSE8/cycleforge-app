@@ -79,6 +79,22 @@ describe('table definition schema', () => {
     assert.equal(parsed.columns.length, 3);
   });
 
+  it('keeps headerForceLabel so a photo gutter can still say Image', () => {
+    const thumb: TableDefinitionColumn = {
+      key: 'thumb',
+      width: 'minmax(3rem, 3rem)',
+      label: 'Image',
+      gridLabel: 'Image',
+      type: 'image',
+      headerForceLabel: true,
+      frozen: true,
+      sortable: false,
+      resizable: false,
+    };
+    const parsed = parseTableDefinition(definition([SELECT, thumb, TITLE]));
+    assert.equal(parsed.columns.find((c) => c.key === 'thumb')?.headerForceLabel, true);
+  });
+
   it('rejects an unknown key — an authored payload may not smuggle fields', () => {
     // Strictness is the guarantee that makes authoring these safe: a field the
     // engine does not read must fail loudly, not be quietly dropped.

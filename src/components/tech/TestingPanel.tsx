@@ -13,6 +13,8 @@ import {
 import {
   StationDisplaysPushStack,
   STATION_DISPLAY_INDEX,
+  StationDisplaysParkedRail,
+  resolveDisplaysActiveTab,
   useYieldStationDisplaysOnAssistantOpen,
 } from '@/components/station/displays';
 import { StationDisplaysUtilityRail } from '@/components/station/displays';
@@ -91,9 +93,7 @@ export function TestingPanel({
   const productTitle = resolveTestingLineTitle(row);
 
   // Displays push — `null` IS closed; `index` is Root Index; leaf id is the body.
-  const [activeSideTab, setActiveSideTab] = useState<
-    TestingDisplayTab | typeof STATION_DISPLAY_INDEX | null
-  >(null);
+  const [activeSideTab, setActiveSideTab] = useState<string | null>(null);
   const [claimMode, setClaimMode] = useState<ClaimModalMode>('create');
   const [pairingFocus, setPairingFocus] = useState<{
     tab: 'zoho_po' | null;
@@ -344,13 +344,14 @@ export function TestingPanel({
     ],
   );
 
-  const resolvedSideTab: TestingDisplayTab | typeof STATION_DISPLAY_INDEX | null = useMemo(() => {
-    if (!activeSideTab) return null;
-    if (activeSideTab === STATION_DISPLAY_INDEX) return STATION_DISPLAY_INDEX;
-    if (displayTabs.some((t) => t.id === activeSideTab)) return activeSideTab;
-    // Gated-away leaf → the index, never a silent swap to an unrelated display.
-    return STATION_DISPLAY_INDEX;
-  }, [activeSideTab, displayTabs]);
+  const resolvedSideTab = useMemo(
+    () =>
+      resolveDisplaysActiveTab(
+        activeSideTab,
+        displayTabs.map((t) => t.id),
+      ),
+    [activeSideTab, displayTabs],
+  );
 
   // Carton-terminal always — Ticket display keeps Reply local (inline). A
   // Displays click must not re-label the dock (Unbox grammar).
@@ -377,7 +378,17 @@ export function TestingPanel({
   const scanSessionForThisLine = sessionMatchesLine(scanSession, row);
 
   const utilityRailBody = !resolvedSideTab ? (
-    <StationDisplaysUtilityRail onOpenDisplays={openDisplaysIndex} />
+    <StationDisplaysUtilityRail
+      onOpenDisplays={openDisplaysIndex}
+      indexRail={
+        <StationDisplaysParkedRail
+          rows={displayIndexRows}
+          tabs={displayTabs}
+          activeId={activeSideTab}
+          onOpenLeaf={setActiveSideTab}
+        />
+      }
+    />
   ) : null;
 
   const exitToList = useCallback(() => {

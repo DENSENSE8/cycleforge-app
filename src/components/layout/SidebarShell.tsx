@@ -18,7 +18,7 @@ import { FilterRefinementBar, type FilterRefinementBarProps } from '@/design-sys
  *
  *   h-full flex flex-col overflow-hidden     ← outer column (never scrolls)
  *     headerAbove                            ← pinned: filterControl / eyebrow / facet filters
- *     <FilterRefinementBar/> (optional)      ← the glassmorphic filter pill
+ *     <FilterRefinementBar/> (optional)      ← leftover rail chrome; desks use DataTable filter
  *     headerRows[]  (each a 40px pill band)  ← pinned: sub-tabs / field scopes / chips
  *                                            (NOT page L2 — that lives in GlobalHeader)
  *     headerBelow                            ← pinned, non-banded, OUTSIDE the scroll
@@ -27,10 +27,10 @@ import { FilterRefinementBar, type FilterRefinementBarProps } from '@/design-sys
  */
 export interface SidebarShellProps {
   /**
-   * Optional configuration for a unified filter bar. When provided, the shell
-   * renders a `<FilterRefinementBar variant="sidebar">` at the top of the panel.
-   * This is a structured refinement UI, NOT a text-search band — search lives in
-   * the global header (see file header).
+   * Optional leftover rail filter bar. Binding-backed desks must NOT pass this —
+   * DataTable owns search + the filter icon to its right (To-ship gold). When
+   * provided, the shell still renders FilterRefinementBar (Inventory / Warranty
+   * / Audit / Issues rails that are not yet on that control).
    */
   filter?: Omit<FilterRefinementBarProps, 'variant'>;
 

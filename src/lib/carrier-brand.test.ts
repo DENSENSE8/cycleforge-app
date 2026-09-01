@@ -21,7 +21,7 @@ describe('carrier-brand', () => {
     assert.equal(CARRIER_BRANDS.DHL.brandHex, '#FFCC00');
   });
 
-  it('Unknown has no brand hex (house blue MapPin)', () => {
+  it('Unknown has no brand hex (house blue ring)', () => {
     assert.equal(CARRIER_BRANDS.Unknown.brandHex, null);
     assert.equal(hasCarrierBrandPaint(CARRIER_BRANDS.Unknown), false);
   });

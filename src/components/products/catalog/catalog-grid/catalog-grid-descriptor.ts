@@ -10,9 +10,8 @@ import {
 } from '@/design-system/components/grid';
 import type { CatalogListRow } from '@/components/products/catalog/types';
 import {
-  defaultDirForCatalogGridSort,
-  isCatalogGridFrozen,
-  isCatalogGridSortable,
+  defaultDirForCatalogColumn,
+  isCatalogColumnSortable,
   type CatalogGridColumn,
 } from '@/lib/products/catalog-grid-layout';
 
@@ -37,9 +36,10 @@ export function makeCatalogGridDescriptor(
     'products.catalog',
     columns,
     {
-      isSortable: isCatalogGridSortable,
-      sortDescFirst: (key) => defaultDirForCatalogGridSort(key) === 'desc',
-      isLocked: isCatalogGridFrozen,
+      isSortable: (key) => isCatalogColumnSortable(columns, key),
+      sortDescFirst: (key) => defaultDirForCatalogColumn(columns, key) === 'desc',
+      // Locked = the mounted model's own frozen prefix (`select · title`).
+      isLocked: (key) => columns.some((c) => c.key === key && c.frozen === true),
     },
     CATALOG_GRID_CAPABILITIES,
   );

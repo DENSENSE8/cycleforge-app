@@ -36,7 +36,7 @@ interface TrackingNumberMenuChipProps {
    */
   onEdit?: () => void;
   onMenuOpenChange?: (open: boolean) => void;
-  /** When false, omit the leading MapPin / CarrierMark (grid column already labeled TRACK). */
+  /** When false, omit any leftover leading glyph (grid column already labeled TRACK). */
   showIcon?: boolean;
   /** Caption-mono face for LedgerGrid Sheets body (never raw text-sm). */
   dense?: boolean;

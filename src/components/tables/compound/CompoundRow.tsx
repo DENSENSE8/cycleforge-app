@@ -64,7 +64,8 @@ export interface CompoundRowProps<C extends CompoundRowColumn>
   /** Present ⇒ the leading gutter paints a checkmark. See `CompoundSelect`. */
   select?: {
     checked: boolean | 'mixed';
-    onToggle?: () => void;
+    /** Receives the click's modifier state so shift-click can extend a range. */
+    onToggle?: (event: { shiftKey: boolean }) => void;
     label: string;
     disabled?: boolean;
   };

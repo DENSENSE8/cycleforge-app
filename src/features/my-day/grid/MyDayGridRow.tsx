@@ -17,7 +17,6 @@ import {
   type MyDayTask,
 } from '@/lib/my-day/my-day-tasks';
 import {
-  MY_DAY_GRID_COLUMNS,
   MY_DAY_GRID_FROZEN_CELL,
   myDayGridCell,
   myDayGridFrozenLeft,
@@ -25,6 +24,8 @@ import {
   myDayGridTemplate,
   type MyDayGridColumn,
 } from '@/lib/my-day/my-day-grid-layout';
+import { resolveMyDaySlotValue } from '@/lib/tables/field-catalog/my-day-resolve';
+import { isSlotTrackKey } from '@/lib/tables/materialize-tracks';
 import { formatDateKeyShort, formatDateTimePST, toPSTDateKey } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import { MY_DAY_GRID_CAPABILITIES } from './my-day-grid-descriptor';
@@ -43,18 +44,86 @@ export const MyDayGridRow = memo(function MyDayGridRow({
   task,
   isSelected,
   onSelect,
-  columns = MY_DAY_GRID_COLUMNS,
+  columns,
 }: {
   task: MyDayTask;
   isSelected: boolean;
   onSelect: (task: MyDayTask) => void;
-  columns?: readonly MyDayGridColumn[];
+  columns: readonly MyDayGridColumn[];
 }) {
   const dueKey = task.deadlineAt ? toPSTDateKey(task.deadlineAt) : null;
   const status = workStatusLabel(task.status);
 
+  /** The body of one materialized slot track, chosen by the BOUND FIELD. */
+  const renderSlotBody = (fieldId: string | undefined): ReactNode => {
+    switch (fieldId) {
+      case 'my-day.lane':
+        return (
+          <GridStatusCellValue
+            label={myDayLaneShortLabel(task.lane)}
+            toneClass={myDayLaneChipClass(task.lane)}
+            dotClass={myDayLaneDot(task.lane)}
+          />
+        );
+      case 'my-day.queue':
+        return (
+          <span className="min-w-0 truncate text-role-caption text-text-muted">
+            {task.queueLabel}
+          </span>
+        );
+      case 'my-day.record':
+        return task.recordLabel == null ? (
+          <GridCellDash />
+        ) : task.source.kind === 'interrupt' ? (
+          <TicketChip value={task.recordLabel} display={task.recordLabel} dense />
+        ) : (
+          <OrderIdChip
+            value={task.recordLabel}
+            display={getLast8(task.recordLabel)}
+            plain
+            truncateDisplay={false}
+            fitDisplayWidth
+          />
+        );
+      case 'my-day.due':
+        return (
+          <GridDateCellValue
+            label={dueKey ? formatDateKeyShort(dueKey) : null}
+            tooltip={task.deadlineAt ? formatDateTimePST(task.deadlineAt) : null}
+            className="text-role-caption"
+          />
+        );
+      case 'my-day.status':
+        // An interrupt has no status machine — a dash, never a borrowed
+        // work-order word.
+        return status ? (
+          <GridStatusCellValue label={status} toneClass={workStatusChipClass(task.status)} />
+        ) : (
+          <GridCellDash />
+        );
+      default: {
+        // A catalog field with no bespoke face paints its resolved text — a new
+        // bindable fact needs a resolver case, never a new column file.
+        const value = fieldId ? resolveMyDaySlotValue(task, fieldId) : null;
+        const text = value?.kind === 'value' ? value.text : null;
+        return text ? (
+          <span className="min-w-0 truncate text-role-caption text-text-soft">{text}</span>
+        ) : (
+          <GridCellDash />
+        );
+      }
+    }
+  };
+
   const renderCell = (col: MyDayGridColumn, last: boolean): ReactNode => {
     const rule = !last;
+    if (isSlotTrackKey(col.key)) {
+      return (
+        <div data-col={col.key} className={dataCell(col, rule)}>
+          {renderSlotBody(col.fieldId)}
+        </div>
+      );
+    }
     switch (col.key) {
       case 'select':
         return (
@@ -64,7 +133,7 @@ export const MyDayGridRow = memo(function MyDayGridRow({
               MY_DAY_GRID_FROZEN_CELL,
               'justify-center',
             )}
-            style={{ left: myDayGridFrozenLeft('select') }}
+            style={{ left: myDayGridFrozenLeft(columns, 'select') }}
           >
             <span className="h-4 w-4 shrink-0" aria-hidden />
           </div>
@@ -74,7 +143,7 @@ export const MyDayGridRow = memo(function MyDayGridRow({
           <div
             data-col="task"
             className={cn(dataCell(col, rule), MY_DAY_GRID_FROZEN_CELL, 'gap-1.5')}
-            style={{ left: myDayGridFrozenLeft('task') }}
+            style={{ left: myDayGridFrozenLeft(columns, 'task') }}
             data-frozen-edge
           >
             <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
@@ -83,62 +152,6 @@ export const MyDayGridRow = memo(function MyDayGridRow({
             <span className="min-w-0 shrink truncate text-role-eyebrow uppercase tracking-widest text-text-faint">
               {task.subtitle}
             </span>
-          </div>
-        );
-      case 'lane':
-        return (
-          <div data-col="lane" className={dataCell(col, rule)}>
-            <GridStatusCellValue
-              label={myDayLaneShortLabel(task.lane)}
-              toneClass={myDayLaneChipClass(task.lane)}
-              dotClass={myDayLaneDot(task.lane)}
-            />
-          </div>
-        );
-      case 'queue':
-        return (
-          <div data-col="queue" className={dataCell(col, rule)}>
-            <span className="min-w-0 truncate text-role-caption text-text-muted">
-              {task.queueLabel}
-            </span>
-          </div>
-        );
-      case 'record':
-        return (
-          <div data-col="record" className={dataCell(col, rule)}>
-            {task.recordLabel == null ? (
-              <GridCellDash />
-            ) : task.source.kind === 'interrupt' ? (
-              <TicketChip value={task.recordLabel} display={task.recordLabel} dense />
-            ) : (
-              <OrderIdChip
-                value={task.recordLabel}
-                display={getLast8(task.recordLabel)}
-                plain
-                truncateDisplay={false}
-                fitDisplayWidth
-              />
-            )}
-          </div>
-        );
-      case 'due':
-        return (
-          <div data-col="due" className={dataCell(col, rule)}>
-            <GridDateCellValue
-              label={dueKey ? formatDateKeyShort(dueKey) : null}
-              tooltip={task.deadlineAt ? formatDateTimePST(task.deadlineAt) : null}
-              className="text-role-caption"
-            />
-          </div>
-        );
-      case 'status':
-        return (
-          <div data-col="status" className={dataCell(col, rule)}>
-            {status ? (
-              <GridStatusCellValue label={status} toneClass={workStatusChipClass(task.status)} />
-            ) : (
-              <GridCellDash />
-            )}
           </div>
         );
       default:

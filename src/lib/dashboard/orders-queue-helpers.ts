@@ -21,9 +21,9 @@ export type QueueRowRecord = ShippedOrder & Record<string, unknown>;
 export type OrdersQueueMode = 'fulfillment' | 'labels' | 'staged' | 'shipped';
 
 /** Sort order for the date-banded / column-sorted queue.
- *  - `priority` (default): soonest deadline, Awaiting-before-Pending within a day.
+ *  - `deadline` (default): bands by ship-by; most-overdue first within a day.
  *  - `newest`: bands by created date, most-recently-added first.
- *  - `deadline`: bands by deadline date; most-overdue first within a day.
+ *  - `priority`: retired synonym of `deadline`. URL parse maps it to deadline.
  *  - Column sorts (`title`…`tracking`): flat global order (see queue-row-compare). */
 export type OrdersQueueSort = QueueDisplaySort;
 
@@ -43,7 +43,7 @@ export function queueRowBandDateSource(
   record: Pick<ShippedOrder, 'deadline_at' | 'created_at' | 'ship_by_date'>,
   sort: OrdersQueueSort,
 ): string | null {
-  // Column sorts are flat (no day banding); if called, use ship-by like priority.
+  // Column sorts are flat (no day banding); if called, use ship-by.
   if (sort === 'newest') {
     return (
       nonEmptyDateSource(record.created_at) ||
@@ -66,7 +66,7 @@ export function queueRowBandDateSource(
 export function queueRowShipBySource(
   record: Pick<ShippedOrder, 'deadline_at' | 'created_at' | 'ship_by_date'>,
 ): string | null {
-  return queueRowBandDateSource(record, 'priority');
+  return queueRowBandDateSource(record, 'deadline');
 }
 
 /** Compact ship-by Date-column presentation (warehouse civil day). */

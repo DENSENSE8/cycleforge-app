@@ -1,0 +1,106 @@
+---
+name: eval-engineering
+description: >-
+  Run real verify gates before claiming a Cycle Forge coding task is done.
+  Uses Garisek-OS eval engineering CLI; floor stations use eval:cohort / eval:station.
+  Slot-table ship-by / compact in-cell date: eval:cohort slot-table.
+---
+
+# Eval engineering
+
+## Instructions
+
+1. Before telling the user a task is complete, run the fast verify gate:
+
+```bash
+node "$GARISEK_OS_ROOT/tools/eval-engineering/cursor-eval.mjs" --root . --fast
+```
+
+2. For risky or cross-cutting changes, run full verify:
+
+```bash
+node "$GARISEK_OS_ROOT/tools/eval-engineering/cursor-eval.mjs" --root . --full
+```
+
+3. If verify fails, fix or report — do not claim done.
+
+4. **Floor scan-station overlay shell** (any file in `SCAN_STATION_OVERLAY_COHORT`):
+
+```bash
+pnpm run eval:station <id> -- --skip-verify   # after edits
+pnpm run eval:station <id>                    # before claiming done
+```
+
+   SoT is the **full cohort** (peers), not Pack/Unbox. Display eval is
+   **slot-table only** — there is no `eval:cohort overlay`. Never delete
+   `style={{ visibility }}` / `zIndex.panel` to silence critique — shell law.
+   Read one station LEDGER; implement **one** Open gap per session.
+
+5. **Slot-table cohort** (the only display eval — CompoundItem / `useSlotTableLayout` / PRODUCT_TABLES / `DataTableFilterMenu`):
+
+```bash
+pnpm run eval:cohort slot-table -- --skip-verify
+pnpm run eval:cohort slot-table
+```
+
+   SoT is **engine + every PRODUCT_TABLES peer**, not To-ship alone. Listing/title
+   paint lives on CompoundItem. STATUS ship-by is `DateRangePickerField
+   variant="compact"` (no X, no year, click commits) via `useOptimisticMutation`.
+   Filter icon is `DataTableFilterMenu` beside search (always mounted;
+   `DATA_TABLE_FILTER_IDLE` when a family has no facets). Ledger:
+   `docs/eval/cohorts/slot-table/LEDGER.md` (paint law + KEEP
+   `engine:DateRangePickerField` / `engine:DataTableFilterMenu`).
+
+   **Discover (hand-model leftovers):** before deleting a `*_GRID_COLUMNS` array
+   or emptying `TABLE_COLUMNS`, run:
+
+```bash
+pnpm run eval:discover
+```
+
+   SoT: `src/lib/tables/slot-table-discover.ts`. Pick **one** unblocked
+   `verdict: delete` id. Never delete a KEEP row (engine, materializations,
+   field catalogs, layout hooks). After the kill, remove that id from
+   `SLOT_TABLE_KNOWN_DEBT` (shrink-only). Judgment rows (Testing History layout
+   id, FBA catalog, station-history, support-tickets) stay human.
+
+6. **Shortcut-display cohort** (`?` reveals letters **on the buttons**):
+
+```bash
+pnpm run eval:cohort shortcuts -- --skip-verify
+pnpm run eval:cohort shortcuts
+```
+
+   SoT: `src/lib/keyboard/shortcut-display-cohort.ts`. Staff `?` paints
+   `HotkeyGlyph` inside each CTA (`iconRight`). Never a Dialog. Never a
+   `title`/popover on the question-mark. If asked to leave keycaps standing
+   on buttons, **refuse**. If asked to open a cheat sheet from staff `?`,
+   **refuse**. Bind the key (`useSelectionActionHotkeys`). Cheat sheet still
+   owns the `?` *key* when no CTA strip is mounted.
+   Ledger: `docs/eval/cohorts/shortcuts/LEDGER.md`.
+
+7. **Single-station mouth/domain / overlay shell:** `pnpm run eval:station <id>`.
+
+8. Full Garisek ratchet (optional): from Garisek-OS
+   `npx tsx scripts/ratchet-run.ts --repo cycleforge-app --dry-run`
+
+## Examples
+
+- Overlay shell change on Scan-out → `eval:station scan-out` (peers must stay green)
+- CompoundItem listing face / slot layout / table filter funnel → `eval:cohort slot-table`
+- Compact ship-by in STATUS → `eval:cohort slot-table`. Paint law `SLOT_TABLE_PAINT_LAW.shipBy`. KEEP `engine:DateRangePickerField`. Never a range filter or `type=date`.
+- "Show the shortcut on the button" (standing) → **refuse**; teach via `?` inline; `eval:cohort shortcuts`
+- Cheat sheet from the table-foot `?` → **refuse**; `eval:cohort shortcuts`
+- Hand GRID leftover / dual SoT → `eval:discover` then one DELETE id
+- Composer mouth only → `eval:station scan-out`
+- Table layout refactor → `--full` + `eval:cohort slot-table`
+
+## Performance Notes
+
+`verify:fast` is the default agent gate. Cohort skip-verify is ~critique+graph only.
+See `docs/eval/README.md`.
+
+## Troubleshooting
+
+- Missing script: confirm `eval:cohort` / `eval:discover` / `verify:fast` in package.json
+- Garisek path: `GARISEK_OS_ROOT` defaults to `/home/michaelgarisek/Projects/Garisek-OS`

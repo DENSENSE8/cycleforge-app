@@ -9,13 +9,13 @@ import {
 } from './cells';
 import { BINS_GRID_CAPABILITIES } from './bins-grid-descriptor';
 import {
-  BINS_GRID_COLUMNS,
   binsGridTemplate,
   type BinsGridColumn,
 } from './bins-grid-layout';
 
 /**
- * One warehouse bin — CSS-grid columns matching {@link BINS_GRID_COLUMNS}.
+ * One warehouse bin — CSS-grid columns matching the MOUNTED model (a
+ * `SlotLayout` materialization since the wave 1.4 hand-model kill).
  *
  * Airtable skin: left checkbox toggles bulk membership (stops propagation); the
  * row body opens the bin flyout at the record plane.
@@ -27,18 +27,19 @@ export const BinsGridRow = memo(function BinsGridRow({
   isChecked,
   onOpen,
   onToggleSelect,
-  columns = BINS_GRID_COLUMNS,
+  columns,
 }: {
   row: BinsOverviewRow;
   isChecked: boolean;
   onOpen: (row: BinsOverviewRow) => void;
   onToggleSelect: (row: BinsOverviewRow) => void;
-  columns?: readonly BinsGridColumn[];
+  columns: readonly BinsGridColumn[];
 }) {
   const ctx: BinsGridCellCtx = {
     row,
     isChecked,
     onToggleSelect,
+    columns,
   };
 
   return (

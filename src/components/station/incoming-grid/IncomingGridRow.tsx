@@ -7,6 +7,7 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 import { INCOMING_GRID_CAPABILITIES } from '@/components/station/incoming-grid/incoming-grid-descriptor';
 import { LedgerGridLeafRow } from '@/design-system/components/grid';
+import { ignoreRowSelectFromSubtitle } from '@/components/tables/compound/useSubtitlePointerReorder';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import {
   displayReceivingProductTitle,
@@ -198,6 +199,7 @@ export const IncomingGridRow = memo(function IncomingGridRow({
             : `Select receiving line ${row.id}`
       }
       onClick={(event) => {
+        if (ignoreRowSelectFromSubtitle(event)) return;
         if (clickSelect) {
           // detail === 2 is the second half of a double-click — skip toggle so
           // dblclick only opens without deselecting.

@@ -121,6 +121,8 @@ export const AUDIT_ENTITY = {
   STAFF_PREFERENCE: 'staff_preference',
   // Settings Registry — per-page org/staff configurable behavior (docs/settings-registry.md)
   SETTINGS: 'settings',
+  /** Org-owned listing→staff automation rule (automation_rules). */
+  AUTOMATION_RULE: 'automation_rule',
   /** Org-defined custom grid column (custom_field_defs). */
   CUSTOM_FIELD_DEF: 'custom_field_def',
   REASON_CODE: 'reason_code',
@@ -595,6 +597,9 @@ export const AUDIT_ACTION = {
   PACK_VERIFICATION: 'packing.verification',
   PACK_REVIEW_DECISION: 'packing.review_decision',
   ORDER_ASSIGNMENT_UPDATED: 'ORDER_ASSIGNMENT_UPDATED',
+  AUTOMATION_RULE_CREATE: 'automation_rule.create',
+  AUTOMATION_RULE_UPDATE: 'automation_rule.update',
+  AUTOMATION_RULE_DELETE: 'automation_rule.delete',
   // Dock scan-out: the package physically left the warehouse (SHIP_CONFIRM event)
   SHIP_CONFIRM_SCAN: 'shipment.scan_out',
   // Bose Sourcing Engine — compatibility DB + alternative sourcing

@@ -10,7 +10,7 @@ import {
   makeCatalogLinkGridDescriptor,
 } from './catalog-link-grid-descriptor';
 import {
-  CATALOG_LINK_GRID_COLUMNS,
+  CATALOG_LINK_COMPOUND_COLUMNS,
   type CatalogLinkGridColumn,
 } from './catalog-link-grid-layout';
 
@@ -24,7 +24,7 @@ export const CATALOG_LINK_TABLE_DEFINITION = parseTableDefinition({
   surface: 'sheet',
   showDayHeaders: false,
   capabilities: CATALOG_LINK_GRID_CAPABILITIES,
-  columns: CATALOG_LINK_GRID_COLUMNS,
+  columns: CATALOG_LINK_COMPOUND_COLUMNS,
 });
 
 export const CATALOG_LINK_TABLE_BINDING: TableSurfaceBinding<
@@ -32,7 +32,7 @@ export const CATALOG_LINK_TABLE_BINDING: TableSurfaceBinding<
   CatalogLinkGridColumn
 > = {
   definition: CATALOG_LINK_TABLE_DEFINITION,
-  columns: CATALOG_LINK_GRID_COLUMNS,
+  columns: CATALOG_LINK_COMPOUND_COLUMNS,
   makeDescriptor: makeCatalogLinkGridDescriptor,
   recordPlane: { kind: 'inspector', occupantId: 'detail:catalog-link' },
 };

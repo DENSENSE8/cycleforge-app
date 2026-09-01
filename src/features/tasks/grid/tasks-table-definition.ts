@@ -10,7 +10,7 @@
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import {
-  TASKS_GRID_COLUMNS,
+  TASKS_COMPOUND_COLUMNS,
   type TasksGridColumn,
 } from '@/lib/staff-todos/tasks-grid-layout';
 import { TASKS_GRID_CAPABILITIES, makeTasksGridDescriptor } from './tasks-grid-descriptor';
@@ -26,12 +26,12 @@ export const TASKS_TABLE_DEFINITION = parseTableDefinition({
   surface: 'sheet',
   showDayHeaders: false,
   capabilities: TASKS_GRID_CAPABILITIES,
-  columns: TASKS_GRID_COLUMNS,
+  columns: TASKS_COMPOUND_COLUMNS,
 });
 
 export const TASKS_TABLE_BINDING: TableSurfaceBinding<StaffTaskRow, TasksGridColumn> = {
   definition: TASKS_TABLE_DEFINITION,
-  columns: TASKS_GRID_COLUMNS,
+  columns: TASKS_COMPOUND_COLUMNS,
   makeDescriptor: makeTasksGridDescriptor,
   recordPlane: { kind: 'inspector', occupantId: 'detail:staff-task' },
 };

@@ -212,12 +212,14 @@ export function DashboardShippedTable({
         group: 'Type',
         label: t.label,
         active: refine.typeFilter === t.id,
+        identity: t.id === 'fba' ? { kind: 'platform' as const, label: 'Amazon', value: 'fba' } : undefined,
       })),
       ...CARRIERS.map((c) => ({
         id: `carrier:${c.value}`,
         group: 'Carrier',
         label: c.label,
         active: refine.carrier === c.value,
+        identity: { kind: 'carrier' as const, label: c.label, value: c.value },
       })),
       ...STATUS_CATEGORIES.map((c) => ({
         id: `status:${c.value}`,

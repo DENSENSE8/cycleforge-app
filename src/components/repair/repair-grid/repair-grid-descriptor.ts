@@ -12,9 +12,8 @@ import {
 } from '@/design-system/components/grid';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import {
-  defaultDirForRepairGridSort,
-  isRepairGridFrozen,
-  isRepairGridSortable,
+  defaultDirForRepairColumn,
+  isRepairColumnSortable,
   type RepairGridColumn,
 } from '@/lib/repair/repair-grid-layout';
 
@@ -39,9 +38,10 @@ export function makeRepairGridDescriptor(
     'repair.queue',
     columns,
     {
-      isSortable: isRepairGridSortable,
-      sortDescFirst: (key) => defaultDirForRepairGridSort(key) === 'desc',
-      isLocked: isRepairGridFrozen,
+      isSortable: (key) => isRepairColumnSortable(columns, key),
+      sortDescFirst: (key) => defaultDirForRepairColumn(columns, key) === 'desc',
+      // Locked = the mounted model's own frozen prefix (`select · title`).
+      isLocked: (key) => columns.some((c) => c.key === key && c.frozen === true),
     },
     REPAIR_GRID_CAPABILITIES,
   );

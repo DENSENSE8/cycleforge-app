@@ -1,0 +1,20 @@
+▶ useSelectionStatusBarHotkeys
+  ✔ owns bind + `?` reveal in one module (0.619821ms)
+  ✔ surface register + reveal + teardown; toggle no-ops without a surface (0.228218ms)
+  ✔ re-export seam still resolves (0.152734ms)
+✔ useSelectionStatusBarHotkeys (1.880734ms)
+▶ shortcut-display cohort (SoT = `?` inline on buttons)
+  ✔ engine files exist (1.189133ms)
+  ✔ status bar reveals HotkeyGlyph inline after `?`, not a sheet or popover (0.324046ms)
+  ✔ hook owns bind + reveal; cheat sheet yields while CTAs are mounted (0.164155ms)
+  ✔ paint law documents inline reveal + refuse standing/sheet (0.137125ms)
+  ✔ discover KEEP paths exist; known-debt ratchet holds (128.221109ms)
+✔ shortcut-display cohort (SoT = `?` inline on buttons) (131.003759ms)
+ℹ tests 8
+ℹ suites 2
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 256.488365

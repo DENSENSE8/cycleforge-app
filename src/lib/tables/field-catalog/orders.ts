@@ -76,6 +76,9 @@ export const ORDERS_FIELD_CATALOG: FieldCatalog = [
   // No `orders.title` subtitle field: the item cell's FIRST line already IS
   // the product title, and a binding that repeats it under itself is noise.
   {
+    // The listing handle. There is no `orders.listing_url` on the feed — the
+    // title and the "Listing" subtitle control derive the storefront URL via
+    // `getExternalUrlByItemNumber`. The id itself is never painted; hover copies it.
     id: 'orders.item_number',
     family: 'orders',
     label: 'Item #',

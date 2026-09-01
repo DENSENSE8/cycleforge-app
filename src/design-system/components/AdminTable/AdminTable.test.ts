@@ -48,7 +48,7 @@ test('label columns resolve to start-alignment — location, tracking, and id', 
   // `location` stayed start on 2026-08-02; `date` rejoined magnitudes 2026-08-03;
   // `id` flipped to start on 2026-08-04 (Law of Strict Alignment — text + IDs left).
   // Admin/settings tables inherit via the same SoT rather than hand-typing align.
-  for (const type of ['text', 'longtext', 'tag', 'external', 'location', 'tracking', 'id'] as ColumnType[]) {
+  for (const type of ['text', 'longtext', 'tag', 'external', 'location', 'tracking', 'id', 'image'] as ColumnType[]) {
     assert.equal(expectedAlign(type), 'left', `${type} should start-align`);
   }
 });

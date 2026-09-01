@@ -33,7 +33,7 @@ export {
 export type { BandCollapseEvent, BandCollapseState } from './band-collapse';
 export { useBandCollapse } from './useBandCollapse';
 export type { BandCollapseController } from './useBandCollapse';
-export { StationBandStack } from './StationBandStack';
+export { StationBandStack, STATION_BAND_BODY_WELL_CLASS } from './StationBandStack';
 export type { StationBand } from './StationBandStack';
 /**
  * The centre block face. Both consumers used to import it by path because the

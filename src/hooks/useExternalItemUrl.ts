@@ -6,6 +6,7 @@ import { useCallback } from 'react';
 // `@/hooks/useExternalItemUrl` keep working unchanged.
 import {
   getExternalUrlByItemNumber,
+  listingChipDisplay,
   getPlatformLabelByItemNumber,
   getPlatformKeyByItemNumber,
   getExternalUrlByPlatform,
@@ -14,6 +15,7 @@ import {
 
 export {
   getExternalUrlByItemNumber,
+  listingChipDisplay,
   getPlatformLabelByItemNumber,
   getPlatformKeyByItemNumber,
   getExternalUrlByPlatform,

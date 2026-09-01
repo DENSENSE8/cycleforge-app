@@ -80,6 +80,12 @@ interface BuyLabelSectionProps {
    * link-only instead of leaving the operator on a dead Buy path.
    */
   onRatesError?: (info: { code: string | null; message: string }) => void;
+  /**
+   * A purchase SUCCEEDED (buy only — never fired on void). `onChange` still
+   * fires for both; this is for hosts that advance on a committed buy (the
+   * To-ship label run). Omit everywhere else.
+   */
+  onPurchased?: (info: BuyResponse) => void;
 }
 
 /**
@@ -97,6 +103,7 @@ export function BuyLabelSection({
   weightOz = null,
   dimensions = null,
   onRatesError,
+  onPurchased,
 }: BuyLabelSectionProps) {
   const face = flush ? 'rounded-none' : 'rounded-xl';
   const faceSm = flush ? 'rounded-none' : 'rounded-lg';
@@ -161,6 +168,7 @@ export function BuyLabelSection({
       setBought(data);
       setConfirming(false);
       onChange();
+      onPurchased?.(data);
     },
   });
 

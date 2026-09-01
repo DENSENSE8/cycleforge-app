@@ -8,12 +8,12 @@
  * This was briefly two separate pill Buttons with a `gap-px` between them,
  * which read as two controls that happened to touch. The house already has the
  * shape: {@link SlicedActionDock} — one tone track with a hairline between a
- * primary segment and a chevron segment, `embeddedChrome="pill"` giving the
- * composer-footer face. It is the same control as Unbox's trailing
- * **Print · Receive** split, which is what this should have been from the
- * start.
+ * primary segment and a chevron segment, `embeddedChrome="header"` giving the
+ * same {@link cornerClass}(`'pill'`) capsule every other desk header CTA uses
+ * ({@link DeskHeaderAction}). Composer-footer docks stay `embeddedChrome="pill"`
+ * ({@link COMPOSER_SHELL_CORNER}); this slot is not that family.
  *
- * Segment order in composer-pill mode is `[ primary CTA ]|[ ▾ menu ]`, so the
+ * Segment order in header chrome is `[ primary CTA ]|[ ▾ menu ]`, so the
  * CTA's own icon sits between its label and the chevron.
  *
  * ## The chevron's menu is a sentence-case dropdown, not station caps
@@ -93,7 +93,7 @@ export function OrdersDeskAddAction({
       <div className="shrink-0" data-testid="orders-desk-add">
       <SlicedActionDock
         embedded
-        embeddedChrome="pill"
+        embeddedChrome="header"
         tone="blue"
         icon={<RefreshCw aria-hidden className="h-3.5 w-3.5" />}
         label={syncing ? 'Syncing…' : 'Sync Google Sheet'}

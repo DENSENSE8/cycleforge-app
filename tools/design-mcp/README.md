@@ -11,26 +11,41 @@ and must have `ds_contract` / `ds_tokens` / `ds_critique` in its tool catalog.
 | What values may I use on **one** axis? | `#1a1a1d`, `text-[13px]`, `axis: "all"` | `ds_tokens` (`axis` required) |
 | Why is this component bad? | rewrites it from scratch | `ds_critique` |
 
+## When the agent catalog is empty
+
+Cursor sometimes leases project MCP servers but never surfaces their tools to
+the agent (only marketplace `plugin-*` namespaces appear). Close that gap with:
+
+1. **CLI (same handlers):** `node tools/design-mcp/ds.mjs contract|tokens|critique …`
+2. **Cursor plugin path:** `tools/design-mcp/cursor-plugin/` — loaded via
+   `.cursor/hooks` `workspaceOpen` (`pluginPaths`) and symlinked under
+   `~/.cursor/plugins/local/cycleforge-design-mcp`
+3. **Hooks:** `sessionStart` injects the dumb-station mouth recipe; `preToolUse`
+   denies UI writes without a fresh `.cursor/design-mcp-session.json` stamp
+
+## Naming (pinned)
+
+- Omni Composer / station mouth → **StationComposerHost**
+- Raw `OmnichannelComposerDock` alone → incomplete mouth
+- Dumb / gun station → `showModeFaces={false}` (keep context ring); never
+  `showModeRow={false}` to hide Unbox|Ticket
+
 ## The contract is derived, not written
 
 Garisek's equivalent server reads a hand-curated pin map with a `useWhen` /
-`doNot` sentence per entry. This repo has no such file, and its primitives carry
-no docblocks to derive those sentences from — `Button.tsx` opens straight into
-imports. Writing 56 `doNot` rules from outside would be inventing law and
-serving it with authority.
-
-So `ds_contract` reports what the repo can **prove**: every primitive that
-exists, where it lives, its real variant options read out of source, and the
-interaction states it declares. Curated prose layers on from
-`src/design-system/pinned.json`. An absent key means **nobody has written that
-law yet** — not that anything is permitted. Do not invent a second constitution.
+`doNot` sentence per entry. CycleForge layers curated prose from
+`src/design-system/pinned.json` onto a walk of real primitives. An absent key
+means **nobody has written that law yet** — not that anything is permitted.
 
 `ds_tokens` requires `axis` (`color` · `radius` · `spacing` · `typography` ·
-`z-index` · `elevation` · `border` · `focus`). There is no dump. The same slices
+`z-index` · `elevation` · `border` · `focus` · `station-skin`). There is no dump. The same slices
 are also MCP resources at `design://tokens/<axis>` — browse those; pass `filter`
 on the tool when you already know the name. After changing a token file, run
 smoke and the axis unit test, then `code-graph` `find_symbol` + `impact_analysis`
-on the role function (`cornerClass`, `elevationClass`, `focusRing`).
+on the role function (`cornerClass`, `elevationClass`, `focusRing`,
+`applyStationSkin`). Scan-station materials are **not** hexes on Unbox: they are
+rows in `src/design-system/themes/station-skins.ts`, served on the `station-skin`
+axis.
 
 ## Primitive homes
 

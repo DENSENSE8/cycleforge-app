@@ -287,7 +287,7 @@ export function useOrderIdentityCellNodes({
    * IDENTITY LANGUAGE (ruled 2026-08-20): the leading mark on an identity cell
    * is the BRAND DOT, never the type glyph.
    *
-   * The type glyph (`#` for id, MapPin for tracking) says what the COLUMN is,
+   * The type glyph (`#` for id) says what the COLUMN is,
    * which the header already says — so it was the same ink repeated on every
    * row, and the 2026-08-04 text-first ruling removed exactly that redundancy
    * from headers. The brand dot says which MARKETPLACE or which CARRIER, a fact
@@ -325,13 +325,17 @@ export function useOrderIdentityCellNodes({
 
   const trackingChipNode = tracking ? (
     <span className="inline-flex min-w-0 items-center gap-1.5">
-      {plain && trackingBrandDot ? (
-        <BrandIdentityDot className={trackingBrandDot.className} style={trackingBrandDot.style} />
+      {trackingBrandDot ? (
+        <BrandIdentityDot
+          className={trackingBrandDot.className}
+          style={trackingBrandDot.style}
+          variant="ring"
+        />
       ) : null}
       <TrackingNumberMenuChip
         value={tracking}
         carrierHint={carrierHint}
-        plain={plain}
+        plain
         onEdit={onEditTracking}
         onMenuOpenChange={handleMenuOpenChange}
       />

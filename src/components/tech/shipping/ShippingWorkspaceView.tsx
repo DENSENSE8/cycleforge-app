@@ -16,14 +16,12 @@ import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import { TechAllTriageTable } from '@/components/tech/all/TechAllTriageTable';
 import { OrderRailCompare } from '@/components/dashboard/rail/OrderRailCompare';
-import { OrderRailShell } from '@/components/dashboard/rail/OrderRailShell';
 import { useOrderRailSelection } from '@/hooks/useOrderRailSelection';
 import { useShippingWorkspaceTab } from '@/hooks/useShippingWorkspaceTab';
 import { useNewOrderParam } from '@/hooks/useNewOrderParam';
 import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
-import { DeskActionSlotRegistrar } from '@/design-system/components/DeskActionSlot';
-import { Button } from '@/design-system/primitives';
+import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { Plus } from '@/components/Icons';
 import type { ShippingWorkspaceTab } from '@/utils/shipping-workspace-state';
 
@@ -91,15 +89,14 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
         overlay it opens is unchanged.
       */}
       <DeskActionSlotRegistrar>
-        <Button
+        <DeskHeaderAction
           variant="primary"
           size="md"
-          radius="pill"
           icon={<Plus aria-hidden />}
           onClick={openNew}
         >
           New order
-        </Button>
+        </DeskHeaderAction>
       </DeskActionSlotRegistrar>
     <div className="relative flex h-full min-h-0 w-full flex-col overflow-hidden">
       <DashboardScrollShell className="h-full bg-transparent">
@@ -133,7 +130,6 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
         {queueTab && selectionEnabled ? (
           <>
             <OrderRailCompare />
-            <OrderRailShell />
             {selectionOverlays}
           </>
         ) : null}

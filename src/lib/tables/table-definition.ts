@@ -62,6 +62,7 @@ const COLUMN_TYPE_VALUES = [
   'location',
   'tracking',
   'price',
+  'image',
 ] as const satisfies readonly ColumnType[];
 
 type MissingColumnType = Exclude<ColumnType, (typeof COLUMN_TYPE_VALUES)[number]>;
@@ -151,14 +152,14 @@ export const tableDefinitionColumnSchema = z.strictObject({
    * Header word for the GRID face. `''` is legal and load-bearing — it is not a
    * blank that slipped through.
    *
-   * The compound chrome tracks (`select`, `thumb`, `_fill`) declare
-   * `gridLabel: ''` on purpose: they are full-bleed 48px squares and a slack
-   * track, and `COMPOUND_TRACKS` documents each one ("No header word: the
-   * column is a 48px checkmark square"). So `''` means *print nothing here*,
-   * which is a different instruction from `undefined` (*not specified — fall
-   * back to `label`*). A `.min(1)` here rejected the empty string and took the
-   * whole Orders desk down with a Zod throw at module load, because the very
-   * first two columns of every compound table carry it.
+   * The compound chrome tracks `select` and `_fill` declare `gridLabel: ''` on
+   * purpose: they are a 48px checkmark square and a slack track, and
+   * `COMPOUND_TRACKS` documents each one. `thumb` is the exception — it keeps
+   * the word `Image` via `headerForceLabel`. So `''` means *print nothing
+   * here*, which is a different instruction from `undefined` (*not specified —
+   * fall back to `label`*). A `.min(1)` here rejected the empty string and
+   * took the whole Orders desk down with a Zod throw at module load, because
+   * select (the first column of every compound table) still carries it.
    *
    * If blank-label authoring ever needs policing, the rule is "`label` must not
    * be blank" — which the line above already enforces — not this one.
@@ -166,6 +167,8 @@ export const tableDefinitionColumnSchema = z.strictObject({
   gridLabel: z.string().optional(),
   labelFitRem: z.number().positive().optional(),
   headerGlyphOnly: z.boolean().optional(),
+  /** Always paint the header word, even in a track narrower than the fit floor. */
+  headerForceLabel: z.boolean().optional(),
   type: z.enum(COLUMN_TYPE_VALUES).optional(),
   dateFace: z.enum(DATE_COLUMN_FACE_VALUES).optional(),
   minTrackRem: z.number().positive().optional(),

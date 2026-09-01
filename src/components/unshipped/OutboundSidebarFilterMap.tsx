@@ -2,7 +2,7 @@
 
 /**
  * Outbound sidebar filter map body — smart segments + saved views.
- * The FilterRefinementBar + Sync live in UnshippedSidebar chrome (top of rail).
+ * Lane/staff refinements live in DataTable's filter (To-ship gold), not here.
  */
 
 import { useMemo, type ComponentType } from 'react';

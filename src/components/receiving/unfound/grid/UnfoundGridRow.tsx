@@ -5,6 +5,8 @@ import { ExternalLink } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { PoChip, TrackingChip, SerialChip, CopyableCellValue, getLast8 } from '@/components/ui/CopyChip';
 import { GridCellDash } from '@/components/ui/grid-cells';
+import { resolveUnfoundSlotValue } from '@/lib/tables/field-catalog/unfound-resolve';
+import { isSlotTrackKey } from '@/lib/tables/materialize-tracks';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import { gridCellAlignClass } from '@/design-system/components/grid';
 import { Button } from '@/design-system/primitives';
@@ -12,7 +14,6 @@ import { cn } from '@/utils/_cn';
 import { splitPoContext, type PatchBody, type QueueRow } from '../queue-table/unfound-queue-shared';
 import { UNFOUND_GRID_CAPABILITIES } from './unfound-grid-descriptor';
 import {
-  UNFOUND_GRID_COLUMNS,
   UNFOUND_GRID_FROZEN_CELL,
   unfoundGridCell,
   unfoundGridFrozenLeft,
@@ -45,11 +46,13 @@ interface UnfoundGridRowProps {
   onPush: (row: QueueRow) => Promise<void>;
   pushing: boolean;
   justSaved: boolean;
-  columns?: readonly UnfoundGridColumn[];
+  columns: readonly UnfoundGridColumn[];
 }
 
 /**
- * One unfound-queue hit — CSS-grid columns matching {@link UNFOUND_GRID_COLUMNS}.
+ * One unfound-queue hit — CSS-grid columns matching the MOUNTED model (a
+ * `SlotLayout` materialization since the wave 1.4 hand-model kill). Fact tracks
+ * switch on the bound FIELD ID; `select · title · action` are structural.
  *
  * Read-only cells: ticket id and the two team notes are edited on the record
  * plane, not in the grid. Check and Push are row-scoped controls that
@@ -64,7 +67,7 @@ export const UnfoundGridRow = memo(function UnfoundGridRow({
   onPush,
   pushing,
   justSaved,
-  columns = UNFOUND_GRID_COLUMNS,
+  columns,
 }: UnfoundGridRowProps) {
   const renderTitleBody = (): ReactNode => {
     if (row.kind === 'email_po') {
@@ -120,88 +123,38 @@ export const UnfoundGridRow = memo(function UnfoundGridRow({
     );
   };
 
-  const renderCell = (col: UnfoundGridColumn, last: boolean): ReactNode => {
-    const rule = !last;
-    switch (col.key) {
-      case 'select':
-        return (
-          <div
-            className={cn(
-              unfoundGridCell({ inset: 'none', rule: true }),
-              UNFOUND_GRID_FROZEN_CELL,
-              'justify-center',
-            )}
-            style={{ left: unfoundGridFrozenLeft('select') }}
-          >
-            <span className="h-4 w-4 shrink-0" aria-hidden />
-          </div>
-        );
-      case 'title':
-        return (
-          <div
-            data-col="title"
-            className={cn(dataCell(col, rule), UNFOUND_GRID_FROZEN_CELL, 'flex-col items-stretch gap-0')}
-            style={{ left: unfoundGridFrozenLeft('title') }}
-            data-frozen-edge
-          >
-            {renderTitleBody()}
-          </div>
-        );
-      case 'ticket': {
+  /** The body of one materialized slot track, chosen by the BOUND FIELD. */
+  const renderSlotBody = (fieldId: string | undefined): ReactNode => {
+    switch (fieldId) {
+      case 'unfound.ticket': {
         const value = row.zendesk_ticket_id ?? '';
-        return (
-          <div
-            data-col="ticket"
-            className={dataCell(col, rule)}
-          >
-            {value ? (
-              <CopyableCellValue
-                value={value}
-                historyKind="ticket"
-                className="min-w-0 flex-1 text-role-caption text-text-default"
-                dense
-              />
-            ) : (
-              <GridCellDash />
-            )}
-          </div>
+        return value ? (
+          <CopyableCellValue
+            value={value}
+            historyKind="ticket"
+            className="min-w-0 flex-1 text-role-caption text-text-default"
+            dense
+          />
+        ) : (
+          <GridCellDash />
         );
       }
-      case 'usaNote': {
-        const value = row.usa_team_note ?? '';
-        return (
-          <div
-            data-col="usaNote"
-            className={dataCell(col, rule)}
-          >
-            {value ? (
-              <span className="min-w-0 truncate text-role-caption text-text-muted">{value}</span>
-            ) : (
-              <GridCellDash />
-            )}
-          </div>
+      case 'unfound.usa_note':
+      case 'unfound.vietnam_note': {
+        const value =
+          (fieldId === 'unfound.usa_note' ? row.usa_team_note : row.vietnam_team_note) ?? '';
+        return value ? (
+          <span className="min-w-0 truncate text-role-caption text-text-muted">{value}</span>
+        ) : (
+          <GridCellDash />
         );
       }
-      case 'vietnamNote': {
-        const value = row.vietnam_team_note ?? '';
+      case 'unfound.checked':
+        // The write IS this fact's face: clearing a row is the queue's verb.
+        // It stops propagation so ticking never also opens the detail plane.
         return (
-          <div
-            data-col="vietnamNote"
-            className={dataCell(col, rule)}
-          >
-            {value ? (
-              <span className="min-w-0 truncate text-role-caption text-text-muted">{value}</span>
-            ) : (
-              <GridCellDash />
-            )}
-          </div>
-        );
-      }
-      case 'checked':
-        return (
-          <div
-            data-col="checked"
-            className={cn(dataCell(col, rule), 'justify-center gap-1.5')}
+          <span
+            className="inline-flex min-w-0 items-center justify-center gap-1.5"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => e.stopPropagation()}
           >
@@ -217,6 +170,54 @@ export const UnfoundGridRow = memo(function UnfoundGridRow({
                 Saved
               </span>
             ) : null}
+          </span>
+        );
+      default: {
+        // A catalog field with no bespoke face paints its resolved text — a new
+        // bindable fact needs a resolver case, never a new column file.
+        const value = fieldId ? resolveUnfoundSlotValue(row, fieldId) : null;
+        const text = value?.kind === 'value' ? value.text : null;
+        return text ? (
+          <span className="min-w-0 truncate text-role-caption text-text-soft">{text}</span>
+        ) : (
+          <GridCellDash />
+        );
+      }
+    }
+  };
+
+  const renderCell = (col: UnfoundGridColumn, last: boolean): ReactNode => {
+    const rule = !last;
+    if (isSlotTrackKey(col.key)) {
+      return (
+        <div data-col={col.key} className={cn(dataCell(col, rule), 'min-w-0')}>
+          {renderSlotBody(col.fieldId)}
+        </div>
+      );
+    }
+    switch (col.key) {
+      case 'select':
+        return (
+          <div
+            className={cn(
+              unfoundGridCell({ inset: 'none', rule: true }),
+              UNFOUND_GRID_FROZEN_CELL,
+              'justify-center',
+            )}
+            style={{ left: unfoundGridFrozenLeft(columns, 'select') }}
+          >
+            <span className="h-4 w-4 shrink-0" aria-hidden />
+          </div>
+        );
+      case 'title':
+        return (
+          <div
+            data-col="title"
+            className={cn(dataCell(col, rule), UNFOUND_GRID_FROZEN_CELL, 'flex-col items-stretch gap-0')}
+            style={{ left: unfoundGridFrozenLeft(columns, 'title') }}
+            data-frozen-edge
+          >
+            {renderTitleBody()}
           </div>
         );
       case 'action':

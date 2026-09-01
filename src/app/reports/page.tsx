@@ -3,8 +3,7 @@
 import { Suspense, useCallback, useEffect, useState } from 'react';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
-import { DeskActionSlotRegistrar } from '@/design-system/components/DeskActionSlot';
-import { Button } from '@/design-system/primitives';
+import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 
 type Tab = 'utilization' | 'velocity' | 'dead';
@@ -202,9 +201,9 @@ function ReportsPageInner() {
       className="h-full"
     >
       <DeskActionSlotRegistrar>
-        <Button variant="secondary" size="md" type="button" onClick={load}>
+        <DeskHeaderAction variant="secondary" size="md" type="button" onClick={load}>
           Refresh
-        </Button>
+        </DeskHeaderAction>
       </DeskActionSlotRegistrar>
       <main className="min-h-0 flex-1 overflow-auto px-3 py-3">
         {error && (

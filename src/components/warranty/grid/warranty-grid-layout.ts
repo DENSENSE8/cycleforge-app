@@ -1,6 +1,7 @@
 /**
- * Warranty claims spreadsheet column model — the warranty-native sibling of
- * {@link RECEIVING_GRID_COLUMNS}.
+ * Warranty claims spreadsheet column model — MATERIALIZED from a
+ * {@link SlotLayout}, never a hand array (the warranty-native sibling of the
+ * other house spreadsheets).
  *
  * A claim row is a support record, not a station line: no unbox/serial/receive
  * lifecycle, no in-cell edit, no fold. So this is a small, read-only column set
@@ -9,10 +10,15 @@
  * `ORDERS_QUEUE_FROZEN_CELL`) so the warranty grid lines up pixel-for-pixel with
  * every other house spreadsheet.
  *
- * Frozen pane = `select` (empty gutter, keeps the left rhythm) + `title` (the
- * flexing item cell). Title is identity — never in-cell editable
- * ({@link GRID_IDENTITY_COLUMN_KEYS}); a claim is corrected at the record plane
- * (the `?open=` detail panel).
+ * The static `WARRANTY_GRID_COLUMNS` died with wave 1.4 of the seller-table
+ * program: tracks whose keys WERE fields (`customer`, `status`, `warranty`) are
+ * a frozen layout no organization can capture.
+ *
+ * What remains STRUCTURAL is the sheet skeleton — the frozen `select` gutter
+ * (empty, keeps the left rhythm), the frozen flexing `title` item cell, the
+ * `claim` identity track (`warranty.claim` is the fact it resolves), and the
+ * trailing `ticket` action. A claim is corrected at the record plane (the
+ * `?open=` detail panel), never in a cell.
  *
  * `ticket` is an ACTION track, not a fact: it carries no `hideKey`, so it is
  * structural (`isGridColumnVisible` rule 1) and the Fields menu never offers it.
@@ -20,26 +26,31 @@
  * where the control went.
  */
 
-import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
 import {
   gridFrozenLeft,
   gridTemplate,
 } from '@/design-system/components/grid/grid-column-geometry';
+import {
+  WARRANTY_FIELD_CATALOG,
+  WARRANTY_PRODUCT_LAYOUT,
+} from '@/lib/tables/field-catalog/warranty';
+import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
+import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 export type WarrantyGridColumnKey =
   | 'select'
   | 'title'
+  /** The claim number — structural identity track; `warranty.claim` resolves it. */
   | 'claim'
-  | 'serial'
-  | 'customer'
-  | 'status'
-  | 'warranty'
-  | 'logged'
-  | 'ticket';
+  /** Row-scoped ticket control — a capability, never an org column. */
+  | 'ticket'
+  /** Materialized slot tracks — keys are slot indices, never field ids. */
+  | `status:${number}`
+  | `subtitle:${number}`;
 
-export interface WarrantyGridColumn {
+export interface WarrantyGridColumn extends SlotTrackFields {
   key: WarrantyGridColumnKey;
   width: string;
   label?: string;
@@ -59,16 +70,11 @@ export interface WarrantyGridColumn {
 }
 
 /**
- * Canonical warranty columns. Only `title` flexes; facts are content-hard.
- *
- * DEFAULT VIEW (tier `core`) is `select · title · claim · customer · status ·
- * warranty · logged` — the five questions a support operator on a phone call
- * actually asks: what is it, which claim, whose is it, what state is it in, how
- * much cover is left, and when was it logged. `serial` is `optional`: it is the
- * lookup key you arrive BY (the sidebar search already matches it), not one you
- * scan down a column, and it duplicates the item cell on most rows.
+ * The structural sheet skeleton — what Warranty paints with ZERO bindings.
+ * `title` is the only flex track; the frozen pane is `select · title`; the
+ * Claim identity track rides beside it and the ticket action closes the row.
  */
-export const WARRANTY_GRID_COLUMNS: readonly WarrantyGridColumn[] = [
+const WARRANTY_SHEET_BASE: readonly WarrantyGridColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
   {
     key: 'title',
@@ -79,82 +85,83 @@ export const WARRANTY_GRID_COLUMNS: readonly WarrantyGridColumn[] = [
     type: 'text',
     labelFitRem: 8,
   },
-  { key: 'claim', width: 'minmax(8rem, 8rem)', label: 'Claim', type: 'id', hideKey: 'claim', labelFitRem: 4.5 },
   {
-    key: 'serial',
+    key: 'claim',
     width: 'minmax(8rem, 8rem)',
-    label: 'Serial',
+    label: 'Claim',
+    gridLabel: 'Claim',
     type: 'id',
-    hideKey: 'serial',
-    tier: 'optional',
     labelFitRem: 4.5,
   },
-  { key: 'customer', width: 'minmax(8rem, 8rem)', label: 'Customer', type: 'text', hideKey: 'customer', labelFitRem: 4.5 },
-  { key: 'status', width: 'minmax(6rem, 6rem)', label: 'Status', type: 'tag', hideKey: 'status', labelFitRem: 4.5 },
-  {
-    key: 'warranty',
-    width: 'minmax(6.5rem, 6.5rem)',
-    label: 'Warranty',
-    // The clock chip is categorical ("14d left" / "Expired"), not a figure the
-    // operator compares digit-by-digit — so it reads as a tag and start-aligns
-    // with Status beside it. Sorting still runs on `daysRemaining`.
-    type: 'tag',
-    hideKey: 'warranty',
-    labelFitRem: 5.5,
-  },
-  { key: 'logged', width: 'minmax(5.5rem, 5.5rem)', label: 'Logged', type: 'date', hideKey: 'logged', labelFitRem: 4.5 },
-  // Action track — no hideKey (structural), no type glyph, never sortable.
+  // Action track — no glyph type, never sortable, never offered in Fields.
   { key: 'ticket', width: 'minmax(2.5rem, 2.5rem)', sortable: false },
-] as const;
+];
 
 /**
- * Frozen identity pane — `select · title`. Derived from the model's `frozen`
- * flag (one declaration for freeze + immovability + offset math), never a
- * re-typed key list.
+ * Materialize the mounted warranty columns from an effective layout. Both bands
+ * anchor on `claim`, so the default plate reads customer · status · warranty ·
+ * logged — the retired hand model's core view — with `ticket` always last.
  */
-const WARRANTY_GRID_LOCKED_KEYS: readonly WarrantyGridColumnKey[] =
-  gridFrozenKeys(WARRANTY_GRID_COLUMNS);
-
-const WARRANTY_GRID_SORTABLE_KEYS: readonly WarrantyGridColumnKey[] = WARRANTY_GRID_COLUMNS.filter(
-  (c) => c.sortable !== false && c.key !== 'select',
-).map((c) => c.key);
-
-export function isWarrantyGridSortable(key: string): key is WarrantyGridColumnKey {
-  return (WARRANTY_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
+export function warrantySheetColumnsFor(
+  layout: SlotLayout,
+): readonly WarrantyGridColumn[] {
+  return materializeTracks<WarrantyGridColumn>({
+    layout,
+    catalog: WARRANTY_FIELD_CATALOG,
+    base: WARRANTY_SHEET_BASE,
+    statusAnchorKey: 'claim',
+    subtitleAnchorKey: 'claim',
+  });
 }
 
-export function isWarrantyGridFrozen(key: string): boolean {
-  return WARRANTY_GRID_LOCKED_KEYS.includes(key as WarrantyGridColumnKey);
+/**
+ * The PRODUCT-DEFAULT materialization — what an org with no override mounts,
+ * the canonical columns of the warranty binding, and the guard SoT.
+ */
+export const WARRANTY_SHEET_COLUMNS: readonly WarrantyGridColumn[] =
+  warrantySheetColumnsFor(WARRANTY_PRODUCT_LAYOUT);
+
+/** The FACT a column sorts by, or null when it offers no sort. */
+export function warrantySortFactFor(col: WarrantyGridColumn): string | null {
+  if (col.sortable === false || col.key === 'select' || col.key === 'ticket') return null;
+  if (col.key === 'title') return 'title';
+  if (col.key === 'claim') return 'warranty.claim';
+  return col.fieldId ?? null;
+}
+
+/** Model-derived sortability — the descriptor's and the URL guard's one answer. */
+export function isWarrantyColumnSortable(
+  columns: readonly WarrantyGridColumn[],
+  key: string,
+): key is WarrantyGridColumnKey {
+  return columns.some((c) => c.key === key && warrantySortFactFor(c) !== null);
 }
 
 /** CSS grid template — one `var(--cf-col-<key>, <width>)` track per column. */
 export function warrantyGridTemplate(
-  columns: readonly WarrantyGridColumn[] = WARRANTY_GRID_COLUMNS,
+  columns: readonly WarrantyGridColumn[] = WARRANTY_SHEET_COLUMNS,
 ): string {
   return gridTemplate(columns);
 }
 
-/**
- * Sticky offset for a frozen cell — row px + the summed widths of the locked
- * columns before it. Self-computed over {@link WARRANTY_GRID_COLUMNS} so this
- * surface's own select/title widths drive the offset.
- */
-export function warrantyGridFrozenLeft(key: WarrantyGridColumnKey): string {
-  return gridFrozenLeft(WARRANTY_GRID_COLUMNS, key);
+/** Sticky offset for a frozen cell, derived from the MOUNTED model. */
+export function warrantyGridFrozenLeft(
+  columns: readonly WarrantyGridColumn[],
+  key: WarrantyGridColumnKey,
+): string {
+  return gridFrozenLeft(columns, key);
 }
 
-
 /**
- * Default direction when first activating a column sort.
- *
- * `logged` → newest first, the usual date reading. `warranty` → **ascending**,
- * because the column holds days REMAINING: fewest-days-left first puts the
- * claims about to fall out of cover at the top, which is the only reason to
- * sort that column at all.
+ * Default direction on first activation: magnitudes and dates read
+ * newest/biggest first, names and ids alphabetically.
  */
-export function defaultDirForWarrantyGridSort(key: WarrantyGridColumnKey): GridSortDir {
-  if (key === 'logged') return 'desc';
-  return 'asc';
+export function defaultDirForWarrantyColumn(
+  columns: readonly WarrantyGridColumn[],
+  key: string,
+): GridSortDir {
+  const dt = columns.find((c) => c.key === key)?.slotDisplayType;
+  return dt === 'date' || dt === 'money' || dt === 'number' ? 'desc' : 'asc';
 }
 
 // Shared spreadsheet chrome — @/design-system/components/grid ledgerGridCell.

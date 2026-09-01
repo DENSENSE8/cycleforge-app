@@ -21,6 +21,29 @@ export function getExternalUrlByItemNumber(itemNumber: string | null | undefined
   return `https://usavshop.com/products/search?keyword=${encodeURIComponent(item)}`;
 }
 
+/**
+ * Compact listing-URL face for diagnostics / non-table chrome — host + path,
+ * no scheme, no `www.`.
+ *
+ * **Not** the compound Item subtitle face. Slot tables paint the listing
+ * icon via `CompoundSubtitleCopyChip` (info when live, faint when missing).
+ * Prefer that control in DataTable compound rows.
+ */
+export function listingChipDisplay(href: string | null | undefined): string {
+  const raw = String(href ?? '').trim();
+  if (!raw) return '';
+  try {
+    const withProto = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    const u = new URL(withProto);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+    const host = u.hostname.replace(/^www\./i, '');
+    const path = u.pathname.replace(/\/$/, '');
+    return path && path !== '/' ? `${host}${path}` : host;
+  } catch {
+    return raw.replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+  }
+}
+
 /** Infer platform label from an item number / platform SKU pattern. */
 export function getPlatformLabelByItemNumber(itemNumber: string | null | undefined): string {
   const item = String(itemNumber || '').trim();

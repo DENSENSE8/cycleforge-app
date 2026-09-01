@@ -2,6 +2,14 @@
 
 /**
  * Units LedgerGrid cell registry — one switch, edit the matching case.
+ *
+ * Since the wave 1.4 slot port the fact tracks are MATERIALIZED
+ * (`status:1…N` / `subtitle:1…N`), so the switch runs on the bound FIELD ID,
+ * not on a hardcoded column key. Structural tracks (`serial · product`) keep
+ * their own cases. A new bindable fact needs a catalog entry, a resolver case
+ * and — only if it wants a face richer than text — a case here; it never needs
+ * a new column file.
+ *
  * Row shell builds {@link UnitsGridCellCtx}; domain values stay here.
  *
  * Status resolves through the unit-status registry (`unitStatusBadgeClass` /
@@ -18,6 +26,8 @@ import { unitStatusBadgeClass, unitStatusDotClass } from '@/lib/unit-status';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { conditionGradeTableLabel } from '@/lib/conditions';
 import type { UnitsOverviewRow } from '@/hooks/useUnitsOverview';
+import { resolveUnitsSlotValue } from '@/lib/tables/field-catalog/units-resolve';
+import { isSlotTrackKey } from '@/lib/tables/materialize-tracks';
 import { cn } from '@/utils/_cn';
 import {
   UNITS_GRID_FROZEN_CELL,
@@ -41,10 +51,71 @@ function unitUpdatedAge(iso: string | null): string {
 
 export interface UnitsGridCellCtx {
   row: UnitsOverviewRow;
+  /** The MOUNTED model — frozen offsets derive from it, never a static list. */
+  columns: readonly UnitsGridColumn[];
 }
 
 function dataCell(col: UnitsGridColumn, rule = true) {
   return cn(unitsGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
+}
+
+/** The body of one materialized slot track, chosen by the BOUND FIELD. */
+function renderUnitsSlotBody(fieldId: string | undefined, row: UnitsOverviewRow): ReactNode {
+  switch (fieldId) {
+    case 'units.status':
+      return (
+        <GridStatusCellValue
+          label={row.current_status}
+          toneClass={unitStatusBadgeClass(row.current_status)}
+          dotClass={unitStatusDotClass(row.current_status)}
+        />
+      );
+    case 'units.condition':
+      return row.condition_grade ? (
+        <span
+          className={cn(
+            'text-role-caption font-semibold',
+            conditionGradeTextClass(row.condition_grade),
+          )}
+        >
+          {conditionGradeTableLabel(row.condition_grade)}
+        </span>
+      ) : (
+        <GridCellDash />
+      );
+    case 'units.location':
+      return row.current_location ? (
+        <span className="min-w-0 truncate text-role-caption text-text-muted">
+          {row.current_location}
+        </span>
+      ) : (
+        <GridCellDash />
+      );
+    case 'units.updated':
+      // The RELATIVE age is the scanning face; the absolute instant stays on
+      // the tooltip. The resolver paints the civil day instead, because it must
+      // not read the clock — see its docblock.
+      return row.updated_at ? (
+        <HoverTooltip label={row.updated_at} asChild>
+          <span className="min-w-0 truncate text-role-caption text-text-soft">
+            {unitUpdatedAge(row.updated_at)}
+          </span>
+        </HoverTooltip>
+      ) : (
+        <GridCellDash />
+      );
+    default: {
+      // A catalog field with no bespoke face paints its resolved text — a new
+      // bindable fact needs a resolver case, never a new column file.
+      const value = fieldId ? resolveUnitsSlotValue(row, fieldId) : null;
+      const text = value?.kind === 'value' ? value.text : null;
+      return text ? (
+        <span className="min-w-0 truncate text-role-caption text-text-soft">{text}</span>
+      ) : (
+        <GridCellDash />
+      );
+    }
+  }
 }
 
 export function renderUnitsGridCell(
@@ -52,14 +123,21 @@ export function renderUnitsGridCell(
   rule: boolean,
   ctx: UnitsGridCellCtx,
 ): ReactNode {
-  const { row } = ctx;
+  const { row, columns } = ctx;
+  if (isSlotTrackKey(col.key)) {
+    return (
+      <div data-col={col.key} className={cn(dataCell(col, rule), 'min-w-0')}>
+        {renderUnitsSlotBody(col.fieldId, row)}
+      </div>
+    );
+  }
   switch (col.key) {
     case 'serial':
       return (
         <div
           data-col="serial"
           className={cn(dataCell(col, rule), UNITS_GRID_FROZEN_CELL, 'gap-1.5')}
-          style={{ left: unitsGridFrozenLeft('serial') }}
+          style={{ left: unitsGridFrozenLeft(columns, 'serial') }}
           data-frozen-edge
         >
           {row.serial_number ? (
@@ -82,59 +160,6 @@ export function renderUnitsGridCell(
           <span className="min-w-0 truncate text-role-eyebrow uppercase tracking-widest text-text-faint">
             {row.sku || '—'}
           </span>
-        </div>
-      );
-    case 'status':
-      return (
-        <div data-col="status" className={cn(dataCell(col, rule), 'min-w-0')}>
-          <GridStatusCellValue
-            label={row.current_status}
-            toneClass={unitStatusBadgeClass(row.current_status)}
-            dotClass={unitStatusDotClass(row.current_status)}
-          />
-        </div>
-      );
-    case 'condition':
-      return (
-        <div data-col="condition" className={dataCell(col, rule)}>
-          {row.condition_grade ? (
-            <span
-              className={cn(
-                'text-role-caption font-semibold',
-                conditionGradeTextClass(row.condition_grade),
-              )}
-            >
-              {conditionGradeTableLabel(row.condition_grade)}
-            </span>
-          ) : (
-            <GridCellDash />
-          )}
-        </div>
-      );
-    case 'location':
-      return (
-        <div data-col="location" className={cn(dataCell(col, rule), 'min-w-0')}>
-          {row.current_location ? (
-            <span className="min-w-0 truncate text-role-caption text-text-muted">
-              {row.current_location}
-            </span>
-          ) : (
-            <GridCellDash />
-          )}
-        </div>
-      );
-    case 'updated':
-      return (
-        <div data-col="updated" className={dataCell(col, rule)}>
-          {row.updated_at ? (
-            <HoverTooltip label={row.updated_at} asChild>
-              <span className="min-w-0 truncate text-role-caption text-text-soft">
-                {unitUpdatedAge(row.updated_at)}
-              </span>
-            </HoverTooltip>
-          ) : (
-            <GridCellDash />
-          )}
         </div>
       );
     default:

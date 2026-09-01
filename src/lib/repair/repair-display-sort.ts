@@ -35,12 +35,19 @@ const REPAIR_SORTABLE_COLUMNS: readonly string[] = [
   'title', 'date', 'customer', 'phone', 'price', 'order', 'ticket',
 ];
 
-/** Recency/urgency columns open most-urgent-first; the rest ascend. */
-function defaultDirForRepairGridSort(key: RepairDisplaySortColumn): GridSortDir {
+/**
+ * Recency/urgency words open most-urgent-first; the rest ascend.
+ *
+ * Named for the WORD, not for a grid: these used to be `*GridSort*`, which read
+ * as the column model's answer and shadowed the display helpers the wave 1.4
+ * slot port retired. The distinction this module's docblock draws — URL
+ * vocabulary, not layout — is now in the names.
+ */
+function defaultDirForRepairSortWord(key: RepairDisplaySortColumn): GridSortDir {
   return key === 'date' ? 'desc' : 'asc';
 }
 
-function isRepairGridSortable(key: string): key is RepairDisplaySortColumn {
+function isRepairSortWord(key: string): key is RepairDisplaySortColumn {
   return REPAIR_SORTABLE_COLUMNS.includes(key);
 }
 /** `newest` is the default composite (server `created_at DESC`). */
@@ -48,7 +55,7 @@ export type RepairDisplaySort = 'newest' | RepairDisplaySortColumn;
 export type RepairDisplaySortDir = GridSortDir;
 
 export function isRepairColumnSort(sort: string): sort is RepairDisplaySortColumn {
-  return isRepairGridSortable(sort);
+  return isRepairSortWord(sort);
 }
 
 export const REPAIR_DISPLAY_SORT_OPTIONS: readonly {
@@ -70,7 +77,7 @@ export const REPAIR_DISPLAY_SORT_OPTIONS: readonly {
 /** Default direction when a sort is first activated (composites: null). */
 export function defaultDirForRepairDisplaySort(sort: RepairDisplaySort): RepairDisplaySortDir | null {
   if (!isRepairColumnSort(sort)) return null;
-  return defaultDirForRepairGridSort(sort);
+  return defaultDirForRepairSortWord(sort);
 }
 
 export function parseRepairDisplaySort(raw: string | null | undefined): RepairDisplaySort {
@@ -88,7 +95,7 @@ export function parseRepairDisplaySortDir(
 ): RepairDisplaySortDir | null {
   if (!isRepairColumnSort(sort)) return null;
   if (raw === 'asc' || raw === 'desc') return raw;
-  return defaultDirForRepairGridSort(sort);
+  return defaultDirForRepairSortWord(sort);
 }
 
 /** Write `?sort=` / `?dir=` — delete defaults so URLs stay clean. */
@@ -101,7 +108,7 @@ export function applyRepairDisplaySortParam(
   else params.set('sort', sort);
 
   if (isRepairColumnSort(sort)) {
-    const def = defaultDirForRepairGridSort(sort);
+    const def = defaultDirForRepairSortWord(sort);
     const resolved = dir ?? def;
     if (resolved === def) params.delete('dir');
     else params.set('dir', resolved);

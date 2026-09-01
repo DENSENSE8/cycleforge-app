@@ -60,6 +60,7 @@ import type {
   CompoundSubtitleSelect,
   CompoundSubtitleEdit,
   CompoundSubtitleCopy,
+  CompoundShipByEdit,
 } from './compound-row-model';
 
 /**
@@ -116,7 +117,8 @@ export interface CompoundGridCellParams<C extends CompoundCellColumn> {
    */
   select?: {
     checked: boolean | 'mixed';
-    onToggle?: () => void;
+    /** Receives the click's modifier state so shift-click can extend a range. */
+    onToggle?: (event: { shiftKey: boolean }) => void;
     label: string;
     disabled?: boolean;
   };
@@ -134,8 +136,10 @@ export interface CompoundGridCellParams<C extends CompoundCellColumn> {
   subtitleNoteKey?: string;
   /** The note's full text. */
   noteText?: string | null;
-  /** Present ⇒ the inline under-title facts drag to reorder. */
-  onReorderSubtitle?: (partKey: string, toIndex: number) => void;
+  /** Present ⇒ the inline under-title facts drag to reorder (field onto field). */
+  onReorderSubtitle?: (dragKey: string, dropKey: string) => void;
+  /** Present ⇒ the status delay line mounts DateRangePickerField. */
+  shipByEdit?: CompoundShipByEdit;
 }
 
 /**
@@ -189,6 +193,7 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
   subtitleNoteKey,
   noteText,
   onReorderSubtitle,
+  shipByEdit,
   formatClass,
 }: CompoundGridCellParams<C>): ReactNode {
   // `select` is only ours when a COMPOUND model is mounted — see
@@ -332,7 +337,7 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
     case 'state':
       return (
         <div data-col="state" data-frozen-edge={frozenEdge} className={className} style={style}>
-          <CompoundState view={view} />
+          <CompoundState view={view} shipByEdit={shipByEdit} />
         </div>
       );
     case 'amount':

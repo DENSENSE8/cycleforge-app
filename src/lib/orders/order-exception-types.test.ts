@@ -24,8 +24,9 @@ describe('deriveOrderExceptionBlockers', () => {
   it('an unpaired SKU is a blocker even when the order could otherwise ship', () => {
     // The case that motivated this surface: 19 of 22 caged orders were
     // releasable-shaped but resolved to no catalog item, so they had no item
-    // display. Pairing is NOT a release gate, which is exactly why it needs
-    // its own blocker — the gates would have called this order fine.
+    // display. Since the 2026-08-31 flow ruling (R-FLOW-1) pairing is ALSO
+    // release gate G4 — this blocker is its finer-grained triage twin, and
+    // the two must agree.
     const blockers = deriveOrderExceptionBlockers({ ...CLEAN, skuCatalogId: null });
     assert.deepEqual(blockers, ['unpaired']);
   });

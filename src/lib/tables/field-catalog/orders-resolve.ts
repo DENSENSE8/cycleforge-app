@@ -209,6 +209,11 @@ export function ordersSubtitleParts(
   for (const fieldId of subtitleFieldIds) {
     const field: FieldDef | undefined = ORDERS_FIELDS_BY_ID.get(fieldId);
     if (!field) continue;
+    if (fieldId === 'orders.item_number') {
+      // Face is the listing glyph in the trailing cluster — never the id.
+      parts.push({ text: '', key: fieldId });
+      continue;
+    }
     const value = resolveOrdersSlotValue(record, fieldId, ctx);
     if (!value || value.kind !== 'value' || !value.text) {
       if (ctx.editableFieldIds?.includes(fieldId)) {
@@ -218,9 +223,15 @@ export function ordersSubtitleParts(
     }
     if (fieldId === 'orders.qty') {
       const qty = Number(value.text);
+      const countTone = orderRowQtyTone(Number.isFinite(qty) ? qty : 1);
       parts.push({
         text: value.text,
-        toneClass: orderRowQtyTone(Number.isFinite(qty) ? qty : 1),
+        // Dark + bold under the title. Notes keep the muted caption; qty 2+
+        // still warns, but a quantity of 1 is no longer the gray subtitle.
+        toneClass:
+          countTone === 'text-text-muted'
+            ? 'font-semibold text-text-default'
+            : `font-semibold ${countTone}`,
         key: fieldId,
         // Two digits, always. A quantity is 1 on most rows and 10–99 on a few,
         // and sizing to content shifted every fact after it sideways on exactly
@@ -233,9 +244,13 @@ export function ordersSubtitleParts(
       continue;
     }
     if (fieldId === 'orders.condition') {
+      const grade = conditionGradeTextClass(str(row, 'condition'));
       parts.push({
         text: value.text,
-        toneClass: conditionGradeTextClass(str(row, 'condition')),
+        toneClass:
+          grade === 'text-text-muted' || grade === 'text-text-faint'
+            ? 'font-semibold text-text-default'
+            : `font-semibold ${grade}`,
         key: fieldId,
       });
       continue;

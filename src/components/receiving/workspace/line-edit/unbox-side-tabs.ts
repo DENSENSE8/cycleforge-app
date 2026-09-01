@@ -24,7 +24,11 @@
  * `timeline` / `support` → Root Index (leaves removed).
  */
 
-import { STATION_DISPLAY_INDEX } from '@/components/station/displays/display-index';
+import {
+  STATION_DISPLAY_INDEX,
+  STATION_LOOK_DISPLAY_ID,
+  isDisplaysHostedLeaf,
+} from '@/components/station/displays/display-index';
 
 /**
  * Sentinel — Displays open on the Root Index (no leaf body).
@@ -49,8 +53,11 @@ export type UnboxSideTab =
   | 'tracking'
   | 'locations';
 
-/** Nav id: closed is `null`; open is index or a content leaf. */
-export type UnboxDisplayNav = typeof UNBOX_DISPLAY_INDEX | UnboxSideTab;
+/** Nav id: closed is `null`; open is index, a carton leaf, or Displays-hosted Look. */
+export type UnboxDisplayNav =
+  | typeof UNBOX_DISPLAY_INDEX
+  | UnboxSideTab
+  | typeof STATION_LOOK_DISPLAY_ID;
 
 /**
  * Photos leaf surfaces (`photoAction` nest). Absent / legacy `browse` → armed
@@ -171,6 +178,7 @@ export function canonicalizeUnboxSideTab(raw: string): UnboxSideTab | null {
 export function parseUnboxDisplayNav(raw: string | null): UnboxDisplayNav | null {
   if (!raw) return null;
   if (raw === UNBOX_DISPLAY_INDEX) return UNBOX_DISPLAY_INDEX;
+  if (isDisplaysHostedLeaf(raw)) return STATION_LOOK_DISPLAY_ID;
   // Retired Displays leaves (2026-08-27) — keep the column open on the index.
   if (raw === 'timeline' || raw === 'support') return UNBOX_DISPLAY_INDEX;
   return canonicalizeUnboxSideTab(raw);
@@ -182,6 +190,9 @@ export function parseUnboxDisplayNav(raw: string | null): UnboxDisplayNav | null
  * - `null` → closed
  * - `index` → open on Root Index (`leaf: null`)
  * - leaf id → open on that leaf (gated-off falls back to first visible index leaf)
+ * - unknown id (e.g. Displays-hosted `look`) → stay on the Root Index.
+ *   Never treat an unknown id as a gated-off carton leaf — that used to dump
+ *   Look onto Linkage, the first visible strip survivor.
  */
 export function resolveUnboxDisplayNav(
   requested: UnboxDisplayNav | null,
@@ -189,7 +200,11 @@ export function resolveUnboxDisplayNav(
 ): { open: boolean; leaf: UnboxSideTab | null } {
   if (requested == null) return { open: false, leaf: null };
   if (requested === UNBOX_DISPLAY_INDEX) return { open: true, leaf: null };
-  return { open: true, leaf: resolveUnboxSideTab(requested, gates) };
+  if (isDisplaysHostedLeaf(requested)) return { open: true, leaf: null };
+  if (!(UNBOX_SIDE_TAB_ORDER as readonly string[]).includes(requested)) {
+    return { open: true, leaf: null };
+  }
+  return { open: true, leaf: resolveUnboxSideTab(requested as UnboxSideTab, gates) };
 }
 
 export function parseUnboxPhotoAction(raw: string | null): UnboxPhotoAction {

@@ -41,12 +41,14 @@ import {
   StationScanPaneHost,
   StationWorkbench,
 } from '@/components/station/workbench';
+import { STATION_SCAN_WELL_CLASS } from '@/components/station/scan-depth';
 import { StationContextBar } from '@/components/station/entity-context';
 import {
   StationDisplaysParkedRail,
   StationDisplaysPushStack,
   StationDisplaysUtilityRail,
   STATION_DISPLAY_INDEX,
+  resolveDisplaysActiveTab,
   useYieldStationDisplaysOnAssistantOpen,
   type DisplayIndexRow,
 } from '@/components/station/displays';
@@ -153,12 +155,14 @@ export function EntityStationPane({
     [onSideTabChange],
   );
 
-  const resolvedSideTab: StationDisplayNav | null = useMemo(() => {
-    if (!activeSideTab) return null;
-    if (activeSideTab === STATION_DISPLAY_INDEX) return STATION_DISPLAY_INDEX;
-    if (displayTabs.some((t) => t.id === activeSideTab)) return activeSideTab;
-    return STATION_DISPLAY_INDEX;
-  }, [activeSideTab, displayTabs]);
+  const resolvedSideTab: StationDisplayNav | null = useMemo(
+    () =>
+      resolveDisplaysActiveTab(
+        activeSideTab,
+        displayTabs.map((t) => t.id),
+      ),
+    [activeSideTab, displayTabs],
+  );
 
   const utilityRail = !activeSideTab ? (
     <StationDisplaysUtilityRail
@@ -214,7 +218,7 @@ export function EntityStationPane({
                 onScroll={onCentreScroll}
                 footer={resolvedDock}
               >
-                {centre}
+                <div className={STATION_SCAN_WELL_CLASS}>{centre}</div>
               </StationWorkbench>
             </div>
           </StationPanelRoot>

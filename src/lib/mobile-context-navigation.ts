@@ -23,10 +23,33 @@ export interface MobileContextOption {
   description?: string;
 }
 
-/** Row-1 app title from the current pathname (matches sidebar nav labels). */
-export function getMobileAppTitle(pathname: string | null): string {
-  if (pathname === '/m/home' || pathname?.startsWith('/m/home/')) return 'Home';
-  const pageId = getSidebarNavPageId(pathname);
+/**
+ * Page name for the mobile top bar (right of the hamburger) and tests.
+ * `/m/*` labels match the drawer; everything else falls through to the
+ * desktop sidebar page label.
+ */
+export function getMobileAppTitle(
+  pathname: string | null,
+  searchParams?: Pick<URLSearchParams, 'get'> | null,
+): string {
+  if (!pathname) return PRODUCT_NAME;
+  if (pathname === '/m/home' || pathname.startsWith('/m/home/')) return 'Home';
+  if (pathname === '/m/work' || pathname.startsWith('/m/work/')) return 'Orders';
+  if (pathname === '/m/pick' || pathname.startsWith('/m/pick/')) return 'Picks';
+  if (pathname === '/m/pack' || pathname.startsWith('/m/pack/')) return 'Packing';
+  if (pathname === '/m/checklist' || pathname.startsWith('/m/checklist/')) return 'Checklists';
+  if (pathname === '/m/scan' || pathname.startsWith('/m/scan/')) return 'Scan';
+  if (pathname === '/m/identify' || pathname.startsWith('/m/identify/')) return 'Identify';
+  if (pathname === '/m/triage' || pathname.startsWith('/m/triage/')) return 'Arrival';
+  if (pathname === '/m/unbox' || pathname.startsWith('/m/unbox/')) return 'Unbox';
+  if (pathname === '/m/receive' || pathname.startsWith('/m/receive/')) return 'Unbox';
+  if (pathname === '/m/receiving' || pathname.startsWith('/m/receiving/')) {
+    const mode = searchParams?.get('mode');
+    if (mode === 'local-pickup') return 'Walk-In';
+    if (mode === 'repair') return 'Repair';
+    return 'Photo feed';
+  }
+  const pageId = getSidebarNavPageId(pathname, searchParams);
   const nav = APP_SIDEBAR_NAV.find((item) => item.id === pageId);
   return nav?.label || PRODUCT_NAME;
 }

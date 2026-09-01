@@ -60,6 +60,20 @@ export function parseEbayAccountScope(
 export const EBAY_OAUTH_STATE_COOKIE = 'ebay_oauth_state';
 
 /**
+ * Production RuName accept URL is `app.cycleforge.ai/api/ebay/callback`. Starting
+ * consent on loopback sets the CSRF cookie on localhost, then eBay returns to
+ * production — cookie miss → `ebay_invalid_oauth_state`. Warn, don't block:
+ * sandbox RuNames can legitimately target a local/tunnel callback.
+ */
+export function ebayConnectLoopbackWarning(hostname: string): string | null {
+  const host = String(hostname ?? '').trim().toLowerCase().replace(/^\[|\]$/g, '');
+  if (host === 'localhost' || host === '127.0.0.1' || host === '::1') {
+    return 'eBay returns to the production Cycle Forge URL after you grant access. Start this connect on app.cycleforge.ai so the callback cookie matches — localhost will fail with an invalid connection link.';
+  }
+  return null;
+}
+
+/**
  * Minimal seller-copilot scope set. `sell.finances` is intentionally NOT
  * included by default — it requires separate eBay app approval and requesting
  * an unapproved scope fails consent. Add it (or any other approved scope) via

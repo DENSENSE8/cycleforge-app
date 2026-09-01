@@ -4,11 +4,12 @@ import { Fragment, memo, type ReactNode } from 'react';
 import { Check } from '@/components/Icons';
 import { SourceOrderChip, TicketChip, getLast8 } from '@/components/ui/CopyChip';
 import { GridCellDash, GridDateCellValue } from '@/components/ui/grid-cells';
+import { resolveRepairSlotValue } from '@/lib/tables/field-catalog/repair-resolve';
+import { isSlotTrackKey } from '@/lib/tables/materialize-tracks';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import { REPAIR_GRID_CAPABILITIES } from '@/components/repair/repair-grid/repair-grid-descriptor';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import {
-  REPAIR_GRID_COLUMNS,
   REPAIR_GRID_FROZEN_CELL,
   repairCreatedAtSource,
   repairCustomerName,
@@ -43,7 +44,7 @@ interface RepairGridRowProps {
   isChecked: boolean;
   onOpen: (repair: RSRecord) => void;
   onToggleSelect: (repair: RSRecord, event: { shiftKey: boolean }) => void;
-  columns?: readonly RepairGridColumn[];
+  columns: readonly RepairGridColumn[];
 }
 
 /**
@@ -58,7 +59,7 @@ export const RepairGridRow = memo(function RepairGridRow({
   isChecked,
   onOpen,
   onToggleSelect,
-  columns = REPAIR_GRID_COLUMNS,
+  columns,
 }: RepairGridRowProps) {
   const productTitle = repair.product_title || 'Unknown Product';
   const issue = String(repair.issue || '').trim();
@@ -72,8 +73,78 @@ export const RepairGridRow = memo(function RepairGridRow({
   const dataCell = (col: RepairGridColumn, rule = true) =>
     cn(repairGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
 
+  /** The body of one materialized slot track, chosen by the BOUND FIELD. */
+  const renderSlotBody = (fieldId: string | undefined): ReactNode => {
+    switch (fieldId) {
+      case 'repair.created':
+        return (
+          <GridDateCellValue
+            label={createdCell?.label}
+            tooltip={createdCell?.tooltip}
+            className="text-role-caption"
+          />
+        );
+      case 'repair.customer':
+        return customer ? (
+          <span className="min-w-0 truncate text-role-caption text-text-default">{customer}</span>
+        ) : (
+          <GridCellDash />
+        );
+      case 'repair.phone':
+        return phone ? (
+          <span className="min-w-0 truncate tabular-nums text-role-caption text-text-muted">
+            {phone}
+          </span>
+        ) : (
+          <GridCellDash />
+        );
+      case 'repair.price':
+        return priceDisplay ? (
+          <span className="min-w-0 truncate tabular-nums text-role-caption font-semibold text-emerald-600">
+            {priceDisplay}
+          </span>
+        ) : (
+          <GridCellDash />
+        );
+      case 'repair.order':
+        // Linked online order → `#`+last-8 copy chip; local/walk-in repairs
+        // (no source order) read as a type label, not a broken order number.
+        return orderValue ? (
+          <SourceOrderChip value={orderValue} display={getLast8(orderValue)} />
+        ) : (
+          <span className="min-w-0 truncate text-role-caption font-semibold text-text-muted">
+            Walk-in
+          </span>
+        );
+      case 'repair.ticket':
+        return ticketValue ? (
+          <TicketChip value={ticketValue} display={getLast8(ticketValue)} />
+        ) : (
+          <GridCellDash />
+        );
+      default: {
+        // A catalog field with no bespoke face paints its resolved text — a new
+        // bindable fact needs a resolver case, never a new column file.
+        const value = fieldId ? resolveRepairSlotValue(repair, fieldId) : null;
+        const text = value?.kind === 'value' ? value.text : null;
+        return text ? (
+          <span className="min-w-0 truncate text-role-caption text-text-soft">{text}</span>
+        ) : (
+          <GridCellDash />
+        );
+      }
+    }
+  };
+
   const renderCell = (col: RepairGridColumn, last: boolean): ReactNode => {
     const rule = !last;
+    if (isSlotTrackKey(col.key)) {
+      return (
+        <div data-col={col.key} className={dataCell(col, rule)}>
+          {renderSlotBody(col.fieldId)}
+        </div>
+      );
+    }
     switch (col.key) {
       case 'select':
         return (
@@ -83,7 +154,7 @@ export const RepairGridRow = memo(function RepairGridRow({
               REPAIR_GRID_FROZEN_CELL,
               'justify-center',
             )}
-            style={{ left: repairGridFrozenLeft('select') }}
+            style={{ left: repairGridFrozenLeft(columns, 'select') }}
             onClick={(e) => e.stopPropagation()}
           >
             <button
@@ -111,7 +182,7 @@ export const RepairGridRow = memo(function RepairGridRow({
           <div
             data-col="title"
             className={cn(dataCell(col, rule), REPAIR_GRID_FROZEN_CELL, 'relative min-w-0')}
-            style={{ left: repairGridFrozenLeft('title') }}
+            style={{ left: repairGridFrozenLeft(columns, 'title') }}
             data-frozen-edge
           >
             <div className="flex min-w-0 flex-col">
@@ -122,74 +193,6 @@ export const RepairGridRow = memo(function RepairGridRow({
                 </span>
               ) : null}
             </div>
-          </div>
-        );
-      case 'date':
-        return (
-          <div data-col="date" className={dataCell(col, rule)}>
-            <GridDateCellValue
-              label={createdCell?.label}
-              tooltip={createdCell?.tooltip}
-              className="text-role-caption"
-            />
-          </div>
-        );
-      case 'customer':
-        return (
-          <div data-col="customer" className={dataCell(col, rule)}>
-            {customer ? (
-              <span className="min-w-0 truncate text-role-caption text-text-default">{customer}</span>
-            ) : (
-              <GridCellDash />
-            )}
-          </div>
-        );
-      case 'phone':
-        return (
-          <div data-col="phone" className={dataCell(col, rule)}>
-            {phone ? (
-              <span className="min-w-0 truncate tabular-nums text-role-caption text-text-muted">
-                {phone}
-              </span>
-            ) : (
-              <GridCellDash />
-            )}
-          </div>
-        );
-      case 'price':
-        return (
-          <div data-col="price" className={dataCell(col, rule)}>
-            {priceDisplay ? (
-              <span className="min-w-0 truncate tabular-nums text-role-caption font-semibold text-emerald-600">
-                {priceDisplay}
-              </span>
-            ) : (
-              <GridCellDash />
-            )}
-          </div>
-        );
-      case 'order':
-        // Linked online order → `#`+last-8 copy chip; local/walk-in repairs
-        // (no source order) read as a type label, not a broken order number.
-        return (
-          <div data-col="order" className={dataCell(col, rule)}>
-            {orderValue ? (
-              <SourceOrderChip value={orderValue} display={getLast8(orderValue)} />
-            ) : (
-              <span className="min-w-0 truncate text-role-caption font-semibold text-text-muted">
-                Walk-in
-              </span>
-            )}
-          </div>
-        );
-      case 'ticket':
-        return (
-          <div data-col="ticket" className={dataCell(col, rule)}>
-            {ticketValue ? (
-              <TicketChip value={ticketValue} display={getLast8(ticketValue)} />
-            ) : (
-              <GridCellDash />
-            )}
           </div>
         );
       default:

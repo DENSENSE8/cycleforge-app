@@ -47,7 +47,9 @@ export type ColumnType =
   /** Carrier tracking number (MapPin header glyph — distinct from bin `location`). */
   | 'tracking'
   /** Money / unit cost (Receipt header glyph — distinct from qty `number` Hash). */
-  | 'price';
+  | 'price'
+  /** Photo / thumbnail track (Image header glyph — never a blank square). */
+  | 'image';
 
 export interface TableColumnSpec {
   /** Must equal the ChipColumn.key or RowMetaColumns slot key it controls. */
@@ -86,7 +88,7 @@ export type TableId =
   | 'repair'
   /** Support › Warranty claims spreadsheet (`WARRANTY_GRID_COLUMNS`). */
   | 'warranty'
-  /** Outbound › Ready / recently-tested history (`READY_GRID_COLUMNS`). */
+  /** Outbound › Ready / recently-tested history (slot-materialized). */
   | 'ready'
   /** Warehouse › Bins overview spreadsheet (`BINS_GRID_COLUMNS`). */
   | 'bins'
@@ -143,23 +145,17 @@ export const META_KEYS = {
   rest: 'rest',
 } as const;
 
-const META_QTY: TableColumnSpec = { key: 'qty', label: 'Quantity', group: 'meta' };
-const META_CONDITION: TableColumnSpec = { key: 'condition', label: 'Condition', group: 'meta' };
-const META_REST: TableColumnSpec = { key: 'rest', label: 'Details', group: 'meta' };
-const META_STATUS: TableColumnSpec = { key: 'status', label: 'Status', group: 'meta', type: 'tag' };
-const CHIP_PLATFORM: TableColumnSpec = { key: 'platform', label: 'Platform', group: 'chip' };
-const CHIP_ORDERID: TableColumnSpec = { key: 'orderid', label: 'Order ID', group: 'chip' };
-const CHIP_TRACKING: TableColumnSpec = { key: 'tracking', label: 'Tracking', group: 'chip' };
-const CHIP_SERIAL: TableColumnSpec = { key: 'serial', label: 'Serial', group: 'chip' };
-
-/**
- * Grid-native tables (Catalog · Pickup · Repair). Unlike the five row-primitive
- * tables above, these render real spreadsheet TRACKS from their own
- * `*-grid-layout` SoT, so each key here is that column's `hideKey` (== its grid
- * column key). Labels mirror the column SoT so the Fields menu and the header
- * read the same word. `select` / `title` are absent on purpose — they carry no
- * `hideKey` and are structurally un-hideable.
+/*
+ * The shared `META_*` / `CHIP_*` column specs were DELETED with the wave 1.3
+ * slot port (2026-08-31).
+ *
+ * They existed so the receiving-family buckets below could name the same
+ * hide-keys without copying them. Every one of those buckets is `[]` now —
+ * hiding a fact is unbinding it from a slot — so the specs had no readers left.
+ * A shared constant with no consumer is not a SoT, it is a suggestion that the
+ * next porter will re-populate a bucket rather than add a catalog field.
  */
+
 const GRID_COL = (key: string, label: string, type?: ColumnType): TableColumnSpec => ({
   key,
   label,
@@ -182,29 +178,38 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
   //
   // `rest` no longer maps to a grid TRACK — the `stage` column that carried
   // `hideKey: 'rest'` was deleted 2026-08-02. It stays because it is still the
-  // vocabulary for the legacy row primitives under this same tableId: the
-  // board-layout `ReceivingLineOrderRow` pass a `rest`
-  // cluster to `RowMetaColumns`, which asks `useIsColumnHidden('rest')`.
-  // Dropping the entry would take that toggle away, not clean anything up.
-  receiving: [
-    META_STATUS,
-    META_QTY,
-    GRID_COL('price', 'Price', 'price'),
-    META_CONDITION,
-    META_REST,
-    CHIP_ORDERID,
-    CHIP_TRACKING,
-    CHIP_SERIAL,
-  ],
-  // Incoming POS (`INCOMING_GRID_COLUMNS`) — separate prefs bucket so a Fields
-  // toggle on Incoming cannot silently hide tracks on History/Unbox (and vice
-  // versa). Status uses meta `rest`; no serial on this surface.
-  incoming: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING],
-  // Unbox pinned-Inbound embed — same column vocabulary as `incoming`, distinct
-  // staff-prefs bucket (D13). Wired via ReceivingLinesTable's embed branch, which
-  // passes `tableId="incoming_embed"` to the provider + IncomingGridView so its
-  // Fields deltas persist under this key, not `incoming`.
-  incoming_embed: [META_QTY, META_CONDITION, META_REST, CHIP_PLATFORM, CHIP_ORDERID, CHIP_TRACKING],
+  /**
+   * Receiving — **deliberately empty** since the wave 1.3 slot port.
+   *
+   * This bucket kept its hide-keys on a justification that had gone stale: the
+   * comment said `ReceivingLineOrderRow` passes a `rest` cluster to
+   * `RowMetaColumns`, "which asks `useIsColumnHidden('rest')`". **There is no
+   * `useIsColumnHidden`** — no definition, no call site, anywhere in `src`.
+   * `RowMetaColumns` is alive and reads no hide-key at all; the two facts had
+   * been conflated, and the prose was defending a consumer that had already
+   * been deleted. Same class of error as the surface count `band3-find-only`
+   * caught, and the same fix: the empty bucket is now the claim.
+   *
+   * Hiding a receiving fact is unbinding it from a slot. The KEY stays because
+   * `TableId`'s runtime vocabulary derives from this record's keys (the
+   * `fba: []` precedent) and the kept binding parses `tableId: 'receiving'` at
+   * module scope.
+   */
+  receiving: [],
+  /**
+   * Incoming POS — **deliberately empty** since the wave 1.3 slot port. The
+   * separate bucket was always the point (a Fields toggle on Incoming must not
+   * hide tracks on History/Unbox); it is a separate LAYOUT DOCUMENT now, which
+   * is what a separate tableId buys. The KEY stays for the `TableId` union.
+   */
+  incoming: [],
+  /**
+   * Unbox pinned-Inbound embed — **deliberately empty**, same port. It stays a
+   * distinct key (D13) so the embed's layout deltas persist separately from
+   * `incoming`; that separation is now a separate layout document rather than a
+   * separate hide-key list.
+   */
+  incoming_embed: [],
   /**
    * Orders + its station twins — **deliberately empty** (Wave-1 hand-model
    * kill, `docs/kill-list/07-slot-table-hand-models.md` §3). Hide-by-field-id
@@ -220,15 +225,12 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
   testing: [],
   packer: [],
   // Grid-native: keys are the `hideKey`s in `src/lib/products/catalog-grid-layout.ts`.
-  catalog: [
-    GRID_COL('sku', 'SKU', 'id'),
-    GRID_COL('inventory', 'Inventory', 'id'),
-    GRID_COL('channels', 'Channels', 'number'),
-    GRID_COL('manuals', 'Manuals', 'number'),
-    GRID_COL('qc', 'QC', 'number'),
-    GRID_COL('orders', 'Orders', 'number'),
-    GRID_COL('status', 'Status', 'tag'),
-  ],
+  /**
+   * Products catalog — **deliberately empty** since the wave 1.4 slot port.
+   * Hiding a product fact is now unbinding it from a slot. The KEY stays
+   * because `TableId`'s runtime vocabulary derives from this record's keys.
+   */
+  catalog: [],
   /**
    * Pickup — **deliberately empty** (Wave-2 hand-model kill, kill-list 07 §4):
    * the columns are a slot materialization now, so "hide SKU" is "unbind
@@ -237,151 +239,124 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
    */
   pickup: [],
   // Keys are the `hideKey`s in `src/lib/repair/repair-grid-layout.ts`.
-  repair: [
-    GRID_COL('date', 'Created', 'date'),
-    GRID_COL('customer', 'Customer', 'text'),
-    GRID_COL('phone', 'Phone', 'text'),
-    GRID_COL('price', 'Price', 'price'),
-    GRID_COL('order', 'Walk-in / Order', 'id'),
-    GRID_COL('ticket', 'Ticket', 'id'),
-  ],
+  /**
+   * Repair queue — **deliberately empty** since the wave 1.4 slot port. Hiding
+   * a repair fact is now unbinding it from a slot. The KEY stays because
+   * `TableId`'s runtime vocabulary derives from this record's keys.
+   */
+  repair: [],
   // Keys are the `hideKey`s in
   // `src/components/warranty/grid/warranty-grid-layout.ts`. The `ticket` action
   // track is deliberately absent — it carries no `hideKey`, so it is structural
   // and the Fields menu must never offer to hide a row control.
-  warranty: [
-    GRID_COL('claim', 'Claim', 'id'),
-    GRID_COL('serial', 'Serial', 'id'),
-    GRID_COL('customer', 'Customer', 'text'),
-    GRID_COL('status', 'Status', 'tag'),
-    GRID_COL('warranty', 'Warranty', 'tag'),
-    GRID_COL('logged', 'Logged', 'date'),
-  ],
-  // Keys are the `hideKey`s in
-  // `src/components/outbound/ready/grid/ready-grid-layout.ts`. The `action`
-  // track (Stage FBA) has no `hideKey` — structural, never offered.
+  /**
+   * Warranty claims — **deliberately empty** since the wave 1.4 slot port.
+   * Hiding a claim fact is now unbinding it from a slot; the ticket CONTROL was
+   * never here (it is structural). The KEY stays because `TableId`'s runtime
+   * vocabulary derives from this record's keys.
+   */
+  warranty: [],
   /**
    * Amazon Prep board — **deliberately empty**. The KEY stays because
    * `TableId`'s runtime vocabulary derives from this record's keys. The
    * display that materialised catalog facts was torn out 2026-08-30.
    */
   fba: [],
-  ready: [
-    GRID_COL('verdict', 'Verdict', 'tag'),
-    GRID_COL('destination', 'Destination', 'tag'),
-    GRID_COL('reasons', 'Reasons', 'tag'),
-    GRID_COL('velocity', 'Velocity', 'tag'),
-    GRID_COL('condition', 'Cond', 'tag'),
-    GRID_COL('tested', 'Tested', 'date'),
-  ],
-  // Keys are the `hideKey`s in
-  // `src/components/warehouse/bins-grid/bins-grid-layout.ts`. `select` /
-  // `barcode` are absent — frozen identity, structurally un-hideable.
-  bins: [
-    GRID_COL('location', 'Room / Location', 'location'),
-    GRID_COL('sku_count', 'SKUs', 'number'),
-    GRID_COL('total_qty', 'Qty', 'number'),
-    GRID_COL('fill', 'Fill', 'text'),
-    GRID_COL('last_counted', 'Counted', 'date'),
-    GRID_COL('status', 'Status', 'tag'),
-  ],
-  // Keys are the `hideKey`s in
-  // `src/components/inventory/units-grid/units-grid-layout.ts`. `serial`
-  // (frozen identity) and `product` (flex title) are absent — structurally
-  // un-hideable / the reading track.
-  'inventory-units': [
-    GRID_COL('status', 'Status', 'tag'),
-    GRID_COL('condition', 'Condition', 'tag'),
-    GRID_COL('location', 'Location', 'location'),
-    GRID_COL('updated', 'Updated', 'date'),
-  ],
+  /**
+   * Recently-tested history — **deliberately empty** since the wave 1.1 slot
+   * port (`docs/todo/seller-table-program-PLAN.md` §03). Hiding a Ready fact is
+   * now unbinding it from a slot, not a per-staff `hideKey` in this third
+   * registry. The KEY stays because `TableId`'s runtime vocabulary derives from
+   * this record's keys (the `fba: []` precedent).
+   */
+  ready: [],
+  /**
+   * Warehouse bins — **deliberately empty** since the wave 1.4 slot port.
+   * Hiding a bin fact is now unbinding it from a slot. The KEY stays because
+   * `TableId`'s runtime vocabulary derives from this record's keys.
+   */
+  bins: [],
+  /**
+   * Inventory units — **deliberately empty** since the wave 1.4 slot port.
+   * Hiding a unit fact is now unbinding it from a slot, not a per-staff
+   * `hideKey` in this third registry. The KEY stays because `TableId`'s runtime
+   * vocabulary derives from this record's keys (the `fba: []` precedent).
+   */
+  'inventory-units': [],
   // Keys are the `hideKey`s in
   // `src/components/outbound/orders/import-staging/csv-import-staging-grid-layout.ts`.
   // `select` / `order` are frozen identity and `status` is the triage state —
   // all three are structural, so none of them is offered here.
-  // Home → Daily. `select` and `task` are frozen identity, so neither is
-  // offered — a checklist you cannot read the name of is not a checklist.
-  daily: [
-    META_STATUS,
-    GRID_COL('team', 'Team', 'number'),
-    GRID_COL('marked', 'Checked', 'date'),
-  ],
-  // My Tasks. `select` and `task` are frozen identity, so neither is offered.
-  tasks: [
-    META_STATUS,
-    GRID_COL('kind', 'Kind', 'tag'),
-    GRID_COL('station', 'Station', 'text'),
-    GRID_COL('due', 'Resets', 'date'),
-    GRID_COL('updated', 'Checked', 'date'),
-  ],
-  'orders-import': [
-    GRID_COL('sku', 'SKU', 'id'),
-    GRID_COL('qty', 'Quantity', 'number'),
-    GRID_COL('customer', 'Customer', 'text'),
-    GRID_COL('tracking', 'Tracking', 'tracking'),
-    GRID_COL('platform', 'Platform', 'text'),
-  ],
+  /**
+   * Home → Daily — **deliberately empty** since the wave 1.3 slot port. Hiding
+   * a checklist fact is unbinding it from a slot; Team and Checked are catalog
+   * facts (`daily.team`, `daily.marked`), unbound on the product layout. The
+   * KEY stays for the `TableId` union.
+   */
+  daily: [],
+  /**
+   * My Tasks — **deliberately empty**, same port. Kind / Station / Resets /
+   * Checked are catalog facts, bindable per organization.
+   */
+  tasks: [],
+  /**
+   * Order import staging — **deliberately empty** since the wave 1.4 slot port.
+   * The separate bucket was always the point (hiding a staging column must not
+   * densify live To-ship); it is now a separate LAYOUT DOCUMENT, which is what
+   * a separate tableId buys. The KEY stays because `TableId`'s runtime
+   * vocabulary derives from this record's keys.
+   */
+  'orders-import': [],
   // Keys are the `hideKey`s in
   // `src/components/receiving/unfound/grid/unfound-grid-layout.ts`. The `action`
   // track (Push / Synced) has no `hideKey` — structural, never offered.
-  unfound: [
-    GRID_COL('ticket', 'Ticket', 'id'),
-    GRID_COL('usaNote', 'USA Team Note', 'longtext'),
-    GRID_COL('vietnamNote', 'Vietnam Team Note', 'longtext'),
-    GRID_COL('checked', 'Check', 'tag'),
-  ],
+  /**
+   * Unfound queue — **deliberately empty** since the wave 1.4 slot port. Hiding
+   * a triage fact is now unbinding it from a slot; the Push CONTROL was never
+   * here (it is structural). The KEY stays because `TableId`'s runtime
+   * vocabulary derives from this record's keys.
+   */
+  unfound: [],
   // Keys are the `hideKey`s in `src/lib/my-day/my-day-grid-layout.ts`. `select`
   // and `task` are absent — frozen identity, structurally un-hideable. Labels
   // mirror the column SoT so the menu and the header read the same word.
-  'my-day': [
-    GRID_COL('lane', 'Lane', 'tag'),
-    GRID_COL('queue', 'Queue', 'tag'),
-    GRID_COL('record', 'Record', 'id'),
-    GRID_COL('due', 'Due', 'date'),
-    GRID_COL('status', 'Status', 'tag'),
-  ],
+  /**
+   * Home · Today — **deliberately empty** since the wave 1.4 slot port, which
+   * also made `fieldsMenu: true` honest here for the first time (it was
+   * leftover column-display lip copy over no catalog). The KEY stays because
+   * `TableId`'s runtime vocabulary derives from this record's keys.
+   */
+  'my-day': [],
   // Keys are the `hideKey`s in `src/lib/tech/tech-all-grid-layout.ts`. `select`
   // and `identity` are absent — frozen identity, structurally un-hideable.
-  'tech-all': [
-    GRID_COL('type', 'Type', 'tag'),
-    GRID_COL('stage', 'Stage', 'text'),
-    GRID_COL('urgency', 'Urgency', 'number'),
-  ],
-  // Keys are the `hideKey`s in
-  // `src/features/review/catalog-link/grid/catalog-link-grid-layout.ts`.
-  'catalog-link': [
-    GRID_COL('item', 'Item number', 'id'),
-    GRID_COL('source', 'Account', 'external'),
-    GRID_COL('sku', 'SKU', 'id'),
-    GRID_COL('orders', 'Orders', 'number'),
-    GRID_COL('first', 'First seen', 'date'),
-    GRID_COL('last', 'Last seen', 'date'),
-  ],
-  // Keys are the `hideKey`s in
-  // `src/features/review/catalog-link/grid/import-exception-grid-layout.ts`.
-  'import-exception': [
-    GRID_COL('order', 'Order', 'id'),
-    GRID_COL('source', 'Account', 'external'),
-    GRID_COL('tracking', 'Tracking', 'tracking'),
-    GRID_COL('sheet', 'Sheet row', 'number'),
-    GRID_COL('seen', 'Seen', 'number'),
-    GRID_COL('first', 'First seen', 'date'),
-    GRID_COL('last', 'Last seen', 'date'),
-  ],
+  /**
+   * Tech · All triage — **deliberately empty** since the wave 1.4 slot port.
+   * Hiding a triage fact is now unbinding it from a slot. The KEY stays because
+   * `TableId`'s runtime vocabulary derives from this record's keys.
+   */
+  'tech-all': [],
+  /**
+   * Review › Catalog link — **deliberately empty** since the wave 1.3 slot
+   * port. Every entry here is now a catalog fact (`catalog-link.*`) bindable
+   * from the Fields menu. The KEY stays for the `TableId` union.
+   */
+  'catalog-link': [],
+  /**
+   * Review › Missing item number — **deliberately empty**, same port. Its own
+   * key (rather than sharing `catalog-link`'s) is what keeps the two queues'
+   * layouts independent.
+   */
+  'import-exception': [],
   // Keys are the `hideKey`s in
   // `src/components/tracking-exceptions/grid/tracking-exceptions-grid-layout.ts`.
   // The `actions` track has no hideKey — structural, never offered.
-  'tracking-exceptions': [
-    GRID_COL('carrier', 'Carrier', 'text'),
-    GRID_COL('source', 'Source', 'text'),
-    GRID_COL('staff', 'Staff', 'text'),
-    GRID_COL('reason', 'Reason', 'tag'),
-    GRID_COL('status', 'Status', 'tag'),
-    GRID_COL('retries', 'Retries', 'number'),
-    GRID_COL('lastCheck', 'Last check', 'date'),
-    GRID_COL('created', 'Created', 'date'),
-    GRID_COL('notes', 'Notes', 'longtext'),
-  ],
+  /**
+   * Tracking exceptions — **deliberately empty** since the wave 1.4 slot port.
+   * Hiding an exception fact is now unbinding it from a slot; the retry/edit
+   * CONTROL was never here (it is structural). The KEY stays because
+   * `TableId`'s runtime vocabulary derives from this record's keys.
+   */
+  'tracking-exceptions': [],
   // Keys are the `hideKey`s in
   // `src/components/support/zendesk/grid/support-tickets-grid-layout.ts`.
   // `select` / `subject` are absent — structurally un-hideable identity.

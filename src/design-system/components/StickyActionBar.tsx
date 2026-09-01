@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { AlertCircle, Check, ChevronDown, Loader2 } from '@/components/Icons';
+import { KeyboardKey } from '@/design-system/primitives/KeyboardKey';
 import { Popover } from '@/design-system/primitives/Popover';
 import { cn } from '@/utils/_cn';
 
@@ -381,9 +382,7 @@ export function StickyActionBar({
                       key={`${h.key}-${h.label}`}
                       className="inline-flex items-center gap-1.5"
                     >
-                      <kbd className="rounded-md border border-border-soft bg-surface-canvas px-1.5 py-0.5 font-mono text-role-micro text-text-muted">
-                        {h.key}
-                      </kbd>
+                      <KeyboardKey size="md">{h.key}</KeyboardKey>
                       <span className="font-semibold uppercase tracking-[0.14em]">
                         {h.label}
                       </span>

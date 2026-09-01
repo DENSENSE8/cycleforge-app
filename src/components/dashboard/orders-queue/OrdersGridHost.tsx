@@ -33,6 +33,7 @@ import {
 } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
 import type { DataTableTab } from '@/components/tables/TableStatusBar';
 import type { DataTableDateMenu } from '@/components/tables/DataTable';
+import { useRailStatusBarActions } from '@/components/right-rail/RailSelectionActions';
 import {
   ORDER_EXPORT_COLUMNS,
   buildOrderExportRow,
@@ -77,6 +78,7 @@ export function OrdersGridHost({
   ...options
 }: OrdersGridHostProps) {
   const sheet = useOrdersSpreadsheet(options);
+  const selectionActions = useRailStatusBarActions();
 
   // The shipped ORDER-export shape, not the on-screen column set: a pasted row
   // has to carry the identity fields (record id, SKU, platform) that make it
@@ -102,6 +104,7 @@ export function OrdersGridHost({
       onTabChange={onTabChange}
       totalCount={totalCount}
       copyExport={copyExport}
+      selectionActions={selectionActions}
     />
   );
 }

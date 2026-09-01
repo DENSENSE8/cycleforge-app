@@ -52,9 +52,11 @@ export interface ButtonProps
    *   already soft). Naming it after the family it belongs to is the point: a
    *   workbench CTA reaching for `radius="composer"` is visibly claiming
    *   something untrue.
+   * - `surface` — `cornerClass('surface')`. Soft rounded rectangle. Mobile
+   *   chrome that sits beside inset-grouped cards (hamburger · scan CTA).
    * - `pill` — `cornerClass('pill')`. The surviving `rounded-full` role.
    */
-  radius?: 'flush' | 'composer' | 'pill';
+  radius?: 'flush' | 'composer' | 'surface' | 'pill';
 }
 
 // ─── Variant classes ─────────────────────────────────────────────────────────
@@ -69,6 +71,7 @@ const BUTTON_CORNER = cornerClass('flush');
 const BUTTON_RADIUS: Record<NonNullable<ButtonProps['radius']>, string> = {
   flush: BUTTON_CORNER,
   composer: COMPOSER_SHELL_CORNER,
+  surface: cornerClass('surface'),
   pill: cornerClass('pill'),
 };
 
@@ -127,8 +130,9 @@ const PRESS_FEEDBACK =
  * `danger` · `success` · `execute`). Replaces the ~1,300 hand-rolled
  * `<button className="bg-… px-… rounded-…">` scattered across the app.
  *
- * - Corner SoT: `radius` prop, default `flush` → `rounded-none`. The one soft
- *   opt-in is `radius="composer"` (the `OmnichannelComposerDock` shell family).
+ * - Corner SoT: `radius` prop, default `flush` → `rounded-none`. Soft opt-ins:
+ *   `radius="composer"` (the `OmnichannelComposerDock` shell family) and
+ *   `radius="surface"` (mobile chrome beside inset-grouped cards).
  * - Children-based API: `<Button variant="brand" icon={<Plus />}>Save</Button>`
  * - CSS press feedback (`active:scale`) on every variant — no motion engine
  * - Mode-aware: promotes to 44px+ touch targets on mobile via `UIModeProvider`

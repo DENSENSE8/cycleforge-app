@@ -42,15 +42,41 @@ test('a desk segment stays rail-less with its own params attached', () => {
   );
 });
 
-test('scan-out keeps its station rail — it is not a desk-chrome page', () => {
+test('Support ticket alias of To ship stays rail-less', () => {
+  // `/shipping/orders?context=support` is Support's spine pin on the Shipping
+  // desk, not a second rail. Focus + Saved views must stay collapsed.
   assert.equal(
-    isRaillessSurface('/shipping/scan-out', params()),
-    false,
-    'Scan out is a Scan Station: edge-to-edge shell, recents rail intact',
+    isRaillessSurface('/shipping/orders', params('context=support')),
+    true,
+  );
+  assert.equal(
+    isRaillessSurface('/shipping/orders', params('context=support&openOrderId=7')),
+    true,
   );
 });
 
-test('scan stations at large are never rail-less', () => {
+test('Support keeps a rail only on Tickets recents', () => {
+  assert.equal(isRaillessSurface('/support', params()), false);
+  assert.equal(isRaillessSurface('/support', params('mode=tickets')), false);
+  assert.equal(isRaillessSurface('/support', params('ticket=12')), false);
+  for (const mode of ['voicemail', 'calls', 'warranty', 'issues', 'orders']) {
+    assert.equal(
+      isRaillessSurface('/support', params(`mode=${mode}`)),
+      true,
+      `/support?mode=${mode} must collapse the left column`,
+    );
+  }
+});
+
+test('scan-out is rail-less — mobile-first composer, no left recent rail', () => {
+  assert.equal(
+    isRaillessSurface('/shipping/scan-out', params()),
+    true,
+    'Scan out collapses the left column for full-bleed center + bottom scan',
+  );
+});
+
+test('other scan stations keep their rail', () => {
   for (const path of ['/unbox', '/pack', '/test', '/triage']) {
     assert.equal(isRaillessSurface(path, params()), false, `${path} keeps its rail`);
   }

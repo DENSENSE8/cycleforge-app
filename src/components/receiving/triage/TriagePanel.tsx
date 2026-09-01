@@ -7,8 +7,8 @@
  * Station column anatomy (Arrival port of the Unbox golden — see
  * `display/station-port-from-unbox.md`):
  *   - CENTRE is the door flow and NOTHING else — identity
- *     ({@link StationContextBar} `placement="flow"`) → one white door-flow plane
- *     (`DISPLAYS_FLUSH_HOST` + `appSurfaceFillClass('chrome')`) holding PO /
+ *     ({@link StationContextBar} `placement="flow"`) → one sunken door-flow plane
+ *     (`DISPLAYS_FLUSH_HOST` + `STATION_SCAN_WELL_CLASS`) holding PO /
  *     unfound **items** (no units chrome). Identity abuts items with zero air
  *     (`reserveIdentityClearance={false}`, `bodyGap="none"`). Nothing stacks
  *     under the items: the centre `TriageClassifySection` and the Staging
@@ -70,11 +70,13 @@ import { LineCartonContextSection } from '../workspace/line-edit/LineCartonConte
 import { POUnboxingSection } from '../workspace/line-edit/POUnboxingSection';
 import type { ClaimModalMode } from '../workspace/claim/claim-types';
 import {
+  StationDisplaysParkedRail,
   StationDisplaysPushStack,
+  StationDisplaysUtilityRail,
   STATION_DISPLAY_INDEX,
+  resolveDisplaysActiveTab,
   useYieldStationDisplaysOnAssistantOpen,
 } from '@/components/station/displays';
-import { StationDisplaysUtilityRail } from '@/components/station/displays';
 import { useUnboxLineController } from '../workspace/line-edit/hooks/useUnboxLineController';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchLineUpdated } from '@/components/station/receiving-lines-table-helpers';
@@ -93,7 +95,7 @@ import {
 import {
   DISPLAYS_FLUSH_HOST,
 } from '@/design-system/shells/detail-stack';
-import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
+import { STATION_SCAN_WELL_CLASS } from '@/components/station/scan-depth';
 import { cn } from '@/utils/_cn';
 
 export function TriagePanel({
@@ -113,9 +115,7 @@ export function TriagePanel({
 
   // The right-edge Displays push (Ticket + Pairing). `null` IS closed; `index`
   // is Root Index; a leaf id is the open body. No second `pairingOpen` flag.
-  const [activeSideTab, setActiveSideTab] = useState<
-    TriageDisplayTab | typeof STATION_DISPLAY_INDEX | null
-  >(null);
+  const [activeSideTab, setActiveSideTab] = useState<string | null>(null);
   const [claimMode, setClaimMode] = useState<ClaimModalMode>('link');
   const [pairingFocus, setPairingFocus] = useState<{
     tab: 'zoho_po' | null;
@@ -123,7 +123,7 @@ export function TriagePanel({
   } | null>(null);
 
   const claimDisplays = useCallback(
-    (tab: TriageDisplayTab | typeof STATION_DISPLAY_INDEX) => {
+    (tab: string) => {
       // One right-edge wrapper — Add inbound (RightRailHost) yields to Displays.
       dispatchStationDeskOccupantClose();
       setActiveSideTab(tab);
@@ -315,7 +315,13 @@ export function TriagePanel({
         onLocationPlaced: closeDisplays,
         // Root Index is not a leaf — Timeline's audit read waits for the leaf
         // itself, never paints behind the index.
-        activeTab: activeSideTab === STATION_DISPLAY_INDEX ? null : activeSideTab,
+        activeTab:
+          activeSideTab === 'ticket' ||
+          activeSideTab === 'linkage' ||
+          activeSideTab === 'location' ||
+          activeSideTab === 'timeline'
+            ? activeSideTab
+            : null,
       }),
     [
       activeSideTab,
@@ -346,6 +352,15 @@ export function TriagePanel({
         },
       ),
     [triageDisplayTabs, claimTicketId, row],
+  );
+
+  const resolvedSideTab = useMemo(
+    () =>
+      resolveDisplaysActiveTab(
+        activeSideTab,
+        triageDisplayTabs.map((t) => t.id),
+      ),
+    [activeSideTab, triageDisplayTabs],
   );
 
   const buildTerminal = useCallback(
@@ -379,14 +394,24 @@ export function TriagePanel({
 
   // Scan-station chrome: utility rail when Displays closed (`←|` bottom
   // footer); ↑↓ on details panel top-right when open.
-  const utilityRailBody = !activeSideTab ? (
-    <StationDisplaysUtilityRail onOpenDisplays={openDisplaysIndex} />
+  const utilityRailBody = !resolvedSideTab ? (
+    <StationDisplaysUtilityRail
+      onOpenDisplays={openDisplaysIndex}
+      indexRail={
+        <StationDisplaysParkedRail
+          rows={triageDisplayIndexRows}
+          tabs={triageDisplayTabs}
+          activeId={activeSideTab}
+          onOpenLeaf={setActiveSideTab}
+        />
+      }
+    />
   ) : null;
 
   return (
     <>
       <StationScanPaneHost
-        displaysOpen={Boolean(activeSideTab)}
+        displaysOpen={Boolean(resolvedSideTab)}
         hostDataAttrs={{ 'data-arrival-pane-host': true }}
         centerTestId="arrival-station-center"
         utilityRail={utilityRailBody}
@@ -475,7 +500,7 @@ export function TriagePanel({
                 <div
                   className={cn(
                     DISPLAYS_FLUSH_HOST,
-                    appSurfaceFillClass('chrome'),
+                    STATION_SCAN_WELL_CLASS,
                     'min-h-0 flex-1 overflow-y-auto',
                   )}
                   data-testid="arrival-door-flow"
@@ -523,7 +548,7 @@ export function TriagePanel({
           </StationPanelRoot>
         }
         displays={
-          activeSideTab ? (
+          resolvedSideTab ? (
             <StationDisplaysPushStack
               ariaLabel="Arrival displays"
               storageKey="arrival-displays-push-width"
@@ -531,13 +556,13 @@ export function TriagePanel({
               resizeTestId="arrival-displays-push-resize"
               tabs={triageDisplayTabs}
               indexRows={triageDisplayIndexRows}
-              activeTab={activeSideTab}
+              activeTab={resolvedSideTab}
               onTabChange={(id) => {
                 if (id === STATION_DISPLAY_INDEX) {
                   claimDisplays(STATION_DISPLAY_INDEX);
                   return;
                 }
-                claimDisplays(id as TriageDisplayTab);
+                claimDisplays(id);
               }}
               onClose={closeDisplays}
               headerActions={

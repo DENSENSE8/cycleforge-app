@@ -14,7 +14,6 @@ import {
   queueRowBandDateSource,
   type OrdersQueueMode,
   type OrdersQueueSort,
-  type QueueRowRecord,
 } from './helpers';
 import { compareQueueColumnRows } from './queue-row-compare';
 
@@ -182,18 +181,14 @@ export function useOrdersQueueRows({
           const tb = new Date(b.created_at || b.deadline_at || 0).getTime();
           return tb - ta;
         }
-        // `deadline` is pure soonest-deadline (most overdue) first — no
-        // tested-before-pending grouping. `priority` keeps that grouping.
-        if (sort === 'priority' && queueMode === 'fulfillment') {
-          const testedA = Boolean((a as QueueRowRecord).has_tech_scan) ? 0 : 1;
-          const testedB = Boolean((b as QueueRowRecord).has_tech_scan) ? 0 : 1;
-          if (testedA !== testedB) return testedA - testedB;
-        }
+        // `deadline` (and every other composite besides newest) is soonest
+        // ship-by first — no tested-before-pending grouping. That grouping
+        // lived on retired `priority` and is gone with the menu row.
         return deadlineTime(a) - deadlineTime(b);
       });
 
     const sortedGroupedEntries = Object.entries(groupedRecords)
-      // `newest` shows the most recent day band first; `priority` shows soonest.
+      // `newest` shows the most recent day band first; ship-by shows soonest.
       .sort((a, b) => (sort === 'newest' ? b[0].localeCompare(a[0]) : a[0].localeCompare(b[0])))
       .map(([date, dayRecords]) => [date, sortDayRecords(dayRecords)] as [string, ShippedOrder[]]);
 

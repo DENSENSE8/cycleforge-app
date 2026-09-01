@@ -173,6 +173,39 @@ export function reorderFieldBinding(
 }
 
 /**
+ * Land a bound field on another bound field in the same band.
+ *
+ * Headers and under-title facts both drop by NAME (`dragFieldId` onto
+ * `dropFieldId`). The index is derived here so a notes-pinned subtitle line
+ * and a `status:N` header share one write. Cross-band drops refuse — that is
+ * a bind change, not a move.
+ */
+export function reorderFieldBindingByDrop(
+  layout: SlotLayout,
+  dragField: FieldDef,
+  dropField: FieldDef,
+): ToggleBindingResult {
+  if (dragField.id === dropField.id) return { ok: true, layout };
+  const dragBand = bandFor(dragField);
+  const dropBand = bandFor(dropField);
+  if (!dragBand) {
+    return { ok: false, reason: `'${dragField.label}' is not a bindable column` };
+  }
+  if (dragBand !== dropBand) {
+    return {
+      ok: false,
+      reason: `'${dragField.label}' and '${dropField.label}' are not in the same band`,
+    };
+  }
+  const bindings = dragBand === 'status' ? layout.statusBindings : layout.subtitleBindings;
+  const dropIndex = bindings.findIndex((b) => b.fieldId === dropField.id);
+  if (dropIndex < 0) {
+    return { ok: false, reason: `'${dropField.label}' is not bound` };
+  }
+  return reorderFieldBinding(layout, dragField, dropIndex);
+}
+
+/**
  * The Fields picker's rows: every status/subtitle-bindable catalog field, with
  * its bound state and — when its band is full — the limit copy. Identity and
  * amount fields are omitted (locked / not free slots).

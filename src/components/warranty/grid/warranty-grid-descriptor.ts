@@ -12,9 +12,8 @@ import {
 } from '@/design-system/components/grid';
 import type { WarrantyClaimListRow } from '@/lib/warranty/types';
 import {
-  defaultDirForWarrantyGridSort,
-  isWarrantyGridFrozen,
-  isWarrantyGridSortable,
+  defaultDirForWarrantyColumn,
+  isWarrantyColumnSortable,
   type WarrantyGridColumn,
 } from './warranty-grid-layout';
 
@@ -47,9 +46,10 @@ export function makeWarrantyGridDescriptor(
     'support.warranty',
     columns,
     {
-      isSortable: isWarrantyGridSortable,
-      sortDescFirst: (key) => defaultDirForWarrantyGridSort(key) === 'desc',
-      isLocked: isWarrantyGridFrozen,
+      isSortable: (key) => isWarrantyColumnSortable(columns, key),
+      sortDescFirst: (key) => defaultDirForWarrantyColumn(columns, key) === 'desc',
+      // Locked = the mounted model's own frozen prefix (`select · title`).
+      isLocked: (key) => columns.some((c) => c.key === key && c.frozen === true),
     },
     WARRANTY_GRID_CAPABILITIES,
   );

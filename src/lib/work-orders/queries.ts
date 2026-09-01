@@ -14,6 +14,27 @@ import type { WorkOrderRow, WorkStatus } from '@/components/work-orders/types';
 
 const shippedByCarrierOrLatestStatusSql = SHIPPED_BY_CARRIER_SQL;
 
+/**
+ * A caged order is not workable work — **R-FLOW-2, 2026-09-01**.
+ *
+ * Auto-cage (`src/lib/orders/auto-cage.ts`) now stamps `release_state='caged'`
+ * on every freshly ingested order that fails a release gate, and the listing
+ * automations assign a tech/packer at import. Without this predicate those two
+ * facts combine into the wrong answer: an order still sitting in triage —
+ * unpaired, or with no paperwork linked — arrives on its assignee's goal chip
+ * and `/m/work` queue as the next thing to do, days before anyone may release
+ * it. Tracking alone is enough to reach this queue (`shipment_id IS NOT NULL`),
+ * so the cage is the ONLY thing standing between a half-known order and the
+ * floor.
+ *
+ * Spelled exactly as the other live-queue readers spell it
+ * (`/api/orders` fulfillmentScope, `/api/orders/queue-counts`) so all three
+ * agree on what "in the working set" means: **NULL reads as released**, per the
+ * `2026-08-30c` migration header — every order predating the cage is real
+ * working stock.
+ */
+const NOT_CAGED_SQL = `COALESCE(o.release_state, '') <> 'caged'`;
+
 function normalizeStatus(raw: unknown): WorkStatus {
   const value = String(raw || '').trim().toUpperCase();
   if (value === 'ASSIGNED' || value === 'IN_PROGRESS' || value === 'DONE' || value === 'CANCELED') return value;
@@ -108,6 +129,7 @@ export async function getOrders(orgId: string): Promise<WorkOrderRow[]> {
        )
        AND UPPER(COALESCE(o.status, '')) <> 'SHIPPED'
        AND o.shipment_id IS NOT NULL
+       AND ${NOT_CAGED_SQL}
        AND o.organization_id = $1
      ORDER BY COALESCE(test_wa.deadline_at, o.created_at) ASC, o.id ASC
      LIMIT 500`,
@@ -177,6 +199,13 @@ function mapOrderRow(row: any) {
  * Additive: a new function alongside getOrders; the existing query is untouched.
  * `fromISO`/`toISO` are inclusive-start / exclusive-end UTC ISO timestamps for
  * the visible window. Org/RLS scoped via tenantQuery.
+ *
+ * **Deliberately NOT filtered by `NOT_CAGED_SQL`** (considered 2026-09-01, not
+ * overlooked). That predicate exists to keep un-triaged work off an operator's
+ * actionable queue; this is a planning lens that already shows DONE rows, and
+ * an order due Thursday that is still stuck in triage is exactly what a
+ * scheduler needs to SEE. If the calendar should hide caged rows, that is an
+ * operator ruling — make it here, and say so.
  */
 export async function getWorkOrdersInRange(
   orgId: string,

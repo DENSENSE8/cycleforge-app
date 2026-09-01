@@ -58,7 +58,6 @@ import {
 } from '@/lib/right-rail/order-compare-model';
 import { cn } from '@/utils/_cn';
 import {
-  RailActionRegion,
   RailSelectionBand,
   useRailActionSnapshot,
 } from './OrderRailActions';
@@ -174,8 +173,7 @@ export function OrderRailCompare() {
     () => resolveRailOccupancy((rows as OrderCompareRow[]).map((r) => Number(r.id))),
     [rows],
   );
-  // Gated through the resolver's own helper so this and `OrderRailShell` can
-  // never both hold a claim on the single slot.
+  // Gated through the resolver so compare never fights inspect for the slot.
   const active = isRailOccupantActive(occupancy, 'compare');
 
   const compare = useMemo(() => {
@@ -282,7 +280,10 @@ export function OrderRailCompare() {
           }
         />
 
-        <RailActionRegion />
+        {/*
+          Selection CTAs live on the table foot strip — do not remount them
+          here (same fork ruled out on the 3+ batch shell).
+        */}
       </div>
       </OrdersViewChromeBridge>
     </DetailStackRailRegistrar>

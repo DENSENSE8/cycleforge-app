@@ -3,9 +3,15 @@
 /**
  * Support · Tickets primary surface — Orders/Unbox workbench recipe.
  *
- * Chrome: a find row with sort beside it, and the shared {@link TableTabs}
- * status strip at the foot
+ * Chrome: ONE toolbar — status facets, find, sort, refresh — above the queue.
  * Body:   full ticket queue (SupportTicketRow) + pagination
+ *
+ * The status strip used to sit at the FOOT of the page as a second band, and
+ * the New ticket CTA sat inside the find row. Both moved on 2026-08-31: filters
+ * belong with the search that narrows the same list (the To-ship desk's
+ * grammar), and a page-level primary action belongs in the desk chrome's
+ * top-right slot with every other page's — published through
+ * {@link DeskActionSlotRegistrar}, so this page stops drawing its own.
  *
  * URL: `/support` (+ `tstatus` / `tq`). Row open writes `?ticket=` for Station focus.
  * Sidebar owns the recently-selected dock only — not this list.
@@ -45,6 +51,7 @@ import { ZendeskSelect } from './ZendeskSelect';
 import { SupportTicketRow } from './queue/SupportTicketRow';
 import { TableTabs } from '@/components/tables/TableStatusBar';
 import { IconButton } from '@/design-system/primitives/IconButton';
+import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 
 const SUPPORT_PATH = '/support';
 
@@ -197,9 +204,12 @@ export function SupportTicketsBoard() {
   const { data, isLoading, isFetching, error } = useZendeskTickets(params);
   const tickets = data?.tickets ?? [];
 
+  // EVERY status is a face now, the default included. As a foot strip the
+  // default had no face at all — you could see you were on Pending but not that
+  // Open was where you started, and clicking the lit tab was the only way back.
   const tabs = useMemo(
     () =>
-      TICKET_STATUS_ITEMS.filter((item) => item.id !== DEFAULT_TICKET_STATUS).map((item) => ({
+      TICKET_STATUS_ITEMS.map((item) => ({
         id: item.id,
         label: item.label,
         count: item.id === status && data?.count != null ? data.count : undefined,
@@ -219,16 +229,33 @@ export function SupportTicketsBoard() {
 
   return (
     <>
-    <>
-      {/* Find + refresh sit with the list they act on, not on a chrome band. */}
-      <div className="flex min-w-0 shrink-0 items-center gap-2 border-b border-border-soft bg-surface-card px-2 py-1">
+      {/*
+        The board owns its OWN column. It used to return a bare double fragment
+        and inherit the flex context from whatever mounted it — which worked
+        only because `ServiceWorkspaceShell`'s list slot happens to be a
+        `flex-col`, and left the queue unable to fill any other host.
+      */}
+      <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
+      {/* ONE toolbar: what narrows the list sits with the list it narrows. */}
+      <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-2 border-b border-border-soft bg-surface-card px-2 py-1">
+        <TableTabs
+          tabs={tabs}
+          activeTab={status}
+          onTabChange={(id) => setStatus(parseTicketStatus(id))}
+          className="shrink-0 border-0 bg-transparent"
+        />
         <SearchField
           value={searchQuery}
           onChange={setSearch}
           placeholder="Search tickets…"
-          className="min-w-0 flex-1"
+          className="min-w-[12rem] flex-1"
           tone="neutral"
           hideUnderline
+        />
+        <ZendeskSelect
+          value={sort}
+          options={SORT_OPTIONS}
+          onChange={(v) => setSort(v as SortKey)}
         />
         <IconButton
           ariaLabel="Refresh tickets"
@@ -236,16 +263,6 @@ export function SupportTicketsBoard() {
           icon={<RefreshCw className={cn('h-3.5 w-3.5 shrink-0', isFetching && 'animate-spin')} />}
           onClick={() => void queryClient.invalidateQueries({ queryKey: ['zendesk'] })}
         />
-        <ZendeskSelect
-          value={sort}
-          options={SORT_OPTIONS}
-          onChange={(v) => setSort(v as SortKey)}
-        />
-        {canCreateTicket ? (
-          <Button variant="primary" size="sm" onClick={() => claim.openCreate()}>
-            New ticket
-          </Button>
-        ) : null}
       </div>
         <div className="min-h-0 flex-1 overflow-y-auto">
             {isLoading ? (
@@ -344,15 +361,15 @@ export function SupportTicketsBoard() {
               Next
             </Button>
           </div>
-      <TableTabs
-        tabs={tabs}
-        activeTab={status === DEFAULT_TICKET_STATUS ? undefined : status}
-        onTabChange={(id) =>
-          setStatus(parseTicketStatus(id === status ? DEFAULT_TICKET_STATUS : id))
-        }
-        className="border-t border-border-soft bg-surface-card"
-      />
-    </>
+      </div>
+
+      {canCreateTicket ? (
+        <DeskActionSlotRegistrar>
+          <DeskHeaderAction variant="primary" size="sm" onClick={() => claim.openCreate()}>
+            New ticket
+          </DeskHeaderAction>
+        </DeskActionSlotRegistrar>
+      ) : null}
 
       <SupportCreateTicketModal
         open={claim.createOpen}

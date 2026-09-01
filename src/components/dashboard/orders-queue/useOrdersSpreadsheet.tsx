@@ -17,11 +17,19 @@ import {
 import { useOrdersTableLayout } from './useOrdersTableLayout';
 import { ORDERS_GRID_CAPABILITIES } from '@/components/dashboard/orders-queue/orders-queue-descriptor';
 import { ORDERS_DEFAULT_TABLE_BINDING } from './orders-table-definition';
+import { outboundSavedViewsConfig } from '@/components/unshipped/outbound-sidebar-shared';
 import {
   COMPOUND_TRACK_SORT_KEYS,
+  QUEUE_DISPLAY_SORT_OPTIONS,
+  flipQueueDisplaySortDir,
   isQueueColumnSort,
+  isQueueNamePinSort,
   isQueueSortableColumnKey,
+  queueCarrierSortOptions,
+  queueChannelSortOptions,
+  queueDisplaySortFace,
   queueSortForColumnKey,
+  type QueueDisplaySort,
   type QueueDisplaySortDir,
 } from '@/utils/queue-display-sort';
 import {
@@ -148,6 +156,18 @@ export interface UseOrdersSpreadsheetOptions {
    * Inspector View topics controls portal — when set, ▦ portals there. To Ship
    * always uses portal-only mode (no card-corner hover fallback).
    */
+  /**
+   * Label-run active row (R-FLOW-6 host b): the row id carrying the
+   * active-work highlight while the To-ship Labels band is open. Highlight is
+   * an OUTLINE (law M3) — colour only, no geometry, no tween.
+   */
+  activeWorkRowId?: string | null;
+  /**
+   * The expansion band rendered BENEATH the active-work row (the shared
+   * `OrderShippingPanel` via `LabelRunBand`). Appears/disappears instantly —
+   * the band host must not animate geometry (M1/M2/M5).
+   */
+  renderActiveWorkBand?: (record: ShippedOrder) => ReactNode;
 }
 
 /**
@@ -202,6 +222,8 @@ export function useOrdersSpreadsheet({
   className,
   'data-testid': dataTestId = 'orders-grid-body',
   scrollParentRef,
+  activeWorkRowId = null,
+  renderActiveWorkBand,
 }: UseOrdersSpreadsheetOptions): OrdersSpreadsheetFeed {
   // Resolved ONCE per table render and threaded into every row's lateness
   // lookup — see `daysLateOn`. Reading it per row is what made the civil-date
@@ -222,7 +244,7 @@ export function useOrdersSpreadsheet({
 
   // Effective slot layout (staff ?? org ?? product) → the mounted compound
   // model. Rebinding changes bindings, never keys, so slot-keyed prefs hold.
-  const { effectiveLayout, subtitleFieldIds, fields, onReorder } = useOrdersTableLayout();
+  const { effectiveLayout, subtitleFieldIds, fields } = useOrdersTableLayout();
   const compoundColumns = useMemo(
     () => ordersCompoundColumnsFor(effectiveLayout, { queueMode }),
     [effectiveLayout, queueMode],
@@ -272,13 +294,17 @@ export function useOrdersSpreadsheet({
     (record: ShippedOrder, condition: string | null) => {
       const id = Number(record.id);
       if (!Number.isFinite(id)) return;
-      assignMutate(
-        { orderId: id, condition },
-        {
-          onError: (e) =>
-            toast.error(e instanceof Error ? e.message : 'Failed to save condition'),
-        },
-      );
+      assignMutate({ orderId: id, condition });
+    },
+    [assignMutate],
+  );
+
+  const handleCommitShipBy = useCallback(
+    (record: ShippedOrder, dateKey: string | null) => {
+      const id = Number(record.id);
+      if (!Number.isFinite(id)) return;
+      if (!dateKey) return;
+      assignMutate({ orderId: id, shipByDate: dateKey });
     },
     [assignMutate],
   );
@@ -322,59 +348,9 @@ export function useOrdersSpreadsheet({
             ? { orderId: id, itemNumber: value }
             : null;
       if (!patch) return;
-      assignMutate(patch, {
-        onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to save'),
-      });
+      assignMutate(patch);
     },
     [assignMutate],
-  );
-
-  /**
-   * Map an inline drop position back to a BINDING index.
-   *
-   * The note is pinned to the right of the line rather than sitting in binding
-   * order, so the list the operator drags within is the bindings MINUS the
-   * note. Landing at inline index 2 therefore means "after the second non-note
-   * fact", which is only the same number while the note is last.
-   */
-  const handleReorderSubtitle = useCallback(
-    (partKey: string, toInlineIndex: number) => {
-      const inline = subtitleFieldIds.filter((id) => id !== 'orders.notes');
-      const target = inline[Math.max(0, Math.min(inline.length - 1, toInlineIndex))];
-      if (!target || target === partKey) return;
-      const bindingIndex = subtitleFieldIds.indexOf(target);
-      if (bindingIndex < 0) return;
-      onReorder(partKey, bindingIndex);
-    },
-    [subtitleFieldIds, onReorder],
-  );
-
-  /**
-   * Header drag → the ORG layout.
-   *
-   * A header track only reorders within the band it materializes from: dragging
-   * a status column onto a subtitle track would be a BIND change, not a move,
-   * and the fields menu owns that. Structural tracks (`select`, `thumb`,
-   * `item`, `amount`, `_fill`) carry no `fieldId`, so they are ignored — their
-   * order is the compound row's geometry, not a preference.
-   */
-  const handleReorderColumn = useCallback(
-    (dragKey: string, dropKey: string) => {
-      const byKey = new Map(compoundColumns.map((c) => [c.key, c]));
-      const dragged = byKey.get(dragKey as OrdersQueueColumnKey);
-      const target = byKey.get(dropKey as OrdersQueueColumnKey);
-      if (!dragged?.fieldId || !target?.fieldId) return;
-      const band = (key: string) => (key.startsWith('status:') ? 'status' : key.startsWith('subtitle:') ? 'subtitle' : null);
-      if (band(dragKey) === null || band(dragKey) !== band(dropKey)) return;
-      const bindings =
-        band(dragKey) === 'status'
-          ? effectiveLayout.statusBindings
-          : effectiveLayout.subtitleBindings;
-      const toIndex = bindings.findIndex((b) => b.fieldId === target.fieldId);
-      if (toIndex < 0) return;
-      onReorder(dragged.fieldId, toIndex);
-    },
-    [compoundColumns, effectiveLayout, onReorder],
   );
 
   /**
@@ -394,14 +370,38 @@ export function useOrdersSpreadsheet({
     (key: OrdersQueueColumnKey, nextDir: 'asc' | 'desc') => {
       if (!urlDriven) return;
       // Resolve through the compound map: the header's key is a TRACK
-      // (`fulfillment`, `item`), and the `?sort=` vocabulary is in FACTS
-      // (`order`, `title`). This used to be a bare `isQueueColumnSort(key)`,
-      // which every compound key failed — so header clicks were a silent no-op.
-      const resolved = queueSortForColumnKey(key);
+      // (`fulfillment`, `item`, `status:1`), and the `?sort=` vocabulary is in
+      // FACTS (`order`, `title`, `picked`). Slot tracks resolve via fieldId.
+      const col = compoundColumns.find((c) => c.key === key);
+      const resolved = queueSortForColumnKey(key, col?.fieldId);
       if (!resolved) return;
       setSort(resolved, nextDir);
     },
-    [urlDriven, setSort],
+    [urlDriven, setSort, compoundColumns],
+  );
+
+  const handleSortMenuSelect = useCallback(
+    (id: string) => {
+      if (!urlDriven) return;
+      const next = id as QueueDisplaySort;
+      // A name pin is a face, not a direction. Re-selecting "Amazon" must
+      // keep Amazon on top — flipping would bury the name the operator chose.
+      if (isQueueNamePinSort(next)) {
+        setSort(next);
+        return;
+      }
+      if (isQueueColumnSort(next) && sort === next && dir) {
+        setSort(next, flipQueueDisplaySortDir(dir));
+      } else {
+        setSort(next);
+      }
+    },
+    [urlDriven, sort, dir, setSort],
+  );
+
+  const sortMenuOptions = useMemo(
+    () => [...QUEUE_DISPLAY_SORT_OPTIONS, ...queueChannelSortOptions(), ...queueCarrierSortOptions()],
+    [],
   );
 
   const isSearching = Boolean(searchValue.trim());
@@ -415,11 +415,11 @@ export function useOrdersSpreadsheet({
     header that no longer exists — otherwise a sorted column shows no
     `aria-sort` and the operator cannot see what the list is ordered by.
   */
-  const sortedTrack = Object.entries(COMPOUND_TRACK_SORT_KEYS).find(
-    ([, fact]) => fact === sort,
-  )?.[0];
+  const sortedTrack =
+    compoundColumns.find((c) => queueSortForColumnKey(c.key, c.fieldId) === sort)?.key ??
+    Object.entries(COMPOUND_TRACK_SORT_KEYS).find(([, fact]) => fact === sort)?.[0];
   const columnSort =
-    urlDriven && isQueueColumnSort(sort)
+    urlDriven && isQueueColumnSort(sort) && !isQueueNamePinSort(sort)
       ? ((sortedTrack ?? sort) as OrdersQueueColumnKey)
       : null;
   const columnSortDir = urlDriven && columnSort ? dir : null;
@@ -475,7 +475,6 @@ export function useOrdersSpreadsheet({
           queueMode={queueMode}
           columns={visible}
           subtitleFieldIds={subtitleFieldIds}
-          onReorderSubtitle={handleReorderSubtitle}
           capabilities={ORDERS_GRID_CAPABILITIES}
           trackingAction={
             queueMode === 'labels' ? <AddTrackingPopover record={record} /> : undefined
@@ -488,7 +487,8 @@ export function useOrdersSpreadsheet({
               : undefined
           }
           onCommitCondition={handleCommitCondition}
-            onCommitSubtitleField={handleCommitSubtitleField}
+          onCommitSubtitleField={handleCommitSubtitleField}
+          onCommitShipBy={handleCommitShipBy}
         />
       );
     },
@@ -504,11 +504,12 @@ export function useOrdersSpreadsheet({
       handleToggleSelect,
       handleRequestReplaceTracking,
       handleCommitCondition,
+      handleCommitSubtitleField,
+      handleCommitShipBy,
       queueMode,
       clickSelect,
       fillsById,
       subtitleFieldIds,
-      handleReorderSubtitle,
     ],
   );
 
@@ -521,11 +522,9 @@ export function useOrdersSpreadsheet({
     // untouched; only the presentation model moves.
     columns: compoundColumns,
     // Fields picker data — DataTable renders it when the definition declares
-    // `fieldsMenu` (org/staff slot binding lives behind it).
+    // `fieldsMenu` (org/staff slot binding lives behind it). Header and
+    // under-title drags both write through `fields.onReorderByDrop`.
     fields,
-    // Header drags — reorder writes the org layout, resize writes a per-track
-    // width override the grid template already reads.
-    onReorderColumn: handleReorderColumn,
     onResizeColumn: handleResizeColumn,
     ariaLabel,
     orderGroupsByDate,
@@ -539,9 +538,27 @@ export function useOrdersSpreadsheet({
     sectionHeaders: { [ADDED_TODAY_BAND]: ADDED_TODAY_LABEL },
     rows: displayedRecords,
     getRowId: getTableRowId,
-    sort: columnSort && isQueueSortableColumnKey(columnSort) ? columnSort : null,
+    sort: columnSort && isQueueSortableColumnKey(columnSort, compoundColumns.find((c) => c.key === columnSort)?.fieldId)
+      ? columnSort
+      : null,
     dir: columnSortDir,
     onSortChange: handleSortChange,
+    sortMenu: urlDriven
+      ? {
+          options: sortMenuOptions,
+          active: sort,
+          hot: sort !== 'deadline',
+          onSelect: handleSortMenuSelect,
+          activeFace: queueDisplaySortFace(sort),
+        }
+      : undefined,
+    views:
+      queueMode === 'fulfillment'
+        ? {
+            ...outboundSavedViewsConfig('unshipped'),
+            emptyHint: 'Save a filter and sort combination to come back to it.',
+          }
+        : undefined,
     loading,
     emptyMessage,
     emptyState: showFirstRun ? firstRunEmpty : undefined,
@@ -562,7 +579,10 @@ export function useOrdersSpreadsheet({
     // A header key on the compound row is a TRACK; the sort vocabulary is in
     // FACTS. `queueSortForColumnKey` bridges them, and this predicate is what
     // keeps the header offering the sorts the engine will actually perform.
-    isSortable: isQueueSortableColumnKey,
+    isSortable: (key) => {
+      const col = compoundColumns.find((c) => c.key === key);
+      return isQueueSortableColumnKey(key, col?.fieldId);
+    },
     selectGutterChrome: 'always' as const,
     // `rowIndex` is the group's first-leaf ARIA index and MUST be forwarded:
     // `OrdersQueueTableRow` derives `inTable` from it, so without it every

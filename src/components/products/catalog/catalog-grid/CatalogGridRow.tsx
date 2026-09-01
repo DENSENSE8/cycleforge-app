@@ -8,7 +8,6 @@ import {
   type CatalogGridCellCtx,
 } from '@/components/products/catalog/catalog-grid/cells';
 import {
-  CATALOG_GRID_COLUMNS,
   catalogDisplayTitle,
   catalogGridTemplate,
   type CatalogGridColumn,
@@ -22,7 +21,7 @@ interface CatalogGridRowProps {
   inventoryProviderLabel?: string | null;
   onOpen: (row: CatalogListRow) => void;
   onToggleSelect: (row: CatalogListRow, event: { shiftKey: boolean }) => void;
-  columns?: readonly CatalogGridColumn[];
+  columns: readonly CatalogGridColumn[];
 }
 
 /**
@@ -36,7 +35,7 @@ export const CatalogGridRow = memo(function CatalogGridRow({
   inventoryProviderLabel,
   onOpen,
   onToggleSelect,
-  columns = CATALOG_GRID_COLUMNS,
+  columns,
 }: CatalogGridRowProps) {
   const title = catalogDisplayTitle(row);
   const ctx: CatalogGridCellCtx = {
@@ -45,6 +44,7 @@ export const CatalogGridRow = memo(function CatalogGridRow({
     isChecked,
     inventoryProviderLabel,
     onToggleSelect,
+    columns,
   };
 
   return (

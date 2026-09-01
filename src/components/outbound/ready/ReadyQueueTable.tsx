@@ -12,18 +12,21 @@ import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { AllocationHit } from '@/lib/channel-allocation';
 import { READY_TABLE_BINDING } from '@/components/outbound/ready/grid/ready-table-definition';
+import { ReadyGridRow } from '@/components/outbound/ready/grid/ReadyGridRow';
 import {
-  ReadyGridRow,
-  readyFallbackStateLabel,
-  readyHitTitle,
-  readyVerdictLabel,
-} from '@/components/outbound/ready/grid/ReadyGridRow';
-import {
-  defaultDirForReadyGridSort,
-  isReadyGridSortable,
+  defaultDirForReadyColumn,
+  isReadyColumnSortable,
+  readySheetColumnsFor,
+  readySortFactFor,
   type ReadyGridColumn,
   type ReadyGridColumnKey,
 } from '@/components/outbound/ready/grid/ready-grid-layout';
+import { useReadyTableLayout } from '@/components/outbound/ready/grid/useReadyTableLayout';
+import {
+  readyDestinationLabel,
+  readyHitTitle,
+  readyVerdictLabel,
+} from '@/lib/tables/field-catalog/ready-resolve';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 interface ReadyQueueTableProps {
@@ -45,9 +48,12 @@ interface ReadyQueueTableProps {
 }
 
 /**
- * Row order for a column sort.
+ * Row order for a column sort, keyed by SORT FACT — the structural `title`
+ * plus catalog field ids (`readySortFactFor` maps a mounted column to one). A
+ * `?colsort=` header key resolves through the mounted model, so rebinding a
+ * slot re-points the sort with it.
  *
- * `destination` sorts on what the cell actually SHOWS, not on
+ * `ready.destination` sorts on what the cell actually SHOWS, not on
  * `hit.disposition` alone: a hit with no disposition renders its allocation
  * state instead ("In FBA", "Not ready"), so ordering by the raw field would
  * scatter those rows against a column the operator can see is grouped.
@@ -55,24 +61,24 @@ interface ReadyQueueTableProps {
 function compareReadyRows(
   a: AllocationHit,
   b: AllocationHit,
-  key: ReadyGridColumnKey,
+  fact: string,
   dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
-  switch (key) {
+  switch (fact) {
     case 'title':
       return sign * readyHitTitle(a).localeCompare(readyHitTitle(b));
-    case 'verdict':
+    case 'ready.unit':
+      return sign * (a.sku || '').localeCompare(b.sku || '');
+    case 'ready.verdict':
       return sign * readyVerdictLabel(a.verdict).localeCompare(readyVerdictLabel(b.verdict));
-    case 'destination': {
-      const label = (h: AllocationHit) => h.disposition ?? readyFallbackStateLabel(h);
-      return sign * label(a).localeCompare(label(b));
-    }
-    case 'velocity':
+    case 'ready.destination':
+      return sign * readyDestinationLabel(a).localeCompare(readyDestinationLabel(b));
+    case 'ready.velocity':
       return sign * (a.velocityTier || '').localeCompare(b.velocityTier || '');
-    case 'condition':
+    case 'ready.condition':
       return sign * (a.conditionGrade || '').localeCompare(b.conditionGrade || '');
-    case 'tested':
+    case 'ready.tested':
       // Untested rows have no instant to order by — park them last in BOTH
       // directions rather than letting the empty string sort as "oldest".
       if (!a.testedAt && !b.testedAt) return 0;
@@ -106,13 +112,24 @@ export function ReadyQueueTable({
 }: ReadyQueueTableProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // The COLUMNS are the effective slot layout's materialization (staff ?? org
+  // ?? product — wave 1.1 hand-model kill): the fourth family on the slot
+  // engine, sheet morph. Sort keys are the mounted track keys; each resolves to
+  // its bound field's fact through `readySortFactFor`.
+  const { effectiveLayout, fields } = useReadyTableLayout();
+  const columns = useMemo(() => readySheetColumnsFor(effectiveLayout), [effectiveLayout]);
+  const sortFactByKey = useMemo(
+    () => new Map(columns.map((c) => [c.key as string, readySortFactFor(c)])),
+    [columns],
+  );
+
   const {
     sort: columnSort,
     dir: sortDir,
     setSort,
   } = useUrlColumnSort<ReadyGridColumnKey>({
-    isColumn: isReadyGridSortable,
-    defaultDir: defaultDirForReadyGridSort,
+    isColumn: (raw) => isReadyColumnSortable(columns, raw),
+    defaultDir: (key) => defaultDirForReadyColumn(columns, key),
   });
 
   // One-shot settle re-render after first data — the virtualized LedgerGrid
@@ -128,14 +145,15 @@ export function ReadyQueueTable({
   }, [isLoading, hasRows]);
 
   const orderGroupsByDate = useMemo<[string, RowGroup<AllocationHit>[]][]>(() => {
+    const sortFact = columnSort ? (sortFactByKey.get(columnSort) ?? null) : null;
     const ordered =
-      columnSort && sortDir
-        ? [...hits].sort((a, b) => compareReadyRows(a, b, columnSort, sortDir))
+      sortFact && sortDir
+        ? [...hits].sort((a, b) => compareReadyRows(a, b, sortFact, sortDir))
         : hits;
     // One unnamed band — tested history has no fold axis. Safe when empty:
     // `LedgerGrid` decides emptiness from ROW count (`hasGridRows`).
     return [['', ordered.map((hit) => ({ key: `hit:${hit.testingResultId}`, rows: [hit] }))]];
-  }, [hits, columnSort, sortDir]);
+  }, [hits, columnSort, sortFactByKey, sortDir]);
 
   // Degrade-not-fail: this list is the pane's PRIMARY resource, so a failed
   // fetch earns the retryable error state — never an empty grid, which would
@@ -163,6 +181,8 @@ export function ReadyQueueTable({
     <div className="flex min-h-[240px] min-w-0 flex-col" aria-busy={isFetching}>
       <DataTable<AllocationHit, ReadyGridColumnKey, ReadyGridColumn>
         binding={READY_TABLE_BINDING}
+        columns={columns}
+        fields={fields}
         orderGroupsByDate={orderGroupsByDate}
         rows={hits}
         getRowId={(r) => String(r.testingResultId)}

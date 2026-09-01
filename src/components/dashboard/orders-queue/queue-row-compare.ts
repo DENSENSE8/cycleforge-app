@@ -4,8 +4,11 @@
  */
 
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
+import { resolveDisplayCarrier } from '@/lib/carrier-brand';
+import { resolveMarketplacePlatformMeta } from '@/lib/marketplace-order-id';
 import { getDaysLateNullable } from '@/utils/date';
 import type { QueueDisplaySortColumn, QueueDisplaySortDir } from '@/utils/queue-display-sort';
+import { queueCarrierPin, queueChannelPin } from '@/utils/queue-display-sort';
 import type { QueueRowRecord } from './helpers';
 
 function deadlineTime(r: ShippedOrder): number {
@@ -23,6 +26,54 @@ function trackingValue(record: QueueRowRecord): string {
 function qtyValue(record: QueueRowRecord): number {
   const n = Number(record.quantity);
   return Number.isFinite(n) ? n : 0;
+}
+
+/** Queue "nobody" faces — treat as blank so they sort last. */
+function personName(record: QueueRowRecord, keys: readonly string[]): string {
+  for (const key of keys) {
+    const raw = String(record[key] ?? '').trim();
+    if (raw && raw !== '---') return raw;
+  }
+  return '';
+}
+
+function pickerName(record: QueueRowRecord): string {
+  return personName(record, ['tested_by_name', 'tester_name']);
+}
+
+function packerName(record: QueueRowRecord): string {
+  return personName(record, ['packed_by_name', 'packer_name']);
+}
+
+/**
+ * Order-column filled dot — Amazon vs eBay vs Walmart. Independent of the
+ * tracking ring so an eBay order with Amazon TBA does not join an Amazon pin.
+ */
+function channelFace(record: ShippedOrder): { blank: boolean; label: string } {
+  const platform = resolveMarketplacePlatformMeta(
+    record.order_id,
+    (record as QueueRowRecord).account_source,
+  );
+  if (!platform.value || !platform.label) return { blank: true, label: '' };
+  return { blank: false, label: platform.label };
+}
+
+/**
+ * Tracking-ring face — same ladder the tracking chip paints.
+ */
+function carrierFace(record: ShippedOrder): { blank: boolean; label: string } {
+  const tracking = trackingValue(record as QueueRowRecord);
+  const carrier = resolveDisplayCarrier(tracking, record.carrier);
+  if (!carrier || carrier === 'Unknown') return { blank: true, label: '' };
+  return { blank: false, label: carrier };
+}
+
+function compareBlankLast(aBlank: boolean, bBlank: boolean): number | null {
+  if (aBlank || bBlank) {
+    if (aBlank && bBlank) return 0;
+    return aBlank ? 1 : -1;
+  }
+  return null;
 }
 
 /**
@@ -82,8 +133,50 @@ export function compareQueueColumnRows(
       }
       break;
     }
-    default:
+    case 'picked': {
+      const na = pickerName(ra);
+      const nb = pickerName(rb);
+      const blank = compareBlankLast(!na, !nb);
+      if (blank !== null) return blank;
+      primary = na.localeCompare(nb, undefined, { sensitivity: 'base' });
+      break;
+    }
+    case 'packed': {
+      const na = packerName(ra);
+      const nb = packerName(rb);
+      const blank = compareBlankLast(!na, !nb);
+      if (blank !== null) return blank;
+      primary = na.localeCompare(nb, undefined, { sensitivity: 'base' });
+      break;
+    }
+    case 'carrier': {
+      const ca = carrierFace(a);
+      const cb = carrierFace(b);
+      const blank = compareBlankLast(ca.blank, cb.blank);
+      if (blank !== null) return blank;
+      primary = ca.label.localeCompare(cb.label, undefined, { sensitivity: 'base' });
+      break;
+    }
+    default: {
+      const channelPin = queueChannelPin(column);
+      const carrierPin = queueCarrierPin(column);
+      const pin = channelPin ?? carrierPin;
+      const faceOf = channelPin ? channelFace : carrierFace;
+      if (pin) {
+        const ca = faceOf(a);
+        const cb = faceOf(b);
+        const blank = compareBlankLast(ca.blank, cb.blank);
+        if (blank !== null) return blank;
+        const aPin = ca.label === pin;
+        const bPin = cb.label === pin;
+        // Pin rank never follows `dir` — flipping would bury the name the
+        // operator just chose. Remaining faces still A–Z / Z–A.
+        if (aPin !== bPin) return (aPin ? 0 : 1) - (bPin ? 0 : 1);
+        primary = ca.label.localeCompare(cb.label, undefined, { sensitivity: 'base' });
+        break;
+      }
       primary = 0;
+    }
   }
 
   if (primary !== 0) return sign * primary;

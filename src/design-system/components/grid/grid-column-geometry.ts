@@ -42,6 +42,7 @@ interface HeaderLike extends TrackLike {
   gridLabel?: string;
   labelFitRem?: number;
   headerGlyphOnly?: boolean;
+  headerForceLabel?: boolean;
 }
 interface FrozenTrackLike extends TrackLike {
   key: string;
@@ -88,8 +89,9 @@ export function gridColumnTrackRem(column: TrackLike): number {
 /**
  * Should this header render its text label, or fall back to the type glyph?
  *
- * THREE gates, in order:
+ * FOUR gates, in order:
  *  - the column must not have DECLARED itself glyph-only (`headerGlyphOnly`),
+ *  - the column may DECLARE the word always (`headerForceLabel` — photo gutter),
  *  - the track must clear the column's declared `labelFitRem` floor, and
  *  - the RESOLVED label must actually fit that track.
  *
@@ -122,6 +124,7 @@ export function gridColumnTrackRem(column: TrackLike): number {
  */
 export function gridHeaderShowsLabel(column: HeaderLike, label?: string): boolean {
   if (column.headerGlyphOnly) return false;
+  if (column.headerForceLabel) return true;
   if (isFlexTrack(column)) return true;
   const trackRem = gridColumnTrackRem(column);
   if (trackRem < (column.labelFitRem ?? 4.5)) return false;
@@ -288,10 +291,11 @@ export function gridFrozenLeft(columns: readonly FrozenTrackLike[], key: string)
  * clipped once the column was sorted (77.6px fit in 80px, but 93.6px with the
  * chevron did not).
  *
- * There is no separate chevron budget: `GridHeaderLabel` renders ONE mark slot,
- * swapping the type glyph for the sort chevron while a column is sorted. That is
- * what keeps this a two-term calculation and keeps header geometry identical
- * across sort states.
+ * There is no separate chevron budget: `GridHeaderLabel` paints a sort arrow
+ * only while THIS column is the active sort, to the right of the title. The
+ * 2rem chrome still budgets that arrow so activating a sort cannot clip a
+ * label that fit while idle. Type glyphs are glyph-only / narrow tracks — they
+ * never sit beside a visible title (text-first, 2026-08-04).
  */
 const HEADER_CHAR_REM = 0.42;
 const HEADER_CHROME_REM = 2;

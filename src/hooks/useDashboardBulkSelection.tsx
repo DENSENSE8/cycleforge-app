@@ -25,7 +25,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Calendar as CalendarIcon, Copy, Download, FileText, Flag, Printer, Trash2, User } from '@/components/Icons';
+import { Bookmark, Calendar as CalendarIcon, Copy, Download, FileText, Flag, Printer, Trash2, User } from '@/components/Icons';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { useDeleteOrderRow } from '@/hooks/useDeleteOrderRow';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
@@ -45,6 +45,7 @@ import { orderBulkActionKeys } from '@/lib/selection-context/order-inspector-con
 import { WorkOrderAssignmentCard } from '@/components/work-orders/WorkOrderAssignmentCard';
 import { BulkShipByDialog } from '@/components/dashboard/BulkShipByDialog';
 import { BulkFlagDialog } from '@/components/dashboard/BulkFlagDialog';
+import { ListingAutomationAssignCard } from '@/components/dashboard/ListingAutomationAssignCard';
 import type { OrderRowFlagId } from '@/lib/orders/order-row-flags';
 import type { WorkOrderRow } from '@/components/work-orders/types';
 import type { OutboundDocumentsResponse } from '@/lib/documents/types';
@@ -215,6 +216,7 @@ export function useDashboardBulkSelection(
   // a batch-edit "mixed values" panel: assignment is a per-order judgement, and
   // the card already models exactly that walk.
   const [assignmentRows, setAssignmentRows] = useState<WorkOrderRow[]>([]);
+  const [listingRuleOrderIds, setListingRuleOrderIds] = useState<number[]>([]);
   const { technicianOptions, packerOptions, loadStaff, confirmAssignment } =
     useWorkOrderAssignment();
 
@@ -227,6 +229,17 @@ export function useDashboardBulkSelection(
       // Pre-pack rows broadcast the full `ShippedOrder`; the narrow
       // DashSelectableRow type is just what the BAR needs to render.
       setAssignmentRows(rows.map((row) => buildAssignmentRow(row as unknown as ShippedOrder)));
+    },
+    [loadStaff],
+  );
+
+  const handleListingRule = useCallback(
+    async (rows: DashSelectableRow[]) => {
+      if (rows.length === 0) return;
+      if (!(await loadStaff())) return;
+      const ids = rows.map((r) => Number(r.id)).filter((n) => Number.isFinite(n) && n > 0);
+      if (ids.length === 0) return;
+      setListingRuleOrderIds(ids);
     },
     [loadStaff],
   );
@@ -445,6 +458,14 @@ export function useDashboardBulkSelection(
         run: handleAssign,
       },
       {
+        key: 'listing-rule',
+        label: 'Listing → staff rule',
+        icon: <Bookmark className="h-4 w-4" />,
+        group: 'Set on these orders',
+        enabled: () => laneActionKeys.has('listing-rule'),
+        run: handleListingRule,
+      },
+      {
         key: 'ship-by',
         label: 'Set ship-by date',
         icon: <CalendarIcon className="h-4 w-4" />,
@@ -495,6 +516,7 @@ export function useDashboardBulkSelection(
     [
       handleCopyDetails,
       handleAssign,
+      handleListingRule,
       handleSetShipBy,
       handleSetFlag,
       handlePrintLabels,
@@ -518,6 +540,23 @@ export function useDashboardBulkSelection(
           onConfirm={confirmAssignment}
           onClose={() => setAssignmentRows([])}
           closeWhenCompleted
+        />
+      ) : null}
+      {listingRuleOrderIds.length > 0 ? (
+        <ListingAutomationAssignCard
+          orderIds={listingRuleOrderIds}
+          technicianOptions={technicianOptions}
+          packerOptions={packerOptions}
+          onClose={() => setListingRuleOrderIds([])}
+          onComplete={(mode) => {
+            clearSelection();
+            refreshDomain('orders.outbound');
+            toast.success(
+              mode === 'save_and_assign'
+                ? 'Listing rules saved and orders assigned'
+                : 'Existing listing rules applied',
+            );
+          }}
         />
       ) : null}
       <BulkShipByDialog

@@ -1,0 +1,15 @@
+{
+  "_README": "Authority is the TS cohort modules — not this file. Runners import via --import tsx. This stub exists only so agents searching for registry.json find the SoT pointers.",
+  "cohorts": {
+    "slot-table": "src/lib/tables/slot-table-cohort.ts",
+    "slot-table-discover": "src/lib/tables/slot-table-discover.ts",
+    "shortcuts": "src/lib/keyboard/shortcut-display-cohort.ts",
+    "overlay-shell": "src/lib/station/scan-station-overlay-cohort.ts"
+  },
+  "commands": {
+    "station": "pnpm run eval:station <id>",
+    "cohortSlotTable": "pnpm run eval:cohort slot-table",
+    "cohortShortcuts": "pnpm run eval:cohort shortcuts",
+    "discoverSlotTable": "pnpm run eval:discover"
+  }
+}

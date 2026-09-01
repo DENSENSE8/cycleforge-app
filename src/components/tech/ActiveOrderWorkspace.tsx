@@ -13,11 +13,13 @@ import {
   WorkspaceTimelineTab,
   buildSectionTabs,
 } from '@/components/station/workbench';
+import { STATION_SCAN_WELL_CLASS } from '@/components/station/scan-depth';
 import {
   StationDisplaysParkedRail,
   StationDisplaysUtilityRail,
   StationDisplaysPushStack,
   STATION_DISPLAY_INDEX,
+  resolveDisplaysActiveTab,
   useYieldStationDisplaysOnAssistantOpen,
   type DisplayIndexRow,
 } from '@/components/station/displays';
@@ -334,13 +336,14 @@ export function ActiveOrderWorkspace({
   const openDisplaysIndex = useCallback(() => setActiveSideTab(STATION_DISPLAY_INDEX), []);
   useYieldStationDisplaysOnAssistantOpen(closeDisplays);
 
-  const resolvedSideTab: ShippingDisplayNav | null = useMemo(() => {
-    if (!activeSideTab) return null;
-    if (activeSideTab === STATION_DISPLAY_INDEX) return STATION_DISPLAY_INDEX;
-    if (displayTabs.some((t) => t.id === activeSideTab)) return activeSideTab;
-    // Gated-away leaf → the index, never a silent swap to an unrelated display.
-    return STATION_DISPLAY_INDEX;
-  }, [activeSideTab, displayTabs]);
+  const resolvedSideTab = useMemo(
+    () =>
+      resolveDisplaysActiveTab(
+        activeSideTab,
+        displayTabs.map((t) => t.id),
+      ),
+    [activeSideTab, displayTabs],
+  );
 
   const utilityRailBody = !resolvedSideTab ? (
     <StationDisplaysUtilityRail
@@ -427,10 +430,12 @@ export function ActiveOrderWorkspace({
               // Advisories (OOS · sub pending) live in StationMoreDetails — never
               // a centre entityContext strip (Unbox centre = ops-flow only).
               tabs={
-                <ShippingScanWorkspace
-                  activeOrder={activeOrder}
-                  previewOrder={isPreview ? previewOrder : undefined}
-                />
+                <div className={STATION_SCAN_WELL_CLASS}>
+                  <ShippingScanWorkspace
+                    activeOrder={activeOrder}
+                    previewOrder={isPreview ? previewOrder : undefined}
+                  />
+                </div>
               }
               // Notes composer + embedded Start pill (Unbox/Testing waist
               // shape). Not a floating terminal dock — that green capsule was

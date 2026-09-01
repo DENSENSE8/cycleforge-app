@@ -10,7 +10,7 @@ import {
   makeImportExceptionGridDescriptor,
 } from './import-exception-grid-descriptor';
 import {
-  IMPORT_EXCEPTION_GRID_COLUMNS,
+  IMPORT_EXCEPTION_COMPOUND_COLUMNS,
   type ImportExceptionGridColumn,
 } from './import-exception-grid-layout';
 
@@ -24,7 +24,7 @@ export const IMPORT_EXCEPTION_TABLE_DEFINITION = parseTableDefinition({
   surface: 'sheet',
   showDayHeaders: false,
   capabilities: IMPORT_EXCEPTION_GRID_CAPABILITIES,
-  columns: IMPORT_EXCEPTION_GRID_COLUMNS,
+  columns: IMPORT_EXCEPTION_COMPOUND_COLUMNS,
 });
 
 export const IMPORT_EXCEPTION_TABLE_BINDING: TableSurfaceBinding<
@@ -32,7 +32,7 @@ export const IMPORT_EXCEPTION_TABLE_BINDING: TableSurfaceBinding<
   ImportExceptionGridColumn
 > = {
   definition: IMPORT_EXCEPTION_TABLE_DEFINITION,
-  columns: IMPORT_EXCEPTION_GRID_COLUMNS,
+  columns: IMPORT_EXCEPTION_COMPOUND_COLUMNS,
   makeDescriptor: makeImportExceptionGridDescriptor,
   recordPlane: { kind: 'inspector', occupantId: 'detail:import-exception' },
 };

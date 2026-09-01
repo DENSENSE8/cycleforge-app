@@ -165,8 +165,8 @@ export interface ReceivingModeContext {
    * Purchasing-source filter (`?inbound=`): which account the incoming order came
    * from. `'all'` (default) unions every source; `'zoho'` narrows to Zoho POs;
    * `'ebay'` narrows to the eBay purchasing account (Universal Incoming). Maps
-   * 1:1 to the server's `?inbound=` facet in `build-sql`. Band-3 search-field
-   * filter (`IncomingSourceFilters`); not a Pipeline facet tab strip.
+   * 1:1 to the server's `?inbound=` facet in `build-sql`. Written by Incoming's
+   * DataTable filter (search · funnel), not a Band-3 FilterMenu or hunt-tile strip.
    */
   incomingSource: 'all' | 'zoho' | 'ebay';
   /**

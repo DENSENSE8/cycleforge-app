@@ -51,12 +51,15 @@ import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import {
-  defaultDirForMyDayGridSort,
-  isMyDayGridSortable,
+  defaultDirForMyDayColumn,
+  isMyDayColumnSortable,
+  myDaySheetColumnsFor,
+  myDaySortFactFor,
   type MyDayGridColumn,
   type MyDayGridColumnKey,
 } from '@/lib/my-day/my-day-grid-layout';
 import { MY_DAY_TABLE_BINDING } from './grid/my-day-table-definition';
+import { useMyDayTableLayout } from './grid/useMyDayTableLayout';
 import { MyDayGridRow } from './grid/MyDayGridRow';
 import { useMyDayFeed } from './useMyDayFeed';
 import { useMyDayView } from './useMyDayView';
@@ -79,20 +82,20 @@ import {
 function compareMyDayTasks(
   a: MyDayTask,
   b: MyDayTask,
-  key: MyDayGridColumnKey,
+  fact: string,
   dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
-  switch (key) {
+  switch (fact) {
     case 'task':
       return sign * a.title.localeCompare(b.title);
-    case 'lane':
+    case 'my-day.lane':
       return sign * a.lane.localeCompare(b.lane);
-    case 'queue':
+    case 'my-day.queue':
       return sign * a.queueLabel.localeCompare(b.queueLabel);
-    case 'record':
+    case 'my-day.record':
       return sign * (a.recordLabel || '').localeCompare(b.recordLabel || '');
-    case 'due':
+    case 'my-day.due':
       // Absent deadlines sort last in BOTH directions — a task with no due date
       // is not "the most urgent thing today", which is what an empty-string
       // compare would claim under `desc`.
@@ -100,7 +103,7 @@ function compareMyDayTasks(
       if (!a.deadlineAt) return 1;
       if (!b.deadlineAt) return -1;
       return sign * a.deadlineAt.localeCompare(b.deadlineAt);
-    case 'status':
+    case 'my-day.status':
       return sign * (a.status || '').localeCompare(b.status || '');
     default:
       return 0;
@@ -189,13 +192,24 @@ export function MyDayWorkspace() {
   // directly. Today is a flat list — no fold, no day bands. Column sort is
   // URL-durable via `?colsort=`/`?coldir=`.
   const gridScrollRef = useRef<HTMLDivElement>(null);
+
+  // The COLUMNS are the effective slot layout's materialization (staff ?? org
+  // ?? product — wave 1.4 hand-model kill). Sort keys are the mounted track
+  // keys; each resolves to its bound field's fact through `myDaySortFactFor`.
+  const { effectiveLayout: myDayLayout, fields: myDayFields } = useMyDayTableLayout();
+  const columns = useMemo(() => myDaySheetColumnsFor(myDayLayout), [myDayLayout]);
+  const sortFactByKey = useMemo(
+    () => new Map(columns.map((c) => [c.key as string, myDaySortFactFor(c)])),
+    [columns],
+  );
+
   const {
     sort: columnSort,
     dir: sortDir,
     setSort,
   } = useUrlColumnSort<MyDayGridColumnKey>({
-    isColumn: isMyDayGridSortable,
-    defaultDir: defaultDirForMyDayGridSort,
+    isColumn: (raw) => isMyDayColumnSortable(columns, raw),
+    defaultDir: (key) => defaultDirForMyDayColumn(columns, key),
   });
 
   // One-shot settle tick after first data — the virtualized grid can otherwise
@@ -209,16 +223,17 @@ export function MyDayWorkspace() {
   }, [isLoading, hasGridRows]);
 
   const orderGroupsByDate = useMemo(() => {
+    const sortFact = columnSort ? (sortFactByKey.get(columnSort) ?? null) : null;
     const ordered =
-      columnSort && sortDir
-        ? [...visibleTasks].sort((a, b) => compareMyDayTasks(a, b, columnSort, sortDir))
+      sortFact && sortDir
+        ? [...visibleTasks].sort((a, b) => compareMyDayTasks(a, b, sortFact, sortDir))
         : visibleTasks;
     const groups: RowGroup<MyDayTask>[] = ordered.map((task) => ({
       key: `task:${task.id}`,
       rows: [task],
     }));
     return [['', groups]] as [string, RowGroup<MyDayTask>[]][];
-  }, [visibleTasks, columnSort, sortDir]);
+  }, [visibleTasks, columnSort, sortFactByKey, sortDir]);
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden bg-surface-canvas text-text-default">
@@ -242,6 +257,8 @@ export function MyDayWorkspace() {
         ) : (
           <DataTable<MyDayTask, MyDayGridColumnKey, MyDayGridColumn>
             binding={MY_DAY_TABLE_BINDING}
+            columns={columns}
+            fields={myDayFields}
             orderGroupsByDate={orderGroupsByDate}
             rows={visibleTasks}
             getRowId={(t) => t.id}

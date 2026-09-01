@@ -5,6 +5,8 @@ import {
 } from '@/design-system/components/grid/grid-surface-descriptor';
 import {
   DAILY_GRID_COLUMNS,
+  dailySortFactFor,
+  defaultDirForDailyGridSort,
   type DailyGridColumn,
 } from '@/lib/daily-checks/daily-grid-layout';
 import type { DailyTaskRow } from '@/features/home/grid/daily-task-row';
@@ -33,7 +35,22 @@ export function makeDailyGridDescriptor(
   return makeGridSurfaceDescriptor<DailyTaskRow, DailyGridColumn>(
     'home.daily',
     visible,
-    undefined,
+    {
+      // Sortability is a property of the BOUND FACT, not of the track: a
+      // checklist row has no order and no price, so the compound
+      // `fulfillment` / `amount` tracks carry nothing to order by. Passing
+      // `undefined` here let the header offer a sort the desk could not
+      // perform — a click that moved a caret and reordered nothing.
+      isSortable: (key) => {
+        const col = visible.find((c) => c.key === key);
+        return col ? dailySortFactFor(col) != null : false;
+      },
+      sortDescFirst: (key) => {
+        const col = visible.find((c) => c.key === key);
+        const fact = col ? dailySortFactFor(col) : null;
+        return fact ? defaultDirForDailyGridSort(fact) === 'desc' : false;
+      },
+    },
     DAILY_GRID_CAPABILITIES,
   );
 }

@@ -24,7 +24,7 @@ test('the compound tracks that carry a sortable fact resolve to it', () => {
 
 test('a flat sort value still resolves to itself', () => {
   // `?sort=` values in live bookmarks are facts, and must keep working.
-  for (const fact of ['title', 'age', 'qty', 'order', 'tracking'] as const) {
+  for (const fact of ['title', 'age', 'qty', 'order', 'tracking', 'picked', 'packed', 'carrier'] as const) {
     assert.ok(isQueueColumnSort(fact));
     assert.equal(queueSortForColumnKey(fact), fact);
   }
@@ -54,9 +54,24 @@ test('every mapped fact is a real sort value', () => {
   }
 });
 
+test('a slot field id maps onto the sort fact, so a rebind still sorts', () => {
+  assert.equal(queueSortForColumnKey('status:1', 'orders.picked'), 'picked');
+  assert.equal(queueSortForColumnKey('status:2', 'orders.packed'), 'packed');
+  assert.equal(queueSortForColumnKey('status:1', 'orders.qty'), null);
+  assert.equal(isQueueSortableColumnKey('status:1', 'orders.picked'), true);
+  assert.equal(isQueueSortableColumnKey('status:1'), false);
+});
+
+test('the product-default Pick track is sortable through its bound field', () => {
+  const pick = ORDERS_COMPOUND_COLUMNS.find((c) => c.fieldId === 'orders.picked');
+  assert.ok(pick, 'product default must bind orders.picked');
+  assert.equal(queueSortForColumnKey(pick.key, pick.fieldId), 'picked');
+  assert.equal(isQueueSortableColumnKey(pick.key, pick.fieldId), true);
+});
+
 test('at least one visible track sorts — the desk is not inert', () => {
-  // The regression in one assertion: if this ever goes to zero, header clicks
-  // do nothing again.
-  const sortable = ORDERS_COMPOUND_COLUMNS.filter((c) => isQueueSortableColumnKey(c.key));
+  const sortable = ORDERS_COMPOUND_COLUMNS.filter((c) =>
+    isQueueSortableColumnKey(c.key, c.fieldId),
+  );
   assert.ok(sortable.length > 0, 'no compound track sorts — header clicks are inert');
 });

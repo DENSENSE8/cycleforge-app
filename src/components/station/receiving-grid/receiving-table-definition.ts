@@ -2,9 +2,22 @@
  * `receiving.browse` — the golden table definition (plan Phase 1).
  *
  * Unbox / History / Testing browse. This is the first surface lifted onto the
- * definition registry, so it is deliberately a *re-declaration of nothing*: the
- * columns are `RECEIVING_GRID_COLUMNS` and the capabilities are
- * `RECEIVING_GRID_CAPABILITIES`, both by reference. The definition adds only
+ * definition registry. Its canonical columns are the COMPOUND materialization
+ * of the product slot layout (`RECEIVING_COMPOUND_COLUMNS`) — what Unbox,
+ * History and Testing actually mount — and the capabilities are
+ * `RECEIVING_GRID_CAPABILITIES` by reference.
+ *
+ * ## The flat model is a second MOUNT, not the default
+ *
+ * `TestingHistoryList` still paints the flat spreadsheet, and it used to get it
+ * by passing no `columns` at all and inheriting this definition's array. That
+ * made the hand model the family's canonical answer by SILENCE: the drift guard
+ * compared the definition against itself and passed, while the three compound
+ * desks mounted something else entirely. The definition now names the model the
+ * desks paint, and that one surface passes `RECEIVING_GRID_COLUMNS` explicitly
+ * — the same "a real second mount, never a preference" escape `tableId` /
+ * `ariaLabel` / `testId` already use. Giving it its own layout id is the next
+ * step (plan §03, wave 1.3). The definition adds only
  * what used to live as literals on the page mount — the shell recipe
  * (`surface: 'sheet'`), the prefs bucket, the accessible name, the testid and
  * the day-band default.
@@ -17,7 +30,7 @@
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import {
-  RECEIVING_GRID_COLUMNS,
+  RECEIVING_COMPOUND_COLUMNS,
   type ReceivingGridColumn,
 } from '@/lib/receiving/receiving-grid-layout';
 import { parseTableDefinition } from '@/lib/tables/table-definition';
@@ -45,12 +58,12 @@ export const RECEIVING_BROWSE_DEFINITION = parseTableDefinition({
   // the host's `showDayHeaders` override.
   showDayHeaders: false,
   capabilities: RECEIVING_GRID_CAPABILITIES,
-  columns: RECEIVING_GRID_COLUMNS,
+  columns: RECEIVING_COMPOUND_COLUMNS,
 });
 
 export const RECEIVING_TABLE_BINDING: TableSurfaceBinding<ReceivingLineRow, ReceivingGridColumn> = {
   definition: RECEIVING_BROWSE_DEFINITION,
-  columns: RECEIVING_GRID_COLUMNS,
+  columns: RECEIVING_COMPOUND_COLUMNS,
   makeDescriptor: makeReceivingGridDescriptor,
   /**
    * The History plane. This binding has THREE mounts and they do not agree:

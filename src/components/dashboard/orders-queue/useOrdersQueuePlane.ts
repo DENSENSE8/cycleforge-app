@@ -13,6 +13,7 @@ import { armReplaceTrackingIntent } from '@/lib/order-inspector/replace-tracking
 import { usePublishRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 import type { CursorIntent } from '@/lib/record-cursor/cursor-model';
 import { RECORD_CURSOR_PRIORITY } from '@/lib/record-cursor/store';
+import { ignoreRowSelectFromSubtitle } from '@/components/tables/compound/useSubtitlePointerReorder';
 
 /**
  * The Orders queue **selection / cursor plane** — the page concern lifted out of
@@ -268,13 +269,17 @@ export function useOrdersQueuePlane({
       record: ShippedOrder,
       event?: { shiftKey: boolean; detail?: number; target?: EventTarget | null },
     ) => {
+      const target = event?.target;
+      // Subtitle-band drag fires `click` on the row (common ancestor of qty →
+      // condition). Bail before bulk-select AND before inspector-open; both
+      // remount the grid and look like "the drag selected the row".
+      if (ignoreRowSelectFromSubtitle({ target: target ?? null })) return;
       if (!railSelection) {
         handleRowClick(record);
         return;
       }
       // Checkbox / spacer lives inside the row; if a click somehow reaches here
       // from the select gutter, bail — toggle already ran (or spacer is inert).
-      const target = event?.target;
       if (target instanceof Element && target.closest('[data-select-gutter]')) {
         return;
       }

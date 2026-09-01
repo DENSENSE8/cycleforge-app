@@ -25,7 +25,11 @@ import { Check, ChevronDown, Loader2 } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { operatorAccentClasses } from '@/utils/operator-accent';
 import { FLOATING_DOCK_BOTTOM_PAD } from '@/design-system/tokens/dock-clearance';
-import { COMPOSER_SHELL_CORNER } from '@/design-system/tokens/radius';
+import {
+  COMPOSER_MENU_ITEM_CORNER,
+  COMPOSER_SHELL_CORNER,
+  cornerClass,
+} from '@/design-system/tokens/radius';
 import { Popover } from './Popover';
 import {
   DropdownMenu,
@@ -63,6 +67,9 @@ export interface SlicedActionMenuItem {
 
 /** Canvas edge the dock slices against. Extend when a new region needs a slice. */
 export type SlicedActionEdge = 'bottom';
+
+/** Embedded track chrome — ops square, composer-footer 2xl, or desk-header capsule. */
+export type SlicedActionEmbeddedChrome = 'flush' | 'pill' | 'header';
 
 export interface SlicedActionDockProps {
   /** CTA label. */
@@ -130,10 +137,14 @@ export interface SlicedActionDockProps {
    */
   embedded?: boolean;
   /**
-   * When `embedded`, choose track chrome. `flush` (default) = ops square.
-   * `pill` = rounded-2xl divided track for the Omnichannel composer footer.
+   * When `embedded`, choose track chrome.
+   * - `flush` (default) — ops square (Unbox Band 1).
+   * - `pill` — {@link COMPOSER_SHELL_CORNER} divided track for the composer footer.
+   * - `header` — {@link cornerClass}(`'pill'`) capsule for the desk page-header
+   *   slot. Same token {@link DeskHeaderAction} locks on Button. Not a licence
+   *   to round a station floor dock.
    */
-  embeddedChrome?: 'flush' | 'pill';
+  embeddedChrome?: SlicedActionEmbeddedChrome;
   /**
    * Which way the split menu opens. Defaults to `top` — correct for a
    * bottom-docked terminal CTA, where the menu must rise off the dock. An
@@ -210,6 +221,19 @@ const EMBEDDED_TRACK = 'rounded-none shadow-none ring-0';
  * elevated plane stacked on the first; the hairline ring alone separates it.
  */
 const COMPOSER_PILL_TRACK = 'rounded-2xl shadow-none ring-1 ring-black/5';
+/**
+ * Desk page-header split CTA — the same {@link cornerClass}(`'pill'`) token
+ * {@link DeskHeaderAction} locks on Button. Flat like the composer-footer
+ * track (it sits in the title row, not over the work).
+ */
+const HEADER_PILL_TRACK = `${cornerClass('pill')} shadow-none ring-1 ring-black/5`;
+
+function isEmbeddedSoftTrack(
+  embedded: boolean | undefined,
+  chrome: SlicedActionEmbeddedChrome | undefined,
+): boolean {
+  return Boolean(embedded) && (chrome === 'pill' || chrome === 'header');
+}
 
 /**
  * Track chrome for a placement. Pure so a test can assert that a composer
@@ -218,11 +242,12 @@ const COMPOSER_PILL_TRACK = 'rounded-2xl shadow-none ring-1 ring-black/5';
  */
 export function slicedActionDockTrackClass(opts: {
   embedded?: boolean;
-  embeddedChrome?: 'flush' | 'pill';
+  embeddedChrome?: SlicedActionEmbeddedChrome;
 }): string {
+  if (opts.embedded && opts.embeddedChrome === 'header') return HEADER_PILL_TRACK;
   const composerPill = Boolean(opts.embedded) && opts.embeddedChrome === 'pill';
   if (composerPill) return COMPOSER_PILL_TRACK;
-  const usePillChrome = !opts.embedded || opts.embeddedChrome === 'pill';
+  const usePillChrome = !opts.embedded || opts.embeddedChrome === 'pill' || opts.embeddedChrome === 'header';
   return usePillChrome ? PILL_TRACK : EMBEDDED_TRACK;
 }
 
@@ -239,9 +264,9 @@ const spring = { type: 'spring', stiffness: 520, damping: 36 } as const;
  */
 export function slicedActionDockSegmentOrder(opts: {
   embedded?: boolean;
-  embeddedChrome?: 'flush' | 'pill';
+  embeddedChrome?: SlicedActionEmbeddedChrome;
 }): 'menu,primary' | 'primary,menu' {
-  return opts.embedded && opts.embeddedChrome === 'pill'
+  return isEmbeddedSoftTrack(opts.embedded, opts.embeddedChrome)
     ? 'primary,menu'
     : 'menu,primary';
 }
@@ -320,14 +345,17 @@ export function SlicedActionDock({
   const wrapperClass = slicedActionDockWrapperClass({ edge, docked, embedded });
 
   // Embedded flush = Band 1 ops square. Embedded pill = composer-footer bubble
-  // (compact h-8 so + / recent / sync sit on one tight bottom row). Floating
-  // bottom docks keep the 48px HIG track.
-  const usePillChrome = !embedded || embeddedChrome === 'pill';
+  // (compact h-8 so + / recent / sync sit on one tight bottom row). Embedded
+  // header = the same compact split on the desk title row, with the pill
+  // token DeskHeaderAction uses. Floating bottom docks keep the 48px HIG track.
+  const headerPill = embedded && embeddedChrome === 'header';
   const composerPill = embedded && embeddedChrome === 'pill';
+  const compactPill = composerPill || headerPill;
+  const usePillChrome = !embedded || compactPill;
   const trackChrome = slicedActionDockTrackClass({ embedded, embeddedChrome });
-  const segmentH = composerPill ? 'h-8' : usePillChrome ? 'h-12' : 'h-11';
-  const radiusL = usePillChrome ? 'rounded-l-2xl' : 'rounded-none';
-  const radiusR = usePillChrome ? 'rounded-r-2xl' : 'rounded-none';
+  const segmentH = compactPill ? 'h-8' : usePillChrome ? 'h-12' : 'h-11';
+  const radiusL = headerPill ? 'rounded-l-full' : usePillChrome ? 'rounded-l-2xl' : 'rounded-none';
+  const radiusR = headerPill ? 'rounded-r-full' : usePillChrome ? 'rounded-r-2xl' : 'rounded-none';
   const dataEmbeddedChrome = embedded ? embeddedChrome : undefined;
   const segmentOrder = slicedActionDockSegmentOrder({
     embedded,
@@ -338,7 +366,7 @@ export function SlicedActionDock({
   const endGlyph = menuIcon ?? (
     <ChevronDown
       className={cn(
-        composerPill ? 'h-3.5 w-3.5' : 'h-4 w-4',
+        compactPill ? 'h-3.5 w-3.5' : 'h-4 w-4',
         'opacity-95 transition-transform duration-150',
         menuOpensFromEnd && menuOpen && 'rotate-180',
       )}
@@ -353,7 +381,7 @@ export function SlicedActionDock({
     menuOnEnd ? `border-l ${ink.divider}` : `border-r ${ink.divider}`,
     segmentH,
     menuOnEnd ? radiusR : radiusL,
-    composerPill ? 'px-2' : usePillChrome ? 'px-3' : 'px-2',
+    compactPill ? 'px-2' : usePillChrome ? 'px-3' : 'px-2',
   );
 
   const useDropdownChrome = menuChrome === 'dropdown' && menuOpensFromEnd;
@@ -381,6 +409,8 @@ export function SlicedActionDock({
           aria-label={menuLabel ?? 'More actions'}
           // The panel matches the composer-pill track it hangs off: same
           // COMPOSER_SHELL_CORNER, so control and menu read as one object.
+          // Rows take COMPOSER_MENU_ITEM_CORNER (16 − p-1 = 12px) so a hover
+          // fill tracks the shell instead of leaving a square sliver.
           className={cn('min-w-[14rem] p-1', COMPOSER_SHELL_CORNER)}
         >
           {menu!.map((item) => (
@@ -397,6 +427,7 @@ export function SlicedActionDock({
                 // the same voice as the button, not station caps.
                 className={cn(
                   'gap-2.5 px-3 py-2 text-role-caption',
+                  COMPOSER_MENU_ITEM_CORNER,
                   item.selected && 'bg-surface-canvas',
                 )}
               >
@@ -530,10 +561,10 @@ export function SlicedActionDock({
         ink.focus,
         segmentH,
         menuOnEnd ? radiusL : radiusR,
-        composerPill ? 'px-3 text-role-caption' : usePillChrome ? 'px-5' : 'px-3.5',
+        compactPill ? 'px-3 text-role-caption' : usePillChrome ? 'px-5' : 'px-3.5',
         fullWidth
           ? 'flex-1'
-          : composerPill
+          : compactPill
             ? 'min-w-[5.5rem]'
             : usePillChrome
               ? 'min-w-[9rem]'

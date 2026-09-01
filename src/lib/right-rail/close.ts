@@ -25,7 +25,7 @@
  * under the host's own control. Two dismiss affordances with two different
  * behaviours on one non-modal column: the visible one at the bottom cleared
  * the selection, the one in the corner left the rows checked with nothing on
- * screen saying so (`OrderRailShell`'s own comment says exactly that).
+ * screen saying so (the retired order-batch shell's own comment said exactly that).
  *
  * Firing both halves from one entry point makes the corner control correct
  * everywhere, which is what lets every panel-owned close be deleted.

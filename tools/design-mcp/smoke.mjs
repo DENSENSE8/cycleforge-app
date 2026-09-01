@@ -82,6 +82,9 @@ send({ jsonrpc: '2.0', id: 22, method: 'resources/read', params: { uri: 'design:
 send({ jsonrpc: '2.0', id: 23, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'edit save patch', limit: 5 } } })
 send({ jsonrpc: '2.0', id: 24, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'jump rail edge knobs', limit: 5 } } })
 send({ jsonrpc: '2.0', id: 25, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'tools/design-mcp/fixtures/token-literal-violation.tsx' } } })
+send({ jsonrpc: '2.0', id: 26, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'src/components/warranty/WarrantyTicketPopover.tsx' } } })
+send({ jsonrpc: '2.0', id: 27, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'src/components/composer/TicketComposer.tsx' } } })
+send({ jsonrpc: '2.0', id: 28, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'src/components/warehouse/room-detail/RoomEditForm.tsx' } } })
 send({ jsonrpc: '2.0', id: 26, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'shadcn dialog', limit: 5 } } })
 send({ jsonrpc: '2.0', id: 27, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'copy chip last-8 tracking serial', limit: 5 } } })
 send({ jsonrpc: '2.0', id: 28, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'page header with title and primary action and in-page tabs', limit: 5 } } })
@@ -93,8 +96,14 @@ send({ jsonrpc: '2.0', id: 33, method: 'tools/call', params: { name: 'ds_contrac
 send({ jsonrpc: '2.0', id: 34, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'dumb station scan mouth gun only context ring', limit: 5 } } })
 send({ jsonrpc: '2.0', id: 35, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'src/components/outbound/workspaces/ScanOutWorkspace.tsx' } } })
 send({ jsonrpc: '2.0', id: 36, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'tools/design-mcp/fixtures/overlay-cohort-bad-style.tsx' } } })
+send({ jsonrpc: '2.0', id: 37, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'scan station theme skin porcelain packing bench', limit: 5 } } })
+send({ jsonrpc: '2.0', id: 38, method: 'tools/call', params: { name: 'ds_tokens', arguments: { axis: 'station-skin' } } })
+send({ jsonrpc: '2.0', id: 39, method: 'resources/read', params: { uri: 'design://tokens/station-skin' } })
+send({ jsonrpc: '2.0', id: 40, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'src/design-system/themes/station-skins.ts' } } })
+send({ jsonrpc: '2.0', id: 41, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'ship-by date in a table cell', limit: 3 } } })
+send({ jsonrpc: '2.0', id: 42, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'filter by date range', limit: 3 } } })
 
-await new Promise((r) => setTimeout(r, 22000))
+await new Promise((r) => setTimeout(r, 25000))
 child.kill()
 
 const msgs = out.split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l) } catch { return { RAW: l.slice(0, 120) } } })
@@ -102,7 +111,7 @@ let fails = 0
 const check = (label, ok, detail) => { console.log(`${ok ? '  ok  ' : '  FAIL'} ${label}${detail ? ' — ' + detail : ''}`); if (!ok) fails++ }
 const byId = (id) => msgs.find((m) => m.id === id)
 const body = (id) => JSON.parse(byId(id)?.result?.content?.[0]?.text ?? '{}')
-const TOKEN_AXES_EXPECT = ['color', 'radius', 'spacing', 'typography', 'z-index', 'elevation', 'border', 'focus']
+const TOKEN_AXES_EXPECT = ['color', 'radius', 'spacing', 'typography', 'z-index', 'elevation', 'border', 'focus', 'station-skin']
 
 check('every stdout line is valid JSON-RPC', !msgs.some((m) => m.RAW), msgs.find((m) => m.RAW)?.RAW)
 check('initialize', !!byId(1)?.result?.serverInfo, byId(1)?.result?.serverInfo?.name)
@@ -393,7 +402,83 @@ check('non-cohort style={{ color }} still flags as inline-style drift',
   check('pinned.json declares ScanStationOverlayShell cohort law',
     /"ScanStationOverlayShell"/.test(pinned) && /SCAN_STATION_OVERLAY_COHORT/.test(pinned),
     'missing ScanStationOverlayShell pin')
+  check('pinned.json declares station-skins as the scan-station theme SoT',
+    /"station-skins"/.test(pinned) && /ds_tokens\(\{ axis: 'station-skin' \}\)/.test(pinned),
+    'missing station-skins pin')
 }
+
+const skinContract = body(37)
+check('ds_contract ranks station-skins first for scan station theme',
+  (skinContract.matches ?? [])[0]?.id === 'station-skins',
+  (skinContract.matches ?? []).map((m) => m.id).join(', '))
+check('station-skins pin forbids per-station fill forks',
+  /STATION_SKINS/.test((skinContract.matches ?? [])[0]?.doNot ?? '')
+    && /STATION_SCAN_\*/.test((skinContract.matches ?? [])[0]?.doNot ?? ''),
+  ((skinContract.matches ?? [])[0]?.doNot ?? 'no pin').slice(0, 140))
+
+const skinTokens = body(38)
+const skinNames = (skinTokens.tokens ?? []).map((t) => t.token)
+const skinValues = (skinTokens.tokens ?? []).map((t) => t.value)
+check('station-skin axis reads station-skins.ts',
+  (skinTokens.sources ?? []).some((s) => String(s).endsWith('themes/station-skins.ts')),
+  (skinTokens.sources ?? []).join(', '))
+check('station-skin axis lists applyStationSkin names',
+  ["applyStationSkin('industrial')", "applyStationSkin('porcelain')", "applyStationSkin('house-color')", "applyStationSkin('high-vis')"]
+    .every((n) => skinNames.includes(n)),
+  skinNames.filter((n) => n.startsWith('applyStationSkin')).slice(0, 6).join(', '))
+check('station-skin axis lists --ds-station paint vars',
+  skinNames.includes('--ds-station-well') && skinNames.includes('--ds-station-plate') && skinNames.includes('--ds-station-slot'),
+  skinNames.filter((n) => n.startsWith('--ds-station')).join(', '))
+check('station-skin values never include a hex',
+  skinValues.length > 0 && skinValues.every((v) => !COLOR_HEX.test(String(v))),
+  skinValues.slice(0, 4).join(' | '))
+
+let skinResource = {}
+try {
+  skinResource = JSON.parse(byId(39)?.result?.contents?.[0]?.text ?? '{}')
+} catch { /* keep empty */ }
+check('resources/read station-skin matches ds_tokens skins',
+  (skinResource.tokens ?? []).some((t) => t.token === "applyStationSkin('porcelain')"),
+  (skinResource.tokens ?? []).slice(0, 3).map((t) => t.token).join(', '))
+
+const skinCrit = body(40)
+check('ds_critique does not treat catalog hex as a color drift',
+  !(skinCrit.problems ?? []).some((p) => /hardcoded hex/.test(p.what ?? '')),
+  (skinCrit.problems ?? []).map((p) => p.what).join(' | ') || 'none')
+
+// ── composer fork detection ──────────────────────────────────────────────────
+// A raw <textarea> is NOT a fork: ~49 files here have one and almost all are
+// ordinary form fields. The signal is a textarea that also owns a SEND. These
+// three pin both halves of that — it must fire, it must not fire on the SoT,
+// and it must stay silent on a plain form.
+const forksOf = (id) =>
+  (body(id).problems ?? []).filter((p) => p.severity === 'forks-the-system').map((p) => p.what)
+
+const warrantyForks = forksOf(26)
+check('a hand-rolled ticket composer is flagged as a fork',
+  warrantyForks.some((w) => /hand-rolled composer/.test(w)) &&
+    warrantyForks.some((w) => /second ticket composer/.test(w)),
+  warrantyForks.join(' | ').slice(0, 120))
+check('the SoT composer is NOT flagged against itself',
+  !forksOf(27).some((w) => /composer/.test(w)),
+  forksOf(27).join(' | ') || 'clean')
+check('a plain form textarea is not called a composer',
+  !forksOf(28).some((w) => /composer/.test(w)),
+  forksOf(28).join(' | ') || 'no composer finding')
+
+const shipBy = body(41)
+const shipHit = (shipBy.matches ?? [])[0]
+check('ship-by cell picks DateRangePickerField compact',
+  shipHit?.id === 'DateRangePickerField' && shipHit?.pickVariant === 'compact',
+  `${shipHit?.id} ${shipHit?.pickVariant} ${shipHit?.mount}`)
+check('ship-by mount is compact',
+  /variant="compact"/.test(shipHit?.mount ?? ''),
+  shipHit?.mount)
+const filterRange = body(42)
+const rangeHit = (filterRange.matches ?? []).find((m) => m.id === 'DateRangePickerField')
+check('filter date range picks DateRangePickerField range',
+  rangeHit?.pickVariant === 'range',
+  `${rangeHit?.id} ${rangeHit?.pickVariant} ${rangeHit?.mount}`)
 
 console.log(fails === 0 ? '\nsmoke: all good' : `\nsmoke: ${fails} failed`)
 process.exit(fails === 0 ? 0 : 1)

@@ -11,8 +11,8 @@ import {
 } from './receiving-grid-cell-types';
 
 /**
- * Tracking column — dense Sheets face keeps MapPin omitted (`omitCellIcon`);
- * carrier brand-identity micro-dot leads the last-8. Pickup → pill, no dot.
+ * Tracking column — dense Sheets face; carrier brand-identity micro-dot
+ * leads the last-8. Pickup → pill, no dot.
  */
 export function ReceivingTrackingCell({ col, rule, ctx }: ReceivingGridCellProps) {
   const { isPickup, pickupLabel, trackingValue, onEditTracking, row } = ctx;
@@ -33,7 +33,7 @@ export function ReceivingTrackingCell({ col, rule, ctx }: ReceivingGridCellProps
           <TrackingNumberMenuChip
             value={trackingValue}
             carrierHint={row.carrier}
-            showIcon={!col.omitCellIcon}
+            showIcon={false}
             dense
             onEdit={onEditTracking}
           />

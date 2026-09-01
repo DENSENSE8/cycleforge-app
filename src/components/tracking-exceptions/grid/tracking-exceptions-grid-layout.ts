@@ -1,6 +1,8 @@
 /**
  * Tracking Exceptions spreadsheet column model — the ops-native sibling of
- * {@link WARRANTY_GRID_COLUMNS} / {@link READY_GRID_COLUMNS}.
+ * {@link WARRANTY_GRID_COLUMNS}. (Its other sibling, the Ready hand model, was
+ * ported to the slot engine on 2026-08-31 — this file is a wave 1.4 port
+ * candidate for the same reason: `docs/todo/seller-table-program-PLAN.md` §03.)
  *
  * A row is one unmatched receiving scan waiting on Zoho re-query or a human
  * edit. No fold, no day band, no in-cell edit — corrections open the record
@@ -10,29 +12,29 @@
  * it is structural and the Fields menu never offers to hide a control.
  */
 
-import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
 import {
   gridFrozenLeft,
   gridTemplate,
 } from '@/design-system/components/grid/grid-column-geometry';
+import {
+  TRACKING_EXCEPTIONS_FIELD_CATALOG,
+  TRACKING_EXCEPTIONS_PRODUCT_LAYOUT,
+} from '@/lib/tables/field-catalog/tracking-exceptions';
+import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
+import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 export type TrackingExceptionsGridColumnKey =
   | 'select'
   | 'title'
-  | 'carrier'
-  | 'source'
-  | 'staff'
-  | 'reason'
-  | 'status'
-  | 'retries'
-  | 'lastCheck'
-  | 'created'
-  | 'notes'
-  | 'actions';
+  /** Retry / edit — structural capability, never an org column. */
+  | 'actions'
+  /** Materialized slot tracks — keys are slot indices, never field ids. */
+  | `status:${number}`
+  | `subtitle:${number}`;
 
-export interface TrackingExceptionsGridColumn {
+export interface TrackingExceptionsGridColumn extends SlotTrackFields {
   key: TrackingExceptionsGridColumnKey;
   width: string;
   label?: string;
@@ -52,15 +54,11 @@ export interface TrackingExceptionsGridColumn {
 }
 
 /**
- * Canonical Tracking Exceptions columns. Only `title` flexes; facts are content-hard.
- *
- * DEFAULT VIEW (tier `core`) is `select · title · carrier · reason · status ·
- * created · actions` — the questions an ops operator scanning unmatched
- * receiving scans actually asks. Source / staff / retries / last check / notes
- * are attribution or Zoho-sync detail: useful when investigating one row, not
- * columns you scan down the queue.
+ * The structural sheet skeleton — what the queue paints with ZERO bindings.
+ * `title` (the scanned number) is the only flex track; the frozen pane is
+ * `select · title`; the retry/edit action closes the row.
  */
-export const TRACKING_EXCEPTIONS_GRID_COLUMNS: readonly TrackingExceptionsGridColumn[] = [
+const TRACKING_EXCEPTIONS_SHEET_BASE: readonly TrackingExceptionsGridColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
   {
     key: 'title',
@@ -71,135 +69,77 @@ export const TRACKING_EXCEPTIONS_GRID_COLUMNS: readonly TrackingExceptionsGridCo
     type: 'tracking',
     labelFitRem: 6,
   },
-  {
-    key: 'carrier',
-    width: 'minmax(6.5rem, 6.5rem)',
-    label: 'Carrier',
-    type: 'text',
-    hideKey: 'carrier',
-    labelFitRem: 5,
-  },
-  {
-    key: 'source',
-    width: 'minmax(6rem, 6rem)',
-    label: 'Source',
-    type: 'text',
-    hideKey: 'source',
-    tier: 'optional',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'staff',
-    width: 'minmax(7rem, 7rem)',
-    label: 'Staff',
-    type: 'text',
-    hideKey: 'staff',
-    tier: 'optional',
-    labelFitRem: 4,
-  },
-  {
-    key: 'reason',
-    width: 'minmax(7rem, 7rem)',
-    label: 'Reason',
-    type: 'tag',
-    hideKey: 'reason',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'status',
-    width: 'minmax(6rem, 6rem)',
-    label: 'Status',
-    type: 'tag',
-    hideKey: 'status',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'retries',
-    width: 'minmax(5rem, 5rem)',
-    label: 'Retries',
-    type: 'number',
-    hideKey: 'retries',
-    tier: 'optional',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'lastCheck',
-    width: 'minmax(6.5rem, 6.5rem)',
-    label: 'Last check',
-    type: 'date',
-    hideKey: 'lastCheck',
-    tier: 'optional',
-    labelFitRem: 6,
-  },
-  {
-    key: 'created',
-    width: 'minmax(6rem, 6rem)',
-    label: 'Created',
-    type: 'date',
-    hideKey: 'created',
-    labelFitRem: 5,
-  },
-  {
-    key: 'notes',
-    width: 'minmax(10rem, 10rem)',
-    label: 'Notes',
-    type: 'longtext',
-    hideKey: 'notes',
-    tier: 'optional',
-    labelFitRem: 4,
-  },
   // Action track — no hideKey (structural), no type glyph, never sortable.
   { key: 'actions', width: 'minmax(5rem, 5rem)', sortable: false },
-] as const;
+];
 
 /**
- * Frozen identity pane — `select · title`. Derived from the model's `frozen`
- * flag (one declaration for freeze + immovability + offset math).
+ * Materialize the mounted columns from an effective layout. Both bands anchor
+ * on `title`, so the default plate reads carrier · reason · status · created —
+ * the retired hand model's core view — with `actions` always last.
  */
-const TRACKING_EXCEPTIONS_GRID_LOCKED_KEYS: readonly TrackingExceptionsGridColumnKey[] =
-  gridFrozenKeys(TRACKING_EXCEPTIONS_GRID_COLUMNS);
-
-const TRACKING_EXCEPTIONS_GRID_SORTABLE_KEYS: readonly TrackingExceptionsGridColumnKey[] =
-  TRACKING_EXCEPTIONS_GRID_COLUMNS.filter(
-    (c) => c.sortable !== false && c.key !== 'select',
-  ).map((c) => c.key);
-
-export function isTrackingExceptionsGridSortable(
-  key: string,
-): key is TrackingExceptionsGridColumnKey {
-  return (TRACKING_EXCEPTIONS_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
+export function trackingExceptionsSheetColumnsFor(
+  layout: SlotLayout,
+): readonly TrackingExceptionsGridColumn[] {
+  return materializeTracks<TrackingExceptionsGridColumn>({
+    layout,
+    catalog: TRACKING_EXCEPTIONS_FIELD_CATALOG,
+    base: TRACKING_EXCEPTIONS_SHEET_BASE,
+    statusAnchorKey: 'title',
+    subtitleAnchorKey: 'title',
+  });
 }
 
-export function isTrackingExceptionsGridFrozen(key: string): boolean {
-  return TRACKING_EXCEPTIONS_GRID_LOCKED_KEYS.includes(key as TrackingExceptionsGridColumnKey);
+/**
+ * The PRODUCT-DEFAULT materialization — what an org with no override mounts,
+ * the canonical columns of the binding, and the guard SoT.
+ */
+export const TRACKING_EXCEPTIONS_SHEET_COLUMNS: readonly TrackingExceptionsGridColumn[] =
+  trackingExceptionsSheetColumnsFor(TRACKING_EXCEPTIONS_PRODUCT_LAYOUT);
+
+/** The FACT a column sorts by, or null when it offers no sort. */
+export function trackingExceptionsSortFactFor(
+  col: TrackingExceptionsGridColumn,
+): string | null {
+  if (col.sortable === false || col.key === 'select' || col.key === 'actions') return null;
+  if (col.key === 'title') return 'title';
+  return col.fieldId ?? null;
+}
+
+/** Model-derived sortability — the descriptor's and the URL guard's one answer. */
+export function isTrackingExceptionsColumnSortable(
+  columns: readonly TrackingExceptionsGridColumn[],
+  key: string,
+): key is TrackingExceptionsGridColumnKey {
+  return columns.some((c) => c.key === key && trackingExceptionsSortFactFor(c) !== null);
 }
 
 /** CSS grid template — one `var(--cf-col-<key>, <width>)` track per column. */
 export function trackingExceptionsGridTemplate(
-  columns: readonly TrackingExceptionsGridColumn[] = TRACKING_EXCEPTIONS_GRID_COLUMNS,
+  columns: readonly TrackingExceptionsGridColumn[] = TRACKING_EXCEPTIONS_SHEET_COLUMNS,
 ): string {
   return gridTemplate(columns);
 }
 
-/**
- * Sticky offset for a frozen cell — row px + the summed widths of the locked
- * columns before it.
- */
-export function trackingExceptionsGridFrozenLeft(key: TrackingExceptionsGridColumnKey): string {
-  return gridFrozenLeft(TRACKING_EXCEPTIONS_GRID_COLUMNS, key);
+/** Sticky offset for a frozen cell, derived from the MOUNTED model. */
+export function trackingExceptionsGridFrozenLeft(
+  columns: readonly TrackingExceptionsGridColumn[],
+  key: TrackingExceptionsGridColumnKey,
+): string {
+  return gridFrozenLeft(columns, key);
 }
 
-
 /**
- * Default direction when first activating a column sort.
- *
- * Date columns → newest first. Retries → most retries first (the stuck ones).
+ * Default direction when first activating a column sort: dates read newest
+ * first, and retries most-retries-first — the stuck rows are the point of the
+ * queue.
  */
-export function defaultDirForTrackingExceptionsGridSort(
-  key: TrackingExceptionsGridColumnKey,
+export function defaultDirForTrackingExceptionsColumn(
+  columns: readonly TrackingExceptionsGridColumn[],
+  key: string,
 ): GridSortDir {
-  if (key === 'created' || key === 'lastCheck' || key === 'retries') return 'desc';
-  return 'asc';
+  const dt = columns.find((c) => c.key === key)?.slotDisplayType;
+  return dt === 'date' || dt === 'money' || dt === 'number' ? 'desc' : 'asc';
 }
 
 // Shared spreadsheet chrome — @/design-system/components/grid ledgerGridCell.

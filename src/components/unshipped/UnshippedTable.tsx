@@ -24,7 +24,7 @@ import {
 import { Button } from '@/design-system/primitives';
 import { GridDegradedBox } from '@/design-system/components/grid';
 import { RefreshCw } from '@/components/Icons';
-import { useRailActionCount } from '@/components/right-rail/RailSelectionActions';
+import { useRailStatusBarActions } from '@/components/right-rail/RailSelectionActions';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
 import { deriveFulfillmentState, fulfillmentLaneTotals, type FulfillmentState } from '@/lib/unshipped-state';
@@ -736,10 +736,9 @@ function UnshippedSheet({
     'data-testid': 'pending-grid-body',
   });
   const chrome = useToShipChrome();
-  // The corner names how many verbs the selection can run; the rail still owns
-  // running them. Without this the bar advertised Copy and nothing else until
-  // the operator happened to check a third row.
-  const selectionActionCount = useRailActionCount();
+  // Live verbs from the first checkbox — Assign / Listing → staff / … sit
+  // flush-left on the status bar. The rail still owns the long form at 3+.
+  const selectionActions = useRailStatusBarActions();
 
   // The spreadsheet hook publishes the cursor (it owns grouping + folds);
   // this lane only turns the keyboard on.
@@ -752,7 +751,7 @@ function UnshippedSheet({
         {...sheet}
         {...chrome}
         copyExport={copyExport}
-        selectionActionCount={selectionActionCount}
+        selectionActions={selectionActions}
         exportFilename="to-ship.csv"
       />
     </div>

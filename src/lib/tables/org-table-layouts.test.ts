@@ -19,9 +19,14 @@ describe('slotCatalogFor', () => {
     assert.ok(slotCatalogFor('orders'));
     // Wave 2 (kill-list 07 §4): pickup is opted in.
     assert.ok(slotCatalogFor('pickup'));
-    // Fork kill 2026-08-30: the Amazon-Prep board is opted in.
-    assert.ok(slotCatalogFor('fba'));
-    assert.equal(slotCatalogFor('repair'), null);
+    // Wave 1.1 (seller-table-program §03): Ready is opted in.
+    assert.ok(slotCatalogFor('ready'));
+    // Repair is a sheet family (wave 1.4+).
+    assert.ok(slotCatalogFor('repair'));
+    // NOT `fba`: its catalog exists but the board display was torn out
+    // 2026-08-30. Opt-in is per-MOUNT — a registered id whose table renders
+    // nothing lets the route store an org layout into a void, silently.
+    assert.equal(slotCatalogFor('fba'), null);
     assert.equal(slotCatalogFor(''), null);
   });
 });
@@ -32,8 +37,11 @@ describe('slotMorphsFor', () => {
     // Pickup is the sheet-morph proof; a compound layout would promise a
     // two-row item cell nothing draws.
     assert.deepEqual(slotMorphsFor('pickup'), ['sheet']);
-    assert.deepEqual(slotMorphsFor('fba'), ['sheet']);
-    assert.deepEqual(slotMorphsFor('repair'), []);
+    // Ready is the second sheet family (wave 1.1).
+    assert.deepEqual(slotMorphsFor('ready'), ['sheet']);
+    assert.deepEqual(slotMorphsFor('repair'), ['sheet']);
+    // An unmounted table accepts nothing — see the catalog test above.
+    assert.deepEqual(slotMorphsFor('fba'), []);
   });
 });
 

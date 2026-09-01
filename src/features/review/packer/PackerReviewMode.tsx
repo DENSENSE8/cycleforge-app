@@ -39,6 +39,7 @@ import {
   StationWorkbench,
   WorkspaceTimelineTab,
 } from '@/components/station/workbench';
+import { STATION_SCAN_WELL_CLASS } from '@/components/station/scan-depth';
 import { STATION_WORKBENCH_COLUMN } from '@/components/station/workbench/workbench-layout';
 import {
   StationContextBar,
@@ -50,6 +51,7 @@ import {
   StationDisplaysUtilityRail,
   StationDisplaysPushStack,
   STATION_DISPLAY_INDEX,
+  resolveDisplaysActiveTab,
   useYieldStationDisplaysOnAssistantOpen,
 } from '@/components/station/displays';
 import { buildReviewDisplayIndexRows } from '@/features/review/packer/review-display-index';
@@ -294,13 +296,14 @@ export function PackerReviewMode({
     [photos.length, tracking, hasTimelineTab],
   );
 
-  const resolvedSideTab: ReviewDisplayNav | null = useMemo(() => {
-    if (!activeSideTab) return null;
-    if (activeSideTab === STATION_DISPLAY_INDEX) return STATION_DISPLAY_INDEX;
-    if (displayTabs.some((t) => t.id === activeSideTab)) return activeSideTab;
-    // Gated-away leaf → the index, never a silent swap to an unrelated display.
-    return STATION_DISPLAY_INDEX;
-  }, [activeSideTab, displayTabs]);
+  const resolvedSideTab = useMemo(
+    () =>
+      resolveDisplaysActiveTab(
+        activeSideTab,
+        displayTabs.map((t) => t.id),
+      ),
+    [activeSideTab, displayTabs],
+  );
 
   const terminalVm: TerminalActionVm = {
     label: 'Approve',
@@ -331,7 +334,7 @@ export function PackerReviewMode({
     ],
   };
 
-  const utilityRailBody = !activeSideTab ? (
+  const utilityRailBody = !resolvedSideTab ? (
     <StationDisplaysUtilityRail
       onOpenDisplays={openDisplaysIndex}
       indexRail={
@@ -409,6 +412,7 @@ export function PackerReviewMode({
               bodyGap="none"
               dock={<StationTerminalDock vm={terminalVm} />}
             >
+              <div className={STATION_SCAN_WELL_CLASS}>
               <motion.div initial="hidden" animate="show" variants={revealContainer}>
                 <motion.div variants={revealItem}>
                   <div className="border-b border-border-hairline bg-surface-card px-3 py-2">
@@ -431,6 +435,7 @@ export function PackerReviewMode({
                   />
                 </motion.div>
               </motion.div>
+              </div>
             </StationWorkbench>
           </StationPanelRoot>
         }

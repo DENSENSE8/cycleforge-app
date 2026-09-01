@@ -35,8 +35,15 @@ import {
   TOP_CHROME_ICON_FACE,
 } from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { useStaffPreferences } from '@/hooks/useStaffPreferences';
+import { resolveStationSkin } from '@/design-system/themes/station-skins';
 import { cn } from '@/utils/_cn';
-import { groupDisplayIndexRows, type DisplayIndexRow } from './display-index';
+import {
+  groupDisplayIndexRows,
+  withLookDisplayIndexRow,
+  type DisplayIndexRow,
+} from './display-index';
+import { withLookDisplayTabs } from './look-display-tab';
 
 /**
  * ONE icon-chrome token, shared with the 40px nav beam.
@@ -75,10 +82,14 @@ export function StationDisplaysParkedRail({
   /** Last opened leaf — marked so returning is aimed, not hunted. */
   activeId?: string | null;
 }) {
-  const iconById = new Map(tabs.map((t) => [t.id, t.icon]));
+  const { prefs } = useStaffPreferences();
+  const lookLabel = resolveStationSkin(prefs?.stationSkin).label;
+  const resolvedRows = withLookDisplayIndexRow(rows, lookLabel);
+  const resolvedTabs = withLookDisplayTabs(tabs);
+  const iconById = new Map(resolvedTabs.map((t) => [t.id, t.icon]));
   // Flatten the SAME grouped sequence the open index renders, so a display sits
   // at the same ordinal whether the column is parked or open.
-  const ordered = groupDisplayIndexRows(rows).flatMap((section) => section.rows);
+  const ordered = groupDisplayIndexRows(resolvedRows).flatMap((section) => section.rows);
   const painted = ordered.filter((row) => iconById.get(row.id));
   if (painted.length === 0) return null;
 

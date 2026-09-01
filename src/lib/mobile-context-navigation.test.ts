@@ -22,6 +22,26 @@ test('getMobileAppTitle resolves receiving-family route labels', () => {
   assert.equal(getMobileAppTitle('/repair'), 'Repair Service');
 });
 
+test('getMobileAppTitle resolves mobile home and assigned-orders routes', () => {
+  assert.equal(getMobileAppTitle('/m/home'), 'Home');
+  assert.equal(getMobileAppTitle('/m/work'), 'Orders');
+  assert.equal(getMobileAppTitle('/m/pick'), 'Picks');
+  assert.equal(getMobileAppTitle('/m/pack'), 'Packing');
+  assert.equal(getMobileAppTitle('/m/scan'), 'Scan');
+  assert.equal(getMobileAppTitle('/m/checklist'), 'Checklists');
+  assert.equal(getMobileAppTitle('/m/triage'), 'Arrival');
+  assert.equal(getMobileAppTitle('/m/unbox'), 'Unbox');
+  assert.equal(getMobileAppTitle('/m/receiving'), 'Photo feed');
+  assert.equal(
+    getMobileAppTitle('/m/receiving', new URLSearchParams('mode=local-pickup')),
+    'Walk-In',
+  );
+  assert.equal(
+    getMobileAppTitle('/m/receiving', new URLSearchParams('mode=repair')),
+    'Repair',
+  );
+});
+
 test('routeHasMobileContextRow includes receiving', () => {
   assert.equal(routeHasMobileContextRow('receiving'), true);
   assert.equal(routeHasMobileContextRow('dashboard'), true);

@@ -146,6 +146,14 @@ export interface RecordTestVerdictResult {
   nextStatus: VerdictMapping['nextStatus'];
   line: TestLineRollup | null;
   eventId: number;
+  /** Present when PASS triggered listing→pending allocate (best-effort). */
+  passAllocate?: {
+    matched: boolean;
+    orderId: number | null;
+    allocationId: number | null;
+    packAssigned: boolean;
+    reason?: string;
+  } | null;
 }
 
 /** Returns null when the serial unit doesn't exist. */
@@ -555,11 +563,37 @@ export async function recordTestVerdict(
     });
   }
 
+  // 7. Listing automation: PASS + pending to-ship order with matching item
+  //    number → allocate this unit and apply PACK assign. Best-effort — never
+  //    fails the verdict. Skips idempotent replays (eventCreated=false).
+  let passAllocate: RecordTestVerdictResult['passAllocate'] = null;
+  if (
+    verdict === 'PASS' &&
+    eventCreated &&
+    orgId &&
+    mapping.nextStatus === 'TESTED'
+  ) {
+    try {
+      const { passAllocateUnitToPendingOrder } = await import(
+        '@/lib/automations/pass-allocate-to-pending'
+      );
+      passAllocate = await passAllocateUnitToPendingOrder({
+        organizationId: orgId,
+        serialUnitId: unit.id,
+        actorStaffId,
+        clientEventId: args.clientEventId ?? null,
+      });
+    } catch (err) {
+      console.warn('[recordTestVerdict] pass-allocate skipped (non-fatal):', err);
+    }
+  }
+
   return {
     unit,
     prevStatus: prev.current_status,
     nextStatus: mapping.nextStatus,
     line: lineRollup,
     eventId,
+    passAllocate,
   };
 }

@@ -24,10 +24,13 @@ import { UnfoundQueueDetailsPanel } from './UnfoundQueueDetailsPanel';
 import { useUnfoundQueueTable } from './queue-table/useUnfoundQueueTable';
 import type { QueueRow } from './queue-table/unfound-queue-shared';
 import { UNFOUND_TABLE_BINDING } from './grid/unfound-table-definition';
+import { useUnfoundTableLayout } from './grid/useUnfoundTableLayout';
 import { UnfoundGridRow, unfoundRowKey, unfoundRowTitle } from './grid/UnfoundGridRow';
 import {
-  defaultDirForUnfoundGridSort,
-  isUnfoundGridSortable,
+  defaultDirForUnfoundColumn,
+  isUnfoundColumnSortable,
+  unfoundSheetColumnsFor,
+  unfoundSortFactFor,
   type UnfoundGridColumn,
   type UnfoundGridColumnKey,
 } from './grid/unfound-grid-layout';
@@ -41,21 +44,25 @@ export {
 function compareUnfoundRows(
   a: QueueRow,
   b: QueueRow,
-  key: UnfoundGridColumnKey,
+  fact: string,
   dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
-  switch (key) {
+  switch (fact) {
     case 'title':
       return sign * unfoundRowTitle(a).localeCompare(unfoundRowTitle(b));
-    case 'ticket':
+    case 'unfound.ticket':
       return sign * (a.zendesk_ticket_id || '').localeCompare(b.zendesk_ticket_id || '');
-    case 'usaNote':
+    case 'unfound.usa_note':
       return sign * (a.usa_team_note || '').localeCompare(b.usa_team_note || '');
-    case 'vietnamNote':
+    case 'unfound.vietnam_note':
       return sign * (a.vietnam_team_note || '').localeCompare(b.vietnam_team_note || '');
-    case 'checked':
+    case 'unfound.checked':
       return sign * (Number(a.checked) - Number(b.checked));
+    case 'unfound.created':
+      return sign * (a.created_at || '').localeCompare(b.created_at || '');
+    case 'unfound.item':
+      return sign * a.source_id.localeCompare(b.source_id);
     default:
       return 0;
   }
@@ -83,13 +90,23 @@ export function UnfoundQueueTable() {
   // ▦ portals into Band-1 controls (find / kind pills live in the admin sidebar).
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // The COLUMNS are the effective slot layout's materialization (staff ?? org
+  // ?? product — wave 1.4 hand-model kill). Sort keys are the mounted track
+  // keys; each resolves to its bound field's fact through `unfoundSortFactFor`.
+  const { effectiveLayout: unfoundLayout, fields: unfoundFields } = useUnfoundTableLayout();
+  const columns = useMemo(() => unfoundSheetColumnsFor(unfoundLayout), [unfoundLayout]);
+  const sortFactByKey = useMemo(
+    () => new Map(columns.map((c) => [c.key as string, unfoundSortFactFor(c)])),
+    [columns],
+  );
+
   const {
     sort: columnSort,
     dir: sortDir,
     setSort,
   } = useUrlColumnSort<UnfoundGridColumnKey>({
-    isColumn: isUnfoundGridSortable,
-    defaultDir: defaultDirForUnfoundGridSort,
+    isColumn: (raw) => isUnfoundColumnSortable(columns, raw),
+    defaultDir: (key) => defaultDirForUnfoundColumn(columns, key),
   });
 
   const [, settleTick] = useState(0);
@@ -103,12 +120,13 @@ export function UnfoundQueueTable() {
   const openKey = openRow ? unfoundRowKey(openRow) : null;
 
   const orderGroupsByDate = useMemo<[string, RowGroup<QueueRow>[]][]>(() => {
+    const sortFact = columnSort ? (sortFactByKey.get(columnSort) ?? null) : null;
     const ordered =
-      columnSort && sortDir
-        ? [...rows].sort((a, b) => compareUnfoundRows(a, b, columnSort, sortDir))
+      sortFact && sortDir
+        ? [...rows].sort((a, b) => compareUnfoundRows(a, b, sortFact, sortDir))
         : rows;
     return [['', ordered.map((row) => ({ key: `unfound:${unfoundRowKey(row)}`, rows: [row] }))]];
-  }, [rows, columnSort, sortDir]);
+  }, [rows, columnSort, sortFactByKey, sortDir]);
 
   // A filter is narrowing the list when search or a non-default kind tab is on —
   // that is what picks "no matches" over "nothing in the queue".
@@ -163,6 +181,8 @@ export function UnfoundQueueTable() {
 
         <DataTable<QueueRow, UnfoundGridColumnKey, UnfoundGridColumn>
           binding={UNFOUND_TABLE_BINDING}
+          columns={columns}
+          fields={unfoundFields}
           orderGroupsByDate={orderGroupsByDate}
           rows={rows}
           getRowId={(r) => unfoundRowKey(r)}

@@ -8,8 +8,6 @@
 import { startTransition } from 'react';
 import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { MessageSquare } from '@/components/Icons';
-import { EmptyState } from '@/design-system/primitives';
 import { KpiStrip } from '@/design-system/components/monitor';
 
 import { formatMedianDeployLabel } from '@/lib/user-issues/kpi';
@@ -74,16 +72,13 @@ export function IssuesWorkspace() {
         <KpiStrip items={kpiItems} />
       </div>
 
-      {/* Mobile: list when nothing selected */}
-      {!issueId ? (
-        <div className="flex h-full min-h-0 w-full flex-col border-r border-border-soft bg-surface-card md:hidden">
+      {issueId == null ? (
+        <div className="flex h-full min-h-0 w-full flex-col bg-surface-card">
           <IssuesQueue />
         </div>
-      ) : null}
-
-      <div className={`${issueId ? 'flex' : 'hidden md:flex'} min-h-0 flex-1 flex-col`}>
-        <AnimatePresence mode="wait" initial={false}>
-          {issueId != null ? (
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={`issue-${issueId}`}
               className="flex h-full min-h-0 w-full flex-col"
@@ -94,24 +89,9 @@ export function IssuesWorkspace() {
             >
               <IssuesDetail issueId={issueId} onBack={clearIssue} />
             </motion.div>
-          ) : (
-            <motion.div
-              key="issue-empty"
-              className="flex h-full items-center justify-center"
-              initial={paneMotion.initial}
-              animate={paneMotion.animate}
-              exit={paneMotion.exit}
-              transition={paneTransition}
-            >
-              <EmptyState
-                icon={<MessageSquare className="h-6 w-6 text-text-faint" />}
-                title="Select an issue"
-                description="Pick a report from the list to review its details."
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 }
