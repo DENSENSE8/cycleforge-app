@@ -49,9 +49,11 @@ test('Displays scope remaps canvas and soft ink for leaf interiors', () => {
   assert.match(css, /--ds-color-surface-strong:\s*var\(--ds-station-slot\)/);
 });
 
+// ds-allow-raw-neutral: this tripwire names the banned class; it is not a paint.
 test('Displays leaf hosts do not paint bg-white or hex wells', () => {
   for (const rel of LEAF_HOSTS) {
     const src = read(rel);
+    // ds-allow-raw-neutral: assertion copy names the banned class.
     assert.doesNotMatch(src, /\bbg-white\b/, `${rel} has bg-white`);
     assert.doesNotMatch(src, /\bbg-\[#/, `${rel} has bg-[#…]`);
   }
