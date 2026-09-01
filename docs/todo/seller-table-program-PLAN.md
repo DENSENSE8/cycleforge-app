@@ -64,21 +64,22 @@ them as constraints, not history — they are closed.
 Seven phases. Families gates every phase that is built at the engine seam;
 the row model runs in parallel because it touches the shell, not the catalogs.
 
+**Phases 1 and 2 are done, and Phase 3 is down to one control.** What remains is
+the seller-facing half — export, import profiles, the marketplace catalog, and
+the layout half of saved views.
+
 ```mermaid
 flowchart TD
-    subgraph GATE["Engine seam — must land first"]
-        P1["<b>Phase 1 · Families</b><br/>16 hand arrays → catalogs<br/><i>gates everything at the seam</i>"]
+    subgraph DONE["Landed"]
+        P1["<b>Phase 1 · Families</b><br/>✓ 19 slot tables<br/><i>fba board + receiving flat still open</i>"]
+        P2["<b>Phase 2 · Row model</b><br/>✓ gestures · keyboard · bottom bar<br/><i>right-edge action + inline form open</i>"]
+        P3["<b>Phase 3 · Header cluster</b><br/>✓ Views · Export · Sort · CTA<br/><i>Import open</i>"]
     end
 
-    subgraph PARALLEL["Shell — runs in parallel"]
-        P2["<b>Phase 2 · Row model</b><br/>gesture table · bottom bar<br/>inline form · right-edge action"]
-    end
-
-    P3["<b>Phase 3 · Header cluster</b><br/>Views · Import · Export · CTA"]
-    P4["<b>Phase 4 · Configurable export</b><br/>three tiers · one serializer"]
-    P5["<b>Phase 5 · Import + mapping</b><br/>inline mapping · named profiles"]
-    P6["<b>Phase 6 · Seller field catalog</b><br/>every marketplace fact bindable"]
-    P7["<b>Phase 7 · Saved views + write paths</b><br/>versioned payload · price write"]
+    P4["<b>Phase 4 · Configurable export</b><br/>three tiers · one serializer<br/><i>trigger landed, panel open</i>"]
+    P5["<b>Phase 5 · Import + mapping</b><br/><i>mapping exists — named PROFILES open</i>"]
+    P6["<b>Phase 6 · Seller field catalog</b><br/>every marketplace fact bindable<br/><i>9 fields, untouched</i>"]
+    P7["<b>Phase 7 · Saved views + write paths</b><br/><i>URL round-trip works —<br/>LAYOUT + price write open</i>"]
 
     P1 --> P3
     P1 --> P4
@@ -104,13 +105,12 @@ flowchart TD
     classDef shell fill:#F7EEDE,stroke:#9A6614,color:#5B4310
     classDef norm fill:#FFFFFF,stroke:#5B6572,color:#12161C
     classDef cross fill:#E6EFE8,stroke:#3A6544,color:#24402B
-    class P1 gate
-    class P2 shell
-    class P3,P4,P5,P6,P7 norm
+    class P1,P2,P3 gate
+    class P4,P5,P6,P7 norm
     class K cross
 ```
 
-### Why the families come first
+### Why the families came first  `kept as the record of the decision`
 
 * Every capability below is built at the **engine seam**. Built while sixteen
   families still mount hand-written column arrays, each one becomes an *Orders
@@ -242,7 +242,7 @@ the reason the cluster stops at four:
 
 ---
 
-## 06 · Phase 4 — Configurable export  `start here after families`
+## 06 · Phase 4 — Configurable export  `START HERE`
 
 > "The export should not just be a blind download. It should be a configurable
 > download that will be inline — download default, download what's shown,
@@ -320,7 +320,7 @@ packed; the default tier is one click; field choice round-trips org-wide.
 
 ---
 
-## 07 · Phase 5 — Import, with inline column mapping  `new`
+## 07 · Phase 5 — Import, with inline column mapping  `partly landed`
 
 Export and import are one axis, and only one has ever been designed.
 
@@ -469,7 +469,7 @@ and a test, and is bindable without a deploy.
 
 ---
 
-## 09 · Phase 7 — Saved views + write paths
+## 09 · Phase 7 — Saved views + write paths  `smaller than it was`
 
 Smaller than it looks. The system exists; the payload is one field and the layout
 layer was never connected.
@@ -827,19 +827,37 @@ Do not guess these. Ask, then record the answer in the repo prompt.
    Should saved views inherit that gate — and do *personal* views survive at all?
 5. **Export destinations.** Is a file download the end state, or is the real ask a
    scheduled push to a sheet or a supplier?
-6. **The right pane's future.** With the record form inline and the actions at the
-   foot of the table, what is the right rail still for — and does the two-row
-   compare plane survive?
+6. **The right pane's future.** *Partly answered by what shipped:* the 3+ batch
+   roster was retired (`resolveRailOccupancy` no longer returns `attention`)
+   because it duplicated the status-bar CTAs, and **the two-row compare plane
+   survived**. Still open: with the record form inline, what is the 1-row
+   inspector for — the deep record, or nothing?
 
 ---
 
 ## 16 · Execution ledger
 
+### What is left, in one place  `2026-09-01`
+
+| # | Open work | Where |
+|---|---|---|
+| 1 | Configurable export — three tiers, one field registry, one serializer (four exist) | §06 |
+| 2 | Named import mapping profiles, org-wide | §07 |
+| 3 | Seller field catalog — 9 fields today, the feed returns far more | §08 |
+| 4 | Saved views: capture the effective LAYOUT and thread it in | §09 |
+| 5 | Price write path — no route accepts `saleAmount` on edit | §09 |
+| 6 | Header Import control | §05 |
+| 7 | Row right-edge next action; the inline record form | §04 |
+| 8 | The keyboard REGISTRY (`useKeymap`) — the guards landed, the map did not | §11 |
+| 9 | Amazon Prep board display; receiving's flat model needs its own layout id | §03 |
+
+Everything else in this document has landed. The rows below are the record.
+
 | Wave | Landed | Notes |
 |---|---|---|
 | 1.1 Ready | **2026-08-31** | `READY_FIELD_CATALOG` (7 facts) + `READY_PRODUCT_LAYOUT` (sheet) + `ready-resolve.ts` + registry entry + `readySheetColumnsFor` + `useReadyTableLayout`; `READY_GRID_COLUMNS` deleted with the last live `{ key: 'tested' }` track in `src/`; `TABLE_COLUMNS.ready` emptied; 4 symbols ledgered; 12 new unit tests. Detail: [kill-list 07 § Wave 3a](../kill-list/07-slot-table-hand-models.md). |
 | 1.2 Amazon Prep | **2026-08-31** (partial) | Operator ruling: **unregister, do not rebuild yet.** `fba` dropped from `SLOT_LAYOUT_TABLES`, so `/api/tables/layouts` 404s instead of storing an org layout for a table that renders nothing; `field-catalog/fba.ts` kept intact so the rebuild is one line. A regression test now pins `slotCatalogFor('fba') === null` with the reason. **The board display rebuild itself is still open.** |
-| 1.3 Compound families | **in progress** | **receiving (compound mount) landed 2026-08-31** — `RECEIVING_FIELD_CATALOG` (8 facts) + compound `RECEIVING_PRODUCT_LAYOUT` with an empty band (byte-for-byte parity), `receivingCompoundColumnsFor`, `useReceivingTableLayout`, a `fields` passthrough on `ReceivingGridHost`, slot values into the shared `CompoundRowView`; 12 new unit tests. Two facts refused in writing (activity stamp, Zoho chip). **Receiving's FLAT mount (`/test` history) is a separate port** — it needs its own layout id. **incoming landed 2026-08-31** — `INCOMING_FIELD_CATALOG` (7 facts) + compound product layout with an empty band, `incomingCompoundColumnsFor`, `useIncomingTableLayout`, both mounts wired; 13 new unit tests. The resolver is deliberately NOT shared with receiving: one row, two questions (`delivery_state` vs `workflow_status`), routed by `linePhase`. Refused in writing: age, Zoho chip. **daily landed** — 4 facts, `dailyCompoundColumnsFor`, `useDailyTableLayout`, both render paths collapsed onto one `dailyRowView` helper; 10 tests. **tasks landed** — 6 facts, its own vocabulary (a staffer's list vs the org's roster-backed checklist); 13 tests; refuses a lateness fact because the surface's shared `nowMs` owns it. **catalog-link landed** — 6 facts; 11 tests; refuses `status` (every row in the queue is unlinked by definition). **import-exception landed** — 7 facts; 13 tests; same `status` refusal. **Wave 1.3 is complete**: six compound families, all with empty default bands (byte-for-byte parity) and honest Fields menus; the slot engine now serves ten tables. Their FLAT models survive as unmounted definition defaults — a separate sweep. |
+| 1.3 Compound families | **2026-08-31** (see the reopened row) | **receiving (compound mount) landed 2026-08-31** — `RECEIVING_FIELD_CATALOG` (8 facts) + compound `RECEIVING_PRODUCT_LAYOUT` with an empty band (byte-for-byte parity), `receivingCompoundColumnsFor`, `useReceivingTableLayout`, a `fields` passthrough on `ReceivingGridHost`, slot values into the shared `CompoundRowView`; 12 new unit tests. Two facts refused in writing (activity stamp, Zoho chip). **Receiving's FLAT mount (`/test` history) is a separate port** — it needs its own layout id. **incoming landed 2026-08-31** — `INCOMING_FIELD_CATALOG` (7 facts) + compound product layout with an empty band, `incomingCompoundColumnsFor`, `useIncomingTableLayout`, both mounts wired; 13 new unit tests. The resolver is deliberately NOT shared with receiving: one row, two questions (`delivery_state` vs `workflow_status`), routed by `linePhase`. Refused in writing: age, Zoho chip. **daily landed** — 4 facts, `dailyCompoundColumnsFor`, `useDailyTableLayout`, both render paths collapsed onto one `dailyRowView` helper; 10 tests. **tasks landed** — 6 facts, its own vocabulary (a staffer's list vs the org's roster-backed checklist); 13 tests; refuses a lateness fact because the surface's shared `nowMs` owns it. **catalog-link landed** — 6 facts; 11 tests; refuses `status` (every row in the queue is unlinked by definition). **import-exception landed** — 7 facts; 13 tests; same `status` refusal. **Wave 1.3 is complete**: six compound families, all with empty default bands (byte-for-byte parity) and honest Fields menus; the slot engine now serves ten tables. Their FLAT models survive as unmounted definition defaults — a separate sweep. |
 | 1.4 Sheet families | **2026-08-31** | All ten landed: **units** (5 facts) · **bins** (7; the flag composite never sorts, and that rule rides the fact) · **warranty** (7; ticket CONTROL structural, linked-ticket FACT bindable) · **catalog** (9; the four roll-ups, cost and category unbound, and a zero roll-up paints blank) · **tech-all** (4; urgency is a RANK, so it opens ASCENDING against the house number default) · **unfound** (6; an interactive fact binds, the Push control does not; the queue ascends on every track so the oldest uncleared row surfaces) · **repair** (8; sort stays the `?sort=` URL vocabulary and a mounted track maps ONTO a word, never mints one — bookmarks keep their meaning) · **my-day** (6; `fieldsMenu: true` was "leftover lip copy" and is now honest) · **tracking-exceptions** (10) · **orders-import** (6; the triage status is structural, resolvers do not coerce — `02` stays `02`). Each: catalog + resolver + registry + `*SheetColumnsFor` + `use*TableLayout`, cells switched onto the bound field id, `TABLE_COLUMNS` bucket emptied, symbols ledgered. **One geometry change, with its reason:** staging's sole `1fr` moved off the `customer` FACT onto a trailing `_fill`, the house law every other family follows. |
 | 1.5 Missing guards | **2026-08-31** | All three written, and each one now passes across every registered surface. **`table-definition-registry.guard.test.ts`** — the definition↔columns DRIFT CHECK, derived from `REGISTERED_BINDINGS` (a hand-typed list is what failed last time); it pins keys-in-order, width and frozen-ness for all 19 bindings. **`table-record-plane.guard.test.ts`** — the COVERAGE ASSERTION (registry ↔ array, same set, same objects by identity, unique tableIds) plus "every row says what it opens": a non-`inspector` arm must carry a reason of real substance, because a type can require the field but only a test can require it to say something. **`band3-find-only.guard.test.ts`** — the desk-peek surface law, enforced in BOTH directions: a ruled surface may not grow a peek, and — the direction that matters more — a surface not on the list may not quietly become `kind: 'none'`. Its prose count was stale (two, not three); the guard is now the authority. The three citing docblocks were corrected to say the guards exist. |
 | 1.3 (reopened) | **2026-08-31** | **Audit of the tree, not the ledger, found wave 1.3 half-landed.** All six compound families had their MOUNT on the materialization and their CANONICAL model (`binding.columns` / `definition.columns`) still on the flat hand array — and each derived its `?colsort=` vocabulary from that array, so `useUrlColumnSort` rejected every mounted track key and **clicking a column header did nothing on six desks**. The same bug `queue-display-sort` documents for To-Ship one wave earlier. Fixed: definitions repointed; `TestingHistoryList` passes the flat model EXPLICITLY (a declared second mount, not a silent fallback); a track→fact map per family on the `COMPOUND_TRACK_SORT_KEYS` shape, with four refusals written down; sortability moved onto the bound fact and wired into the daily/tasks descriptors so a header stops offering a sort it cannot perform; `catalog-link` / `import-exception`'s half-patch completed (dead `item` header, `undefined` comparator type); seven prefs buckets emptied — including `receiving`, whose justification cited `useIsColumnHidden`, **which does not exist**. Detail: [kill-list 07 § Wave 3f](../kill-list/07-slot-table-hand-models.md). |
