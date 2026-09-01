@@ -129,220 +129,48 @@ big-bang — order them by what they de-risk.
 
 ---
 
-## 03 · Phase 1 — Finish the displays  `16 families`
+## 03 · Phase 1 — Finish the displays  `LANDED 2026-08-31 · reopened and closed 2026-08-31`
 
-Per family: a catalog, a pure resolver, a registry entry, the materializer in
-place of the array — then delete the array and ledger it.
+All sixteen families are ported. The slot engine went from 3 registered tables
+to **19**; every family in the kill list declares a `FieldCatalog` + a
+`SlotLayout`, every `TABLE_COLUMNS` bucket that served a ported family is `[]`,
+and `fieldsMenu: true` is honest everywhere it is set.
 
-### The engine, as it stands
+**Wave 1.3 had to be reopened.** An audit of the tree found the six compound
+families had their MOUNT on the materialization and their CANONICAL model still
+on the flat hand array — and each derived its `?colsort=` vocabulary from that
+array, so **clicking a column header did nothing on six desks**. Closed
+2026-08-31.
 
-```mermaid
-flowchart LR
-    subgraph SOURCES["Layout cascade — resolveEffectiveLayout"]
-        SV["savedViewLayout<br/><i>declared, passed by<br/>no caller — phase 7</i>"]
-        SL["staffLayout<br/>staff_preferences<br/>.tableLayouts[id]"]
-        OL["orgLayout<br/>organizations.settings<br/>.tableLayouts[id]"]
-        PD["productLayout<br/><i>*_PRODUCT_LAYOUT</i>"]
-    end
+The recipe, the wave order and the per-family notes now live where the work is:
+[kill-list 07](../kill-list/07-slot-table-hand-models.md) (§ Wave 3a–3f) and the
+ledger in §16 below. **Still open from this phase, and only this:**
 
-    CAT["FieldCatalog<br/><i>*_FIELD_CATALOG</i><br/>the bindable vocabulary"]
-
-    SV -.->|"dead param"| RES
-    SL --> RES
-    OL --> RES
-    PD --> RES
-    CAT --> RES
-
-    RES["resolveEffectiveLayout<br/><i>drops stale bindings</i>"]
-    RES --> EFF["SlotLayout<br/>morph · identityFieldId<br/>statusBindings[≤10]<br/>subtitleBindings[≤5]<br/>amountFieldId"]
-
-    EFF --> MAT["materializeTracks<br/><i>keys are slot INDICES</i>"]
-    BASE["family base skeleton<br/><i>select · title · …</i>"] --> MAT
-    CAT --> MAT
-
-    MAT --> COLS["mounted columns<br/>status:1…N · subtitle:1…N"]
-    COLS --> DT["DataTable → LedgerGrid"]
-
-    ROW["family row renderer"] --> DT
-    RESV["*-resolve.ts<br/>row + fieldId → value<br/><i>pure, one case per field</i>"] --> ROW
-
-    WRITE["PUT /api/tables/layouts"] -->|"parseSlotLayout<br/>+ slotMorphsFor gate"| OL
-    REG["SLOT_LAYOUT_TABLES<br/><i>org-table-layouts.ts</i>"] --> WRITE
-
-    classDef live fill:#E6EFE8,stroke:#3A6544,color:#24402B
-    classDef dead fill:#F4F5F7,stroke:#8B94A1,stroke-dasharray:4 3,color:#5B6572
-    classDef core fill:#E4F1F1,stroke:#0E6A70,stroke-width:2px,color:#0A4F54
-    class SV dead
-    class RES,MAT,EFF core
-    class SL,OL,PD,CAT,COLS,DT,ROW,RESV,BASE,WRITE,REG live
-```
-
-### The per-family port recipe
-
-Six files, in this order. Orders and Pickup are the two worked examples; Pickup
-is the sheet morph, Orders the compound.
-
-```mermaid
-flowchart TD
-    S1["<b>1 · Catalog</b><br/>src/lib/tables/field-catalog/&lt;fam&gt;.ts<br/>FieldDef[] + *_PRODUCT_LAYOUT + *_TABLE_LAYOUT_ID<br/><i>LEAF module — no client imports</i>"]
-    S2["<b>2 · Resolver</b><br/>&lt;fam&gt;-resolve.ts<br/>(row, fieldId) → CompoundSlotValue | null<br/><i>pure; one switch case per field</i>"]
-    S3["<b>3 · Registry</b><br/>SLOT_LAYOUT_TABLES[id] = { catalog, morphs }<br/><i>absent id = 404 at the API, never a silent blob</i>"]
-    S4["<b>4 · Materialized model</b><br/>&lt;fam&gt;-grid-layout.ts<br/>BASE skeleton + &lt;fam&gt;SheetColumnsFor(layout)<br/><i>delete the hand array here</i>"]
-    S5["<b>5 · Layout hook</b><br/>use&lt;Fam&gt;TableLayout.ts<br/><i>a CONFIG on useSlotTableLayout, never a fork</i>"]
-    S6["<b>6 · Mount + row</b><br/>columns={…} fields={fields} on DataTable<br/>row renders isSlotTrackKey tracks by fieldId"]
-
-    S1 --> S2 --> S3 --> S4 --> S5 --> S6
-
-    S6 --> D1["<b>Delete + ledger</b><br/>TABLE_COLUMNS.&lt;id&gt; → []<br/>retired-symbols.test.ts entry<br/>fieldsMenu: true now honest"]
-    D1 --> V["<b>Verify</b><br/>catalog test parses the product layout<br/>materialization reproduces pre-port scan order<br/>npm run verify"]
-
-    classDef step fill:#FFFFFF,stroke:#0E6A70,color:#12161C
-    classDef kill fill:#F7EEDE,stroke:#9A6614,color:#5B4310
-    classDef ver fill:#E6EFE8,stroke:#3A6544,color:#24402B
-    class S1,S2,S3,S4,S5,S6 step
-    class D1 kill
-    class V ver
-```
-
-### Rules for the port
-
-* **Reproduce, then improve.** The port lands with the same columns in the same
-  order. Any change ships as its own commit with a reason.
-* **The picker flag becomes true only when the catalog exists.** Flipping it
-  earlier is the lie this phase ends.
-* **Two table ids, one cell map.** A second prefs bucket is not a second engine.
-* Watch the budgets — ten status slots, five subtitle slots. The catalog is the
-  menu; the product layout is the default plate.
-
-### Wave order — by what it de-risks, never by size
-
-```mermaid
-flowchart LR
-    W1["<b>1.1 Ready</b><br/>1 family<br/><i>mounts a literal</i> tested <i>track —<br/>the forbidden pattern, live</i>"]
-    W2["<b>1.2 Amazon Prep</b><br/>1 family<br/><i>catalog + layout survived the<br/>teardown; only the mount is missing.<br/>Fixes the registry lie.</i>"]
-    W3["<b>1.3 Compound families</b><br/>receiving · incoming · daily · tasks<br/>catalog-link · import-exception<br/><i>already share the compound row —<br/>each port is catalog-only</i>"]
-    W4["<b>1.4 Sheet families</b><br/>units · catalog · unfound · repair<br/>tech-all · tracking-exceptions · bins<br/>warranty · my-day · orders-import"]
-    W5["<b>1.5 The three missing guards</b><br/>definition→columns drift check<br/>registry coverage assertion<br/>desk-peek surface law"]
-
-    W1 --> W2 --> W3 --> W4 --> W5
-
-    classDef first fill:#E4F1F1,stroke:#0E6A70,stroke-width:2px,color:#0A4F54
-    classDef norm fill:#FFFFFF,stroke:#5B6572,color:#12161C
-    classDef guard fill:#E6EFE8,stroke:#3A6544,color:#24402B
-    class W1 first
-    class W2,W3,W4 norm
-    class W5 guard
-```
-
-> **A live bug fixed on the way in.** ~~The `fba` table id is still registered in
-> `SLOT_LAYOUT_TABLES`, so `/api/tables/layouts` accepts and stores organization
-> column layouts for a table that renders nothing.~~ **Resolved 2026-08-31** by
-> operator ruling: **unregistered**. Opt-in is per-MOUNT, not per-catalog. The
-> catalog file survives; re-adding one registry line is the last step of the
-> board rebuild, which remains open.
-
-**Done when:** every hand array is deleted and ledgered; a test proves the layout
-parses and the materialization reproduces the pre-port scan order; the picker
-flag is true only where a catalog exists.
+* **The Amazon Prep board display.** Unregistered by operator ruling, not
+  rebuilt. `field-catalog/fba.ts` is intact — re-registering is one line in
+  `SLOT_LAYOUT_TABLES` beside the rebuilt mount.
+* **Receiving's FLAT model.** `/test`'s `TestingHistoryList` mounts it, now
+  passing `RECEIVING_GRID_COLUMNS` explicitly rather than inheriting it by
+  silence. It owes its own layout id.
+* **Unmounted flat definition defaults** on the families whose descriptors and
+  row components still fall back to a `*_GRID_COLUMNS` array nothing paints.
 
 ---
 
-## 04 · Phase 2 — The row model  `new`
+## 04 · Phase 2 — The row model  `mostly landed`
 
-Two rulings, one coherent model — and the right rail stops being the answer for
-either. Build the gesture table **first** and make the code match it.
+**The gesture table and the keyboard are done** (2026-09-01) — declared in
+`src/lib/tables/row-gestures.ts`, bound by `useRowGestures` on the table region,
+suppressed by `table-key-layer.ts`. Shift-click works for the first time. See
+§11 for what the keyboard still owes, and §16 for the detail.
 
-```mermaid
-stateDiagram-v2
-    direction LR
-    [*] --> Browsing
+**The bottom bar is done** — selection verbs paint on `TableStatusBar` from the
+first checked row, the 3+ `attention` roster is retired, and
+`resolveRailOccupancy` no longer returns it.
 
-    Browsing --> Browsing: j / k / ↑ / ↓ — move the record cursor
-    Browsing --> Selected: click · Space · x — toggle selection
-    Selected --> Selected: shift+click · Shift+↑↓ — extend from the anchor
-    Selected --> Browsing: Esc — clear the selection
-    Selected --> Acting: bottom bar registers at ONE row
+### What is still open
 
-    Acting --> Selected: verb runs (undo or confirm)
-
-    Browsing --> FormOpen: double-click · Enter · o · the visible hint
-    Selected --> FormOpen: double-click · Enter · o
-    FormOpen --> Browsing: Esc — focus returns to the row
-    FormOpen --> FormOpen: edit price · item # · condition · notes
-
-    Browsing --> Overflow: right-click · Shift+F10 · Menu · .
-    Overflow --> Browsing: Esc
-
-    note right of FormOpen
-        URL is the state — the existing
-        open-order param. It SHOWS;
-        it never animates open.
-        One row open at a time.
-        Fixed-height panel so the
-        virtualizer's scroll math stays exact.
-    end note
-
-    note right of Acting
-        Bottom bar, not the right rail.
-        Full-bleed, zero-padding,
-        full-height buttons — the hit
-        target IS the column.
-        Overflow is a "More" popover,
-        never a scroll.
-    end note
-```
-
-### The gesture table, written down
-
-> **Landed 2026-09-01.** The table below is no longer prose: it is declared in
-> `src/lib/tables/row-gestures.ts` and bound by `useRowGestures`, and
-> `row-gestures.test.ts` enforces the law — *every verb the pointer can reach,
-> the keyboard can reach* — as an assertion rather than a heading.
-
-| Gesture | Keyboard | Does |
-|---|---|---|
-| Click | `x` · `Space` | Toggle selection |
-| Shift+click | `Shift+↑` / `Shift+↓` | Extend from the anchor. ~~plumbed and hardcoded off~~ **fixed** — the checkbox now forwards its click's modifier, and a source guard fails on a literal `shiftKey: false`. |
-| Double-click | `Enter` · `o` | Open the record |
-| — | `j` / `k` / `↑` / `↓` | Move the record cursor (clamps; never wraps) |
-| — | `Home` / `End` | First row · last row |
-| Header checkbox | `⌘A` | Select every row in the current view |
-| — | `Esc` | Close the form; if none is open, clear the selection |
-| Right-click | — | Reserved. No per-row menu without a ruling — recorded by ABSENCE from the table, since an entry would be a binding. |
-
-**One anchor, two input devices.** Shift+click and Shift+↓ resolve through the
-same `selection-anchor.extendTo`, so they cannot mean different things. The span
-takes the *target* row's new state, which is what makes a range-DESELECT
-expressible at all.
-
-**The suppressor is real now.** `table-key-layer.ts` implements the §11
-flowchart, and `hasScanTarget()` is the missing predicate it needed: a wedge
-scan of `SKU-1129` types eight ordinary keydowns, and on a screen where single
-letters run verbs that is ship-by, print, a cursor move, then Enter. Shift is
-deliberately **not** treated as protection — a scanner shifts for uppercase.
-
-### Selection becomes the bottom bar
-
-```
-── no selection ────────────────────────────────────────────────
-[ Must ship 99+ ][ Urgent ]                     200 of 847  ↓
-── 12 selected ─────────────────────────────────────────────────
-12 selected │ Copy │ Assign │ Ship-by │ Print labels │ Export │ Delete
-```
-
-* **Full-bleed, zero-padding, full-height buttons.** Compose the fill-size icon
-  button inside the flush terminal footer — the house primitive whose docblock
-  already states this law. Do not hand-roll a bar.
-* **Verbs come from the existing selection-action list**, unchanged and grouped
-  as they already are, with destroy separated by a rule.
-* **Available from one row.** The three-row gate goes.
-* **The multi-select rail is removed**, not hidden. Put the two-row compare
-  plane to the operator before deleting it.
-* **Overflow is a menu, not a scroll.**
-* **Undo or confirm.** Seven of eight verbs have neither today.
-* **Announce it.** The bar switching from counts to verbs is a live-region change.
-
-### The row's right edge — what needs doing next
+**The row's right edge — a hover-revealed next action.**
 
 ```
 │ … Bose Wave IV        ● TESTED   47d late  │   Pack  ⋮ │  ← on hover / focus
@@ -362,67 +190,55 @@ deliberately **not** treated as protection — a scanner shifts for uppercase.
 * **The next action is data.** A family supplies a pure
   `row → { label, run } | null`. No lifecycle branching in a cell.
 * **Opacity only.** It fades in; it never shifts the row.
+* It shows its key when it appears on focus (§11).
+
+**The inline record form.** Double-click / `Enter` / `o` call `onOpen`, and every
+desk still routes that to its existing record plane. The plan's inline form —
+URL-backed, fixed-height so the virtualizer's scroll math stays exact, one row
+open at a time — is not built.
 
 > **Decide what happens to the right pane.** Either the inline form replaces it
 > on this desk, or the two coexist with the form as triage and the pane as the
-> deep record. Do not ship both silently doing one job.
+> deep record. Do not ship both silently doing one job. *(Operator question 6.)*
+
+**Undo or confirm on the bulk verbs.** Still true, still unaddressed: most of
+them have neither.
 
 ---
 
-## 05 · Phase 3 — The header cluster  `new`
+## 05 · Phase 3 — The header cluster  `one control left`
 
 ```
-Shipping                    [ Views ▾ ]  [ Import ]  [ Export ]  [ + Add order ]
-To ship   Amazon Prep   Shipped
-─────────
+Shipping                              [ Import ]  [ Export ]  [ + Add order ]
+To ship   Amazon Prep   Shipped            ↑ the only one still missing
 ```
 
-Four controls, which is the working-memory ceiling for a decision point.
+**Landed:** the page-level top-right CTA on every desk (`DeskActionSlot`,
+2026-08-31, Home included — it was docking a permanent composer row under the
+grid instead); **Views**, mounted in the `DataTable` toolbar beside Sort;
+**Sort**, a real menu; and **Export** as a labeled `DeskHeaderAction` on a desk
+stage, falling back to the toolbar glyph in fullscreen and off-stage.
 
-| Control | Why it is a main button |
-|---|---|
-| Views ▾ | The named view is *which table you are looking at*. It frames everything below it. |
-| Import | Getting data *in* is a primary job, not a settings action. |
-| Export | Getting data *out* is the other half of the same job. |
-| + Add order | The existing CTA. Still rightmost — it creates the thing the page is about. |
+**Open: Import.** Getting data *in* is a primary job, not a settings action, and
+today it has no header control at all — the import surface is reached another
+way. Import and export carry equal visual weight.
 
-**What does not earn a button** — this list is the review standard:
+**What does not earn a button** — this list is the review standard, and it is
+the reason the cluster stops at four:
 
 * **Print and labels** — verbs that act on *chosen rows*; they belong in the
-  bottom bar, not a header that acts on nothing.
+  bottom bar, not a header that acts on nothing. *(Now enforced: they live on
+  the status-bar selection strip.)*
 * **Refresh** — the desk is realtime-patched. Fix the invalidation instead.
 * **Columns, filter, zoom, fullscreen** — already in the toolbar, next to the
   table they change.
 * **Search** — already the toolbar's first and widest control.
 * **New view** — lives *inside* the views control.
 
-> **The toolbar glyph goes when the header button lands.** Two doors to one panel
-> is the same fork as two funnels. Import and export carry equal visual weight.
-
-### The CTA is page-level and top-right, on every desk  `landed 2026-08-31`
-
-The frame already has the channel — `DeskActionSlot`, whose own law reads *"the
-CTA is page-level, top-right of the header"* — and desks like To-ship and Unbox
-were already registering into it. **Home was not.** Its two tables each docked a
-full composer ROW under the grid: a permanent input, an Add button and a border,
-on the first screen of a shift, for every operator whether or not they were ever
-going to add anything.
-
-Both now register a `+ Add task` CTA into the slot and summon the composer.
-
-* **The control moved, it did not multiply.** One control per job — the CTA is
-  the create control, and the composer is the surface it opens, not a second
-  button beside it.
-* **The fast loop survives.** Once open, the composer behaves exactly as before
-  — type, Enter, repeat — so bulk entry costs one extra click in total, not one
-  per item. Pressing the CTA with text already typed COMMITS rather than
-  re-focusing: the operator has said what they want twice, and asking for a
-  third gesture is the interaction-budget regression this program's own standard
-  names.
-* **A period is never inferred.** On Tasks the CTA commits a *general* task;
-  recurring stays a deliberate choice inside the composer.
-* Home reclaims that vertical band on the screen an operator opens first —
-  which its own frame docblock already argued for when it deleted the mode rail.
+> **The toolbar glyph goes when the header button lands.** Two doors to one
+> panel is the same fork as two funnels. Export already follows this — it is a
+> header button on a desk and a glyph *only* where the header is unavailable,
+> never both at once. Import must do the same.
 
 ---
 
@@ -432,9 +248,13 @@ Both now register a `+ Add task` CTA into the slot and summon the composer.
 > download that will be inline — download default, download what's shown,
 > configure more."
 
-Today one button writes every column for every rendered row. It is correct and it
-is dumb: it cannot answer *"just the SKUs and quantities for these forty rows"*,
-which is exactly what a seller does before a reprice or a restock order.
+**The TRIGGER landed with Phase 3** (header button on a desk, glyph elsewhere,
+disabled at zero rows). **The panel did not.** `DataTableExportButton` still
+writes every column of every rendered row on click — one tier, no scope choice,
+no field choice. It cannot answer *"just the SKUs and quantities for these forty
+rows"*, which is exactly what a seller does before a reprice or a restock order.
+
+Everything below is open.
 
 ```mermaid
 flowchart TD
@@ -504,13 +324,23 @@ packed; the default tier is one click; field choice round-trips org-wide.
 
 Export and import are one axis, and only one has ever been designed.
 
-**More exists than you would guess:** a descriptor pipeline, seventeen canonical
-fields with the order number the only required one, header auto-mapping, per-row
-Ready / Action-required classification, a real staging grid with its own table id
-and prefs bucket, and a permission-gated commit.
+**More exists than the plan first credited.** A descriptor pipeline, seventeen
+canonical fields with the order number the only required one, header
+auto-mapping, per-row Ready / Action-required classification, a real staging grid
+with its own table id and prefs bucket, a permission-gated commit — **and a
+mapping step**: `CsvImportStagingRail` maps their column to our field, counts
+the unmapped, gates the commit on `order_number`, and asks
+`/api/orders/import/suggest-mapping` for the columns the alias map could not
+place.
 
-**What is missing is the mapping step.** Headers are auto-mapped or they are not,
-and when they are not the operator edits cells in staging to compensate.
+**Two things are still missing:**
+
+1. **Named mapping profiles.** Nothing persists a mapping, so next week's file
+   from the same supplier is mapped by hand again. This is the half that makes
+   the feature pay for itself.
+2. **The mapping lives in the RAIL, not in the table.** It is not a modal
+   wizard, which is the failure mode the plan was written against — but it is
+   also not the preview-in-the-real-cells the sketch describes.
 
 ```mermaid
 sequenceDiagram
@@ -557,12 +387,12 @@ Ship By            →    [ Ship-by date      ▾ ]   auto
 ☐ Remember this mapping as "Supplier — October"
 ```
 
-* **Mapping is inline, in the table** — not a wizard in a modal.
-* **Auto-mapped rows are marked as such** and stay editable. Confidence is shown.
-* **Unmapped columns default to "don't import"**, never to a nearest match.
+* ~~Mapping is not a wizard in a modal.~~ *(it is a rail — see above)*
+* ~~Unmapped columns default to "don't import", never to a nearest match.~~
+* ~~Required fields gate the commit, surfaced as a blocking row count.~~
+* **Mappings persist as named profiles, organization-wide.** ← the gap
 * **The preview uses the real table** — same cells, same row model.
-* **Mappings persist as named profiles, organization-wide.**
-* **Required fields gate the commit**, surfaced as a blocking row count.
+* **Auto-mapped columns are marked as such** and stay editable; confidence shown.
 
 **Done when:** a supplier file with foreign headers imports without hand-mapping
 twice.
@@ -646,12 +476,18 @@ layer was never connected.
 
 **What exists:** a real saved-view system — a table with organization, staff,
 surface, name and a JSONB `filters` blob; twenty-four registered surfaces
-including all three order lanes; full CRUD, routes, a hook and a menu. A migration
-guard even pins the surface list against the live database constraint.
+including all three order lanes; full CRUD, routes, a hook, and a menu now
+mounted in the `DataTable` toolbar (Phase 3).
 
-**What is missing — two different things.** First, the payload is a search string:
-the save path writes `{ query }` and nothing else. Second, the layout layer is a
-dead parameter:
+> **Correction, 2026-09-01.** This section used to say "the payload is a search
+> string: the save path writes `{ query }` and nothing else." That is wrong
+> against the code. `useSavedViews` encodes **every registered `paramKey`** for
+> the surface into `query`, and `applyView` writes them all back — so search,
+> filters, sort, date range and tab already round-trip, and **the view already
+> IS the URL**. Read the hook before planning against this paragraph.
+
+**What is actually missing is one thing: the LAYOUT layer.** Columns are the one
+part of a view that does not survive it, because the parameter is dead:
 
 ```ts
 const picked = savedViewLayout ?? staffLayout ?? orgLayout ?? productDefault;
@@ -683,11 +519,12 @@ flowchart LR
     class V,CAP,THREAD,CASC,URL live
 ```
 
+* Capture the EFFECTIVE layout on save and thread it into
+  `resolveEffectiveLayout` — the cascade already handles the rest.
 * Views are **organization-wide**, extending the layout law. The table already
   carries a staff id and a shared flag — decide whether personal views survive.
-* **The view is the URL.**
-* Views live **in the filter popover's own band**. Not a fourth control, never a
-  tab strip.
+  *(Operator question 4.)*
+* ~~The view is the URL.~~ *(already true)*
 * Deleting a view must never delete the rows it named.
 
 ### Write paths
@@ -725,7 +562,8 @@ Not a phase — a standing list. Each is small, each removes a daily irritation.
 
 **Working**
 
-* **A keyboard sheet on `?`.**
+* ~~A keyboard sheet on `?`.~~ **landed** — `KeyboardShortcutsCheatSheet`, and
+  the selection strip reveals its own letters on the same key.
 * **Selection survives a refresh.**
 * **Return to the row.** Closing the form lands you back on the row you opened,
   scrolled into view.
@@ -750,6 +588,16 @@ Every verb the pointer can reach, the keyboard can reach.
 > The ownership *model* is already right; nothing composes it. Every feature adds
 > listener 54 with its own copy of the guards, so precedence is decided by mount
 > order and no file can answer "what does `x` do right now". **Do not add a 54th.**
+
+**Landed 2026-09-01 — the guards, which is where the copies actually differ.**
+`table-key-layer.ts` is the one suppressor (typing target → overlay → scanner →
+focus ownership), `hasScanTarget()` is the scanner predicate that did not exist,
+and `useRowGestures` binds the row model to the table REGION rather than to
+`window`. WCAG 2.1.4 is satisfied by construction there, not by discipline.
+
+**Still open: the REGISTRY.** `useKeymap` does not exist. Until it does, a
+binding is discoverable only by reading the file that declares it, and the `?`
+sheet cannot be scoped to the live layer because nothing can enumerate it.
 
 ```ts
 useKeymap(layer, [
@@ -796,15 +644,17 @@ flowchart TD
 
 ### The map
 
-| Keys | Does |
-|---|---|
-| j · k · ↑ · ↓ | Move the row cursor |
-| g g · G | First row · last row |
-| x | Toggle selection on the focused row |
-| Shift+↑ / ↓ | Extend the selection |
-| ⌘A | Select every row in the current view |
-| Enter · o | Open the record form |
-| Esc | Close the form, then clear the selection |
+Bound today by `useRowGestures` (✓) or still owed (—):
+
+| Keys | Does | |
+|---|---|---|
+| j · k · ↑ · ↓ | Move the row cursor | ✓ |
+| Home · End | First row · last row | ✓ *(the plan said `g g` / `G`; the sequence engine does not exist, and a single key that works beats a chord that does not)* |
+| x · Space | Toggle selection on the focused row | ✓ |
+| Shift+↑ / ↓ | Extend the selection | ✓ |
+| ⌘A | Select every row in the current view | ✓ |
+| Enter · o | Open the record | ✓ |
+| Esc | Close the form, then clear the selection | ✓ |
 | . | Open the row's overflow (alias of Shift+F10) |
 | / | Focus the find field |
 | f · d · c · v · e · i · z · F | Filter · date · columns · views · export · import · zoom · fullscreen |
@@ -836,8 +686,8 @@ The shortcuts are not the hard part; knowing they exist is.
 
 | Phase | Owes |
 |---|---|
-| Families | The registry lives at the engine seam so every ported family inherits one map. **No family-local listener** — porting means deleting its listener, not moving it. |
-| Row model | The gesture table gains a keyboard column. Shift-click's fix and Shift+arrow selection are the same anchor logic — write it once. |
+| Families | The registry lives at the engine seam so every ported family inherits one map. **No family-local listener** — porting means deleting its listener, not moving it. *(open — waiting on the registry)* |
+| ~~Row model~~ | ~~The gesture table gains a keyboard column. Shift-click's fix and Shift+arrow selection are the same anchor logic — write it once.~~ **done 2026-09-01** — one `selection-anchor.extendTo` serves both. |
 | Header | `v` / `i` / `e` open Views / Import / Export; each trigger shows its key in its tooltip. |
 | Export | `e` opens; Enter runs the default tier; Escape closes without downloading. |
 | Import | Tab between mapping columns, type-ahead in each select, ⌘Enter commits. |
