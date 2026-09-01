@@ -138,7 +138,7 @@ export function useCopyChip({
   tooltipAction?: 'copy' | 'external-link';
   /**
    * Authoritative carrier for tracking tooltips (`FedEx 8751…`). Same ladder as
-   * Open URL / {@link CarrierMark}. Ignored unless `historyKind === 'tracking'`.
+   * Open URL / carrier identity. Ignored unless `historyKind === 'tracking'`.
    */
   carrierHint?: string | null;
   /**

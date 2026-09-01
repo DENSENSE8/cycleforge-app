@@ -20,7 +20,6 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
 import { OrderRailCompare } from '@/components/dashboard/rail/OrderRailCompare';
-import { OrderRailShell } from '@/components/dashboard/rail/OrderRailShell';
 import { OrdersViewControlsRail } from '@/components/outbound/orders/OrdersViewControlsRail';
 import { useOrdersViewChrome } from '@/components/outbound/orders/orders-view-chrome-context';
 import { useRailActionSnapshot } from '@/components/dashboard/rail/OrderRailActions';
@@ -99,7 +98,6 @@ export function DashboardOrdersView({
   const overlays = showCsvStaging ? null : selectionEnabled ? (
     <>
       <OrderRailCompare />
-      <OrderRailShell />
       <OrdersViewControlsRail />
       {selectionOverlays}
     </>

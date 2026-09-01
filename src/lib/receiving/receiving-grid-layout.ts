@@ -19,6 +19,16 @@
  */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
+import {
+  INCOMING_FIELD_CATALOG,
+  INCOMING_PRODUCT_LAYOUT,
+} from '@/lib/tables/field-catalog/incoming';
+import {
+  RECEIVING_FIELD_CATALOG,
+  RECEIVING_PRODUCT_LAYOUT,
+} from '@/lib/tables/field-catalog/receiving';
+import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
+import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 import { GRID_FILL_COLUMN } from '@/design-system/components/grid';
 import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
 import {
@@ -57,6 +67,9 @@ export type ReceivingGridColumnKey =
   | 'amount'
   | 'actions'
   | '_fill'
+  /** Materialized slot tracks — keys are slot indices, never field ids. */
+  | `status:${number}`
+  | `subtitle:${number}`
   /** Org-defined custom columns (`custom:<defKey>`). */
   | CustomFieldColumnKey;
 
@@ -68,7 +81,9 @@ export type ReceivingGridColumnKey =
  * each of the five surface layouts. Only `key` narrows, plus genuinely
  * receiving-specific fields.
  */
-export interface ReceivingGridColumn extends Omit<LedgerGridColumnModel, 'key'> {
+export interface ReceivingGridColumn
+  extends Omit<LedgerGridColumnModel, 'key'>,
+    SlotTrackFields {
   key: ReceivingGridColumnKey;
   /** When false, header is not click-to-sort (select gutter only). Default true for data cols. */
   sortable?: boolean;
@@ -213,8 +228,30 @@ export const RECEIVING_GRID_COLUMNS: readonly ReceivingGridColumn[] = [
  * dispatches per key. Swapping presentation is therefore a `columns` prop, not
  * a second table component.
  */
+export function receivingCompoundColumnsFor(
+  layout: SlotLayout,
+): readonly ReceivingGridColumn[] {
+  return materializeTracks<ReceivingGridColumn>({
+    layout,
+    catalog: RECEIVING_FIELD_CATALOG,
+    base: compoundColumnsFor<ReceivingGridColumn>(),
+    // The default anchor — the status band opens after the `state` pill, the
+    // position Orders' bound facts occupy on the same shared skeleton.
+  });
+}
+
+/**
+ * The PRODUCT-DEFAULT materialization — what an org with no override mounts.
+ *
+ * With the product layout's empty status band that is the shared
+ * `COMPOUND_TRACKS` verbatim, which is the point: the port reproduces what
+ * Unbox / History / Testing paint today, and every catalog fact becomes
+ * bindable without a deploy. The `unbox-compound-columns` and
+ * `compound-row-model` guards still pin this array against the shared
+ * skeleton, so a drift shows up as a red build rather than a visual bug.
+ */
 export const RECEIVING_COMPOUND_COLUMNS: readonly ReceivingGridColumn[] =
-  compoundColumnsFor<ReceivingGridColumn>();
+  receivingCompoundColumnsFor(RECEIVING_PRODUCT_LAYOUT);
 
 /**
  * Frozen pane — `select · order`. Derived from the column model's `frozen`
@@ -244,9 +281,51 @@ const RECEIVING_GRID_SORTABLE_KEYS: readonly ReceivingGridColumnKey[] = RECEIVIN
  * blank ⇒ a stable id-order tie. That is quieter than rejecting the param,
  * which would silently drop an operator's shared link back to default order.
  */
+/**
+ * Compound track → the FLAT fact word it carries.
+ *
+ * The twin of `queue-display-sort`'s `COMPOUND_TRACK_SORT_KEYS`, and it exists
+ * for the bug that module documents: when To-Ship's mount moved to the compound
+ * tracks nothing updated the sort vocabulary, so `isColumn` rejected every
+ * header key and **clicking a header silently did nothing**. Wave 1.3 moved
+ * Unbox / History / Testing onto the same tracks with the same omission.
+ *
+ * A compound track is a CONTAINER for facts the flat model already sorted by,
+ * so this re-connects existing comparators rather than inventing orderings:
+ * `fulfillment` carries the PO (`order`), `item` the product title, `amount`
+ * the Zoho line rate (`price`).
+ *
+ * `state` is deliberately ABSENT. `compareReceivingGridRows` has no `status`
+ * arm — the flat model never column-sorted the stage either — so admitting the
+ * track would offer a click that resolves to `null` for every row. Incoming's
+ * twin DOES map it, because `compareIncomingGridRows` has a real `statusRank`.
+ * Adding one here means adding a comparator arm, which is the point at which it
+ * is a product decision rather than a restoration.
+ */
+const RECEIVING_TRACK_SORT_FACTS: Readonly<Record<string, ReceivingGridColumnKey>> = {
+  fulfillment: 'order',
+  item: 'title',
+  amount: 'price',
+};
+
+/**
+ * Normalize a header key to the fact word this family sorts by.
+ *
+ * Both mounts run through it: the compound desks emit track keys, and the flat
+ * `/test` history mount (which takes the definition's own columns) emits the
+ * flat words. One function, so the two models cannot drift into two answers.
+ */
+export function receivingSortFactFor(key: string): ReceivingGridColumnKey | null {
+  if (isCustomFieldColumnKey(key)) return key as ReceivingGridColumnKey;
+  const track = RECEIVING_TRACK_SORT_FACTS[key];
+  if (track) return track;
+  return (RECEIVING_GRID_SORTABLE_KEYS as readonly string[]).includes(key)
+    ? (key as ReceivingGridColumnKey)
+    : null;
+}
+
 export function isReceivingGridSortable(key: string): key is ReceivingGridColumnKey {
-  if (isCustomFieldColumnKey(key)) return true;
-  return (RECEIVING_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
+  return receivingSortFactFor(key) != null;
 }
 
 export function receivingGridTemplate(
@@ -312,10 +391,15 @@ export type IncomingGridColumnKey =
   | 'state'
   | 'amount'
   | 'actions'
-  | '_fill';
+  | '_fill'
+  /** Materialized slot tracks — keys are slot indices, never field ids. */
+  | `status:${number}`
+  | `subtitle:${number}`;
 
 /** Extends the house model — see {@link LedgerGridColumnModel}; only `key` narrows. */
-export interface IncomingGridColumn extends Omit<LedgerGridColumnModel, 'key'> {
+export interface IncomingGridColumn
+  extends Omit<LedgerGridColumnModel, 'key'>,
+    SlotTrackFields {
   key: IncomingGridColumnKey;
   /** When false, header is not click-to-sort (select gutter only). Default true for data cols. */
   sortable?: boolean;
@@ -430,8 +514,29 @@ export const INCOMING_GRID_COLUMNS: readonly IncomingGridColumn[] = [
  * array would be the first crack in "any visual difference between two tables
  * is a data difference".
  */
+export function incomingCompoundColumnsFor(
+  layout: SlotLayout,
+): readonly IncomingGridColumn[] {
+  return materializeTracks<IncomingGridColumn>({
+    layout,
+    catalog: INCOMING_FIELD_CATALOG,
+    base: compoundColumnsFor<IncomingGridColumn>(),
+    // Default anchor: the status band opens after the `state` pill, the same
+    // position Orders' and Receiving's bound facts take on this skeleton.
+  });
+}
+
+/**
+ * The PRODUCT-DEFAULT materialization — what an org with no override mounts.
+ *
+ * With the product layout's empty status band that is the shared
+ * `COMPOUND_TRACKS` verbatim: the port reproduces what the Incoming rails paint
+ * today, and every catalog fact becomes bindable without a deploy. Incoming and
+ * Receiving keep SEPARATE layout documents (two tableIds) for the same reason
+ * they keep separate prefs buckets — one cell map, two vocabularies.
+ */
 export const INCOMING_COMPOUND_COLUMNS: readonly IncomingGridColumn[] =
-  compoundColumnsFor<IncomingGridColumn>();
+  incomingCompoundColumnsFor(INCOMING_PRODUCT_LAYOUT);
 
 /**
  * Frozen identity pane — `select · order · title`. Derived from the column
@@ -447,8 +552,32 @@ export const INCOMING_GRID_SORTABLE_KEYS: readonly IncomingGridColumnKey[] = INC
   (c) => c.sortable !== false && c.key !== 'select',
 ).map((c) => c.key);
 
+/**
+ * Compound track → the FLAT fact word it carries — Receiving's twin, same
+ * reason (see {@link receivingSortFactFor}).
+ *
+ * `state` IS mapped here, unlike Receiving: `compareIncomingGridRows` carries a
+ * real `statusRank` (delivery state, then confidence), so the stage pill has an
+ * ordering to restore rather than one to invent. `amount` stays absent — an
+ * inbound POS line has no money track to sort.
+ */
+const INCOMING_TRACK_SORT_FACTS: Readonly<Record<string, IncomingGridColumnKey>> = {
+  fulfillment: 'order',
+  item: 'title',
+  state: 'status',
+};
+
+/** Normalize a header key to the fact word this family sorts by. */
+export function incomingSortFactFor(key: string): IncomingGridColumnKey | null {
+  const track = INCOMING_TRACK_SORT_FACTS[key];
+  if (track) return track;
+  return (INCOMING_GRID_SORTABLE_KEYS as readonly string[]).includes(key)
+    ? (key as IncomingGridColumnKey)
+    : null;
+}
+
 export function isIncomingGridSortable(key: string): key is IncomingGridColumnKey {
-  return (INCOMING_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
+  return incomingSortFactFor(key) != null;
 }
 
 /** @deprecated Alias of the shared waist — kept for an existing test import. */

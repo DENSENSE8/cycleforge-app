@@ -61,6 +61,11 @@ export interface StaffPreferences {
    */
   theme?: string | null;
   /**
+   * Scan-station skin from the station-skin registry (industrial | bench |
+   * coal). Absent = industrial. Drives `data-station-skin` on <html>.
+   */
+  stationSkin?: string | null;
+  /**
    * Clock display format for every rendered timestamp: `'12h'` (h:mm AM/PM,
    * the default) or `'24h'` (HH:mm). Absent/`null` = `12h`. Display-only — the
    * store (src/lib/time-format/store.ts) mirrors it to localStorage for

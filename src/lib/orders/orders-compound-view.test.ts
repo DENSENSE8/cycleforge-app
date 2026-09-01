@@ -181,4 +181,61 @@ describe('ordersCompoundView', () => {
     assert.equal(view.flagMark?.label, 'Hold');
     assert.equal(view.flagMark?.dotClass, 'bg-amber-500');
   });
+
+  it('joins the listing URL onto the title from the item number', () => {
+    const ebay = ordersCompoundView(baseOrder({ item_number: '123456789012' }), {
+      stateLabel: null,
+      delayDays: null,
+    });
+    assert.equal(ebay.titleHref, 'https://www.ebay.com/itm/123456789012');
+
+    const blank = ordersCompoundView(baseOrder({ item_number: '' }), {
+      stateLabel: null,
+      delayDays: null,
+    });
+    assert.equal(blank.titleHref, null);
+  });
+
+  it('puts the civil ship-by on the delay, not a relative on-time face', () => {
+    const view = ordersCompoundView(
+      baseOrder({ deadline_at: '2026-08-17T12:00:00-07:00' }),
+      { stateLabel: 'Awaiting test', delayDays: 0, todayKey: '2026-08-10' },
+    );
+    assert.equal(view.delay?.dateLabel, 'Aug 17');
+    assert.equal(view.delay?.dateKey, '2026-08-17');
+    assert.equal(view.delay?.overdue, false);
+    assert.equal(view.delay?.dueToday, false);
+    assert.match(String(view.delayTip ?? ''), /Ship by/);
+  });
+
+  it('marks due-today so the date is not faint on-time ink', () => {
+    const view = ordersCompoundView(baseOrder({ deadline_at: '2026-08-17' }), {
+      stateLabel: 'Awaiting test',
+      delayDays: 0,
+      todayKey: '2026-08-17',
+    });
+    assert.equal(view.delay?.dueToday, true);
+    assert.equal(view.delay?.dateLabel, 'Aug 17');
+  });
+
+  it('keeps late days AND the civil date', () => {
+    const view = ordersCompoundView(baseOrder({ deadline_at: '2026-08-14' }), {
+      stateLabel: 'Awaiting test',
+      delayDays: 15,
+      todayKey: '2026-08-29',
+    });
+    assert.equal(view.delay?.dateLabel, 'Aug 14');
+    assert.equal(view.delay?.overdue, true);
+    assert.equal(view.delay?.days, 15);
+  });
+
+  it('does not invent a ship-by from created_at', () => {
+    const view = ordersCompoundView(
+      baseOrder({ deadline_at: null, ship_by_date: null, created_at: '2026-08-01T12:00:00-07:00' }),
+      { stateLabel: 'Awaiting test', delayDays: null, todayKey: '2026-08-29' },
+    );
+    assert.equal(view.delay?.dateLabel, null);
+    assert.equal(view.delay?.dateKey, null);
+    assert.equal(view.delayTip, undefined);
+  });
 });

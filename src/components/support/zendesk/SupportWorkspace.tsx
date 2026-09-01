@@ -5,7 +5,6 @@ import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-sys
 import { useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { EmptyState } from '@/design-system/primitives';
-import { Voicemail } from '@/components/Icons';
 
 import { capabilityNoun } from '@/lib/integrations/capability-labels';
 import { parseSupportMode } from '@/components/sidebar/support/support-sidebar-shared';
@@ -26,22 +25,16 @@ const WarrantyWorkspace = dynamic(
 );
 
 /**
- * /support page body. The contextual sidebar (SupportSidebarPanel) owns the
- * per-mode map (filters / recents); this body is the visual display and reacts
- * to the same `?mode=` URL param:
+ * /support page body. Tickets is the only mode with a left column (recent
+ * dock). Every other tab is rail-less and owns its picker on this stage:
  *
  * - tickets   → `service-workspace` shell (`SupportTicketsWorkspace`: board map
  *   keep-alive + thread focus when `?ticket=`). Sidebar shows recently selected.
- * - orders    → Dashboard To Ship board (`UnshippedTable` → the outbound
- *   spreadsheet) +
- *   Station order focus when `?openOrderId=` is set.
- * - voicemail → selected voicemail detail (`?vm=`), Workbench crossfade.
+ * - orders    → aliases Shipping · To ship (proxy); not mounted here.
+ * - voicemail → queue ⇄ selected voicemail detail (`?vm=`).
  * - calls     → the org call-log Monitor stream (read-only).
  * - warranty  → Warranty Logger (coverage + claims table + claim detail).
  * - issues    → Reported-Issues console (KPI strip + fact stack, `?issueId=`).
- *
- * Below md the contextual sidebar isn't shown, so tickets/orders still render
- * their board here; voicemail/issues keep list ⇄ detail swap.
  */
 export function SupportWorkspace() {
   const { has, isLoaded } = useAuth();
@@ -139,16 +132,13 @@ export function SupportWorkspace() {
   if (mode === 'voicemail') {
     return (
       <div className="flex h-full min-h-0 w-full bg-surface-canvas">
-        {/* Mobile/tablet (<md): no contextual sidebar, so the picker lives here. */}
-        {!vmId ? (
-          <div className="flex h-full w-full flex-col border-r border-border-soft bg-surface-card md:hidden">
+        {vmId == null ? (
+          <div className="flex h-full w-full flex-col bg-surface-card">
             <VoicemailQueue />
           </div>
-        ) : null}
-
-        <div className={`${vmId ? 'flex' : 'hidden md:flex'} h-full min-h-0 w-full flex-col`}>
-          <AnimatePresence mode="wait" initial={false}>
-            {vmId != null ? (
+        ) : (
+          <div className="flex h-full min-h-0 w-full flex-col">
+            <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={`vm-${vmId}`}
                 className="flex h-full min-h-0 w-full flex-col"
@@ -159,24 +149,9 @@ export function SupportWorkspace() {
               >
                 <VoicemailDetail voicemailId={vmId} onBack={() => setVm(null)} />
               </motion.div>
-            ) : (
-              <motion.div
-                key="vm-empty"
-                className="flex h-full items-center justify-center"
-                initial={paneMotion.initial}
-                animate={paneMotion.animate}
-                exit={paneMotion.exit}
-                transition={paneTransition}
-              >
-                <EmptyState
-                  icon={<Voicemail className="h-6 w-6 text-text-faint" />}
-                  title="Select a voicemail"
-                  description="Choose a follow-up from the list to play it and act on it."
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+            </AnimatePresence>
+          </div>
+        )}
       </div>
     );
   }

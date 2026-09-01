@@ -23,6 +23,7 @@ import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { OrderIdChip, getLast8 } from '@/components/ui/CopyChip';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 
@@ -234,7 +235,10 @@ export function RepairOrderLinkSearch({ value, onChange, disabled }: RepairOrder
         <div
           id="ecwid-order-results"
           role="listbox"
-          className="absolute z-dropdown mt-1 max-h-72 w-full overflow-y-auto rounded-lg border border-border-soft bg-surface-card py-1 shadow-lg"
+          className={cn(
+            'absolute z-dropdown mt-1 max-h-72 w-full overflow-y-auto border border-border-soft bg-surface-card py-1 shadow-lg',
+            DROPDOWN_SHELL_CORNER,
+          )}
         >
           {isError ? (
             <p className="px-3 py-2 text-xs text-rose-600">Couldn’t reach the store. Type the order # and press Enter.</p>

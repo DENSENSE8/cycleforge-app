@@ -33,7 +33,7 @@
  * is linkable, exactly like Daily's `?item=`.
  */
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { DataTable } from '@/components/tables/DataTable';
@@ -41,20 +41,27 @@ import { rowGroupTotals, singleBand, type RowGroup } from '@/lib/group-rows';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { compareGridValues } from '@/design-system/components/grid';
 import {
-  TASKS_COMPOUND_COLUMNS,
-  TASKS_GRID_COLUMNS,
+  tasksColumnKeyForSort,
+  tasksCompoundColumnsFor,
+  tasksSortFactFor,
   defaultDirForTasksGridSort,
-  isTasksGridSortable,
+  isTasksSortFact,
+  TASKS_SORT_FACT_TYPES,
   type TasksGridColumn,
   type TasksGridColumnKey,
+  type TasksSortFact,
 } from '@/lib/staff-todos/tasks-grid-layout';
 import { TASKS_TABLE_BINDING } from './grid/tasks-table-definition';
 import { CompoundRow } from '@/components/tables/compound/CompoundRow';
+import { useTasksTableLayout } from '@/features/tasks/grid/useTasksTableLayout';
+import { tasksSlotValuesFor } from '@/lib/tables/field-catalog/tasks-resolve';
 import { staffTaskCompoundView } from './grid/staff-task-compound-view';
 import { TASKS_GRID_CAPABILITIES } from './grid/tasks-grid-descriptor';
 import type { StaffTaskRow } from './grid/staff-task-row';
 import { StaffTaskInspectorRail } from './StaffTaskInspector';
 import { TasksComposerRow } from './TasksComposerRow';
+import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
+import { Plus } from '@/components/Icons';
 import { useStaffTasks } from './useStaffTasks';
 
 /**
@@ -90,7 +97,15 @@ export function TasksWorkbench() {
   const staffId = user?.staffId ?? null;
 
   const tasks = useStaffTasks(staffId);
+
+  // The effective slot layout (staff ?? org ?? product) materialized into the
+  // compound tracks — a staffer's own list, and its own document.
+  const { effectiveLayout: tasksLayout, fields: tasksFields } = useTasksTableLayout();
+  const tasksColumns = useMemo(() => tasksCompoundColumnsFor(tasksLayout), [tasksLayout]);
   const [draft, setDraft] = useState('');
+  /** Summoned by the page CTA rather than permanently docked under the grid. */
+  const [composerOpen, setComposerOpen] = useState(false);
+  const composerRef = useRef<HTMLInputElement>(null);
 
   const lane = parseLane(searchParams.get('filter'));
   const query = searchParams.get('q') ?? '';
@@ -144,8 +159,8 @@ export function TasksWorkbench() {
     dir: sortDir,
     setSort,
     toggleColumnSort,
-  } = useUrlColumnSort<TasksGridColumnKey>({
-    isColumn: isTasksGridSortable,
+  } = useUrlColumnSort<TasksSortFact>({
+    isColumn: isTasksSortFact,
     defaultDir: defaultDirForTasksGridSort,
   });
 
@@ -166,7 +181,7 @@ export function TasksWorkbench() {
         (a, b) => a.station.localeCompare(b.station) || a.sortOrder - b.sortOrder || a.id - b.id,
       );
     }
-    const type = TASKS_GRID_COLUMNS.find((c) => c.key === columnSort)?.type;
+    const type = TASKS_SORT_FACT_TYPES[columnSort];
     const value = (r: StaffTaskRow) => {
       switch (columnSort) {
         case 'task':
@@ -221,6 +236,49 @@ export function TasksWorkbench() {
     [composerStation, draft, tasks],
   );
 
+  /**
+   * The page CTA's handler — open the composer and put the caret in it.
+   *
+   * Creating a task is what this page CREATES, so the control is page-level and
+   * top-right (operator ruling; `DeskActionSlot`'s own law), registered into the
+   * desk chrome's slot rather than docked under the grid. The composer stays
+   * under the table where a composer belongs — it is summoned, not permanent.
+   *
+   * With text already typed it COMMITS a general task instead of re-focusing:
+   * the operator has said what they want twice. Recurring stays a deliberate
+   * choice inside the composer, because a period is not something to infer.
+   */
+  const openComposer = useCallback(() => {
+    setComposerOpen(true);
+    if (draft.trim()) {
+      submitDraft('general');
+      return;
+    }
+    composerRef.current?.focus();
+  }, [draft, submitDraft]);
+
+  // Focus lands after the composer has actually mounted — on the first open
+  // the ref is still null when the click handler runs.
+  useEffect(() => {
+    if (composerOpen) composerRef.current?.focus();
+  }, [composerOpen]);
+
+  /** Memoized — a fresh identity every render re-registers through the slot. */
+  const addAction = useMemo(
+    () =>
+      lane === 'deleted' ? null : (
+        <DeskHeaderAction
+          variant="primary"
+          size="sm"
+          icon={<Plus aria-hidden className="h-3.5 w-3.5" />}
+          onClick={openComposer}
+        >
+          Add task
+        </DeskHeaderAction>
+      ),
+    [lane, openComposer],
+  );
+
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col bg-surface-card">
       <DataTable<StaffTaskRow, TasksGridColumnKey, TasksGridColumn>
@@ -230,13 +288,22 @@ export function TasksWorkbench() {
         // photo, no order and no carrier, so those tracks read empty:
         // that is a data difference, and it is the only kind of
         // difference between two of these tables there is meant to be.
-        columns={TASKS_COMPOUND_COLUMNS}
+        columns={tasksColumns}
+        fields={tasksFields}
         orderGroupsByDate={groups}
         rows={rows}
         getRowId={(r) => String(r.id)}
-        sort={columnSort}
+        // A header click speaks in TRACK keys; `?colsort=` speaks in Tasks'
+        // own words. Map both ways through the MOUNTED model so a bookmarked
+        // sort keeps its meaning after a rebind moves the fact to a new slot.
+        sort={tasksColumnKeyForSort(tasksColumns, columnSort)}
         dir={sortDir}
-        onSortChange={setSort}
+        onSortChange={(key, nextDir) => {
+          const fact = tasksSortFactFor(
+            tasksColumns.find((c) => c.key === key) ?? { key, sortable: true },
+          );
+          if (fact) setSort(fact, nextDir);
+        }}
         loading={tasks.loading}
         search={{ value: query, onChange: setQuery, placeholder: 'Filter tasks…' }}
         tabs={TASK_LANE_TABS}
@@ -275,7 +342,12 @@ export function TasksWorkbench() {
               capabilities={TASKS_GRID_CAPABILITIES}
               selected={selectedId === row.id}
               // The family's only contribution: its DATA.
-              view={staffTaskCompoundView(row, { nowMs: tasks.nowMs })}
+              view={{
+                // Materialized slot tracks — one resolved value per BOUND slot,
+                // keyed by track key. Empty on the product default.
+                slots: tasksSlotValuesFor(row, visible),
+                ...staffTaskCompoundView(row, { nowMs: tasks.nowMs }),
+              }}
               onOpen={() => selectTask(row.id)}
               // The tick means "this task is done", not "this row is
               // selected" — same control, same picture, a different handler.
@@ -309,7 +381,10 @@ export function TasksWorkbench() {
             capabilities={TASKS_GRID_CAPABILITIES}
             selected={selectedId === row.id}
             // The family's only contribution: its DATA.
-            view={staffTaskCompoundView(row, { nowMs: tasks.nowMs })}
+            view={{
+              slots: tasksSlotValuesFor(row, visible),
+              ...staffTaskCompoundView(row, { nowMs: tasks.nowMs }),
+            }}
             onOpen={() => selectTask(row.id)}
             // The tick means "this task is done", not "this row is
             // selected" — same control, same picture, a different handler.
@@ -322,13 +397,16 @@ export function TasksWorkbench() {
           />
         )}
       />
-            {lane === 'deleted' ? null : (
+      <DeskActionSlotRegistrar>{addAction}</DeskActionSlotRegistrar>
+
+            {lane === 'deleted' || !composerOpen ? null : (
               <TasksComposerRow
                 draft={draft}
                 onDraftChange={setDraft}
                 onSubmit={submitDraft}
                 pending={tasks.createPending}
                 stationLabel={composerStation}
+                inputRef={composerRef}
               />
       )}
 

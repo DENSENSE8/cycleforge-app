@@ -16,19 +16,20 @@ const GREEN: ReleaseGateFacts = {
   docsNotRequired: false,
   shippingLabelLinked: true,
   shippingLabelPurchased: false,
+  skuCatalogId: 741,
 };
 
-function gate(facts: ReleaseGateFacts, id: 'G1' | 'G2' | 'G3') {
+function gate(facts: ReleaseGateFacts, id: 'G1' | 'G2' | 'G3' | 'G4') {
   const found = evaluateReleaseGates(facts).gates.find((g) => g.id === id);
   assert.ok(found, `gate ${id} present`);
   return found;
 }
 
-test('all three gates green → canRelease', () => {
+test('all four gates green → canRelease', () => {
   const result = evaluateReleaseGates(GREEN);
   assert.equal(result.canRelease, true);
   assert.equal(result.failing.length, 0);
-  assert.deepEqual(result.gates.map((g) => g.id), ['G1', 'G2', 'G3']);
+  assert.deepEqual(result.gates.map((g) => g.id), ['G1', 'G2', 'G3', 'G4']);
   assert.ok(result.gates.every((g) => g.reason === null), 'a passed gate carries no reason');
 });
 
@@ -137,13 +138,34 @@ test('G3 is implied by G1 — it can never be the only failure', () => {
   }
 });
 
+// ── G4 SKU pairing (operator ruling 2026-08-31, R-FLOW-1) ───────────────────
+
+test('G4 passes on a paired catalog id', () => {
+  assert.equal(gate({ ...GREEN, skuCatalogId: 1 }, 'G4').passed, true);
+});
+
+test('G4 fails when unpaired — null and unknown land on the same side', () => {
+  const g = gate({ ...GREEN, skuCatalogId: null }, 'G4');
+  assert.equal(g.passed, false);
+  assert.match(g.reason ?? '', /catalog SKU/);
+  assert.equal(gate({ ...GREEN, skuCatalogId: undefined }, 'G4').passed, false);
+});
+
+test('G4 alone holds the cage shut — pairing is a real gate now', () => {
+  // This is the behaviour the 2026-08-31 flow ruling adds. The old note that
+  // pairing "is NOT a gate at all" is superseded (R-FLOW-1).
+  const result = evaluateReleaseGates({ ...GREEN, skuCatalogId: null });
+  assert.equal(result.canRelease, false);
+  assert.deepEqual(result.failing.map((g) => g.id), ['G4']);
+});
+
 // ── The matrix as a whole ───────────────────────────────────────────────────
 
-test('an empty order fails all three and reports all three', () => {
+test('an empty order fails all four and reports all four', () => {
   const result = evaluateReleaseGates({});
   assert.equal(result.canRelease, false);
-  assert.equal(result.failing.length, 3, 'every failure is named, not just the first');
-  assert.deepEqual(result.failing.map((g) => g.id), ['G1', 'G2', 'G3']);
+  assert.equal(result.failing.length, 4, 'every failure is named, not just the first');
+  assert.deepEqual(result.failing.map((g) => g.id), ['G1', 'G2', 'G3', 'G4']);
 });
 
 test('one red gate is enough to hold the cage shut', () => {
@@ -153,6 +175,7 @@ test('one red gate is enough to hold the cage shut', () => {
   for (const broken of [
     { itemNumber: null },
     { linkedDocumentCount: 0, docsNotRequired: false },
+    { skuCatalogId: null },
   ] satisfies Partial<ReleaseGateFacts>[]) {
     const result = evaluateReleaseGates({ ...GREEN, ...broken });
     assert.equal(result.canRelease, false, `${JSON.stringify(broken)} must not release`);

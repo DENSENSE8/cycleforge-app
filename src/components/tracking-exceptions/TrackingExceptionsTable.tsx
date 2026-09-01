@@ -9,10 +9,13 @@ import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir'
 
 import { TrackingExceptionEditDialog } from './TrackingExceptionEditDialog';
 import { TRACKING_EXCEPTIONS_TABLE_BINDING } from './grid/tracking-exceptions-table-definition';
+import { useTrackingExceptionsTableLayout } from './grid/useTrackingExceptionsTableLayout';
 import { TrackingExceptionsGridRow } from './grid/TrackingExceptionsGridRow';
 import {
-  defaultDirForTrackingExceptionsGridSort,
-  isTrackingExceptionsGridSortable,
+  defaultDirForTrackingExceptionsColumn,
+  isTrackingExceptionsColumnSortable,
+  trackingExceptionsSheetColumnsFor,
+  trackingExceptionsSortFactFor,
   type TrackingExceptionsGridColumn,
   type TrackingExceptionsGridColumnKey,
 } from './grid/tracking-exceptions-grid-layout';
@@ -31,34 +34,34 @@ import { useTrackingExceptions } from './useTrackingExceptions';
 function compareTrackingExceptionRows(
   a: TrackingExceptionRow,
   b: TrackingExceptionRow,
-  key: TrackingExceptionsGridColumnKey,
+  fact: string,
   dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
-  switch (key) {
+  switch (fact) {
     case 'title':
       return sign * a.tracking_number.localeCompare(b.tracking_number);
-    case 'carrier':
+    case 'tracking-exceptions.carrier':
       return sign * trackingExceptionCarrier(a).localeCompare(trackingExceptionCarrier(b));
-    case 'source':
+    case 'tracking-exceptions.source':
       return sign * (a.source_station || '').localeCompare(b.source_station || '');
-    case 'staff':
+    case 'tracking-exceptions.staff':
       return sign * trackingExceptionStaffLabel(a).localeCompare(trackingExceptionStaffLabel(b));
-    case 'reason':
+    case 'tracking-exceptions.reason':
       return sign * a.exception_reason.localeCompare(b.exception_reason);
-    case 'status':
+    case 'tracking-exceptions.status':
       return sign * a.status.localeCompare(b.status);
-    case 'retries':
+    case 'tracking-exceptions.retries':
       return sign * (a.zoho_check_count - b.zoho_check_count);
-    case 'lastCheck': {
+    case 'tracking-exceptions.last_check': {
       if (!a.last_zoho_check_at && !b.last_zoho_check_at) return 0;
       if (!a.last_zoho_check_at) return 1;
       if (!b.last_zoho_check_at) return -1;
       return sign * a.last_zoho_check_at.localeCompare(b.last_zoho_check_at);
     }
-    case 'created':
+    case 'tracking-exceptions.created':
       return sign * a.created_at.localeCompare(b.created_at);
-    case 'notes':
+    case 'tracking-exceptions.notes':
       return sign * (a.notes || '').localeCompare(b.notes || '');
     default:
       return 0;
@@ -104,13 +107,28 @@ export function TrackingExceptionsTable() {
   } = useTrackingExceptions(statusTab, search);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // The COLUMNS are the effective slot layout's materialization (staff ?? org
+  // ?? product — wave 1.4 hand-model kill). Sort keys are the mounted track
+  // keys; each resolves to its bound field's fact.
+  const { effectiveLayout: exceptionsLayout, fields: trackingExceptionsFields } =
+    useTrackingExceptionsTableLayout();
+  const columns = useMemo(
+    () => trackingExceptionsSheetColumnsFor(exceptionsLayout),
+    [exceptionsLayout],
+  );
+  const sortFactByKey = useMemo(
+    () => new Map(columns.map((c) => [c.key as string, trackingExceptionsSortFactFor(c)])),
+    [columns],
+  );
+
   const {
     sort: columnSort,
     dir: sortDir,
     setSort,
   } = useUrlColumnSort<TrackingExceptionsGridColumnKey>({
-    isColumn: isTrackingExceptionsGridSortable,
-    defaultDir: defaultDirForTrackingExceptionsGridSort,
+    isColumn: (raw) => isTrackingExceptionsColumnSortable(columns, raw),
+    defaultDir: (key) => defaultDirForTrackingExceptionsColumn(columns, key),
   });
 
   // One-shot settle re-render after first data — the virtualized LedgerGrid can
@@ -124,13 +142,14 @@ export function TrackingExceptionsTable() {
   }, [loading, hasRows]);
 
   const orderGroupsByDate = useMemo<[string, RowGroup<TrackingExceptionRow>[]][]>(() => {
+    const sortFact = columnSort ? (sortFactByKey.get(columnSort) ?? null) : null;
     const ordered =
-      columnSort && sortDir
-        ? [...rows].sort((a, b) => compareTrackingExceptionRows(a, b, columnSort, sortDir))
+      sortFact && sortDir
+        ? [...rows].sort((a, b) => compareTrackingExceptionRows(a, b, sortFact, sortDir))
         : rows;
     // One unnamed band — the triage queue has no day/fold axis.
     return [['', ordered.map((row) => ({ key: `exc:${row.id}`, rows: [row] }))]];
-  }, [rows, columnSort, sortDir]);
+  }, [rows, columnSort, sortFactByKey, sortDir]);
 
   const renderLeaf = (
     row: TrackingExceptionRow,
@@ -183,6 +202,8 @@ export function TrackingExceptionsTable() {
           TrackingExceptionsGridColumn
         >
           binding={TRACKING_EXCEPTIONS_TABLE_BINDING}
+          columns={columns}
+          fields={trackingExceptionsFields}
           orderGroupsByDate={orderGroupsByDate}
           rows={rows}
           getRowId={(r) => String(r.id)}

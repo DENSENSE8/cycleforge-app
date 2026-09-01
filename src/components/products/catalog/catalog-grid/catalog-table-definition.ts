@@ -8,7 +8,7 @@
 
 import type { CatalogListRow } from '@/components/products/catalog/types';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
-import { CATALOG_GRID_COLUMNS, type CatalogGridColumn } from '@/lib/products/catalog-grid-layout';
+import { CATALOG_SHEET_COLUMNS, type CatalogGridColumn } from '@/lib/products/catalog-grid-layout';
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import { CATALOG_GRID_CAPABILITIES, makeCatalogGridDescriptor } from './catalog-grid-descriptor';
 
@@ -22,12 +22,12 @@ export const CATALOG_TABLE_DEFINITION = parseTableDefinition({
   surface: 'sheet',
   showDayHeaders: false,
   capabilities: CATALOG_GRID_CAPABILITIES,
-  columns: CATALOG_GRID_COLUMNS,
+  columns: CATALOG_SHEET_COLUMNS,
 });
 
 export const CATALOG_TABLE_BINDING: TableSurfaceBinding<CatalogListRow, CatalogGridColumn> = {
   definition: CATALOG_TABLE_DEFINITION,
-  columns: CATALOG_GRID_COLUMNS,
+  columns: CATALOG_SHEET_COLUMNS,
   makeDescriptor: makeCatalogGridDescriptor,
   // A catalog row IS a product page. Opening it navigates to
   // `productDetailHref(sku)` rather than peeking, because the product record is

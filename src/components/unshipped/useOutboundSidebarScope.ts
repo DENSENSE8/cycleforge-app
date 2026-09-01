@@ -2,8 +2,8 @@
 
 /**
  * URL scope for the Outbound dashboard sidebar (Unshipped ⇄ Shipped).
- * Reads the same params the boards already honor and exposes setters + active
- * refinement chips so the left rail is a filter map, not a second board.
+ * Reads the same params the boards already honor so the left rail is a
+ * focus map (My queue / Needs attention), not a second filter toolbar.
  */
 
 import { useCallback, useMemo } from 'react';
@@ -12,11 +12,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStaffFilter } from '@/hooks/useStaffFilter';
 import { getDashboardOrderViewFromSearch, normalizeDashboardOrderViewParams } from '@/utils/dashboard-search-state';
 import type { FulfillmentState } from '@/lib/unshipped-state';
-import { FULFILLMENT_STATE_META } from '@/lib/unshipped-state';
 import {
   useShippedFilterRefinements,
 } from '@/components/shipping/shipped-filter/useShippedFilterRefinements';
-import type { FilterRefinement } from '@/design-system/components/FilterRefinementBar';
 
 export type OutboundSidebarMode = 'unshipped' | 'tested' | 'packed' | 'shipped';
 
@@ -45,7 +43,7 @@ export function useOutboundSidebarScope() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user } = useAuth();
-  const { staffId, selectedName, setStaff } = useStaffFilter();
+  const { staffId, setStaff } = useStaffFilter();
   const shipped = useShippedFilterRefinements();
 
   const orderView = getDashboardOrderViewFromSearch(searchParams);
@@ -61,8 +59,6 @@ export function useOutboundSidebarScope() {
 
   const ustatus = parseUstatus(searchParams.get('ustatus'));
   const stage = parseStage(searchParams.get('stage'));
-  const searchQuery = String(searchParams.get('search') || '').trim();
-  const ostatus = String(searchParams.get('ostatus') || '').trim().toUpperCase();
   const attentionOnly =
     searchParams.get('attention') === '1' || searchParams.get('attention') === 'true';
   const lateOnly = searchParams.get('late') === '1';
@@ -90,40 +86,6 @@ export function useOutboundSidebarScope() {
     },
     [replaceParams],
   );
-
-  const setStage = useCallback(
-    (next: 'all' | 'pending' | 'tested') => {
-      replaceParams((p) => {
-        if (next === 'all') p.delete('stage');
-        else p.set('stage', next);
-        p.delete('ustatus');
-      });
-    },
-    [replaceParams],
-  );
-
-  const clearSearch = useCallback(() => {
-    replaceParams((p) => {
-      p.delete('search');
-    });
-  }, [replaceParams]);
-
-  const clearOstatus = useCallback(() => {
-    replaceParams((p) => {
-      p.delete('ostatus');
-    });
-  }, [replaceParams]);
-
-  const clearUnshippedScope = useCallback(() => {
-    replaceParams((p) => {
-      p.delete('ustatus');
-      p.delete('stage');
-      p.delete('staff');
-      p.delete('search');
-      p.delete('late');
-      p.delete('attention');
-    });
-  }, [replaceParams]);
 
   /** Null when filters are mixed (e.g. other-staff only) so no single row looks selected. */
   const activeUnshippedSegment = useMemo((): UnshippedSegmentId | null => {
@@ -223,132 +185,13 @@ export function useOutboundSidebarScope() {
     ],
   );
 
-  const unshippedRefinements = useMemo((): FilterRefinement[] => {
-    const out: FilterRefinement[] = [];
-    if (searchQuery) {
-      out.push({ id: 'search', label: `“${searchQuery}”`, onRemove: clearSearch });
-    }
-    if (ustatus) {
-      out.push({
-        id: 'ustatus',
-        label: FULFILLMENT_STATE_META[ustatus].label,
-        onRemove: () => setUstatus(null),
-      });
-    } else if (stage !== 'all') {
-      out.push({
-        id: 'stage',
-        label: stage === 'pending' ? 'Pending stage' : 'Tested stage',
-        onRemove: () => setStage('all'),
-      });
-    }
-    if (attentionOnly) {
-      out.push({
-        id: 'attention',
-        // Wire id/param stays `attention`; the filter now means "urgent only"
-        // (orders.is_urgent), so the chip reads Urgent.
-        label: 'Urgent',
-        onRemove: () =>
-          replaceParams((p) => {
-            p.delete('attention');
-          }),
-      });
-    }
-    if (staffId != null) {
-      const isMe = myStaffId != null && staffId === myStaffId;
-      out.push({
-        id: 'staff',
-        label: isMe ? 'My queue' : selectedName ? selectedName : `Staff #${staffId}`,
-        onRemove: () => setStaff(null),
-      });
-    }
-    return out;
-  }, [
-    searchQuery,
-    ustatus,
-    stage,
-    staffId,
-    myStaffId,
-    selectedName,
-    attentionOnly,
-    lateOnly,
-    clearSearch,
-    setUstatus,
-    setStage,
-    setStaff,
-    replaceParams,
-  ]);
-
-  const shippedRefinements = useMemo((): FilterRefinement[] => {
-    const out: FilterRefinement[] = [...shipped.refinements];
-    if (searchQuery) {
-      out.unshift({ id: 'search', label: `“${searchQuery}”`, onRemove: clearSearch });
-    }
-    if (ostatus) {
-      out.push({
-        id: 'ostatus',
-        label: ostatus.replace(/_/g, ' '),
-        onRemove: clearOstatus,
-      });
-    }
-    if (staffId != null) {
-      const isMe = myStaffId != null && staffId === myStaffId;
-      out.push({
-        id: 'staff',
-        label: isMe ? 'My queue' : selectedName ? selectedName : `Staff #${staffId}`,
-        onRemove: () => setStaff(null),
-      });
-    }
-    return out;
-  }, [
-    shipped.refinements,
-    searchQuery,
-    ostatus,
-    staffId,
-    myStaffId,
-    selectedName,
-    clearSearch,
-    clearOstatus,
-    setStaff,
-  ]);
-
-  const clearShippedScope = useCallback(() => {
-    replaceParams((p) => {
-      [
-        'exceptions',
-        'carrier',
-        'statusCategory',
-        'testedBy',
-        'packedBy',
-        'dateFrom',
-        'dateTo',
-        'staff',
-        'ostatus',
-        'search',
-        'shippedFilter',
-        'shippedSearchField',
-      ].forEach((k) => p.delete(k));
-    });
-  }, [replaceParams]);
-
   return {
     mode,
     myStaffId,
     staffId,
-    ustatus,
-    stage,
-    searchQuery,
-    ostatus,
-    attentionOnly,
-    lateOnly,
     activeUnshippedSegment,
     selectUnshippedSegment,
-    unshippedRefinements,
-    shippedRefinements,
-    clearUnshippedScope,
-    clearShippedScope,
     shipped,
     setStaff,
-    setUstatus,
-    setStage,
   };
 }

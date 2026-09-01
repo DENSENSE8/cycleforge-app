@@ -4,10 +4,8 @@ import { ReactNode, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { OutboundSidebarFilterMap } from '@/components/unshipped/OutboundSidebarFilterMap';
-import { ShippedFilterDropdown } from '@/components/shipping/shipped-filter/ShippedFilterDropdown';
 import { motion } from '@/design-system/motion';
 import { SidebarShell } from '@/components/layout/SidebarShell';
-import { useOutboundSidebarScope } from '@/components/unshipped/useOutboundSidebarScope';
 import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
 
 interface UnshippedSidebarProps {
@@ -21,7 +19,6 @@ interface UnshippedSidebarProps {
 export default function UnshippedSidebar(props: UnshippedSidebarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const scope = useOutboundSidebarScope();
   const {
     filterControl,
     embedded = false,
@@ -61,10 +58,6 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
     },
   };
 
-  const isPrePack = scope.mode === 'unshipped' || scope.mode === 'tested';
-  const refinements = isPrePack ? scope.unshippedRefinements : scope.shippedRefinements;
-  const onClearAll = isPrePack ? scope.clearUnshippedScope : scope.clearShippedScope;
-
   const content = (
     <SidebarShell
       as={motion.div}
@@ -88,21 +81,9 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
           ) : null}
         </>
       }
-      // Pre-pack ("Shipping") lane/staff filtering lives in the workspace
-      // header (OutboundExactFilters funnel + StaffFilterButton) — the single
-      // filter home. Only the shipped scope keeps a sidebar filter, for its
-      // carrier facets that the header doesn't carry.
-      filter={
-        isPrePack
-          ? undefined
-          : {
-              label: 'Shipment filters',
-              refinements,
-              activeCount: refinements.length,
-              onClearAll,
-              renderDropdown: (onClose) => <ShippedFilterDropdown onClose={onClose} />,
-            }
-      }
+      // Lane, stage, carrier and staff refinements live in DataTable's one
+      // filter control (search · funnel), the To-ship gold. A FilterRefinementBar
+      // here was a second toolbar for facts the table already shows.
       bodyClassName="flex flex-col no-scrollbar pb-6 space-y-4"
     >
       <motion.div variants={itemVariants}>

@@ -136,7 +136,17 @@ export function GridRowCheckbox({
   disabled = false,
 }: {
   checked: boolean | 'mixed';
-  onToggle: () => void;
+  /**
+   * Toggle this row. Receives the click's MODIFIER STATE so a range select can
+   * reach the selection model.
+   *
+   * It used to be `() => void`, which swallowed the event — so every caller
+   * that wanted shift-click had to hard-code `{ shiftKey: false }` and the
+   * range gesture was plumbed all the way down to `useTableSelectMode` and then
+   * never reachable. A zero-arg handler stays assignable, so callers that do
+   * not care are unchanged.
+   */
+  onToggle: (event: { shiftKey: boolean }) => void;
   /** Accessible name — say what toggling does, e.g. "Select carton 123". */
   label: string;
   className?: string;
@@ -189,7 +199,7 @@ export function GridRowCheckbox({
       // cell wrapper is what keeps a click on the surrounding plane off the row.
       onClick={(event) => {
         event.stopPropagation();
-        onToggle();
+        onToggle({ shiftKey: event.shiftKey });
       }}
       onKeyDown={(event) => {
         if (event.key === 'Enter' || event.key === ' ') event.stopPropagation();

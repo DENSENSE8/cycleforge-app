@@ -11,11 +11,12 @@
  * ```
  *
  * Everything that used to be copied per desk lives here once: the CTA slot
- * channel, the nav → tabs adapter, the page title, and the fullscreen state the
- * table's ⤢ toggles. A desk opts in by declaring `deskChrome: true` on its
- * `SIDEBAR_PAGE_NAV` entry and wrapping its segments in a route group with this
- * layout — no per-desk wiring, which is the point: the second copy of a frame
- * is where two desks start disagreeing about what a desk is.
+ * channel (primary create verb plus overall actions such as Export), the nav →
+ * tabs adapter, the page title, and the fullscreen state the table's ⤢ toggles.
+ * A desk opts in by declaring `deskChrome: true` on its `SIDEBAR_PAGE_NAV` entry
+ * and wrapping its segments in a route group with this layout — no per-desk
+ * wiring, which is the point: the second copy of a frame is where two desks
+ * start disagreeing about what a desk is.
  *
  * **A route GROUP, not a shared page.** Next keeps a layout mounted across
  * sibling segments, so switching tabs swaps only the body — and fullscreen

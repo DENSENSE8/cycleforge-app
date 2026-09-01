@@ -53,6 +53,7 @@ import { useStaffPreferences } from '@/hooks/useStaffPreferences';
 import type { BoardLanePref, BoardPrefs, BoardPrefsKey } from '@/lib/neon/staff-preferences-queries';
 import type { StaffPreferencesPutBody } from '@/lib/schemas/staff-preferences';
 import { cn } from '@/utils/_cn';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 
 
@@ -238,7 +239,11 @@ function LaneSortMenu<SortId extends string>({
         <Popover.Content
           align="end"
           sideOffset={6}
-          className={cn("z-dropdown w-36 overflow-hidden rounded-lg border border-border-soft bg-surface-card p-1 shadow-lg ring-1 ring-black/5", focusRing('field', 'accent'))}
+          className={cn(
+            'z-dropdown w-36 overflow-hidden border border-border-soft bg-surface-card p-1 shadow-lg ring-1 ring-black/5',
+            DROPDOWN_SHELL_CORNER,
+            focusRing('field', 'accent'),
+          )}
         >
           {options.map((o) => (
             // ds-raw-button: text-left two-state menu/select row

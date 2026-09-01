@@ -239,16 +239,25 @@ describe('ordersSlotValues', () => {
 });
 
 describe('ordersSubtitleParts', () => {
-  it('paints qty as the BARE number in the count tone (1 quiet, >1 warning)', () => {
+  it('paints qty as the BARE number, dark and bold (2+ still warns)', () => {
     // `widthCh: 2` reserves the two-digit case so a 10–99 quantity does not
     // shift every fact after it (operator ruling 2026-08-31).
     const single = ordersSubtitleParts(row({ quantity: '1' }), ['orders.qty']);
     assert.deepEqual(single, [
-      { text: '1', toneClass: 'text-text-muted', key: 'orders.qty', widthCh: 2 },
+      { text: '1', toneClass: 'font-semibold text-text-default', key: 'orders.qty', widthCh: 2 },
     ]);
     const multi = ordersSubtitleParts(row({ quantity: '3' }), ['orders.qty']);
     assert.deepEqual(multi, [
-      { text: '3', toneClass: 'text-text-warning', key: 'orders.qty', widthCh: 2 },
+      { text: '3', toneClass: 'font-semibold text-text-warning', key: 'orders.qty', widthCh: 2 },
+    ]);
+  });
+
+  it('emits an empty item_number part so the listing glyph owns the face, even when the number is missing', () => {
+    assert.deepEqual(ordersSubtitleParts(row({ item_number: '123456789012' }), [
+      'orders.item_number',
+    ]), [{ text: '', key: 'orders.item_number' }]);
+    assert.deepEqual(ordersSubtitleParts(row({ item_number: '' }), ['orders.item_number']), [
+      { text: '', key: 'orders.item_number' },
     ]);
   });
 
@@ -258,7 +267,8 @@ describe('ordersSubtitleParts', () => {
       ['orders.condition', 'orders.notes'],
     );
     assert.equal(parts.length, 2);
-    assert.ok(parts[0].toneClass, 'condition part carries its grade tone');
+    assert.ok(parts[0].toneClass?.includes('font-semibold'), 'condition is bold under the title');
+    assert.ok(!parts[1].toneClass?.includes('font-semibold'), 'notes stay the muted caption');
     assert.deepEqual(parts[1], { text: 'leave at dock', key: 'orders.notes' });
   });
 

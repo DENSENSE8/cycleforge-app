@@ -16,17 +16,12 @@ import { isEmptyDisplayValue } from '@/utils/empty-display-value';
 import { Barcode, ExternalLink, MapPin, Package, Pencil, Receipt, Tags, Ticket } from '../Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { CarrierMark } from '@/components/ui/CarrierMark';
 import { chipText, monoValue } from '@/design-system/tokens/typography/presets';
 import type { OptimisticSerialFlag } from '@/lib/receiving/optimistic-serials';
 import { useChipTooltip, useCopyChip } from '@/hooks';
 import { conditionGradeChipStyleOrPending } from '@/lib/condition-tone';
 import { conditionGradeTableLabel } from '@/components/station/receiving-constants';
 import { skuScanPrefixBeforeColon, getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
-import {
-  hasCarrierBrandPaint,
-  resolveCarrierBrand,
-} from '@/lib/carrier-brand';
 import {
   EMPTY_CHIP_DISPLAY,
   QUIET_CHIP_EMPTY,
@@ -78,7 +73,7 @@ export const HashIcon = () => (
  * group-count variants) follows.
  *
  *   id        gray / hash       internal order ids, PO#s, source order #s
- *   tracking  blue / map-pin    outbound carrier tracking numbers ONLY
+ *   tracking  blue / ring-dot   outbound carrier tracking numbers ONLY
  *   serial    emerald / barcode device/unit serial numbers
  *   sku       yellow / pencil   SKU-driven values (static scan refs, sku-table serials)
  *   fnsku     purple / package  Amazon FNSKUs scanned at FBA intake ONLY
@@ -101,7 +96,8 @@ export const CHIP_TONES = {
     dot: 'bg-border-emphasis',
   },
   tracking: {
-    icon: <MapPin className="h-4 w-4 shrink-0" />,
+    // Identity is the carrier ring dot ({@link BrandIdentityDot}), not MapPin.
+    icon: null,
     iconClass: 'inline-flex items-center justify-center text-blue-500',
     dot: 'bg-blue-500',
   },
@@ -128,7 +124,7 @@ export const CHIP_TONES = {
     dot: 'bg-orange-500',
   },
   bin: {
-    // Bin / location barcode — Tags glyph, teal family (distinct from tracking MapPin).
+    // Bin / location barcode — Tags glyph, teal family (distinct from tracking).
     icon: <Tags className="h-4 w-4 shrink-0" />,
     iconClass: 'inline-flex items-center justify-center text-teal-600',
     dot: 'bg-teal-500',
@@ -560,8 +556,8 @@ export const PoChip = ({
 );
 
 /**
- * Carrier shipping tracking number. Blue / MapPin by default; known carriers
- * override the mark with {@link CarrierMark} brand hex (UPS brown, FedEx purple…).
+ * Carrier shipping tracking number. Last-8 mono; carrier identity is the
+ * ring {@link BrandIdentityDot} the host paints, never MapPin.
  * DESIGN SYSTEM RULE: Use ONLY for outbound carrier tracking numbers (UPS, FedEx, USPS…).
  * Do NOT use FNSKU codes — use FnskuChip (purple/Package) for those.
  */
@@ -569,8 +565,8 @@ export const TrackingChip = ({
   value,
   disableCopy,
   width = 'w-fit max-w-full',
-  /** When false, renders copy label only — use with a separate leading icon column so rows align across the FBA sidebar. */
-  showIcon = true,
+  /** When false, no leading glyph — desk grids paint the carrier ring instead. Phone lists pass true for the MapPin. */
+  showIcon = false,
   /**
    * Authoritative carrier from the shipment / label. Prefer over regex detect
    * for brand paint (same ladder as Open URL).
@@ -597,7 +593,7 @@ export const TrackingChip = ({
   disableTooltip = false,
   /**
    * Default `chip` (`px-1.5`). Pass `flush` when the chip sits under plain text
-   * (e.g. a milestone timestamp) so the MapPin shares that text's left edge.
+   * (e.g. a milestone timestamp) so the last-8 shares that text's left edge.
    */
   outerPad,
 }: {
@@ -618,26 +614,12 @@ export const TrackingChip = ({
   disableTooltip?: boolean;
   outerPad?: 'chip' | 'flush';
 }) => {
-  const brand = resolveCarrierBrand(value, carrierHint);
-  const brandPaint = hasCarrierBrandPaint(brand);
   return (
     <CopyChip
       value={value}
       display={resolveChipDisplay(getLast8(value))}
       tone="tracking"
-      icon={
-        showIcon
-          ? brandPaint
-            ? <CarrierMark meta={brand} footprint="chip" />
-            : undefined
-          : null
-      }
-      // Brand mark carries its own hex; don't force house blue on top.
-      iconClass={
-        showIcon && brandPaint
-          ? 'text-inherit'
-          : undefined
-      }
+      icon={showIcon ? <MapPin className="h-3.5 w-3.5 shrink-0" /> : null}
       width={width}
       // Empty → quiet em dash; disable copy so the button stays full-opacity
       // instead of the no-value disabled fade.
@@ -847,7 +829,7 @@ export const ConditionGradeChip = ({
  */
 export function TrackingOrSkuScanChip({
   value,
-  plain,
+  plain: _plain,
   dense = false,
   carrierHint = null,
 }: {
@@ -881,7 +863,7 @@ export function TrackingOrSkuScanChip({
     <TrackingChip
       value={raw}
       display={display}
-      showIcon={!plain}
+      showIcon={false}
       dense={dense}
       carrierHint={carrierHint}
     />
@@ -1081,7 +1063,7 @@ export const BinChip = ({
 /**
  * Amazon FNSKU identifier (e.g. X001ABC123). Purple / Package icon.
  * DESIGN SYSTEM RULE: Use ONLY for FNSKU values scanned at FBA intake.
- * Do NOT use for carrier tracking numbers — use TrackingChip (blue/MapPin) for those.
+ * Do NOT use for carrier tracking numbers — use TrackingChip for those.
  */
 export const FnskuChip = ({ value, width }: { value: string; width?: string }) => (
   <CopyChip value={value} display={getLast8(value)} tone="fnsku" width={width} />

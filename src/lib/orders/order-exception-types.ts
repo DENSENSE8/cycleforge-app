@@ -75,8 +75,10 @@ export function deriveOrderExceptionBlockers(facts: {
   shippingLabelPurchased?: boolean | null;
 }): OrderExceptionBlocker[] {
   const blockers: OrderExceptionBlocker[] = [];
-  // Pairing first: it is the one blocker that is NOT a release gate, and the
-  // one the operator is here to clear.
+  // Pairing first: it is the one the operator is here to clear, and since the
+  // 2026-08-31 flow ruling (R-FLOW-1) it corresponds to release gate G4 —
+  // `unpaired` here and G4 in `release-gates.ts` must agree, same as the
+  // tracking↔label coupling below.
   if (facts.skuCatalogId == null) blockers.push('unpaired');
   if (!present(facts.itemNumber)) blockers.push('no_item_number');
   if (!present(facts.trackingNumber)) blockers.push('no_tracking');

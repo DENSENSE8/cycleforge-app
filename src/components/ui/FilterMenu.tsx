@@ -31,7 +31,7 @@ import { Filter, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ToolbarListboxOption } from '@/design-system/primitives/ToolbarListbox';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
-import { cornerClass } from '@/design-system/tokens/radius';
+import { cornerClass, DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -115,7 +115,8 @@ export function FilterMenu({
           sideOffset={6}
           data-testid="filter-menu"
           className={cn(
-            'z-dropdown overflow-hidden rounded-lg border border-border-soft bg-surface-card p-0.5 shadow-md ring-1 ring-black/5',
+            'z-dropdown overflow-hidden border border-border-soft bg-surface-card p-0.5 shadow-md ring-1 ring-black/5',
+            DROPDOWN_SHELL_CORNER,
             focusRing('field', 'accent'),
             contentClassName ?? 'w-56',
           )}

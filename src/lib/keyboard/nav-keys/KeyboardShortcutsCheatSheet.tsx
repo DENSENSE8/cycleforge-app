@@ -1,14 +1,15 @@
 'use client';
 
 /**
- * Global `?` keyboard shortcuts cheat sheet — single binder, overlay-stack
- * owned, map sourced from the same registries handlers read.
+ * Global `?` keyboard shortcuts cheat sheet — staff overview when no selection
+ * CTA strip owns the key. With a selection mounted, `?` toggles **absolute
+ * overlay** letters on those buttons instead (see useSelectionStatusBarHotkeys).
  *
  * Station teaching: letters are AFTER `⌘;` arms a region (never bare wedge keys).
- * Yields on editables and on /photos (MediaLibrary owns `?` there).
+ * Yields the `?` *key* on /photos (MediaLibrary owns that chord).
  */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useSyncExternalStore } from 'react';
 import { usePathname } from 'next/navigation';
 import {
   Dialog,
@@ -19,24 +20,30 @@ import {
 } from '@/design-system/components/Dialog';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { pushOverlay } from '@/lib/overlay-stack/store';
+import {
+  closeShortcutOverview,
+  getServerShortcutOverviewGroups,
+  getServerShortcutOverviewOpen,
+  getShortcutOverviewOpen,
+  listShortcutOverviewGroups,
+  subscribeShortcutOverview,
+  subscribeShortcutOverviewGroups,
+  toggleShortcutOverview,
+} from '@/lib/keyboard/shortcut-overview';
+import {
+  isSelectionInlineHotkeySurfaceActive,
+} from '@/hooks/useSelectionStatusBarHotkeys';
 import { DISPLAY_LEAF_NAV_KEY } from '@/components/station/displays/display-index';
 import { UNBOX_BAND3_NAV_KEY } from '@/lib/receiving/unbox-band3-nav-keys';
 import { UNBOX_MIDDLE_CARTON_NAV_KEY } from '@/lib/receiving/unbox-middle-carton-nav-keys';
 import { PHOTO_VERB_NAV_KEY } from '@/components/receiving/workspace/line-edit/photo-verb-nav-keys';
+import { KeyboardKey } from '@/design-system/primitives/KeyboardKey';
 import { NAV_REGIONS } from './nav-regions';
 import { getHotkey } from '@/lib/scan-hotkey/store';
 
 interface ShortcutRow {
   keys: string[];
   label: string;
-}
-
-function KeyCap({ children }: { children: string }) {
-  return (
-    <kbd className="inline-flex min-w-[1.5rem] items-center justify-center border border-border-default bg-surface-canvas px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted">
-      {children}
-    </kbd>
-  );
 }
 
 function ShortcutList({ title, rows }: { title: string; rows: ShortcutRow[] }) {
@@ -56,7 +63,9 @@ function ShortcutList({ title, rows }: { title: string; rows: ShortcutRow[] }) {
             </span>
             <span className="flex shrink-0 items-center gap-1">
               {row.keys.map((k, i) => (
-                <KeyCap key={i}>{k}</KeyCap>
+                <KeyboardKey key={i} size="md">
+                  {k}
+                </KeyboardKey>
               ))}
             </span>
           </li>
@@ -74,7 +83,7 @@ function buildGroups(): { title: string; rows: ShortcutRow[] }[] {
       title: 'Global',
       rows: [
         { keys: ['⌘', ';'], label: 'Arm nav-keys (then region · letter)' },
-        { keys: ['?'], label: 'This cheat sheet' },
+        { keys: ['?'], label: 'Reveal hotkeys on buttons (or this sheet)' },
         { keys: ['⌘', 'K'], label: 'Command palette' },
         { keys: ['⌘', ']'], label: 'Open / close Station Displays' },
         { keys: ['⌘', '.'], label: 'Next scan — clear + focus station scan bar' },
@@ -137,12 +146,23 @@ function buildGroups(): { title: string; rows: ShortcutRow[] }[] {
 
 export function KeyboardShortcutsCheatSheet() {
   const pathname = usePathname() ?? '';
-  const [open, setOpen] = useState(false);
-
-  // Photos library owns `?` — do not double-bind.
   const enabled = !pathname.startsWith('/photos');
+  const open = useSyncExternalStore(
+    subscribeShortcutOverview,
+    getShortcutOverviewOpen,
+    getServerShortcutOverviewOpen,
+  );
+  const extraGroups = useSyncExternalStore(
+    subscribeShortcutOverviewGroups,
+    listShortcutOverviewGroups,
+    getServerShortcutOverviewGroups,
+  );
 
-  const close = useCallback(() => setOpen(false), []);
+  const close = useCallback(() => closeShortcutOverview(), []);
+
+  useEffect(() => {
+    if (!enabled) closeShortcutOverview();
+  }, [enabled]);
 
   useEffect(() => {
     if (!enabled || typeof window === 'undefined') return;
@@ -150,10 +170,15 @@ export function KeyboardShortcutsCheatSheet() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== '?') return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      // Selection CTAs own `?` while mounted — useSelectionStatusBarHotkeys
+      // toggles overlays (including from Filter-orders INPUT). Do not open this
+      // sheet, and do NOT stopPropagation: this listener registered first and
+      // would otherwise swallow the event before the hook runs.
+      if (isSelectionInlineHotkeySurfaceActive()) return;
       if (isEditableKeyTarget(e.target)) return;
       e.preventDefault();
       e.stopPropagation();
-      setOpen((prev) => !prev);
+      toggleShortcutOverview();
     };
 
     window.addEventListener('keydown', onKey, { capture: true });
@@ -167,7 +192,12 @@ export function KeyboardShortcutsCheatSheet() {
 
   if (!enabled) return null;
 
-  const groups = buildGroups();
+  const staticGroups = buildGroups();
+  const groups = [
+    staticGroups[0],
+    ...extraGroups.map((g) => ({ title: g.title, rows: [...g.rows] })),
+    ...staticGroups.slice(1),
+  ];
 
   return (
     <Dialog

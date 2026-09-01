@@ -16,6 +16,11 @@
  * server-side validation is unchanged.
  */
 import { THEME_NAMES, type ThemeName } from '@/design-system/themes/registry';
+import {
+  DEFAULT_STATION_SKIN,
+  STATION_SKIN_NAMES,
+  type StationSkinName,
+} from '@/design-system/themes/station-skins';
 
 /**
  * Keys that reclaim focus even while an editable field is focused — warehouse
@@ -72,6 +77,14 @@ export const DEFAULT_FOCUS_SCAN_HOTKEY = 'Insert';
 export const STAFF_THEMES = THEME_NAMES;
 export type StaffTheme = ThemeName;
 export const DEFAULT_THEME: StaffTheme = 'light';
+
+/**
+ * Scan-station skins — derived from the station-skin registry so a new skin
+ * is valid here with zero schema edits. Industrial is the default (absence).
+ */
+export const STAFF_STATION_SKINS = STATION_SKIN_NAMES;
+export type StaffStationSkin = StationSkinName;
+export const DEFAULT_STATION_SKIN_PREF: StaffStationSkin = DEFAULT_STATION_SKIN;
 
 /**
  * Clock display format for every timestamp the app renders. `12h` = h:mm AM/PM

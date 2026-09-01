@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "hooks": {
+    "workspaceOpen": [
+      {
+        "command": ".cursor/hooks/workspace-open-garisek-plugins.sh",
+        "timeout": 10
+      }
+    ],
+    "sessionStart": [
+      {
+        "command": ".cursor/hooks/session-start-design-mcp.sh",
+        "timeout": 25
+      },
+      {
+        "command": ".cursor/hooks/session-start-garisek-engineering.sh",
+        "timeout": 35
+      }
+    ],
+    "afterMCPExecution": [
+      {
+        "command": ".cursor/hooks/after-mcp-design-stamp.sh",
+        "matcher": "ds_contract|ds_tokens|ds_critique",
+        "timeout": 5
+      },
+      {
+        "command": ".cursor/hooks/after-mcp-code-graph-stamp.sh",
+        "matcher": "search_code|find_symbol|get_call_graph|impact_analysis|find_path|graph_stats|list_projects",
+        "timeout": 5
+      }
+    ],
+    "preToolUse": [
+      {
+        "command": ".cursor/hooks/pretool-ui-design-mcp.sh",
+        "matcher": "Write|StrReplace|EditNotebook|Delete",
+        "timeout": 8
+      }
+    ]
+  }
+}

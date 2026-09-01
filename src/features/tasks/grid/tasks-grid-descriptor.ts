@@ -5,6 +5,8 @@ import {
 } from '@/design-system/components/grid/grid-surface-descriptor';
 import {
   TASKS_GRID_COLUMNS,
+  tasksSortFactFor,
+  defaultDirForTasksGridSort,
   type TasksGridColumn,
 } from '@/lib/staff-todos/tasks-grid-layout';
 import type { StaffTaskRow } from './staff-task-row';
@@ -36,7 +38,22 @@ export function makeTasksGridDescriptor(
   return makeGridSurfaceDescriptor<StaffTaskRow, TasksGridColumn>(
     'tasks.mine',
     visible,
-    undefined,
+    {
+      // Sortability is a property of the BOUND FACT, not of the track: a
+      // staffer's task has no order and no price, so the compound
+      // `fulfillment` / `amount` tracks carry nothing to order by. Passing
+      // `undefined` here let the header offer a sort the desk could not
+      // perform — a click that moved a caret and reordered nothing.
+      isSortable: (key) => {
+        const col = visible.find((c) => c.key === key);
+        return col ? tasksSortFactFor(col) != null : false;
+      },
+      sortDescFirst: (key) => {
+        const col = visible.find((c) => c.key === key);
+        const fact = col ? tasksSortFactFor(col) : null;
+        return fact ? defaultDirForTasksGridSort(fact) === 'desc' : false;
+      },
+    },
     TASKS_GRID_CAPABILITIES,
   );
 }

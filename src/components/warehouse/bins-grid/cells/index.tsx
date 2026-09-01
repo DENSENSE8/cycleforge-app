@@ -2,6 +2,13 @@
 
 /**
  * Bins LedgerGrid cell registry — one switch, edit the matching case.
+ *
+ * Since the wave 1.4 slot port the fact tracks are MATERIALIZED
+ * (`status:1…N` / `subtitle:1…N`), so the switch runs on the bound FIELD ID,
+ * not on a hardcoded column key. Structural tracks (`select · barcode`) keep
+ * their own cases. A new bindable fact needs a catalog entry, a resolver case
+ * and — only if it wants a face richer than text — a case here.
+ *
  * Row shell builds {@link BinsGridCellCtx}; domain values stay here.
  */
 
@@ -14,6 +21,8 @@ import { FillBar } from '@/components/warehouse/FillBar';
 import { StatusChips } from '@/components/warehouse/StatusChip';
 import { gridCellAlignClass } from '@/design-system/components/grid';
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
+import { resolveBinsSlotValue } from '@/lib/tables/field-catalog/bins-resolve';
+import { isSlotTrackKey } from '@/lib/tables/materialize-tracks';
 import { cn } from '@/utils/_cn';
 import {
   BINS_GRID_FROZEN_CELL,
@@ -39,58 +48,20 @@ export interface BinsGridCellCtx {
   row: BinsOverviewRow;
   isChecked: boolean;
   onToggleSelect: (row: BinsOverviewRow) => void;
+  /** The MOUNTED model — frozen offsets derive from it, never a static list. */
+  columns: readonly BinsGridColumn[];
 }
 
 function dataCell(col: BinsGridColumn, rule = true) {
   return cn(binsGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
 }
 
-export function renderBinsGridCell(
-  col: BinsGridColumn,
-  rule: boolean,
-  ctx: BinsGridCellCtx,
-): ReactNode {
-  const { row, isChecked, onToggleSelect } = ctx;
-  switch (col.key) {
-    case 'select':
+/** The body of one materialized slot track, chosen by the BOUND FIELD. */
+function renderBinsSlotBody(fieldId: string | undefined, row: BinsOverviewRow): ReactNode {
+  switch (fieldId) {
+    case 'bins.location':
       return (
-        <div
-          className={cn(
-            binsGridCell({ inset: 'none', rule: true }),
-            BINS_GRID_FROZEN_CELL,
-            'justify-center',
-          )}
-          style={{ left: binsGridFrozenLeft('select') }}
-        >
-          <GridRowCheckbox
-            checked={isChecked}
-            onToggle={() => onToggleSelect(row)}
-            label={`Select ${row.barcode ?? row.name}`}
-          />
-        </div>
-      );
-    case 'barcode':
-      return (
-        <div
-          data-col="barcode"
-          className={cn(dataCell(col, rule), BINS_GRID_FROZEN_CELL, 'gap-1.5')}
-          style={{ left: binsGridFrozenLeft('barcode') }}
-          data-frozen-edge
-        >
-          {row.barcode ? (
-            <CopyableCellValue
-              value={row.barcode}
-              historyKind="bin"
-              className="min-w-0 flex-1 text-role-data text-blue-700"
-            />
-          ) : (
-            <GridCellDash />
-          )}
-        </div>
-      );
-    case 'location':
-      return (
-        <div data-col="location" className={cn(dataCell(col, rule), 'flex-col items-start gap-0')}>
+        <span className="flex min-w-0 flex-col items-start gap-0">
           <span className="min-w-0 truncate text-role-caption font-semibold text-text-default">
             {row.room ?? <span className="font-normal text-text-faint">—</span>}
             {row.zone_letter ? (
@@ -104,50 +75,103 @@ export function renderBinsGridCell(
               ? `${row.row_label} · ${row.col_label}`
               : (row.name || 'Special bin')}
           </span>
-        </div>
+        </span>
       );
-    case 'sku_count':
+    case 'bins.sku_count':
+      return <span className="tabular-nums text-role-caption text-text-muted">{row.sku_count}</span>;
+    case 'bins.total_qty':
+      return <span className="tabular-nums text-role-caption text-text-muted">{row.total_qty}</span>;
+    case 'bins.fill':
       return (
-        <div data-col="sku_count" className={dataCell(col, rule)}>
-          <span className="tabular-nums text-role-caption text-text-muted">{row.sku_count}</span>
-        </div>
+        <FillBar
+          pct={row.fill_pct}
+          current={row.total_qty}
+          max={row.capacity}
+          className="w-full min-w-0"
+        />
       );
-    case 'total_qty':
+    case 'bins.last_counted':
+      // The RELATIVE age is the scanning face; the absolute instant stays on
+      // the tooltip. The resolver paints the civil day instead, because it must
+      // not read the clock — see its docblock.
       return (
-        <div data-col="total_qty" className={dataCell(col, rule)}>
-          <span className="tabular-nums text-role-caption text-text-muted">{row.total_qty}</span>
-        </div>
+        <HoverTooltip label={row.last_counted ?? 'never'} asChild>
+          <span className="min-w-0 truncate text-role-caption text-text-soft">
+            {binsCountedAge(row.last_counted)}
+          </span>
+        </HoverTooltip>
       );
-    case 'fill':
+    case 'bins.status':
       return (
-        <div data-col="fill" className={cn(dataCell(col, rule), 'min-w-0')}>
-          <FillBar
-            pct={row.fill_pct}
-            current={row.total_qty}
-            max={row.capacity}
-            className="w-full min-w-0"
+        <StatusChips
+          is_empty={row.is_empty}
+          has_low_stock={row.has_low_stock}
+          is_over_capacity={row.is_over_capacity}
+          is_stale={row.is_stale}
+        />
+      );
+    default: {
+      // A catalog field with no bespoke face paints its resolved text — a new
+      // bindable fact needs a resolver case, never a new column file.
+      const value = fieldId ? resolveBinsSlotValue(row, fieldId) : null;
+      const text = value?.kind === 'value' ? value.text : null;
+      return text ? (
+        <span className="min-w-0 truncate text-role-caption text-text-soft">{text}</span>
+      ) : (
+        <GridCellDash />
+      );
+    }
+  }
+}
+
+export function renderBinsGridCell(
+  col: BinsGridColumn,
+  rule: boolean,
+  ctx: BinsGridCellCtx,
+): ReactNode {
+  const { row, isChecked, onToggleSelect, columns } = ctx;
+  if (isSlotTrackKey(col.key)) {
+    return (
+      <div data-col={col.key} className={cn(dataCell(col, rule), 'min-w-0 gap-1')}>
+        {renderBinsSlotBody(col.fieldId, row)}
+      </div>
+    );
+  }
+  switch (col.key) {
+    case 'select':
+      return (
+        <div
+          className={cn(
+            binsGridCell({ inset: 'none', rule: true }),
+            BINS_GRID_FROZEN_CELL,
+            'justify-center',
+          )}
+          style={{ left: binsGridFrozenLeft(columns, 'select') }}
+        >
+          <GridRowCheckbox
+            checked={isChecked}
+            onToggle={() => onToggleSelect(row)}
+            label={`Select ${row.barcode ?? row.name}`}
           />
         </div>
       );
-    case 'last_counted':
+    case 'barcode':
       return (
-        <div data-col="last_counted" className={dataCell(col, rule)}>
-          <HoverTooltip label={row.last_counted ?? 'never'} asChild>
-            <span className="min-w-0 truncate text-role-caption text-text-soft">
-              {binsCountedAge(row.last_counted)}
-            </span>
-          </HoverTooltip>
-        </div>
-      );
-    case 'status':
-      return (
-        <div data-col="status" className={cn(dataCell(col, rule), 'min-w-0 gap-1')}>
-          <StatusChips
-            is_empty={row.is_empty}
-            has_low_stock={row.has_low_stock}
-            is_over_capacity={row.is_over_capacity}
-            is_stale={row.is_stale}
-          />
+        <div
+          data-col="barcode"
+          className={cn(dataCell(col, rule), BINS_GRID_FROZEN_CELL, 'gap-1.5')}
+          style={{ left: binsGridFrozenLeft(columns, 'barcode') }}
+          data-frozen-edge
+        >
+          {row.barcode ? (
+            <CopyableCellValue
+              value={row.barcode}
+              historyKind="bin"
+              className="min-w-0 flex-1 text-role-data text-blue-700"
+            />
+          ) : (
+            <GridCellDash />
+          )}
         </div>
       );
     default:

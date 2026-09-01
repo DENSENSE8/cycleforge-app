@@ -38,8 +38,8 @@ import {
  * re-adding height makes it claim the column and paint over everything below.
  *
  * Single-select only. A facet that must hold two values at once — or a column
- * carrying three-plus facets — belongs on `SidebarShell`'s first-class `filter`
- * prop (`FilterRefinementBar variant="sidebar"`) instead.
+ * carrying three-plus facets — belongs in DataTable's filter control on a
+ * binding-backed desk, not a second bar.
  */
 export function SidebarFacetGroup<TId extends string>({
   label,

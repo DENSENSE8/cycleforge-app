@@ -7,7 +7,7 @@
  *
  * Native brand hex is intentional (operators ID carriers at a glance). Hex lives
  * ONLY here behind `ds-allow-hex` — never scatter in cells. Unknown keeps the
- * house blue MapPin via CHIP_TONES.tracking (no hex).
+ * house tracking blue ring via {@link carrierBrandDotPaint} (no hex).
  */
 
 import {
@@ -22,8 +22,8 @@ export interface CarrierBrandMeta {
   carrier: DisplayCarrier;
   label: string;
   /**
-   * Official-ish primary brand hex for the leading MapPin. `null` = use house
-   * blue MapPin from CHIP_TONES.tracking (Unknown / unresolved).
+   * Official-ish primary brand hex for the identity ring. `null` = use house
+   * tracking blue from {@link carrierBrandDotPaint} (Unknown / unresolved).
    */
   brandHex: string | null;
 }
@@ -37,7 +37,7 @@ export const CARRIER_BRANDS: Record<DisplayCarrier, CarrierBrandMeta> = {
   UPS: { carrier: 'UPS', label: 'UPS', brandHex: '#351C15' },
   // ds-allow-hex: FedEx Purple — primary; orange accent deferred to multi-stop marks.
   FedEx: { carrier: 'FedEx', label: 'FedEx', brandHex: '#4D148C' },
-  // ds-allow-hex: USPS light postal blue — readable at MapPin size (darker
+  // ds-allow-hex: USPS light postal blue — readable at identity-dot size (darker
   // official #005EA2 reads near-navy on a 16px pin; keep distinct from house
   // CHIP_TONES.tracking blue-500).
   USPS: { carrier: 'USPS', label: 'USPS', brandHex: '#4A9FE5' },
@@ -99,15 +99,15 @@ export function resolveCarrierBrand(
   return carrierBrandMeta(resolveDisplayCarrier(tracking, knownCarrier));
 }
 
-/** True when the mark should use brand hex (not house blue MapPin). */
+/** True when the mark should use brand hex (not house tracking blue). */
 export function hasCarrierBrandPaint(meta: CarrierBrandMeta): boolean {
   return meta.brandHex != null && meta.carrier !== 'Unknown';
 }
 
 /**
- * Dense Sheets brand-identity micro-dot fill for tracking# when MapPin is
- * omitted. Known carriers → native {@link CarrierBrandMeta.brandHex}; Unknown
- * → house tracking blue (`bg-blue-500`, same family as CHIP_TONES.tracking.dot).
+ * Dense Sheets brand-identity micro-dot fill for tracking#. Known carriers →
+ * native {@link CarrierBrandMeta.brandHex}; Unknown → house tracking blue
+ * (`bg-blue-500`, same family as CHIP_TONES.tracking.dot).
  * Not a lifecycle status dot (`GridStatusCellValue`).
  */
 export function carrierBrandDotPaint(meta: CarrierBrandMeta): {

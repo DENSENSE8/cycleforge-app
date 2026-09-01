@@ -1,34 +1,41 @@
 /**
- * Catalog spreadsheet column model — SoT for the Products Catalog LedgerGrid.
+ * Catalog spreadsheet column model — MATERIALIZED from a {@link SlotLayout},
+ * never a hand array.
  *
- * Same spreadsheet family as Pending / Repair:
- *   select · title · sku · inventory · channels · manuals · qc · orders · status
+ * The static `CATALOG_GRID_COLUMNS` died with wave 1.4 of the seller-table
+ * program: tracks whose keys WERE fields (`channels`, `qc`, `status`) are a
+ * frozen layout no organization can capture as `tableLayouts.catalog`.
  *
- * Frozen identity pane (select · title) + cell chrome reuse the shared grid
- * geometry from {@link ORDERS_QUEUE_COLUMNS}'s helpers.
+ * What remains STRUCTURAL is the sheet skeleton — the frozen `select · title`
+ * identity pane (`catalog.sku` is the identity FACT; the Product track paints
+ * the title). Everything after it is a catalog fact an org/staffer binds.
+ *
+ * Sort and frozen-offset helpers derive from the MOUNTED model, never a module
+ * constant.
  */
 
-import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
 import {
   gridFrozenLeft,
   gridTemplate,
 } from '@/design-system/components/grid/grid-column-geometry';
 import type { CatalogListRow } from '@/components/products/catalog/types';
+import {
+  CATALOG_FIELD_CATALOG,
+  CATALOG_PRODUCT_LAYOUT,
+} from '@/lib/tables/field-catalog/catalog';
+import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
+import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 export type CatalogGridColumnKey =
   | 'select'
   | 'title'
-  | 'sku'
-  | 'inventory'
-  | 'channels'
-  | 'manuals'
-  | 'qc'
-  | 'orders'
-  | 'status';
+  /** Materialized slot tracks — keys are slot indices, never field ids. */
+  | `status:${number}`
+  | `subtitle:${number}`;
 
-export interface CatalogGridColumn {
+export interface CatalogGridColumn extends SlotTrackFields {
   key: CatalogGridColumnKey;
   width: string;
   label?: string;
@@ -48,167 +55,136 @@ export interface CatalogGridColumn {
 }
 
 /**
- * Canonical catalog columns.
- *
- * DEFAULT VIEW (tier `core`) is deliberately lean — `select · title · sku ·
- * inventory · status`: what the product is, how it is keyed, whether it is wired
- * to the inventory master (the catalog's whole job, and the axis the Filter
- * popover slices on), and whether it needs attention. The four roll-up COUNTS
- * (channels · manuals · qc · orders) are drill-down analytics, not scan facts —
- * they ship `optional` so a first-load catalog reads as a product list instead
- * of a numbers table. Staff opt them back in per-person via the Fields menu.
+ * The structural sheet skeleton — what Catalog paints with ZERO bindings.
+ * `title` is the only flex track; the frozen pane is `select · title`.
  */
-export const CATALOG_GRID_COLUMNS: readonly CatalogGridColumn[] = [
+const CATALOG_SHEET_BASE: readonly CatalogGridColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
   {
     key: 'title',
     frozen: true,
     width: 'minmax(14rem, 1fr)',
     label: 'Product',
+    gridLabel: 'Product',
     type: 'text',
     labelFitRem: 8,
   },
-  { key: 'sku', width: 'minmax(7rem, 7rem)', label: 'SKU', type: 'id', hideKey: 'sku', labelFitRem: 3 },
-  {
-    key: 'inventory',
-    width: 'minmax(6.5rem, 6.5rem)',
-    label: 'Inventory',
-    // Typed `id` for the header glyph, but the cell is a linkage chip — keep
-    // start so it does not join the numeric end-align cluster.
-    type: 'id',
-    align: 'start',
-    hideKey: 'inventory',
-    labelFitRem: 5,
-  },
-  {
-    key: 'channels',
-    width: 'minmax(4.5rem, 4.5rem)',
-    label: 'Channels',
-    gridLabel: 'Ch',
-    type: 'number',
-    hideKey: 'channels',
-    tier: 'optional',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'manuals',
-    width: 'minmax(4.5rem, 4.5rem)',
-    label: 'Manuals',
-    gridLabel: 'Man',
-    type: 'number',
-    hideKey: 'manuals',
-    tier: 'optional',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'qc',
-    width: 'minmax(3.5rem, 3.5rem)',
-    label: 'QC',
-    type: 'number',
-    hideKey: 'qc',
-    tier: 'optional',
-    labelFitRem: 2.5,
-  },
-  {
-    key: 'orders',
-    // 4.75rem: 'Orders' is 6 chars ≈ 2.52rem + 2rem header chrome. See incoming `status`.
-    width: 'minmax(4.75rem, 4.75rem)',
-    label: 'Orders',
-    type: 'number',
-    hideKey: 'orders',
-    tier: 'optional',
-    labelFitRem: 4,
-  },
-  {
-    key: 'status',
-    width: 'minmax(5.5rem, 5.5rem)',
-    label: 'Status',
-    type: 'tag',
-    hideKey: 'status',
-    labelFitRem: 4,
-  },
-] as const;
+];
 
 /**
- * Frozen identity pane — `select · title`. Derived from the column model's
- * `frozen` flag (one declaration for freeze + immovability + offset math), not
- * from the house key list: the pane is a per-surface answer, and Orders already
- * freezes a third track. See `grid-column-editability.ts`.
+ * Materialize the mounted catalog columns from an effective layout. Both bands
+ * anchor on `title`, so the default plate reads sku · inventory · status —
+ * the retired hand model's core view.
  */
-const CATALOG_GRID_LOCKED_KEYS: readonly CatalogGridColumnKey[] = gridFrozenKeys(CATALOG_GRID_COLUMNS);
-
-const CATALOG_GRID_SORTABLE_KEYS: readonly CatalogGridColumnKey[] = CATALOG_GRID_COLUMNS.filter(
-  (c) => c.sortable !== false && c.key !== 'select',
-).map((c) => c.key);
-
-export function isCatalogGridSortable(key: string): key is CatalogGridColumnKey {
-  return (CATALOG_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
+export function catalogSheetColumnsFor(layout: SlotLayout): readonly CatalogGridColumn[] {
+  return materializeTracks<CatalogGridColumn>({
+    layout,
+    catalog: CATALOG_FIELD_CATALOG,
+    base: CATALOG_SHEET_BASE,
+    statusAnchorKey: 'title',
+    subtitleAnchorKey: 'title',
+  });
 }
 
+/**
+ * The PRODUCT-DEFAULT materialization — what an org with no override mounts,
+ * the canonical columns of the catalog binding, and the guard SoT.
+ */
+export const CATALOG_SHEET_COLUMNS: readonly CatalogGridColumn[] =
+  catalogSheetColumnsFor(CATALOG_PRODUCT_LAYOUT);
+
+/** The FACT a column sorts by, or null when it offers no sort. */
+export function catalogSortFactFor(col: CatalogGridColumn): string | null {
+  if (col.sortable === false || col.key === 'select') return null;
+  if (col.key === 'title') return 'title';
+  return col.fieldId ?? null;
+}
+
+/** Model-derived sortability — the descriptor's and the URL guard's one answer. */
+export function isCatalogColumnSortable(
+  columns: readonly CatalogGridColumn[],
+  key: string,
+): key is CatalogGridColumnKey {
+  return columns.some((c) => c.key === key && catalogSortFactFor(c) !== null);
+}
 
 export function catalogGridTemplate(
-  columns: readonly CatalogGridColumn[] = CATALOG_GRID_COLUMNS,
+  columns: readonly CatalogGridColumn[] = CATALOG_SHEET_COLUMNS,
 ): string {
   return gridTemplate(columns);
 }
 
-export function isCatalogGridFrozen(key: string): boolean {
-  return CATALOG_GRID_LOCKED_KEYS.includes(key as CatalogGridColumnKey);
+/**
+ * Default direction on first activation: magnitudes and dates read
+ * newest/biggest first, names and ids alphabetically.
+ */
+export function defaultDirForCatalogColumn(
+  columns: readonly CatalogGridColumn[],
+  key: string,
+): GridSortDir {
+  const dt = columns.find((c) => c.key === key)?.slotDisplayType;
+  return dt === 'date' || dt === 'money' || dt === 'number' ? 'desc' : 'asc';
 }
 
 /**
- * Sticky-left offset for a frozen cell, bound to THIS surface's pane.
+ * Sticky-left offset for a frozen cell, derived from the MOUNTED model.
  *
  * This was `ordersQueueFrozenLeft` under an alias until 2026-08-02, so Catalog
  * computed its offsets from ORDERS' `select · order · title` pane at ORDERS'
- * widths. See {@link gridFrozenLeft}.
+ * widths — and it read a module constant until the wave 1.4 port, which went
+ * stale the moment a staffer bound a column. See {@link gridFrozenLeft}.
  */
-export function catalogGridFrozenLeft(key: string): string {
-  return gridFrozenLeft(CATALOG_GRID_COLUMNS, key);
-}
-
-
-export function defaultDirForCatalogGridSort(key: CatalogGridColumnKey): GridSortDir {
-  return key === 'orders' || key === 'channels' || key === 'manuals' || key === 'qc'
-    ? 'desc'
-    : 'asc';
+export function catalogGridFrozenLeft(
+  columns: readonly CatalogGridColumn[],
+  key: string,
+): string {
+  return gridFrozenLeft(columns, key);
 }
 
 export function catalogDisplayTitle(row: CatalogListRow): string {
   return (row.display_title || row.product_title || row.sku || '').trim();
 }
 
+/**
+ * Row order for a column sort, keyed by SORT FACT — the structural `title` plus
+ * catalog field ids (`catalogSortFactFor` maps a mounted column to one), so a
+ * `?colsort=` key resolves through the mounted model and rebinding a slot
+ * re-points the sort with it.
+ */
 export function compareCatalogGridRows(
   a: CatalogListRow,
   b: CatalogListRow,
-  key: CatalogGridColumnKey,
+  fact: string,
   dir: GridSortDir,
 ): number {
   const mul = dir === 'desc' ? -1 : 1;
   const cmpStr = (x: string, y: string) => x.localeCompare(y, undefined, { sensitivity: 'base' }) * mul;
   const cmpNum = (x: number, y: number) => (x - y) * mul;
 
-  switch (key) {
+  switch (fact) {
     case 'title':
       return cmpStr(catalogDisplayTitle(a), catalogDisplayTitle(b));
-    case 'sku':
+    case 'catalog.sku':
       return cmpStr(a.sku || '', b.sku || '');
-    case 'inventory':
+    case 'catalog.inventory':
       return cmpStr(a.provider_item_id || '', b.provider_item_id || '');
-    case 'channels':
+    case 'catalog.channels':
       return cmpNum(a.platform_count, b.platform_count);
-    case 'manuals':
+    case 'catalog.manuals':
       return cmpNum(a.manual_count, b.manual_count);
-    case 'qc':
+    case 'catalog.qc':
       return cmpNum(a.qc_step_count, b.qc_step_count);
-    case 'orders':
+    case 'catalog.orders':
       return cmpNum(a.order_count, b.order_count);
-    case 'status': {
+    case 'catalog.status': {
       const rank = (r: CatalogListRow) =>
         (r.has_pending_action ? 2 : 0) + (r.is_active ? 0 : 1) + (r.is_inventory_linked ? 0 : 0.5);
       return cmpNum(rank(a), rank(b));
     }
-    case 'select':
+    case 'catalog.cost':
+      return cmpNum(a.last_known_cost_cents ?? 0, b.last_known_cost_cents ?? 0);
+    case 'catalog.category':
+      return cmpStr(a.category || '', b.category || '');
     default:
       return cmpStr(catalogDisplayTitle(a), catalogDisplayTitle(b));
   }

@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  COMPOSER_MENU_ITEM_CORNER,
+  COMPOSER_SHELL_CORNER,
   cornerClass,
+  DROPDOWN_SHELL_CORNER,
   nestedCorner,
   nestedCornerClass,
   radius,
+  SEGMENTED_CONTROL_CORNER,
   type CornerRole,
 } from './radius';
 
@@ -53,6 +57,17 @@ describe('radius SoT', () => {
   it('surface is the triage-panel exemption — not a licence to round the ladder', () => {
     assert.equal(cornerClass('surface'), 'rounded-xl');
     assert.equal(nestedCorner('surface', 0), 'field');
+  });
+
+  it('dropdown shells are the 8px control rung — ladder stays flush', () => {
+    assert.equal(DROPDOWN_SHELL_CORNER, 'rounded-lg');
+    assert.equal(DROPDOWN_SHELL_CORNER, SEGMENTED_CONTROL_CORNER);
+    assert.equal(cornerClass('control'), 'rounded-none');
+  });
+
+  it('composer menu rows nest inside the 16px shell padded p-1', () => {
+    assert.equal(COMPOSER_SHELL_CORNER, 'rounded-2xl');
+    assert.equal(COMPOSER_MENU_ITEM_CORNER, 'rounded-xl');
   });
 
   describe('nestedCorner — concentric inner = outer − padding', () => {

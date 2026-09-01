@@ -24,6 +24,12 @@
  * same set. A hand-maintained "all of them" is only as good as the assertion
  * that it is all of them.
  *
+ * Both of those guards — the drift check
+ * (`table-definition-registry.guard.test.ts`) and that coverage assertion —
+ * were named here for a long time and did not exist. They were written
+ * 2026-08-31 (seller-table-program wave 1.5), which is the point at which this
+ * docblock's account of what protects the list became true.
+ *
  * ## Why `as const` and not an erased element type
  *
  * `TableSurfaceBinding<Row, C>` cannot be widened to hold heterogeneous row

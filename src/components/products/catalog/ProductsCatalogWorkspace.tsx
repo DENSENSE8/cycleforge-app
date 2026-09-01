@@ -19,6 +19,7 @@ import type { CatalogListRow } from '@/components/products/catalog/types';
 import { productDetailHref } from '@/components/products/products-view';
 import { DataTable } from '@/components/tables/DataTable';
 import { CATALOG_TABLE_BINDING } from '@/components/products/catalog/catalog-grid/catalog-table-definition';
+import { useCatalogTableLayout } from '@/components/products/catalog/catalog-grid/useCatalogTableLayout';
 import { CatalogGridRow } from '@/components/products/catalog/catalog-grid/CatalogGridRow';
 import { CatalogBulkActionBar } from '@/components/products/catalog/CatalogBulkActionBar';
 import type { RowGroup } from '@/lib/group-rows';
@@ -36,8 +37,10 @@ import {
 } from '@/components/products/catalog/catalog-url-state';
 import {
   compareCatalogGridRows,
-  defaultDirForCatalogGridSort,
-  isCatalogGridSortable,
+  catalogSheetColumnsFor,
+  catalogSortFactFor,
+  defaultDirForCatalogColumn,
+  isCatalogColumnSortable,
   type CatalogGridColumn,
   type CatalogGridColumnKey,
 } from '@/lib/products/catalog-grid-layout';
@@ -72,9 +75,19 @@ export function ProductsCatalogWorkspace() {
   // Column sort is DURABLE: `?colsort=`/`?coldir=` (workbench URL-as-state law),
   // so a reload or a shared catalog link reproduces the same ordering. NOT
   // `?sort=` — that name is reserved for server ordering vocabularies elsewhere.
+  // The COLUMNS are the effective slot layout's materialization (staff ?? org
+  // ?? product — wave 1.4 hand-model kill). Sort keys are the mounted track
+  // keys; each resolves to its bound field's fact through `catalogSortFactFor`.
+  const { effectiveLayout: catalogLayout, fields: catalogFields } = useCatalogTableLayout();
+  const columns = useMemo(() => catalogSheetColumnsFor(catalogLayout), [catalogLayout]);
+  const sortFactByKey = useMemo(
+    () => new Map(columns.map((c) => [c.key as string, catalogSortFactFor(c)])),
+    [columns],
+  );
+
   const { sort, dir, setSort } = useUrlColumnSort<CatalogGridColumnKey>({
-    isColumn: isCatalogGridSortable,
-    defaultDir: defaultDirForCatalogGridSort,
+    isColumn: (raw) => isCatalogColumnSortable(columns, raw),
+    defaultDir: (key) => defaultDirForCatalogColumn(columns, key),
   });
 
   const updateParams = useCallback(
@@ -136,9 +149,10 @@ export function ProductsCatalogWorkspace() {
 
   const visibleItems = useMemo(() => {
     const refined = applyCatalogRefine(items, refine);
-    if (!sort || !dir) return refined;
-    return [...refined].sort((a, b) => compareCatalogGridRows(a, b, sort, dir));
-  }, [items, refine, sort, dir]);
+    const sortFact = sort ? (sortFactByKey.get(sort) ?? null) : null;
+    if (!sortFact || !dir) return refined;
+    return [...refined].sort((a, b) => compareCatalogGridRows(a, b, sortFact, dir));
+  }, [items, refine, sort, sortFactByKey, dir]);
 
   const selectedCatalogRows = useTableSelection<CatalogListRow>(
     CATALOG_SELECTION_SCOPE,
@@ -287,6 +301,8 @@ export function ProductsCatalogWorkspace() {
           ) : (
             <DataTable<CatalogListRow, CatalogGridColumnKey, CatalogGridColumn>
               binding={CATALOG_TABLE_BINDING}
+              columns={columns}
+              fields={catalogFields}
               search={{
                 value: q,
                 onChange: setCatalogSearch,

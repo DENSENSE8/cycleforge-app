@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { ItemRecordRow } from './ItemRecordRow';
+import { STATION_SCAN_INSET_BEVEL_CLASS } from '@/components/station/scan-depth';
 
 /**
  * Per-row disclosure of the `body`.
@@ -95,17 +96,34 @@ describe('ItemRecordRow disclosure', () => {
     }
   });
 
+  it('recesses the empty thumb as a placeholder well against the row face', () => {
+    const html = render();
+    const thumbAt = html.indexOf('data-item-record-thumb');
+    assert.ok(thumbAt >= 0, 'the cube cell is the ItemRecordThumb');
+    const thumb = html.slice(thumbAt, thumbAt + 420);
+    assert.match(
+      thumb,
+      /bg-surface-station-slot/,
+      'empty cube is the station slot — deeper than the well',
+    );
+  });
+
   it('draws no hairlines — not on the row, the thumb, the meta, or the body', () => {
     // Operator ruling 2026-08-30: the PO line display carries no rules. What
     // separates one line from the next is the thumb's height and the active
     // row's fill, the same way the station plane carries no tone changes.
     const html = render({ disclosure: { expanded: true, onToggle: () => {} } });
     // A rule is a non-zero WIDTH utility (`border`, `border-t`, `border-2`,
-    // `divide-x`). `border-0` is a removal and a bare colour token paints
-    // nothing without a width, so neither counts.
+    // `divide-x`). `border-0` is a removal. The empty thumb's inset bevel is
+    // the cube carve, not a row hairline.
+    const thumbBevel = new Set(STATION_SCAN_INSET_BEVEL_CLASS.split(' '));
     const rules = [...html.matchAll(/class="([^"]*)"/g)]
       .flatMap((m) => m[1].split(' '))
-      .filter((t) => /^(border(-[trblxy])?(-[1-9]\d*)?|divide-[xy](-[1-9]\d*)?)$/.test(t));
+      .filter(
+        (t) =>
+          !thumbBevel.has(t) &&
+          /^(border(-[trblxy])?(-[1-9]\d*)?|divide-[xy](-[1-9]\d*)?)$/.test(t),
+      );
     assert.deepEqual(rules, [], `unexpected rules: ${rules.join(', ')}`);
   });
 

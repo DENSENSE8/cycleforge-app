@@ -5,6 +5,7 @@ import * as Popover from '@radix-ui/react-popover';
 import { format } from 'date-fns';
 import { Calendar as CalendarPicker } from '@/components/ui/calendar';
 import { Calendar as CalendarIcon } from '@/components/Icons';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 interface DateTimePickerFieldProps {
@@ -102,7 +103,10 @@ export function DateTimePickerField({
         <Popover.Content
           align="start"
           sideOffset={6}
-          className="z-dropdown rounded-xl border border-border-soft bg-surface-card shadow-lg ring-1 ring-black/5 focus:outline-none"
+          className={cn(
+            'z-dropdown border border-border-soft bg-surface-card shadow-lg ring-1 ring-black/5 focus:outline-none',
+            DROPDOWN_SHELL_CORNER,
+          )}
         >
           <CalendarPicker
             mode="single"

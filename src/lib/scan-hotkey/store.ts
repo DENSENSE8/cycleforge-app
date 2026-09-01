@@ -152,6 +152,25 @@ function topTarget(): ScanBarTarget | undefined {
   return targets[targets.length - 1];
 }
 
+/**
+ * Is a scan bar mounted — i.e. is a wedge scanner ARMED on this screen?
+ *
+ * The suppressor every single-key verb owes (`table-key-layer.ts`). A wedge
+ * scanner types its payload as ordinary keydowns: `SKU-1129` is `s`, `k`, `u`,
+ * digits, then Enter. On a screen where single letters run verbs, that scan is
+ * Ship-by, then Print, then a cursor move, then whatever Enter does — which is
+ * why the plan's key flow makes single-key verbs INERT while a scanner is armed
+ * unless a modifier is held.
+ *
+ * Deliberately "a bar is mounted" rather than "a scan is in flight": the whole
+ * point is to be safe BEFORE the first character arrives, and by the time a
+ * wedge machine has enough keystrokes to recognise a scan the verbs have
+ * already fired.
+ */
+export function hasScanTarget(): boolean {
+  return targets.length > 0;
+}
+
 function focusTopTarget(): void {
   if (isBrowser()) {
     window.dispatchEvent(new CustomEvent(SCAN_FOCUS_REQUESTED_EVENT));

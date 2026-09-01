@@ -12,6 +12,9 @@
  */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
+import { DAILY_FIELD_CATALOG, DAILY_PRODUCT_LAYOUT } from '@/lib/tables/field-catalog/daily';
+import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
+import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 import {
   GRID_FILL_COLUMN,
 } from '@/design-system/components/grid';
@@ -33,9 +36,12 @@ export type DailyGridColumnKey =
   | 'state'
   | 'amount'
   | 'actions'
-  | '_fill';
+  | '_fill'
+  /** Materialized slot tracks — keys are slot indices, never field ids. */
+  | `status:${number}`
+  | `subtitle:${number}`;
 
-export interface DailyGridColumn {
+export interface DailyGridColumn extends SlotTrackFields {
   key: DailyGridColumnKey;
   width: string;
   label?: string;
@@ -116,25 +122,134 @@ export const DAILY_GRID_COLUMNS: readonly DailyGridColumn[] = [
  * governs that track's geometry and its face; it has never governed what
  * clicking it does.
  */
+export function dailyCompoundColumnsFor(layout: SlotLayout): readonly DailyGridColumn[] {
+  return materializeTracks<DailyGridColumn>({
+    layout,
+    catalog: DAILY_FIELD_CATALOG,
+    base: compoundColumnsFor<DailyGridColumn>(),
+  });
+}
+
+/**
+ * The PRODUCT-DEFAULT materialization — what an org with no override mounts.
+ * With the product layout's empty band that is the shared `COMPOUND_TRACKS`
+ * verbatim, so the port reproduces the shift board exactly and every catalog
+ * fact becomes bindable without a deploy.
+ */
 export const DAILY_COMPOUND_COLUMNS: readonly DailyGridColumn[] =
-  compoundColumnsFor<DailyGridColumn>();
+  dailyCompoundColumnsFor(DAILY_PRODUCT_LAYOUT);
 
 
-/** Data columns that support click-to-sort (`_fill` carries `sortable: false`). */
-const DAILY_GRID_SORTABLE_KEYS: readonly DailyGridColumnKey[] = DAILY_GRID_COLUMNS.filter(
-  (c) => c.sortable !== false && c.key !== 'select',
-).map((c) => c.key);
+/**
+ * The `?colsort=` vocabulary — declared here, not derived from a column model.
+ *
+ * Same shape and the same reason as `queue-display-sort`'s
+ * `COMPOUND_TRACK_SORT_KEYS`, which exists because the To-Ship desk shipped
+ * this exact bug: the mount moved to the compound tracks, nothing updated the
+ * sort vocabulary, `isColumn` rejected every header key, and **clicking a
+ * header silently did nothing**. Wave 1.3 moved Daily onto the same tracks and
+ * left `DAILY_GRID_SORTABLE_KEYS` deriving from the flat array — so
+ * `isDailyGridSortable('state')` was false and the shift board's headers went
+ * dead the same way.
+ *
+ * Keeping the WORDS local (rather than emitting track keys into the URL) is the
+ * `repair-display-sort` rule: a bookmarked `?colsort=marked` must keep meaning
+ * `marked` after a rebind moves that fact to a different slot index.
+ */
+export type DailySortFact = 'task' | 'status' | 'team' | 'marked';
 
-export function isDailyGridSortable(key: string): key is DailyGridColumnKey {
-  return (DAILY_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
+/**
+ * Compound track → the fact it carries.
+ *
+ * A compound track is a CONTAINER for facts the flat model already sorted by:
+ * `item` carries the checklist title (`task`), `state` carries the done pill
+ * (`status`). `fulfillment` and `amount` are absent because a shift-checklist
+ * row has neither an order nor a price — the compound adapter sets them null on
+ * purpose, and a header that sorts by nothing is worse than one that does not
+ * offer to.
+ */
+const DAILY_TRACK_SORT_FACTS: Readonly<Record<string, DailySortFact>> = {
+  item: 'task',
+  state: 'status',
+};
+
+/**
+ * Bound catalog field → the fact it sorts by. Slot tracks are keyed `status:N`,
+ * so the bound FIELD is what makes the header clickable — binding Team into
+ * `status:2` must still sort as `team`.
+ */
+const DAILY_SLOT_SORT_FACTS: Readonly<Record<string, DailySortFact>> = {
+  'daily.status': 'status',
+  'daily.team': 'team',
+  'daily.marked': 'marked',
+};
+
+/** The `?colsort=` word a mounted track drives, or null when it does not sort. */
+export function dailySortFactFor(
+  col: Pick<DailyGridColumn, 'key' | 'sortable' | 'fieldId'>,
+): DailySortFact | null {
+  if (col.sortable === false || col.key === 'select') return null;
+  const slot = col.fieldId ? DAILY_SLOT_SORT_FACTS[col.fieldId] : undefined;
+  if (slot) return slot;
+  return DAILY_TRACK_SORT_FACTS[col.key] ?? null;
+}
+
+export function isDailySortFact(raw: string): raw is DailySortFact {
+  return raw === 'task' || raw === 'status' || raw === 'team' || raw === 'marked';
+}
+
+/**
+ * The comparator shape each fact sorts under (blanks-last, numeric vs lexical).
+ *
+ * On the FACT rather than read off a column, because the desk needs it for a
+ * fact that may be bound into any slot — or, on this family's product layout,
+ * into none at all. It used to be `DAILY_GRID_COLUMNS.find(c => c.key ===
+ * sort)?.type`, which returned `undefined` for every compound track and quietly
+ * sorted everything as the default shape.
+ */
+export const DAILY_SORT_FACT_TYPES: Readonly<Record<DailySortFact, ColumnType>> = {
+  task: 'text',
+  status: 'tag',
+  team: 'number',
+  marked: 'date',
+};
+
+/** Header keys that sort — the descriptor's `isSortable` for this family. */
+export function isDailyGridSortable(
+  columns: readonly DailyGridColumn[],
+  key: string,
+): boolean {
+  const col = columns.find((c) => c.key === key);
+  return col ? dailySortFactFor(col) != null : false;
+}
+
+/**
+ * The mounted track a `?colsort=` word points at — the direction the header's
+ * active-sort mark needs, and the inverse of {@link dailySortFactFor}.
+ *
+ * One direction only, like Repair: a word with no mounted track simply shows no
+ * active header rather than minting a track key the model does not have.
+ */
+export function dailyColumnKeyForSort(
+  columns: readonly DailyGridColumn[],
+  fact: DailySortFact | null,
+): DailyGridColumnKey | null {
+  if (!fact) return null;
+  return columns.find((c) => dailySortFactFor(c) === fact)?.key ?? null;
 }
 
 
 
 
-/** Recency opens newest-first; everything else ascends. */
-export function defaultDirForDailyGridSort(key: DailyGridColumnKey): GridSortDir {
-  return key === 'marked' ? 'desc' : 'asc';
+/**
+ * Recency opens newest-first; everything else ascends.
+ *
+ * Keyed on the FACT, not the track: `marked` opens `desc` wherever it is bound,
+ * so a rebind carries the rule with it instead of leaving it behind on a slot
+ * index (the wave-1.4 law — see `tech-all`'s urgency rank for the twin case).
+ */
+export function defaultDirForDailyGridSort(fact: DailySortFact): GridSortDir {
+  return fact === 'marked' ? 'desc' : 'asc';
 }
 
 /**

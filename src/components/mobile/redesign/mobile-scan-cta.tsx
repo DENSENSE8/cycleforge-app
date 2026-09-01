@@ -118,6 +118,7 @@ export function MobileScanCta() {
       onClick={onClick}
       icon={onScanSurface ? <Plus className="h-4 w-4" /> : <Barcode className="h-4 w-4" />}
       aria-label={onScanSurface ? 'Start a new scan' : 'Go to scan'}
+      radius="surface"
       // ds-allow-control-size — 44px exactly, the touch floor, because this one
       // is aimed at with a gloved thumb while walking.
       //

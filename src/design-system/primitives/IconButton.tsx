@@ -3,6 +3,7 @@
 import { forwardRef, type ButtonHTMLAttributes, type MouseEvent, type ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '../tokens/focus-ring';
+import { cornerClass } from '../tokens/radius';
 
 type IconButtonTone = 'neutral' | 'accent';
 
@@ -68,7 +69,19 @@ export interface IconButtonProps
   tone?: IconButtonTone;
   /** Fixed square hit-box from the control-size scale. Omit = legacy bare glyph-button. */
   size?: IconButtonSize;
+  /**
+   * Corner. Default `flush` — the zero-radius ops law.
+   * `surface` is `cornerClass('surface')` for mobile chrome beside inset-grouped cards.
+   * `pill` is `cornerClass('pill')`.
+   */
+  radius?: 'flush' | 'surface' | 'pill';
 }
+
+const ICON_BUTTON_RADIUS: Record<NonNullable<IconButtonProps['radius']>, string> = {
+  flush: cornerClass('flush'),
+  surface: cornerClass('surface'),
+  pill: cornerClass('pill'),
+};
 
 export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(function IconButton(
   {
@@ -79,6 +92,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
     title,
     tone = 'neutral',
     size,
+    radius = 'flush',
     disabled = false,
     type = 'button',
     ...rest
@@ -99,14 +113,14 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       // box by design, and giving it one would change every legacy call site.
       data-cf-control={size ? '' : undefined}
       className={cn(
-        // Square hit wash — never a circular hover plate.
-        'rounded-none transition-colors duration-100 ease-out active:scale-95 disabled:cursor-not-allowed disabled:opacity-35',
+        'transition-colors duration-100 ease-out active:scale-95 disabled:cursor-not-allowed disabled:opacity-35',
         // Keyboard focus ring from the SoT — IconButton had none (a11y gain);
         // :focus-visible so a mouse click never flashes it.
         focusRing('control', 'accent'),
         size && 'inline-flex shrink-0 items-center justify-center',
         size && sizeClassName[size],
         toneClassName[tone],
+        ICON_BUTTON_RADIUS[radius],
         className,
       )}
       {...rest}

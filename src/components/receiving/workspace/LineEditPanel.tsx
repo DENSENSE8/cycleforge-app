@@ -57,6 +57,7 @@ import {
   StationDisplaysParkedRail,
   StationDisplaysPushStack,
   STATION_DISPLAYS_HOST_PAD_CLASS,
+  isDisplaysHostedLeaf,
   type DisplaysVisitFrame,
 } from '@/components/station/displays';
 import { useAssistantDockOpen } from '@/components/assistant/AssistantProvider';
@@ -260,6 +261,11 @@ export function LineEditPanel({
     requestedSideTab,
     sideGates,
   );
+  /** Carton leaf is null on Look — pass the hosted id through so PushStack paints skins, not the index. */
+  const displaysActiveTab =
+    requestedSideTab != null && isDisplaysHostedLeaf(requestedSideTab)
+      ? requestedSideTab
+      : (activeSideTab ?? UNBOX_DISPLAY_INDEX);
   const checklistSelected = showDisplays && activeSideTab === 'checklist';
 
   // Warm deferred Photos / Ticket chunks while the
@@ -309,8 +315,8 @@ export function LineEditPanel({
 
   /** Visit snapshot for Displays ← → — nest verbs ride with the leaf tab. */
   const displaysVisitFrame = useMemo((): DisplaysVisitFrame => {
-    const tab = activeSideTab ?? UNBOX_DISPLAY_INDEX;
-    if (tab === UNBOX_DISPLAY_INDEX) return { tab: UNBOX_DISPLAY_INDEX };
+    const tab = displaysActiveTab;
+    if (tab === UNBOX_DISPLAY_INDEX || isDisplaysHostedLeaf(tab)) return { tab };
     const nest: Record<string, string> = {};
     if (tab === 'photos') nest.photoAction = photoAction;
     if (tab === 'linkage') nest.linkageAction = linkageAction;
@@ -320,7 +326,7 @@ export function LineEditPanel({
     }
     return { tab, nest };
   }, [
-    activeSideTab,
+    displaysActiveTab,
     photoAction,
     linkageAction,
     ticketAction,
@@ -331,6 +337,10 @@ export function LineEditPanel({
     (frame: DisplaysVisitFrame) => {
       if (frame.tab === UNBOX_DISPLAY_INDEX) {
         setRequestedSideTab(UNBOX_DISPLAY_INDEX);
+        return;
+      }
+      if (isDisplaysHostedLeaf(frame.tab)) {
+        setRequestedSideTab(frame.tab as UnboxDisplayNav);
         return;
       }
       const nest = frame.nest ?? {};
@@ -955,7 +965,13 @@ export function LineEditPanel({
           activeId={activeSideTab ?? null}
           // Same contract as the parked strip: a cell names a leaf, so land
           // that leaf rather than the index the operator would then re-pick.
-          onOpenLeaf={(id) => openDisplays(id as UnboxSideTab)}
+          onOpenLeaf={(id) => {
+            if (isDisplaysHostedLeaf(id)) {
+              openDisplays(id as UnboxDisplayNav);
+              return;
+            }
+            openDisplays(id as UnboxSideTab);
+          }}
         />
       }
     />
@@ -1240,7 +1256,7 @@ export function LineEditPanel({
           showDisplays ? (
             <StationDisplaysPushStack
               tabs={unboxSideTabs}
-              activeTab={activeSideTab ?? UNBOX_DISPLAY_INDEX}
+              activeTab={displaysActiveTab}
               indexRows={displayIndexRows}
               visitFrame={displaysVisitFrame}
               onVisitNavigate={onDisplaysVisitNavigate}
@@ -1248,6 +1264,10 @@ export function LineEditPanel({
               onTabChange={(id) => {
                 if (id === UNBOX_DISPLAY_INDEX) {
                   setRequestedSideTab(UNBOX_DISPLAY_INDEX);
+                  return;
+                }
+                if (isDisplaysHostedLeaf(id)) {
+                  setRequestedSideTab(id as UnboxDisplayNav);
                   return;
                 }
                 const tab = id as UnboxSideTab;

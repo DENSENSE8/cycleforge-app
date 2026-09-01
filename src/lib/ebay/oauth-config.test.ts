@@ -16,6 +16,7 @@ import {
   ebayTokenEndpoint,
   ebayIdentityEndpoint,
   probeEbayOauthAuthorizeConfig,
+  ebayConnectLoopbackWarning,
 } from './oauth-config';
 
 afterEach(() => {
@@ -153,4 +154,12 @@ test('probeEbayOauthAuthorizeConfig treats terminal HTML as ok', async () => {
     fetchImpl,
   });
   deepStrictEqual(result, { ok: true });
+});
+
+test('ebayConnectLoopbackWarning flags localhost-style hosts', () => {
+  ok(ebayConnectLoopbackWarning('localhost'));
+  ok(ebayConnectLoopbackWarning('127.0.0.1'));
+  ok(ebayConnectLoopbackWarning('::1'));
+  strictEqual(ebayConnectLoopbackWarning('app.cycleforge.ai'), null);
+  strictEqual(ebayConnectLoopbackWarning('preview.cycleforge.ai'), null);
 });

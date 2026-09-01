@@ -20,10 +20,14 @@ import { DataTable } from '@/components/tables/DataTable';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
 import type { RowGroup } from '@/lib/group-rows';
 import {
+  repairColumnKeyForSort,
+  repairSheetColumnsFor,
+  repairSortFactFor,
   type RepairGridColumn,
   type RepairGridColumnKey,
 } from '@/lib/repair/repair-grid-layout';
 import { REPAIR_TABLE_BINDING } from './repair-grid/repair-table-definition';
+import { useRepairTableLayout } from './repair-grid/useRepairTableLayout';
 import { RepairGridRow } from './repair-grid/RepairGridRow';
 import { RepairRailShell } from './rail/RepairRailShell';
 import { useRepairsTable } from '@/hooks/useRepairs';
@@ -57,6 +61,12 @@ export function RepairTable({ filter }: RepairTableProps) {
     isLoading: loading,
     refetch: refetchRepairs,
   } = useRepairsTable(search, filter);
+
+  // The COLUMNS are the effective slot layout's materialization (staff ?? org
+  // ?? product — wave 1.4 hand-model kill). Sort stays the queue's own `?sort=`
+  // vocabulary; `repairSortFactFor` maps a mounted track onto one of its words.
+  const { effectiveLayout: repairLayout, fields: repairFields } = useRepairTableLayout();
+  const columns = useMemo(() => repairSheetColumnsFor(repairLayout), [repairLayout]);
 
   const displayRepairs = useMemo(
     () =>
@@ -191,13 +201,21 @@ export function RepairTable({ filter }: RepairTableProps) {
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <DataTable<RSRecord, RepairGridColumnKey, RepairGridColumn>
           binding={REPAIR_TABLE_BINDING}
+          columns={columns}
+          fields={repairFields}
           orderGroupsByDate={orderGroupsByDate}
           rows={displayRepairs}
           getRowId={(r) => String(r.id)}
-          sort={columnSort}
+          sort={repairColumnKeyForSort(columns, columnSort)}
           dir={dir}
+          // A header click speaks in TRACK keys; `?sort=` speaks in the
+          // queue's own words. Map back through the mounted model so a
+          // bookmarked URL keeps its meaning after a rebind.
           onSortChange={(key, nextDir) => {
-            if (isRepairColumnSort(key)) setSort(key, nextDir);
+            const word = repairSortFactFor(
+              columns.find((c) => c.key === key) ?? ({ key } as RepairGridColumn),
+            );
+            if (word && isRepairColumnSort(word)) setSort(word, nextDir);
           }}
           loading={loading}
           emptyMessage={search ? `No repairs match "${search}"` : 'No repairs found'}

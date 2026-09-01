@@ -10,6 +10,7 @@ import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { ChevronRight } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { elevationClass } from '@/design-system/tokens/shadows';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
@@ -25,7 +26,8 @@ const DropdownMenuContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        'z-popover max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-none border border-border-soft bg-surface-card p-1 text-text-default',
+        'z-popover max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[8rem] overflow-y-auto overflow-x-hidden border border-border-soft bg-surface-card p-1 text-text-default',
+        DROPDOWN_SHELL_CORNER,
         elevationClass('overlay'),
         className,
       )}
@@ -119,7 +121,8 @@ const DropdownMenuSubContent = React.forwardRef<
       ref={ref}
       sideOffset={sideOffset}
       className={cn(
-        'z-popover max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[12rem] overflow-y-auto overflow-x-hidden rounded-none border border-border-soft bg-surface-card p-1 text-text-default',
+        'z-popover max-h-[var(--radix-dropdown-menu-content-available-height)] min-w-[12rem] overflow-y-auto overflow-x-hidden border border-border-soft bg-surface-card p-1 text-text-default',
+        DROPDOWN_SHELL_CORNER,
         elevationClass('overlay'),
         className,
       )}

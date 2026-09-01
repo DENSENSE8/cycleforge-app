@@ -1,5 +1,7 @@
 'use client';
 
+import type { Ref } from 'react';
+
 import { Plus } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { STATION_LABEL, type StationKey } from '@/components/layout/goal-chip/goal-chip-shared';
@@ -26,6 +28,7 @@ export function TasksComposerRow({
   onSubmit,
   pending,
   stationLabel,
+  inputRef,
 }: {
   draft: string;
   onDraftChange: (value: string) => void;
@@ -33,12 +36,15 @@ export function TasksComposerRow({
   pending: boolean;
   /** Station key the new task will land on — named, never silent. */
   stationLabel: string;
+  /** Focus target for the page CTA that summons this composer. */
+  inputRef?: Ref<HTMLInputElement>;
 }) {
   const station = STATION_LABEL[stationLabel as StationKey] ?? stationLabel;
   return (
     <div className="flex shrink-0 items-center gap-2 border-t border-border-hairline bg-surface-card px-3 py-2">
       <Plus className="h-3.5 w-3.5 shrink-0 text-text-soft" aria-hidden />
       <input
+        ref={inputRef}
         value={draft}
         onChange={(e) => onDraftChange(e.target.value)}
         onKeyDown={(e) => {

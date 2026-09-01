@@ -66,6 +66,12 @@ test.describe('Unbox centre band accordion', () => {
     }
     await expect(itemsToggle).toHaveAttribute('aria-expanded', 'true');
 
+    // Open band bodies inherit the shared well; headers sit on the header token.
+    await expect(items.locator(':scope > .bg-surface-station-well')).toHaveCount(1);
+    await expect(label.locator(':scope > .bg-surface-station-well')).toHaveCount(0);
+    await expect(page.locator('[data-item-record-thumb]')).toHaveClass(/bg-surface-station-slot/);
+    await expect(page.locator('[data-unbox-serial-input]')).toHaveClass(/bg-surface-station-slot/);
+
     const itemsBox = await itemsToggle.boundingBox();
     expect(itemsBox, 'hit target is a real row, not a 12px seam').toBeTruthy();
     expect(itemsBox!.height).toBeGreaterThanOrEqual(28);
@@ -78,6 +84,7 @@ test.describe('Unbox centre band accordion', () => {
 
     await labelToggle.click();
     await expect(labelToggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(label.locator(':scope > .bg-surface-station-well')).toHaveCount(1);
     await expect(page.getByTestId('unbox-label-preview')).toBeVisible();
     await expect(page.getByTestId('unbox-label-show')).toHaveCount(0);
     await expect(page.getByTestId('unbox-label-hide')).toHaveCount(0);

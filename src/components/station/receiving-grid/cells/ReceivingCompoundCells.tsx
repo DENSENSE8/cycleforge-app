@@ -24,6 +24,8 @@ import {
 import type { CompoundRowView } from '@/components/tables/compound/compound-row-model';
 import { incomingStateFace } from '@/lib/receiving/incoming-compound-view';
 import { receivingCompoundView } from '@/lib/receiving/receiving-compound-view';
+import { incomingSlotValuesFor } from '@/lib/tables/field-catalog/incoming-resolve';
+import { receivingSlotValuesFor } from '@/lib/tables/field-catalog/receiving-resolve';
 import type {
   ReceivingGridCellColumn,
   ReceivingGridCellCtx,
@@ -46,7 +48,21 @@ function viewFor(ctx: ReceivingGridCellCtx): CompoundRowView {
   const incoming = ctx.linePhase === 'expected';
   const state = incoming ? incomingStateFace(ctx.row) : null;
 
-  return receivingCompoundView(ctx.row, {
+  return {
+    // Materialized slot tracks (wave 1.3) — one resolved value per BOUND slot,
+    // keyed by track key. Empty on both product defaults, which is why the port
+    // reproduces the row exactly; an org that binds Location gets a real column
+    // with no change to this adapter.
+    //
+    // The resolver follows the same split as the state pill above: an Incoming
+    // row answers the CARRIER's question and a landed row answers the
+    // WAREHOUSE's, so `incoming.*` and `receiving.*` are two vocabularies over
+    // one cell map. Routing by `linePhase` also means a binding from the other
+    // family resolves to nothing rather than painting a lane-dependent lie.
+    slots: incoming
+      ? incomingSlotValuesFor(ctx.row, ctx.columns ?? [])
+      : receivingSlotValuesFor(ctx.row, ctx.columns ?? []),
+    ...receivingCompoundView(ctx.row, {
     title: ctx.productTitle,
     stateLabel: state ? state.label : ctx.stageLabel,
     stateTone: state ? state.tone : undefined,
@@ -60,7 +76,8 @@ function viewFor(ctx: ReceivingGridCellCtx): CompoundRowView {
     delayTip: (incoming ? ctx.ageTooltip : ctx.stageTip) || undefined,
     tracking: (ctx.trackingValue || '').trim() || null,
     orderId: ctx.poValue || null,
-  });
+    }),
+  };
 }
 
 /**

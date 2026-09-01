@@ -139,6 +139,15 @@ const PRIMITIVE_HOMES = [
       /^(LabelFacePreview|LabelFaceSlotOverlay|LabelPlatformTypeMenu|LabelFaceReceivingSlots|LabelFaceProductSlots|WorkspaceLabelPreviewCard|LabelPreviewCard)\.tsx$/,
   },
   { dir: 'src/lib/optimistic', label: 'write primitive', alias: '@/lib/optimistic', match: /^useOptimisticMutation\.ts$/ },
+  // Scan-station skin catalog. The picker in Appearance lists STATION_SKIN_NAMES
+  // from this file; ds_tokens({ axis: 'station-skin' }) is the introspective SoT
+  // so agents stop inventing a 17th Unbox-only fill.
+  {
+    dir: 'src/design-system/themes',
+    label: 'theme catalog (house)',
+    alias: '@/design-system/themes',
+    match: /^station-skins\.ts$/,
+  },
 ]
 
 /**
@@ -150,7 +159,7 @@ const PRIMITIVE_HOMES = [
  * `find_symbol` + `impact_analysis` on the role function (`cornerClass`,
  * `elevationClass`, `focusRing`) so the next session sees real call sites.
  */
-const TOKEN_AXES = ['color', 'radius', 'spacing', 'typography', 'z-index', 'elevation', 'border', 'focus']
+const TOKEN_AXES = ['color', 'radius', 'spacing', 'typography', 'z-index', 'elevation', 'border', 'focus', 'station-skin']
 
 /**
  * The axes whose law is TypeScript (or Node-native `.mjs` twins), not CSS.
@@ -168,6 +177,7 @@ const TOKEN_AXES = ['color', 'radius', 'spacing', 'typography', 'z-index', 'elev
 const TOKEN_TS = {
   radius: 'src/design-system/tokens/radius.ts',
   themes: 'src/design-system/themes/registry.ts',
+  stationSkins: 'src/design-system/themes/station-skins.ts',
   spacing: 'src/design-system/tokens/spacing.mjs',
   zIndex: 'src/design-system/tokens/z-index.mjs',
   elevation: 'src/design-system/tokens/shadows.ts',
@@ -271,6 +281,18 @@ function blockAfter(source, anchor, from = 0) {
   return source.slice(open + 1, i - 1)
 }
 
+/**
+ * Depth-0 object body following `key:` inside `body`. Quoted kebab keys
+ * (`'paper-mill':`) and bare ids (`porcelain:`) both work.
+ */
+function objectAfterKey(body, key) {
+  const escaped = String(key).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const re = new RegExp(`(?:^|[\\n,{])\\s*(?:'${escaped}'|${escaped})\\s*:`)
+  const m = re.exec(body)
+  if (!m) return null
+  return blockAfter(body, '{', m.index + m[0].length - 1)
+}
+
 const AFFORDANCES = [
   { key: 'focus-visible styling', re: /focus-visible:|focusRing|focus_ring/ },
   { key: 'disabled styling', re: /disabled:/ },
@@ -344,7 +366,7 @@ function inventory() {
           if (flat.length) axes.variant = flat
         }
       }
-      out.push({
+      const entry = {
         id,
         home: home.label,
         file: rel,
@@ -352,7 +374,15 @@ function inventory() {
         variant_axes: axes,
         declares: AFFORDANCES.filter((a) => a.re.test(source)).map((a) => a.key),
         lines: source.split('\n').length,
-      })
+      }
+      // Flat `*_VARIANTS = { compact: 'ship-by…', range: 'filter…' }` notes
+      // are how ds_contract picks a face (pickVariant / mount). Class maps
+      // (Button) also match this shape; recommendVariant drops those as notes.
+      if (vBlock && (axes.variant ?? []).length) {
+        const notes = variantNotesFromBlock(vBlock, axes.variant)
+        if (Object.keys(notes).length) entry.variant_notes = notes
+      }
+      out.push(entry)
     }
   }
   INVENTORY = out
@@ -605,6 +635,72 @@ function loadBorderTokens() {
   return out
 }
 
+const STATION_SKIN_CLASS = {
+  header: 'bg-surface-station-header',
+  well: 'bg-surface-station-well',
+  plate: 'bg-surface-station-plate',
+  slot: 'bg-surface-station-slot',
+  bar: 'bg-surface-station-bar',
+  'row-hover': 'hover:bg-surface-station-row-hover',
+  'header-hover': 'hover:bg-surface-station-header-hover',
+  'bevel-shadow': 'border-station-shadow',
+  'bevel-highlight': 'border-station-highlight',
+}
+
+/**
+ * Scan-station skin law. Names and `--ds-station-*` vars are the answer;
+ * character hexes stay in station-skins.ts and must never leak into this
+ * payload (an agent would paste them onto Unbox).
+ */
+function loadStationSkinTokens() {
+  const rel = TOKEN_TS.stationSkins
+  const src = readTs(rel)
+  if (!src) return []
+  const out = []
+
+  const varKeys = arrayAfter(src, 'export const STATION_SKIN_VAR_KEYS')
+  for (const key of varKeys) {
+    const cls = STATION_SKIN_CLASS[key] ?? `var(--ds-station-${key})`
+    out.push(row(
+      'station-skin',
+      rel,
+      `--ds-station-${key}`,
+      'per station-skin',
+      `className="${cls}" — consume STATION_SCAN_* from @/components/station/scan-depth; do not retype the fill.`,
+    ))
+  }
+
+  const skinsBody = blockAfter(src, 'export const STATION_SKINS')
+  if (!skinsBody) {
+    throw new Error(`${rel} has no STATION_SKINS record — station-skin reader fault, not a licence to invent a fill.`)
+  }
+  const names = keysAtTopLevel(skinsBody)
+  if (names.length === 0) {
+    throw new Error(`${rel} STATION_SKINS parsed zero skins — station-skin reader fault.`)
+  }
+  for (const name of names) {
+    const nested = objectAfterKey(skinsBody, name) ?? ''
+    const label = /(?:^|\n)\s*label:\s*'([^']+)'/.exec(nested)?.[1]
+    const group = /(?:^|\n)\s*group:\s*'([^']+)'/.exec(nested)?.[1]
+    const grainOn = /(?:^|\n)\s*grain:\s*true/.test(nested)
+    const hint = /(?:^|\n)\s*hint:\s*'([^']+)'/.exec(nested)?.[1]
+    const bits = [label ?? name, group ?? 'ungrouped', grainOn ? 'grain on' : 'grain off']
+    const extra = name === 'industrial'
+      ? ' Default mill — ABSENCE of data-station-skin.'
+      : name === 'house-color'
+        ? ' Plate mixes --ds-color-accent-bg; bevels stay mill.'
+        : ''
+    out.push(row(
+      'station-skin',
+      rel,
+      `applyStationSkin('${name}')`,
+      bits.join(' · '),
+      `applyStationSkin('${name}') — import from @/lib/theme/station-skin. Appearance lists STATION_SKIN_NAMES.${hint ? ` ${hint}` : ''}${extra}`,
+    ))
+  }
+  return out
+}
+
 const AXIS_LOADERS = {
   color: loadThemeTokens,
   radius: loadRadiusTokens,
@@ -614,6 +710,7 @@ const AXIS_LOADERS = {
   elevation: loadElevationTokens,
   border: loadBorderTokens,
   focus: loadFocusTokens,
+  'station-skin': loadStationSkinTokens,
 }
 
 const AXIS_NOTE = {
@@ -635,6 +732,10 @@ const AXIS_NOTE = {
     'Prefer semantic border-border-* utilities over a hex or an arbitrary width.',
   focus:
     "Prefer focusRing(archetype, tone) over a hand-rolled focus:ring-* recipe.",
+  'station-skin':
+    "Scan-station material is a row in station-skins.ts, not a hex on Unbox. " +
+    "Call applyStationSkin(name); wells use STATION_SCAN_* / --ds-station-*. " +
+    "Industrial is the absence of data-station-skin. Character hexes live in the catalog file only.",
 }
 
 /**
@@ -666,6 +767,9 @@ function loadAxis(axis) {
   const loader = AXIS_LOADERS[axis]
   const rows = loader ? loader() : []
   if (axis === 'color' && process.env.DESIGN_MCP_PLANT_HEX !== '1') {
+    for (const t of rows) t.value = scrubColorValue(t.value)
+  }
+  if (axis === 'station-skin') {
     for (const t of rows) t.value = scrubColorValue(t.value)
   }
   return rows
@@ -702,6 +806,50 @@ function presentAxis(axis, filter) {
 
 const STOP = new Set(['a', 'an', 'the', 'for', 'of', 'to', 'in', 'on', 'and', 'or', 'with', 'that', 'this', 'is', 'my'])
 const terms = (s) => String(s).toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length > 2 && !STOP.has(t))
+
+function variantNotesFromBlock(vBlock, variantNames) {
+  const allowed = new Set(variantNames)
+  const notes = {}
+  for (const m of vBlock.matchAll(/([A-Za-z0-9_-]+)\s*:\s*'([^']*)'/g)) {
+    if (allowed.has(m[1])) notes[m[1]] = m[2]
+  }
+  return notes
+}
+
+/** Class-string maps (Button) are not the law; prose notes (DateRangePickerField) are. */
+function isProseVariantNote(note) {
+  const s = String(note ?? '')
+  if (!s.includes(' ')) return false
+  if (/\b(bg|text|hover|active|ring|shadow|flex|inline)-/.test(s)) return false
+  return true
+}
+
+/**
+ * Rank a catalogued variant against the job. `compact` vs `range` is the
+ * ship-by vs filter split — without this, agents mount the default range
+ * (presets + Apply + X + year) into a table cell.
+ */
+function recommendVariant(entry, q) {
+  const names = entry.variant_axes?.variant ?? []
+  if (names.length === 0) return null
+  const notes = entry.variant_notes ?? {}
+  let best = null
+  let bestScore = 0
+  for (const name of names) {
+    let s = 0
+    const blob = terms(`${name} ${notes[name] ?? ''}`).join(' ')
+    for (const t of q) {
+      if (name === t) s += 14
+      else if (blob.includes(t)) s += 8
+    }
+    if (s > bestScore) {
+      bestScore = s
+      best = { name, note: notes[name] ?? '', score: s }
+    }
+  }
+  if (!best || bestScore === 0) return null
+  return best
+}
 
 function score(entry, q, override) {
   const id = entry.id.toLowerCase()
@@ -768,13 +916,49 @@ function resolveInRepo(input) {
   return { abs: real, rel }
 }
 
+/**
+ * `re` alone is the signal. `and` narrows it: BOTH must match, and the report
+ * still points at `re`'s line.
+ *
+ * A composer needs `and` and nothing else does. A raw `<textarea>` is not a
+ * fork — 49 files in this repo have one and almost all are ordinary form
+ * fields on a record. What makes it a composer is a textarea that ALSO owns a
+ * send: an Enter-commits handler, a commit callback, or a "type a message"
+ * placeholder. Signalling on the textarea alone would cry wolf on every
+ * settings page and get the whole detector ignored.
+ */
 const FORK_SIGNALS = [
   { pin: 'Button', also: ['button'], re: /<button[\s>]/, what: 'a raw <button>' },
   { pin: 'TextField', also: ['input'], re: /<input[\s>]/, what: 'a raw <input>' },
   { pin: 'Checkbox', also: ['checkbox'], re: /type=["']checkbox["']/, what: 'a raw checkbox input' },
   { pin: 'Dialog', also: ['dialog'], re: /role=["']dialog["']/, what: 'a hand-rolled dialog role' },
   { pin: 'HoverTooltip', also: ['popover'], re: /role=["']tooltip["']/, what: 'a hand-rolled tooltip role' },
+  { pin: 'station-skins', re: /\bbg-surface-(trough|bench|plate|slot)\b/, what: 'a packing-bench fill class' },
+  {
+    pin: 'OmnichannelComposerDock',
+    also: ['TicketComposer', 'StationComposerHost'],
+    re: /<textarea[\s>]/,
+    and: /key === ['"]Enter['"]|Enter to send|handleComposerKeyDown|onCommit|placeholder=["'{][^"'}]*(message|reply|comment|write a|ask|type a)/i,
+    what: 'a hand-rolled composer (a raw <textarea> that owns its own send)',
+  },
+  {
+    pin: 'TicketComposer',
+    also: ['StationComposerHost'],
+    re: /\bisPublic\b|\bemailCcs\b/,
+    and: /<textarea[\s>]|OmnichannelComposerDock/,
+    what: 'a second ticket composer (its own public/internal channel)',
+  },
 ]
+
+const THEME_CATALOG_DIR = 'src/design-system/themes/'
+
+function isThemeCatalog(rel) {
+  return rel.replaceAll('\\', '/').startsWith(THEME_CATALOG_DIR)
+}
+
+function importsScanDepth(source) {
+  return /@\/components\/station\/scan-depth|STATION_SCAN_(WELL|BENCH|FIELD_WELL|ACTIVE_WELL)_CLASS/.test(source)
+}
 
 /**
  * One problem per axis, matching ds_tokens slices. A single "use var(--token)"
@@ -812,6 +996,50 @@ const LITERAL_PATTERNS = [
     fix: 'Tokens live in TypeScript roles (cornerClass, elevationClass, focusRing), not style={{}}.',
   },
 ]
+
+/**
+ * Idle↔overlay cohort workspaces (SoT =
+ * `SCAN_STATION_OVERLAY_COHORT` in scan-station-overlay-cohort.ts).
+ * Keep in sync when the cohort grows — design-mcp cannot import the TS module.
+ */
+const OVERLAY_COHORT_WORKSPACES = new Set([
+  'src/components/receiving/unbox/UnboxLineWorkspace.tsx',
+  'src/components/receiving/triage/TriageLineWorkspace.tsx',
+  'src/components/packer/PackOrderWorkspace.tsx',
+  'src/components/tech/TestingLineWorkspace.tsx',
+  'src/components/tech/TechRightPane.tsx',
+  'src/components/outbound/workspaces/ScanOutWorkspace.tsx',
+])
+
+/** Cohort-law styles: visibility hide + zIndex.panel stack — not token drifts. */
+function isOverlayCohortAllowedStyleObject(slice) {
+  if (
+    /style=\{\{\s*visibility:/.test(slice) &&
+    /['"]hidden['"]/.test(slice) &&
+    /['"]visible['"]/.test(slice)
+  ) {
+    return true
+  }
+  if (/style=\{\{\s*zIndex:\s*zIndex\.panel\b/.test(slice)) return true
+  return false
+}
+
+/**
+ * Collect `style={{` hits; in cohort workspaces, skip visibility / zIndex.panel.
+ */
+function inlineStyleHits(source, rel) {
+  const norm = rel.replaceAll('\\', '/')
+  const inCohort = OVERLAY_COHORT_WORKSPACES.has(norm)
+  const hits = []
+  const re = /style=\{\{/g
+  let m
+  while ((m = re.exec(source)) !== null) {
+    const slice = source.slice(m.index, Math.min(source.length, m.index + 180))
+    if (inCohort && isOverlayCohortAllowedStyleObject(slice)) continue
+    hits.push(m[0])
+  }
+  return hits
+}
 
 const TRIAGE_LAYOUT_FILES = new Set([
   'src/design-system/components/TriageScrollLayout.tsx',
@@ -875,12 +1103,13 @@ const TOOLS = [
     name: 'ds_contract',
     description:
       'Use this BEFORE writing any React component, to find the UI primitives that already exist (Buttons, ' +
-      'Composers, chips, dialogs). Returns the exact import path, the real variant options, and the usage ' +
-      'laws where a human has written them. ' +
+      'Composers, chips, dialogs, date fields). Returns the exact import path, the real variant options, ' +
+      'and the usage laws where a human has written them. When pickVariant/mount are set, mount THAT face ' +
+      '(ship-by / in-cell date is DateRangePickerField variant="compact", not the range filter). ' +
       'New composed / 21st.dev work starts from the shadcn primitives in @/components/ui (home label ' +
       '"shadcn primitive"). Ops CTAs still take Button from @/design-system/primitives/Button. ' +
-      'Describe the job in plain words ("row of actions", "status chip", "confirm a destructive action", ' +
-      '"shadcn dialog") and this returns the matching primitives. If something here covers the job, building beside it is a fork.',
+      'Describe the job in plain words ("row of actions", "status chip", "ship-by date in a table cell", ' +
+      '"confirm a destructive action") and this returns the matching primitives. If something here covers the job, building beside it is a fork.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -896,7 +1125,8 @@ const TOOLS = [
       'Look up the exact class or value on ONE visual axis before you type a literal. ' +
       'axis is required — a dump of every axis is not a lookup. Never invent a hex, a px radius, ' +
       'or text-[Npx] if this returns a token. On radius call cornerClass(role); on colour write var(--ds-color-…); ' +
-      'on elevation call elevationClass; on focus call focusRing.',
+      'on elevation call elevationClass; on focus call focusRing; on station-skin call applyStationSkin(name) ' +
+      'and consume STATION_SCAN_* — never hex a well or fork a packing-bench fill on one station.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -938,7 +1168,7 @@ function tokenResources() {
 }
 
 const server = new Server(
-  { name: 'cycleforge-design-mcp', version: '0.1.0' },
+  { name: 'cycleforge-design-mcp', version: '0.2.0' },
   { capabilities: { tools: {}, resources: {} } },
 )
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOLS }))
@@ -970,11 +1200,25 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       const q = terms(args.intent)
       const limit = Math.min(Math.max(args.limit ?? 5, 1), 20)
       const hits = all
-        .map((e) => ({ e, s: score(e, q, overrides[e.id]) }))
+        .map((e) => {
+          const pick = recommendVariant(e, q)
+          let s = score(e, q, overrides[e.id])
+          if (pick) s += Math.min(pick.score, 16)
+          return { e, s, pick }
+        })
         .filter((h) => h.s > 0)
         .sort((a, b) => b.s - a.s)
         .slice(0, limit)
-        .map(({ e }) => ({ ...e, ...(overrides[e.id] ?? {}) }))
+        .map(({ e, pick }) => {
+          const { variant_notes: _notes, ...rest } = e
+          const out = { ...rest, ...(overrides[e.id] ?? {}) }
+          if (pick) {
+            out.pickVariant = pick.name
+            out.mount = `<${e.id} variant="${pick.name}" />`
+            if (isProseVariantNote(pick.note)) out.pickVariantNote = pick.note
+          }
+          return out
+        })
 
       return json({
         matches: hits,
@@ -986,6 +1230,8 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
               '(the index is by component name and path, not by job description yet), then look through ' +
               'src/design-system/primitives directly.'
             : 'variant_axes and declares are read from the source, so they cannot disagree with the code. ' +
+              'When pickVariant is set, mount THAT face — not a sibling and not the default. ' +
+              'pickVariantNote is the law for that face (ship-by / in-cell date is compact; filter range is range). ' +
               'useWhen/doNot appear only where a human has curated them in src/design-system/pinned.json — ' +
               'their absence means nobody has written the law yet, NOT that anything is permitted. ' +
               'New composed / 21st.dev work starts from matches whose home is "shadcn primitive". ' +
@@ -1017,28 +1263,42 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
         for (const s of FORK_SIGNALS) {
           const alreadyUses = used.includes(s.pin) || (s.also ?? []).some((id) => used.includes(id))
           if (!s.re.test(source) || alreadyUses) continue
+          if (s.and && !s.and.test(source)) continue
           const e = byId.get(s.pin)
+          const stationSkinFork = s.pin === 'station-skins'
           problems.push({
             severity: 'forks-the-system',
             line: lineOf(source, (source.match(s.re) ?? [])[0]),
             what: `${s.what} where the system has ${s.pin}`,
-            fix: e ? `Import ${s.pin} from ${e.import}` : `Use the existing ${s.pin}.`,
+            fix: stationSkinFork
+              ? "ds_tokens({ axis: 'station-skin' }) — add a STATION_SKINS row; wells consume STATION_SCAN_* from @/components/station/scan-depth."
+              : e ? `Import ${s.pin} from ${e.import}` : `Use the existing ${s.pin}.`,
             confidence: 'heuristic',
           })
         }
       }
 
       let literalTotal = 0
+      const catalog = isThemeCatalog(rel)
       for (const { kind, axis, re, fix } of LITERAL_PATTERNS) {
-        const hits = source.match(new RegExp(re.source, 'g')) ?? []
+        if (kind === 'hardcoded hex' && catalog) continue
+        let hits
+        if (kind === 'inline style object') {
+          hits = inlineStyleHits(source, rel)
+        } else {
+          hits = source.match(new RegExp(re.source, 'g')) ?? []
+        }
         if (!hits.length) continue
         literalTotal += hits.length
+        const scanPaintHex = kind === 'hardcoded hex' && importsScanDepth(source)
         problems.push({
           severity: 'drifts-from-tokens',
-          ...(axis ? { axis } : {}),
-          what: `${hits.length} ${kind} where the ${axis ?? 'token'} axis exists`,
+          ...((scanPaintHex ? 'station-skin' : axis) ? { axis: scanPaintHex ? 'station-skin' : axis } : {}),
+          what: `${hits.length} ${kind} where the ${scanPaintHex ? 'station-skin' : axis ?? 'token'} axis exists`,
           detail: { examples: [...new Set(hits)].slice(0, 4) },
-          fix,
+          fix: scanPaintHex
+            ? "ds_tokens({ axis: 'station-skin' }) — add a STATION_SKINS row; wells consume STATION_SCAN_* classes, never a hex."
+            : fix,
           confidence: 'heuristic',
         })
       }
@@ -1050,7 +1310,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
         })
       }
       const lines = source.split('\n').length
-      if (lines > 300) {
+      if (lines > 300 && !catalog) {
         problems.push({ severity: 'size', what: `${lines} lines — past the point reviewers read`, fix: 'Split the leaf presentational parts out.' })
       }
 

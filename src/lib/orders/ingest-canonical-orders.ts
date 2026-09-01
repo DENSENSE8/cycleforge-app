@@ -1062,6 +1062,92 @@ export async function ingestCanonicalOrders(
     await Promise.all(orderDeadlinesToUpsert.map((e) => upsertOrderDeadline(e.id, e.shipByDate, orgId)));
   }
 
+  // Auto-cage — the accepted/exception SPLIT (R-FLOW-2, 2026-08-31). Freshly
+  // INSERTED rows only, evaluated by the one gate rule after shipment links
+  // and deadlines are in place so the tracking fact is honest. Runs before
+  // cache invalidation below so the first client refetch already sees the
+  // cage. Best-effort: a cage failure must never lose an ingested order —
+  // but it is loud, because a silent skip means orders bypass triage.
+  if (insertedOrderIds.length > 0) {
+    try {
+      const { autoCageNewOrders } = await import('./auto-cage');
+      const caged = await autoCageNewOrders(effectiveOrgId, insertedOrderIds);
+      if (caged.length > 0) {
+        console.info(`[ingestCanonicalOrders] auto-caged ${caged.length}/${insertedOrderIds.length} new orders for triage`);
+      }
+    } catch (err) {
+      console.error('[ingestCanonicalOrders] auto-cage failed — new orders landed UNCAGED:', err);
+    }
+  }
+
+  // Listing → staff automations (TEST assign on import / first item_number).
+  // Best-effort: a rules/table miss must never fail ingest.
+  if (orgId) {
+    try {
+      const { applyListingAssignment } = await import('@/lib/automations/apply-listing-assignment');
+      const automationTargets: Array<{
+        orderId: number;
+        triggerKey: 'order.imported' | 'order.item_number_set';
+        itemNumber: string | null;
+        skuCatalogId: number | null;
+        sku: string | null;
+        accountSource: string | null;
+      }> = [];
+
+      for (let i = 0; i < ordersToInsert.length; i++) {
+        const planned = ordersToInsert[i];
+        const id = insertedOrderIds[i];
+        if (!id || !planned) continue;
+        automationTargets.push({
+          orderId: id,
+          triggerKey: 'order.imported',
+          itemNumber: String(planned.values.itemNumber || '') || null,
+          skuCatalogId:
+            planned.values.skuCatalogId == null ? null : Number(planned.values.skuCatalogId),
+          sku: String(planned.values.sku || '') || null,
+          accountSource: String(planned.values.accountSource || '') || null,
+        });
+      }
+
+      for (const entry of ordersToBackfill) {
+        if (!('itemNumber' in entry.values)) continue;
+        const itemNumber = String(entry.values.itemNumber || '') || null;
+        if (!itemNumber) continue;
+        automationTargets.push({
+          orderId: entry.id,
+          triggerKey: 'order.item_number_set',
+          itemNumber,
+          skuCatalogId:
+            entry.values.skuCatalogId == null
+              ? null
+              : Number(entry.values.skuCatalogId as number),
+          sku: entry.values.sku == null ? null : String(entry.values.sku),
+          accountSource: null,
+        });
+      }
+
+      await Promise.all(
+        automationTargets.map((t) =>
+          applyListingAssignment({
+            organizationId: orgId,
+            orderId: t.orderId,
+            triggerKey: t.triggerKey,
+            facts: {
+              item_number: t.itemNumber,
+              sku_catalog_id: t.skuCatalogId,
+              sku: t.sku,
+              account_source: t.accountSource,
+            },
+          }).catch((err) => {
+            console.warn('[ingestCanonicalOrders] listing automation skipped:', err);
+          }),
+        ),
+      );
+    } catch (err) {
+      console.warn('[ingestCanonicalOrders] listing automation unavailable:', err);
+    }
+  }
+
   // Explicit catalog-link chores for NEW unmatched item numbers only (no
   // historical orphan scan). Upserts unpaired sku_platform_ids + Review queue.
   if (catalogLinkChoresToEnqueue.length > 0) {

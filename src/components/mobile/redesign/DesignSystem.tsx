@@ -32,8 +32,8 @@ import { cn } from '@/utils/_cn';
  */
 export const TOKENS = {
   colors: {
-    /** Page ground for every mobile surface. */
-    background: 'bg-surface-canvas',
+    /** Page ground for every mobile surface — white sheet; depth lives on cards. */
+    background: 'bg-surface-card',
     /** Raised panel on that ground. */
     card: 'bg-surface-card border border-border-soft',
     text: {

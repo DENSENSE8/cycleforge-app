@@ -52,7 +52,7 @@ import {
 export type StationComposerHostProps = {
   labelValue: string;
   onLabelChange: (next: string) => void;
-  onLabelCommit: () => void;
+  onLabelCommit: (liveValue?: string) => void;
   onLabelBlur?: () => void;
   labelCommitDisabled?: boolean;
   labelCommitAriaLabel?: string;
@@ -103,6 +103,16 @@ export type StationComposerHostProps = {
   ticketFooterStart?: ReactNode;
   onModeChange?: (mode: StationComposerMode) => void;
   modeRowLeading?: ReactNode;
+  /**
+   * When false, omit the below-outline row entirely.
+   * Default true (Unbox / Testing / scan-out).
+   */
+  showModeRow?: boolean;
+  /**
+   * When false (with {@link showModeRow}), hide Unbox | Ticket and keep only
+   * the bottom-right context / procedure ring — dumb scan mouths.
+   */
+  showModeFaces?: boolean;
   progressPercent?: number;
   progressTone?: 'idle' | 'selected';
   onProgressClick?: () => void;
@@ -142,6 +152,8 @@ export function StationComposerHost({
   ticketFooterStart,
   onModeChange,
   modeRowLeading,
+  showModeRow = true,
+  showModeFaces = true,
   progressPercent = 0,
   progressTone = 'idle',
   onProgressClick,
@@ -179,7 +191,7 @@ export function StationComposerHost({
   const value = isTicket ? ticketDraft : labelValue;
   const onChange = isTicket ? setTicketDraft : onLabelChange;
   const onCommit = isTicket
-    ? () => {
+    ? (_live?: string) => {
         onTicketCommit?.();
       }
     : onLabelCommit;
@@ -210,6 +222,7 @@ export function StationComposerHost({
   // mode from the CURRENT one rather than toggling, so both compute the same
   // target and the second call is a no-op write.
   useEffect(() => {
+    if (!showModeRow || !showModeFaces) return;
     const onKeyDown = (e: globalThis.KeyboardEvent) => {
       if (!classifyStationComposerModeKey(e)) return;
       e.preventDefault();
@@ -217,7 +230,7 @@ export function StationComposerHost({
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [cycleMode]);
+  }, [cycleMode, showModeRow, showModeFaces]);
 
   // The textarea still delegates to the host's ghost-autocomplete handler; the
   // mode chords are no longer handled here — the document listener above owns
@@ -329,14 +342,17 @@ export function StationComposerHost({
         onDismissGhost={isTicket ? undefined : onDismissGhost}
         onTextareaKeyDown={handleModeKey}
       />
-      <ComposerModeRow
-        mode={mode}
-        onModeChange={setMode}
-        progressPercent={progressPercent}
-        progressTone={progressTone}
-        onProgressClick={onProgressClick}
-        leading={modeRowLeading}
-      />
+      {showModeRow ? (
+        <ComposerModeRow
+          mode={mode}
+          onModeChange={setMode}
+          showModeFaces={showModeFaces}
+          progressPercent={progressPercent}
+          progressTone={progressTone}
+          onProgressClick={onProgressClick}
+          leading={modeRowLeading}
+        />
+      ) : null}
     </div>
   );
 }

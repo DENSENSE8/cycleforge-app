@@ -44,6 +44,13 @@ export interface LedgerGridColumnModel {
    * (shipped 2026-08-02, caught at the bench).
    */
   headerGlyphOnly?: boolean;
+  /**
+   * Always paint the header WORD, even when the track is narrower than the
+   * label-fit floor. Twin of {@link headerGlyphOnly}: declared intent, not a
+   * starved measurement. The photo gutter (`thumb`) uses this so the header
+   * reads "Image" in a 48px square rather than degrading to a type glyph.
+   */
+  headerForceLabel?: boolean;
   type?: ColumnType;
   /**
    * Date DISPLAY FACE — only meaningful when `type === 'date'`. Drives the

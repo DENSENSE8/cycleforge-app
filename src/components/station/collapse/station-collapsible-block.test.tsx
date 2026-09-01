@@ -95,7 +95,7 @@ test('count is a ReactNode, so a header can count in words', () => {
 
 test('the header bar paints a full-width bottom hairline', () => {
   const html = renderLabel();
-  assert.match(html, /after:bg-border-hairline/, html);
+  assert.match(html, /after:bg-border-subtle/, html);
   assert.match(html, /after:inset-x-0/, html);
 });
 

@@ -24,10 +24,14 @@ import {
   ImportExceptionFormRail,
 } from '@/features/review/catalog-link/CatalogLinkFormRail';
 import { catalogLinkCompoundView } from '@/features/review/catalog-link/grid/catalog-link-compound-view';
+import { useCatalogLinkTableLayout } from '@/features/review/catalog-link/grid/useCatalogLinkTableLayout';
+import { useImportExceptionTableLayout } from '@/features/review/catalog-link/grid/useImportExceptionTableLayout';
+import { importExceptionSlotValuesFor } from '@/lib/tables/field-catalog/import-exception-resolve';
+import { catalogLinkSlotValuesFor } from '@/lib/tables/field-catalog/catalog-link-resolve';
 import { CATALOG_LINK_GRID_CAPABILITIES } from '@/features/review/catalog-link/grid/catalog-link-grid-descriptor';
 import {
-  CATALOG_LINK_COMPOUND_COLUMNS,
-  CATALOG_LINK_GRID_COLUMNS,
+  catalogLinkCompoundColumnsFor,
+  CATALOG_LINK_SORT_TYPES,
   defaultDirForCatalogLinkGridSort,
   isCatalogLinkGridSortable,
   type CatalogLinkGridColumn,
@@ -37,8 +41,8 @@ import { CATALOG_LINK_TABLE_BINDING } from '@/features/review/catalog-link/grid/
 import { importExceptionCompoundView } from '@/features/review/catalog-link/grid/import-exception-compound-view';
 import { IMPORT_EXCEPTION_GRID_CAPABILITIES } from '@/features/review/catalog-link/grid/import-exception-grid-descriptor';
 import {
-  IMPORT_EXCEPTION_COMPOUND_COLUMNS,
-  IMPORT_EXCEPTION_GRID_COLUMNS,
+  importExceptionCompoundColumnsFor,
+  IMPORT_EXCEPTION_SORT_TYPES,
   defaultDirForImportExceptionGridSort,
   isImportExceptionGridSortable,
   type ImportExceptionGridColumn,
@@ -73,6 +77,24 @@ const REVIEW_SECTION_TABS = [
 ] as const;
 
 export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
+  // The effective slot layout (staff ?? org ?? product) materialized into the
+  // compound tracks — matching chores are facts an organization binds, not a
+  // private column model.
+  const { effectiveLayout: catalogLinkLayout, fields: catalogLinkFields } =
+    useCatalogLinkTableLayout();
+  const catalogLinkColumns = useMemo(
+    () => catalogLinkCompoundColumnsFor(catalogLinkLayout),
+    [catalogLinkLayout],
+  );
+
+  // The page's SECOND queue keeps its own document — same cells, different
+  // vocabulary, exactly as incoming and receiving do.
+  const { effectiveLayout: importExceptionLayout, fields: importExceptionFields } =
+    useImportExceptionTableLayout();
+  const importExceptionColumns = useMemo(
+    () => importExceptionCompoundColumnsFor(importExceptionLayout),
+    [importExceptionLayout],
+  );
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -157,7 +179,7 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
     const items = chores.data?.items ?? [];
     const { sort, dir } = choreSort;
     if (!sort || !dir) return items;
-    const type = CATALOG_LINK_GRID_COLUMNS.find((c) => c.key === sort)?.type;
+    const type = CATALOG_LINK_SORT_TYPES[sort];
     const value = (r: CatalogLinkChoreRow) => {
       switch (sort) {
         case 'item':
@@ -190,7 +212,7 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
     const items = exceptions.data?.items ?? [];
     const { sort, dir } = exceptionSort;
     if (!sort || !dir) return items;
-    const type = IMPORT_EXCEPTION_GRID_COLUMNS.find((c) => c.key === sort)?.type;
+    const type = IMPORT_EXCEPTION_SORT_TYPES[sort];
     const value = (r: ImportExceptionRow) => {
       switch (sort) {
         case 'order':
@@ -269,7 +291,8 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
                     : 'catalog-link',
                 )
               }
-              columns={IMPORT_EXCEPTION_COMPOUND_COLUMNS}
+              columns={importExceptionColumns}
+              fields={importExceptionFields}
               orderGroupsByDate={exceptionGroups}
               rows={exceptionRows}
               getRowId={(r) => String(r.id)}
@@ -305,7 +328,12 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
                       columns={visible}
                       capabilities={IMPORT_EXCEPTION_GRID_CAPABILITIES}
                       selected={exceptionId === row.id}
-                      view={importExceptionCompoundView(row)}
+                      view={{
+                        // Materialized slot tracks — one resolved value per
+                        // BOUND slot, keyed by track key. Empty by default.
+                        slots: importExceptionSlotValuesFor(row, visible),
+                        ...importExceptionCompoundView(row),
+                      }}
                       onOpen={() => selectException(row.id)}
                     />
                   ))}
@@ -330,7 +358,10 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
                   columns={visible}
                   capabilities={IMPORT_EXCEPTION_GRID_CAPABILITIES}
                   selected={exceptionId === row.id}
-                  view={importExceptionCompoundView(row)}
+                  view={{
+                    slots: importExceptionSlotValuesFor(row, visible),
+                    ...importExceptionCompoundView(row),
+                  }}
                   onOpen={() => selectException(row.id)}
                 />
               )}
@@ -356,7 +387,8 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
                     : 'catalog-link',
                 )
               }
-              columns={CATALOG_LINK_COMPOUND_COLUMNS}
+              columns={catalogLinkColumns}
+              fields={catalogLinkFields}
               orderGroupsByDate={choreGroups}
               rows={choreRows}
               getRowId={(r) => String(r.id)}
@@ -392,7 +424,12 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
                       columns={visible}
                       capabilities={CATALOG_LINK_GRID_CAPABILITIES}
                       selected={choreId === row.id}
-                      view={catalogLinkCompoundView(row)}
+                      view={{
+                        // Materialized slot tracks — one resolved value per
+                        // BOUND slot, keyed by track key. Empty by default.
+                        slots: catalogLinkSlotValuesFor(row, visible),
+                        ...catalogLinkCompoundView(row),
+                      }}
                       onOpen={() => selectChore(row.id)}
                     />
                   ))}
@@ -417,7 +454,10 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
                   columns={visible}
                   capabilities={CATALOG_LINK_GRID_CAPABILITIES}
                   selected={choreId === row.id}
-                  view={catalogLinkCompoundView(row)}
+                  view={{
+                    slots: catalogLinkSlotValuesFor(row, visible),
+                    ...catalogLinkCompoundView(row),
+                  }}
                   onOpen={() => selectChore(row.id)}
                 />
               )}

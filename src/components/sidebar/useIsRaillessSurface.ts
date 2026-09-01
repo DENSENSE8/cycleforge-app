@@ -7,11 +7,11 @@ import { isRaillessSurface } from '@/lib/sidebar-navigation';
  * Does the current location run **rail-less** (Pattern E — no left context
  * column)?
  *
- * True for every desk-chrome surface (the Shipping desk — To ship · Amazon Prep
- * · Labels — and the `/dashboard` outbound domain) plus the Inbound desk
- * (`/incoming`). False elsewhere: scan stations keep their recents,
- * `/dashboard` inbound / sales keep their pickers, and `/shipping/scan-out`
- * keeps its station rail because it is not a desk-chrome page.
+ * True for every desk-chrome surface that declares `railless` (Shipping desk —
+ * To ship · Amazon Prep · Labels · Shipped — and the `/dashboard` outbound
+ * domain), the Inbound desk (`/incoming`), and **Scan out** (mobile-first
+ * composer: full-bleed center, no left recents). False elsewhere: other scan
+ * stations keep their recents; `/dashboard` inbound / sales keep their pickers.
  *
  * Wraps the pure {@link isRaillessSurface} with the pathname + params the
  * frame has. One consumer: `ContextPanelLayout`, which subtracts this from

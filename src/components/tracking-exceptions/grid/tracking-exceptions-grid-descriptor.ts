@@ -12,9 +12,8 @@ import {
 } from '@/design-system/components/grid';
 import type { TrackingExceptionRow } from '../types';
 import {
-  defaultDirForTrackingExceptionsGridSort,
-  isTrackingExceptionsGridFrozen,
-  isTrackingExceptionsGridSortable,
+  defaultDirForTrackingExceptionsColumn,
+  isTrackingExceptionsColumnSortable,
   type TrackingExceptionsGridColumn,
 } from './tracking-exceptions-grid-layout';
 
@@ -46,9 +45,10 @@ export function makeTrackingExceptionsGridDescriptor(
     'ops.tracking-exceptions',
     columns,
     {
-      isSortable: isTrackingExceptionsGridSortable,
-      sortDescFirst: (key) => defaultDirForTrackingExceptionsGridSort(key) === 'desc',
-      isLocked: isTrackingExceptionsGridFrozen,
+      isSortable: (key) => isTrackingExceptionsColumnSortable(columns, key),
+      sortDescFirst: (key) => defaultDirForTrackingExceptionsColumn(columns, key) === 'desc',
+      // Locked = the mounted model's own frozen prefix (`select · title`).
+      isLocked: (key) => columns.some((c) => c.key === key && c.frozen === true),
     },
     TRACKING_EXCEPTIONS_GRID_CAPABILITIES,
   );

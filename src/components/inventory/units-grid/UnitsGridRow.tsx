@@ -6,13 +6,14 @@ import { LedgerGridLeafRow } from '@/design-system/components/grid';
 import { renderUnitsGridCell, type UnitsGridCellCtx } from './cells';
 import { UNITS_GRID_CAPABILITIES } from './units-grid-descriptor';
 import {
-  UNITS_GRID_COLUMNS,
   unitsGridTemplate,
   type UnitsGridColumn,
 } from './units-grid-layout';
 
 /**
- * One serialized unit — CSS-grid columns matching {@link UNITS_GRID_COLUMNS}.
+ * One serialized unit — CSS-grid columns matching the MOUNTED model (a
+ * `SlotLayout` materialization since the wave 1.4 hand-model kill; there is no
+ * static column list to default to any more).
  *
  * Browse-only (no bulk gutter): the row body opens the unit at the record plane.
  * Desktop cells live under `./cells/`; edit a column there, not here.
@@ -20,13 +21,13 @@ import {
 export const UnitsGridRow = memo(function UnitsGridRow({
   row,
   onOpen,
-  columns = UNITS_GRID_COLUMNS,
+  columns,
 }: {
   row: UnitsOverviewRow;
   onOpen: (row: UnitsOverviewRow) => void;
-  columns?: readonly UnitsGridColumn[];
+  columns: readonly UnitsGridColumn[];
 }) {
-  const ctx: UnitsGridCellCtx = { row };
+  const ctx: UnitsGridCellCtx = { row, columns };
 
   return (
     <LedgerGridLeafRow

@@ -12,9 +12,8 @@ import {
 } from '@/design-system/components/grid';
 import type { MyDayTask } from '@/lib/my-day/my-day-tasks';
 import {
-  defaultDirForMyDayGridSort,
-  isMyDayGridFrozen,
-  isMyDayGridSortable,
+  defaultDirForMyDayColumn,
+  isMyDayColumnSortable,
   type MyDayGridColumn,
 } from '@/lib/my-day/my-day-grid-layout';
 
@@ -54,9 +53,10 @@ export function makeMyDayGridDescriptor(
     'my-day.today',
     columns,
     {
-      isSortable: isMyDayGridSortable,
-      sortDescFirst: (key) => defaultDirForMyDayGridSort(key) === 'desc',
-      isLocked: isMyDayGridFrozen,
+      isSortable: (key) => isMyDayColumnSortable(columns, key),
+      sortDescFirst: (key) => defaultDirForMyDayColumn(columns, key) === 'desc',
+      // Locked = the mounted model's own frozen prefix (`select · task`).
+      isLocked: (key) => columns.some((c) => c.key === key && c.frozen === true),
     },
     MY_DAY_GRID_CAPABILITIES,
   );

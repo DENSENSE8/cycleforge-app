@@ -4,11 +4,12 @@
 // (src/lib/billing/plan-ceilings.ts) BEFORE starting a batch, not per-order.
 import { EbayClient } from './client';
 import pool from '@/lib/db';
-import { EBAY_PLATFORM_PREDICATE, EBAY_SELLER_ROLE_PREDICATE } from './credentials';
+import { EBAY_PLATFORM_PREDICATE, EBAY_SELLER_ROLE_PREDICATE, getEbayAppCreds } from './credentials';
 import { normalizeTrackingKey18 } from '@/lib/tracking-format';
 import { logger } from '@/lib/observability/logger';
 import { formatApiInstant, normalizePSTTimestamp } from '@/utils/date';
 import { resolveOrCreateSkuCatalogId } from '@/lib/neon/sku-catalog-queries';
+import { isEbaySandbox } from './oauth-config';
 
 export interface SyncResult {
   accountName: string;
@@ -26,6 +27,185 @@ type ExceptionTrackingEntry = {
   ids: number[];
   rawTracking: string;
 };
+
+/** First page size for a newly connected seller that has no exception work-list. */
+const RECENT_SELLER_INGEST_LIMIT = 20;
+
+function fulfillmentFields(ebayOrder: any) {
+  const lineItems = Array.isArray(ebayOrder?.lineItems) ? ebayOrder.lineItems : [];
+  const firstItem = lineItems[0] || {};
+  const productTitle = String(firstItem?.title || '').trim() || 'No title';
+  const condition = String(firstItem?.condition || firstItem?.conditionId || '').trim();
+  const sku = String(firstItem?.sku || '').trim();
+  const quantity = firstItem?.quantity ? String(firstItem.quantity).trim() : '1';
+  const orderDateRaw = ebayOrder?.creationDate ? new Date(ebayOrder.creationDate) : null;
+  const orderDate = orderDateRaw && !Number.isNaN(orderDateRaw.getTime()) ? orderDateRaw : null;
+  const rawAmount = ebayOrder?.pricingSummary?.total?.value;
+  const parsedAmount = rawAmount != null ? Number(rawAmount) : null;
+  const saleAmount = parsedAmount != null && !Number.isNaN(parsedAmount) ? parsedAmount : null;
+  const currency = String(ebayOrder?.pricingSummary?.total?.currency || '').trim() || 'USD';
+  const buyerNote = String(ebayOrder?.buyerCheckoutNotes || '').trim() || null;
+  const orderId = String(ebayOrder?.orderId || '').trim() || null;
+  const itemNumber = String(firstItem?.legacyItemId || firstItem?.lineItemId || '').trim() || null;
+  return {
+    orderId,
+    productTitle,
+    condition,
+    sku,
+    quantity,
+    orderDate,
+    saleAmount,
+    currency,
+    buyerNote,
+    itemNumber,
+  };
+}
+
+/**
+ * Upsert a Fulfillment order into `orders` by (org, account_source, order_id).
+ * Tracking is optional — a newly connected seller has no exception work-list,
+ * so Sync now / first ingest must still persist live API rows.
+ */
+async function upsertOrderFromEbayFulfillment(params: {
+  accountName: string;
+  ebayOrder: any;
+  organizationId: string;
+}): Promise<'created' | 'updated' | 'skipped'> {
+  const f = fulfillmentFields(params.ebayOrder);
+  if (!f.orderId) return 'skipped';
+
+  const existing = await pool.query(
+    `SELECT id FROM orders
+      WHERE account_source = $1 AND order_id = $2 AND organization_id = $3
+      LIMIT 1`,
+    [params.accountName, f.orderId, params.organizationId],
+  );
+  const existingId: number | null = existing.rows[0]?.id ?? null;
+
+  const skuCatalogId = await resolveOrCreateSkuCatalogId({
+    sku: f.sku || null,
+    itemNumber: f.itemNumber,
+    productTitle: f.productTitle,
+    accountSource: params.accountName,
+    orderId: f.orderId,
+  }, params.organizationId);
+
+  if (existingId) {
+    await pool.query(
+      `UPDATE orders
+       SET product_title = COALESCE(NULLIF(product_title, ''), $1),
+           condition = COALESCE(NULLIF(condition, ''), $2),
+           sku = COALESCE(NULLIF(sku, ''), $3),
+           quantity = COALESCE(NULLIF(quantity, ''), $4),
+           order_date = COALESCE(order_date, $5),
+           sku_catalog_id = COALESCE(sku_catalog_id, $6),
+           sale_amount = COALESCE(sale_amount, $7),
+           currency = COALESCE(NULLIF(currency, ''), $8),
+           buyer_note = COALESCE(buyer_note, $9)
+       WHERE id = $10 AND organization_id = $11`,
+      [
+        f.productTitle,
+        f.condition,
+        f.sku,
+        f.quantity,
+        f.orderDate,
+        skuCatalogId,
+        f.saleAmount,
+        f.currency,
+        f.buyerNote,
+        existingId,
+        params.organizationId,
+      ],
+    );
+    return 'updated';
+  }
+
+  await pool.query(
+    `INSERT INTO orders (
+      organization_id, order_id, product_title, condition, sku, status,
+      status_history, notes, quantity, account_source, order_date,
+      sku_catalog_id, sale_amount, currency, buyer_note
+    ) VALUES (
+      $1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15
+    )
+    ON CONFLICT ON CONSTRAINT idx_orders_unique_account_order DO UPDATE
+      SET product_title = COALESCE(NULLIF(EXCLUDED.product_title, 'No title'), orders.product_title),
+          condition = COALESCE(NULLIF(orders.condition, ''), EXCLUDED.condition),
+          sku = COALESCE(NULLIF(orders.sku, ''), EXCLUDED.sku),
+          quantity = COALESCE(NULLIF(orders.quantity, ''), EXCLUDED.quantity),
+          order_date = COALESCE(orders.order_date, EXCLUDED.order_date),
+          sku_catalog_id = COALESCE(orders.sku_catalog_id, EXCLUDED.sku_catalog_id),
+          sale_amount = COALESCE(orders.sale_amount, EXCLUDED.sale_amount),
+          currency = COALESCE(NULLIF(orders.currency, ''), EXCLUDED.currency),
+          buyer_note = COALESCE(orders.buyer_note, EXCLUDED.buyer_note)`,
+    [
+      params.organizationId,
+      f.orderId,
+      f.productTitle,
+      f.condition,
+      f.sku,
+      'shipped',
+      JSON.stringify([]),
+      '',
+      f.quantity,
+      params.accountName,
+      f.orderDate,
+      skuCatalogId,
+      f.saleAmount,
+      f.currency,
+      f.buyerNote,
+    ],
+  );
+  return 'created';
+}
+
+/** Pull a bounded page of live Fulfillment orders into `orders` for this seller. */
+export async function ingestRecentSellerOrders(
+  accountName: string,
+  orgId: string,
+  options?: { limit?: number },
+): Promise<{ fetched: number; created: number; updated: number; skipped: number; errors: string[] }> {
+  const limit = Math.max(1, Math.min(options?.limit ?? RECENT_SELLER_INGEST_LIMIT, 50));
+  const client = new EbayClient(accountName, orgId);
+  const { accessToken } = await client.getValidAccessToken();
+  const creds = await getEbayAppCreds(orgId);
+  if (!creds) throw new Error('eBay app credentials are not configured');
+  const apiHost = isEbaySandbox(creds.environment) ? 'api.sandbox.ebay.com' : 'api.ebay.com';
+  const sinceIso = formatApiInstant(new Date(Date.now() - 30 * 24 * 60 * 60 * 1000));
+  const filter = `lastmodifieddate:[${sinceIso}..]`;
+  const url =
+    `https://${apiHost}/sell/fulfillment/v1/order` +
+    `?limit=${limit}&offset=0&filter=${encodeURIComponent(filter)}`;
+  const res = await fetch(url, {
+    headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
+  });
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`eBay Fulfillment getOrders HTTP ${res.status}${body ? `: ${body.slice(0, 180)}` : ''}`);
+  }
+  const payload = (await res.json()) as { orders?: unknown[] };
+  const pageOrders = payload.orders ?? [];
+  const errors: string[] = [];
+  let created = 0;
+  let updated = 0;
+  let skipped = 0;
+  const list = Array.isArray(pageOrders) ? pageOrders : [];
+  for (const ebayOrder of list) {
+    try {
+      const result = await upsertOrderFromEbayFulfillment({
+        accountName,
+        ebayOrder,
+        organizationId: orgId,
+      });
+      if (result === 'created') created += 1;
+      else if (result === 'updated') updated += 1;
+      else skipped += 1;
+    } catch (err: unknown) {
+      errors.push(err instanceof Error ? err.message : String(err));
+    }
+  }
+  return { fetched: list.length, created, updated, skipped, errors };
+}
 
 function extractTrackingNumbers(ebayOrder: any): string[] {
   const fromInstructions = ebayOrder?.fulfillmentStartInstructions?.[0]?.shippingStep?.shipmentTracking;
@@ -257,7 +437,7 @@ export async function syncAccountOrders(accountName: string, orgId: string): Pro
   let skippedExistingOrders = 0;
 
   try {
-    const client = new EbayClient(accountName);
+    const client = new EbayClient(accountName, orgId);
 
     const lastSyncResult = await pool.query(
       'SELECT last_sync_date FROM ebay_accounts WHERE account_name = $1',
@@ -268,19 +448,23 @@ export async function syncAccountOrders(accountName: string, orgId: string): Pro
     // Load all exception tracking numbers first — this is our work list
     const exceptionMap = await loadExceptionTrackingMap(orgId);
     if (exceptionMap.size === 0) {
+      const ingest = await ingestRecentSellerOrders(accountName, orgId, {
+        limit: RECENT_SELLER_INGEST_LIMIT,
+      });
       await pool.query(
-        'UPDATE ebay_accounts SET last_sync_date = NOW(), updated_at = NOW() WHERE account_name = $1',
-        [accountName]
+        'UPDATE ebay_accounts SET last_sync_date = NOW(), updated_at = NOW() WHERE account_name = $1 AND organization_id = $2',
+        [accountName, orgId],
       );
       return {
         accountName,
-        fetchedOrders: 0,
+        fetchedOrders: ingest.fetched,
         scannedTracking: 0,
         matchedExceptions: 0,
-        createdOrders: 0,
+        createdOrders: ingest.created,
         deletedExceptions: 0,
-        skippedExistingOrders: 0,
+        skippedExistingOrders: ingest.updated,
         lastSyncDate: normalizePSTTimestamp(lastSyncDate),
+        errors: ingest.errors.length > 0 ? ingest.errors : undefined,
       };
     }
 
@@ -389,8 +573,8 @@ export async function syncAccountOrders(accountName: string, orgId: string): Pro
     }
 
     await pool.query(
-      'UPDATE ebay_accounts SET last_sync_date = NOW(), updated_at = NOW() WHERE account_name = $1',
-      [accountName]
+      'UPDATE ebay_accounts SET last_sync_date = NOW(), updated_at = NOW() WHERE account_name = $1 AND organization_id = $2',
+      [accountName, orgId],
     );
 
     logger.info(

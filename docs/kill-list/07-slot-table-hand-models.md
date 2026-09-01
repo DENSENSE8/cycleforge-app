@@ -123,24 +123,227 @@ Plan phase 5. Same why for every row: **the hand array is a frozen layout.** It 
 
 | tableId | Label | Host | Kill | Why this family, specifically |
 |---|---|---|---|---|
-| `receiving` | Unbox · History · Testing | `ReceivingGridHost` / `ReceivingLinesTable` | `RECEIVING_GRID_COLUMNS` / `RECEIVING_COMPOUND_COLUMNS` in [`receiving-grid-layout.ts`](../../src/lib/receiving/receiving-grid-layout.ts); `TABLE_COLUMNS.receiving` | The compound golden. Still a forever track list (title, stage, platform, …). Plan §7.4 is a **port into slots**, not a licence to keep a private skeleton. If Receiving stays a hand model, every later family copies it and the engine is optional. |
-| `incoming` | Incoming POs | Same `ReceivingLinesTable`, other model | `INCOMING_GRID_COLUMNS` / `INCOMING_COMPOUND_COLUMNS`; `TABLE_COLUMNS.incoming` **and** `incoming_embed` | A second column model on the same component so Incoming and History do not share prefs. That is two layouts in code. Slots: two `tableId`s, two `SlotLayout`s, one cell map. `incoming_embed` is a third hide-bucket for the same columns — prefs fork, not a product table. |
-| `daily` | Daily checks | `HomeDailyMode` | `DAILY_GRID_COLUMNS` / `DAILY_COMPOUND_COLUMNS` | Checklist painted as a unique grid. It is still an information table; org “what we check on the shift board” is layout, not a new column file. |
-| `tasks` | My tasks | `TasksWorkbench` | `TASKS_GRID_COLUMNS` / `TASKS_COMPOUND_COLUMNS` | Personal `staff_todos`. Sibling of daily (different store) — same slots, different catalog. |
-| `catalog-link` | Review · Listing match | `ReviewCatalogLinkTable` | `CATALOG_LINK_*` in [`catalog-link-grid-layout.ts`](../../src/features/review/catalog-link/grid/catalog-link-grid-layout.ts) | Review queue with a private compound model. Matching chores are facts; the strip is slots. |
-| `import-exception` | Review · Missing item number | Sibling `DataTable` on the same page | `IMPORT_EXCEPTION_*` | Second store, second hand model, one page. Two catalogs, two layouts — not two engines. |
-| `inventory-units` | Inventory units | `UnitsWorkspaceView` | `UNITS_GRID_COLUMNS` | Unit browse tracks (serial, SKU, location) as forever keys. Bind into identity/status/subtitle; do not grow another units-only header. |
-| `orders-import` | Order import staging | `CsvImportStagingHost` | `CSV_IMPORT_STAGING_GRID_COLUMNS` | Own prefs bucket on purpose (hiding a staging column must not densify live To-ship). That is a **separate `tableId`**, which slots already give you. The hand array is still a frozen layout for that id. |
-| `ready` | Recently tested units | `ReadyQueueTable` | `READY_GRID_COLUMNS` — especially `{ key: 'tested', … }` and `data-col="tested"` in [`ready-grid/cells`](../../src/components/outbound/ready/grid/cells/index.tsx) | **The forbidden pattern, live, off To-ship.** A Tested column whose key is `tested`. Wave 1 on Orders is pointless if Ready keeps teaching the next agent to add `key: 'tested'`. |
-| `catalog` | Products catalog | `ProductsCatalogWorkspace` | `CATALOG_GRID_COLUMNS`; `TABLE_COLUMNS.catalog` | Product browse. SKU/inventory/channels are catalog fields, not a second grid product. |
-| `unfound` | Unfound queue | `UnfoundQueueTable` | `UNFOUND_GRID_COLUMNS` | Absence-of-a-line queue. Ticket/notes are subtitle/status facts; the row is not a third editor grid (in-cell already off). |
-| `repair` | Repair queue | `RepairTable` | `REPAIR_GRID_COLUMNS`; `TABLE_COLUMNS.repair` | Walk-in/repair facts (customer, phone, ticket) belong in a catalog so an org can put phone in subtitle:2 without a deploy. |
-| `tech-all` | Tech · All | `TechAllTriageTable` | `TECH_ALL_GRID_COLUMNS` | Strip over several stores. Still one information table; status slots are the strip, not a private All-only column file. |
-| `tracking-exceptions` | Tracking exceptions | `TrackingExceptionsTable` | `TRACKING_EXCEPTIONS_GRID_COLUMNS` | Exception facts (carrier, age, last scan) are bindable; a frozen exception grid cannot be tenant-captured. |
-| `bins` | Warehouse bins | `BinsTable` | `BINS_GRID_COLUMNS` | Location/occupancy facts. Same skeleton as every other browse table. |
-| `warranty` | Warranty claims | `WarrantyClaimsTable` | `WARRANTY_GRID_COLUMNS`; `TABLE_COLUMNS.warranty` | Claim/serial/status. Structural action track stays a capability, not an org column. |
-| `my-day` | Home · Today | `MyDayWorkspace` | `MY_DAY_GRID_COLUMNS` | Today’s work orders. Derived fields; layout is which facts show, not a Home-only spreadsheet. `fieldsMenu: true` here is leftover column-display lip copy. |
+| `receiving` | Unbox · History · Testing | `ReceivingGridHost` / `ReceivingLinesTable` | ~~`RECEIVING_COMPOUND_COLUMNS`~~ **EXECUTED 2026-08-31**; ~~`TABLE_COLUMNS.receiving`~~ **emptied 2026-08-31** (wave 3f — its stated consumer `useIsColumnHidden` did not exist). Still open: `RECEIVING_GRID_COLUMNS`, the FLAT model, now passed EXPLICITLY by `/test`'s `TestingHistoryList` instead of inherited from the definition by silence — it owes its own layout id | The compound golden. Still a forever track list (title, stage, platform, …). Plan §7.4 is a **port into slots**, not a licence to keep a private skeleton. If Receiving stays a hand model, every later family copies it and the engine is optional. |
+| `incoming` | Incoming POs | Same `ReceivingLinesTable`, other model | ~~`INCOMING_COMPOUND_COLUMNS`~~ **EXECUTED 2026-08-31**; ~~`TABLE_COLUMNS.incoming` / `incoming_embed`~~ and ~~the flat definition default~~ **closed 2026-08-31** (wave 3f). `INCOMING_GRID_COLUMNS` survives only as the row/header fallback default | A second column model on the same component so Incoming and History do not share prefs. That is two layouts in code. Slots: two `tableId`s, two `SlotLayout`s, one cell map. `incoming_embed` is a third hide-bucket for the same columns — prefs fork, not a product table. |
+| `daily` | Daily checks | `HomeDailyMode` | ~~`DAILY_COMPOUND_COLUMNS`~~ **EXECUTED 2026-08-31** (`DAILY_FIELD_CATALOG`, 4 facts). Still open: `DAILY_GRID_COLUMNS` (unmounted flat model) | Checklist painted as a unique grid. It is still an information table; org “what we check on the shift board” is layout, not a new column file. |
+| `tasks` | My tasks | `TasksWorkbench` | ~~`TASKS_COMPOUND_COLUMNS`~~ **EXECUTED 2026-08-31** (`TASKS_FIELD_CATALOG`, 6 facts). Still open: `TASKS_GRID_COLUMNS` (unmounted flat model) | Personal `staff_todos`. Sibling of daily (different store) — same slots, different catalog. |
+| `catalog-link` | Review · Listing match | `ReviewCatalogLinkTable` | ~~`CATALOG_LINK_COMPOUND_COLUMNS`~~ **EXECUTED 2026-08-31** (`CATALOG_LINK_FIELD_CATALOG`, 6 facts). Still open: the flat `CATALOG_LINK_GRID_COLUMNS` | Review queue with a private compound model. Matching chores are facts; the strip is slots. |
+| `import-exception` | Review · Missing item number | Sibling `DataTable` on the same page | ~~`IMPORT_EXCEPTION_COMPOUND_COLUMNS`~~ **EXECUTED 2026-08-31** (`IMPORT_EXCEPTION_FIELD_CATALOG`, 7 facts). Still open: the flat `IMPORT_EXCEPTION_GRID_COLUMNS` | Second store, second hand model, one page. Two catalogs, two layouts — not two engines. |
+| `inventory-units` | Inventory units | `UnitsWorkspaceView` | ~~`UNITS_GRID_COLUMNS`~~ **EXECUTED 2026-08-31** (wave 1.4) | Unit browse tracks (serial, SKU, location) as forever keys. Bind into identity/status/subtitle; do not grow another units-only header. |
+| `orders-import` | Order import staging | `CsvImportStagingHost` | ~~`CSV_IMPORT_STAGING_GRID_COLUMNS`~~ **EXECUTED 2026-08-31** (wave 1.4) | Own prefs bucket on purpose (hiding a staging column must not densify live To-ship). That is a **separate `tableId`**, which slots already give you. The hand array is still a frozen layout for that id. |
+| `ready` | Recently tested units | `ReadyQueueTable` | ~~`READY_GRID_COLUMNS`~~ **EXECUTED 2026-08-31** (seller-table-program wave 1.1 — see below) | **The forbidden pattern, live, off To-ship.** A Tested column whose key is `tested`. Wave 1 on Orders is pointless if Ready keeps teaching the next agent to add `key: 'tested'`. |
+| `catalog` | Products catalog | `ProductsCatalogWorkspace` | ~~`CATALOG_GRID_COLUMNS`; `TABLE_COLUMNS.catalog`~~ **EXECUTED 2026-08-31** (wave 1.4) | Product browse. SKU/inventory/channels are catalog fields, not a second grid product. |
+| `unfound` | Unfound queue | `UnfoundQueueTable` | ~~`UNFOUND_GRID_COLUMNS`~~ **EXECUTED 2026-08-31** (wave 1.4) | Absence-of-a-line queue. Ticket/notes are subtitle/status facts; the row is not a third editor grid (in-cell already off). |
+| `repair` | Repair queue | `RepairTable` | ~~`REPAIR_GRID_COLUMNS`; `TABLE_COLUMNS.repair`~~ **EXECUTED 2026-08-31** (wave 1.4) | Walk-in/repair facts (customer, phone, ticket) belong in a catalog so an org can put phone in subtitle:2 without a deploy. |
+| `tech-all` | Tech · All | `TechAllTriageTable` | ~~`TECH_ALL_GRID_COLUMNS`~~ **EXECUTED 2026-08-31** (wave 1.4) | Strip over several stores. Still one information table; status slots are the strip, not a private All-only column file. |
+| `tracking-exceptions` | Tracking exceptions | `TrackingExceptionsTable` | ~~`TRACKING_EXCEPTIONS_GRID_COLUMNS`~~ **EXECUTED 2026-08-31** (wave 1.4) | Exception facts (carrier, age, last scan) are bindable; a frozen exception grid cannot be tenant-captured. |
+| `bins` | Warehouse bins | `BinsTable` | ~~`BINS_GRID_COLUMNS`~~ **EXECUTED 2026-08-31** (wave 1.4) | Location/occupancy facts. Same skeleton as every other browse table. |
+| `warranty` | Warranty claims | `WarrantyClaimsTable` | ~~`WARRANTY_GRID_COLUMNS`; `TABLE_COLUMNS.warranty`~~ **EXECUTED 2026-08-31** (wave 1.4) | Claim/serial/status. Structural action track stays a capability, not an org column. |
+| `my-day` | Home · Today | `MyDayWorkspace` | ~~`MY_DAY_GRID_COLUMNS`~~ **EXECUTED 2026-08-31** (wave 1.4) | Today’s work orders. Derived fields; layout is which facts show, not a Home-only spreadsheet. `fieldsMenu: true` here is leftover column-display lip copy. |
 | `fba` | Amazon Prep board | `FbaBoardTable` | ~~`FBA_BOARD_GRID_COLUMNS`~~ **EXECUTED 2026-08-30** (operator order — fork removed early, out of wave order): `FBA_FIELD_CATALOG` + `FBA_PRODUCT_LAYOUT` (sheet; `asin` identity, structural `select · asin · title · details` skeleton), `fbaSheetColumnsFor` materialization, shared `useSlotTableLayout` config, `fieldsMenu: true` with the + popover live. The desk's Ready/Plan/Shipped bottom strip was **cleaned up entirely** — modes are dataset-swap options at the head of the ONE filter control on every body (the `caged` precedent), `?fbaMode` contract unchanged. Still open here: the Shipped body is a hand list (not binding-backed) and Ready keeps `READY_GRID_COLUMNS` + the forbidden `tested` track — both remain Wave-3 debt. | Was the last surface to reach LedgerGrid without a definition. Board ≠ a second engine. |
+
+---
+
+## Wave 3a — `ready` — **EXECUTED 2026-08-31**
+
+Plan of record: [`docs/todo/seller-table-program-PLAN.md`](../todo/seller-table-program-PLAN.md) §03,
+wave 1.1. First of the Wave-3 ports, chosen first **not for size**: `READY_GRID_COLUMNS`
+was the last live `{ key: 'tested', … }` track in `src/`, and it painted
+`data-col="tested"` — the forbidden pattern teaching every next agent to copy it.
+
+**As landed:** `READY_FIELD_CATALOG` + `READY_PRODUCT_LAYOUT` (sheet morph;
+`ready.unit` identity — the unit handle the Product cell paints as its
+identifier trail; `verdict · destination · cond · tested` in the status band,
+which is the retired hand model's CORE view, byte-for-byte scan order) ·
+`reasons` and `velocity` (the old `tier: 'optional'` ship-hidden pair) are now
+UNBOUND catalog facts an org can bind · `readySheetColumnsFor` materializes over
+a 3-track structural skeleton (`select · title · action`), with **both** bands
+anchored on `title` so the Stage-FBA `action` track stays last however many
+facts are bound · `useReadyTableLayout` is the fourth CONFIG on the shared
+`useSlotTableLayout` · `slotCatalogFor('ready')` serves, morph gate `['sheet']` ·
+Fields + popover live on the Ready desk (`fieldsMenu: true` is now honest —
+before the port it was `true` over nothing) · the cell registry switches on the
+bound FIELD ID, not a column key, with a resolved-text default so a new fact
+needs a resolver case and never a new column file · pure label functions
+(`readyVerdictLabel` / `readyFallbackStateLabel` / `readyHitTitle`) moved to the
+`ready-resolve.ts` leaf so the row comparator stops importing a `'use client'`
+module to sort · `?colsort=` keys are mounted track keys resolving to the bound
+field's fact, and the "a chip list has no single value to order by" rule moved
+from the `reasons` COLUMN to the `ready.reasons` FACT so a rebind carries it ·
+`TABLE_COLUMNS.ready` emptied (`fba: []` precedent — the KEYS feed the zod
+`tableId` enum) · four retired symbols ledgered.
+
+**Geometry drift, the doctrine's price:** Destination (7rem hand-tuned) and
+Tested (6.5rem) now ride the `tag` / `date` display-type geometry, and the
+hand model's `gridLabel: 'Dest'` abbreviation is gone — the catalog label is one
+word for both the header and the Fields picker.
+
+---
+
+## Wave 3b — `receiving` (compound mount) — **EXECUTED 2026-08-31**
+
+Plan of record: [`docs/todo/seller-table-program-PLAN.md`](../todo/seller-table-program-PLAN.md) §03,
+wave 1.3. **The compound golden** — Unbox, History and Testing all mount one
+compound row, so leaving this family a hand model would have every later family
+copy it and make the engine optional.
+
+**As landed:** `RECEIVING_FIELD_CATALOG` (8 facts: order · status · qty · price ·
+condition · location · tracking · serial) + `RECEIVING_PRODUCT_LAYOUT`
+(**compound** morph, `receiving.order` identity, **empty** status band) ·
+`receivingCompoundColumnsFor` materializes over the shared `COMPOUND_TRACKS`
+skeleton, so with the product default the mounted array is byte-for-byte what
+the desk painted before the port — the parity the `unbox-compound-columns` and
+`compound-row-model` guards already pin · `useReceivingTableLayout` is the FIFTH
+config on the shared `useSlotTableLayout` and the first compound port after
+Orders · `slotCatalogFor('receiving')` serves, morph gate `['compound']` ·
+`ReceivingGridHost` grew a `fields` passthrough, so the toolbar `+` popover on
+Unbox / History / Testing finally has a catalog behind the `fieldsMenu: true` it
+has been declaring · `receivingSlotValuesFor` resolves one value per bound slot
+into the shared `CompoundRowView.slots`, keyed by TRACK key, so a rebind
+re-points the cell with no adapter change.
+
+**Two facts deliberately refused, in writing** (see the catalog docblock): the
+**activity stamp** (the flat `date` track) is not a row property — which instant
+a row reports depends on the rail's activity axis (Unbox `unboxed_at`, History
+`scanned_at`, Testing `tested_at`), and threading the axis into the pure
+`(row, fieldId)` resolver contract for one field would fork the contract every
+family shares; and the **Zoho sync chip**, which derives from several columns
+plus the connected-provider capability that its own cell already owns.
+
+**Still open on this family.** `RECEIVING_GRID_COLUMNS` — the FLAT spreadsheet
+model — survives, because `/test`'s `TestingHistoryList` mounts it (it passes no
+`columns`, so it takes the definition's canonical list). That is a SECOND MOUNT
+of one definition, and porting it needs its own layout id so the two desks do
+not fight over one document. Opt-in is per-MOUNT (the same ruling that
+unregistered `fba`), so `receiving` is registered compound-only and
+`TABLE_COLUMNS.receiving` stays until the flat mount is ported.
+
+---
+
+## Wave 3c — `incoming` — **EXECUTED 2026-08-31**
+
+Plan of record: [`docs/todo/seller-table-program-PLAN.md`](../todo/seller-table-program-PLAN.md) §03,
+wave 1.3. This is the row this file described as "a second column model on the
+same component so Incoming and History do not share prefs — two layouts in
+code", and the answer it prescribed: **two tableIds, two `SlotLayout`s, one cell
+map.** That is now literally what ships.
+
+**As landed:** `INCOMING_FIELD_CATALOG` (7 facts: order · expected · qty ·
+status · platform · tracking · condition) + `INCOMING_PRODUCT_LAYOUT`
+(**compound**, `incoming.order` identity, **empty** status band — byte-for-byte
+parity with what the Incoming rails paint today) · `incomingCompoundColumnsFor`
+materializes over the same shared `COMPOUND_TRACKS` skeleton Receiving and
+Orders use · `useIncomingTableLayout` is the SIXTH config on
+`useSlotTableLayout` · `slotCatalogFor('incoming')` serves, morph gate
+`['compound']` · both Incoming mounts in `ReceivingLinesTable` (the docked embed
+and the full sheet) take the materialization and the Fields picker.
+
+**The interesting half is the resolver split.** Incoming and Receiving carry the
+SAME `ReceivingLineRow` through the SAME compound cells, so one resolver was the
+obvious move and is the wrong one: `receiving.status` answers what the WAREHOUSE
+has done (`workflow_status`), `incoming.status` answers what the CARRIER has
+done (`delivery_state`) — two true answers to two different questions about one
+row. `ReceivingCompoundCells`' adapter routes by the `linePhase` it already
+branches on for the state pill, so a binding from the other family resolves to
+nothing rather than painting a lane-dependent lie. A unit test pins that the two
+catalogs share no field id, and another pins that one row resolves the two
+statuses differently.
+
+**Refused in writing:** `age` (a duration derived against now — not a row
+property, it moves without the row, and the compound state cell already reports
+lateness from the same number, so a bound column would be a second author) and
+the Zoho receipt chip (same derivation argument as `receiving.zoho`; on the
+default lane it is also constant by construction).
+
+**Still open on this family.** `INCOMING_GRID_COLUMNS` — the flat model — is
+unmounted but still the registered definition's canonical list and the
+row/header default, and `TABLE_COLUMNS.incoming` / `incoming_embed` serve it.
+Those die with the flat-definition sweep, not with this port.
+
+---
+
+## Wave 3d — `daily` · `tasks` · `catalog-link` · `import-exception` — **EXECUTED 2026-08-31**
+
+Plan of record: [`docs/todo/seller-table-program-PLAN.md`](../todo/seller-table-program-PLAN.md) §03,
+wave 1.3. Four compound families on the recipe receiving and incoming proved,
+which completes wave 1.3 and takes the slot engine to **ten** opted-in tables.
+
+Each one landed the same six pieces — catalog, resolver, registry entry,
+`*CompoundColumnsFor` materialization over the shared `COMPOUND_TRACKS`,
+`use*TableLayout` config on `useSlotTableLayout`, and slot values threaded into
+the shared `CompoundRowView` — with an **empty default status band**, so every
+desk paints byte-for-byte what it painted before while the whole vocabulary
+becomes bindable. `fieldsMenu: true` is honest on all four for the first time.
+
+| family | facts | its own vocabulary, because |
+|---|---|---|
+| `daily` | 4 (item · status · team · marked) | the org's shift checklist, with a roster behind every row |
+| `tasks` | 6 (task · status · kind · station · resets · checked) | a staffer's own list — a different store answering a different question |
+| `catalog-link` | 6 (item # · source · sku · orders · first · last) | a listing that has no catalog SKU |
+| `import-exception` | 7 (order · source · tracking · sheet row · seen · first · last) | a sheet row that never became an order |
+
+Unit tests pin that daily/tasks share no field id and that catalog-link and
+import-exception share none either — the two pairs that look alike, mount the
+same cells, and are the exact cases this file warned would fork.
+
+**Two refusals worth carrying forward.** `tasks` names no lateness fact: whether
+a recurring task is behind depends on the clock, and the surface deliberately
+passes ONE `nowMs` to every row so two rows in a paint cannot disagree about
+what day it is — a bound column would be a second author with a worse clock.
+Both review queues name no `status`: they are the OPEN queues, so a status
+column would paint one identical value on 100% of rows, the same
+constant-by-construction argument that kept `incoming.zoho` out.
+
+**Still open on all four.** Their FLAT models (`DAILY_GRID_COLUMNS`,
+`TASKS_GRID_COLUMNS`, `CATALOG_LINK_GRID_COLUMNS`,
+`IMPORT_EXCEPTION_GRID_COLUMNS`) survive as the registered definitions'
+canonical lists and the row/header defaults. Nothing mounts them; they die with
+the flat-definition sweep, not with these ports.
+
+---
+
+## Wave 3e — the ten SHEET families — **EXECUTED 2026-08-31**
+
+Plan of record: [`docs/todo/seller-table-program-PLAN.md`](../todo/seller-table-program-PLAN.md) §03,
+wave 1.4. This closes Wave 3 and, with it, **every family in this file's table**.
+The slot engine now serves **twenty** tableIds.
+
+`inventory-units` · `catalog` · `unfound` · `repair` · `tech-all` ·
+`tracking-exceptions` · `bins` · `warranty` · `my-day` · `orders-import`.
+
+Each landed the same seven pieces — catalog, resolver, registry entry,
+`*SheetColumnsFor` materialization over a structural skeleton, `use*TableLayout`
+config, cells switched onto the bound FIELD ID, and the `TABLE_COLUMNS` bucket
+emptied to `[]` (the `fba: []` precedent — the keys feed the zod `TableId` enum)
+— plus four retired symbols apiece in `retired-symbols.test.ts`.
+
+**Family rules that had been living inside a column array, now riding the FACT**
+(so a rebind carries them, which a key-keyed rule cannot):
+
+* `bins.status` is a COMPOSITE of four flags → never sortable.
+* `tech-all.urgency` is a RANK, lower = do first → opens **ascending**, against
+  the house default for a number.
+* `unfound` ascends on **every** track including its date: the oldest uncleared
+  row is the one that needs a human, and newest-first would bury it.
+* `repair` does not ride `?colsort=` at all — it shares `?sort=`/`?dir=` with a
+  chrome dropdown, and `repair-display-sort.ts` keeps that vocabulary local so a
+  bookmarked URL cannot change meaning. A mounted track maps ONTO one of its
+  words and never mints a new one; a fact with no word is simply unsortable.
+  (Its two private helpers were renamed off `*GridSort*`, which shadowed the
+  retired display symbols and read as the column model's answer.)
+
+**Structural, not catalog** — the same law across four families: Ready's
+Stage-FBA link, Warranty's ticket button, Unfound's Push control,
+tracking-exceptions' retry/edit, and staging's Ready/Action-required triage
+state. A row-scoped control must never be something a staffer can hide and then
+wonder where it went. Where the control's SUBJECT is a row fact, the fact is
+bindable and the control is not — `warranty.ticket` and `unfound.checked` are
+both in their catalogs.
+
+**One geometry change, with its reason.** Staging hung its sole `1fr` on the
+`customer` track. `customer` is a FACT, so it is now sized by its display type,
+and a sheet with no flex track leaves its slack unallocated — the trailing
+`_fill` takes it, which is the house law every other family already follows.
 
 ---
 
@@ -204,3 +407,66 @@ see the table row above).
 | Out-of-waist hosts | **StationListTable** (+ History/Tech/Packer wrappers) |
 
 Grep the bare symbol (`-w`) before deleting. `ORDERS_QUEUE_COLUMNS` is imported by the definition, sort tests, station-history comments, and grid templates — Wave 1 cuts the **named forever tracks** and the second binding, not the file on the first try.
+
+
+---
+
+## Wave 3f — the canonical models, and the dead headers they caused — **EXECUTED 2026-08-31**
+
+Wave 1.3 moved six families' MOUNTS onto the compound materialization and left
+their **canonical** models — `binding.columns` / `definition.columns` — pointing
+at the flat hand arrays. An audit of the tree, not of the ledger, found it.
+
+That second source of truth was not inert. Each family derived its `?colsort=`
+vocabulary from the flat array:
+
+```
+DAILY_GRID_SORTABLE_KEYS = DAILY_GRID_COLUMNS.filter(…).map(c => c.key)
+  → task · status · team · marked
+
+mounted tracks (DAILY_COMPOUND_COLUMNS)
+  → select · thumb · fulfillment · item · state · amount · actions · _fill
+```
+
+`useUrlColumnSort`'s `isColumn` therefore rejected every key the header could
+emit, and **clicking a column header did nothing on all six desks**. This is the
+same bug `utils/queue-display-sort.ts` documents for To-Ship one wave earlier —
+its `COMPOUND_TRACK_SORT_KEYS` exists for exactly this, and none of the six got
+the equivalent.
+
+**What landed**
+
+* **Definitions + bindings repointed** to `*_COMPOUND_COLUMNS` on all six.
+  `TestingHistoryList` — the one surface still painting the flat model — now
+  passes `RECEIVING_GRID_COLUMNS` **explicitly**, converting a silent fallback
+  into a declared second mount.
+* **A track→fact map per family**, the `COMPOUND_TRACK_SORT_KEYS` shape:
+  `item` → the title fact, `fulfillment` → the identity fact, `amount` → money
+  where the flat model already sorted it. Refused in writing, with the reason:
+  `state` on **receiving** (`compareReceivingGridRows` has no `status` arm, and
+  the flat model never sorted the stage either — Incoming's twin DOES map it,
+  because it has a real `statusRank`), and `fulfillment` / `amount` on **daily**
+  and **tasks** (a checklist row has no order and no price).
+* **Sortability moved onto the bound FACT**, and daily/tasks descriptors now
+  pass `isSortable` so a header stops OFFERING a sort the desk cannot perform.
+* **`catalog-link` / `import-exception`** were half-patched — track keys had been
+  appended to the flat key list without a fact map, so `item` was missing (a
+  dead header whose comparator arm already existed) and the `type` lookup
+  returned `undefined` for every compound track, sorting dates as text. Both
+  vocabularies are kept alive on purpose: the flat words are what live bookmarks
+  carry, the track keys are what the mounted header emits.
+* **Seven prefs buckets emptied** — `receiving · incoming · incoming_embed ·
+  daily · tasks · catalog-link · import-exception`. `TABLE_COLUMNS.receiving`
+  had been kept on the stated grounds that `RowMetaColumns` "asks
+  `useIsColumnHidden('rest')`"; **there is no `useIsColumnHidden`** anywhere in
+  `src`. The prose was defending a consumer that had already been deleted. The
+  now-unused `META_*` / `CHIP_*` specs went with them.
+* **A guard that can catch it.** The drift check compared `binding.columns` to
+  `definition.columns` — the same reference — so it passed while the desks
+  painted something else. `table-definition-registry.guard.test.ts` now also
+  asserts that a slot-opted **compound** family declares compound tracks;
+  verified red against the pre-fix tree with a message that names the fix.
+* **`incoming-grid-layout.test.ts`** pinned "receiving has a serial track,
+  incoming does not" against the two prefs buckets. Both are `[]` now, so it
+  pins the two FIELD CATALOGS instead — and additionally that they share no
+  field id, since one row answers two different questions.

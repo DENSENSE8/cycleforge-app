@@ -31,29 +31,40 @@ import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import {
-  defaultDirForTechAllGridSort,
-  isTechAllGridSortable,
+  defaultDirForTechAllColumn,
+  isTechAllColumnSortable,
+  techAllSheetColumnsFor,
+  techAllSortFactFor,
   type TechAllGridColumn,
   type TechAllGridColumnKey,
 } from '@/lib/tech/tech-all-grid-layout';
 import { TECH_ALL_TABLE_BINDING } from './tech-all-table-definition';
 import { TechAllGridRow } from './TechAllGridRow';
+import { useTechAllTableLayout } from './useTechAllTableLayout';
 
+/**
+ * Row order for a column sort, keyed by SORT FACT — the structural `identity`
+ * plus catalog field ids (`techAllSortFactFor` maps a mounted column to one),
+ * so a `?colsort=` key resolves through the mounted model and rebinding a slot
+ * re-points the sort with it.
+ */
 function compareTechAllRows(
   a: TechAllTriageRow,
   b: TechAllTriageRow,
-  key: TechAllGridColumnKey,
+  fact: string,
   dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
-  switch (key) {
+  switch (fact) {
     case 'identity':
       return sign * a.title.localeCompare(b.title);
-    case 'type':
+    case 'tech-all.item':
+      return sign * a.id.localeCompare(b.id);
+    case 'tech-all.type':
       return sign * a.typeLabel.localeCompare(b.typeLabel);
-    case 'stage':
+    case 'tech-all.stage':
       return sign * a.stage.localeCompare(b.stage);
-    case 'urgency':
+    case 'tech-all.urgency':
       return sign * (a.urgencyRank - b.urgencyRank);
     default:
       return 0;
@@ -213,13 +224,24 @@ export function TechAllTriageTable({
   );
 
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // The COLUMNS are the effective slot layout's materialization (staff ?? org
+  // ?? product — wave 1.4 hand-model kill). Sort keys are the mounted track
+  // keys; each resolves to its bound field's fact through `techAllSortFactFor`.
+  const { effectiveLayout: techAllLayout, fields: techAllFields } = useTechAllTableLayout();
+  const columns = useMemo(() => techAllSheetColumnsFor(techAllLayout), [techAllLayout]);
+  const sortFactByKey = useMemo(
+    () => new Map(columns.map((c) => [c.key as string, techAllSortFactFor(c)])),
+    [columns],
+  );
+
   const {
     sort: columnSort,
     dir: sortDir,
     setSort,
   } = useUrlColumnSort<TechAllGridColumnKey>({
-    isColumn: isTechAllGridSortable,
-    defaultDir: defaultDirForTechAllGridSort,
+    isColumn: (raw) => isTechAllColumnSortable(columns, raw),
+    defaultDir: (key) => defaultDirForTechAllColumn(columns, key),
   });
 
   const [, settleTick] = useState(0);
@@ -231,9 +253,10 @@ export function TechAllTriageTable({
   }, [loading, hasRows]);
 
   const orderGroupsByDate = useMemo(() => {
+    const sortFact = columnSort ? (sortFactByKey.get(columnSort) ?? null) : null;
     const ordered =
-      columnSort && sortDir
-        ? [...rows].sort((a, b) => compareTechAllRows(a, b, columnSort, sortDir))
+      sortFact && sortDir
+        ? [...rows].sort((a, b) => compareTechAllRows(a, b, sortFact, sortDir))
         : rows;
     const groups: RowGroup<TechAllTriageRow>[] = ordered.map((row) => ({ key: row.id, rows: [row] }));
     return [['', groups]] as [string, RowGroup<TechAllTriageRow>[]][];
@@ -244,6 +267,8 @@ export function TechAllTriageTable({
   return (
     <DataTable<TechAllTriageRow, TechAllGridColumnKey, TechAllGridColumn>
       binding={TECH_ALL_TABLE_BINDING}
+      columns={columns}
+      fields={techAllFields}
       orderGroupsByDate={orderGroupsByDate}
       rows={rows}
       getRowId={(r) => r.id}

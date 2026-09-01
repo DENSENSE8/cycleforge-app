@@ -11,6 +11,7 @@ import {
   FilterMenuGroupLabel,
   FilterMenuRow,
 } from '@/components/ui/FilterMenu';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -161,7 +162,11 @@ export function StaffFilterButton({
         <Popover.Content
           align={align}
           sideOffset={6}
-          className={cn("z-dropdown max-h-[60vh] w-52 overflow-y-auto rounded-lg border border-border-soft bg-surface-card p-1 shadow-lg ring-1 ring-black/5", focusRing('field', 'accent'))}
+          className={cn(
+            'z-dropdown max-h-[60vh] w-52 overflow-y-auto border border-border-soft bg-surface-card p-1 shadow-lg ring-1 ring-black/5',
+            DROPDOWN_SHELL_CORNER,
+            focusRing('field', 'accent'),
+          )}
         >
           <Row id={null} name={allLabel} />
           {options.length > 0 ? <div className="my-1 h-px bg-surface-sunken" /> : null}

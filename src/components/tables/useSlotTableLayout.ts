@@ -36,6 +36,7 @@ import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import {
   moveFieldBinding,
   reorderFieldBinding,
+  reorderFieldBindingByDrop,
   slotFieldOptions,
   toggleFieldBinding,
   type SlotFieldOption,
@@ -79,6 +80,12 @@ export interface SlotTableFieldsMenu {
   onToggle: (fieldId: string) => void;
   /** ↑/↓ on a bound row — rewrites the band's binding (= display) order. */
   onMove: (fieldId: string, direction: 'up' | 'down') => void;
+  /**
+   * Drop one bound field onto another in the same band — the write behind
+   * header click-and-hold AND the under-title fact drag. See
+   * `docs/todo/subtitle-band-reorder-PLAN.md`.
+   */
+  onReorderByDrop: (dragFieldId: string, dropFieldId: string) => void;
   /** Locked identity row copy ("Order — locked"). */
   identityLabel: string;
   bandLabels?: { status?: string; subtitle?: string };
@@ -269,6 +276,19 @@ export function useSlotTableLayout(config: SlotTableLayoutConfig): SlotTableLayo
     [catalog, effectiveLayout, writeOrgLayout],
   );
 
+  /** Header and under-title drags — same write, named destination. */
+  const onReorderByDrop = useCallback(
+    (dragFieldId: string, dropFieldId: string) => {
+      const dragField = catalog.find((f) => f.id === dragFieldId);
+      const dropField = catalog.find((f) => f.id === dropFieldId);
+      if (!dragField || !dropField) return;
+      const result = reorderFieldBindingByDrop(effectiveLayout, dragField, dropField);
+      if (!result.ok || result.layout === effectiveLayout) return;
+      writeOrgLayout(result.layout);
+    },
+    [catalog, effectiveLayout, writeOrgLayout],
+  );
+
   const onSaveAsOrgDefault = useCallback(() => {
     const layout = effectiveLayout;
     void (async () => {
@@ -330,6 +350,7 @@ export function useSlotTableLayout(config: SlotTableLayoutConfig): SlotTableLayo
             options,
             onToggle,
             onMove,
+            onReorderByDrop,
             identityLabel,
             ...(bandLabels ? { bandLabels } : null),
             // No "Save as org default" button any more: every edit above IS an
@@ -339,7 +360,7 @@ export function useSlotTableLayout(config: SlotTableLayoutConfig): SlotTableLayo
             ...(staffLayout ? { onResetToDefault } : null),
           }
         : undefined,
-    [fieldsReady, options, onToggle, onMove, identityLabel, bandLabels, staffLayout, onResetToDefault],
+    [fieldsReady, options, onToggle, onMove, onReorderByDrop, identityLabel, bandLabels, staffLayout, onResetToDefault],
   );
 
   return { effectiveLayout, subtitleFieldIds, fields, onReorder, canManage };

@@ -13,8 +13,8 @@ describe('resolveGridColumnAlign', () => {
     }
   });
 
-  it('start-aligns LABEL + ID types — prose, categorical, location, tracking, id', () => {
-    for (const type of ['text', 'longtext', 'tag', 'external', 'location', 'tracking', 'id'] as const) {
+  it('start-aligns LABEL + ID types — prose, categorical, location, tracking, id, image', () => {
+    for (const type of ['text', 'longtext', 'tag', 'external', 'location', 'tracking', 'id', 'image'] as const) {
       assert.equal(resolveGridColumnAlign({ type }), 'start', type);
       assert.equal(gridCellAlignClass({ type }), 'justify-start text-left', type);
     }

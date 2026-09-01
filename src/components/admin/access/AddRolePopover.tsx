@@ -15,6 +15,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/design-system/primitives';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
 
 interface RoleSlim {
   id: number;
@@ -105,7 +107,10 @@ export function AddRolePopover({ roles, onAdd, disabled }: AddRolePopoverProps) 
           ref={popoverRef}
           role="menu"
           aria-label="Add role"
-          className="fixed z-panelPopover max-h-72 overflow-y-auto rounded-xl border border-border-soft bg-surface-card shadow-xl shadow-gray-900/15"
+          className={cn(
+            'fixed z-panelPopover max-h-72 overflow-y-auto border border-border-soft bg-surface-card shadow-xl shadow-gray-900/15',
+            DROPDOWN_SHELL_CORNER,
+          )}
           style={{ top: pos.top, left: pos.left, width: POPOVER_WIDTH }}
         >
           <ul className="divide-y divide-border-hairline">

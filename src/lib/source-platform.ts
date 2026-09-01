@@ -1,7 +1,7 @@
 /**
  * Single source of truth for a `source_platform` / channel value → mark, tone,
- * and display label. Ops UI paints the **colored mark** ({@link PlatformMark}
- * lettermark / brand glyph, or order `#` via {@link platformMetaIconTone}) —
+ * and display label. Ops UI paints the **colored identity dot**
+ * ({@link platformMetaBrandDot}) or a lettermark via {@link PlatformMark} —
  * never uppercase prose like "ECWID" as the channel face. {@link label} is for
  * tooltip / aria / select-option text / physical print only.
  *
@@ -14,7 +14,6 @@
  */
 
 import { platformPaintFromHex } from '@/lib/color-contrast';
-import { PLATFORM_BRAND_ICON_PATHS } from '@/lib/platform-brand-icons';
 
 /**
  * The PINNED hue for a platform — the one place the sentence "eBay is yellow,
@@ -55,9 +54,8 @@ export interface SourcePlatformMeta {
    */
   label: string;
   /**
-   * Fixed 1–2 char lettermark for icon-only listing chrome. Keeps the listing
-   * chip constant-width across platforms (tooltip / aria still use `label`).
-   * Fallback when {@link icon} is absent.
+   * Fixed 1–2 char lettermark for listing chrome that still mounts
+   * {@link PlatformMark}. Ops identity is the colored {@link dot}, not a glyph.
    */
   mark: string;
   /** Tailwind text tone for the chip's external-link icon / lettermark. */
@@ -78,15 +76,8 @@ export interface SourcePlatformMeta {
    */
   accentHex?: string | null;
   /**
-   * Monochrome brand-mark SVG path (24×24, `currentColor`) from
-   * `src/lib/platform-brand-icons.ts`. Preferred mark in {@link PlatformMark};
-   * tinted by {@link text}. Lettermark is the only fallback.
-   */
-  icon?: string;
-  /**
    * Optional full-color brand tile under `/public` (e.g. Amazon smile square).
-   * Used when {@link PlatformMark} sets `preferBrandTile` (carton listing +
-   * {@link GridPlatformMarkValue} data sheets). Glyph-only callers omit it.
+   * Used when {@link PlatformMark} sets `preferBrandTile` (carton listing).
    */
   tileSrc?: string;
 }
@@ -97,7 +88,7 @@ export interface SourcePlatformMeta {
  * from here. Add a platform once, in this list.
  */
 export const SOURCE_PLATFORMS: SourcePlatformMeta[] = [
-  { value: 'ebay', hue: 'yellow',       label: 'eBay',       mark: 'eB', text: 'text-yellow-500', border: 'border-yellow-400', dot: 'bg-yellow-500', icon: PLATFORM_BRAND_ICON_PATHS.ebay },
+  { value: 'ebay', hue: 'yellow',       label: 'eBay',       mark: 'eB', text: 'text-yellow-500', border: 'border-yellow-400', dot: 'bg-yellow-500' },
   {
     value: 'amazon',
     hue: 'orange',
@@ -106,23 +97,22 @@ export const SOURCE_PLATFORMS: SourcePlatformMeta[] = [
     text: 'text-orange-600',
     border: 'border-orange-600',
     dot: 'bg-orange-600',
-    icon: PLATFORM_BRAND_ICON_PATHS.amazon,
     tileSrc: '/icons/platforms/amazon.png',
   },
-  { value: 'fba', hue: 'orange',        label: 'Amazon',     mark: 'FB', text: 'text-orange-600', border: 'border-orange-600', dot: 'bg-orange-600', icon: PLATFORM_BRAND_ICON_PATHS.fba },
-  { value: 'aliexpress', hue: 'red', label: 'AliExpress', mark: 'AE', text: 'text-red-500',    border: 'border-red-500',    dot: 'bg-red-500', icon: PLATFORM_BRAND_ICON_PATHS.aliexpress },
-  { value: 'walmart', hue: 'amber',    label: 'Walmart',    mark: 'W',  text: 'text-amber-700',  border: 'border-amber-700',  dot: 'bg-amber-700', icon: PLATFORM_BRAND_ICON_PATHS.walmart },
-  { value: 'goodwill', hue: 'sky',   label: 'Goodwill',   mark: 'Gw', text: 'text-sky-600',    border: 'border-sky-600',    dot: 'bg-sky-600', icon: PLATFORM_BRAND_ICON_PATHS.goodwill },
+  { value: 'fba', hue: 'orange',        label: 'Amazon',     mark: 'FB', text: 'text-orange-600', border: 'border-orange-600', dot: 'bg-orange-600' },
+  { value: 'aliexpress', hue: 'red', label: 'AliExpress', mark: 'AE', text: 'text-red-500',    border: 'border-red-500',    dot: 'bg-red-500' },
+  { value: 'walmart', hue: 'amber',    label: 'Walmart',    mark: 'W',  text: 'text-amber-700',  border: 'border-amber-700',  dot: 'bg-amber-700' },
+  { value: 'goodwill', hue: 'sky',   label: 'Goodwill',   mark: 'Gw', text: 'text-sky-600',    border: 'border-sky-600',    dot: 'bg-sky-600' },
   // Storefront channel. Repair-service cartons are a receiving *type*, not a
   // second marketplace — the stored slug stays `ecwid`, the face is Ecwid.
-  { value: 'ecwid', hue: 'blue',      label: 'Ecwid',      mark: 'Ec', text: 'text-blue-600',   border: 'border-blue-600',   dot: 'bg-blue-600', icon: PLATFORM_BRAND_ICON_PATHS.ecwid },
-  { value: 'square', hue: 'slate',     label: 'Square',     mark: 'Sq', text: 'text-text-muted',  border: 'border-slate-600',  dot: 'bg-slate-500', icon: PLATFORM_BRAND_ICON_PATHS.square }, // ds-allow-raw-neutral: identity/tone hue — Square's slate among platform brand hues, distinct from Other (= border-emphasis)
-  { value: 'shopify', hue: 'green',    label: 'Shopify',    mark: 'Sh', text: 'text-green-600',  border: 'border-green-600',  dot: 'bg-green-600', icon: PLATFORM_BRAND_ICON_PATHS.shopify },
+  { value: 'ecwid', hue: 'blue',      label: 'Ecwid',      mark: 'Ec', text: 'text-blue-600',   border: 'border-blue-600',   dot: 'bg-blue-600' },
+  { value: 'square', hue: 'slate',     label: 'Square',     mark: 'Sq', text: 'text-text-muted',  border: 'border-slate-600',  dot: 'bg-slate-500' }, // ds-allow-raw-neutral: identity/tone hue — Square's slate among platform brand hues, distinct from Other (= border-emphasis)
+  { value: 'shopify', hue: 'green',    label: 'Shopify',    mark: 'Sh', text: 'text-green-600',  border: 'border-green-600',  dot: 'bg-green-600' },
   // Order / Product Hub channels (not door-intake defaults) — still need a
   // mark + tone so PlatformMark never falls back to typed prose.
-  { value: 'zoho', hue: 'red',       label: 'Zoho',       mark: 'Zo', text: 'text-red-600',    border: 'border-red-600',    dot: 'bg-red-600', icon: PLATFORM_BRAND_ICON_PATHS.zoho },
-  { value: 'mercari', hue: 'purple',    label: 'Mercari',    mark: 'Me', text: 'text-purple-600', border: 'border-purple-600', dot: 'bg-purple-600', icon: PLATFORM_BRAND_ICON_PATHS.mercari },
-  { value: 'other', hue: 'neutral',      label: 'Other',      mark: '·',  text: 'text-text-soft',  border: 'border-border-emphasis', dot: 'bg-border-emphasis', icon: PLATFORM_BRAND_ICON_PATHS.other },
+  { value: 'zoho', hue: 'red',       label: 'Zoho',       mark: 'Zo', text: 'text-red-600',    border: 'border-red-600',    dot: 'bg-red-600' },
+  { value: 'mercari', hue: 'purple',    label: 'Mercari',    mark: 'Me', text: 'text-purple-600', border: 'border-purple-600', dot: 'bg-purple-600' },
+  { value: 'other', hue: 'neutral',      label: 'Other',      mark: '·',  text: 'text-text-soft',  border: 'border-border-emphasis', dot: 'bg-border-emphasis' },
 ];
 
 /** Fallback tone/label for an empty/unknown platform value. */

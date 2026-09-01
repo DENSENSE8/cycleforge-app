@@ -106,6 +106,17 @@ const config = {
                 'surface-hover': 'var(--ds-color-surface-hover)',
                 // Tracks / skeletons / avatar placeholders (≈ gray-200).
                 'surface-strong': 'var(--ds-color-surface-strong)',
+                'surface-bench': 'var(--ds-color-surface-bench)',
+                'surface-trough': 'var(--ds-color-surface-trough)',
+                'surface-plate': 'var(--ds-color-surface-plate)',
+                'surface-slot': 'var(--ds-color-surface-slot)',
+                'surface-station-header': 'var(--ds-station-header)',
+                'surface-station-well': 'var(--ds-station-well)',
+                'surface-station-plate': 'var(--ds-station-plate)',
+                'surface-station-slot': 'var(--ds-station-slot)',
+                'surface-station-bar': 'var(--ds-station-bar)',
+                'surface-station-row-hover': 'var(--ds-station-row-hover)',
+                'surface-station-header-hover': 'var(--ds-station-header-hover)',
                 // Inverted chrome — dark pills/action bars/headers that must
                 // stay distinct-but-themed (mid-slate on dark, near-black on
                 // light). Text on them = text-inverse / text-inverse-soft.
@@ -139,6 +150,10 @@ const config = {
                 'border-hairline': 'var(--ds-color-border-hairline)',
                 // Emphasis border (≈ gray-400: dashed drop-zones, dotted underlines).
                 'border-emphasis': 'var(--ds-color-border-emphasis)',
+                'border-stain': 'var(--ds-color-border-stain)',
+                'border-ply': 'var(--ds-color-border-ply)',
+                'border-station-shadow': 'var(--ds-station-bevel-shadow)',
+                'border-station-highlight': 'var(--ds-station-bevel-highlight)',
                 // Max-emphasis border (≈ gray-900 selection outlines).
                 'border-strong': 'var(--ds-color-border-strong)',
                 // Border on inverted chrome (≈ gray-700 on a gray-900 bar).

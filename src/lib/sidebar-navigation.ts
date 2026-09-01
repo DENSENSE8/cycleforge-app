@@ -539,9 +539,10 @@ export function isStationSurfaceRoute(pathname: string | null): boolean {
  * So a desk now says which it is. The cost of the split is one honest
  * declaration per page; the cost of the derivation was four broken surfaces.
  *
- * **Scan stations fall out for free.** `/shipping/scan-out` resolves to its own
- * page id (`scan-out`, `kind: 'station'`), which declares neither flag — so the
- * station keeps its recents rail without this function naming it.
+ * **Most scan stations keep their rail** (Unbox / Pack / QC / Triage) — they
+ * declare neither flag. **Scan out is the exception:** it opts into
+ * `railless: true` for the mobile-first composer grammar (full-bleed center +
+ * bottom scan dock, no left recents).
  *
  * Media Library (`/ops/photos`) is also rail-less but drops from
  * {@link CONTEXT_PANEL_ROUTE_KEYS} instead — it is not a desk-chrome page.
@@ -555,9 +556,34 @@ export function isRaillessSurface(
   // Params matter for `/dashboard`, which is multi-domain: the outbound domain
   // resolves to the `outbound` page, while `?mode=sales` resolves to `sales`
   // and keeps its walk-in picker.
-  return (
+  if (
     getSidebarPageNav(getSidebarNavPageId(pathname, searchParams ?? null))?.railless === true
-  );
+  ) {
+    return true;
+  }
+  // Support keeps ONE left column: Tickets recents. Voicemail / Calls /
+  // Warranty / Issues pick from the stage itself (same as the <md path).
+  if (pathname === '/support' || pathname.startsWith('/support/')) {
+    const mode = String(searchParams?.get('mode') ?? '').trim().toLowerCase();
+    return (
+      mode === 'voicemail' ||
+      mode === 'calls' ||
+      mode === 'warranty' ||
+      mode === 'issues' ||
+      mode === 'orders'
+    );
+  }
+  // Support's ticket alias (`?context=support`) claims this URL for the spine
+  // pin / desk title, but the stage is still the Shipping To-ship desk. That
+  // claim must not resurrect the Focus + Saved views recents rail Shipping
+  // already retired (operator 2026-08-31).
+  if (
+    pathname === SHIPPING_ORDERS_PATH ||
+    pathname.startsWith(`${SHIPPING_ORDERS_PATH}/`)
+  ) {
+    return getSidebarPageNav('outbound')?.railless === true;
+  }
+  return false;
 }
 
 /** @deprecated Prefer {@link isRaillessSurface} — same predicate, old name. */
@@ -1394,9 +1420,13 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     },
   },
   // ── Scan out (Scan Stations) ──────────────────────────────────────────────
-  // Modeless dock ship-confirm station. Shares route key `outbound` for panels.
+  // Mobile-first composer station: full-bleed center + bottom scan dock.
+  // No left recent rail — `railless: true` collapses the context column
+  // (operator 2026-08-31 · docs/todo/scan-out-mobile-composer-HANDOFF.md).
+  // Shares route key `outbound` for panels on mobile only.
   {
     id: 'scan-out', label: 'Scan out', href: OUTBOUND_MODE_PATHS['scan-out'], icon: SHIPPING_NAV_ICONS['scan-out'], kind: 'station', stationGroup: 'floor', requires: 'shipping.view',
+    railless: true,
   },
   // ── Packing ───────────────────────────────────────────────────────────────
   // Standard-only / modeless. Legacy `?packMode=fragile|multi` deep-links may
@@ -1533,17 +1563,18 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // the /support param spec.
   {
     id: 'support', label: 'Support', href: SUPPORT, icon: AlertCircle, kind: 'domain', domainGroup: 'support', requires: 'integrations.zendesk',
-    // Desk page chrome (2026-08-31): Tickets · To ship · Voicemail · Calls ·
-    // Warranty · Issues are drawn as IN-PAGE tabs.
+    // Desk page chrome (2026-08-31): Tickets · Voicemail · Calls · Warranty ·
+    // Issues are drawn as IN-PAGE tabs. Every one of them stays on `/support`.
     //
-    // **The To ship tab leaves the route on purpose.** It aliases
-    // `/shipping/orders?context=support`, and `resolveChild` below claims that
-    // URL — so `getSidebarNavPageId` answers `support` there and the Shipping
-    // desk's frame draws SUPPORT's title and tabs, with To ship lit. The tab
-    // strip does not vanish on the one tab that changes pathname, which is what
-    // made the alias worth having.
+    // **To ship was REMOVED here (operator ruling 2026-08-31).** It was the one
+    // tab that left the route — an alias onto `/shipping/orders?context=support`
+    // with a `resolveChild` claiming that URL so the Shipping desk drew
+    // SUPPORT's title and tabs instead of its own. Clever, and a fork: two
+    // desks disagreed about whose page you were on, and the To-ship queue has a
+    // canonical home in Shipping already. Support does not restate it.
     //
-    // NOT `railless` — the ticket rail is this desk's navigator.
+    // Rail-less except Tickets: `isRaillessSurface` keeps the recents dock on
+    // the default mode and collapses the column on every other tab.
     deskChrome: true,
     children: [
       {
@@ -1553,17 +1584,6 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
         to: () => ({
           pathname: SUPPORT,
           params: { mode: null },
-        }),
-      },
-      {
-        id: 'orders',
-        label: 'To ship',
-        icon: Package,
-        requires: 'orders.view',
-        // Alias onto the shared To-ship desk (ticket affordances via context=support).
-        to: () => ({
-          pathname: SHIPPING_ORDERS_PATH,
-          params: { context: 'support' },
         }),
       },
       {
@@ -1605,16 +1625,10 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
         }),
       },
     ],
-    resolveChild: ({ pathname, params }) => {
-      // To ship aliases `/shipping/orders?context=support` — highlight while there.
-      if (
-        (pathname === SHIPPING_ORDERS_PATH || pathname.startsWith(`${SHIPPING_ORDERS_PATH}/`)) &&
-        params.get('context') === 'support'
-      ) {
-        return 'orders';
-      }
+    resolveChild: ({ params }) => {
       const m = params.get('mode');
-      if (m === 'orders') return 'orders';
+      // Legacy `?mode=orders` deep links land on Tickets now that To ship is
+      // gone from this desk — the queue lives at /shipping/orders.
       if (m === 'voicemail') return 'voicemail';
       if (m === 'calls') return 'calls';
       if (m === 'warranty') return 'warranty';

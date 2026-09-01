@@ -7,6 +7,7 @@ import { CONDITION_GRADES, resolveConditionGrade } from '@/lib/conditions';
 import { displayTrackingNumber } from '@/lib/receiving/fulfillment-mode';
 import {
   RECEIVING_GRID_COLUMNS,
+  receivingSortFactFor,
   type ReceivingGridColumnKey,
 } from '@/lib/receiving/receiving-grid-layout';
 import {
@@ -160,8 +161,15 @@ export function compareReceivingGridRows(
   // switch used to carry the comparison too, which is how `date` ended up with
   // an unflipped `+Infinity` (undated rows at the TOP under desc) while Orders
   // sank its missing deadlines under both directions.
+  // The header may speak in COMPOUND track keys (`item`, `fulfillment`,
+  // `amount`) or in this family's flat words — two live mounts, two models.
+  // Normalize once so both the extractor and the `type` lookup below read one
+  // vocabulary; without this the compound desks fell through to `default: null`
+  // and every row compared equal.
+  const fact = receivingSortFactFor(column) ?? column;
+
   const value = (row: ReceivingLineRow): GridSortValue => {
-    switch (column) {
+    switch (fact) {
       case 'title':
         return productTitle(row);
       // `stageMs` already returns `+Infinity` for a missing stamp, and the
@@ -192,7 +200,7 @@ export function compareReceivingGridRows(
 
   // Type off the column MODEL, never a second hand-written map — the same
   // declaration that resolves this column's alignment and header glyph.
-  const type = RECEIVING_GRID_COLUMNS.find((c) => c.key === column)?.type;
+  const type = RECEIVING_GRID_COLUMNS.find((c) => c.key === fact)?.type;
   const primary = compareGridValues(value(a), value(b), { type, dir });
 
   // `compareGridValues` already applied `dir` — re-signing here would

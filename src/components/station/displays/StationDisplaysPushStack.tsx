@@ -53,8 +53,11 @@ import type { SectionTab } from '@/design-system/components';
 import { isKeyboardRegionOwner } from '@/lib/keyboard/keyboard-region-owner';
 import {
   STATION_DISPLAY_INDEX,
+  STATION_LOOK_DISPLAY_ID,
   deriveDisplayIndexRowsFromTabs,
   filterDisplayIndexRows,
+  isDisplaysHostedLeaf,
+  withLookDisplayIndexRow,
   type DisplayIndexRow,
 } from './display-index';
 import {
@@ -82,6 +85,10 @@ import { StationDisplaysParkedRail } from './StationDisplaysParkedRail';
 import { StationDisplayLeafHeader } from './StationDisplayLeafHeader';
 import { StationDisplaysPushColumn } from './StationDisplaysPushColumn';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
+import { Layers } from '@/components/Icons';
+import { useStaffPreferences } from '@/hooks/useStaffPreferences';
+import { resolveStationSkin } from '@/design-system/themes/station-skins';
+import { StationLookDisplayHost } from './StationLookDisplayHost';
 
 const DISPLAYS_PUSH_STORAGE_KEY = 'unbox-displays-push-width';
 
@@ -157,14 +164,44 @@ export function StationDisplaysPushStack({
   resizeTestId?: string;
   resizeTooltip?: string;
 }) {
-  const onIndex = activeTab === STATION_DISPLAY_INDEX;
+  const [hostedLeaf, setHostedLeaf] = useState<string | null>(null);
+  const effectiveTab = hostedLeaf ?? activeTab;
+  const onIndex = effectiveTab === STATION_DISPLAY_INDEX;
+  const navigateTab = useCallback(
+    (id: string) => {
+      if (isDisplaysHostedLeaf(id)) {
+        setHostedLeaf(id);
+        return;
+      }
+      setHostedLeaf(null);
+      onTabChange(id);
+    },
+    [onTabChange],
+  );
+  const { prefs } = useStaffPreferences();
+  const lookLabel = resolveStationSkin(prefs?.stationSkin).label;
+  const lookTab = useMemo<SectionTab>(
+    () => ({
+      id: STATION_LOOK_DISPLAY_ID,
+      label: 'Look',
+      icon: Layers,
+      content: <StationLookDisplayHost />,
+    }),
+    [],
+  );
+  const resolvedTabs = useMemo(() => {
+    const rest = tabs.filter((t) => t.id !== STATION_LOOK_DISPLAY_ID);
+    return [...rest, lookTab];
+  }, [tabs, lookTab]);
+  const resolvedTabsRef = useRef(resolvedTabs);
+  resolvedTabsRef.current = resolvedTabs;
   const [filterQuery, setFilterQuery] = useState('');
   const applyFilterQuery = useCallback(
     (next: string) => {
       setFilterQuery(next);
-      if (!onIndex && next.trim()) onTabChange(STATION_DISPLAY_INDEX);
+      if (!onIndex && next.trim()) navigateTab(STATION_DISPLAY_INDEX);
     },
-    [onIndex, onTabChange],
+    [onIndex, navigateTab],
   );
   /** Footer filter → index list ↑↓/Enter/Esc bridge (cursor stays in the list). */
   const indexFilterKeysRef = useRef<StationDisplayIndexFilterKeys | null>(null);
@@ -179,7 +216,11 @@ export function StationDisplaysPushStack({
   /** Segment ids popped by nested Back — Forward restores before visit future. */
   const [nestedForward, setNestedForward] = useState<string[]>([]);
 
-  const resolvedFrame = visitFrame ?? defaultVisitFrame(activeTab);
+  const resolvedFrame = hostedLeaf
+    ? { tab: hostedLeaf }
+    : isDisplaysHostedLeaf(activeTab)
+      ? { tab: activeTab }
+      : (visitFrame ?? defaultVisitFrame(activeTab));
   const frameKey = visitFrameKey(resolvedFrame);
   const [history, setHistory] = useState<DisplaysVisitHistoryState>(() =>
     createVisitHistory(resolvedFrame),
@@ -191,9 +232,9 @@ export function StationDisplaysPushStack({
   presentFrameRef.current = resolvedFrame;
 
   useEffect(() => {
-    if (activeTab !== STATION_DISPLAY_INDEX) setLastLeafId(activeTab);
+    if (effectiveTab !== STATION_DISPLAY_INDEX) setLastLeafId(effectiveTab);
     else setLeafTrailingState(null);
-  }, [activeTab]);
+  }, [effectiveTab]);
 
   // Carton / line scope change — wipe visit + nested forward.
   useEffect(() => {
@@ -201,7 +242,16 @@ export function StationDisplaysPushStack({
     prevScopeRef.current = historyScopeKey;
     setHistory(createVisitHistory(presentFrameRef.current));
     setNestedForward([]);
+    setHostedLeaf(null);
   }, [historyScopeKey]);
+
+  // A domain leaf from the station host (Photos, Pairing, …) wins over a
+  // Displays-hosted Look session so cockpit auto-swap cannot strand the trough
+  // editor on screen.
+  useEffect(() => {
+    if (isDisplaysHostedLeaf(activeTab)) return;
+    if (activeTab !== STATION_DISPLAY_INDEX) setHostedLeaf(null);
+  }, [activeTab]);
 
   // Record divergent visits whenever the host frame key changes.
   useEffect(() => {
@@ -227,17 +277,17 @@ export function StationDisplaysPushStack({
       setNestedForward([]);
       return;
     }
-    setLeafTrail([{ id: activeTab, label: tabLabel(tabs, activeTab) }]);
+    setLeafTrail([{ id: effectiveTab, label: tabLabel(resolvedTabsRef.current, effectiveTab) }]);
     nestedPopRef.current = null;
     nestedRestoreRef.current = null;
     setNestedForward([]);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- tab label is read once per leaf open
-  }, [activeTab, onIndex]);
+  }, [effectiveTab, onIndex]);
 
   // Action Plane: when a leaf mounts a dossier shell, land keyboard focus on
   // its roving row (not the Back control). Leaves without the shell are unchanged.
   useEffect(() => {
-    if (activeTab === STATION_DISPLAY_INDEX) return;
+    if (effectiveTab === STATION_DISPLAY_INDEX) return;
     const id = window.requestAnimationFrame(() => {
       const dossier = document.querySelector<HTMLElement>(
         `[data-testid="${testId}"] [data-station-action-dossier]`,
@@ -247,11 +297,15 @@ export function StationDisplaysPushStack({
       row?.focus();
     });
     return () => window.cancelAnimationFrame(id);
-  }, [activeTab, testId]);
+  }, [effectiveTab, testId]);
 
   const resolvedIndexRows = useMemo(
-    () => indexRows ?? deriveDisplayIndexRowsFromTabs(tabs),
-    [indexRows, tabs],
+    () =>
+      withLookDisplayIndexRow(
+        indexRows ?? deriveDisplayIndexRowsFromTabs(tabs),
+        lookLabel,
+      ),
+    [indexRows, tabs, lookLabel],
   );
 
   const filteredIndexRows = useMemo(
@@ -261,12 +315,17 @@ export function StationDisplaysPushStack({
 
   const activeLeafTab = useMemo(() => {
     if (onIndex) return null;
-    return tabs.find((t) => t.id === activeTab) ?? null;
-  }, [onIndex, tabs, activeTab]);
+    return resolvedTabs.find((t) => t.id === effectiveTab) ?? null;
+  }, [onIndex, resolvedTabs, effectiveTab]);
 
   const applyFrame = useCallback(
     (frame: DisplaysVisitFrame) => {
       historyNavRef.current = true;
+      if (isDisplaysHostedLeaf(frame.tab)) {
+        setHostedLeaf(frame.tab);
+        return;
+      }
+      setHostedLeaf(null);
       if (onVisitNavigate) {
         onVisitNavigate(frame);
         return;
@@ -372,7 +431,7 @@ export function StationDisplaysPushStack({
     if (onIndex || !canHistoryBack) return null;
     const tab = history.past[history.past.length - 1]!.tab;
     if (tab === STATION_DISPLAY_INDEX) return 'Displays';
-    return tabLabel(tabs, tab);
+    return tabLabel(resolvedTabs, tab);
   })();
 
   const backLabel =
@@ -392,7 +451,7 @@ export function StationDisplaysPushStack({
     }
     if (canHistoryForward) {
       const tab = history.future[0]!.tab;
-      return tab === STATION_DISPLAY_INDEX ? 'Displays' : tabLabel(tabs, tab);
+      return tab === STATION_DISPLAY_INDEX ? 'Displays' : tabLabel(resolvedTabs, tab);
     }
     return '';
   })();
@@ -412,7 +471,7 @@ export function StationDisplaysPushStack({
           ? [{ id: STATION_DISPLAY_INDEX, label: 'Displays' }]
           : leafTrail.length > 0
             ? leafTrail
-            : [{ id: activeTab, label: tabLabel(tabs, activeTab) }]
+            : [{ id: effectiveTab, label: tabLabel(resolvedTabs, effectiveTab) }]
       }
       onBack={onHistoryBack}
       onForward={goForward}
@@ -440,13 +499,13 @@ export function StationDisplaysPushStack({
       parkedRail={(open) => (
         <StationDisplaysParkedRail
           rows={resolvedIndexRows}
-          tabs={tabs}
+          tabs={resolvedTabs}
           activeId={lastLeafId}
           onOpenLeaf={(id) => {
             // Open ON the display, not onto the index: a parked cell already
             // names the leaf, so landing the index would make the operator
             // pick the same thing twice.
-            onTabChange(id);
+            navigateTab(id);
             open();
           }}
         />
@@ -480,13 +539,13 @@ export function StationDisplaysPushStack({
       <DisplaysIndexLeafStage
         onIndex={onIndex}
         rows={filteredIndexRows}
-        tabs={tabs}
-        onSelectLeaf={onTabChange}
+        tabs={resolvedTabs}
+        onSelectLeaf={navigateTab}
         lastLeafId={lastLeafId}
         filterQuery={filterQuery}
         onClearFilter={() => setFilterQuery('')}
         indexFilterKeysRef={indexFilterKeysRef}
-        leafId={activeTab}
+        leafId={effectiveTab}
         leafTestId="unbox-displays-leaf"
         leafBody={
           <DisplaysLeafChromeProvider

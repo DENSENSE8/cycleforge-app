@@ -111,14 +111,14 @@ async function measureFlush(page: Page, pushTestId?: string): Promise<FlushGeome
     const pushSurface =
       (pushHost?.querySelector(':scope > div.border-l, :scope > div.border') as Element | null) ??
       pushHost;
-    // Sunken plane lives on StationPanelRoot inside the center column.
-    const sunken =
-      workspace?.querySelector('.bg-surface-sunken') ??
-      (workspace?.classList.contains('bg-surface-sunken') ? workspace : null);
+    // Recessed band well is the Items body, not StationPanelRoot (flat card).
+    const well =
+      workspace?.querySelector('[data-testid="unbox-band-items"] > div') ??
+      workspace?.querySelector('.bg-surface-station-well');
     const cs = (el: Element | null) => (el ? getComputedStyle(el) : null);
     const ccs = cs(context);
     const pcs = cs(pushSurface);
-    const wcs = cs(sunken ?? workspace);
+    const wcs = cs(well ?? workspace);
     return {
       context: box(context),
       workspace: box(workspace),

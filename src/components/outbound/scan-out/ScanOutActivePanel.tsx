@@ -1,26 +1,36 @@
 'use client';
 
 /**
- * Scan-out carton workbench — Pack-family Tier A:
- * StationScanPaneHost + CartonContextCard + Displays (timeline · listings).
- * No Ticket · Claim · pack checklist — dock confirm is scan-driven.
+ * Scan-out focused carton — Pack / Ready-to-Pack station anatomy (no desk fork):
+ *
+ *   StationScanPaneHost
+ *     └ StationPanelRoot
+ *         ├ StationContextBar → ShippingEntityContextHeader → CartonContextCard
+ *         └ StationWorkbench (ops centre only — no second identity dump)
+ *     └ StationDisplaysPushStack (Timeline · Listings)
+ *
+ * Gun + notes stay in the page-bottom OmnichannelComposerDock.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ExternalLink, History } from '@/components/Icons';
+import { ExternalLink, History, Check, AlertTriangle } from '@/components/Icons';
 import {
-  buildSectionTabs,
   StationPanelRoot,
   StationScanPaneHost,
   StationWorkbench,
   WorkspaceTimelineTab,
+  buildSectionTabs,
 } from '@/components/station/workbench';
-import { StationContextBar } from '@/components/station/entity-context';
+import {
+  StationContextBar,
+  StationMoreDetails,
+} from '@/components/station/entity-context';
 import {
   StationDisplaysParkedRail,
-  StationDisplaysUtilityRail,
   StationDisplaysPushStack,
+  StationDisplaysUtilityRail,
   STATION_DISPLAY_INDEX,
+  resolveDisplaysActiveTab,
   useYieldStationDisplaysOnAssistantOpen,
   type DisplayIndexRow,
 } from '@/components/station/displays';
@@ -28,10 +38,17 @@ import { ListingLinksTab } from '@/components/receiving/workspace/line-edit/List
 import { ShippingEntityContextHeader } from '@/components/tech/shipping/ShippingEntityContextHeader';
 import { resolveShippingListingLinks } from '@/components/tech/shipping/shipping-listing-links';
 import { Button } from '@/design-system/primitives';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { STATION_SCAN_WELL_CLASS } from '@/components/station/scan-depth';
 import { cn } from '@/utils/_cn';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import type { ScanOutActivePane } from '@/components/outbound/scan-out/scan-out-active';
-import { dispatchScanOutActive } from '@/components/outbound/scan-out/scan-out-active';
+import {
+  SCAN_OUT_CLOSE_DISPLAYS_EVENT,
+  SCAN_OUT_OPEN_DISPLAYS_EVENT,
+  dispatchScanOutActive,
+  dispatchScanOutDisplaysChanged,
+} from '@/components/outbound/scan-out/scan-out-active';
 
 type ScanOutDisplayTab = 'timeline' | 'listings';
 type ScanOutDisplayNav = typeof STATION_DISPLAY_INDEX | ScanOutDisplayTab;
@@ -81,31 +98,6 @@ function paneToStationOrder(pane: ScanOutActivePane): ActiveStationOrder {
   };
 }
 
-function buildScanOutDisplayIndexRows(signals: {
-  hasTimeline: boolean;
-  hasListing: boolean;
-  status: ScanOutActivePane['status'];
-}): DisplayIndexRow[] {
-  const rows: DisplayIndexRow[] = [];
-  if (signals.hasTimeline) {
-    rows.push({
-      id: 'timeline',
-      label: 'Timeline',
-      subtitle: signals.status === 'ok' ? 'Left the dock' : 'Order history',
-      tone: signals.status === 'ok' ? 'ok' : 'neutral',
-      group: 'context',
-    });
-  }
-  rows.push({
-    id: 'listings',
-    label: 'Listings',
-    subtitle: signals.hasListing ? 'Listing links' : 'No listing',
-    tone: signals.hasListing ? 'ok' : 'neutral',
-    group: 'context',
-  });
-  return rows;
-}
-
 export function ScanOutActivePanel({
   pane,
   onUndo,
@@ -117,24 +109,48 @@ export function ScanOutActivePanel({
   canUndo?: boolean;
   isUndoing?: boolean;
 }) {
-  const [activeSideTab, setActiveSideTab] = useState<ScanOutDisplayNav | null>(null);
   const activeOrder = useMemo(() => paneToStationOrder(pane), [pane]);
-  const listing = useMemo(
+  const onExit = useCallback(() => dispatchScanOutActive(null), []);
+  const [activeSideTab, setActiveSideTab] = useState<ScanOutDisplayNav | null>(null);
+
+  const listingResolution = useMemo(
     () => resolveShippingListingLinks(activeOrder),
     [activeOrder.itemNumber, activeOrder.sku],
   );
-  const [listingLink, setListingLink] = useState(listing.listingUrl ?? '');
+  const [listingLink, setListingLink] = useState(listingResolution.listingUrl ?? '');
   useEffect(() => {
-    setListingLink(listing.listingUrl ?? '');
-  }, [listing.listingUrl, pane.tracking, pane.orderId]);
+    setListingLink(listingResolution.listingUrl ?? '');
+  }, [pane.orderRowId, pane.tracking, listingResolution.listingUrl]);
 
   const tracking = pane.tracking.trim();
   const orderId = pane.orderId.trim();
-  const hasTimelineTab = tracking.length > 0 || orderId.length > 0;
+  const hasTimeline = tracking.length > 0 || orderId.length > 0;
 
   const closeDisplays = useCallback(() => setActiveSideTab(null), []);
+  const openDisplaysIndex = useCallback(
+    () => setActiveSideTab(STATION_DISPLAY_INDEX),
+    [],
+  );
   useYieldStationDisplaysOnAssistantOpen(closeDisplays);
-  const openDisplaysIndex = useCallback(() => setActiveSideTab(STATION_DISPLAY_INDEX), []);
+
+  useEffect(() => {
+    const onOpen = () => openDisplaysIndex();
+    const onClose = () => closeDisplays();
+    window.addEventListener(SCAN_OUT_OPEN_DISPLAYS_EVENT, onOpen);
+    window.addEventListener(SCAN_OUT_CLOSE_DISPLAYS_EVENT, onClose);
+    return () => {
+      window.removeEventListener(SCAN_OUT_OPEN_DISPLAYS_EVENT, onOpen);
+      window.removeEventListener(SCAN_OUT_CLOSE_DISPLAYS_EVENT, onClose);
+    };
+  }, [openDisplaysIndex, closeDisplays]);
+
+  useEffect(() => {
+    dispatchScanOutDisplaysChanged(activeSideTab != null);
+  }, [activeSideTab]);
+
+  useEffect(() => {
+    return () => dispatchScanOutDisplaysChanged(false);
+  }, []);
 
   const displayTabs = useMemo(
     () =>
@@ -143,7 +159,7 @@ export function ScanOutActivePanel({
           id: 'timeline',
           label: 'Timeline',
           icon: History,
-          visible: hasTimelineTab,
+          visible: hasTimeline,
           content: (
             <WorkspaceTimelineTab
               orderId={orderId || null}
@@ -158,34 +174,47 @@ export function ScanOutActivePanel({
           icon: ExternalLink,
           content: (
             <ListingLinksTab
-              listingLinks={listing.listingLinks}
+              listingLinks={listingResolution.listingLinks}
               listingLink={listingLink}
               setListingLink={setListingLink}
             />
           ),
         },
       ]),
-    [hasTimelineTab, orderId, tracking, listing.listingLinks, listingLink],
+    [hasTimeline, orderId, tracking, listingResolution.listingLinks, listingLink],
   );
 
-  const resolvedSideTab: ScanOutDisplayNav | null = useMemo(() => {
-    if (!activeSideTab) return null;
-    if (activeSideTab === STATION_DISPLAY_INDEX) return STATION_DISPLAY_INDEX;
-    if (displayTabs.some((t) => t.id === activeSideTab)) return activeSideTab;
-    return STATION_DISPLAY_INDEX;
-  }, [activeSideTab, displayTabs]);
+  const displayIndexRows = useMemo((): DisplayIndexRow[] => {
+    const rows: DisplayIndexRow[] = [];
+    if (hasTimeline) {
+      rows.push({
+        id: 'timeline',
+        label: 'Timeline',
+        subtitle: 'Shipment history',
+        tone: pane.status === 'ok' ? 'ok' : 'neutral',
+        group: 'context',
+      });
+    }
+    rows.push({
+      id: 'listings',
+      label: 'Listings',
+      subtitle: listingResolution.listingUrl ? 'Listing links' : 'No listing',
+      tone: listingResolution.listingUrl ? 'ok' : 'neutral',
+      group: 'context',
+    });
+    return rows;
+  }, [hasTimeline, pane.status, listingResolution.listingUrl]);
 
-  const displayIndexRows = useMemo(
+  const resolvedSideTab = useMemo(
     () =>
-      buildScanOutDisplayIndexRows({
-        hasTimeline: hasTimelineTab,
-        hasListing: Boolean(listing.listingUrl),
-        status: pane.status,
-      }),
-    [hasTimelineTab, listing.listingUrl, pane.status],
+      resolveDisplaysActiveTab(
+        activeSideTab,
+        displayTabs.map((t) => t.id),
+      ),
+    [activeSideTab, displayTabs],
   );
 
-  const paneUtilityRow = !activeSideTab ? (
+  const utilityRailBody = !resolvedSideTab ? (
     <StationDisplaysUtilityRail
       onOpenDisplays={openDisplaysIndex}
       indexRail={
@@ -199,18 +228,37 @@ export function ScanOutActivePanel({
     />
   ) : null;
 
-  const onExit = useCallback(() => dispatchScanOutActive(null), []);
+  const statusChip = (
+    <span
+      className={cn(
+        'inline-flex max-w-[14rem] items-center gap-1 truncate px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-widest',
+        cornerClass('flush'),
+        STATUS_TONE[pane.status],
+      )}
+      data-testid="scan-out-status-chip"
+    >
+      {pane.status === 'ok' ? (
+        <Check className="h-3 w-3 shrink-0" aria-hidden />
+      ) : pane.status === 'pending' ? null : (
+        <AlertTriangle className="h-3 w-3 shrink-0" aria-hidden />
+      )}
+      <span className="truncate">{statusLabel(pane)}</span>
+    </span>
+  );
 
   return (
-    <div className="relative flex h-full w-full min-h-0 flex-col">
+    <div
+      className="relative flex h-full w-full min-h-0 flex-col bg-surface-card"
+      data-testid="scan-out-station-center"
+    >
       <StationScanPaneHost
         displaysOpen={Boolean(resolvedSideTab)}
         hostDataAttrs={{ 'data-scan-out-pane-host': true }}
-        centerTestId="scan-out-station-center"
-        utilityRail={!activeSideTab ? paneUtilityRow : null}
+        centerTestId="scan-out-entity-center"
+        utilityRail={utilityRailBody}
         center={
-          <StationPanelRoot>
-            <div className="relative flex min-h-0 flex-1 flex-col overflow-visible">
+          <StationPanelRoot surface="card">
+            <div className="relative flex min-h-0 flex-1 flex-col overflow-visible bg-surface-card">
               <StationContextBar
                 placement="flow"
                 identity={
@@ -219,43 +267,38 @@ export function ScanOutActivePanel({
                     onExitToList={onExit}
                   />
                 }
-              />
-              <StationWorkbench
-                ambientWash={false}
-                className="relative z-0 flex-1 bg-transparent"
-                reserveScrollClearance={false}
-                reserveIdentityClearance={false}
-                bodyGap="none"
-                feedback={
-                  <div
-                    className={cn(
-                      'flex items-center gap-2 rounded-lg px-3 py-2 text-role-caption font-semibold',
-                      STATUS_TONE[pane.status],
-                    )}
-                  >
-                    <span className="min-w-0 flex-1 truncate">{statusLabel(pane)}</span>
+                moreDetails={
+                  <StationMoreDetails>
+                    {statusChip}
                     {canUndo && pane.status === 'ok' && onUndo ? (
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={onUndo}
                         disabled={isUndoing}
-                        className="h-auto shrink-0 px-0 text-role-caption text-emerald-800 underline-offset-2 hover:underline"
+                        className="h-auto shrink-0 px-1 text-role-micro text-emerald-800 underline-offset-2 hover:underline"
                       >
                         {isUndoing ? 'Undoing…' : 'Undo'}
                       </Button>
                     ) : null}
-                  </div>
+                  </StationMoreDetails>
                 }
+              />
+
+              <StationWorkbench
+                ambientWash={false}
+                className="relative z-0 flex-1 bg-transparent"
+                reserveScrollClearance={false}
+                reserveIdentityClearance={false}
+                bodyGap="none"
               >
-                <div className="stack-section inset-card">
-                  <p className="text-role-body font-semibold text-text-primary">
-                    {pane.productTitle}
-                  </p>
-                  <p className="text-role-caption font-semibold uppercase tracking-widest text-text-soft">
-                    {pane.qty}
-                    {pane.condition ? ` · ${pane.condition}` : ''}
-                    {tracking ? ` · ${tracking}` : ''}
+                <div
+                  className={cn(STATION_SCAN_WELL_CLASS, "flex min-h-0 flex-1 flex-col items-center justify-center inset-empty text-center")}
+                  data-testid="scan-out-ops-centre"
+                >
+                  <p className="text-role-caption text-text-muted">
+                    Scan the next carrier label below. Notes land on this package in the same
+                    field.
                   </p>
                 </div>
               </StationWorkbench>

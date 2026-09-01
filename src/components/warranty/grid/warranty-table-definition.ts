@@ -8,7 +8,7 @@
 
 import type { WarrantyClaimListRow } from '@/lib/warranty/types';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
-import { WARRANTY_GRID_COLUMNS, type WarrantyGridColumn } from './warranty-grid-layout';
+import { WARRANTY_SHEET_COLUMNS, type WarrantyGridColumn } from './warranty-grid-layout';
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import { WARRANTY_GRID_CAPABILITIES, makeWarrantyGridDescriptor } from './warranty-grid-descriptor';
 
@@ -22,12 +22,12 @@ export const WARRANTY_TABLE_DEFINITION = parseTableDefinition({
   surface: 'sheet',
   showDayHeaders: false,
   capabilities: WARRANTY_GRID_CAPABILITIES,
-  columns: WARRANTY_GRID_COLUMNS,
+  columns: WARRANTY_SHEET_COLUMNS,
 });
 
 export const WARRANTY_TABLE_BINDING: TableSurfaceBinding<WarrantyClaimListRow, WarrantyGridColumn> = {
   definition: WARRANTY_TABLE_DEFINITION,
-  columns: WARRANTY_GRID_COLUMNS,
+  columns: WARRANTY_SHEET_COLUMNS,
   makeDescriptor: makeWarrantyGridDescriptor,
   // The claim detail panel, keyed on `?open=`.
   recordPlane: { kind: 'inspector', occupantId: 'detail:warranty' },

@@ -24,17 +24,25 @@
  * scanning the band. Truncated at 14ch with the full name still in the tooltip
  * and the accessible name. Lit fill is the control box only (never a full-row /
  * full-band wash). SoT: source-of-truth.md → Left-edge occupant.
+ *
+ * Panel: the SAME house Popover + {@link DROPDOWN_SHELL_CORNER} as Sort and
+ * Filter. Header chrome (`HeaderChromeMenu`, `rounded-none`) is the GlobalHeader
+ * page/recents/pins face — a sibling a thumb-width away must not disagree about
+ * whether a menu in this product has corners.
  */
 
 import { useState } from 'react';
-import { AnchoredLayer } from '@/design-system/primitives';
 import { Bookmark } from '@/components/Icons';
-import { HeaderChromeMenu } from '@/components/layout/header-chrome-menu';
 import { SavedViewsList } from '@/components/saved-views/SavedViewsList';
 import { useSavedViews } from '@/hooks/useSavedViews';
 import { cn } from '@/utils/_cn';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
-import { cornerClass } from '@/design-system/tokens/radius';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/design-system/primitives/radix-popover';
+import { cornerClass, DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 
 export function WorkbenchViewsMenu({
@@ -66,7 +74,17 @@ export function WorkbenchViewsMenu({
           paramKeys={paramKeys}
           hideHeader
           emptyHint={emptyHint}
-          controller={controller}
+          controller={{
+            ...controller,
+            applyView: (view) => {
+              controller.applyView(view);
+              setOpen(false);
+            },
+            clearView: () => {
+              controller.clearView();
+              setOpen(false);
+            },
+          }}
         />
       </ViewsMenuShell>
     </div>
@@ -74,7 +92,8 @@ export function WorkbenchViewsMenu({
 }
 
 /**
- * The Views **face** — flush Bookmark trigger + `HeaderChromeMenu` panel, with
+ * The Views **face** — flush Bookmark trigger + the same `Popover` /
+ * {@link DROPDOWN_SHELL_CORNER} panel as DataTable Sort and Filter, with
  * no opinion about where the views come from.
  *
  * Exported because a surface may legitimately own a different saved-views
@@ -107,45 +126,55 @@ export function ViewsMenuShell({
   onClose: () => void;
   children: React.ReactNode;
 }) {
-  const [wrapEl, setWrapEl] = useState<HTMLDivElement | null>(null);
-  const wrapRef = { current: wrapEl };
   const lit = open || active;
   return (
-    <div ref={setWrapEl} className="relative inline-flex shrink-0 items-center p-0">
-      <button
-        type="button"
-        aria-label={active ? `Saved view: ${tip}` : 'Saved views'}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        aria-pressed={lit}
-        onClick={onToggle}
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) onClose();
+        else if (!open) onToggle();
+      }}
+    >
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={active ? `Saved view: ${tip}` : 'Saved views'}
+          aria-expanded={open}
+          aria-haspopup="menu"
+          aria-pressed={lit}
+          className={cn(
+            'ds-raw-button inline-flex shrink-0 items-center gap-1 px-1.5 text-role-caption',
+            // Colour only — ops chrome never tweens a neighbour's position.
+            'transition-colors duration-100 ease-out',
+            PRIMARY_CHROME_ROW_FACE,
+            cornerClass('flush'),
+            focusRing('control'),
+            lit
+              ? 'bg-blue-600 text-white hover:bg-blue-600'
+              : 'text-text-muted hover:bg-surface-hover hover:text-text-default',
+          )}
+        >
+          <Bookmark className="h-3.5 w-3.5 shrink-0" />
+          <span className="max-w-[12ch] truncate">{tip}</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        sideOffset={2}
+        aria-label="Saved views"
+        data-testid="data-table-views-menu"
+        onEscapeKeyDown={() => onClose()}
         className={cn(
-          'ds-raw-button inline-flex shrink-0 items-center gap-1 px-1.5 text-role-caption',
-          // Colour only — ops chrome never tweens a neighbour's position.
-          'transition-colors duration-100 ease-out',
-          PRIMARY_CHROME_ROW_FACE,
-          cornerClass('flush'),
-          focusRing('control'),
-          lit
-            ? 'bg-blue-600 text-white hover:bg-blue-600'
-            : 'text-text-muted hover:bg-surface-hover hover:text-text-default',
+          // Same named exemption Sort and Filter pass — the primitive already
+          // applies it, the import at this call site is the contract that a
+          // sibling a thumb-width away cannot disagree about corners.
+          DROPDOWN_SHELL_CORNER,
+          'w-72 overflow-hidden p-0.5',
+          focusRing('field', 'accent'),
         )}
       >
-        <Bookmark className="h-3.5 w-3.5 shrink-0" />
-        <span className="max-w-[12ch] truncate">{tip}</span>
-      </button>
-      <AnchoredLayer
-        open={open}
-        onClose={onClose}
-        anchorRef={wrapRef}
-        placement="bottom-end"
-        className="z-popover"
-      >
-        <HeaderChromeMenu ariaLabel="Saved views" className="w-72 p-0">
-          {/* Vertical rhythm only — no horizontal pad (flush ops chrome). */}
-          <div className="py-2">{children}</div>
-        </HeaderChromeMenu>
-      </AnchoredLayer>
-    </div>
+        <div className="p-1.5">{children}</div>
+      </PopoverContent>
+    </Popover>
   );
 }

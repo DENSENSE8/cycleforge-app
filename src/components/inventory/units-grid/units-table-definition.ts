@@ -12,7 +12,7 @@
 
 import type { UnitsOverviewRow } from '@/hooks/useUnitsOverview';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
-import { UNITS_GRID_COLUMNS, type UnitsGridColumn } from './units-grid-layout';
+import { UNITS_SHEET_COLUMNS, type UnitsGridColumn } from './units-grid-layout';
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import { UNITS_GRID_CAPABILITIES, makeUnitsGridDescriptor } from './units-grid-descriptor';
 
@@ -26,12 +26,12 @@ export const UNITS_TABLE_DEFINITION = parseTableDefinition({
   surface: 'sheet',
   showDayHeaders: false,
   capabilities: UNITS_GRID_CAPABILITIES,
-  columns: UNITS_GRID_COLUMNS,
+  columns: UNITS_SHEET_COLUMNS,
 });
 
 export const UNITS_TABLE_BINDING: TableSurfaceBinding<UnitsOverviewRow, UnitsGridColumn> = {
   definition: UNITS_TABLE_DEFINITION,
-  columns: UNITS_GRID_COLUMNS,
+  columns: UNITS_SHEET_COLUMNS,
   makeDescriptor: makeUnitsGridDescriptor,
   // The push inspector, keyed per RECORD (`?open=unit:<ref>`). Keyed by record
   // because a unit browse has no queue walk — an operator opens one unit, reads

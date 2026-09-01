@@ -8,6 +8,7 @@ import { IconButton } from '@/design-system/primitives/IconButton';
 import { RefreshCw, Trash2 } from '@/components/Icons';
 import type { AccountSummary } from './registry';
 import { FIELD_INPUT_CLS } from './form-styles';
+import { ebayConnectLoopbackWarning } from '@/lib/ebay/oauth-config';
 
 interface EbayConnectPopoverProps {
   role: 'seller' | 'buyer';
@@ -48,6 +49,8 @@ export function EbayConnectPopover({
   };
 
   const isBuyer = role === 'buyer';
+  const loopbackWarning =
+    typeof window !== 'undefined' ? ebayConnectLoopbackWarning(window.location.hostname) : null;
 
   return (
     <Popover open={open} onClose={onClose} anchorRef={anchorRef} placement="bottom-start" className={isBuyer ? 'w-96' : 'w-80'} role="dialog" aria-label={`Connect eBay ${kind} account`}>
@@ -91,6 +94,9 @@ export function EbayConnectPopover({
             autoFocus
           />
         </label>
+        {loopbackWarning && (
+          <p className="text-role-caption font-medium text-amber-800">{loopbackWarning}</p>
+        )}
         {error && <p className="text-role-caption font-medium text-red-600">{error}</p>}
         <div className="flex items-center justify-end gap-2">
           <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>

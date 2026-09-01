@@ -117,7 +117,7 @@ interface OmnichannelComposerDockProps {
   value: string;
   onChange: (next: string) => void;
   /** Persist / send — Enter (no Shift) and the trailing commit control. */
-  onCommit: () => void;
+  onCommit: (liveValue?: string) => void;
   placeholder?: string;
   ariaLabel?: string;
   disabled?: boolean;
@@ -337,7 +337,7 @@ export const OmnichannelComposerDock = forwardRef<
               radius="composer"
               ariaLabel={commitAriaLabel}
               disabled={disabled || !canCommit}
-              onClick={() => onCommit()}
+              onClick={() => onCommit(localRef.current?.value)}
               icon={commitIcon}
             >
               {commitLabel ?? commitAriaLabel}
@@ -349,7 +349,7 @@ export const OmnichannelComposerDock = forwardRef<
               type="button"
               aria-label={commitAriaLabel}
               disabled={disabled || !canCommit}
-              onClick={() => onCommit()}
+              onClick={() => onCommit(localRef.current?.value)}
               className={cn(
                 'ds-raw-button inline-flex h-8 w-8 shrink-0 items-center justify-center',
                 'text-text-faint hover:text-text-muted',
@@ -368,7 +368,7 @@ export const OmnichannelComposerDock = forwardRef<
               type="button"
               ariaLabel={commitAriaLabel}
               disabled={disabled || !canCommit}
-              onClick={() => onCommit()}
+              onClick={() => onCommit(localRef.current?.value)}
               className="h-7 w-7 rounded-full p-0"
             >
               <Send className="h-3.5 w-3.5" />
@@ -479,9 +479,15 @@ export const OmnichannelComposerDock = forwardRef<
               onDismissGhost();
               return;
             }
+            // Enter commits from the LIVE textarea value. HID wedges (Zebra /
+            // Eyoyo / Tera) hammer chars then Enter; the global wedge listener
+            // stands down over editables, so this field owns the terminator.
+            // Never gate Enter on React `canCommit` / `commitDisabled` — those
+            // lag one frame behind the DOM and silently drop the scan.
             handleComposerKeyDown(e, () => {
-              if (!canCommit) return;
-              onCommit();
+              const live = (e.currentTarget.value || localRef.current?.value || value).trim();
+              if (!live) return;
+              onCommit(live);
             });
           }}
           className={cn(

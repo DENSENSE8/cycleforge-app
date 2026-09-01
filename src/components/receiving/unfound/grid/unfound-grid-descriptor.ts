@@ -11,9 +11,8 @@ import {
 } from '@/design-system/components/grid';
 import type { QueueRow } from '../queue-table/unfound-queue-shared';
 import {
-  defaultDirForUnfoundGridSort,
-  isUnfoundGridFrozen,
-  isUnfoundGridSortable,
+  defaultDirForUnfoundColumn,
+  isUnfoundColumnSortable,
   type UnfoundGridColumn,
 } from './unfound-grid-layout';
 
@@ -46,9 +45,10 @@ export function makeUnfoundGridDescriptor(
     'receiving.unfound',
     columns,
     {
-      isSortable: isUnfoundGridSortable,
-      sortDescFirst: (key) => defaultDirForUnfoundGridSort(key) === 'desc',
-      isLocked: isUnfoundGridFrozen,
+      isSortable: (key) => isUnfoundColumnSortable(columns, key),
+      sortDescFirst: (key) => defaultDirForUnfoundColumn(columns, key) === 'desc',
+      // Locked = the mounted model's own frozen prefix (`select · title`).
+      isLocked: (key) => columns.some((c) => c.key === key && c.frozen === true),
     },
     UNFOUND_GRID_CAPABILITIES,
   );

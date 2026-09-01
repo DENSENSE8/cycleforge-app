@@ -33,6 +33,7 @@ import { requestConfirm } from '@/design-system/components/confirm';
 import { StaffAvatar } from '@/components/identity';
 import { renderInlineMarkdown } from '@/lib/support/markdown';
 import { formatDateTimePST } from '@/utils/date';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 
@@ -187,7 +188,12 @@ function MessageBubble({
             onClick={() => setMenuOpen((v) => !v)}
           />
           {menuOpen ? (
-            <div className="absolute right-0 z-panelPopover mt-1 w-32 overflow-hidden rounded-lg border border-border-soft bg-surface-card shadow-lg">
+            <div
+              className={cn(
+                'absolute right-0 z-panelPopover mt-1 w-32 overflow-hidden border border-border-soft bg-surface-card shadow-lg',
+                DROPDOWN_SHELL_CORNER,
+              )}
+            >
               {/* ds-raw-button: popover menu rows */}
               <button
                 type="button"
@@ -264,7 +270,12 @@ function StatusControl({
         {pill}
       </button>
       {open ? (
-        <div className="absolute left-0 z-panelPopover mt-1 w-36 overflow-hidden rounded-lg border border-border-soft bg-surface-card shadow-lg">
+        <div
+          className={cn(
+            'absolute left-0 z-panelPopover mt-1 w-36 overflow-hidden border border-border-soft bg-surface-card shadow-lg',
+            DROPDOWN_SHELL_CORNER,
+          )}
+        >
           {(Object.keys(STATUS_TONE) as ThreadStatus[]).map((s) => (
             // ds-raw-button: popover menu rows
             <button
@@ -332,7 +343,12 @@ function AssigneeControl({
       {/* ds-raw-button: assignee chip acts as a menu trigger */}
       <button type="button" onClick={() => setOpen((v) => !v)}>{chip}</button>
       {open ? (
-        <div className="absolute left-0 z-panelPopover mt-1 max-h-64 w-52 overflow-y-auto rounded-lg border border-border-soft bg-surface-card shadow-lg">
+        <div
+          className={cn(
+            'absolute left-0 z-panelPopover mt-1 max-h-64 w-52 overflow-y-auto border border-border-soft bg-surface-card shadow-lg',
+            DROPDOWN_SHELL_CORNER,
+          )}
+        >
           {assignment ? (
             // ds-raw-button: popover menu rows
             <button
@@ -620,7 +636,12 @@ export function ThreadPanel({
                   Escalate
                 </Button>
                 {escalateOpen && !escalate.isPending ? (
-                  <div className="absolute right-0 z-panelPopover mt-1 w-52 overflow-hidden rounded-xl border border-border-soft bg-surface-card shadow-lg">
+                  <div
+                    className={cn(
+                      'absolute right-0 z-panelPopover mt-1 w-52 overflow-hidden border border-border-soft bg-surface-card shadow-lg',
+                      DROPDOWN_SHELL_CORNER,
+                    )}
+                  >
                     <EscalateOption
                       label="Internal ticket"
                       hint="Track here — no external send"

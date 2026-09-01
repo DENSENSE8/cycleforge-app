@@ -12,11 +12,16 @@
  * editable; correction happens at the record plane the row opens.
  */
 
-import { gridFrozenKeys } from '@/design-system/components/grid/grid-column-editability';
 import {
   gridFrozenLeft,
   gridTemplate,
 } from '@/design-system/components/grid/grid-column-geometry';
+import {
+  MY_DAY_FIELD_CATALOG,
+  MY_DAY_PRODUCT_LAYOUT,
+} from '@/lib/tables/field-catalog/my-day';
+import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
+import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 import type { ColumnType, TableId } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -31,13 +36,11 @@ export const MY_DAY_TABLE_ID: TableId = 'my-day';
 export type MyDayGridColumnKey =
   | 'select'
   | 'task'
-  | 'lane'
-  | 'queue'
-  | 'record'
-  | 'due'
-  | 'status';
+  /** Materialized slot tracks — keys are slot indices, never field ids. */
+  | `status:${number}`
+  | `subtitle:${number}`;
 
-export interface MyDayGridColumn {
+export interface MyDayGridColumn extends SlotTrackFields {
   key: MyDayGridColumnKey;
   width: string;
   label?: string;
@@ -57,25 +60,11 @@ export interface MyDayGridColumn {
 }
 
 /**
- * Canonical Today columns. Only `task` flexes; facts are content-hard.
- *
- * **DEFAULT VIEW (tier `core`) is `select · task · lane · record · due`** — the
- * four questions a personal task row has to answer without a click: what it is,
- * which band of the day it belongs to, which record it points at, and when it is
- * due. Grids open lean and staff opt the rest in (`source-of-truth.md` → Grid
- * column visibility).
- *
- * `queue` and `status` ship `optional` for reasons, not to hit a number:
- *  - `queue` is the coarse category ("Orders" / "Testing" / "Support") of a
- *    record the `record` track already names precisely, so on a narrow viewport
- *    it is the track that costs most and says least.
- *  - `status` is **null on every interrupt** — only work orders carry a
- *    lifecycle — so on an interrupt-heavy day it is a half-empty ruled band.
- *
- * `select` and `task` are frozen, so they carry NO `hideKey` and no `tier`: the
- * Fields menu can never take a row's identity away (`isGridColumnVisible` rule 1).
+ * The structural sheet skeleton — what Today paints with ZERO bindings.
+ * `task` is the only flex track; the frozen pane is `select · task`, which
+ * carries no `hideKey`: the Fields menu can never take a row's identity away.
  */
-export const MY_DAY_GRID_COLUMNS: readonly MyDayGridColumn[] = [
+const MY_DAY_SHEET_BASE: readonly MyDayGridColumn[] = [
   { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
   {
     key: 'task',
@@ -86,88 +75,69 @@ export const MY_DAY_GRID_COLUMNS: readonly MyDayGridColumn[] = [
     type: 'text',
     labelFitRem: 8,
   },
-  {
-    key: 'lane',
-    width: 'minmax(6.5rem, 6.5rem)',
-    label: 'Lane',
-    type: 'tag',
-    hideKey: 'lane',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'queue',
-    width: 'minmax(6.5rem, 6.5rem)',
-    label: 'Queue',
-    type: 'tag',
-    hideKey: 'queue',
-    tier: 'optional',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'record',
-    width: 'minmax(8rem, 8rem)',
-    label: 'Record',
-    type: 'id',
-    hideKey: 'record',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'due',
-    width: 'minmax(5.5rem, 5.5rem)',
-    label: 'Due',
-    type: 'date',
-    hideKey: 'due',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'status',
-    width: 'minmax(6rem, 6rem)',
-    label: 'Status',
-    type: 'tag',
-    hideKey: 'status',
-    tier: 'optional',
-    labelFitRem: 4.5,
-  },
-] as const;
+];
 
 /**
- * Frozen identity pane — `select · task`, derived from the model's own `frozen`
- * flag (one declaration for freeze + immovability + sticky-offset math).
+ * Materialize the mounted Today columns from an effective layout. Both bands
+ * anchor on `task`, so the default plate reads lane · record · due — the
+ * retired hand model's core view.
  */
-const MY_DAY_GRID_LOCKED_KEYS: readonly MyDayGridColumnKey[] = gridFrozenKeys(MY_DAY_GRID_COLUMNS);
-
-const MY_DAY_GRID_SORTABLE_KEYS: readonly MyDayGridColumnKey[] = MY_DAY_GRID_COLUMNS.filter(
-  (c) => c.sortable !== false && c.key !== 'select',
-).map((c) => c.key);
-
-export function isMyDayGridSortable(key: string): key is MyDayGridColumnKey {
-  return (MY_DAY_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
+export function myDaySheetColumnsFor(layout: SlotLayout): readonly MyDayGridColumn[] {
+  return materializeTracks<MyDayGridColumn>({
+    layout,
+    catalog: MY_DAY_FIELD_CATALOG,
+    base: MY_DAY_SHEET_BASE,
+    statusAnchorKey: 'task',
+    subtitleAnchorKey: 'task',
+  });
 }
 
-export function isMyDayGridFrozen(key: string): boolean {
-  return MY_DAY_GRID_LOCKED_KEYS.includes(key as MyDayGridColumnKey);
+/**
+ * The PRODUCT-DEFAULT materialization — what an org with no override mounts,
+ * the canonical columns of the Today binding, and the guard SoT.
+ */
+export const MY_DAY_SHEET_COLUMNS: readonly MyDayGridColumn[] =
+  myDaySheetColumnsFor(MY_DAY_PRODUCT_LAYOUT);
+
+/** The FACT a column sorts by, or null when it offers no sort. */
+export function myDaySortFactFor(col: MyDayGridColumn): string | null {
+  if (col.sortable === false || col.key === 'select') return null;
+  if (col.key === 'task') return 'task';
+  return col.fieldId ?? null;
+}
+
+/** Model-derived sortability — the descriptor's and the URL guard's one answer. */
+export function isMyDayColumnSortable(
+  columns: readonly MyDayGridColumn[],
+  key: string,
+): key is MyDayGridColumnKey {
+  return columns.some((c) => c.key === key && myDaySortFactFor(c) !== null);
 }
 
 /** CSS grid template — one `var(--cf-col-<key>, <width>)` track per column. */
 export function myDayGridTemplate(
-  columns: readonly MyDayGridColumn[] = MY_DAY_GRID_COLUMNS,
+  columns: readonly MyDayGridColumn[] = MY_DAY_SHEET_COLUMNS,
 ): string {
   return gridTemplate(columns);
 }
 
-/**
- * Sticky offset for a frozen cell — row px plus the summed widths of the locked
- * columns before it. Self-computed over {@link MY_DAY_GRID_COLUMNS} so Today's
- * own track widths drive the offset.
- */
-export function myDayGridFrozenLeft(key: MyDayGridColumnKey): string {
-  return gridFrozenLeft(MY_DAY_GRID_COLUMNS, key);
+/** Sticky offset for a frozen cell, derived from the MOUNTED model. */
+export function myDayGridFrozenLeft(
+  columns: readonly MyDayGridColumn[],
+  key: MyDayGridColumnKey,
+): string {
+  return gridFrozenLeft(columns, key);
 }
 
-
-/** First-activation direction — recency/urgency columns open most-urgent-first. */
-export function defaultDirForMyDayGridSort(key: MyDayGridColumnKey): GridSortDir {
-  return key === 'due' ? 'desc' : 'asc';
+/**
+ * First-activation direction — recency/urgency columns open most-urgent-first.
+ */
+export function defaultDirForMyDayColumn(
+  columns: readonly MyDayGridColumn[],
+  key: string,
+): GridSortDir {
+  const dt = columns.find((c) => c.key === key)?.slotDisplayType;
+  return dt === 'date' || dt === 'money' || dt === 'number' ? 'desc' : 'asc';
 }
 
 // Shared spreadsheet chrome — @/design-system/components/grid ledgerGridCell.

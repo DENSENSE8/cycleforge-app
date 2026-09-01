@@ -64,7 +64,7 @@ export function SearchEntityCentre({
 
   return (
     <StationBandStack
-      className="flex min-h-0 flex-1 flex-col gap-3"
+      className="flex min-h-0 flex-1 flex-col"
       face="label"
       collapse={bands}
       bands={[

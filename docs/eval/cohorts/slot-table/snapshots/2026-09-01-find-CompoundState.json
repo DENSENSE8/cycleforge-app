@@ -1,0 +1,21 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "component:src/components/tables/compound/CompoundCells.tsx:CompoundState",
+      "kind": "component",
+      "name": "CompoundState",
+      "location": "src/components/tables/compound/CompoundCells.tsx:795",
+      "exported": true,
+      "signature": "function CompoundState({ view }: { view: CompoundRowView })"
+    },
+    {
+      "node_key": "type:src/components/tables/compound/compound-row-model.ts:CompoundStateTone",
+      "kind": "type",
+      "name": "CompoundStateTone",
+      "location": "src/components/tables/compound/compound-row-model.ts:34",
+      "exported": true,
+      "signature": "type CompoundStateTone = /** Ordinary progress. Neutral by default — most WMS states are unremarkable. */ | 'neutral' /** Finished / confirmed. */ | 'done' /** Needs a human: hold, exception, mismatch. The only attention-grabbing tone. */ | 'alert';"
+    }
+  ]
+}

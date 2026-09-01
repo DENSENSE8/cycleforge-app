@@ -39,6 +39,13 @@ import { cn } from '@/utils/_cn';
  */
 const MIN_RESIZE_PX = 48;
 
+/**
+ * Header reorder arms only after the pointer actually travels. HTML5
+ * `draggable` on the whole cell otherwise steals the click (Chrome starts a
+ * drag at ~4px of jitter) and header sort reads as dead.
+ */
+const HEADER_REORDER_ARM_PX = 24;
+
 /** Primary chrome row — LedgerGrid header / select / fact cells. One seam height. */
 const LEDGER_HEADER_ROW_FACE = PRIMARY_CHROME_ROW_FACE;
 import {
@@ -299,6 +306,8 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
 }) {
   const frozen = Boolean(column.frozen);
   const cellRef = useRef<HTMLDivElement>(null);
+  const originRef = useRef<{ x: number; y: number } | null>(null);
+  const didReorderRef = useRef(false);
   const [dragOver, setDragOver] = useState(false);
   /*
    * A header is three affordances on one element, so each is claimed narrowly:
@@ -331,12 +340,48 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
   const cell = (
     <div
       ref={cellRef}
-      draggable={reorderable || undefined}
+      onPointerDown={
+        reorderable
+          ? (event) => {
+              if (event.button !== 0) return;
+              const el = cellRef.current;
+              originRef.current = { x: event.clientX, y: event.clientY };
+              didReorderRef.current = false;
+              el?.setAttribute('draggable', 'false');
+              const move = (e: PointerEvent) => {
+                const origin = originRef.current;
+                if (!origin || !el) return;
+                if (
+                  Math.hypot(e.clientX - origin.x, e.clientY - origin.y) >=
+                  HEADER_REORDER_ARM_PX
+                ) {
+                  el.setAttribute('draggable', 'true');
+                }
+              };
+              const up = () => {
+                window.removeEventListener('pointermove', move);
+                window.removeEventListener('pointerup', up);
+                originRef.current = null;
+                if (!didReorderRef.current) el?.setAttribute('draggable', 'false');
+              };
+              window.addEventListener('pointermove', move);
+              window.addEventListener('pointerup', up);
+            }
+          : undefined
+      }
       onDragStart={
         reorderable
           ? (event) => {
+              didReorderRef.current = true;
               event.dataTransfer.effectAllowed = 'move';
               event.dataTransfer.setData('text/plain', column.key);
+            }
+          : undefined
+      }
+      onDragEnd={
+        reorderable
+          ? () => {
+              cellRef.current?.setAttribute('draggable', 'false');
             }
           : undefined
       }
@@ -364,7 +409,13 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
       data-col={column.key}
       data-frozen-edge={column.key === frozenEdgeKey ? true : undefined}
       aria-sort={ariaSort}
-      onClick={onSort}
+      onClick={() => {
+        if (didReorderRef.current) {
+          didReorderRef.current = false;
+          return;
+        }
+        onSort?.();
+      }}
       className={cn(
         'group/hcell relative gap-1',
         LEDGER_HEADER_ROW_FACE,
@@ -376,15 +427,19 @@ function LedgerHeaderCell<C extends LedgerGridColumnModel>({
         flushTrack && 'overflow-hidden p-0',
         frozen && LEDGER_GRID_FROZEN_CELL,
         tableHeader,
-        sortActive && 'cursor-pointer hover:text-text-default',
-        isActiveSort && 'text-text-default',
+        'text-text-default',
+        sortActive && 'cursor-pointer',
         // Colour only — a drop marker that inset or moved the cell would
         // reflow the whole header row mid-drag (AGENTS.md: no layout tweens).
         dragOver && 'bg-surface-sunken',
       )}
       style={frozen ? { left: gridFrozenLeft(columns, column.key) } : undefined}
     >
-      <GridHeaderLabel column={column} sortDir={isActiveSort ? sortDir : null} />
+      <GridHeaderLabel
+        column={column}
+        sortDir={isActiveSort ? sortDir : null}
+        sortable={sortActive}
+      />
       {resizable ? (
         <span
           role="separator"

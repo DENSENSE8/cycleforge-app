@@ -12,9 +12,8 @@ import {
 } from '@/design-system/components/grid';
 import type { OrderImportRowView } from '@/lib/orders/order-import-descriptor';
 import {
-  defaultDirForCsvImportStagingGridSort,
-  isCsvImportStagingGridFrozen,
-  isCsvImportStagingGridSortable,
+  defaultDirForCsvImportStagingColumn,
+  isCsvImportStagingColumnSortable,
   type CsvImportStagingGridColumn,
 } from './csv-import-staging-grid-layout';
 
@@ -48,9 +47,10 @@ export function makeCsvImportStagingGridDescriptor(
     'orders-import.staging',
     columns,
     {
-      isSortable: isCsvImportStagingGridSortable,
-      sortDescFirst: (key) => defaultDirForCsvImportStagingGridSort(key) === 'desc',
-      isLocked: isCsvImportStagingGridFrozen,
+      isSortable: (key) => isCsvImportStagingColumnSortable(columns, key),
+      sortDescFirst: (key) => defaultDirForCsvImportStagingColumn(columns, key) === 'desc',
+      // Locked = the mounted model's own frozen prefix (`select · order`).
+      isLocked: (key) => columns.some((c) => c.key === key && c.frozen === true),
     },
     CSV_IMPORT_STAGING_GRID_CAPABILITIES,
   );

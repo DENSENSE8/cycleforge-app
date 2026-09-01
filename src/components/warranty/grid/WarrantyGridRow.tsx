@@ -8,10 +8,14 @@ import { gridCellAlignClass } from '@/design-system/components/grid';
 import { WarrantyClockChip, WarrantyStatusBadge } from '@/components/warranty/chips';
 import { WarrantyTicketButton } from '@/components/warranty/WarrantyTicketPopover';
 import type { WarrantyClaimListRow } from '@/lib/warranty/types';
+import {
+  resolveWarrantySlotValue,
+  warrantyClaimItemLabel,
+} from '@/lib/tables/field-catalog/warranty-resolve';
+import { isSlotTrackKey } from '@/lib/tables/materialize-tracks';
 import { cn } from '@/utils/_cn';
 import { WARRANTY_GRID_CAPABILITIES } from './warranty-grid-descriptor';
 import {
-  WARRANTY_GRID_COLUMNS,
   WARRANTY_GRID_FROZEN_CELL,
   warrantyGridCell,
   warrantyGridFrozenLeft,
@@ -23,13 +27,13 @@ import {
 const dataCell = (col: WarrantyGridColumn, rule = true) =>
   cn(warrantyGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
 
-/** The item a claim is about — title, else the SKU, else the serial. */
-export function warrantyClaimItemLabel(claim: WarrantyClaimListRow): string | null {
-  return claim.productTitle || claim.sku || claim.serialNumber || null;
-}
+export { warrantyClaimItemLabel } from '@/lib/tables/field-catalog/warranty-resolve';
 
 /**
- * One warranty claim — CSS-grid columns matching {@link WARRANTY_GRID_COLUMNS}.
+ * One warranty claim — CSS-grid columns matching the MOUNTED model (a
+ * `SlotLayout` materialization since the wave 1.4 hand-model kill). The fact
+ * tracks switch on the bound FIELD ID; `select · title · claim · ticket` are
+ * structural and keep their own cases.
  *
  * Read-only: no inline editor and no fold. The row opens the claim at the
  * RECORD plane (`?open=`); the only row-scoped control is the ticket link,
@@ -40,17 +44,66 @@ export const WarrantyGridRow = memo(function WarrantyGridRow({
   claim,
   isSelected,
   onOpenClaim,
-  columns = WARRANTY_GRID_COLUMNS,
+  columns,
 }: {
   claim: WarrantyClaimListRow;
   isSelected: boolean;
   onOpenClaim: (id: number) => void;
-  columns?: readonly WarrantyGridColumn[];
+  columns: readonly WarrantyGridColumn[];
 }) {
   const itemLabel = warrantyClaimItemLabel(claim);
 
+  /** The body of one materialized slot track, chosen by the BOUND FIELD. */
+  const renderSlotBody = (fieldId: string | undefined): ReactNode => {
+    switch (fieldId) {
+      case 'warranty.serial':
+        return claim.serialNumber ? (
+          <SerialChip value={claim.serialNumber} width="w-fit max-w-full" />
+        ) : (
+          <GridCellDash />
+        );
+      case 'warranty.customer':
+        return claim.customerName ? (
+          <span className="min-w-0 truncate text-role-caption text-text-muted">
+            {claim.customerName}
+          </span>
+        ) : (
+          <GridCellDash />
+        );
+      case 'warranty.status':
+        return <WarrantyStatusBadge status={claim.status} />;
+      case 'warranty.clock':
+        return <WarrantyClockChip daysRemaining={claim.daysRemaining} basis={claim.clockBasis} />;
+      case 'warranty.logged':
+        return (
+          <GridDateTimeCellValue
+            raw={claim.createdAt}
+            className="text-role-caption text-text-faint"
+          />
+        );
+      default: {
+        // A catalog field with no bespoke face paints its resolved text — a new
+        // bindable fact needs a resolver case, never a new column file.
+        const value = fieldId ? resolveWarrantySlotValue(claim, fieldId) : null;
+        const text = value?.kind === 'value' ? value.text : null;
+        return text ? (
+          <span className="min-w-0 truncate text-role-caption text-text-soft">{text}</span>
+        ) : (
+          <GridCellDash />
+        );
+      }
+    }
+  };
+
   const renderCell = (col: WarrantyGridColumn, last: boolean): ReactNode => {
     const rule = !last;
+    if (isSlotTrackKey(col.key)) {
+      return (
+        <div data-col={col.key} className={dataCell(col, rule)}>
+          {renderSlotBody(col.fieldId)}
+        </div>
+      );
+    }
     switch (col.key) {
       case 'select':
         return (
@@ -60,7 +113,7 @@ export const WarrantyGridRow = memo(function WarrantyGridRow({
               WARRANTY_GRID_FROZEN_CELL,
               'justify-center',
             )}
-            style={{ left: warrantyGridFrozenLeft('select') }}
+            style={{ left: warrantyGridFrozenLeft(columns, 'select') }}
           >
             <span className="h-4 w-4 shrink-0" aria-hidden />
           </div>
@@ -70,7 +123,7 @@ export const WarrantyGridRow = memo(function WarrantyGridRow({
           <div
             data-col="title"
             className={cn(dataCell(col, rule), WARRANTY_GRID_FROZEN_CELL, 'gap-1.5')}
-            style={{ left: warrantyGridFrozenLeft('title') }}
+            style={{ left: warrantyGridFrozenLeft(columns, 'title') }}
             data-frozen-edge
           >
             {itemLabel ? (
@@ -100,46 +153,6 @@ export const WarrantyGridRow = memo(function WarrantyGridRow({
               truncateDisplay={false}
               fitDisplayWidth
             />
-          </div>
-        );
-      case 'serial':
-        return (
-          <div data-col="serial" className={dataCell(col, rule)}>
-            {claim.serialNumber ? (
-              <SerialChip value={claim.serialNumber} width="w-fit max-w-full" />
-            ) : (
-              <GridCellDash />
-            )}
-          </div>
-        );
-      case 'customer':
-        return (
-          <div data-col="customer" className={dataCell(col, rule)}>
-            {claim.customerName ? (
-              <span className="min-w-0 truncate text-role-caption text-text-muted">
-                {claim.customerName}
-              </span>
-            ) : (
-              <GridCellDash />
-            )}
-          </div>
-        );
-      case 'status':
-        return (
-          <div data-col="status" className={dataCell(col, rule)}>
-            <WarrantyStatusBadge status={claim.status} />
-          </div>
-        );
-      case 'warranty':
-        return (
-          <div data-col="warranty" className={dataCell(col, rule)}>
-            <WarrantyClockChip daysRemaining={claim.daysRemaining} basis={claim.clockBasis} />
-          </div>
-        );
-      case 'logged':
-        return (
-          <div data-col="logged" className={dataCell(col, rule)}>
-            <GridDateTimeCellValue raw={claim.createdAt} className="text-role-caption text-text-faint" />
           </div>
         );
       case 'ticket':

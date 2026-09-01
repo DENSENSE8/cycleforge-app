@@ -67,9 +67,41 @@ export function defaultDisplayIndexGroup(id: string): DisplayIndexGroup {
     case 'manuals':
       return 'assets';
     default:
-      // ticket · tracking · timeline · support · unknown → context
+      // ticket · tracking · timeline · support · look · unknown → context
       return 'context';
   }
+}
+
+/** Shared Displays leaf — live scan-station skin try-on. Injected by PushStack. */
+export const STATION_LOOK_DISPLAY_ID = 'look';
+
+/**
+ * Leaves the push column owns itself. Station hosts must not canonicalize
+ * these ids — Unbox used to treat unknown leaves as gated-off and fall back
+ * to the first visible strip tab (Linkage).
+ */
+export function isDisplaysHostedLeaf(id: string): boolean {
+  return id === STATION_LOOK_DISPLAY_ID;
+}
+
+/**
+ * Resolve the tab the Displays column should paint.
+ *
+ * Closed is `null`. `index` stays index. Displays-hosted leaves (`look`) pass
+ * through even when the station's carton tab list does not mention them —
+ * Pack / Testing / Search used to treat unknown ids as gated-off and bounce
+ * to the index. Known carton leaves stay as-is; anything else falls back to
+ * the index (never `tabs[0]`).
+ */
+export function resolveDisplaysActiveTab(
+  requested: string | null,
+  knownLeafIds: readonly string[],
+): string | null {
+  if (requested == null) return null;
+  if (requested === STATION_DISPLAY_INDEX) return STATION_DISPLAY_INDEX;
+  if (isDisplaysHostedLeaf(requested)) return requested;
+  if (knownLeafIds.includes(requested)) return requested;
+  return STATION_DISPLAY_INDEX;
 }
 
 /**
@@ -103,6 +135,8 @@ export const DISPLAY_LEAF_NAV_KEY: Record<string, string> = {
   order: 'o',
   documents: 'e',
   conversation: 'v',
+  // Scan-station skin try-on (injected on every PushStack host)
+  look: 'w',
 };
 
 /**
@@ -130,6 +164,31 @@ export function deriveDisplayIndexRowsFromTabs(tabs: readonly SectionTab[]): Dis
         group: defaultDisplayIndexGroup(t.id),
       };
     });
+}
+
+/**
+ * Ensure the Root Index carries a Look row whose subtitle is the live skin
+ * label. PushStack injects this so Unbox builders and thin stations both get
+ * the try-on leaf without forking a tab. Existing `look` rows keep their group
+ * and get a fresh subtitle.
+ */
+export function withLookDisplayIndexRow(
+  rows: readonly DisplayIndexRow[],
+  currentLabel: string,
+): DisplayIndexRow[] {
+  const lookRow: DisplayIndexRow = {
+    id: STATION_LOOK_DISPLAY_ID,
+    label: 'Look',
+    subtitle: currentLabel,
+    tone: 'neutral',
+    group: 'context',
+  };
+  const idx = rows.findIndex((r) => r.id === STATION_LOOK_DISPLAY_ID);
+  if (idx === -1) return [...rows, lookRow];
+  const existing = rows[idx]!;
+  const next = [...rows];
+  next[idx] = { ...lookRow, group: existing.group };
+  return next;
 }
 
 /**

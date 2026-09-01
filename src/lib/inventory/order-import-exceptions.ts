@@ -288,6 +288,29 @@ export async function resolveImportException(
     return { ok: false, error: 'Exception is not open', status: 409 };
   }
 
+  // Ingest already fired order.imported for a newly inserted order. When the
+  // resolve path only backfills an existing row, ingest's item_number backfill
+  // arm also fires order.item_number_set. If orderId is known, fire once more
+  // defensively for the resolve actor (idempotent when already assigned).
+  if (orderId != null) {
+    try {
+      const { applyListingAssignment, loadOrderListingFacts } = await import(
+        '@/lib/automations/apply-listing-assignment'
+      );
+      const facts = await loadOrderListingFacts(orgId, orderId);
+      if (facts) {
+        await applyListingAssignment({
+          organizationId: orgId,
+          orderId,
+          triggerKey: 'order.item_number_set',
+          facts: { ...facts, item_number: itemNumber },
+        });
+      }
+    } catch (err) {
+      console.warn('[resolveImportException] listing automation skipped:', err);
+    }
+  }
+
   await (deps.invalidate ?? invalidateCacheTags)(orgId, [CACHE_TAGS.orders]).catch(() => {});
 
   return { ok: true, orderId };

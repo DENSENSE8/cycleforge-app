@@ -3,6 +3,7 @@
 import { gridDataCellClass } from '@/design-system/components/grid';
 import { isCompoundColumnModel } from '@/components/tables/compound/compound-columns';
 import { renderCompoundGridCell } from '@/components/tables/compound/CompoundGridCell';
+import { ignoreRowSelectFromSubtitle } from '@/components/tables/compound/useSubtitlePointerReorder';
 import type { CompoundRowAction } from '@/components/tables/compound/compound-row-model';
 import { copyToClipboard } from '@/utils/_dom';
 import {
@@ -38,6 +39,7 @@ import {
 } from '@/components/ui/GridRowCheckbox';
 import type { GridSurfaceCapabilities } from '@/design-system/components/grid';
 import { isFbaOrder, marketplaceOrderUrl } from '@/utils/order-platform';
+import { getExternalUrlByItemNumber } from '@/utils/external-item-url';
 import { useOrderChannelLabel } from '@/hooks/useCatalog';
 import {
   formatDateWithOrdinal,
@@ -211,10 +213,10 @@ export interface OrdersQueueTableRowProps {
     value: string | null,
   ) => void;
   /**
-   * Reorder the under-title facts by dragging one. Writes the ORG layout, so
-   * it is handed down from the layout hook rather than owned per row.
+   * Present ⇒ the STATUS delay line edits ship-by in place (civil `YYYY-MM-DD`,
+   * `null` = clear). Same assign waist as condition / qty.
    */
-  onReorderSubtitle?: (partKey: string, toIndex: number) => void;
+  onCommitShipBy?: (record: ShippedOrder, dateKey: string | null) => void;
 }
 
 /** In-cell editors this row can host (one open at a time).
@@ -455,7 +457,6 @@ function OrdersQueueFlatRowCells({
         { orderId: id, shippingTrackingNumber: value },
         {
           onSuccess: () => toast.success('Tracking pasted from clipboard'),
-          onError: (e) => toast.error(e instanceof Error ? e.message : 'Failed to save tracking'),
         },
       );
     },
@@ -524,10 +525,8 @@ function OrdersQueueFlatRowCells({
 
   // ── Lateness / ship-by — the FLAT `age` cell and the mobile meta row ──────
   // `toPSTDateKey` → `formatDateWithOrdinal` and `formatQueueRowDateCell` are
-  // Intl work, once per row per render. COMPOUND carries lateness on its own
-  // `state` track (from the same `daysLate` prop) and has no ship-by cell at
-  // all, which is why none of this is reachable from there any more; the date
-  // node is mobile-only in either model.
+  // Intl work, once per row per render. COMPOUND paints the civil ship-by on
+  // the `state` track (same `daysLate` source, date from deadline / ship_by).
   const hasTester = Boolean(
     (record.test_date_time || record.test_activity_at) &&
       String(record.test_date_time || record.test_activity_at).trim(),
@@ -626,7 +625,10 @@ function OrdersQueueFlatRowCells({
         onToggleSelect ? (
           <GridRowCheckbox
             checked={isChecked}
-            onToggle={() => onToggleSelect(record, { shiftKey: false })}
+            // Shift-click extends from the anchor. This was `{ shiftKey: false }`
+            // — the range walk existed in `useTableSelectMode` the whole time
+            // and no caller could ever reach it.
+            onToggle={(event) => onToggleSelect(record, event)}
             label={isChecked ? 'Deselect row' : 'Select row'}
             chrome={selectGutterChrome}
           />
@@ -934,7 +936,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   onRequestReplaceTracking,
   onCommitCondition,
   onCommitSubtitleField,
-  onReorderSubtitle,
+  onCommitShipBy,
 }: OrdersQueueTableRowProps) {
   /**
    * WHICH COLUMN MODEL is mounted — this row's one layout discriminant.
@@ -1044,9 +1046,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                   onCommitSubtitleField(record, 'orders.qty', value),
               }]
             : []),
-          // Item number is COPY-ONLY in the list (operator ruling 2026-08-31).
-          // Editing it is a record-plane job — a chip that might copy or might
-          // open an editor makes the operator aim before a one-click verb.
+          // Item number is the Listing control (open on click, copy on hover).
           ...(subtitleFieldIds?.includes('orders.notes')
             ? [{
                 partKey: 'orders.notes',
@@ -1059,13 +1059,17 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         ]
       : undefined;
 
-  // The item number paints as a copy chip — it is the number an operator reads
-  // off a shelf label and retypes elsewhere, so the click is COPY and the edit
-  // rides in its menu.
+  // Item number is never painted as digits. Bound ⇒ listing glyph in the
+  // trailing cluster (info when a URL exists, faint when missing).
   const itemNumberValue = String(record.item_number ?? '').trim();
+  const listingHref = getExternalUrlByItemNumber(itemNumberValue);
   const subtitleCopies: readonly CompoundSubtitleCopy[] | undefined =
-    compoundLayout && itemNumberValue && subtitleFieldIds?.includes('orders.item_number')
-      ? [{ partKey: 'orders.item_number', value: itemNumberValue }]
+    compoundLayout && subtitleFieldIds?.includes('orders.item_number')
+      ? [{
+          partKey: 'orders.item_number',
+          value: itemNumberValue,
+          openHref: listingHref,
+        }]
       : undefined;
 
   // One adapter call per row — the compound cells all read this. Built here
@@ -1115,6 +1119,14 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     : null;
 
   const inTable = rowIndex != null;
+
+  const shipByEdit =
+    compoundView && onCommitShipBy
+      ? {
+          value: compoundView.delay?.dateKey ?? '',
+          onCommit: (dateKey: string | null) => onCommitShipBy(record, dateKey),
+        }
+      : undefined;
 
   /*
    * The row's ⋮ verbs.
@@ -1184,14 +1196,14 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         subtitleCopies,
         subtitleNoteKey: 'orders.notes',
         noteText: record.notes ?? null,
-        onReorderSubtitle,
+        shipByEdit,
         onOpen: onRowOpen ? () => onRowOpen(record) : undefined,
         actions: rowMenuActions,
         // Bulk membership. The mobile stacked row keeps its own leading slot.
         select: {
           checked: isChecked,
           onToggle: onToggleSelect
-            ? () => onToggleSelect(record, { shiftKey: false })
+            ? (event: { shiftKey: boolean }) => onToggleSelect(record, event)
             : undefined,
           label: isChecked ? 'Deselect row' : 'Select row',
         },
@@ -1229,12 +1241,14 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
 
   const shell: OrdersQueueRowShellProps = {
     'aria-rowindex': rowIndex,
-    onClick: (event) =>
+    onClick: (event) => {
+      if (ignoreRowSelectFromSubtitle(event)) return;
       onRowClick(record, {
         shiftKey: event.shiftKey,
         detail: event.detail,
         target: event.target,
-      }),
+      });
+    },
     onDoubleClick: () => {
       if (clickSelect) onRowOpen?.(record);
     },
@@ -1379,6 +1393,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.record.currency !== next.record.currency) return false;
   if (prev.record.label_printed_at !== next.record.label_printed_at) return false;
   if (prev.record.deadline_at !== next.record.deadline_at) return false;
+  if (prev.record.ship_by_date !== next.record.ship_by_date) return false;
   if (prev.record.created_at !== next.record.created_at) return false;
   if (prev.record.item_number !== next.record.item_number) return false;
   // TESTED-lane cells (tester + tested-at) render these — compare or go stale.
@@ -1401,6 +1416,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // renders; the host's callback is a stable useCallback, so this only fires
   // on a real capability change (record.condition is compared above).
   if (prev.onCommitCondition !== next.onCommitCondition) return false;
+  if (prev.onCommitShipBy !== next.onCommitShipBy) return false;
   // Live fields the COMPOUND `fulfillment` / `item` tracks paint. A label
   // landing on an open To-ship desk changes `shipping_tracking_number` and
   // nothing else on this list — compared nowhere, the row kept the empty

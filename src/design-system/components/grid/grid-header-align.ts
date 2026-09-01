@@ -60,6 +60,7 @@ export type GridColumnAlign = 'start' | 'end';
  * | `tracking` | `start` | **Label** — carrier tracking last-8; same start rule as `location`, distinct glyph (MapPin). |
  * | `text` · `longtext` | `start` | Prose reads from the left edge; a ragged left edge destroys the scan line. |
  * | `tag` · `external` | `start` | A chip or brand mark is a categorical label, not a quantity. |
+ * | `image` | `start` | A photo is looked at, not compared down a ones place — same scan line as a label. |
  *
  * **`location` / `tracking` stayed start on 2026-08-02; `date` flipped back to end on
  * 2026-08-03.** Tracking last-8s in an 8rem track left ~3rem of empty track on
@@ -92,6 +93,7 @@ const ALIGN_BY_TYPE: Record<ColumnType, GridColumnAlign> = {
   longtext: 'start',
   tag: 'start',
   external: 'start',
+  image: 'start',
 };
 
 /**

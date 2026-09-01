@@ -44,8 +44,14 @@ no `axis` and with `axis: "all"`, and both must be `isError` with `requires axis
 A `ds_tokens` result whose `tokens` array mixes axes is a `FAIL`.
 
 Each advertised axis (`color`, `radius`, `spacing`, `typography`, `z-index`,
-`elevation`, `border`, `focus`) must return `count > 0`. A missing TypeScript
+`elevation`, `border`, `focus`, `station-skin`) must return `count > 0`. A missing TypeScript
 file must throw, never `"0 tokens"`.
+
+Scan-station skins are a **separate axis** from colour. `ds_tokens({ axis: "station-skin" })`
+must list `applyStationSkin('porcelain')` (and peers) plus `--ds-station-well`, sourced from
+`src/design-system/themes/station-skins.ts`. Values on that axis must never contain a `#hex`
+(character fills stay in the catalog file; leaking them is how agents paste wood hex onto Unbox).
+`ds_contract("scan station theme skin porcelain packing bench")` must rank `station-skins` first.
 
 Colour `value` fields must never contain a `#hex`. That check is **vacuous**
 unless a planted hex fails it. Smoke spawns a second server with
@@ -78,12 +84,25 @@ command is the **mise node shim** plus `tools/design-mcp/server.mjs` — not
 `run-mcp.sh`. Cursor spawns without a login shell; a PATH-dependent wrapper is
 how the catalog goes empty.
 
+**Agent catalog gap (operator 2026-08-31):** Cursor may lease
+`project-0-…-design-mcp` without writing tools into the agent MCP filesystem
+(only `plugin-*` namespaces appear in `GetDynamicTools`). Closing the gap:
+
+1. `tools/design-mcp/cursor-plugin/` + `.cursor/hooks` `workspaceOpen` returns
+   `pluginPaths` so the same server loads as a plugin.
+2. Symlink: `~/.cursor/plugins/local/cycleforge-design-mcp` → that plugin dir.
+3. CLI fallback: `node tools/design-mcp/ds.mjs contract|tokens|critique …`
+4. `sessionStart` injects naming + dumb-station law; `preToolUse` denies UI
+   writes without `.cursor/design-mcp-session.json`.
+
 ```bash
 ./tools/design-mcp/run-mcp.sh </dev/null 2>&1 | head -2
+node tools/design-mcp/ds.mjs contract "dumb station scan mouth" | head -c 200
 ```
 
-Must print nothing on stdout and `cycleforge-design-mcp: ready` on stderr.
-(`run-mcp.sh` is still the smoke/CLI launcher.)
+Must print nothing on stdout and `cycleforge-design-mcp: ready` on stderr for
+`run-mcp.sh`. CLI must rank `StationComposerHost` first for the dumb-station
+intent.
 
 ## 4. The variant extractor — plant a regression
 

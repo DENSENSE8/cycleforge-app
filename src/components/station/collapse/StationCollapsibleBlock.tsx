@@ -88,6 +88,7 @@ export function StationBlockLabel({
   onToggle,
   face = 'label',
   seam = true,
+  className,
 }: {
   label: string;
   /**
@@ -122,6 +123,8 @@ export function StationBlockLabel({
    * rather than a boundary.
    */
   seam?: boolean;
+  /** Plane for the header strip (station-skin header fill). */
+  className?: string;
 }) {
   const identity = (
     <>
@@ -148,6 +151,7 @@ export function StationBlockLabel({
         className={cn(
           'relative flex w-full min-h-8 min-w-0 flex-nowrap items-center justify-start gap-1 px-3',
           !isHairline && seam ? STATION_CHROME_SEAM_HAIRLINE : null,
+          className,
         )}
         data-block-face={isHairline ? 'hairline' : 'label'}
       >
@@ -168,7 +172,10 @@ export function StationBlockLabel({
           data-collapse-toggle
           aria-expanded={open}
           aria-label={open ? `Collapse ${label}` : `Expand ${label}`}
-          className="absolute inset-0 z-0 h-full w-full min-w-0 cursor-pointer px-0"
+          className={cn(
+            'absolute inset-0 z-0 h-full w-full min-w-0 cursor-pointer px-0',
+            className ? 'hover:bg-surface-station-header-hover' : null,
+          )}
         />
         <span
           className={cn(
@@ -194,6 +201,7 @@ export function StationBlockLabel({
       className={cn(
         'flex w-full min-h-6 items-center justify-between gap-2',
         seam ? STATION_CHROME_SEAM_HAIRLINE : null,
+        className,
       )}
       data-block-face="label"
     >
@@ -276,6 +284,7 @@ export function StationCollapsibleBlock({
   face = 'label',
   seam = true,
   className,
+  headerClassName,
 }: {
   label: string;
   /** Identity glyph, drawn left of the word. See {@link StationBlockLabel}. */
@@ -298,6 +307,8 @@ export function StationCollapsibleBlock({
    * standalone it stays unset and the block is transparent chrome.
    */
   className?: string;
+  /** Birch bench strip on scan-station headers. */
+  headerClassName?: string;
 }) {
   return (
     // `shrink-0` unconditionally: in a bounded centre column the flexible
@@ -318,6 +329,7 @@ export function StationCollapsibleBlock({
         onToggle={onToggle}
         face={face}
         seam={seam}
+        className={headerClassName}
       />
 
       {collapsed ? null : <div className={bodyClassName}>{children}</div>}

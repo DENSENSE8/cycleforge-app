@@ -6,12 +6,17 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import type { SectionTab } from '@/design-system/components';
 import {
+  DISPLAY_LEAF_NAV_KEY,
   STATION_DISPLAY_INDEX,
+  STATION_LOOK_DISPLAY_ID,
   defaultDisplayIndexGroup,
   deriveDisplayIndexRowsFromTabs,
   filterDisplayIndexRows,
   groupDisplayIndexRows,
+  isDisplaysHostedLeaf,
+  resolveDisplaysActiveTab,
   summarizeDisplayIndexGroup,
+  withLookDisplayIndexRow,
   type DisplayIndexRow,
 } from './display-index';
 
@@ -42,6 +47,7 @@ test('defaultDisplayIndexGroup maps known leaves', () => {
   assert.equal(defaultDisplayIndexGroup('manuals'), 'assets');
   assert.equal(defaultDisplayIndexGroup('ticket'), 'context');
   assert.equal(defaultDisplayIndexGroup('timeline'), 'context');
+  assert.equal(defaultDisplayIndexGroup('look'), 'context');
 });
 
 test('deriveDisplayIndexRowsFromTabs skips stripHidden only (visible checklist stays)', () => {
@@ -120,4 +126,53 @@ test('filterDisplayIndexRows matches Daily inspector topic labels', () => {
   assert.equal(filterDisplayIndexRows(rows, 'overview')[0]?.id, 'overview');
   assert.equal(filterDisplayIndexRows(rows, 'ticket')[0]?.id, 'ticket');
   assert.ok(filterDisplayIndexRows(rows, 'who ran').some((r) => r.id === 'who-ran'));
+});
+
+test('DISPLAY_LEAF_NAV_KEY letters are unique', () => {
+  const letters = Object.values(DISPLAY_LEAF_NAV_KEY);
+  assert.equal(letters.length, new Set(letters).size);
+  assert.equal(DISPLAY_LEAF_NAV_KEY[STATION_LOOK_DISPLAY_ID], 'w');
+});
+
+test('Look is a Displays-hosted leaf — stations must not canonicalize it', () => {
+  assert.equal(isDisplaysHostedLeaf(STATION_LOOK_DISPLAY_ID), true);
+  assert.equal(isDisplaysHostedLeaf('linkage'), false);
+  assert.equal(isDisplaysHostedLeaf('index'), false);
+});
+
+test('resolveDisplaysActiveTab passes Look through and never swaps to tabs[0]', () => {
+  const known = ['photos', 'linkage'];
+  assert.equal(resolveDisplaysActiveTab(null, known), null);
+  assert.equal(resolveDisplaysActiveTab('index', known), 'index');
+  assert.equal(resolveDisplaysActiveTab('look', known), 'look');
+  assert.equal(resolveDisplaysActiveTab('photos', known), 'photos');
+  assert.equal(resolveDisplaysActiveTab('ghost', known), 'index');
+});
+
+test('withLookDisplayIndexRow appends Look under context', () => {
+  const rows: DisplayIndexRow[] = [
+    { id: 'ticket', label: 'Ticket', subtitle: 'No ticket', tone: 'neutral', group: 'context' },
+  ];
+  const next = withLookDisplayIndexRow(rows, 'Porcelain');
+  assert.equal(next.length, 2);
+  assert.equal(next[1]?.id, STATION_LOOK_DISPLAY_ID);
+  assert.equal(next[1]?.label, 'Look');
+  assert.equal(next[1]?.subtitle, 'Porcelain');
+  assert.equal(next[1]?.group, 'context');
+});
+
+test('withLookDisplayIndexRow refreshes subtitle without duplicating', () => {
+  const rows: DisplayIndexRow[] = [
+    {
+      id: STATION_LOOK_DISPLAY_ID,
+      label: 'Look',
+      subtitle: 'Industrial',
+      tone: 'neutral',
+      group: 'assets',
+    },
+  ];
+  const next = withLookDisplayIndexRow(rows, 'Coal');
+  assert.equal(next.length, 1);
+  assert.equal(next[0]?.subtitle, 'Coal');
+  assert.equal(next[0]?.group, 'assets');
 });

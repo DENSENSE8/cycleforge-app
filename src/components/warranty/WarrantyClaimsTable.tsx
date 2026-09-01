@@ -7,13 +7,16 @@ import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import type { RowGroup } from '@/lib/group-rows';
 import type { WarrantyClaimListRow } from '@/lib/warranty/types';
 import { WARRANTY_TABLE_BINDING } from '@/components/warranty/grid/warranty-table-definition';
+import { useWarrantyTableLayout } from '@/components/warranty/grid/useWarrantyTableLayout';
 import {
   WarrantyGridRow,
   warrantyClaimItemLabel,
 } from '@/components/warranty/grid/WarrantyGridRow';
 import {
-  defaultDirForWarrantyGridSort,
-  isWarrantyGridSortable,
+  defaultDirForWarrantyColumn,
+  isWarrantyColumnSortable,
+  warrantySheetColumnsFor,
+  warrantySortFactFor,
   type WarrantyGridColumn,
   type WarrantyGridColumnKey,
 } from '@/components/warranty/grid/warranty-grid-layout';
@@ -32,22 +35,22 @@ import { useWorkbenchSearchParam } from '@/hooks/useWorkbenchSearchParam';
 function compareWarrantyRows(
   a: WarrantyClaimListRow,
   b: WarrantyClaimListRow,
-  key: WarrantyGridColumnKey,
+  fact: string,
   dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
-  switch (key) {
+  switch (fact) {
     case 'title':
       return sign * (warrantyClaimItemLabel(a) || '').localeCompare(warrantyClaimItemLabel(b) || '');
-    case 'claim':
+    case 'warranty.claim':
       return sign * a.claimNumber.localeCompare(b.claimNumber);
-    case 'serial':
+    case 'warranty.serial':
       return sign * (a.serialNumber || '').localeCompare(b.serialNumber || '');
-    case 'customer':
+    case 'warranty.customer':
       return sign * (a.customerName || '').localeCompare(b.customerName || '');
-    case 'status':
+    case 'warranty.status':
       return sign * a.status.localeCompare(b.status);
-    case 'warranty': {
+    case 'warranty.clock': {
       const av = a.daysRemaining;
       const bv = b.daysRemaining;
       if (av == null && bv == null) return 0;
@@ -55,7 +58,7 @@ function compareWarrantyRows(
       if (bv == null) return -1;
       return sign * (av - bv);
     }
-    case 'logged':
+    case 'warranty.logged':
       return sign * a.createdAt.localeCompare(b.createdAt);
     default:
       return 0;
@@ -82,13 +85,23 @@ export function WarrantyClaimsTable() {
   // ▦ portals into Band-1 controls (find lives in Support sidebar — Units recipe).
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // The COLUMNS are the effective slot layout's materialization (staff ?? org
+  // ?? product — wave 1.4 hand-model kill). Sort keys are the mounted track
+  // keys; each resolves to its bound field's fact through `warrantySortFactFor`.
+  const { effectiveLayout: warrantyLayout, fields: warrantyFields } = useWarrantyTableLayout();
+  const columns = useMemo(() => warrantySheetColumnsFor(warrantyLayout), [warrantyLayout]);
+  const sortFactByKey = useMemo(
+    () => new Map(columns.map((c) => [c.key as string, warrantySortFactFor(c)])),
+    [columns],
+  );
+
   const {
     sort: columnSort,
     dir: sortDir,
     setSort,
   } = useUrlColumnSort<WarrantyGridColumnKey>({
-    isColumn: isWarrantyGridSortable,
-    defaultDir: defaultDirForWarrantyGridSort,
+    isColumn: (raw) => isWarrantyColumnSortable(columns, raw),
+    defaultDir: (key) => defaultDirForWarrantyColumn(columns, key),
   });
 
   // One-shot "settle" re-render after the grid first has data: the virtualized
@@ -105,9 +118,10 @@ export function WarrantyClaimsTable() {
   }, [isLoading, hasRows]);
 
   const orderGroupsByDate = useMemo<[string, RowGroup<WarrantyClaimListRow>[]][]>(() => {
+    const sortFact = columnSort ? (sortFactByKey.get(columnSort) ?? null) : null;
     const ordered =
-      columnSort && sortDir
-        ? [...claims].sort((a, b) => compareWarrantyRows(a, b, columnSort, sortDir))
+      sortFact && sortDir
+        ? [...claims].sort((a, b) => compareWarrantyRows(a, b, sortFact, sortDir))
         : claims;
     const groups = ordered.map((claim) => ({ key: `claim:${claim.id}`, rows: [claim] }));
     // One unnamed band — a claim list has no day/fold axis. Safe to emit even
@@ -115,7 +129,7 @@ export function WarrantyClaimsTable() {
     // not band count, so a band holding nothing still resolves to the teaching
     // box rather than headers over a void.
     return [['', groups]];
-  }, [claims, columnSort, sortDir]);
+  }, [claims, columnSort, sortFactByKey, sortDir]);
 
   // Degrade-not-fail: the claim list is this pane's PRIMARY resource, so a
   // failed fetch earns the retryable error state rather than an empty grid that
@@ -148,6 +162,8 @@ export function WarrantyClaimsTable() {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <DataTable<WarrantyClaimListRow, WarrantyGridColumnKey, WarrantyGridColumn>
           binding={WARRANTY_TABLE_BINDING}
+          columns={columns}
+          fields={warrantyFields}
           orderGroupsByDate={orderGroupsByDate}
           rows={claims}
           getRowId={(r) => String(r.id)}

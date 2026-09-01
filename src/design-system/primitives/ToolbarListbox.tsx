@@ -18,10 +18,14 @@
  * so they are structurally incapable of drifting apart — which is exactly what
  * happened before this module existed.
  *
- * Row anatomy, left to right — the gutters are FIXED so every row in a menu
- * lines up whether or not it carries a dot or a count:
+ * Row anatomy — the gutters are FIXED so every row in a menu lines up
+ * whether or not it carries a dot or a count:
  *
- *   [✓ 3.5 gutter] [leading dot] label …flex… [trailing count · kbd]
+ *   start (default): [✓ 3.5 gutter] [leading] label …flex… [trailing]
+ *   end (combobox):  [leading] label …flex… [trailing] [✓ 3.5 gutter]
+ *
+ * `checkAlign="end"` is the DataTable sort combobox face. Filter / icon menus
+ * keep `start` so their check does not compete with a trailing count.
  *
  * The row is deliberately NOT a `Button` variant: it is a flush, full-width
  * menu child, not an action control.
@@ -29,6 +33,7 @@
 
 import type { KeyboardEvent, ReactNode, RefObject } from 'react';
 import { Check } from '@/components/Icons';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
 /** `Popover` className for a toolbar listbox panel — one panel geometry. */
@@ -84,6 +89,12 @@ interface ToolbarListboxOptionProps {
   semantics?: 'option' | 'toggle' | 'plain';
   /** Replaces the checkmark in the glyph gutter (e.g. a reset arrow). */
   icon?: ReactNode;
+  /**
+   * Where the selection check sits. Default `start` (reserved left gutter so
+   * rows do not jump). `end` is the combobox face — check on the far right,
+   * still reserved so unselected rows keep the same width.
+   */
+  checkAlign?: 'start' | 'end';
   /** Sits between the check gutter and the label — a lifecycle/status dot. */
   leading?: ReactNode;
   /** Right-aligned meta — a count, a `kbd` shortcut chip. */
@@ -101,6 +112,7 @@ export function ToolbarListboxOption({
   selected = false,
   semantics = 'option',
   icon,
+  checkAlign = 'start',
   leading,
   trailing,
   children,
@@ -109,6 +121,14 @@ export function ToolbarListboxOption({
   dataAttrs,
   className,
 }: ToolbarListboxOptionProps) {
+  const check = icon ?? (
+    <Check
+      className={cn(
+        'h-3.5 w-3.5 shrink-0 text-blue-600',
+        selected ? 'opacity-100' : 'opacity-0',
+      )}
+    />
+  );
   return (
     // ds-raw-button: flush full-width menu child (role=option / aria-pressed) — no DS Button variant expresses it.
     <button
@@ -123,24 +143,19 @@ export function ToolbarListboxOption({
         // the operator reads, not the dense chrome the condensed 10px cut exists
         // for. One role for all three menus — never a per-menu size.
         'flex w-full items-center gap-2 rounded-none px-2.5 py-1.5 text-left text-role-caption font-semibold transition-colors',
+        focusRing('control'),
         selected
-          ? 'text-text-default hover:bg-surface-sunken'
-          : 'text-text-muted hover:bg-surface-sunken hover:text-text-default',
+          ? 'text-text-default hover:bg-surface-hover'
+          : 'text-text-muted hover:bg-surface-hover hover:text-text-default',
         className,
       )}
       {...dataAttrs}
     >
-      {icon ?? (
-        <Check
-          className={cn(
-            'h-3.5 w-3.5 shrink-0 text-blue-600',
-            selected ? 'opacity-100' : 'opacity-0',
-          )}
-        />
-      )}
+      {checkAlign === 'start' ? check : null}
       {leading}
       <span className="min-w-0 flex-1 truncate">{children}</span>
       {trailing}
+      {checkAlign === 'end' ? check : null}
     </button>
   );
 }

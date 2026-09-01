@@ -7,7 +7,13 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { FieldCatalog, FieldDef } from './field-catalog/types';
-import { moveFieldBinding, slotFieldOptions, toggleFieldBinding } from './layout-edit';
+import {
+  moveFieldBinding,
+  reorderFieldBinding,
+  reorderFieldBindingByDrop,
+  slotFieldOptions,
+  toggleFieldBinding,
+} from './layout-edit';
 import { MAX_STATUS_SLOTS, slotLimitMessage, type SlotLayout } from './slot-layout-core';
 
 const IDENTITY: FieldDef = {
@@ -24,6 +30,12 @@ const QTY: FieldDef = {
 };
 const NOTES: FieldDef = {
   id: 'orders.notes', family: 'orders', label: 'Notes', displayType: 'note', slotKinds: ['subtitle'],
+};
+const ITEM: FieldDef = {
+  id: 'orders.item_number', family: 'orders', label: 'Item', displayType: 'id', slotKinds: ['subtitle'],
+};
+const COND: FieldDef = {
+  id: 'orders.condition', family: 'orders', label: 'Condition', displayType: 'tag', slotKinds: ['subtitle'],
 };
 const AMOUNT: FieldDef = {
   id: 'orders.amount', family: 'orders', label: 'Amount', displayType: 'money', slotKinds: ['amount'],
@@ -122,6 +134,93 @@ describe('moveFieldBinding', () => {
   it('refuses an unbound or unbindable field', () => {
     assert.equal(moveFieldBinding(layout(), QTY, 'down').ok, false);
     assert.equal(moveFieldBinding(layout(), AMOUNT, 'up').ok, false);
+  });
+});
+
+describe('reorderFieldBinding', () => {
+  it('lands a bound field at an absolute index in one write', () => {
+    const bound = layout({
+      subtitleBindings: [
+        { fieldId: 'orders.qty' },
+        { fieldId: 'orders.condition' },
+        { fieldId: 'orders.item_number' },
+      ],
+    });
+    const result = reorderFieldBinding(bound, ITEM, 0);
+    assert.ok(result.ok);
+    if (!result.ok) return;
+    assert.deepEqual(result.layout.subtitleBindings, [
+      { fieldId: 'orders.item_number' },
+      { fieldId: 'orders.qty' },
+      { fieldId: 'orders.condition' },
+    ]);
+    assert.deepEqual(bound.subtitleBindings[0], { fieldId: 'orders.qty' });
+  });
+
+  it('clamps a drop past the last track to last, and is a no-op at the same index', () => {
+    const bound = layout({
+      subtitleBindings: [{ fieldId: 'orders.qty' }, { fieldId: 'orders.notes' }],
+    });
+    const clamped = reorderFieldBinding(bound, QTY, 99);
+    assert.ok(clamped.ok);
+    if (!clamped.ok) return;
+    assert.deepEqual(clamped.layout.subtitleBindings, [
+      { fieldId: 'orders.notes' },
+      { fieldId: 'orders.qty' },
+    ]);
+    const same = reorderFieldBinding(bound, QTY, 0);
+    assert.ok(same.ok);
+    if (!same.ok) return;
+    assert.equal(same.layout, bound);
+  });
+});
+
+describe('reorderFieldBindingByDrop', () => {
+  it('lands the dragged field on the drop field in the same band', () => {
+    const bound = layout({
+      subtitleBindings: [
+        { fieldId: 'orders.qty' },
+        { fieldId: 'orders.condition' },
+        { fieldId: 'orders.item_number' },
+      ],
+    });
+    const result = reorderFieldBindingByDrop(bound, ITEM, QTY);
+    assert.ok(result.ok);
+    if (!result.ok) return;
+    assert.deepEqual(result.layout.subtitleBindings, [
+      { fieldId: 'orders.item_number' },
+      { fieldId: 'orders.qty' },
+      { fieldId: 'orders.condition' },
+    ]);
+  });
+
+  it('lands on the named field even when notes sits in the middle of the band', () => {
+    const bound = layout({
+      subtitleBindings: [
+        { fieldId: 'orders.qty' },
+        { fieldId: 'orders.notes' },
+        { fieldId: 'orders.condition' },
+        { fieldId: 'orders.item_number' },
+      ],
+    });
+    const result = reorderFieldBindingByDrop(bound, ITEM, COND);
+    assert.ok(result.ok);
+    if (!result.ok) return;
+    assert.deepEqual(result.layout.subtitleBindings, [
+      { fieldId: 'orders.qty' },
+      { fieldId: 'orders.notes' },
+      { fieldId: 'orders.item_number' },
+      { fieldId: 'orders.condition' },
+    ]);
+  });
+
+  it('refuses a cross-band drop', () => {
+    const bound = layout({
+      statusBindings: [{ fieldId: 'orders.picked' }],
+      subtitleBindings: [{ fieldId: 'orders.qty' }],
+    });
+    const result = reorderFieldBindingByDrop(bound, QTY, TESTED);
+    assert.equal(result.ok, false);
   });
 });
 

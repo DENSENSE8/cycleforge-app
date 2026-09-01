@@ -67,8 +67,8 @@ import {
 import { useOrderChannelLabel, usePlatformMeta } from '@/hooks/useCatalog';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
 import { PlatformMark } from '@/components/ui/PlatformMark';
-import { CarrierMark } from '@/components/ui/CarrierMark';
-import { resolveCarrierBrand } from '@/lib/carrier-brand';
+import { BrandIdentityDot } from '@/components/ui/grid-cells';
+import { carrierBrandDotPaint, resolveCarrierBrand } from '@/lib/carrier-brand';
 
 export type SearchRowDensity = 'compact' | 'comfortable' | 'dropdown';
 
@@ -257,11 +257,12 @@ function TrackingMeta({
   carrier?: string | null;
 }) {
   const brand = resolveCarrierBrand(tracking, carrier);
+  const paint = carrierBrandDotPaint(brand);
   return (
     <span className="inline-flex shrink-0 items-center gap-1">
       <HoverTooltip label={brand.label} focusable={false}>
         <span className="inline-flex shrink-0 items-center">
-          <CarrierMark meta={brand} footprint="chip" />
+          <BrandIdentityDot variant="ring" className={paint.className} style={paint.style} />
         </span>
       </HoverTooltip>
       <TrackingChip value={tracking} display={getLast8(tracking)} dense />

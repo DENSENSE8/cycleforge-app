@@ -28,8 +28,7 @@ const parseISODate = (raw: string | null): Date | undefined => {
  * ReceivingLinesTable refetches off the same params — no prop-drilling. Every
  * filter change drops `?page=` so the right pane lands on page 1.
  *
- * Writers: Band-3 search-field source filter owns `?inbound=` (All / Zoho /
- * eBay); filter popover owns `?state=` + date.
+ * Writers: DataTable's filter (search · funnel) owns `?inbound=` and `?state=`.
  */
 export function useIncomingFilters() {
   const router = useRouter();

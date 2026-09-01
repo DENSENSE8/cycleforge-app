@@ -35,7 +35,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 import { describe, it } from 'node:test';
 
@@ -207,6 +207,293 @@ const RETIRED: RetiredSymbol[] = [
     retiredBy:
       'Amazon Prep shipped-table orphan — only consumer was FbaShippedTable, deleted with the display teardown.',
   },
+  // ── Seller-table-program wave 1.1 — Ready slot port (docs/todo/seller-table-program-PLAN.md §03) ──
+  {
+    symbol: 'READY_GRID_COLUMNS',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.1 — the Ready flat fact-track array, and the last live `{ key: \'tested\' }` track in src/. Mount readySheetColumnsFor(SlotLayout) over READY_FIELD_CATALOG.',
+  },
+  {
+    symbol: 'isReadyGridSortable',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.1 — static-list sortability. Sortability derives from the MOUNTED model: isReadyColumnSortable(columns, key).',
+  },
+  {
+    symbol: 'isReadyGridFrozen',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.1 — static frozen-key list. The descriptor reads the mounted column\'s own `frozen` flag.',
+  },
+  {
+    symbol: 'defaultDirForReadyGridSort',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.1 — per-key default direction. Direction rides the bound field\'s displayType: defaultDirForReadyColumn(columns, key).',
+  },
+  // ── Seller-table-program wave 1.4 — sheet ports (docs/todo/seller-table-program-PLAN.md §03) ──
+  {
+    symbol: 'UNITS_GRID_COLUMNS',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — the units flat fact-track array. Mount unitsSheetColumnsFor(SlotLayout) over UNITS_FIELD_CATALOG.',
+  },
+  {
+    symbol: 'isUnitsGridSortable',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static-list sortability. Sortability derives from the MOUNTED model: isUnitsColumnSortable(columns, key).',
+  },
+  {
+    symbol: 'isUnitsGridFrozen',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static frozen-key list. The descriptor reads the mounted column\'s own `frozen` flag.',
+  },
+  {
+    symbol: 'defaultDirForUnitsGridSort',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — per-key default direction. Direction rides the bound field\'s displayType: defaultDirForUnitsColumn(columns, key).',
+  },
+  {
+    symbol: 'BINS_GRID_COLUMNS',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — the bins flat fact-track array. Mount binsSheetColumnsFor(SlotLayout) over BINS_FIELD_CATALOG.',
+  },
+  {
+    symbol: 'isBinsGridSortable',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static-list sortability. Sortability derives from the MOUNTED model: isBinsColumnSortable(columns, key).',
+  },
+  {
+    symbol: 'isBinsGridFrozen',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static frozen-key list. The descriptor reads the mounted column\'s own `frozen` flag.',
+  },
+  {
+    symbol: 'defaultDirForBinsGridSort',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — per-key default direction. Direction rides the bound field\'s displayType: defaultDirForBinsColumn(columns, key).',
+  },
+
+  {
+    symbol: 'WARRANTY_GRID_COLUMNS',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — the warranty flat fact-track array. Mount warrantySheetColumnsFor(SlotLayout) over WARRANTY_FIELD_CATALOG.',
+  },
+  {
+    symbol: 'isWarrantyGridSortable',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static-list sortability. Sortability derives from the MOUNTED model: isWarrantyColumnSortable(columns, key).',
+  },
+  {
+    symbol: 'isWarrantyGridFrozen',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static frozen-key list. The descriptor reads the mounted column\'s own `frozen` flag.',
+  },
+  {
+    symbol: 'defaultDirForWarrantyGridSort',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — per-key default direction. Direction rides the bound field\'s displayType: defaultDirForWarrantyColumn(columns, key).',
+  },
+
+  {
+    symbol: 'CATALOG_GRID_COLUMNS',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — the products-catalog flat fact-track array. Mount catalogSheetColumnsFor(SlotLayout) over CATALOG_FIELD_CATALOG.',
+  },
+  {
+    symbol: 'isCatalogGridSortable',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static-list sortability. Sortability derives from the MOUNTED model: isCatalogColumnSortable(columns, key).',
+  },
+  {
+    symbol: 'isCatalogGridFrozen',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static frozen-key list. The descriptor reads the mounted column\'s own `frozen` flag.',
+  },
+  {
+    symbol: 'defaultDirForCatalogGridSort',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — per-key default direction. Direction rides the bound field\'s displayType: defaultDirForCatalogColumn(columns, key).',
+  },
+
+  {
+    symbol: 'TECH_ALL_GRID_COLUMNS',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — the Tech-All flat fact-track array. Mount techAllSheetColumnsFor(SlotLayout) over TECH_ALL_FIELD_CATALOG.',
+  },
+  {
+    symbol: 'isTechAllGridSortable',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static-list sortability. Sortability derives from the MOUNTED model: isTechAllColumnSortable(columns, key).',
+  },
+  {
+    symbol: 'isTechAllGridFrozen',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static frozen-key list. The descriptor reads the mounted column\'s own `frozen` flag.',
+  },
+  {
+    symbol: 'defaultDirForTechAllGridSort',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — per-key default direction. The urgency RANK exception now rides the fact in defaultDirForTechAllColumn(columns, key).',
+  },
+
+  {
+    symbol: 'UNFOUND_GRID_COLUMNS',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — the unfound flat fact-track array. Mount unfoundSheetColumnsFor(SlotLayout) over UNFOUND_FIELD_CATALOG.',
+  },
+  {
+    symbol: 'isUnfoundGridSortable',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static-list sortability. Sortability derives from the MOUNTED model: isUnfoundColumnSortable(columns, key).',
+  },
+  {
+    symbol: 'isUnfoundGridFrozen',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static frozen-key list. The descriptor reads the mounted column\'s own `frozen` flag.',
+  },
+  {
+    symbol: 'defaultDirForUnfoundGridSort',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — per-key default direction. The queue\'s ascending-everything rule now lives in defaultDirForUnfoundColumn.',
+  },
+
+  {
+    symbol: 'REPAIR_GRID_COLUMNS',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — the repair flat fact-track array. Mount repairSheetColumnsFor(SlotLayout) over REPAIR_FIELD_CATALOG.',
+  },
+  {
+    symbol: 'isRepairGridSortable',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static-list sortability. Sortability derives from the MOUNTED model: isRepairColumnSortable(columns, key).',
+  },
+  {
+    symbol: 'isRepairGridFrozen',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static frozen-key list. The descriptor reads the mounted column\'s own `frozen` flag.',
+  },
+
+  {
+    symbol: 'MY_DAY_GRID_COLUMNS',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — the Today flat fact-track array. Mount myDaySheetColumnsFor(SlotLayout) over MY_DAY_FIELD_CATALOG.',
+  },
+  {
+    symbol: 'isMyDayGridSortable',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static-list sortability. Sortability derives from the MOUNTED model: isMyDayColumnSortable(columns, key).',
+  },
+  {
+    symbol: 'isMyDayGridFrozen',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static frozen-key list. The descriptor reads the mounted column\'s own `frozen` flag.',
+  },
+  {
+    symbol: 'defaultDirForMyDayGridSort',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — per-key default direction. Direction rides the bound field\'s displayType: defaultDirForMyDayColumn(columns, key).',
+  },
+
+  {
+    symbol: 'TRACKING_EXCEPTIONS_GRID_COLUMNS',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — the exceptions flat fact-track array. Mount trackingExceptionsSheetColumnsFor(SlotLayout) over TRACKING_EXCEPTIONS_FIELD_CATALOG.',
+  },
+  {
+    symbol: 'isTrackingExceptionsGridSortable',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static-list sortability. Sortability derives from the MOUNTED model: isTrackingExceptionsColumnSortable(columns, key).',
+  },
+  {
+    symbol: 'isTrackingExceptionsGridFrozen',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static frozen-key list. The descriptor reads the mounted column\'s own `frozen` flag.',
+  },
+  {
+    symbol: 'defaultDirForTrackingExceptionsGridSort',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — per-key default direction. Direction rides the bound field\'s displayType: defaultDirForTrackingExceptionsColumn(columns, key).',
+  },
+
+  {
+    symbol: 'CSV_IMPORT_STAGING_GRID_COLUMNS',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — the staging flat fact-track array. Mount csvImportStagingSheetColumnsFor(SlotLayout) over ORDERS_IMPORT_FIELD_CATALOG.',
+  },
+  {
+    symbol: 'isCsvImportStagingGridSortable',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static-list sortability. Sortability derives from the MOUNTED model: isCsvImportStagingColumnSortable(columns, key).',
+  },
+  {
+    symbol: 'isCsvImportStagingGridFrozen',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — static frozen-key list. Cells read the mounted column\'s own `frozen` flag.',
+  },
+  {
+    symbol: 'defaultDirForCsvImportStagingGridSort',
+    since: '2026-08-31',
+    retiredBy:
+      'seller-table-program wave 1.4 — per-key default direction. Direction rides the bound field\'s displayType: defaultDirForCsvImportStagingColumn(columns, key).',
+  },
+
+  {
+    symbol: 'PLATFORM_BRAND_ICON_PATHS',
+    since: '2026-09-01',
+    retiredBy:
+      'Platform identity is BrandIdentityDot / platformMetaBrandDot. Do not restore SVG path data.',
+  },
+  {
+    symbol: 'PLATFORM_BRAND_ICON_VIEWBOX',
+    since: '2026-09-01',
+    retiredBy:
+      'Platform identity is BrandIdentityDot / platformMetaBrandDot. Do not restore SVG path data.',
+  },
+  {
+    symbol: 'CarrierMark',
+    since: '2026-09-01',
+    retiredBy:
+      'Tracking identity is BrandIdentityDot ring / carrierBrandDotPaint. Do not restore a MapPin carrier glyph.',
+  },
 ];
 
 /** Recursively collect shipped `.ts`/`.tsx` under src (skip tests + node_modules). */
@@ -258,6 +545,43 @@ describe('retired design-system symbols stay retired (1a + 1d)', () => {
       );
     });
   }
+
+  it('primitives/FilterMenu.tsx stays deleted — compose ui/FilterMenu', () => {
+    assert.equal(
+      existsSync(join(SRC, 'design-system/primitives/FilterMenu.tsx')),
+      false,
+      'src/design-system/primitives/FilterMenu.tsx returned. That fork had zero importers; the SoT is src/components/ui/FilterMenu.tsx.',
+    );
+  });
+
+  it('platform-brand-icons.ts stays deleted — identity is BrandIdentityDot', () => {
+    assert.equal(
+      existsSync(join(SRC, 'lib/platform-brand-icons.ts')),
+      false,
+      'src/lib/platform-brand-icons.ts returned. Platform identity is BrandIdentityDot / platformMetaBrandDot, not SVG path data.',
+    );
+  });
+
+  it('CarrierMark.tsx stays deleted — tracking identity is BrandIdentityDot', () => {
+    assert.equal(
+      existsSync(join(SRC, 'components/ui/CarrierMark.tsx')),
+      false,
+      'src/components/ui/CarrierMark.tsx returned. Tracking identity is the carrier ring BrandIdentityDot, not MapPin.',
+    );
+  });
+
+  it('Incoming Band-3 FilterMenu wrappers stay deleted — compose DataTable filter', () => {
+    assert.equal(
+      existsSync(join(SRC, 'components/sidebar/receiving/incoming/IncomingKindFilters.tsx')),
+      false,
+      'IncomingKindFilters.tsx returned. Kind/source facets live in Incoming DataTable filter (To-ship gold).',
+    );
+    assert.equal(
+      existsSync(join(SRC, 'components/sidebar/receiving/incoming/IncomingSourceFilters.tsx')),
+      false,
+      'IncomingSourceFilters.tsx returned. Kind/source facets live in Incoming DataTable filter (To-ship gold).',
+    );
+  });
 
   it('registry is honest — no duplicates, every entry cites a retiring rule', () => {
     const seen = new Set<string>();

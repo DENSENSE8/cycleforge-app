@@ -1,5 +1,6 @@
 import { chipLabel } from '@/design-system/tokens/typography/presets';
 import { elevationClass } from '@/design-system/tokens/shadows';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -10,6 +11,7 @@ import { cn } from '@/utils/_cn';
  */
 export const CHIP_HOVER_MENU_PANEL_CLASS = cn(
   'min-w-35 max-w-[18rem] overflow-hidden border border-border-soft bg-surface-card p-0 text-text-default',
+  DROPDOWN_SHELL_CORNER,
   elevationClass('overlay'),
 );
 

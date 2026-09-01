@@ -71,13 +71,17 @@ test('journeyFirst (search deep-link) wins over the context default', () => {
 
 test('pre-pack lanes prep the unit; post-pack lanes reprint the shipping document', () => {
   const pending = orderBulkActionKeys('unshipped');
-  assert.deepEqual([...pending], ['copy', 'assign', 'ship-by', 'print', 'flag', 'export', 'delete']);
+  assert.deepEqual(
+    [...pending],
+    ['copy', 'assign', 'listing-rule', 'ship-by', 'print', 'flag', 'export', 'delete'],
+  );
   assert.deepEqual([...PENDING_BULK_ACTION_KEYS], [...pending]);
 
   const packed = orderBulkActionKeys('packed');
   assert.ok(packed.includes('print-shipping'));
   // Assigning a tester to an order that is already packed is not a thing.
   assert.ok(!packed.includes('assign'));
+  assert.ok(!packed.includes('listing-rule'));
   assert.ok(!packed.includes('ship-by'));
   assert.ok(!packed.includes('print'));
 

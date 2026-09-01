@@ -21,16 +21,27 @@
  *
  * `null` sort = "no column sort" — the surface's server/mode default order,
  * with the param absent from the URL entirely.
+ *
+ * Header clicks paint **pending** before App Router's soft-replace lands, so
+ * the arrow and the row order update in the same tick as the click rather than
+ * waiting on `useSearchParams`.
  */
 
 import { useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useOptimisticUrlParams } from '@/hooks/useOptimisticUrlParam';
+import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
 import {
   GRID_COLUMN_DIR_PARAM,
   GRID_COLUMN_SORT_PARAM,
 } from '@/lib/tables/grid-column-sort-params';
 
 type UrlColumnSortDir = 'asc' | 'desc';
+
+type UrlColumnSortPair<K extends string> = {
+  sort: K | null;
+  dir: UrlColumnSortDir | null;
+};
 
 interface UrlColumnSortResult<K extends string> {
   /** Active column sort, or `null` for the surface's default order. */
@@ -64,43 +75,68 @@ export function useUrlColumnSort<K extends string>({
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
-  const sort = useMemo<K | null>(() => {
+  const urlSort = useMemo<K | null>(() => {
     const raw = searchParams.get(sortParam);
     return raw && isColumn(raw) ? (raw as K) : null;
     // eslint-disable-next-line react-hooks/exhaustive-deps -- isColumn is a stable module fn
   }, [searchParams, sortParam]);
 
-  const dir = useMemo<UrlColumnSortDir | null>(() => {
-    if (!sort) return null;
+  const urlDir = useMemo<UrlColumnSortDir | null>(() => {
+    if (!urlSort) return null;
     const raw = searchParams.get(dirParam);
-    return raw === 'asc' || raw === 'desc' ? raw : defaultDir(sort);
+    return raw === 'asc' || raw === 'desc' ? raw : defaultDir(urlSort);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- defaultDir is a stable module fn
-  }, [searchParams, dirParam, sort]);
+  }, [searchParams, dirParam, urlSort]);
 
-  const replaceParams = useCallback(
-    (nextSort: K | null, nextDir: UrlColumnSortDir | null) => {
-      const params = new URLSearchParams(searchParams.toString());
-      if (!nextSort) {
-        params.delete(sortParam);
-        params.delete(dirParam);
-      } else {
-        params.set(sortParam, nextSort);
-        // Omit the default direction so shared links stay clean and the
-        // "pristine" URL is unambiguous.
-        if (nextDir && nextDir !== defaultDir(nextSort)) params.set(dirParam, nextDir);
-        else params.delete(dirParam);
-      }
+  const replace = useCallback(
+    (mutate: (params: URLSearchParams) => void) => {
+      const params = readLiveSearchParams(searchParams.toString());
+      mutate(params);
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname || '/', { scroll: false });
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- defaultDir is a stable module fn
     },
-    [pathname, router, searchParams, sortParam, dirParam],
+    [pathname, router, searchParams],
+  );
+
+  const write = useCallback(
+    (params: URLSearchParams, next: UrlColumnSortPair<K>) => {
+      if (!next.sort) {
+        params.delete(sortParam);
+        params.delete(dirParam);
+        return;
+      }
+      params.set(sortParam, next.sort);
+      // Omit the default direction so shared links stay clean and the
+      // "pristine" URL is unambiguous.
+      if (next.dir && next.dir !== defaultDir(next.sort)) params.set(dirParam, next.dir);
+      else params.delete(dirParam);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- defaultDir is a stable module fn
+    [sortParam, dirParam],
+  );
+
+  const { value, paint } = useOptimisticUrlParams<UrlColumnSortPair<K>>({
+    urlValues: { sort: urlSort, dir: urlDir },
+    replace,
+    write,
+  });
+
+  const commit = useCallback(
+    (next: UrlColumnSortPair<K>) => {
+      // Paint first, then replace on this tick — `setValue`'s startTransition
+      // can lose the router.write behind a click, so the header looks sorted
+      // while the address bar (and a reload) still show the old order.
+      paint(next);
+      replace((params) => write(params, next));
+    },
+    [paint, replace, write],
   );
 
   const setSort = useCallback(
-    (key: K, nextDir?: UrlColumnSortDir) => replaceParams(key, nextDir ?? defaultDir(key)),
+    (key: K, nextDir?: UrlColumnSortDir) =>
+      commit({ sort: key, dir: nextDir ?? defaultDir(key) }),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- defaultDir is a stable module fn
-    [replaceParams],
+    [commit],
   );
 
   const toggleColumnSort = useCallback(
@@ -108,14 +144,26 @@ export function useUrlColumnSort<K extends string>({
       // asc ↔ desc only — never a third "remove sort" state. Mirrors
       // `enableSortingRemoval: false` in useGridSurface so the header click and
       // the TanStack state engine can never disagree about the cycle.
-      if (sort === key && dir) replaceParams(key, dir === 'asc' ? 'desc' : 'asc');
-      else replaceParams(key, defaultDir(key));
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- defaultDir is a stable module fn
+      if (value.sort === key && value.dir) {
+        commit({ sort: key, dir: value.dir === 'asc' ? 'desc' : 'asc' });
+      } else {
+        commit({ sort: key, dir: defaultDir(key) });
+      }
     },
-    [sort, dir, replaceParams],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- defaultDir is a stable module fn
+    [value.sort, value.dir, commit],
   );
 
-  const clear = useCallback(() => replaceParams(null, null), [replaceParams]);
+  const clear = useCallback(
+    () => commit({ sort: null, dir: null }),
+    [commit],
+  );
 
-  return { sort, dir, setSort, toggleColumnSort, clear };
+  return {
+    sort: value.sort,
+    dir: value.dir,
+    setSort,
+    toggleColumnSort,
+    clear,
+  };
 }

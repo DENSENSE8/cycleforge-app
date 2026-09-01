@@ -91,6 +91,17 @@ test('StaffPreferencesPutBody accepts quickAccess pins with label + exact href',
   );
 });
 
+test('StaffPreferencesPutBody accepts scan-station skins', () => {
+  ok(StaffPreferencesPutBody.safeParse({ stationSkin: 'industrial' }).success);
+  ok(StaffPreferencesPutBody.safeParse({ stationSkin: 'bench' }).success);
+  ok(StaffPreferencesPutBody.safeParse({ stationSkin: 'coal' }).success);
+  ok(StaffPreferencesPutBody.safeParse({ stationSkin: 'porcelain' }).success);
+  ok(StaffPreferencesPutBody.safeParse({ stationSkin: 'high-vis' }).success);
+  ok(StaffPreferencesPutBody.safeParse({ stationSkin: 'house-color' }).success);
+  ok(StaffPreferencesPutBody.safeParse({ stationSkin: null }).success);
+  ok(!StaffPreferencesPutBody.safeParse({ stationSkin: 'leather' }).success);
+});
+
 test('StaffPreferencesPutBody accepts product-update last-seen keys', () => {
   ok(StaffPreferencesPutBody.safeParse({ lastSeenProductUpdateId: '2026-08-13-to-ship-desk' }).success);
   ok(StaffPreferencesPutBody.safeParse({ lastSeenProductUpdateId: null }).success);

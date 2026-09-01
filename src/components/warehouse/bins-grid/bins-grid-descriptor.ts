@@ -1,5 +1,6 @@
 /**
- * Warehouse › Bins grid surface descriptor — lifts {@link BINS_GRID_COLUMNS}
+ * Warehouse › Bins grid surface descriptor — lifts the MOUNTED column model
+ * (a `SlotLayout` materialization since the wave 1.4 hand-model kill)
  * into the TanStack defs `LedgerGridSurface` mounts. Row ORDER stays with the
  * house comparator in `BinsTable` (state math only).
  */
@@ -11,9 +12,8 @@ import {
 } from '@/design-system/components/grid';
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 import {
-  defaultDirForBinsGridSort,
-  isBinsGridFrozen,
-  isBinsGridSortable,
+  defaultDirForBinsColumn,
+  isBinsColumnSortable,
   type BinsGridColumn,
 } from './bins-grid-layout';
 
@@ -46,9 +46,10 @@ export function makeBinsGridDescriptor(
     'warehouse.bins',
     columns,
     {
-      isSortable: isBinsGridSortable,
-      sortDescFirst: (key) => defaultDirForBinsGridSort(key) === 'desc',
-      isLocked: isBinsGridFrozen,
+      isSortable: (key) => isBinsColumnSortable(columns, key),
+      sortDescFirst: (key) => defaultDirForBinsColumn(columns, key) === 'desc',
+      // Locked = the mounted model's own frozen prefix (`select · barcode`).
+      isLocked: (key) => columns.some((c) => c.key === key && c.frozen === true),
     },
     BINS_GRID_CAPABILITIES,
   );

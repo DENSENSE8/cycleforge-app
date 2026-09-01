@@ -27,6 +27,12 @@ export interface ScanOutActivePane {
 export const SCAN_OUT_ACTIVE_EVENT = 'scan-out-active-changed';
 /** Fired after a dock confirm settles — rail prepends / invalidates. */
 export const SCAN_OUT_CONFIRMED_EVENT = 'scan-out-confirmed';
+/** Composer procedure ring → open Displays Root Index (verify carton). */
+export const SCAN_OUT_OPEN_DISPLAYS_EVENT = 'scan-out-open-displays';
+/** Composer procedure ring toggle-off / panel close. */
+export const SCAN_OUT_CLOSE_DISPLAYS_EVENT = 'scan-out-close-displays';
+/** Panel → dock: keep the context ring pressed state in sync. */
+export const SCAN_OUT_DISPLAYS_CHANGED_EVENT = 'scan-out-displays-changed';
 
 export function dispatchScanOutActive(detail: ScanOutActivePane | null) {
   window.dispatchEvent(new CustomEvent(SCAN_OUT_ACTIVE_EVENT, { detail }));
@@ -34,6 +40,20 @@ export function dispatchScanOutActive(detail: ScanOutActivePane | null) {
 
 export function dispatchScanOutConfirmed(detail: ScanOutActivePane) {
   window.dispatchEvent(new CustomEvent(SCAN_OUT_CONFIRMED_EVENT, { detail }));
+}
+
+export function dispatchScanOutOpenDisplays() {
+  window.dispatchEvent(new CustomEvent(SCAN_OUT_OPEN_DISPLAYS_EVENT));
+}
+
+export function dispatchScanOutCloseDisplays() {
+  window.dispatchEvent(new CustomEvent(SCAN_OUT_CLOSE_DISPLAYS_EVENT));
+}
+
+export function dispatchScanOutDisplaysChanged(open: boolean) {
+  window.dispatchEvent(
+    new CustomEvent(SCAN_OUT_DISPLAYS_CHANGED_EVENT, { detail: { open } }),
+  );
 }
 
 export function resultToScanOutPane(

@@ -75,6 +75,12 @@ describe('every searchable entity paints the same two bands', () => {
     assert.match(html, /ITEMS BODY/);
   });
 
+  it('open band bodies inherit the shared scan well', () => {
+    const html = render('order');
+    assert.match(html, /bg-surface-station-well/);
+    assert.doesNotMatch(html, /bg-surface-sunken/);
+  });
+
   it('a band with nothing to say still exists', () => {
     // "This record has no items" is a different claim from "this record has no
     // items band", and only the first one is ever true.

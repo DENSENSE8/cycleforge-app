@@ -32,9 +32,12 @@ import { useInventoryOpenParam } from './useInventoryOpenParam';
 import { useUnitsOverview, type UnitsOverviewRow } from '@/hooks/useUnitsOverview';
 import { UnitsGridRow } from './units-grid/UnitsGridRow';
 import { UNITS_TABLE_BINDING } from './units-grid/units-table-definition';
+import { useUnitsTableLayout } from './units-grid/useUnitsTableLayout';
 import {
-  defaultDirForUnitsGridSort,
-  isUnitsGridSortable,
+  defaultDirForUnitsColumn,
+  isUnitsColumnSortable,
+  unitsSheetColumnsFor,
+  unitsSortFactFor,
   type UnitsGridColumn,
   type UnitsGridColumnKey,
 } from './units-grid/units-grid-layout';
@@ -47,27 +50,33 @@ function parseList(raw: string | null): string[] {
     .filter(Boolean);
 }
 
-/** Row order for a column sort — string/number/date compares, unknown parks last. */
+/**
+ * Row order for a column sort, keyed by SORT FACT — the structural `product`
+ * plus catalog field ids (`unitsSortFactFor` maps a mounted column to one). A
+ * `?colsort=` header key resolves through the mounted model, so rebinding a
+ * slot re-points the sort with it. String/number/date compares; unknown parks
+ * last.
+ */
 function compareUnitsRows(
   a: UnitsOverviewRow,
   b: UnitsOverviewRow,
-  key: UnitsGridColumnKey,
+  fact: string,
   dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
   const s = (v: string | null) => String(v ?? '');
-  switch (key) {
-    case 'serial':
+  switch (fact) {
+    case 'units.serial':
       return sign * s(a.serial_number).localeCompare(s(b.serial_number));
     case 'product':
       return sign * s(a.product_title).localeCompare(s(b.product_title));
-    case 'status':
+    case 'units.status':
       return sign * s(a.current_status).localeCompare(s(b.current_status));
-    case 'condition':
+    case 'units.condition':
       return sign * s(a.condition_grade).localeCompare(s(b.condition_grade));
-    case 'location':
+    case 'units.location':
       return sign * s(a.current_location).localeCompare(s(b.current_location));
-    case 'updated': {
+    case 'units.updated': {
       if (!a.updated_at && !b.updated_at) return 0;
       if (!a.updated_at) return 1;
       if (!b.updated_at) return -1;
@@ -105,13 +114,24 @@ export function UnitsWorkspaceView() {
 
 
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // The COLUMNS are the effective slot layout's materialization (staff ?? org
+  // ?? product — wave 1.4 hand-model kill). Sort keys are the mounted track
+  // keys; each resolves to its bound field's fact through `unitsSortFactFor`.
+  const { effectiveLayout: unitsLayout, fields: unitsFields } = useUnitsTableLayout();
+  const columns = useMemo(() => unitsSheetColumnsFor(unitsLayout), [unitsLayout]);
+  const sortFactByKey = useMemo(
+    () => new Map(columns.map((c) => [c.key as string, unitsSortFactFor(c)])),
+    [columns],
+  );
+
   const {
     sort: columnSort,
     dir: sortDir,
     setSort,
   } = useUrlColumnSort<UnitsGridColumnKey>({
-    isColumn: isUnitsGridSortable,
-    defaultDir: defaultDirForUnitsGridSort,
+    isColumn: (raw) => isUnitsColumnSortable(columns, raw),
+    defaultDir: (key) => defaultDirForUnitsColumn(columns, key),
   });
 
   // One-shot settle re-render after first data — see BinsTable.
@@ -126,12 +146,13 @@ export function UnitsWorkspaceView() {
   const { searchQuery, setSearch } = useWorkbenchSearchParam();
 
   const orderGroupsByDate = useMemo<[string, RowGroup<UnitsOverviewRow>[]][]>(() => {
+    const sortFact = columnSort ? (sortFactByKey.get(columnSort) ?? null) : null;
     const ordered =
-      columnSort && sortDir
-        ? [...rows].sort((a, b) => compareUnitsRows(a, b, columnSort, sortDir))
+      sortFact && sortDir
+        ? [...rows].sort((a, b) => compareUnitsRows(a, b, sortFact, sortDir))
         : rows;
     return [['', ordered.map((row) => ({ key: `unit:${row.id}`, rows: [row] }))]];
-  }, [rows, columnSort, sortDir]);
+  }, [rows, columnSort, sortFactByKey, sortDir]);
 
   const onOpen = useCallback((row: UnitsOverviewRow) => onRowClick(row), [onRowClick]);
 
@@ -145,6 +166,8 @@ export function UnitsWorkspaceView() {
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           <DataTable<UnitsOverviewRow, UnitsGridColumnKey, UnitsGridColumn>
             binding={UNITS_TABLE_BINDING}
+            columns={columns}
+            fields={unitsFields}
             orderGroupsByDate={orderGroupsByDate}
             rows={rows}
             getRowId={(r) => String(r.id)}

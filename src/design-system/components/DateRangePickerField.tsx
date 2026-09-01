@@ -4,30 +4,47 @@ import { useEffect, useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import type { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
+import { Calendar } from '@/components/ui/calendar';
 import { CalendarRangeSelect } from '@/components/ui/calendar-range-select';
 import { Calendar as CalendarIcon, ChevronDown, X } from '@/components/Icons';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { computeWeekRange, dateKeyToLocalDate } from '@/utils/date';
 
-export interface DateRangePickerFieldProps {
-  /** Current value. `undefined` = nothing picked yet. `{from, to: undefined}` = first endpoint only. */
+export const DATE_RANGE_PICKER_VARIANTS = {
+  range:
+    'filter date range from-to period: presets + month grid + Clear/Apply; idle face includes the year; X clears',
+  compact:
+    'ship-by due date single day in a cell: month grid only; click commits; no year; no X; face always paints MMM d or --; replace native input type=date',
+} as const;
+
+export type DateRangePickerVariant = keyof typeof DATE_RANGE_PICKER_VARIANTS;
+
+type SharedFieldProps = {
+  disabled?: boolean;
+  fromDate?: Date;
+  toDate?: Date;
+  className?: string;
+};
+
+export type DateRangePickerRangeProps = SharedFieldProps & {
+  variant?: 'range';
   value: DateRange | undefined;
   onChange: (next: DateRange | undefined) => void;
-  /** Trigger button label when no range is set. */
   placeholder?: string;
-  /** Disable the whole control. */
-  disabled?: boolean;
-  /** Optional shortcut chips below the calendar (Today / This week / Last 7 / …). */
   presets?: ReadonlyArray<{ label: string; range: () => DateRange }>;
-  /** Earliest selectable day. */
-  fromDate?: Date;
-  /** Latest selectable day. */
-  toDate?: Date;
-  /** Extra classes on the trigger button. */
-  className?: string;
-  /** When true, open the calendar popover on mount (find-field chip → edit date). */
   autoOpen?: boolean;
-}
+};
+
+export type DateRangePickerCompactProps = SharedFieldProps & {
+  variant: 'compact';
+  /** Civil day on the trigger. `undefined` still paints `--` — never a blank. */
+  value: Date | undefined;
+  /** Always a day. Compact cannot clear. */
+  onChange: (next: Date) => void;
+};
+
+export type DateRangePickerFieldProps = DateRangePickerRangeProps | DateRangePickerCompactProps;
 
 const DEFAULT_PRESETS: ReadonlyArray<{ label: string; range: () => DateRange }> = [
   {
@@ -75,22 +92,94 @@ const DEFAULT_PRESETS: ReadonlyArray<{ label: string; range: () => DateRange }> 
   },
 ];
 
+const TRIGGER_CLASS =
+  'inline-flex h-9 w-full items-center gap-2 rounded-lg border border-border-soft bg-surface-card px-2.5 text-left text-role-caption font-semibold text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50/40 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50';
+
+const POPOVER_CLASS = cn(
+  'z-dropdown border border-border-soft bg-surface-card shadow-lg ring-1 ring-black/5 focus:outline-none',
+  DROPDOWN_SHELL_CORNER,
+);
+
 /**
- * Trigger-button + Radix Popover + react-day-picker range mode. Drop-in
- * replacement for `<input type="date">` pairs when the operator picks a
- * date range to filter by. Owns no application state — fully controlled
- * via {@link DateRangePickerFieldProps.value} + onChange.
+ * Trigger + popover over the house calendar.
  *
- * Layout (popover open):
- *   ┌──────────────────────────────────────┐
- *   │ Today | Week | 7 days | 30d | Month │  presets row
- *   ├──────────────────────────────────────┤
- *   │      [ inline calendar ]              │  react-day-picker, range mode
- *   ├──────────────────────────────────────┤
- *   │       Clear        Apply              │  footer
- *   └──────────────────────────────────────┘
+ * Slot-table ship-by / due date / pick a date in a cell is **compact** —
+ * not the filter range, not a native `input type=date`, not InlineEditableValue.
+ *
+ * - `range` (default): filter grammar. Presets, month grid, Clear/Apply, X
+ *   on the trigger, year in the face.
+ * - `compact`: one civil day. Calendar only — no presets, no footer, no X.
+ *   Clicking a day commits and closes. Face is `MMM d` (no year) and is never
+ *   blank (`--` until a day exists).
  */
-export function DateRangePickerField({
+export function DateRangePickerField(props: DateRangePickerFieldProps) {
+  if (props.variant === 'compact') {
+    return <CompactDatePickerField {...props} />;
+  }
+  return <RangeDatePickerField {...props} />;
+}
+
+function CompactDatePickerField({
+  value,
+  onChange,
+  disabled = false,
+  fromDate,
+  toDate,
+  className,
+}: DateRangePickerCompactProps) {
+  const [open, setOpen] = useState(false);
+  // Paint the picked day immediately; the parent cache is the source of truth
+  // and resets this if the write rolls back.
+  const [selected, setSelected] = useState<Date | undefined>(value);
+
+  useEffect(() => {
+    setSelected(value);
+  }, [value]);
+
+  const label = selected ? format(selected, 'MMM d') : '--';
+
+  return (
+    <Popover.Root open={open} onOpenChange={setOpen}>
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          disabled={disabled}
+          className={cn(TRIGGER_CLASS, 'text-text-default', className)}
+        >
+          <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-text-faint" />
+          <span className="flex-1 truncate">{label}</span>
+        </button>
+      </Popover.Trigger>
+
+      <Popover.Portal>
+        <Popover.Content align="start" sideOffset={6} className={POPOVER_CLASS}>
+          <Calendar
+            mode="single"
+            selected={selected}
+            onSelect={(day) => {
+              if (!day) {
+                setOpen(false);
+                return;
+              }
+              setSelected(day);
+              onChange(day);
+              setOpen(false);
+            }}
+            numberOfMonths={1}
+            defaultMonth={selected ?? new Date()}
+            disabled={
+              fromDate || toDate
+                ? { before: fromDate ?? new Date(0), after: toDate ?? new Date(8.64e15) }
+                : undefined
+            }
+          />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
+  );
+}
+
+function RangeDatePickerField({
   value,
   onChange,
   placeholder = 'Pick a date range',
@@ -100,20 +189,16 @@ export function DateRangePickerField({
   toDate,
   className,
   autoOpen = false,
-}: DateRangePickerFieldProps) {
+}: DateRangePickerRangeProps) {
   const [open, setOpen] = useState(autoOpen);
-  // Local working copy — only commits to parent on "Apply" or preset click
-  // so a half-picked range doesn't fire useEffect chains on every click.
   const [draft, setDraft] = useState<DateRange | undefined>(value);
 
   useEffect(() => {
     if (!autoOpen) return;
     setDraft(value);
     setOpen(true);
-    // Re-arm when the parent remounts with a fresh autoOpen key.
   }, [autoOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Sync draft when the popover opens (parent may have changed value).
   const handleOpenChange = (next: boolean) => {
     if (next) setDraft(value);
     setOpen(next);
@@ -134,11 +219,7 @@ export function DateRangePickerField({
         <button
           type="button"
           disabled={disabled}
-          className={cn(
-            'inline-flex h-9 w-full items-center gap-2 rounded-lg border border-border-soft bg-surface-card px-2.5 text-left text-role-caption font-semibold text-text-muted transition-colors hover:border-blue-300 hover:bg-blue-50/40 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50',
-            hasValue ? 'text-text-default' : 'text-text-faint',
-            className,
-          )}
+          className={cn(TRIGGER_CLASS, hasValue ? 'text-text-default' : 'text-text-faint', className)}
         >
           <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-text-faint" />
           <span className="flex-1 truncate">{label}</span>
@@ -162,27 +243,12 @@ export function DateRangePickerField({
 
       <Popover.Portal>
         <Popover.Content
-          // Right-aligned with an inset (operator ruling 2026-08-31): the
-          // control sits near the sheet's right edge, so a start-aligned panel
-          // hung off it. The offset keeps the panel a few px inside the edge
-          // rather than flush against it.
           align="end"
           alignOffset={-8}
           sideOffset={6}
-          className="z-dropdown rounded-xl border border-border-soft bg-surface-card shadow-lg ring-1 ring-black/5 focus:outline-none"
+          className={POPOVER_CLASS}
         >
           {presets.length > 0 ? (
-            /*
-             * Presets as a DROPDOWN, not a row of chips (operator ruling
-             * 2026-08-31).
-             *
-             * Five uppercase labels laid side by side set the popover's width
-             * from the longest phrase rather than from the calendar under it,
-             * so the panel spilled wider than the control it hangs off and
-             * fought the toolbar's alignment. A select is one line at any
-             * label length, and the calendar below it becomes the widest thing
-             * in the panel — which is the thing the panel is actually for.
-             */
             <div className="border-b border-border-hairline p-2">
               <label className="sr-only" htmlFor="cf-date-preset">
                 Quick range

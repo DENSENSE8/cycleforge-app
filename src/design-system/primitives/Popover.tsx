@@ -7,15 +7,16 @@ import { AnchoredLayer, type AnchoredPlacement } from './AnchoredLayer';
 import { framerPresence, framerTransition } from '../foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '../foundations/motion-framer-hooks';
 import { elevationClass } from '../tokens/shadows';
+import { DROPDOWN_SHELL_CORNER } from '../tokens/radius';
 import type { ZIndexToken } from '../tokens/z-index';
 
 // ─── Popover ─────────────────────────────────────────────────────────────────
 //
 // The canonical anchored, *styled* popover panel. <AnchoredLayer> owns the hard
 // part (portal, rect-tracking, dismissal) but no visual chrome; <Popover> adds
-// the industrial flush surface (zero radius, zero pad, hairline border, soft
-// elevation) and the shared dropdown enter/exit motion — so callers stop
-// re-rolling rounded floating-card boilerplate.
+// DROPDOWN_SHELL_CORNER, a hairline border, soft elevation, and the shared
+// dropdown enter/exit motion — so callers stop re-rolling floating-card
+// boilerplate.
 //
 // Motion comes from the SHARED presets (`framerPresence.dropdownPanel` +
 // `framerTransition.dropdownOpen`), run through the reduced-motion-aware hooks.
@@ -119,7 +120,8 @@ export function Popover({
             exit={presence.exit}
             transition={transition}
             className={cn(
-              'min-w-[10rem] overflow-hidden rounded-none border border-border-default bg-surface-card text-text-default',
+              'min-w-[10rem] overflow-hidden border border-border-default bg-surface-card text-text-default',
+              DROPDOWN_SHELL_CORNER,
               elevationClass('raised', 'soft'),
               padded && 'p-2',
               className,

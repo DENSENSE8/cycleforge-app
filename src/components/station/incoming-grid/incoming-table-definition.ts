@@ -22,7 +22,7 @@
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import {
-  INCOMING_GRID_COLUMNS,
+  INCOMING_COMPOUND_COLUMNS,
   type IncomingGridColumn,
 } from '@/lib/receiving/receiving-grid-layout';
 import { parseTableDefinition } from '@/lib/tables/table-definition';
@@ -42,12 +42,12 @@ export const INCOMING_TABLE_DEFINITION = parseTableDefinition({
   // Date is a per-row column on Incoming — no sticky day bands.
   showDayHeaders: false,
   capabilities: INCOMING_GRID_CAPABILITIES,
-  columns: INCOMING_GRID_COLUMNS,
+  columns: INCOMING_COMPOUND_COLUMNS,
 });
 
 export const INCOMING_TABLE_BINDING: TableSurfaceBinding<ReceivingLineRow, IncomingGridColumn> = {
   definition: INCOMING_TABLE_DEFINITION,
-  columns: INCOMING_GRID_COLUMNS,
+  columns: INCOMING_COMPOUND_COLUMNS,
   makeDescriptor: makeIncomingGridDescriptor,
   recordPlane: { kind: 'inspector', occupantId: 'detail:incoming' },
 };

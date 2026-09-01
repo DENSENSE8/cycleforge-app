@@ -5,6 +5,12 @@
  */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
+import {
+  IMPORT_EXCEPTION_FIELD_CATALOG,
+  IMPORT_EXCEPTION_PRODUCT_LAYOUT,
+} from '@/lib/tables/field-catalog/import-exception';
+import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
+import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 import { GRID_FILL_COLUMN } from '@/design-system/components/grid';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import type { ColumnType } from '@/lib/tables/table-columns';
@@ -25,9 +31,12 @@ export type ImportExceptionGridColumnKey =
   | 'state'
   | 'amount'
   | 'actions'
-  | '_fill';
+  | '_fill'
+  /** Materialized slot tracks — keys are slot indices, never field ids. */
+  | `status:${number}`
+  | `subtitle:${number}`;
 
-export interface ImportExceptionGridColumn {
+export interface ImportExceptionGridColumn extends SlotTrackFields {
   key: ImportExceptionGridColumnKey;
   width: string;
   label?: string;
@@ -114,8 +123,24 @@ export const IMPORT_EXCEPTION_GRID_COLUMNS: readonly ImportExceptionGridColumn[]
   GRID_FILL_COLUMN,
 ] as const;
 
+export function importExceptionCompoundColumnsFor(
+  layout: SlotLayout,
+): readonly ImportExceptionGridColumn[] {
+  return materializeTracks<ImportExceptionGridColumn>({
+    layout,
+    catalog: IMPORT_EXCEPTION_FIELD_CATALOG,
+    base: compoundColumnsFor<ImportExceptionGridColumn>(),
+  });
+}
+
+/**
+ * The PRODUCT-DEFAULT materialization — what an org with no override mounts.
+ * With the product layout's empty band that is the shared `COMPOUND_TRACKS`
+ * verbatim, so the port reproduces the queue exactly and every catalog fact
+ * becomes bindable without a deploy.
+ */
 export const IMPORT_EXCEPTION_COMPOUND_COLUMNS: readonly ImportExceptionGridColumn[] =
-  compoundColumnsFor<ImportExceptionGridColumn>();
+  importExceptionCompoundColumnsFor(IMPORT_EXCEPTION_PRODUCT_LAYOUT);
 
 const IMPORT_EXCEPTION_GRID_SORTABLE_KEYS: readonly ImportExceptionGridColumnKey[] = [
   ...IMPORT_EXCEPTION_GRID_COLUMNS.filter((c) => c.sortable !== false && c.key !== 'select').map(
@@ -130,6 +155,30 @@ const IMPORT_EXCEPTION_GRID_SORTABLE_KEYS: readonly ImportExceptionGridColumnKey
 export function isImportExceptionGridSortable(key: string): key is ImportExceptionGridColumnKey {
   return (IMPORT_EXCEPTION_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
 }
+
+/**
+ * The comparator shape each sort word uses.
+ *
+ * Read off the FLAT column array until wave 1.3 moved the mount to compound
+ * tracks, at which point `.find(c => c.key === 'state')` returned `undefined`
+ * and every compound-track sort silently fell back to the default shape — a
+ * date comparing as text. Declared here so a word with no flat twin still names
+ * its own shape. Both spellings are kept: the flat words are what live
+ * bookmarks carry, the track keys are what the mounted header emits.
+ */
+export const IMPORT_EXCEPTION_SORT_TYPES: Readonly<Record<string, ColumnType>> = {
+  item: 'text',
+  order: 'id',
+  fulfillment: 'id',
+  source: 'external',
+  tracking: 'tracking',
+  sheet: 'number',
+  seen: 'number',
+  amount: 'number',
+  first: 'date',
+  last: 'date',
+  state: 'date',
+};
 
 export function defaultDirForImportExceptionGridSort(
   key: ImportExceptionGridColumnKey,

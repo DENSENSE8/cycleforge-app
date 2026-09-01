@@ -51,10 +51,14 @@ import type { TableDefinition } from '@/lib/tables/table-definition';
  *
  * ## Absence is a legitimate answer, and it carries its reason
  *
- * Three of these surfaces are ruled honest-absence and must NOT grow a peek to
+ * Some of these surfaces are ruled honest-absence and must NOT grow a peek to
  * make the family look symmetrical — the reasons live in
  * `band3-find-only.guard.test.ts`'s `NO_DESK_PEEK_SURFACES` and are restated on
- * the binding so the next agent reads them at the mount they are about. The
+ * the binding so the next agent reads them at the mount they are about. That
+ * guard was cited here for a long time without existing; it was written
+ * 2026-08-31 (seller-table-program wave 1.5), and it is now the authority on
+ * how many such surfaces there are — this sentence used to say "three", which
+ * had already gone stale. The
  * `reason` string is the whole point of the non-`inspector` arms: a bare
  * `kind: 'none'` would be a silence with a type annotation.
  */

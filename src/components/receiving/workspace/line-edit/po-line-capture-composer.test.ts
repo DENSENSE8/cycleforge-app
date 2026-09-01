@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { PoLineCaptureRow } from './PoLineCaptureRow';
+import { STATION_SCAN_INSET_BEVEL_CLASS } from '@/components/station/scan-depth';
 
 /**
  * The Unbox capture composer's ANATOMY, pinned in the rendered DOM rather than
@@ -84,18 +85,39 @@ describe('PO-line capture composer anatomy', () => {
     );
   });
 
+  it('recesses the flush Serial field, not the whole capture bar', () => {
+    const html = render();
+    const composerAt = at(html, 'data-capture-composer');
+    const bar = html.slice(Math.max(0, composerAt - 220), composerAt + 40);
+    assert.match(bar, /bg-surface-station-bar/, 'the joined bar stays the raised face');
+    assert.doesNotMatch(
+      bar,
+      /bg-surface-canvas|bg-surface-sunken/,
+      'greying the whole bar is the shortcut this retired',
+    );
+    const fieldAt = at(html, 'data-unbox-serial-input');
+    const field = html.slice(Math.max(0, fieldAt - 500), fieldAt);
+    assert.match(field, /bg-surface-station-slot/, 'the flush Serial input is the hole');
+    assert.match(field, /border-t-border-station-shadow/, 'inset dual-edge carves the field');
+  });
+
   it('draws no rules at all — no bar hairlines, no cell seams', () => {
     // The cells already separate themselves: Tags is a filled plate, Serial is
-    // a white field, the check is emerald, Photos is blue. A seam between two
+    // a recessed field, the check is emerald, Photos is blue. A seam between two
     // cells that are already different colours draws a line over a boundary
     // that was never in question.
     const html = render();
     // A rule is a non-zero WIDTH utility (`border`, `border-t`, `border-2`,
-    // `divide-x`). `border-0` is a removal and a bare colour token paints
-    // nothing without a width, so neither counts.
+    // `divide-x`). `border-0` is a removal. The Serial field's inset bevel
+    // (`border` + per-side colours) is the carve, not a cell seam.
+    const fieldBevel = new Set(STATION_SCAN_INSET_BEVEL_CLASS.split(' '));
     const rules = [...html.matchAll(/class="([^"]*)"/g)]
       .flatMap((m) => m[1].split(' '))
-      .filter((t) => /^(border(-[trblxy])?(-[1-9]\d*)?|divide-[xy](-[1-9]\d*)?)$/.test(t));
+      .filter(
+        (t) =>
+          !fieldBevel.has(t) &&
+          /^(border(-[trblxy])?(-[1-9]\d*)?|divide-[xy](-[1-9]\d*)?)$/.test(t),
+      );
     assert.deepEqual(rules, [], `unexpected rules: ${rules.join(', ')}`);
   });
 

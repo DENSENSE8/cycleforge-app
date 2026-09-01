@@ -14,6 +14,7 @@ import {
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import { RECEIVING_GRID_CAPABILITIES } from '@/components/station/receiving-grid/receiving-grid-descriptor';
+import { ignoreRowSelectFromSubtitle } from '@/components/tables/compound/useSubtitlePointerReorder';
 import { usePlatformMeta } from '@/hooks/useCatalog';
 import type { CustomFieldDef } from '@/lib/custom-fields/types';
 import {
@@ -244,6 +245,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
             : `Select receiving line ${row.id}`
       }
       onClick={(event) => {
+        if (ignoreRowSelectFromSubtitle(event)) return;
         if (clickSelect) {
           // detail === 2 is the second half of a double-click — skip toggle so
           // dblclick only opens without deselecting.

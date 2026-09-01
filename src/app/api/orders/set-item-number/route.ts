@@ -38,6 +38,24 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       return NextResponse.json({ success: true, updated: false, message: 'item_number already set or row not found' });
     }
 
+    try {
+      const { applyListingAssignment, loadOrderListingFacts } = await import(
+        '@/lib/automations/apply-listing-assignment'
+      );
+      const facts = await loadOrderListingFacts(ctx.organizationId, id);
+      if (facts) {
+        await applyListingAssignment({
+          organizationId: ctx.organizationId,
+          orderId: id,
+          triggerKey: 'order.item_number_set',
+          facts,
+          actorStaffId: ctx.staffId ?? null,
+        });
+      }
+    } catch (err) {
+      console.warn('[set-item-number] listing automation skipped:', err);
+    }
+
     await invalidateAllOrdersApiCaches([], ctx.organizationId);
     await publishOrderChanged({ organizationId: ctx.organizationId, orderIds: [id], source: 'orders.set-item-number' });
 

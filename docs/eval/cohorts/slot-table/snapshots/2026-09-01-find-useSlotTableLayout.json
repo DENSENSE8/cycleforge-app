@@ -1,0 +1,21 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "function:src/components/tables/useSlotTableLayout.ts:useSlotTableLayout",
+      "kind": "function",
+      "name": "useSlotTableLayout",
+      "location": "src/components/tables/useSlotTableLayout.ts:104",
+      "exported": true,
+      "signature": "function useSlotTableLayout(config: SlotTableLayoutConfig): SlotTableLayout"
+    },
+    {
+      "node_key": "file:src/components/tables/useSlotTableLayout.ts",
+      "kind": "file",
+      "name": "useSlotTableLayout.ts",
+      "location": "src/components/tables/useSlotTableLayout.ts:1",
+      "exported": false,
+      "signature": null
+    }
+  ]
+}

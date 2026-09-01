@@ -33,7 +33,7 @@ describe('queue row Date column helpers', () => {
       deadline_at: '2026-06-09T12:00:00-07:00',
       created_at: '2026-06-01T12:00:00-07:00',
     };
-    assert.equal(queueRowBandDateSource(record, 'priority'), record.deadline_at);
+    assert.equal(queueRowBandDateSource(record, 'deadline'), record.deadline_at);
     assert.equal(queueRowBandDateSource(record, 'newest'), record.created_at);
   });
 

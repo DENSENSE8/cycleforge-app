@@ -58,13 +58,16 @@ import {
 } from '@/lib/tables/import/staging-store';
 import { CsvImportStagingRail } from '@/components/outbound/orders/CsvImportStagingRail';
 import { CSV_IMPORT_STAGING_TABLE_BINDING } from '@/components/outbound/orders/import-staging/csv-import-staging-table-definition';
+import { useOrdersImportTableLayout } from '@/components/outbound/orders/import-staging/useOrdersImportTableLayout';
 import {
   CsvImportStagingGridRow,
   csvImportStagingRowKey,
 } from '@/components/outbound/orders/import-staging/CsvImportStagingGridRow';
 import {
-  defaultDirForCsvImportStagingGridSort,
-  isCsvImportStagingGridSortable,
+  csvImportStagingSheetColumnsFor,
+  csvImportStagingSortFactFor,
+  defaultDirForCsvImportStagingColumn,
+  isCsvImportStagingColumnSortable,
   type CsvImportStagingGridColumn,
   type CsvImportStagingGridColumnKey,
 } from '@/components/outbound/orders/import-staging/csv-import-staging-grid-layout';
@@ -92,25 +95,25 @@ const STATUS_FILTERS: { id: TableImportFilter; label: string }[] = [
 function compareStagingRows(
   a: OrderImportRowView,
   b: OrderImportRowView,
-  key: CsvImportStagingGridColumnKey,
+  fact: string,
   dir: 'asc' | 'desc',
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
-  switch (key) {
-    case 'order':
+  switch (fact) {
+    case 'orders-import.order':
       return sign * a.orderNumber.localeCompare(b.orderNumber);
     // Action required first when ascending — the rows that need a human.
     case 'status':
       return sign * (Number(a.status === 'ready') - Number(b.status === 'ready'));
-    case 'sku':
+    case 'orders-import.sku':
       return sign * a.sku.localeCompare(b.sku);
-    case 'qty':
+    case 'orders-import.qty':
       return sign * ((Number(a.quantity) || 0) - (Number(b.quantity) || 0));
-    case 'customer':
+    case 'orders-import.customer':
       return sign * a.customerName.localeCompare(b.customerName);
-    case 'tracking':
+    case 'orders-import.tracking':
       return sign * a.trackingNumber.localeCompare(b.trackingNumber);
-    case 'platform':
+    case 'orders-import.platform':
       return sign * a.platform.localeCompare(b.platform);
     default:
       return 0;
@@ -124,13 +127,27 @@ export function CsvImportStagingHost() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [filterOpen, setFilterOpen] = useState(false);
 
+  // The COLUMNS are the effective slot layout's materialization (staff ?? org
+  // ?? product — wave 1.4 hand-model kill). Staging keeps its OWN tableId on
+  // purpose: hiding a staging column must not densify live To-ship.
+  const { effectiveLayout: stagingLayout, fields: stagingFields } =
+    useOrdersImportTableLayout();
+  const columns = useMemo(
+    () => csvImportStagingSheetColumnsFor(stagingLayout),
+    [stagingLayout],
+  );
+  const sortFactByKey = useMemo(
+    () => new Map(columns.map((c) => [c.key as string, csvImportStagingSortFactFor(c)])),
+    [columns],
+  );
+
   const {
     sort: columnSort,
     dir: sortDir,
     setSort,
   } = useUrlColumnSort<CsvImportStagingGridColumnKey>({
-    isColumn: isCsvImportStagingGridSortable,
-    defaultDir: defaultDirForCsvImportStagingGridSort,
+    isColumn: (raw) => isCsvImportStagingColumnSortable(columns, raw),
+    defaultDir: (key) => defaultDirForCsvImportStagingColumn(columns, key),
   });
 
   const exitStaging = useCallback(() => {
@@ -141,9 +158,10 @@ export function CsvImportStagingHost() {
 
   const views = useMemo(() => {
     const list = draft ? listTableImportRows(ORDER_IMPORT_DESCRIPTOR, draft) : [];
-    if (!columnSort || !sortDir) return list;
-    return [...list].sort((a, b) => compareStagingRows(a, b, columnSort, sortDir));
-  }, [draft, columnSort, sortDir]);
+    const sortFact = columnSort ? (sortFactByKey.get(columnSort) ?? null) : null;
+    if (!sortFact || !sortDir) return list;
+    return [...list].sort((a, b) => compareStagingRows(a, b, sortFact, sortDir));
+  }, [draft, columnSort, sortFactByKey, sortDir]);
 
   const orderGroupsByDate = useMemo<[string, RowGroup<OrderImportRowView>[]][]>(
     () => [['', views.map((row) => ({ key: csvImportStagingRowKey(row), rows: [row] }))]],
@@ -304,6 +322,8 @@ export function CsvImportStagingHost() {
           CsvImportStagingGridColumn
         >
           binding={CSV_IMPORT_STAGING_TABLE_BINDING}
+          columns={columns}
+          fields={stagingFields}
           orderGroupsByDate={orderGroupsByDate}
           rows={views}
           getRowId={csvImportStagingRowKey}

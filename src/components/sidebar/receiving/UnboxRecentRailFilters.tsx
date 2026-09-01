@@ -17,7 +17,7 @@ import {
   FilterMenuRow,
   FilterMenu,
 } from '@/components/ui/FilterMenu';
-import { PlatformMark } from '@/components/ui/PlatformMark';
+import { MenuBrandIdentity } from '@/components/ui/grid-cells';
 import { ReceivingTypeMark } from '@/components/ui/ReceivingTypeMark';
 import { usePlatformCatalog, useReceivingTypeCatalog } from '@/hooks/useCatalog';
 import { PRIORITY_OVERRIDE_TIERS } from '@/lib/receiving/priority-override';
@@ -109,9 +109,7 @@ export function UnboxRecentRailFilters({
           key={opt.value}
           label={opt.label}
           active={facets.platform === opt.value}
-          leading={
-            <PlatformMark platformValue={opt.value} preferBrandTile textClassName="text-current" />
-          }
+          leading={<MenuBrandIdentity kind="platform" label={opt.label} value={opt.value} />}
           onClick={() => {
             onChange({ ...facets, platform: opt.value });
             setOpen(false);

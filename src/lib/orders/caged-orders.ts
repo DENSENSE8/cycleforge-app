@@ -107,10 +107,12 @@ interface RawGateRow {
   order_id: string | null;
   item_number: string | null;
   sku: string | null;
+  sku_catalog_id: number | string | null;
   product_title: string | null;
   quantity: string | null;
   condition: string | null;
   account_source: string | null;
+  status: string | null;
   release_state: string | null;
   released_at: string | null;
   released_by: number | string | null;
@@ -138,10 +140,14 @@ export interface CagedOrderRecord {
    * disagree is a pairing the operator needs to look at.
    */
   sku: string | null;
+  /** `orders.sku_catalog_id` — the G4 pairing fact; null = unpaired. */
+  skuCatalogId: number | null;
   productTitle: string | null;
   quantity: string | null;
   condition: string | null;
   accountSource: string | null;
+  /** `orders.status` free text — the auto-cage guard reads it (shipped rows never cage). */
+  status: string | null;
   releaseState: string | null;
   releasedAt: string | null;
   releasedBy: number | null;
@@ -166,10 +172,12 @@ const GATE_SELECT = `
     o.order_id,
     o.item_number,
     o.sku,
+    o.sku_catalog_id,
     o.product_title,
     o.quantity,
     o.condition,
     o.account_source,
+    o.status,
     o.release_state,
     o.released_at::text            AS released_at,
     o.released_by,
@@ -196,6 +204,7 @@ function factsFromRow(row: RawGateRow): ReleaseGateFacts {
     docsNotRequired: row.docs_not_required === true,
     shippingLabelLinked: row.shipping_label_linked === true,
     shippingLabelPurchased: row.shipping_label_purchased === true,
+    skuCatalogId: row.sku_catalog_id == null ? null : Number(row.sku_catalog_id),
   };
 }
 
@@ -213,10 +222,12 @@ function mapRow(row: RawGateRow): CagedOrderRecord {
     orderNumber: row.order_id,
     itemNumber: row.item_number,
     sku: row.sku,
+    skuCatalogId: row.sku_catalog_id == null ? null : Number(row.sku_catalog_id),
     productTitle: row.product_title,
     quantity: row.quantity,
     condition: row.condition,
     accountSource: row.account_source,
+    status: row.status,
     releaseState: row.release_state,
     releasedAt: row.released_at,
     releasedBy: row.released_by == null ? null : Number(row.released_by),
@@ -281,6 +292,28 @@ export async function getOrderReleaseRecord(
   // own uncommitted UPDATE — that is what makes release's re-evaluation honest.
   if (client) return run(client);
   return withTenantTransaction<CagedOrderRecord | null>(orgId, run);
+}
+
+/**
+ * Batch read: the live gate records for a set of order ids. The auto-cage
+ * path (`auto-cage.ts`) runs this over freshly inserted rows so the ONE rule
+ * (`evaluateReleaseGates`) decides — no second SQL copy of the gate logic.
+ */
+export async function listOrderReleaseRecordsByIds(
+  orgId: OrgId,
+  orderIds: number[],
+  client?: Client,
+): Promise<CagedOrderRecord[]> {
+  const ids = orderIds.filter((id) => Number.isFinite(id) && id > 0);
+  if (ids.length === 0) return [];
+  const sql = `${GATE_SELECT} WHERE o.organization_id = $1 AND o.id = ANY($2::bigint[])`;
+  const run = async (c: Client) => {
+    const res = await c.query<RawGateRow>(sql, [orgId, ids]);
+    return res.rows.map(mapRow);
+  };
+  if (client) return run(client);
+  const res = await tenantQuery<RawGateRow>(orgId, sql, [orgId, ids]);
+  return res.rows.map(mapRow);
 }
 
 /** Put a freshly-typed order in the cage. Idempotent. */

@@ -16,26 +16,25 @@ test('an empty selection mounts nothing', () => {
   assert.deepEqual(resolveRailOccupancy([null, undefined, '', Number.NaN]), { kind: 'none' });
 });
 
-test('one row inspects, two compare, three or more stage for a batch', () => {
+test('one row inspects, two compare, three or more mount no rail', () => {
   assert.equal(resolveRailOccupancy([4821]).kind, 'inspect');
   assert.equal(resolveRailOccupancy([4821, 4830]).kind, 'compare');
-  assert.equal(resolveRailOccupancy([4821, 4830, 4844]).kind, 'attention');
-  assert.equal(resolveRailOccupancy([1, 2, 3, 4, 5, 6]).kind, 'attention');
+  // Batch verbs live on the table foot strip — no 3+ roster rail.
+  assert.equal(resolveRailOccupancy([4821, 4830, 4844]).kind, 'none');
+  assert.equal(resolveRailOccupancy([1, 2, 3, 4, 5, 6]).kind, 'none');
 });
 
-test('the compare boundary is exactly two — three is a roster, not a wider compare', () => {
+test('the compare boundary is exactly two — three is not a wider compare', () => {
   assert.equal(COMPARE_SELECTION_SIZE, 2);
   assert.equal(resolveRailOccupancy(Array.from({ length: 2 }, (_, i) => i + 1)).kind, 'compare');
   assert.equal(
     resolveRailOccupancy(Array.from({ length: COMPARE_SELECTION_SIZE + 1 }, (_, i) => i + 1)).kind,
-    'attention',
+    'none',
   );
 });
 
-test('every non-empty kind exposes orderIds, so the shared bands never branch on kind', () => {
-  // The selection band ("6 of 142 selected") and the action region are shared
-  // across all three bodies — they read `orderIds` and nothing else.
-  for (const ids of [[4821], [4821, 4830], [4821, 4830, 4844]]) {
+test('every non-empty rail kind exposes orderIds, so the shared bands never branch on kind', () => {
+  for (const ids of [[4821], [4821, 4830]]) {
     const occupancy = resolveRailOccupancy(ids);
     assert.notEqual(occupancy.kind, 'none');
     if (occupancy.kind === 'none') return;
@@ -63,7 +62,7 @@ test('compare preserves selection order — the columns must not swap under the 
 });
 
 test('duplicates collapse to first-seen, so a re-broadcast cannot change the kind', () => {
-  // Two ids arriving as three events must stay `compare`, not become `attention`.
+  // Two ids arriving as three events must stay `compare`, not become a batch.
   const occupancy = resolveRailOccupancy([4821, 4830, 4821]);
   assert.equal(occupancy.kind, 'compare');
   if (occupancy.kind !== 'compare') return;
@@ -78,8 +77,8 @@ test('ids are coerced and non-row values are dropped once, here', () => {
 });
 
 test('junk mixed with real ids does not shift the kind', () => {
-  // A single real id beside two unresolvable ones is an INSPECT, not an
-  // attention roster over rows the rail could never load.
+  // A single real id beside two unresolvable ones is an INSPECT, not a batch
+  // over rows the rail could never load.
   assert.equal(resolveRailOccupancy([4821, Number.NaN, null]).kind, 'inspect');
 });
 
@@ -96,7 +95,7 @@ test('occupant ids are stable per mode and never carry a record id', () => {
   for (const id of Object.values(RAIL_OCCUPANT_ID)) {
     assert.equal(/\d/.test(id), false, `${id} must not embed a record id`);
   }
-  // Three distinct modes, three distinct ids.
+  // Three distinct mode ids remain reserved (inspect / compare / retired batch).
   assert.equal(new Set(Object.values(RAIL_OCCUPANT_ID)).size, 3);
 });
 
@@ -111,7 +110,7 @@ test('exactly one registrar is active per selection', () => {
     { ids: [] as number[], active: null },
     { ids: [1], active: 'inspect' as const },
     { ids: [1, 2], active: 'compare' as const },
-    { ids: [1, 2, 3], active: 'attention' as const },
+    { ids: [1, 2, 3], active: null },
   ];
   for (const { ids, active } of cases) {
     const occupancy = resolveRailOccupancy(ids);

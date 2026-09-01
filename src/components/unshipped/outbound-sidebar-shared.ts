@@ -54,7 +54,7 @@ export const RAIL_OWNED_SEGMENT_IDS = (
   Object.keys(OUTBOUND_FACET_OWNER) as OutboundFacetId[]
 ).filter((id): id is RailOwnedSegmentId => OUTBOUND_FACET_OWNER[id] === 'rail');
 
-/** Unshipped board saved views — filters only, never search text. */
+/** Unshipped board saved views — filters + sort pin, never search text. */
 const UNSHIPPED_VIEW_PARAMS = [
   'stage',
   'ustatus',
@@ -63,6 +63,8 @@ const UNSHIPPED_VIEW_PARAMS = [
   'attention',
   'packPlaced',
   'packStation',
+  'sort',
+  'dir',
 ] as const;
 
 /** Shipped board saved views — matches DashboardShippedTable. */

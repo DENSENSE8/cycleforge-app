@@ -31,13 +31,9 @@ function SupportPageContent() {
                 The one page frame (2026-08-31) — inside the RouteShell's content
                 pane, not around it, so the ticket rail keeps its own column.
 
-                Tickets · To ship · Voicemail · Calls · Warranty · Issues are its
+                Tickets · Voicemail · Calls · Warranty · Issues are its
                 tab row, drawn from this page's own `SIDEBAR_PAGE_NAV` children.
-                To ship is the interesting one: it aliases
-                `/shipping/orders?context=support`, and because Support's
-                `resolveChild` claims that URL, the Shipping desk's frame draws
-                SUPPORT's title and tabs there with To ship lit — the strip does
-                not vanish on the one tab that leaves this route.
+                Tickets keeps the recents rail; every other tab is rail-less.
 
                 This file's docblock calls Support a Station; it is not a SCAN
                 station — no bench, no wedge, pointer-driven ticket triage on a

@@ -9,6 +9,7 @@ import {
 } from '@/lib/receiving/fulfillment-mode';
 import {
   incomingRowDateSource,
+  incomingSortFactFor,
   type IncomingGridColumnKey,
 } from '@/lib/receiving/receiving-grid-layout';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -119,7 +120,12 @@ export function compareIncomingGridRows(
   const sign = dir === 'asc' ? 1 : -1;
   let primary = 0;
 
-  switch (column) {
+  // The header may speak in COMPOUND track keys (`item`, `fulfillment`,
+  // `state`) or in this family's flat words. Normalize once — without it the
+  // compound mount fell through to `default` and every row compared equal.
+  const fact = incomingSortFactFor(column) ?? column;
+
+  switch (fact) {
     case 'title':
       primary = productTitle(a).localeCompare(productTitle(b), undefined, { sensitivity: 'base' });
       break;

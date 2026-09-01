@@ -6111,3 +6111,63 @@ export type BuildRequestRow = typeof buildRequests.$inferSelect;
 export type NewBuildRequestRow = typeof buildRequests.$inferInsert;
 export type ApprovalReviewRow = typeof approvalReviews.$inferSelect;
 export type NewApprovalReviewRow = typeof approvalReviews.$inferInsert;
+
+// ─── Listing → staff automations (2026-08-31_automation_rules.sql) ───────────
+
+/**
+ * Org-owned ECA rules: match order listing facts → assign TEST/PACK work.
+ * Vocabulary is TEXT + JSONB (K12). Soft-delete via deleted_at.
+ */
+export const automationRules = pgTable('automation_rules', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  name: text('name').notNull(),
+  description: text('description'),
+  enabled: boolean('enabled').notNull().default(true),
+  /** Lower sorts first — same convention as work_assignments.priority. */
+  priority: integer('priority').notNull().default(100),
+  triggerKeys: text('trigger_keys').array().notNull().default(sql`ARRAY['order.imported','order.item_number_set','unit.test_passed']::text[]`),
+  whenJson: jsonb('when_json').notNull().default(sql`'{}'::jsonb`),
+  thenJson: jsonb('then_json').notNull().default(sql`'[]'::jsonb`),
+  createdByStaffId: integer('created_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  updatedByStaffId: integer('updated_by_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+}, (table) => ({
+  orgPriorityIdx: index('idx_automation_rules_org_trigger').on(table.organizationId, table.priority),
+}));
+
+/** Append-only evaluation log for automation_rules. */
+export const automationRuns = pgTable('automation_runs', {
+  id: bigserial('id', { mode: 'number' }).primaryKey(),
+  organizationId: orgIdCol(),
+  ruleId: bigint('rule_id', { mode: 'number' }).references(() => automationRules.id, { onDelete: 'set null' }),
+  triggerKey: text('trigger_key').notNull(),
+  entityType: text('entity_type').notNull(),
+  entityId: bigint('entity_id', { mode: 'number' }).notNull(),
+  /** applied | skipped | failed (named CHECK in migration). */
+  status: text('status').notNull(),
+  matchedWhen: jsonb('matched_when'),
+  actionsApplied: jsonb('actions_applied'),
+  error: text('error'),
+  actorStaffId: integer('actor_staff_id').references(() => staff.id, { onDelete: 'set null' }),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  orgEntityIdx: index('idx_automation_runs_org_entity').on(
+    table.organizationId,
+    table.entityType,
+    table.entityId,
+    table.occurredAt,
+  ),
+  orgRuleIdx: index('idx_automation_runs_org_rule').on(
+    table.organizationId,
+    table.ruleId,
+    table.occurredAt,
+  ),
+}));
+
+export type AutomationRule = typeof automationRules.$inferSelect;
+export type NewAutomationRule = typeof automationRules.$inferInsert;
+export type AutomationRun = typeof automationRuns.$inferSelect;
+export type NewAutomationRun = typeof automationRuns.$inferInsert;

@@ -9,7 +9,7 @@
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import {
-  DAILY_GRID_COLUMNS,
+  DAILY_COMPOUND_COLUMNS,
   type DailyGridColumn,
 } from '@/lib/daily-checks/daily-grid-layout';
 import {
@@ -28,12 +28,12 @@ export const DAILY_TABLE_DEFINITION = parseTableDefinition({
   surface: 'sheet',
   showDayHeaders: false,
   capabilities: DAILY_GRID_CAPABILITIES,
-  columns: DAILY_GRID_COLUMNS,
+  columns: DAILY_COMPOUND_COLUMNS,
 });
 
 export const DAILY_TABLE_BINDING: TableSurfaceBinding<DailyTaskRow, DailyGridColumn> = {
   definition: DAILY_TABLE_DEFINITION,
-  columns: DAILY_GRID_COLUMNS,
+  columns: DAILY_COMPOUND_COLUMNS,
   makeDescriptor: makeDailyGridDescriptor,
   recordPlane: { kind: 'inspector', occupantId: 'detail:daily-check' },
 };

@@ -9,20 +9,12 @@ import {
   type ReadyGridCellCtx,
 } from './cells';
 import { READY_GRID_CAPABILITIES } from './ready-grid-descriptor';
-import {
-  READY_GRID_COLUMNS,
-  readyGridTemplate,
-  type ReadyGridColumn,
-} from './ready-grid-layout';
-
-export {
-  readyFallbackStateLabel,
-  readyHitTitle,
-  readyVerdictLabel,
-} from './cells';
+import { readyGridTemplate, type ReadyGridColumn } from './ready-grid-layout';
 
 /**
- * One recently-tested hit — CSS-grid columns matching {@link READY_GRID_COLUMNS}.
+ * One recently-tested hit — CSS-grid columns matching the MOUNTED model (a
+ * `SlotLayout` materialization since the wave 1.1 hand-model kill; there is no
+ * static column list to default to any more).
  *
  * Deliberately NOT interactive as a row: these are append-only history records
  * with no detail plane to open, so the row carries no `role="button"` and no
@@ -32,15 +24,16 @@ export {
  */
 export const ReadyGridRow = memo(function ReadyGridRow({
   hit,
-  columns = READY_GRID_COLUMNS,
+  columns,
 }: {
   hit: AllocationHit;
-  columns?: readonly ReadyGridColumn[];
+  columns: readonly ReadyGridColumn[];
 }) {
   const ctx: ReadyGridCellCtx = {
     hit,
     tierMeta: hit.velocityTier ? velocityTierMeta(hit.velocityTier) : null,
     condGrade: (hit.conditionGrade || '').toUpperCase(),
+    columns,
   };
 
   return (

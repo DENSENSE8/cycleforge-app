@@ -5,17 +5,19 @@
  *
  * One store, one apply-to-URL path (`useSavedViews`). A surface supplies
  * `storageKey` + `paramKeys`. Personal by default; optional **Share with org**
- * on save (and a share toggle on owned rows). Non-owners see shared views but
- * cannot delete them.
+ * on save (and a share toggle on owned rows). Owners can **rename** in place
+ * (`InlineEditableValue`). Non-owners see shared views but cannot mutate them.
  */
 
-import { useState } from 'react';
-import { Check, Plus, Share2, Star, Trash2 } from '@/components/Icons';
+import { useRef, useState } from 'react';
+import { Check, Pencil, Plus, Share2, Star, Trash2 } from '@/components/Icons';
 import { useSavedViews, type UseSavedViewsResult } from '@/hooks/useSavedViews';
+import { InlineEditableValue } from '@/design-system/components/InlineEditableValue';
 import { NAV_ROW } from '@/components/ui/queue-row-chrome';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cornerClass } from '@/design-system/tokens/radius';
 
 
 const EYEBROW = 'text-role-eyebrow uppercase tracking-widest text-text-soft';
@@ -69,6 +71,7 @@ function SavedViewsListView({
     applyView,
     clearView,
     saveView,
+    renameView,
     setViewShared,
     removeView,
   } = controller;
@@ -76,6 +79,9 @@ function SavedViewsListView({
   const [naming, setNaming] = useState(false);
   const [draft, setDraft] = useState('');
   const [shareWithOrg, setShareWithOrg] = useState(false);
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameDraft, setRenameDraft] = useState('');
+  const skipRenameCommit = useRef(false);
 
   const commit = () => {
     if (!draft.trim()) return;
@@ -102,31 +108,84 @@ function SavedViewsListView({
         <ul className="space-y-0.5">
           {views.map((view) => {
             const isActive = view.id === activeView?.id;
+            const isRenaming = renamingId === view.id;
             return (
               <li key={view.id} className="group flex items-center gap-0.5">
-                <button
-                  type="button"
-                  onClick={() => applyView(view)}
-                  className={cn(
-                    'ds-raw-button flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-1.5 text-left text-role-caption transition-colors',
-                    isActive
-                      ? NAV_ROW.selectedClass
-                      : 'text-text-muted hover:bg-surface-hover',
-                  )}
-                >
-                  <Check
+                {isRenaming ? (
+                  <div
+                    className="min-w-0 flex-1 px-2 py-0.5"
+                    onKeyDown={(event) => {
+                      if (event.key !== 'Escape') return;
+                      event.preventDefault();
+                      event.stopPropagation();
+                      skipRenameCommit.current = true;
+                      setRenamingId(null);
+                    }}
+                  >
+                    <InlineEditableValue
+                      value={renameDraft}
+                      onChange={setRenameDraft}
+                      autoFocus
+                      showEditIcon={false}
+                      placeholder="Name this view…"
+                      className="gap-1"
+                      valueClassName="text-role-caption font-medium"
+                      inputClassName="text-role-caption font-medium"
+                      onSubmit={() => {
+                        if (skipRenameCommit.current) {
+                          skipRenameCommit.current = false;
+                          return;
+                        }
+                        const next = renameDraft.trim();
+                        if (next && next !== view.name) renameView(view.id, next);
+                        setRenamingId(null);
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => applyView(view)}
+                    data-testid={`data-table-views-apply-${view.id}`}
                     className={cn(
-                      'h-3.5 w-3.5 shrink-0',
-                      isActive ? 'text-text-default' : 'text-transparent',
+                      'ds-raw-button flex min-w-0 flex-1 items-center gap-2 rounded px-2 py-1.5 text-left text-role-caption transition-colors',
+                      focusRing('control'),
+                      isActive
+                        ? NAV_ROW.selectedClass
+                        : 'text-text-muted hover:bg-surface-hover',
                     )}
-                  />
-                  <span className="truncate">{view.name}</span>
-                  {view.isShared ? (
-                    <HoverTooltip label="Shared with org" focusable={false}>
-                      <Share2 className="h-3 w-3 shrink-0 text-text-faint" />
-                    </HoverTooltip>
-                  ) : null}
-                </button>
+                  >
+                    <Check
+                      className={cn(
+                        'h-3.5 w-3.5 shrink-0',
+                        isActive ? 'text-text-default' : 'text-transparent',
+                      )}
+                    />
+                    <span className="truncate">{view.name}</span>
+                    {view.isShared ? (
+                      <HoverTooltip label="Shared with org" focusable={false}>
+                        <Share2 className="h-3 w-3 shrink-0 text-text-faint" />
+                      </HoverTooltip>
+                    ) : null}
+                  </button>
+                )}
+                {view.isMine ? (
+                  <HoverTooltip label="Rename" focusable={false}>
+                    <button
+                      type="button"
+                      aria-label={`Rename view ${view.name}`}
+                      data-testid={`data-table-views-rename-${view.id}`}
+                      onClick={() => {
+                        skipRenameCommit.current = false;
+                        setRenamingId(view.id);
+                        setRenameDraft(view.name);
+                      }}
+                      className="ds-raw-button shrink-0 rounded p-1.5 text-text-faint opacity-0 transition-all hover:text-text-default group-hover:opacity-100"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  </HoverTooltip>
+                ) : null}
                 {view.isMine ? (
                   <HoverTooltip
                     label={view.isShared ? 'Stop sharing with org' : 'Share with org'}
@@ -172,7 +231,8 @@ function SavedViewsListView({
         <button
           type="button"
           onClick={clearView}
-          className="ds-raw-button w-full rounded-lg px-2 py-1.5 text-left text-role-caption font-medium text-text-muted transition-colors hover:bg-surface-hover"
+          data-testid="data-table-views-clear"
+          className="ds-raw-button w-full rounded px-2 py-1.5 text-left text-role-caption font-medium text-text-muted transition-colors hover:bg-surface-hover"
         >
           Clear view
         </button>
@@ -193,12 +253,20 @@ function SavedViewsListView({
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
                 placeholder="Name this view…"
-                className={cn("min-w-0 flex-1 rounded-md border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption text-text-default", focusRing('field', 'accent'))}
+                className={cn(
+                  'min-w-0 flex-1 border border-border-soft bg-surface-card px-2 py-1.5 text-role-caption text-text-default',
+                  cornerClass('field'),
+                  focusRing('field', 'accent'),
+                )}
               />
               <button
                 type="submit"
                 disabled={!draft.trim()}
-                className="ds-raw-button shrink-0 rounded-md bg-blue-600 px-2.5 py-1.5 text-role-caption font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-40"
+                data-testid="data-table-views-save"
+                className={cn(
+                  'ds-raw-button shrink-0 bg-blue-600 px-2.5 py-1.5 text-role-caption font-semibold text-white transition-colors hover:bg-blue-700 disabled:opacity-40',
+                  cornerClass('control'),
+                )}
               >
                 Save
               </button>
@@ -208,6 +276,7 @@ function SavedViewsListView({
                 type="checkbox"
                 checked={shareWithOrg}
                 onChange={(e) => setShareWithOrg(e.target.checked)}
+                data-testid="data-table-views-share-org"
                 className="h-3 w-3 accent-blue-600"
               />
               Share with org
@@ -220,12 +289,13 @@ function SavedViewsListView({
             onClick={() => setNaming(true)}
             title={
               !hasActiveFilters
-                ? 'Set a filter first'
+                ? 'Set a filter or sort first'
                 : activeView
-                  ? 'These filters are already saved'
-                  : 'Save the current filters as a view'
+                  ? 'This combination is already saved'
+                  : 'Save the current filter and sort as a view'
             }
-            className="ds-raw-button flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-role-caption font-medium text-text-muted transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
+            data-testid="data-table-views-save-current"
+            className="ds-raw-button flex w-full items-center gap-1.5 rounded px-2 py-1.5 text-left text-role-caption font-medium text-text-muted transition-colors hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
             <Plus className="h-3.5 w-3.5 shrink-0" />
             Save current view

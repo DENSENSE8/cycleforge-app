@@ -1,11 +1,24 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { Suspense, type ReactNode } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { ChevronLeft, Menu } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
-import { cornerClass } from '@/design-system/tokens/radius';
-import { cn } from '@/utils/_cn';
+import { getMobileAppTitle } from '@/lib/mobile-context-navigation';
 import { MobileScanCta } from './mobile-scan-cta';
+
+function MobilePageTitle() {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  return (
+    <h1
+      data-testid="mobile-page-title"
+      className="min-w-0 truncate text-role-title text-text-default"
+    >
+      {getMobileAppTitle(pathname, searchParams)}
+    </h1>
+  );
+}
 
 /**
  * Shared top bar for every primary mobile page.
@@ -25,7 +38,8 @@ import { MobileScanCta } from './mobile-scan-cta';
  * Desktop wrote the test this follows: a control earns persistent rail pixels
  * by FREQUENCY, not existence. On a 390px bar the bar is stricter still.
  *
- * Deliberately title-less: mobile pages never show a page title in the top-left.
+ * The page name sits immediately right of the hamburger so the operator can
+ * see which surface they are on without opening the drawer.
  *
  * The **SCAN CTA owns the top-right corner** ({@link MobileScanCta}), mounted
  * HERE by the host on every mobile page — starting a scan is the act a warehouse
@@ -62,24 +76,27 @@ export const MobileTopBar = ({
           <IconButton
             onClick={onMenu}
             ariaLabel="Open menu"
+            radius="surface"
             icon={<Menu className="h-5 w-5" />}
-            className={cn(
-              'flex h-10 w-10 shrink-0 items-center justify-center border border-border-soft bg-surface-card text-text-muted transition-colors hover:bg-surface-hover',
-              cornerClass('flush'),
-            )}
+            className="ds-allow-control-size flex h-10 w-10 shrink-0 items-center justify-center border border-border-soft bg-surface-card text-text-muted transition-colors hover:bg-surface-hover"
           />
         )}
         {onBack && (
           <IconButton
             onClick={onBack}
             ariaLabel="Back"
+            radius="surface"
             icon={<ChevronLeft className="h-5 w-5" />}
-            className={cn(
-              'flex h-10 w-10 shrink-0 items-center justify-center border border-border-soft bg-surface-card text-text-muted transition-colors hover:bg-surface-hover',
-              cornerClass('flush'),
-            )}
+            className="ds-allow-control-size flex h-10 w-10 shrink-0 items-center justify-center border border-border-soft bg-surface-card text-text-muted transition-colors hover:bg-surface-hover"
           />
         )}
+        <Suspense
+          fallback={
+            <h1 className="min-w-0 truncate text-role-title text-text-default">&nbsp;</h1>
+          }
+        >
+          <MobilePageTitle />
+        </Suspense>
       </div>
 
       <div className="flex shrink-0 items-center gap-2">

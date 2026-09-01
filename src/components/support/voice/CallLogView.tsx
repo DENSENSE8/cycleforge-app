@@ -1,10 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useCallback, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Phone } from '@/components/Icons';
 import { EmptyState } from '@/design-system/primitives';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import { TimelineSection } from '@/components/ui/TimelineSection';
+import { TableTabs } from '@/components/tables/TableStatusBar';
 import { callEventsToTimeline } from '@/lib/timeline';
 import {
   parseCallDirection,
@@ -15,20 +17,34 @@ import { isNotConfigured, useCallEvents } from './useVoiceQueries';
 /**
  * Calls mode — the Monitor body. A newest-first org call stream rendered through
  * the shared {@link EventTimeline} (via `callEventsToTimeline`), reacting to the
- * ephemeral `?direction=` / `?q=` URL filters set by the sidebar rail. Read-only:
- * no durable selection, no edit.
+ * ephemeral `?direction=` / `?q=` URL filters. Read-only: no durable selection.
  */
 export function CallLogView() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const direction = parseCallDirection(searchParams.get('direction'));
   const query = searchParams.get('q') ?? '';
+
+  const setParam = useCallback(
+    (key: 'direction' | 'q', value: string, dropWhenDefault: string | null = null) => {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('mode', 'calls');
+      if (!value || value === dropWhenDefault) params.delete(key);
+      else params.set(key, value);
+      router.replace(`/support?${params.toString()}`);
+    },
+    [router, searchParams],
+  );
 
   const { data, isLoading, error } = useCallEvents({ direction, query: query.trim() });
   const notConfigured = isNotConfigured(error);
 
   const items = useMemo(() => callEventsToTimeline(data?.items ?? []), [data?.items]);
 
-  const directionLabel = CALL_DIRECTION_ITEMS.find((d) => d.id === direction)?.label ?? 'All';
+  const tabs = useMemo(
+    () => CALL_DIRECTION_ITEMS.map((item) => ({ id: item.id, label: item.label })),
+    [],
+  );
 
   if (notConfigured) {
     return (
@@ -53,20 +69,31 @@ export function CallLogView() {
   }
 
   return (
-    <div className="mx-auto h-full w-full max-w-3xl overflow-y-auto px-6 py-6">
-      <header className="mb-2 flex items-baseline justify-between gap-3">
-        <h1 className="text-xl font-semibold uppercase tracking-tighter text-text-default">Call log</h1>
-        <p className="text-role-eyebrow uppercase tracking-widest text-blue-600">
-          {directionLabel} · live
-        </p>
-      </header>
-      <TimelineSection
-        title="Calls"
-        loading={isLoading}
-        items={items}
-        emptyMessage={query ? 'No calls match this search.' : 'No calls recorded yet.'}
-        className="border-t border-border-hairline pt-4"
-      />
+    <div className="flex h-full min-h-0 w-full flex-col bg-surface-canvas">
+      <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-2 border-b border-border-soft bg-surface-card px-2 py-1">
+        <TableTabs
+          tabs={tabs}
+          activeTab={direction}
+          onTabChange={(id) => setParam('direction', id, 'all')}
+          className="shrink-0 border-0 bg-transparent"
+        />
+        <SearchField
+          value={query}
+          onChange={(v) => setParam('q', v)}
+          placeholder="Search caller or number…"
+          className="min-w-[12rem] flex-1"
+          tone="neutral"
+          hideUnderline
+        />
+      </div>
+      <div className="mx-auto min-h-0 w-full max-w-3xl flex-1 overflow-y-auto px-6 py-6">
+        <TimelineSection
+          title="Calls"
+          loading={isLoading}
+          items={items}
+          emptyMessage={query ? 'No calls match this search.' : 'No calls recorded yet.'}
+        />
+      </div>
     </div>
   );
 }

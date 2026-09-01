@@ -11,7 +11,7 @@
 
 import type { BinsOverviewRow } from '@/hooks/useBinsOverview';
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
-import { BINS_GRID_COLUMNS, type BinsGridColumn } from './bins-grid-layout';
+import { BINS_SHEET_COLUMNS, type BinsGridColumn } from './bins-grid-layout';
 import { parseTableDefinition } from '@/lib/tables/table-definition';
 import { BINS_GRID_CAPABILITIES, makeBinsGridDescriptor } from './bins-grid-descriptor';
 
@@ -25,12 +25,12 @@ export const BINS_TABLE_DEFINITION = parseTableDefinition({
   surface: 'sheet',
   showDayHeaders: false,
   capabilities: BINS_GRID_CAPABILITIES,
-  columns: BINS_GRID_COLUMNS,
+  columns: BINS_SHEET_COLUMNS,
 });
 
 export const BINS_TABLE_BINDING: TableSurfaceBinding<BinsOverviewRow, BinsGridColumn> = {
   definition: BINS_TABLE_DEFINITION,
-  columns: BINS_GRID_COLUMNS,
+  columns: BINS_SHEET_COLUMNS,
   makeDescriptor: makeBinsGridDescriptor,
   // The bin flyout — a peek at what a location holds, opened from the row.
   recordPlane: { kind: 'inspector', occupantId: 'detail:bin' },

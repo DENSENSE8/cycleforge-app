@@ -6,6 +6,14 @@ import {
   emitSelectionTotal,
   onToggleAll,
 } from '@/lib/selection/table-selection';
+import {
+  clearSelection,
+  extendTo,
+  selectAll,
+  selectOnlyAt,
+  toggleAt,
+  type SelectionAnchorState,
+} from '@/lib/selection/selection-anchor';
 
 /**
  * Table-side wiring for always-on multi-select (left-gutter checkboxes → act),
@@ -54,6 +62,8 @@ export function useTableSelectMode<T>({
    * for. Distinct from `toggle`, which is the checkbox gesture.
    */
   selectOnly: (id: number) => void;
+  /** Check every row in the current view — ⌘A. */
+  selectEvery: () => void;
   /** Drop every checked row (the rail's close / the header's Clear). */
   clear: () => void;
   isSelected: (id: number) => boolean;
@@ -69,50 +79,64 @@ export function useTableSelectMode<T>({
   // Last-clicked row id — the anchor for shift-click range select.
   const anchorRef = useRef<number | null>(null);
 
-  const toggle = useCallback((id: number, extend = false) => {
-    const anchorId = anchorRef.current;
-    if (extend && anchorId != null && anchorId !== id) {
-      const ids = rowsRef.current.map((r) => getIdRef.current(r));
-      const anchorPos = ids.indexOf(anchorId);
-      const clickPos = ids.indexOf(id);
-      if (anchorPos >= 0 && clickPos >= 0) {
-        const [lo, hi] = anchorPos <= clickPos ? [anchorPos, clickPos] : [clickPos, anchorPos];
-        const range = ids.slice(lo, hi + 1);
-        setSelectedIds((prev) => {
-          // Apply the clicked row's NEW state to the whole range (range select).
-          const checked = !prev.has(id);
-          const next = new Set(prev);
-          for (const rid of range) {
-            if (checked) next.add(rid);
-            else next.delete(rid);
-          }
-          return next;
-        });
-        anchorRef.current = id;
-        return;
-      }
-    }
-    setSelectedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-    anchorRef.current = id;
-  }, []);
+  /**
+   * Read the current gesture's inputs for {@link selection-anchor}.
+   *
+   * `ids` is DISPLAY order — the order on screen after sort and filter — which
+   * is what a span between two rows means to the operator.
+   */
+  const anchorStateFor = useCallback(
+    (selected: ReadonlySet<number>): SelectionAnchorState => ({
+      ids: rowsRef.current.map((r) => getIdRef.current(r)),
+      selected,
+      anchorId: anchorRef.current,
+    }),
+    [],
+  );
 
-  // Both return `prev` untouched when nothing would change, so a repeat click on
-  // the already-sole selection does not re-render the grid or re-broadcast the
-  // same set on the bus.
-  const selectOnly = useCallback((id: number) => {
-    anchorRef.current = id;
-    setSelectedIds((prev) => (prev.size === 1 && prev.has(id) ? prev : new Set([id])));
-  }, []);
+  /**
+   * Apply one anchor result. Returning `prev` when nothing changed is not an
+   * optimisation — the page collects the broadcast into React state, so a fresh
+   * Set for a no-op gesture would re-render the grid and re-emit the same
+   * selection (the ping-pong this hook's docblock warns about).
+   */
+  const applyAnchor = useCallback(
+    (run: (state: SelectionAnchorState) => ReturnType<typeof toggleAt>) => {
+      setSelectedIds((prev) => {
+        const result = run(anchorStateFor(prev));
+        anchorRef.current = result.anchorId;
+        return result.changed ? (result.selected as Set<number>) : prev;
+      });
+    },
+    [anchorStateFor],
+  );
+
+  // The RANGE WALK used to live inline here, reachable only from a pointer
+  // event. Shift+↑/↓ is the same gesture with a different input device, so it
+  // moved to `selection-anchor` where both call one implementation — and where
+  // it can be tested without mounting React.
+  const toggle = useCallback(
+    (id: number, extend = false) => {
+      applyAnchor((state) => (extend ? extendTo(state, id) : toggleAt(state, id)));
+    },
+    [applyAnchor],
+  );
+
+  const selectOnly = useCallback(
+    (id: number) => {
+      applyAnchor((state) => selectOnlyAt(state, id));
+    },
+    [applyAnchor],
+  );
+
+  /** ⌘A — every row in the CURRENT view, which is what the operator can see. */
+  const selectEvery = useCallback(() => {
+    applyAnchor((state) => selectAll(state));
+  }, [applyAnchor]);
 
   const clear = useCallback(() => {
-    anchorRef.current = null;
-    setSelectedIds((prev) => (prev.size ? new Set() : prev));
-  }, []);
+    applyAnchor((state) => clearSelection(state));
+  }, [applyAnchor]);
 
   const isSelected = useCallback((id: number) => selectedIds.has(id), [selectedIds]);
 
@@ -154,5 +178,5 @@ export function useTableSelectMode<T>({
     emitSelectionTotal(scope, selectMode ? rows.length : 0);
   }, [scope, selectMode, rows.length]);
 
-  return { selectedIds, toggle, selectOnly, clear, isSelected };
+  return { selectedIds, toggle, selectOnly, selectEvery, clear, isSelected };
 }

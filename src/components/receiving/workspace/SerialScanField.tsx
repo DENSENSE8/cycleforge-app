@@ -22,6 +22,7 @@ import { TextField, IconButton } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { getLast8Serial } from '@/lib/copy-chip-format';
 import { cn } from '@/utils/_cn';
+import { STATION_SCAN_FIELD_WELL_CLASS } from '@/components/station/scan-depth';
 import { PO_LINE_CAPTURE_ACTIONS_CLASS } from './po-line-capture-chrome';
 import { NoSerialOfferCheck } from './line-edit/NoSerialOfferCheck';
 import { focusUnboxCaptureSerialRelative } from './line-edit/focus-unbox-capture-serial';
@@ -332,6 +333,7 @@ export const SerialScanField = forwardRef<
             // asking for `serial` would light nothing at all.
             data-capture-segment="serial"
             appearance={embedded ? 'flush' : 'default'}
+            inputClassName={embedded ? STATION_SCAN_FIELD_WELL_CLASS : undefined}
             value={scan}
             onChange={(next) => {
               setScan(next);

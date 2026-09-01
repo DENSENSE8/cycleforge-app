@@ -81,31 +81,42 @@ async function postScanOut(tracking: string): Promise<ScanOutResult> {
  */
 export function useScanOutStation() {
   const queryClient = useQueryClient();
-  const [scanValue, setScanValue] = useState('');
   const [active, setActive] = useState<ActiveScanOut | null>(null);
   const [undoable, setUndoable] = useState<{ shipmentId: number } | null>(null);
   const [inFlight, setInFlight] = useState(0);
   const [isUndoing, setIsUndoing] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
+  /**
+   * Last matched `orders.id` for notes — survives idle / pending / miss so the
+   * single OmnichannelComposerDock can note the prior package without a second
+   * mouth or a focused-pane gate.
+   */
+  const [noteOrderRowId, setNoteOrderRowId] = useState<number | null>(null);
+  /** Composer dock focus — HID / post-scan refocus lands here (textarea). */
+  const focusFnRef = useRef<(() => void) | null>(null);
   /** Monotonic token so a slower older response cannot overwrite a newer one. */
   const seqRef = useRef(0);
   /** Last matched carton — a miss must not wipe a prior good focus. */
   const lastGoodRef = useRef<ScanOutActivePane | null>(null);
 
+  const bindFocus = useCallback((fn: (() => void) | null) => {
+    focusFnRef.current = fn;
+  }, []);
+
   const refocus = useCallback(() => {
-    requestAnimationFrame(() => inputRef.current?.focus());
+    requestAnimationFrame(() => focusFnRef.current?.());
   }, []);
 
   const bustCaches = useCallback(() => {
     bustScanOutCaches(queryClient);
   }, [queryClient]);
 
-  // External clear (identity ◁ / rail toggle) drops the undo handle.
+  // External clear (identity ◁) drops undo + note target.
   useEffect(() => {
     const handler = (e: Event) => {
       if ((e as CustomEvent<ScanOutActivePane | null>).detail == null) {
         setUndoable(null);
         lastGoodRef.current = null;
+        setNoteOrderRowId(null);
       }
     };
     window.addEventListener(SCAN_OUT_ACTIVE_EVENT, handler);
@@ -140,9 +151,12 @@ export function useScanOutStation() {
         }
         if (status === 'ok' || status === 'dup' || status === 'exc') {
           lastGoodRef.current = pane;
+          if (pane.orderRowId != null && pane.orderRowId > 0) {
+            setNoteOrderRowId(pane.orderRowId);
+          }
           dispatchScanOutActive(pane);
         } else if (status === 'miss' || status === 'err') {
-          // Keep the prior good carton on screen; bar still shows the miss.
+          // Keep the prior good carton on screen; feedback still shows the miss.
           dispatchScanOutActive(lastGoodRef.current);
         }
       }
@@ -160,8 +174,8 @@ export function useScanOutStation() {
       const v = raw.trim();
       if (!v) return;
 
-      // Clear + refocus BEFORE the network — the next wedge must land now.
-      setScanValue('');
+      // Refocus BEFORE the network — the next wedge must land now.
+      // Caller clears the composer draft; HID sink never fills the textarea.
       refocus();
 
       const seq = ++seqRef.current;
@@ -173,10 +187,14 @@ export function useScanOutStation() {
         text: 'Scanning…',
         scanned: v,
       });
-      // Optimistic focus so the center leaves idle immediately on a rapid pass.
-      dispatchScanOutActive(
-        resultToScanOutPane({ tracking: v, productTitle: 'Scanning…' }, 'pending', v),
-      );
+      // Keep the most-recent carton on the station header. Composer feedback
+      // owns "Scanning…" — never replace CartonContextCard with a pending stub
+      // when a prior confirm is already on screen (scan-station contract).
+      if (!lastGoodRef.current) {
+        dispatchScanOutActive(
+          resultToScanOutPane({ tracking: v, productTitle: 'Scanning…' }, 'pending', v),
+        );
+      }
 
       void postScanOut(v)
         .then((result) => applySettled(seq, v, result))
@@ -199,10 +217,6 @@ export function useScanOutStation() {
     [applySettled, refocus],
   );
 
-  const submit = useCallback(() => {
-    submitRaw(scanValue);
-  }, [scanValue, submitRaw]);
-
   const undo = useCallback(() => {
     if (!undoable || isUndoing) return;
     const { shipmentId } = undoable;
@@ -216,6 +230,7 @@ export function useScanOutStation() {
         if (!res.ok) throw new Error(`undo failed (${res.status})`);
         setUndoable(null);
         setActive(null);
+        setNoteOrderRowId(null);
         dispatchScanOutActive(null);
         bustCaches();
         refocus();
@@ -234,13 +249,12 @@ export function useScanOutStation() {
   }, [undoable, isUndoing, bustCaches, refocus]);
 
   return {
-    scanValue,
-    setScanValue,
-    inputRef,
+    bindFocus,
     refocus,
     active,
     undoable,
-    submit,
+    /** Last matched order for notes — even when the center is idle / pending. */
+    noteOrderRowId,
     submitRaw,
     undo,
     /** True while ANY confirm is in flight — never gates the gun. */

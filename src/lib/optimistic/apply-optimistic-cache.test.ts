@@ -60,6 +60,32 @@ test('beginOptimisticUpdate cancels in-flight reads on the key before patching',
   assert.deepEqual(qc.getQueryData(KEY), { n: 2 });
 });
 
+test('match: prefix patches every query under the key, not only the exact key', () => {
+  const qc = new QueryClient();
+  const listA = ['dashboard-table', 'unshipped', { q: 'a' }] as const;
+  const listB = ['dashboard-table', 'unshipped', { q: 'b' }] as const;
+  qc.setQueryData(listA, [{ id: 1, ship_by_date: '2026-01-01' }]);
+  qc.setQueryData(listB, [{ id: 1, ship_by_date: '2026-01-01' }]);
+  qc.setQueryData(['other'], [{ id: 1, ship_by_date: '2026-01-01' }]);
+
+  snapshotAndPatch(
+    qc,
+    [
+      {
+        queryKey: ['dashboard-table'],
+        match: 'prefix',
+        update: (current: Array<{ id: number; ship_by_date: string }> | undefined, vars: { date: string }) =>
+          current?.map((row) => (row.id === 1 ? { ...row, ship_by_date: vars.date } : row)),
+      },
+    ],
+    { date: '2026-09-01' },
+  );
+
+  assert.deepEqual(qc.getQueryData(listA), [{ id: 1, ship_by_date: '2026-09-01' }]);
+  assert.deepEqual(qc.getQueryData(listB), [{ id: 1, ship_by_date: '2026-09-01' }]);
+  assert.deepEqual(qc.getQueryData(['other']), [{ id: 1, ship_by_date: '2026-01-01' }]);
+});
+
 test('mutationErrorMessage prefers the Error message the server threw', () => {
   assert.equal(mutationErrorMessage(new Error('Subject is required')), 'Subject is required');
   assert.equal(mutationErrorMessage('nope'), 'Update failed');

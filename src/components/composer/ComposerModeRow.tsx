@@ -161,6 +161,9 @@ export function ComposerProcedureRingButton({
 
 /**
  * Horizontal Unbox | Ticket (left cluster) + procedure ring BELOW the outline.
+ *
+ * `showModeFaces={false}` keeps the same row plate and trailing ring but hides
+ * Unbox | Ticket — scan-out / dumb mouths that only need the context ring.
  */
 export function ComposerModeRow({
   mode,
@@ -169,6 +172,7 @@ export function ComposerModeRow({
   progressTone = 'idle',
   onProgressClick,
   leading,
+  showModeFaces = true,
 }: {
   mode: StationComposerMode;
   onModeChange: (next: StationComposerMode) => void;
@@ -176,6 +180,8 @@ export function ComposerModeRow({
   progressTone?: 'idle' | 'selected';
   onProgressClick?: () => void;
   leading?: ReactNode;
+  /** When false, only the bottom-right context / procedure ring paints. */
+  showModeFaces?: boolean;
 }) {
   return (
     <div
@@ -188,36 +194,37 @@ export function ComposerModeRow({
       )}
       data-testid="composer-mode-row"
       data-composer-mode={mode}
+      data-composer-mode-faces={showModeFaces ? 'true' : 'false'}
       role="toolbar"
-      aria-label="Composer mode"
+      aria-label={showModeFaces ? 'Composer mode' : 'Composer context'}
     >
-      <div className="flex shrink-0 items-center gap-0.5">
-        <ModeFace
-          id="unbox"
-          active={mode === 'unbox'}
-          onSelect={() => onModeChange('unbox')}
-        />
-        <ModeFace
-          id="ticket"
-          active={mode === 'ticket'}
-          onSelect={() => onModeChange('ticket')}
-        />
-      </div>
-      <div className="flex min-w-0 flex-1 items-center gap-1">
-        {leading}
-        {/* Cycle chord, once, after the two faces — the third thing you can
-            press, not a property of either mode. */}
-        {/* The chord is PAINTED, not hidden in a tooltip — a shortcut nobody
-            can see is a shortcut nobody uses. In WORDS, not ⇧⇥: this bench runs
-            Windows workstations and Mac key glyphs are one more thing to decode
-            mid-carton (operator ruling 2026-08-31). */}
-        <span
-          className="hidden shrink-0 text-role-micro font-normal text-text-faint md:inline"
-          title="Toggle composer mode"
-        >
-          {STATION_COMPOSER_CYCLE_CHORD}
-        </span>
-      </div>
+      {showModeFaces ? (
+        <>
+          <div className="flex shrink-0 items-center gap-0.5">
+            <ModeFace
+              id="unbox"
+              active={mode === 'unbox'}
+              onSelect={() => onModeChange('unbox')}
+            />
+            <ModeFace
+              id="ticket"
+              active={mode === 'ticket'}
+              onSelect={() => onModeChange('ticket')}
+            />
+          </div>
+          <div className="flex min-w-0 flex-1 items-center gap-1">
+            {leading}
+            <span
+              className="hidden shrink-0 text-role-micro font-normal text-text-faint md:inline"
+              title="Toggle composer mode"
+            >
+              {STATION_COMPOSER_CYCLE_CHORD}
+            </span>
+          </div>
+        </>
+      ) : (
+        <div className="min-w-0 flex-1" aria-hidden />
+      )}
       <ComposerProcedureRingButton
         percent={progressPercent}
         tone={progressTone}

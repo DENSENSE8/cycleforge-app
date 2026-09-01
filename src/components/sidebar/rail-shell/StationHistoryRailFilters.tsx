@@ -11,7 +11,7 @@ import {
   FilterMenuRow,
   FilterMenu,
 } from '@/components/ui/FilterMenu';
-import { PlatformMark } from '@/components/ui/PlatformMark';
+import { MenuBrandIdentity } from '@/components/ui/grid-cells';
 import { usePlatformCatalog } from '@/hooks/useCatalog';
 import { sourcePlatformLabel } from '@/lib/source-platform';
 
@@ -77,9 +77,7 @@ export function StationHistoryRailFilters({
           key={opt.value}
           label={opt.label}
           active={facets.platform === opt.value}
-          leading={
-            <PlatformMark platformValue={opt.value} preferBrandTile textClassName="text-current" />
-          }
+          leading={<MenuBrandIdentity kind="platform" label={opt.label} value={opt.value} />}
           onClick={() => {
             onChange({ ...facets, platform: opt.value });
             setOpen(false);

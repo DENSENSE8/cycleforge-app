@@ -46,8 +46,7 @@ import {
 } from '@/lib/search/search-refine';
 import type { SearchHitEntityType } from '@/lib/search/search-hit';
 import { usePlatformMeta } from '@/hooks/useCatalog';
-import { platformMetaBrandDot } from '@/lib/source-platform';
-import { cn } from '@/utils/_cn';
+import { MenuBrandIdentity } from '@/components/ui/grid-cells';
 
 export function SearchRefineControls({
   statusOptions,
@@ -190,17 +189,17 @@ export function SearchRefineControls({
           />
           {channelOptions.map((value) => {
             const meta = platformMeta(value);
-            const dot = platformMetaBrandDot(meta);
             return (
               <FilterMenuRow
                 key={value}
                 label={meta.label}
                 active={chan === value}
                 leading={
-                  <span
-                    className={cn('h-2 w-2 shrink-0 rounded-full', dot.className)}
-                    style={dot.style}
-                    aria-hidden
+                  <MenuBrandIdentity
+                    kind="platform"
+                    label={meta.label}
+                    value={value}
+                    meta={meta}
                   />
                 }
                 onClick={() => {

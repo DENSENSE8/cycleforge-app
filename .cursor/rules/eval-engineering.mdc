@@ -1,0 +1,29 @@
+---
+description: Eval engineering — run real verify before claiming a task is done.
+alwaysApply: true
+---
+
+# Eval engineering
+
+Before marking a coding task complete:
+
+1. Run `node "$GARISEK_OS_ROOT/tools/eval-engineering/cursor-eval.mjs" --root . --fast`
+2. On failure: fix or report — do not claim done.
+3. Cross-cutting refactors: use `--full` instead of `--fast`.
+4. **Floor stations / overlay shell:** after edits to any
+   `SCAN_STATION_OVERLAY_COHORT` workspace, run
+   `pnpm run eval:station <id>` (see `docs/eval/README.md`). SoT is the
+   full cohort — peers, not Pack/Unbox-as-golden. Display eval is
+   **slot-table only** — there is no `eval:cohort overlay`. Do not delete
+   cohort-law `visibility` / `zIndex.panel` styles to silence critique.
+5. **Slot-table cohort (the only display eval):** after CompoundItem /
+   `useSlotTableLayout` / PRODUCT_TABLES / DataTable funnel engine edits, run
+   `pnpm run eval:cohort slot-table`. SoT is engine + every product table peer
+   — not To-ship alone. Hand-model leftovers:
+   `pnpm run eval:discover` — delete only listed DELETE ids; never KEEP rows.
+6. **Shortcut-display cohort:** after `?` / shortcut / TableStatusBar hotkey
+   edits, run `pnpm run eval:cohort shortcuts`. Staff `?` reveals letters
+   inline on the buttons. Standing keycaps: refuse. Cheat sheet from the
+   table-foot `?`: refuse. No `title`/popover on the question-mark.
+
+Verify commands come from this repo's `package.json` — not model-invented commands.

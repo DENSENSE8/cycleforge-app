@@ -24,10 +24,13 @@ import {
 } from '@/lib/selection/table-selection';
 import { BINS_SELECTION_SCOPE } from './bins-grid/bins-grid-descriptor';
 import { BINS_TABLE_BINDING } from './bins-grid/bins-table-definition';
+import { useBinsTableLayout } from './bins-grid/useBinsTableLayout';
 import { BinsGridRow } from './bins-grid/BinsGridRow';
 import {
-  defaultDirForBinsGridSort,
-  isBinsGridSortable,
+  binsSheetColumnsFor,
+  binsSortFactFor,
+  defaultDirForBinsColumn,
+  isBinsColumnSortable,
   type BinsGridColumn,
   type BinsGridColumnKey,
 } from './bins-grid/bins-grid-layout';
@@ -50,31 +53,31 @@ interface Props {
 function compareBinsRows(
   a: BinsOverviewRow,
   b: BinsOverviewRow,
-  key: BinsGridColumnKey,
+  fact: string,
   dir: GridSortDir,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
-  switch (key) {
-    case 'barcode':
+  switch (fact) {
+    case 'bins.barcode':
       return sign * String(a.barcode ?? '').localeCompare(String(b.barcode ?? ''));
-    case 'location':
+    case 'bins.location':
       return (
         sign *
         (String(a.room ?? '').localeCompare(String(b.room ?? '')) ||
           String(a.row_label ?? '').localeCompare(String(b.row_label ?? '')) ||
           String(a.col_label ?? '').localeCompare(String(b.col_label ?? '')))
       );
-    case 'sku_count':
+    case 'bins.sku_count':
       return sign * (a.sku_count - b.sku_count);
-    case 'total_qty':
+    case 'bins.total_qty':
       return sign * (a.total_qty - b.total_qty);
-    case 'fill':
+    case 'bins.fill':
       // Unknown fill parks last in BOTH directions — not as -1 "emptiest".
       if (a.fill_pct == null && b.fill_pct == null) return 0;
       if (a.fill_pct == null) return 1;
       if (b.fill_pct == null) return -1;
       return sign * (a.fill_pct - b.fill_pct);
-    case 'last_counted': {
+    case 'bins.last_counted': {
       // Never-counted parks last in BOTH directions — same unknown treatment.
       if (!a.last_counted && !b.last_counted) return 0;
       if (!a.last_counted) return 1;
@@ -96,13 +99,23 @@ export function BinsTable({
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // The COLUMNS are the effective slot layout's materialization (staff ?? org
+  // ?? product — wave 1.4 hand-model kill). Sort keys are the mounted track
+  // keys; each resolves to its bound field's fact through `binsSortFactFor`.
+  const { effectiveLayout: binsLayout, fields: binsFields } = useBinsTableLayout();
+  const columns = useMemo(() => binsSheetColumnsFor(binsLayout), [binsLayout]);
+  const sortFactByKey = useMemo(
+    () => new Map(columns.map((c) => [c.key as string, binsSortFactFor(c)])),
+    [columns],
+  );
+
   const {
     sort: columnSort,
     dir: sortDir,
     setSort,
   } = useUrlColumnSort<BinsGridColumnKey>({
-    isColumn: isBinsGridSortable,
-    defaultDir: defaultDirForBinsGridSort,
+    isColumn: (raw) => isBinsColumnSortable(columns, raw),
+    defaultDir: (key) => defaultDirForBinsColumn(columns, key),
   });
 
   // Bridge parent Set → selection bus (header select-all + indeterminate).
@@ -144,12 +157,13 @@ export function BinsTable({
   }, [loading, hasRows]);
 
   const orderGroupsByDate = useMemo<[string, RowGroup<BinsOverviewRow>[]][]>(() => {
+    const sortFact = columnSort ? (sortFactByKey.get(columnSort) ?? null) : null;
     const ordered =
-      columnSort && sortDir
-        ? [...rows].sort((a, b) => compareBinsRows(a, b, columnSort, sortDir))
+      sortFact && sortDir
+        ? [...rows].sort((a, b) => compareBinsRows(a, b, sortFact, sortDir))
         : rows;
     return [['', ordered.map((row) => ({ key: `bin:${row.id}`, rows: [row] }))]];
-  }, [rows, columnSort, sortDir]);
+  }, [rows, columnSort, sortFactByKey, sortDir]);
 
   const onOpen = useCallback((row: BinsOverviewRow) => onRowClick(row), [onRowClick]);
   const onToggleSelect = useCallback(
@@ -177,6 +191,8 @@ export function BinsTable({
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <DataTable<BinsOverviewRow, BinsGridColumnKey, BinsGridColumn>
         binding={BINS_TABLE_BINDING}
+        columns={columns}
+        fields={binsFields}
         orderGroupsByDate={orderGroupsByDate}
         rows={rows}
         getRowId={(r) => String(r.id)}

@@ -111,6 +111,29 @@ describe('Collapse all — one control, not one per station', () => {
     assert.doesNotMatch(src, /UnboxPlacementSection/);
   });
 
+  it('Unbox does not name a per-band well — the stack defaults it', () => {
+    const src = readFileSync(
+      'src/components/receiving/workspace/line-edit/terminal/unbox-tabs.tsx',
+      'utf8',
+    );
+    assert.doesNotMatch(src, /STATION_BAND_BODY_WELL_CLASS/);
+    assert.doesNotMatch(src, /bodyClassName:/);
+  });
+
+  it('Testing and Search inherit the stack well without a local fill', () => {
+    for (const path of [
+      'src/components/tech/TestingPanel.tsx',
+      'src/components/search/station/SearchEntityCentre.tsx',
+    ]) {
+      const src = readFileSync(path, 'utf8');
+      assert.doesNotMatch(
+        src,
+        /STATION_BAND_BODY_WELL_CLASS|STATION_SCAN_WELL_CLASS/,
+        `${path} redeclared the well — that is a fork of StationBandStack`,
+      );
+    }
+  });
+
   it('Unbox and Testing do not auto-collapse the centre on scroll', () => {
     // Scroll-collapse unmounted Items, remounted the serial input, and
     // scrollIntoView yanked the label the operator was reading.
@@ -267,8 +290,10 @@ describe('StationBandStack', () => {
 
   it('the header bar is flush — name padding lives on the row, not around it', () => {
     const html = render(false);
-    assert.doesNotMatch(html, /bg-surface-card/);
-    assert.doesNotMatch(html, /bg-surface-canvas/);
+    assert.match(html, /bg-surface-station-well/);
+    // Open bodies inherit the shared well; the header strip uses the header token.
+    assert.doesNotMatch(html, /bg-surface-sunken/);
+    assert.match(html, /bg-surface-station-header/);
     // Names keep the workbench px-3 inset on the header bar…
     assert.match(html, /px-3/);
     // …but the bar itself must not sit in an outer gutter. `px-3 py-2` on the
@@ -286,6 +311,31 @@ describe('StationBandStack', () => {
       2,
       'three bands, two boundaries',
     );
+  });
+
+  it('every open band body sits in the shared well without greying the header', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(StationBandStack, {
+        bands: [
+          {
+            id: 'items',
+            label: 'Items',
+            body: React.createElement('p', null, 'ITEMS_BODY'),
+          },
+        ],
+        collapse: controller(false),
+      }),
+    );
+    assert.match(html, /bg-surface-station-well/);
+    assert.doesNotMatch(html, /bg-surface-sunken/);
+    assert.match(html, /ITEMS_BODY/);
+    const headerAt = html.indexOf('data-block-face="hairline"');
+    const headerStart = html.lastIndexOf('<div', headerAt);
+    const headerFace = html.slice(headerStart, html.indexOf('</div>', headerAt));
+    assert.match(headerFace, /Items/);
+    const headerClass = headerFace.match(/^<div class="([^"]*)"/)?.[1] ?? '';
+    assert.match(headerClass, /bg-surface-station-header/);
+    assert.doesNotMatch(headerClass, /bg-surface-station-well/);
   });
 });
 

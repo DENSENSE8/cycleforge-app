@@ -8,6 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/design-system/components/Dialog';
+import { KeyboardKey } from '@/design-system/primitives/KeyboardKey';
 
 interface ShortcutRow {
   keys: string[];
@@ -36,14 +37,6 @@ const VIEWER_SHORTCUTS: ShortcutRow[] = [
   { keys: ['Esc'], label: 'Close viewer' },
 ];
 
-function KeyCap({ children }: { children: string }) {
-  return (
-    <kbd className="inline-flex min-w-[1.5rem] items-center justify-center rounded border border-border-default bg-surface-canvas px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-muted">
-      {children}
-    </kbd>
-  );
-}
-
 function ShortcutList({ title, rows }: { title: string; rows: ShortcutRow[] }) {
   return (
     <div className="space-y-1">
@@ -54,7 +47,9 @@ function ShortcutList({ title, rows }: { title: string; rows: ShortcutRow[] }) {
             <span className="truncate text-role-caption text-text-muted">{row.label}</span>
             <span className="flex shrink-0 items-center gap-1">
               {row.keys.map((k, i) => (
-                <KeyCap key={i}>{k}</KeyCap>
+                <KeyboardKey key={i} size="md">
+                  {k}
+                </KeyboardKey>
               ))}
             </span>
           </li>

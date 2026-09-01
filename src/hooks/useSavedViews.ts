@@ -54,6 +54,8 @@ export interface UseSavedViewsResult {
   clearView: () => void;
   /** Save the current params under a name (replaces a same-name owned view). */
   saveView: (name: string, options?: SaveViewOptions) => void;
+  /** Rename an owned view. Filters stay; only the label moves. */
+  renameView: (id: string, name: string) => void;
   /** Toggle org-share on an owned view. */
   setViewShared: (id: string, isShared: boolean) => void;
   /** Delete a saved view by id (owner only). */
@@ -222,6 +224,31 @@ export function useSavedViews({
     [views, currentQuery, surface, staffId],
   );
 
+  const renameView = useCallback(
+    (id: string, name: string) => {
+      const trimmed = name.trim();
+      if (!trimmed || !surface) return;
+      const target = views.find((v) => v.id === id);
+      if (!target?.isMine) return;
+      if (trimmed === target.name) return;
+      const prevName = target.name;
+      setViews((prev) => prev.map((v) => (v.id === id ? { ...v, name: trimmed } : v)));
+      void (async () => {
+        try {
+          const json = await reqJson(`/api/saved-views/${id}`, 'PATCH', { name: trimmed });
+          if (json?.view) {
+            const updated = toClientView(json.view as ServerView, staffId);
+            setViews((prev) => prev.map((v) => (v.id === id ? updated : v)));
+          }
+        } catch (err) {
+          console.error('[useSavedViews] rename failed:', err);
+          setViews((prev) => prev.map((v) => (v.id === id ? { ...v, name: prevName } : v)));
+        }
+      })();
+    },
+    [views, surface, staffId],
+  );
+
   const setViewShared = useCallback(
     (id: string, isShared: boolean) => {
       if (!surface) return;
@@ -273,6 +300,7 @@ export function useSavedViews({
     applyView,
     clearView,
     saveView,
+    renameView,
     setViewShared,
     removeView,
   };

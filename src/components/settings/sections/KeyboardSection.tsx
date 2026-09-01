@@ -21,6 +21,7 @@ import {
   isBindableFocusScanHotkey,
 } from '@/lib/schemas/staff-preferences-constants';
 import { NEXT_SCAN_CHORD_LABEL } from '@/lib/scan-hotkey/store';
+import { KeyboardKey } from '@/design-system/primitives/KeyboardKey';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
@@ -208,15 +209,5 @@ export function KeyboardSection() {
 }
 
 function Kbd({ children, inline }: { children: ReactNode; inline?: boolean }) {
-  return (
-    <kbd
-      className={cn(
-        'inline-flex items-center justify-center border border-border-default bg-surface-canvas font-mono text-role-micro uppercase tracking-widest text-text-muted',
-        FLUSH,
-        inline ? 'min-w-[1.25rem] px-1 py-0.5' : 'min-w-[1.5rem] px-1.5 py-0.5',
-      )}
-    >
-      {children}
-    </kbd>
-  );
+  return <KeyboardKey size={inline ? 'sm' : 'md'}>{children}</KeyboardKey>;
 }

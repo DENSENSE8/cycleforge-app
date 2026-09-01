@@ -81,7 +81,7 @@ export function StagedQueueTable({
         searchEmptyTitle="No matching staged packages"
         searchResultLabel="staged packages"
         clearSearchLabel="Show all staged"
-        sort="priority"
+        sort="deadline"
         selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
         data-testid="staged-grid-body"
         onOpenRecord={(record) => onOpenOrder(record)}

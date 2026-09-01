@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/design-system/components/Dialog';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { useSkuCatalogSearch, type SkuCatalogItem } from '@/hooks/useSkuCatalogSearch';
 import { useSkuChildren, useSkuParents, useSkuRelationshipMutations } from './useSkuGraph';
@@ -108,7 +109,12 @@ export function SkuGraphCrudModal({ focused, onClose }: SkuGraphCrudModalProps) 
                   className={cn("h-9 w-full rounded-xl border border-border-soft bg-surface-canvas pl-8 pr-3 text-role-data focus:bg-surface-card", focusRing('field', 'accent'))}
                 />
                 {query.trim().length > 0 && results.length > 0 && (
-                  <ul className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-xl border border-border-soft bg-surface-card py-1 shadow-lg">
+                  <ul
+                    className={cn(
+                      'absolute z-10 mt-1 max-h-56 w-full overflow-y-auto border border-border-soft bg-surface-card py-1 shadow-lg',
+                      DROPDOWN_SHELL_CORNER,
+                    )}
+                  >
                     {results
                       .filter((r) => r.id !== focused.sku_id)
                       .map((r) => (

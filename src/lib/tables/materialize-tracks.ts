@@ -154,8 +154,10 @@ function insertAfter<C extends MaterializableTrack>(
   tracks: readonly C[],
   anchorKey: string,
   band: readonly C[],
-): C[] {
-  if (band.length === 0) return [...tracks];
+): readonly C[] {
+  // Empty band MUST return the same array reference so product-default
+  // compound mounts stay `=== COMPOUND_TRACKS` (compound-row-model guard).
+  if (band.length === 0) return tracks;
   const at = tracks.findIndex((t) => t.key === anchorKey);
   if (at < 0) {
     throw new Error(`materializeTracks: anchor '${anchorKey}' is not in the base skeleton`);
@@ -172,7 +174,7 @@ export function materializeTracks<C extends MaterializableTrack>({
   base,
   statusAnchorKey = 'state',
   subtitleAnchorKey = 'item',
-}: MaterializeTracksArgs<C>): C[] {
+}: MaterializeTracksArgs<C>): readonly C[] {
   const byId = catalogById(catalog);
   const collision = base.find(
     (t) => t.key.startsWith('status:') || t.key.startsWith('subtitle:'),

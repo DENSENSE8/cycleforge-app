@@ -39,17 +39,20 @@
  *
  * ## Separation is a seam — never a gutter around the bar
  *
- * The plane is flat white ({@link StationPanelRoot}). The header is edge to
- * edge; a `border-subtle` rule is the only separator. `border-subtle`
- * (`#e2e8f0`) and not `border-hairline` (`#f1f5f9`), which is the same hex as
- * `surface-sunken` — a line the colour of a fill, invisible at bench distance
- * and useless as the only separator on a white sheet.
+ * Headers sit on {@link STATION_SCAN_BENCH_CLASS} (transparent under the
+ * industrial skin). The header is edge to edge; a `border-subtle` rule is
+ * the only separator.
+ *
+ * An open body sits in {@link STATION_BAND_BODY_WELL_CLASS} (inset bevel) so
+ * a working row can lift off it (`selectedStationClass` = plate). Every band
+ * inherits the well — Unbox, Testing, Search. Fill follows the station skin.
  *
  * **No layout animation** (AGENTS.md). Bodies unmount — nothing tweens a height.
  */
 
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
+import { STATION_SCAN_BENCH_CLASS, STATION_SCAN_WELL_CLASS } from '@/components/station/scan-depth';
 import {
   StationCollapseAllAction,
   StationCollapsibleBlock,
@@ -66,6 +69,13 @@ import type { BandCollapseController } from './useBandCollapse';
 const BAND_FLUSH_CLASS = 'w-full min-w-0';
 const BAND_BODY_INSET_CLASS = '';
 
+/**
+ * Recessed open-body plane for a scan-station band. Alias of
+ * {@link STATION_SCAN_WELL_CLASS} — the same fill Arrival / Pack / Scan-out
+ * wrap their centres with. Headers use {@link STATION_SCAN_BENCH_CLASS}.
+ */
+export const STATION_BAND_BODY_WELL_CLASS = STATION_SCAN_WELL_CLASS;
+
 /** Bands abut; the seam between them is the separator, not a gap. */
 const BAND_STACK_CLASS = 'flex w-full min-w-0 flex-col flex-nowrap';
 
@@ -80,6 +90,12 @@ export interface StationBand {
    */
   icon?: StationBlockIcon;
   body: ReactNode;
+  /**
+   * Extra open-body classes. The shared well is applied by the stack —
+   * do not pass {@link STATION_BAND_BODY_WELL_CLASS} here; that is how
+   * Unbox forked Testing.
+   */
+  bodyClassName?: string;
   testId?: string;
 }
 
@@ -125,7 +141,12 @@ export function StationBandStack({
             // is a boundary with nothing on the other side of it.
             seam={index > 0}
             className={BAND_FLUSH_CLASS}
-            bodyClassName={BAND_BODY_INSET_CLASS}
+            headerClassName={STATION_SCAN_BENCH_CLASS}
+            bodyClassName={cn(
+              BAND_BODY_INSET_CLASS,
+              STATION_BAND_BODY_WELL_CLASS,
+              band.bodyClassName,
+            )}
             collapsed={!open}
             onToggle={() => collapse.toggle(band.id)}
             action={

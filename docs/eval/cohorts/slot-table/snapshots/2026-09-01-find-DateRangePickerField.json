@@ -1,0 +1,29 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "component:src/design-system/components/DateRangePickerField.tsx:DateRangePickerField",
+      "kind": "component",
+      "name": "DateRangePickerField",
+      "location": "src/design-system/components/DateRangePickerField.tsx:93",
+      "exported": true,
+      "signature": "function DateRangePickerField({ value, onChange, placeholder = 'Pick a date range', disabled = false, presets = DEFAULT_PRESETS, fromDate, toDate, className, autoOpen = false, }: DateRangePickerFieldProps)"
+    },
+    {
+      "node_key": "file:src/design-system/components/DateRangePickerField.tsx",
+      "kind": "file",
+      "name": "DateRangePickerField.tsx",
+      "location": "src/design-system/components/DateRangePickerField.tsx:1",
+      "exported": false,
+      "signature": null
+    },
+    {
+      "node_key": "interface:src/design-system/components/DateRangePickerField.tsx:DateRangePickerFieldProps",
+      "kind": "interface",
+      "name": "DateRangePickerFieldProps",
+      "location": "src/design-system/components/DateRangePickerField.tsx:12",
+      "exported": true,
+      "signature": "interface DateRangePickerFieldProps"
+    }
+  ]
+}

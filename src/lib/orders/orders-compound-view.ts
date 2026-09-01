@@ -13,14 +13,24 @@
 
 import {
   firstNote,
+  type CompoundDelay,
   type CompoundRowView,
   type CompoundStateTone,
 } from '@/components/tables/compound/compound-row-model';
 import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
 import type { ShippedOrder } from '@/types/orders';
 import { formatCurrency } from '@/utils/_number';
-import { formatMonthDayTimePST } from '@/utils/date';
-import { nonSentinelTimestamp } from '@/components/dashboard/orders-queue/helpers';
+import {
+  formatDateKeyShort,
+  formatMonthDayTimePST,
+  getCurrentPSTDateKey,
+  toPSTDateKey,
+} from '@/utils/date';
+import { getExternalUrlByItemNumber } from '@/utils/external-item-url';
+import {
+  formatQueueRowDateCell,
+  nonSentinelTimestamp,
+} from '@/components/dashboard/orders-queue/helpers';
 
 /**
  * Fulfillment lane → the three-tone vocabulary.
@@ -74,6 +84,11 @@ export interface OrdersCompoundParts {
    * identity filler.
    */
   subtitleParts?: CompoundRowView['subtitleParts'];
+  /**
+   * Warehouse civil today (`YYYY-MM-DD`). Due-today ink vs future faint.
+   * Omitted ⇒ `getCurrentPSTDateKey()` (tests pass it so the face is stable).
+   */
+  todayKey?: string;
 }
 
 /**
@@ -123,6 +138,36 @@ export function ordersIdentityLine(
   return bits.length > 0 ? bits.join(' · ') : null;
 }
 
+/**
+ * Absolute ship-by for the STATUS line — deadline, then `ship_by_date`.
+ * Never created-at: that stamp is when the order landed, not when it must
+ * leave, and painting it as ship-by is how a missing deadline used to look
+ * like a real one.
+ */
+function ordersShipByRaw(
+  record: Pick<ShippedOrder, 'deadline_at' | 'ship_by_date'>,
+): string | null {
+  return nonSentinelTimestamp(record.deadline_at) ?? nonSentinelTimestamp(record.ship_by_date);
+}
+
+/** Civil-day delay facts the compound STATUS line paints. */
+export function ordersShipByDelay(
+  record: Pick<ShippedOrder, 'deadline_at' | 'ship_by_date'>,
+  delayDays: number | null,
+  todayKey: string,
+): CompoundDelay {
+  const raw = ordersShipByRaw(record);
+  const parsed = raw ? toPSTDateKey(raw) : '';
+  const dateKey = parsed && parsed !== 'Unknown' ? parsed : null;
+  return {
+    days: delayDays ?? 0,
+    overdue: (delayDays ?? 0) > 0,
+    dateLabel: dateKey ? formatDateKeyShort(dateKey) : null,
+    dateKey,
+    dueToday: Boolean(dateKey && dateKey === todayKey),
+  };
+}
+
 export function ordersCompoundView(
   record: ShippedOrder,
   parts: OrdersCompoundParts,
@@ -141,6 +186,9 @@ export function ordersCompoundView(
   // identity exist, identity rides the state tip so nothing is lost.
   const secondary = parts.subtitleParts !== undefined ? null : (opNote ?? identity);
   const stateTipParts = [parts.delayTip, opNote && identity ? identity : null].filter(Boolean);
+  const todayKey = parts.todayKey ?? getCurrentPSTDateKey();
+  const delay = ordersShipByDelay(record, parts.delayDays, todayKey);
+  const shipByTooltip = formatQueueRowDateCell(ordersShipByRaw(record))?.tooltip;
 
   return {
     id: String(record.id),
@@ -150,6 +198,9 @@ export function ordersCompoundView(
     // column is an honest empty rather than a fabricated thumbnail.
     thumbUrl: null,
     title: record.product_title || '',
+    // Listing join — the item number is the handle, the URL is derived. Absent
+    // item number ⇒ no href, and the title stays plain text.
+    titleHref: getExternalUrlByItemNumber(record.item_number) ?? null,
     note: secondary,
     flagMark: parts.flagMark ?? null,
     orderId: String(record.order_id || '').trim() || null,
@@ -165,9 +216,8 @@ export function ordersCompoundView(
     stateLabel: parts.stateLabel ?? '',
     stateTone: ordersStateTone(parts.stateLabel),
     stateTip: stateTipParts.length > 0 ? stateTipParts.join(' · ') : undefined,
-    delay:
-      parts.delayDays == null ? null : { days: parts.delayDays, overdue: parts.delayDays > 0 },
-    delayTip: parts.delayTip,
+    delay,
+    delayTip: shipByTooltip,
     // What the order sold for. `sale_amount` arrives as a string or a number
     // depending on the query path, and an order with no recorded sale renders an
     // empty cell rather than a `$0.00` nobody charged.

@@ -28,6 +28,8 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
   Check,
   ChevronRight,
+  Copy,
+  ExternalLink,
   FileText,
   MoreHorizontal,
   Package,
@@ -40,26 +42,34 @@ import { StaffAvatar } from '@/components/identity';
 import { BrandIdentityDot, GridCellDash } from '@/components/ui/grid-cells';
 import { GridClickSelectFace, GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { CopyChip, getLast8 } from '@/components/ui/CopyChip';
+import { CopyChipHoverMenu } from '@/components/ui/CopyChipHoverMenu';
 import { OrderNumberMenuChip } from '@/components/ui/OrderNumberMenuChip';
 import { TrackingNumberMenuChip } from '@/components/ui/TrackingNumberMenuChip';
 import { carrierBrandDotPaint, resolveCarrierBrand } from '@/lib/carrier-brand';
 import { resolveMarketplacePlatformMeta } from '@/lib/marketplace-order-id';
 import { platformMetaBrandDot } from '@/lib/source-platform';
 import { marketplaceOrderUrl } from '@/utils/order-platform';
+import { copyToClipboard } from '@/utils/_dom';
 import { cn } from '@/utils/_cn';
+import { useSlotLayoutReorder } from '@/components/tables/SlotLayoutReorderContext';
+import { useSubtitlePointerReorder } from './useSubtitlePointerReorder';
 import { CompoundCell, CompoundLine } from './CompoundCell';
 import { COMPOUND_GUTTER_PX, COMPOUND_ROW_PX } from './compound-row-chrome';
+import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/design-system/primitives/DropdownMenu';
+import { EMPTY_META_DASH } from '@/lib/conditions';
+import { dateKeyToLocalDate, localDateToDateKey } from '@/utils/date';
 import {
+  formatCompoundDelayFace,
   formatCompoundStageStepLine,
   type CompoundRowAction,
   type CompoundRowView,
+  type CompoundShipByEdit,
   type CompoundSlotValue,
   type CompoundStageStepFacts,
   type CompoundStateTone,
@@ -154,7 +164,8 @@ export function CompoundSelect({
 }: {
   checked: boolean | 'mixed';
   /** Present ⇒ a real checkbox. Absent ⇒ a decorative face (row owns toggle). */
-  onToggle?: () => void;
+  /** Receives the click's modifier state so shift-click can extend a range. */
+  onToggle?: (event: { shiftKey: boolean }) => void;
   label: string;
   disabled?: boolean;
 }) {
@@ -222,10 +233,12 @@ function CompoundSubtitleTextEditor({
   part,
   edit,
   face,
+  skipClick,
 }: {
   part: CompoundSubtitlePart;
   edit: CompoundSubtitleEdit;
   face: ReactNode;
+  skipClick?: () => boolean;
 }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(edit.value);
@@ -250,6 +263,7 @@ function CompoundSubtitleTextEditor({
         inputMode={edit.kind === 'numeric' ? 'numeric' : undefined}
         placeholder={edit.placeholder}
         aria-label={edit.label}
+        size={part.widthCh ?? 2}
         onChange={(event) => setDraft(event.target.value)}
         onClick={(event) => event.stopPropagation()}
         onBlur={commit}
@@ -264,102 +278,203 @@ function CompoundSubtitleTextEditor({
           }
         }}
         className={cn(
-          'w-[7ch] min-w-0 rounded-sm border border-border-default bg-surface-card px-1',
-          'text-role-micro text-text-default',
-          focusRing('control'),
+          // Caret only — no padded box, no border, no focus ring. The idle
+          // face is the quantity on the caption track; editing is typing into
+          // that same run.
+          'm-0 appearance-none border-0 bg-transparent p-0 shadow-none',
+          'h-3 tabular-nums leading-none outline-none',
+          part.toneClass ?? 'text-text-muted',
         )}
+        style={part.widthCh != null ? { width: `${part.widthCh}ch` } : { width: '2ch' }}
       />
     );
   }
 
   return (
-    <button
-      type="button"
+    <span
+      role="button"
       tabIndex={-1}
       aria-label={`Edit ${edit.label.toLowerCase()}: ${part.text}`}
       onClick={(event) => {
         event.stopPropagation();
+        if (skipClick?.()) return;
         open();
       }}
       className={cn(
-        'ds-raw-button inline-flex min-w-0 items-center text-left',
+        'ds-raw-button inline-flex h-3 min-w-0 items-center leading-none text-left',
         'hover:underline decoration-dotted underline-offset-2',
+        part.toneClass ?? 'text-text-muted',
         focusRing('control'),
       )}
     >
       {face}
-    </button>
-  );
-}
-
-/**
- * A subtitle part painted as a copy chip.
- *
- * Click copies — that is the frequent verb for an identifier an operator is
- * retyping into a marketplace or a shelf lookup. When the same fact is also
- * editable the edit rides in the chip's menu rather than competing for the
- * click, so a single gesture never has to mean two things.
- */
-/**
- * A subtitle part painted as a copy chip — COPY ONLY, one click.
- *
- * No menu, no inline editor. An identifier an operator is transcribing wants
- * exactly one verb under the pointer, and a chip that might copy or might open
- * a menu makes them aim. Editing an item number is a record-plane job (click
- * the row), not something a list cell should offer mid-scan.
- */
-function CompoundSubtitleCopyChip({
-  copy,
-}: {
-  copy: CompoundSubtitleCopy;
-}) {
-  /*
-   * The HOUSE chip, not a subtitle-local one. `CopyChip` already owns the copy
-   * behaviour every identifier on this desk has — click to copy, tooltip with
-   * the full value, ⌘C, right-click, clipboard history — and `last8` is the
-   * same truncation the order and tracking chips use.
-   *
-   * `icon={null}`: the `sku` tone's pencil is the same 12px glyph the order and
-   * tracking chips carry, but those sit on their own line while this one shares
-   * a line with three short facts — at that scale the glyph read as the biggest
-   * mark on the row and said nothing the mono face did not. The value is the
-   * affordance.
-   *
-   * NO text override: order id, tracking and this must be one size, because
-   * they are one KIND of thing (an identifier you copy) and a size difference
-   * between them reads as a difference in importance. That size is `chipText`,
-   * the dense face every identity chip in the product already uses.
-   *
-   * Inside `[data-cf-grid]` the chip zeroes its own padding, so no `outerPad`.
-   */
-  return (
-    <span onClick={(event) => event.stopPropagation()}>
-      <CopyChip
-        value={copy.value}
-        display={getLast8(copy.value)}
-        tone="sku"
-        icon={null}
-        displayWidth="last8"
-        dense
-      />
     </span>
   );
 }
 
 /**
- * The NOTE, as a glyph that never changes the line's size.
+ * A subtitle listing control.
  *
- * A note is prose of unbounded length sharing a line with three short facts, so
- * printing it inline made the subtitle's width a function of how much somebody
- * typed — the line grew, the facts beside it shifted, and a long note pushed
- * everything else out of the row. It rides as a fixed glyph at the END of the
- * line instead: same width whether the note is empty, three words, or three
- * sentences, and the operator reads it on demand.
+ * The face is ALWAYS the external-link glyph — never the word "Listing", never
+ * the item number. Live listing → info blue, click opens. Missing item number
+ * or missing URL → faint (grayed-out) icon, same box, so the slot does not
+ * vanish and the line does not jump.
+ */
+function CompoundSubtitleCopyChip({
+  copy,
+  skipClick,
+  dragActive,
+}: {
+  copy: CompoundSubtitleCopy;
+  /** True after a reorder drag — open-listing must not fire on drop. */
+  skipClick?: () => boolean;
+  /** Hide the hover copy menu while the subtitle line is being reordered. */
+  dragActive?: boolean;
+}) {
+  const href = String(copy.openHref ?? '').trim() || null;
+  const handle = String(copy.value ?? '').trim();
+  const live = Boolean(href);
+  const copyItems = handle
+    ? [
+        {
+          id: 'copy-item',
+          label: 'Copy item number',
+          icon: <Copy />,
+          onSelect: () => {
+            void copyToClipboard(handle, {
+              historyKind: 'sku',
+              historyDisplay: handle,
+            });
+          },
+        },
+      ]
+    : [];
+
+  const glyph = (
+    <span
+      role="button"
+      tabIndex={-1}
+      aria-label={live ? 'Open listing' : handle ? 'Listing' : 'No listing'}
+      aria-disabled={live ? undefined : true}
+      onClick={(event) => {
+        event.stopPropagation();
+        if (skipClick?.()) return;
+        if (href) window.open(href, '_blank', 'noopener,noreferrer');
+      }}
+      className={cn(
+        'ds-raw-button inline-flex h-3 w-3 shrink-0 items-center justify-center',
+        live ? 'text-text-info' : 'text-text-faint',
+        focusRing('control'),
+      )}
+    >
+      <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
+    </span>
+  );
+
+  return (
+    <span onClick={(event) => event.stopPropagation()}>
+      {copyItems.length > 0 && !dragActive ? (
+        <CopyChipHoverMenu menuLabel="Listing actions" denseLabel className="h-3" items={copyItems}>
+          {glyph}
+        </CopyChipHoverMenu>
+      ) : (
+        glyph
+      )}
+    </span>
+  );
+}
+
+function isListingSubtitlePart(key: string | undefined): boolean {
+  return Boolean(key?.endsWith('.item_number'));
+}
+
+/**
+ * Condition (and any other subtitle select) — click opens, hold-and-move
+ * reorders. Radix DropdownMenuTrigger toggles on pointerdown, which is the
+ * same press that starts a drag, so this menu is controlled and forced shut
+ * while the line is being reordered.
+ */
+function CompoundSubtitleSelectMenu({
+  part,
+  select,
+  face,
+  dragging,
+  skipClick,
+}: {
+  part: CompoundSubtitlePart;
+  select: CompoundSubtitleSelect;
+  face: ReactNode;
+  dragging: boolean;
+  skipClick?: () => boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <DropdownMenu
+      open={open && !dragging}
+      onOpenChange={(next) => {
+        if (next && (dragging || skipClick?.())) return;
+        setOpen(next);
+      }}
+    >
+      <DropdownMenuTrigger asChild>
+        <span
+          role="button"
+          tabIndex={-1}
+          aria-label={`Edit ${select.label.toLowerCase()}: ${part.text}`}
+          onClick={(event) => event.stopPropagation()}
+          className={cn(
+            'ds-raw-button inline-flex h-3 min-w-0 items-center leading-none text-left',
+            'hover:underline decoration-dotted underline-offset-2',
+            part.toneClass ?? 'text-text-muted',
+            focusRing('control'),
+          )}
+        >
+          {face}
+        </span>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" onClick={(event) => event.stopPropagation()}>
+        {select.options.map((option) => (
+          <DropdownMenuItem
+            key={option.value}
+            title={option.description}
+            onSelect={() => select.onCommit(option.value)}
+            className={cn(
+              'font-semibold uppercase tracking-wide',
+              option.toneClass,
+              option.current && option.currentClass,
+            )}
+          >
+            <span className="flex w-full items-center justify-between gap-2">
+              <span className="min-w-0 truncate">{option.label}</span>
+              {option.current ? <Check className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
+            </span>
+          </DropdownMenuItem>
+        ))}
+        {select.clearLabel ? (
+          <DropdownMenuItem
+            onSelect={() => select.onCommit(null)}
+            className="border-t border-border-hairline text-text-muted"
+          >
+            {select.clearLabel}
+          </DropdownMenuItem>
+        ) : null}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/**
+ * The NOTE at the end of the subtitle line.
  *
- * Editing opens over the row rather than inside the line, for the same reason:
- * an in-line input would have to be either too small to type in or wide enough
- * to reflow the facts next to it. The glyph itself never resizes and carries no
- * box — filled when there is a note, faint when there is not.
+ * Empty → the FileText glyph (a click target that does not invent prose).
+ * Written → the note itself as muted caption text, truncated so qty /
+ * condition / listing stay put. Click opens the editor, which always seeds
+ * from the note that is already there.
+ *
+ * The editor opens below the trigger and grows to the RIGHT (`side="bottom"`
+ * `align="start"`). The facts sit under the title on the left; `align="end"`
+ * would throw the 16rem panel left into the select gutter. Collision
+ * flipping stays off so a tight viewport cannot send it bottom-left.
  */
 function CompoundSubtitleNote({
   text,
@@ -370,29 +485,32 @@ function CompoundSubtitleNote({
 }) {
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState(text);
-  const has = text.trim().length > 0;
+  const body = text.trim();
+  const has = body.length > 0;
 
   const glyph = (
-    <FileText
-      className={cn('h-3 w-3 shrink-0', has ? 'text-text-muted' : 'text-text-faint')}
-      aria-hidden
-    />
+    <FileText className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />
+  );
+  const face = has ? (
+    <span className="min-w-0 truncate text-text-muted">{body}</span>
+  ) : (
+    glyph
   );
 
   if (!edit) {
     return has ? (
-      <HoverTooltip label={text} asChild>
-        <span className="inline-flex shrink-0 items-center">{glyph}</span>
+      <HoverTooltip label={body} asChild>
+        <span className="inline-flex min-w-0 max-w-[12rem] items-center">{face}</span>
       </HoverTooltip>
     ) : (
-      <span className="inline-flex shrink-0 items-center">{glyph}</span>
+      <span className="inline-flex shrink-0 items-center">{face}</span>
     );
   }
 
   const commit = () => {
     setOpen(false);
     const next = draft.trim();
-    if (next === text.trim()) return;
+    if (next === body) return;
     edit.onCommit(next.length > 0 ? next : null);
   };
 
@@ -406,22 +524,26 @@ function CompoundSubtitleNote({
       }}
     >
       <DropdownMenuTrigger asChild>
-        <button
-          type="button"
+        <span
+          role="button"
           tabIndex={-1}
-          aria-label={has ? `Edit note: ${text}` : 'Add a note'}
-          title={has ? text : 'Add a note'}
+          aria-label={has ? `Edit note: ${body}` : 'Add a note'}
+          title={has ? body : 'Add a note'}
           onClick={(event) => event.stopPropagation()}
           className={cn(
-            'ds-raw-button inline-flex shrink-0 items-center',
+            'ds-raw-button inline-flex h-3 items-center leading-none',
+            has ? 'min-w-0 max-w-[12rem]' : 'shrink-0',
             focusRing('control'),
           )}
         >
-          {glyph}
-        </button>
+          {face}
+        </span>
       </DropdownMenuTrigger>
       <DropdownMenuContent
-        align="end"
+        side="bottom"
+        align="start"
+        sideOffset={4}
+        avoidCollisions={false}
         className="w-64 p-1"
         onClick={(event) => event.stopPropagation()}
       >
@@ -474,15 +596,16 @@ export function CompoundItem({
   /** The note's full text (the part's face may be truncated or a placeholder). */
   noteText?: string | null;
   /**
-   * Present ⇒ the inline facts can be dragged into a new order. Receives the
-   * dragged part key and the index it was dropped at, within the inline list.
+   * Test override for under-title reorder. Production reads the same
+   * `onReorderByDrop` DataTable provides to header drags (field id onto
+   * field id). See `docs/todo/subtitle-band-reorder-PLAN.md`.
    */
-  onReorderSubtitle?: (partKey: string, toIndex: number) => void;
+  onReorderSubtitle?: (dragKey: string, dropKey: string) => void;
 }) {
-  // Bound subtitles (an explicit org/staff layout choice) REPLACE the note
-  // line: parts in binding order, ` · ` separated, each carrying the tone its
-  // family SoT resolved (qty count tone, condition grade tone). Absent ⇒ the
-  // legacy note fallback.
+  // Bound subtitles REPLACE the note line: parts in binding order, sitting
+  // LEFT under the title. Listing is the external-link glyph — never the
+  // item number. No middle dots. Notes stay in that cluster; the editor
+  // opens bottom-right of the glyph. Absent parts ⇒ the legacy note fallback.
   const parts = view.subtitleParts;
   const selectFor = (part: CompoundSubtitlePart): CompoundSubtitleSelect | undefined =>
     part.key ? subtitleSelects?.find((s) => s.partKey === part.key) : undefined;
@@ -493,126 +616,80 @@ export function CompoundItem({
     part.key ? subtitleCopies?.find((c) => c.partKey === part.key) : undefined;
 
   /*
-   * Inline reorder of the under-title facts.
+   * Click-and-hold reorder of the under-title facts.
    *
-   * Native HTML5 drag rather than dnd-kit: the list is three or four inline
-   * spans inside one grid cell that is already inside a virtualized row, and a
-   * DndContext per row would mount a sensor tree 200 times over. `draggable`
-   * costs one attribute and two handlers, and the drop writes through the same
-   * `reorderFieldBinding` the arrows used to.
-   *
-   * `stopPropagation` on drag start keeps the row's own click/select from
-   * firing, and the drop index is the position within the INLINE list, which is
-   * the order the operator is looking at.
+   * Headers still use HTML5 drag (an empty `select-none` cell). This line
+   * cannot: nested editors, a Radix menu that opens on pointerdown, and
+   * 1–2ch of selectable text all steal the native drag. Pointer tracking
+   * on `window` is the display method — same write (`onReorderByDrop`),
+   * destination named by field id. Notes stay in the left cluster and are
+   * not a drop target. See `useSubtitlePointerReorder`.
    */
-  const [dragKey, setDragKey] = useState<string | null>(null);
+  const contextReorder = useSlotLayoutReorder();
+  const reorder = onReorderSubtitle ?? contextReorder;
+  const { draggingKey, overKey, skipClick, bindPart, enabled: reorderable } =
+    useSubtitlePointerReorder(reorder);
 
   const renderPart = (part: CompoundSubtitlePart, i: number) => {
     const select = selectFor(part);
     const edit = editFor(part);
-    const copy = copyFor(part);
+    const copy =
+      copyFor(part) ??
+      (isListingSubtitlePart(part.key)
+        ? {
+            partKey: part.key!,
+            value: String(part.text ?? '').trim(),
+            openHref: String(view.titleHref ?? '').trim() || null,
+          }
+        : undefined);
     const face = (
       <span
-        className={cn(part.toneClass, part.widthCh != null && 'inline-block text-left tabular-nums')}
+        className={cn(
+          // Same box as the notes FileText (`h-3`): caption size, no extra
+          // line-height, so qty / condition sit on the glyph's centre line.
+          'inline-flex h-3 items-center leading-none',
+          part.toneClass,
+          part.widthCh != null && 'tabular-nums',
+        )}
         style={part.widthCh != null ? { width: `${part.widthCh}ch` } : undefined}
       >
         {part.text}
       </span>
     );
-    const draggable = Boolean(onReorderSubtitle && part.key);
+    const partKey = part.key;
+    const dragBind = partKey && reorderable ? bindPart(partKey) : {};
     return (
       <span
-        key={part.key ?? i}
-        draggable={draggable || undefined}
-        data-subtitle-part={part.key}
-        onDragStart={
-          draggable
-            ? (event) => {
-                event.stopPropagation();
-                event.dataTransfer.effectAllowed = 'move';
-                // Firefox refuses to start a drag with no payload.
-                event.dataTransfer.setData('text/plain', part.key ?? '');
-                setDragKey(part.key ?? null);
-              }
-            : undefined
-        }
-        onDragEnd={draggable ? () => setDragKey(null) : undefined}
-        onDragOver={
-          draggable && dragKey && dragKey !== part.key
-            ? (event) => {
-                event.preventDefault();
-                event.dataTransfer.dropEffect = 'move';
-              }
-            : undefined
-        }
-        onDrop={
-          draggable && dragKey
-            ? (event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                const moved = dragKey;
-                setDragKey(null);
-                if (moved && moved !== part.key) onReorderSubtitle?.(moved, i);
-              }
-            : undefined
-        }
+        key={partKey ?? i}
+        data-subtitle-part={partKey}
+        {...dragBind}
         className={cn(
-          'inline-flex min-w-0 items-center',
-          draggable && 'cursor-grab',
-          dragKey === part.key && 'opacity-50',
+          'inline-flex h-3 min-w-0 select-none items-center [&_svg]:pointer-events-none',
+          reorderable && (draggingKey ? 'cursor-grabbing' : 'cursor-grab'),
+          overKey === partKey && 'bg-surface-sunken',
         )}
       >
-        {i > 0 ? <span className="shrink-0 px-1 text-text-faint">·</span> : null}
         {copy ? (
-          <CompoundSubtitleCopyChip copy={copy} />
+          <CompoundSubtitleCopyChip
+            copy={copy}
+            skipClick={skipClick}
+            dragActive={Boolean(draggingKey)}
+          />
         ) : edit ? (
-          <CompoundSubtitleTextEditor part={part} edit={edit} face={face} />
+          <CompoundSubtitleTextEditor
+            part={part}
+            edit={edit}
+            face={face}
+            skipClick={skipClick}
+          />
         ) : select ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                tabIndex={-1}
-                aria-label={`Edit ${select.label.toLowerCase()}: ${part.text}`}
-                // The row's own click would select or open — this is "edit".
-                onClick={(event) => event.stopPropagation()}
-                className={cn(
-                  'ds-raw-button inline-flex min-w-0 items-center text-left',
-                  'hover:underline decoration-dotted underline-offset-2',
-                  focusRing('control'),
-                )}
-              >
-                {face}
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" onClick={(event) => event.stopPropagation()}>
-              {select.options.map((option) => (
-                <DropdownMenuItem
-                  key={option.value}
-                  title={option.description}
-                  onSelect={() => select.onCommit(option.value)}
-                  className={cn(
-                    'font-semibold uppercase tracking-wide',
-                    option.toneClass,
-                    option.current && option.currentClass,
-                  )}
-                >
-                  <span className="flex w-full items-center justify-between gap-2">
-                    <span className="min-w-0 truncate">{option.label}</span>
-                    {option.current ? <Check className="h-3.5 w-3.5 shrink-0" aria-hidden /> : null}
-                  </span>
-                </DropdownMenuItem>
-              ))}
-              {select.clearLabel ? (
-                <DropdownMenuItem
-                  onSelect={() => select.onCommit(null)}
-                  className="border-t border-border-hairline text-text-muted"
-                >
-                  {select.clearLabel}
-                </DropdownMenuItem>
-              ) : null}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <CompoundSubtitleSelectMenu
+            part={part}
+            select={select}
+            face={face}
+            dragging={Boolean(draggingKey)}
+            skipClick={skipClick}
+          />
         ) : (
           face
         )}
@@ -621,42 +698,43 @@ export function CompoundItem({
   };
 
   /*
-   * The note leaves the inline flow and pins to the RIGHT of the line.
-   *
-   * It is the one bound fact with no bounded width, so in binding order it
-   * decided where every fact after it started. As a trailing glyph the facts
-   * keep fixed positions an operator can scan straight down, and the note is
-   * still one click away. Its binding still controls WHETHER it appears — only
-   * its position is fixed.
+   * Notes stay in the left cluster (after qty / condition / listing). They
+   * used to pin right, which is what made the under-title facts look like
+   * they belonged to the identity column. The editor still opens to the
+   * bottom-right of the glyph — that is a menu placement, not a face.
    */
   const noteKey = subtitleNoteKey;
   const inlineParts = parts?.filter((p) => p.key !== noteKey);
   const notePart = noteKey ? parts?.find((p) => p.key === noteKey) : undefined;
   const noteEdit = noteKey ? subtitleEdits?.find((e) => e.partKey === noteKey) : undefined;
+  const noteBody = (() => {
+    const fromRow = String(noteText ?? '').trim();
+    if (fromRow) return fromRow;
+    const fromPart = String(notePart?.text ?? '').trim();
+    return fromPart && fromPart !== '--' ? fromPart : '';
+  })();
   const noteGlyph = notePart ? (
-    <CompoundSubtitleNote text={noteText ?? ''} edit={noteEdit} />
+    <CompoundSubtitleNote text={noteBody} edit={noteEdit} />
   ) : null;
 
   /*
-   * ONE row, everything on the same centre line.
-   *
-   * The facts, the chip and the note glyph are laid out as a single flex row
-   * with `items-center` rather than as inline text: a `CopyChip` is a bordered
-   * inline-flex box, and in a text flow it sits on the TEXT BASELINE, which
-   * left the chip riding visibly high against the digits either side of it.
-   * Centring the row lines the chip's box, the plain values and the glyph on
-   * one axis.
-   *
-   * `whitespace-nowrap` + `shrink-0` on the trailing glyph keep it to a single
-   * row — the facts truncate before the note is ever pushed to a second line.
+   * LEFT under the title: qty, condition, listing glyph, notes glyph.
+   * Same `h-3` box, no middle dots. `justify-start` — a trailing cluster
+   * was the wrong reading of "open the note to the bottom right".
    */
   const noteLine = parts ? (
     inlineParts && (inlineParts.length > 0 || noteGlyph) ? (
-      <span className="flex min-w-0 items-center gap-1 whitespace-nowrap">
-        <span className="flex min-w-0 items-center truncate">
-          {inlineParts.map(renderPart)}
-        </span>
-        {noteGlyph ? <span className="ml-auto flex shrink-0 items-center">{noteGlyph}</span> : null}
+      <span
+        className="flex h-3 min-w-0 items-center justify-start gap-1 whitespace-nowrap leading-none"
+        data-subtitle-reorder={reorderable ? 'true' : undefined}
+        onPointerDown={(event) => event.stopPropagation()}
+        onMouseDown={(event) => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
+      >
+        {inlineParts.map(renderPart)}
+        {noteGlyph ? (
+          <span className="flex h-3 shrink-0 items-center">{noteGlyph}</span>
+        ) : null}
       </span>
     ) : null
   ) : view.note ? (
@@ -666,10 +744,31 @@ export function CompoundItem({
   ) : null;
 
   const flagMark = view.flagMark ?? null;
+  const titleHref = String(view.titleHref ?? '').trim() || null;
   const titleLine = view.title ? (
-    <HoverTooltip label={view.title} asChild>
-      <CompoundLine>{view.title}</CompoundLine>
-    </HoverTooltip>
+    titleHref ? (
+      <HoverTooltip label={titleHref} asChild>
+        <CompoundLine>
+          <a
+            href={titleHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(event) => event.stopPropagation()}
+            className={cn(
+              'min-w-0 truncate text-text-default hover:text-text-info hover:underline',
+              'focus-visible:text-text-info focus-visible:underline underline-offset-2',
+              focusRing('control'),
+            )}
+          >
+            {view.title}
+          </a>
+        </CompoundLine>
+      </HoverTooltip>
+    ) : (
+      <HoverTooltip label={view.title} asChild>
+        <CompoundLine>{view.title}</CompoundLine>
+      </HoverTooltip>
+    )
   ) : (
     <span className="text-text-faint">Untitled</span>
   );
@@ -787,22 +886,51 @@ const STATE_TONE_CLASS: Record<CompoundStateTone, { pill: string; dot: string }>
 /**
  * STATUS column — the state pill over the DELAY.
  *
- * The second line is late-ness, by rule, because that is the fact that reorders
- * an operator's queue. On time renders as a quiet "On time" rather than an
- * empty line: blank is ambiguous (no deadline? not computed? on time?), and a
- * floor reading a hundred rows should never have to resolve that ambiguity.
+ * The second line is WHEN the row must ship (civil day), not a relative
+ * "On time" / "1d late" that hides the date. Lateness is tone + a suffix.
+ * Families that never supplied a date keep the relative face.
+ *
+ * Editable ship-by is {@link DateRangePickerField} `variant="compact"` —
+ * one day, calendar only, click commits. Never a range filter, never a
+ * native date input, never a click-to-retype caption.
  */
-export function CompoundState({ view }: { view: CompoundRowView }) {
+export function CompoundState({
+  view,
+  shipByEdit,
+}: {
+  view: CompoundRowView;
+  shipByEdit?: CompoundShipByEdit;
+}) {
   const tone = STATE_TONE_CLASS[view.stateTone];
-  const delay = view.delay;
-  const delayNode =
-    delay && delay.overdue ? (
-      <CompoundLine className="font-semibold text-rose-600">
-        {delay.days}d late
-      </CompoundLine>
-    ) : (
-      <CompoundLine className="text-text-faint">On time</CompoundLine>
-    );
+  const face = formatCompoundDelayFace(view.delay, {
+    editable: Boolean(shipByEdit),
+    missingText: EMPTY_META_DASH,
+  });
+  const delayNode = shipByEdit ? (
+    <div
+      className="min-w-0 w-full self-stretch"
+      onClick={(event) => event.stopPropagation()}
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <DateRangePickerField
+        variant="compact"
+        value={dateKeyToLocalDate(shipByEdit.value)}
+        onChange={(day) => {
+          const key = localDateToDateKey(day);
+          if (!key || key === shipByEdit.value.trim()) return;
+          shipByEdit.onCommit(key);
+        }}
+        className={cn(
+          'h-full min-h-0 w-full gap-1 border-0 bg-transparent px-0 py-0 shadow-none',
+          'hover:border-0 hover:bg-transparent',
+          'text-role-caption font-medium',
+          face.toneClass,
+        )}
+      />
+    </div>
+  ) : (
+    <CompoundLine className={face.toneClass}>{face.text}</CompoundLine>
+  );
 
   const pill = (
     <span
@@ -817,6 +945,15 @@ export function CompoundState({ view }: { view: CompoundRowView }) {
     </span>
   );
 
+  const delayWrapped =
+    view.delayTip && !shipByEdit ? (
+      <HoverTooltip label={view.delayTip} asChild>
+        {delayNode}
+      </HoverTooltip>
+    ) : (
+      delayNode
+    );
+
   return (
     <CompoundCell
       primary={
@@ -828,15 +965,7 @@ export function CompoundState({ view }: { view: CompoundRowView }) {
           pill
         )
       }
-      secondary={
-        view.delayTip ? (
-          <HoverTooltip label={view.delayTip} asChild>
-            {delayNode}
-          </HoverTooltip>
-        ) : (
-          delayNode
-        )
-      }
+      secondary={delayWrapped}
     />
   );
 }

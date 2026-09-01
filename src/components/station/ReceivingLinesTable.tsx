@@ -40,7 +40,7 @@ import {
   useTableImportDraft,
 } from '@/lib/tables/import/staging-store';
 import {
-  INCOMING_COMPOUND_COLUMNS,
+  incomingCompoundColumnsFor,
   defaultDirForIncomingGridSort,
   isIncomingGridSortable,
   type IncomingGridColumn,
@@ -81,7 +81,11 @@ import { useReceivingAutoWeek } from '@/components/station/useReceivingAutoWeek'
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 import { GridDegradedBox } from '@/design-system/components/grid';
 import { ReceivingGridHost } from '@/components/station/receiving-grid/ReceivingGridHost';
-import { RECEIVING_COMPOUND_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
+import { receivingCompoundColumnsFor } from '@/lib/receiving/receiving-grid-layout';
+import { useReceivingTableLayout } from '@/components/station/receiving-grid/useReceivingTableLayout';
+import { useIncomingTableLayout } from '@/components/station/incoming-grid/useIncomingTableLayout';
+import { useIncomingTableChrome } from '@/components/station/incoming-grid/useIncomingTableChrome';
+import { useReceivingTableChrome } from '@/components/station/receiving-grid/useReceivingTableChrome';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { STATION_PIPELINE_BOARDS } from '@/lib/station/flags';
@@ -708,6 +712,25 @@ export default function ReceivingLinesTable({
   // list is the only History body now.
   const weekCount = getWeekCount();
   /** The one find field for every receiving body — the URL is the state. */
+  // The effective slot layout (staff ?? org ?? product) materialized into the
+  // compound tracks — one document for every receiving rail, because Unbox,
+  // History and Testing are the same table read at different moments.
+  const { effectiveLayout: receivingLayout, fields: receivingFields } =
+    useReceivingTableLayout();
+  const receivingColumns = useMemo(
+    () => receivingCompoundColumnsFor(receivingLayout),
+    [receivingLayout],
+  );
+
+  // Incoming keeps its OWN document — same compound cells, different question
+  // (what the carrier has done, not what the warehouse has done).
+  const { effectiveLayout: incomingLayout, fields: incomingFields } =
+    useIncomingTableLayout();
+  const incomingColumns = useMemo(
+    () => incomingCompoundColumnsFor(incomingLayout),
+    [incomingLayout],
+  );
+
   const receivingSearch = {
     value: searchParams.get(RECEIVING_SEARCH_PARAM_KEY) ?? '',
     onChange: (next: string) => {
@@ -720,6 +743,8 @@ export default function ReceivingLinesTable({
     },
     placeholder: isIncomingMode ? 'Filter incoming…' : 'Filter cartons…',
   };
+  const incomingChrome = useIncomingTableChrome();
+  const receivingChrome = useReceivingTableChrome();
 
   const receivingGrid = () => (
     // COMPOUND (two-row) WMS layout — the receiving spreadsheet's row shape,
@@ -727,10 +752,16 @@ export default function ReceivingLinesTable({
     // are the same table read at different moments, so a lane-conditional
     // column model would be exactly the fork this engine exists to prevent.
     // Density is an operator control in Column display, not chrome here.
+    //
+    // The tracks are MATERIALIZED from the effective slot layout (wave 1.3):
+    // the shared compound skeleton plus whatever facts the organization has
+    // bound, which before this port took a new React column.
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <ReceivingGridHost
         search={receivingSearch}
-        columns={RECEIVING_COMPOUND_COLUMNS}
+        filter={isUnboxWorkbench ? receivingChrome.filter : undefined}
+        columns={receivingColumns}
+        fields={receivingFields}
         filteredGroupedRecords={filteredGroupedRecords}
         serverSorted={mode.serverSorted}
         loading={isLoading && localRows.length === 0}
@@ -800,13 +831,15 @@ export default function ReceivingLinesTable({
             <DataTable<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
               binding={INCOMING_TABLE_BINDING}
               search={receivingSearch}
+              filter={incomingChrome.filter}
               selectionScope={RECEIVING_SELECTION_SCOPE}
               // COMPOUND (two-row) WMS layout — the SAME tracks Unbox, History,
               // Testing, To-Ship and Tasks mount. No lane variant: the
               // recently-removed lane's reason rides the STATE pill
               // (`incomingStateFace`) instead of a sixth column only that lane
               // can use.
-              columns={INCOMING_COMPOUND_COLUMNS}
+              columns={incomingColumns}
+              fields={incomingFields}
               orderGroupsByDate={incomingGroups}
               rows={incomingFlatRows}
               sort={incomingColumnSort}
@@ -883,9 +916,11 @@ export default function ReceivingLinesTable({
                 <DataTable<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
                   binding={INCOMING_TABLE_BINDING}
                   search={receivingSearch}
+                  filter={incomingChrome.filter}
                   selectionScope={RECEIVING_SELECTION_SCOPE}
                   // COMPOUND (two-row) WMS layout — see the embedded mount above.
-                  columns={INCOMING_COMPOUND_COLUMNS}
+                  columns={incomingColumns}
+                  fields={incomingFields}
                   orderGroupsByDate={incomingGroups}
                   rows={incomingFlatRows}
                   sort={incomingColumnSort}
