@@ -86,6 +86,11 @@ export interface DeskPageLayoutProps {
   tabs?: readonly DeskPageTab[];
   activeTab?: string;
   onTabChange?: (id: string) => void;
+  /**
+   * Same-axis overflow at the head of the tab row — see
+   * {@link DeskPageChromeProps.tabsLead}. Not a second CTA slot.
+   */
+  tabsLead?: ReactNode;
   className?: string;
 }
 
@@ -106,6 +111,7 @@ function DeskPageFrame({
   tabs: tabsOverride,
   activeTab: activeTabOverride,
   onTabChange: onTabChangeOverride,
+  tabsLead,
   className,
 }: DeskPageLayoutProps) {
   const nav = useDeskPageChromeTabs();
@@ -130,6 +136,7 @@ function DeskPageFrame({
       activeTab={activeTab}
       onTabChange={onTabChange}
       addSlot={addSlot}
+      tabsLead={tabsLead}
       fullscreen={fullscreen}
       onToggleFullscreen={toggleFullscreen}
       className={className}

@@ -161,6 +161,26 @@ export interface DeskPageChromeProps {
    * needs.
    */
   addSlot?: ReactNode;
+  /**
+   * A control at the START of the tab row, on the SAME axis as the tabs.
+   *
+   * This is not a second CTA slot and must never be used as one — the tab row
+   * still holds no actions. It exists for the case where a page's tab
+   * vocabulary is larger than a row can hold, so the overflow rides beside the
+   * tabs rather than becoming a second control at a different altitude.
+   *
+   * Media Library is the case it was cut for: seven lifecycle scopes are tabs,
+   * and N operator-defined media types live one click deep in a popover here.
+   * Both write ONE param through one function, and that single-writer law is
+   * why the overflow cannot simply be moved somewhere else on the page — a
+   * scope control sitting apart from the scope tabs is how that surface grew
+   * two writers of one param in the first place (`PhotoLibraryScopeBand`).
+   *
+   * If what you have is an ACTION, it belongs in {@link addSlot}. If it is a
+   * refinement of the rows, it belongs on the table's own toolbar. Only a
+   * control that answers the same question as the tabs belongs here.
+   */
+  tabsLead?: ReactNode;
   fullscreen: boolean;
   onToggleFullscreen: () => void;
   /** The desk body — a grid, a board, a form host. Mounted inside the card. */
@@ -175,6 +195,7 @@ export function DeskPageChrome({
   activeTab,
   onTabChange,
   addSlot,
+  tabsLead,
   fullscreen,
   onToggleFullscreen,
   children,
@@ -239,8 +260,8 @@ export function DeskPageChrome({
               {addSlot}
             </div>
 
-            {/* ── Tab row — tabs only, underline selection ───────────────── */}
-            {tabs.length === 0 ? null : (
+            {/* ── Tab row — tabs (+ same-axis overflow), underline selection ── */}
+            {tabs.length === 0 && !tabsLead ? null : (
             <div
               data-testid="desk-page-chrome-band"
               className={cn(
@@ -256,9 +277,19 @@ export function DeskPageChrome({
                 is on the HIT box — so the selection hung 12px left of the
                 row's hairline (operator 2026-08-31).
               */}
+              {/*
+                Same-axis overflow, abutting the tablist with no gap — it reads
+                as the head of the tab vocabulary rather than a control beside
+                it. When present it also takes the row's left edge, so the
+                first tab drops its `first:pl-0` alignment claim to the lead.
+              */}
+              {tabsLead}
               <div
                 role="tablist"
-                className="flex min-w-0 flex-1 items-stretch gap-1"
+                className={cn(
+                  'flex min-w-0 flex-1 items-stretch gap-1',
+                  tabsLead && '[&>button:first-child]:pl-3',
+                )}
               >
                 {tabs.map((tab) => {
                   const active = tab.id === activeTab;

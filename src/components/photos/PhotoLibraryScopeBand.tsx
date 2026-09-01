@@ -1,9 +1,22 @@
 'use client';
 
 /**
- * Media Library **Band 1** — the lifecycle tab rail plus the leading media-type
+ * Media Library **scope** — the lifecycle tabs plus the leading media-type
  * cube. This file is the SINGLE WRITER of `sourceScope` / `imageType` on this
  * surface, and that is the whole point of it being one file.
+ *
+ * ## It is no longer a band (2026-08-31)
+ *
+ * It was Band 1 of a three-band chrome stack. The page now wears the design
+ * system's one page frame ({@link DeskPageChrome}), so the tabs ride the
+ * frame's tab row and the cube rides that row's `tabsLead` — the SAME row, in
+ * the same order, one altitude up.
+ *
+ * The single-writer law is why this is a HOOK plus a component rather than two
+ * components handed to the frame separately. `usePhotoLibraryScope` owns
+ * `selectSection`; the page threads its tabs into the frame and renders its
+ * cube into the lead. Both halves still resolve from one function in one file,
+ * which is the invariant — not the fact that they used to share a `<div>`.
  *
  * ## The reversal this performs (2026-08-09)
  *
@@ -29,15 +42,16 @@
  * files would be two writers of one param sitting one import apart, which is
  * exactly the 2026-07-29 shape. One `selectSection` serves both groups.
  *
- * Band-1 **trailing is deliberately empty**: this surface has no import / add /
- * return-to-scan CTA, and honest absence beats an invented one.
- *
+ * The frame's **CTA slot stays empty**: this surface has no import / add /
+ * return-to-scan action, and honest absence beats an invented one. The frame
+ * renders nothing where a CTA would go rather than reserving space for it.
  */
 
-import { useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { Check, Folder, Loader2, Plus } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { Input } from '@/components/ui/input';
 import {
   FilterMenuGroupLabel,
   FilterMenuRow,
@@ -57,10 +71,27 @@ import {
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
-import { TableTabs } from '@/components/tables/TableStatusBar';
 
 
-export function PhotoLibraryScopeBand({ className }: { className?: string }) {
+export interface PhotoLibraryScope {
+  /** Lifecycle scopes, for the frame's tab row. */
+  tabs: { id: string; label: string }[];
+  /** Empty while a custom media type is active — see `activeSection` below. */
+  activeTab: string;
+  /** The ONE writer of `sourceScope` / `imageType`. Serves tabs AND the cube. */
+  selectSection: (id: string) => void;
+  /** The media-type overflow, for the tab row's `tabsLead`. */
+  lead: ReactNode;
+}
+
+/**
+ * The scope control, as data for the frame.
+ *
+ * Returns the tab list, the lit tab and the one `selectSection` that writes
+ * both halves — plus the cube already wired to it, so a caller cannot mount the
+ * overflow against a different writer.
+ */
+export function usePhotoLibraryScope(): PhotoLibraryScope {
   const { filters, patch } = usePhotoLibraryUrlState();
   const activeScope = sourceScopeFromFilters(filters);
   const { custom, isLoading: typesLoading, createType } = useImageTypes();
@@ -106,13 +137,8 @@ export function PhotoLibraryScopeBand({ className }: { className?: string }) {
     label: PHOTO_LIBRARY_SCOPE_TAB_LABEL[id],
   }));
 
-  return (
-    <div
-      className={cn(
-        'flex min-w-0 items-stretch border-b border-border-soft bg-surface-card',
-        className,
-      )}
-    >
+  const lead = useMemo(
+    () => (
       <PhotoMediaTypePopover
         custom={custom}
         isLoading={typesLoading}
@@ -123,9 +149,15 @@ export function PhotoLibraryScopeBand({ className }: { className?: string }) {
           selectSection(created.key);
         }}
       />
-      <TableTabs tabs={tabs} activeTab={activeTab} onTabChange={selectSection} />
-    </div>
+    ),
+    // `selectSection` is redeclared each render (it closes over `patch`), so it
+    // is deliberately not a dep — the popover reads the latest through the
+    // element it is rebuilt into whenever the values below change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [custom, typesLoading, activeSection, createType],
   );
+
+  return { tabs, activeTab, selectSection, lead };
 }
 
 /**
@@ -249,7 +281,15 @@ function PhotoMediaTypePopover({
                 cornerClass('flush'),
               )}
             >
-              <input
+              {/*
+                The shadcn-lane field, not a hand-rolled `<input>`: this is a
+                labelled field inside an overlay, which is exactly the lane
+                `ui/input` is pinned for. It carried its own border / bg /
+                focus-ring stack that restated what the primitive already owns.
+                Height is trimmed to the popover's density — the only thing this
+                surface actually needed to say.
+              */}
+              <Input
                 autoFocus
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -260,10 +300,7 @@ function PhotoMediaTypePopover({
                 placeholder="Media type name…"
                 aria-label="New media type name"
                 data-testid="photo-media-type-name"
-                className={cn(
-                  cn('w-full border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-default', focusRing('field', 'accent')),
-                  cornerClass('flush'),
-                )}
+                className="h-7 px-2 text-role-caption"
               />
               <div className="flex items-center gap-1.5">
                 {/* ds-raw-button */}

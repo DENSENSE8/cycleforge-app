@@ -8,7 +8,7 @@
  * Run: node tools/design-mcp/smoke.mjs
  */
 import { spawn } from 'node:child_process'
-import { rmSync, symlinkSync } from 'node:fs'
+import { rmSync, symlinkSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -88,8 +88,13 @@ send({ jsonrpc: '2.0', id: 28, method: 'tools/call', params: { name: 'ds_contrac
 send({ jsonrpc: '2.0', id: 29, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'mount the desk frame on a route group layout', limit: 5 } } })
 send({ jsonrpc: '2.0', id: 31, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'table status bar row counts selected', limit: 5 } } })
 send({ jsonrpc: '2.0', id: 30, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'inline edit printed sticker label face corners', limit: 5 } } })
+send({ jsonrpc: '2.0', id: 32, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'filter menu rail facet funnel', limit: 8 } } })
+send({ jsonrpc: '2.0', id: 33, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'filter refinement bar hunt tiles table funnel', limit: 8 } } })
+send({ jsonrpc: '2.0', id: 34, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'dumb station scan mouth gun only context ring', limit: 5 } } })
+send({ jsonrpc: '2.0', id: 35, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'src/components/outbound/workspaces/ScanOutWorkspace.tsx' } } })
+send({ jsonrpc: '2.0', id: 36, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'tools/design-mcp/fixtures/overlay-cohort-bad-style.tsx' } } })
 
-await new Promise((r) => setTimeout(r, 18000))
+await new Promise((r) => setTimeout(r, 22000))
 child.kill()
 
 const msgs = out.split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l) } catch { return { RAW: l.slice(0, 120) } } })
@@ -308,6 +313,10 @@ check('ds_contract ranks DeskPageChrome first for a page header',
 // The rule REVERSED on 2026-08-31 (stations used to be forbidden this frame),
 // so assert what it says now: stations mount it, and their tabs ride the top
 // row rather than a TableStatusBar foot strip.
+check('DeskPageChrome pin fences tabsLead off from the CTA slot',
+  /tabsLead[\s\S]*not a second CTA/.test((deskChrome.matches ?? [])[0]?.doNot ?? ''),
+  /tabsLead/.test((deskChrome.matches ?? [])[0]?.doNot ?? '') ? 'tabsLead law present' : 'MISSING')
+
 check('DeskPageChrome pin puts station tabs on the top row',
   /scan stations mount it too/i.test((deskChrome.matches ?? [])[0]?.doNot ?? '')
     && /TableStatusBar/.test((deskChrome.matches ?? [])[0]?.doNot ?? ''),
@@ -337,6 +346,54 @@ check('ds_contract ranks LabelFacePreview for inline sticker edit',
 check('LabelFacePreview pin names the slot overlay',
   /LabelFaceSlotOverlay/.test((labelFace.matches ?? [])[0]?.doNot ?? ''),
   ((labelFace.matches ?? [])[0]?.doNot ?? 'no pin').slice(0, 80))
+
+const filterMenu = body(32)
+const filterMenuHits = (filterMenu.matches ?? []).filter((m) => m.id === 'FilterMenu')
+check('ds_contract reports exactly one FilterMenu (the ui SoT)',
+  filterMenuHits.length === 1 && String(filterMenuHits[0]?.home ?? '').includes('ui composite'),
+  filterMenuHits.map((m) => `${m.id}@${m.home}`).join(', ') || (filterMenu.matches ?? []).map((m) => m.id).join(', '))
+check('FilterMenu pin forbids recreating the primitives fork',
+  /primitives\/FilterMenu\.tsx/.test(filterMenuHits[0]?.doNot ?? ''),
+  (filterMenuHits[0]?.doNot ?? 'no pin').slice(0, 80))
+
+const filterBar = body(33)
+const filterBarPin = (filterBar.matches ?? []).find((m) => m.id === 'FilterRefinementBar')
+check('ds_contract pins FilterRefinementBar as a table-filter fork',
+  Boolean(filterBarPin) && /DataTable/.test(filterBarPin?.doNot ?? ''),
+  (filterBarPin?.doNot ?? 'no pin').slice(0, 96))
+check('filter refinement intent still ranks DataTable',
+  (filterBar.matches ?? []).some((m) => m.id === 'DataTable'),
+  (filterBar.matches ?? []).map((m) => m.id).join(', '))
+
+/*
+ * Operator 2026-08-31: dumb / gun stations must resolve to StationComposerHost
+ * (full mouth), not raw OmnichannelComposerDock. Pin must forbid showModeRow={false}.
+ */
+const dumbMouth = body(34)
+check('ds_contract ranks StationComposerHost for dumb station mouth',
+  (dumbMouth.matches ?? [])[0]?.id === 'StationComposerHost',
+  (dumbMouth.matches ?? []).map((m) => m.id).join(', '))
+check('StationComposerHost pin forbids deleting the mode row on dumb stations',
+  /showModeFaces=\{false\}/.test((dumbMouth.matches ?? [])[0]?.doNot ?? '')
+    && /showModeRow=\{false\}/.test((dumbMouth.matches ?? [])[0]?.doNot ?? ''),
+  ((dumbMouth.matches ?? [])[0]?.doNot ?? 'no pin').slice(0, 120))
+
+const overlayCrit = body(35)
+check('cohort workspace: visibility/zIndex.panel styles are not inline-style drifts',
+  !(overlayCrit.problems ?? []).some((p) => /inline style object/.test(p.what ?? '')),
+  (overlayCrit.problems ?? []).map((p) => p.what).join(' | ') || 'none')
+
+const badStyleCrit = body(36)
+check('non-cohort style={{ color }} still flags as inline-style drift',
+  (badStyleCrit.problems ?? []).some((p) => /inline style object/.test(p.what ?? '')),
+  (badStyleCrit.problems ?? []).map((p) => p.what).join(' | '))
+
+{
+  const pinned = readFileSync(path.join(REPO, 'src/design-system/pinned.json'), 'utf8')
+  check('pinned.json declares ScanStationOverlayShell cohort law',
+    /"ScanStationOverlayShell"/.test(pinned) && /SCAN_STATION_OVERLAY_COHORT/.test(pinned),
+    'missing ScanStationOverlayShell pin')
+}
 
 console.log(fails === 0 ? '\nsmoke: all good' : `\nsmoke: ${fails} failed`)
 process.exit(fails === 0 ? 0 : 1)

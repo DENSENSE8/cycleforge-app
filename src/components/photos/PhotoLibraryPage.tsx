@@ -40,7 +40,8 @@ import { PhotoDisplayControls } from './PhotoDisplayControls';
 import { PhotoLibraryGrid } from './PhotoLibraryGrid';
 import { PhotoLibraryHeader } from './PhotoLibraryHeader';
 import { PhotoBatchInspectorPanel } from './photo-inspector/PhotoBatchInspectorPanel';
-import { PhotoLibraryScopeBand } from './PhotoLibraryScopeBand';
+import { usePhotoLibraryScope } from './PhotoLibraryScopeBand';
+import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import { PhotoLibraryTicketNasBackup } from './PhotoLibraryTicketNasBackup';
 import { PhotoLabelEditor } from './PhotoLabelEditor';
 import { MediaLibraryShortcutsModal } from './MediaLibraryShortcutsModal';
@@ -74,6 +75,7 @@ import { isLibraryDocument, libraryDocumentId } from './photo-library-types';
 
 /** Right pane: workbench chrome + the flat photo stream. Filters live in the header. */
 export function PhotoLibraryPage() {
+  const libraryScope = usePhotoLibraryScope();
   const { filters, display, setView, patch } = usePhotoLibraryUrlState();
   const { view } = display;
 
@@ -659,22 +661,51 @@ export function PhotoLibraryPage() {
   );
 
   return (
-    // `min-w-0 flex-1` is load-bearing, not decoration: this host is a flex ITEM
-    // in `<main>`'s row, and without a grow it sizes to `max-content` — which
-    // measured **721px inside a 1440 viewport**, i.e. below `MIN_WORK_SURFACE_PX`
-    // (784). Deleting the left rail reclaimed the column but handed the width to
-    // nobody; the S1 report read that 720 as the rail's cost when it was actually
-    // this. Pinned by `tests/e2e/photos-railless-frame.spec.ts`.
+    /*
+      The one page frame (2026-08-31) — `@/design-system/components/DeskPageChrome`
+      via `DeskPageLayout`. Title top-left; the lifecycle scopes as its tab row;
+      the media-type overflow at the head of that row (`tabsLead`), because both
+      halves write ONE param through one `selectSection` and splitting them
+      across two altitudes is how this surface grew two writers once before.
+
+      `title` is explicit: `/ops/photos` has no `SIDEBAR_PAGE_NAV` entry, so the
+      nav-derived default would be an empty `<h1>`. It matches the route's own
+      metadata title.
+
+      No CTA — this surface has no import / add action, and the frame renders
+      nothing rather than reserving space for one.
+    */
+    <DeskPageLayout
+      className="h-full"
+      title="Media"
+      tabs={libraryScope.tabs}
+      activeTab={libraryScope.activeTab}
+      onTabChange={libraryScope.selectSection}
+      tabsLead={libraryScope.lead}
+    >
+    {/*
+      `min-w-0 flex-1` is load-bearing, not decoration: this host is a flex ITEM
+      in its parent's row, and without a grow it sizes to `max-content` — which
+      measured **721px inside a 1440 viewport**, i.e. below `MIN_WORK_SURFACE_PX`
+      (784). Deleting the left rail reclaimed the column but handed the width to
+      nobody; the S1 report read that 720 as the rail's cost when it was actually
+      this. Pinned by `tests/e2e/photos-railless-frame.spec.ts`.
+    */}
     <RightPaneOverlayHost className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
     <DashboardScrollShell
       chrome={
-        // Flush sheet chrome — THREE bands stack with `gap-0` inside ONE
+        // Flush sheet chrome — TWO bands stack with `gap-0` inside ONE
         // non-scrolling slot (Sheets flush mount recipe). No host `px`/`py`:
         // the outer host is flush and readable pad lives on each band's row.
         //
-        //   Band 1  lifecycle tabs + media-type cube  (PhotoLibraryScopeBand)
-        //   Band 2  the search band                   (PhotoLibraryWorkspaceHeader)
-        //   Band 3  breadcrumb + display controls     (PhotoLibraryHeader)
+        //   Band 1  the search band          (PhotoLibraryWorkspaceHeader)
+        //   Band 2  breadcrumb + display     (PhotoLibraryHeader)
+        //
+        // The lifecycle tabs and the media-type cube LEFT this stack on
+        // 2026-08-31: they are page navigation, and page navigation belongs on
+        // the frame's tab row (`DeskPageLayout` below), not in a band inside
+        // the card the rows live in. Losing that band is also what buys back
+        // the vertical space the frame's header costs.
         //
         // That order INVERTS the house Band 2 = KPI / Band 3 = find, and the
         // divergence is deliberate: there is no KPI band here (so Band 2 is
@@ -691,7 +722,6 @@ export function PhotoLibraryPage() {
         // (`PhotoBatchInspectorPanel`), which is where "what can I do to the
         // picked record" already lived at n = 1.
         <div className={cn('relative w-full min-w-0', 'flex flex-col gap-0')}>
-          <PhotoLibraryScopeBand />
           <PhotoLibraryHeader
             breadcrumb={
               <PhotoDateBreadcrumb
@@ -850,6 +880,7 @@ export function PhotoLibraryPage() {
       <MediaLibraryShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
     </DashboardScrollShell>
     </RightPaneOverlayHost>
+    </DeskPageLayout>
   );
 }
 
