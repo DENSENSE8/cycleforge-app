@@ -7,6 +7,7 @@
  */
 
 import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
+import { reserveLegacyPrintPopup } from '@/lib/print/iframePrint';
 
 interface StationCommandLabelPayload {
   /** Exact scan string (e.g. CMD-BATCH-SORT). */
@@ -46,12 +47,14 @@ export function printStationCommandLabel(payload: StationCommandLabelPayload): v
   const face = stationCommandPayloadToFace(payload);
   if (!face.matrix.value) return;
 
+  const legacyPopup = reserveLegacyPrintPopup();
   void import('@/lib/print/printLabel').then(({ printLabel }) => {
     printLabel({
       name: 'Station command',
       ...buildFaceInfoHtml(face),
       dataMatrix: face.matrix,
       hri: face.hri,
+      legacyPopup,
     });
   });
 }

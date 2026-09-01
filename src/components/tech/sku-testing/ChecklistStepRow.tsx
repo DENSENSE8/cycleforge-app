@@ -34,7 +34,9 @@ export function ChecklistStepRow({
   return (
     <li
       className={`flex items-start gap-2 rounded-none border px-3 py-2 transition-colors duration-150 ${
-        checked ? 'border-emerald-200 bg-emerald-50/60' : 'border-border-soft/70 bg-surface-card'
+        checked
+          ? 'border-emerald-200 bg-surface-sunken'
+          : 'border-border-soft/70 bg-surface-card'
       }`}
     >
       <HoverTooltip label={recordHint} asChild>
@@ -71,7 +73,7 @@ export function ChecklistStepRow({
               disabled={ed.busy}
               ariaLabel="Save step"
               icon={ed.busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <span className="text-xs font-semibold">✓</span>}
-              className="rounded-md p-1 text-emerald-600 hover:bg-emerald-50"
+              className="rounded-md p-1 text-emerald-600 hover:bg-surface-sunken"
             />
             <IconButton
               onClick={() => ed.setEditingId(null)}

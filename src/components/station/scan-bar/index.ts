@@ -24,7 +24,8 @@ export { ThemedStationScanBar, type ThemedStationScanBarProps } from './ThemedSt
 export { StationScanModeRail, type StationScanModeDefinition } from './StationScanModeRail';
 // The stance has exactly TWO writers, and neither commits anything:
 //   1. the bar's own `ScanHotkeyControl` — the operator picking their mode;
-//   2. leaving a preview (`ReceivingSidebarPanel`) — done looking, back to work.
+//   2. leaving a preview (Unbox `ReceivingSidebarPanel` / Ready to Pack
+//      `ShippingScanBand` on close-shipped-details) — done looking, back to work.
 // What stays banned is a writer that flips the stance AND submits, which is how
 // a preview would become an unbox behind the operator (see the deleted
 // `promoteToScan` / `receiving-preview-commit`).

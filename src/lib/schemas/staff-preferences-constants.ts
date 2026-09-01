@@ -17,6 +17,11 @@
  */
 import { THEME_NAMES, type ThemeName } from '@/design-system/themes/registry';
 import {
+  DEFAULT_STATION_DEPTH,
+  STATION_DEPTH_NAMES,
+  type StationDepthName,
+} from '@/design-system/themes/station-depths';
+import {
   DEFAULT_STATION_SKIN,
   STATION_SKIN_NAMES,
   type StationSkinName,
@@ -85,6 +90,14 @@ export const DEFAULT_THEME: StaffTheme = 'light';
 export const STAFF_STATION_SKINS = STATION_SKIN_NAMES;
 export type StaffStationSkin = StationSkinName;
 export const DEFAULT_STATION_SKIN_PREF: StaffStationSkin = DEFAULT_STATION_SKIN;
+
+/**
+ * Scan-station depth — derived from the station-depth registry. Flat is the
+ * default (absence of `data-station-depth`). Independent of Color (`stationSkin`).
+ */
+export const STAFF_STATION_DEPTHS = STATION_DEPTH_NAMES;
+export type StaffStationDepth = StationDepthName;
+export const DEFAULT_STATION_DEPTH_PREF: StaffStationDepth = DEFAULT_STATION_DEPTH;
 
 /**
  * Clock display format for every timestamp the app renders. `12h` = h:mm AM/PM

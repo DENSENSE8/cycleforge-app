@@ -35,7 +35,11 @@ import {
   PopoverTrigger,
 } from '@/design-system/primitives/radix-popover';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
-import { cornerClass } from '@/design-system/tokens/radius';
+import {
+  DATA_TABLE_TOOLBAR_CORNER,
+  DROPDOWN_ITEM_CORNER,
+  DROPDOWN_SHELL_CORNER,
+} from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -93,7 +97,7 @@ export function DataTableZoomToggle({ className }: { className?: string }) {
             'ds-raw-button inline-flex shrink-0 items-center gap-1 px-1.5 text-role-caption',
             'transition-colors duration-100 ease-out',
             PRIMARY_CHROME_ROW_FACE,
-            cornerClass('flush'),
+            DATA_TABLE_TOOLBAR_CORNER,
             focusRing('control'),
             'text-text-muted hover:bg-surface-hover hover:text-text-default',
             className,
@@ -104,7 +108,11 @@ export function DataTableZoomToggle({ className }: { className?: string }) {
           <ChevronDown className="h-3 w-3 shrink-0" aria-hidden />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" sideOffset={2} className="w-24 p-0.5">
+      <PopoverContent
+        align="end"
+        sideOffset={2}
+        className={cn(DROPDOWN_SHELL_CORNER, 'w-24 overflow-hidden p-0.5')}
+      >
         {STEPS.map((step) => (
           <button
             key={step}
@@ -112,7 +120,8 @@ export function DataTableZoomToggle({ className }: { className?: string }) {
             onClick={() => pick(step)}
             data-testid={`data-table-zoom-${step}`}
             className={cn(
-              'ds-raw-button flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-role-caption tabular-nums',
+              'ds-raw-button flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left text-role-caption tabular-nums',
+              DROPDOWN_ITEM_CORNER,
               focusRing('control'),
               step === percent
                 ? 'bg-surface-sunken font-semibold text-text-default'

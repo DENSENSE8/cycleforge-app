@@ -1,21 +1,24 @@
 {
   "file": "src/components/tables/DataTable.tsx",
-  "summary": "1 problem, worst first: 1410 lines — past the point reviewers read",
+  "summary": "1 problem, worst first: 1684 lines — past the point reviewers read",
   "problems": [
     {
       "severity": "size",
-      "what": "1410 lines — past the point reviewers read",
+      "what": "1684 lines — past the point reviewers read",
       "fix": "Split the leaf presentational parts out."
     }
   ],
   "design_system_used": [
     "SearchField",
+    "Toolbar",
+    "ToolbarListbox",
     "DateRangePickerField",
     "DeskActionSlot",
     "DeskStageContext",
     "GridRowCheckbox",
     "grid-cells",
     "DataTable",
+    "DataTableColumnActionRow",
     "DataTableFullscreenToggle",
     "DataTableZoomToggle",
     "NonlinearTableHost",
@@ -23,7 +26,7 @@
     "TableStatusBar"
   ],
   "metrics": {
-    "lines": 1410,
+    "lines": 1684,
     "arbitrary_literals": 0
   },
   "notes": [

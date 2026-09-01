@@ -42,21 +42,25 @@ function applyOptimisticUpdate(current: unknown, payload: OrderAssignPayload): u
     const next: Record<string, unknown> = { ...row };
 
     if (payload.testerId !== undefined) {
+      // Assignee only — tested_by is the scan-completion actor, not the claim.
       next.tester_id = payload.testerId;
-      next.tested_by = payload.testerId;
       next.testerId = payload.testerId;
       if (payload.testerName !== undefined) {
-        next.tested_by_name = payload.testerName;
         next.tester_name = payload.testerName;
+        // Prefer assignee face on the Pick cell when no scan stamp has landed.
+        if (payload.testerId != null) {
+          next.tested_by_name = next.tested_by_name || payload.testerName;
+        }
       }
     }
     if (payload.packerId !== undefined) {
       next.packer_id = payload.packerId;
-      next.packed_by = payload.packerId;
       next.packerId = payload.packerId;
       if (payload.packerName !== undefined) {
-        next.packed_by_name = payload.packerName;
         next.packer_name = payload.packerName;
+        if (payload.packerId != null) {
+          next.packed_by_name = next.packed_by_name || payload.packerName;
+        }
       }
     }
     if (payload.shipByDate !== undefined) {

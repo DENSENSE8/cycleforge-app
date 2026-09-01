@@ -327,6 +327,30 @@ export interface CompoundStageStepFacts {
 }
 
 /**
+ * Presence ⇒ the stage MARK invites assign while the step is still pending
+ * (`!at`). Done stages stay read-only. One lane per column — never a dual
+ * tester+packer picker inside a single Pick or Packed cell.
+ */
+export type CompoundStageAssignRole = 'technician' | 'packer';
+
+export interface CompoundStageAssign {
+  /** Current assignee for this lane (not the scan-completion actor). */
+  selectedStaffId: number | null;
+  /** Accessible name for the assign combobox — e.g. Pick / Packer; not painted. */
+  label: string;
+  role: CompoundStageAssignRole;
+  onCommit: (staffId: number | null, staffName: string | null) => void;
+}
+
+/** Assign chrome only when the host armed a handler and the step has no stamp. */
+export function canAssignCompoundStage(
+  assign: CompoundStageAssign | null | undefined,
+  at: string | null | undefined,
+): boolean {
+  return Boolean(assign) && !at;
+}
+
+/**
  * Secondary line for a stage-step cell: `who · time · station`, blanks dropped.
  * Returns `null` when nothing landed — the cell drops the tooltip and leaves
  * its second line blank.

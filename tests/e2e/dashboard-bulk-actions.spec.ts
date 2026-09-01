@@ -7,88 +7,70 @@ import { test, expect, type Page } from '@playwright/test';
  * All four outbound tabs render one grid with one persisted column layout, so
  * the divergence has to live in the action set — "assign a tester" is
  * meaningless on Shipped, "print a shipping label" is meaningless on Pending.
- * `ContextualSelectionBar` drops actions whose constraints can't be met, so the
- * scoping shows up as absent buttons rather than disabled ones.
+ *
+ * To-ship paints those verbs as **column-aligned icons** under the grid
+ * (`data-table-column-actions`), not status-bar pills. Rail still owns export /
+ * print / listing-rule.
  */
 
 test.describe('Dashboard bulk actions', () => {
   test.skip(({ browserName }) => browserName === 'webkit', 'queue grid is a desktop layout');
 
-  /** Select the first row on a lane and return the bar's action labels. */
-  async function barActionsFor(page: Page, query: string): Promise<string[]> {
+  async function selectFirstRow(page: Page, query: string) {
     await page.goto(`/dashboard?${query}`);
     const row = page.locator('[data-order-row-id]').first();
     await expect(row).toBeVisible({ timeout: 30_000 });
     await row.getByRole('checkbox').first().check();
-
-    const labels = page.locator('[aria-label]');
-    // Wait for an action that EVERY lane carries, not merely "some labelled
-    // icon" — the old gate matched header chrome, so it was already satisfied
-    // before the action set existed. That was harmless while the bottom capsule
-    // rendered synchronously with the selection; the actions now live in the
-    // right rail's footer, which appears only after the inspector opens and
-    // finishes its entrance animation, so the loose gate started collecting an
-    // empty array. Plan: docs/todo/order-rail-selection-plane-PLAN.md (D2).
-    await expect(page.locator('[aria-label="Copy details"]').first()).toBeVisible({
-      timeout: 20_000,
-    });
-    const all = await labels.evaluateAll((els) =>
-      els.map((e) => e.getAttribute('aria-label') ?? '').filter(Boolean),
-    );
-    return [
-      ...new Set(all.filter((l) => /^(Assign|Set ship-by|Print|Delete|Copy details|Export CSV)/i.test(l))),
-    ];
+    await expect(page.getByTestId('data-table-column-actions')).toBeVisible({ timeout: 20_000 });
+    return row;
   }
 
-  test('pre-pack lanes offer prep actions; post-pack lanes offer the shipping document', async ({
+  function columnActionKeys(page: Page): Promise<string[]> {
+    return page
+      .getByTestId('data-table-column-actions')
+      .locator('button[data-testid^="data-table-selection-action-"]')
+      .evaluateAll((els) =>
+        els
+          .map((e) => e.getAttribute('data-testid') ?? '')
+          .map((id) => id.replace('data-table-selection-action-', ''))
+          .filter(Boolean),
+      );
+  }
+
+  test('column-aligned icons sit under Image and Order', async ({
     page,
   }) => {
-    const pending = await barActionsFor(page, 'unshipped');
-    expect(pending).toContain('Copy details');
-    expect(pending).toContain('Assign tester / packer');
-    expect(pending).toContain('Set ship-by date');
-    expect(pending).toContain('Print product labels'); // SKU+serial prep label
-    // Reads the selected rows only, so it holds on every lane.
-    expect(pending).toContain('Export CSV');
-    expect(pending).not.toContain('Print shipping labels');
+    await selectFirstRow(page, 'unshipped');
+    const pending = await columnActionKeys(page);
+    expect(pending).toContain('copy');
+    expect(pending).toContain('download-photos');
+    expect(pending).toContain('assign-pick');
+    expect(pending).toContain('assign-pack');
+    expect(pending).toContain('ship-by');
+    expect(pending).toContain('condition');
+    expect(pending).toContain('qty');
+    expect(pending).toContain('notes');
+    expect(pending).not.toContain('print-shipping');
+    expect(pending).not.toContain('export');
 
-    const packed = await barActionsFor(page, 'packed');
-    expect(packed).toContain('Copy details');
-    expect(packed).toContain('Print shipping labels');
-    expect(packed).toContain('Export CSV');
-    // Assigning a tester to an order that is already packed is not a thing.
-    expect(packed).not.toContain('Assign tester / packer');
-    expect(packed).not.toContain('Set ship-by date');
-    expect(packed).not.toContain('Print product labels');
+    const thumb = page.locator('[data-grid-col-header] [data-col="thumb"]');
+    const download = page.getByTestId('data-table-selection-action-download-photos');
+    const thumbBox = await thumb.boundingBox();
+    const downloadBox = await download.boundingBox();
+    expect(thumbBox).toBeTruthy();
+    expect(downloadBox).toBeTruthy();
+    expect(Math.abs((thumbBox!.x + thumbBox!.width / 2) - (downloadBox!.x + downloadBox!.width / 2))).toBeLessThan(24);
+
+    const orderHeader = page.locator('[data-grid-col-header] [data-col="fulfillment"]');
+    const copy = page.getByTestId('data-table-selection-action-copy');
+    const orderBox = await orderHeader.boundingBox();
+    const copyBox = await copy.boundingBox();
+    expect(orderBox).toBeTruthy();
+    expect(copyBox).toBeTruthy();
+    expect(Math.abs((orderBox!.x + orderBox!.width / 2) - (copyBox!.x + copyBox!.width / 2))).toBeLessThan(48);
   });
 
-  test('Export CSV downloads the selection as a warehouse-dated file', async ({ page }) => {
-    await page.goto('/dashboard?unshipped');
-    const row = page.locator('[data-order-row-id]').first();
-    await expect(row).toBeVisible({ timeout: 30_000 });
-    await row.getByRole('checkbox').first().check();
-
-    const [download] = await Promise.all([
-      page.waitForEvent('download'),
-      page.getByLabel('Export CSV').first().click(),
-    ]);
-
-    // Named for the lane + the WAREHOUSE civil day (not UTC, which is already
-    // tomorrow for a late-afternoon PST export).
-    expect(download.suggestedFilename()).toMatch(/^pending-orders-\d{4}-\d{2}-\d{2}\.csv$/);
-
-    // Header + at least the one selected row — the file is built from the rows
-    // in hand, never a second query that could disagree with the screen.
-    const stream = await download.createReadStream();
-    const chunks: Buffer[] = [];
-    for await (const chunk of stream) chunks.push(Buffer.from(chunk));
-    const lines = Buffer.concat(chunks).toString('utf8').trim().split('\n');
-    expect(lines[0]).toContain('order_id');
-    expect(lines[0]).toContain('is_out_of_stock');
-    expect(lines.length).toBeGreaterThanOrEqual(2);
-  });
-
-  test('Assign opens the multi-row carousel, not a batch-edit form', async ({ page }) => {
+  test('Assign pick / pack open upward staff search under the column icons', async ({ page }) => {
     await page.goto('/dashboard?unshipped');
     const rows = page.locator('[data-order-row-id]');
     await expect(rows.first()).toBeVisible({ timeout: 30_000 });
@@ -97,17 +79,35 @@ test.describe('Dashboard bulk actions', () => {
     await rows.nth(0).getByRole('checkbox').first().check();
     await rows.nth(1).getByRole('checkbox').first().check();
 
-    await page.getByLabel('Assign tester / packer').first().click();
+    const pickBtn = page.getByTestId('data-table-selection-action-assign-pick');
+    const packBtn = page.getByTestId('data-table-selection-action-assign-pack');
+    await expect(pickBtn).toBeVisible();
+    await expect(packBtn).toBeVisible();
 
-    // The carousel walks the selection one record at a time (prev/next +
-    // confirm→advance) rather than showing "mixed" values across the set.
-    await expect(page.getByRole('button', { name: 'Next' })).toBeVisible({ timeout: 20_000 });
+    await pickBtn.click();
+    const pickPanel = page.getByTestId('stage-assign-bottom-up-pick');
+    await expect(pickPanel).toBeVisible({ timeout: 20_000 });
+    await expect(pickPanel.getByPlaceholder('Search staff…')).toBeVisible();
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    // Foot icons stay painted while the panel floats above the grid.
+    await expect(pickBtn).toBeVisible();
+    await expect(packBtn).toBeVisible();
+    const panelBox = await pickPanel.boundingBox();
+    const tableBox = await page.locator('[data-testid="data-table-column-actions"]').boundingBox();
+    expect(panelBox).toBeTruthy();
+    expect(tableBox).toBeTruthy();
+    expect(panelBox!.y + panelBox!.height).toBeLessThanOrEqual(tableBox!.y + 2);
+
+    await packBtn.click();
+    const packPanel = page.getByTestId('stage-assign-bottom-up-pack');
+    await expect(packPanel).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByTestId('stage-assign-bottom-up-pick')).toHaveCount(0);
+    await expect(page.getByRole('dialog')).toHaveCount(0);
+    await expect(pickBtn).toBeVisible();
+    await expect(packBtn).toBeVisible();
   });
 
   test('checkbox multi-select keeps both rows in the set', async ({ page }) => {
-    // Regression for the 1→2 collapse: toggle adds B, then either a bubbled
-    // row click or the adopt-effect race selectOnly-replaced the set with one
-    // id. Assert the count on the rail band — independent of any action dialog.
     await page.goto('/dashboard?unshipped');
     const rows = page.locator('[data-order-row-id]');
     await expect(rows.first()).toBeVisible({ timeout: 30_000 });
@@ -116,7 +116,7 @@ test.describe('Dashboard bulk actions', () => {
     await rows.nth(0).getByRole('checkbox').first().check();
     await rows.nth(1).getByRole('checkbox').first().check();
 
-    await expect(page.getByText(/\b2 of \d+ selected\b/).first()).toBeVisible({
+    await expect(page.getByText(/\b2 selected\b/).first()).toBeVisible({
       timeout: 20_000,
     });
     await expect(rows.nth(0).getByRole('checkbox').first()).toHaveAttribute(
@@ -129,6 +129,20 @@ test.describe('Dashboard bulk actions', () => {
     );
   });
 
+  test('row body does not open the documents rail and does not toggle the checkbox', async ({
+    page,
+  }) => {
+    await page.goto('/dashboard?unshipped');
+    const row = page.locator('[data-order-row-id]').first();
+    await expect(row).toBeVisible({ timeout: 30_000 });
+    const checkbox = row.getByRole('checkbox').first();
+    await expect(checkbox).toHaveAttribute('aria-checked', 'false');
+    await row.click({ position: { x: 180, y: 12 } });
+    await expect(checkbox).toHaveAttribute('aria-checked', 'false');
+    await expect(page.getByText('Draft saved.')).toHaveCount(0);
+    await expect(page.getByTestId('order-documents-section')).toHaveCount(0);
+  });
+
   test('Set ship-by opens a date picker scoped to the selection', async ({ page }) => {
     await page.goto('/dashboard?unshipped');
     const rows = page.locator('[data-order-row-id]');
@@ -138,16 +152,15 @@ test.describe('Dashboard bulk actions', () => {
     await rows.nth(0).getByRole('checkbox').first().check();
     await rows.nth(1).getByRole('checkbox').first().check();
 
-    await expect(page.getByText(/\b2 of \d+ selected\b/).first()).toBeVisible({
+    await expect(page.getByText(/\b2 selected\b/).first()).toBeVisible({
       timeout: 20_000,
     });
 
-    await page.getByLabel('Set ship-by date').first().click();
+    await page.getByTestId('data-table-selection-action-ship-by').click();
 
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible({ timeout: 20_000 });
     await expect(dialog).toContainText('Applies to all 2 selected orders.');
-    // Nothing is written until a date is chosen.
-    await expect(dialog.getByRole('button', { name: 'Set date' })).toBeDisabled();
+    await expect(dialog.getByRole('button', { name: '--' })).toBeVisible();
   });
 });

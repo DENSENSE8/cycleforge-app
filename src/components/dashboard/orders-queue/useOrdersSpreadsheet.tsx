@@ -102,9 +102,8 @@ export interface UseOrdersSpreadsheetOptions {
    * that row). Off by default: this grid has seven mount sites and only the
    * three dashboard outbound lanes opt in.
    *
-   * When on, also enables Sheets click-select (`clickSelect`): row click
-   * toggles bulk, double-click opens; the select track keeps the painted
-   * `'always'` checkbox gutter (header select-all + every leftmost row cell).
+   * When on, the left gutter checkbox owns the bulk set. Row click opens the
+   * record. Sheets click-select (row body toggles membership) is off.
    *
    * `selectionScope` cannot stand in for this. Six of the seven hosts pass
    * `DASHBOARD_ORDERS_SELECTION_SCOPE` — including Labels, Staged, and both
@@ -309,6 +308,24 @@ export function useOrdersSpreadsheet({
     [assignMutate],
   );
 
+  const handleCommitStageAssign = useCallback(
+    (
+      record: ShippedOrder,
+      fieldId: 'orders.picked' | 'orders.packed',
+      staffId: number | null,
+      staffName: string | null,
+    ) => {
+      const id = Number(record.id);
+      if (!Number.isFinite(id)) return;
+      if (fieldId === 'orders.picked') {
+        assignMutate({ orderId: id, testerId: staffId, testerName: staffName });
+        return;
+      }
+      assignMutate({ orderId: id, packerId: staffId, packerName: staffName });
+    },
+    [assignMutate],
+  );
+
   /**
    * The other under-title facts, written through the same waist.
    *
@@ -433,15 +450,15 @@ export function useOrdersSpreadsheet({
     ) => {
       const r = record as QueueRowRecord;
       const testerName =
-        (r.tested_by_name as string | undefined) ||
-        (r.tester_name as string | undefined) ||
-        getStaffName(r.tested_by as number | null | undefined) ||
-        getStaffName(r.tester_id as number | null | undefined);
+        String(r.tested_by_name ?? '').trim() ||
+        String(r.tester_name ?? '').trim() ||
+        (Number(r.tested_by) > 0 ? getStaffName(Number(r.tested_by)) : '') ||
+        (Number(r.tester_id) > 0 ? getStaffName(Number(r.tester_id)) : '');
       const packerName =
-        (r.packed_by_name as string | undefined) ||
-        (r.packer_name as string | undefined) ||
-        getStaffName(r.packed_by as number | null | undefined) ||
-        getStaffName(r.packer_id as number | null | undefined);
+        String(r.packed_by_name ?? '').trim() ||
+        String(r.packer_name ?? '').trim() ||
+        (Number(r.packed_by) > 0 ? getStaffName(Number(r.packed_by)) : '') ||
+        (Number(r.packer_id) > 0 ? getStaffName(Number(r.packer_id)) : '');
       const rowFillHex =
         clickSelect ? (fillsById[String(record.id)] ?? null) : null;
       return (
@@ -464,8 +481,20 @@ export function useOrdersSpreadsheet({
           useAlternateStripe={stripeIndex % 2 === 1}
           testerDisplay={normalizePersonName(testerName)}
           packerDisplay={normalizePersonName(packerName)}
-          testerId={(r.tested_by as number | null) ?? (r.tester_id as number | null)}
-          packerId={(r.packed_by as number | null) ?? (r.packer_id as number | null)}
+          testerId={
+            Number(r.tester_id) > 0
+              ? Number(r.tester_id)
+              : Number(r.tested_by) > 0
+                ? Number(r.tested_by)
+                : null
+          }
+          packerId={
+            Number(r.packer_id) > 0
+              ? Number(r.packer_id)
+              : Number(r.packed_by) > 0
+                ? Number(r.packed_by)
+                : null
+          }
           rowStatus={resolveRowStatus(r, queueMode)}
           daysLate={daysLateOn(
             todayKey,
@@ -489,6 +518,7 @@ export function useOrdersSpreadsheet({
           onCommitCondition={handleCommitCondition}
           onCommitSubtitleField={handleCommitSubtitleField}
           onCommitShipBy={handleCommitShipBy}
+          onCommitStageAssign={handleCommitStageAssign}
         />
       );
     },
@@ -506,6 +536,7 @@ export function useOrdersSpreadsheet({
       handleCommitCondition,
       handleCommitSubtitleField,
       handleCommitShipBy,
+      handleCommitStageAssign,
       queueMode,
       clickSelect,
       fillsById,

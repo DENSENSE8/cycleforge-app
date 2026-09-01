@@ -1,6 +1,6 @@
 # PLAN — Media Library: breadcrumb to the footer, search on the row, a real CTA
 
-**Written:** 2026-09-01 · **Branch:** `main` · **Status:** plan of record, not started
+**Written:** 2026-09-01 · **Branch:** `main` · **Status:** plan of record — decisions locked 2026-09-01
 **Composes (do not fork):** `DeskPageChrome` (`@/design-system/components`) · `TableStatusBar` · `SearchField` · `DeskActionSlot`
 **Follows:** the Media Library frame port (`daeb2ba13`) — tabs + media-type cube moved to the frame's tab row
 
@@ -18,17 +18,18 @@ is mandatory before any UI code here.
 | Piece | File | Lines | Fate |
 |---|---|---|---|
 | Page host + chrome stack | `src/components/photos/PhotoLibraryPage.tsx` | 903 | edit |
-| Path strip (breadcrumb · count · display controls) | `PhotoLibraryHeader.tsx` | 88 | **split** — breadcrumb leaves, controls stay |
-| The breadcrumb itself | `PhotoDateBreadcrumb.tsx` | 164 | move, unchanged |
-| Display controls (density · view · refresh · select) | `PhotoDisplayControls.tsx` | 163 | keep, re-host |
+| Path strip (breadcrumb · count · display controls) | `PhotoLibraryHeader.tsx` | 88 | **delete** — breadcrumb → footer, controls → find row |
+| The breadcrumb itself | `PhotoDateBreadcrumb.tsx` | 164 | move to footer `lead`, clickable ancestors kept |
+| Display controls (density · view · refresh · select) | `PhotoDisplayControls.tsx` | 163 | keep, re-host on find row; select must toggle |
 | Scope tabs + media-type cube | `PhotoLibraryScopeBand.tsx` | 349 | **done** — already on the frame |
 | The stream | `PhotoLibraryGrid.tsx` | — | untouched |
 | Filter popover | `PhotoLibraryFilterDropdown.tsx` | — | keep, re-host |
 | Saved views | `MediaViewsMenu.tsx` · `MediaSavedViewsSection.tsx` | — | keep, re-host |
 | URL state | `hooks/usePhotoLibraryUrlState.ts` · `lib/photos/library-filter-state.ts` | — | **SoT, do not fork** |
 
-**Chrome today** (after the frame port) is two bands inside
-`DashboardScrollShell`'s `chrome` slot:
+**Chrome today** (after the frame port) is one band inside
+`DashboardScrollShell`'s `chrome` slot (Band 1 / `PhotoLibraryWorkspaceHeader`
+is already gone — comments still name it):
 
 ```text
 ┌ frame: Media                                            [ no CTA ]  ┐
@@ -54,120 +55,149 @@ it is restoring the surface's primary job.
 
 ---
 
-## 2. The three moves
+## 2. The three moves (decisions locked)
 
-### 2.1 Breadcrumb → the footer
+### 2.1 Breadcrumb → the footer (`lead` on `TableStatusBar`)
 
-**Why the footer is right, and why it is right *now*.** `TableStatusBar`'s left
-half was the page-mode tab strip until 2026-08-31, when page modes moved to
-`DeskPageChrome`'s top row. That half is **empty product-wide**. Its right half
-already prints shown / total / selected — a context readout. A date/folder path
-is the same kind of fact: *where am I in this archive*, not *what can I do*.
+**Correction:** the footer left is **not** empty product-wide. After
+2026-08-31, `TableStatusBar` is **selection verbs left, counts right**. Labels
+still parks sub-mode tabs there; DataTable paints Assign/Copy when a selection
+exists. The empty spacer is only the idle state of surfaces that pass neither.
 
-`PhotoLibraryHeader`'s own docblock already concedes the altitude problem — it
-says the path strip sits where a KPI band would, "and the divergence is
-deliberate". With the footer's left half free, the divergence stops being
-necessary.
+So `lead` is an **idle-left readout** for surfaces that do not put verbs on this
+bar. Media can use it because bulk verbs already live on
+`PhotoBatchInspectorPanel` (2026-08-09: bands stay mounted; verbs are the
+right-edge rail).
+
+**Precedence (Phase 1 fence — write it on the prop):**
+
+`selectionActions` (and legacy Copy) beat `tabs` beat `lead` beat empty spacer.
+
+Never paint `lead` beside pill CTAs. Never grow `lead` into actions.
+Path-contraction crumbs are the one allowed exception, and they stay
+caption-weight `ds-raw-button`, not `Button`.
+
+`lead` is **not** `tabsLead`. `tabsLead` belongs to `DeskPageChrome` (Media
+already uses it for the type cube). Same *idea* of a readout slot; different
+component.
 
 ```text
-│ ‹ Aug 2026 › ‹ Aug 29 › ‹ PO-4471 ›            6 shown · 48 total · 2 sel  │
+│ All dates › Aug 2026 › Aug 29 › PO-4471          48 of 48 · 2 selected │
 ```
 
 The `metaLine` count (`photo-library-meta`) **merges into the footer's existing
-count** rather than riding along beside it. Two counts on one row saying the
-same number in different words is what the end-of-stream footer already had to
-be talked out of (`PhotoLibraryPage.tsx` — *"it used to read `Photos 48` — the
-same count the path strip already shows"*).
+count** rather than riding along beside it. Keep the end-of-stream line — it
+answers "there is no more to load", which a count does not.
 
-**Do not** reimplement the strip. Media has no `DataTable`, so it mounts
-`TableStatusBar` directly — the component's docblock already sanctions exactly
-this: *"the station desks also mount `StationListTable`… Both need the SAME
-strip, and two copies of it is how the display layer forked the last time."*
+**Breadcrumb stays clickable — ancestor crumbs only.** Keep
+`PhotoDateBreadcrumb` as-is: All dates / ancestor range buttons patch the date
+window and clear the entity leaf; the current crumb is already `disabled`; the
+folder leaf is already a `<span>`. That is path contraction, not page
+navigation (Unboxing · Packing · … on the frame). Today / Latest move with the
+component as its empty state.
 
-`TableStatusBar` needs one additive prop: **`lead?: ReactNode`** for the vacated
-left half. Same fence as `tabsLead` — a context readout, never an action.
+Media has no `DataTable`, so it mounts `TableStatusBar` directly — the
+component's docblock already sanctions exactly this.
 
-### 2.2 Search → inline on the card's toolbar row
+### 2.2 Search → inline on the card's find row
 
-The card gains **one toolbar row**, the same shape every `DataTable` draws:
-
-```text
-│ ⌕ Find by order # / tracking / serial…   [scope ▾] [filter] [views] ⤢ │
-```
-
-- **Find field left** — `SearchField` from `@/design-system/primitives`, the same
-  primitive `DataTable`'s toolbar uses. Writes `poFinder`.
-- **Scope selector** — `poFinderKind` (`any` · `po` · `tracking` · `serial`). It
-  is *part of the find field*, not a filter: it changes how the typed value is
-  read. Render it as the field's own leading affordance, not a separate cell —
-  `PhotoSearchField`/`finderKindForField` already model the mapping.
-- **Filter** → the existing `PhotoLibraryFilterDropdown`.
-- **Views** → the existing `MediaViewsMenu`.
-- **⤢** → `DataTableFullscreenToggle`. It renders nothing off a desk stage and
-  the frame now provides one, so Media gets fullscreen for free.
-
-**`PhotoDisplayControls` moves here too** (density · view · refresh · select).
-Band 2 then has nothing left and is **deleted** — that is the point. The card
-goes back to one chrome row, which is what the frame was for.
-
-### 2.3 The CTA — one primary, one overflow
-
-The frame's `addSlot` is empty today, and `PhotoLibraryScopeBand`'s docblock
-defends that: *"this surface has no import / add CTA, and honest absence beats
-an invented one."* That sentence expires here — the operator is asking for the
-action, so it stops being invented.
+The card gains **one find row**, the same shape every `DataTable` draws:
 
 ```text
-Media                                        [ Add photos ]  [ ⋯ ]
+│ ⌕ Find by order # / tracking / serial…   [filter] [views] … ⤢ │
 ```
 
-| Control | Does | Endpoint (exists today) |
-|---|---|---|
-| **Add photos** (primary) | File picker → upload into the active scope/folder | `POST /api/photos/upload` |
-| ⋯ → Export selection (zip) | Bulk download of the checked set, else the current window | `GET /api/photos/download-zip` |
-| ⋯ → Mirror to NAS | Bulk archive | `/api/photos/nas-backup` |
-| ⋯ → Mirror to Drive | Bulk archive | `/api/photos/drive-backup` |
-| ⋯ → Share pack | Tokenised external bundle | `/api/photos/share-packs` |
+- **Find field left** — `SearchField` from `@/design-system/primitives`. Writes
+  `poFinder` through `usePhotoLibraryUrlState` — **no second writer**.
+- **Find kind inside the field** — `poFinderKind` via `SearchField`'s
+  `onLeadingAction` (search-by picker). Not a separate `[scope ▾]` cell.
+  `finderKindForField` / `fieldForFinderKind` already model the mapping.
+- **Filter** → existing `PhotoLibraryFilterDropdown`.
+- **Views** → existing `MediaViewsMenu`.
+- **Display controls** → `PhotoDisplayControls` (density · view · refresh ·
+  select). **Select stays here** — it changes how tiles behave, not what the
+  page creates. Fix the toggle lie: tooltip says "Done selecting" but the page
+  currently only `setSelectMode(true)`.
+- **⤢** → `DataTableFullscreenToggle` (free once the frame provides a desk
+  stage).
 
-**One primary plus an overflow, not four buttons.** This repo has already ruled
-on the shouted row: `ChromeCheckButton` went icon-only because *"the word CHECK
-in condensed uppercase next to UNBOX next to ADD read as a shouted row of
-three."* Bulk verbs are also rare and destructive-adjacent; a menu is the
-correct altitude, and it keeps the header to one visual weight.
+**Do not** name the new row `PhotoLibraryToolbar` — that name was the
+selection-swap band the batch rail replaced. Band 2 / `PhotoLibraryHeader` is
+deleted once its pieces move.
 
-**Add photos uploads into the current scope.** The tab and breadcrumb already
-say where the operator is; an upload that ignores that context and lands
-everything in an unsorted bucket makes the scope a lie.
+### 2.3 The CTA — primary Add + overall Download (no ⋯)
+
+```text
+Media                              [ Download 48 ]  [ Add photos ]
+```
+
+| Control | Role | Does | Endpoint |
+|---|---|---|---|
+| **Add photos** | `primary` | File picker → upload into the **resolved entity leaf** | `POST /api/photos/upload` |
+| **Download N** | `overall` | ZIP of **shown** photo ids (same `shown` the footer prints) | `GET /api/photos/download-zip` |
+
+**No ⋯.** NAS / Drive are tenant-wide pending-mirror batches — not peers of
+Download; leave them where they already live. Share pack is selection-scoped and
+already on the batch rail. That leaves one collection verb: view Download — the
+same `DeskActionSlotRegistrar role="overall"` slot every DataTable desk uses.
+
+**Download with nothing selected — download shown, labeled, refuse at 0.** Label
+`Download 48`; disabled at 0 as `Download`. Do **not** fetch
+`/api/photos/library/ids` from the header click (that zips thousands the
+operator has not seen). Selection download stays on the rail floor.
+
+**Add photos cannot land on a scope tab.** Upload requires `entityType` +
+`entityId`. Armed only when a leaf is resolved (`poRef` / `receivingId` /
+`ticketId` — the same facts the breadcrumb leaf names). Otherwise visible and
+disabled (or focuses Find). `photoType` from the active media scope.
+
+**Rename the rail verb.** The batch rail's primary row is already labeled
+**Add photos** and means "attach selection to a Zendesk ticket". Header Add =
+upload. Rail becomes **Attach to ticket** (or keep Zendesk wording).
+
+Target chrome:
+
+```text
+Media                              [ Download 48 ]  [ Add photos ]
+Unboxing · Packing · …                              [type cube]
+┌ card ─────────────────────────────────────────────────────────┐
+│ Find by order # / tracking / serial…  [filter] [views]  … ⤢  │
+│ tiles                                                         │
+│ All dates › Aug 2026 › Aug 29              48 of 48           │
+└───────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## 3. Phases
 
 ### Phase 1 — `TableStatusBar` grows a `lead` slot
-Additive prop + pin + smoke assertion, mirroring `tabsLead`. No consumer
-changes. Ships alone and green.
+Additive prop + precedence docs + pin + smoke. No Media consumer. After the
+edit: `pnpm run eval:cohort shortcuts` (`TableStatusBar` is shortcut-display
+cohort engine).
 
 ### Phase 2 — the footer
-Mount `TableStatusBar` at the foot of the card with `lead={<PhotoDateBreadcrumb …/>}`,
-`shown` / `total` / `selected` wired from the existing query + selection state.
-Delete the `metaLine` span. Keep the end-of-stream line — it answers "there is
-no more to load", which a count does not.
+Mount `TableStatusBar` at the foot of the card with
+`lead={<PhotoDateBreadcrumb …/>}`, `shown` / `total` / `selected` wired.
+Delete `photo-library-meta`. Keep end-of-stream. Clickable ancestors.
 
-### Phase 3 — the toolbar row
-New `PhotoLibraryToolbar` composing `SearchField` + scope + filter + views +
-display controls + `DataTableFullscreenToggle`. Wire `poFinder` /
-`poFinderKind` through `usePhotoLibraryUrlState` — **no second writer**. Delete
-`PhotoLibraryHeader` once its controls have moved.
+### Phase 3 — the find row
+Compose `SearchField` + kind + filter + views + display controls +
+`DataTableFullscreenToggle`. Wire `poFinder` / `poFinderKind` through
+`usePhotoLibraryUrlState`. Delete `PhotoLibraryHeader`. Select toggles for real.
+Do not name it `PhotoLibraryToolbar`.
 
 ### Phase 4 — the CTA
-`PhotoLibraryDeskActions` registering into `DeskActionSlotRegistrar`: primary
-**Add photos**, overflow for the four bulk verbs. Upload posts with the active
-scope/folder. Confirm before any destructive-adjacent bulk action.
+`PhotoLibraryDeskActions` (or equivalent): `role="overall"` Download shown;
+`role="primary"` Add photos (leaf-armed). Rename rail Zendesk verb. No
+NAS/Drive/Share in the header. Once header CTAs exist, staff `?` must yield
+`MediaLibraryShortcutsModal` to the house cheat-sheet / inline overlay (cohort
+law).
 
 ### Phase 5 — verify
-`npm run verify` · `node tools/design-mcp/smoke.mjs` ·
-`tests/e2e/photos-railless-frame.spec.ts` (asserts the ≥784px work surface —
-the toolbar and footer must not re-narrow it).
+`pnpm run verify:fast` · `node tools/design-mcp/smoke.mjs` ·
+`tests/e2e/photos-railless-frame.spec.ts` (≥784px) ·
+`pnpm run eval:cohort shortcuts` after TableStatusBar.
 
 ---
 
@@ -177,24 +207,21 @@ the toolbar and footer must not re-narrow it).
 |---|---|
 | Fork `TableStatusBar` or `SearchField` for Media | Two copies of the strip is the fork its own docblock names |
 | Add a second writer of `poFinder` | The 2026-07-29 two-writer bug on this exact surface |
-| Put bulk verbs in the header as peer buttons | The shouted-row ruling; and they are rare, not primary |
+| Put NAS / Drive / Share in a header ⋯ | False peer set; NAS/Drive are tenant mirrors; Share is rail-scoped |
 | Keep `metaLine` beside the footer count | Two readouts, one number, different words |
-| Let the breadcrumb become navigation chrome | It is a readout in the footer; the tab row is the navigation |
+| Let the breadcrumb become navigation chrome | Path contraction in the footer; the tab row is navigation |
 | Re-introduce a band under selection | Bands stay mounted (2026-08-09); bulk verbs are armed rows on the right edge |
-| Upload outside the active scope | Makes the tab and breadcrumb lie |
+| Upload with only a scope tab (no entity leaf) | Makes the tab and breadcrumb lie |
+| Resurrect the name `PhotoLibraryToolbar` | That was the selection-swap band the rail replaced |
+| Paint `lead` beside selection CTAs | Precedence: verbs beat tabs beat lead |
+| Open a sheet from staff `?` once header CTAs exist | Shortcut-display cohort — letters on the Buttons |
 
 ---
 
-## 5. Open questions for the operator
+## 5. Decisions (locked 2026-09-01)
 
-1. **Does the breadcrumb stay clickable in the footer?** It is a navigator today
-   (each crumb patches the date window). In the footer it reads as a readout.
-   Recommendation: **keep it clickable** — it is the cheapest way back up the
-   date tree, and the footer is one glance away. But a clickable control in a
-   readout strip is a small altitude break worth naming.
-2. **Export scope when nothing is selected** — the current window, or refuse?
-   Recommendation: export the window and say so in the menu item
-   ("Export 48 in view"), because a disabled item teaches nothing.
-3. **Is `select` still a display control** once bulk export exists? It arms the
-   selection the export consumes, so it may belong beside the CTA rather than in
-   the toolbar's display group.
+1. **Breadcrumb stays clickable** — ancestor crumbs only (path contraction).
+2. **Download with nothing selected** — download **shown**, labeled
+   (`Download N`); disabled at 0; never `library/ids` from the header.
+3. **Select stays in the display group** — mode toggle, not a create verb; fix
+   the toggle-off lie while re-hosting.

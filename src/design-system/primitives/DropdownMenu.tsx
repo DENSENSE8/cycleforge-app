@@ -3,6 +3,11 @@
 /**
  * Kinetic Ledger DropdownMenu — Radix DropdownMenu (shadcn-shaped) restyled to
  * house tokens. Prefer this over absolute + document-mousedown menus.
+ *
+ * Shell is {@link DROPDOWN_SHELL_CORNER} (`p-1`). Rows are
+ * {@link DROPDOWN_ITEM_CORNER} — concentric, so a highlight does not leave a
+ * sliver at the panel's corners. A composer-family panel
+ * (`COMPOSER_SHELL_CORNER`) overrides the row with `COMPOSER_MENU_ITEM_CORNER`.
  */
 
 import * as React from 'react';
@@ -10,7 +15,7 @@ import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { ChevronRight } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { elevationClass } from '@/design-system/tokens/shadows';
-import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
+import { DROPDOWN_ITEM_CORNER, DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
@@ -47,7 +52,8 @@ const DropdownMenuItem = React.forwardRef<
   <DropdownMenuPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex cursor-default select-none items-center gap-2 rounded-none px-2 py-1.5 text-sm outline-none transition-colors',
+      'relative flex cursor-default select-none items-center gap-2 px-2 py-1.5 text-sm outline-none transition-colors',
+      DROPDOWN_ITEM_CORNER,
       'focus:bg-surface-canvas data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       '[&>svg]:size-4 [&>svg]:shrink-0',
       tone === 'danger' && 'text-rose-600 focus:bg-rose-50 focus:text-rose-700',
@@ -98,7 +104,8 @@ const DropdownMenuSubTrigger = React.forwardRef<
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={cn(
-      'flex cursor-default select-none items-center gap-2 rounded-none px-2 py-1.5 text-sm outline-none',
+      'flex cursor-default select-none items-center gap-2 px-2 py-1.5 text-sm outline-none',
+      DROPDOWN_ITEM_CORNER,
       'focus:bg-surface-canvas data-[state=open]:bg-surface-canvas',
       '[&>svg]:size-4 [&>svg]:shrink-0',
       inset && 'pl-8',

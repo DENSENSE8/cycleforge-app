@@ -85,9 +85,9 @@ send({ jsonrpc: '2.0', id: 25, method: 'tools/call', params: { name: 'ds_critiqu
 send({ jsonrpc: '2.0', id: 26, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'src/components/warranty/WarrantyTicketPopover.tsx' } } })
 send({ jsonrpc: '2.0', id: 27, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'src/components/composer/TicketComposer.tsx' } } })
 send({ jsonrpc: '2.0', id: 28, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'src/components/warehouse/room-detail/RoomEditForm.tsx' } } })
-send({ jsonrpc: '2.0', id: 26, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'shadcn dialog', limit: 5 } } })
-send({ jsonrpc: '2.0', id: 27, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'copy chip last-8 tracking serial', limit: 5 } } })
-send({ jsonrpc: '2.0', id: 28, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'page header with title and primary action and in-page tabs', limit: 5 } } })
+send({ jsonrpc: '2.0', id: 48, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'shadcn dialog', limit: 5 } } })
+send({ jsonrpc: '2.0', id: 49, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'copy chip last-8 tracking serial', limit: 5 } } })
+send({ jsonrpc: '2.0', id: 50, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'page header with title and primary action and in-page tabs', limit: 5 } } })
 send({ jsonrpc: '2.0', id: 29, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'mount the desk frame on a route group layout', limit: 5 } } })
 send({ jsonrpc: '2.0', id: 31, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'table status bar row counts selected', limit: 5 } } })
 send({ jsonrpc: '2.0', id: 30, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'inline edit printed sticker label face corners', limit: 5 } } })
@@ -102,8 +102,13 @@ send({ jsonrpc: '2.0', id: 39, method: 'resources/read', params: { uri: 'design:
 send({ jsonrpc: '2.0', id: 40, method: 'tools/call', params: { name: 'ds_critique', arguments: { file_path: 'src/design-system/themes/station-skins.ts' } } })
 send({ jsonrpc: '2.0', id: 41, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'ship-by date in a table cell', limit: 3 } } })
 send({ jsonrpc: '2.0', id: 42, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'filter by date range', limit: 3 } } })
+send({ jsonrpc: '2.0', id: 43, method: 'tools/call', params: { name: 'ds_tokens', arguments: { axis: 'station-depth' } } })
+send({ jsonrpc: '2.0', id: 44, method: 'resources/read', params: { uri: 'design://tokens/station-depth' } })
+send({ jsonrpc: '2.0', id: 45, method: 'tools/call', params: { name: 'ds_tokens', arguments: { axis: 'item-record' } } })
+send({ jsonrpc: '2.0', id: 46, method: 'resources/read', params: { uri: 'design://tokens/item-record' } })
+send({ jsonrpc: '2.0', id: 47, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'mobile to-ship qty condition notes pick packed', limit: 5 } } })
 
-await new Promise((r) => setTimeout(r, 25000))
+await new Promise((r) => setTimeout(r, 35000))
 child.kill()
 
 const msgs = out.split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l) } catch { return { RAW: l.slice(0, 120) } } })
@@ -111,7 +116,7 @@ let fails = 0
 const check = (label, ok, detail) => { console.log(`${ok ? '  ok  ' : '  FAIL'} ${label}${detail ? ' — ' + detail : ''}`); if (!ok) fails++ }
 const byId = (id) => msgs.find((m) => m.id === id)
 const body = (id) => JSON.parse(byId(id)?.result?.content?.[0]?.text ?? '{}')
-const TOKEN_AXES_EXPECT = ['color', 'radius', 'spacing', 'typography', 'z-index', 'elevation', 'border', 'focus', 'station-skin']
+const TOKEN_AXES_EXPECT = ['color', 'radius', 'spacing', 'typography', 'z-index', 'elevation', 'border', 'focus', 'station-skin', 'station-depth', 'item-record']
 
 check('every stdout line is valid JSON-RPC', !msgs.some((m) => m.RAW), msgs.find((m) => m.RAW)?.RAW)
 check('initialize', !!byId(1)?.result?.serverInfo, byId(1)?.result?.serverInfo?.name)
@@ -283,7 +288,7 @@ check('critique never says generic var(--token) for a typed literal',
   !litProblems.some((p) => /use var\(--token\)/.test(p.fix ?? '')),
   litProblems.map((p) => p.fix).join(' | '))
 
-const shadcnDialog = body(26)
+const shadcnDialog = body(48)
 check('ds_contract ranks shadcn dialog for a shadcn dialog',
   (shadcnDialog.matches ?? [])[0]?.id === 'dialog',
   (shadcnDialog.matches ?? []).map((m) => `${m.id}@${m.home}`).join(', '))
@@ -291,7 +296,7 @@ check('shadcn dialog pin is merged (filename id, not Dialog)',
   typeof (shadcnDialog.matches ?? [])[0]?.doNot === 'string' && /21st\.dev/.test((shadcnDialog.matches ?? [])[0]?.doNot ?? ''),
   (shadcnDialog.matches ?? [])[0]?.doNot?.slice(0, 80))
 
-const copyChip = body(27)
+const copyChip = body(49)
 check('ds_contract ranks CopyChip for a copy chip',
   (copyChip.matches ?? [])[0]?.id === 'CopyChip',
   (copyChip.matches ?? []).map((m) => m.id).join(', '))
@@ -314,7 +319,7 @@ check('CopyChip pin names CHIP_TONES',
  * and the failure mode is a plausible near-miss (a Panel, a StickyHeader) that
  * sends an agent off to hand-roll a title row.
  */
-const deskChrome = body(28)
+const deskChrome = body(50)
 check('ds_contract ranks DeskPageChrome first for a page header',
   (deskChrome.matches ?? [])[0]?.id === 'DeskPageChrome',
   (deskChrome.matches ?? []).map((m) => m.id).join(', '))
@@ -347,6 +352,10 @@ const statusBar = body(31)
 check('TableStatusBar pin keeps page modes off the foot strip',
   /DeskPageChrome's TOP row/.test((statusBar.matches ?? []).find((m) => m.id === 'TableStatusBar')?.doNot ?? ''),
   ((statusBar.matches ?? []).find((m) => m.id === 'TableStatusBar')?.doNot ?? 'no pin').slice(0, 88))
+check('TableStatusBar pin fences idle-left lead off from CTAs',
+  /selectionActions beat tabs beat lead/.test((statusBar.matches ?? []).find((m) => m.id === 'TableStatusBar')?.doNot ?? '')
+    && /not DeskPageChrome's `tabsLead`/.test((statusBar.matches ?? []).find((m) => m.id === 'TableStatusBar')?.doNot ?? ''),
+  ((statusBar.matches ?? []).find((m) => m.id === 'TableStatusBar')?.doNot ?? 'no pin').slice(0, 120))
 
 const labelFace = body(30)
 check('ds_contract ranks LabelFacePreview for inline sticker edit',
@@ -427,7 +436,8 @@ check('station-skin axis lists applyStationSkin names',
     .every((n) => skinNames.includes(n)),
   skinNames.filter((n) => n.startsWith('applyStationSkin')).slice(0, 6).join(', '))
 check('station-skin axis lists --ds-station paint vars',
-  skinNames.includes('--ds-station-well') && skinNames.includes('--ds-station-plate') && skinNames.includes('--ds-station-slot'),
+  skinNames.includes('--ds-station-well') && skinNames.includes('--ds-station-plate') && skinNames.includes('--ds-station-slot')
+    && skinNames.includes('--ds-station-ink'),
   skinNames.filter((n) => n.startsWith('--ds-station')).join(', '))
 check('station-skin values never include a hex',
   skinValues.length > 0 && skinValues.every((v) => !COLOR_HEX.test(String(v))),
@@ -445,6 +455,27 @@ const skinCrit = body(40)
 check('ds_critique does not treat catalog hex as a color drift',
   !(skinCrit.problems ?? []).some((p) => /hardcoded hex/.test(p.what ?? '')),
   (skinCrit.problems ?? []).map((p) => p.what).join(' | ') || 'none')
+
+const depthTokens = body(43)
+const depthNames = (depthTokens.tokens ?? []).map((t) => t.token)
+check('station-depth axis reads station-depths.ts',
+  (depthTokens.sources ?? []).some((s) => String(s).endsWith('themes/station-depths.ts')),
+  (depthTokens.sources ?? []).join(', '))
+check('station-depth axis lists applyStationDepth names',
+  ["applyStationDepth('flat')", "applyStationDepth('mill')", "applyStationDepth('deep')"]
+    .every((n) => depthNames.includes(n)),
+  depthNames.filter((n) => n.startsWith('applyStationDepth')).join(', '))
+check('station-depth axis lists bevel width',
+  depthNames.includes('--ds-station-bevel-width'),
+  depthNames.join(', '))
+
+let depthResource = {}
+try {
+  depthResource = JSON.parse(byId(44)?.result?.contents?.[0]?.text ?? '{}')
+} catch { /* keep empty */ }
+check('resources/read station-depth matches ds_tokens depths',
+  (depthResource.tokens ?? []).some((t) => t.token === "applyStationDepth('deep')"),
+  (depthResource.tokens ?? []).slice(0, 3).map((t) => t.token).join(', '))
 
 // ── composer fork detection ──────────────────────────────────────────────────
 // A raw <textarea> is NOT a fork: ~49 files here have one and almost all are
@@ -479,6 +510,34 @@ const rangeHit = (filterRange.matches ?? []).find((m) => m.id === 'DateRangePick
 check('filter date range picks DateRangePickerField range',
   rangeHit?.pickVariant === 'range',
   `${rangeHit?.id} ${rangeHit?.pickVariant} ${rangeHit?.mount}`)
+
+const itemRecord = body(45)
+const itemNames = (itemRecord.tokens ?? []).map((t) => t.token)
+check('item-record axis reads the mobile token file',
+  (itemRecord.sources ?? []).some((s) => String(s).endsWith('tokens/item-record-mobile.ts')),
+  (itemRecord.sources ?? []).join(', '))
+check('item-record axis lists the qty-condition-notes cluster',
+  itemNames.includes('ITEM_RECORD_MOBILE_META.cluster') && itemNames.includes('ITEM_RECORD_MOBILE_META.qty'),
+  itemNames.filter((n) => n.startsWith('ITEM_RECORD_MOBILE_META')).join(', '))
+check('item-record axis lists thumb geometry',
+  itemNames.includes('ITEM_RECORD_FACE.hw'),
+  itemNames.filter((n) => n.startsWith('ITEM_RECORD_FACE')).join(', '))
+check('item-record axis lists Pick / Packed verbs',
+  itemNames.includes('ITEM_RECORD_MOBILE_STAGE_VERBS.pick') && itemNames.includes('ITEM_RECORD_MOBILE_STAGE_VERBS.packed'),
+  itemNames.filter((n) => n.startsWith('ITEM_RECORD_MOBILE_STAGE')).join(', '))
+
+let itemResource = {}
+try {
+  itemResource = JSON.parse(byId(46)?.result?.contents?.[0]?.text ?? '{}')
+} catch { /* keep empty */ }
+check('resources/read item-record matches ds_tokens cluster',
+  (itemResource.tokens ?? []).some((t) => t.token === 'ITEM_RECORD_MOBILE_META.cluster'),
+  (itemResource.tokens ?? []).slice(0, 3).map((t) => t.token).join(', '))
+
+const mobileMetaContract = body(47)
+check('ds_contract ranks ItemRecordMobileMeta for phone qty-condition-notes',
+  (mobileMetaContract.matches ?? []).some((m) => m.id === 'ItemRecordMobileMeta'),
+  (mobileMetaContract.matches ?? []).map((m) => m.id).join(', '))
 
 console.log(fails === 0 ? '\nsmoke: all good' : `\nsmoke: ${fails} failed`)
 process.exit(fails === 0 ? 0 : 1)

@@ -166,7 +166,7 @@ function focusAdjacentTabStop(origin: HTMLElement, backward: boolean) {
 export function SearchableSelectField<T = unknown>({
   value,
   onChange,
-  options,
+  options = [],
   placeholder = 'Select…',
   label,
   searchPlaceholder = 'Search…',

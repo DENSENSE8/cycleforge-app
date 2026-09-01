@@ -105,6 +105,7 @@ export function OrdersGridHost({
       totalCount={totalCount}
       copyExport={copyExport}
       selectionActions={selectionActions}
+      selectionActionLayout="columns"
     />
   );
 }

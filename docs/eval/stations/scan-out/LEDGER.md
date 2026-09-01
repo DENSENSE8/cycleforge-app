@@ -94,5 +94,5 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station scan-out` for full g
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-01T08:48:31.188Z · station `scan-out`_
+_Updated 2026-09-01T10:05:38.439Z · station `scan-out`_
 <!-- /eval-ledger:auto:last-run -->

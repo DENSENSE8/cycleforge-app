@@ -8,12 +8,11 @@
  *
  * ## Blockers, not gates
  *
- * G1–G4 (`evaluateReleaseGates`) answer "may this be released"; they are the
- * release contract and stay exactly as they are — this module never re-derives
- * them, it calls them. But the gates are coarse for triage: G1 fails as one
- * unit whether the item number or the tracking is missing. So a blocker is
- * the finer-grained, actionable phrasing: each one names a single missing
- * fact and maps to a single control.
+ * G4 (`evaluateReleaseGates`) still answers "is this item paired"; G1–G3 stay
+ * the packet/intake contract and are rendered on To-ship paperwork, not here.
+ * A blocker on this queue is a pairing fact: unpaired SKU, or no item number
+ * to pair with. Amends the 2026-08-31 reading that every gate had a blocker
+ * twin (R-FLOW-7, 2026-09-01).
  *
  * ~~PAIRING is not a gate at all~~ — struck 2026-08-31 by the order-flow
  * ruling (R-FLOW-1, `docs/warehouse-os/PLAN-order-flow-spine-3h.md` §2):
@@ -33,6 +32,7 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { evaluateReleaseGates } from './release-gates';
+import { exceptionHeldSql } from './exception-membership';
 import {
   deriveOrderExceptionBlockers,
   type OrderExceptionRow,
@@ -138,15 +138,6 @@ const SIBLING_UNPAIRED_SQL = `(
 function mapRow(row: RawExceptionRow): OrderExceptionRow {
   const skuCatalogId = row.sku_catalog_id == null ? null : Number(row.sku_catalog_id);
   const linkedDocumentCount = Number(row.linked_document_count ?? 0);
-  const facts = {
-    itemNumber: row.item_number,
-    trackingNumber: row.tracking_number,
-    skuCatalogId,
-    linkedDocumentCount,
-    docsNotRequired: row.docs_not_required === true,
-    shippingLabelLinked: row.shipping_label_linked === true,
-    shippingLabelPurchased: row.shipping_label_purchased === true,
-  };
   return {
     id: Number(row.id),
     orderNumber: row.order_id,
@@ -162,7 +153,10 @@ function mapRow(row: RawExceptionRow): OrderExceptionRow {
     catalogTitle: row.catalog_title,
     catalogSku: row.catalog_sku,
     siblingUnpairedCount: Number(row.sibling_unpaired_count ?? 0),
-    blockers: deriveOrderExceptionBlockers(facts),
+    blockers: deriveOrderExceptionBlockers({
+      itemNumber: row.item_number,
+      skuCatalogId,
+    }),
     gates: evaluateReleaseGates({
       orderNumber: row.order_id,
       itemNumber: row.item_number,
@@ -214,10 +208,10 @@ const EXCEPTION_SELECT = `
  * opens on thousands of rows is not a worklist, it is a wall: nobody finishes
  * it, so nobody starts it, and the surface dies.
  *
- * The cage already IS the curated review set — an order is caged precisely
- * because someone decided it needs looking at before it ships. So `actionable`
- * is exactly the caged set (finishable in a sitting), and `all` is the opt-in
- * backlog sweep for a cleanup run. Widening is one click and never a surprise.
+ * The cage stamp is the curated review set so several thousand historical
+ * unpaired rows do not flood the desk. R-FLOW-7: membership is caged **and**
+ * unpaired — pairing is what leaves this queue; a stale cage on a paired
+ * order is live To-ship paperwork, not an exception.
  */
 export async function listOrderExceptions(
   orgId: OrgId,
@@ -231,17 +225,13 @@ export async function listOrderExceptions(
   let where = `WHERE o.organization_id = $1`;
 
   if (scope === 'actionable') {
-    // The held-for-review set. Caged orders are never "already shipped", so no
-    // ship-exclusion is needed (and applying one would silently drop rows).
-    where += ` AND o.release_state = 'caged'`;
+    where += ` AND ${exceptionHeldSql('o')}`;
   } else {
-    // Everything still fixable: any blocker, minus what already left the dock.
     where += `
       AND (
-        o.release_state = 'caged'
+        ${exceptionHeldSql('o')}
         OR o.sku_catalog_id IS NULL
         OR NULLIF(TRIM(COALESCE(o.item_number, '')), '') IS NULL
-        OR o.shipment_id IS NULL
       )
       AND NOT EXISTS (
         SELECT 1 FROM station_activity_logs sal

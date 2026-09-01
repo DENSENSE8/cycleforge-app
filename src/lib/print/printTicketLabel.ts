@@ -1,5 +1,6 @@
 import { encodePrintMatrix, type PrintMatrix } from '@/lib/qr/platform-link';
 import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
+import { reserveLegacyPrintPopup } from '@/lib/print/iframePrint';
 
 /**
  * Minimal ticket scan sticker — same corner grammar as the carton face
@@ -60,6 +61,7 @@ export function printTicketLabel(payload: TicketLabelPayload): void {
   const face = ticketPayloadToFace(payload);
   if (!face.matrix.value) return;
 
+  const legacyPopup = reserveLegacyPrintPopup();
   // Lazy: printLabel drags the bwip-js barcode engine; load on the actual print.
   void import('@/lib/print/printLabel').then(({ printLabel }) => {
     printLabel({
@@ -67,6 +69,7 @@ export function printTicketLabel(payload: TicketLabelPayload): void {
       ...buildFaceInfoHtml(face),
       dataMatrix: face.matrix,
       hri: face.hri,
+      legacyPopup,
     });
   });
 }

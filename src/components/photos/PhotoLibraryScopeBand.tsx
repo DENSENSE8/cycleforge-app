@@ -42,9 +42,8 @@
  * files would be two writers of one param sitting one import apart, which is
  * exactly the 2026-07-29 shape. One `selectSection` serves both groups.
  *
- * The frame's **CTA slot stays empty**: this surface has no import / add /
- * return-to-scan action, and honest absence beats an invented one. The frame
- * renders nothing where a CTA would go rather than reserving space for it.
+ * Header CTAs (Export · Add photos) register via {@link DeskActionSlotRegistrar}
+ * from `PhotoLibraryDeskActions` — this band only owns the tab row + type cube.
  */
 
 import { useMemo, useState, type ReactNode } from 'react';

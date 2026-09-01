@@ -1,5 +1,6 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
+import { liveWorkingSetSql } from '@/lib/orders/exception-membership';
 import { normalizePSTTimestamp } from '@/utils/date';
 import type { WorkOrderRow, WorkStatus } from '@/components/work-orders/types';
 
@@ -15,25 +16,22 @@ import type { WorkOrderRow, WorkStatus } from '@/components/work-orders/types';
 const shippedByCarrierOrLatestStatusSql = SHIPPED_BY_CARRIER_SQL;
 
 /**
- * A caged order is not workable work — **R-FLOW-2, 2026-09-01**.
+ * A pairing exception is not workable work — **R-FLOW-7, 2026-09-01**.
  *
- * Auto-cage (`src/lib/orders/auto-cage.ts`) now stamps `release_state='caged'`
- * on every freshly ingested order that fails a release gate, and the listing
- * automations assign a tech/packer at import. Without this predicate those two
- * facts combine into the wrong answer: an order still sitting in triage —
- * unpaired, or with no paperwork linked — arrives on its assignee's goal chip
- * and `/m/work` queue as the next thing to do, days before anyone may release
- * it. Tracking alone is enough to reach this queue (`shipment_id IS NOT NULL`),
- * so the cage is the ONLY thing standing between a half-known order and the
- * floor.
+ * Auto-cage (`src/lib/orders/auto-cage.ts`) stamps `release_state='caged'`
+ * on every freshly ingested order that is unpaired (`sku_catalog_id` null).
+ * Listing automations assign a tech/packer at import. Without this predicate
+ * those two facts combine into the wrong answer: an order still sitting in
+ * catalog pairing arrives on its assignee's goal chip and `/m/work` as the
+ * next thing to do. Paperwork gaps (manuals, labels) stay on To-ship; they
+ * are not this hold.
  *
  * Spelled exactly as the other live-queue readers spell it
  * (`/api/orders` fulfillmentScope, `/api/orders/queue-counts`) so all three
- * agree on what "in the working set" means: **NULL reads as released**, per the
- * `2026-08-30c` migration header — every order predating the cage is real
- * working stock.
+ * agree on what "in the working set" means: **caged ∩ unpaired** is held;
+ * a paired row with a stale cage stamp is live work.
  */
-const NOT_CAGED_SQL = `COALESCE(o.release_state, '') <> 'caged'`;
+const NOT_CAGED_SQL = liveWorkingSetSql('o');
 
 function normalizeStatus(raw: unknown): WorkStatus {
   const value = String(raw || '').trim().toUpperCase();

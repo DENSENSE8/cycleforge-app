@@ -87,6 +87,7 @@ import { StationDisplaysPushColumn } from './StationDisplaysPushColumn';
 import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
 import { Layers } from '@/components/Icons';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
+import { resolveStationDepth } from '@/design-system/themes/station-depths';
 import { resolveStationSkin } from '@/design-system/themes/station-skins';
 import { StationLookDisplayHost } from './StationLookDisplayHost';
 
@@ -179,7 +180,7 @@ export function StationDisplaysPushStack({
     [onTabChange],
   );
   const { prefs } = useStaffPreferences();
-  const lookLabel = resolveStationSkin(prefs?.stationSkin).label;
+  const lookLabel = `${resolveStationSkin(prefs?.stationSkin).label} · ${resolveStationDepth(prefs?.stationDepth).label}`;
   const lookTab = useMemo<SectionTab>(
     () => ({
       id: STATION_LOOK_DISPLAY_ID,

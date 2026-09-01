@@ -1,8 +1,8 @@
 {
   "project": "cycleforge-app",
   "target": "component:src/components/tables/compound/CompoundCells.tsx:CompoundItem",
-  "files_affected": 5,
-  "total_symbols": 7,
+  "files_affected": 6,
+  "total_symbols": 9,
   "files": [
     {
       "file": "src/components/tables/compound/CompoundGridCell.tsx",
@@ -20,6 +20,15 @@
         "compound-gutter-flush.test.ts",
         "idsHtml",
         "paint"
+      ]
+    },
+    {
+      "file": "src/components/tables/compound/compound-item-listing.test.ts",
+      "nearest_depth": 2,
+      "affected_symbols": 2,
+      "symbols": [
+        "compound-item-listing.test.ts",
+        "paintItem"
       ]
     },
     {

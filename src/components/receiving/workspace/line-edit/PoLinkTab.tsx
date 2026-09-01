@@ -244,7 +244,7 @@ export function PoLinkTab({
         <p
           className={cn(
             cornerClass('flush'),
-            'border border-blue-200 bg-blue-50 inset-field text-role-eyebrow font-semibold uppercase tracking-widest text-blue-700',
+            'border border-accent-border bg-surface-sunken inset-field text-role-eyebrow font-semibold uppercase tracking-widest text-accent-bg',
           )}
         >
           {`${(row.inbound_source_type || 'eBay')} order · pick its purchase order to merge`}

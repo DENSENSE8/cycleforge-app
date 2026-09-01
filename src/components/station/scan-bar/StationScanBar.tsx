@@ -32,7 +32,6 @@ import {
 import type { StationTheme } from '@/utils/staff-colors';
 import { cn } from '@/utils/_cn';
 import { StationScanLeadingIcon } from './StationScanLeadingIcon';
-import type { UnboxPreviewHit } from '@/lib/receiving/preview-scan';
 import { setScanEscBlock } from './scan-esc-block';
 import { getScanStance, setScanStance, useScanStance, useToggleScanStance } from './scan-stance';
 import type { StationScanStance } from './scan-stance';
@@ -128,11 +127,13 @@ export interface StationScanBarProps {
   displayEdit?: boolean;
   /**
    * Preview stance's READ. Hosts hand back what the value actually resolves to
-   * (`GET /api/receiving/preview-scan`) — a real lookup against the same tables
-   * the scan would open, with none of its writes. Without it the stance can
-   * only echo the typed value back, which is what made Preview read as broken.
+   * (Unbox: `GET /api/receiving/preview-scan`; Ready to Pack: orders lookup) —
+   * a real lookup against the same tables the scan would open, with none of
+   * its writes. The bar ignores the payload; a miss is the host's to narrate.
+   * Without this the stance is not offered — a bar that cannot preview must
+   * not arm a mode that swallows the next scan.
    */
-  previewLookup?: (value: string) => Promise<UnboxPreviewHit | null>;
+  previewLookup?: (value: string) => Promise<unknown>;
   /**
    * Identity of the vocabulary a preview would resolve against (the armed type,
    * or `auto`). Changing it RE-RUNS the open for the value already on the bar:

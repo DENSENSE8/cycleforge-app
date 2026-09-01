@@ -367,7 +367,7 @@ test.describe('Photo library — unbox_item stage filter surfaces line-linked SK
       // sub-filter" test; grid-sm is the flat contact-sheet view (tiles open the
       // shared lightbox — see photos-library-context-panel.spec.ts).
       await page.goto('/ops/photos?sourceScope=unboxing&stage=unbox_item&view=grid-sm');
-      await expect(page.locator('[data-testid="photo-library-meta"]')).toContainText(/\d+ photo/i);
+      await expect(page.locator('[data-testid="data-table-row-count"]')).toContainText(/\d/);
 
       // PhotoCard.tsx stamps data-photo-id — locate THIS photo's tile precisely
       // rather than fuzzy-matching visible text (house selector discipline).

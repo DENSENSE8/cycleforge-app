@@ -102,6 +102,14 @@ test('StaffPreferencesPutBody accepts scan-station skins', () => {
   ok(!StaffPreferencesPutBody.safeParse({ stationSkin: 'leather' }).success);
 });
 
+test('StaffPreferencesPutBody accepts scan-station depths', () => {
+  ok(StaffPreferencesPutBody.safeParse({ stationDepth: 'flat' }).success);
+  ok(StaffPreferencesPutBody.safeParse({ stationDepth: 'mill' }).success);
+  ok(StaffPreferencesPutBody.safeParse({ stationDepth: 'deep' }).success);
+  ok(StaffPreferencesPutBody.safeParse({ stationDepth: null }).success);
+  ok(!StaffPreferencesPutBody.safeParse({ stationDepth: 'recessed' }).success);
+});
+
 test('StaffPreferencesPutBody accepts product-update last-seen keys', () => {
   ok(StaffPreferencesPutBody.safeParse({ lastSeenProductUpdateId: '2026-08-13-to-ship-desk' }).success);
   ok(StaffPreferencesPutBody.safeParse({ lastSeenProductUpdateId: null }).success);

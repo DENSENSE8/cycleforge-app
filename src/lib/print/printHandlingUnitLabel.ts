@@ -1,5 +1,6 @@
 import { handlingUnitHandle } from '@/lib/barcode-routing';
 import { escapeLabelHtml } from '@/lib/print/labelHtml';
+import { reserveLegacyPrintPopup } from '@/lib/print/iframePrint';
 
 /**
  * 2×1" license-plate (LPN) label for a handling unit (box/tray). The big face
@@ -49,6 +50,7 @@ export function printHandlingUnitLabel(payload: HandlingUnitLabelPayload): void 
     </div>
     <div class="hu-loc">${escapeLabelHtml(loc)}</div>`;
 
+  const legacyPopup = reserveLegacyPrintPopup();
   // Lazy: printLabel drags the bwip-js barcode engine; load on the actual print.
   void import('@/lib/print/printLabel').then(({ printLabel }) => {
     printLabel({
@@ -57,6 +59,7 @@ export function printHandlingUnitLabel(payload: HandlingUnitLabelPayload): void 
       infoCss: HANDLING_UNIT_INFO_CSS,
       // Plain DataMatrix carrying the `H-{id}` handle — no URL on the wire.
       dataMatrix: { value: handle, symbology: 'datamatrix', scale: 4 },
+      legacyPopup,
     });
   });
 }

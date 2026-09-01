@@ -46,19 +46,26 @@
  * second front door onto a menu that already existed. `onMethod` now runs the
  * work on the desk itself.
  *
- * ## Sync is the primary, manual add is in the menu
+ * ## Sync is the primary; platforms, export, and manual add are in the menu
  *
- * Operator direction (2026-08-31). The desk's dominant intake is a bulk pull —
- * Google Sheet plus the connected channels — and one-at-a-time typing is the
- * exception, so the face does the bulk pull and the chevron carries the rest.
- * (The single-order acknowledgment intake still has its own front door: the
- * `?triage=` overlay, reachable from the Exceptions tab and deep links.)
+ * Operator direction (2026-08-31 / 2026-09-01). The desk's dominant intake is
+ * a bulk pull — Google Sheet on the face, connected channels in the chevron
+ * (`Sync eBay · {connection}`, `Sync Amazon · {connection}`, `Sync Ecwid ·
+ * {store}`, Sync more). Export CSV tucks into the same menu (not a header
+ * `overall` button).
+ * One-at-a-time typing stays the exception. (The single-order acknowledgment
+ * intake still has its own front door: the `?triage=` overlay, reachable from
+ * the Exceptions tab and deep links.)
  */
 
 import { useMemo } from 'react';
-import { FileText, Plus, RefreshCw } from '@/components/Icons';
-import { DeskActionSlotRegistrar } from '@/design-system/components/DeskActionSlot';
+import { FileText, Plus, RefreshCw, Download, ExternalLink } from '@/components/Icons';
+import {
+  DeskActionSlotRegistrar,
+  useDeskExportMenuAction,
+} from '@/design-system/components/DeskActionSlot';
 import { SlicedActionDock } from '@/design-system/primitives';
+import { useToShipPlatformSyncMenu } from '@/components/outbound/orders/useToShipPlatformSyncMenu';
 
 /**
  * What the CTA runs directly. There is no rail behind these any more — the desk
@@ -86,6 +93,9 @@ export function OrdersDeskAddAction({
   /** A sync is already running; the face reports it rather than starting a second. */
   syncing?: boolean;
 }) {
+  const platformMenu = useToShipPlatformSyncMenu();
+  const exportAction = useDeskExportMenuAction();
+
   // Memoized: the registrar re-registers whenever this node's identity changes,
   // and a fresh element every render would loop through the provider.
   const control = useMemo(
@@ -103,10 +113,36 @@ export function OrdersDeskAddAction({
         menuChrome="dropdown"
         menuLabel="More intake methods"
         menu={[
+          ...platformMenu.map((row) => ({
+            label: row.label,
+            icon:
+              row.kind === 'more' ? (
+                <ExternalLink aria-hidden className="h-3.5 w-3.5" />
+              ) : (
+                <RefreshCw aria-hidden className="h-3.5 w-3.5" />
+              ),
+            onClick: row.onClick,
+            disabled: row.disabled,
+            separatorBefore: row.separatorBefore,
+          })),
+          ...(exportAction
+            ? [
+                {
+                  label: exportAction.empty
+                    ? 'Export to CSV'
+                    : `Export ${exportAction.rowCount} rows to CSV`,
+                  icon: <Download aria-hidden className="h-3.5 w-3.5" />,
+                  onClick: exportAction.run,
+                  disabled: exportAction.empty,
+                  separatorBefore: true,
+                },
+              ]
+            : []),
           {
             label: 'Add one order (review first)',
             icon: <Plus aria-hidden className="h-3.5 w-3.5" />,
             onClick: onAdd,
+            separatorBefore: true,
           },
           ...(canImport
             ? [
@@ -114,7 +150,6 @@ export function OrdersDeskAddAction({
                   label: 'Import from file (CSV)',
                   icon: <FileText aria-hidden className="h-3.5 w-3.5" />,
                   onClick: () => onMethod('file'),
-                  separatorBefore: true,
                 },
               ]
             : []),
@@ -123,7 +158,7 @@ export function OrdersDeskAddAction({
       />
       </div>
     ),
-    [onAdd, onMethod, canImport, syncing],
+    [onAdd, onMethod, canImport, syncing, platformMenu, exportAction],
   );
 
   return <DeskActionSlotRegistrar>{control}</DeskActionSlotRegistrar>;

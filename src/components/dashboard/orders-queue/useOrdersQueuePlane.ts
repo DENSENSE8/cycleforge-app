@@ -86,11 +86,9 @@ export function useOrdersQueuePlane({
   });
 
   const getRowId = useCallback((r: ShippedOrder) => Number(r.id), []);
-  // To-ship (`railSelection`): Sheets click-select — row click toggles the set;
-  // double-click opens. Select track keeps the always-painted checkbox face
-  // (Unbox History interactive gutter language). `selectMode` only gates
-  // visible pencil chrome on non-rail mounts.
-  const clickSelect = railSelection;
+  // Checkbox gutter is the only bulk-select gesture. Row body opens the
+  // record. Sheets click-to-select (row click toggles the set) is off.
+  const clickSelect = false;
   const { fillsById } = useGridRowFills(tableId);
   const { selectedIds, toggle, selectOnly, clear } = useTableSelectMode<ShippedOrder>({
     scope: selectionScope,
@@ -136,6 +134,8 @@ export function useOrdersQueuePlane({
 
   // Derive the open record from the set.
   useEffect(() => {
+    // Checkbox-only bulk: the check-set does not own the open record.
+    if (!clickSelect) return;
     if (!railOccupancy) return;
     if (railOccupancy.kind === 'inspect') {
       if (selectedRecordId === railOccupancy.orderId) return;
@@ -187,7 +187,7 @@ export function useOrdersQueuePlane({
     // close branch exists to prevent. Guarded by the ref check above, so the
     // `?openOrderId=` boot window is still never closed from here.
     dispatchCloseShippedDetails();
-  }, [railOccupancy, selectedRecordId, displayedRecords, openRecord, closeRecord, clear]);
+  }, [clickSelect, railOccupancy, selectedRecordId, displayedRecords, openRecord, closeRecord, clear]);
 
   // Adopt an externally-opened record into the set, so every entry path lands on
   // the same single selection SoT. Guarded by the ref, not by set size: an
@@ -201,6 +201,7 @@ export function useOrdersQueuePlane({
   // to 1"). True external opens (deep link / search / Recents) land with the
   // id absent from the set, so they still adopt.
   useEffect(() => {
+    if (!clickSelect) return;
     if (!railSelection) return;
     if (selectedRecordId == null) {
       // The close the rail dispatched has landed — stop suppressing that id.
@@ -215,26 +216,23 @@ export function useOrdersQueuePlane({
     if (railClosingIdRef.current === selectedRecordId) return;
     railOpenedIdRef.current = selectedRecordId;
     selectOnly(selectedRecordId);
-  }, [railSelection, selectedRecordId, selectOnly, selectedIds]);
+  }, [clickSelect, railSelection, selectedRecordId, selectOnly, selectedIds]);
 
   // ─── Record cursor ─────────────────────────────────────────────────────────
   /**
    * Open a record on behalf of the cursor — open, then scroll.
    *
-   * **The `railSelection` branch is load-bearing.** On the three dashboard
-   * outbound lanes the CHECK-SET is the single selection SoT and the open record
-   * is derived from it. Calling `openRecord` directly here would bypass the set:
-   * `railOpenedIdRef` would stay stale and the adopt effect would fire
-   * `selectOnly` a commit later — the exact race the two refs above arbitrate. A
-   * step must go through the same door a click does.
+   * Checkbox-only bulk: the check-set does not own the open record, so the
+   * cursor calls `openRecord` directly. The old `selectOnly` path stays behind
+   * `clickSelect` for any mount that still derives open-from-checks.
    */
   const handleCursorOpen = useCallback(
     (record: ShippedOrder, _ctx: { intent: CursorIntent; revealFoldKey: string | null }) => {
-      if (railSelection) selectOnly(Number(record.id));
+      if (clickSelect) selectOnly(Number(record.id));
       else openRecord(record);
       scrollQueueRowIntoView(record.id);
     },
-    [railSelection, selectOnly, openRecord],
+    [clickSelect, selectOnly, openRecord],
   );
 
   /**
@@ -247,10 +245,10 @@ export function useOrdersQueuePlane({
       const id = Number(record.id);
       if (!Number.isFinite(id) || id <= 0) return;
       armReplaceTrackingIntent(id);
-      if (railSelection) selectOnly(id);
+      if (clickSelect) selectOnly(id);
       else openRecord(record);
     },
-    [railSelection, selectOnly, openRecord],
+    [clickSelect, selectOnly, openRecord],
   );
 
   usePublishRecordCursor<ShippedOrder>({
@@ -283,34 +281,22 @@ export function useOrdersQueuePlane({
       if (target instanceof Element && target.closest('[data-select-gutter]')) {
         return;
       }
-      const id = Number(record.id);
 
-      // Sheets click-select: click toggles bulk; skip the second half of a
-      // double-click so dblclick only opens (ReceivingGridRow parity).
+      // Sheets click-select is off on to-ship: the checkbox gutter owns the
+      // bulk set. Row body must NOT open the documents / order right rail —
+      // that parked prior panels with a "Draft saved." toast on every click
+      // (operator 2026-09-01).
       if (clickSelect) {
         if ((event?.detail ?? 1) > 1) return;
         if (event?.shiftKey) {
-          toggle(id, true);
+          toggle(Number(record.id), true);
           return;
         }
-        toggle(id, false);
+        toggle(Number(record.id), false);
         return;
       }
-
-      // Shift extends the set from the anchor — same gesture as the checkbox.
-      if (event?.shiftKey) {
-        toggle(id, true);
-        return;
-      }
-      // Re-clicking the sole selected row clears it. Under this model an open
-      // record IS a selection of one, so this clears the selection too.
-      if (selectedIds.size === 1 && selectedIds.has(id)) {
-        clear();
-        return;
-      }
-      selectOnly(id);
     },
-    [railSelection, clickSelect, handleRowClick, toggle, selectedIds, clear, selectOnly],
+    [railSelection, clickSelect, handleRowClick, toggle],
   );
 
   const handleRowOpen = useCallback(

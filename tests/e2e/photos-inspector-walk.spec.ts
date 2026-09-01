@@ -45,10 +45,10 @@ import { test, expect, type Page } from '@playwright/test';
  * frame and the test reads its tile count before any photo has arrived. The
  * digits are what say "settled".
  */
-const META_LINE = '[data-testid="photo-library-meta"]';
+const META_LINE = '[data-testid="data-table-row-count"]';
 
 /** The readout has settled on a real count. */
-const SETTLED_META = /\d+ photo/i;
+const SETTLED_META = /\d/;
 
 const RAIL = '[data-testid="photo-inspector-panel"]';
 const TILE = '[data-testid="photo-tile"]';

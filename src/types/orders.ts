@@ -84,6 +84,8 @@ export interface ShippedOrder {
   is_shipped?: boolean;
   /** Operator blocked the line — `orders.is_out_of_stock`. */
   is_out_of_stock?: boolean;
+  /** Catalog listing image from `sku_catalog.image_url` (orders queue join). */
+  catalog_image_url?: string | null;
   shipment_status?: string | null;
   latest_status_code?: string | null;
   latest_status_label?: string | null;
@@ -99,6 +101,11 @@ export interface ShippedOrder {
   tested_by_name?: string | null;
   packed_by_name?: string | null;
   tester_name?: string | null;
+  packer_name?: string | null;
+  /** Assigned picker `staff.color_hex` (work_assignments.assigned_tech_id). */
+  tester_color_hex?: string | null;
+  /** Assigned packer `staff.color_hex` (work_assignments.assigned_packer_id). */
+  packer_color_hex?: string | null;
   /** `packer_logs.id` for DELETE; from packerlogs API join. */
   packer_log_id?: number | null;
   /** Latest `pack_verification_events.outcome` for this packer_log (Review hydrate). */

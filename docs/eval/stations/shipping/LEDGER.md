@@ -33,7 +33,9 @@ _Prioritized. Agent implements **one** per session._
 ## Machine gates
 
 <!-- eval-ledger:auto:machine-gates -->
-_Skipped verify (--skip-verify). Cohort run `2026-09-01T08-12-54-023Z`._
+| Date | Gate | Result | Snapshot |
+|------|------|--------|----------|
+| 2026-09-01 | verify:fast | pass | `docs/eval/stations/shipping/snapshots/2026-09-01-verify-fast.log` |
 <!-- /eval-ledger:auto:machine-gates -->
 
 ## Design critique (latest)
@@ -66,5 +68,5 @@ _Skipped verify (--skip-verify). Cohort run `2026-09-01T08-12-54-023Z`._
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-01T08:14:03.168Z · station `shipping`_
+_Updated 2026-09-01T19:22:22.243Z · station `shipping`_
 <!-- /eval-ledger:auto:last-run -->

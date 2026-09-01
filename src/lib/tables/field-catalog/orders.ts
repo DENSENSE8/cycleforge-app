@@ -40,9 +40,8 @@ export const ORDERS_FIELD_CATALOG: FieldCatalog = [
     displayType: 'stage_event',
     slotKinds: ['status'],
     iconKey: 'picked',
-    // Pending face is accessible-name only when the cell dashes (operator
-    // ruling 2026-08-30). One word, state-flavoured — never an imperative.
-    stageLabels: { done: 'Picked', pending: 'Needed' },
+    // Claimed-pending paints this verb (PICK); empty stays a dash. Done = Picked.
+    stageLabels: { done: 'Picked', pending: 'Pick' },
     paths: {
       who: 'tested_by_name|tester_name',
       at: 'test_date_time|test_activity_at',
@@ -56,7 +55,7 @@ export const ORDERS_FIELD_CATALOG: FieldCatalog = [
     displayType: 'stage_event',
     slotKinds: ['status'],
     iconKey: 'packed',
-    stageLabels: { done: 'Packed', pending: 'Needed' },
+    stageLabels: { done: 'Packed', pending: 'Pack' },
     paths: {
       who: 'packed_by_name|packer_name',
       at: 'packed_at|pack_activity_at',

@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motio
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useMediaQuery } from '@/hooks/_ui';
+import { useRegisterOverlay } from '@/design-system/hooks/useOverlayStack';
 import { zIndex as zLayer } from '@/design-system/tokens/z-index';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
@@ -34,6 +35,13 @@ interface BottomSheetProps {
   dragDisabled?: boolean;
   /** Override the max-width on desktop. Default 28rem. */
   maxWidth?: string;
+  /** Pin the panel to `maxWidth` instead of shrinking with the content. */
+  fixedWidth?: boolean;
+  /**
+   * Cap the panel height and scroll the body. Title (and any chrome above
+   * the body) stay put. Used by long pickers (switch-staff).
+   */
+  scrollBody?: boolean;
   /** Force a specific variant regardless of viewport. */
   forceVariant?: Variant;
   /**
@@ -53,6 +61,8 @@ export function BottomSheet({
   title,
   dragDisabled = false,
   maxWidth = '28rem',
+  fixedWidth = false,
+  scrollBody = false,
   forceVariant = 'auto',
   level = 0,
   children,
@@ -62,24 +72,32 @@ export function BottomSheet({
   const variant: Variant =
     forceVariant !== 'auto' ? forceVariant : isDesktop ? 'dialog' : 'sheet';
 
+  // Claim keyboard ownership so dashboard capture listeners (queue cursor,
+  // nav leader) stand down instead of eating Escape before this sheet.
+  useRegisterOverlay(open);
+
   // Track portal target — only mount on the client side.
   const [portalNode, setPortalNode] = useState<HTMLElement | null>(null);
   useEffect(() => {
     setPortalNode(document.body);
   }, []);
 
-  // Lock body scroll + Escape-to-close while open.
+  // Lock body scroll + Escape-to-close while open. Capture so we own the
+  // key even if a late-mounted bubble listener is still live.
   useEffect(() => {
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      e.stopPropagation();
+      onClose();
     };
-    window.addEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
     return () => {
       document.body.style.overflow = prev;
-      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('keydown', onKey, true);
     };
   }, [open, onClose]);
 
@@ -111,6 +129,8 @@ export function BottomSheet({
               title={title}
               dragDisabled={dragDisabled}
               maxWidth={maxWidth}
+              fixedWidth={fixedWidth}
+              scrollBody={scrollBody}
               reduceMotion={!!reduceMotion}
               onClose={onClose}
             >
@@ -120,7 +140,10 @@ export function BottomSheet({
             <DialogPanel
               title={title}
               maxWidth={maxWidth}
+              fixedWidth={fixedWidth}
+              scrollBody={scrollBody}
               reduceMotion={!!reduceMotion}
+              onClose={onClose}
             >
               {children}
             </DialogPanel>
@@ -139,12 +162,14 @@ interface SheetPanelProps {
   title?: string;
   dragDisabled: boolean;
   maxWidth: string;
+  fixedWidth: boolean;
+  scrollBody: boolean;
   reduceMotion: boolean;
   onClose: () => void;
   children: React.ReactNode;
 }
 
-function SheetPanel({ title, dragDisabled, maxWidth, reduceMotion, onClose, children }: SheetPanelProps) {
+function SheetPanel({ title, dragDisabled, maxWidth, fixedWidth, scrollBody, reduceMotion, onClose, children }: SheetPanelProps) {
   return (
     <div className="absolute inset-x-0 bottom-0 flex justify-center">
       <motion.div
@@ -162,8 +187,15 @@ function SheetPanel({ title, dragDisabled, maxWidth, reduceMotion, onClose, chil
         onDragEnd={(_, info) => {
           if (info.offset.y > 100 || info.velocity.y > 600) onClose();
         }}
-        className="w-full overflow-hidden rounded-t-[28px] bg-surface-card shadow-[0_-12px_48px_-16px_rgba(0,0,0,0.25)]"
-        style={{ maxWidth, paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+        className={cn(
+          'w-full overflow-hidden rounded-t-[28px] bg-surface-card shadow-[0_-12px_48px_-16px_rgba(0,0,0,0.25)]',
+          scrollBody && 'flex max-h-[min(36rem,calc(100vh-2rem))] flex-col',
+        )}
+        style={{
+          maxWidth,
+          width: fixedWidth ? `min(${maxWidth}, 100%)` : undefined,
+          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        }}
       >
         {!dragDisabled && (
           <div className="flex justify-center pt-3 pb-1">
@@ -177,7 +209,7 @@ function SheetPanel({ title, dragDisabled, maxWidth, reduceMotion, onClose, chil
             </h3>
           </div>
         )}
-        <div className="px-6 pb-6 pt-2">{children}</div>
+        <div className={cn('px-6 pb-6 pt-2', scrollBody && 'flex min-h-0 flex-1 flex-col overflow-hidden')}>{children}</div>
       </motion.div>
     </div>
   );
@@ -188,15 +220,22 @@ function SheetPanel({ title, dragDisabled, maxWidth, reduceMotion, onClose, chil
 interface DialogPanelProps {
   title?: string;
   maxWidth: string;
+  fixedWidth: boolean;
+  scrollBody: boolean;
   reduceMotion: boolean;
+  onClose: () => void;
   children: React.ReactNode;
 }
 
-function DialogPanel({ title, maxWidth, reduceMotion, children }: DialogPanelProps) {
-  // Stop scrim-click bubbling so clicking inside the dialog doesn't close it.
+function DialogPanel({ title, maxWidth, fixedWidth, scrollBody, reduceMotion, onClose, children }: DialogPanelProps) {
+  // The flex host covers the full viewport *above* the scrim, so click-off
+  // never reached the scrim's onClick. Dismiss here; stop inside the card.
   const stop = (e: React.MouseEvent) => e.stopPropagation();
   return (
-    <div className="absolute inset-0 flex items-center justify-center p-4">
+    <div
+      className="absolute inset-0 flex items-center justify-center p-4"
+      onClick={onClose}
+    >
       <motion.div
         role="dialog"
         aria-modal="true"
@@ -209,17 +248,20 @@ function DialogPanel({ title, maxWidth, reduceMotion, children }: DialogPanelPro
             ? { duration: 0 }
             : { type: 'spring', damping: 28, stiffness: 360, mass: 0.7 }
         }
-        className="w-full overflow-hidden rounded-3xl border border-border-hairline bg-surface-card shadow-[0_24px_64px_-12px_rgba(0,0,0,0.25),0_0_0_1px_rgba(0,0,0,0.02)]"
-        style={{ maxWidth }}
+        className={cn(
+          'w-full overflow-hidden rounded-3xl border border-border-hairline bg-surface-card shadow-[0_24px_64px_-12px_rgba(0,0,0,0.25),0_0_0_1px_rgba(0,0,0,0.02)]',
+          scrollBody && 'flex max-h-[min(36rem,calc(100vh-2rem))] flex-col',
+        )}
+        style={{ maxWidth, width: fixedWidth ? `min(${maxWidth}, 100%)` : undefined }}
       >
         {title && (
-          <div className="border-b border-border-hairline px-6 pt-5 pb-4 text-center">
+          <div className="shrink-0 border-b border-border-hairline px-6 pt-5 pb-4 text-center">
             <h3 className="text-base font-semibold tracking-tight text-text-default">
               {title}
             </h3>
           </div>
         )}
-        <div className="px-6 py-5">{children}</div>
+        <div className={cn('px-6 py-5', scrollBody && 'flex min-h-0 flex-1 flex-col overflow-hidden')}>{children}</div>
       </motion.div>
     </div>
   );

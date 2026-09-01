@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  STATION_DISPLAYS_BAND_CLASS,
+  STATION_DISPLAYS_COLUMN_CLASS,
+  STATION_DISPLAYS_LEADING_BEVEL_CLASS,
+  STATION_DISPLAYS_STRIP_CLASS,
   STATION_SCAN_ACTIVE_WELL_CLASS,
   STATION_SCAN_BENCH_CLASS,
   STATION_SCAN_FIELD_WELL_CLASS,
@@ -15,10 +19,15 @@ import {
   STATION_SKINS,
   stationSkinCssText,
 } from '@/design-system/themes/station-skins';
+import {
+  DEFAULT_STATION_DEPTH,
+  stationDepthCssText,
+} from '@/design-system/themes/station-depths';
 
 /**
  * Unified scan-station depth lives in this module. Fills remap through
  * `--ds-station-*` so a skin restyles every station that imports these classes.
+ * Bevel width + grain follow Depth (`station-depths.ts`).
  */
 describe('scan-station depth tokens', () => {
   it('the well uses station tokens — not a hardcoded wood or sunken fill', () => {
@@ -27,7 +36,8 @@ describe('scan-station depth tokens', () => {
     assert.doesNotMatch(STATION_SCAN_WELL_CLASS, /bg-surface-sunken/);
     assert.doesNotMatch(STATION_SCAN_WELL_CLASS, /bg-surface-trough/);
     assert.ok(STATION_SCAN_WELL_CLASS.includes(STATION_SCAN_INSET_BEVEL_CLASS));
-    assert.match(STATION_SCAN_INSET_BEVEL_CLASS, /border-2/);
+    assert.match(STATION_SCAN_INSET_BEVEL_CLASS, /--ds-station-bevel-width/);
+    assert.doesNotMatch(STATION_SCAN_INSET_BEVEL_CLASS, /border-2/);
     assert.match(STATION_SCAN_INSET_BEVEL_CLASS, /border-t-border-station-shadow/);
     assert.match(STATION_SCAN_INSET_BEVEL_CLASS, /border-b-border-station-highlight/);
     assert.doesNotMatch(STATION_SCAN_WELL_CLASS, /shadow-/);
@@ -52,22 +62,36 @@ describe('scan-station depth tokens', () => {
     assert.doesNotMatch(STATION_SCAN_ACTIVE_WELL_CLASS, /shadow-/);
   });
 
-  it('industrial is the default mill — strong well, no grain', () => {
+  it('Displays column / strip are station bar — never desk card chrome', () => {
+    assert.match(STATION_DISPLAYS_COLUMN_CLASS, /bg-surface-station-bar/);
+    assert.ok(STATION_DISPLAYS_COLUMN_CLASS.includes(STATION_SCAN_GRAIN_CLASS));
+    assert.ok(STATION_DISPLAYS_COLUMN_CLASS.includes(STATION_DISPLAYS_LEADING_BEVEL_CLASS));
+    assert.doesNotMatch(STATION_DISPLAYS_COLUMN_CLASS, /bg-surface-card/);
+    assert.doesNotMatch(STATION_DISPLAYS_COLUMN_CLASS, /border-border-soft/);
+    assert.match(STATION_DISPLAYS_STRIP_CLASS, /bg-surface-station-bar/);
+    assert.doesNotMatch(STATION_DISPLAYS_STRIP_CLASS, /bg-surface-card/);
+    assert.equal(STATION_DISPLAYS_BAND_CLASS, STATION_SCAN_BENCH_CLASS);
+  });
+
+  it('industrial Color + flat Depth are the defaults', () => {
     assert.equal(DEFAULT_STATION_SKIN, 'industrial');
-    assert.equal(STATION_SKINS.industrial.grain, false);
+    assert.equal(DEFAULT_STATION_DEPTH, 'flat');
     assert.match(STATION_SKINS.industrial.vars.well, /surface-strong/);
     assert.match(STATION_SKINS.industrial.vars.plate, /surface-accent/);
     assert.match(STATION_SKINS.industrial.vars['bevel-highlight'], /background-canvas/);
+    assert.match(STATION_SKINS.industrial.vars.ink, /text-primary/);
   });
 
-  it('packing bench keeps the wood tokens as a skin, not the default', () => {
-    assert.equal(STATION_SKINS.bench.grain, true);
+  it('packing bench keeps wood Color tokens; grain is Depth Deep only', () => {
     assert.match(STATION_SKINS.bench.vars.well, /surface-trough/);
     assert.match(STATION_SKINS.bench.vars['bevel-shadow'], /border-stain/);
-    const css = stationSkinCssText();
-    assert.match(css, /html\[data-station-skin='bench'\]/);
-    assert.match(css, /html\[data-station-skin='bench'\] \.station-scan-grain/);
-    assert.doesNotMatch(css, /url\(.*wood/i);
+    const skinCss = stationSkinCssText();
+    assert.match(skinCss, /html\[data-station-skin='bench'\]/);
+    assert.doesNotMatch(skinCss, /\.station-scan-grain/);
+    assert.match(skinCss, /\[data-station-displays\]/);
+    const depthCss = stationDepthCssText();
+    assert.match(depthCss, /html\[data-station-depth='deep'\] \.station-scan-grain/);
+    assert.doesNotMatch(depthCss, /url\(.*wood/i);
   });
 
   it('StationBandStack aliases the well — it does not retype it', () => {
@@ -114,7 +138,7 @@ describe('scan-station depth tokens', () => {
     }
   });
 
-  it('Appearance lists every registry skin so a new skin is pickable', () => {
+  it('Appearance lists Color and Depth so both Look methods are pickable', () => {
     const src = readFileSync(
       'src/components/settings/sections/AppearanceSection.tsx',
       'utf8',
@@ -123,6 +147,20 @@ describe('scan-station depth tokens', () => {
     assert.match(src, /STATION_SKIN_GROUP_ORDER/);
     assert.match(src, /updateStationSkin/);
     assert.match(src, /stationSkin/);
+    assert.match(src, /STATION_DEPTH_NAMES/);
+    assert.match(src, /updateStationDepth/);
+    assert.match(src, /stationDepth/);
+  });
+
+  it('Displays push column scopes station chrome and drops desk push class', () => {
+    const src = readFileSync(
+      'src/components/station/displays/StationDisplaysPushColumn.tsx',
+      'utf8',
+    );
+    assert.match(src, /data-station-displays/);
+    assert.match(src, /STATION_DISPLAYS_COLUMN_CLASS/);
+    assert.match(src, /STATION_DISPLAYS_STRIP_CLASS/);
+    assert.doesNotMatch(src, /DETAIL_STACK_PUSH_COLUMN_CLASS/);
   });
 
   it('identity chrome seam is border-subtle, not hairline', () => {

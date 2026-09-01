@@ -6,7 +6,7 @@
  * Shipping · Review). Not a `RightRailHost` occupant.
  *
  * **In-flow when it fits** (ruled 2026-08-10): flush
- * {@link DETAIL_STACK_PUSH_COLUMN_CLASS} sibling that **encloses** the middle
+ * {@link STATION_DISPLAYS_COLUMN_CLASS} sibling that **encloses** the middle
  * (and its bottom dock) — never an overlay that covers them. When the frame
  * cannot seat Displays beside an open left rail, the frame store parks the
  * **left** rail first so Displays stays open. Displays itself auto-parks to the
@@ -33,6 +33,11 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { Maximize2, Minimize2 } from '@/components/Icons';
 import {
+  STATION_DISPLAYS_BAND_CLASS,
+  STATION_DISPLAYS_COLUMN_CLASS,
+  STATION_DISPLAYS_STRIP_CLASS,
+} from '@/components/station/scan-depth';
+import {
   STATION_DISPLAYS_PUSH_TOP_BAND,
   STATION_DISPLAYS_PUSH_TOP_CELL,
   STATION_DISPLAYS_PUSH_TOP_CLUSTER,
@@ -54,7 +59,6 @@ import {
 import { LIST_KEY_REGION_OPEN_ATTR } from '@/lib/keyboard/list-key-scope';
 import { useKeyboardRegionOwner } from '@/lib/keyboard/useKeyboardRegionOwner';
 import { IconButton } from '@/design-system/primitives';
-import { DETAIL_STACK_PUSH_COLUMN_CLASS } from '@/design-system/shells/detail-stack';
 import { STATION_DISPLAYS_MIN_WIDTH_PX } from '@/components/station/workbench/workbench-layout';
 import {
   getRightRailFrame,
@@ -387,10 +391,11 @@ export function StationDisplaysPushColumn({
           }
         }}
         className={cn(
-          'group relative flex h-full w-8 shrink-0 cursor-pointer flex-col items-center self-stretch',
-          'border-l border-border-soft bg-surface-card hover:bg-surface-sunken',
+          STATION_DISPLAYS_STRIP_CLASS,
+          'group cursor-pointer',
           frameParked && 'cursor-default',
         )}
+        data-station-displays=""
       >
         {/* The Root Index as icons (2026-08-19). The strip used to be an empty
             mid plus a restore button at its foot; both are gone. The foot
@@ -436,8 +441,10 @@ export function StationDisplaysPushColumn({
         minWidth: STATION_DISPLAYS_MIN_WIDTH_PX,
       }}
     >
-      <div className={cn(DETAIL_STACK_PUSH_COLUMN_CLASS, 'relative h-full min-h-0')}>
-        {/* Drag ONLY — inset on this card's border-l seam (display hairline).
+      <div
+        className={cn(STATION_DISPLAYS_COLUMN_CLASS, 'relative h-full min-h-0')}
+        data-station-displays=""
+      >        {/* Drag ONLY — inset on this card's border-l seam (display hairline).
             `elevatedHairline` paints the rule ABOVE the leaf ← → header band
             (`z-header`, opaque) so the seam reads continuously over the Back
             chevron; the hit stays below the chrome so the chevron keeps its
@@ -460,7 +467,7 @@ export function StationDisplaysPushColumn({
             Fullscreen and close are the two WINDOW controls, so they close the
             row and never collapse — the item verbs to their left are what a
             narrower column would fold into `⋮`. */}
-        <div className={STATION_DISPLAYS_PUSH_TOP_BAND}>
+        <div className={cn(STATION_DISPLAYS_PUSH_TOP_BAND, STATION_DISPLAYS_BAND_CLASS)}>
           {headerNav}
           {headerNav == null ? <div className="flex-1" /> : null}
           <div className={STATION_DISPLAYS_PUSH_TOP_CLUSTER}>

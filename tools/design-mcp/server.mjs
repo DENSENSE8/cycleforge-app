@@ -148,6 +148,21 @@ const PRIMITIVE_HOMES = [
     alias: '@/design-system/themes',
     match: /^station-skins\.ts$/,
   },
+  {
+    dir: 'src/design-system/themes',
+    label: 'theme catalog (house)',
+    alias: '@/design-system/themes',
+    match: /^station-depths\.ts$/,
+  },
+  // Phone item-record cluster (qty · condition · notes) + Pick/Packed marks.
+  // Nested under components/item-record, so the walk must name the faces or
+  // ds_contract answers a calendar for "mobile to-ship qty".
+  {
+    dir: 'src/design-system/components/item-record',
+    label: 'item-record face (house)',
+    alias: '@/design-system/components/item-record',
+    match: /^(ItemRecordQtyBadge|ItemRecordThumb|ItemRecordMobileMeta|ItemRecordMobileStage)\.tsx$/,
+  },
 ]
 
 /**
@@ -159,7 +174,7 @@ const PRIMITIVE_HOMES = [
  * `find_symbol` + `impact_analysis` on the role function (`cornerClass`,
  * `elevationClass`, `focusRing`) so the next session sees real call sites.
  */
-const TOKEN_AXES = ['color', 'radius', 'spacing', 'typography', 'z-index', 'elevation', 'border', 'focus', 'station-skin']
+const TOKEN_AXES = ['color', 'radius', 'spacing', 'typography', 'z-index', 'elevation', 'border', 'focus', 'station-skin', 'station-depth', 'item-record']
 
 /**
  * The axes whose law is TypeScript (or Node-native `.mjs` twins), not CSS.
@@ -178,6 +193,7 @@ const TOKEN_TS = {
   radius: 'src/design-system/tokens/radius.ts',
   themes: 'src/design-system/themes/registry.ts',
   stationSkins: 'src/design-system/themes/station-skins.ts',
+  stationDepths: 'src/design-system/themes/station-depths.ts',
   spacing: 'src/design-system/tokens/spacing.mjs',
   zIndex: 'src/design-system/tokens/z-index.mjs',
   elevation: 'src/design-system/tokens/shadows.ts',
@@ -185,6 +201,8 @@ const TOKEN_TS = {
   border: 'src/design-system/tokens/borders.ts',
   typePresets: 'src/design-system/tokens/typography/presets.ts',
   typeSizes: 'src/design-system/tokens/typography/sizes.ts',
+  itemRecordFace: 'src/design-system/components/item-record/item-record-face.ts',
+  itemRecordMobile: 'src/design-system/tokens/item-record-mobile.ts',
   tailwind: 'tailwind.config.mjs',
 }
 const OVERRIDES = 'src/design-system/pinned.json'
@@ -645,12 +663,15 @@ const STATION_SKIN_CLASS = {
   'header-hover': 'hover:bg-surface-station-header-hover',
   'bevel-shadow': 'border-station-shadow',
   'bevel-highlight': 'border-station-highlight',
+  ink: 'text-[color:var(--ds-station-ink)]',
+  'ink-muted': 'text-[color:var(--ds-station-ink-muted)]',
 }
 
 /**
  * Scan-station skin law. Names and `--ds-station-*` vars are the answer;
  * character hexes stay in station-skins.ts and must never leak into this
- * payload (an agent would paste them onto Unbox).
+ * payload (an agent would paste them onto Unbox). Color only — Depth is
+ * `station-depth`.
  */
 function loadStationSkinTokens() {
   const rel = TOKEN_TS.stationSkins
@@ -682,9 +703,8 @@ function loadStationSkinTokens() {
     const nested = objectAfterKey(skinsBody, name) ?? ''
     const label = /(?:^|\n)\s*label:\s*'([^']+)'/.exec(nested)?.[1]
     const group = /(?:^|\n)\s*group:\s*'([^']+)'/.exec(nested)?.[1]
-    const grainOn = /(?:^|\n)\s*grain:\s*true/.test(nested)
     const hint = /(?:^|\n)\s*hint:\s*'([^']+)'/.exec(nested)?.[1]
-    const bits = [label ?? name, group ?? 'ungrouped', grainOn ? 'grain on' : 'grain off']
+    const bits = [label ?? name, group ?? 'ungrouped', 'Color']
     const extra = name === 'industrial'
       ? ' Default mill — ABSENCE of data-station-skin.'
       : name === 'house-color'
@@ -701,6 +721,134 @@ function loadStationSkinTokens() {
   return out
 }
 
+/**
+ * Scan-station depth law. Flat | Mill | Deep — bevel width + grain.
+ * Independent of Color (`station-skin`).
+ */
+function loadStationDepthTokens() {
+  const rel = TOKEN_TS.stationDepths
+  const src = readTs(rel)
+  if (!src) return []
+  const out = []
+  out.push(row(
+    'station-depth',
+    rel,
+    '--ds-station-bevel-width',
+    'per station-depth',
+    'border-[length:var(--ds-station-bevel-width)] via STATION_SCAN_* / STATION_DISPLAYS_* in scan-depth.ts.',
+  ))
+  out.push(row(
+    'station-depth',
+    rel,
+    'station-scan-grain',
+    'Deep only',
+    "Grain paints only under html[data-station-depth='deep'] .station-scan-grain — not per Color.",
+  ))
+  const depthsBody = blockAfter(src, 'export const STATION_DEPTHS')
+  if (!depthsBody) {
+    throw new Error(`${rel} has no STATION_DEPTHS record — station-depth reader fault.`)
+  }
+  const names = keysAtTopLevel(depthsBody)
+  if (names.length === 0) {
+    throw new Error(`${rel} STATION_DEPTHS parsed zero depths — station-depth reader fault.`)
+  }
+  for (const name of names) {
+    const nested = objectAfterKey(depthsBody, name) ?? ''
+    const label = /(?:^|\n)\s*label:\s*'([^']+)'/.exec(nested)?.[1]
+    const hint = /(?:^|\n)\s*hint:\s*'([^']+)'/.exec(nested)?.[1]
+    const extra = name === 'mill'
+      ? ' Default — ABSENCE of data-station-depth.'
+      : ''
+    out.push(row(
+      'station-depth',
+      rel,
+      `applyStationDepth('${name}')`,
+      label ?? name,
+      `applyStationDepth('${name}') — import from @/lib/theme/station-depth. Appearance lists STATION_DEPTH_NAMES.${hint ? ` ${hint}` : ''}${extra}`,
+    ))
+  }
+  return out
+}
+
+/**
+ * Named ds_tokens queries on axis item-record. Each maps to a token-name
+ * substring so `query: "meta"` is the phone qty·condition·notes cluster, not
+ * a dump of FACE + STAGE + TITLE. Unknown query is an error — not a filter.
+ */
+const ITEM_RECORD_QUERIES = {
+  meta: 'MOBILE_META',
+  thumb: 'MOBILE_THUMB',
+  stage: 'MOBILE_STAGE',
+  title: 'MOBILE_TITLE',
+}
+
+/**
+ * Phone item-record faces. Qty · condition · notes is ONE cluster; Pick /
+ * Packed is PackageSearch / Package + Assigned or stamp. Padded thumb and
+ * two-line title live on ITEM_RECORD_MOBILE_*.
+ */
+function loadItemRecordTokens() {
+  const out = []
+  const maps = [
+    {
+      rel: TOKEN_TS.itemRecordFace,
+      anchor: 'export const ITEM_RECORD_FACE',
+      prefix: 'ITEM_RECORD_FACE',
+      use: 'Flush ledger thumb geometry (ItemRecordRow). Phone to-ship uses ITEM_RECORD_MOBILE_THUMB + ItemRecordThumb variant=padded. Query ds_tokens({ axis: "item-record", query: "thumb" }).',
+    },
+    {
+      rel: TOKEN_TS.itemRecordMobile,
+      anchor: 'export const ITEM_RECORD_MOBILE_THUMB',
+      prefix: 'ITEM_RECORD_MOBILE_THUMB',
+      use: 'Padded cornered phone photo. ItemRecordThumb variant="padded" inside ITEM_RECORD_MOBILE_THUMB.column. Never flush-bleed the cube on the to-ship card. Query ds_tokens({ axis: "item-record", query: "thumb" }).',
+    },
+    {
+      rel: TOKEN_TS.itemRecordMobile,
+      anchor: 'export const ITEM_RECORD_MOBILE_TITLE',
+      prefix: 'ITEM_RECORD_MOBILE_TITLE',
+      use: 'Two-line reserved title; meta+stage pin to the foot so a one-line title does not shift the cluster. Query ds_tokens({ axis: "item-record", query: "title" }).',
+    },
+    {
+      rel: TOKEN_TS.itemRecordMobile,
+      anchor: 'export const ITEM_RECORD_MOBILE_META',
+      prefix: 'ITEM_RECORD_MOBILE_META',
+      use: 'Qty · condition · notes as one sunken token. Mount ItemRecordMobileMeta. Never three independent chips, never SKU/serial/price on the phone card (that is ItemRecordMetaGrid on the desk). Query ds_tokens({ axis: "item-record", query: "meta" }).',
+    },
+    {
+      rel: TOKEN_TS.itemRecordMobile,
+      anchor: 'export const ITEM_RECORD_MOBILE_STAGE',
+      prefix: 'ITEM_RECORD_MOBILE_STAGE',
+      use: 'Phone Pick / Packed — same face as desk CompoundStageStep without the avatar. PackageSearch + Package glyphs; pending Assigned; done stamp. Names stay on the order sheet. Query ds_tokens({ axis: "item-record", query: "stage" }).',
+    },
+    {
+      rel: TOKEN_TS.itemRecordMobile,
+      anchor: 'export const ITEM_RECORD_MOBILE_STAGE_VERBS',
+      prefix: 'ITEM_RECORD_MOBILE_STAGE_VERBS',
+      use: 'Done verbs Picked / Packed + pending Assigned. Never a staff name. Import from @/design-system/tokens/item-record-mobile.',
+    },
+    {
+      rel: TOKEN_TS.itemRecordMobile,
+      anchor: 'export const ITEM_RECORD_MOBILE_STAGE_ICONS',
+      prefix: 'ITEM_RECORD_MOBILE_STAGE_ICONS',
+      use: 'Pick = package-search (PackageSearch). Packed = package (Package). Same catalog iconKey as orders.picked / orders.packed.',
+    },
+  ]
+  for (const spec of maps) {
+    const src = readTs(spec.rel)
+    if (!src) {
+      throw new Error(`${spec.rel} missing — item-record reader fault, not a licence to invent a chip.`)
+    }
+    const pairs = quotedMap(src, spec.anchor)
+    if (pairs.length === 0) {
+      throw new Error(`${spec.rel} ${spec.prefix} parsed zero keys — item-record reader fault.`)
+    }
+    for (const [key, value] of pairs) {
+      out.push(row('item-record', spec.rel, `${spec.prefix}.${key}`, value, spec.use))
+    }
+  }
+  return out
+}
+
 const AXIS_LOADERS = {
   color: loadThemeTokens,
   radius: loadRadiusTokens,
@@ -711,6 +859,8 @@ const AXIS_LOADERS = {
   border: loadBorderTokens,
   focus: loadFocusTokens,
   'station-skin': loadStationSkinTokens,
+  'station-depth': loadStationDepthTokens,
+  'item-record': loadItemRecordTokens,
 }
 
 const AXIS_NOTE = {
@@ -733,9 +883,21 @@ const AXIS_NOTE = {
   focus:
     "Prefer focusRing(archetype, tone) over a hand-rolled focus:ring-* recipe.",
   'station-skin':
-    "Scan-station material is a row in station-skins.ts, not a hex on Unbox. " +
+    "Scan-station Color is a row in station-skins.ts, not a hex on Unbox. " +
     "Call applyStationSkin(name); wells use STATION_SCAN_* / --ds-station-*. " +
-    "Industrial is the absence of data-station-skin. Character hexes live in the catalog file only.",
+    "Industrial is the absence of data-station-skin. Character hexes live in the catalog file only. " +
+    "Grain and bevel width are station-depth — do not bake them onto a color row.",
+  'station-depth':
+    "Scan-station Depth is flat | mill | deep in station-depths.ts. " +
+    "Call applyStationDepth(name). Mill is the absence of data-station-depth. " +
+    "Grain paints only at Deep. Independent of Color (station-skin).",
+  'item-record':
+    "Phone item-record queries: ds_tokens({ axis: 'item-record', query: 'meta' | 'thumb' | 'stage' | 'title' }). " +
+    "META = qty · condition · notes as one sunken token (ItemRecordMobileMeta). " +
+    "THUMB = padded rounded photo (ItemRecordThumb variant=padded). " +
+    "TITLE = two-line reserved title + foot so the cluster does not jump. " +
+    "STAGE = PackageSearch / Package + Assigned or picked/packed stamp (desk CompoundStageStep; names on the sheet). " +
+    "Do not mount ItemRecordMetaGrid (desk five-track) on the phone card.",
 }
 
 /**
@@ -772,11 +934,32 @@ function loadAxis(axis) {
   if (axis === 'station-skin') {
     for (const t of rows) t.value = scrubColorValue(t.value)
   }
+  if (axis === 'station-depth') {
+    for (const t of rows) t.value = scrubColorValue(t.value)
+  }
   return rows
 }
 
-function presentAxis(axis, filter) {
-  const needle = filter ? String(filter).toLowerCase() : null
+function presentAxis(axis, filter, query) {
+  let needle = filter ? String(filter).toLowerCase() : null
+  let resolvedQuery = null
+  if (query != null && String(query).trim() !== '') {
+    if (axis !== 'item-record') {
+      throw new Error(
+        `ds_tokens query is the item-record named lookup (${Object.keys(ITEM_RECORD_QUERIES).join('|')}). ` +
+          'Other axes take filter, not query.',
+      )
+    }
+    const key = String(query).trim().toLowerCase()
+    const mapped = ITEM_RECORD_QUERIES[key]
+    if (!mapped) {
+      throw new Error(
+        `unknown item-record query "${query}" — one of: ${Object.keys(ITEM_RECORD_QUERIES).join(', ')}`,
+      )
+    }
+    resolvedQuery = key
+    needle = mapped.toLowerCase()
+  }
   const rows = loadAxis(axis)
     .filter((t) => (needle ? t.name.toLowerCase().includes(needle) : true))
     .map((t) => ({
@@ -789,12 +972,13 @@ function presentAxis(axis, filter) {
     }))
   if (rows.length === 0) {
     throw new Error(
-      `no tokens on axis "${axis}"${filter ? ` matching "${filter}"` : ''} — this is a reader fault, not a licence ` +
+      `no tokens on axis "${axis}"${needle ? ` matching "${resolvedQuery ?? filter}"` : ''} — this is a reader fault, not a licence ` +
         'to write a literal. Say so rather than inventing a value.',
     )
   }
   return {
     axis,
+    ...(resolvedQuery ? { query: resolvedQuery } : {}),
     count: rows.length,
     sources: [...new Set(rows.map((r) => r.source))],
     tokens: rows,
@@ -1125,8 +1309,12 @@ const TOOLS = [
       'Look up the exact class or value on ONE visual axis before you type a literal. ' +
       'axis is required — a dump of every axis is not a lookup. Never invent a hex, a px radius, ' +
       'or text-[Npx] if this returns a token. On radius call cornerClass(role); on colour write var(--ds-color-…); ' +
-      'on elevation call elevationClass; on focus call focusRing; on station-skin call applyStationSkin(name) ' +
-      'and consume STATION_SCAN_* — never hex a well or fork a packing-bench fill on one station.',
+      'on elevation call elevationClass; on focus call focusRing; on station-skin call applyStationSkin(name); ' +
+      'on station-depth call applyStationDepth(name) ' +
+      'and consume STATION_SCAN_* — never hex a well or fork a packing-bench fill on one station. ' +
+      'On item-record: query "meta" (qty·condition·notes one token), "thumb" (padded photo), ' +
+      '"title" (two-line reserved title), "stage" (PackageSearch/Package + Assigned or stamp). ' +
+      'Mount ItemRecordMobileMeta + ItemRecordMobileStage + ItemRecordThumb variant=padded.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -1136,6 +1324,14 @@ const TOOLS = [
           description: 'The axis you are about to write. Required. There is no "all".',
         },
         filter: { type: 'string', description: 'Substring match on the token name, e.g. "surface" or "sunken".' },
+        query: {
+          type: 'string',
+          enum: ['meta', 'thumb', 'stage', 'title'],
+          description:
+            'item-record named query. meta = qty·condition·notes one cluster; thumb = padded corner photo; ' +
+            'stage = PackageSearch/Package + Assigned or stamp; title = two-line reserved title + foot. ' +
+            'Only valid with axis item-record.',
+        },
       },
       required: ['axis'],
     },

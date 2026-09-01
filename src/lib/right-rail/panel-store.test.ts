@@ -75,14 +75,14 @@ describe('panel-store — singleton lifecycle', () => {
     assert.equal(getPanelStore().activeView?.id, 'detail:sku:ABC');
   });
 
-  it('closeAndCachePanel snapshots the capture getter and arms the toast', () => {
+  it('closeAndCachePanel snapshots the capture getter and parks without a toast', () => {
     installCapture();
     openPanel({ id: 'detail:order' });
     setPanelDraftCapture(() => ({ qty: 3 }));
     closeAndCachePanel();
     const snap = getPanelStore();
     assert.equal(snap.dismissed, true);
-    assert.equal(snap.draftToastArmed, true);
+    assert.equal(snap.draftToastArmed, false);
     assert.deepEqual(snap.draftData?.data, { qty: 3 });
   });
 

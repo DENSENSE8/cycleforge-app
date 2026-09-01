@@ -44,7 +44,7 @@ no `axis` and with `axis: "all"`, and both must be `isError` with `requires axis
 A `ds_tokens` result whose `tokens` array mixes axes is a `FAIL`.
 
 Each advertised axis (`color`, `radius`, `spacing`, `typography`, `z-index`,
-`elevation`, `border`, `focus`, `station-skin`) must return `count > 0`. A missing TypeScript
+`elevation`, `border`, `focus`, `station-skin`, `item-record`) must return `count > 0`. A missing TypeScript
 file must throw, never `"0 tokens"`.
 
 Scan-station skins are a **separate axis** from colour. `ds_tokens({ axis: "station-skin" })`

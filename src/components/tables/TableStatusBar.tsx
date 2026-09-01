@@ -2,7 +2,7 @@
 
 /**
  * The one status strip a table paints at its foot: selection CTAs left,
- * counts right (legacy sub-mode tabs still optional).
+ * counts right (legacy sub-mode tabs still optional; idle-left `lead` optional).
  *
  * ```text
  * ┌────────────────────────────────────────────┬─────────────────────────────┐
@@ -12,13 +12,19 @@
  * │ [ Assign A] [ Copy C] [ Listing L]         │
  * ```
  *
+ * Idle-left readout (no selection verbs, no sub-mode tabs) — Media Library path:
+ * ```text
+ * │ All dates › Aug 2026 › Aug 29              │  48 of 48                   │
+ * ```
+ *
  * ## Why it is its own component
  *
  * {@link DataTable} draws every binding-backed table, but the station desks
  * also mount `StationListTable` (the week-scoped history list, which is not on
  * the binding waist). Both need the SAME strip, and two copies of it is how the
  * display layer forked the last time. One component, two mounts — not one
- * component per surface.
+ * component per surface. Media Library mounts this directly (no DataTable) for
+ * the same reason.
  *
  * ## The tab half is being retired (2026-08-31)
  *
@@ -29,11 +35,20 @@
  * frame — on every desk AND every scan station, because two tab positions in
  * one product is two vocabularies for one job.
  *
- * The `tabs` props stay for the surfaces still passing them (Labels, Photos,
+ * The `tabs` props stay for the surfaces still passing them (Labels,
  * Locations, Support, Walk-in). **Do not wire a new one.** A page's modes
  * belong to its frame; what this strip is genuinely for is selection verbs +
  * shown / total / selected, which is the one thing a table knows and a frame
- * does not.
+ * does not. {@link TableStatusBarProps.lead} fills the idle left for a
+ * context readout (date/folder path) — never page navigation, never a CTA.
+ *
+ * ## Left-half precedence (2026-09-01)
+ *
+ * `selectionActions` (and legacy Copy) beat `tabs` beat `lead` beat empty
+ * spacer. Never paint `lead` beside pill CTAs. Never grow `lead` into actions.
+ * Path-contraction crumbs (Media) stay caption-weight `ds-raw-button`, not
+ * {@link Button}. `lead` is not `DeskPageChrome`'s `tabsLead` — same idea of a
+ * readout slot, different component.
  *
  * ## Selection CTAs + keyboard `?` (2026-09-01)
  *
@@ -101,6 +116,17 @@ export interface TableStatusBarProps {
   tabs?: readonly DataTableTab[];
   activeTab?: string;
   onTabChange?: (id: string) => void;
+  /**
+   * Idle-left context readout (date/folder path, archive place). Painted only
+   * when there are no selection CTAs and no legacy sub-mode `tabs`.
+   *
+   * Precedence: `selectionActions` (and legacy Copy) beat `tabs` beat `lead`
+   * beat empty spacer. A readout, never an action — same fence as
+   * `DeskPageChrome`'s `tabsLead`, different component. Path-contraction
+   * crumbs are the one allowed interactive exception and stay
+   * caption-weight `ds-raw-button`, not {@link Button}.
+   */
+  lead?: ReactNode;
   /**
    * Rows this view is showing. Omit on a desk whose body is a RAIL rather than
    * a table — it has tabs but no row count, and a made-up number is worse than
@@ -274,6 +300,7 @@ export function TableStatusBar({
   tabs,
   activeTab,
   onTabChange,
+  lead,
   shown,
   total,
   selected = 0,
@@ -314,6 +341,8 @@ export function TableStatusBar({
   const tabList = tabs ?? [];
   const showTabs = tabList.length > 0;
   const showLeftCluster = hasCtas;
+  // Precedence: selection CTAs beat tabs beat lead beat empty spacer.
+  const showLead = Boolean(lead) && !showLeftCluster && !showTabs;
 
   return (
     <div
@@ -326,8 +355,9 @@ export function TableStatusBar({
       )}
     >
       {/*
-        LEFT: pill CTAs. Keyboard `?` overlays Linear keycaps on the face
-        (right-aligned) — zero layout shift.
+        LEFT: pill CTAs, else legacy sub-mode tabs, else idle `lead` readout.
+        Keyboard `?` overlays Linear keycaps on CTA faces (right-aligned) —
+        zero layout shift.
       */}
       <div className="flex min-w-0 flex-1 items-stretch gap-0 overflow-x-auto">
         {showLeftCluster ? (
@@ -348,6 +378,13 @@ export function TableStatusBar({
         ) : null}
         {showTabs ? (
           <TableTabs tabs={tabList} activeTab={activeTab} onTabChange={onTabChange ?? (() => {})} />
+        ) : showLead ? (
+          <div
+            className="flex min-w-0 flex-1 items-center px-3 py-1"
+            data-testid="data-table-status-lead"
+          >
+            {lead}
+          </div>
         ) : !showLeftCluster ? (
           <div className="min-w-0 flex-1" />
         ) : null}

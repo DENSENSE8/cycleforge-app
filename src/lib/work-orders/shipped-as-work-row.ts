@@ -2,6 +2,11 @@ import type { WorkOrderRow } from '@/components/work-orders/types';
 import type { ShippedOrder } from '@/types/orders';
 import { isOutOfStock } from '@/utils/order-out-of-stock';
 
+function asStaffColorHex(raw: string | null | undefined): string | null {
+  const hex = String(raw ?? '').trim().toLowerCase();
+  return /^#[0-9a-f]{6}$/.test(hex) ? hex : null;
+}
+
 /**
  * Adapt a to-ship {@link ShippedOrder} onto the work-order row the mobile
  * inset groups already know how to band and render. Phone-only: the desk
@@ -22,8 +27,10 @@ export function shippedOrderAsWorkRow(row: ShippedOrder): WorkOrderRow {
     sourcePath: `/m/orders/${encodeURIComponent(orderId || String(row.id))}`,
     techId: row.tester_id ?? null,
     techName: row.tester_name ?? null,
+    techColorHex: asStaffColorHex(row.tester_color_hex),
     packerId: row.packer_id ?? null,
-    packerName: row.packed_by_name ?? null,
+    packerName: row.packer_name ?? row.packed_by_name ?? null,
+    packerColorHex: asStaffColorHex(row.packer_color_hex),
     status: assigned ? 'ASSIGNED' : 'OPEN',
     priority: 100,
     deadlineAt: row.ship_by_date || row.deadline_at || null,
@@ -38,6 +45,7 @@ export function shippedOrderAsWorkRow(row: ShippedOrder): WorkOrderRow {
     shipmentId: row.shipment_id ?? null,
     accountSource: row.account_source ?? null,
     quantity: row.quantity ?? null,
+    imageUrl: String(row.catalog_image_url || '').trim() || null,
     outOfStock: isOutOfStock(row) ? 'Out of stock' : null,
   };
 }

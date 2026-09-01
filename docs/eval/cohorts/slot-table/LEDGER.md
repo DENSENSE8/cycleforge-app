@@ -228,13 +228,13 @@ _Snapshot:_ `docs/eval/cohorts/slot-table/snapshots/2026-09-01-discover.json`
 <!-- eval-ledger:auto:graph-matrix -->
 | Symbol | node_key | files_affected | snapshot |
 |---|---|---|---|
-| CompoundItem | `component:src/components/tables/compound/CompoundCells.tsx:CompoundItem` | 5 | `docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-CompoundItem.json` |
-| CompoundState | `component:src/components/tables/compound/CompoundCells.tsx:CompoundState` | 5 | `docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-CompoundState.json` |
-| useSlotTableLayout | `function:src/components/tables/useSlotTableLayout.ts:useSlotTableLayout` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-useSlotTableLayout.json` |
-| materializeTracks | `function:src/lib/tables/materialize-tracks.ts:materializeTracks` | 12 | `docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-materializeTracks.json` |
-| getExternalUrlByItemNumber | `function:src/utils/external-item-url.ts:getExternalUrlByItemNumber` | 20 | `docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-getExternalUrlByItemNumber.json` |
-| DateRangePickerField | `component:src/design-system/components/DateRangePickerField.tsx:DateRangePickerField` | 6 | `docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-DateRangePickerField.json` |
-| useOptimisticMutation | `function:src/lib/optimistic/useOptimisticMutation.ts:useOptimisticMutation` | 0 | `docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-useOptimisticMutation.json` |
+| CompoundItem | `component:src/components/tables/compound/CompoundCells.tsx:CompoundItem` | 6 | `docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-CompoundItem.json` |
+| CompoundState | `component:src/components/tables/compound/CompoundCells.tsx:CompoundState` | 6 | `docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-CompoundState.json` |
+| useSlotTableLayout | `function:src/components/tables/useSlotTableLayout.ts:useSlotTableLayout` | 36 | `docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-useSlotTableLayout.json` |
+| materializeTracks | `function:src/lib/tables/materialize-tracks.ts:materializeTracks` | 54 | `docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-materializeTracks.json` |
+| getExternalUrlByItemNumber | `function:src/utils/external-item-url.ts:getExternalUrlByItemNumber` | 27 | `docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-getExternalUrlByItemNumber.json` |
+| DateRangePickerField | `component:src/design-system/components/DateRangePickerField.tsx:DateRangePickerField` | 9 | `docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-DateRangePickerField.json` |
+| useOptimisticMutation | `function:src/lib/optimistic/useOptimisticMutation.ts:useOptimisticMutation` | 10 | `docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-useOptimisticMutation.json` |
 | DataTableFilterMenu | `component:src/components/tables/DataTable.tsx:DataTableFilterMenu` | 21 | `docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-DataTableFilterMenu.json` |
 <!-- /eval-ledger:auto:graph-matrix -->
 
@@ -245,7 +245,7 @@ _Snapshot:_ `docs/eval/cohorts/slot-table/snapshots/2026-09-01-discover.json`
 ```
 {
   "file": "src/components/tables/compound/CompoundCells.tsx",
-  "summary": "2 problems, worst first: 2 arbitrary type size where the typography axis exists",
+  "summary": "2 problems, worst first: 3 arbitrary type size where the typography axis exists",
   "problems": [
     {
 ```
@@ -277,7 +277,7 @@ _Snapshot:_ `docs/eval/cohorts/slot-table/snapshots/2026-09-01-discover.json`
 ```
 {
   "file": "src/components/tables/DataTable.tsx",
-  "summary": "1 problem, worst first: 1410 lines — past the point reviewers read",
+  "summary": "1 problem, worst first: 1684 lines — past the point reviewers read",
   "problems": [
     {
 ```
@@ -286,13 +286,13 @@ _Snapshot:_ `docs/eval/cohorts/slot-table/snapshots/2026-09-01-discover.json`
 ## Graph impact (shared symbols)
 
 <!-- eval-ledger:auto:graph-impact -->
-- **CompoundItem** — 5 files, 7 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-CompoundItem.json`)
-- **CompoundState** — 5 files, 7 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-CompoundState.json`)
-- **useSlotTableLayout** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-useSlotTableLayout.json`)
-- **materializeTracks** — 12 files, 17 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-materializeTracks.json`)
-- **getExternalUrlByItemNumber** — 20 files, 23 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-getExternalUrlByItemNumber.json`)
-- **DateRangePickerField** — 6 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-DateRangePickerField.json`)
-- **useOptimisticMutation** — 0 files, 0 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-useOptimisticMutation.json`)
+- **CompoundItem** — 6 files, 9 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-CompoundItem.json`)
+- **CompoundState** — 6 files, 9 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-CompoundState.json`)
+- **useSlotTableLayout** — 36 files, 36 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-useSlotTableLayout.json`)
+- **materializeTracks** — 54 files, 73 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-materializeTracks.json`)
+- **getExternalUrlByItemNumber** — 27 files, 30 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-getExternalUrlByItemNumber.json`)
+- **DateRangePickerField** — 9 files, 11 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-DateRangePickerField.json`)
+- **useOptimisticMutation** — 10 files, 10 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-useOptimisticMutation.json`)
 - **DataTableFilterMenu** — 21 files, 21 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-01-impact-DataTableFilterMenu.json`)
 <!-- /eval-ledger:auto:graph-impact -->
 
@@ -308,13 +308,13 @@ _Snapshot:_ `docs/eval/cohorts/slot-table/snapshots/2026-09-01-discover.json`
 <!-- eval-ledger:auto:graph-stats -->
 - project: `cycleforge-app`
 - status: `ready`
-- last_built_at: `2026-08-31T22:47:46.121Z`
-- nodes: 36519 · edges: 169929 · embedded: 36519
+- last_built_at: `2026-09-01T10:49:17.663Z`
+- nodes: 37449 · edges: 174654 · embedded: 37449
 - snapshot: `docs/eval/cohorts/slot-table/snapshots/2026-09-01-graph-stats.json`
 <!-- /eval-ledger:auto:graph-stats -->
 
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-01T08:49:05.957Z · cohort `slot-table` · run id `2026-09-01T08-47-51-608Z`_
+_Updated 2026-09-01T19:23:56.890Z · cohort `slot-table` · run id `2026-09-01T19-23-15-647Z`_
 <!-- /eval-ledger:auto:last-run -->

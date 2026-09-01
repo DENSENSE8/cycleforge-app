@@ -5,9 +5,9 @@
       "node_key": "function:src/lib/tables/materialize-tracks.ts:materializeTracks",
       "kind": "function",
       "name": "materializeTracks",
-      "location": "src/lib/tables/materialize-tracks.ts:169",
+      "location": "src/lib/tables/materialize-tracks.ts:171",
       "exported": true,
-      "signature": "function materializeTracks<C extends MaterializableTrack>({ layout, catalog, base, statusAnchorKey = 'state', subtitleAnchorKey = 'item', }: MaterializeTracksArgs<C>): C[]"
+      "signature": "function materializeTracks<C extends MaterializableTrack>({ layout, catalog, base, statusAnchorKey = 'state', subtitleAnchorKey = 'item', }: MaterializeTracksArgs<C>): readonly C[]"
     },
     {
       "node_key": "interface:src/lib/tables/materialize-tracks.ts:MaterializeTracksArgs",

@@ -25,6 +25,7 @@ import {
   type EvaluatedReleaseGates,
   type ReleaseGateFacts,
 } from './release-gates';
+import { exceptionHeldSql } from './exception-membership';
 
 type Client = Pick<PoolClient, 'query'>;
 
@@ -255,7 +256,7 @@ export async function listCagedOrders(
     orgId,
     `${GATE_SELECT}
       WHERE o.organization_id = $1
-        AND o.release_state = 'caged'
+        AND ${exceptionHeldSql('o')}
       ORDER BY o.id DESC
       LIMIT $2`,
     [orgId, limit],
@@ -270,7 +271,7 @@ export async function countCagedOrders(orgId: OrgId): Promise<number> {
     `SELECT COUNT(*)::int AS count
        FROM orders
       WHERE organization_id = $1
-        AND release_state = 'caged'`,
+        AND ${exceptionHeldSql()}`,
     [orgId],
   );
   return Number(res.rows[0]?.count ?? 0);

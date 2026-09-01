@@ -4,6 +4,8 @@ import { createCacheLookupKey, getCachedJson, setCachedJson } from '@/lib/cache/
 import { logRouteMetric } from '@/lib/route-metrics';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
 import { sqlOrderHasPackScan, sqlOrderHasShipConfirm, sqlOrderHasTechScan } from '@/lib/orders/order-grain-sql';
+import { liveWorkingSetSql } from '@/lib/orders/exception-membership';
+import { PRINT_PACKET_INCOMPLETE_SQL } from '@/lib/orders/print-packet';
 import { withAuth } from '@/lib/auth/withAuth';
 import { countOpenPlacementsByLocation } from '@/lib/packing/pack-placement';
 
@@ -48,7 +50,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       // Bump when membership SQL / payload shape changes so stale tallies cannot outlive the fix.
       // Bumped for `shippedToday` (2026-08-30) — a cached payload without the
       // field would print 0 shipped today for a whole TTL on every desk.
-      queueScope: 'in_warehouse_order_grain_v4_ship_confirm',
+      queueScope: 'in_warehouse_pairing_exception_v1_paperwork',
     });
 
     const CACHE_HEADERS = { 'Cache-Control': 'private, max-age=60, stale-while-revalidate=30' };
@@ -129,10 +131,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
          */
         AND NOT ${SHIPPED_BY_CARRIER_SQL}
         AND COALESCE(o.fulfillment_channel, '') <> 'AFN'
-        /* CAGED stays out of the live queue (order-intake-acknowledgment) —
+        /* Exception-held stays out of the live queue (R-FLOW-7) —
          * same predicate the fulfillmentScope feed applies, kept in lockstep
          * so the tab totals never exceed the rows on screen. */
-        AND COALESCE(o.release_state, '') <> 'caged'
+        AND ${liveWorkingSetSql('o')}
         AND NOT ${sqlOrderHasShipConfirm('o')}${staffClause}
       GROUP BY 1, 2, 3
     `;
@@ -171,13 +173,27 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           = timezone('America/Los_Angeles', NOW())::date${shippedTodayStaffClause}
     `;
 
+    const paperworkSql = `
+      SELECT COUNT(*)::int AS n
+      FROM orders o
+      LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
+      WHERE o.organization_id = $1
+        AND NOT ${SHIPPED_BY_CARRIER_SQL}
+        AND COALESCE(o.fulfillment_channel, '') <> 'AFN'
+        AND ${liveWorkingSetSql('o')}
+        AND NOT ${sqlOrderHasShipConfirm('o')}${staffClause}
+        AND ${PRINT_PACKET_INCOMPLETE_SQL}
+    `;
+
     // Independent queries, so they run concurrently rather than stacking two
     // round trips on the desk's first paint.
-    const [result, shippedTodayResult] = await Promise.all([
+    const [result, shippedTodayResult, paperworkResult] = await Promise.all([
       tenantQuery(ctx.organizationId, sql, params),
       tenantQuery(ctx.organizationId, shippedTodaySql, shippedTodayParams),
+      tenantQuery(ctx.organizationId, paperworkSql, params),
     ]);
     const shippedToday = Number(shippedTodayResult.rows[0]?.n) || 0;
+    const paperworkIncomplete = Number(paperworkResult.rows[0]?.n) || 0;
     // Lane combos stay pre-pack only (PENDING/TESTED/BLOCKED); packed-staged
     // is a separate stage counted via byStage.packed.
     const combos = result.rows
@@ -215,6 +231,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         counts: packPlacementCounts,
         totalPlaced: packPlacementPlaced,
       },
+      paperworkIncomplete,
     };
 
     await setCachedJson('api:orders-queue-counts', cacheLookup, payload, 60, ['orders']);
@@ -235,6 +252,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         shippedToday: 0,
         combos: [],
         packPlacement: { counts: [], totalPlaced: 0 },
+        paperworkIncomplete: 0,
         degraded: true,
         error: 'queue_counts_unavailable',
       },

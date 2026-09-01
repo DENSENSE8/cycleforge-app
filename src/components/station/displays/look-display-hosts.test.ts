@@ -60,3 +60,18 @@ test('idle Scan-out listens for the composer ring and mounts Displays', () => {
   assert.match(src, /StationDisplaysPushStack/);
   assert.match(src, /listenDisplays/);
 });
+
+test('Look leaf exposes Color and Depth methods independently', () => {
+  const src = read('src/components/station/displays/StationLookDisplayHost.tsx');
+  assert.match(src, /applyStationSkin/);
+  assert.match(src, /applyStationDepth/);
+  assert.match(src, /stationSkin/);
+  assert.match(src, /stationDepth/);
+  assert.match(src, /LookMethod/);
+  assert.match(src, /station-look-method-\$\{tab\.id\}/);
+  assert.match(src, /NORMAL_LOOK_ID/);
+  assert.match(src, /label: 'Normal'/);
+  assert.match(src, /Original flat display/);
+  assert.match(src, /applyNormal/);
+  assert.doesNotMatch(src, /ComposerModeRow/);
+});

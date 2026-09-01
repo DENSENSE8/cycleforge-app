@@ -320,12 +320,12 @@ export function SupportTicketDetail({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.12 }}
-            className="pointer-events-none absolute inset-2 z-20 flex items-center justify-center rounded-2xl border-2 border-dashed border-blue-400 bg-blue-50/80 backdrop-blur-sm"
+            className="pointer-events-none absolute inset-2 z-20 flex items-center justify-center rounded-2xl border-2 border-dashed border-accent-border bg-surface-sunken/80 backdrop-blur-sm"
           >
-            <div className="flex flex-col items-center gap-2 text-blue-700">
+            <div className="flex flex-col items-center gap-2 text-accent-bg">
               <Upload className="h-7 w-7" />
               <p className="text-role-caption font-semibold">Drop to attach · #{ticketId}</p>
-              <p className="text-role-caption font-semibold text-blue-500">Uploads to the library, attaches on your next reply</p>
+              <p className="text-role-caption font-semibold text-text-soft">Uploads to the library, attaches on your next reply</p>
             </div>
           </motion.div>
         ) : null}

@@ -4,8 +4,9 @@
  * Phone to-ship queue — `/m/work`.
  *
  * Compact All / Assigned / Unassigned pills, inline SearchField, sort
- * (including Title A–Z). White floor; raised white cards. Condition is the
- * slot-table subtitle face. Out of stock writes through useOrderAssignment.
+ * (including Title A–Z). White floor; raised white cards. Product thumb,
+ * qty, and condition use the existing item-record / grade faces. Out of
+ * stock writes through useOrderAssignment and disables Ship.
  */
 
 import { useCallback, useMemo, useState } from 'react';
@@ -22,6 +23,7 @@ import {
   SearchField,
 } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
+import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { cn } from '@/utils/_cn';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { bandWorkOrderRows } from '@/lib/work-orders/deadline-bands';
@@ -61,11 +63,8 @@ export function MobileToShipQueue() {
   const [oosIds, setOosIds] = useState<ReadonlySet<number>>(() => new Set());
 
   const groups = useMemo(() => {
-    const working = rows.filter(
-      (row) => !isToShipOutOfStock(row) && !oosIds.has(row.entityId),
-    );
     const filtered = sortToShipRows(
-      filterToShipByQuery(filterToShipByTab(working, tab), searchQuery),
+      filterToShipByQuery(filterToShipByTab(rows, tab), searchQuery),
       sort,
       getStaffName,
     );
@@ -73,7 +72,7 @@ export function MobileToShipQueue() {
       return filtered.length > 0 ? [{ band: 'none' as const, label: '', rows: filtered }] : [];
     }
     return bandWorkOrderRows(filtered);
-  }, [getStaffName, oosIds, rows, searchQuery, sort, tab]);
+  }, [getStaffName, rows, searchQuery, sort, tab]);
 
   const replaceParams = useCallback(
     (patch: { tab?: MobileToShipTab; sort?: MobileToShipSort; q?: string }) => {
@@ -93,9 +92,10 @@ export function MobileToShipQueue() {
 
   const onProcess = useCallback(
     (row: WorkOrderRow) => {
+      if (oosIds.has(row.entityId) || isToShipOutOfStock(row)) return;
       router.push(mobileProcessOrderHref(row));
     },
-    [router],
+    [oosIds, router],
   );
 
   const onOutOfStock = useCallback(
@@ -220,7 +220,13 @@ export function MobileToShipQueue() {
               {groups.map((group) => (
                 <section key={group.band + group.label}>
                   {group.label ? (
-                    <h2 className="mb-1 px-1 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                    <h2
+                      className={cn(
+                        sectionLabel,
+                        'mb-2 bg-surface-sunken px-4 py-1.5 font-bold text-text-muted',
+                        cornerClass('surface'),
+                      )}
+                    >
                       {group.label}
                     </h2>
                   ) : null}
@@ -230,6 +236,7 @@ export function MobileToShipQueue() {
                         <MobileToShipRow
                           row={row}
                           resolveName={getStaffName}
+                          blocked={oosIds.has(row.entityId) || isToShipOutOfStock(row)}
                           onOpen={setSheetRow}
                           onProcess={onProcess}
                           onOutOfStock={onOutOfStock}
@@ -251,6 +258,7 @@ export function MobileToShipQueue() {
         onProcess={onProcess}
         onOutOfStock={onOutOfStock}
         onOpenDetail={onOpenDetail}
+        blocked={sheetRow != null && (oosIds.has(sheetRow.entityId) || isToShipOutOfStock(sheetRow))}
         resolveName={getStaffName}
       />
     </div>

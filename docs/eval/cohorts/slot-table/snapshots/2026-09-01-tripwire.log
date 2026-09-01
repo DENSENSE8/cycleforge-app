@@ -1,24 +1,24 @@
 ▶ slot-table cohort (SoT = engine + PRODUCT_TABLES)
-  ✔ peers are exactly PRODUCT_TABLES ids (no hand list) (1.286307ms)
-  ✔ every engine layout hook file exists and imports useSlotTableLayout (0.587166ms)
-  ✔ engine peers are a subset of PRODUCT_TABLES (opt-in map) (0.148909ms)
-  ✔ CompoundItem title + Listing chip satisfy paint contract (0.559453ms)
-  ✔ engine seam files export the shared hooks (0.157754ms)
-  ✔ compact DateRangePickerField is the ship-by surface (0.219303ms)
-  ✔ ship-by writes through useOptimisticMutation (0.126387ms)
-  ✔ paint law constants document cohort scope (not To-ship alone) (0.148179ms)
-  ✔ graph + critique surfaces include compact ship-by (0.170266ms)
-  ✔ DataTable always mounts the filter funnel (0.315496ms)
-✔ slot-table cohort (SoT = engine + PRODUCT_TABLES) (5.084714ms)
+  ✔ peers are exactly PRODUCT_TABLES ids (no hand list) (1.198749ms)
+  ✔ every engine layout hook file exists and imports useSlotTableLayout (0.716689ms)
+  ✔ engine peers are a subset of PRODUCT_TABLES (opt-in map) (0.163456ms)
+  ✔ CompoundItem title + Listing chip satisfy paint contract (0.607241ms)
+  ✔ engine seam files export the shared hooks (0.166812ms)
+  ✔ compact DateRangePickerField is the ship-by surface (0.223063ms)
+  ✔ ship-by writes through useOptimisticMutation (0.122728ms)
+  ✔ paint law constants document cohort scope (not To-ship alone) (0.148954ms)
+  ✔ graph + critique surfaces include compact ship-by (0.131627ms)
+  ✔ DataTable always mounts the filter funnel (0.297882ms)
+✔ slot-table cohort (SoT = engine + PRODUCT_TABLES) (5.456193ms)
 ▶ slot-table discover (delete vs keep)
-  ✔ KEEP engine paths exist on disk (1.292183ms)
-  ✔ KEEP includes a materialization for every PRODUCT_TABLES peer on the engine (0.199471ms)
-  ✔ does not list KEEP symbols as DELETE (0.190156ms)
-  ✔ known-debt ratchet: no new drifts, no stale ids (0.799281ms)
-  ✔ names the live receiving dual-SoT (Testing History + hand GRID) (0.296303ms)
-  ✔ next unblocked delete is mechanical (not judgment) (0.276993ms)
-  ✔ FBA catalog and station-history are judgment — not auto-delete (0.184656ms)
-✔ slot-table discover (delete vs keep) (4.714506ms)
+  ✔ KEEP engine paths exist on disk (0.854029ms)
+  ✔ KEEP includes a materialization for every PRODUCT_TABLES peer on the engine (0.136426ms)
+  ✔ does not list KEEP symbols as DELETE (0.130367ms)
+  ✔ known-debt ratchet: no new drifts, no stale ids (0.545562ms)
+  ✔ names the live receiving dual-SoT (Testing History + hand GRID) (0.211485ms)
+  ✔ next unblocked delete is mechanical (not judgment) (0.179816ms)
+  ✔ FBA catalog and station-history are judgment — not auto-delete (0.135172ms)
+✔ slot-table discover (delete vs keep) (3.173061ms)
 ℹ tests 17
 ℹ suites 2
 ℹ pass 17
@@ -26,4 +26,4 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 759.307252
+ℹ duration_ms 557.925892

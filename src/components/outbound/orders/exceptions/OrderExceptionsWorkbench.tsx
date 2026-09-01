@@ -74,6 +74,13 @@
  * add a second Escape listener. It needs a `min-h-0` flex parent or its
  * scrollport will not scroll.
  *
+ * ## What the editor is for (R-FLOW-7)
+ *
+ * Pairing the item number to the Zoho inventory SKU. That write un-cages the
+ * order and it leaves this queue. Manuals and shipping labels are a sibling
+ * To-ship form — same walk chrome (table, then record + recents rail),
+ * different job.
+ *
  * ## Scope is fixed to `actionable`
  *
  * There is no Actionable | All control. `all` does not narrow this queue, it

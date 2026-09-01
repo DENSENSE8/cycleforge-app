@@ -48,10 +48,10 @@ import {
  * frame and the test reads its tile count before any photo has arrived. The
  * digits are what say "settled".
  */
-const META_LINE = '[data-testid="photo-library-meta"]';
+const META_LINE = '[data-testid="data-table-row-count"]';
 
 /** The readout has settled on a real count. */
-const SETTLED_META = /\d+ photo/i;
+const SETTLED_META = /\d/;
 
 /** Fails the test on any uncaught page error, which a silent render crash would otherwise hide. */
 function trackPageErrors(page: import('@playwright/test').Page): string[] {

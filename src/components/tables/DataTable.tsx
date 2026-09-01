@@ -81,7 +81,7 @@
  * the interaction budget (`AGENTS.md`).
  */
 
-import { Fragment, useCallback, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { Fragment, useCallback, useId, useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import {
   Popover,
   PopoverContent,
@@ -97,6 +97,7 @@ import { DataTableZoomToggle } from '@/components/tables/DataTableZoomToggle';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { useDeskStageOptional } from '@/design-system/components/DeskStageContext';
 import { NonlinearTableHost } from '@/components/tables/NonlinearTableHost';
+import { DataTableColumnActionRow } from '@/components/tables/DataTableColumnActionRow';
 import { SlotLayoutReorderProvider } from '@/components/tables/SlotLayoutReorderContext';
 import { LedgerGridColumnHeader } from '@/design-system/components/grid/LedgerGridColumnHeader';
 import type { LedgerGridColumnModel } from '@/design-system/components/grid';
@@ -119,14 +120,15 @@ import {
   toolbarListboxOptionKeyDown,
 } from '@/design-system/primitives/ToolbarListbox';
 import {
-  cornerClass,
+  DATA_TABLE_TOOLBAR_CORNER,
+  DROPDOWN_ITEM_CORNER,
   DROPDOWN_SHELL_CORNER,
-  SEGMENTED_CONTROL_CORNER,
-  SEGMENTED_CONTROL_FACE_CORNER,
 } from '@/design-system/tokens/radius';
-import { elevationClass } from '@/design-system/tokens/shadows';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
+import { copyToClipboard } from '@/utils/_dom';
+import { toast } from '@/lib/toast';
+import { LEDGER_GRID_WIDTH_VAR } from '@/design-system/components/grid/grid-cell-chrome';
 
 /**
  * The QUICK DATE control — a peer of the filter, not a second toolbar.
@@ -247,7 +249,8 @@ function DataTableDateMenuControl({ range, onRangeChange }: DataTableDateMenu) {
       // same calendar, same presets — it just has to sit on a 28px band beside
       // the funnel instead of in a form. `cn` is tailwind-merge, so these win.
       className={cn(
-        'h-6 w-auto shrink-0 gap-1 rounded-none border-0 bg-transparent px-1.5 text-role-caption',
+        'h-6 w-auto shrink-0 gap-1 border-0 bg-transparent px-1.5 text-role-caption',
+        DATA_TABLE_TOOLBAR_CORNER,
         'hover:border-0 hover:bg-surface-hover',
         // No `focus:ring-0` here: overriding the picker's focus ring away would
         // strip the only thing telling a keyboard operator where they are.
@@ -267,9 +270,12 @@ function DataTableDateMenuControl({ range, onRangeChange }: DataTableDateMenu) {
  * to select 800 rows first.
  *
  * On a desk the control is a labeled {@link DeskHeaderAction} in the header
- * cluster (`role="overall"`), left of the primary CTA. The toolbar glyph is
- * only the fullscreen / off-desk face — the header is unrendered in
- * fullscreen (`DeskPageChrome`), so the glyph is how export stays reachable.
+ * cluster (`role="overall"`), left of the primary CTA — unless the surface
+ * sets {@link DataTableProps.copyExportPlacement} to `'menu'`, in which case
+ * the header button is omitted (To-ship tucks Export into the Sync dropdown).
+ * The toolbar glyph is only the fullscreen / off-desk face — the header is
+ * unrendered in fullscreen (`DeskPageChrome`), so the glyph is how export
+ * stays reachable.
  *
  * Reuses the surface's existing `copyExport` shape rather than a second column
  * contract: the clipboard and the file should not disagree about which fields
@@ -296,15 +302,7 @@ function DataTableExportButton<Row>({
     const current = getRows();
     const exportShape = getShape();
     if (current.length === 0) return;
-    const csv = toCsv(exportShape.columns, current.map((row) => exportShape.toRow(row)));
-    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadDataTableCsv(exportShape, current, filename);
   }, [getRows, getShape, filename]);
 
   const empty = rowCount === 0;
@@ -339,7 +337,7 @@ function DataTableExportButton<Row>({
       className={cn(
         'ds-raw-button inline-flex h-6 w-6 shrink-0 items-center justify-center',
         'transition-colors duration-100 ease-out',
-        cornerClass('flush'),
+        DATA_TABLE_TOOLBAR_CORNER,
         focusRing('control'),
         'text-text-muted hover:bg-surface-hover hover:text-text-default',
         'disabled:cursor-default disabled:text-text-faint disabled:opacity-40 disabled:hover:bg-transparent',
@@ -499,6 +497,12 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
    * the first checkbox, not only from a 3+ rail body.
    */
   selectionActions?: readonly TableStatusSelectionAction[];
+  /**
+   * Where those verbs paint. `pills` (default) is the status-bar CTA cluster.
+   * `columns` is an icon-only row that shares the grid template so Download
+   * sits under Image, Copy under Order, … — not a second toolbar.
+   */
+  selectionActionLayout?: 'pills' | 'columns';
   /** Quick date refinement — drawn beside the filter. See {@link DataTableDateMenu}. */
   dateMenu?: DataTableDateMenu;
   /**
@@ -521,12 +525,19 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
   selectionScope?: string;
   /**
    * Copy/export shape. On a desk the view-export control is a labeled
-   * **Export** header action (`role="overall"`), left of the primary CTA.
-   * The toolbar glyph remains in fullscreen (header unrendered) and off a
-   * desk stage. Omit and neither control is offered. Selection copy still
-   * uses this shape in the status bar.
+   * **Export** header action (`role="overall"`), left of the primary CTA —
+   * unless {@link copyExportPlacement} is `'menu'`. The toolbar glyph remains
+   * in fullscreen (header unrendered) and off a desk stage. Omit and neither
+   * control is offered. Selection copy still uses this shape in the status bar.
    */
   copyExport?: DataTableExport<Row>;
+  /**
+   * Where the view-export control paints. `'header'` (default) is the labeled
+   * desk-header button. `'menu'` hides that button so a desk (To-ship) can tuck
+   * Export into its Sync dropdown via {@link downloadDataTableCsv} +
+   * {@link DeskExportMenuRegistrar}. Fullscreen still gets the toolbar glyph.
+   */
+  copyExportPlacement?: 'header' | 'menu';
   /** Select-gutter face. Defaults to the flat `'always'` checklist square. */
   selectGutterChrome?: GridSelectGutterChrome;
 
@@ -604,6 +615,24 @@ function toCsv(
   return [columns.map(cell).join(','), ...rows.map((r) => r.map(cell).join(','))].join('\r\n');
 }
 
+/** Download the current view as a CSV file. Used by the header button and by desks that tuck Export into a dropdown. */
+export function downloadDataTableCsv<Row>(
+  shape: DataTableExport<Row>,
+  rows: readonly Row[],
+  filename: string,
+): void {
+  if (rows.length === 0) return;
+  const csv = toCsv(shape.columns, rows.map((row) => shape.toRow(row)));
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 /** Serialize a selection as TSV — what a spreadsheet expects off the clipboard. */
 function toTsv(
   columns: readonly string[],
@@ -612,6 +641,84 @@ function toTsv(
   const cell = (v: string | number | null | undefined) =>
     v == null ? '' : String(v).replace(/[\t\r\n]+/g, ' ');
   return [columns.join('\t'), ...rows.map((r) => r.map(cell).join('\t'))].join('\n');
+}
+
+function selectionIdentityFields(row: unknown): { orderId: string; tracking: string } {
+  if (!row || typeof row !== 'object') return { orderId: '', tracking: '' };
+  const rec = row as Record<string, unknown>;
+  return {
+    orderId: String(rec.order_id ?? '').trim(),
+    tracking: String(rec.shipping_tracking_number ?? rec.tracking_number ?? '').trim(),
+  };
+}
+
+async function copySelectionLines(lines: string[], emptyMessage: string, okMessage: string) {
+  if (lines.length === 0) {
+    toast.error(emptyMessage);
+    return;
+  }
+  const text = [...new Set(lines)].join('\n');
+  const copied = await copyToClipboard(text);
+  if (copied) toast.success(okMessage);
+  else toast.error('Copy failed');
+}
+
+/** Mirror ledger geometry onto the column-action foot so tracks line up after h-scroll. */
+function useMirrorGridGeometry(
+  hostRef: RefObject<HTMLElement | null>,
+  footerRef: RefObject<HTMLElement | null>,
+  enabled: boolean,
+): void {
+  useLayoutEffect(() => {
+    if (!enabled) return;
+    const host = hostRef.current;
+    if (!host) return;
+
+    let styleObserver: MutationObserver | null = null;
+    let resizeObserver: ResizeObserver | null = null;
+
+    const read = () => {
+      const grid = host.querySelector<HTMLElement>('[data-cf-grid]');
+      const footer = footerRef.current;
+      if (!grid || !footer) return;
+      const sx = grid.style.getPropertyValue('--cf-grid-sx').trim() || '0px';
+      footer.style.setProperty('--cf-grid-sx', sx);
+      const headerRow = host.querySelector<HTMLElement>('[data-grid-col-header] [role="row"]');
+      const widthPx = headerRow ? Math.ceil(headerRow.getBoundingClientRect().width) : 0;
+      if (widthPx > 0) {
+        footer.style.setProperty(LEDGER_GRID_WIDTH_VAR, `${widthPx}px`);
+      } else {
+        const width =
+          grid.style.getPropertyValue(LEDGER_GRID_WIDTH_VAR).trim() ||
+          getComputedStyle(grid).getPropertyValue(LEDGER_GRID_WIDTH_VAR).trim();
+        if (width) footer.style.setProperty(LEDGER_GRID_WIDTH_VAR, width);
+      }
+    };
+
+    const attach = () => {
+      styleObserver?.disconnect();
+      resizeObserver?.disconnect();
+      const grid = host.querySelector<HTMLElement>('[data-cf-grid]');
+      if (!grid) return;
+      styleObserver = new MutationObserver(read);
+      styleObserver.observe(grid, { attributes: true, attributeFilter: ['style'] });
+      const headerRow = host.querySelector<HTMLElement>('[data-grid-col-header] [role="row"]');
+      if (headerRow) {
+        resizeObserver = new ResizeObserver(read);
+        resizeObserver.observe(headerRow);
+      }
+      read();
+    };
+
+    const treeObserver = new MutationObserver(attach);
+    treeObserver.observe(host, { childList: true, subtree: true });
+    attach();
+    return () => {
+      treeObserver.disconnect();
+      styleObserver?.disconnect();
+      resizeObserver?.disconnect();
+    };
+  }, [enabled, hostRef, footerRef]);
 }
 
 /** The single filter control. Lit and counted — never a bare dot (WCAG 1.4.1). */
@@ -668,7 +775,7 @@ export function DataTableFilterMenu({
             // neighbour (AGENTS.md — no layout animations).
             'transition-colors duration-100 ease-out',
             PRIMARY_CHROME_ROW_FACE,
-            cornerClass('flush'),
+            DATA_TABLE_TOOLBAR_CORNER,
             focusRing('control'),
             hot
               ? 'bg-blue-600 text-white hover:bg-blue-600'
@@ -720,7 +827,8 @@ export function DataTableFilterMenu({
                   data-testid={`data-table-filter-${option.id}`}
                   data-active={option.active ? '' : undefined}
                   className={cn(
-                    'ds-raw-button flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-role-caption',
+                    'ds-raw-button flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left text-role-caption',
+                    DROPDOWN_ITEM_CORNER,
                     focusRing('control'),
                     option.active
                       ? 'bg-surface-sunken font-semibold text-text-default'
@@ -751,7 +859,8 @@ export function DataTableFilterMenu({
                 }}
                 data-testid="data-table-filter-clear"
                 className={cn(
-                  'ds-raw-button w-full rounded px-2 py-1.5 text-left text-role-caption text-text-soft',
+                  'ds-raw-button w-full px-2 py-1.5 text-left text-role-caption text-text-soft',
+                  DROPDOWN_ITEM_CORNER,
                   focusRing('control'),
                   'hover:bg-surface-hover hover:text-text-default',
                 )}
@@ -768,15 +877,16 @@ export function DataTableFilterMenu({
 /**
  * The one SORT control — a peer of the filter, not a second toolbar.
  *
- * Groups (View · Platform · Carriers) are TABS, not a stacked list:
- * hunting Amazon in a 30-row menu is the job failing. A pick here reorders
- * every row; a pick in the funnel next door hides some. Column sorts live
+ * Groups (View · Platform · Carriers) are CATEGORY HEADINGS in one list,
+ * the same banded-popover grammar as the filter next door. A pick here
+ * reorders every row; a pick in the funnel hides some. Column sorts live
  * on header click, not in this menu.
  *
  * The list is a combobox listbox ({@link ToolbarListboxOption}): dense rows,
- * trailing check, full-width hover, arrow-key roving. Platform / carrier
- * lists of 8+ get a sticky filter under the tabs. Identity dots stay on the
- * toolbar trigger (same Order-column face) — not in the list.
+ * trailing check on the selected value, full-width hover, arrow-key roving.
+ * Eight or more options get a sticky filter. Platform / carrier rows paint
+ * the same {@link MenuBrandIdentity} dots as the Order column (left) and
+ * keep the check on the right. View rows have no identity.
  */
 function DataTableSortMenu({
   options,
@@ -786,7 +896,6 @@ function DataTableSortMenu({
   activeFace,
 }: NonNullable<DataTableProps<unknown, string, LedgerGridColumnModel>['sortMenu']>) {
   const [open, setOpen] = useState(false);
-  const [tabOverride, setTabOverride] = useState<string | null>(null);
   const [query, setQuery] = useState('');
   const listRef = useRef<HTMLUListElement | null>(null);
   const listId = useId();
@@ -809,26 +918,35 @@ function DataTableSortMenu({
   }, [options]);
 
   const grouped = bands.length > 1 && bands.some((b) => b.key !== '');
-  const defaultTab =
-    (activeOption?.group && bands.some((b) => b.key === activeOption.group)
-      ? activeOption.group
-      : bands[0]?.key) ?? '';
-  const activeTab = tabOverride ?? defaultTab;
-  const visibleOptions = grouped
-    ? (bands.find((b) => b.key === activeTab) ?? bands[0])?.options ?? options
-    : options;
-  const showFilter = visibleOptions.length >= 8;
-  const filteredOptions = useMemo(() => {
+  const showFilter = options.length >= 8;
+  const filteredBands = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return visibleOptions;
-    return visibleOptions.filter(
-      (option) =>
-        option.label.toLowerCase().includes(q) ||
-        (option.shortLabel ?? '').toLowerCase().includes(q),
-    );
-  }, [visibleOptions, query]);
+    if (!q) return bands;
+    return bands
+      .map((band) => ({
+        ...band,
+        options: band.options.filter(
+          (option) =>
+            option.label.toLowerCase().includes(q) ||
+            (option.shortLabel ?? '').toLowerCase().includes(q),
+        ),
+      }))
+      .filter((band) => band.options.length > 0);
+  }, [bands, query]);
+  const filteredOptions = useMemo(
+    () => filteredBands.flatMap((band) => band.options),
+    [filteredBands],
+  );
 
   const closeMenu = () => setOpen(false);
+
+  const revealActive = () => {
+    requestAnimationFrame(() => {
+      listRef.current
+        ?.querySelector<HTMLElement>('[aria-selected="true"]')
+        ?.scrollIntoView({ block: 'nearest' });
+    });
+  };
 
   return (
     <Popover
@@ -836,8 +954,8 @@ function DataTableSortMenu({
       onOpenChange={(next) => {
         setOpen(next);
         if (next) {
-          setTabOverride(null);
           setQuery('');
+          revealActive();
         }
       }}
     >
@@ -856,7 +974,7 @@ function DataTableSortMenu({
             'ds-raw-button inline-flex shrink-0 items-center justify-center gap-1 px-1.5 text-role-caption',
             'transition-colors duration-100 ease-out',
             PRIMARY_CHROME_ROW_FACE,
-            cornerClass('flush'),
+            DATA_TABLE_TOOLBAR_CORNER,
             focusRing('control'),
             hot
               ? 'bg-blue-600 text-white hover:bg-blue-600'
@@ -885,47 +1003,6 @@ function DataTableSortMenu({
           focusRing('field', 'accent'),
         )}
       >
-        {grouped ? (
-          <div
-            role="tablist"
-            aria-label="Sort by"
-            className={cn(
-              SEGMENTED_CONTROL_CORNER,
-              'border-b border-border-soft bg-surface-sunken p-px',
-              bands.length > 3 ? 'grid grid-cols-2 gap-px' : 'flex',
-            )}
-          >
-            {bands.map((band) => {
-              const selected = band.key === activeTab;
-              const tabId = band.key.replace(/\s+/g, '-') || 'sort';
-              const label = band.key || 'Sort';
-              return (
-                <button
-                  key={band.key || 'sort'}
-                  type="button"
-                  role="tab"
-                  aria-selected={selected}
-                  title={label}
-                  data-testid={`data-table-sort-tab-${tabId}`}
-                  onClick={() => {
-                    setTabOverride(band.key);
-                    setQuery('');
-                  }}
-                  className={cn(
-                    'ds-raw-button min-w-0 flex-1 truncate px-1.5 py-0.5 text-role-micro font-semibold',
-                    SEGMENTED_CONTROL_FACE_CORNER,
-                    focusRing('control'),
-                    selected
-                      ? cn('bg-surface-card text-text-default', elevationClass('raised', 'soft'))
-                      : 'text-text-soft hover:text-text-default',
-                  )}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        ) : null}
         {showFilter ? (
           <div
             role="search"
@@ -971,40 +1048,75 @@ function DataTableSortMenu({
           ref={listRef}
           id={listId}
           role="listbox"
-          aria-label={activeTab || 'Sort'}
+          aria-label="Sort"
           className="min-h-0 flex-1 overflow-y-auto py-0.5"
         >
           {filteredOptions.length === 0 ? (
             <li className="px-2.5 py-1.5 text-role-caption text-text-faint">No matches</li>
           ) : (
-            filteredOptions.map((option, index) => (
-              <li key={option.id}>
-                <ToolbarListboxOption
-                  index={index}
-                  selected={option.id === active}
-                  checkAlign="end"
-                  onClick={() => {
-                    onSelect(option.id);
-                    closeMenu();
-                  }}
-                  onKeyDown={(event) =>
-                    toolbarListboxOptionKeyDown(
-                      event,
-                      index,
-                      filteredOptions.length,
-                      listRef,
-                      closeMenu,
-                    )
-                  }
-                  dataAttrs={{
-                    'data-testid': `data-table-sort-${option.id.replace(/:/g, '-')}`,
-                    ...(option.id === active ? { 'data-active': '' } : {}),
-                  }}
-                >
-                  {option.label}
-                </ToolbarListboxOption>
-              </li>
-            ))
+            filteredBands.map((band, bandIndex) => {
+              const headingId = band.key
+                ? `${listId}-${band.key.replace(/\s+/g, '-')}`
+                : undefined;
+              let optionIndex = 0;
+              for (let i = 0; i < bandIndex; i += 1) {
+                optionIndex += filteredBands[i].options.length;
+              }
+              return (
+                <Fragment key={band.key || `band-${bandIndex}`}>
+                  {grouped && band.key ? (
+                    <li role="presentation">
+                      <p
+                        id={headingId}
+                        data-testid={`data-table-sort-group-${band.key.replace(/\s+/g, '-')}`}
+                        className={cn(
+                          'px-2.5 pb-0.5 text-role-micro font-semibold uppercase tracking-widest text-text-faint',
+                          bandIndex === 0 ? 'pt-1' : 'pt-2',
+                        )}
+                      >
+                        {band.key}
+                      </p>
+                    </li>
+                  ) : null}
+                  {band.options.map((option, withinBand) => {
+                    const index = optionIndex + withinBand;
+                    return (
+                      <li key={option.id}>
+                        <ToolbarListboxOption
+                          index={index}
+                          selected={option.id === active}
+                          checkAlign="end"
+                          leading={
+                            option.identity ? (
+                              <MenuBrandIdentity {...option.identity} />
+                            ) : undefined
+                          }
+                          onClick={() => {
+                            onSelect(option.id);
+                            closeMenu();
+                          }}
+                          onKeyDown={(event) =>
+                            toolbarListboxOptionKeyDown(
+                              event,
+                              index,
+                              filteredOptions.length,
+                              listRef,
+                              closeMenu,
+                            )
+                          }
+                          dataAttrs={{
+                            'data-testid': `data-table-sort-${option.id.replace(/:/g, '-')}`,
+                            ...(option.id === active ? { 'data-active': '' } : {}),
+                          }}
+                        >
+                          {option.label}
+                        </ToolbarListboxOption>
+                      </li>
+                    );
+                  })}
+                </Fragment>
+              );
+            })
           )}
         </ul>
       </PopoverContent>
@@ -1066,7 +1178,8 @@ function DataTableFieldsMenu({
         // announces six identical buttons and the check glyph says nothing.
         aria-pressed={option.bound}
         className={cn(
-          'ds-raw-button flex w-full min-w-0 flex-1 items-center justify-between gap-2 rounded px-2 py-1.5 text-left text-role-caption',
+          'ds-raw-button flex w-full min-w-0 flex-1 items-center justify-between gap-2 px-2 py-1.5 text-left text-role-caption',
+          DROPDOWN_ITEM_CORNER,
           focusRing('control'),
           option.bound
             ? 'bg-surface-sunken font-semibold text-text-default'
@@ -1101,7 +1214,7 @@ function DataTableFieldsMenu({
             'ds-raw-button inline-flex shrink-0 items-center justify-center gap-1 px-1.5 text-role-caption',
             'transition-colors duration-100 ease-out',
             PRIMARY_CHROME_ROW_FACE,
-            cornerClass('flush'),
+            DATA_TABLE_TOOLBAR_CORNER,
             focusRing('control'),
             'text-text-muted hover:bg-surface-hover hover:text-text-default',
           )}
@@ -1163,7 +1276,8 @@ function DataTableFieldsMenu({
                 setOpen(false);
               }}
               className={cn(
-                'ds-raw-button w-full rounded px-2 py-1.5 text-left text-role-caption text-text-soft',
+                'ds-raw-button w-full px-2 py-1.5 text-left text-role-caption text-text-soft',
+                DROPDOWN_ITEM_CORNER,
                 focusRing('control'),
                 'hover:bg-surface-hover hover:text-text-default',
               )}
@@ -1185,7 +1299,8 @@ function DataTableFieldsMenu({
                 setOpen(false);
               }}
               className={cn(
-                'ds-raw-button w-full rounded px-2 py-1.5 text-left text-role-caption',
+                'ds-raw-button w-full px-2 py-1.5 text-left text-role-caption',
+                DROPDOWN_ITEM_CORNER,
                 focusRing('control'),
                 confirmingOrgSave
                   ? 'bg-blue-600 font-semibold text-white hover:bg-blue-600'
@@ -1231,8 +1346,10 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   onLoadMore,
   selectionActionCount,
   selectionActions,
+  selectionActionLayout = 'pills',
   selectionScope,
   copyExport,
+  copyExportPlacement = 'header',
   selectGutterChrome = 'always',
   isSortable,
   sort,
@@ -1253,6 +1370,13 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
 }: DataTableProps<Row, K, C>) {
   const selectedRows = useTableSelection<Row>(selectionScope ?? '__idle__');
   const selectedCount = selectionScope ? selectedRows.length : 0;
+  const gridHostRef = useRef<HTMLDivElement>(null);
+  const columnFooterRef = useRef<HTMLDivElement>(null);
+  const columnActionsLive =
+    selectionActionLayout === 'columns' &&
+    selectedCount > 0 &&
+    Boolean(selectionActions && selectionActions.length > 0);
+  useMirrorGridGeometry(gridHostRef, columnFooterRef, columnActionsLive);
 
   // Sortability is a property of the DESCRIPTOR, not of the page: TanStack's
   // `enableSorting` is already the surface's sort vocabulary, so reading it back
@@ -1351,11 +1475,47 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
     void navigator.clipboard?.writeText(tsv);
   }, [copyExport, selectedRows, selectedCount]);
 
+  const columnCopySource = useMemo(() => {
+    const orderIds: string[] = [];
+    const trackingNumbers: string[] = [];
+    for (const row of selectedRows) {
+      const fields = selectionIdentityFields(row);
+      if (fields.orderId) orderIds.push(fields.orderId);
+      if (fields.tracking) trackingNumbers.push(fields.tracking);
+    }
+    const copyAction = selectionActions?.find((action) => action.key === 'copy');
+    return {
+      orderIds,
+      trackingNumbers,
+      onCopyOrderIds: () => {
+        void copySelectionLines(orderIds, 'No order IDs on the selected row(s)', 'Copied order ID');
+      },
+      onCopyTracking: () => {
+        void copySelectionLines(
+          trackingNumbers,
+          'No tracking numbers on the selected row(s)',
+          'Copied tracking number',
+        );
+      },
+      onCopyAll: () => {
+        if (copyAction) copyAction.onClick();
+        else onCopySelection();
+      },
+    };
+  }, [selectedRows, selectionActions, onCopySelection]);
+
   const filterChrome = filter ?? DATA_TABLE_FILTER_IDLE;
   const isNarrowed = Boolean(search.value) || Boolean(filterChrome.options.some((o) => o.active));
 
   const stage = useDeskStageOptional();
-  const exportInHeader = Boolean(copyExport && stage && !stage.fullscreen);
+  const exportInHeader = Boolean(
+    copyExport && stage && !stage.fullscreen && copyExportPlacement !== 'menu',
+  );
+  const showExportGlyph = Boolean(
+    copyExport &&
+      !exportInHeader &&
+      (copyExportPlacement !== 'menu' || Boolean(stage?.fullscreen)),
+  );
   const rowsRef = useRef(rows);
   rowsRef.current = rows;
   const copyExportRef = useRef(copyExport);
@@ -1398,7 +1558,10 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           value={search.value}
           onChange={search.onChange}
           placeholder={search.placeholder ?? 'Search'}
-          className="min-w-0 max-w-[22rem] flex-1"
+          className={cn(
+            'min-w-0 max-w-[22rem] flex-1 overflow-hidden',
+            DATA_TABLE_TOOLBAR_CORNER,
+          )}
           tone="neutral"
           hideUnderline
           fillHost
@@ -1429,7 +1592,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           never scans the row.
         */}
         <span className="ml-auto inline-flex shrink-0 items-center gap-1">
-          {copyExport && !exportInHeader ? exportControl : null}
+          {showExportGlyph ? exportControl : null}
           {fields && binding.definition.capabilities.fieldsMenu ? (
             <DataTableFieldsMenu {...fields} />
           ) : null}
@@ -1440,7 +1603,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
       </div>
 
       {/* ── The grid ───────────────────────────────────────────────────────── */}
-      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+      <div ref={gridHostRef} className="relative flex min-h-0 min-w-0 flex-1 flex-col">
         <NonlinearTableHost<Row, K, C>
           binding={binding}
           ariaLabel={ariaLabel}
@@ -1470,24 +1633,49 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
         />
       </div>
 
+      {columnActionsLive ? (
+        <div
+          ref={columnFooterRef}
+          role="rowgroup"
+          data-grid-col-footer=""
+          className="sticky bottom-0 z-dropdown shrink-0 overflow-x-auto overflow-y-visible bg-surface-card"
+        >
+          <DataTableColumnActionRow
+            columns={mounted}
+            actions={selectionActions ?? []}
+            copySource={columnCopySource}
+            selectedLabel={`${selectedCount.toLocaleString()} selected`}
+            shownLabel={
+              typeof totalCount === 'number'
+                ? `${rows.length.toLocaleString()} of ${totalCount.toLocaleString()}`
+                : `${rows.length.toLocaleString()} ${rows.length === 1 ? 'row' : 'rows'}`
+            }
+          />
+        </div>
+      ) : null}
+
+      {columnActionsLive && !(tabs && tabs.length > 0) && !onLoadMore ? null : (
       <TableStatusBar
         tabs={tabs}
         activeTab={activeTab}
         onTabChange={onTabChange}
-        shown={rows.length}
-        total={totalCount}
-        selected={selectedCount}
+        shown={columnActionsLive ? undefined : rows.length}
+        total={columnActionsLive ? undefined : totalCount}
+        selected={columnActionsLive ? 0 : selectedCount}
         onCopySelection={
-          selectionActions && selectionActions.length > 0
+          columnActionsLive
             ? undefined
-            : copyExport
-              ? onCopySelection
-              : undefined
+            : selectionActions && selectionActions.length > 0
+              ? undefined
+              : copyExport
+                ? onCopySelection
+                : undefined
         }
-        selectionActions={selectionActions}
+        selectionActions={columnActionsLive ? undefined : selectionActions}
         selectionActionCount={selectionActionCount}
         onLoadMore={onLoadMore}
       />
+      )}
     </div>
       </>
     </SlotLayoutReorderProvider>

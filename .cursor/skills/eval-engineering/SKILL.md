@@ -81,7 +81,21 @@ pnpm run eval:cohort shortcuts
 
 7. **Single-station mouth/domain / overlay shell:** `pnpm run eval:station <id>`.
 
-8. Full Garisek ratchet (optional): from Garisek-OS
+8. **Cursor `stop` + Hermes Host twin** — shared
+   `tools/eval-ledger/machine-gate.mjs` (`pnpm run eval:machine-gate`).
+   Cursor: pass = silence; real red = one `followup_message`; timeout = fail
+   open. Hermes: `cycleforge-app` defaults `LOOP_VERIFY_COMMAND` to that CLI
+   forever (`defaultVerifyCommandForRepo`); local coder gets the same display
+   law in `buildRepairPrompt`. **Perf north star 95:** every pass stamps
+   `eval:perf-gate` debt (`.cursor/perf-session.json`); live
+   `LOOP_PERF=check` / `strict` optional. **Overnight:**
+   `pnpm run perf:overnight` (Hermes Host loop until Tier-1 ≥ 95 or max hours).
+   Kill switch: `CYCLEFORGE_EVAL_STOP=0`.
+   Dry: `CYCLEFORGE_EVAL_STOP=dry` / `--dry-fail`. Tests:
+   `pnpm run eval:stop-gate-test`. Optional MLX brief smoke:
+   `pnpm run eval:mlx-smoke`.
+
+9. Full Garisek ratchet (optional): from Garisek-OS
    `npx tsx scripts/ratchet-run.ts --repo cycleforge-app --dry-run`
 
 ## Examples
@@ -102,5 +116,7 @@ See `docs/eval/README.md`.
 
 ## Troubleshooting
 
-- Missing script: confirm `eval:cohort` / `eval:discover` / `verify:fast` in package.json
+- Missing script: confirm `eval:cohort` / `eval:discover` / `verify:fast` / `eval:stop-gate-test` / `eval:mlx-smoke` in package.json
 - Garisek path: `GARISEK_OS_ROOT` defaults to `/home/michaelgarisek/Projects/Garisek-OS`
+- Stop gate noisy: `CYCLEFORGE_EVAL_STOP=0` for this shell; Hooks channel stderr is pass summary only
+- MLX unreachable: wake Mac or set `CYCLEFORGE_MLX_BASE`; never fall back to Ollama 7B

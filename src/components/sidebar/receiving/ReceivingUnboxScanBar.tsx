@@ -7,6 +7,7 @@ import {
   ThemedStationScanBar,
   useScanStance,
 } from '@/components/station/scan-bar';
+import { composeStationScanBarRightContent } from '@/components/station/scan-bar/station-scan-preview-rail';
 // From the light scan-parser module — importing via lib/support/tickets drags
 // the server-only tenancy/db (Neon driver) into this client bundle.
 import type { UnboxPreviewHit } from '@/lib/receiving/preview-scan';
@@ -135,36 +136,28 @@ export function ReceivingUnboxScanBar({
         previewLookup ? (raw) => previewLookup(raw, armedMode) : undefined
       }
       previewMode={armedMode ?? 'auto'}
-      rightContent={
-        filterSlot || stance === 'scan' ? (
-          <>
-            {filterSlot}
-            {/* The scan-TYPE picker belongs to scanning. In Preview the bar is
-                the rail's find field, so a type to arm the NEXT SCAN with is a
-                control for something this field is not about to do. */}
-            {stance === 'scan' ? (
-              <StationScanModeRail
-                modes={UNBOX_SCAN_MODES}
-                armedMode={armedMode}
-                onToggleMode={onToggleMode}
-                size="compact"
-                getAriaLabel={(mode, armed) => {
-                  const full = UNBOX_SCAN_MODE_FULL_LABEL[mode.mode];
-                  return armed
-                    ? `${full} armed for next scan. Click again to auto-detect.`
-                    : `Arm ${full}: force the next scan to search ${full}.`;
-                }}
-                getTitle={(mode, armed) => {
-                  const full = UNBOX_SCAN_MODE_FULL_LABEL[mode.mode];
-                  return armed
-                    ? `${full} armed \u2014 next scan. Click again to auto-detect.`
-                    : `Search by ${full}`;
-                }}
-              />
-            ) : null}
-          </>
-        ) : undefined
-      }
+      rightContent={composeStationScanBarRightContent(
+        stance,
+        filterSlot,
+        <StationScanModeRail
+          modes={UNBOX_SCAN_MODES}
+          armedMode={armedMode}
+          onToggleMode={onToggleMode}
+          size="compact"
+          getAriaLabel={(mode, armed) => {
+            const full = UNBOX_SCAN_MODE_FULL_LABEL[mode.mode];
+            return armed
+              ? `${full} armed for next scan. Click again to auto-detect.`
+              : `Arm ${full}: force the next scan to search ${full}.`;
+          }}
+          getTitle={(mode, armed) => {
+            const full = UNBOX_SCAN_MODE_FULL_LABEL[mode.mode];
+            return armed
+              ? `${full} armed \u2014 next scan. Click again to auto-detect.`
+              : `Search by ${full}`;
+          }}
+        />,
+      )}
     />
   );
 }

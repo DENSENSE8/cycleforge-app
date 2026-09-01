@@ -360,6 +360,9 @@ test('/shipping/orders declares the params its own components read', () => {
   assert.equal(parse('dateTo=2026-08-27'), '2026-08-27');
   // Packed dismiss writes `allDates=1` so current-week seed does not re-apply.
   assert.equal(parse('allDates=1'), '1');
+  // Labels walk. Undeclared, hygiene strips `?paperwork=` and the desk flashes.
+  assert.equal(parse('paperwork=42'), '42');
+  assert.equal(parse('paperwork=0'), null);
 });
 
 test('routeParamsFor resolves the longest route first', () => {

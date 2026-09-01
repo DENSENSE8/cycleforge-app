@@ -1,18 +1,9 @@
 {
   "project": "cycleforge-app",
   "target": "component:src/design-system/components/DateRangePickerField.tsx:DateRangePickerField",
-  "files_affected": 6,
-  "total_symbols": 8,
+  "files_affected": 9,
+  "total_symbols": 11,
   "files": [
-    {
-      "file": "src/components/board/SwimlaneBoard.tsx",
-      "nearest_depth": 1,
-      "affected_symbols": 2,
-      "symbols": [
-        "SwimlaneBoard",
-        "SwimlaneBubble"
-      ]
-    },
     {
       "file": "src/components/tables/DataTable.tsx",
       "nearest_depth": 1,
@@ -20,6 +11,15 @@
       "symbols": [
         "DataTable",
         "DataTableDateMenuControl"
+      ]
+    },
+    {
+      "file": "src/components/board/SwimlaneBoard.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 2,
+      "symbols": [
+        "SwimlaneBoard",
+        "SwimlaneBubble"
       ]
     },
     {
@@ -39,6 +39,30 @@
       ]
     },
     {
+      "file": "src/components/dashboard/BulkShipByDialog.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "BulkShipByDialog"
+      ]
+    },
+    {
+      "file": "src/components/tables/compound/CompoundCells.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "CompoundState"
+      ]
+    },
+    {
+      "file": "src/hooks/useDashboardBulkSelection.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "useDashboardBulkSelection"
+      ]
+    },
+    {
       "file": "src/components/shipping/ShippedFilterToolbar.tsx",
       "nearest_depth": 2,
       "affected_symbols": 1,
@@ -47,11 +71,11 @@
       ]
     },
     {
-      "file": "src/components/unshipped/UnshippedSidebar.tsx",
+      "file": "src/components/tables/compound/CompoundGridCell.tsx",
       "nearest_depth": 2,
       "affected_symbols": 1,
       "symbols": [
-        "UnshippedSidebar"
+        "renderCompoundGridCell"
       ]
     }
   ]

@@ -79,14 +79,15 @@ export function mediaPickerShowsGridControls(args: {
 
 /** Photo thumbnail grids (folders leaf, grid-sm, grid-ticket, pickers). */
 export function photoGridLeafClass(density: PhotoGridDensity): string {
+  // gap-0.5 — Google Photos wall seam (~2px); card borders no longer carry the gap.
   switch (density) {
     case 'sm':
-      return 'grid grid-cols-4 gap-1.5 sm:grid-cols-5 md:grid-cols-6 xl:grid-cols-8';
+      return 'grid grid-cols-4 gap-0.5 sm:grid-cols-5 md:grid-cols-6 xl:grid-cols-8';
     case 'md':
-      return 'grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5';
+      return 'grid grid-cols-3 gap-0.5 sm:grid-cols-4 md:grid-cols-5';
     case 'lg':
       // Natural-height cards — top-align so mixed orientations don't stretch.
-      return 'grid grid-cols-2 items-start gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4';
+      return 'grid grid-cols-2 items-start gap-0.5 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4';
   }
 }
 

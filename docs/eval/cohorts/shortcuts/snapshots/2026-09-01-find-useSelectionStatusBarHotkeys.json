@@ -1,4 +1,1 @@
-{
-  "project": "cycleforge-app",
-  "matches": []
-}
+find_symbol failed: relation "graphify_projects" does not exist

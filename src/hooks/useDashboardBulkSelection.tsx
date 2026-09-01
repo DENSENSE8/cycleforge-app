@@ -8,7 +8,8 @@
  * checkboxes + column select-all, no chrome pencil. This hook owns the clear-
  * on-view-flip resets and the bulk actions. The floating action bar is rendered
  * by the page from `selectionActions`; overlays those actions open (the
- * assignment carousel, the ship-by picker) come back as `selectionOverlays`.
+ * one-shot assign picker, condition / qty / notes / ship-by dialogs) come
+ * back as `selectionOverlays`.
  *
  * Right-rail publishers wrap this via {@link useOrderRailSelection} — do not
  * add a publish flag here. Surfaces that still need a floating capsule (none of
@@ -25,31 +26,32 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Bookmark, Calendar as CalendarIcon, Copy, Download, FileText, Flag, Printer, Trash2, User } from '@/components/Icons';
+import { Bookmark, Calendar as CalendarIcon, Copy, Download, FileText, Flag, Hash, Image, Printer, Tag, Trash2, User } from '@/components/Icons';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { useDeleteOrderRow } from '@/hooks/useDeleteOrderRow';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
-import { useWorkOrderAssignment } from '@/hooks/useWorkOrderAssignment';
+import { getActiveStaff } from '@/lib/staffCache';
 import { emitToggleAll } from '@/lib/selection/table-selection';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import { getDashboardDomainFromSearch } from '@/lib/dashboard/dashboard-domains';
 import { isPdfOutboundDocument } from '@/lib/documents/outbound-document-display';
 import { printOutboundDocuments, type PrintableOutboundDocument } from '@/lib/print/printOutboundDocuments';
-import { buildAssignmentRow } from '@/components/shipped/details-panel/shipped-details-logic';
 import {
   buildOrderExportCsv,
   orderExportFilename,
   type ExportableOrderRow,
 } from '@/lib/dashboard/order-export-csv';
 import { orderBulkActionKeys } from '@/lib/selection-context/order-inspector-context';
-import { WorkOrderAssignmentCard } from '@/components/work-orders/WorkOrderAssignmentCard';
+import { BulkConditionDialog } from '@/components/dashboard/BulkConditionDialog';
+import { BulkQtyDialog } from '@/components/dashboard/BulkQtyDialog';
+import { BulkNotesDialog } from '@/components/dashboard/BulkNotesDialog';
 import { BulkShipByDialog } from '@/components/dashboard/BulkShipByDialog';
 import { BulkFlagDialog } from '@/components/dashboard/BulkFlagDialog';
 import { ListingAutomationAssignCard } from '@/components/dashboard/ListingAutomationAssignCard';
+import { openStageAssignPanel } from '@/lib/tables/stage-assign-panel-store';
 import type { OrderRowFlagId } from '@/lib/orders/order-row-flags';
-import type { WorkOrderRow } from '@/components/work-orders/types';
+import type { ConditionGrade } from '@/lib/conditions';
 import type { OutboundDocumentsResponse } from '@/lib/documents/types';
-import type { ShippedOrder } from '@/types/orders';
 import type { SelectionAction } from '@/lib/selection/selection-actions';
 // Lazy: the product-label printer drags the bwip-js barcode engine (~250 KB gz)
 // into whatever bundle imports it statically — this hook rides in the dashboard
@@ -72,6 +74,7 @@ type DashSelectableRow = {
   shipping_tracking_number?: string | null;
   tracking_number?: string | null;
   packer_log_id?: number | null;
+  catalog_image_url?: string | null;
 };
 
 /**
@@ -107,7 +110,7 @@ export interface DashboardBulkSelection {
   selectedRows: DashSelectableRow[];
   /** Lifecycle-scoped bulk actions for the contextual selection bar. */
   selectionActions: SelectionAction<DashSelectableRow>[];
-  /** Modal surfaces some actions open (assignment carousel, ship-by picker).
+  /** Modal surfaces some actions open (one-shot assign, condition, qty, notes, ship-by).
    *  The page renders this beside the rail — never inside a selection capsule. */
   selectionOverlays: ReactNode;
 }
@@ -186,6 +189,31 @@ export function useDashboardBulkSelection(
     else toast.error('Copy is unavailable on this connection — select the text manually');
   }, []);
 
+  const handleDownloadPhotos = useCallback((rows: DashSelectableRow[]) => {
+    const urls = [
+      ...new Set(
+        rows
+          .map((r) => String(r.catalog_image_url || '').trim())
+          .filter(Boolean),
+      ),
+    ];
+    if (urls.length === 0) {
+      toast.error('No photos on the selected row(s)');
+      return;
+    }
+    for (const url of urls) {
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = '';
+      a.rel = 'noopener';
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+    }
+    toast.success(urls.length === 1 ? 'Downloading photo' : `Downloading ${urls.length} photos`);
+  }, []);
+
   /*
    * Scale confirmation for a write that fans out over a selection.
    *
@@ -202,6 +230,7 @@ export function useDashboardBulkSelection(
    * confirm — destruction is not a matter of degree.
    */
   const BULK_CONFIRM_THRESHOLD = 5;
+  const BULK_WRITE_CAP = 500;
   const confirmBulkWrite = useCallback(async (count: number, verb: string) => {
     if (count < BULK_CONFIRM_THRESHOLD) return true;
     return requestConfirm({
@@ -211,27 +240,35 @@ export function useDashboardBulkSelection(
     });
   }, []);
 
-  // ─── Assign tester / packer ────────────────────────────────────────────────
-  // Composes the existing multi-row carousel (prev/next + confirm→advance), NOT
-  // a batch-edit "mixed values" panel: assignment is a per-order judgement, and
-  // the card already models exactly that walk.
-  const [assignmentRows, setAssignmentRows] = useState<WorkOrderRow[]>([]);
-  const [listingRuleOrderIds, setListingRuleOrderIds] = useState<number[]>([]);
-  const { technicianOptions, packerOptions, loadStaff, confirmAssignment } =
-    useWorkOrderAssignment();
+  const selectedOrderIds = useCallback(() => {
+    const ids = selectedRows.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
+    if (ids.length > BULK_WRITE_CAP) {
+      toast.error(`Select at most ${BULK_WRITE_CAP} orders`);
+      return [];
+    }
+    return ids;
+  }, [selectedRows]);
 
-  const handleAssign = useCallback(
-    async (rows: DashSelectableRow[]) => {
-      if (rows.length === 0) return;
-      // loadStaff() toasts its own failure; returning quietly here would leave
-      // the operator with an unexplained no-op after the roster fetch died.
-      if (!(await loadStaff())) return;
-      // Pre-pack rows broadcast the full `ShippedOrder`; the narrow
-      // DashSelectableRow type is just what the BAR needs to render.
-      setAssignmentRows(rows.map((row) => buildAssignmentRow(row as unknown as ShippedOrder)));
-    },
-    [loadStaff],
-  );
+  // ─── Staff roster (listing-rule overlay) + stage assign opens via column foot ─
+  const [listingRuleOrderIds, setListingRuleOrderIds] = useState<number[]>([]);
+  const [staffOptions, setStaffOptions] = useState<{ id: number; name: string }[]>([]);
+  const assignOrder = useOrderAssignment();
+
+  const loadStaff = useCallback(async (): Promise<boolean> => {
+    try {
+      const members = await getActiveStaff();
+      setStaffOptions(
+        members
+          .map((m) => ({ id: Number(m.id), name: String(m.name || '').trim() }))
+          .filter((m) => Number.isFinite(m.id) && m.id > 0 && m.name)
+          .sort((a, b) => a.name.localeCompare(b.name)),
+      );
+      return true;
+    } catch {
+      toast.error('Failed to load staff');
+      return false;
+    }
+  }, []);
 
   const handleListingRule = useCallback(
     async (rows: DashSelectableRow[]) => {
@@ -247,18 +284,16 @@ export function useDashboardBulkSelection(
   // ─── Bulk ship-by ──────────────────────────────────────────────────────────
   const [shipByOpen, setShipByOpen] = useState(false);
   const [isSavingShipBy, setIsSavingShipBy] = useState(false);
-  const assignOrder = useOrderAssignment();
 
   const handleSetShipBy = useCallback(() => setShipByOpen(true), []);
 
   const handleConfirmShipBy = useCallback(
     async (dateKey: string) => {
-      const orderIds = selectedRows.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
+      const orderIds = selectedOrderIds();
       if (orderIds.length === 0) return;
       if (!(await confirmBulkWrite(orderIds.length, `Set the ship-by date to ${dateKey}`))) return;
       setIsSavingShipBy(true);
       try {
-        // One request for the whole set — the assign waist already takes orderIds[].
         await assignOrder.mutateAsync({ orderIds, shipByDate: dateKey });
         toast.success(
           orderIds.length === 1 ? 'Ship-by date set' : `Ship-by date set on ${orderIds.length} orders`,
@@ -272,7 +307,89 @@ export function useDashboardBulkSelection(
         setIsSavingShipBy(false);
       }
     },
-    [assignOrder, clearSelection, confirmBulkWrite, selectedRows],
+    [assignOrder, clearSelection, confirmBulkWrite, selectedOrderIds],
+  );
+
+  // ─── Bulk condition / qty / notes ──────────────────────────────────────────
+  const [conditionOpen, setConditionOpen] = useState(false);
+  const [isSavingCondition, setIsSavingCondition] = useState(false);
+  const [qtyOpen, setQtyOpen] = useState(false);
+  const [isSavingQty, setIsSavingQty] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+
+  const handleConfirmCondition = useCallback(
+    async (condition: ConditionGrade) => {
+      const orderIds = selectedOrderIds();
+      if (orderIds.length === 0) return;
+      if (!(await confirmBulkWrite(orderIds.length, `Set condition to ${condition}`))) return;
+      setIsSavingCondition(true);
+      try {
+        await assignOrder.mutateAsync({ orderIds, condition });
+        toast.success(
+          orderIds.length === 1 ? 'Condition set' : `Condition set on ${orderIds.length} orders`,
+        );
+        setConditionOpen(false);
+        clearSelection();
+        refreshDomain('orders.outbound');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Could not set the condition');
+      } finally {
+        setIsSavingCondition(false);
+      }
+    },
+    [assignOrder, clearSelection, confirmBulkWrite, selectedOrderIds],
+  );
+
+  const handleConfirmQty = useCallback(
+    async (quantity: string) => {
+      const orderIds = selectedOrderIds();
+      if (orderIds.length === 0) return;
+      if (!(await confirmBulkWrite(orderIds.length, `Set quantity to ${quantity}`))) return;
+      setIsSavingQty(true);
+      try {
+        await assignOrder.mutateAsync({ orderIds, quantity });
+        toast.success(
+          orderIds.length === 1 ? 'Quantity set' : `Quantity set on ${orderIds.length} orders`,
+        );
+        setQtyOpen(false);
+        clearSelection();
+        refreshDomain('orders.outbound');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Could not set the quantity');
+      } finally {
+        setIsSavingQty(false);
+      }
+    },
+    [assignOrder, clearSelection, confirmBulkWrite, selectedOrderIds],
+  );
+
+  const handleConfirmNotes = useCallback(
+    async (noteText: string) => {
+      const orderIds = selectedOrderIds();
+      if (orderIds.length === 0) return;
+      if (!(await confirmBulkWrite(orderIds.length, 'Add the note'))) return;
+      setIsSavingNotes(true);
+      try {
+        const res = await fetch('/api/orders/notes/bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderIds, noteText }),
+        });
+        if (!res.ok) throw new Error(`bulk-notes ${res.status}`);
+        const data = (await res.json()) as { updatedIds?: number[] };
+        const n = data.updatedIds?.length ?? orderIds.length;
+        toast.success(n === 1 ? 'Note added' : `Note added on ${n} orders`);
+        setNotesOpen(false);
+        clearSelection();
+        refreshDomain('orders.outbound');
+      } catch (e) {
+        toast.error(e instanceof Error ? e.message : 'Could not add the note');
+      } finally {
+        setIsSavingNotes(false);
+      }
+    },
+    [clearSelection, confirmBulkWrite, selectedOrderIds],
   );
 
   // ─── Bulk triage flag ──────────────────────────────────────────────────────
@@ -283,7 +400,7 @@ export function useDashboardBulkSelection(
 
   const handleConfirmFlag = useCallback(
     async (flag: OrderRowFlagId | null) => {
-      const orderIds = selectedRows.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
+      const orderIds = selectedOrderIds();
       if (orderIds.length === 0) return;
       if (!(await confirmBulkWrite(orderIds.length, flag === null ? 'Clear the flag' : 'Flag')))
         return;
@@ -314,7 +431,7 @@ export function useDashboardBulkSelection(
         setIsSavingFlag(false);
       }
     },
-    [clearSelection, confirmBulkWrite, selectedRows],
+    [clearSelection, confirmBulkWrite, selectedOrderIds],
   );
 
   // ─── Print shipping labels (post-pack) ─────────────────────────────────────
@@ -446,16 +563,58 @@ export function useDashboardBulkSelection(
 
   const selectionActions = useMemo<SelectionAction<DashSelectableRow>[]>(
     () => [
+      {
+        key: 'download-photos',
+        label: 'Download photos',
+        icon: <Image className="h-4 w-4" />,
+        group: 'Take away',
+        enabled: () => laneActionKeys.has('download-photos'),
+        run: handleDownloadPhotos,
+      },
       { key: 'copy', label: 'Copy details', icon: <Copy className="h-4 w-4" />, tone: 'blue', primary: true, group: 'Take away', run: handleCopyDetails },
       {
-        key: 'assign',
-        label: 'Assign tester / packer',
+        key: 'assign-pick',
+        label: 'Assign pick',
         icon: <User className="h-4 w-4" />,
         group: 'Set on these orders',
-        // Pre-pack only: assigning a tester to an order that already shipped is
-        // not a thing an operator ever means to do.
-        enabled: () => laneActionKeys.has('assign'),
-        run: handleAssign,
+        enabled: () => laneActionKeys.has('assign-pick'),
+        run: async () => {
+          openStageAssignPanel('pick');
+        },
+      },
+      {
+        key: 'assign-pack',
+        label: 'Assign pack',
+        icon: <User className="h-4 w-4" />,
+        group: 'Set on these orders',
+        enabled: () => laneActionKeys.has('assign-pack'),
+        run: async () => {
+          openStageAssignPanel('pack');
+        },
+      },
+      {
+        key: 'condition',
+        label: 'Set condition',
+        icon: <Tag className="h-4 w-4" />,
+        group: 'Set on these orders',
+        enabled: () => laneActionKeys.has('condition'),
+        run: () => setConditionOpen(true),
+      },
+      {
+        key: 'qty',
+        label: 'Set quantity',
+        icon: <Hash className="h-4 w-4" />,
+        group: 'Set on these orders',
+        enabled: () => laneActionKeys.has('qty'),
+        run: () => setQtyOpen(true),
+      },
+      {
+        key: 'notes',
+        label: 'Add note',
+        icon: <FileText className="h-4 w-4" />,
+        group: 'Set on these orders',
+        enabled: () => laneActionKeys.has('notes'),
+        run: () => setNotesOpen(true),
       },
       {
         key: 'listing-rule',
@@ -514,8 +673,8 @@ export function useDashboardBulkSelection(
       { key: 'delete', label: 'Delete', icon: <Trash2 className="h-4 w-4" />, tone: 'red', run: handleDelete },
     ],
     [
+      handleDownloadPhotos,
       handleCopyDetails,
-      handleAssign,
       handleListingRule,
       handleSetShipBy,
       handleSetFlag,
@@ -529,24 +688,15 @@ export function useDashboardBulkSelection(
 
   // Overlays the actions open. Rendered by the page beside the selection bar —
   // they are modal surfaces, so they must not live inside the bar's capsule.
+  // Pick / Pack assign opens as an upward search under the column-foot icons
+  // (no Dialog / Popover).
   const selectionOverlays = (
     <>
-      {assignmentRows.length > 0 ? (
-        <WorkOrderAssignmentCard
-          rows={assignmentRows}
-          startIndex={0}
-          technicianOptions={technicianOptions}
-          packerOptions={packerOptions}
-          onConfirm={confirmAssignment}
-          onClose={() => setAssignmentRows([])}
-          closeWhenCompleted
-        />
-      ) : null}
       {listingRuleOrderIds.length > 0 ? (
         <ListingAutomationAssignCard
           orderIds={listingRuleOrderIds}
-          technicianOptions={technicianOptions}
-          packerOptions={packerOptions}
+          technicianOptions={staffOptions}
+          packerOptions={staffOptions}
           onClose={() => setListingRuleOrderIds([])}
           onComplete={(mode) => {
             clearSelection();
@@ -559,6 +709,27 @@ export function useDashboardBulkSelection(
           }}
         />
       ) : null}
+      <BulkConditionDialog
+        open={conditionOpen}
+        count={selectedRows.length}
+        saving={isSavingCondition}
+        onCancel={() => setConditionOpen(false)}
+        onConfirm={handleConfirmCondition}
+      />
+      <BulkQtyDialog
+        open={qtyOpen}
+        count={selectedRows.length}
+        saving={isSavingQty}
+        onCancel={() => setQtyOpen(false)}
+        onConfirm={handleConfirmQty}
+      />
+      <BulkNotesDialog
+        open={notesOpen}
+        count={selectedRows.length}
+        saving={isSavingNotes}
+        onCancel={() => setNotesOpen(false)}
+        onConfirm={handleConfirmNotes}
+      />
       <BulkShipByDialog
         open={shipByOpen}
         count={selectedRows.length}

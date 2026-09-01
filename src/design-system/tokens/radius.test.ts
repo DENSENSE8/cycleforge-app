@@ -4,6 +4,7 @@ import {
   COMPOSER_MENU_ITEM_CORNER,
   COMPOSER_SHELL_CORNER,
   cornerClass,
+  DROPDOWN_ITEM_CORNER,
   DROPDOWN_SHELL_CORNER,
   nestedCorner,
   nestedCornerClass,
@@ -63,6 +64,11 @@ describe('radius SoT', () => {
     assert.equal(DROPDOWN_SHELL_CORNER, 'rounded-lg');
     assert.equal(DROPDOWN_SHELL_CORNER, SEGMENTED_CONTROL_CORNER);
     assert.equal(cornerClass('control'), 'rounded-none');
+  });
+
+  it('dropdown rows nest inside the 8px shell padded p-1', () => {
+    assert.equal(DROPDOWN_SHELL_CORNER, 'rounded-lg');
+    assert.equal(DROPDOWN_ITEM_CORNER, 'rounded');
   });
 
   it('composer menu rows nest inside the 16px shell padded p-1', () => {

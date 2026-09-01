@@ -51,7 +51,7 @@ export function PhotoDisplayControls({
   onDensityChange,
   showDensity,
   selectionActive,
-  onStartSelect,
+  onToggleSelect,
   onRefresh,
   isRefreshing,
 }: {
@@ -61,7 +61,8 @@ export function PhotoDisplayControls({
   onDensityChange: (density: PhotoGridDensity) => void;
   showDensity: boolean;
   selectionActive: boolean;
-  onStartSelect: () => void;
+  /** Arms or exits select mode — must toggle both ways (was start-only). */
+  onToggleSelect: () => void;
   onRefresh: () => void;
   isRefreshing: boolean;
 }) {
@@ -122,7 +123,7 @@ export function PhotoDisplayControls({
             type="button"
             aria-label={selectionActive ? 'Done selecting' : 'Select'}
             aria-pressed={selectionActive}
-            onClick={onStartSelect}
+            onClick={onToggleSelect}
             className={mediaBandCellClass(selectionActive)}
           >
             <Pencil className={'block h-3.5 w-3.5 shrink-0'} />

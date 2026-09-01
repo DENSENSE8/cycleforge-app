@@ -14,6 +14,7 @@
  */
 
 import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
+import { reserveLegacyPrintPopup } from '@/lib/print/iframePrint';
 import {
   DEFAULT_RETURNS_TEST_BIN_BARCODE,
   returnsTestBinSymbol,
@@ -131,12 +132,14 @@ function printFlatLocationTag(payload: SpecialBinLabelPayload): void {
   const face = specialBinPayloadToFace(payload);
   if (!face.matrix.value) return;
 
+  const legacyPopup = reserveLegacyPrintPopup();
   void import('@/lib/print/printLabel').then(({ printLabel }) => {
     printLabel({
       name: payload.docName?.trim() || `Bin ${face.matrix.value}`,
       ...buildFaceInfoHtml(face),
       dataMatrix: face.matrix,
       hri: face.hri,
+      legacyPopup,
     });
   });
 }

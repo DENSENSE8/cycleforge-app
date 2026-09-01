@@ -38,7 +38,8 @@ Garisek's equivalent server reads a hand-curated pin map with a `useWhen` /
 means **nobody has written that law yet** — not that anything is permitted.
 
 `ds_tokens` requires `axis` (`color` · `radius` · `spacing` · `typography` ·
-`z-index` · `elevation` · `border` · `focus` · `station-skin`). There is no dump. The same slices
+`z-index` · `elevation` · `border` · `focus` · `station-skin` · `station-depth` ·
+`item-record`). There is no dump. The same slices
 are also MCP resources at `design://tokens/<axis>` — browse those; pass `filter`
 on the tool when you already know the name. After changing a token file, run
 smoke and the axis unit test, then `code-graph` `find_symbol` + `impact_analysis`

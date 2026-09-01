@@ -1,16 +1,24 @@
 'use client';
 
 /**
- * Phone to-ship card — title (2-line clamp), slot-table qty + condition + note,
- * picker/packer, Out of stock + Ship. Identity numbers live on the sheet.
+ * Phone to-ship card — catalog thumb flush left, title, then the item-record
+ * meta cluster (qty · condition · notes) and Pick / Packed colour marks.
+ * Names live on the order sheet. One action row: Out of stock · Listing · Ship.
  */
 
 import { useCallback, useRef } from 'react';
-import { FileText, AlertTriangle, Truck } from '@/components/Icons';
-import { StaffAvatar } from '@/components/identity/StaffAvatar';
+import { FileText, AlertTriangle, ExternalLink, Truck } from '@/components/Icons';
 import { OrderIdChip, TrackingChip, getLast8 } from '@/components/ui/CopyChip';
-import { Button, Inset, Panel } from '@/design-system/primitives';
+import { Button, Panel } from '@/design-system/primitives';
 import { BUTTON_VARIANTS } from '@/design-system/primitives/button-variants';
+import {
+  ItemRecordQtyBadge,
+  ItemRecordThumb,
+  ITEM_RECORD_FACE,
+  ItemRecordMobileMeta,
+  ItemRecordMobileStage,
+} from '@/design-system/components/item-record';
+import { ITEM_RECORD_MOBILE_META } from '@/design-system/tokens/item-record-mobile';
 import {
   animate,
   motion,
@@ -22,14 +30,15 @@ import { framerTransition } from '@/design-system/foundations/motion-framer';
 import { cn } from '@/utils/_cn';
 import type { WorkOrderRow } from '@/components/work-orders/types';
 import {
-  toShipGivenName,
+  isToShipOutOfStock,
   toShipOrderId,
   toShipPackerLabel,
   toShipPickerLabel,
   toShipTrackingNumber,
 } from '@/lib/work-orders/to-ship-assignment';
-import { ordersSubtitleParts } from '@/lib/tables/field-catalog/orders-resolve';
-import type { ShippedOrder } from '@/types/orders';
+import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
+import { conditionGradeTableLabel, conditionTextColor, EMPTY_META_DASH } from '@/lib/conditions';
+import { conditionGradeTextClass } from '@/lib/condition-tone';
 
 const SWIPE_REVEAL_PX = 88;
 const SWIPE_COMMIT_PX = 64;
@@ -56,83 +65,51 @@ export function ToShipIdentityChips({ row }: { row: WorkOrderRow }) {
   );
 }
 
-const TO_SHIP_SUBTITLE_FIELDS = ['orders.qty', 'orders.condition', 'orders.notes'] as const;
-
-function toShipSubtitleRecord(row: WorkOrderRow): ShippedOrder {
-  return {
-    quantity: row.quantity ?? '',
-    condition: row.condition ?? '',
-    notes: row.notes ?? '',
-    item_number: row.itemNumber ?? '',
-  } as ShippedOrder;
+function toShipExpectedQty(row: WorkOrderRow): number | null {
+  const n = Number(String(row.quantity ?? '').trim());
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n;
 }
 
-function subtitlePartTestId(key: string | undefined): string | undefined {
-  if (key === 'orders.qty') return 'to-ship-qty';
-  if (key === 'orders.condition') return 'to-ship-condition';
-  return undefined;
-}
-
-/**
- * Same under-title face as CompoundItem: `ordersSubtitleParts` + the slot
- * span (qty reservation, condition grade text — never a status chip ring).
- */
-export function ToShipSlotSubtitle({ row }: { row: WorkOrderRow }) {
-  const parts = ordersSubtitleParts(toShipSubtitleRecord(row), TO_SHIP_SUBTITLE_FIELDS);
-  const hasNote = parts.some((part) => part.key === 'orders.notes');
-
+export function ToShipQtyFace({ row }: { row: WorkOrderRow }) {
+  const expected = toShipExpectedQty(row);
   return (
-    <span
-      data-testid="to-ship-slot-subtitle"
-      className="flex h-3 min-w-0 items-center justify-start gap-1 whitespace-nowrap leading-none"
-    >
-      {parts.map((part, index) => (
-        <span
-          key={part.key ?? index}
-          data-testid={subtitlePartTestId(part.key)}
-          className={cn(
-            'inline-flex h-3 items-center leading-none',
-            part.toneClass,
-            part.widthCh != null && 'tabular-nums',
-            part.key === 'orders.notes' && 'min-w-0 truncate text-text-muted',
-          )}
-          style={part.widthCh != null ? { width: `${part.widthCh}ch` } : undefined}
-        >
-          {part.text}
-        </span>
-      ))}
-      {hasNote ? null : <FileText className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />}
+    <span data-testid="to-ship-qty">
+      <ItemRecordQtyBadge quantity={expected != null ? { expected } : null} />
     </span>
   );
 }
 
-function AssignmentMark({
-  role,
-  staffId,
-  name,
-}: {
-  role: 'Pick' | 'Pack';
-  staffId: number | null;
-  name: string | null;
-}) {
-  const given = toShipGivenName(name);
+export function ToShipConditionFace({ row }: { row: WorkOrderRow }) {
+  const label = conditionGradeTableLabel(row.condition);
+  if (!label || label === EMPTY_META_DASH) return null;
+  const raw = String(row.condition || '').toLowerCase();
+  const tone = raw.includes('new')
+    ? conditionTextColor(row.condition)
+    : conditionGradeTextClass(row.condition);
   return (
-    <span
-      data-testid={role === 'Pick' ? 'to-ship-picker' : 'to-ship-packer'}
-      className="flex min-w-0 items-center gap-1.5"
-      aria-label={name ? `${role} ${name}` : `${role} unassigned`}
-    >
-      {staffId != null || name ? (
-        <StaffAvatar staffId={staffId} name={name} size="sm" colorRing alt={name ?? undefined} />
-      ) : (
-        <span
-          aria-hidden
-          className="h-7 w-7 shrink-0 rounded-full border border-dashed border-border-default"
-        />
-      )}
-      <span className="max-w-[4.5rem] truncate text-role-caption text-text-soft">
-        {given ?? role}
-      </span>
+    <span data-testid="to-ship-condition" className={tone}>
+      {label}
+    </span>
+  );
+}
+
+/** Qty · condition · notes as one item-record cluster. Names are the sheet. */
+export function ToShipSlotSubtitle({ row }: { row: WorkOrderRow }) {
+  const note = row.notes?.trim() || '';
+  return (
+    <span data-testid="to-ship-slot-subtitle" className="min-w-0 flex-1">
+      <ItemRecordMobileMeta
+        qty={<ToShipQtyFace row={row} />}
+        condition={<ToShipConditionFace row={row} />}
+        notes={
+          note ? (
+            <span className={ITEM_RECORD_MOBILE_META.notes}>{note}</span>
+          ) : (
+            <FileText className={ITEM_RECORD_MOBILE_META.notesIdle} aria-hidden />
+          )
+        }
+      />
     </span>
   );
 }
@@ -140,12 +117,14 @@ function AssignmentMark({
 export function MobileToShipRow({
   row,
   resolveName,
+  blocked = false,
   onOpen,
   onProcess,
   onOutOfStock,
 }: {
   row: WorkOrderRow;
   resolveName: (id: number) => string;
+  blocked?: boolean;
   onOpen: (row: WorkOrderRow) => void;
   onProcess: (row: WorkOrderRow) => void;
   onOutOfStock: (row: WorkOrderRow) => void;
@@ -155,10 +134,13 @@ export function MobileToShipRow({
   const dragging = useRef(false);
   const picker = toShipPickerLabel(row, resolveName);
   const packer = toShipPackerLabel(row, resolveName);
+  const isBlocked = blocked || isToShipOutOfStock(row);
+  const listingHref = getExternalUrlByItemNumber(row.itemNumber || row.sku);
 
   const process = useCallback(() => {
+    if (isBlocked) return;
     onProcess(row);
-  }, [onProcess, row]);
+  }, [isBlocked, onProcess, row]);
 
   const openSheet = useCallback(() => {
     if (dragging.current) return;
@@ -170,7 +152,8 @@ export function MobileToShipRow({
 
   const onDragEnd = useCallback(
     (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-      const commit = info.offset.x >= SWIPE_COMMIT_PX || info.velocity.x >= SWIPE_FLICK_VX;
+      const commit =
+        !isBlocked && (info.offset.x >= SWIPE_COMMIT_PX || info.velocity.x >= SWIPE_FLICK_VX);
       if (commit) {
         void animate(x, SWIPE_REVEAL_PX, framerTransition.cardExpansion);
         process();
@@ -181,7 +164,7 @@ export function MobileToShipRow({
         dragging.current = false;
       }, 80);
     },
-    [process, x],
+    [isBlocked, process, x],
   );
 
   return (
@@ -196,6 +179,7 @@ export function MobileToShipRow({
         className={cn(
           BUTTON_VARIANTS.primary,
           'pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center text-role-eyebrow font-semibold',
+          isBlocked && 'opacity-50',
         )}
         style={{ width: SWIPE_REVEAL_PX }}
       >
@@ -207,7 +191,7 @@ export function MobileToShipRow({
         aria-label={row.title}
         className="relative z-base bg-surface-card"
         style={{ x }}
-        drag={reduceMotion ? false : 'x'}
+        drag={reduceMotion || isBlocked ? false : 'x'}
         dragConstraints={{ left: 0, right: SWIPE_REVEAL_PX }}
         dragElastic={{ left: 0, right: 0.12 }}
         dragDirectionLock
@@ -232,44 +216,73 @@ export function MobileToShipRow({
           }
         }}
       >
-        <Inset space="card" className="flex flex-col gap-2">
-          <span className="line-clamp-2 text-role-title font-semibold leading-snug text-text-default">
-            {row.title}
-          </span>
-          <ToShipSlotSubtitle row={row} />
-          <div className="flex min-w-0 items-center gap-3">
-            <AssignmentMark role="Pick" staffId={row.techId} name={picker} />
-            <AssignmentMark role="Pack" staffId={row.packerId} name={packer} />
+        <div className={cn('grid min-w-0 items-start', ITEM_RECORD_FACE.thumbGrid)}>
+          <ItemRecordThumb
+            imageUrl={row.imageUrl}
+            className={cn(ITEM_RECORD_FACE.hw, 'self-start')}
+          />
+          <div className="flex min-w-0 flex-col gap-1 px-2 py-2">
+            <span className="line-clamp-2 text-role-title font-semibold leading-snug text-text-default">
+              {row.title}
+            </span>
+            <div className="flex min-w-0 items-center">
+              <ToShipSlotSubtitle row={row} />
+              <ItemRecordMobileStage
+                pick={{
+                  staffId: row.techId,
+                  name: picker,
+                  colorHex: row.techColorHex ?? null,
+                }}
+                packed={{
+                  staffId: row.packerId,
+                  name: packer,
+                  colorHex: row.packerColorHex ?? null,
+                }}
+              />
+            </div>
           </div>
-          <div
-            className="flex items-center gap-1.5"
-            onPointerDown={(event) => event.stopPropagation()}
-            onClick={(event) => event.stopPropagation()}
+        </div>
+        <div
+          className="flex w-full items-stretch gap-1.5 px-2 pb-2"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <Button
+            variant="warning"
+            size="sm"
+            radius="surface"
+            icon={<AlertTriangle />}
+            ariaLabel="Out of stock"
+            disabled={isBlocked}
+            className="ds-allow-control-size min-h-11 min-w-0 flex-1 px-0"
+            onClick={() => onOutOfStock(row)}
+          />
+          <Button
+            variant="primarySoft"
+            size="sm"
+            radius="surface"
+            icon={<ExternalLink />}
+            ariaLabel="Listing"
+            disabled={!listingHref}
+            className="ds-allow-control-size min-h-11 min-w-0 flex-1 px-0"
+            onClick={() => {
+              if (!listingHref) return;
+              window.open(listingHref, '_blank', 'noopener,noreferrer');
+            }}
+          />
+          <Button
+            variant="primary"
+            size="sm"
+            radius="surface"
+            icon={<Truck />}
+            ariaLabel="Ship"
+            disabled={isBlocked}
+            className="ds-allow-control-size min-h-11 min-w-0 flex-[4]"
+            onClick={process}
           >
-            <Button
-              variant="warning"
-              size="sm"
-              radius="surface"
-              icon={<AlertTriangle />}
-              ariaLabel="Out of stock"
-              className="ds-allow-control-size min-h-11 min-w-0 flex-1 px-3"
-              onClick={() => onOutOfStock(row)}
-            >
-              Out of stock
-            </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              radius="surface"
-              icon={<Truck />}
-              ariaLabel="Ship"
-              className="ds-allow-control-size min-h-11 min-w-0 flex-1 px-4"
-              onClick={process}
-            >
-              Ship
-            </Button>
-          </div>
-        </Inset>
+            Ship
+          </Button>
+        </div>
       </motion.div>
     </Panel>
   );

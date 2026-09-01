@@ -1,4 +1,5 @@
 import { escapeLabelHtml } from '@/lib/print/labelHtml';
+import { reserveLegacyPrintPopup } from '@/lib/print/iframePrint';
 
 /**
  * 2×1" master label for a preboxed KIT manifest (serial↔label pairing plan §5.2,
@@ -42,6 +43,7 @@ export function printManifestLabel(payload: ManifestLabelPayload): void {
       <span class="mf-sku">${escapeLabelHtml(sku)}</span>
     </div>`;
 
+  const legacyPopup = reserveLegacyPrintPopup();
   // Lazy: printLabel drags the bwip-js barcode engine; load on the actual print.
   void import('@/lib/print/printLabel').then(({ printLabel }) => {
     printLabel({
@@ -50,6 +52,7 @@ export function printManifestLabel(payload: ManifestLabelPayload): void {
       infoCss: MANIFEST_INFO_CSS,
       // Plain DataMatrix carrying the manifest uid — no URL on the wire.
       dataMatrix: { value: uid, symbology: 'datamatrix', scale: 4 },
+      legacyPopup,
     });
   });
 }

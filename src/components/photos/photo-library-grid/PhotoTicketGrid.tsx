@@ -1,18 +1,15 @@
 'use client';
 
-import { Layers } from '@/components/Icons';
-import { cornerClass } from '@/design-system/tokens/radius';
-import { cn } from '@/utils/_cn';
 import { photoGridLeafClass, photoGridTileProps, type PhotoGridDensity } from '@/lib/photos/photo-grid-density';
-import { formatDateTimePST } from '@/utils/date';
 import { TicketNasBackupButton } from '../TicketNasBackupButton';
 import { PhotoCard } from './PhotoCard';
+import { PhotoEntityGroupHeader } from './PhotoEntityGroupHeader';
 import { groupPhotosByTicket } from './photo-grid-format';
 import type { PhotoGridViewProps } from './types';
 
 /**
- * Group-by-ticket: stack ticket sections, each a labeled header + a tight grid
- * of its photos. Claims group by Zendesk ticket#; other scopes group by `poRef`.
+ * Group-by-ticket view — same Google Photos entity bands as {@link PhotoFlatGrid}
+ * (one PO/ticket title + select-all; tiles stay label-free).
  */
 export function PhotoTicketGrid({
   photos,
@@ -21,45 +18,49 @@ export function PhotoTicketGrid({
   selectionActive,
   selected,
   onSelectTile,
+  onToggleGroupSelection,
   onPhotoContextMenu,
   openAt,
 }: PhotoGridViewProps & { gridDensity: PhotoGridDensity }) {
   const groups = groupPhotosByTicket(photos, scope);
   const showNasBackup = scope === 'claims';
+  const containerClass = photoGridLeafClass(gridDensity);
+
   return (
-    <div className="space-y-5">
+    <div className="flex flex-col gap-4">
       {groups.map((group) => {
+        const groupIds = group.photos.map((p) => p.id);
+        const allGroupSelected =
+          groupIds.length > 0 && groupIds.every((id) => selected.has(id));
+        const someGroupSelected = groupIds.some((id) => selected.has(id));
         const ticketNumber = group.key.startsWith('ticket:')
           ? group.key.slice('ticket:'.length)
           : null;
+
         return (
-          <section key={group.key}>
-            <header className="mb-2 flex flex-wrap items-center gap-2 border-b border-border-hairline pb-1.5">
-              <Layers className="h-3.5 w-3.5 shrink-0 text-text-faint" />
-              <span className="truncate text-sm font-semibold text-text-default">
-                {group.label}
-              </span>
-              <span
-                className={cn(
-                  'shrink-0 bg-surface-sunken px-1.5 py-0.5 text-role-micro tabular-nums text-text-soft',
-                  cornerClass('chip'),
-                )}
-              >
-                {group.photos.length}
-              </span>
-              <time className="shrink-0 text-role-micro tabular-nums text-text-faint">
-                {formatDateTimePST(group.latestAt)}
-              </time>
-              {showNasBackup && ticketNumber ? (
-                <TicketNasBackupButton
-                  ticketNumber={ticketNumber}
-                  size="sm"
-                  label="Sync to NAS"
-                  className="ml-auto"
-                />
-              ) : null}
-            </header>
-            <div className={photoGridLeafClass(gridDensity)}>
+          <section key={group.key} data-testid="photo-entity-group">
+            <PhotoEntityGroupHeader
+              title={group.label}
+              count={group.photos.length}
+              allSelected={allGroupSelected}
+              someSelected={someGroupSelected && !allGroupSelected}
+              onToggleSelectAll={
+                onToggleGroupSelection
+                  ? () => onToggleGroupSelection(groupIds)
+                  : undefined
+              }
+              trailing={
+                showNasBackup && ticketNumber ? (
+                  <TicketNasBackupButton
+                    ticketNumber={ticketNumber}
+                    size="sm"
+                    label="Sync to NAS"
+                    className="ml-auto"
+                  />
+                ) : null
+              }
+            />
+            <div className={containerClass}>
               {group.photos.map((photo) => {
                 const tile = photoGridTileProps(photo, gridDensity);
                 return (

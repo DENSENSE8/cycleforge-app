@@ -10,7 +10,7 @@ import * as ContextMenuPrimitive from '@radix-ui/react-context-menu';
 import { ChevronRight } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { elevationClass } from '@/design-system/tokens/shadows';
-import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
+import { DROPDOWN_ITEM_CORNER, DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 
 const ContextMenu = ContextMenuPrimitive.Root;
 const ContextMenuTrigger = ContextMenuPrimitive.Trigger;
@@ -46,7 +46,8 @@ const ContextMenuItem = React.forwardRef<
   <ContextMenuPrimitive.Item
     ref={ref}
     className={cn(
-      'relative flex cursor-default select-none items-center rounded-none px-2 py-1.5 text-sm outline-none',
+      'relative flex cursor-default select-none items-center px-2 py-1.5 text-sm outline-none',
+      DROPDOWN_ITEM_CORNER,
       'focus:bg-surface-canvas data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       tone === 'danger' && 'text-rose-600 focus:bg-rose-50 focus:text-rose-700',
       inset && 'pl-8',
@@ -64,7 +65,8 @@ const ContextMenuRadioItem = React.forwardRef<
   <ContextMenuPrimitive.RadioItem
     ref={ref}
     className={cn(
-      'relative flex cursor-default select-none items-center rounded-none py-1.5 pl-8 pr-2 text-sm outline-none',
+      'relative flex cursor-default select-none items-center py-1.5 pl-8 pr-2 text-sm outline-none',
+      DROPDOWN_ITEM_CORNER,
       'focus:bg-surface-canvas data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       className,
     )}
@@ -101,7 +103,8 @@ const ContextMenuSubTrigger = React.forwardRef<
   <ContextMenuPrimitive.SubTrigger
     ref={ref}
     className={cn(
-      'flex cursor-default select-none items-center rounded-none px-2 py-1.5 text-sm outline-none',
+      'flex cursor-default select-none items-center px-2 py-1.5 text-sm outline-none',
+      DROPDOWN_ITEM_CORNER,
       'focus:bg-surface-canvas data-[state=open]:bg-surface-canvas',
       inset && 'pl-8',
       className,

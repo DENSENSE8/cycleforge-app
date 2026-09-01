@@ -1,20 +1,15 @@
 'use client';
 
 /**
- * Bulk ship-by picker for the dashboard selection bar — one date onto N orders.
+ * Bulk ship-by picker for the table-foot selection strip — one date onto N orders.
  *
- * A dialog rather than a bar-anchored popover on purpose: `ContextualSelectionBar`
- * renders an icon-only capsule and exposes no anchor for a floating layer, and
- * teaching it to would grow a shared primitive's public API for one call site.
- * Picking a date for a batch is also a deliberate, blocking choice — the one
- * shape a modal is actually right for.
+ * Compact DateRangePickerField: month grid, click commits, no X, no year.
+ * The dialog only names the batch ("applies to N"); the field owns the day.
  *
- * Writes through the shared `useOrderAssignment` waist, which already accepts
- * `orderIds[]`; there is no bulk-only endpoint to add.
+ * Writes through `useOrderAssignment`, which already accepts `orderIds[]`.
  */
 
-import { useState } from 'react';
-import { Calendar } from '@/components/ui/calendar';
+import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import {
   Dialog,
   DialogContent,
@@ -24,7 +19,7 @@ import {
   DialogTitle,
 } from '@/design-system/components/Dialog';
 import { Button } from '@/design-system/primitives';
-import { dateKeyToLocalDate, localDateToDateKey } from '@/utils/date';
+import { localDateToDateKey } from '@/utils/date';
 
 interface BulkShipByDialogProps {
   open: boolean;
@@ -43,44 +38,36 @@ export function BulkShipByDialog({
   onCancel,
   onConfirm,
 }: BulkShipByDialogProps) {
-  const [dateKey, setDateKey] = useState<string | null>(null);
-
   return (
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!next) {
-          setDateKey(null);
-          onCancel();
-        }
+        if (!next) onCancel();
       }}
     >
       <DialogContent className="max-w-sm">
         <DialogHeader>
           <DialogTitle>Set ship-by date</DialogTitle>
           <DialogDescription>
-            {count === 1 ? 'Applies to 1 selected order.' : `Applies to all ${count} selected orders.`}
+            {count === 1
+              ? 'Applies to 1 selected order.'
+              : `Applies to all ${count} selected orders.`}
           </DialogDescription>
         </DialogHeader>
 
-        {/* Calendar widgets round-trip through the local frame on BOTH sides —
-            never a zoned formatter or toISOString() for civil day logic. */}
-        <Calendar
-          mode="single"
-          selected={dateKey ? dateKeyToLocalDate(dateKey) : undefined}
-          onSelect={(next?: Date) => setDateKey(next ? localDateToDateKey(next) : null)}
+        <DateRangePickerField
+          variant="compact"
+          value={undefined}
+          disabled={saving}
+          onChange={(day) => {
+            const key = localDateToDateKey(day);
+            if (key) onConfirm(key);
+          }}
         />
 
         <DialogFooter>
           <Button variant="ghost" onClick={onCancel} disabled={saving}>
             Cancel
-          </Button>
-          <Button
-            onClick={() => dateKey && onConfirm(dateKey)}
-            disabled={!dateKey || saving}
-            loading={saving}
-          >
-            {saving ? 'Saving…' : 'Set date'}
           </Button>
         </DialogFooter>
       </DialogContent>

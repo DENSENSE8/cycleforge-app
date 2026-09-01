@@ -80,13 +80,21 @@ export function PhotoCard({
     <div
       onContextMenu={onContextMenu && !isDocument ? (e) => onContextMenu(photo, e) : undefined}
       className={cn(
-        // Clipping lives on PhotoThumb itself. It stays there now for a plainer
-        // reason than it used to: the thumb owns its own aspect box, so this
-        // ancestor has nothing to clip. (It used to be load-bearing for the
-        // hero-morph transform, which was deleted 2026-08-09.)
-        'group relative border bg-surface-card text-left transition-colors',
+        // Clipping lives on PhotoThumb itself. Wall tiles (!showLabel) drop the
+        // card chrome so the Google Photos entity grid reads as one photo wall;
+        // labeled cards keep the bordered shell for identity footers.
+        'group relative text-left transition-colors',
         cornerClass('flush'),
-        selected ? 'border-primary ring-2 ring-inset ring-primary' : 'border-border hover:border-border-default',
+        showLabel
+          ? cn(
+              'border bg-surface-card',
+              selected
+                ? 'border-primary ring-2 ring-inset ring-primary'
+                : 'border-border hover:border-border-default',
+            )
+          : selected
+            ? 'ring-2 ring-inset ring-primary'
+            : undefined,
       )}
     >
       <SelectionMark

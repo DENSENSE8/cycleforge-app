@@ -14,7 +14,7 @@ import { cn } from '@/utils/_cn';
 export function PhotoGridSkeleton() {
   return (
     <div
-      className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-8"
+      className="grid grid-cols-3 gap-0.5 sm:grid-cols-4 md:grid-cols-5 xl:grid-cols-8"
       aria-busy="true"
       aria-label="Loading photos"
     >

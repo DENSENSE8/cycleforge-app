@@ -9,8 +9,6 @@ import { usePhotoLibraryUrlState } from '@/hooks/usePhotoLibraryUrlState';
 import { usePhotoSelection } from '@/hooks/usePhotoSelection';
 import { usePhotoShareLinks } from '@/hooks/usePhotoShareLinks';
 import {
-  ALL_PHOTOS_CONTEXT_TITLE,
-  describePhotoLibraryContext,
   resolvePhotoLibraryFolderLeafLabel,
 } from '@/lib/photos/library-context-label';
 import { photoShareTitle } from '@/lib/photos/display-names';
@@ -33,30 +31,27 @@ import type { ClaimPhotoInput } from '@/components/support/zendesk/claim/claim-t
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { DashboardScrollShell, useDashboardScrollParent } from '@/components/dashboard/DashboardScrollShell';
 import { Panel } from '@/design-system/primitives';
-import { cn } from '@/utils/_cn';
 import { PhotoContextMenu, type PhotoContextMenuItem } from './PhotoContextMenu';
 import { PhotoDateBreadcrumb } from './PhotoDateBreadcrumb';
-import { PhotoDisplayControls } from './PhotoDisplayControls';
+import { PhotoLibraryFindRow } from './PhotoLibraryFindRow';
+import {
+  PhotoLibraryDeskActions,
+  type MediaUploadTarget,
+} from './PhotoLibraryDeskActions';
 import { PhotoLibraryGrid } from './PhotoLibraryGrid';
-import { PhotoLibraryHeader } from './PhotoLibraryHeader';
 import { PhotoBatchInspectorPanel } from './photo-inspector/PhotoBatchInspectorPanel';
 import { usePhotoLibraryScope } from './PhotoLibraryScopeBand';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import { PhotoLibraryTicketNasBackup } from './PhotoLibraryTicketNasBackup';
 import { PhotoLabelEditor } from './PhotoLabelEditor';
-import { MediaLibraryShortcutsModal } from './MediaLibraryShortcutsModal';
 import { PhotoInspectorPanel } from './photo-inspector/PhotoInspectorPanel';
 import { photoLibraryShowsGridControls } from '@/lib/photos/photo-grid-density';
+import { TableStatusBar } from '@/components/tables/TableStatusBar';
+import type { PhotoLinkRole } from '@/lib/photos/types';
 
-/** Fixed share-link lifetime (24h) for copied links + share pages. */
 /**
- * The one phrase for "how many photos are in view".
- *
- * Two places say it — the path strip's readout and the end-of-stream footer —
- * and they are counts of the same set, so they must not drift into `Photos 48`
- * in one and `48 photos` in the other. Pluralised because `1 photos` is the
- * kind of small wrongness an operator reads as the surface being careless with
- * the rest of its numbers.
+ * The one phrase for "how many photos are in view" on the end-of-stream line.
+ * Footer counts live on {@link TableStatusBar} — do not duplicate them here.
  */
 function photoCountLabel(count: number): string {
   return `${count} ${count === 1 ? 'photo' : 'photos'}`;
@@ -76,7 +71,7 @@ import { isLibraryDocument, libraryDocumentId } from './photo-library-types';
 /** Right pane: workbench chrome + the flat photo stream. Filters live in the header. */
 export function PhotoLibraryPage() {
   const libraryScope = usePhotoLibraryScope();
-  const { filters, display, setView, patch } = usePhotoLibraryUrlState();
+  const { filters, display, setView, patch, applyView } = usePhotoLibraryUrlState();
   const { view } = display;
 
   // Always fetch photos. The folder drill used to gate this query behind
@@ -162,8 +157,6 @@ export function PhotoLibraryPage() {
   const [labelEditorPhotos, setLabelEditorPhotos] = useState<LibraryPhoto[] | null>(null);
   // Right-click context menu target (null = closed).
   const [ctxMenu, setCtxMenu] = useState<{ photo: LibraryPhoto; x: number; y: number } | null>(null);
-  // Keyboard-shortcut cheat sheet (toggled with `?`).
-  const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Live-refresh when a packer's phone commits a GCS upload (station channel),
   // mirroring how receiving photos already propagate into the library.
@@ -183,7 +176,6 @@ export function PhotoLibraryPage() {
   const selectionActive = selectMode || isActive;
 
   const shareLinks = usePhotoShareLinks();
-  const { title: contextTitle } = describePhotoLibraryContext(displayFilters);
 
   // ── The desk inspector ────────────────────────────────────────────────────
   //
@@ -328,9 +320,9 @@ export function PhotoLibraryPage() {
     }
   }, [filters, selectIds]);
 
-  // Grid keyboard shortcuts (the viewer owns its own keys). `?` help, `⌘A`
-  // select-all while selecting, `Esc` exit, digit → view switch.
-  const toggleShortcuts = useCallback(() => setShowShortcuts((v) => !v), []);
+  // Grid keyboard shortcuts (the viewer owns its own keys). House
+  // KeyboardShortcutsCheatSheet owns `?` — do not open a page sheet (cohort).
+  // `⌘A` select-all while selecting, `Esc` exit, digit → view switch.
   const selectViewByIndex = useCallback(
     (index: number) => {
       const next = PHOTO_LIBRARY_HEADER_DISPLAY_MODES[index];
@@ -340,7 +332,9 @@ export function PhotoLibraryPage() {
   );
   useMediaLibraryShortcuts({
     selectionActive,
-    onToggleHelp: toggleShortcuts,
+    onToggleHelp: () => {
+      // Yield to KeyboardShortcutsCheatSheet / selection inline overlays.
+    },
     onSelectAll: selectAll,
     onEscape: exitSelectMode,
     onSelectViewIndex: selectViewByIndex,
@@ -348,29 +342,48 @@ export function PhotoLibraryPage() {
 
   // Infinite scroll lives in {@link PhotoLibraryLoadMoreSentinel} (needs scroll-shell root).
 
+  const shownIds = useMemo(
+    () => photos.map((p) => p.id).filter((id) => Number.isFinite(id) && id > 0),
+    [photos],
+  );
+
   /**
-   * The path strip's meta is a READOUT — how many photos, and what they are of.
-   *
-   * It used to render the context *subtitle*, which on the default scope is
-   * "Browse receiving, packing, and unit photos": an instruction to a
-   * first-time visitor, parked permanently in 28px ops chrome, describing the
-   * same seven sources Band 1's tabs are already showing. It said nothing that
-   * changed as the operator worked.
-   *
-   * The count answers "how much is in view". The context TITLE is appended only
-   * when it names something narrower than the whole archive — `PO 14-14825`,
-   * `Carton #88`, `#9599` — because that is the fact the breadcrumb above does
-   * not always carry. On the whole archive it is `All photos`, which the tabs
-   * and the breadcrumb both already say, so it is dropped rather than repeated.
+   * Upload target for header Add photos. Upload requires entityType+entityId —
+   * a lifecycle tab alone is not a folder. Armed on carton (`receivingId`) or
+   * ticket leaf; poRef without a carton stays visible-disabled (find first).
    */
-  const metaLine = query.isLoading
-    ? 'Loading…'
-    : [
-        photoCountLabel(photos.length),
-        contextTitle === ALL_PHOTOS_CONTEXT_TITLE ? null : contextTitle,
-      ]
-        .filter(Boolean)
-        .join(' · ');
+  const uploadTarget = useMemo<MediaUploadTarget | null>(() => {
+    const receivingRaw = filters.receivingId?.trim();
+    if (receivingRaw) {
+      const entityId = Number(receivingRaw);
+      if (Number.isFinite(entityId) && entityId > 0) {
+        return {
+          entityType: 'RECEIVING',
+          entityId,
+          photoType: filters.imageType ?? null,
+          poRef: resolvedPoRef ?? filters.poRef ?? null,
+        };
+      }
+    }
+    const ticketRaw = (resolvedTicketId ?? filters.ticketId)?.trim().replace(/^#/, '');
+    if (ticketRaw) {
+      const entityId = Number(ticketRaw);
+      if (Number.isFinite(entityId) && entityId > 0) {
+        return {
+          entityType: 'ZENDESK_TICKET',
+          entityId,
+          photoType: filters.imageType ?? null,
+          linkRole: 'claim_evidence' as PhotoLinkRole,
+        };
+      }
+    }
+    return null;
+  }, [filters.imageType, filters.poRef, filters.receivingId, filters.ticketId, resolvedPoRef, resolvedTicketId]);
+
+  const exportTitle = useMemo(
+    () => photoShareTitle(photos, scope, shownIds.length) || 'photos',
+    [photos, scope, shownIds.length],
+  );
 
   const downloadPhotoFile = useCallback(async (url: string, filename: string) => {
     const res = await fetch(url);
@@ -559,7 +572,7 @@ export function PhotoLibraryPage() {
             {
               // Attach the selection to a support ticket (new or existing).
               key: 'zendesk',
-              label: 'Add photos',
+              label: 'Attach to ticket',
               icon: <TicketHelp className="h-4 w-4" />,
               tone: 'blue' as const,
               primary: true,
@@ -663,17 +676,9 @@ export function PhotoLibraryPage() {
   return (
     /*
       The one page frame (2026-08-31) — `@/design-system/components/DeskPageChrome`
-      via `DeskPageLayout`. Title top-left; the lifecycle scopes as its tab row;
-      the media-type overflow at the head of that row (`tabsLead`), because both
-      halves write ONE param through one `selectSection` and splitting them
-      across two altitudes is how this surface grew two writers once before.
-
-      `title` is explicit: `/ops/photos` has no `SIDEBAR_PAGE_NAV` entry, so the
-      nav-derived default would be an empty `<h1>`. It matches the route's own
-      metadata title.
-
-      No CTA — this surface has no import / add action, and the frame renders
-      nothing rather than reserving space for one.
+      via `DeskPageLayout`. Title top-left; lifecycle scopes as its tab row;
+      media-type overflow at `tabsLead`. Overall Download + primary Add photos
+      register into the frame's action slot.
     */
     <DeskPageLayout
       className="h-full"
@@ -683,79 +688,70 @@ export function PhotoLibraryPage() {
       onTabChange={libraryScope.selectSection}
       tabsLead={libraryScope.lead}
     >
+    <PhotoLibraryDeskActions
+      shownIds={shownIds}
+      shownCount={shownIds.length}
+      exportTitle={exportTitle}
+      uploadTarget={uploadTarget}
+      onUploaded={refreshLibrary}
+    />
     {/*
       `min-w-0 flex-1` is load-bearing, not decoration: this host is a flex ITEM
       in its parent's row, and without a grow it sizes to `max-content` — which
       measured **721px inside a 1440 viewport**, i.e. below `MIN_WORK_SURFACE_PX`
-      (784). Deleting the left rail reclaimed the column but handed the width to
-      nobody; the S1 report read that 720 as the rail's cost when it was actually
-      this. Pinned by `tests/e2e/photos-railless-frame.spec.ts`.
+      (784). Pinned by `tests/e2e/photos-railless-frame.spec.ts`.
     */}
     <RightPaneOverlayHost className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
     <DashboardScrollShell
       chrome={
-        // Flush sheet chrome — TWO bands stack with `gap-0` inside ONE
-        // non-scrolling slot (Sheets flush mount recipe). No host `px`/`py`:
-        // the outer host is flush and readable pad lives on each band's row.
-        //
-        //   Band 1  the search band          (PhotoLibraryWorkspaceHeader)
-        //   Band 2  breadcrumb + display     (PhotoLibraryHeader)
-        //
-        // The lifecycle tabs and the media-type cube LEFT this stack on
-        // 2026-08-31: they are page navigation, and page navigation belongs on
-        // the frame's tab row (`DeskPageLayout` below), not in a band inside
-        // the card the rows live in. Losing that band is also what buys back
-        // the vertical space the frame's header costs.
-        //
-        // That order INVERTS the house Band 2 = KPI / Band 3 = find, and the
-        // divergence is deliberate: there is no KPI band here (so Band 2 is
-        // free, not displaced); search is this surface's approved entry path
-        // rather than a refinement, so it earns its own band; and a path strip
-        // is a context readout, which is the altitude a KPI strip occupies on a
- // queue. Recorded in.
-        //
-        // The bands STAY MOUNTED under selection (2026-08-09). A bulk-action
-        // toolbar used to swap itself in over all three, so ticking two photos
-        // took away the lifecycle tabs, the search field and the breadcrumb —
-        // the operator lost their place in the archive to read a row of icons.
-        // Bulk verbs are armed ROWS on the right edge now
-        // (`PhotoBatchInspectorPanel`), which is where "what can I do to the
-        // picked record" already lived at n = 1.
-        <div className={cn('relative w-full min-w-0', 'flex flex-col gap-0')}>
-          <PhotoLibraryHeader
-            breadcrumb={
-              <PhotoDateBreadcrumb
-                filters={displayFilters}
-                today={today}
-                mostRecentDay={isSettled ? mostRecentDay : undefined}
-                folderLeafLabel={folderLeafLabel ?? undefined}
-                onNavigate={({ dateFrom, dateTo }) =>
-                  patch({
-                    dateFrom,
-                    dateTo,
-                    poRef: undefined,
-                    ticketId: undefined,
-                    receivingId: undefined,
-                  })
-                }
-              />
-            }
-            metaLine={metaLine}
-            controls={
-              <PhotoDisplayControls
-                view={view}
-                onViewChange={handleViewChange}
-                density={gridDensity}
-                onDensityChange={setGridDensity}
-                showDensity={showGridControls}
-                selectionActive={selectionActive}
-                onStartSelect={() => setSelectMode(true)}
-                onRefresh={refreshLibrary}
-                isRefreshing={isRefreshing}
-              />
-            }
-          />
-        </div>
+        // One find row on the card (DataTable shape). Breadcrumb lives on
+        // TableStatusBar's idle-left `lead`. Bands stay mounted under selection
+        // (2026-08-09) — bulk verbs are the right-edge rail.
+        <PhotoLibraryFindRow
+          filters={filters}
+          view={view}
+          onPatch={patch}
+          onApplyView={(payload) => applyView(payload.filters, payload.view)}
+          onViewChange={handleViewChange}
+          density={gridDensity}
+          onDensityChange={setGridDensity}
+          showDensity={showGridControls}
+          selectionActive={selectionActive}
+          onToggleSelect={() => {
+            if (selectionActive) exitSelectMode();
+            else setSelectMode(true);
+          }}
+          onRefresh={refreshLibrary}
+          isRefreshing={isRefreshing}
+          isSearching={query.isFetching}
+          canManageViews={canManagePhotos}
+        />
+      }
+      footer={
+        // Outside the scroll port (same law as `chrome`) — sticky-inside cannot
+        // pin a foot when a flex-1 panel overflows mid-column.
+        <TableStatusBar
+          lead={
+            <PhotoDateBreadcrumb
+              filters={displayFilters}
+              today={today}
+              mostRecentDay={isSettled ? mostRecentDay : undefined}
+              folderLeafLabel={folderLeafLabel ?? undefined}
+              onNavigate={({ dateFrom, dateTo }) =>
+                patch({
+                  dateFrom,
+                  dateTo,
+                  poRef: undefined,
+                  ticketId: undefined,
+                  receivingId: undefined,
+                })
+              }
+            />
+          }
+          shown={photos.length}
+          total={query.hasNextPage ? undefined : photos.length}
+          selected={selected.size}
+        />
       }
     >
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
@@ -763,18 +759,13 @@ export function PhotoLibraryPage() {
           <PhotoLibraryTicketNasBackup ticketId={resolvedTicketId} />
         ) : null}
 
-        {/* The sheet plane: flush, borderless, no lift — the chrome bands above
-            own every hairline. Still not `TABLE_SURFACE_SHEET_CLASS`, but the
-            reason changed: that token is the LedgerGrid sheet's framed shell,
-            and this surface is a media stream, not a grid. (The old reason —
-            its `overflow-hidden` clipping the tile hero-morph mid-flight — died
-            with the morph on 2026-08-09.) */}
         <Panel
           data-testid="photo-library-display"
           padding="none"
           elevation="none"
           borderless
-          className="relative min-h-0 flex-1 inset-field"
+          // No inset-field — photos are flush to the card edge (operator 2026-09-01).
+          className="relative min-h-0 flex-1"
         >
           <PhotoLibraryGrid
             photos={photos}
@@ -783,8 +774,6 @@ export function PhotoLibraryPage() {
             sourceScope={sourceScopeFromFilters(filters)}
             onPhotoDeleted={() => {
               void queryClient.invalidateQueries({ queryKey: ['photo-library'] });
-              // The picker modal still browses server folder aggregates, so its
-              // counts must drop too when a photo is deleted from here.
               void queryClient.invalidateQueries({ queryKey: ['photo-library-folders'] });
             }}
             selectionActive={selectionActive}
@@ -805,12 +794,6 @@ export function PhotoLibraryPage() {
               onLoadMore={() => void query.fetchNextPage()}
             />
           ) : !query.isLoading && photos.length > 0 ? (
-            /*
-              End-of-stream. It used to read `Photos 48` — the same count the
-              path strip already shows, in the same words, saying nothing about
-              why it is there. The operator scrolled to the bottom; what they
-              need to know is that there is no more to load.
-            */
             <p className="mt-6 text-center text-role-micro uppercase tracking-widest text-text-faint">
               {`End of results · ${photoCountLabel(photos.length)}`}
             </p>
@@ -818,9 +801,6 @@ export function PhotoLibraryPage() {
         </Panel>
       </div>
 
-      {/* Registers into the global `RightRailHost` (already mounted by
-          ResponsiveLayout) and renders null here — geometry belongs to the host,
-          not to this page. Closing clears the selection, which clears the param. */}
       {inspectorPhoto ? (
         <PhotoInspectorPanel
           photo={inspectorPhoto}
@@ -829,11 +809,6 @@ export function PhotoLibraryPage() {
         />
       ) : null}
 
-      {/* The n ≠ 1 face of the SAME slot — armed rows for the bulk verbs that
-          used to be a chrome toolbar. `showBatchRail` is the toolbar's own
-          predicate unchanged, so the zero-selected entry state ("Select all
-          48") is relocated rather than dropped, and the two panels stay
-          mutually exclusive by construction. */}
       {showBatchRail ? (
         <PhotoBatchInspectorPanel
           rows={selectedPhotos}
@@ -876,8 +851,6 @@ export function PhotoLibraryPage() {
           onClose={() => setLabelEditorPhotos(null)}
         />
       ) : null}
-
-      <MediaLibraryShortcutsModal open={showShortcuts} onClose={() => setShowShortcuts(false)} />
     </DashboardScrollShell>
     </RightPaneOverlayHost>
     </DeskPageLayout>

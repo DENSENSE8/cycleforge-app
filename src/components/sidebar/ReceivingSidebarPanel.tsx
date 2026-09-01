@@ -44,8 +44,8 @@ import {
   isScanPreview,
   setScanStance,
   useScanModeRelease,
-  useScanStance,
 } from '@/components/station/scan-bar';
+import { useScanPreviewRailFilter } from '@/components/station/scan-bar/station-scan-preview-rail';
 import { useUnboxPreviewOpen } from '@/components/sidebar/receiving/useUnboxPreviewOpen';
 import { ReceivingRailBody } from '@/components/sidebar/receiving/ReceivingRailBody';
 import { ReceivingRecentRailFilters } from '@/components/sidebar/rail-shell/ReceivingRecentRailFilters';
@@ -186,8 +186,7 @@ export function ReceivingSidebarPanel() {
   // no-op in Preview). The facet popover rides the bar's right rail, so the
   // filter icon is present exactly when the field filters — which is what
   // replaced the always-mounted footer search bar under the list.
-  const scanStance = useScanStance();
-  const previewFiltering = scanStance === 'preview';
+  const { previewFiltering } = useScanPreviewRailFilter();
   const receivingFacetSlot = previewFiltering ? (
     <ReceivingRecentRailFilters
       facets={receivingRailFacets.facets}

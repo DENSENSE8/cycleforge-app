@@ -25,6 +25,7 @@ import { useTechDetailOverlays } from '@/components/tech/useTechDetailOverlays';
 import { TechRightPane } from '@/components/tech/TechRightPane';
 import { TechDashboardOverlays } from '@/components/tech/TechDashboardOverlays';
 import { dispatchTechCloseActiveOrder } from '@/components/tech/tech-active-order-events';
+import { dispatchCloseShippedDetails, dispatchUpNextPreview } from '@/utils/events';
 
 interface TechDashboardProps {
   techId: string;
@@ -89,7 +90,11 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
                 setActiveOrderPane((prev) => (prev ? { ...prev, activeOrder: next } : null))
               }
               previewOrder={previewOrder}
-              onClosePreview={() => setPreviewOrder(null)}
+              onClosePreview={() => {
+                setPreviewOrder(null);
+                dispatchUpNextPreview(null);
+                dispatchCloseShippedDetails();
+              }}
             />
             <ReceivingLineRailShell surface="lines" enabled={railEnabled} />
           </RightPaneOverlayHost>

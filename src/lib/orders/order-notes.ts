@@ -153,3 +153,48 @@ export async function createOrderNote({
     };
   });
 }
+
+/**
+ * Append the SAME note onto many orders in one tenant transaction.
+ *
+ * Ids the org does not own are dropped, not fatal — same honesty as
+ * {@link setOrderFlagBulk}. The trail stays append-only; `orders.notes` is the
+ * denormalized latest face, updated in the same write as the single-row path.
+ */
+export async function createOrderNotesBulk({
+  orderIds,
+  organizationId,
+  noteText,
+  staffId,
+}: {
+  orderIds: readonly number[];
+  organizationId: OrgId;
+  noteText: string;
+  staffId: number | null;
+}): Promise<{ updatedIds: number[] }> {
+  const body = noteText.trim();
+  if (!body) return { updatedIds: [] };
+
+  const ids = [...new Set(orderIds.filter((id) => Number.isFinite(id) && id > 0))];
+  if (ids.length === 0) return { updatedIds: [] };
+
+  return withTenantTransaction(organizationId, async (client) => {
+    const owned = await client.query<{ id: number }>(
+      'SELECT id FROM orders WHERE id = ANY($1::int[])',
+      [ids],
+    );
+    const updatedIds = owned.rows.map((r) => Number(r.id));
+    if (updatedIds.length === 0) return { updatedIds };
+
+    await client.query(
+      `INSERT INTO order_notes (order_id, note_text, author_staff_id)
+       SELECT unnest($1::int[]), $2, $3`,
+      [updatedIds, body, staffId],
+    );
+    await client.query('UPDATE orders SET notes = $1 WHERE id = ANY($2::int[])', [
+      body,
+      updatedIds,
+    ]);
+    return { updatedIds };
+  });
+}

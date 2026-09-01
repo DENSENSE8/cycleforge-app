@@ -9,7 +9,7 @@
  * > Select all 48                     ← armed rows (↑↓ / Home / End / Enter)
  *   Select all matching
  * ───────────────────────────────────
- *   Add photos
+ *   Attach to ticket
  *   Copy shareable links
  *   Create share page
  *   Edit labels

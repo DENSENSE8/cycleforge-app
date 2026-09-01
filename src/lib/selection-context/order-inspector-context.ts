@@ -8,12 +8,11 @@
  * predicates; this module is where that decision now lives, and the hook reads
  * from it.
  *
- * **Docs-first on Pending.** The pre-pack queue's first question is "does this
- * order have its shipping label and packing slip yet" — that is what decides
- * whether it can move to Pack at all. Opening on Shipping made the operator pay
- * a tab click on every single row to answer it. Buying / fetching / deleting
- * those documents stays on the Labels station (`documentsMode: 'manage'`); the
- * dashboard only previews (`'preview'`).
+ * **To-ship row body does not open the inspector** (checkbox + column-foot
+ * own the desk). When the rail does open, seed Shipping — not Documents —
+ * so a Documents right-rail / slide-over is not the first paint. Buying /
+ * fetching / deleting documents stays on the Labels station
+ * (`documentsMode: 'manage'`); the dashboard only previews (`'preview'`).
  */
 
 import type { ShippedActiveSection } from '@/components/shipped/stacks/types';
@@ -44,8 +43,14 @@ export type OrderInspectorRecordCta = 'assign' | 'open_testing' | 'open_pack' | 
 
 /** Bulk-action keys, matching `SelectionAction.key` in `useDashboardBulkSelection`. */
 export type OrderBulkActionKey =
+  | 'download-photos'
   | 'copy'
   | 'assign'
+  | 'assign-pick'
+  | 'assign-pack'
+  | 'condition'
+  | 'qty'
+  | 'notes'
   | 'listing-rule'
   | 'ship-by'
   | 'print'
@@ -92,11 +97,14 @@ export interface ResolveOrderInspectorContextInput {
 }
 
 /**
- * Pending / To Ship + the queue slide-over. Docs-first, read-only documents,
- * and a Testing hand-off (the next station for a pre-pack order).
+ * Pending / To Ship + the queue slide-over. Shipping-first (not Documents) —
+ * row click no longer opens the inspector on To-ship; when the rail does open
+ * (deep link, Labels walk), Documents is available but not the seed leaf.
+ * Buying / fetching / deleting those documents stays on the Labels station
+ * (`documentsMode: 'manage'`); the dashboard only previews (`'preview'`).
  */
 const FULFILLMENT_CONTEXT: OrderInspectorContext = {
-  defaultTab: 'documents',
+  defaultTab: 'shipping',
   showDocumentsTab: true,
   documentsMode: 'preview',
   recordCtas: ['assign', 'open_testing'],
@@ -209,8 +217,22 @@ export function resolveOrderInspectorContext({
 export function orderBulkActionKeys(orderView: DashboardOrderView): readonly OrderBulkActionKey[] {
   const isPostPack = orderView === 'packed' || orderView === 'shipped';
   return isPostPack
-    ? ['copy', 'print-shipping', 'flag', 'export', 'delete']
-    : ['copy', 'assign', 'listing-rule', 'ship-by', 'print', 'flag', 'export', 'delete'];
+    ? ['download-photos', 'copy', 'notes', 'print-shipping', 'flag', 'export', 'delete']
+    : [
+        'download-photos',
+        'copy',
+        'assign-pick',
+        'assign-pack',
+        'condition',
+        'qty',
+        'notes',
+        'listing-rule',
+        'ship-by',
+        'print',
+        'flag',
+        'export',
+        'delete',
+      ];
 }
 
 /** Pending / To Ship — named so specs assert against the registry, not a literal. */

@@ -5,7 +5,7 @@ import { formatDateTimePST } from '@/utils/date';
 import { cn } from '@/utils/_cn';
 import { TicketNasBackupButton } from '../TicketNasBackupButton';
 import { PhotoThumb } from '../PhotoThumb';
-import { GroupSelectionMark } from './GroupSelectionMark';
+import { PhotoEntityGroupHeader } from './PhotoEntityGroupHeader';
 import { SelectionMark } from './SelectionMark';
 import {
   clickSelectsInstead,
@@ -45,35 +45,28 @@ export function PhotoListView({
         return (
           <section key={group.key} className="space-y-1.5">
             {showGroupHeaders || (showNasBackup && ticketNumber) ? (
-              <header className="flex flex-wrap items-center gap-2 px-1">
-                {selectionActive && onToggleGroupSelection ? (
-                  <GroupSelectionMark
-                    allSelected={allGroupSelected}
-                    someSelected={someGroupSelected && !allGroupSelected}
-                    label={group.label}
-                    onToggle={() => onToggleGroupSelection(groupIds)}
-                  />
-                ) : null}
-                <span className="truncate text-role-eyebrow uppercase tracking-widest text-text-soft">
-                  {group.label}
-                </span>
-                <span
-                  className={cn(
-                    'shrink-0 bg-surface-sunken px-1.5 py-0.5 text-role-micro tabular-nums text-text-soft',
-                    cornerClass('chip'),
-                  )}
-                >
-                  {group.photos.length}
-                </span>
-                {showNasBackup && ticketNumber ? (
-                  <TicketNasBackupButton
-                    ticketNumber={ticketNumber}
-                    size="sm"
-                    label="Sync to NAS"
-                    className="ml-auto"
-                  />
-                ) : null}
-              </header>
+              <PhotoEntityGroupHeader
+                title={group.label}
+                count={group.photos.length}
+                allSelected={allGroupSelected}
+                someSelected={someGroupSelected && !allGroupSelected}
+                sticky={false}
+                onToggleSelectAll={
+                  onToggleGroupSelection
+                    ? () => onToggleGroupSelection(groupIds)
+                    : undefined
+                }
+                trailing={
+                  showNasBackup && ticketNumber ? (
+                    <TicketNasBackupButton
+                      ticketNumber={ticketNumber}
+                      size="sm"
+                      label="Sync to NAS"
+                      className="ml-auto"
+                    />
+                  ) : null
+                }
+              />
             ) : null}
             <ul
               className={cn(

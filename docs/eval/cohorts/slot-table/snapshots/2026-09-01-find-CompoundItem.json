@@ -5,7 +5,7 @@
       "node_key": "component:src/components/tables/compound/CompoundCells.tsx:CompoundItem",
       "kind": "component",
       "name": "CompoundItem",
-      "location": "src/components/tables/compound/CompoundCells.tsx:456",
+      "location": "src/components/tables/compound/CompoundCells.tsx:581",
       "exported": true,
       "signature": "function CompoundItem({ view, subtitleSelects, subtitleEdits, subtitleCopies, subtitleNoteKey, noteText, onReorderSubtitle, }: { view: CompoundRowView; /** Present ⇒ the parts these claim (by key) edit in place. */ subtitleSelects?: readonly CompoundSubtitleSelect[]; /** Present ⇒ the parts these claim retype in place (free text / number). */ subtitleEdits?: readonly CompoundSubtitleEdit[]; /** Pr"
     }

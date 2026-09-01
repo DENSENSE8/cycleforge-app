@@ -46,7 +46,12 @@ tools/eval-ledger/
 ├── registry.json              ← pointer only; authority is the TS cohorts
 ├── eval-core.mjs
 ├── run-station-eval.mjs       ← node --import tsx …
-└── run-cohort-eval.mjs        ← slot-table | shortcuts
+├── run-cohort-eval.mjs        ← slot-table | shortcuts
+├── machine-gate.mjs           ← Host checker (Cursor stop + Hermes LOOP_VERIFY)
+├── perf-target.mjs            ← Lighthouse / Speed Insights north star 95
+├── perf-gate.mjs              ← baseline gap debt (+ optional live check)
+├── stop-eval-gate.test.sh     ← synthetic stdin for Cursor stop hook
+└── mlx-eval-chat.mjs          ← Mac MLX Qwen 27B smoke (no tree writes)
 ```
 
 ## Overlay shell (not a display cohort)
@@ -122,3 +127,75 @@ Exception: ⌘; reveal-on-arm (`NAV_KEY_HINT_CLASS`); ScanHotkeyControl bind-edi
 3. Shortcut / `?` / button-face keycaps → `pnpm run eval:cohort shortcuts`.
 4. Mouth/domain/overlay shell → `pnpm run eval:station <id>` is enough.
 5. Human walks tunnel → edits Operator verdict.
+
+## Cursor `stop` eval gate
+
+Silent checker: [`.cursor/hooks/stop-eval-gate.sh`](../../.cursor/hooks/stop-eval-gate.sh)
+→ shared Host CLI [`tools/eval-ledger/machine-gate.mjs`](../../tools/eval-ledger/machine-gate.mjs)
+(wired in `.cursor/hooks.json`, `timeout: 300`, `loop_limit: 1`).
+
+**Hermes twin (forever, no per-issue wire):** for `cycleforge-app`,
+`hermes-dispatch` / `hermes-land` default `LOOP_VERIFY_COMMAND` to
+`node tools/eval-ledger/machine-gate.mjs` (`defaultVerifyCommandForRepo` in
+Garisek `verify-gate.ts`). Local Hermes coder is the maker-on-fail; repair
+prompt carries the same display law as the Cursor follow-up. Override only via
+`LOOP_VERIFY_COMMAND` if needed.
+
+**Perf north star (Lighthouse / Speed Insights ≥ 95):**
+`tools/eval-ledger/perf-target.mjs` + `perf-gate.mjs`. Every machine-gate pass
+runs `--mode=debt` (cheap baseline gap → `.cursor/perf-session.json`). Live
+Chrome audit only when `LOOP_PERF=check` or `MACHINE_GATE_PERF=check` with
+`LH_BASE_URL` set. `LOOP_PERF=strict` fails until Tier-1 floors meet 95.
+Cursor stop never runs full Lighthouse by default.
+
+| Result | Hook stdout / Hermes |
+|--------|----------------------|
+| Pass / skip | Cursor `{}` — **silence**; Hermes stop hop |
+| Machine red, `loop_count` 0 | Cursor one `followup_message`; Hermes `buildRepairPrompt` + coder again |
+| Verify hung / timed out | Cursor `{}` fail-open; Hermes unmeasured (not a pass) |
+
+Skips (Cursor only): `status !== completed`, `loop_count >= 1`, clean tree (no
+dirty under `src/` / `tools/eval-ledger/` / tables / overlay cohort / the stop
+hook), or kill switch `CYCLEFORGE_EVAL_STOP=0`. Fail-open on parse / crash /
+**timeout**. Subprocess budget defaults to 280s
+(`CYCLEFORGE_EVAL_STOP_TIMEOUT_SEC`). Paint / Operator verdict is **not** a
+resume reason.
+
+```bash
+pnpm run eval:machine-gate          # Host checker (+ perf debt stamp)
+pnpm run eval:perf-target           # print 95 north star + baseline gaps
+pnpm run eval:perf-gate             # debt (default) | --mode=strict | --mode=check
+pnpm run eval:machine-gate -- --dry-fail
+pnpm run eval:stop-gate-test        # synthetic Cursor stdin (no MLX, no verify)
+pnpm run eval:mlx-smoke             # Mac MLX Qwen 27B: ping + contract + dry-hook pipe
+# Live Tier-1 ratchet (needs prod build + LH_BASE_URL + cookie):
+pnpm run lighthouse:check
+
+### Overnight local-model grind → 95
+
+Host loop (not Cursor stop): local Hermes coder keeps attacking the worst
+Tier-1 gap until floors meet 95 or the wall-clock cap. State:
+`.cursor/perf-overnight-state.json`, log `.cursor/perf-overnight.log`.
+
+```bash
+# Terminal A — prod build on :3100
+NEXT_DIST_DIR=.next-perf pnpm build
+AUTH_PINLESS_SIGNIN=true NEXT_DIST_DIR=.next-perf npx next start -p 3100
+
+# Terminal B — overnight (Hermes coder + measure + ratchet)
+export LH_BASE_URL=http://127.0.0.1:3100
+export LH_COOKIE="$(node scripts/lighthouse-mint-session.mjs)"
+pnpm run eval:perf-overnight -- --dry-run          # preview next gap + prompt
+pnpm run perf:overnight                            # nohup-friendly launcher
+# or: nohup pnpm run eval:perf-overnight -- --max-hours 12 >> .cursor/perf-overnight.log 2>&1 &
+```
+
+Resume after a stop: same command; it re-reads baseline gaps. Win exit 0 when
+`perf-gate` Tier-1 debt is empty. Caps: `--max-hours` (default 12),
+`--max-rounds` (48). Does **not** lower floors or strip desk density.
+```
+
+MLX env: `CYCLEFORGE_MLX_BASE` (OpenAI `/v1`) — **grader of the repair brief
+only**, never the Host checker. Probe order also tries `100.96.113.23:8081`,
+`prometheus:8080`, `:8080`. Dry fixture: `CYCLEFORGE_EVAL_STOP=dry` or
+`machine-gate --dry-fail`. No Ollama fallback — unreachable Mac fails clearly.

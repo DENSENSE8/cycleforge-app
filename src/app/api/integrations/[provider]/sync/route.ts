@@ -12,19 +12,8 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { getConnector } from '@/lib/integrations/connectors/registry';
 import { syncConnection } from '@/lib/integrations/connectors/orchestrator';
 import type { IntegrationProvider } from '@/lib/integrations/credentials';
-import type { PermissionString } from '@/lib/auth/permissions';
+import { syncPermissionForProvider } from '@/lib/integrations/sync-permission';
 import { wouldExceedPlanCeiling, planLimitResponseBody } from '@/lib/billing/plan-ceilings';
-
-function managePermission(provider: string): PermissionString {
-  if (provider === 'ebay') return 'integrations.ebay';
-  if (provider === 'amazon') return 'integrations.amazon';
-  if (provider === 'zoho') return 'integrations.zoho';
-  // Order-import sources whose sync replaces the legacy transfer-orders
-  // buttons (INT-020) keep the permission those buttons required, so the
-  // Unshipped sidebar's importers don't silently start 403ing operators.
-  if (provider === 'google_sheets' || provider === 'ecwid') return 'orders.import';
-  return 'admin.manage_features';
-}
 
 /** Optional body — provider-specific manual-sync options. */
 const BodySchema = z
@@ -41,7 +30,7 @@ export const POST = withAuth(async (req, ctx) => {
   if (!connector?.sync) {
     return NextResponse.json({ error: 'NO_SYNC', provider }, { status: 400 });
   }
-  const perm = managePermission(provider);
+  const perm = syncPermissionForProvider(provider);
   if (!ctx.permissions.has(perm)) {
     return NextResponse.json({ error: 'FORBIDDEN', permission: perm }, { status: 403 });
   }

@@ -2,11 +2,14 @@
  * Browser silent-print fallback — renders label/report HTML in a hidden iframe
  * and lets the page's own `window.print()` drive the job.
  *
- * Why an iframe (not `window.open` + popup):
+ * Modern browsers use an iframe (not `window.open` + popup):
  *   - No popup window flashes on screen, and the popup blocker can't intercept
  *     it (a hidden same-document iframe needs no user-gesture popup grant).
  *   - The print originates from the iframe's own document, so `window.print()`
  *     prints exactly that label.
+ *
+ * Older WebKit is feature-detected below and uses the original popup/document.write
+ * path, with the popup reserved synchronously by the station button handler.
  *
  * What makes it SILENT:
  *   Under Chrome/Edge launched with `--kiosk-printing`, any `window.print()`
@@ -39,6 +42,60 @@ export interface IframePrintOptions {
    * which matches what `--kiosk-printing` does in the browser path.
    */
   deviceName?: string | null;
+  /** Popup reserved synchronously from the original button gesture. */
+  legacyPopup?: Window | null;
+}
+
+function needsLegacyPopup(): boolean {
+  if (typeof document === 'undefined') return false;
+  const probe = document.createElement('iframe');
+  return !('srcdoc' in probe);
+}
+
+/**
+ * Reserve the original popup path while the button still owns the user gesture.
+ * Dynamic imports can finish after that gesture expires on older WebKit.
+ */
+export function reserveLegacyPrintPopup(): Window | null {
+  if (!needsLegacyPopup() || typeof window === 'undefined') return null;
+  const popup = window.open('', '_blank', 'width=900,height=700');
+  if (!popup) {
+    console.warn('Print label: popup blocked');
+    return null;
+  }
+  return popup;
+}
+
+/**
+ * Safari 5 / older WebKit does not implement iframe.srcdoc. Keep the original
+ * station path for those machines: a user-gesture-created popup, document.write
+ * of the self-printing 2×1 page, then document.close(). No modern APIs or
+ * blob/object URLs are required by this branch.
+ */
+function printHtmlInLegacyPopup(
+  html: string,
+  options: IframePrintOptions,
+  reservedPopup?: Window | null,
+): boolean {
+  if (typeof window === 'undefined') return false;
+  const popup = reservedPopup ?? window.open('', '_blank', 'width=900,height=700');
+  if (!popup) {
+    console.warn(`${options.name ?? 'Print label'}: popup blocked`);
+    return false;
+  }
+  try {
+    popup.document.open();
+    popup.document.write(html);
+    popup.document.close();
+    return true;
+  } catch {
+    try {
+      popup.close();
+    } catch {
+      /* best effort */
+    }
+    return false;
+  }
 }
 
 /**
@@ -66,6 +123,10 @@ export function printHtmlInIframe(html: string, options: IframePrintOptions = {}
       });
       return true;
     }
+  }
+
+  if (needsLegacyPopup()) {
+    return printHtmlInLegacyPopup(html, options, options.legacyPopup);
   }
 
   const iframe = document.createElement('iframe');

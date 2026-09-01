@@ -5,9 +5,9 @@
       "node_key": "component:src/components/tables/DataTable.tsx:DataTableFilterMenu",
       "kind": "component",
       "name": "DataTableFilterMenu",
-      "location": "src/components/tables/DataTable.tsx:472",
+      "location": "src/components/tables/DataTable.tsx:711",
       "exported": true,
-      "signature": "function DataTableFilterMenu({ options, onToggle, onClearAll, }: NonNullable<DataTableProps<unknown, string, LedgerGridColumnModel>['filter']>)"
+      "signature": "function DataTableFilterMenu({ options, onToggle, onClearAll, }: DataTableFilterChrome)"
     }
   ]
 }

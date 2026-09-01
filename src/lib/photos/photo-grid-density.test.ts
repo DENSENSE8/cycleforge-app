@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   photoGridImageUrl,
+  photoGridLeafClass,
   photoGridTileRatio,
   photoLibraryShowsGridControls,
   type PhotoGridDensity,
@@ -35,4 +36,10 @@ test('density is offered only on photo tile grids', () => {
   assert.equal(photoLibraryShowsGridControls('grid-sm'), true);
   assert.equal(photoLibraryShowsGridControls('grid-lg'), true);
   assert.equal(photoLibraryShowsGridControls('grid-ticket'), true);
+});
+
+test('photo tile grids use a Google Photos wall seam — gap-0.5 at every density', () => {
+  for (const density of ['sm', 'md', 'lg'] satisfies PhotoGridDensity[]) {
+    assert.match(photoGridLeafClass(density), /\bgap-0\.5\b/);
+  }
 });

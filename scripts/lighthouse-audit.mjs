@@ -163,6 +163,7 @@ export const ROUTES = [
   { path: '/support', tier: 2, auth: true, formFactor: 'desktop' },
   { path: '/inventory', tier: 2, auth: true, formFactor: 'desktop' },
   { path: '/settings', tier: 2, auth: true, formFactor: 'desktop' },
+  { path: '/settings/integrations', tier: 2, auth: true, formFactor: 'desktop' },
   { path: '/incoming', tier: 2, auth: true, formFactor: 'desktop' },
   { path: '/m/pack', tier: 2, auth: true, formFactor: 'mobile' },
   { path: '/m/triage', tier: 2, auth: true, formFactor: 'mobile' },

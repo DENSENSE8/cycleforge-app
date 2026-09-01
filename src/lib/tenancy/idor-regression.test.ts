@@ -122,6 +122,43 @@ test('leak: staff-picker on apex host (no x-tenant-slug) returns an EMPTY list â
   }
 });
 
+test('staff-picker on apex with a session returns that org\'s names â€” not staff # ids, not another tenant', { skip: !HAS_DB }, async () => {
+  const { NextRequest } = await import('next/server');
+  const { default: pool } = await import('@/lib/db');
+  const { GET } = await import('@/app/api/auth/staff-picker/route');
+  const { createSession } = await import('@/lib/auth/session');
+  await ensureOrgs(pool);
+  await pool.query(`DELETE FROM staff WHERE name LIKE 'apex-sess-%'`);
+  const insA = await pool.query<{ id: number }>(
+    `INSERT INTO staff (organization_id, name, role, status) VALUES ($1, 'apex-sess-a', 'admin', 'active') RETURNING id`,
+    [ORG_A],
+  );
+  await pool.query(
+    `INSERT INTO staff (organization_id, name, role, status) VALUES ($1, 'apex-sess-b', 'tech', 'active')`,
+    [ORG_B],
+  );
+  const staffA = insA.rows[0]!.id;
+  const prevDefault = process.env.DEFAULT_TENANT_SLUG;
+  delete process.env.DEFAULT_TENANT_SLUG;
+  let sid: string | null = null;
+  try {
+    const session = await createSession({ staffId: staffA, deviceKind: 'station' });
+    sid = session.sid;
+    const req = new NextRequest('http://localhost/api/auth/staff-picker', {
+      headers: { cookie: `cf_sid=${session.sid}` },
+    });
+    const res = await GET(req);
+    const body = (await res.json()) as { staff: { id: number; name: string }[] };
+    ok(body.staff.some((s) => s.name === 'apex-sess-a'), 'session org staff name is listed');
+    ok(!body.staff.some((s) => s.name === 'apex-sess-b'), 'other tenant must stay hidden');
+    ok(!body.staff.some((s) => /^staff #\d+$/i.test(s.name)), 'picker must not emit staff # ids as names');
+  } finally {
+    if (sid) await pool.query(`DELETE FROM staff_sessions WHERE sid = $1`, [sid]);
+    if (prevDefault !== undefined) process.env.DEFAULT_TENANT_SLUG = prevDefault;
+    await pool.query(`DELETE FROM staff WHERE name LIKE 'apex-sess-%'`);
+  }
+});
+
 test('leak: signin with a staffId from another tenant is rejected (org-scoped PIN verify)', { skip: !HAS_DB }, async () => {
   const { default: pool } = await import('@/lib/db');
   const { setStaffPin } = await import('@/lib/auth/pin');

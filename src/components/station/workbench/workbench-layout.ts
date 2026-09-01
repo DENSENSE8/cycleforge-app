@@ -7,6 +7,7 @@
 
 import { STATION_COLUMN_FOOTER_BAND_FACE } from '@/components/layout/header-shell';
 import { CONTEXT_PANEL_RESIZE } from '@/components/sidebar/context-panel-column';
+import { STATION_DISPLAYS_STRIP_CLASS } from '@/components/station/scan-depth';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -103,11 +104,11 @@ export const STATION_SCAN_PANE_HOST_CLASS =
   'relative flex h-full min-h-0 min-w-0 flex-1 overflow-hidden';
 
 /**
- * Scan-station utility rail — slim white trailing chrome for Displays `←|` +
+ * Scan-station utility rail — slim trailing chrome for Displays `←|` +
  * carton `↑↓`. Sibling of the center column (and of Displays when open) — never
  * inside {@link CartonContextCard}. Mirror of the left context collapse strip
- * (`CONTEXT_PANEL_COLLAPSE_STRIP_CLASS`), trailing hairline against center /
- * Displays.
+ * (`CONTEXT_PANEL_COLLAPSE_STRIP_CLASS`), leading bevel against center /
+ * Displays. Consumes station Color + Depth via {@link STATION_DISPLAYS_STRIP_CLASS}.
  *
  * **Open displays (`←|`) seats at the bottom** of this rail — it opens a column
  * that is not mounted, so it is a real control rather than a second door onto
@@ -117,8 +118,10 @@ export const STATION_SCAN_PANE_HOST_CLASS =
  * Closed body ({@link StationDisplaysUtilityRail}) also opens on whole-strip
  * click.
  */
-export const STATION_UTILITY_RAIL_CLASS =
-  'relative z-raised flex h-full w-8 shrink-0 flex-col items-center border-l border-border-soft bg-surface-card';
+export const STATION_UTILITY_RAIL_CLASS = cn(
+  STATION_DISPLAYS_STRIP_CLASS,
+  'relative z-raised',
+);
 
 /**
  * Bottom cell of {@link STATION_UTILITY_RAIL_CLASS} — `←|` Open displays.

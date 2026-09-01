@@ -15,9 +15,11 @@ import {
   Truck,
 } from '@/components/Icons';
 import { BottomSheet } from '@/components/ui/BottomSheet';
+import { StaffAvatar } from '@/components/identity/StaffAvatar';
 import { Button, Inset, Stack } from '@/design-system/primitives';
 import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import {
+  isToShipOutOfStock,
   toShipPackerLabel,
   toShipPickerLabel,
 } from '@/lib/work-orders/to-ship-assignment';
@@ -51,6 +53,7 @@ export function MobileToShipSheet({
   onOutOfStock,
   onOpenDetail,
   resolveName,
+  blocked = false,
 }: {
   row: WorkOrderRow | null;
   open: boolean;
@@ -59,6 +62,7 @@ export function MobileToShipSheet({
   onOutOfStock: (row: WorkOrderRow) => void;
   onOpenDetail: (row: WorkOrderRow) => void;
   resolveName: (id: number) => string;
+  blocked?: boolean;
 }) {
   const entityId = row?.entityId ?? null;
   const { data: documents = [], isPending } = useQuery({
@@ -69,6 +73,7 @@ export function MobileToShipSheet({
 
   if (!row) return null;
 
+  const isBlocked = blocked || isToShipOutOfStock(row);
   const listingHref = getExternalUrlByItemNumber(row.itemNumber || row.sku);
   const label = documents.find((doc) => doc.documentType === 'shipping_label');
   const slip = documents.find((doc) => doc.documentType === 'packing_slip');
@@ -89,8 +94,36 @@ export function MobileToShipSheet({
           <Stack space="tight" className="flex flex-col">
             <ToShipIdentityChips row={row} />
             <ToShipSlotSubtitle row={row} />
-            <p className="text-role-eyebrow text-text-soft">
-              Pick {picker ?? '—'} · Pack {packer ?? '—'}
+            <p
+              data-testid="to-ship-sheet-assignees"
+              className="row-gap flex-wrap text-role-eyebrow text-text-soft"
+            >
+              <span className="row-gap min-w-0">
+                {row.techId != null || picker ? (
+                  <StaffAvatar
+                    staffId={row.techId}
+                    name={picker}
+                    colorHex={row.techColorHex}
+                    avatarPhotoId={null}
+                    size="xs"
+                    alt={picker ?? undefined}
+                  />
+                ) : null}
+                <span>Pick {picker ?? '—'}</span>
+              </span>
+              <span className="row-gap min-w-0">
+                {row.packerId != null || packer ? (
+                  <StaffAvatar
+                    staffId={row.packerId}
+                    name={packer}
+                    colorHex={row.packerColorHex}
+                    avatarPhotoId={null}
+                    size="xs"
+                    alt={packer ?? undefined}
+                  />
+                ) : null}
+                <span>Pack {packer ?? '—'}</span>
+              </span>
             </p>
             <p className={`text-role-eyebrow ${getDaysLateTone(daysLate)}`}>
               Ship by {formatDatePST(row.deadlineAt, { shortYear: true })}
@@ -135,9 +168,10 @@ export function MobileToShipSheet({
               Order details
             </Button>
             <Button
-              variant="warning"
+              variant="ghost"
               radius="surface"
               icon={<AlertTriangle />}
+              disabled={isBlocked}
               onClick={() => onOutOfStock(row)}
             >
               Out of stock
@@ -146,7 +180,9 @@ export function MobileToShipSheet({
               variant="primary"
               radius="surface"
               icon={<Truck />}
+              disabled={isBlocked}
               onClick={() => {
+                if (isBlocked) return;
                 onClose();
                 onProcess(row);
               }}
