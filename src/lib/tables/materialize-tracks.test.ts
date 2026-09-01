@@ -17,8 +17,7 @@ import type { SlotLayout } from './slot-layout';
 
 const CATALOG: FieldCatalog = [
   { id: 'orders.order_id', family: 'orders', label: 'Order', displayType: 'id', slotKinds: ['identity'] },
-  // Synthetic fixture, but the verb faces mirror the shipped catalog's
-  // Needed-class pending copy so this file cannot read as a stale vocabulary.
+  // Synthetic fixture: shipped catalog pending verb is Pick (not Needed).
   { id: 'orders.picked', family: 'orders', label: 'Pick', displayType: 'stage_event', slotKinds: ['status'], iconKey: 'picked', stageLabels: { done: 'Picked', pending: 'Pick' } },
   { id: 'orders.packed', family: 'orders', label: 'Packed', displayType: 'stage_event', slotKinds: ['status'], iconKey: 'packed' },
   { id: 'orders.qty', family: 'orders', label: 'Qty', displayType: 'number', slotKinds: ['subtitle'] },
@@ -60,7 +59,7 @@ describe('materializeTracks — compound', () => {
     assert.equal(status1.fieldId, 'orders.picked');
     assert.equal(status1.slotIconKey, 'picked');
     assert.equal(status1.slotDisplayType, 'stage_event');
-    assert.deepEqual(status1.slotStageLabels, { done: 'Picked', pending: 'Needed' });
+    assert.deepEqual(status1.slotStageLabels, { done: 'Picked', pending: 'Pick' });
     // Step-track geometry — 8rem since the 2026-08-31 tightening (was 10).
     assert.equal(status1.width, 'minmax(8rem, 8rem)');
     assert.equal(status1.resizable, true);
