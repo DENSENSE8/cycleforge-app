@@ -194,30 +194,39 @@ test.describe('To-ship · DataTable chrome', () => {
 
     await sort.click();
     const menu = page.getByTestId('data-table-sort-menu');
-    await expect(menu.getByTestId('data-table-sort-tab-View')).toBeVisible();
-    await expect(menu.getByTestId('data-table-sort-tab-Platform')).toBeVisible();
-    await expect(menu.getByTestId('data-table-sort-tab-Carriers')).toBeVisible();
+    await expect(menu.getByRole('tab')).toHaveCount(0);
+    await expect(menu.getByTestId('data-table-sort-tab-View')).toHaveCount(0);
     await expect(menu.getByTestId('data-table-sort-tab-Column')).toHaveCount(0);
     await expect(menu.getByTestId('data-table-sort-tab-Channel')).toHaveCount(0);
+    await expect(menu.getByTestId('data-table-sort-group-View')).toBeVisible();
+    await expect(menu.getByTestId('data-table-sort-group-Platform')).toBeVisible();
+    await expect(menu.getByTestId('data-table-sort-group-Carriers')).toBeVisible();
     await expect(menu.getByText('Priority (due soon)')).toHaveCount(0);
 
     await expect(menu.getByTestId('data-table-sort-newest')).toBeVisible();
+    await expect(
+      menu.getByTestId('data-table-sort-newest').locator('[data-brand-identity]'),
+    ).toHaveCount(0);
     await expect(menu.getByTestId('data-table-sort-deadline')).toBeVisible();
-    await expect(menu.getByTestId('data-table-sort-filter')).toHaveCount(0);
+    await expect(menu.getByTestId('data-table-sort-deadline')).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    await expect(menu.getByTestId('data-table-sort-filter')).toBeVisible();
     await expect(menu.getByTestId('data-table-sort-picked')).toHaveCount(0);
     await expect(menu.getByTestId('data-table-sort-packed')).toHaveCount(0);
 
-    await menu.getByTestId('data-table-sort-tab-Carriers').click();
-    await expect(menu.getByTestId('data-table-sort-filter')).toBeVisible();
     await expect(menu.getByTestId('data-table-sort-carrier-USPS')).toBeVisible();
     await expect(
-      menu.getByTestId('data-table-sort-carrier-USPS').locator('[data-brand-identity]'),
-    ).toHaveCount(0);
+      menu.getByTestId('data-table-sort-carrier-USPS').locator('[data-brand-identity="carrier"]'),
+    ).toBeVisible();
     await expect(menu.getByTestId('data-table-sort-carrier-USPS').locator('img')).toHaveCount(0);
     await expect(menu.getByTestId('data-table-sort-carrier-UPS')).toBeVisible();
     await expect(menu.getByTestId('data-table-sort-carrier')).toHaveCount(0);
     await expect(menu.getByText('USPS first')).toHaveCount(0);
     await menu.getByTestId('data-table-sort-filter').locator('input').fill('usps');
+    await expect(menu.getByTestId('data-table-sort-group-View')).toHaveCount(0);
+    await expect(menu.getByTestId('data-table-sort-group-Carriers')).toBeVisible();
     await expect(menu.getByTestId('data-table-sort-carrier-USPS')).toBeVisible();
     await expect(menu.getByTestId('data-table-sort-carrier-UPS')).toHaveCount(0);
     await menu.getByTestId('data-table-sort-carrier-USPS').click();
@@ -323,7 +332,6 @@ test.describe('To-ship · DataTable chrome', () => {
     page,
   }) => {
     await toolbar(page).getByTestId('data-table-sort').click();
-    await page.getByTestId('data-table-sort-menu').getByTestId('data-table-sort-tab-Platform').click();
     await page.getByTestId('data-table-sort-channel-Amazon').click();
     await expect(page).toHaveURL(/[?&]sort=channel(:|%3A)Amazon/);
     await expect(toolbar(page).getByTestId('data-table-sort')).toHaveAttribute(
@@ -339,7 +347,6 @@ test.describe('To-ship · DataTable chrome', () => {
     await closeViews(page);
 
     await toolbar(page).getByTestId('data-table-sort').click();
-    await page.getByTestId('data-table-sort-menu').getByTestId('data-table-sort-tab-View').click();
     await page.getByTestId('data-table-sort-deadline').click();
     await expect(page).not.toHaveURL(/[?&]sort=/);
 
@@ -378,7 +385,6 @@ test.describe('To-ship · DataTable chrome', () => {
     await closeViews(page);
 
     await toolbar(page).getByTestId('data-table-sort').click();
-    await page.getByTestId('data-table-sort-menu').getByTestId('data-table-sort-tab-View').click();
     await page.getByTestId('data-table-sort-deadline').click();
     await expect(page).not.toHaveURL(/[?&]sort=/);
     await expect(toolbar(page).getByTestId('data-table-sort')).toHaveAttribute('aria-label', 'Sort');
@@ -436,10 +442,10 @@ test.describe('To-ship · DataTable chrome', () => {
 
     await toolbar(page).getByTestId('data-table-sort').click();
     const menu = page.getByTestId('data-table-sort-menu');
-    await menu.getByTestId('data-table-sort-tab-Platform').click();
+    await expect(menu.getByTestId('data-table-sort-group-Platform')).toBeVisible();
     await expect(menu.getByTestId('data-table-sort-filter')).toBeVisible();
     const amazon = menu.getByTestId('data-table-sort-channel-Amazon');
-    await expect(amazon.locator('[data-brand-identity]')).toHaveCount(0);
+    await expect(amazon.locator('[data-brand-identity="platform"]')).toBeVisible();
     await expect(amazon.locator('img')).toHaveCount(0);
     await amazon.click();
     await expect(page).toHaveURL(/[?&]sort=channel(:|%3A)Amazon/);
@@ -453,7 +459,6 @@ test.describe('To-ship · DataTable chrome', () => {
 
     await toolbar(page).getByTestId('data-table-sort').click();
     const reopen = page.getByTestId('data-table-sort-menu');
-    await reopen.getByTestId('data-table-sort-tab-Platform').click();
     await expect(reopen.getByTestId('data-table-sort-channel-Amazon')).toHaveAttribute(
       'aria-selected',
       'true',

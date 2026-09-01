@@ -17,7 +17,7 @@
 
 import { Maximize2, Minimize2 } from '@/components/Icons';
 import { useDeskStageOptional } from '@/design-system/components/DeskStageContext';
-import { cornerClass } from '@/design-system/tokens/radius';
+import { DATA_TABLE_TOOLBAR_CORNER } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -36,7 +36,7 @@ export function DataTableFullscreenToggle({ className }: { className?: string })
       className={cn(
         'ds-raw-button inline-flex h-6 w-6 shrink-0 items-center justify-center',
         'text-text-muted transition-colors duration-100 ease-out hover:bg-surface-hover hover:text-text-default',
-        cornerClass('flush'),
+        DATA_TABLE_TOOLBAR_CORNER,
         focusRing('control'),
         className,
       )}

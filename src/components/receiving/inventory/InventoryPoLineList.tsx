@@ -354,7 +354,7 @@ export function InventoryPoLineList({
         const dirty = draft.trim() !== (line.description ?? '').trim();
 
         return (
-          <li key={key} className={cn(isActive && 'bg-blue-50/80')}>
+          <li key={key} className={cn(isActive && 'bg-surface-sunken')}>
             <button
               type="button"
               className={cn(

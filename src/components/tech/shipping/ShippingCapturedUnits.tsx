@@ -83,7 +83,7 @@ export function ShippingCapturedUnits({
                 exit={{ ...rowPresence.exit, height: 0 }}
                 transition={framerTransition.stationSerialRow}
                 className={`flex items-center gap-2 px-3 py-2 transition-colors duration-500 ${
-                  isNew ? 'bg-emerald-50' : 'bg-surface-card'
+                  isNew ? 'bg-surface-sunken' : 'bg-surface-card'
                 }`}
               >
                 <Check className="h-3 w-3 flex-shrink-0 text-emerald-600" />

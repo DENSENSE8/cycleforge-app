@@ -1,9 +1,9 @@
 {
   "version": 1,
   "generatedAt": "2026-08-21T01:05:42Z",
-  "totalRoutes": 969,
+  "totalRoutes": 971,
   "summary": {
-    "permissionGated": 827,
+    "permissionGated": 829,
     "authenticatedNoPermission": 53,
     "anonymousIntentional": 87,
     "serviceToService": 2,
@@ -2792,6 +2792,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/integrations/order-sources/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/interop/asn/[shipmentId]/route.ts",
       "methods": [
         "GET"
@@ -4101,6 +4110,15 @@
         "POST"
       ],
       "gate": "withAuth",
+      "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/notes/bulk/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
       "permission": "orders.create",
       "exemptReason": null
     },
@@ -5432,6 +5450,24 @@
     },
     {
       "path": "/api/receiving/inbound/import-purchase/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/inbound/extract-po/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/inbound/confirm-po/route.ts",
       "methods": [
         "POST"
       ],

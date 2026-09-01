@@ -14,20 +14,13 @@
 
 import type { EvaluatedReleaseGates } from './release-gates';
 
-/** One missing fact, one control that fixes it. */
-export type OrderExceptionBlocker =
-  | 'unpaired'
-  | 'no_item_number'
-  | 'no_tracking'
-  | 'no_docs'
-  | 'no_label';
+/** One missing pairing fact, one control that fixes it. Paperwork (docs /
+ * labels / tracking) is not an exception blocker — that walk is To-ship. */
+export type OrderExceptionBlocker = 'unpaired' | 'no_item_number';
 
 export const ORDER_EXCEPTION_BLOCKER_LABEL: Record<OrderExceptionBlocker, string> = {
   unpaired: 'Unpaired SKU',
   no_item_number: 'No item number',
-  no_tracking: 'No tracking',
-  no_docs: 'No documents',
-  no_label: 'No label',
 };
 
 export type OrderExceptionScope = 'actionable' | 'all';
@@ -67,32 +60,14 @@ function present(value: string | null | undefined): boolean {
  */
 export function deriveOrderExceptionBlockers(facts: {
   itemNumber?: string | null;
-  trackingNumber?: string | null;
   skuCatalogId?: number | null;
-  linkedDocumentCount?: number | null;
-  docsNotRequired?: boolean | null;
-  shippingLabelLinked?: boolean | null;
-  shippingLabelPurchased?: boolean | null;
 }): OrderExceptionBlocker[] {
   const blockers: OrderExceptionBlocker[] = [];
-  // Pairing first: it is the one the operator is here to clear, and since the
-  // 2026-08-31 flow ruling (R-FLOW-1) it corresponds to release gate G4 —
-  // `unpaired` here and G4 in `release-gates.ts` must agree, same as the
-  // tracking↔label coupling below.
+  // Pairing is the one the operator is here to clear. Since the 2026-08-31
+  // flow ruling (R-FLOW-1) it corresponds to release gate G4; R-FLOW-7
+  // (2026-09-01) narrowed this *queue* to pairing only — G2/G3 paperwork is
+  // To-ship, not an exception blocker.
   if (facts.skuCatalogId == null) blockers.push('unpaired');
   if (!present(facts.itemNumber)) blockers.push('no_item_number');
-  if (!present(facts.trackingNumber)) blockers.push('no_tracking');
-  const docCount = Number(facts.linkedDocumentCount ?? 0);
-  if (!(docCount > 0) && facts.docsNotRequired !== true) blockers.push('no_docs');
-  // A linked tracking number counts as the label (operator ruling 2026-08-31),
-  // exactly as it does for G3 in `release-gates.ts` — the two must agree or a
-  // row would print a `no_label` chip the Release control does not honour.
-  if (
-    facts.shippingLabelLinked !== true
-    && facts.shippingLabelPurchased !== true
-    && !present(facts.trackingNumber)
-  ) {
-    blockers.push('no_label');
-  }
   return blockers;
 }

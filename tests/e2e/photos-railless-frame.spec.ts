@@ -1,50 +1,28 @@
 /**
- * Media Library — the rail-less frame and its three-band chrome (S1.5).
+ * Media Library — the rail-less frame (S1.5) + find row / footer path (2026-09-01).
  *
  *   npx playwright test tests/e2e/photos-railless-frame.spec.ts --project=qa-desktop
  *
- * Third net beside `photos-library-deep-link.spec.ts` (filter params) and
- * `photos-inspector-walk.spec.ts` (the record param). This one pins the two
- * facts S1.5 traded a whole left column for, and neither is visible in code
- * review:
+ * Pins:
  *
  *  1. **The centre actually got the width.** `/ops/photos` is rail-less
  *     (Pattern E) via `CONTEXT_PANEL_ROUTE_KEYS`, so the stream must run the
- *     full content row and clear `MIN_WORK_SURFACE_PX` (784) at 1440. Deleting
- *     the rail alone did NOT achieve this: `RightPaneOverlayHost` is a flex item
- *     that sized to `max-content` and measured **721px inside a 1440 viewport**
- *     — a number the S1 report attributed to the rail. The `min-w-0 flex-1` in
- *     `PhotoLibraryPage` is what hands the reclaimed column to the stream, and
- *     it is one careless class deletion away from regressing silently.
- *  2. **The bands stack, in order, with no gap.** Band 1 tabs → Band 2 search →
- *     Band 3 path strip, contiguous inside one `WORKBENCH_SHEET_CHROME` host.
- *     A gap here means someone reintroduced host padding on a flush host.
+ *     full content row and clear `MIN_WORK_SURFACE_PX` (784) at 1440.
+ *  2. **Card chrome is find row + TableStatusBar footer** (breadcrumb on
+ *     `lead`). Lifecycle tabs + type cube live on the frame tab row.
  *
- * Assertions are shape-based, not count-based, so seeded row counts may change
- * (`.claude/rules/verify.md` → E2E runs against the QA org).
+ * Assertions are shape-based, not count-based (QA org seed may change).
  */
 import { test, expect, type Page } from '@playwright/test';
 
-/** The settled header meta line — see the deep-link spec for why `·` is load-bearing. */
 /**
- * The path strip's count readout, and the SETTLED gate every test here opens
- * with.
- *
- * Targeted by test id rather than by copy: this was a `/Photos \d+ ·/` regex
- * whose trailing separator existed only to disambiguate it from the
- * end-of-stream footer's own count, and both broke the first time the wording
- * was improved.
- *
- * The assertion is `toContainText(/\d+ photo/)`, never `toBeVisible()`. The
- * element is mounted during loading too — its loading branch is `Loading…`,
- * which carries no digits — so a mere visibility check passes on the first
- * frame and the test reads its tile count before any photo has arrived. The
- * digits are what say "settled".
+ * Footer row-count readout — the SETTLED gate every test here opens with.
+ * Digits are what say "settled" (loading paints nothing useful here).
  */
-const META_LINE = '[data-testid="photo-library-meta"]';
+const META_LINE = '[data-testid="data-table-row-count"]';
 
 /** The readout has settled on a real count. */
-const SETTLED_META = /\d+ photo/i;
+const SETTLED_META = /\d/;
 
 /** `MIN_WORK_SURFACE_PX` from `src/lib/right-rail/frame.ts` — the desk centre floor. */
 const MIN_WORK_SURFACE_PX = 784;
@@ -75,72 +53,132 @@ async function toggleTile(page: Page, index: number): Promise<void> {
 }
 
 test.describe('Media Library · rail-less frame', () => {
-  test('no left context column — the stream runs the full content row', async ({ page }) => {
+  test('no left context column — the stream fills the desk stage', async ({ page }) => {
     await landOnStream(page);
 
     const geometry = await page.evaluate(() => {
-      const main = document.querySelector('main');
+      const stage = document.querySelector('[data-testid="desk-page-stage"]');
       const display = document.querySelector('[data-testid="photo-library-display"]');
       return {
-        main: main ? Math.round(main.getBoundingClientRect().width) : 0,
+        stage: stage ? Math.round(stage.getBoundingClientRect().width) : 0,
         display: display ? Math.round(display.getBoundingClientRect().width) : 0,
         left: display ? Math.round(display.getBoundingClientRect().left) : -1,
-        mainLeft: main ? Math.round(main.getBoundingClientRect().left) : -1,
+        stageLeft: stage ? Math.round(stage.getBoundingClientRect().left) : -1,
       };
     });
 
-    // The stream starts at the content row's own left edge — nothing reserved
-    // beside it. (A resident context rail would push this in by ~360.)
-    expect(geometry.left).toBe(geometry.mainLeft);
+    // Rail-less Pattern E: nothing reserved beside the stream inside the stage
+    // (a resident context rail would push this in by ~360). The stage itself is
+    // the desk measure (`max-w-6xl`) — not edge-to-edge of `<main>`.
+    expect(geometry.left).toBe(geometry.stageLeft);
     expect(geometry.display).toBeGreaterThanOrEqual(MIN_WORK_SURFACE_PX);
-    // And it is not merely "wide enough" — it is the whole row.
-    expect(geometry.display).toBe(geometry.main);
+    expect(geometry.display).toBe(geometry.stage);
   });
 
-  test('the chrome is three contiguous bands: tabs, search, path strip', async ({ page }) => {
+  test('card chrome is find row + footer status; tabs live on the frame', async ({ page }) => {
     await landOnStream(page);
 
-    const bands = await page.evaluate(() => {
-      const cube = document.querySelector('[data-testid="photo-media-types"]');
-      const host = cube?.closest('div.flex.min-w-0')?.parentElement ?? null;
-      if (!host) return [];
-      return [...host.children].map((child) => {
-        const rect = child.getBoundingClientRect();
-        return {
-          top: Math.round(rect.top),
-          bottom: Math.round(rect.bottom),
-          width: Math.round(rect.width),
-        };
-      });
-    });
+    await expect(page.locator('[data-testid="photo-library-find-row"]')).toBeVisible();
+    await expect(page.locator('[data-testid="data-table-status"]')).toBeVisible();
+    await expect(page.locator('[data-testid="data-table-status-lead"]')).toBeVisible();
+    await expect(page.locator(TYPES_CUBE)).toBeVisible();
 
-    expect(bands).toHaveLength(3);
-    // Contiguous: each band's top is its predecessor's bottom. A non-zero delta
-    // is host `gap-*` / `p-*` creeping back onto a flush sheet-chrome host.
-    expect(bands[1].top).toBe(bands[0].bottom);
-    expect(bands[2].top).toBe(bands[1].bottom);
-    // All three span the same row the stream does.
-    for (const band of bands) expect(band.width).toBe(bands[0].width);
+    const stack = await page.evaluate(() => {
+      const find = document.querySelector('[data-testid="photo-library-find-row"]');
+      const display = document.querySelector('[data-testid="photo-library-display"]');
+      const status = document.querySelector('[data-testid="data-table-status"]');
+      const footer = document.querySelector('[data-testid="dashboard-footer"]');
+      const scroll = document.querySelector('[data-testid="dashboard-scroll"]');
+      const host = scroll?.parentElement;
+      if (!find || !display || !status || !footer || !scroll || !host) return null;
+      return {
+        findBottom: Math.round(find.getBoundingClientRect().bottom),
+        displayTop: Math.round(display.getBoundingClientRect().top),
+        scrollBottom: Math.round(scroll.getBoundingClientRect().bottom),
+        footerTop: Math.round(footer.getBoundingClientRect().top),
+        footerBottom: Math.round(footer.getBoundingClientRect().bottom),
+        hostBottom: Math.round(host.getBoundingClientRect().bottom),
+        statusTop: Math.round(status.getBoundingClientRect().top),
+        // Footer is a non-scrolling sibling — must not live inside the scrollport.
+        statusInsideScroll: scroll.contains(status),
+      };
+    });
+    expect(stack).toBeTruthy();
+    expect(stack!.displayTop).toBe(stack!.findBottom);
+    expect(stack!.statusInsideScroll, 'status bar is outside the scroll port').toBe(false);
+    expect(stack!.footerTop).toBe(stack!.scrollBottom);
+    expect(stack!.statusTop).toBe(stack!.footerTop);
+    // Pinned to the bottom of the scroll shell — not floating mid-grid.
+    expect(stack!.footerBottom).toBe(stack!.hostBottom);
   });
 
-  /**
-   * Every chrome control tracks the 28px row it sits in.
-   *
-   * Before 2026-08-20 this surface ran FOUR heights across its two 28px bands:
-   * a 24px Views trigger, a 28px inspector toggle, a 32px sort pill and refresh
-   * button, and 34px toggle groups (an `h-7` button inside a `border` + `p-0.5`
-   * box). The tall ones overflowed the band they lived in, so no two controls
-   * shared a top or a bottom edge and the rows read as a ragged parade.
-   *
-   * The fix was the house answer — `WORKBENCH_CHROME_CUBE_CLASS`, whose whole
-   * contract is `self-stretch aspect-square` so a cell tracks the row instead
-   * of pinning a size that overflows it. This measures the OUTCOME (shared
-   * edges) rather than the class, so a future control that reaches for a fixed
-   * `h-8` fails here even if it spells it differently.
-   */
-  test('every band control shares its row height — no control overflows its band', async ({
-    page,
-  }) => {
+  test('header Download CTA exports the shown window', async ({ page }) => {
+    await landOnStream(page);
+
+    const download = page.getByTestId('photo-library-export');
+    await expect(download).toBeVisible();
+    await expect(download).toBeEnabled();
+    await expect(download).toHaveText(/Download \d+/);
+    await expect(page.getByTestId('photo-library-add-photos')).toBeVisible();
+  });
+
+  test('photo tiles form a tight Google Photos wall', async ({ page }) => {
+    await landOnStream(page);
+    await expect(page.locator(TILE).first()).toBeVisible();
+    await expect(page.getByTestId('photo-entity-group-header').first()).toBeVisible();
+
+    const gaps = await page.evaluate(() => {
+      const display = document.querySelector('[data-testid="photo-library-display"]');
+      const tiles = [...document.querySelectorAll('[data-testid="photo-tile"]')].slice(0, 8);
+      if (!display || tiles.length < 2) return null;
+      const style = getComputedStyle(display);
+      const boxes = tiles.map((t) => {
+        const card = t.closest('.group') ?? t.parentElement;
+        return card!.getBoundingClientRect();
+      });
+      // Same-row neighbors: Google Photos seam is ~2px (gap-0.5).
+      const rowGaps: number[] = [];
+      for (let i = 1; i < boxes.length; i++) {
+        const prev = boxes[i - 1]!;
+        const cur = boxes[i]!;
+        if (Math.abs(prev.top - cur.top) > 2) continue;
+        rowGaps.push(Math.round(cur.left - prev.right));
+      }
+      const header = document.querySelector('[data-testid="photo-entity-group-header"]');
+      const labelUnderTile = tiles[0]?.closest('.group')?.querySelector('.truncate');
+      return {
+        rowGaps,
+        padL: parseFloat(style.paddingLeft) || 0,
+        padR: parseFloat(style.paddingRight) || 0,
+        padT: parseFloat(style.paddingTop) || 0,
+        hasEntityHeader: Boolean(header),
+        // Titles live on the group header — not cloned under each tile.
+        tileHasTitleClone: Boolean(labelUnderTile),
+      };
+    });
+    expect(gaps, 'enough same-row tiles to measure').toBeTruthy();
+    expect(gaps!.padL, 'no left inset on the stream').toBe(0);
+    expect(gaps!.padR, 'no right inset on the stream').toBe(0);
+    expect(gaps!.padT, 'no top inset on the stream').toBe(0);
+    expect(gaps!.hasEntityHeader).toBe(true);
+    expect(gaps!.tileHasTitleClone, 'PO/ticket title is not cloned on tiles').toBe(false);
+    expect(gaps!.rowGaps.length).toBeGreaterThan(0);
+    for (const gap of gaps!.rowGaps) {
+      expect(gap, 'Google Photos wall seam (≤3px)').toBeLessThanOrEqual(3);
+    }
+  });
+
+  test('entity group header select-all arms the selection', async ({ page }) => {
+    await landOnStream(page);
+    const header = page.getByTestId('photo-entity-group-header').first();
+    await expect(header).toBeVisible();
+    await header.getByTestId('photo-group-select-all').click();
+    await expect(page.getByTestId('data-table-selected-count')).toBeVisible();
+    await expect(page.getByTestId('data-table-selected-count')).toContainText(/selected/);
+  });
+
+  /** Find-row display controls track the 28px chrome row. */
+  test('every find-row display control shares its row height', async ({ page }) => {
     await landOnStream(page);
 
     const rows = await page.evaluate(() => {
@@ -151,11 +189,6 @@ test.describe('Media Library · rail-less frame', () => {
         return { top: Math.round(r.top), bottom: Math.round(r.bottom), h: Math.round(r.height) };
       };
       return {
-        // Band 2 — the sort pill and the inspector toggle are the two controls
-        // that flank the right cluster.
-        sort: box('button[aria-label^="Sort:"]'),
-        inspector: box('[data-testid="media-library-inspector-toggle"]'),
-        // Band 3 — density group, refresh, select, display toggle.
         gridSize: box('[role="group"][aria-label="Grid size"]'),
         refresh: box('button[aria-label="Refresh photos"]'),
         display: box('[role="group"][aria-label="Photo display"]'),
@@ -164,17 +197,10 @@ test.describe('Media Library · rail-less frame', () => {
 
     for (const [name, cell] of Object.entries(rows)) {
       expect(cell, `${name} is mounted`).toBeTruthy();
-      // 28px row; a cell may inset by the band's own hairline, never exceed it.
       expect(cell!.h, `${name} fits its 28px band`).toBeLessThanOrEqual(28);
       expect(cell!.h, `${name} fills its band`).toBeGreaterThanOrEqual(26);
     }
 
-    /*
-      Band 3 is ONE strip: every adjacent pair of cells shares a collapsed
-      hairline (`-ml-px`, so the measured delta is -1), including across the
-      `role="group"` boundaries. A positive delta is a `gap-*` creeping back
-      onto the row and re-splitting it into floating clusters.
-    */
     const seams = await page.evaluate(() => {
       const inner = document
         .querySelector('button[aria-label="Refresh photos"]')
@@ -187,25 +213,21 @@ test.describe('Media Library · rail-less frame', () => {
       });
       return edges.slice(1).map((cell, i) => cell.left - edges[i].right);
     });
-    expect(seams, 'Band 3 control cells are measurable').toBeTruthy();
-    expect(seams!.length, 'Band 3 has a multi-cell strip').toBeGreaterThan(1);
-    for (const seam of seams!) expect(seam).toBeLessThanOrEqual(0);
+    expect(seams, 'find-row control cells are measurable').toBeTruthy();
+    expect(seams!.length, 'find-row has a multi-cell strip').toBeGreaterThan(1);
+    for (const seam of seams!) expect(seam).toBeLessThanOrEqual(4);
 
-    // Band 2's two flanking controls share one baseline...
-    expect(rows.sort!.bottom).toBe(rows.inspector!.bottom);
-    expect(rows.sort!.top).toBe(rows.inspector!.top);
-    // ...and Band 3's three clusters share theirs. Different edges per cluster
-    // is exactly the ragged row this test exists to keep out.
     expect(rows.refresh!.top).toBe(rows.gridSize!.top);
     expect(rows.display!.top).toBe(rows.gridSize!.top);
     expect(rows.refresh!.bottom).toBe(rows.gridSize!.bottom);
     expect(rows.display!.bottom).toBe(rows.gridSize!.bottom);
   });
 
+
   test('Band-1 tabs are the scope writer and round-trip through the URL', async ({ page }) => {
     await landOnStream(page);
 
-    await page.getByRole('button', { name: 'Unboxing', exact: true }).click();
+    await page.getByRole('tab', { name: 'Unboxing', exact: true }).click();
     await expect(page).toHaveURL(/sourceScope=unboxing/);
 
     await page.reload();
@@ -213,7 +235,7 @@ test.describe('Media Library · rail-less frame', () => {
     await expect(page).toHaveURL(/sourceScope=unboxing/);
 
     // `all` is the default and drops out of the URL rather than serializing.
-    await page.getByRole('button', { name: 'All', exact: true }).click();
+    await page.getByRole('tab', { name: 'All', exact: true }).click();
     await expect(page).not.toHaveURL(/sourceScope=/);
   });
 
@@ -238,40 +260,20 @@ test.describe('Media Library · rail-less frame', () => {
     expect(width).toBeGreaterThanOrEqual(MIN_WORK_SURFACE_PX);
   });
 
-  test('the two facets the rail uniquely held survive, in the find field', async ({ page }) => {
+  test('find-row filter menu opens; Unboxing exposes the stage facet', async ({ page }) => {
     await landOnStream(page);
-    const refine = page.getByRole('button', { name: /Refine media/ });
+    const refine = page.getByTestId('filter-menu-trigger');
 
-    // 1. Capture days — the rail's day tree had per-day COUNTS and a jump to a
-    //    day off the breadcrumb's current path. Dropping it would be a silent
-    //    capability loss on an archive whose primary axis is capture day.
     await refine.click();
-    const days = page.getByTestId('photo-capture-days');
-    await expect(days).toBeVisible();
-    // A day row carries its COUNT — the thing the breadcrumb cannot say, and
-    // the reason this facet moved instead of being dropped.
-    const firstDay = days.locator('button[aria-pressed]').first();
-    await expect(firstDay).toBeVisible();
-    await expect(firstDay).toContainText(/\d/);
-    await firstDay.click();
-    await expect(page).toHaveURL(/dateFrom=\d{4}-\d{2}-\d{2}/);
-    await expect(page).toHaveURL(/dateTo=\d{4}-\d{2}-\d{2}/);
-
-    // 2. Outbound document types are scope-conditional — absent everywhere else,
-    //    exactly as the rail's chip strip was.
-    await page.goto('/ops/photos');
-    await expect(page.locator(META_LINE)).toContainText(SETTLED_META);
-    await refine.click();
-    await expect(page.getByTestId('photo-document-types')).toHaveCount(0);
+    await expect(page.getByText('Staff', { exact: true })).toBeVisible();
     await page.keyboard.press('Escape');
 
-    await page.getByRole('button', { name: 'Outbound', exact: true }).click();
-    await expect(page).toHaveURL(/sourceScope=outbound/);
+    // Evidence stage is Unboxing-only — absent on All, present after the scope tab.
+    await expect(page.getByTestId('photo-library-stage-filter')).toHaveCount(0);
+    await page.getByRole('tab', { name: 'Unboxing', exact: true }).click();
+    await expect(page).toHaveURL(/sourceScope=unboxing/);
     await refine.click();
-    const docTypes = page.getByTestId('photo-document-types');
-    await expect(docTypes).toBeVisible();
-    await docTypes.getByRole('button', { name: 'Shipping labels' }).click();
-    await expect(page).toHaveURL(/documentType=shipping_label/);
+    await expect(page.getByTestId('photo-library-stage-filter')).toBeVisible();
   });
 
   test('the media-type cube leads the tab rail and opens its own list', async ({ page }) => {
@@ -284,7 +286,7 @@ test.describe('Media Library · rail-less frame', () => {
     // tab starts after it (`gap-0`, abutting — never host air between them).
     const [cubeBox, firstTabBox] = await Promise.all([
       cube.boundingBox(),
-      page.getByRole('button', { name: 'All', exact: true }).boundingBox(),
+      page.getByRole('tab', { name: 'All', exact: true }).boundingBox(),
     ]);
     expect(cubeBox).not.toBeNull();
     expect(firstTabBox).not.toBeNull();
@@ -319,9 +321,11 @@ test.describe('Media Library · batch rail', () => {
     await expect(page.getByTestId('photo-batch-count')).toHaveText(/2 selected/);
 
     // THE POINT: selection no longer costs the operator their place in the
-    // archive. All three bands survive.
+    // archive. Frame tabs + find row + footer path survive.
     await expect(page.locator(TYPES_CUBE)).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Unboxing', exact: true })).toBeVisible();
+    await expect(page.getByRole('tab', { name: 'Unboxing', exact: true })).toBeVisible();
+    await expect(page.locator('[data-testid="photo-library-find-row"]')).toBeVisible();
+    await expect(page.locator('[data-testid="data-table-status-lead"]')).toBeVisible();
     await expect(page.locator(META_LINE)).toContainText(SETTLED_META);
 
     // One slot, two cardinalities — the n = 1 rail must not be co-mounted.

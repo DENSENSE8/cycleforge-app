@@ -42,7 +42,9 @@ _Prioritized. Agent implements **one** per session._
 ## Machine gates
 
 <!-- eval-ledger:auto:machine-gates -->
-_Skipped verify (--skip-verify)._
+| Date | Gate | Result | Snapshot |
+|------|------|--------|----------|
+| 2026-09-01 | verify:fast | pass | `docs/eval/cohorts/shortcuts/snapshots/2026-09-01-verify-fast.log` |
 <!-- /eval-ledger:auto:machine-gates -->
 
 ## Tripwire result
@@ -57,15 +59,30 @@ _Skipped verify (--skip-verify)._
 | Predicate | Result |
 |---|---|
 | hotkeyGlyph | pass |
+| keyboardKeyImport | pass |
 | gatedReveal | pass |
-| statusBarToggle | pass |
 | statusBarHook | pass |
-| iconRightGlyph | pass |
+| insideRightOverlay | pass |
+| actionWrap | pass |
+| opaqueKeycap | **FAIL** |
+| softKeyRim | **FAIL** |
+| blackLetter | pass |
+| keyElevation | **FAIL** |
+| squaredKeycap | **FAIL** |
+| hotkeyCapTestId | pass |
+| ignoreKeyRepeat | **FAIL** |
 | cheatSheetYields | pass |
 | hookToggle | pass |
 | absent:hotkeyPopover | pass |
 | absent:staffQuestionOpensSheet | pass |
-| absent:hintsButtonTitle | pass |
+| absent:footQuestionButton | pass |
+| absent:translucentOverlay | pass |
+| absent:iconRightKeySlot | pass |
+| absent:reservedHotkeySlot | pass |
+| absent:outsideAnchor | pass |
+| absent:revealGapWiden | pass |
+| absent:whiteTeachingFace | pass |
+| absent:mutedTeachingLetter | **FAIL** |
 <!-- /eval-ledger:auto:engine-contract -->
 
 ## Discover — next gap
@@ -79,7 +96,7 @@ _Snapshot:_ `docs/eval/cohorts/shortcuts/snapshots/2026-09-01-discover.json`
 ## Discover — DELETE (mechanical)
 
 <!-- eval-ledger:auto:discover-delete -->
-_No mechanical deletes. Staff `?` reveals inline; no sheet/popover from the question-mark._
+_No mechanical deletes. Keyboard `?` reveals inside-right Linear overlays; zero layout shift._
 <!-- /eval-ledger:auto:discover-delete -->
 
 ## Discover — KEEP
@@ -87,10 +104,12 @@ _No mechanical deletes. Staff `?` reveals inline; no sheet/popover from the ques
 <!-- eval-ledger:auto:discover-keep -->
 | id | path | keep because |
 |---|---|---|
-| `engine:HotkeyGlyph` | `src/components/tables/TableStatusBar.tsx` | Reveal-only letter inside the CTA after `?`. Gated by showHotkey — not standing chrome. |
+| `engine:KeyboardKey` | `src/design-system/primitives/KeyboardKey.tsx` | ONE physical keycap face — bg-surface-sunken gray + text-text-default black. Teaching overlays and cheat sheets import this; never fork a white/muted kbd. |
+| `engine:HotkeyGlyph` | `src/components/tables/TableStatusBar.tsx` | Reveal-only KeyboardKey after keyboard `?`. Absolute overlay inside the face (right) — zero layout shift. |
+| `engine:DataTableColumnActionRow` | `src/components/tables/DataTableColumnActionRow.tsx` | Icon-only column-aligned selection foot. Same HotkeyGlyph overlay law as TableStatusBar. |
 | `engine:useSelectionStatusBarHotkeys` | `src/hooks/useSelectionStatusBarHotkeys.ts` | ONE hook: bind letters + `?` reveal store. TableStatusBar and the cheat sheet both read it. |
 | `engine:useSelectionActionHotkeys` | `src/hooks/useSelectionActionHotkeys.ts` | Re-export seam onto useSelectionStatusBarHotkeys — keep until stale importers die. |
-| `engine:KeyboardShortcutsCheatSheet` | `src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx` | `?` key when no CTA strip is mounted (station teaching). Must yield to inline reveal while the strip exists. |
+| `engine:KeyboardShortcutsCheatSheet` | `src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx` | `?` key when no CTA strip is mounted (station teaching). Must yield to trailing keycap reveal while the strip exists. Paints with KeyboardKey. |
 | `exception:NAV_KEY_HINT_CLASS` | `src/lib/keyboard/nav-keys/nav-key-face.ts` | ⌘; reveal-on-arm only. Not a standing button keycap. |
 | `exception:ScanHotkeyControl` | `src/components/scan/ScanHotkeyControl.tsx` | Bind-edit UI for the scan chord — not a verb-face keycap. |
 <!-- /eval-ledger:auto:discover-keep -->
@@ -109,14 +128,23 @@ _No mechanical deletes. Staff `?` reveals inline; no sheet/popover from the ques
 <!-- eval-ledger:auto:graph-matrix -->
 | Symbol | node_key | files_affected | snapshot |
 |---|---|---|---|
-| KeyboardShortcutsCheatSheet | `component:src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx:KeyboardShortcutsCheatSheet` | 3 | `docs/eval/cohorts/shortcuts/snapshots/2026-09-01-impact-KeyboardShortcutsCheatSheet.json` |
+| KeyboardKey | — | no match | `docs/eval/cohorts/shortcuts/snapshots/2026-09-01-find-KeyboardKey.json` |
+| KeyboardShortcutsCheatSheet | — | no match | `docs/eval/cohorts/shortcuts/snapshots/2026-09-01-find-KeyboardShortcutsCheatSheet.json` |
 | useSelectionStatusBarHotkeys | — | no match | `docs/eval/cohorts/shortcuts/snapshots/2026-09-01-find-useSelectionStatusBarHotkeys.json` |
-| TableStatusBar | `component:src/components/tables/TableStatusBar.tsx:TableStatusBar` | 22 | `docs/eval/cohorts/shortcuts/snapshots/2026-09-01-impact-TableStatusBar.json` |
+| TableStatusBar | — | no match | `docs/eval/cohorts/shortcuts/snapshots/2026-09-01-find-TableStatusBar.json` |
 <!-- /eval-ledger:auto:graph-matrix -->
 
 ## Design critique
 
 <!-- eval-ledger:auto:design-critique -->
+- `src/design-system/primitives/KeyboardKey.tsx` — `docs/eval/cohorts/shortcuts/snapshots/2026-09-01-critique-KeyboardKey.txt`
+```
+{
+  "file": "src/design-system/primitives/KeyboardKey.tsx",
+  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
+  "problems": [],
+  "design_system_used": [],
+```
 - `src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx` — `docs/eval/cohorts/shortcuts/snapshots/2026-09-01-critique-KeyboardShortcutsCheatSheet.txt`
 ```
 {
@@ -129,7 +157,15 @@ _No mechanical deletes. Staff `?` reveals inline; no sheet/popover from the ques
 ```
 {
   "file": "src/components/tables/TableStatusBar.tsx",
-  "summary": "1 problem, worst first: 429 lines — past the point reviewers read",
+  "summary": "1 problem, worst first: 437 lines — past the point reviewers read",
+  "problems": [
+    {
+```
+- `src/components/tables/DataTableColumnActionRow.tsx` — `docs/eval/cohorts/shortcuts/snapshots/2026-09-01-critique-DataTableColumnActionRow.txt`
+```
+{
+  "file": "src/components/tables/DataTableColumnActionRow.tsx",
+  "summary": "1 problem, worst first: 1 inline style object where the token axis exists",
   "problems": [
     {
 ```
@@ -138,24 +174,25 @@ _No mechanical deletes. Staff `?` reveals inline; no sheet/popover from the ques
 ## graph_stats
 
 <!-- eval-ledger:auto:graph-stats -->
-- project: `cycleforge-app`
-- status: `ready`
-- last_built_at: `2026-08-31T22:47:46.121Z`
-- nodes: 36519 · edges: 169929 · embedded: 36519
+- project: `?`
+- status: `?`
+- last_built_at: `?`
+- nodes: ? · edges: ? · embedded: ?
 - snapshot: `docs/eval/cohorts/shortcuts/snapshots/2026-09-01-graph-stats.json`
 <!-- /eval-ledger:auto:graph-stats -->
 
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-01T07:21:32.329Z · cohort `shortcuts` · run id `2026-09-01T07-21-16-509Z`_
+_Updated 2026-09-01T11:59:47.262Z · cohort `shortcuts` · run id `2026-09-01T11-59-31-072Z`_
 <!-- /eval-ledger:auto:last-run -->
 
 
 <!-- eval-ledger:auto:graph-impact -->
-- **KeyboardShortcutsCheatSheet** — 3 files, 3 symbols (`docs/eval/cohorts/shortcuts/snapshots/2026-09-01-impact-KeyboardShortcutsCheatSheet.json`)
+- **KeyboardKey** — no match (`docs/eval/cohorts/shortcuts/snapshots/2026-09-01-find-KeyboardKey.json`)
+- **KeyboardShortcutsCheatSheet** — no match (`docs/eval/cohorts/shortcuts/snapshots/2026-09-01-find-KeyboardShortcutsCheatSheet.json`)
 - **useSelectionStatusBarHotkeys** — no match (`docs/eval/cohorts/shortcuts/snapshots/2026-09-01-find-useSelectionStatusBarHotkeys.json`)
-- **TableStatusBar** — 22 files, 22 symbols (`docs/eval/cohorts/shortcuts/snapshots/2026-09-01-impact-TableStatusBar.json`)
+- **TableStatusBar** — no match (`docs/eval/cohorts/shortcuts/snapshots/2026-09-01-find-TableStatusBar.json`)
 <!-- /eval-ledger:auto:graph-impact -->
 
 

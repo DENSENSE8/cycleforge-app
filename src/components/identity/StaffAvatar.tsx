@@ -23,6 +23,7 @@
 import { useStaffColorVersion } from '@/contexts/StaffColorsProvider';
 import { staffInitials } from '@/design-system/components/StaffBadge';
 import { photoContentUrl } from '@/lib/photos/display-url';
+import { STAFF_NAMES } from '@/utils/staff';
 import { getStaffAvatarPhotoId, getStaffColorHex } from '@/utils/staff-colors';
 import { IdentityMark, type IdentityMarkSize } from './IdentityMark';
 
@@ -65,19 +66,29 @@ export function StaffAvatar({
   useStaffColorVersion();
 
   const photoId = avatarPhotoId === undefined ? getStaffAvatarPhotoId(staffId) : avatarPhotoId;
-  const trimmed = (name ?? '').trim();
+  // Assigned marks must never paint a lone middle-dot when the feed omitted
+  // the display name — resolve the dogfood map, then fall back to id digits.
+  const parsedId = Number(staffId);
+  const hasId = Number.isFinite(parsedId) && parsedId > 0;
+  const trimmed =
+    (name ?? '').trim() || (hasId ? (STAFF_NAMES[parsedId] ?? '').trim() : '');
+  const initials = trimmed
+    ? staffInitials(trimmed)
+    : hasId
+      ? String(parsedId).slice(-2)
+      : '·';
   const resolvedColor = colorHex ?? getStaffColorHex({ id: staffId ?? null, color_hex: colorHex });
 
   return (
     <IdentityMark
-      initials={trimmed ? staffInitials(trimmed) : '·'}
+      initials={initials}
       src={photoId && photoId > 0 ? photoContentUrl(photoId, 'thumb') : null}
       colorHex={resolvedColor}
       size={size}
       ring={ring}
       ringHex={colorRing ? resolvedColor : null}
       className={className}
-      alt={alt}
+      alt={alt ?? (trimmed || undefined)}
     />
   );
 }

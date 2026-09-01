@@ -8,7 +8,10 @@ import {
   type ReceivingLabelPayload,
 } from '@/lib/print/printReceivingLabel';
 import { getProfileForRole, printRawToProfile, resolvePaperSize } from '@/lib/print/browserPrint';
-import { printHtmlInIframe } from '@/lib/print/iframePrint';
+import {
+  printHtmlInIframe,
+  reserveLegacyPrintPopup,
+} from '@/lib/print/iframePrint';
 import { isSilentPrintEnabled } from '@/lib/print/printMode';
 
 // Lazy: the label-render modules carry the bwip-js barcode engine (~250 KB gz).
@@ -40,6 +43,8 @@ export function printReceivingLabel(payload: ReceivingLabelPayload) {
   // hands the label to the browser's print dialog so an operator can pick a
   // printer / preview.
   const silent = isSilentPrintEnabled();
+  // Older WebKit blocks a popup opened after the lazy label modules resolve.
+  const legacyPopup = reserveLegacyPrintPopup();
 
   void (async () => {
     const [
@@ -75,7 +80,10 @@ export function printReceivingLabel(payload: ReceivingLabelPayload) {
                 labelProfile.copies,
               );
         const res = await printRawToProfile(commands, labelProfile);
-        if (res.success) return; // silent print to the paired thermal printer
+        if (res.success) {
+          legacyPopup?.close();
+          return;
+        } // silent print to the paired thermal printer
         // Raw send failed — fall through to the iframe/window.print() path below.
         // We do NOT toast "failed": window.print() is fire-and-forget, so the
         // label may well print on the fallback and a failure toast would be a
@@ -87,7 +95,7 @@ export function printReceivingLabel(payload: ReceivingLabelPayload) {
     //    only under `--kiosk-printing` (default printer); otherwise the normal
     //    print dialog. An iframe (vs a popup) never flashes and dodges the
     //    popup blocker.
-    printHtmlInIframe(html, { name: 'Receiving label' });
+    printHtmlInIframe(html, { name: 'Receiving label', legacyPopup });
   })();
 }
 

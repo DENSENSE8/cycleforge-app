@@ -250,3 +250,26 @@ test('the To-ship desk keeps the params that open the Add-orders rail', () => {
     );
   }
 });
+
+/**
+ * Regression (2026-09-01): Labels opened the paperwork walk and closed it.
+ *
+ * Same hygiene trap as `ingest`. The CTA writes `?paperwork=<id>`; if the
+ * To-ship spec does not own that key, the shipping-layout hygiene pass
+ * strips it on the next tick and the desk flashes table ↔ walk.
+ */
+test('the To-ship desk keeps the param that opens the Labels walk', () => {
+  const spec = routeParamsFor('/shipping/orders');
+  assert.ok(spec, 'expected a route spec for /shipping/orders');
+
+  const kept = parseRouteParams(spec, new URLSearchParams('paperwork=13306'));
+  assert.equal(
+    kept.get('paperwork'),
+    '13306',
+    'paperwork=<id> must survive the boundary parse or the walk closes itself',
+  );
+  assert.equal(
+    parseRouteParams(spec, new URLSearchParams('paperwork=0')).get('paperwork'),
+    null,
+  );
+});

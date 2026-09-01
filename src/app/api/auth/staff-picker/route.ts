@@ -10,10 +10,13 @@
  *
  * Multi-tenant: the picker is scoped by the tenant resolved from the
  * `x-tenant-slug` header set by proxy.ts (`resolveOrgIdFromRequest`). On the
- * apex / no-subdomain host there is NO tenant, so the picker returns an EMPTY
- * list — it no longer leaks the USAV dogfood tenant's staff. An operator can
- * opt one dogfood tenant onto the apex host via `DEFAULT_TENANT_SLUG` during
- * the DNS cutover; that is explicit, not a silent USAV fallback.
+ * apex / no-subdomain host there is NO public tenant, so an anonymous picker
+ * returns an EMPTY list — it no longer leaks the USAV dogfood tenant's staff.
+ * When a valid session cookie is present on that apex host, the picker uses
+ * the session's organization (in-app switch-staff / throw / clipboard). That
+ * is the caller's own workspace, not a silent USAV fallback. An operator can
+ * still opt one dogfood tenant onto the apex host via `DEFAULT_TENANT_SLUG`
+ * during the DNS cutover.
  *
  * Public: the picker has to render before sign-in. We expose only id/name/
  * role/colour/avatar/hasPin — no email, employee_code, or sensitive columns.
@@ -35,6 +38,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
+import { loadSession, readSessionSid } from '@/lib/auth/session';
 import { resolveOrgIdFromRequest, NIL_ORG_ID } from '@/lib/tenancy/resolve-org-from-request';
 
 export const runtime = 'nodejs';
@@ -58,9 +62,15 @@ function isPinlessEnabled(): boolean {
 
 export async function GET(req: NextRequest) {
   try {
-    const orgId = await resolveOrgIdFromRequest(req);
-    // Apex / unknown slug → nil org → return an empty picker rather than
-    // running the query (which would also be empty, but skip the round-trip).
+    let orgId = await resolveOrgIdFromRequest(req);
+    // Apex / unknown slug: anonymous callers stay empty (no tenant leak).
+    // Signed-in callers (Change staff on localhost / apex) use their session org.
+    if (orgId === NIL_ORG_ID) {
+      const cookieStore = req.cookies;
+      const sid = cookieStore ? readSessionSid(cookieStore) : null;
+      const session = sid ? await loadSession(sid) : null;
+      if (session?.organizationId) orgId = session.organizationId;
+    }
     if (orgId === NIL_ORG_ID) {
       return NextResponse.json(
         { staff: [], pinless: isPinlessEnabled() },

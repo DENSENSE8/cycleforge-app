@@ -1,11 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, useDeferredValue } from 'react';
+import { useCallback, useEffect, useMemo, useState, useDeferredValue, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { getOrdersChannelName, safeChannelName } from '@/lib/realtime/channels';
 import type { DashboardSearchSectionProps } from '@/components/dashboard/DashboardSearchSectionProps';
-import { DataTable, type DataTableExport } from '@/components/tables/DataTable';
+import { DataTable, downloadDataTableCsv, type DataTableExport } from '@/components/tables/DataTable';
 import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
 import { useToShipChrome } from '@/components/unshipped/useToShipChrome';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
@@ -24,7 +24,7 @@ import {
 import { Button } from '@/design-system/primitives';
 import { GridDegradedBox } from '@/design-system/components/grid';
 import { RefreshCw } from '@/components/Icons';
-import { useRailStatusBarActions } from '@/components/right-rail/RailSelectionActions';
+import { useRailStatusBarActions, useRailActionSnapshot } from '@/components/right-rail/RailSelectionActions';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
 import { deriveFulfillmentState, fulfillmentLaneTotals, type FulfillmentState } from '@/lib/unshipped-state';
@@ -38,13 +38,17 @@ import {
   insertUnshippedOrderIntoCache,
 } from '@/lib/queries/dashboard-cache-patch';
 import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
-import { SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
+import { SHIPPING_ORDERS_PATH, ORDERS_DESK_CONTEXT_KEY, ORDERS_DESK_SUPPORT_CONTEXT, parseOrdersDeskContext } from '@/lib/shipping/orders-desk';
 import type { ShippedOrder } from '@/types/orders';
 import type {
   OrdersQueueColumn,
   OrdersQueueColumnKey,
 } from '@/lib/dashboard-order-row-layout';
 import { useRefreshSignal } from '@/lib/refresh/bus';
+import { OrdersDeskLabelsAction } from '@/components/outbound/orders/paperwork/OrdersDeskLabelsAction';
+import { PaperworkWalkHost } from '@/components/outbound/orders/paperwork/PaperworkWalkHost';
+import { DeskExportMenuRegistrar } from '@/design-system/components/DeskActionSlot';
+import { PAPERWORK_PARAM, parsePaperworkOrderId } from '@/lib/orders/print-packet';
 import { PACK_PLACED_PARAM, PACK_STATION_PARAM } from '@/lib/packing/pack-station-arm';
 
 /**
@@ -125,6 +129,10 @@ function assignmentPatchFromEvent(detail: any): Record<string, unknown> {
   return patch;
 }
 
+function orderIdOf(row: ShippedOrder): number {
+  return Number(row.id);
+}
+
 export function UnshippedTable({
   packedBy,
   testedBy,
@@ -197,6 +205,12 @@ export function UnshippedTable({
   // assigned work. Absent = ALL staff (current behavior preserved).
   const staffParam = Number(searchParams.get('staff'));
   const staffId = Number.isFinite(staffParam) && staffParam > 0 ? staffParam : undefined;
+  const paperworkId = parsePaperworkOrderId(searchParams.get(PAPERWORK_PARAM));
+  const [walkIds, setWalkIds] = useState<number[] | null>(null);
+  const { rows: selectedRailRows } = useRailActionSnapshot();
+  const isSupportContext =
+    parseOrdersDeskContext(searchParams.get(ORDERS_DESK_CONTEXT_KEY)) ===
+    ORDERS_DESK_SUPPORT_CONTEXT;
 
   // Phase 2 pagination — a growing row ceiling. "Load more" bumps it; any filter
   // change resets it. A search stays unbounded (results are already the matches).
@@ -526,6 +540,80 @@ export function UnshippedTable({
     [laneRecords],
   );
 
+  useEffect(() => {
+    if (paperworkId == null) setWalkIds(null);
+  }, [paperworkId]);
+
+  const patchPaperwork = useCallback(
+    (id: number | null) => {
+      const params = new URLSearchParams(searchParams.toString());
+      if (id == null) {
+        params.delete(PAPERWORK_PARAM);
+      } else {
+        params.set(PAPERWORK_PARAM, String(id));
+        // One writer. Closing the inspector via `dispatchCloseShippedDetails`
+        // issues a second `router.replace` from a stale searchParams snapshot
+        // and wipes `?paperwork=` — the desk then flashes table ↔ walk.
+        params.delete('openOrderId');
+      }
+      const qs = params.toString();
+      router.replace(
+        qs ? `${SHIPPING_ORDERS_PATH}?${qs}` : SHIPPING_ORDERS_PATH,
+        { scroll: false },
+      );
+    },
+    [router, searchParams],
+  );
+
+  const walkRows = useMemo(() => {
+    if (!walkIds) return records;
+    return walkIds
+      .map((id) => records.find((r) => Number(r.id) === id))
+      .filter((r): r is ShippedOrder => r != null);
+  }, [records, walkIds]);
+
+  const closePaperworkWalk = useCallback(() => {
+    setWalkIds(null);
+    patchPaperwork(null);
+  }, [patchPaperwork]);
+
+  const openLabelsWalk = useCallback(() => {
+    if (cagedOnly || paperworkId != null) return;
+    const selected = selectedRailRows
+      .map((row) => Number((row as { id?: unknown }).id))
+      .filter((id) => Number.isFinite(id) && id > 0);
+    const selectedPool =
+      selected.length > 0
+        ? records.filter((r) => selected.includes(Number(r.id)))
+        : [];
+    const pool = selectedPool.length > 0 ? selectedPool : records;
+    const first = pool[0];
+    if (!first) return;
+    setWalkIds(
+      [...new Set(pool.map((r) => Number(r.id)))].filter((id) => Number.isFinite(id) && id > 0),
+    );
+    // Stay in the page header: Labels sits left of Sync there, and fullscreen
+    // unrenders that row (DeskPageChrome). Inspector hides via `?paperwork=`.
+    patchPaperwork(Number(first.id));
+  }, [cagedOnly, paperworkId, patchPaperwork, records, selectedRailRows]);
+
+  const advancePaperworkWalk = useCallback(() => {
+    const list = walkRows.length > 0 ? walkRows : records;
+    const current = Number(paperworkId);
+    const idx = list.findIndex((r) => orderIdOf(r) === current);
+    const next = idx >= 0 ? list[idx + 1] : list[0];
+    if (!next || orderIdOf(next) === current) {
+      closePaperworkWalk();
+      return;
+    }
+    patchPaperwork(orderIdOf(next));
+  }, [closePaperworkWalk, paperworkId, patchPaperwork, records, walkRows]);
+
+  const handlePaperworkFactsChanged = useCallback(() => {
+    invalidateUnshippedCounts(queryClient);
+    void queryClient.invalidateQueries({ queryKey: ['paperwork-manuals'] });
+  }, [queryClient]);
+
   // Copy acts on the SELECTION, and the shape it copies is the shipped
   // order-export shape rather than the on-screen column set: a pasted order row
   // has to carry the identity fields (record id, SKU, platform) that make it
@@ -613,23 +701,80 @@ export function UnshippedTable({
   const showLoadMore = !cagedOnly && !searchQuery && stageTotal > rowLimit;
   const onLoadMore = showLoadMore ? () => setRowLimit((n) => n + 200) : undefined;
 
-  return (
-    <UnshippedSheet
-      records={records}
-      loading={cagedOnly ? cagedQuery.isLoading : query.isLoading}
-      searchValue={searchQuery}
-      selectMode={selectMode}
-      railSelection={railSelection}
-      onOpenRecord={handleOpenRecord}
-      onClearSearch={clearSearch}
-      searchEmptyTitle={searchEmptyTitle}
-      searchResultLabel={searchResultLabel}
-      clearSearchLabel={clearSearchLabel}
-      onLoadMore={onLoadMore}
-      copyExport={copyExport}
-      stale={queueError}
-      onRetryStale={retryQueue}
+  const onToShipDesk =
+    pathname === SHIPPING_ORDERS_PATH && !isSupportContext && !cagedOnly;
+  const toggleLabelsWalk = useCallback(() => {
+    if (paperworkId != null) {
+      closePaperworkWalk();
+      return;
+    }
+    openLabelsWalk();
+  }, [closePaperworkWalk, openLabelsWalk, paperworkId]);
+  const copyExportRef = useRef(copyExport);
+  copyExportRef.current = copyExport;
+  const recordsRef = useRef(records);
+  recordsRef.current = records;
+  const runExport = useCallback(() => {
+    downloadDataTableCsv(copyExportRef.current, recordsRef.current, 'to-ship.csv');
+  }, []);
+  const labelsCta = onToShipDesk ? (
+    <OrdersDeskLabelsAction
+      incompleteCount={queueCounts?.paperworkIncomplete ?? 0}
+      walkOpen={paperworkId != null}
+      disabled={records.length === 0}
+      onToggle={toggleLabelsWalk}
     />
+  ) : null;
+  const exportMenu = onToShipDesk ? (
+    <DeskExportMenuRegistrar
+      run={runExport}
+      rowCount={records.length}
+      empty={records.length === 0}
+    />
+  ) : null;
+
+  if (paperworkId != null && onToShipDesk) {
+    return (
+      <>
+        {labelsCta}
+        {exportMenu}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
+          <PaperworkWalkHost
+            rows={walkRows.length > 0 ? walkRows : records}
+            selectedId={paperworkId}
+            loading={query.isLoading}
+            onSelect={(id) => patchPaperwork(id)}
+            onAdvance={advancePaperworkWalk}
+            onExit={closePaperworkWalk}
+            onFactsChanged={handlePaperworkFactsChanged}
+          />
+        </div>
+      </>
+    );
+  }
+
+  return (
+    <>
+      {labelsCta}
+      {exportMenu}
+      <UnshippedSheet
+        records={records}
+        loading={cagedOnly ? cagedQuery.isLoading : query.isLoading}
+        searchValue={searchQuery}
+        selectMode={selectMode}
+        railSelection={railSelection}
+        onOpenRecord={handleOpenRecord}
+        onClearSearch={clearSearch}
+        searchEmptyTitle={searchEmptyTitle}
+        searchResultLabel={searchResultLabel}
+        clearSearchLabel={clearSearchLabel}
+        onLoadMore={onLoadMore}
+        copyExport={copyExport}
+        copyExportPlacement={onToShipDesk ? 'menu' : 'header'}
+        stale={queueError}
+        onRetryStale={retryQueue}
+      />
+    </>
   );
 }
 
@@ -694,6 +839,7 @@ function UnshippedSheet({
   railSelection = false,
   onLoadMore,
   copyExport,
+  copyExportPlacement = 'header',
   stale = false,
   onRetryStale,
 }: {
@@ -712,6 +858,7 @@ function UnshippedSheet({
   /** Next page, drawn inside the status bar's count sentence. */
   onLoadMore?: () => void;
   copyExport: DataTableExport<ShippedOrder>;
+  copyExportPlacement?: 'header' | 'menu';
   /** A read failed while these rows were already painted — see {@link QueueStaleBand}. */
   stale?: boolean;
   onRetryStale?: () => void;
@@ -751,7 +898,9 @@ function UnshippedSheet({
         {...sheet}
         {...chrome}
         copyExport={copyExport}
+        copyExportPlacement={copyExportPlacement}
         selectionActions={selectionActions}
+        selectionActionLayout="columns"
         exportFilename="to-ship.csv"
       />
     </div>

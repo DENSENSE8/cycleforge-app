@@ -551,7 +551,7 @@ export function MovePhotosBetweenPoPanel({
                             }}
                             className={
                               isSel
-                                ? 'flex w-full border-b border-border-hairline bg-blue-50 px-3 py-2.5 text-left ring-1 ring-inset ring-blue-400 transition-colors last:border-b-0 hover:bg-blue-50/80'
+                                ? 'flex w-full border-b border-border-hairline bg-surface-sunken px-3 py-2.5 text-left ring-1 ring-inset ring-accent-border transition-colors last:border-b-0 hover:bg-surface-hover'
                                 : 'flex w-full border-b border-border-hairline px-3 py-2.5 text-left transition-colors last:border-b-0 hover:bg-surface-hover'
                             }
                           >

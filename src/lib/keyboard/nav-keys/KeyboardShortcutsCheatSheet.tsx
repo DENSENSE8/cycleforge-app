@@ -169,6 +169,9 @@ export function KeyboardShortcutsCheatSheet() {
 
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== '?') return;
+      // Holding `?` (key-repeat) must not open / toggle the cheat sheet —
+      // selection CTA reveal already ignores repeat; stay aligned.
+      if (e.repeat) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       // Selection CTAs own `?` while mounted — useSelectionStatusBarHotkeys
       // toggles overlays (including from Filter-orders INPUT). Do not open this

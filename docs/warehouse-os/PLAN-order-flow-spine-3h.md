@@ -48,14 +48,13 @@ note, **this file wins**; strike the older note per X3.
   "pairing is NOT a gate" notes in `order-exceptions.ts` (header) and
   `order-exception-types.ts:78-79` — strike both in the same change. Evidence
   already agreed: 19 of the operator's 22 caged orders were unpaired.
-- **R-FLOW-2: New orders enter caged unless clean.** After insert, evaluate the
-  **full gates** (reuse the `GATE_SELECT` fact SQL from `caged-orders.ts` over
-  the new ids — one batched query) and stamp `release_state='caged'` on any
-  failure. Guards: **new rows only**, **never** rows arriving already fulfilled
-  (`status='shipped'` — the eBay lane pulls 30 days of already-shipped orders,
-  Amazon FBA lands shipped; caging those floods the desk), and the UPDATE is
-  defensive (`WHERE release_state IS NULL AND id = ANY(...)`). NULL-means-released
-  stays; nothing historical is touched.
+- **R-FLOW-2: New unpaired orders enter caged.** After insert, evaluate **G4
+  pairing** (`sku_catalog_id`) over the new ids and stamp
+  `release_state='caged'` on any unpaired row. Guards: **new rows only**,
+  **never** rows arriving already fulfilled (`status='shipped'`), and the UPDATE
+  is defensive (`WHERE release_state IS NULL AND id = ANY(...)`). NULL-means-released
+  stays; nothing historical is touched. **Amended 2026-09-01 by R-FLOW-7:** G2/G3
+  paperwork no longer cages — those orders land on To-ship.
 - **R-FLOW-3: On the staff's own queue, deadline outranks priority.** The global
   ranking SoT is untouched; the mobile view sorts by deadline bands (Overdue ·
   Must ship today · Upcoming · No deadline), priority breaking ties inside a band.
@@ -72,7 +71,8 @@ note, **this file wins**; strike the older note per X3.
   not a page — and it is never scoped to exceptions.** One shared
   `OrderShippingPanel` (tracking/label state → parcel → rate-shop/buy →
   upload/attach) with two hosts importing the same component:
-  (a) the exceptions/intake editor renders it as its G3 card;
+  (a) the order-intake editor renders it as its G3 card (not the exceptions
+  form — exceptions pair SKU only, R-FLOW-7);
   (b) **inline in the one data table** — the operator selects rows on the
   To-ship queue, invokes **Labels** (a `selectionActions` verb in the
   TableStatusBar cluster, hotkey `L`), and the panel expands as a band
@@ -86,6 +86,16 @@ note, **this file wins**; strike the older note per X3.
   universal. This also finally mounts the designed-but-dead "labels" documents
   context (`documentsMode='manage'`) and retires the `/ops/labels` CTA that
   points at a route that does not exist.
+- **R-FLOW-7 (operator, 2026-09-01): exceptions are catalog pairing only.** The
+  exceptions form pairs the item number to the Zoho inventory SKU
+  (`sku_catalog`). That pairing un-cages the order and it leaves
+  `/shipping/exceptions` onto To-ship. Manuals, packing slips, and shipping
+  labels (upload or buy) are a **sibling** walk on To-ship — same table-then-
+  record chrome, a different form. Auto-cage is G4 (unpaired) only; G2/G3 stay
+  packet facts, not exception blockers. Amends R-FLOW-2 (full-gate cage) and
+  R-FLOW-6 host (a) (exceptions no longer mount `OrderShippingPanel`).
+  **UI build map (compose existing To-ship hosts, do not grow `ExceptionEditor`):**
+  [`PLAN-to-ship-paperwork-ui.md`](./PLAN-to-ship-paperwork-ui.md).
 
 ## 3 · The build
 

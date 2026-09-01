@@ -706,7 +706,11 @@ async function runBatchPair(
       const ordersBackfill = orgId
         ? await client.query(
             `UPDATE orders
-                SET sku_catalog_id = $1
+                SET sku_catalog_id = $1,
+                    release_state = CASE
+                      WHEN COALESCE(release_state, '') = 'caged' THEN NULL
+                      ELSE release_state
+                    END
               WHERE sku_catalog_id IS NULL
                 AND item_number IS NOT NULL
                 AND organization_id = $3
@@ -716,7 +720,11 @@ async function runBatchPair(
           )
         : await client.query(
             `UPDATE orders
-                SET sku_catalog_id = $1
+                SET sku_catalog_id = $1,
+                    release_state = CASE
+                      WHEN COALESCE(release_state, '') = 'caged' THEN NULL
+                      ELSE release_state
+                    END
               WHERE sku_catalog_id IS NULL
                 AND item_number IS NOT NULL
                 AND regexp_replace(UPPER(TRIM(item_number)), '[^A-Z0-9]', '', 'g')

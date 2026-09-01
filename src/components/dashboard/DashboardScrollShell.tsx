@@ -31,6 +31,13 @@ export interface DashboardScrollShellProps {
    * it because it is a non-scrolling sibling, not a competing sticky layer.
    */
   chrome?: ReactNode;
+  /**
+   * Pinned chrome docked BELOW the scroll body — same outside-the-port pattern
+   * as {@link chrome}. Media Library mounts {@link TableStatusBar} here so the
+   * foot cannot float mid-stream when the panel overflows a `flex-1` column
+   * inside the scrollport (sticky `bottom-0` alone cannot save that geometry).
+   */
+  footer?: ReactNode;
 }
 
 /**
@@ -39,7 +46,12 @@ export interface DashboardScrollShellProps {
  * Mirrors {@link MonitorPageShell}. Virtualization targets the scroll body via
  * {@link useDashboardScrollParent}.
  */
-export function DashboardScrollShell({ children, className, chrome }: DashboardScrollShellProps) {
+export function DashboardScrollShell({
+  children,
+  className,
+  chrome,
+  footer,
+}: DashboardScrollShellProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   return (
@@ -68,6 +80,16 @@ export function DashboardScrollShell({ children, className, chrome }: DashboardS
         >
           {children}
         </div>
+        {footer ? (
+          <div
+            className="relative shrink-0"
+            style={{ zIndex: zIndex.header }}
+            data-dashboard-footer
+            data-testid="dashboard-footer"
+          >
+            {footer}
+          </div>
+        ) : null}
       </div>
     </DashboardScrollContext.Provider>
   );

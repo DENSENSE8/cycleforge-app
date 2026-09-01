@@ -19,7 +19,7 @@ const CATALOG: FieldCatalog = [
   { id: 'orders.order_id', family: 'orders', label: 'Order', displayType: 'id', slotKinds: ['identity'] },
   // Synthetic fixture, but the verb faces mirror the shipped catalog's
   // Needed-class pending copy so this file cannot read as a stale vocabulary.
-  { id: 'orders.picked', family: 'orders', label: 'Pick', displayType: 'stage_event', slotKinds: ['status'], iconKey: 'picked', stageLabels: { done: 'Picked', pending: 'Needed' } },
+  { id: 'orders.picked', family: 'orders', label: 'Pick', displayType: 'stage_event', slotKinds: ['status'], iconKey: 'picked', stageLabels: { done: 'Picked', pending: 'Pick' } },
   { id: 'orders.packed', family: 'orders', label: 'Packed', displayType: 'stage_event', slotKinds: ['status'], iconKey: 'packed' },
   { id: 'orders.qty', family: 'orders', label: 'Qty', displayType: 'number', slotKinds: ['subtitle'] },
   { id: 'orders.notes', family: 'orders', label: 'Notes', displayType: 'note', slotKinds: ['subtitle'] },

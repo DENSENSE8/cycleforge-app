@@ -1,11 +1,11 @@
 {
   "file": "src/components/tables/compound/CompoundCells.tsx",
-  "summary": "2 problems, worst first: 2 arbitrary type size where the typography axis exists",
+  "summary": "2 problems, worst first: 3 arbitrary type size where the typography axis exists",
   "problems": [
     {
       "severity": "drifts-from-tokens",
       "axis": "typography",
-      "what": "2 arbitrary type size where the typography axis exists",
+      "what": "3 arbitrary type size where the typography axis exists",
       "detail": {
         "examples": [
           "text-[11px]"
@@ -16,7 +16,7 @@
     },
     {
       "severity": "size",
-      "what": "1300 lines — past the point reviewers read",
+      "what": "1333 lines — past the point reviewers read",
       "fix": "Split the leaf presentational parts out."
     }
   ],
@@ -33,8 +33,8 @@
     "SlotLayoutReorderContext"
   ],
   "metrics": {
-    "lines": 1300,
-    "arbitrary_literals": 2
+    "lines": 1333,
+    "arbitrary_literals": 3
   },
   "notes": [
     "Everything here is HEURISTIC — text matches, not AST proof, and this repo has no shared adjudicator for this server to borrow a verdict from. Treat each as \"go look at this line\".",

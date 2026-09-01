@@ -5,7 +5,7 @@
       "node_key": "function:src/components/tables/useSlotTableLayout.ts:useSlotTableLayout",
       "kind": "function",
       "name": "useSlotTableLayout",
-      "location": "src/components/tables/useSlotTableLayout.ts:104",
+      "location": "src/components/tables/useSlotTableLayout.ts:111",
       "exported": true,
       "signature": "function useSlotTableLayout(config: SlotTableLayoutConfig): SlotTableLayout"
     },

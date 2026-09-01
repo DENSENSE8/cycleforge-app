@@ -54,6 +54,19 @@ test('a malformed packPlacement degrades to zero rather than a broken shape', ()
   assert.deepEqual(out?.packPlacement, { counts: [], totalPlaced: 0 });
 });
 
+test('paperworkIncomplete survives normalization for the Labels badge', () => {
+  const out = normalizeQueueCountsPayload({
+    total: 27,
+    paperworkIncomplete: 12,
+  });
+  assert.equal(out?.paperworkIncomplete, 12);
+});
+
+test('missing paperworkIncomplete falls back to zero, not undefined', () => {
+  const out = normalizeQueueCountsPayload({ total: 5 });
+  assert.equal(out?.paperworkIncomplete, 0);
+});
+
 test('an unusable payload is null so each caller picks its own fallback', () => {
   // The browser path serves zeros; the seed leaves the key unset and lets the
   // client fetch — a seeded zero would look settled and suppress the refetch.

@@ -148,8 +148,8 @@ export interface OrdersQueueTableRowProps {
   rowIndex?: number;
   /** Toggle this row's selection from the gutter checkbox (stops propagation, so
    *  it never opens the record). Supplying it makes the gutter INTERACTIVE —
-   *  required on grid skin so the leftmost cell is a real checkbox even when
-   *  {@link clickSelect} also lets the row body toggle membership. */
+   *  required on grid skin so the leftmost cell is a real checkbox. Row body
+   *  opens the record; it does not toggle membership. */
   onToggleSelect?: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
   queueMode?: OrdersQueueMode;
   /** Ordered VISIBLE column models (already sanitized + visibility-resolved).
@@ -217,6 +217,17 @@ export interface OrdersQueueTableRowProps {
    * `null` = clear). Same assign waist as condition / qty.
    */
   onCommitShipBy?: (record: ShippedOrder, dateKey: string | null) => void;
+  /**
+   * Present ⇒ pending Pick / Packed stage marks open a searchable staff
+   * combobox (full roster, one lane per column). Done stages stay read-only.
+   * Same `useOrderAssignment` waist as condition / qty — never a lifecycle stamp.
+   */
+  onCommitStageAssign?: (
+    record: ShippedOrder,
+    fieldId: 'orders.picked' | 'orders.packed',
+    staffId: number | null,
+    staffName: string | null,
+  ) => void;
 }
 
 /** In-cell editors this row can host (one open at a time).
@@ -600,8 +611,9 @@ function OrdersQueueFlatRowCells({
   ) : null;
 
   // Select cell — full-track hit plane + centered checklist face via
-  // GridRowCheckbox (To-ship keeps clickSelect row gestures; any click in this
-  // column toggles — operators need not aim at the 16px square).
+  // GridRowCheckbox. The gutter is the only bulk-select gesture; row body
+  // opens the record. Any click in this column toggles — operators need not
+  // aim at the 16px square.
   const leadControls = (
     <div
       data-select-gutter
@@ -911,8 +923,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   useAlternateStripe,
   testerDisplay,
   packerDisplay,
-  testerId: _testerId,
-  packerId: _packerId,
+  testerId,
+  packerId,
   rowStatus,
   trackingAction,
   serialChip,
@@ -937,6 +949,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   onCommitCondition,
   onCommitSubtitleField,
   onCommitShipBy,
+  onCommitStageAssign,
 }: OrdersQueueTableRowProps) {
   /**
    * WHICH COLUMN MODEL is mounted — this row's one layout discriminant.
@@ -1128,6 +1141,26 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         }
       : undefined;
 
+  const stageAssigns = useMemo(() => {
+    if (!compoundView || !onCommitStageAssign) return undefined;
+    return {
+      'orders.picked': {
+        selectedStaffId: testerId,
+        label: 'Pick',
+        role: 'technician' as const,
+        onCommit: (staffId: number | null, staffName: string | null) =>
+          onCommitStageAssign(record, 'orders.picked', staffId, staffName),
+      },
+      'orders.packed': {
+        selectedStaffId: packerId,
+        label: 'Packer',
+        role: 'packer' as const,
+        onCommit: (staffId: number | null, staffName: string | null) =>
+          onCommitStageAssign(record, 'orders.packed', staffId, staffName),
+      },
+    };
+  }, [compoundView, onCommitStageAssign, testerId, packerId, record]);
+
   /*
    * The row's ⋮ verbs.
    *
@@ -1197,6 +1230,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         subtitleNoteKey: 'orders.notes',
         noteText: record.notes ?? null,
         shipByEdit,
+        stageAssigns,
         onOpen: onRowOpen ? () => onRowOpen(record) : undefined,
         actions: rowMenuActions,
         // Bulk membership. The mobile stacked row keeps its own leading slot.
@@ -1286,13 +1320,13 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     // no rows at all. Selection moves to `aria-selected` (valid on `row`);
     // under clickSelect the gutter checkbox + wash both show membership.
     // Outside a table the original interactive roles stand.
-    role: inTable ? 'row' : clickSelect || selectMode ? 'checkbox' : 'button',
+    role: inTable ? 'row' : clickSelect ? 'checkbox' : 'button',
     tabIndex: 0,
     'aria-selected': inTable ? isChecked : undefined,
-    'aria-checked': !inTable && (clickSelect || selectMode) ? isChecked : undefined,
+    'aria-checked': !inTable && clickSelect ? isChecked : undefined,
     'aria-pressed': inTable || clickSelect || selectMode ? undefined : isSelected,
     'aria-label':
-      clickSelect || selectMode
+      clickSelect
         ? `Select order ${record.order_id || record.id}`
         : `Open order ${record.order_id || record.id}`,
     'data-order-row-id': String(record.id),
@@ -1417,6 +1451,9 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // on a real capability change (record.condition is compared above).
   if (prev.onCommitCondition !== next.onCommitCondition) return false;
   if (prev.onCommitShipBy !== next.onCommitShipBy) return false;
+  if (prev.onCommitStageAssign !== next.onCommitStageAssign) return false;
+  if (prev.testerId !== next.testerId) return false;
+  if (prev.packerId !== next.packerId) return false;
   // Live fields the COMPOUND `fulfillment` / `item` tracks paint. A label
   // landing on an open To-ship desk changes `shipping_tracking_number` and
   // nothing else on this list — compared nowhere, the row kept the empty

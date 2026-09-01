@@ -56,6 +56,8 @@ export interface PrintLabelOptions {
    * Default false — print callers keep the silent-print pipeline.
    */
   preview?: boolean;
+  /** Popup reserved synchronously for older browsers. */
+  legacyPopup?: Window | null;
 }
 
 /**
@@ -120,5 +122,5 @@ ${printScript}
 export function printLabel(opts: PrintLabelOptions): void {
   if (typeof window === 'undefined') return;
   const html = buildLabelHtml(opts);
-  printHtmlInIframe(html, { name: opts.name ?? 'printLabel' });
+  printHtmlInIframe(html, { name: opts.name ?? 'printLabel', legacyPopup: opts.legacyPopup });
 }

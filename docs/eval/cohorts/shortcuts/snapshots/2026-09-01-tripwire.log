@@ -1,20 +1,22 @@
 ▶ useSelectionStatusBarHotkeys
-  ✔ owns bind + `?` reveal in one module (0.619821ms)
-  ✔ surface register + reveal + teardown; toggle no-ops without a surface (0.228218ms)
-  ✔ re-export seam still resolves (0.152734ms)
-✔ useSelectionStatusBarHotkeys (1.880734ms)
-▶ shortcut-display cohort (SoT = `?` inline on buttons)
-  ✔ engine files exist (1.189133ms)
-  ✔ status bar reveals HotkeyGlyph inline after `?`, not a sheet or popover (0.324046ms)
-  ✔ hook owns bind + reveal; cheat sheet yields while CTAs are mounted (0.164155ms)
-  ✔ paint law documents inline reveal + refuse standing/sheet (0.137125ms)
-  ✔ discover KEEP paths exist; known-debt ratchet holds (128.221109ms)
-✔ shortcut-display cohort (SoT = `?` inline on buttons) (131.003759ms)
-ℹ tests 8
+  ✔ owns bind + `?` reveal in one module (0.683044ms)
+  ✔ surface register + reveal + teardown; toggle no-ops without a surface (0.223664ms)
+  ✔ re-export seam still resolves (0.152585ms)
+✔ useSelectionStatusBarHotkeys (1.926393ms)
+▶ shortcut-display cohort (SoT = KeyboardKey inside-right overlays)
+  ✔ engine files exist (0.758916ms)
+  ✔ KeyboardKey is gray face + black letter SoT (0.277839ms)
+  ✔ status bar reveals KeyboardKey inside-right overlay after `?` (0.22688ms)
+  ✔ column action row reveals KeyboardKey inside-right overlay after `?` (0.173228ms)
+  ✔ hook owns bind + reveal; ignores key-repeat; cheat sheet yields + KeyboardKey (0.791316ms)
+  ✔ paint law documents inside-right overlay + refuse layout moves (0.1761ms)
+  ✔ discover KEEP paths exist; known-debt ratchet holds (161.089504ms)
+✔ shortcut-display cohort (SoT = KeyboardKey inside-right overlays) (164.541826ms)
+ℹ tests 10
 ℹ suites 2
-ℹ pass 8
+ℹ pass 10
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 256.488365
+ℹ duration_ms 300.733449

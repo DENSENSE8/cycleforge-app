@@ -20,6 +20,7 @@ export function ScanStationUtilityRail({ children }: { children: ReactNode }) {
       role="toolbar"
       aria-label="Carton navigation"
       data-testid="scan-station-utility-rail"
+      data-station-displays=""
       className={STATION_UTILITY_RAIL_CLASS}
     >
       {children}

@@ -1,18 +1,19 @@
 /**
  * Auto-cage — the ingest half of the accepted/exception **split**.
  *
- * Operator ruling R-FLOW-2 (2026-08-31, `docs/warehouse-os/PLAN-order-flow-spine-3h.md`
- * §2): a freshly ingested order enters the cage unless it is already clean —
- * the system splits sync output into *accepted* (all release gates green,
- * `release_state` stays NULL) and *exceptions* (`release_state = 'caged'`,
- * surfacing on `/shipping/exceptions` for triage).
+ * Operator ruling R-FLOW-2 (2026-08-31) as amended by R-FLOW-7 (2026-09-01,
+ * `docs/warehouse-os/PLAN-order-flow-spine-3h.md` §2): a freshly ingested
+ * order enters the cage when it is **unpaired** (`sku_catalog_id` null) —
+ * the system splits sync output into *accepted* (item resolves to Zoho
+ * inventory, `release_state` stays NULL) and *exceptions* (`release_state =
+ * 'caged'`, surfacing on `/shipping/exceptions` for catalog pairing). Missing
+ * manuals or shipping labels do not cage; they are To-ship paperwork.
  *
  * Two disciplines, both load-bearing:
  *
- * 1. **One rule.** The verdict comes from `evaluateReleaseGates` via
- *    `listOrderReleaseRecordsByIds` — the same pure function the release
- *    transaction enforces. No SQL copy of the gate logic exists here, so the
- *    split and the release can never disagree.
+ * 1. **One rule.** The verdict is G4 pairing (`skuCatalogId` on the live
+ *    release record). G1–G3 stay the packet/intake contract; they are not
+ *    this split.
  * 2. **New rows only, defensively.** The UPDATE re-checks
  *    `release_state IS NULL` and skips rows that arrived already fulfilled
  *    (`status = 'shipped'` — the eBay lane imports 30 days of already-shipped
@@ -31,7 +32,7 @@ import { selectAutoCageIds } from './auto-cage-core';
 export { selectAutoCageIds, type AutoCageCandidate } from './auto-cage-core';
 
 /**
- * IO half: evaluate the live gates for the new rows and stamp the failures.
+ * IO half: evaluate pairing for the new rows and stamp the unpaired ones.
  * Returns the ids actually caged. Safe to re-run (the UPDATE predicate makes
  * it a no-op on anything already caged, released, or shipped since).
  */
@@ -44,7 +45,11 @@ export async function autoCageNewOrders(
 
   const records = await listOrderReleaseRecordsByIds(orgId, ids);
   const toCage = selectAutoCageIds(
-    records.map((r) => ({ id: r.id, status: r.status, canRelease: r.gates.canRelease })),
+    records.map((r) => ({
+      id: r.id,
+      status: r.status,
+      paired: r.skuCatalogId != null,
+    })),
   );
   if (toCage.length === 0) return [];
 

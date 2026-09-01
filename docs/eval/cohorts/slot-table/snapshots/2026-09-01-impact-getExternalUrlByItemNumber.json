@@ -1,8 +1,8 @@
 {
   "project": "cycleforge-app",
   "target": "function:src/utils/external-item-url.ts:getExternalUrlByItemNumber",
-  "files_affected": 20,
-  "total_symbols": 23,
+  "files_affected": 27,
+  "total_symbols": 30,
   "files": [
     {
       "file": "src/lib/receiving/listing-links.ts",
@@ -21,6 +21,14 @@
       "symbols": [
         "makeDeps",
         "returned-serial-link.test.ts"
+      ]
+    },
+    {
+      "file": "src/components/dashboard/orders-queue/OrdersQueueTableRow.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "OrdersQueueTableRow"
       ]
     },
     {
@@ -64,11 +72,35 @@
       ]
     },
     {
+      "file": "src/lib/orders/orders-compound-view.ts",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "ordersCompoundView"
+      ]
+    },
+    {
+      "file": "src/utils/external-item-url.test.ts",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "external-item-url.test.ts"
+      ]
+    },
+    {
       "file": "src/utils/external-item-url.ts",
       "nearest_depth": 1,
       "affected_symbols": 1,
       "symbols": [
         "getExternalUrlByPlatform"
+      ]
+    },
+    {
+      "file": "src/components/station/StationQueueRow.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "StationQueueRow"
       ]
     },
     {
@@ -96,11 +128,11 @@
       ]
     },
     {
-      "file": "src/lib/receiving/listing-links.test.ts",
+      "file": "src/components/dashboard/orders-queue/useOrdersSpreadsheet.tsx",
       "nearest_depth": 2,
       "affected_symbols": 1,
       "symbols": [
-        "listing-links.test.ts"
+        "useOrdersSpreadsheet"
       ]
     },
     {
@@ -112,11 +144,11 @@
       ]
     },
     {
-      "file": "src/components/packer/PackOrderPanel.tsx",
+      "file": "src/lib/receiving/listing-links.test.ts",
       "nearest_depth": 2,
       "affected_symbols": 1,
       "symbols": [
-        "PackOrderPanel"
+        "listing-links.test.ts"
       ]
     },
     {
@@ -125,6 +157,30 @@
       "affected_symbols": 1,
       "symbols": [
         "listing-candidate.test.ts"
+      ]
+    },
+    {
+      "file": "src/components/outbound/scan-out/ScanOutActivePanel.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "ScanOutActivePanel"
+      ]
+    },
+    {
+      "file": "src/components/packer/pack-order-identity-chips.ts",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "resolvePackOrderIdentityChips"
+      ]
+    },
+    {
+      "file": "src/components/packer/PackOrderPanel.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "PackOrderPanel"
       ]
     },
     {
@@ -144,11 +200,11 @@
       ]
     },
     {
-      "file": "src/components/packer/pack-order-identity-chips.ts",
+      "file": "src/lib/orders/orders-compound-view.test.ts",
       "nearest_depth": 2,
       "affected_symbols": 1,
       "symbols": [
-        "resolvePackOrderIdentityChips"
+        "orders-compound-view.test.ts"
       ]
     },
     {

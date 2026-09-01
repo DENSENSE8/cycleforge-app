@@ -61,6 +61,7 @@ import type {
   CompoundSubtitleEdit,
   CompoundSubtitleCopy,
   CompoundShipByEdit,
+  CompoundStageAssign,
 } from './compound-row-model';
 
 /**
@@ -77,6 +78,7 @@ interface CompoundCellColumn {
   /** Slot-track metadata (materialized `status:N` columns) — see
    *  `materialize-tracks.ts`. Absent on the structural chrome tracks. */
   label?: string;
+  fieldId?: string;
   slotIconKey?: string;
   slotDisplayType?: FieldDisplayType;
   slotStageLabels?: Readonly<{ done: string; pending: string }>;
@@ -140,6 +142,12 @@ export interface CompoundGridCellParams<C extends CompoundCellColumn> {
   onReorderSubtitle?: (dragKey: string, dropKey: string) => void;
   /** Present ⇒ the status delay line mounts DateRangePickerField. */
   shipByEdit?: CompoundShipByEdit;
+  /**
+   * Stage-lane assign, keyed by catalog field id (`orders.picked` /
+   * `orders.packed`). Presence on a bound status track arms the mark popover
+   * while the step is still pending; done stages stay read-only.
+   */
+  stageAssigns?: Readonly<Partial<Record<string, CompoundStageAssign>>>;
 }
 
 /**
@@ -194,6 +202,7 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
   noteText,
   onReorderSubtitle,
   shipByEdit,
+  stageAssigns,
   formatClass,
 }: CompoundGridCellParams<C>): ReactNode {
   // `select` is only ours when a COMPOUND model is mounted — see
@@ -302,6 +311,7 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
           displayType={col.slotDisplayType}
           stageLabels={col.slotStageLabels}
           view={view}
+          assign={col.fieldId ? stageAssigns?.[col.fieldId] : undefined}
         />
       </div>
     );

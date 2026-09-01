@@ -31,6 +31,7 @@ describe('shortcut-display cohort (SoT = KeyboardKey inside-right overlays)', ()
     assert.ok(existsSync(join(ROOT, SHORTCUT_DISPLAY_ENGINE.keyboardKey)));
     assert.ok(existsSync(join(ROOT, SHORTCUT_DISPLAY_ENGINE.cheatSheet)));
     assert.ok(existsSync(join(ROOT, SHORTCUT_DISPLAY_ENGINE.statusBar)));
+    assert.ok(existsSync(join(ROOT, SHORTCUT_DISPLAY_ENGINE.columnActionRow)));
     assert.ok(existsSync(join(ROOT, SHORTCUT_DISPLAY_ENGINE.inlineHotkeys)));
     assert.ok(existsSync(join(ROOT, 'src/hooks/useSelectionActionHotkeys.ts')));
   });
@@ -65,12 +66,28 @@ describe('shortcut-display cohort (SoT = KeyboardKey inside-right overlays)', ()
     assert.doesNotMatch(src, SHORTCUT_DISPLAY_FORBIDDEN.revealGapWiden);
   });
 
+  it('column action row reveals KeyboardKey inside-right overlay after `?`', () => {
+    const src = read(SHORTCUT_DISPLAY_ENGINE.columnActionRow);
+    assert.match(src, SHORTCUT_DISPLAY_ENGINE_CONTRACT.hotkeyGlyph);
+    assert.match(src, SHORTCUT_DISPLAY_ENGINE_CONTRACT.keyboardKeyImport);
+    assert.match(src, SHORTCUT_DISPLAY_ENGINE_CONTRACT.gatedReveal);
+    assert.match(src, SHORTCUT_DISPLAY_ENGINE_CONTRACT.statusBarHook);
+    assert.match(src, SHORTCUT_DISPLAY_ENGINE_CONTRACT.insideRightOverlay);
+    assert.match(src, SHORTCUT_DISPLAY_ENGINE_CONTRACT.actionWrap);
+    assert.match(src, SHORTCUT_DISPLAY_ENGINE_CONTRACT.hotkeyCapTestId);
+    assert.doesNotMatch(src, SHORTCUT_DISPLAY_FORBIDDEN.hotkeyPopover);
+    assert.doesNotMatch(src, SHORTCUT_DISPLAY_FORBIDDEN.staffQuestionOpensSheet);
+    assert.doesNotMatch(src, SHORTCUT_DISPLAY_FORBIDDEN.footQuestionButton);
+    assert.doesNotMatch(src, SHORTCUT_DISPLAY_FORBIDDEN.translucentOverlay);
+  });
+
   it('hook owns bind + reveal; ignores key-repeat; cheat sheet yields + KeyboardKey', () => {
     const hook = read(SHORTCUT_DISPLAY_ENGINE.inlineHotkeys);
     assert.match(hook, SHORTCUT_DISPLAY_ENGINE_CONTRACT.hookToggle);
     assert.match(hook, SHORTCUT_DISPLAY_ENGINE_CONTRACT.ignoreKeyRepeat);
     const src = read(SHORTCUT_DISPLAY_ENGINE.cheatSheet);
     assert.match(src, SHORTCUT_DISPLAY_ENGINE_CONTRACT.cheatSheetYields);
+    assert.match(src, SHORTCUT_DISPLAY_ENGINE_CONTRACT.ignoreKeyRepeat);
     assert.match(src, SHORTCUT_DISPLAY_ENGINE_CONTRACT.keyboardKeyImport);
   });
 

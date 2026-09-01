@@ -201,9 +201,31 @@ export const SEGMENTED_CONTROL_FACE_CORNER = 'rounded-md';
  * face, once, so DropdownMenu / ContextMenu / the table chrome popovers cannot
  * disagree about whether a menu in this product has corners.
  *
- * Not a licence to round a table, a toolbar, or a workbench card.
+ * Not a licence to round a table or a workbench card. Find-row tokens
+ * (search, filter, sort, views, …) use {@link DATA_TABLE_TOOLBAR_CORNER}.
  */
 export const DROPDOWN_SHELL_CORNER = 'rounded-lg';
+
+/**
+ * Rows inside a {@link DROPDOWN_SHELL_CORNER} panel padded `p-1`.
+ *
+ * Inner = outer − padding: 8px − 4px = 4px (`rounded`). Square
+ * (`rounded-none`) highlights leave a sliver at each corner of the shell.
+ * `nestedCornerClass('control', 1)` cannot express this: the ladder renders
+ * flush. Same hatch as {@link COMPOSER_MENU_ITEM_CORNER}.
+ */
+export const DROPDOWN_ITEM_CORNER = 'rounded';
+
+/**
+ * DataTable find-row tokens — search, filter, sort, views, date, fields,
+ * zoom, fullscreen, the export glyph. Operator 2026-09-01: round them off;
+ * a square token on that row reads as boxed-off, not industrial chrome.
+ *
+ * Same 8px rung as {@link DROPDOWN_SHELL_CORNER} so a closed trigger and the
+ * panel it opens cannot disagree about corners. Named so a call site is
+ * claiming the find row, not rounding a table cell or a workbench card.
+ */
+export const DATA_TABLE_TOOLBAR_CORNER = 'rounded-lg';
 
 /**
  * Chrome INSIDE a `cornerClass('surface')` triage panel — the alerts, pickers,

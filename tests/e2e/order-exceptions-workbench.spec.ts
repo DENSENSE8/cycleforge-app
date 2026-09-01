@@ -8,7 +8,8 @@ import { test, expect } from '@playwright/test';
  * data table, mounted from the orders binding through `useOrdersSpreadsheet`
  * (which is why the rows carry `data-order-row-id` — they are the To-ship
  * desk's own rows), and `?order=` swaps the body to the editor as a PAGE — no
- * right rail, no modal — with pairing and order-field CRUD reachable there.
+ * right rail, no modal — with catalog pairing reachable there. R-FLOW-7: this
+ * form pairs the item to Zoho inventory; paperwork is not on this page.
  */
 
 const QA_STORAGE = path.join(__dirname, '..', '.auth', 'qa-admin.json');
@@ -20,7 +21,7 @@ test.describe('Order exceptions workbench', () => {
   test.skip(({ browserName }) => browserName === 'webkit', 'desktop workbench');
   test.skip(({ isMobile }) => !!isMobile, 'desktop workbench');
 
-  test('queue + editor render, and the editor exposes pairing and order CRUD', async ({ page }) => {
+  test('queue + editor render, and the editor exposes catalog pairing', async ({ page }) => {
     const probe = await page.request.get('/api/orders/queue-counts');
     test.skip(!probe.ok(), 'no QA session — run pnpm provision:qa-org');
 
@@ -51,18 +52,15 @@ test.describe('Order exceptions workbench', () => {
     expect(new URL(page.url()).pathname).toBe(PAGE);
     await expect(grid).toHaveCount(0);
 
-    // Order CRUD is present on the page, not behind a modal.
+    // Order identity for pairing is present on the page, not behind a modal.
     await expect(editor.getByTestId('exception-item-number')).toBeVisible();
     await expect(editor.getByTestId('exception-sku')).toBeVisible();
     await expect(editor.getByTestId('exception-title')).toBeVisible();
-    await expect(editor.getByTestId('exception-tracking')).toBeVisible();
-    // No Save button — the editor autosaves; the bottom-right readout is the
-    // confirmation that replaced it.
+    // Paperwork (tracking, docs, labels, Release) is To-ship — not this form.
+    await expect(editor.getByTestId('exception-tracking')).toHaveCount(0);
     await expect(editor.getByTestId('exception-save-status')).toBeVisible();
     await expect(editor.getByTestId('exception-save')).toHaveCount(0);
-
-    // Release gates are rendered (never re-derived) with a Release control.
-    await expect(editor.getByTestId('exception-release')).toBeVisible();
+    await expect(editor.getByTestId('exception-release')).toHaveCount(0);
 
     // Escape leaves the record and paints the queue again. The editor owns the
     // only Escape listener on this surface; the page adds none of its own.

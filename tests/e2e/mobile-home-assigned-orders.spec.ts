@@ -109,9 +109,12 @@ test.describe('mobile home assigned orders inset group', () => {
               shipping_tracking_number: '1Z999AA10123456784',
               tester_id: 4,
               tester_name: 'Alex Pick',
+              tester_color_hex: '#e11d48',
               tested_by: null,
               test_date_time: null,
               packer_id: 3,
+              packer_name: 'Pat Pack',
+              packer_color_hex: '#2563eb',
               packed_by_name: 'Pat Pack',
               packed_by: null,
               packed_at: null,
@@ -178,24 +181,37 @@ test.describe('mobile home assigned orders inset group', () => {
     await expect(page.getByTestId('to-ship-sort')).toBeVisible();
     await expect(page.getByTestId('to-ship-search')).toBeVisible();
     await expect(page.getByText('Test Bike')).toBeVisible();
+    await expect(page.locator('[data-item-record-thumb]').first()).toBeVisible();
     await expect(page.getByTestId('to-ship-qty').first()).toHaveText('2');
     await expect(page.getByTestId('to-ship-condition').first()).toHaveText('A');
-    await expect(page.getByTestId('to-ship-condition').first()).not.toHaveClass(/ring/);
     await expect(page.getByTestId('to-ship-slot-subtitle').first()).toContainText('Hold for photo');
-    await expect(page.getByTestId('to-ship-picker').first()).toContainText('Alex');
-    await expect(page.getByTestId('to-ship-packer').first()).toContainText('Pat');
+    await expect(page.getByTestId('to-ship-picker').first()).toContainText('Pick');
+    await expect(page.getByTestId('to-ship-picker').first()).not.toContainText('Alex');
+    await expect(page.getByTestId('to-ship-packer').first()).toContainText('Packed');
+    await expect(page.getByTestId('to-ship-packer').first()).not.toContainText('Pat');
+    await expect(page.getByTestId('to-ship-picker').first().locator('span').first()).toHaveCSS(
+      'background-color',
+      'rgb(225, 29, 72)',
+    );
+    await expect(page.getByTestId('to-ship-packer').first().locator('span').first()).toHaveCSS(
+      'background-color',
+      'rgb(37, 99, 235)',
+    );
     await expect(page.getByTestId('to-ship-queue').getByRole('button', { name: 'Ship', exact: true }).first()).toBeVisible();
     await expect(page.getByTestId('to-ship-queue').getByRole('button', { name: 'Out of stock' }).first()).toBeVisible();
+    await expect(page.getByTestId('to-ship-queue').getByRole('button', { name: 'Listing' }).first()).toBeVisible();
     await expect(page.getByText('78901234')).toHaveCount(0);
     await expect(page.getByText(/9\/2\/26/)).toHaveCount(0);
     await expect(page.getByText('SKU-1')).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Test Bike' }).click();
+    await page.getByText('Test Bike').click();
     await expect(page.getByTestId('to-ship-sheet')).toBeVisible();
     await expect(page.getByText('78901234')).toBeVisible();
     await expect(page.getByText(/9\/2\/26/)).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Listing' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Listing' }).locator('svg')).toBeVisible();
+    await expect(page.getByTestId('to-ship-sheet-assignees')).toContainText('Alex Pick');
+    await expect(page.getByTestId('to-ship-sheet-assignees')).toContainText('Pat Pack');
+    await expect(page.getByTestId('to-ship-sheet').getByRole('button', { name: 'Listing' })).toBeVisible();
+    await expect(page.getByTestId('to-ship-sheet').getByRole('button', { name: 'Listing' }).locator('svg')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Shipping label' }).locator('svg')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Internal documents' }).locator('svg')).toBeVisible();
     await expect(page.getByRole('button', { name: 'Order details' }).locator('svg')).toBeVisible();
@@ -203,7 +219,7 @@ test.describe('mobile home assigned orders inset group', () => {
     await expect(page.getByTestId('to-ship-sheet').getByRole('button', { name: 'Ship', exact: true }).locator('svg')).toBeVisible();
   });
 
-  test('search finds the order; Title A–Z sorts; out of stock removes the row', async ({ page }) => {
+  test('search finds the order; Title A–Z sorts; out of stock disables Ship', async ({ page }) => {
     await page.route('**/api/work-orders/mine**', (route) =>
       route.fulfill({
         status: 200,
@@ -303,6 +319,9 @@ test.describe('mobile home assigned orders inset group', () => {
     await page.getByTestId('to-ship-queue').getByRole('button', { name: 'Out of stock' }).click();
     await expect.poll(() => assignPosts.length).toBe(1);
     expect(assignPosts[0]).toMatchObject({ orderId: 99, isOutOfStock: true });
-    await expect(page.getByRole('button', { name: 'Test Bike' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Test Bike' })).toBeVisible();
+    await expect(
+      page.getByTestId('to-ship-queue').getByRole('button', { name: 'Ship', exact: true }),
+    ).toBeDisabled();
   });
 });

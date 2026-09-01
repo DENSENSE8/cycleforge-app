@@ -33,7 +33,7 @@ _Prioritized. Agent implements **one** per session._
 ## Machine gates
 
 <!-- eval-ledger:auto:machine-gates -->
-_Skipped verify (--skip-verify). Cohort run `2026-09-01T08-12-54-023Z`._
+_Skipped verify (--skip-verify). Run `pnpm run eval:station unbox` for full gate._
 <!-- /eval-ledger:auto:machine-gates -->
 
 ## Design critique (latest)
@@ -66,5 +66,5 @@ _Skipped verify (--skip-verify). Cohort run `2026-09-01T08-12-54-023Z`._
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-01T08:13:12.641Z · station `unbox`_
+_Updated 2026-09-01T10:20:32.426Z · station `unbox`_
 <!-- /eval-ledger:auto:last-run -->

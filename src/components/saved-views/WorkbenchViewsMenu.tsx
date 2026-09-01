@@ -14,7 +14,7 @@
  *     surface's `paramKeys` (`useSavedViews`). Personal by default; optional
  *     org-share via `is_shared`.
  *
- * Trigger: flush **Bookmark + name** on the shared band face
+ * Trigger: **Bookmark + name** on the shared band face
  * ({@link WorkbenchBandControl}) — one rung, one resting tone and one lit fill
  * with its KPI / inspector peers. Abuts the find plane at `gap-0` (no white
  * seam between paste/refine and Views). The label carries the ACTIVE VIEW'S
@@ -42,7 +42,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/design-system/primitives/radix-popover';
-import { cornerClass, DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
+import {
+  DATA_TABLE_TOOLBAR_CORNER,
+  DROPDOWN_SHELL_CORNER,
+} from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 
 export function WorkbenchViewsMenu({
@@ -147,7 +150,7 @@ export function ViewsMenuShell({
             // Colour only — ops chrome never tweens a neighbour's position.
             'transition-colors duration-100 ease-out',
             PRIMARY_CHROME_ROW_FACE,
-            cornerClass('flush'),
+            DATA_TABLE_TOOLBAR_CORNER,
             focusRing('control'),
             lit
               ? 'bg-blue-600 text-white hover:bg-blue-600'

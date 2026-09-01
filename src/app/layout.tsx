@@ -8,10 +8,12 @@ import "./globals.css";
 import { AppShellSwitch } from "@/components/layout/AppShellSwitch";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme/theme";
 import { STATION_SKIN_BOOT_SCRIPT } from "@/lib/theme/station-skin";
+import { STATION_DEPTH_BOOT_SCRIPT } from "@/lib/theme/station-depth";
 import { BOOT_SPLASH_SCRIPT } from "@/lib/boot-splash-script";
 import { designTokenStyleText } from '@/styles/tokens';
 import { themePaletteStyleText } from '@/design-system/themes/registry';
 import { stationSkinStyleText } from '@/design-system/themes/station-skins';
+import { stationDepthStyleText } from '@/design-system/themes/station-depths';
 // NOTE: `ReducedMotionProvider` is deliberately NOT imported here. It renders
 // `MotionConfig`, so a static import in this file shipped the framer runtime
 // (~104KB gz) to every route, public chrome included. It now lives inside
@@ -115,9 +117,11 @@ export default async function RootLayout({
                     theme-varying --ds-color-* variable. */}
                 <style id="app-theme-palettes">{themePaletteStyleText}</style>
                 <style id="app-station-skins">{stationSkinStyleText}</style>
+                <style id="app-station-depths">{stationDepthStyleText}</style>
                 {/* Applies the cached theme before paint (no light→dark flash). */}
                 <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
                 <script dangerouslySetInnerHTML={{ __html: STATION_SKIN_BOOT_SCRIPT }} />
+                <script dangerouslySetInnerHTML={{ __html: STATION_DEPTH_BOOT_SCRIPT }} />
                 {/* Evict leftover Warehouse-OS Workbox CacheFirst on this
                     origin (usav-dev / localhost:3050) so Home CSS can paint. */}
                 <script

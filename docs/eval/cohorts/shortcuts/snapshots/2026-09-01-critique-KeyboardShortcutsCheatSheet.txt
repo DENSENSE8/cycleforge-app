@@ -3,10 +3,11 @@
   "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
   "problems": [],
   "design_system_used": [
+    "KeyboardKey",
     "Dialog"
   ],
   "metrics": {
-    "lines": 236,
+    "lines": 231,
     "arbitrary_literals": 0
   },
   "notes": [

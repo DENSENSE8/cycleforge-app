@@ -3,6 +3,8 @@ export * from './item-record-face';
 export * from './ItemRecordThumb';
 export * from './ItemRecordQtyBadge';
 export * from './ItemRecordMetaGrid';
+export * from './ItemRecordMobileMeta';
+export * from './ItemRecordMobileStage';
 export * from './ItemRecordRow';
 export * from './ItemRecordFactList';
 export * from './ItemRecordCard';

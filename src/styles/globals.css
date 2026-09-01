@@ -856,6 +856,22 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
   transform: translateX(calc(-1 * var(--cf-grid-sx, 0px)));
 }
 
+/* Column-aligned selection foot — same `--cf-grid-sx` translate as the header
+   so Download sits under Image after a horizontal scroll. Lives on DataTable's
+   sticky foot (always on screen), not after the last virtualized row. */
+[data-grid-col-footer] {
+  background-color: var(--ds-color-background-surface);
+}
+[data-grid-col-footer] .sticky {
+  background-color: var(--ds-color-background-surface);
+}
+[data-grid-col-footer] [role='row'] {
+  transform: translateX(var(--cf-grid-sx, 0px));
+}
+[data-grid-col-footer] [role='row'] > .sticky {
+  transform: translateX(calc(-1 * var(--cf-grid-sx, 0px)));
+}
+
 /* ── Ops spreadsheet skin (LedgerGrid) — quiet row rules only (1B) ──
    BOTTOM hairlines separate rows; NO vertical column cage so data pops and
    structure recedes. `--cf-grid-line` = `border-hairline` (near-invisible).
@@ -871,6 +887,7 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
 /* Internal grid: BOTTOM row rules only — header + body + summary share one
    horizontal-line language. No border-right (1B). Shell owns the outer perimeter. */
 [data-grid-skin='airtable'] [data-grid-col-header] [role='row'] > *,
+[data-grid-skin='airtable'] [data-grid-col-footer] [role='row'] > *,
 [data-grid-skin='airtable'] [data-grid-row] > *,
 [data-grid-skin='airtable'] [data-order-row-id] > *,
 [data-grid-skin='airtable'] [data-grid-summary-row] > * {
@@ -891,7 +908,10 @@ html[data-color-scheme='dark'] .react-flow__attribution a { color: #94a3b8; }
 /* Frozen header band — card-white (matches TABLE_FROZEN_HEADER). */
 [data-grid-skin='airtable'] [data-grid-col-header],
 [data-grid-skin='airtable'] [data-grid-col-header] [role='row'],
-[data-grid-skin='airtable'] [data-grid-col-header] .sticky {
+[data-grid-skin='airtable'] [data-grid-col-header] .sticky,
+[data-grid-skin='airtable'] [data-grid-col-footer],
+[data-grid-skin='airtable'] [data-grid-col-footer] [role='row'],
+[data-grid-skin='airtable'] [data-grid-col-footer] .sticky {
   background-color: var(--ds-color-background-surface);
   backdrop-filter: none;
 }

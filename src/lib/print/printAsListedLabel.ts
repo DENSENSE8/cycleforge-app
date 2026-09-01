@@ -1,6 +1,7 @@
 import { getLast8 } from '@/components/ui/CopyChip';
 import { encodePrintMatrix, type PrintMatrix } from '@/lib/qr/platform-link';
 import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
+import { reserveLegacyPrintPopup } from '@/lib/print/iframePrint';
 import { conditionLabel } from '@/lib/conditions';
 
 /**
@@ -70,6 +71,7 @@ export function printAsListedLabel(payload: AsListedLabelPayload): void {
   const face = asListedPayloadToFace(payload);
   if (!face.matrix.value && !face.center) return;
 
+  const legacyPopup = reserveLegacyPrintPopup();
   // Lazy: printLabel drags the bwip-js barcode engine; load on the actual print.
   void import('@/lib/print/printLabel').then(({ printLabel }) => {
     printLabel({
@@ -77,6 +79,7 @@ export function printAsListedLabel(payload: AsListedLabelPayload): void {
       ...buildFaceInfoHtml(face),
       dataMatrix: face.matrix,
       hri: face.hri,
+      legacyPopup,
     });
   });
 }

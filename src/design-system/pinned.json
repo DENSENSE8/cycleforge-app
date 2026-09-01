@@ -7,9 +7,9 @@
   },
 
   "DeskActionSlot": {
-    "useWhen": "page CTA, primary action on a desk, overall action, Export in the page header, register an action into the page header, Add button on a workbench, desk action slot",
-    "doNot": "Do not pass a CTA down as a prop through the route-group layout \u2014 a shared frame that imports one desk's intake stops being shared. The active surface registers with DeskActionSlotRegistrar (role=primary for the create verb, role=overall for collection actions such as Export). Last writer wins per role, so Export does not replace Add. A desk with no CTA registers nothing and the slot stays empty. Memoize the node \u2014 a fresh element identity every render re-registers every render, which loops through the provider. The node is DeskHeaderAction (Button with radius pill locked) or SlicedActionDock embeddedChrome=header for a split intake \u2014 never a raw Button with a rounded-* class, never radius flush in this slot. Print, labels, filter, columns, zoom and fullscreen stay off this row.",
-    "law": "src/design-system/components/DeskActionSlot.tsx. Operator 2026-08-30: the CTA is page-level, top-right of the header. Operator 2026-09-01: every desk header CTA uses the same pill token (DeskHeaderAction / SlicedActionDock header chrome); a per-page corner is a fork. Operator 2026-09-01: overall actions (Export) sit in the header cluster left of the primary CTA; the toolbar glyph goes when the header button lands, restoring only in fullscreen because that header is unrendered."
+    "useWhen": "page CTA, primary action on a desk, overall action, leading action, Labels left of Sync, Labels display toggle, Export in the Sync dropdown, register an action into the page header, Add button on a workbench, desk action slot",
+    "doNot": "Do not pass a CTA down as a prop through the route-group layout \u2014 a shared frame that imports one desk's intake stops being shared. The active surface registers with DeskActionSlotRegistrar (role=primary for the create verb, role=overall for collection actions such as Media Export, role=leading for To-ship Labels immediately left of primary). Last writer wins per role, so Labels does not replace Add. A desk with no CTA registers nothing and the slot stays empty. Memoize the node \u2014 a fresh element identity every render re-registers every render, which loops through the provider. The node is DeskHeaderAction (Button with radius pill locked) or SlicedActionDock embeddedChrome=header for a split intake \u2014 never a raw Button with a rounded-* class, never radius flush in this slot. Print, filter, columns, zoom and fullscreen stay off this row. To-ship Export is not an overall header button \u2014 DeskExportMenuRegistrar tucks it into the Sync Google Sheet dropdown (operator 2026-09-01). Labels is a display toggle for the paperwork walk (pressed = walk on), not a per-row print verb.",
+    "law": "src/design-system/components/DeskActionSlot.tsx. Operator 2026-08-30: the CTA is page-level, top-right of the header. Operator 2026-09-01: every desk header CTA uses the same pill token (DeskHeaderAction / SlicedActionDock header chrome); a per-page corner is a fork. Operator 2026-09-01: overall actions (Export) sit in the header cluster left of the primary CTA on desks that still own a collection Export; To-ship tucks Export into the Sync dropdown. Operator 2026-09-01: To-ship Labels is role=leading, immediately left of Sync, and toggles the paperwork display."
   },
 
   "KeyboardKey": {
@@ -19,9 +19,9 @@
   },
 
   "TableStatusBar": {
-    "useWhen": "row count, shown of total, selected count, copy selection, table foot strip, sub-mode tabs inside one page tab, selection CTA hotkey reveal",
-    "doNot": "Do not wire NEW page modes into its `tabs` props. Page modes ride DeskPageChrome's TOP row on every desk AND every scan station (operator 2026-08-31) \u2014 the desk-threaded `tabStrip` plumbing was deleted the same day. What this strip is for is the right half (shown / total / selected / copy), which is the one thing a table knows and a frame does not; its tab half survives only for SECOND-level sub-modes inside a single page tab. Do not hand-roll a teaching `<kbd>` for selection hotkeys — mount KeyboardKey. Do not leave standing letters, open a cheat sheet from staff `?` while CTAs are mounted, add a foot `?`, park keycaps outside, or widen via iconRight/gap.",
-    "law": "src/components/tables/TableStatusBar.tsx. Operator 2026-08-31: tabs moved to the top; the foot strip keeps the counts. Operator 2026-09-01: keyboard `?` reveals KeyboardKey overlays inside each CTA (absolute right-1.5), gray face + black letter, zero layout shift."
+    "useWhen": "row count, shown of total, selected count, copy selection, table foot strip, sub-mode tabs inside one page tab, selection CTA hotkey reveal, idle-left path readout lead",
+    "doNot": "Do not wire NEW page modes into its `tabs` props. Page modes ride DeskPageChrome's TOP row on every desk AND every scan station (operator 2026-08-31) \u2014 the desk-threaded `tabStrip` plumbing was deleted the same day. What this strip is for is the right half (shown / total / selected / copy), which is the one thing a table knows and a frame does not; its tab half survives only for SECOND-level sub-modes inside a single page tab. Idle-left `lead` is a context readout (date/folder path) — never a CTA, never page navigation, never painted beside selection pills (precedence: selectionActions beat tabs beat lead). `lead` is not DeskPageChrome's `tabsLead`. Do not hand-roll a teaching `<kbd>` for selection hotkeys — mount KeyboardKey. Do not leave standing letters, open a cheat sheet from staff `?` while CTAs are mounted, add a foot `?`, park keycaps outside, or widen via iconRight/gap.",
+    "law": "src/components/tables/TableStatusBar.tsx. Operator 2026-08-31: tabs moved to the top; the foot strip keeps the counts. Operator 2026-09-01: keyboard `?` reveals KeyboardKey overlays inside each CTA (absolute right-1.5), gray face + black letter, zero layout shift. Operator 2026-09-01: `lead` fills the idle left for Media path contraction."
   },
 
   "DeskPageChrome": {
@@ -244,5 +244,25 @@
     "useWhen": "idle overlay, browse under focus, visibility hidden idle, zIndex.panel overlay, station swap AnimatePresence, scan station workspace shell, UnboxLineWorkspace PackOrderWorkspace ScanOutWorkspace TriageLineWorkspace TestingLineWorkspace TechRightPane",
     "doNot": "Do not treat Pack or Unbox as the golden template — SoT is SCAN_STATION_OVERLAY_COHORT (every floor station is a peer). Do not delete style={{ visibility }} / style={{ zIndex: zIndex.panel }} to silence ds_critique — those are cohort law inside cohort workspaces. Do not invent a second idle↔overlay recipe outside the cohort list. New floor scan stations must append a cohort row. Motion may be motionRole.swap.scan or .focus.",
     "law": "src/lib/station/scan-station-overlay-cohort.ts + scan-station-overlay-cohort.test.ts. Operator 2026-08-31: cohort SoT, not Pack/Unbox-as-golden. Display eval is slot-table; shell eval is `pnpm run eval:station <id>`."
+  },
+  "station-skins": {
+    "useWhen": "scan station theme, station skin, porcelain packing bench, station color, applyStationSkin, mill industrial coal",
+    "doNot": "Do not hex-fill a well or fork a packing-bench class on one station. Color is a STATION_SKINS row; wells consume STATION_SCAN_* from @/components/station/scan-depth. Query ds_tokens({ axis: 'station-skin' }). Industrial is the absence of data-station-skin. Grain and bevel width are station-depth.",
+    "law": "src/design-system/themes/station-skins.ts. Operator 2026-09-01: scan-station Color is the catalog, not a fill fork."
+  },
+  "ItemRecordMobileMeta": {
+    "useWhen": "mobile to-ship qty condition notes, phone item record facts, qty condition notes cluster, handheld order card meta",
+    "doNot": "Do not split qty, condition, and notes into independent chips. Do not mount ItemRecordMetaGrid (desk five-track: SKU · serial · price) on the phone card. Do not hand-roll a second meta row. Query ds_tokens({ axis: 'item-record' }).",
+    "law": "src/design-system/components/item-record/ItemRecordMobileMeta.tsx + src/design-system/tokens/item-record-mobile.ts. Operator 2026-09-01: one cluster under the title."
+  },
+  "ItemRecordMobileStage": {
+    "useWhen": "mobile pick packed mark, phone staff assignment, to-ship picker packer avatar, staff color on order card",
+    "doNot": "Do not paint the person's name on the card — Pick / Packed verbs only. Names live on the order sheet. Do not show the staff photo on this mark (avatarPhotoId={null}) — the fill is staff.color_hex. Do not hash a name into a colour. Query ds_tokens({ axis: 'item-record' }).",
+    "law": "src/design-system/components/item-record/ItemRecordMobileStage.tsx + ITEM_RECORD_MOBILE_STAGE. Operator 2026-09-01: colour mark + catalog verb; name on the sheet."
+  },
+  "ItemRecordQtyBadge": {
+    "useWhen": "item quantity badge, expected qty, counted over expected, phone to-ship quantity",
+    "doNot": "Do not hand-roll a qty span. Expected-only sales orders paint the number; counted/expected paints n/m. Mount inside ItemRecordMobileMeta on the phone card.",
+    "law": "src/design-system/components/item-record/ItemRecordQtyBadge.tsx"
   }
 }

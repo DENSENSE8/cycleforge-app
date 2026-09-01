@@ -34,8 +34,9 @@ export const SHORTCUT_DISPLAY_ENGINE = {
   keyboardKey: 'src/design-system/primitives/KeyboardKey.tsx',
   cheatSheet: 'src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx',
   overview: 'src/lib/keyboard/shortcut-overview.ts',
-  statusBar: 'src/components/tables/TableStatusBar.tsx',
-  inlineHotkeys: 'src/hooks/useSelectionStatusBarHotkeys.ts',
+    statusBar: 'src/components/tables/TableStatusBar.tsx',
+    columnActionRow: 'src/components/tables/DataTableColumnActionRow.tsx',
+    inlineHotkeys: 'src/hooks/useSelectionStatusBarHotkeys.ts',
   graphSymbols: [
     'KeyboardKey',
     'KeyboardShortcutsCheatSheet',
@@ -46,6 +47,7 @@ export const SHORTCUT_DISPLAY_ENGINE = {
     'src/design-system/primitives/KeyboardKey.tsx',
     'src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx',
     'src/components/tables/TableStatusBar.tsx',
+    'src/components/tables/DataTableColumnActionRow.tsx',
   ] as const,
 } as const;
 
@@ -148,6 +150,11 @@ export function discoverShortcutDisplay(repoRoot = process.cwd()): ShortcutDispl
       id: 'engine:HotkeyGlyph',
       path: SHORTCUT_DISPLAY_ENGINE.statusBar,
       why: 'Reveal-only KeyboardKey after keyboard `?`. Absolute overlay inside the face (right) — zero layout shift.',
+    },
+    {
+      id: 'engine:DataTableColumnActionRow',
+      path: SHORTCUT_DISPLAY_ENGINE.columnActionRow,
+      why: 'Icon-only column-aligned selection foot. Same HotkeyGlyph overlay law as TableStatusBar.',
     },
     {
       id: 'engine:useSelectionStatusBarHotkeys',
@@ -272,6 +279,21 @@ export function discoverShortcutDisplay(repoRoot = process.cwd()): ShortcutDispl
         why: '`?` key does not yield to overlay glyphs while the CTA strip is mounted.',
         keep: 'KeyboardShortcutsCheatSheet for `?` when no CTA strip exists',
         next: 'If isSelectionInlineHotkeySurfaceActive(), return without opening the Dialog — useSelectionStatusBarHotkeys owns the toggle (do not stopPropagation or double-toggle).',
+      });
+    }
+
+    if (
+      rel.endsWith('DataTableColumnActionRow.tsx') &&
+      /function HotkeyGlyph/.test(src) &&
+      !/absolute right-1\.5/.test(src)
+    ) {
+      findings.push({
+        id: 'anchor:DataTableColumnActionRow:missing-inside-right-overlay',
+        verdict: 'delete',
+        path: rel,
+        why: 'HotkeyGlyph is not an inside-right overlay.',
+        keep: 'pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2',
+        next: 'Wrap IconButton; position HotkeyGlyph inside the face on the right.',
       });
     }
 

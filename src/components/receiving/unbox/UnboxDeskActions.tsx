@@ -1,24 +1,14 @@
 'use client';
 
 /**
- * Unbox page-header CTAs — **Unbox** (resume last carton) and **Check**
- * (unreceived-orders rail).
- *
- * They used to live on Band 1 (`ReceivingBoxChromeActions`). The desk frame
- * moved the primary action to the title row (`DeskPageChrome` addSlot); this
- * registers into that slot so the buttons sit top-right, not on the tab row.
- *
- * - **Check** opens `IncomingDeskRightRail` (`kind: 'check'`) — the same
- *   RightRailHost occupant Incoming uses for receipts.
- * - **Unbox** re-opens the most recently unboxed carton (Unboxed-rail MRU) and
- *   re-arms the scan bar. Opening the carton claims the station Displays
- *   column; that is the right rail for Unbox's own components, and it yields
- *   the Check occupant (one right edge).
+ * Unbox page-header CTAs — **Unbox** (resume last carton), **Check**
+ * (unreceived-orders rail), and on the Inbound tab **Add purchase order**
+ * (inline intake band under the Incoming embed).
  */
 
 import { useCallback, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ClipboardList, ReceivingModeUnbox } from '@/components/Icons';
+import { ClipboardList, Package, ReceivingModeUnbox } from '@/components/Icons';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import {
   IncomingDeskRightRail,
@@ -29,18 +19,25 @@ import { useUnboxWorkspaceTab } from '@/hooks/useUnboxWorkspaceTab';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { fetchUnboxOpenedRows } from '@/lib/receiving/rail/feeds';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { openPoIntake } from '@/lib/inbound/po-intake-store';
 
 export function UnboxDeskActions() {
   const searchParams = useSearchParams();
   const staffId = parseStaffParam(searchParams.get('staff') ?? searchParams.get('staffId'));
-  const { setUnboxView } = useUnboxWorkspaceTab();
+  const { unboxView, setUnboxView } = useUnboxWorkspaceTab();
   const [deskRail, setDeskRail] = useState<IncomingDeskRailTool | null>(null);
+  const isIncoming = unboxView === 'incoming';
 
   const handleCheck = useCallback(() => {
     setDeskRail((current) =>
       current?.kind === 'check' ? null : { kind: 'check', checkOnly: true },
     );
   }, []);
+
+  const handleAddPo = useCallback(() => {
+    setUnboxView('incoming', { clearLine: false });
+    openPoIntake({ reset: true });
+  }, [setUnboxView]);
 
   const handleUnbox = useCallback(() => {
     void (async () => {
@@ -65,6 +62,18 @@ export function UnboxDeskActions() {
   const control = useMemo(
     () => (
       <div className="flex shrink-0 items-center gap-2" data-testid="unbox-desk-actions">
+        {isIncoming ? (
+          <DeskHeaderAction
+            variant="primary"
+            size="md"
+            icon={<Package className="h-3.5 w-3.5" aria-hidden />}
+            ariaLabel="Add purchase order"
+            onClick={handleAddPo}
+            data-testid="incoming-add-purchase-order"
+          >
+            Add purchase order
+          </DeskHeaderAction>
+        ) : null}
         <DeskHeaderAction
           variant="execute"
           size="md"
@@ -76,7 +85,7 @@ export function UnboxDeskActions() {
           Check
         </DeskHeaderAction>
         <DeskHeaderAction
-          variant="primary"
+          variant={isIncoming ? 'secondary' : 'primary'}
           size="md"
           icon={<ReceivingModeUnbox />}
           onClick={handleUnbox}
@@ -86,7 +95,7 @@ export function UnboxDeskActions() {
         </DeskHeaderAction>
       </div>
     ),
-    [handleCheck, handleUnbox],
+    [handleCheck, handleUnbox, handleAddPo, isIncoming],
   );
 
   return (

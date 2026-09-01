@@ -72,8 +72,9 @@ process.stdout.write(
     '\n',
 );
 
-/** Windows: `npx` is npx.CMD — spawning it with shell:false is ENOENT/EINVAL,
- *  which made every npx gate report ✗ no matter what the gate actually did. */
+/** Windows: `eslint.CMD` / `tsc.CMD` — spawning `.CMD` with shell:false is
+ *  ENOENT/EINVAL, which made every local-bin gate report ✗ no matter what
+ *  the gate actually did. */
 const SPAWN_SHELL = process.platform === 'win32';
 
 /** @param {import('./verify-profile.mjs').VerifyGate} gate */

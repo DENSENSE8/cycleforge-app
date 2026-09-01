@@ -25,14 +25,15 @@ function returnsCsv(stamp: string): string {
 
 async function openReturnsStaging(page: Page, csv: string) {
   await page.goto(DESK);
-  await page.getByRole('button', { name: 'Add inbound purchase or return' }).click();
-  const rail = page.getByRole('region', { name: /add inbound purchase or return/i });
-  await expect(rail).toBeVisible({ timeout: 15_000 });
-  await rail.getByTestId('station-displays-index-import-returns').click();
-  await expect(page.getByTestId('incoming-returns-choose-csv')).toBeVisible();
+  const add = page.getByTestId('incoming-add-purchase-order');
+  await expect(add).toBeVisible({ timeout: 15_000 });
 
-  const fileInput = page.locator('input[type="file"][accept*="csv"]');
-  await fileInput.setInputFiles({
+  await add.getByRole('button', { name: 'More inbound intake' }).click();
+  const [chooser] = await Promise.all([
+    page.waitForEvent('filechooser'),
+    page.getByRole('menuitem', { name: 'Import returns (CSV/TSV)' }).click(),
+  ]);
+  await chooser.setFiles({
     name: 'qa-amazon-returns.csv',
     mimeType: 'text/csv',
     buffer: Buffer.from(csv, 'utf8'),
@@ -87,14 +88,14 @@ test.describe('Incoming returns CSV staging', () => {
     await expect(page.getByText('QA Return Gadget').first()).toBeVisible();
   });
 
-  test('Band-1 Import CSV aliases the same import-returns leaf', async ({ page }) => {
+  test('Add menu exposes Import returns (CSV/TSV)', async ({ page }) => {
     await page.goto(DESK);
-    await page.getByRole('button', { name: /import incoming orders/i }).click();
-    await page.getByRole('button', { name: /upload csv/i }).click();
-    const rail = page.getByRole('region', { name: /add inbound purchase or return/i });
-    await expect(rail).toBeVisible({ timeout: 15_000 });
-    await expect(page.getByTestId('incoming-returns-choose-csv')).toBeVisible({
-      timeout: 10_000,
-    });
+    const add = page.getByTestId('incoming-add-purchase-order');
+    await expect(add).toBeVisible({ timeout: 15_000 });
+    await add.getByRole('button', { name: 'More inbound intake' }).click();
+    await expect(
+      page.getByRole('menuitem', { name: 'Import returns (CSV/TSV)' }),
+    ).toBeVisible();
+    await expect(add.locator('input[type="file"][accept*="csv"]')).toHaveCount(1);
   });
 });

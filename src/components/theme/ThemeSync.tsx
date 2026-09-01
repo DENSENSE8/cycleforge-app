@@ -4,14 +4,16 @@ import { useEffect } from 'react';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
 import { applyTheme, applyAccentTheme } from '@/lib/theme/theme';
 import { applyStationSkin } from '@/lib/theme/station-skin';
+import { applyStationDepth } from '@/lib/theme/station-depth';
+import { DEFAULT_STATION_DEPTH } from '@/design-system/themes/station-depths';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStaffColorVersion } from '@/contexts/StaffColorsProvider';
 import { resolveOperatorAccentTheme } from '@/utils/operator-accent';
 
 /**
  * Bridges the server-backed staff_preferences `theme` to `data-theme`, the
- * scan-station skin to `data-station-skin`, and the operator accent to the
- * `theme-${accent}` class.
+ * scan-station Color to `data-station-skin`, Depth to `data-station-depth`,
+ * and the operator accent to the `theme-${accent}` class.
  * Mount once inside the authenticated tree (beside ScanHotkeySync).
  *
  * Deps are the theme/accent *fields* — never the whole `prefs` object identity
@@ -24,6 +26,7 @@ export function ThemeSync() {
   const prefsReady = prefs != null;
   const theme = prefs?.theme;
   const stationSkin = prefs?.stationSkin;
+  const stationDepth = prefs?.stationDepth;
   const useStaffAccent = prefs?.useStaffAccent;
   const accentHex = prefs?.accentHex;
 
@@ -36,6 +39,11 @@ export function ThemeSync() {
     if (!prefsReady) return;
     applyStationSkin(stationSkin ?? 'industrial');
   }, [prefsReady, stationSkin]);
+
+  useEffect(() => {
+    if (!prefsReady) return;
+    applyStationDepth(stationDepth ?? DEFAULT_STATION_DEPTH);
+  }, [prefsReady, stationDepth]);
 
   useEffect(() => {
     if (!user?.staffId) {

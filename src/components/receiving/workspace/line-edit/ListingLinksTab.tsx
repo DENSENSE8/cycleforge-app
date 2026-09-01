@@ -624,7 +624,7 @@ function ListingLinkRow({
       <div
         className={cn(
           LISTING_LINE_GRID,
-          selected ? 'bg-surface-canvas' : 'hover:bg-surface-canvas/60',
+          selected ? 'bg-surface-sunken' : 'hover:bg-surface-hover',
         )}
       >
         {/* The whole row opens the link. */}
@@ -638,7 +638,7 @@ function ListingLinkRow({
               // min-h-9 = the combo's own h-9, so this row and the picker above
               // it are one column of equal boxes.
               'flex min-h-9 min-w-0 items-center gap-2 text-left',
-              'hover:bg-surface-canvas/60',
+              'hover:bg-surface-hover',
               focusRing('cell'),
             )}
           >

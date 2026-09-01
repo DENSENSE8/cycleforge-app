@@ -51,6 +51,13 @@ describe('shippedOrderAsWorkRow', () => {
     assert.equal(row.outOfStock, null);
   });
 
+  it('maps catalog listing image onto the work-row thumb', () => {
+    const row = shippedOrderAsWorkRow(
+      order({ id: 4, catalog_image_url: 'https://cdn.example/bike.jpg' }),
+    );
+    assert.equal(row.imageUrl, 'https://cdn.example/bike.jpg');
+  });
+
   it('maps is_out_of_stock onto the work-row outOfStock face', () => {
     const row = shippedOrderAsWorkRow(order({ id: 3, is_out_of_stock: true }));
     assert.equal(row.outOfStock, 'Out of stock');
@@ -59,5 +66,22 @@ describe('shippedOrderAsWorkRow', () => {
   it('marks packer or tech assignment as ASSIGNED', () => {
     assert.equal(shippedOrderAsWorkRow(order({ id: 1, packer_id: 9 })).status, 'ASSIGNED');
     assert.equal(shippedOrderAsWorkRow(order({ id: 2, tester_id: 3 })).status, 'ASSIGNED');
+  });
+
+  it('maps assigned staff colour onto the phone Pick / Packed marks', () => {
+    const row = shippedOrderAsWorkRow(
+      order({
+        id: 8,
+        tester_id: 4,
+        tester_name: 'Sang',
+        tester_color_hex: '#E11D48',
+        packer_id: 3,
+        packer_name: 'Tuan',
+        packer_color_hex: '#2563EB',
+      }),
+    );
+    assert.equal(row.techColorHex, '#e11d48');
+    assert.equal(row.packerColorHex, '#2563eb');
+    assert.equal(row.packerName, 'Tuan');
   });
 });

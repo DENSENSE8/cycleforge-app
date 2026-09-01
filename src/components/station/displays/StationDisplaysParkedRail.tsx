@@ -36,6 +36,7 @@ import {
 } from '@/components/layout/header-shell';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
+import { resolveStationDepth } from '@/design-system/themes/station-depths';
 import { resolveStationSkin } from '@/design-system/themes/station-skins';
 import { cn } from '@/utils/_cn';
 import {
@@ -83,7 +84,7 @@ export function StationDisplaysParkedRail({
   activeId?: string | null;
 }) {
   const { prefs } = useStaffPreferences();
-  const lookLabel = resolveStationSkin(prefs?.stationSkin).label;
+  const lookLabel = `${resolveStationSkin(prefs?.stationSkin).label} · ${resolveStationDepth(prefs?.stationDepth).label}`;
   const resolvedRows = withLookDisplayIndexRow(rows, lookLabel);
   const resolvedTabs = withLookDisplayTabs(tabs);
   const iconById = new Map(resolvedTabs.map((t) => [t.id, t.icon]));

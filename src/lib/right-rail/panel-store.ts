@@ -6,7 +6,9 @@
  * Occupancy (`store.ts`) still answers "who is registered for the slot".
  * This store answers the operator gesture the host owns:
  *
- *   open → paint · →| / Esc → unmount + cache draft + toast · Resume / Mod+Shift+R → remount
+ *   open → paint · →| / Esc → unmount + cache draft · Resume / Mod+Shift+R → remount
+ *
+ * Park is silent (no "Draft saved." toast) — operator 2026-09-01.
  *
  * House store shape (subscribe/emit + cached snapshot), not Zustand — same
  * idiom as `store.ts` / `overlay-stack`. `usePanelStore` is the React waist.
@@ -34,7 +36,7 @@ export interface PanelStoreSnapshot {
   draftData: RightRailDraftCache | null;
   /** True after closeAndCachePanel until Resume / a new openPanel. Host skips painting this id. */
   dismissed: boolean;
-  /** True while the "Draft saved." toast is live — arms Mod+Shift+R. */
+  /** True while a draft-resume chord is armed (Mod+Shift+R). Default notify disarms immediately — no toast. */
   draftToastArmed: boolean;
 }
 
@@ -51,28 +53,13 @@ const EMPTY: PanelStoreSnapshot = {
   draftToastArmed: false,
 };
 
-const DRAFT_TOAST_MS = 8_000;
-
 const defaultNotifyDeps: PanelStoreNotifyDeps = {
   now: () => Date.now(),
-  notifyDraftSaved: ({ onResume, onDismiss }) => {
-    toast.success('Draft saved.', {
-      action: {
-        label: 'Resume',
-        onClick: () => {
-          onResume();
-        },
-      },
-      duration: DRAFT_TOAST_MS,
-      closeButton: false,
-      onDismiss,
-      onAutoClose: onDismiss,
-      classNames: {
-        toast: 'rounded-none',
-        actionButton:
-          'mt-0 rounded-none border border-current/20 bg-transparent px-2 py-1 text-role-micro font-medium hover:bg-surface-sunken',
-      },
-    });
+  // Operator 2026-09-01: park silently — no "Draft saved." toast on →| / Esc /
+  // row churn. Resume stays on Mod+Shift+R only while draftToastArmed (tests /
+  // hosts may still arm via setPanelStoreNotifyDeps).
+  notifyDraftSaved: ({ onDismiss }) => {
+    onDismiss();
   },
   dismissToast: () => {
     toast.dismiss();
@@ -176,7 +163,7 @@ export function syncPanelOccupant(id: string | null): void {
 
 /**
  * →| / Esc. Snapshot dirty state, unmount the view (host skips its occupant
- * id), toast "Draft saved." with Resume.
+ * id). Parks silently — no "Draft saved." toast (operator 2026-09-01).
  */
 export function closeAndCachePanel(): void {
   const view = snapshot.activeView;
@@ -194,11 +181,7 @@ export function closeAndCachePanel(): void {
       capturedAt: notifyDeps.now(),
     },
     dismissed: true,
-    draftToastArmed: true,
-  });
-  notifyDeps.notifyDraftSaved({
-    onResume: () => reopenDraft(),
-    onDismiss: () => disarmDraftToast(),
+    draftToastArmed: false,
   });
 }
 
@@ -211,6 +194,7 @@ function disarmDraftToast(): void {
 export function reopenDraft(): void {
   if (!snapshot.dismissed && !snapshot.draftData) return;
   notifyDeps.dismissToast();
+  disarmDraftToast();
   replace({
     ...snapshot,
     dismissed: false,

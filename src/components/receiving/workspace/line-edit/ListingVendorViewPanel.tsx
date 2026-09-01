@@ -358,7 +358,7 @@ export function ListingVendorViewPanel({
               // page in a letterbox with dead rail underneath it.
               // No `border-t`: the banner above owns this seam. Both would
               // double the joint.
-              'flex min-h-0 flex-1 items-center justify-center bg-surface-canvas',
+              'flex min-h-0 flex-1 items-center justify-center bg-surface-sunken',
             )}
           >
             {/* Covered by the native view once Main mounts it. Visible only for

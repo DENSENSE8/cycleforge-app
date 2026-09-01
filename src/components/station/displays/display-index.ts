@@ -167,10 +167,10 @@ export function deriveDisplayIndexRowsFromTabs(tabs: readonly SectionTab[]): Dis
 }
 
 /**
- * Ensure the Root Index carries a Look row whose subtitle is the live skin
- * label. PushStack injects this so Unbox builders and thin stations both get
- * the try-on leaf without forking a tab. Existing `look` rows keep their group
- * and get a fresh subtitle.
+ * Ensure the Root Index carries a Look row whose subtitle is the live Color ·
+ * Depth label (e.g. `Coal · Mill`). PushStack injects this so Unbox builders
+ * and thin stations both get the try-on leaf without forking a tab. Existing
+ * `look` rows keep their group and get a fresh subtitle.
  */
 export function withLookDisplayIndexRow(
   rows: readonly DisplayIndexRow[],

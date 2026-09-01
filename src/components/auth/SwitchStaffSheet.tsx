@@ -18,6 +18,7 @@ import { useStaffSwitcher } from '@/contexts/StaffSwitcherContext';
 import { StaffPickerList, type StaffPickerRow } from '@/components/auth/StaffPickerList';
 import { StaffPinPad } from '@/components/auth/StaffPinPad';
 import { BottomSheet } from '@/components/ui/BottomSheet';
+import { SearchField } from '@/design-system/primitives/SearchField';
 import { readRecentSignins, writeRecentSignin } from '@/lib/auth/recent-signins';
 
 function humanError(code: string | undefined): string {
@@ -44,12 +45,14 @@ export function SwitchStaffSheet() {
   // re-grouping rows mid-interaction.
   const [recent, setRecent] = useState<number[]>([]);
   const [recentReady, setRecentReady] = useState(false);
+  const [query, setQuery] = useState('');
 
   // Reset whenever the sheet opens.
   useEffect(() => {
     if (isOpen) {
       setPicked(null);
       setPickerMessage(null);
+      setQuery('');
       setRecent(readRecentSignins());
       setRecentReady(true);
     } else {
@@ -80,7 +83,10 @@ export function SwitchStaffSheet() {
     return { ok: true as const };
   }, [picked, refresh, router, closeSwitcher]);
 
-  const currentStaffName = user ? `Currently signed in as staff #${user.staffId}` : 'Choose a staff member';
+  const currentName = user?.name?.trim() || null;
+  const currentStaffLabel = currentName
+    ? `Currently signed in as ${currentName}`
+    : 'Choose a staff member';
 
   return (
     <BottomSheet
@@ -88,6 +94,8 @@ export function SwitchStaffSheet() {
       onClose={closeSwitcher}
       title={picked ? undefined : 'Switch staff'}
       maxWidth="28rem"
+      fixedWidth
+      scrollBody
     >
       {picked ? (
         <StaffPinPad
@@ -97,12 +105,25 @@ export function SwitchStaffSheet() {
           submitLabel="Switch"
         />
       ) : (
-        <>
-          <p className="text-center text-role-caption text-text-soft">{currentStaffName}</p>
-          <div className="mt-6">
+        <div className="flex min-h-0 flex-1 flex-col">
+          <p className="shrink-0 text-center text-role-caption text-text-soft">{currentStaffLabel}</p>
+          <div className="mt-3 shrink-0">
+            <SearchField
+              value={query}
+              onChange={setQuery}
+              onClear={() => setQuery('')}
+              placeholder="Search staff"
+              tone="neutral"
+              size="compact"
+              debounceMs={0}
+              autoFocus
+            />
+          </div>
+          <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
             <StaffPickerList
               recent={recent}
               recentReady={recentReady}
+              query={query}
               onPick={(s) => { setPickerMessage(null); setPicked(s); }}
               onMessage={setPickerMessage}
             />
@@ -112,7 +133,7 @@ export function SwitchStaffSheet() {
               </div>
             )}
           </div>
-        </>
+        </div>
       )}
     </BottomSheet>
   );

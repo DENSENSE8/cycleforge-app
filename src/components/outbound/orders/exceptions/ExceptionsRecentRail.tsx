@@ -51,7 +51,7 @@ export function getExceptionStatusDot(row: OrderExceptionRow): string {
 }
 
 export function getExceptionStatusDotLabel(row: OrderExceptionRow): string {
-  if (row.blockers.length === 0) return 'Ready to release';
+  if (row.blockers.length === 0) return 'Paired';
   return row.blockers.map((b) => ORDER_EXCEPTION_BLOCKER_LABEL[b]).join(' · ');
 }
 

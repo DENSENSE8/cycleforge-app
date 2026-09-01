@@ -40,6 +40,8 @@ import {
 import type { FieldDisplayType } from '@/lib/tables/field-catalog/types';
 import { StaffAvatar } from '@/components/identity';
 import { BrandIdentityDot, GridCellDash } from '@/components/ui/grid-cells';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { ITEM_RECORD_MOBILE_STAGE } from '@/design-system/tokens/item-record-mobile';
 import { GridClickSelectFace, GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { CopyChipHoverMenu } from '@/components/ui/CopyChipHoverMenu';
@@ -71,6 +73,7 @@ import {
   type CompoundRowView,
   type CompoundShipByEdit,
   type CompoundSlotValue,
+  type CompoundStageAssign,
   type CompoundStageStepFacts,
   type CompoundStateTone,
   type CompoundSubtitlePart,
@@ -988,64 +991,83 @@ export function CompoundState({
  *   error. A colour ring keeps the assigned colour scannable once a photo
  *   uploads. Round mark = person; the square edge-to-edge image stays the
  *   product photo's alone.
- * - **The verb marks what HAPPENED; nothing-yet is the ICON over a DASH.**
- *   The done face ("Tested") paints once the event's timestamp lands. Before
- *   that the line keeps the step's glyph (the column identity survives) with
- *   the house blank-cell dash where the verb would be (operator ruling
- *   2026-08-30: a step that has not happened is a blank, not an instruction).
- *   The catalog's `pending` face survives as the dash's accessible name only,
- *   so AT still hears the state. An assigned-but-undone row keeps the
- *   assignee's mark beside it — "this is Michael's" is still the actionable
- *   read.
+ * - **The verb marks what HAPPENED; nothing-yet is dotted empty + dash.**
+ *   The done face ("Tested" / "Picked" / "Packed") paints once the event's
+ *   timestamp lands. Before that the line keeps the step's glyph (the column
+ *   identity survives) with {@link ITEM_RECORD_MOBILE_STAGE.empty} (dashed
+ *   circle + pill corner) where the avatar would be, and the house
+ *   {@link GridCellDash} beside the glyph. The catalog's `pending` face
+ *   survives as the circle's accessible name only, so AT still hears the
+ *   state. An assigned-but-undone row keeps the assignee's mark beside the
+ *   dash — "this is Michael's" is still the actionable read. When
+ *   {@link CompoundStageAssign} is present and the step has no `at`, that
+ *   mark (or the empty unclaimed circle) is display-only — assign commits from
+ *   the column-foot person icons under Pick / Packed (bottom-up staff search,
+ *   no cell popover). Full roster; no WorkOrder grid.
  * - **The name lives in the tooltip.** Names are ragged; the mark is 28px
  *   always. The full `who · time · station` line rides the hover, and the
  *   mark's `alt` names the actor for screen readers.
+ * - **Past-tense second line is the stamp.** Once `at` is set the verb paints
+ *   on the primary (PICKED / PACKED) and the secondary is the exact date/time
+ *   — never the word Assigned. Pending + assignee paints the catalog pending
+ *   verb (PICK / PACK) with Assigned underneath — never a dash.
  *
  * The two text lines stay {@link CompoundCell}'s fixed tracks, so the verb
  * baseline still locks to the state/item columns — the avatar is a leading
  * flex sibling, never a third row.
  *
- * An unclaimed step paints a dashed empty circle in the mark's slot (the
- * universal "no owner yet" face) so TEST and TESTED align identically.
+ * An unclaimed / unstamped step paints an empty circle in the mark's slot
+ * (same 28px as the `sm` avatar) and a dash next to the glyph — Pick and
+ * Packed share this face; neither invents a blank cell.
  */
 export function CompoundStageStep({
   labels,
   Icon,
   facts,
+  assign,
 }: {
   labels: Readonly<{ done: string; pending: string }>;
   Icon: (props: { className?: string }) => JSX.Element;
   facts: CompoundStageStepFacts | null;
+  /** Present ⇒ pending mark is the assign trigger; done stages ignore it. */
+  assign?: CompoundStageAssign;
 }) {
   const tip = formatCompoundStageStepLine(facts);
   const filled = Boolean(facts?.at);
-  const stampLine = [facts?.at, facts?.station]
-    .map((s) => String(s ?? '').trim())
-    .filter(Boolean)
-    .join(' · ');
-  const hasActor = Boolean(facts && (facts.whoStaffId || facts.who));
+  const assignedStaffId =
+    assign?.selectedStaffId != null && assign.selectedStaffId > 0
+      ? assign.selectedStaffId
+      : null;
+  const actorId = facts?.whoStaffId ?? assignedStaffId;
+  const actorName = (facts?.who ?? '').trim() || null;
+  const hasActor = Boolean(actorId || actorName);
+  // Past tense → exact stamp on the secondary. Pending claim → "Assigned".
+  // Stamp also rides the hover tip via `tip`. Assign commits from the
+  // column-foot person icons (bottom-up search) — never a cell popover.
+  const showAssigned = !filled && hasActor;
+  const stampLine = filled ? (facts?.at ?? null) : null;
+
+  const markFace = hasActor ? (
+    <StaffAvatar
+      staffId={actorId}
+      name={actorName}
+      // Stage marks read as colour + initials — a photo often collapses to a
+      // white speck at 28px (operator 2026-09-01). Same as phone stage marks.
+      avatarPhotoId={null}
+      size="sm"
+      colorRing
+      alt={actorName ?? undefined}
+    />
+  ) : (
+    <span
+      aria-hidden
+      className={cn(ITEM_RECORD_MOBILE_STAGE.empty, cornerClass('pill'), 'h-7 w-7')}
+    />
+  );
 
   const body = (
     <div className="flex h-full min-w-0 items-center gap-1.5">
-      {hasActor ? (
-        <StaffAvatar
-          staffId={facts?.whoStaffId ?? null}
-          name={facts?.who}
-          size="sm"
-          colorRing
-          alt={facts?.who ?? undefined}
-        />
-      ) : (
-        // Unclaimed still shows the MARK (operator ruling 2026-08-31): the
-        // status band reads as one column of owners, and a step that dropped
-        // its circle when nobody had claimed it made the band ragged exactly
-        // where an operator scans for "who has this". Same 28px slot as the
-        // `sm` avatar, dashed to say "no owner yet" rather than naming one.
-        <span
-          aria-hidden
-          className="h-7 w-7 shrink-0 rounded-full border border-dashed border-border-default"
-        />
-      )}
+      {markFace}
       <CompoundCell
         className="flex-1"
         primary={
@@ -1054,11 +1076,13 @@ export function CompoundStageStep({
               <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
               <CompoundLine>{labels.done}</CompoundLine>
             </span>
+          ) : showAssigned ? (
+            // Claimed but not stamped: keep the column verb (PICK / PACK), not a dash.
+            <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              <CompoundLine>{labels.pending}</CompoundLine>
+            </span>
           ) : (
-            // Not happened yet ⇒ the step's glyph over the house blank-cell
-            // dash, never a verb (operator ruling 2026-08-30: the icon keeps
-            // the column identity, the dash says nothing landed). The dash is
-            // aria-hidden, so the pending face carries the state for AT.
             <span className="inline-flex min-w-0 items-center gap-1 text-text-muted">
               <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
               <GridCellDash />
@@ -1066,10 +1090,15 @@ export function CompoundStageStep({
             </span>
           )
         }
-        // No stamp ⇒ a BLANK second line (operator ruling 2026-08-30) — the
-        // top row's dash already says nothing landed; a second dash under it
-        // was the same fact twice.
-        secondary={stampLine ? <CompoundLine>{stampLine}</CompoundLine> : null}
+        secondary={
+          stampLine ? (
+            <CompoundLine className="text-text-muted" mono>
+              {stampLine}
+            </CompoundLine>
+          ) : showAssigned ? (
+            <CompoundLine className="text-text-muted">Assigned</CompoundLine>
+          ) : null
+        }
       />
     </div>
   );
@@ -1110,6 +1139,7 @@ export function CompoundSlotCell({
   displayType,
   stageLabels,
   view,
+  assign,
 }: {
   trackKey: string;
   label: string;
@@ -1118,6 +1148,8 @@ export function CompoundSlotCell({
   /** Verb faces from the catalog field; falls back to the header label. */
   stageLabels?: Readonly<{ done: string; pending: string }>;
   view: CompoundRowView;
+  /** Present ⇒ pending stage mark opens assign; done stays read-only. */
+  assign?: CompoundStageAssign;
 }) {
   const value: CompoundSlotValue | undefined = view.slots?.[trackKey];
   if (displayType === 'stage_event') {
@@ -1128,6 +1160,7 @@ export function CompoundSlotCell({
         labels={stageLabels ?? { done: label, pending: label }}
         Icon={Icon}
         facts={facts}
+        assign={assign}
       />
     );
   }

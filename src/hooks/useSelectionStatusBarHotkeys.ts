@@ -40,6 +40,11 @@ export const SELECTION_STATUS_BAR_META: Record<
   { label: string; variant: ButtonVariant; hotkey: string }
 > = {
   assign: { label: 'Assign', variant: 'success', hotkey: 'a' },
+  'assign-pick': { label: 'Assign pick', variant: 'success', hotkey: 'a' },
+  'assign-pack': { label: 'Assign pack', variant: 'success', hotkey: 'k' },
+  condition: { label: 'Condition', variant: 'secondary', hotkey: 'o' },
+  qty: { label: 'Qty', variant: 'secondary', hotkey: 'q' },
+  notes: { label: 'Notes', variant: 'secondary', hotkey: 'n' },
   copy: { label: 'Copy', variant: 'primary', hotkey: 'c' },
   // `l` belongs to Labels (operator R-FLOW-6, 2026-09-01): the To-ship lane
   // appends the Labels verb locally and two verbs cannot share a letter on
@@ -50,6 +55,7 @@ export const SELECTION_STATUS_BAR_META: Record<
   print: { label: 'Product labels', variant: 'secondary', hotkey: 'p' },
   'print-shipping': { label: 'Shipping labels', variant: 'secondary', hotkey: 's' },
   flag: { label: 'Flag', variant: 'primarySoft', hotkey: 'f' },
+  'download-photos': { label: 'Download', variant: 'secondary', hotkey: 'i' },
   delete: { label: 'Delete', variant: 'danger', hotkey: 'd' },
 };
 

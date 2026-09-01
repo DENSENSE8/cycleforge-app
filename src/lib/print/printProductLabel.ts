@@ -1,5 +1,8 @@
 import { getProfileForRole, printRawToProfile, resolvePaperSize } from '@/lib/print/browserPrint';
-import { printHtmlInIframe } from '@/lib/print/iframePrint';
+import {
+  printHtmlInIframe,
+  reserveLegacyPrintPopup,
+} from '@/lib/print/iframePrint';
 import { isSilentPrintEnabled } from '@/lib/print/printMode';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import {
@@ -79,6 +82,8 @@ export function printProductLabel(input: PrintProductLabelInput): void {
 
   const { sku, matrix } = built;
   const silent = isSilentPrintEnabled();
+  // Reserve while the station button still owns the gesture on old WebKit.
+  const legacyPopup = reserveLegacyPrintPopup();
 
   void (async () => {
     // Lazy: the print shell + raw-command builders carry the bwip-js barcode
@@ -104,7 +109,10 @@ export function printProductLabel(input: PrintProductLabelInput): void {
                 labelProfile.copies,
               );
         const res = await printRawToProfile(commands, labelProfile);
-        if (res.success) return;
+        if (res.success) {
+          legacyPopup?.close();
+          return;
+        }
         console.warn('printProductLabel: browser raw print failed, falling back:', res.reason);
       }
     }
@@ -114,6 +122,7 @@ export function printProductLabel(input: PrintProductLabelInput): void {
         name: `Label ${sku}`,
         ...built,
         dataMatrix: matrix,
+        legacyPopup,
       });
       return;
     }
@@ -123,7 +132,7 @@ export function printProductLabel(input: PrintProductLabelInput): void {
       ...built,
       dataMatrix: matrix,
     });
-    printHtmlInIframe(html, { name: `Label ${sku}` });
+    printHtmlInIframe(html, { name: `Label ${sku}`, legacyPopup });
   })();
 }
 

@@ -8,6 +8,7 @@ import {
   MessageSquare,
   MoreHorizontal,
   Power,
+  RefreshCw,
   Settings,
 } from '@/components/Icons';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
@@ -36,6 +37,7 @@ import {
 } from '@/components/quick-access/ClipboardHistoryHost';
 import { FeedbackPopover } from '@/components/quick-access/FeedbackWidget';
 import { useAuth } from '@/contexts/AuthContext';
+import { useStaffSwitcher } from '@/contexts/StaffSwitcherContext';
 import { cn } from '@/utils/_cn';
 
 type OpenMenu = 'none' | 'more' | 'feedback';
@@ -43,7 +45,7 @@ type OpenMenu = 'none' | 'more' | 'feedback';
 /**
  * Spine footer — staff identity, ⋯ overflow, and sign-out. The map's pin band
  * is gone: Studio and Admin are ordinary L1 rows. This menu is report →
- * clipboard → Settings last.
+ * clipboard → change staff → Settings last.
  *
  * The ⋯ panel is the shadcn/ui Popover (Radix), imported from
  * `src/design-system/primitives/radix-popover.ts` — same altitude as
@@ -52,9 +54,10 @@ type OpenMenu = 'none' | 'more' | 'feedback';
  * still opens as a sibling layer because it is a panel, not a menu row.
  *
  * Daily account actions only: report an issue, clipboard history (⌘⇧V),
- * Settings. Throw lives on {@link HeaderGoalChip}; phone QR / kiosk preview /
- * desktop download live on Settings → Workstation. Phone scan history is not
- * an account-menu row.
+ * change staff, Settings last. Change staff opens {@link SwitchStaffSheet}
+ * (PIN pick) so the station stays signed in. Throw lives on
+ * {@link HeaderGoalChip}; phone QR / kiosk preview / desktop download live on
+ * Settings → Workstation. Phone scan history is not an account-menu row.
  *
  * **Mobile now follows** (2026-08-21). The phone mounts THIS component at the
  * bottom of its navigation drawer ({@link MobileSidebarDrawer}).
@@ -73,6 +76,7 @@ type OpenMenu = 'none' | 'more' | 'feedback';
 export function StaffAccountFooter({ className }: { className?: string }) {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
+  const { openSwitcher } = useStaffSwitcher();
   const [menu, setMenu] = useState<OpenMenu>('none');
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -202,6 +206,20 @@ export function StaffAccountFooter({ className }: { className?: string }) {
               <kbd className="shrink-0 rounded border border-border-soft bg-surface-canvas px-1 py-0.5 font-mono text-role-micro font-semibold text-text-soft">
                 {CLIPBOARD_HISTORY_HOTKEY_LABEL}
               </kbd>
+            </button>
+            <button
+              type="button"
+              role="menuitem"
+              onClick={() => {
+                setMenu('none');
+                openSwitcher();
+              }}
+              className={cn('ds-raw-button', SIDEBAR_SPINE_MENU_ACTION_CLASS)}
+            >
+              <RefreshCw className="h-3 w-3 shrink-0 text-text-muted" />
+              <span className={SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS}>
+                Change staff
+              </span>
             </button>
             <Link
               href="/settings"

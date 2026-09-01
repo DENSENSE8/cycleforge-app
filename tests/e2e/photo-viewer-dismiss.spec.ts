@@ -97,7 +97,7 @@ async function assertPhotoLibraryHeaderClickable(page: Page) {
   // so it had been matching nothing and timing out rather than proving
   // anything. The live field is the one control on this surface that can hold
   // focus, which is exactly what a lingering scrim would steal.
-  const filter = page.getByPlaceholder(/PO, order, tracking, serial/i);
+  const filter = page.getByPlaceholder(/Find by order/i);
   await filter.click();
   await expect(filter).toBeFocused();
 }
@@ -113,7 +113,7 @@ async function hoverRotateTooltip(page: Page) {
 
 async function openLightbox(page: Page) {
   await page.goto('/ops/photos?view=grid-sm');
-  await expect(page.locator('[data-testid="photo-library-meta"]')).toContainText(/\d+ photo/i);
+  await expect(page.locator('[data-testid="data-table-row-count"]')).toContainText(/\d/);
   const tile = page.getByTestId('photo-tile').first();
   if (!(await tile.count())) test.skip(true, 'no photos seeded in this environment');
   await tile.click();

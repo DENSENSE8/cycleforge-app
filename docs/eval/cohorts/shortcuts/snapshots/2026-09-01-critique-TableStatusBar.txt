@@ -1,18 +1,19 @@
 {
   "file": "src/components/tables/TableStatusBar.tsx",
-  "summary": "1 problem, worst first: 429 lines — past the point reviewers read",
+  "summary": "1 problem, worst first: 437 lines — past the point reviewers read",
   "problems": [
     {
       "severity": "size",
-      "what": "429 lines — past the point reviewers read",
+      "what": "437 lines — past the point reviewers read",
       "fix": "Split the leaf presentational parts out."
     }
   ],
   "design_system_used": [
-    "Button"
+    "Button",
+    "KeyboardKey"
   ],
   "metrics": {
-    "lines": 429,
+    "lines": 437,
     "arbitrary_literals": 0
   },
   "notes": [

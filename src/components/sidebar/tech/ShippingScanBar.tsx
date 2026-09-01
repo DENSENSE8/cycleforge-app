@@ -1,6 +1,6 @@
 'use client';
 
-import type { FormEvent, Ref } from 'react';
+import type { FormEvent, ReactNode, Ref } from 'react';
 import { Barcode, MapPin, Package, Settings } from '@/components/Icons';
 import {
   StationScanModeRail,
@@ -8,7 +8,9 @@ import {
   useScanStance,
   type StationScanModeDefinition,
 } from '@/components/station/scan-bar';
+import { composeStationScanBarRightContent } from '@/components/station/scan-bar/station-scan-preview-rail';
 import { type StationInputMode } from '@/lib/station-scan-routing';
+import type { Order } from '@/components/station/upnext/upnext-types';
 
 interface ShippingScanModeMeta extends StationScanModeDefinition<StationInputMode> {
   iconClass: string;
@@ -66,6 +68,16 @@ interface Props {
    * order is active). Defaults to tracking.
    */
   idleFallbackMode?: StationInputMode;
+  /**
+   * Recent-rail facet popover — mounted only in Preview (Unbox SoT). Typing
+   * then filters the history rail instead of arming a scan.
+   */
+  filterSlot?: ReactNode;
+  /**
+   * Preview stance READ — resolve the value and open the station read-only.
+   * Wired = Preview appears in the leading icon. Unwired = no stance.
+   */
+  previewLookup?: (value: string) => Promise<Order | null>;
 }
 
 /**
@@ -82,6 +94,8 @@ export function ShippingScanBar({
   armedMode = null,
   onToggleMode,
   idleFallbackMode: _idleFallbackMode = 'tracking',
+  filterSlot,
+  previewLookup,
 }: Props) {
   const stance = useScanStance();
   const active = armedMode ? modeMeta(armedMode) : null;
@@ -108,31 +122,30 @@ export function ShippingScanBar({
       // Align the scan icon/text to the recent rail's dot/title column below.
       leadingColumn="rail"
       isResolving={isResolving}
-      rightContent={
-        // The scan-TYPE picker belongs to scanning. In Preview the bar is a
-        // find field, so arming a type for the NEXT SCAN is a control for
-        // something this field is not about to do.
-        stance === 'scan' ? (
-          <StationScanModeRail
-            modes={SHIPPING_SCAN_MODES}
-            armedMode={armedMode}
-            onToggleMode={onToggleMode}
-            size="compact"
-            getTitle={(mode, armed) => {
-              const full = mode.mode === 'fba' ? 'Amazon Prep' : mode.label;
-              return armed
-                ? `${full} armed \u2014 next Enter/scan. Click again to cancel.`
-                : `${full} (next Enter/scan; or search now if the field has text)`;
-            }}
-            getAriaLabel={(mode, armed) => {
-              const full = mode.mode === 'fba' ? 'Amazon Prep' : mode.label;
-              return armed
-                ? `${full} armed for next scan. Click again to cancel.`
-                : `Arm ${full}: next Enter/scan searches ${full}.`;
-            }}
-          />
-        ) : undefined
-      }
+      previewLookup={previewLookup}
+      previewMode={armedMode ?? 'auto'}
+      rightContent={composeStationScanBarRightContent(
+        stance,
+        filterSlot,
+        <StationScanModeRail
+          modes={SHIPPING_SCAN_MODES}
+          armedMode={armedMode}
+          onToggleMode={onToggleMode}
+          size="compact"
+          getTitle={(mode, armed) => {
+            const full = mode.mode === 'fba' ? 'Amazon Prep' : mode.label;
+            return armed
+              ? `${full} armed \u2014 next Enter/scan. Click again to cancel.`
+              : `${full} (next Enter/scan; or search now if the field has text)`;
+          }}
+          getAriaLabel={(mode, armed) => {
+            const full = mode.mode === 'fba' ? 'Amazon Prep' : mode.label;
+            return armed
+              ? `${full} armed for next scan. Click again to cancel.`
+              : `Arm ${full}: next Enter/scan searches ${full}.`;
+          }}
+        />,
+      )}
     />
   );
 }

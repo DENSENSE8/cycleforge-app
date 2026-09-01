@@ -32,6 +32,7 @@ import {
 import type { UnboxScanKind } from '@/lib/receiving/unbox-scan-kind';
 import { resolveShipmentForScan } from '@/lib/receiving/resolve-shipment-for-scan';
 import { resolveInboundCartonByTracking } from '@/lib/inbound/resolve-inbound-tracking';
+import { resolveInboundCartonByOrderId } from '@/lib/inbound/resolve-inbound-order';
 import type { ReceivingExceptionCode } from '@/lib/receiving/exception-codes';
 import {
   upsertOpenTrackingException,
@@ -1188,9 +1189,112 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         }
       }
 
+      // Marketplace / manual desk intake — match source_order_id (eBay /
+      // Amazon / Goodwill) when Zoho PO# missed. Mint a carton if the line is
+      // still EXPECTED with receiving_id NULL so Unbox can open the work.
+      if (!poId && (mode === 'order' || mode === 'auto')) {
+        const inboundOrder = await resolveInboundCartonByOrderId(
+          ctx.organizationId as OrgId,
+          poLookupValue,
+        ).catch((err) => {
+          console.warn('[lookup-po.order] inbound order resolve failed', errMessage(err));
+          return null;
+        });
+        if (inboundOrder) {
+          const receivingId = inboundOrder.receivingId;
+          const orderScanKind = await scanKindForMaybeExisting(
+            receivingId,
+            !inboundOrder.createdCarton,
+          );
+          const orderScanId = await recordScan(
+            receivingId,
+            trackingNumber,
+            carrier,
+            staffId,
+            'unmatched',
+            intakeSurface,
+            orderScanKind,
+            false,
+          );
+          await stampUnboxOpened(receivingId, orderScanId, trackingNumber, orderScanKind);
+          await applyIntakeClassification(receivingId, classification, ctx.organizationId);
+
+          const [lines, receiving_package] = await Promise.all([
+            fetchLines(receivingId, ctx.organizationId),
+            fetchReceivingPackage(receivingId, ctx.organizationId),
+          ]);
+          const pendingOrderSkus = await computePendingOrderSkus(ctx.organizationId, lines);
+
+          after(async () => {
+            try {
+              await invalidateReceivingViews(ctx.organizationId);
+            } catch (err) {
+              console.warn('[lookup-po.order] inbound cache invalidation failed', errMessage(err));
+            }
+            try {
+              await publishReceivingLogChanged({
+                organizationId: ctx.organizationId,
+                action: 'insert',
+                rowId: String(receivingId),
+                source: 'receiving.lookup-po.inbound-order',
+              });
+            } catch (err) {
+              console.warn('[lookup-po.order] inbound realtime publish failed', errMessage(err));
+            }
+            if (pendingOrderSkus.length > 0) {
+              await markReceivingPriority(receivingId, ctx.organizationId);
+              try {
+                await publishPriorityUnbox({
+                  organizationId: ctx.organizationId,
+                  staffId,
+                  trackingNumber,
+                  receivingId,
+                  skus: pendingOrderSkus,
+                  source: 'receiving.lookup-po.inbound-order',
+                });
+              } catch (err) {
+                console.warn(
+                  '[lookup-po.order] inbound priority-unbox publish failed',
+                  errMessage(err),
+                );
+              }
+            }
+          });
+
+          return NextResponse.json({
+            success: true,
+            receiving_id: receivingId,
+            ...lookupResponseFields(),
+            preexisting: !inboundOrder.createdCarton,
+            deduped: false,
+            matched: lines.length > 0,
+            po_matched: true,
+            resolved_via: 'local',
+            unbox_verdict: pendingOrderSkus.length > 0 ? 'expedited' : 'normal',
+            po_ids: [],
+            inbound_source_type: inboundOrder.sourceType,
+            inbound_source_order_id: inboundOrder.sourceOrderId,
+            pending_order_skus: pendingOrderSkus,
+            receiving_package,
+            lines: lines.map((l) => ({
+              id: l.id,
+              sku: l.sku,
+              item_name: l.item_name,
+              image_url: l.image_url,
+              zoho_item_id: l.zoho_item_id,
+              zoho_purchaseorder_id: l.zoho_purchaseorder_id,
+              quantity_expected: l.quantity_expected,
+              quantity_received: l.quantity_received,
+            })),
+            scan_id: orderScanId,
+          });
+        }
+      }
+
       if (!poId && mode === 'order') {
-        // Explicit order mode, PO# missed locally — report not-found WITHOUT
-        // spawning a phantom carton and WITHOUT calling live Zoho.
+        // Explicit order mode, PO# + marketplace order# missed locally —
+        // report not-found WITHOUT spawning a phantom carton and WITHOUT
+        // calling live Zoho.
         return NextResponse.json({
           success: true,
           matched: false,

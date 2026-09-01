@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   type StationInputMode,
@@ -8,7 +8,13 @@ import {
 } from '@/hooks/useStationTestingController';
 import { looksLikeFnsku } from '@/lib/scan-resolver';
 import { useStationTheme } from '@/hooks/useStationTheme';
-import { ScanBandShell, isScanPreview, useScanModeRelease } from '@/components/station/scan-bar';
+import {
+  ScanBandShell,
+  isScanPreview,
+  setScanStance,
+  useScanModeRelease,
+} from '@/components/station/scan-bar';
+import type { Order } from '@/components/station/upnext/upnext-types';
 import { ShippingScanBar } from '@/components/sidebar/tech/ShippingScanBar';
 import { useArmedPackStation } from '@/hooks/useArmedPackStation';
 import { unitPackPlacementQuery } from '@/lib/queries/unit-pack-placement-queries';
@@ -25,6 +31,15 @@ interface ShippingScanBandProps {
   scanOnly?: boolean;
   /** Receives a handler that loads an Up Next order by tracking (Start action). */
   onStartHandlerReady?: (startWithTracking: (tracking: string) => void) => void;
+  /** Recent-rail facet popover — Preview only (Unbox scan-dock SoT). */
+  filterSlot?: ReactNode;
+  /** Preview stance READ. Wired = leading icon offers Preview. */
+  previewLookup?: (value: string) => Promise<Order | null>;
+  /**
+   * Preview turns the bar into the rail's find field. Parent owns the
+   * keep-filter; we report every keystroke so the rail can follow.
+   */
+  onPreviewFilterText?: (next: string) => void;
 }
 
 /**
@@ -54,6 +69,9 @@ export function ShippingScanBand({
   onComplete,
   scanOnly = false,
   onStartHandlerReady,
+  filterSlot,
+  previewLookup,
+  onPreviewFilterText,
 }: ShippingScanBandProps) {
   const { theme: themeColor } = useStationTheme({ staffId });
   const [manualMode, setManualMode] = useState<StationInputMode | null>(null);
@@ -165,10 +183,23 @@ export function ShippingScanBand({
 
   const idleFallbackMode: StationInputMode = activeOrder ? 'serial' : 'tracking';
 
+  useEffect(() => {
+    const onWorkspaceClose = () => {
+      if (!isScanPreview()) return;
+      setScanStance('scan');
+      setInputValue('');
+    };
+    window.addEventListener('close-shipped-details', onWorkspaceClose);
+    return () => window.removeEventListener('close-shipped-details', onWorkspaceClose);
+  }, [setInputValue]);
+
   const scanBar = (
     <ShippingScanBar
       value={inputValue}
-      onChange={setInputValue}
+      onChange={(next) => {
+        setInputValue(next);
+        onPreviewFilterText?.(next);
+      }}
       onSubmit={handleFormSubmit}
       inputRef={inputRef}
       staffId={staffId}
@@ -176,6 +207,8 @@ export function ShippingScanBand({
       armedMode={manualMode}
       onToggleMode={toggleMode}
       idleFallbackMode={idleFallbackMode}
+      filterSlot={filterSlot}
+      previewLookup={previewLookup}
     />
   );
 

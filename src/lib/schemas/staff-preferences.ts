@@ -3,19 +3,23 @@ import {
   ACCENT_HEX_RE,
   DEFAULT_FOCUS_SCAN_HOTKEY,
   DEFAULT_THEME,
+  DEFAULT_STATION_DEPTH_PREF,
   DEFAULT_STATION_SKIN_PREF,
   DEFAULT_TIME_FORMAT,
   FOCUS_SCAN_ALWAYS_AVAILABLE_RE,
   FOCUS_SCAN_HOTKEY_OPTIONS,
   isBindableFocusScanHotkey,
   STAFF_THEMES,
+  STAFF_STATION_DEPTHS,
   STAFF_STATION_SKINS,
   TIME_FORMAT_VALUES,
   type StaffTheme,
+  type StaffStationDepth,
   type StaffStationSkin,
   type TimeFormat,
 } from '@/lib/schemas/staff-preferences-constants';
 import type { ThemeName } from '@/design-system/themes/registry';
+import type { StationDepthName } from '@/design-system/themes/station-depths';
 import type { StationSkinName } from '@/design-system/themes/station-skins';
 import { slotLayoutSchema } from '@/lib/tables/slot-layout';
 
@@ -29,16 +33,18 @@ export {
   ACCENT_HEX_RE,
   DEFAULT_FOCUS_SCAN_HOTKEY,
   DEFAULT_THEME,
+  DEFAULT_STATION_DEPTH_PREF,
   DEFAULT_STATION_SKIN_PREF,
   DEFAULT_TIME_FORMAT,
   FOCUS_SCAN_ALWAYS_AVAILABLE_RE,
   FOCUS_SCAN_HOTKEY_OPTIONS,
   isBindableFocusScanHotkey,
   STAFF_THEMES,
+  STAFF_STATION_DEPTHS,
   STAFF_STATION_SKINS,
   TIME_FORMAT_VALUES,
 };
-export type { StaffTheme, StaffStationSkin, TimeFormat };
+export type { StaffTheme, StaffStationDepth, StaffStationSkin, TimeFormat };
 import { MAX_PINS } from '@/lib/quick-access/types';
 import { UNBOX_PINNED_EXTRA_TABS_MAX } from '@/lib/receiving/unbox-extra-tabs';
 
@@ -123,12 +129,21 @@ export const StaffPreferencesPutBody = z
       .optional(),
     theme: z.enum(STAFF_THEMES as [ThemeName, ...ThemeName[]]).nullable().optional(),
     /**
-     * Scan-station skin (industrial mill, packing bench, coal, catalog
-     * materials). `null` resets to industrial. Independent of the app colour
-     * theme — every scan station reads the same `--ds-station-*` tokens.
+     * Scan-station Color (industrial mill, packing bench, coal, catalog
+     * materials). `null` resets to industrial. Independent of app theme and of
+     * Depth (`stationDepth`) — every scan station reads the same `--ds-station-*`
+     * fill tokens.
      */
     stationSkin: z
       .enum(STAFF_STATION_SKINS as [StationSkinName, ...StationSkinName[]])
+      .nullable()
+      .optional(),
+    /**
+     * Scan-station depth (flat | mill | deep). `null` resets to flat.
+     * Independent of Color (`stationSkin`) — relief only.
+     */
+    stationDepth: z
+      .enum(STAFF_STATION_DEPTHS as [StationDepthName, ...StationDepthName[]])
       .nullable()
       .optional(),
     /**

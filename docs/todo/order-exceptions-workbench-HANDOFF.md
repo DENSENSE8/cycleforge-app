@@ -117,18 +117,17 @@ opt-in backlog sweep.
 /shipping/exceptions                      OUTSIDE (desk) — that stage caps at 1152px
   OrderExceptionsWorkbench                queue left (22rem) + editor (flex-1)
     ExceptionQueueList                    blockers as chips, ↑↓/j/k
-    ExceptionEditor                       TriageScrollLayout knobs
-      ExceptionCatalogPairing             link (Command combobox) OR create+pair
-      ExceptionOrderFields                item#/SKU/title/qty/tracking/condition
-      ExceptionReleaseSection             G1–G3 rendered + Release
+    ExceptionEditor                       TriageScrollLayout knobs — pairing only (R-FLOW-7)
+      ExceptionCatalogPairing             link (IntakeCombobox) OR create+pair
+      ExceptionOrderFields                title / item number / SKU
 GET /api/orders/exceptions                the ONE new route; everything else composes
 src/lib/orders/order-exceptions.ts        query (server) — pure half in -types.ts
+src/lib/orders/exception-membership.ts    caged ∩ unpaired (live To-ship is the rest)
 src/design-system/components/TriageScrollKnobs.tsx   NEW, edge rail + IO readout
 ```
 
 Writes all compose existing endpoints: `PATCH /api/orders/[id]`,
-`POST /api/orders/[id]/tracking`, `POST /api/sku-catalog`,
-`POST /api/sku-catalog/pair`, `POST /api/orders/[id]/cage-release`.
+`POST /api/sku-catalog`, `POST /api/sku-catalog/pair` (pair un-cages).
 
 ## 7. Suggested next steps
 

@@ -428,6 +428,13 @@ test('regression: node-bound station writes are studio.manage (ST5 / Phase D)', 
   assert.ok(writeFile!.methods.includes('PUT'), 'the node-station file exposes a PUT write');
 });
 
+test('regression: orders.view gates the To-ship order-sources menu', () => {
+  const r = routeByPath('/api/integrations/order-sources/route.ts');
+  assert.ok(r);
+  assert.equal(r.permission, 'orders.view');
+  assert.deepEqual(r.methods, ['GET']);
+});
+
 test('regression: integrations.amazon gates the Amazon connection routes', () => {
   // Amazon SP-API order import (docs/amazon-sp-api-order-import-plan.md). The
   // OAuth callback is intentionally ungated (state-validated public redirect,

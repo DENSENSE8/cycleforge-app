@@ -33,6 +33,7 @@ import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { IncomingReturnsImportStagingHost } from '@/components/sidebar/receiving/incoming/IncomingReturnsImportStagingHost';
 import { IncomingReturnsImportStagingRail } from '@/components/sidebar/receiving/incoming/IncomingReturnsImportStagingRail';
+import { IncomingPoIntakeTableShell } from '@/components/receiving/incoming/IncomingPoIntakeBand';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { INBOUND_RETURNS_IMPORT_DESCRIPTOR } from '@/lib/inbound/inbound-returns-import-descriptor';
 import {
@@ -828,6 +829,7 @@ export default function ReceivingLinesTable({
               <GridDegradedBox onRetry={refetch} />
             </div>
           ) : (
+            <IncomingPoIntakeTableShell>
             <DataTable<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
               binding={INCOMING_TABLE_BINDING}
               search={receivingSearch}
@@ -879,6 +881,7 @@ export default function ReceivingLinesTable({
                 />
               )}
             />
+            </IncomingPoIntakeTableShell>
           )}
         </>
       );
@@ -913,6 +916,7 @@ export default function ReceivingLinesTable({
                   <GridDegradedBox onRetry={refetch} />
                 </div>
               ) : (
+                <IncomingPoIntakeTableShell>
                 <DataTable<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
                   binding={INCOMING_TABLE_BINDING}
                   search={receivingSearch}
@@ -960,6 +964,7 @@ export default function ReceivingLinesTable({
                     />
                   )}
                 />
+                </IncomingPoIntakeTableShell>
               )
             ) : (
               receivingGrid()

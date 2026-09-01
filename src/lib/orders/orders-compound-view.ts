@@ -192,11 +192,7 @@ export function ordersCompoundView(
 
   return {
     id: String(record.id),
-    // NO photo on the orders row model — `ShippedOrder` carries no image field,
-    // so this renders the typed placeholder. Adding one is a query + row-model
-    // change (join the catalog listing image), not a cell change; until then the
-    // column is an honest empty rather than a fabricated thumbnail.
-    thumbUrl: null,
+    thumbUrl: String(record.catalog_image_url || '').trim() || null,
     title: record.product_title || '',
     // Listing join — the item number is the handle, the URL is derived. Absent
     // item number ⇒ no href, and the title stays plain text.

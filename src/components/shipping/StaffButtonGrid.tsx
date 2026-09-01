@@ -21,7 +21,7 @@ interface StaffButtonGridProps {
 
 export function StaffButtonGrid({
   label,
-  options,
+  options = [],
   selectedId,
   onSelect,
   columns,
@@ -32,17 +32,18 @@ export function StaffButtonGrid({
   // This grid used to pass the tap target unguarded, so the floor SNAPPED the 0.9
   // scale (transforms are positional keys) and the press read as a glitch.
   const pressGesture = useMotionPressRole(motionRole.gesture.press);
-  const cols = Math.min(columns ?? options.length, options.length);
+  const roster = Array.isArray(options) ? options : [];
+  const cols = Math.min(columns ?? roster.length, roster.length);
 
   return (
     <div className={className}>
       <p className="mb-2 text-role-eyebrow uppercase tracking-[0.22em] text-text-soft">{label}</p>
-      {options.length > 0 ? (
+      {roster.length > 0 ? (
         <div
           className="grid w-full gap-2"
           style={{ gridTemplateColumns: `repeat(${Math.max(1, cols)}, minmax(0, 1fr))` }}
         >
-          {options.map((m) => {
+          {roster.map((m) => {
             const active = selectedId === m.id;
             const cls = stationThemeClasses[getStaffThemeById(m.id)];
             return (

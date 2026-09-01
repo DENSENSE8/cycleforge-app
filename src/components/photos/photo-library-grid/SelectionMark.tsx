@@ -5,6 +5,14 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 /**
+ * Shared inset for the tile hover check and the entity-band select-all —
+ * keep them on one vertical line (Google Photos alignment).
+ */
+export const PHOTO_SELECTION_MARK_INSET_X = 'left-2' as const;
+/** Left pad on {@link PhotoEntityGroupHeader} — matches {@link PHOTO_SELECTION_MARK_INSET_X}. */
+export const PHOTO_ENTITY_GROUP_HEADER_PL = 'pl-2' as const;
+
+/**
  * The hover/active selection checkmark. Rendered as its own button (a sibling of
  * the tile's activation button, never nested inside it) so it toggles selection
  * without nested-interactive markup. Hidden until hover unless selection is
@@ -31,12 +39,11 @@ export function SelectionMark({
         onToggle({ shift: e.shiftKey });
       }}
       className={cn(
-        'ds-raw-button absolute left-2 top-2 z-20 inline-flex h-6 w-6 items-center justify-center border shadow-sm transition',
-        // Flush, not `rounded-full`: this is an `aria-pressed` toggle CONTROL,
-        // and `rounded-full` survives only on status dots · avatars · Switch
-        // tracks. A circle check on a flush-square tile also reads as leftover
-        // chrome. Same ruling for {@link GroupSelectionMark}.
-        cornerClass('flush'),
+        'ds-raw-button absolute top-2 z-20 inline-flex h-6 w-6 items-center justify-center border shadow-sm transition',
+        PHOTO_SELECTION_MARK_INSET_X,
+        // Google Photos selection token — circular check (operator 2026-09-01).
+        // Same face on {@link GroupSelectionMark}.
+        cornerClass('pill'),
         checked
           ? 'border-blue-600 bg-blue-600 text-white opacity-100'
           : cn(

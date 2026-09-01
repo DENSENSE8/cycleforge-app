@@ -93,6 +93,16 @@ export const Images = ({ className = "w-6 h-6" }: { className?: string }) => (
     </svg>
 );
 
+/** Add-photo affordance — Lucide `image-plus` (frame + corner plus). */
+export const ImagePlus = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 5h6m-3-3v6" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8v12a2 2 0 002 2h12a2 2 0 002-2v-6" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14" />
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 8h.01" />
+    </svg>
+);
+
 export const Clipboard = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />

@@ -1,7 +1,117 @@
 {
-  "generatedAt": "2026-08-30T16:15:03.826Z",
-  "count": 198,
+  "generatedAt": "2026-09-01T19:42:01.774Z",
+  "count": 197,
   "commits": [
+    {
+      "sha": "77217905e6ac6cfb33d9489c3e00915875f31870",
+      "shortSha": "77217905e",
+      "date": "2026-09-01T02:21:31-07:00",
+      "author": "DENSENSE8",
+      "subject": "Update the seller-table plan so phases 1–3 show as landed.",
+      "body": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "other",
+      "title": "Update the seller-table plan so phases 1–3 show as landed."
+    },
+    {
+      "sha": "dd5675b77775c4e62473dcb28398e77622c0dc98",
+      "shortSha": "dd5675b77",
+      "date": "2026-09-01T02:19:46-07:00",
+      "author": "DENSENSE8",
+      "subject": "Mark seller-table phase 1 landed in the plan now that the slot-table port is on main.",
+      "body": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "other",
+      "title": "Mark seller-table phase 1 landed in the plan now that the slot-table port is on main."
+    },
+    {
+      "sha": "3169e77893df962472533bfd35b2a189a1a2feb0",
+      "shortSha": "3169e7789",
+      "date": "2026-09-01T02:18:17-07:00",
+      "author": "DENSENSE8",
+      "subject": "Add the Media Library frame-completion plan that landed after the working-tree commit.",
+      "body": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "other",
+      "title": "Add the Media Library frame-completion plan that landed after the working-tree commit."
+    },
+    {
+      "sha": "e78b61068c73ece041346bed6181693b817a6707",
+      "shortSha": "e78b61068",
+      "date": "2026-09-01T02:16:14-07:00",
+      "author": "DENSENSE8",
+      "subject": "Land the slot-table cohort, scan-out composer mouth, shortcut-display law, and mobile assigned work.",
+      "body": "Co-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "other",
+      "title": "Land the slot-table cohort, scan-out composer mouth, shortcut-display law, and mobile assigned work."
+    },
+    {
+      "sha": "daeb2ba13454710737e779b33a8f99e8e6d6dfdb",
+      "shortSha": "daeb2ba13",
+      "date": "2026-08-31T23:35:16-07:00",
+      "author": "DENSENSE8",
+      "subject": "Port the Media Library onto the desk frame, and give the tab row a same-axis lead",
+      "body": "`/ops/photos` was the last page-level tab strip still footing itself with\n`TableTabs`. Its lifecycle scopes now ride `DeskPageChrome`'s tab row with the\ntitle top-left, and the three-band chrome stack drops to two — the band the tabs\nleft is what pays for the header.\n\nThe interesting constraint was the media-type cube. It and the tabs write ONE\nparam through one `selectSection`, and `PhotoLibraryScopeBand`'s docblock\nrecords that this surface already grew two writers of that param once, when the\nscope control sat apart from the scope tabs. So rather than split them across\ntwo altitudes:\n\n- `DeskPageChrome` gains `tabsLead` — a control at the head of the tab row, on\n  the SAME axis as the tabs. Explicitly not a second CTA slot: an action goes to\n  the header, a row refinement goes to the table's toolbar, and only a control\n  answering the tabs' own question belongs here. Pinned, with a smoke assertion.\n- `PhotoLibraryScopeBand` becomes `usePhotoLibraryScope()` — one file, one\n  writer, returning the tabs and the cube already wired to it, so a caller\n  cannot mount the overflow against a different writer.\n\nAlso swapped the new-media-type field for the pinned shadcn `ui/input`: a\nlabelled field in an overlay is exactly that lane, and it was restating the\nborder / bg / focus-ring the primitive owns.\n\nRemaining `TableTabs` users are all SECOND-level sub-modes inside one page tab\n(Support ticket statuses, call log, Walk-in lanes, Locations tools) — not page\nnavigation, and deliberately left where they are.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "other",
+      "title": "Port the Media Library onto the desk frame, and give the tab row a same-axis lead"
+    },
+    {
+      "sha": "f9296e8a1c92b4195eb8bf936e5774b3b028817a",
+      "shortSha": "f9296e8a1",
+      "date": "2026-08-31T14:10:48-07:00",
+      "author": "DENSENSE8",
+      "subject": "Checkpoint: desk frame refinements, Unbox desk actions, and the claim/ticket path",
+      "body": "Concurrent-session work in the shared checkout, gated green and shipped as one\ncheckpoint:\n\n- `DeskPageChrome` / `desk-stage` tokens trimmed, and the header page switcher\n  simplified alongside them (`header-page-face` down ~40 lines) now that a\n  desk's modes are drawn by the frame rather than the header.\n- `UnboxDeskActions` — Unbox registers its own CTA into the frame's action slot.\n- Zendesk claim / composer-ticket path: `file-receiving-claim`, the claim\n  wizard steps, and `ReceivingTicketChip`.\n\n`npm run verify` green (lint · typecheck · unit) before commit.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "other",
+      "title": "Checkpoint: desk frame refinements, Unbox desk actions, and the claim/ticket path"
+    },
+    {
+      "sha": "f9a528a743283afae00c0c99ccda81823ca52b74",
+      "shortSha": "f9a528a74",
+      "date": "2026-08-31T14:05:01-07:00",
+      "author": "DENSENSE8",
+      "subject": "Rebuild scan-out as an async floor station with recent rail and carton context.",
+      "body": "Gun accepts the next label while prior SHIP_CONFIRM POSTs fly; center is scan-await then Pack-family carton + Displays; left rail lists this staffer's ship-outs.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "other",
+      "title": "Rebuild scan-out as an async floor station with recent rail and carton context."
+    },
+    {
+      "sha": "712a7e26c17437bfe7e14e8199ac69fcdcd43b68",
+      "shortSha": "712a7e26c",
+      "date": "2026-08-31T11:01:58-07:00",
+      "author": "DENSENSE8",
+      "subject": "Land DeskPageChrome as the design system's one page frame, and port every surface onto it",
+      "body": "The page header / tab row / detached table card that grew on the Shipping desk\nmoves into `src/design-system/components` (flat, because design-mcp's catalog\nwalk is a non-recursive readdir and a nested file is law no agent can reach),\nwith its stage tokens beside the other token roles. `pinned.json` carries the\nlaw for the frame, its two seams and the narrowed status bar, so `ds_contract`\nserves them instead of an agent guessing; smoke asserts the ranks.\n\nPorted onto it: Home, Sales, Shipping, Support, Products, Inventory, Sourcing,\nOperations (tabs from nav children); Unbox, Arrival, Testing, Packing, Scan out\n(explicit body-switcher tabs); Inbound, Tracking Exceptions, Reports.\n\nTwo rules changed to make that possible, both on operator instruction:\n\n- rail-less is no longer inferred from wearing the chrome. Four desks navigate\n  BY their context rail, so `deskChrome` and `railless` are now two declared\n  facts and `isDeskStageSurface` became `isRaillessSurface`.\n- scan stations wear the frame. Their mode tabs left the TableStatusBar foot\n  strip for the top row, and the `tabStrip` plumbing that threaded a desk's tabs\n  down into whichever table body it mounted is deleted.\n\nForks removed on the way: Inventory's hand-rolled PageHeader at a second\nmeasure, and Reports' filled-face segmented tab strip.\n\nSweeps concurrent sessions' in-flight work in the same tree (FBA board, labels,\norder intake, exceptions grid). `npm run verify` green across all of it.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "other",
+      "title": "Land DeskPageChrome as the design system's one page frame, and port every surface onto it"
+    },
+    {
+      "sha": "285d64fcb16212654308cc73c29a65e90428393b",
+      "shortSha": "285d64fcb",
+      "date": "2026-08-30T21:24:38-07:00",
+      "author": "DENSENSE8",
+      "subject": "Fix the four type errors blocking the pre-push gate",
+      "body": "react-query 5.101 gives every mutation callback a trailing\nMutationFunctionContext (onSettled a fifth argument). optimisticMutationOptions\nwraps all three and was calling the caller's callback with the old arity, so\na consumer's own onError/onSuccess/onSettled lost the context argument. The\nwrapper owns none of it — forwarded untouched.\n\nThe backfill script's `server-only` shim declared _load as\n(...args: unknown[]) and then assigned a (request: string, …) function to it,\nwhich is unsound in that direction. Declared the real signature once.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "fix",
+      "title": "Fix the four type errors blocking the pre-push gate"
+    },
+    {
+      "sha": "2d07f570be886835cc3018323b5e05ff2a27ae8f",
+      "shortSha": "2d07f570b",
+      "date": "2026-08-30T21:13:37-07:00",
+      "author": "DENSENSE8",
+      "subject": "Commit the in-flight working tree as it stood on 2026-08-30",
+      "body": "Everything else that was uncommitted in the operator's tree, captured on\nrequest in one commit rather than left to drift. This is concurrent\nsession work, not a single authored change: the one-table SoT teardown\n(slot layouts, table catalog, DataTable), order exceptions and release\ngates, the shipping desk route move under (desk), search query logging\nand relaxation, the station collapse band/line split, helpdesk comment\nstaff identity, and six unapplied migrations under src/lib/migrations.\n\nNOT VERIFIED GREEN. No typecheck, lint, or test run stands behind this\ncommit; the migrations are written, not applied. It is a checkpoint of\nwork in progress, and the individual pieces belong to the sessions that\nwere writing them.\n\nAlso swept in: five scratch files at the repo root (exceptions-page.png,\nexceptions-pairing.png, search-display-sot.md, search-identifiers.txt,\nseed-budget.json) that look like working notes rather than deliverables.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "other",
+      "title": "Commit the in-flight working tree as it stood on 2026-08-30"
+    },
+    {
+      "sha": "445a53ceebc226d9c82a5feb661b76b488e5d8ec",
+      "shortSha": "445a53cee",
+      "date": "2026-08-30T21:13:20-07:00",
+      "author": "DENSENSE8",
+      "subject": "Make design-mcp the one design authority agents actually reach",
+      "body": "The server was invisible and stale at the same time: no client loaded its\ntools, and the readers inside it were aimed at files deleted in the\nWarehouse OS refactor. ds_tokens answered \"0 tokens\" on the radius axis,\nwhich a model reads as \"no law exists\".\n\nDiscovery — .cursor/mcp.json is now the real config (Cursor reads only\nfrom .cursor/) and .mcp.json is a symlink to it. .gitignore keeps banning\na .cursor rules tree but carves out mcp.json: wiring is not house law, and\na tracked symlink into an ignored directory would dangle on every clone.\nBoth clients spawn the server directly on the mise node binary, verified\nunder `env -i`.\n\nInvocation — CLAUDE.md is three lines routing UI work to ds_contract /\nds_tokens / ds_critique, and nothing else. Same text in .cursorrules. The\ntool descriptions carry the mandate (\"BEFORE writing any React component\",\n\"never invent a raw Tailwind class or a hex\").\n\nRetarget — ds_tokens reads radius.ts and themes/registry.ts as text, so\nthe cornerClass role map (18 radius tokens) and the theme palette (48\ncolour tokens) are reachable. An empty axis now throws instead of\nanswering \"0 tokens\". CSS scanning stays: globals.css has 48 real\nnon-colour vars. Only the dead src/shell/tokens.css was dropped.\n\npinned.json resolves the two-Buttons ambiguity that made agents guess:\nthe design-system primitive is canonical, ui/button is shadcn lineage in\nmigration, and the composer carries I8.\n\nsmoke asserts by key, not count — the exact numbers had already gone\nstale (6v/4s to 6v/5s) and a red smoke run is how developers learn to\nignore this server.\n\nRemoved the competing oracles: the Impeccable skill (.claude and .agents\ncopies), its PostToolUse/Stop detector hooks in .claude/settings.local.json\nand .codex/hooks.json, .impeccable.md, .impeccable/, and\n.design-system-rules.md. Impeccable intercepted every UI task and never\nmentioned ds_contract. Its 249 in-flight edits are preserved on\npreserve/impeccable-skill-2026-08-30.\n\ndocs/warehouse-os/ is deliberately kept — no longer pointed at by\nCLAUDE.md, but still the operator's design reference.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
+      "type": "other",
+      "title": "Make design-mcp the one design authority agents actually reach"
+    },
     {
       "sha": "14fc42d865c20bec56b2063e42da853e41f4076a",
       "shortSha": "14fc42d86",
@@ -1861,126 +1971,6 @@
       "body": "Phase-B forest burn (11/14). The two mode-grids (CatalogLinkChoresGrid +\nImportExceptionsGrid) merge from the wrapper file into ReviewCatalogLinkTable,\nwhich now mounts NonlinearTableHost twice (once per binding) directly. Each tab\nkeeps its own useUrlColumnSort over the shared ?colsort= param — the disjoint\nisColumn guards + setSection's param clear keep them from mis-reading each\nother's sort (the interaction the table already documented). Comparators + the\nsettle helper move to the table's module scope.\n\n- delete src/features/review/catalog-link/grid/ReviewCatalogLinkGridView.tsx\n- shrink GRID_VIEW_FOREST freeze allowlist by one (→ 3)\n- re-point capabilities MOUNTS, trailing-cluster view, review-workspace-sheet\n  two-host-mount assertion at ReviewCatalogLinkTable\n- refresh descriptor + column-header comments (wrapper retired)\n\nGuards green; tsc introduces no new erroring files.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
       "type": "other",
       "title": "refac(tables): burn ReviewCatalogLinkGridView — table binds the host directly"
-    },
-    {
-      "sha": "a074b6dffc1d10974ea2bc9cfad307a216368440",
-      "shortSha": "a074b6dff",
-      "date": "2026-08-08T14:13:19-07:00",
-      "author": "DENSENSE8",
-      "subject": "refac(tables): burn RepairGridView — repair table binds the host directly",
-      "body": "Phase-B forest burn (10/14). The repair grid adapter (useTableSelectMode\nairtable-gutter selection, group memo, open/toggle/leaf renderers) merges from\nthe RepairGridView wrapper into RepairTable, which already owned sort + fetch +\nrail-selection and now mounts NonlinearTableHost with REPAIR_TABLE_BINDING\ndirectly. Selection still coordinates through REPAIR_SELECTION_SCOPE.\n\n- delete src/components/repair/repair-grid/RepairGridView.tsx\n- shrink GRID_VIEW_FOREST freeze allowlist by one (→ 4)\n- re-point capabilities MOUNTS, wave7 GRID_SURFACES gridView, trailing-cluster\n- refresh RepairTable + repair-grid-descriptor + repair-scopes comments\n\nGuards green; tsc introduces no new erroring files.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "other",
-      "title": "refac(tables): burn RepairGridView — repair table binds the host directly"
-    },
-    {
-      "sha": "8e82448ed0b532d0e2199f22c34759bd7b886f1a",
-      "shortSha": "8e82448ed",
-      "date": "2026-08-08T14:11:09-07:00",
-      "author": "DENSENSE8",
-      "subject": "refac(tables): burn BinsGridView — bins table binds the host directly",
-      "body": "Phase-B forest burn (9/14). BinsGridView collapses into its sole importer\nBinsTable (a thin div host), which now mounts NonlinearTableHost with\nBINS_TABLE_BINDING directly — carrying the full adapter: compareBinsRows, the\nparent-Set→selection-bus bridge (emitSelection / emitSelectionTotal /\nonToggleAll on BINS_SELECTION_SCOPE), useUrlColumnSort, settle-tick, group memo,\nrenderers. BinsTable's public props are unchanged, so LocationsWorkspace is\nuntouched.\n\n- delete src/components/warehouse/bins-grid/BinsGridView.tsx\n- shrink GRID_VIEW_FOREST freeze allowlist by one (→ 5)\n- re-point capabilities MOUNTS + trailing-cluster view at BinsTable\n- refresh BinsTable + bins-grid-descriptor docblocks (wrapper retired)\n\nGuards green; tsc introduces no new erroring files.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "other",
-      "title": "refac(tables): burn BinsGridView — bins table binds the host directly"
-    },
-    {
-      "sha": "4c1dcd633848c4338694a79d13036206ae0d18c6",
-      "shortSha": "4c1dcd633",
-      "date": "2026-08-08T14:09:15-07:00",
-      "author": "DENSENSE8",
-      "subject": "refac(tables): burn MyDayGridView — workspace binds the host directly",
-      "body": "Phase-B forest burn (8/14). The My Day grid adapter (compareMyDayTasks,\nuseUrlColumnSort, settle-tick, group memo, group/leaf renderers) merges from the\nMyDayGridView wrapper into MyDayWorkspace, which now mounts NonlinearTableHost\nwith MY_DAY_TABLE_BINDING directly. Grid state uses gridScrollRef/hasGridRows to\navoid colliding with the workspace's own locals.\n\n- delete src/features/my-day/grid/MyDayGridView.tsx\n- shrink GRID_VIEW_FOREST freeze allowlist by one (→ 6)\n- re-point capabilities MOUNTS, trailing-cluster view, my-day-sheet host mount\n- refresh MyDayWorkspace + descriptor + guard comments (wrapper retired)\n\nGuards green; tsc introduces no new erroring files.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "other",
-      "title": "refac(tables): burn MyDayGridView — workspace binds the host directly"
-    },
-    {
-      "sha": "17fa12b8e70ae131cd98018cddf88d525ef38696",
-      "shortSha": "17fa12b8e",
-      "date": "2026-08-08T14:05:10-07:00",
-      "author": "DENSENSE8",
-      "subject": "refac(tables): burn TrackingExceptionsGridView — table binds the host directly",
-      "body": "Phase-B forest burn (7/14). The tracking-exceptions grid adapter\n(compareTrackingExceptionRows, useUrlColumnSort, settle-tick, group memo,\nrenderer) merges from the wrapper into TrackingExceptionsTable, which now mounts\nNonlinearTableHost with TRACKING_EXCEPTIONS_TABLE_BINDING directly. Grid hooks\nmove above the error-state early return to stay unconditional.\n\n- delete src/components/tracking-exceptions/grid/TrackingExceptionsGridView.tsx\n- shrink GRID_VIEW_FOREST freeze allowlist by one (→ 7)\n- re-point capabilities MOUNTS, wave7 residual-pin, trailing-cluster view\n- refresh useTrackingExceptions + descriptor comments (wrapper retired)\n\nGuards green; tsc introduces no new erroring files.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "other",
-      "title": "refac(tables): burn TrackingExceptionsGridView — table binds the host directly"
-    },
-    {
-      "sha": "742292547f3302b9254a285465a02d0b733eec78",
-      "shortSha": "742292547",
-      "date": "2026-08-08T14:02:45-07:00",
-      "author": "DENSENSE8",
-      "subject": "refac(tables): burn TechAllGridView — triage table binds the host directly",
-      "body": "Phase-B forest burn (6/14). The Tech-All grid adapter (compareTechAllRows,\nuseUrlColumnSort, settle-tick, group memo, custom emptyState, renderers) merges\nfrom the TechAllGridView wrapper into TechAllTriageTable, which now mounts\nNonlinearTableHost with TECH_ALL_TABLE_BINDING directly.\n\n- delete src/components/tech/all/TechAllGridView.tsx\n- shrink GRID_VIEW_FOREST freeze allowlist by one (→ 8)\n- re-point capabilities MOUNTS (only guard referencing this wrapper path)\n\nGuards green; tsc introduces no new erroring files.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "other",
-      "title": "refac(tables): burn TechAllGridView — triage table binds the host directly"
-    },
-    {
-      "sha": "a2e30d60bacfa8faabb4ae0c82bb0eabcf5e7820",
-      "shortSha": "a2e30d60b",
-      "date": "2026-08-08T14:00:58-07:00",
-      "author": "DENSENSE8",
-      "subject": "refac(tables): burn PickupGridView — workspace binds the host directly",
-      "body": "Phase-B forest burn (5/14). The Pickup grid adapter (pickupFoldKey,\ncomparePickupRows, useUrlColumnSort, settle-tick, grouped one-to-many memo,\ngroup/leaf renderers) merges from the PickupGridView wrapper into\nPickupWorkspace, which now mounts NonlinearTableHost with PICKUP_TABLE_BINDING\ndirectly (products condensed under their LCPU order number).\n\n- delete src/components/receiving/pickup/grid/PickupGridView.tsx\n- shrink GRID_VIEW_FOREST freeze allowlist by one (→ 9)\n- re-point capabilities MOUNTS, wave7 GRID_SURFACES gridView, trailing-cluster\n- refresh PickupWorkspace + pickup-grid-descriptor docblocks (wrapper retired)\n\nGuards green; tsc introduces no new erroring files.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "other",
-      "title": "refac(tables): burn PickupGridView — workspace binds the host directly"
-    },
-    {
-      "sha": "dd0a19ad8e29bc2ebc5cdd1ddad071b93ee55b52",
-      "shortSha": "dd0a19ad8",
-      "date": "2026-08-08T13:57:57-07:00",
-      "author": "DENSENSE8",
-      "subject": "refac(tables): burn UnfoundGridView — queue table binds the host directly",
-      "body": "Phase-B forest burn (4/14). The Unfound grid adapter (compareUnfoundRows,\nuseUrlColumnSort, settle-tick, group memo, in-cell-edit renderer) merges from\nthe UnfoundGridView wrapper into UnfoundQueueTable, which now mounts\nNonlinearTableHost with UNFOUND_TABLE_BINDING directly.\n\n- delete src/components/receiving/unfound/grid/UnfoundGridView.tsx\n- shrink GRID_VIEW_FOREST freeze allowlist by one (→ 10)\n- re-point capabilities MOUNTS, wave7 residual-pin, trailing-cluster view\n- refresh unfound-grid-descriptor comment (wrapper retired)\n\nGuards green; tsc introduces no new erroring files.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "other",
-      "title": "refac(tables): burn UnfoundGridView — queue table binds the host directly"
-    },
-    {
-      "sha": "d1fbc838b91730c866d05d28ddff821676c65615",
-      "shortSha": "d1fbc838b",
-      "date": "2026-08-08T13:55:41-07:00",
-      "author": "DENSENSE8",
-      "subject": "refac(tables): burn ReadyGridView — queue table binds the host directly",
-      "body": "Phase-B forest burn (3/14). The Ready grid adapter (compareReadyRows,\nuseUrlColumnSort, settle-tick, group memo, renderer) merges from the\nReadyGridView wrapper into ReadyQueueTable, which now mounts NonlinearTableHost\nwith READY_TABLE_BINDING directly. Grid hooks move above the degrade-not-fail\nisError early return to stay unconditional.\n\n- delete src/components/outbound/ready/grid/ReadyGridView.tsx\n- shrink GRID_VIEW_FOREST freeze allowlist by one (→ 11)\n- re-point capabilities MOUNTS, trailing-cluster view, and the\n  ready-workspace-sheet host-mount assertion at ReadyQueueTable\n- refresh ready-grid-descriptor + wave7 passing comments (wrapper retired)\n\nGuard set 138/138 green; tsc introduces no new erroring files.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "other",
-      "title": "refac(tables): burn ReadyGridView — queue table binds the host directly"
-    },
-    {
-      "sha": "b756fa97e8745cabdabf39129b0cdc6d08cd37c1",
-      "shortSha": "b756fa97e",
-      "date": "2026-08-08T13:52:38-07:00",
-      "author": "DENSENSE8",
-      "subject": "refac(tables): burn WarrantyGridView — claims table binds the host directly",
-      "body": "Phase-B forest burn (2/14). The warranty grid adapter (compareWarrantyRows\ncomparator, useUrlColumnSort, settle-tick, group memo, renderers) merges from\nthe WarrantyGridView wrapper into WarrantyClaimsTable, which now mounts\nNonlinearTableHost with WARRANTY_TABLE_BINDING directly. The grid hooks move\nABOVE the degrade-not-fail early return to stay unconditional (React rules).\n\n- delete src/components/warranty/grid/WarrantyGridView.tsx\n- shrink GRID_VIEW_FOREST freeze allowlist by one\n- re-point capabilities MOUNTS, wave7 residual-pin, and trailing-cluster\n  column-display view at WarrantyClaimsTable\n- also re-point the Catalog trailing-cluster view entry the 1/14 burn missed\n  (that guard was outside the named table-guard subset — now folded into the\n  per-wrapper check)\n- refresh warranty-grid-descriptor docblock/comment (wrapper name retired)\n\nGuard set (table 7 + workbench-trailing-cluster) 134/134 green; tsc introduces\nno new erroring files.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "other",
-      "title": "refac(tables): burn WarrantyGridView — claims table binds the host directly"
-    },
-    {
-      "sha": "98fec9cffd88feb6df17ae4e5723fac2fbf6e1d0",
-      "shortSha": "98fec9cff",
-      "date": "2026-08-08T13:45:44-07:00",
-      "author": "DENSENSE8",
-      "subject": "refac(tables): burn CatalogGridView — page binds the host directly",
-      "body": "Phase-B forest burn (1/14). The catalog grid adapter (useTableSelectMode +\ngroup memo + renderers) moves from the CatalogGridView wrapper into\nProductsCatalogWorkspace, which now mounts NonlinearTableHost with\nCATALOG_TABLE_BINDING directly. Selection still coordinates through\nCATALOG_SELECTION_SCOPE (useTableSelectMode broadcasts, the bulk bar reads).\n\n- delete src/components/products/catalog/catalog-grid/CatalogGridView.tsx\n- shrink GRID_VIEW_FOREST freeze allowlist by one\n- re-point capabilities MOUNTS + wave7 sheet-recipe pin at the workspace\n\nTable guard set 104/104 green; tsc introduces no new erroring files.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "other",
-      "title": "refac(tables): burn CatalogGridView — page binds the host directly"
-    },
-    {
-      "sha": "d9e22dbb182f0aaa8f0a6f9c8d44b07a24f1d991",
-      "shortSha": "d9e22dbb1",
-      "date": "2026-08-08T12:12:37-07:00",
-      "author": "DENSENSE8",
-      "subject": "docs: add the eslint and git-add traps to the dead-export handoff",
-      "body": "Two new §3 entries, both from mistakes made this session:\n\n3.9 — Run eslint, not just tsc + knip. Deleting a symbol orphans its\nimports and any helper only it used, and neither other tool can see that:\nknip reports unused EXPORTS (an un-exported dead local is invisible to\nit) and tsc does not run noUnusedLocals. One eslint pass found 20\nleftovers, cascading to 26 over three rounds, several of them errors. It\nalso caught an over-removal — a PhotoScope import still in use.\n\n3.10 — A failed `git add` silently drops later paths. Passing a path\nalready staged by `git rm` aborts the command, and nothing after it in\nthe argument list gets staged. That dropped knip-baseline.json from\ncommit 550deed45 (fixed by amend). Always eyeball\n`git diff --cached --name-only` before committing.\n\n464 findings cleaned across 18 commits.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "docs",
-      "title": "add the eslint and git-add traps to the dead-export handoff"
-    },
-    {
-      "sha": "3c32cb00f33acd6b57ae32df4503562f8953e655",
-      "shortSha": "3c32cb00f",
-      "date": "2026-08-08T12:12:12-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: trim the station-workbench barrel; prune location/lifecycle/unshipped",
-      "body": "Thirteenth dead-code pass. tsc + eslint + 6667 tests green.\n\n- components/station/workbench/index.ts: dropped 8 re-exports nothing\n  reaches through the barrel (SectionTabsRightTrack/Pill,\n  StationUnitJourneys, mergeStationUnitJourneys, SectionTabDef,\n  SerialJourneyBucket, STATION_WORKBENCH_HEADER_COLUMN and _BODY_DOCKED).\n  All are live at their source paths; the barrel keeps its 19 real\n  consumers and the SoT docblock is unchanged.\n- neon/location-queries: deleted getBinsByRoom, getRowsForRoom,\n  getColsForRoomRow; getBinContents un-exported. BinContent and\n  LocationTransfer here shadow the Drizzle-inferred types in\n  drizzle/schema.ts, which are the live ones — un-exported.\n- order-lifecycle: isOutOfStock, hasLabel, DEFAULT_LIFECYCLE_STAGE,\n  CUSTODY_CATEGORIES un-exported. The big ext counts were a route's own\n  local variable and a PageHeader local const, not importers.\n- unshipped-state: deleted deriveUnshippedState (explicitly legacy,\n  superseded by resolveOrderLifecycleStage), countFulfillmentStates,\n  ZERO_UNSHIPPED_COUNTS, and the isUnshippedLate/UnshippedCounts they\n  kept alive; remaining types un-exported.\n\norder-lifecycle.test.ts named deriveUnshippedState in a test TITLE (a\nparity assertion, not a call). Retitled to \"the legacy unshipped-state\nderivation\" so the suite does not describe itself against a function\nthat no longer exists.\n\nCo-Authored-By: Claude Opus 5 <noreply@anthropic.com>",
-      "type": "chore",
-      "title": "trim the station-workbench barrel; prune location/lifecycle/unshipped"
     }
   ]
 }

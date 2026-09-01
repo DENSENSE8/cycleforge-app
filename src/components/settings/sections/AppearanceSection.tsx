@@ -19,12 +19,19 @@ import { TIME_FORMAT_VALUES, type TimeFormat } from '@/lib/schemas/staff-prefere
 import { formatTime12hPST } from '@/utils/date';
 import { applyTheme, applyAccentTheme, type ThemeName } from '@/lib/theme/theme';
 import { applyStationSkin } from '@/lib/theme/station-skin';
+import { applyStationDepth } from '@/lib/theme/station-depth';
 import {
   THEME_NAMES,
   THEME_PALETTES,
   resolveTheme,
   type ThemePalette,
 } from '@/design-system/themes/registry';
+import {
+  STATION_DEPTH_NAMES,
+  STATION_DEPTHS,
+  resolveStationDepth,
+  type StationDepthName,
+} from '@/design-system/themes/station-depths';
 import {
   STATION_SKIN_GROUP_LABEL,
   STATION_SKIN_GROUP_ORDER,
@@ -180,6 +187,7 @@ export function AppearanceSection() {
   // an impossible selection.
   const currentTheme: ThemeName = resolveTheme(prefs?.theme).name;
   const currentStationSkin: StationSkinName = resolveStationSkin(prefs?.stationSkin).name;
+  const currentStationDepth: StationDepthName = resolveStationDepth(prefs?.stationDepth).name;
   const useStaffAccent = resolvesUseStaffAccent(prefs);
   const staffColorHex = user?.staffId
     ? getStaffColorHex({ id: user.staffId })
@@ -198,6 +206,11 @@ export function AppearanceSection() {
   function updateStationSkin(skin: StationSkinName) {
     applyStationSkin(skin);
     update({ stationSkin: skin });
+  }
+
+  function updateStationDepth(depth: StationDepthName) {
+    applyStationDepth(depth);
+    update({ stationDepth: depth });
   }
 
   function updateTimeFormat(tf: TimeFormat) {
@@ -413,8 +426,11 @@ export function AppearanceSection() {
       <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
         <h3 className="mb-3 text-sm font-semibold text-text-default">Scan station</h3>
         <p className="mb-3 text-role-caption text-text-soft">
-          How Unbox, Arrival, Pack, Testing, Scan-out, and Search paint their
-          wells — one skin for every floor station.
+          Color paints Unbox, Arrival, Pack, Testing, Scan-out, and Search wells.
+          Depth sets bevel and grain. One pair for every floor station.
+        </p>
+        <p className="mb-2 text-role-eyebrow uppercase tracking-widest text-text-soft">
+          Color
         </p>
         <div className="space-y-4">
           {STATION_SKIN_GROUP_ORDER.map((group) => {
@@ -458,6 +474,36 @@ export function AppearanceSection() {
                   })}
                 </div>
               </div>
+            );
+          })}
+        </div>
+        <p className="mb-2 mt-5 text-role-eyebrow uppercase tracking-widest text-text-soft">
+          Depth
+        </p>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {STATION_DEPTH_NAMES.map((name) => {
+            const depth = STATION_DEPTHS[name];
+            const isActive = currentStationDepth === name;
+            return (
+              <button
+                key={name}
+                type="button"
+                onClick={() => updateStationDepth(name)}
+                className={`ds-raw-button rounded-none border px-4 py-3 text-left transition ${
+                  isActive
+                    ? 'border-blue-500 bg-blue-50 text-text-default ring-2 ring-blue-500/20'
+                    : 'border-border-soft bg-surface-card text-text-muted hover:border-border-default hover:bg-surface-canvas'
+                }`}
+                aria-pressed={isActive}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm font-semibold">{depth.label}</span>
+                  {isActive ? (
+                    <span className="h-2 w-2 rounded-full bg-blue-500" aria-hidden />
+                  ) : null}
+                </div>
+                <div className="mt-1 text-role-caption text-text-soft">{depth.hint}</div>
+              </button>
             );
           })}
         </div>

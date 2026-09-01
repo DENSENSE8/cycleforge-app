@@ -107,6 +107,7 @@ export function PhotoLibraryGrid({
           selectionActive={selectionActive}
           selected={selected}
           onSelectTile={onSelectTile}
+          onToggleGroupSelection={onToggleGroupSelection}
           onPhotoContextMenu={onPhotoContextMenu}
           openAt={openAt}
         />
@@ -125,6 +126,7 @@ export function PhotoLibraryGrid({
         selectionActive={selectionActive}
         selected={selected}
         onSelectTile={onSelectTile}
+        onToggleGroupSelection={onToggleGroupSelection}
         onPhotoContextMenu={onPhotoContextMenu}
         openAt={openAt}
       />

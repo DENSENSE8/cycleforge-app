@@ -109,7 +109,7 @@ export function toShipPickerLabel(
   return resolveStaffLabel(row.techName, row.techId, resolveName);
 }
 
-/** Pack assignment — packer_id / packed_by_name. */
+/** Pack assignment — packer_id / packer_name (assigned), then packed_by_name. */
 export function toShipPackerLabel(
   row: Pick<WorkOrderRow, 'packerName' | 'packerId'>,
   resolveName?: (id: number) => string,

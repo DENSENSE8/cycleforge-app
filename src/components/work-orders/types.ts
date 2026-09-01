@@ -43,6 +43,12 @@ export interface WorkOrderRow {
   shipmentId?: number | string | null;
   accountSource?: string | null;
   quantity?: string | null;
+  /** Catalog listing image — phone to-ship thumb. Absent = package placeholder. */
+  imageUrl?: string | null;
+  /** Assigned picker `staff.color_hex` — phone Pick mark fill. */
+  techColorHex?: string | null;
+  /** Assigned packer `staff.color_hex` — phone Packed mark fill. */
+  packerColorHex?: string | null;
   createdAt?: string | null;
   stockLevel?: number | null;
   hasTechScan?: boolean;

@@ -7,7 +7,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/design-system/primitives/DropdownMenu';
-import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import type { ReactNode } from 'react';
 
@@ -54,7 +53,7 @@ export function PhotoContextMenu({
         align="start"
         side="bottom"
         sideOffset={0}
-        className={cn('min-w-[200px]', cornerClass('flush'))}
+        className="min-w-[200px]"
         onCloseAutoFocus={(e) => e.preventDefault()}
       >
         {items.map((item) => (

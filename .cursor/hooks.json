@@ -35,6 +35,13 @@
         "matcher": "Write|StrReplace|EditNotebook|Delete",
         "timeout": 8
       }
+    ],
+    "stop": [
+      {
+        "command": ".cursor/hooks/stop-eval-gate.sh",
+        "timeout": 300,
+        "loop_limit": 1
+      }
     ]
   }
 }

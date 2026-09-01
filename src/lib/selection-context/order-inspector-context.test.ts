@@ -7,10 +7,10 @@ import {
   resolveOrderInspectorContext,
 } from './order-inspector-context';
 
-test('Pending / fulfillment opens docs-first with a read-only tray', () => {
+test('Pending / fulfillment opens shipping-first with a read-only documents tray', () => {
   for (const panelContext of ['fulfillment', 'queue'] as const) {
     const ctx = resolveOrderInspectorContext({ panelContext });
-    assert.equal(ctx.defaultTab, 'documents');
+    assert.equal(ctx.defaultTab, 'shipping');
     assert.equal(ctx.showDocumentsTab, true);
     // Buy / fetch / delete stay on the Labels station.
     assert.equal(ctx.documentsMode, 'preview');
@@ -73,7 +73,7 @@ test('pre-pack lanes prep the unit; post-pack lanes reprint the shipping documen
   const pending = orderBulkActionKeys('unshipped');
   assert.deepEqual(
     [...pending],
-    ['copy', 'assign', 'listing-rule', 'ship-by', 'print', 'flag', 'export', 'delete'],
+    ['download-photos', 'copy', 'assign-pick', 'assign-pack', 'condition', 'qty', 'notes', 'listing-rule', 'ship-by', 'print', 'flag', 'export', 'delete'],
   );
   assert.deepEqual([...PENDING_BULK_ACTION_KEYS], [...pending]);
 
@@ -81,9 +81,14 @@ test('pre-pack lanes prep the unit; post-pack lanes reprint the shipping documen
   assert.ok(packed.includes('print-shipping'));
   // Assigning a tester to an order that is already packed is not a thing.
   assert.ok(!packed.includes('assign'));
+  assert.ok(!packed.includes('assign-pick'));
+  assert.ok(!packed.includes('assign-pack'));
   assert.ok(!packed.includes('listing-rule'));
   assert.ok(!packed.includes('ship-by'));
   assert.ok(!packed.includes('print'));
+  assert.ok(!packed.includes('condition'));
+  assert.ok(!packed.includes('qty'));
+  assert.ok(packed.includes('notes'));
 
   // `flag` annotates the record, so it holds on every lane — a shipped order
   // can still be Damaged.
@@ -97,6 +102,7 @@ test('export and copy hold on every lane — they only read the selected rows', 
     const keys = orderBulkActionKeys(view);
     assert.ok(keys.includes('export'), `${view} should offer export`);
     assert.ok(keys.includes('copy'), `${view} should offer copy`);
+    assert.ok(keys.includes('download-photos'), `${view} should offer photo download`);
     assert.ok(keys.includes('delete'), `${view} should offer delete`);
   }
 });

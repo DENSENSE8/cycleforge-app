@@ -16,6 +16,22 @@
  * }} VerifyGate
  */
 
+import path from 'node:path';
+
+/**
+ * Local package bin — never `npx tsc` / `npx eslint`.
+ *
+ * npm's npx, when it misses pnpm's layout, downloads the WRONG packages:
+ * the npm name `tsc` (not TypeScript) and ESLint 10. That is this repo's
+ * 2026-09-01 machine-eval red: `Cannot find module …/typescript/bin/tsc` and
+ * `Cannot find package …/@typescript-eslint/parser/index.js` under ESLint 10.9.1.
+ * `node_modules/.bin/*` is the install we already paid for.
+ */
+function localBin(name) {
+  const file = process.platform === 'win32' ? `${name}.CMD` : name;
+  return path.join(process.cwd(), 'node_modules', '.bin', file);
+}
+
 /**
  * @param {string[]} argv
  * @returns {VerifyProfile}
@@ -64,13 +80,12 @@ export function gateInProfile(gate, profile) {
 export const ALL_GATES = [
   {
     name: 'Lint',
-    cmd: 'npx',
+    cmd: localBin('eslint'),
     // --cache: eslint re-lints only files whose content or resolved config changed
     // (the per-file cache entry carries a config hash, so a flat-config edit
     // invalidates on its own). Cache lives under node_modules/.cache so it is
     // wiped by `npm ci` in CI — same cold-run semantics there as before.
     args: [
-      'eslint',
       'src',
       '--max-warnings=10000',
       '--cache',
@@ -81,8 +96,8 @@ export const ALL_GATES = [
   },
   {
     name: 'Typecheck',
-    cmd: 'npx',
-    args: ['tsc', '--noEmit', '-p', 'tsconfig.json'],
+    cmd: localBin('tsc'),
+    args: ['--noEmit', '-p', 'tsconfig.json'],
     env: { NODE_OPTIONS: '--max-old-space-size=6144' },
     profiles: 'always',
   },

@@ -31,7 +31,7 @@ import { Filter, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { ToolbarListboxOption } from '@/design-system/primitives/ToolbarListbox';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
-import { cornerClass, DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
+import { cornerClass, DROPDOWN_ITEM_CORNER, DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -196,7 +196,7 @@ export function FilterMenuRow({
       leading={
         sectionHeader ? undefined : (leading ?? <span className="w-2 shrink-0" aria-hidden />)
       }
-      className={sectionHeader ? 'px-0' : undefined}
+      className={cn(DROPDOWN_ITEM_CORNER, sectionHeader && 'px-0')}
       trailing={
         count === undefined && !shortcut ? null : (
           <span className="flex shrink-0 items-center gap-2">

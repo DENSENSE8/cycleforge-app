@@ -235,7 +235,7 @@ export function StationNewLocationForm({
               letter, and one cannot be invented — the barcode would decode to
               another zone's shelf. */}
           {!roomsLoading && room && !zone ? (
-            <p className="border border-dashed border-amber-200 bg-amber-50 inset-empty text-role-caption text-amber-800">
+            <p className="border border-dashed border-amber-200 bg-surface-sunken inset-empty text-role-caption text-amber-800">
               “{room}” has no zone letter yet, so a scannable address can’t be
               minted here. Give the room a zone letter in Inventory → Locations,
               then come back.
@@ -243,7 +243,7 @@ export function StationNewLocationForm({
           ) : null}
 
           {levelFull ? (
-            <p className="border border-dashed border-amber-200 bg-amber-50 inset-empty text-role-caption text-amber-800">
+            <p className="border border-dashed border-amber-200 bg-surface-sunken inset-empty text-role-caption text-amber-800">
               Every slot on this level is taken — move to the next level or bay.
             </p>
           ) : null}

@@ -48,6 +48,8 @@ interface StaffPickerListProps {
   onMessage?: (msg: string | null) => void;
   /** Surfaces the server-side auth policy (e.g. pinless rollout flag). */
   onPolicy?: (policy: { pinless: boolean }) => void;
+  /** Case-insensitive name/role filter. Empty = full roster. */
+  query?: string;
 }
 
 const THEME_ROW: Record<StationTheme, {
@@ -69,7 +71,14 @@ const THEME_ROW: Record<StationTheme, {
   pink:      { hoverBg: 'hover:bg-pink-50',     hoverRing: 'hover:ring-pink-200',    chevron: 'text-pink-600',    avatarRing: 'ring-pink-100',     recentDot: 'bg-pink-400',     nameHover: 'group-hover:text-pink-900' },
 };
 
-export function StaffPickerList({ recent = [], recentReady = true, onPick, onMessage, onPolicy }: StaffPickerListProps) {
+function staffMatchesQuery(staff: StaffRow, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const role = staff.role.replace(/_/g, ' ').toLowerCase();
+  return staff.name.toLowerCase().includes(q) || role.includes(q);
+}
+
+export function StaffPickerList({ recent = [], recentReady = true, onPick, onMessage, onPolicy, query = '' }: StaffPickerListProps) {
   const [staff, setStaff] = useState<StaffRow[]>([]);
   const [loading, setLoading] = useState(true);
   // "The roster is empty" and "we could not load the roster" are DIFFERENT
@@ -121,14 +130,17 @@ export function StaffPickerList({ recent = [], recentReady = true, onPick, onMes
   }, [reloadKey]);
 
   const { recentRows, otherRows } = useMemo(() => {
-    const map = new Map(staff.map((s) => [s.id, s] as const));
+    const visible = staff.filter((s) => staffMatchesQuery(s, query));
+    const map = new Map(visible.map((s) => [s.id, s] as const));
     const recents: StaffRow[] = [];
     for (const id of recent) {
       const hit = map.get(id);
       if (hit) { recents.push(hit); map.delete(id); }
     }
     return { recentRows: recents, otherRows: Array.from(map.values()) };
-  }, [staff, recent]);
+  }, [staff, recent, query]);
+  const filteredEmpty = staff.length > 0 && recentRows.length === 0 && otherRows.length === 0;
+  const searching = query.trim().length > 0;
 
   if (loading || !recentReady) return <StaffPickerSkeleton />;
   // Degraded (could not load) is checked BEFORE absence — the two states share
@@ -163,10 +175,19 @@ export function StaffPickerList({ recent = [], recentReady = true, onPick, onMes
     );
   }
 
-  const hasRecent = recentRows.length > 0;
-  // With recent names on top, the rest collapse behind "More". Without any
-  // recent, the full roster is the primary list and always shows.
-  const showOthers = !hasRecent || showAll;
+  const hasRecent = !searching && recentRows.length > 0;
+  // With recent names on top, the rest collapse behind "More". Search and
+  // an empty-recent roster show the full match list. Without any recent,
+  // the full roster is the primary list and always shows.
+  const showOthers = searching || !hasRecent || showAll;
+
+  if (filteredEmpty) {
+    return (
+      <div className="rounded-xl border border-dashed border-border-default px-6 py-10 text-center text-sm text-text-soft">
+        No staff match that search.
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">

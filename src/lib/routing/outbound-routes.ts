@@ -94,6 +94,13 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
      * on this route is stripped on the operator's next keystroke.
      */
     triage: paramText,
+    /**
+     * To-ship Labels walk (`PaperworkWalkHost`). MUST stay declared:
+     * `useSurfaceParamHygiene` in the shipping layout drops undeclared keys
+     * on the next tick. While this was missing, Labels wrote `?paperwork=`
+     * and hygiene stripped it — the desk flashed table ↔ walk.
+     */
+    paperwork: paramPositiveInt,
     /** Caged facet on the To-ship queue — shows the held set instead of the live one. */
     cage: paramFlag,
     /** CSV import staging surface on the To-Ship desk (session draft in memory). */

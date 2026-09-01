@@ -12,6 +12,7 @@ import {
   sqlOrderHasShipConfirm,
   sqlOrderHasTechScan,
 } from '@/lib/orders/order-grain-sql';
+import { liveWorkingSetSql } from '@/lib/orders/exception-membership';
 import { withAuth } from '@/lib/auth/withAuth';
 import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
 import { parsePackedDateKey } from '@/lib/packed/packed-filters';
@@ -184,7 +185,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       pageLimit:          pageLimit ?? '',
       cursor:             cursorRaw || '',
       inWarehouse,
-      membershipVersion:  'ship_confirm_v1',
+      membershipVersion:  'pairing_exception_v1',
       shipmentStatusRuleVersion: 'latest_status_relaxed_v2',
     });
 
@@ -523,6 +524,8 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         staff_test_assignee.name AS tested_by_name,
         staff_pack_assignee.name AS packer_name,
         staff_packed_by.name     AS packed_by_name,
+        staff_pick_assignee.color_hex AS tester_color_hex,
+        staff_pack_assignee.color_hex AS packer_color_hex,
         ${sqlOrderHasTechScan('o')} AS has_tech_scan,
         opp.location_id AS pack_location_id,
         COALESCE(NULLIF(BTRIM(loc_pack.display_name), ''), loc_pack.name) AS pack_location_name,
@@ -600,6 +603,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       LEFT JOIN test_duration ON test_duration.shipment_id = o.shipment_id
       LEFT JOIN sal_scan ON sal_scan.shipment_id = o.shipment_id
       LEFT JOIN staff staff_test_assignee ON staff_test_assignee.id = test_activity.staff_id
+      LEFT JOIN staff staff_pick_assignee ON staff_pick_assignee.id = wa_t.assigned_tech_id
       LEFT JOIN staff staff_packed_by ON staff_packed_by.id = COALESCE(pack_activity.staff_id, pl_latest.packed_by)
       LEFT JOIN staff staff_pack_assignee ON staff_pack_assignee.id = wa_p.assigned_packer_id
       WHERE 1=1
@@ -658,22 +662,20 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       // CF-04: exclude only when THIS order has a pack fact — not when a sibling
       // sharing the carton was packed (shipment-grain NOT EXISTS was the vanish bug).
       sql += ` AND NOT ${sqlOrderHasPackScan('o')}`;
-      // CAGED stays out of the live working set (order-intake-acknowledgment
-      // ship). Under the old shipment_id requirement a caged order was
-      // invisible by accident (no tracking yet); now that label-less orders
-      // are a lifecycle stage on this board, the cage must be an explicit
-      // predicate — a caged order that already has tracking is still not
-      // released work. NULL release_state = released (legacy rows).
-      sql += ` AND COALESCE(o.release_state, '') <> 'caged'`;
+      // Exception-held stays out of the live working set (R-FLOW-7): caged
+      // AND unpaired. Pairing lands the order on this board even when manuals
+      // or a shipping label are still missing — those are paperwork, not
+      // another table. NULL release_state = released (legacy rows).
+      sql += ` AND ${liveWorkingSetSql('o')}`;
       sql += ` AND NOT ${sqlOrderHasShipConfirm('o')}`;
     }
 
     if (inWarehouse) {
       sql += ` AND o.shipment_id IS NOT NULL`;
       sql += ` AND COALESCE(TRIM(stn.tracking_number_raw), '') <> ''`;
-      // Same cage predicate as fulfillmentScope — the To-ship desk's
-      // in-building set is live work, and caged is by definition not.
-      sql += ` AND COALESCE(o.release_state, '') <> 'caged'`;
+      // Same exception-held predicate as fulfillmentScope — the To-ship desk's
+      // in-building set is live work; unpaired+caged is by definition not.
+      sql += ` AND ${liveWorkingSetSql('o')}`;
       sql += ` AND NOT ${sqlOrderHasShipConfirm('o')}`;
     }
 

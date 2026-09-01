@@ -6,27 +6,41 @@ the committed floor is `lighthouse-baseline.json`.
 
 ## Targets
 
-**The goal is Performance ≥ 92 on every route** (operator ruling 2026-08-27,
-raised from 90), **and ≥ 90 in every other category.** As of the 2026-07 audit
-only Performance is short — Accessibility 93–95, Best Practices 96, SEO 91,
-CLS ~0 and TBT 22–158 ms already clear it everywhere.
+**The goal is Performance ≥ 95 on every Tier-1 route** (operator ruling
+2026-09-01, raised from 92), **and ≥ 95 Accessibility / Best Practices**
+(Speed Insights / Core Web Vitals aligned — LCP ≤ 2.5 s). Host law lives in
+`tools/eval-ledger/perf-target.mjs`; every `machine-gate` pass stamps
+`.cursor/perf-session.json` with the gap to that north star. Live
+`lighthouse:check` is opt-in (`LOOP_PERF=check` / `MACHINE_GATE_PERF=check`)
+so Cursor stop never waits minutes for Chrome.
 
-| Category | Target | Status (2026-07) |
+| Category | Target | Status (see baseline) |
 |---|---|---|
-| Performance | ≥ 92 | **67–78** — the whole gap |
-| Accessibility | ≥ 90 | 93–95 ✅ |
-| Best Practices | ≥ 90 | 96 ✅ |
-| SEO | ≥ 90 public routes (`/signin`, `/signup`, `/share/photos/*`) | 91 ✅ |
-| LCP | ≤ 2.5 s | **5.9–12.3 s** — the whole of Performance |
-| TBT | ≤ 600 ms | 22–158 ms ✅ |
-| CLS | ≤ 0.1 | ~0 ✅ |
+| Performance | ≥ 95 | Floors ratchet upward in `lighthouse-baseline.json` |
+| Accessibility | ≥ 95 | Same |
+| Best Practices | ≥ 95 | Same |
+| SEO | ≥ 95 public routes (`/signin`, …) | Private warehouse stays `Disallow: /` |
+| LCP | ≤ 2.5 s | Primary lever for Performance |
+| TBT | ≤ 200 ms | Keep low |
+| CLS | ≤ 0.1 | Keep near 0 |
 
-So "Lighthouse 90" is not a hundred small fixes. It is **one** problem: the
-data-heavy workbenches (`/dashboard`, `/unbox`, `/triage`, `/search`, `/test`)
-render a shell, hydrate, and only *then* fetch their first collection, so LCP
-waits on a post-hydration round trip. Streaming that first payload server-side
-is the single lever that moves all five. Bundle weight was already cut 61–68% in
-the 2026-07 initiative and is no longer the constraint.
+So "Lighthouse 95" is not a hundred small fixes. It is **primarily** one
+problem: data-heavy workbenches LCP-wait on a post-hydration fetch. Streaming
+that first payload server-side is the lever. Bundle weight was already cut
+61–68% in the 2026-07 initiative.
+
+### Overnight grind (local Hermes)
+
+Host-owned loop — not Cursor Agent stop (avoids cloud billing / IDE wedges):
+
+```bash
+pnpm run eval:perf-overnight -- --dry-run
+pnpm run perf:overnight   # needs :3100 prod + LH_COOKIE; see docs/eval/README.md
+```
+
+Loops worst Tier-1 gap → Hermes coder → machine-gate → single-route audit →
+ratchet floor **up** only → repeat until Tier-1 meets 95 or `--max-hours`.
+State: `.cursor/perf-overnight-state.json`.
 
 ### Form factor is a deployment claim, not a preference
 

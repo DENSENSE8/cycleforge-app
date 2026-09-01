@@ -207,7 +207,7 @@ function PreboxWizardBody({
                     onClick={() => toggle(s.id)}
                     aria-pressed={on}
                     className={`ds-raw-button flex h-11 w-full min-w-0 items-stretch divide-x divide-border-hairline text-left transition-colors ${
-                      on ? 'bg-blue-50/60' : 'hover:bg-surface-hover'
+                      on ? 'bg-surface-sunken' : 'hover:bg-surface-hover'
                     }`}
                   >
                     <span

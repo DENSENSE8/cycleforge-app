@@ -36,6 +36,7 @@ import { useTableImportFilePicker } from '@/components/tables/import/TableImport
 import { useOrdersSync } from '@/hooks/useOrdersSync';
 import { useAuth } from '@/contexts/AuthContext';
 import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
+import { PAPERWORK_PARAM, parsePaperworkOrderId } from '@/lib/orders/print-packet';
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import {
   ORDERS_DESK_CONTEXT_KEY,
@@ -187,7 +188,7 @@ function OutboundOrdersDeskContent({
           />
         }
         details={
-          !isSupportContext ? (
+          !isSupportContext && parsePaperworkOrderId(searchParams.get(PAPERWORK_PARAM)) == null ? (
             <DashboardOrderDetails
               detailsEnabled={detailsEnabled}
               selectedShipped={selectedShipped}

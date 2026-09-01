@@ -52,6 +52,13 @@ export interface UnshippedQueueCounts {
   combos: QueueCountsCombo[];
   /** Packing DESK/STAGING open-package counts (Ready-to-Pack placement). */
   packPlacement?: QueueCountsPackPlacement;
+  /**
+   * Live To-ship rows whose print packet is incomplete (no shipping-label
+   * document, or no G2 paperwork without the docs-not-required exemption).
+   * Drives the Labels header CTA badge. Distinct from G3 — tracking without a
+   * PDF still counts here.
+   */
+  paperworkIncomplete?: number;
 }
 
 export const ZERO_QUEUE_COUNTS: UnshippedQueueCounts = {
@@ -62,6 +69,7 @@ export const ZERO_QUEUE_COUNTS: UnshippedQueueCounts = {
   shippedToday: 0,
   combos: [],
   packPlacement: { counts: [], totalPlaced: 0 },
+  paperworkIncomplete: 0,
 };
 
 /**
@@ -97,5 +105,7 @@ export function normalizeQueueCountsPayload(raw: unknown): UnshippedQueueCounts 
     shippedToday: typeof data.shippedToday === 'number' ? data.shippedToday : 0,
     combos: Array.isArray(data.combos) ? (data.combos as QueueCountsCombo[]) : [],
     packPlacement,
+    paperworkIncomplete:
+      typeof data.paperworkIncomplete === 'number' ? data.paperworkIncomplete : 0,
   };
 }
