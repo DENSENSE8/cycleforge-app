@@ -2,14 +2,18 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
-import { pairManual, searchManuals } from './sku-testing-api';
+import { searchManuals } from './sku-testing-api';
 import type { ManualRow } from './sku-testing-types';
 
 /**
- * Debounced (250ms) manuals-library search + pair-to-line action for the manual
+ * Debounced (250ms) manuals-library search + pair action for the manual
  * picker. Owns the query, results, and per-row pairing state.
+ * Callers supply `onPair` (receiving-line or SKU-based).
  */
-export function useManualPicker(receivingLineId: number, onPaired: () => Promise<void>) {
+export function useManualPicker(
+  onPair: (manualId: number) => Promise<void>,
+  onPaired: () => Promise<void>,
+) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<ManualRow[]>([]);
   const [searching, setSearching] = useState(false);
@@ -44,7 +48,7 @@ export function useManualPicker(receivingLineId: number, onPaired: () => Promise
     async (manualId: number) => {
       setPairingId(manualId);
       try {
-        await pairManual(receivingLineId, manualId);
+        await onPair(manualId);
         toast.success('Manual paired');
         await onPaired();
       } catch (err) {
@@ -53,7 +57,7 @@ export function useManualPicker(receivingLineId: number, onPaired: () => Promise
         setPairingId(null);
       }
     },
-    [receivingLineId, onPaired],
+    [onPair, onPaired],
   );
 
   return { query, setQuery, results, searching, pairingId, pair };

@@ -107,6 +107,35 @@ test('no account label → null platform account, no account SELECT', async () =
   assert.equal(linkCalls[0].platformAccountId, null);
 });
 
+test('preview uses the same lookup and does not write', async () => {
+  const { deps, calls, linkCalls, mirrorCalls, testingCalls } = fakes({ existingLineId: null, accountId: 7 });
+  const r = await ingestPurchase(ORG, {
+    sourceOrderId: 'E-NEW',
+    accountLabel: 'USAV-Buyer',
+    sku: 'SKU-1',
+    preview: true,
+  }, deps);
+  assert.equal(r.preview, true);
+  assert.equal(r.created, true);
+  assert.equal(r.receivingLineId, 0);
+  assert.equal(r.platformAccountId, 7);
+  assert.ok(!calls.some((c) => /pg_advisory_xact_lock/.test(c.sql)), 'preview does not take the write lock');
+  assert.ok(!calls.some((c) => /INSERT INTO receiving_line/.test(c.sql)), 'preview does not insert');
+  assert.equal(mirrorCalls.length, 0);
+  assert.equal(linkCalls.length, 0);
+  assert.equal(testingCalls.length, 0);
+});
+
+test('preview of an existing line reports would-update', async () => {
+  const { deps, calls } = fakes({ existingLineId: 55 });
+  const r = await ingestPurchase(ORG, { sourceOrderId: 'E-123', preview: true }, deps);
+  assert.equal(r.preview, true);
+  assert.equal(r.created, false);
+  assert.equal(r.receivingLineId, 55);
+  assert.ok(calls.some((c) => /FROM inbound_purchase_order_links/.test(c.sql)));
+  assert.ok(!calls.some((c) => /INSERT INTO receiving_line/.test(c.sql)));
+});
+
 test('rejects a blank order id and an unregistered source before any tx', async () => {
   const a = fakes();
   await assert.rejects(() => ingestPurchase(ORG, { sourceOrderId: '   ', sku: 'X' }, a.deps), /sourceOrderId is required/);

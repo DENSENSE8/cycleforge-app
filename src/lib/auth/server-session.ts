@@ -2,6 +2,7 @@ import { cache } from 'react';
 import { getCurrentUser } from './current-user';
 import { touchSession } from './session';
 import { getOrganization } from '@/lib/tenancy/organizations';
+import { loadOrgEnvironment } from '@/lib/qa/environment';
 import { resolveEnvelopeMemberships } from '@/lib/identity/memberships';
 import type { AuthSessionUser } from '@/contexts/AuthContext';
 
@@ -29,6 +30,7 @@ export const getInitialAuthUser = cache(async (): Promise<AuthSessionUser | null
     organizationName: org?.name ?? 'Workspace',
     organizationSlug: org?.slug ?? null,
     organizationPlan: org?.plan ?? null,
+    organizationEnvironment: await loadOrgEnvironment(current.organizationId).catch(() => 'customer' as const),
     memberships,
     name: current.name,
     role: current.role,

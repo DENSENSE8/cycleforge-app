@@ -15,6 +15,7 @@ import {
 } from '@/lib/dashboard/order-export-csv';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
+import { PackAwaitingFeedback } from '@/components/packer/PackAwaitingFeedback';
 import { dispatchCloseShippedDetails, dispatchOpenShippedDetails } from '@/utils/events';
 import { unshippedOrdersQuery, unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 import {
@@ -77,6 +78,12 @@ export interface UnshippedTableProps extends DashboardSearchSectionProps {
    * `tested` = TESTED only. Omit for station embeds (all lanes + `?ustatus`).
    */
   fulfillmentLane?: 'pending' | 'tested';
+  /**
+   * Soft idle copy when the board has nothing to show (and when the fetch
+   * failed with zero rows). Pack uses "Awaiting scan" instead of a red
+   * degraded alert or a first-run sales-channel CTA.
+   */
+  awaitingMessage?: string;
   /** SSR stand-in handoff — primary queue has paintable rows (seed or fetch). */
   onPrimaryPainted?: () => void;
 }
@@ -144,6 +151,7 @@ export function UnshippedTable({
   railSelection = false,
   onOpenRecord,
   fulfillmentLane,
+  awaitingMessage,
   onPrimaryPainted,
 }: UnshippedTableProps = {}) {
   const pathname = usePathname();
@@ -631,6 +639,17 @@ export function UnshippedTable({
   // active search/filter sees the "connect a sales channel" CTA instead of three
   // empty lanes that read as broken. Any active search/status/staff filter falls
   // through to the board, which owns its own typed "no matches" empty per lane.
+  // Pack (and similar embeds) pass `awaitingMessage` so idle / failed-empty
+  // reads as "Awaiting scan" — never a rose degraded alert.
+  const isIdleEmpty =
+    !query.isLoading &&
+    allRecords.length === 0 &&
+    !searchQuery &&
+    !statusFilter &&
+    !urgentOnly &&
+    stageFilter === 'all' &&
+    staffId === undefined;
+
   const isFirstRunEmpty =
     // An empty cage is not a brand-new org — showing "connect a sales channel"
     // there would answer a question nobody asked.
@@ -640,13 +659,15 @@ export function UnshippedTable({
     // up. The degraded gate below catches it first; this keeps the teaching
     // state honest on its own terms.
     !queueError &&
-    !query.isLoading &&
-    allRecords.length === 0 &&
-    !searchQuery &&
-    !statusFilter &&
-    !urgentOnly &&
-    stageFilter === 'all' &&
-    staffId === undefined;
+    isIdleEmpty;
+
+  if (awaitingMessage && (isIdleEmpty || (query.isError && allRecords.length === 0))) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-surface-card p-6">
+        <PackAwaitingFeedback message={awaitingMessage} />
+      </div>
+    );
+  }
 
   // Degraded outranks every absence state: with nothing to show and a failed
   // read, the only honest screen is the one that says so and offers the retry.

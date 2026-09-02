@@ -80,6 +80,17 @@ test('per-line ingest error is isolated', async () => {
   assert.match(r.errors[0], /E-1/);
 });
 
+test('preview threads preview:true into ingest and does not advance the cursor', async () => {
+  const { deps, ingested, cursorsSet } = fakes({
+    accounts: [{ accountName: 'USAV-Buyer' }],
+    linesByAccount: { 'USAV-Buyer': [{ sourceOrderId: 'E-1', sku: 'A' }] },
+  });
+  const r = await syncEbayPurchasesToReceiving(ORG, deps, { preview: true });
+  assert.equal(r.ingested, 1);
+  assert.equal(ingested[0].preview, true);
+  assert.deepEqual(cursorsSet, []);
+});
+
 test('a fetch failure skips the account (no cursor advance) but not the org', async () => {
   const { deps, cursorsSet } = fakes({
     accounts: [{ accountName: 'bad' }, { accountName: 'good' }],

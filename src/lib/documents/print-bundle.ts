@@ -4,8 +4,9 @@
  * Phase 1: shipping_label + packing_slip via documents hub.
  * Phase 2–3: manuals via documents SoT (SKU links) with product_manuals fallback.
  *
- * Dispatches via PrintNode pdf_base64 when an `outbound` printer profile exists;
- * otherwise returns browser-fallback ids for the Station iframe path.
+ * Dispatches via NAS media agent (`vendor=agent`) or PrintNode pdf_base64 when
+ * an `outbound` printer profile exists; otherwise returns browser-fallback ids
+ * for the Station iframe path.
  * Never re-buys postage. Idempotent via client_event_id.
  */
 
@@ -30,6 +31,10 @@ import {
   type DocumentPrintJobType,
 } from '@/lib/documents/document-print-jobs';
 import { dispatchPrintNodePdf } from '@/lib/print/dispatchPrintNodePdf';
+import {
+  dispatchAgentPdf,
+  isPrintAgentConfigured,
+} from '@/lib/print/dispatchAgentPdf';
 
 const BUNDLE_TYPES: OutboundDocumentType[] = ['shipping_label', 'packing_slip'];
 
@@ -100,10 +105,12 @@ export interface PrintBundleDeps {
   readOutboundDocumentBytes: typeof readOutboundDocumentBytes;
   readProductManualBytes: typeof readProductManualBytes;
   dispatchPrintNodePdf: typeof dispatchPrintNodePdf;
+  dispatchAgentPdf: typeof dispatchAgentPdf;
   recordDocumentPrintJob: typeof recordDocumentPrintJob;
   getDocumentPrintJobByEventId: typeof getDocumentPrintJobByEventId;
   resolveOutboundPrinter: (orgId: OrgId) => Promise<PrinterProfileRow | null>;
   isPrintNodeConfigured: () => boolean;
+  isPrintAgentConfigured: () => boolean;
 }
 
 async function defaultResolveOutboundPrinter(orgId: OrgId): Promise<PrinterProfileRow | null> {
@@ -128,10 +135,12 @@ const defaultDeps: PrintBundleDeps = {
   readOutboundDocumentBytes,
   readProductManualBytes,
   dispatchPrintNodePdf,
+  dispatchAgentPdf,
   recordDocumentPrintJob,
   getDocumentPrintJobByEventId,
   resolveOutboundPrinter: defaultResolveOutboundPrinter,
   isPrintNodeConfigured: () => Boolean(process.env.PRINTNODE_API_KEY),
+  isPrintAgentConfigured,
 };
 
 export async function resolvePrintBundle(
@@ -225,6 +234,83 @@ function pushManualFallback(
   });
 }
 
+type DispatchAttempt = {
+  status: DocumentPrintJobStatus;
+  error?: string;
+  printnodeJobId: number | null;
+  fallback: boolean;
+};
+
+async function attemptPdfDispatch(input: {
+  profile: PrinterProfileRow | null;
+  printNodeConfigured: boolean;
+  agentConfigured: boolean;
+  documentType: DocumentPrintJobType;
+  title: string;
+  pdfBase64: string;
+  source: string;
+  deps: PrintBundleDeps;
+}): Promise<DispatchAttempt> {
+  const { profile, deps } = input;
+  if (profile?.vendor === 'agent' && input.agentConfigured) {
+    const ag = await deps.dispatchAgentPdf({
+      title: input.title,
+      pdfBase64: input.pdfBase64,
+      documentType: input.documentType,
+      source: input.source,
+    });
+    if (ag.ok && ag.dispatched) {
+      return { status: 'dispatched', printnodeJobId: null, fallback: false };
+    }
+    return {
+      status: 'fallback_browser',
+      error: ag.error,
+      printnodeJobId: null,
+      fallback: true,
+    };
+  }
+
+  if (profile?.vendor === 'printnode' && input.printNodeConfigured) {
+    const pn = await deps.dispatchPrintNodePdf({
+      printerExternalId: profile.external_id,
+      title: input.title,
+      pdfBase64: input.pdfBase64,
+      source: input.source,
+    });
+    if (pn.ok && pn.dispatched) {
+      return {
+        status: 'dispatched',
+        printnodeJobId: pn.jobId ?? null,
+        fallback: false,
+      };
+    }
+    return {
+      status: 'fallback_browser',
+      error: pn.error,
+      printnodeJobId: null,
+      fallback: true,
+    };
+  }
+
+  // Prefer an explicit reason so ops can see "agent profile but Next has no
+  // NAS_AGENT_URL" instead of a silent browser dialog with error=null.
+  const reason =
+    profile?.vendor === 'agent' && !input.agentConfigured
+      ? 'NAS_AGENT_URL / NAS_AGENT_TOKEN not loaded in this Next process'
+      : profile?.vendor === 'printnode' && !input.printNodeConfigured
+        ? 'PRINTNODE_API_KEY not configured'
+        : profile
+          ? `no dispatch path for vendor=${profile.vendor}`
+          : 'no active outbound printer_profiles row';
+
+  return {
+    status: 'fallback_browser',
+    error: reason,
+    printnodeJobId: null,
+    fallback: true,
+  };
+}
+
 export async function dispatchPrintBundle(
   orgId: OrgId,
   input: DispatchPrintBundleInput,
@@ -252,6 +338,7 @@ export async function dispatchPrintBundle(
   const reprint = Boolean(input.reprint);
   const profile = await deps.resolveOutboundPrinter(orgId);
   const printNodeConfigured = deps.isPrintNodeConfigured();
+  const agentConfigured = deps.isPrintAgentConfigured();
 
   const jobs: DispatchPrintBundleJobResult[] = [];
   const browserFallbackDocs: PrintableBundleItem[] = [];
@@ -266,22 +353,31 @@ export async function dispatchPrintBundle(
     if (!reprint) {
       const existing = await deps.getDocumentPrintJobByEventId(orgId, clientEventId);
       if (existing) {
-        anyIdempotent = true;
         const st = existing.status as DocumentPrintJobStatus;
-        if (st === 'fallback_browser') {
-          anyFallback = true;
-          pushOutboundFallback(browserFallbackDocs, doc, true);
+        // Sticky browser-fallback after a prior miss (e.g. Next missing
+        // NAS_AGENT_*) must not block a later silent dispatch once the agent
+        // is configured — re-attempt instead of replaying the dialog.
+        const canRetrySilent =
+          st === 'fallback_browser' &&
+          ((profile?.vendor === 'agent' && agentConfigured) ||
+            (profile?.vendor === 'printnode' && printNodeConfigured));
+        if (!canRetrySilent) {
+          anyIdempotent = true;
+          if (st === 'fallback_browser') {
+            anyFallback = true;
+            pushOutboundFallback(browserFallbackDocs, doc, true);
+          }
+          if (st === 'dispatched') anyDispatched = true;
+          if (st === 'failed') anyFailed = true;
+          jobs.push({
+            documentId: doc.id,
+            documentType: doc.documentType,
+            status: st,
+            jobRow: existing,
+            isPdf: true,
+          });
+          continue;
         }
-        if (st === 'dispatched') anyDispatched = true;
-        if (st === 'failed') anyFailed = true;
-        jobs.push({
-          documentId: doc.id,
-          documentType: doc.documentType,
-          status: st,
-          jobRow: existing,
-          isPdf: true,
-        });
-        continue;
       }
     }
 
@@ -304,26 +400,25 @@ export async function dispatchPrintBundle(
           status = 'fallback_browser';
           anyFallback = true;
           pushOutboundFallback(browserFallbackDocs, doc, false);
-        } else if (!profile || profile.vendor !== 'printnode' || !printNodeConfigured) {
-          status = 'fallback_browser';
-          anyFallback = true;
-          pushOutboundFallback(browserFallbackDocs, doc, true);
         } else {
-          const pn = await deps.dispatchPrintNodePdf({
-            printerExternalId: profile.external_id,
+          const attempt = await attemptPdfDispatch({
+            profile,
+            printNodeConfigured,
+            agentConfigured,
+            documentType: doc.documentType,
             title: `${doc.documentType} · order ${input.orderId}`,
             pdfBase64: loaded.bytes.toString('base64'),
             source: 'cycleforge.pack-bundle',
+            deps,
           });
-          if (pn.ok && pn.dispatched) {
-            status = 'dispatched';
-            printnodeJobId = pn.jobId ?? null;
-            anyDispatched = true;
-          } else {
-            status = 'fallback_browser';
-            error = pn.error;
+          status = attempt.status;
+          error = attempt.error;
+          printnodeJobId = attempt.printnodeJobId;
+          if (attempt.fallback) {
             anyFallback = true;
             pushOutboundFallback(browserFallbackDocs, doc, true);
+          } else {
+            anyDispatched = true;
           }
         }
       }
@@ -368,23 +463,29 @@ export async function dispatchPrintBundle(
     if (!reprint) {
       const existing = await deps.getDocumentPrintJobByEventId(orgId, clientEventId);
       if (existing) {
-        anyIdempotent = true;
         const st = existing.status as DocumentPrintJobStatus;
-        if (st === 'fallback_browser') {
-          anyFallback = true;
-          pushManualFallback(browserFallbackDocs, manual, true);
+        const canRetrySilent =
+          st === 'fallback_browser' &&
+          ((profile?.vendor === 'agent' && agentConfigured) ||
+            (profile?.vendor === 'printnode' && printNodeConfigured));
+        if (!canRetrySilent) {
+          anyIdempotent = true;
+          if (st === 'fallback_browser') {
+            anyFallback = true;
+            pushManualFallback(browserFallbackDocs, manual, true);
+          }
+          if (st === 'dispatched') anyDispatched = true;
+          if (st === 'failed' || st === 'skipped') anyFailed = st === 'failed';
+          jobs.push({
+            documentId: manualDocumentId,
+            productManualId: manual.id,
+            documentType: 'manual',
+            status: st,
+            jobRow: existing,
+            isPdf: true,
+          });
+          continue;
         }
-        if (st === 'dispatched') anyDispatched = true;
-        if (st === 'failed' || st === 'skipped') anyFailed = st === 'failed';
-        jobs.push({
-          documentId: manualDocumentId,
-          productManualId: manual.id,
-          documentType: 'manual',
-          status: st,
-          jobRow: existing,
-          isPdf: true,
-        });
-        continue;
       }
     }
 
@@ -412,26 +513,25 @@ export async function dispatchPrintBundle(
           status = 'fallback_browser';
           anyFallback = true;
           pushManualFallback(browserFallbackDocs, manual, false);
-        } else if (!profile || profile.vendor !== 'printnode' || !printNodeConfigured) {
-          status = 'fallback_browser';
-          anyFallback = true;
-          pushManualFallback(browserFallbackDocs, manual, true);
         } else {
-          const pn = await deps.dispatchPrintNodePdf({
-            printerExternalId: profile.external_id,
+          const attempt = await attemptPdfDispatch({
+            profile,
+            printNodeConfigured,
+            agentConfigured,
+            documentType: 'manual',
             title: `manual · ${manual.displayName}`,
             pdfBase64: loaded.bytes.toString('base64'),
             source: 'cycleforge.pack-bundle.manual',
+            deps,
           });
-          if (pn.ok && pn.dispatched) {
-            status = 'dispatched';
-            printnodeJobId = pn.jobId ?? null;
-            anyDispatched = true;
-          } else {
-            status = 'fallback_browser';
-            error = pn.error;
+          status = attempt.status;
+          error = attempt.error;
+          printnodeJobId = attempt.printnodeJobId;
+          if (attempt.fallback) {
             anyFallback = true;
             pushManualFallback(browserFallbackDocs, manual, true);
+          } else {
+            anyDispatched = true;
           }
         }
       }

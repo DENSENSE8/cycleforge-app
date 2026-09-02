@@ -43,6 +43,7 @@ import {
   HEADER_ICON_WRAP,
   TOP_CHROME_ICON_FACE,
 } from './header-shell';
+import { useSilentScanSession } from './useSilentScanSession';
 
 function toPageNav(item: SidebarNavItem): SidebarPageNav {
   const page = getSidebarPageNav(item.id);
@@ -58,6 +59,10 @@ export function HeaderRecentsSwitcher() {
   const { pageId, childId } = useActiveSidebarChild();
   const navigate = useSidebarChildNav();
   const { recents: recentPageRefs, pushRecent } = useRecentPages();
+  // Keep the hook mounted so a stale Turbopack graph that still calls it
+  // resolves; session rows are omitted while the stub returns null/empty.
+  const { session: _silentSession, recent: _silentRecent, loadRecent } =
+    useSilentScanSession();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -68,7 +73,14 @@ export function HeaderRecentsSwitcher() {
     pushRecent(pageId, childId);
   }, [pageId, childId, pushRecent]);
 
-  const navItems = useOrgNavItems({ permissions });
+  useEffect(() => {
+    void loadRecent();
+  }, [loadRecent]);
+
+  const navItems = useOrgNavItems({
+    permissions,
+    organizationEnvironment: user?.organizationEnvironment ?? null,
+  });
   const pages = useMemo(
     () => navItems.map(toPageNav).map((page) => filterPageChildren(page, permissions)),
     [navItems, permissions],

@@ -5,6 +5,7 @@ import { ShippedOrder } from '@/lib/neon/orders-queries';
 import { useSkuIdentity } from '@/hooks/useSkuIdentity';
 import { useExternalItemUrl } from '@/hooks/useExternalItemUrl';
 import { ContextualManualLinkRow } from '@/components/shipped/details-panel/blocks/ContextualManualLinkRow';
+import { IntakeManualLinkBlock } from '@/components/shipped/IntakeManualLinkBlock';
 import { FnskuCatalogInfoPanel } from '@/components/fba/FnskuCatalogInfoPanel';
 import { getFnskuCatalogValue, isFnskuCatalogContext } from '@/utils/fnsku-catalog';
 import { CopyChip } from '@/components/ui/CopyChip';
@@ -135,6 +136,13 @@ export function ProductDetailsSection({
               allowEmbeddedItemNumberInput={false}
               embedded
             />
+            {shipped.sku?.trim() ? (
+              <IntakeManualLinkBlock
+                sku={shipped.sku}
+                productTitle={shipped.product_title ?? undefined}
+                orderId={shipped.order_id ?? undefined}
+              />
+            ) : null}
           </div>
         ) : (
           <p className="text-sm font-medium text-text-faint">No item number</p>

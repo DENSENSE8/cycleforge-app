@@ -10,7 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Camera, ExternalLink, History, MapPin } from '@/components/Icons';
+import { Camera, ExternalLink, FileText, History, MapPin } from '@/components/Icons';
 import {
   buildSectionTabs,
   StationPanelRoot,
@@ -25,7 +25,7 @@ import { useOrderPackChecklist } from '@/hooks/useOrderPackChecklist';
 import { usePackingPolicy } from '@/hooks/usePackingPolicy';
 import type { PackActiveOrderPane } from '@/components/packer/usePackerOrderPane';
 import { PackOrderIdentity } from '@/components/packer/PackOrderIdentity';
-import { PackPapersStatusCard } from '@/components/packer/PackPapersStatusCard';
+import { PackDocumentsLeaf } from '@/components/packer/PackDocumentsLeaf';
 import { UnitPackPhotoPeek } from '@/components/packer/UnitPackPhotoPeek';
 import { StationContextBar } from '@/components/station/entity-context';
 import {
@@ -42,7 +42,7 @@ import { buildPackDisplayIndexRows } from '@/components/packer/pack-display-inde
 import { packListingIdentity } from '@/components/packer/pack-listing-identity';
 
 /** Scan/pack Displays only — no Ticket · Support hubs. */
-type PackDisplayTab = 'photos' | 'timeline' | 'listings';
+type PackDisplayTab = 'photos' | 'timeline' | 'locations' | 'listings' | 'documents';
 
 /** Displays nav: closed is `null`; open is the Root Index or a content leaf. */
 type PackDisplayNav = typeof STATION_DISPLAY_INDEX | PackDisplayTab;
@@ -127,6 +127,20 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
     () =>
       buildSectionTabs([
         {
+          id: 'documents',
+          label: 'Documents',
+          icon: FileText,
+          visible: packOrderId != null,
+          content: packOrderId != null ? (
+            <PackDocumentsLeaf
+              orderRowId={packOrderId}
+              orderId={orderId}
+              sku={activeOrder.sku}
+              productTitle={activeOrder.productTitle}
+            />
+          ) : null,
+        },
+        {
           id: 'photos',
           label: 'Photos',
           icon: Camera,
@@ -182,13 +196,18 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
       ]),
     [
       activeOrder.serialUnitId,
+      activeOrder.sku,
+      activeOrder.productTitle,
       hasTimelineTab,
       orderId,
+      packOrderId,
       photosInDisplays,
       timelineSerials,
       tracking,
       listingIdentity.listingLinks,
       listingLink,
+      placement,
+      closePackDisplays,
     ],
   );
 
@@ -264,12 +283,8 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
                 reserveScrollClearance={false}
                 reserveIdentityClearance={false}
                 bodyGap="none"
-                // Print-bundle status is action feedback (Unbox feedback slot),
-                // never an advisory strip between identity and the checklist.
-                // Rollup lives on Displays → Timeline subtitle — not a centre band.
-                feedback={
-                  <PackPapersStatusCard orderRowId={activeOrder.orderRowId} />
-                }
+                // Documents + print status live on Displays → Documents (QC grain).
+                // Centre is checklist / UNIT peek only — never label trays or PACK PAPERS.
               >
                 <div className={STATION_SCAN_WELL_CLASS}>
                 {isUnitScan ? (

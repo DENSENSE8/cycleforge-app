@@ -24,7 +24,18 @@ export const PACK_WORKSPACE_TAB_LABEL: Record<PackWorkspaceTab, string> = {
   history: 'History',
 };
 
-const VALID: ReadonlySet<string> = new Set(['queue', 'history']);
+/**
+ * Band-1 order for the Pack desk chrome — Queue leftmost on every mount,
+ * including when no packer is assigned (`packedBy` / staff filter irrelevant).
+ * History sits right of Queue; both are always drawn (never hide Queue as an
+ * unlabeled default body).
+ */
+export const PACK_WORKSPACE_TABS: readonly PackWorkspaceTab[] = [
+  'queue',
+  'history',
+] as const;
+
+const VALID: ReadonlySet<string> = new Set(PACK_WORKSPACE_TABS);
 
 /**
  * Raw-string form of {@link getPackWorkspaceTabFromSearch}, for callers that hold

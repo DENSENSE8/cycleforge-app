@@ -20,6 +20,15 @@ export function buildPackDisplayIndexRows(
   signals: PackDisplayIndexSignals,
 ): DisplayIndexRow[] {
   const rows: DisplayIndexRow[] = [];
+  if (signals.hasPlaceableOrder) {
+    rows.push({
+      id: 'documents',
+      label: 'Documents',
+      subtitle: 'Labels · slips · manuals',
+      tone: 'neutral',
+      group: 'assets',
+    });
+  }
   if (signals.photosVisible) {
     rows.push({
       id: 'photos',

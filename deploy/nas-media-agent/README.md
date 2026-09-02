@@ -87,10 +87,68 @@ DELETE /file/:root/:path*
 GET    /thumb/:root/:path*?w=320
 POST   /archive
 POST   /test-folder
+POST   /print
 ```
 
 `/thumb` uses `sharp` when available. If `sharp` is missing on the host, it falls
 back to returning the original image.
+
+## Pack print (`POST /print`)
+
+Cycle Forge pack-confirm pushes PDFs here (same `x-agent-token` as file writes).
+The agent shells macOS/Linux CUPS `lp` — USB thermals and LAN lasers must be
+installed as printers **on this Mac** (the agent host), not only on a packing
+Chrome.
+
+Env (pick one or both):
+
+```sh
+PRINT_QUEUE_LABEL="YXWL_CTP800BD"          # 4×6 shipping labels
+PRINT_QUEUE_PAPER="Canon_PRO_200S_series"  # letter slips + manuals
+```
+
+If only one is set, every `documentType` uses that queue (Canon-only smoke).
+
+```sh
+curl -X POST -H "x-agent-token: $TOKEN" -H "content-type: application/json" \
+  --data-binary @- \
+  "http://127.0.0.1:8787/print" <<'EOF'
+{
+  "title": "shipping_label · order 42",
+  "documentType": "shipping_label",
+  "pdfBase64": "<base64 pdf>"
+}
+EOF
+```
+
+Optional body field `queue` overrides the type map but must be one of the
+configured env queues. `GET /health` lists CUPS printers (`lpstat -a`) and the
+configured queue env (no token required on `/health`).
+
+Preflight on the agent Mac:
+
+```sh
+lpstat -p -a
+printf 'Cycle Forge print smoke\n' | lp -d Canon_PRO_200S_series -t 'smoke'
+```
+
+### Packing Chrome loopback
+
+When Cycle Forge (Vercel / remote Next) cannot reach this Mac’s agent over
+`NAS_AGENT_URL` (public `_agent` has no `/print`), the packing browser on **this
+Mac** posts to `http://127.0.0.1:8787/print` after a `fallback_browser` response.
+
+```sh
+NAS_AGENT_ALLOW_LOOPBACK_PRINT=1   # skip x-agent-token for loopback /print only
+# Optional explicit allowlist (defaults also cover *.app.cycleforge.ai):
+# NAS_AGENT_PRINT_CORS_ORIGINS=https://usav.app.cycleforge.ai,http://localhost:3050
+```
+
+`GET /health` and `POST /print` answer CORS for those origins so the Pack page
+can probe + dispatch without a browser print dialog.
+
+Keep the agent auto-started (launchd / Login Items) so pack scans do not fall
+back to the browser print dialog when the tunnel is up.
 
 ## Archive Payload
 

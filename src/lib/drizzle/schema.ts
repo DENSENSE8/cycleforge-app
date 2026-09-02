@@ -3652,12 +3652,14 @@ export const stationCommandAliases = pgTable('station_command_aliases', {
 /**
  * printer_profiles — targets for /api/print/dispatch (2026-05-14).
  * One row per physical printer with vendor + external dispatcher id +
- * optional default label class (carton | product | bin).
+ * optional default label class (carton | product | bin | unit | outbound).
+ * vendor: printnode | loftware | agent (NAS media agent / CUPS).
  */
 export const printerProfiles = pgTable('printer_profiles', {
   id: serial('id').primaryKey(),
   name: text('name').notNull(),
   externalId: text('external_id').notNull(),
+  /** printnode | loftware | agent */
   vendor: text('vendor').notNull().default('printnode'),
   /** carton | product | bin | unit | outbound (PDF docs) | null (generic). */
   defaultFor: text('default_for'),
@@ -4030,6 +4032,7 @@ export const organizations = pgTable('organizations', {
   name: text('name').notNull(),
   plan: text('plan').notNull().default('trial'),
   status: text('status').notNull().default('active'),
+  environment: text('environment').notNull().default('customer'),
   stripeCustomerId: text('stripe_customer_id'),
   stripeSubscriptionId: text('stripe_subscription_id'),
   // Phase F1: the org's billing/notification address (persisted at signup) —

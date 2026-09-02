@@ -7,6 +7,7 @@ import { HorizontalButtonSlider, type HorizontalSliderItem } from '@/components/
 import { ConditionPills } from '@/components/receiving/workspace/ConditionPills';
 import { normalizeCondition } from '@/components/tech/StationConditionEditor';
 import { SearchableSelectField } from '@/design-system/components';
+import { IntakeManualLinkBlock } from '@/components/shipped/IntakeManualLinkBlock';
 import { Button, FlushTerminalFooter, IconButton, TextField } from '@/design-system/primitives';
 import { usePlatformCatalog, useReceivingTypeCatalog } from '@/hooks/useCatalog';
 import { parseTrackingPaste } from '@/lib/receiving/tracking-paste';
@@ -400,6 +401,13 @@ export function ShippedIntakeForm({
               mono
               appearance="flush"
             />
+            <div className="px-3 py-2">
+              <IntakeManualLinkBlock
+                sku={replacementData.sku}
+                productTitle={replacementData.product_title}
+                orderId={replacementData.order_id}
+              />
+            </div>
           </div>
         ) : (
           <div className="divide-y divide-border-hairline">
@@ -476,6 +484,13 @@ export function ShippedIntakeForm({
               mono
               appearance="flush"
             />
+            <div className="px-3 py-2">
+              <IntakeManualLinkBlock
+                sku={addOrderData.sku}
+                productTitle={addOrderData.product_title}
+                orderId={addOrderData.order_id}
+              />
+            </div>
           </div>
         )}
       </div>

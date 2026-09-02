@@ -19,6 +19,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { getSyncCursor, updateSyncCursor } from '@/lib/sync-cursors';
 import { ingestPurchase } from './ingest-purchase';
+import { applyAdapterInjection } from '@/lib/qa/adapter-injection';
 import {
   fetchBuyerPurchaseOrders,
   type BuyerAccountRef,
@@ -41,6 +42,8 @@ export interface SyncEbayPurchasesDeps {
   getCursor: (resource: string) => Promise<Date | null>;
   setCursor: (resource: string, at: Date) => Promise<void>;
   now: () => number;
+  /** QA failure injection at the adapter boundary. Omitted in unit tests. */
+  applyInjection?: (orgId: OrgId) => Promise<void>;
 }
 
 async function defaultListBuyerAccounts(orgId: OrgId): Promise<BuyerAccountRef[]> {
@@ -65,6 +68,7 @@ const defaultDeps: SyncEbayPurchasesDeps = {
   getCursor: getSyncCursor,
   setCursor: updateSyncCursor,
   now: () => Date.now(),
+  applyInjection: (orgId) => applyAdapterInjection(orgId, 'ebay'),
 };
 
 function msg(e: unknown): string {
@@ -80,7 +84,9 @@ function msg(e: unknown): string {
 export async function syncEbayPurchasesToReceiving(
   orgId: OrgId,
   deps: SyncEbayPurchasesDeps = defaultDeps,
+  opts: { preview?: boolean } = {},
 ): Promise<SyncEbayPurchasesResult> {
+  await deps.applyInjection?.(orgId);
   const accounts = await deps.listBuyerAccounts(orgId);
   let linesFetched = 0;
   let ingested = 0;
@@ -124,6 +130,7 @@ export async function syncEbayPurchasesToReceiving(
           vendorOrSellerName: line.vendorOrSellerName ?? line.sellerUsername ?? null,
           trackingNumber: line.trackingNumber ?? null,
           carrierCode: line.carrierCode ?? null,
+          preview: opts.preview === true,
         });
         ingested += 1;
         if (res.created) created += 1;
@@ -133,11 +140,14 @@ export async function syncEbayPurchasesToReceiving(
     }
 
     // Advance the cursor only after a successful fetch (including empty pulls).
-    // Failed fetches `continue` above without moving `since`.
-    try {
-      await deps.setCursor(resource, new Date(deps.now()));
-    } catch (e) {
-      errors.push(`${account.accountName}: cursor update failed: ${msg(e)}`);
+    // Failed fetches `continue` above without moving `since`. Preview never
+    // moves the cursor — it is a read of the same fetch+normalize path.
+    if (!opts.preview) {
+      try {
+        await deps.setCursor(resource, new Date(deps.now()));
+      } catch (e) {
+        errors.push(`${account.accountName}: cursor update failed: ${msg(e)}`);
+      }
     }
   }
 

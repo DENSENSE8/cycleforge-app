@@ -13,6 +13,7 @@ import {
 } from '@/lib/sidebar-navigation';
 import { useOrgNavItems } from '@/hooks/useOrgNavItems';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
+import { useAuth } from '@/contexts/AuthContext';
 import { prefetchNavData } from '@/lib/nav/nav-data-prefetch';
 import { hydrateSpineSlots, SPINE_STATIONS_SLOT_ID } from '@/lib/nav/spine-slots';
 import { useActiveSidebarChild } from './useActiveSidebarChild';
@@ -47,7 +48,12 @@ export function MasterNav({
 
   const [drillId, setDrillId] = useState<string | null>(null);
 
-  const navItems = useOrgNavItems({ permissions, mobileRestricted });
+  const { user } = useAuth();
+  const navItems = useOrgNavItems({
+    permissions,
+    mobileRestricted,
+    organizationEnvironment: user?.organizationEnvironment ?? null,
+  });
   const pages = useMemo(
     () =>
       navItems

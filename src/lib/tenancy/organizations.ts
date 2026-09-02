@@ -55,6 +55,9 @@ interface OrgDbRow {
   deleted_at: Date | null;
 }
 
+const ORG_SELECT = `id, slug, name, plan, status, stripe_customer_id, stripe_subscription_id,
+            settings, trial_ends_at, created_at, updated_at, deleted_at`;
+
 function mapRow(row: OrgDbRow): OrganizationRow {
   return {
     id: row.id,
@@ -77,8 +80,7 @@ export async function getOrganization(orgId: OrgId): Promise<OrganizationRow | n
   if (cached && cached.expiresAt > Date.now()) return cached.org;
 
   const r = await pool.query<OrgDbRow>(
-    `SELECT id, slug, name, plan, status, stripe_customer_id, stripe_subscription_id,
-            settings, trial_ends_at, created_at, updated_at, deleted_at
+    `SELECT ${ORG_SELECT}
        FROM organizations
       WHERE id = $1
       LIMIT 1`,
@@ -100,8 +102,7 @@ export async function getOrganizationBySlug(slug: string): Promise<OrganizationR
   }
 
   const r = await pool.query<OrgDbRow>(
-    `SELECT id, slug, name, plan, status, stripe_customer_id, stripe_subscription_id,
-            settings, trial_ends_at, created_at, updated_at, deleted_at
+    `SELECT ${ORG_SELECT}
        FROM organizations
       WHERE slug = $1
       LIMIT 1`,
@@ -139,8 +140,7 @@ export async function createOrganization(input: CreateOrganizationInput): Promis
   const r = await pool.query<OrgDbRow>(
     `INSERT INTO organizations (slug, name, plan, settings, trial_ends_at)
      VALUES ($1, $2, $3, $4::jsonb, $5)
-     RETURNING id, slug, name, plan, status, stripe_customer_id, stripe_subscription_id,
-               settings, trial_ends_at, created_at, updated_at, deleted_at`,
+     RETURNING ${ORG_SELECT}`,
     [input.slug, input.name, input.plan ?? 'trial', settings, input.trialEndsAt ?? null],
   );
   const org = mapRow(r.rows[0]!);

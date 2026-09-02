@@ -67,6 +67,7 @@ function fakeJob(
 
 interface Captured {
   printCalls: unknown[];
+  agentCalls: unknown[];
   recorded: unknown[];
 }
 
@@ -77,11 +78,13 @@ function fakes(opts: {
   existingByEvent?: Record<string, DocumentPrintJobRow>;
   printer?: { id: number; name: string; external_id: string; vendor: string } | null;
   printNodeOk?: boolean;
+  agentOk?: boolean;
   bytesNull?: boolean;
   manualBytesNull?: boolean;
   printNodeConfigured?: boolean;
+  agentConfigured?: boolean;
 }) {
-  const cap: Captured = { printCalls: [], recorded: [] };
+  const cap: Captured = { printCalls: [], agentCalls: [], recorded: [] };
   const existing = { ...(opts.existingByEvent ?? {}) };
   const deps: PrintBundleDeps = {
     listDocumentsForOrder: async () => opts.orderDocs ?? [],
@@ -110,6 +113,13 @@ function fakes(opts: {
       }
       return { ok: true, dispatched: true, jobId: 777 };
     },
+    dispatchAgentPdf: async (input) => {
+      cap.agentCalls.push(input);
+      if (opts.agentOk === false) {
+        return { ok: false, dispatched: false, error: 'agent boom' };
+      }
+      return { ok: true, dispatched: true, jobId: 'Canon-1', queue: 'Canon_PRO_200S_series' };
+    },
     recordDocumentPrintJob: async (input) => {
       cap.recorded.push(input);
       const row = fakeJob({
@@ -130,6 +140,7 @@ function fakes(opts: {
         ? { id: 3, name: 'Bench laser', external_id: '55', vendor: 'printnode' }
         : opts.printer,
     isPrintNodeConfigured: () => opts.printNodeConfigured !== false,
+    isPrintAgentConfigured: () => opts.agentConfigured === true,
   };
   return { deps, cap };
 }
@@ -196,8 +207,68 @@ test('dispatchPrintBundle: no PrintNode → browser fallback includes manuals', 
   const out = await dispatchPrintBundle(ORG, { orderId: 42, packerLogId: 9 }, deps);
   assert.equal(out.status, 'fallback_browser');
   assert.equal(cap.printCalls.length, 0);
+  assert.equal(cap.agentCalls.length, 0);
   assert.ok(out.browserFallbackDocs.some((d) => d.kind === 'outbound' && d.documentId === 10));
   assert.ok(out.browserFallbackDocs.some((d) => d.kind === 'manual' && d.productManualId === 5));
+});
+
+test('dispatchPrintBundle: agent happy path dispatches label + slip + manual', async () => {
+  const { deps, cap } = fakes({
+    orderDocs: [doc(10, 'shipping_label'), doc(11, 'packing_slip')],
+    manuals: [manual(5)],
+    printer: {
+      id: 7,
+      name: 'Office NAS agent',
+      external_id: 'Canon_PRO_200S_series',
+      vendor: 'agent',
+    },
+    agentConfigured: true,
+    printNodeConfigured: false,
+  });
+  const out = await dispatchPrintBundle(ORG, { orderId: 42, packerLogId: 9 }, deps);
+  assert.equal(out.status, 'dispatched');
+  assert.equal(cap.agentCalls.length, 3);
+  assert.equal(cap.printCalls.length, 0);
+  assert.equal(
+    (cap.agentCalls[0] as { documentType: string }).documentType,
+    'shipping_label',
+  );
+});
+
+test('dispatchPrintBundle: agent failure → browser fallback', async () => {
+  const { deps, cap } = fakes({
+    orderDocs: [doc(10, 'shipping_label')],
+    printer: {
+      id: 7,
+      name: 'Office NAS agent',
+      external_id: 'Canon_PRO_200S_series',
+      vendor: 'agent',
+    },
+    agentConfigured: true,
+    agentOk: false,
+    printNodeConfigured: false,
+  });
+  const out = await dispatchPrintBundle(ORG, { orderId: 42, packerLogId: 9 }, deps);
+  assert.equal(out.status, 'fallback_browser');
+  assert.equal(cap.agentCalls.length, 1);
+  assert.ok(out.browserFallbackDocs.some((d) => d.documentId === 10));
+});
+
+test('dispatchPrintBundle: agent vendor but agent not configured → browser fallback', async () => {
+  const { deps, cap } = fakes({
+    orderDocs: [doc(10, 'shipping_label')],
+    printer: {
+      id: 7,
+      name: 'Office NAS agent',
+      external_id: 'Canon_PRO_200S_series',
+      vendor: 'agent',
+    },
+    agentConfigured: false,
+    printNodeConfigured: false,
+  });
+  const out = await dispatchPrintBundle(ORG, { orderId: 42, packerLogId: 9 }, deps);
+  assert.equal(out.status, 'fallback_browser');
+  assert.equal(cap.agentCalls.length, 0);
 });
 
 test('dispatchPrintBundle: manual without bytes is skipped not failed', async () => {

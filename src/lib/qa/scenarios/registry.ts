@@ -1,0 +1,294 @@
+/**
+ * Named, deterministic QA scenarios — first-class registry.
+ *
+ * The provisioner still seeds the live fixture rows. This registry is the
+ * catalog the console and Playwright specs should point at, instead of
+ * embedding scenario intent inside one large script.
+ */
+
+import {
+  QA_FIXTURE_ORDERS,
+  QA_FIXTURE_PO_NUMBER,
+  QA_FIXTURE_TRACKING,
+} from '@/lib/tenancy/qa-org';
+
+export type QaScenarioFamily = 'ebay' | 'zoho' | 'shipping' | 'webhooks' | 'fixtures';
+
+export interface QaScenario {
+  id: string;
+  family: QaScenarioFamily;
+  title: string;
+  description: string;
+  /** Seed identifiers already present after `pnpm provision:qa-org`. */
+  seed: Record<string, string | number | boolean>;
+  expectedInternalState: string[];
+  expectedProviderCalls: string[];
+  expectedAuditEvents: string[];
+  expectedJobs: string[];
+  reset: 'none' | 'reseed-fixtures' | 'reseed-demo' | 'clear-injections';
+  /** Live execute in the console? Phase 1 only lists + reset-linked ones. */
+  executable: boolean;
+}
+
+export const QA_SCENARIOS: readonly QaScenario[] = [
+  {
+    id: 'ebay.successful-order-import',
+    family: 'ebay',
+    title: 'Successful order import',
+    description: 'A sandbox seller order normalizes into an internal order + shipment.',
+    seed: { environment: 'SANDBOX' },
+    expectedInternalState: ['internal order created', 'shipment record created'],
+    expectedProviderCalls: ['eBay Sandbox GetOrders / fulfillments'],
+    expectedAuditEvents: ['receiving.inbound.import or orders.import'],
+    expectedJobs: [],
+    reset: 'none',
+    executable: false,
+  },
+  {
+    id: 'ebay.duplicate-order',
+    family: 'ebay',
+    title: 'Duplicate order',
+    description: 'Re-importing the same provider order id is a no-op (idempotent).',
+    seed: {},
+    expectedInternalState: ['no second order row'],
+    expectedProviderCalls: ['eBay Sandbox GetOrders'],
+    expectedAuditEvents: [],
+    expectedJobs: [],
+    reset: 'none',
+    executable: false,
+  },
+  {
+    id: 'ebay.expired-token',
+    family: 'ebay',
+    title: 'Expired OAuth token',
+    description: 'Health check and import fail with a re-authorization class, not a generic 500.',
+    seed: {},
+    expectedInternalState: ['no writes'],
+    expectedProviderCalls: ['token refresh → rejected'],
+    expectedAuditEvents: [],
+    expectedJobs: [],
+    reset: 'clear-injections',
+    executable: false,
+  },
+  {
+    id: 'ebay.missing-required-field',
+    family: 'ebay',
+    title: 'Missing required field',
+    description: 'A payload that fails Zod/normalization is skipped with a recorded error class.',
+    seed: {},
+    expectedInternalState: ['order skipped, not created'],
+    expectedProviderCalls: ['eBay Sandbox GetOrders'],
+    expectedAuditEvents: [],
+    expectedJobs: [],
+    reset: 'none',
+    executable: false,
+  },
+  {
+    id: 'ebay.provider-rate-limit',
+    family: 'ebay',
+    title: 'Provider rate limit',
+    description: 'HTTP 429 with Retry-After is classified as ProviderRateLimited.',
+    seed: {},
+    expectedInternalState: ['no writes'],
+    expectedProviderCalls: ['eBay Sandbox API → 429'],
+    expectedAuditEvents: [],
+    expectedJobs: [],
+    reset: 'clear-injections',
+    executable: false,
+  },
+  {
+    id: 'ebay.provider-500',
+    family: 'ebay',
+    title: 'Provider 500 response',
+    description: 'A 500 from the sandbox is retried/classified, not written as a local order.',
+    seed: {},
+    expectedInternalState: ['no writes'],
+    expectedProviderCalls: ['eBay Sandbox API → 500'],
+    expectedAuditEvents: [],
+    expectedJobs: [],
+    reset: 'clear-injections',
+    executable: false,
+  },
+  {
+    id: 'zoho.new-purchase-order',
+    family: 'zoho',
+    title: 'New purchase order',
+    description: 'A Zoho PO appears on Incoming as EXPECTED with quantity_received = 0.',
+    seed: { poNumber: QA_FIXTURE_PO_NUMBER },
+    expectedInternalState: ['incoming PO row present'],
+    expectedProviderCalls: ['Zoho Inventory PO get/list'],
+    expectedAuditEvents: [],
+    expectedJobs: [],
+    reset: 'reseed-fixtures',
+    executable: false,
+  },
+  {
+    id: 'zoho.changed-line-quantity',
+    family: 'zoho',
+    title: 'Changed line quantity',
+    description: 'A quantity edit on the provider PO updates the local line, not a duplicate.',
+    seed: {},
+    expectedInternalState: ['same line id, new qty'],
+    expectedProviderCalls: ['Zoho Inventory PO get'],
+    expectedAuditEvents: [],
+    expectedJobs: [],
+    reset: 'none',
+    executable: false,
+  },
+  {
+    id: 'zoho.deleted-item',
+    family: 'zoho',
+    title: 'Deleted item',
+    description: 'A deleted Zoho line is marked locally; warehouse receipts are not invented.',
+    seed: {},
+    expectedInternalState: ['line cancelled or hidden'],
+    expectedProviderCalls: ['Zoho webhook or PO get'],
+    expectedAuditEvents: [],
+    expectedJobs: [],
+    reset: 'none',
+    executable: false,
+  },
+  {
+    id: 'zoho.duplicate-webhook',
+    family: 'webhooks',
+    title: 'Duplicate webhook',
+    description: 'The same Zoho event_id is processed once (zoho_webhook_events idempotency).',
+    seed: {},
+    expectedInternalState: ['second delivery is a no-op'],
+    expectedProviderCalls: [],
+    expectedAuditEvents: [],
+    expectedJobs: [],
+    reset: 'none',
+    executable: false,
+  },
+  {
+    id: 'zoho.out-of-order-webhook',
+    family: 'webhooks',
+    title: 'Out-of-order webhook',
+    description: 'An older event arriving after a newer one does not rewind local state.',
+    seed: {},
+    expectedInternalState: ['latest provider version wins'],
+    expectedProviderCalls: [],
+    expectedAuditEvents: [],
+    expectedJobs: [],
+    reset: 'none',
+    executable: false,
+  },
+  {
+    id: 'shipping.successful-label-purchase',
+    family: 'shipping',
+    title: 'Successful label purchase',
+    description: 'Sandbox/mock label buy only — never a live paid postage action from this console.',
+    seed: {},
+    expectedInternalState: ['label stored against shipment'],
+    expectedProviderCalls: ['carrier sandbox or mock'],
+    expectedAuditEvents: [],
+    expectedJobs: [],
+    reset: 'none',
+    executable: false,
+  },
+  {
+    id: 'shipping.invalid-address',
+    family: 'shipping',
+    title: 'Invalid address',
+    description: 'Address validation failure does not purchase a label.',
+    seed: {},
+    expectedInternalState: ['no label, no charge'],
+    expectedProviderCalls: ['rate shop / validate'],
+    expectedAuditEvents: [],
+    expectedJobs: [],
+    reset: 'none',
+    executable: false,
+  },
+  {
+    id: 'shipping.carrier-unavailable',
+    family: 'shipping',
+    title: 'Carrier unavailable',
+    description: 'Provider outage is classified; the console does not buy a live label as a fallback.',
+    seed: {},
+    expectedInternalState: ['no label'],
+    expectedProviderCalls: ['carrier sandbox → error'],
+    expectedAuditEvents: [],
+    expectedJobs: [],
+    reset: 'clear-injections',
+    executable: false,
+  },
+  {
+    id: 'shipping.label-purchase-timeout',
+    family: 'shipping',
+    title: 'Label purchase timeout',
+    description: 'A hung buy is timed out; idempotency key prevents a double purchase on retry.',
+    seed: {},
+    expectedInternalState: ['no second label'],
+    expectedProviderCalls: ['carrier sandbox timeout'],
+    expectedAuditEvents: [],
+    expectedJobs: [],
+    reset: 'clear-injections',
+    executable: false,
+  },
+  {
+    id: 'shipping.duplicate-idempotency-key',
+    family: 'shipping',
+    title: 'Duplicate idempotency key',
+    description: 'Replaying a label buy with the same key returns the original result.',
+    seed: {},
+    expectedInternalState: ['one label row'],
+    expectedProviderCalls: ['at most one paid/sandbox buy'],
+    expectedAuditEvents: [],
+    expectedJobs: [],
+    reset: 'none',
+    executable: false,
+  },
+  {
+    id: 'fixtures.e2e-outbound',
+    family: 'fixtures',
+    title: 'E2E outbound orders',
+    description: 'Deterministic QA-TEST-* orders used by Playwright on the QA org.',
+    seed: {
+      awaiting: QA_FIXTURE_ORDERS.awaiting,
+      pending: QA_FIXTURE_ORDERS.pending,
+      packed: QA_FIXTURE_ORDERS.packed,
+    },
+    expectedInternalState: ['awaiting / pending / packed lanes non-empty'],
+    expectedProviderCalls: [],
+    expectedAuditEvents: [],
+    expectedJobs: [],
+    reset: 'reseed-fixtures',
+    executable: true,
+  },
+  {
+    id: 'fixtures.receiving-carton',
+    family: 'fixtures',
+    title: 'Receiving carton',
+    description: 'Matched receiving PO scanned via the mock tracking fixture.',
+    seed: { tracking: QA_FIXTURE_TRACKING },
+    expectedInternalState: ['receiving shipment + lines present'],
+    expectedProviderCalls: [],
+    expectedAuditEvents: [],
+    expectedJobs: [],
+    reset: 'reseed-fixtures',
+    executable: true,
+  },
+  {
+    id: 'fixtures.demo-volume',
+    family: 'fixtures',
+    title: 'Demo outbound volume',
+    description: 'QA-DEMO-ORD-* rows that make desks look like a running warehouse.',
+    seed: { prefix: 'QA-DEMO-ORD-' },
+    expectedInternalState: ['awaiting/pending/packed/shipped demo counts'],
+    expectedProviderCalls: [],
+    expectedAuditEvents: [],
+    expectedJobs: [],
+    reset: 'reseed-demo',
+    executable: true,
+  },
+] as const;
+
+export function getQaScenario(id: string): QaScenario | undefined {
+  return QA_SCENARIOS.find((s) => s.id === id);
+}
+
+export function listQaScenarios(family?: QaScenarioFamily): QaScenario[] {
+  if (!family) return [...QA_SCENARIOS];
+  return QA_SCENARIOS.filter((s) => s.family === family);
+}

@@ -10,8 +10,9 @@ import pool from '@/lib/db';
  *
  * JIT pack documents Phase 1–2 — Print-on-Pack-Confirm / reprint.
  * Resolves shipping_label + packing_slip + assigned product_manuals,
- * dispatches via PrintNode pdf_base64 when an outbound printer profile exists;
- * otherwise returns browserFallbackDocs for the Station iframe path.
+ * dispatches via NAS media agent (`vendor=agent`) or PrintNode pdf_base64 when
+ * an outbound printer profile exists; otherwise returns browserFallbackDocs
+ * for the Station iframe path.
  * Never re-buys postage.
  *
  * Body: { packerLogId?: number, shipmentId?: number, reprint?: boolean }

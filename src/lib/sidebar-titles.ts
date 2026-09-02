@@ -28,6 +28,7 @@ export const SIDEBAR_TITLES: Record<string, string> = {
   support: 'Support',
   'ai-chat': 'Chat',
   admin: 'Admin',
+  'qa-console': 'QA Console',
   'audit-log': 'Audit Log',
   settings: 'Settings',
 };

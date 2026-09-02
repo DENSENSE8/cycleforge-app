@@ -81,6 +81,12 @@ export interface IngestPurchaseInput {
   poDate?: string | null;
   expectedDeliveryDate?: string | null;
   rawPayload?: unknown;
+  /**
+   * When true, run the same validation + existing-row lookup as a real ingest
+   * and return would-create / would-update without writing. Used by the QA
+   * Console dry-run — not a separate fake implementation.
+   */
+  preview?: boolean;
 }
 
 export interface IngestPurchaseResult {
@@ -91,6 +97,7 @@ export interface IngestPurchaseResult {
   platformAccountId: number | null;
   sourceType: string;
   sourceOrderId: string;
+  preview?: boolean;
 }
 
 export interface IngestPurchaseDeps {
@@ -147,9 +154,12 @@ export async function ingestPurchase(
   return deps.withTx(orgId, async (client) => {
     // Serialize concurrent imports of the SAME external order so a first-time
     // order can't race two INSERTs into two spine rows. Transaction-scoped.
-    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
-      `inbound:${orgId}:${sourceType}:${sourceOrderId}:${sourceLineItemId ?? ''}`,
-    ]);
+    // Preview skips the lock — it never writes.
+    if (!input.preview) {
+      await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+        `inbound:${orgId}:${sourceType}:${sourceOrderId}:${sourceLineItemId ?? ''}`,
+      ]);
+    }
 
     // Resolve the buyer/storefront account id from its label (platform slug === source).
     let platformAccountId: number | null = null;
@@ -166,25 +176,27 @@ export async function ingestPurchase(
       platformAccountId = acct.rows[0]?.id ?? null;
     }
 
-    // Reconcile mirror snapshot (idempotent on org+source+order).
-    await deps.upsertInboundMirror(
-      orgId,
-      {
-        sourceType,
-        sourceOrderId,
-        platformAccountId,
-        orderNumber: input.orderNumber ?? null,
-        vendorOrSellerName: input.vendorOrSellerName ?? input.sellerUsername ?? null,
-        status: input.status ?? input.purchaseOrderStatus ?? null,
-        paymentStatus: input.paymentStatus ?? null,
-        poDate: input.poDate ?? null,
-        expectedDeliveryDate: input.expectedDeliveryDate ?? null,
-        trackingNumber: input.trackingNumber ?? null,
-        carrierCode: input.carrierCode ?? null,
-        rawPayload: input.rawPayload ?? null,
-      },
-      { query: (async (_o: OrgId, sql: string, params?: ReadonlyArray<unknown>) => client.query(sql, params)) as never },
-    );
+    if (!input.preview) {
+      // Reconcile mirror snapshot (idempotent on org+source+order).
+      await deps.upsertInboundMirror(
+        orgId,
+        {
+          sourceType,
+          sourceOrderId,
+          platformAccountId,
+          orderNumber: input.orderNumber ?? null,
+          vendorOrSellerName: input.vendorOrSellerName ?? input.sellerUsername ?? null,
+          status: input.status ?? input.purchaseOrderStatus ?? null,
+          paymentStatus: input.paymentStatus ?? null,
+          poDate: input.poDate ?? null,
+          expectedDeliveryDate: input.expectedDeliveryDate ?? null,
+          trackingNumber: input.trackingNumber ?? null,
+          carrierCode: input.carrierCode ?? null,
+          rawPayload: input.rawPayload ?? null,
+        },
+        { query: (async (_o: OrgId, sql: string, params?: ReadonlyArray<unknown>) => client.query(sql, params)) as never },
+      );
+    }
 
     // Find the existing spine row for this identity (idempotent re-import).
     const existing = await client.query<{ receiving_line_id: number }>(
@@ -199,6 +211,17 @@ export async function ingestPurchase(
 
     let receivingLineId = existing.rows[0]?.receiving_line_id ?? null;
     const created = receivingLineId == null;
+
+    if (input.preview) {
+      return {
+        receivingLineId: receivingLineId ?? 0,
+        created,
+        platformAccountId,
+        sourceType,
+        sourceOrderId,
+        preview: true,
+      };
+    }
 
     const skuCatalogId =
       input.skuCatalogId != null && Number.isFinite(Number(input.skuCatalogId))
