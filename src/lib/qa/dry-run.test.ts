@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { summarizeDryRun, type DryRunPreview } from './dry-run';
+import { refuseExecuteReason } from './preview-import';
 
 test('summarizeDryRun matches the operator-facing preview shape', () => {
   const preview: DryRunPreview = {
@@ -24,4 +25,15 @@ test('summarizeDryRun matches the operator-facing preview shape', () => {
     'Would call:',
     '  eBay Sandbox API',
   ]);
+});
+
+test('refuseExecuteReason: seller sync is never an execute action', () => {
+  const msg = refuseExecuteReason('ebay.seller-sync', 'SANDBOX');
+  assert.ok(msg && /Preview only/.test(msg));
+});
+
+test('refuseExecuteReason: buyer execute needs SANDBOX eBay app', () => {
+  assert.equal(refuseExecuteReason('ebay.buyer-import', 'SANDBOX'), null);
+  assert.ok(refuseExecuteReason('ebay.buyer-import', 'PRODUCTION'));
+  assert.ok(refuseExecuteReason('ebay.buyer-import', null));
 });

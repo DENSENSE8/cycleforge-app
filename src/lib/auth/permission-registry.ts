@@ -260,7 +260,7 @@ export const PERMISSIONS = [
   { id: 'developer.qa_tools.execute',           category: 'developer', label: 'Execute QA Console actions' },
   { id: 'developer.qa_tools.destructive',       category: 'developer', label: 'Destructive QA actions (reset fixtures)', destructive: true, stepUp: true },
   { id: 'developer.qa_tools.connection_debug',  category: 'developer', label: 'Check connection health (live provider probe)' },
-  { id: 'developer.qa_tools.webhook_replay',    category: 'developer', label: 'Replay stored webhooks (application — not provider-authentic)' },
+  { id: 'developer.qa_tools.webhook_replay',    category: 'developer', label: 'Replay stored webhooks (application) or send a provider-authentic signed delivery' },
   { id: 'developer.qa_tools.fixture_reset',     category: 'developer', label: 'Reset QA fixtures', destructive: true, stepUp: true },
 ] as const satisfies ReadonlyArray<PermissionDef>;
 

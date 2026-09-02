@@ -163,7 +163,7 @@ async function upsertOrderFromEbayFulfillment(params: {
 export async function ingestRecentSellerOrders(
   accountName: string,
   orgId: string,
-  options?: { limit?: number },
+  options?: { limit?: number; preview?: boolean },
 ): Promise<{ fetched: number; created: number; updated: number; skipped: number; errors: string[] }> {
   const limit = Math.max(1, Math.min(options?.limit ?? RECENT_SELLER_INGEST_LIMIT, 50));
   const client = new EbayClient(accountName, orgId);
@@ -192,6 +192,22 @@ export async function ingestRecentSellerOrders(
   const list = Array.isArray(pageOrders) ? pageOrders : [];
   for (const ebayOrder of list) {
     try {
+      if (options?.preview) {
+        const orderId = String((ebayOrder as { orderId?: string } | null)?.orderId || '').trim();
+        if (!orderId) {
+          skipped += 1;
+          continue;
+        }
+        const existing = await pool.query(
+          `SELECT id FROM orders
+            WHERE account_source = $1 AND order_id = $2 AND organization_id = $3
+            LIMIT 1`,
+          [accountName, orderId, orgId],
+        );
+        if (existing.rows[0]) updated += 1;
+        else created += 1;
+        continue;
+      }
       const result = await upsertOrderFromEbayFulfillment({
         accountName,
         ebayOrder,

@@ -2,12 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHmac } from 'node:crypto';
 
-import { verifyZohoWebhookSignature } from './verify';
+import { signZohoWebhookBody, verifyZohoWebhookSignature } from './verify';
 
 const HEADER = 'x-zoho-webhook-signature';
 
 function sign(body: string, secret: string, encoding: 'hex' | 'base64' = 'hex'): string {
-  return createHmac('sha256', secret).update(Buffer.from(body, 'utf8')).digest(encoding);
+  return signZohoWebhookBody(body, secret, encoding);
 }
 
 function headersWith(sig: string): Headers {
@@ -51,6 +51,15 @@ test('falls back to ZOHO_WEBHOOK_SECRET when no per-org secret supplied', () => 
 test('missing signature header → fail (not throw)', () => {
   const res = verifyZohoWebhookSignature('{}', new Headers(), { secret: 's' });
   assert.equal(res.ok, false);
+});
+
+test('signZohoWebhookBody matches the verifier HMAC', () => {
+  const body = '{"event_id":"qa-1","event_type":"purchaseorder.updated"}';
+  const secret = 'org-secret';
+  const sig = signZohoWebhookBody(body, secret, 'hex');
+  const expected = createHmac('sha256', secret).update(Buffer.from(body, 'utf8')).digest('hex');
+  assert.equal(sig, expected);
+  assert.equal(verifyZohoWebhookSignature(body, headersWith(sig), { secret }).ok, true);
 });
 
 test('no secret available at all → fail closed', () => {

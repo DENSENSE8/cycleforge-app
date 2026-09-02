@@ -97,7 +97,7 @@ function modifyNonSecret(envelope: ZohoWebhookEnvelope): ZohoWebhookEnvelope {
   return next;
 }
 
-async function loadEnvelope(orgId: OrgId, eventId: string): Promise<EventRow> {
+export async function loadStoredWebhookEnvelope(orgId: OrgId, eventId: string): Promise<EventRow> {
   return withTenantTransaction(orgId, async (client) => {
     const r = await client.query<EventRow>(
       `SELECT event_id, event_type, object_id, event_time, received_at, processed_at,
@@ -126,7 +126,7 @@ export async function replayStoredWebhook(
     modifyNonSecretFields?: boolean;
   },
 ): Promise<WebhookReplayResult> {
-  const row = await loadEnvelope(orgId, input.eventId);
+  const row = await loadStoredWebhookEnvelope(orgId, input.eventId);
   let envelope = cloneEnvelope(row.raw_payload);
   if (input.modifyNonSecretFields) envelope = modifyNonSecret(envelope);
 

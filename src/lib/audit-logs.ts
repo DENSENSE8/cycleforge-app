@@ -673,6 +673,8 @@ export const AUDIT_ACTION = {
   QA_FIXTURE_RESET: 'qa.fixture_reset',
   QA_FAILURE_INJECT: 'qa.failure_inject',
   QA_WEBHOOK_REPLAY: 'qa.webhook_replay',
+  QA_WEBHOOK_AUTHENTIC: 'qa.webhook_authentic',
+  QA_IMPORT_EXECUTE: 'qa.import_execute',
   QA_SCENARIO_RUN: 'qa.scenario_run',
 } as const;
 

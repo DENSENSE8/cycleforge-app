@@ -28,16 +28,43 @@ export const QaFailureInjectionBody = z.object({
 
 export const QaWebhookReplayBody = z.object({
   eventId: z.string().min(1).max(200),
+  kind: z.enum(['application', 'provider_authentic', 'signature_mismatch']).default('application'),
   mode: z.enum(['once', 'twice', 'out_of_order']).default('once'),
   modifyNonSecretFields: z.boolean().optional(),
   /** Application replay is never presented as provider-authentic. */
-  acknowledgeApplicationReplay: z.literal(true),
+  acknowledgeApplicationReplay: z.boolean().optional(),
+  acknowledgeProviderAuthentic: z.boolean().optional(),
   idempotencyKey: z.string().min(8).max(128).optional(),
+}).superRefine((value, ctx) => {
+  if (value.kind === 'application' && value.acknowledgeApplicationReplay !== true) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'acknowledgeApplicationReplay must be true — this path is not provider-authentic',
+      path: ['acknowledgeApplicationReplay'],
+    });
+  }
+  if (value.kind === 'provider_authentic' && value.acknowledgeProviderAuthentic !== true) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'acknowledgeProviderAuthentic must be true',
+      path: ['acknowledgeProviderAuthentic'],
+    });
+  }
 });
 
 export const QaDryRunBody = z.object({
-  operation: z.enum(['ebay.buyer-import']),
+  operation: z.enum(['ebay.buyer-import', 'ebay.seller-sync']),
+  mode: z.enum(['preview', 'execute']).default('preview'),
+  confirmExecute: z.boolean().optional(),
   idempotencyKey: z.string().min(8).max(128).optional(),
+}).superRefine((value, ctx) => {
+  if (value.mode === 'execute' && value.confirmExecute !== true) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'confirmExecute must be true — preview is the default',
+      path: ['confirmExecute'],
+    });
+  }
 });
 
 export const QaJobTriggerBody = z.object({

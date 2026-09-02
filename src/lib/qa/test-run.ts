@@ -21,6 +21,8 @@ export type QaRunKind =
   | 'fixture_reseed'
   | 'failure_inject'
   | 'webhook_replay'
+  | 'webhook_authentic'
+  | 'import_execute'
   | 'job_control'
   | 'role_preview'
   | 'scenario';
