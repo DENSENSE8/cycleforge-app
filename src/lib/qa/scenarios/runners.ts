@@ -23,6 +23,9 @@ export type ScenarioHandlerId =
   | 'webhook-normalize-idempotency'
   | 'webhook-replay-twice'
   | 'webhook-replay-out-of-order'
+  | 'webhook-authentic-signature'
+  | 'zoho-qty-same-line'
+  | 'zoho-delete-missing-po'
   | 'refuse-live-label'
   | 'not-wired';
 
@@ -77,14 +80,19 @@ export const QA_SCENARIO_RUNNERS: Record<string, ScenarioRunnerDef> = {
     playwright: { spec: 'tests/e2e/incoming-ebay-zoho-dedup.spec.ts', project: 'qa-desktop' },
   },
   'zoho.changed-line-quantity': {
-    handler: 'not-wired',
-    suite: 'sandbox',
-    releaseRequired: false,
+    handler: 'zoho-qty-same-line',
+    suite: 'deterministic',
+    releaseRequired: true,
   },
   'zoho.deleted-item': {
-    handler: 'not-wired',
-    suite: 'sandbox',
+    handler: 'zoho-delete-missing-po',
+    suite: 'qa-org',
     releaseRequired: false,
+  },
+  'zoho.provider-authentic-signature': {
+    handler: 'webhook-authentic-signature',
+    suite: 'deterministic',
+    releaseRequired: true,
   },
   'zoho.duplicate-webhook': {
     handler: 'webhook-normalize-idempotency',

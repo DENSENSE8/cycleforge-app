@@ -24,6 +24,8 @@ test('deterministic suite is secret-free and non-empty', () => {
   assert.ok(ids.includes('ebay.missing-required-field'));
   assert.ok(ids.includes('zoho.duplicate-webhook'));
   assert.ok(ids.includes('shipping.successful-label-purchase'));
+  assert.ok(ids.includes('zoho.changed-line-quantity'));
+  assert.ok(ids.includes('zoho.provider-authentic-signature'));
   assert.ok(!ids.includes('ebay.successful-order-import'));
 });
 

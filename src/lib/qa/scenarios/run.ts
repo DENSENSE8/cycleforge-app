@@ -8,6 +8,8 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { ingestPurchase } from '@/lib/inbound/ingest-purchase';
 import { normalizeZohoWebhook } from '@/lib/zoho/webhooks/normalize';
+import { dispatchWebhookEvent } from '@/lib/zoho/webhooks/handlers';
+import { signZohoWebhookBody, verifyZohoWebhookSignature } from '@/lib/zoho/webhooks/verify';
 import { QA_FIXTURE_ORDERS, QA_FIXTURE_PO_NUMBER, QA_FIXTURE_TRACKING } from '@/lib/tenancy/qa-org';
 import { createFailureInjection, clearFailureInjection } from '@/lib/qa/failure-injection';
 import { runConnectionHealthChecks } from '@/lib/qa/health';
@@ -223,6 +225,70 @@ async function runHandler(id: string, ctx: HandlerCtx): Promise<never> {
         mode: 'out_of_order',
       });
       pass(`out-of-order application replay: ${replay.attempts.map((a) => a.action).join(', ')}`);
+    }
+    case 'webhook-authentic-signature': {
+      const body = '{"event_id":"qa-sig","event_type":"purchaseorder.updated"}';
+      const secret = 'qa-org-secret';
+      const sig = signZohoWebhookBody(body, secret);
+      const ok = verifyZohoWebhookSignature(
+        body,
+        new Headers({ 'x-zoho-webhook-signature': sig }),
+        { secret },
+      );
+      if (!ok.ok) fail('production verifier rejected a correctly signed body');
+      const bad = verifyZohoWebhookSignature(
+        body,
+        new Headers({ 'x-zoho-webhook-signature': signZohoWebhookBody(body, 'wrong-secret') }),
+        { secret },
+      );
+      if (bad.ok) fail('production verifier accepted a wrong-secret signature');
+      pass('HMAC of the raw body verifies; a wrong secret is rejected');
+    }
+    case 'zoho-qty-same-line': {
+      const base = {
+        event_type: 'purchaseorder.updated',
+        data: { purchaseorder: { purchaseorder_id: 'QA-PO-QTY', line_items: [{ line_item_id: 'L1', quantity: 1 }] } },
+      };
+      const edited = {
+        event_type: 'purchaseorder.updated',
+        data: { purchaseorder: { purchaseorder_id: 'QA-PO-QTY', line_items: [{ line_item_id: 'L1', quantity: 3 }] } },
+      };
+      const a = normalizeZohoWebhook(base);
+      const b = normalizeZohoWebhook(edited);
+      if (a.objectId !== b.objectId || a.objectId !== 'QA-PO-QTY') {
+        fail('qty edit was classified as a different PO identity');
+      }
+      if (a.eventType !== 'purchaseorder.updated' || b.eventType !== 'purchaseorder.updated') {
+        fail(`expected purchaseorder.updated, got ${a.eventType}/${b.eventType}`);
+      }
+      pass(`qty 1 → 3 keeps objectId ${a.objectId}; production upsert is keyed on that identity, not a duplicate row`);
+    }
+    case 'zoho-delete-missing-po': {
+      if (!ctx.orgId) blocked('Needs the QA organization');
+      const before = await tenantQuery<{ n: string }>(
+        ctx.orgId,
+        `SELECT count(*)::text AS n FROM receiving_line WHERE organization_id = $1`,
+        [ctx.orgId],
+      );
+      const event = normalizeZohoWebhook({
+        event_id: `qa-deleted-missing-${Date.now()}`,
+        event_type: 'purchaseorder.deleted',
+        data: { purchaseorder: { purchaseorder_id: 'QA-MISSING-PO' } },
+      });
+      const result = await dispatchWebhookEvent(event, ctx.orgId);
+      const after = await tenantQuery<{ n: string }>(
+        ctx.orgId,
+        `SELECT count(*)::text AS n FROM receiving_line WHERE organization_id = $1`,
+        [ctx.orgId],
+      );
+      if (result.action !== 'po.deleted') fail(`expected po.deleted, got ${result.action}`);
+      if (Number(result.detail?.rows_detached ?? -1) !== 0) {
+        fail(`missing PO detached ${String(result.detail?.rows_detached)} rows`);
+      }
+      if (Number(before.rows[0]?.n ?? 0) !== Number(after.rows[0]?.n ?? 0)) {
+        fail('deleted missing PO invented receiving_line rows');
+      }
+      pass('purchaseorder.deleted on an unknown PO detaches 0 rows and does not invent receipts');
     }
     case 'refuse-live-label': {
       pass('QA Console will not buy live postage. Use a carrier sandbox or mock — never a paid production label from this surface.');

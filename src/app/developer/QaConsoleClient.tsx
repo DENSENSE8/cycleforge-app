@@ -16,7 +16,7 @@ type ScenarioRow = QaScenario & {
 };
 import type { FailureInjection } from '@/lib/qa/failure-injection';
 import { type FailureProfile } from '@/lib/qa/failure-profiles';
-import type { QaTestRun } from '@/lib/qa/test-run';
+import type { QaTestRun, QaTestRunEvent } from '@/lib/qa/test-run';
 import type { DryRunPreview } from '@/lib/qa/dry-run';
 
 interface Props {
@@ -72,6 +72,11 @@ export function QaConsoleClient({ initialPermissions }: Props) {
   const [runs, setRuns] = useState<QaTestRun[]>([]);
   const [fixturePreview, setFixturePreview] = useState<DryRunPreview | null>(null);
   const [importPreview, setImportPreview] = useState<DryRunPreview | null>(null);
+  const [sellerPreview, setSellerPreview] = useState<DryRunPreview | null>(null);
+  const [executeResult, setExecuteResult] = useState<string | null>(null);
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null);
+  const [runEvents, setRunEvents] = useState<QaTestRunEvent[]>([]);
+  const [authenticNote, setAuthenticNote] = useState<string | null>(null);
   const [reseedCommand, setReseedCommand] = useState<string>('pnpm provision:qa-org -- --fixtures-only');
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -264,35 +269,96 @@ export function QaConsoleClient({ initialPermissions }: Props) {
           <Panel padding="md" className="flex flex-col gap-3">
             <h2 className="text-sm font-semibold text-text-default">Dry-run / preview</h2>
             <p className="text-role-micro text-text-muted">
-              Preview uses <code>ingestPurchase(preview: true)</code> — the same
-              validation and existing-row lookup as a live eBay buyer import.
-              No writes, cursor not advanced. Sequence: preview → approval →
-              execute on Incoming.
+              Buyer preview uses <code>ingestPurchase(preview: true)</code> —
+              the same validation and existing-row lookup as production.
+              Sequence: preview → confirm → execute. Execute writes Incoming
+              rows and advances the cursor, and is refused unless the eBay app
+              is SANDBOX. Seller sync is preview-only (it deletes exceptions).
             </p>
             {importPreview ? (
               <pre className="overflow-x-auto bg-surface-muted p-3 text-role-micro text-text-default">
-                {[...summarizeDryRun(importPreview), ...(importPreview.notes ?? [])].join('\n') || 'Nothing to preview.'}
+                {['Buyer import', ...summarizeDryRun(importPreview), ...(importPreview.notes ?? [])].join('\n')}
               </pre>
             ) : (
-              <p className="text-sm text-text-muted">No preview yet.</p>
+              <p className="text-sm text-text-muted">No buyer preview yet.</p>
             )}
-            <Button
-              size="sm"
-              disabled={!perms.execute || busy !== null}
-              loading={busy === 'dry-run'}
-              onClick={() => void run('dry-run', async () => {
-                const res = await fetch('/api/developer/qa/dry-run', {
-                  method: 'POST',
-                  headers: { 'content-type': 'application/json' },
-                  body: JSON.stringify({ operation: 'ebay.buyer-import' }),
-                });
-                const data = await readJson<{ success?: boolean; error?: string; preview?: DryRunPreview }>(res);
-                if (!res.ok) throw new Error(data.error ?? 'Preview failed');
-                setImportPreview(data.preview ?? null);
-              })}
-            >
-              Preview eBay buyer import
-            </Button>
+            {sellerPreview ? (
+              <pre className="overflow-x-auto bg-surface-muted p-3 text-role-micro text-text-default">
+                {['Seller sync', ...summarizeDryRun(sellerPreview), ...(sellerPreview.notes ?? [])].join('\n')}
+              </pre>
+            ) : null}
+            {executeResult ? (
+              <p className="text-sm text-text-default">{executeResult}</p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                disabled={!perms.execute || busy !== null}
+                loading={busy === 'dry-run'}
+                onClick={() => void run('dry-run', async () => {
+                  const res = await fetch('/api/developer/qa/dry-run', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ operation: 'ebay.buyer-import', mode: 'preview' }),
+                  });
+                  const data = await readJson<{ success?: boolean; error?: string; preview?: DryRunPreview }>(res);
+                  if (!res.ok) throw new Error(data.error ?? 'Preview failed');
+                  setImportPreview(data.preview ?? null);
+                  setExecuteResult(null);
+                })}
+              >
+                Preview eBay buyer import
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={!perms.execute || busy !== null}
+                loading={busy === 'seller-preview'}
+                onClick={() => void run('seller-preview', async () => {
+                  const res = await fetch('/api/developer/qa/dry-run', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({ operation: 'ebay.seller-sync', mode: 'preview' }),
+                  });
+                  const data = await readJson<{ success?: boolean; error?: string; preview?: DryRunPreview }>(res);
+                  if (!res.ok) throw new Error(data.error ?? 'Seller preview failed');
+                  setSellerPreview(data.preview ?? null);
+                })}
+              >
+                Preview eBay seller sync
+              </Button>
+              <Button
+                size="sm"
+                variant="danger"
+                disabled={!perms.execute || busy !== null || !importPreview}
+                loading={busy === 'execute'}
+                onClick={() => void run('execute', async () => {
+                  const res = await fetch('/api/developer/qa/dry-run', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({
+                      operation: 'ebay.buyer-import',
+                      mode: 'execute',
+                      confirmExecute: true,
+                    }),
+                  });
+                  const data = await readJson<{
+                    success?: boolean;
+                    error?: string;
+                    executed?: { ingested: number; created: number; accounts: number; errors: string[] };
+                  }>(res);
+                  if (!res.ok) throw new Error(data.error ?? 'Execute refused');
+                  const ex = data.executed;
+                  setExecuteResult(
+                    ex
+                      ? `Executed buyer import: ${ex.created} created, ${ex.ingested} ingested, ${ex.accounts} accounts.`
+                      : 'Executed.',
+                  );
+                })}
+              >
+                Execute buyer import (writes, advances cursor)
+              </Button>
+            </div>
           </Panel>
 
           <Panel padding="md" className="flex flex-col gap-3 xl:col-span-2">
@@ -362,7 +428,24 @@ export function QaConsoleClient({ initialPermissions }: Props) {
                       <tr key={row.scenarioId} className="border-t border-border-soft">
                         <td className="py-1.5 font-mono">{row.scenarioId}</td>
                         <td className="py-1.5">{row.status} · {row.detail}</td>
-                        <td className="py-1.5 font-mono">{row.runId ?? '—'}</td>
+                        <td className="py-1.5 font-mono">
+                          {row.runId ? (
+                            <button
+                              type="button"
+                              className="underline"
+                              onClick={() => {
+                                setSelectedRunId(row.runId);
+                                void (async () => {
+                                  const res = await fetch(`/api/developer/qa/runs?id=${encodeURIComponent(row.runId!)}`);
+                                  const data = await readJson<{ events?: QaTestRunEvent[] }>(res);
+                                  setRunEvents(data.events ?? []);
+                                })();
+                              }}
+                            >
+                              {row.runId}
+                            </button>
+                          ) : '—'}
+                        </td>
                         <td className="py-1.5 font-mono">{row.playwrightCommand ?? '—'}</td>
                       </tr>
                     ))}
@@ -399,15 +482,20 @@ export function QaConsoleClient({ initialPermissions }: Props) {
             </p>
             <ul className="list-disc space-y-1 pl-5 text-sm text-text-default">
               <li>
-                <strong>Provider-authentic</strong> — deliver from the Zoho
-                sandbox to <code>/api/zoho/webhooks/&#123;token&#125;</code>. That
-                path checks signature, timestamp, and headers.
+                <strong>Provider-authentic</strong> — this console HMAC-signs a
+                stored payload with this org&apos;s secret and posts it to
+                <code> processZohoWebhook</code> (token URL → HMAC → normalize →
+                dedupe → dispatch). Same path Zoho uses.
               </li>
               <li>
                 <strong>Application replay — not provider-authentic</strong> —
                 replay a stored payload against <code>dispatchWebhookEvent</code>.
+                Signature is not checked.
               </li>
             </ul>
+            {authenticNote ? (
+              <p className="text-sm text-text-default">{authenticNote}</p>
+            ) : null}
             {webhooks.length === 0 ? (
               <p className="text-sm text-text-muted">No stored Zoho deliveries for this org.</p>
             ) : (
@@ -427,6 +515,63 @@ export function QaConsoleClient({ initialPermissions }: Props) {
               </label>
             )}
             <div className="flex flex-wrap gap-2">
+              <Button
+                size="sm"
+                disabled={!perms.webhookReplay || busy !== null || !webhookId}
+                loading={busy === 'wh-auth'}
+                onClick={() => void run('wh-auth', async () => {
+                  const res = await fetch('/api/developer/qa/webhooks', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({
+                      eventId: webhookId,
+                      kind: 'provider_authentic',
+                      acknowledgeProviderAuthentic: true,
+                    }),
+                  });
+                  const data = await readJson<{
+                    success?: boolean;
+                    error?: string;
+                    delivery?: { httpStatus: number; verified: boolean; notes?: string[] };
+                  }>(res);
+                  if (!res.ok) throw new Error(data.error ?? 'Authentic delivery failed');
+                  const d = data.delivery;
+                  setAuthenticNote(
+                    d
+                      ? `Provider-authentic: HTTP ${d.httpStatus}, signature ${d.verified ? 'verified' : 'not verified'}. ${(d.notes ?? []).join(' ')}`
+                      : 'Provider-authentic delivery completed.',
+                  );
+                })}
+              >
+                Send provider-authentic signed webhook
+              </Button>
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={!perms.webhookReplay || busy !== null || !webhookId}
+                loading={busy === 'wh-mismatch'}
+                onClick={() => void run('wh-mismatch', async () => {
+                  const res = await fetch('/api/developer/qa/webhooks', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({
+                      eventId: webhookId,
+                      kind: 'signature_mismatch',
+                    }),
+                  });
+                  const data = await readJson<{
+                    success?: boolean;
+                    error?: string;
+                    delivery?: { httpStatus: number };
+                  }>(res);
+                  if (!res.ok) throw new Error(data.error ?? 'Mismatch delivery failed');
+                  setAuthenticNote(
+                    `Wrong-secret delivery: HTTP ${data.delivery?.httpStatus ?? '—'}. Production must return 401.`,
+                  );
+                })}
+              >
+                Send with wrong secret (expect 401)
+              </Button>
               {(['once', 'twice', 'out_of_order'] as const).map((mode) => (
                 <Button
                   key={mode}
@@ -440,12 +585,14 @@ export function QaConsoleClient({ initialPermissions }: Props) {
                       headers: { 'content-type': 'application/json' },
                       body: JSON.stringify({
                         eventId: webhookId,
+                        kind: 'application',
                         mode,
                         acknowledgeApplicationReplay: true,
                       }),
                     });
                     const data = await readJson<{ success?: boolean; error?: string }>(res);
                     if (!res.ok) throw new Error(data.error ?? 'Application replay failed');
+                    setAuthenticNote('Application replay — not provider-authentic.');
                   })}
                 >
                   {mode === 'once'
@@ -735,7 +882,18 @@ export function QaConsoleClient({ initialPermissions }: Props) {
                 </thead>
                 <tbody>
                   {runs.map((runRow) => (
-                    <tr key={runRow.id} className="border-t border-border-soft font-mono">
+                    <tr
+                      key={runRow.id}
+                      className="cursor-pointer border-t border-border-soft font-mono"
+                      onClick={() => {
+                        setSelectedRunId(runRow.runId);
+                        void (async () => {
+                          const res = await fetch(`/api/developer/qa/runs?id=${encodeURIComponent(runRow.runId)}`);
+                          const data = await readJson<{ events?: QaTestRunEvent[] }>(res);
+                          setRunEvents(data.events ?? []);
+                        })();
+                      }}
+                    >
                       <td className="py-1.5">{runRow.runId}</td>
                       <td className="py-1.5">{runRow.kind}</td>
                       <td className="py-1.5">{runRow.scenarioId ?? '—'}</td>
@@ -746,6 +904,28 @@ export function QaConsoleClient({ initialPermissions }: Props) {
                 </tbody>
               </table>
             )}
+            {selectedRunId ? (
+              <div>
+                <h3 className="text-role-micro font-semibold uppercase tracking-wide text-text-soft">
+                  Events for {selectedRunId}
+                </h3>
+                {runEvents.length === 0 ? (
+                  <p className="text-sm text-text-muted">No event rows on this run (result is still on the run record).</p>
+                ) : (
+                  <ul className="mt-1 space-y-1 font-mono text-role-micro">
+                    {runEvents.map((ev) => (
+                      <li key={ev.seq}>
+                        #{ev.seq} · {ev.provider ?? '—'} · {ev.operation ?? '—'}
+                        {ev.httpStatus != null ? ` · HTTP ${ev.httpStatus}` : ''}
+                        {ev.durationMs != null ? ` · ${ev.durationMs} ms` : ''}
+                        {ev.errorClass ? ` · ${ev.errorClass}` : ''}
+                        {ev.requestHash ? ` · hash ${ev.requestHash}` : ''}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ) : null}
           </Panel>
         </div>
       </div>
