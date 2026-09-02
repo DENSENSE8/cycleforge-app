@@ -1,0 +1,36 @@
+{
+  "id": "perf-tier1-95",
+  "statement": "Every Tier-1 route meets the Lighthouse north star: Performance, Accessibility and Best Practices >= 95 and LCP <= 2.5s; floors ratchet up, never down; desk density stays.",
+  "createdBy": "human",
+  "createdAt": "2026-09-02T09:00:00Z",
+  "routerHint": "lighthouse performance LCP baseline floors tier-1 routes perf",
+  "successPredicates": [
+    {
+      "kind": "eval",
+      "command": "eval:perf-gate --mode=strict",
+      "expect": "exit0"
+    },
+    {
+      "kind": "eval",
+      "command": "verify:fast",
+      "expect": "exit0"
+    },
+    {
+      "kind": "invariant",
+      "keepIds": [
+        "engine:slot-table-header-sort"
+      ]
+    }
+  ],
+  "stopConditions": {
+    "maxHops": 12,
+    "maxHours": 12,
+    "maxNoProgressHops": 3,
+    "onUnmeasured": "block",
+    "onRed": "repair",
+    "maxRepairs": 2
+  },
+  "budget": {
+    "maxCostUsd": 20
+  }
+}

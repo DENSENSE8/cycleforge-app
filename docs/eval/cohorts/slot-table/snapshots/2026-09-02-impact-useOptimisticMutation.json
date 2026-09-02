@@ -1,0 +1,96 @@
+{
+  "project": "cycleforge-app",
+  "target": "function:src/lib/optimistic/useOptimisticMutation.ts:useOptimisticMutation",
+  "files_affected": 11,
+  "total_symbols": 11,
+  "files": [
+    {
+      "file": "src/hooks/useOrderAssignment.ts",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "useOrderAssignment"
+      ]
+    },
+    {
+      "file": "src/components/dashboard/orders-queue/useOrdersSpreadsheet.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "useOrdersSpreadsheet"
+      ]
+    },
+    {
+      "file": "src/components/mobile/redesign/MobileToShipQueue.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "MobileToShipQueue"
+      ]
+    },
+    {
+      "file": "src/components/outbound/labels/AddTrackingPopover.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "AddTrackingPopover"
+      ]
+    },
+    {
+      "file": "src/components/shipped/details-panel/ShippingInformationSection.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "ShippingInformationSection"
+      ]
+    },
+    {
+      "file": "src/components/shipped/ShippedDetailsPanel.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "ShippedDetailsPanel"
+      ]
+    },
+    {
+      "file": "src/components/tables/ColumnStaffAssignControl.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "ColumnStaffAssignControl"
+      ]
+    },
+    {
+      "file": "src/components/tech/ActiveOrderWorkspace.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "ActiveOrderWorkspace"
+      ]
+    },
+    {
+      "file": "src/hooks/useDashboardBulkSelection.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "useDashboardBulkSelection"
+      ]
+    },
+    {
+      "file": "src/components/dashboard/orders-queue/OrdersQueueTableRow.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "OrdersQueueMobileStack"
+      ]
+    },
+    {
+      "file": "src/hooks/useOrderFieldSave.ts",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "useOrderFieldSave"
+      ]
+    }
+  ]
+}

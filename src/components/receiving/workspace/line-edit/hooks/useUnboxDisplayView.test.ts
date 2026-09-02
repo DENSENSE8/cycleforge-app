@@ -32,8 +32,8 @@ describe('parseUnboxDisplayParam', () => {
     assert.equal(parseUnboxDisplayParam('Listings'), null, 'case-sensitive — ids are lowercase');
   });
 
-  it('rejects `overview` — the carton owns the centre, it is not a display', () => {
-    assert.equal(parseUnboxDisplayParam('overview'), null);
+  it('accepts `overview` as the identity copy leaf (centre carton stays)', () => {
+    assert.equal(parseUnboxDisplayParam('overview'), 'overview');
   });
 
   it('rejects the browse-tab vocabulary, so display ids cannot shadow `?unboxview=`', () => {

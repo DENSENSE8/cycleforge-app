@@ -3,9 +3,9 @@
 /**
  * Sales sidebar — Walk-In station deep-links.
  *
- * L2 modes (Local Pickup · Sales) live in GlobalHeader (`HeaderPageSwitcher` →
- * `?mode=`). Per-mode **table tabs** live in the page chrome
- * (`WalkInDeskHeader` → `TableTabs`) — modes ≠ tabs.
+ * L2 modes (Local Pickup · Sales) live on MasterNav (floor benches) /
+ * DeskPageChrome — not a GlobalHeader chip. Per-mode **table tabs** live in
+ * the page body (`WalkInHistoryHub` → `TableTabs`) — modes ≠ tabs.
  *
  * Below sits the one thing a history Monitor can't do — start work.
  * Sales is observe-only; every action here hands off to the station (Repair

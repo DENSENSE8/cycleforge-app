@@ -9,6 +9,8 @@ export type ScanOutFocusStatus = 'ok' | 'dup' | 'miss' | 'err' | 'exc' | 'pendin
 export interface ScanOutActivePane {
   /** Internal `orders.id` when resolved. */
   orderRowId: number | null;
+  /** Receiving carton whose complete PO-line set is shown in the station. */
+  receivingId: number | null;
   orderId: string;
   productTitle: string;
   qty: number;
@@ -60,6 +62,7 @@ export function resultToScanOutPane(
   result: {
     shipmentId?: number;
     tracking?: string | null;
+    receivingId?: number | null;
     orderRowId?: number | null;
     orderId?: string | null;
     productTitle?: string | null;
@@ -77,6 +80,10 @@ export function resultToScanOutPane(
   const qty = Number(result.quantity);
   return {
     orderRowId: result.orderRowId != null && result.orderRowId > 0 ? Number(result.orderRowId) : null,
+    receivingId:
+      result.receivingId != null && result.receivingId > 0
+        ? Number(result.receivingId)
+        : null,
     orderId: String(result.orderId || '').trim(),
     productTitle: String(result.productTitle || '').trim() || tracking || 'Shipment',
     qty: Number.isFinite(qty) && qty > 0 ? qty : 1,

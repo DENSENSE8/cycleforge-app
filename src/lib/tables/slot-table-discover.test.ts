@@ -23,12 +23,17 @@ describe('slot-table discover (delete vs keep)', () => {
   it('KEEP engine paths exist on disk', () => {
     const required = [
       'engine:CompoundItem',
+      'engine:ProductTitleLink',
       'engine:CompoundState',
       'engine:DateRangePickerField',
+      'engine:useOptimisticMutation',
       'engine:useSlotTableLayout',
       'engine:materializeTracks',
       'engine:DataTable',
       'engine:DataTableFilterMenu',
+      'engine:slot-table-header-sort',
+      'engine:queueSortForColumnKey',
+      'engine:LedgerGridColumnHeader',
       'engine:PRODUCT_TABLES',
       'engine:REGISTERED_BINDINGS',
       'engine:TABLE_COLUMNS-keys',
@@ -80,34 +85,16 @@ describe('slot-table discover (delete vs keep)', () => {
     assert.ok(SLOT_TABLE_KNOWN_DEBT.length >= 1);
   });
 
-  it('names the live receiving dual-SoT (Testing History + hand GRID)', () => {
-    const ids = new Set(report.delete.map((f) => f.id));
-    assert.ok(ids.has('hand-grid-export:receiving:RECEIVING_GRID_COLUMNS'));
-    const mount = report.judgment.find((f) => f.id === 'flat-mount:receiving:TestingHistoryList');
-    assert.ok(mount, 'Testing History mount is a human layout-id choice, not a silent GRID delete');
-    const hand = report.delete.find((f) => f.id === 'hand-grid-export:receiving:RECEIVING_GRID_COLUMNS');
-    assert.ok(hand);
-    assert.deepEqual(hand.blockedBy, ['flat-mount:receiving:TestingHistoryList']);
-  });
-
-  it('next unblocked delete is mechanical (not judgment)', () => {
+  it('has no unblocked hand-model deletes after the compound port', () => {
     const next = nextDeleteGap(report);
-    assert.ok(next, 'expected at least one unblocked delete');
-    assert.equal(next.verdict, 'delete');
-    assert.ok(next.priority <= 2);
-    assert.equal(next.blockedBy.length, 0);
-    assert.equal(
-      next.scanner,
-      'hand-grid-export',
-      'prefer unused hand GRID arrays over live-mount work',
-    );
+    assert.equal(next, null);
   });
 
-  it('FBA catalog and station-history are judgment — not auto-delete', () => {
+  it('keeps only documented non-product table judgment items', () => {
     const j = new Set(report.judgment.map((f) => f.id));
-    assert.ok(j.has('flat-mount:receiving:TestingHistoryList'));
-    assert.ok(j.has('out-of-waist-hand-model:station-history:STATION_HISTORY_COLUMNS'));
+    assert.ok(j.has('catalog-orphan:fba:FBA_FIELD_CATALOG'));
+    assert.ok(j.has('table-columns-zombie:support-tickets'));
+    assert.ok(!j.has('out-of-waist-hand-model:station-history:STATION_HISTORY_COLUMNS'));
     assert.ok(!report.delete.some((f) => f.symbol === 'FBA_FIELD_CATALOG'));
-    assert.ok(!report.delete.some((f) => f.symbol === 'STATION_HISTORY_COLUMNS'));
   });
 });

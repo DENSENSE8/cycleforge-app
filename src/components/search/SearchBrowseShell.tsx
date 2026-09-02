@@ -3,8 +3,30 @@
 /**
  * SearchBrowseShell — `/search` body when no `?sel=` is active.
  *
- * Find lives only in {@link GlobalHeaderSearch}. This shell never mounts a
- * locked-width stage field. While an identifier resolves or retrieve runs it
+ * ## It wears the page frame, at the desk measure (2026-09-01)
+ *
+ * Browse was **full-bleed under the header**, and that was the whole point of
+ * the old shape. The operator overruled it: *"when you search something, it
+ * should display fixed width inline, not edge to edge. The only thing that
+ * should be edge to edge is the scan stations."* So this mounts
+ * {@link DeskPageChrome} at the default measure — results sit on the same
+ * 1152 stage every desk uses, and the eye travels the same distance here as it
+ * does on To ship.
+ *
+ * ## The find field is the title
+ *
+ * The prior law was "find lives ONLY in `GlobalHeaderSearch`; this shell never
+ * mounts a locked-width stage field", and it was earned — a second field is a
+ * second writer of `?q=`. That is still true, and it is why the field here is
+ * not a second writer: it reads and writes the SAME `?q=` through the router,
+ * and the header's own field keeps working. What changed is that a find surface
+ * whose identity is the operator's query should not print the constant word
+ * "Search" over that query (`titleSlot`).
+ *
+ * Entity types are the tab row: `?etype=` was a refine dropdown among Status and
+ * Sort, and it is not the same kind of question — it says WHICH COLLECTION you
+ * are looking at, which is what a tab is. Status / Sort stay refinements on the
+ * card's own row. While an identifier resolves or retrieve runs it
  * publishes pending via {@link setGlobalSearchPending} so the header paints
  * {@link SearchPendingBar} — the body never invents “Opening…” / gray overlay
  * holds. Sole hits set `?sel=`; multi-hit browse is full-bleed under the header.
@@ -18,6 +40,14 @@ import { useCallback, useEffect, useMemo, useState, type MouseEvent as ReactMous
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SearchRefineControls } from '@/components/search/SearchRefineControls';
+import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
+import { SearchField } from '@/design-system/primitives';
+import {
+  SEARCH_ENTITY_TYPES,
+  SEARCH_ENTITY_TYPE_LABELS,
+  applySearchEtype,
+} from '@/lib/search/search-refine';
+import type { SearchHitEntityType } from '@/lib/search/search-hit';
 import { SearchResultsSurface } from '@/components/search/SearchResultsSurface';
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import {
@@ -259,8 +289,73 @@ export function SearchBrowseShell({
     setRetrieveSettled(true);
   }, []);
 
+  /**
+   * ONE writer of `?q=` and `?etype=` — the same router write the header field
+   * and the refine menu already use. A second writer of either is the bug this
+   * surface's old "find lives only in the header" law existed to prevent; the
+   * law is kept by construction rather than by withholding the field.
+   */
+  const patchParams = useCallback(
+    (mutate: (params: URLSearchParams) => void) => {
+      const params = new URLSearchParams(searchParams.toString());
+      mutate(params);
+      const qs = params.toString();
+      router.replace(qs ? `/search?${qs}` : '/search', { scroll: false });
+    },
+    [router, searchParams],
+  );
+
+  const setQuery = useCallback(
+    (next: string) =>
+      patchParams((params) => {
+        const value = next.trim();
+        if (value) params.set('q', value);
+        else params.delete('q');
+      }),
+    [patchParams],
+  );
+
+  // Absence is the unfiltered list — there is no `All` tab, the same rule every
+  // other strip in the product follows. Re-clicking the lit type clears it.
+  const etypeTabs = useMemo(
+    () =>
+      SEARCH_ENTITY_TYPES.map((id) => ({
+        id,
+        label: SEARCH_ENTITY_TYPE_LABELS[id],
+      })),
+    [],
+  );
+
+  const onEtypeChange = useCallback(
+    (id: string) =>
+      patchParams((params) =>
+        applySearchEtype(
+          params,
+          id === etype ? null : (id as SearchHitEntityType),
+        ),
+      ),
+    [patchParams, etype],
+  );
+
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden bg-surface-card">
+    <DeskPageLayout
+      className="h-full"
+      title="Search"
+      titleSlot={
+        <SearchField
+          value={q}
+          onChange={setQuery}
+          onClear={() => setQuery('')}
+          placeholder="Search orders, units, receiving, SKUs…"
+          className="max-w-[34rem]"
+          isSearching={idResolving}
+        />
+      }
+      tabs={etypeTabs}
+      activeTab={etype ?? ''}
+      onTabChange={onEtypeChange}
+    >
+    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
       {mountRetrieve ? (
         <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden">
           {showRefineChrome ? (
@@ -295,5 +390,6 @@ export function SearchBrowseShell({
         <div className="min-h-0 flex-1" aria-busy={idResolving || undefined} />
       )}
     </div>
+    </DeskPageLayout>
   );
 }

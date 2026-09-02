@@ -29,7 +29,7 @@ import {
   workflowStageLabel,
 } from '@/lib/receiving/workflow-stages';
 import {
-  RECEIVING_GRID_COLUMNS,
+  RECEIVING_COMPOUND_COLUMNS,
   receivingGridRowShellClass,
   receivingGridTemplate,
   type ReceivingGridColumn,
@@ -106,11 +106,9 @@ interface ReceivingGridRowProps {
 
 /**
  * Unbox / History / Testing leaf row — CSS-grid columns matching
- * {@link RECEIVING_GRID_COLUMNS}. Desktop cells live under `./cells/`;
- * mobile falls back to {@link ReceivingLineOrderRow}.
- *
- * Agent waist: edit a column → open that `cells/*Cell.tsx` only
- * (skill `receiving-grid-cell`). Do not load PoLine / Orders / Incoming.
+ * {@link RECEIVING_COMPOUND_COLUMNS}. Desktop cells go through
+ * {@link renderReceivingGridCell} → {@link renderCompoundGridCell}.
+ * Mobile falls back to {@link ReceivingLineOrderRow}.
  */
 export const ReceivingGridRow = memo(function ReceivingGridRow({
   row,
@@ -127,7 +125,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
   isHistory = false,
   statusVocabulary = 'fine',
   inventoryProviderLabel = 'Inventory',
-  columns = RECEIVING_GRID_COLUMNS,
+  columns = RECEIVING_COMPOUND_COLUMNS,
   clickSelect = false,
   onOpenWorkspace,
   historyTriageMenu = false,

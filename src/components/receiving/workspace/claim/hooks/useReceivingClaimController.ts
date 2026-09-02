@@ -8,6 +8,7 @@ import {
 import { defaultReceivingClaimType } from '@/lib/receiving-claim-type';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { useComposerCcHistory } from '@/components/composer/useComposerCcHistory';
 import {
   claimWizardStartStep,
   claimWizardStepStates,
@@ -36,33 +37,6 @@ import {
  * instead of an opaque wall. Matches the house pattern used across admin/
  * favorites API callers (`details || error || fallback`).
  */
-/**
- * Reads the operator's accumulated claim-CC history. Tolerates the legacy
- * single-email string this key used to hold (`receiving-claim:last-cc-email`)
- * so an existing stored value seeds the new list rather than being dropped.
- */
-function readStoredCcEmails(storageKey: string): string[] {
-  let stored: string | null;
-  try {
-    stored = window.localStorage.getItem(storageKey);
-  } catch {
-    return [];
-  }
-  if (!stored) return [];
-  try {
-    const parsed: unknown = JSON.parse(stored);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .map((v) => String(v ?? '').trim())
-      .filter(Boolean)
-      .filter((v, i, arr) => arr.indexOf(v) === i);
-  } catch {
-    // Not JSON — the legacy single-email string.
-    const trimmed = stored.trim();
-    return trimmed ? [trimmed] : [];
-  }
-}
-
 function apiErrorText(data: unknown, fallback: string): string {
   const d = (data ?? {}) as { error?: unknown; details?: unknown };
   const details = typeof d.details === 'string' ? d.details.trim() : '';
@@ -112,7 +86,6 @@ export function useReceivingClaimController({
   onTicketCreated,
   onTicketUnlinked,
 }: ClaimModalProps) {
-  const LAST_CC_EMAIL_STORAGE_KEY = 'receiving-claim:cc-emails';
   const receivingId = row.receiving_id;
   // `undefined` override = default to the row's own line; an explicit value
   // (incl. `null` for a carton-level claim) wins. Placeholder / unfound stub
@@ -152,7 +125,11 @@ export function useReceivingClaimController({
   // public reply and enables CC'ing collaborator emails (a vendor, a teammate).
   // CCs are only meaningful on a public comment, so the UI hides them when
   // internal-note is selected and the server ignores them there too.
-  const [ccEmails, setCcEmails] = useState<string[]>([]);
+  // Same history bank as StationComposerHost Ticket Cc — both mouths seed here.
+  const { ccs: ccEmails, setCcs: setCcEmails } = useComposerCcHistory({
+    identityKey: `${receivingId ?? ''}:${lineId ?? ''}`,
+    active: open,
+  });
   const [notePublic, setNotePublic] = useState(true);
 
   // ── Create-flow submit state ─────────────────────────────────────────────
@@ -255,7 +232,6 @@ export function useReceivingClaimController({
     setDraftBody(null);
     setClaimType(seed.claimType);
     setNotePublic(true);
-    setCcEmails(readStoredCcEmails(LAST_CC_EMAIL_STORAGE_KEY));
     // `crypto.randomUUID` only exists in a secure context (HTTPS / localhost);
     // over a plain-HTTP LAN IP it's undefined. `randomId` falls back safely.
     idempotencyKey.current = randomId();
@@ -267,29 +243,6 @@ export function useReceivingClaimController({
     setArchiveState(null);
     setAutoCreateFromEmptyTracking(false);
   }, [open, receivingId, lineId]);
-
-  // Remember every CC email ever entered (accumulated, not just this session's
-  // set) so the next claim on any carton auto-fills from the operator's full
-  // history — removing a chip from the current form doesn't forget it.
-  useEffect(() => {
-    if (!open || !ccEmails.length) return;
-    try {
-      const known = new Set(readStoredCcEmails(LAST_CC_EMAIL_STORAGE_KEY));
-      let changed = false;
-      for (const email of ccEmails) {
-        const trimmed = email.trim();
-        if (trimmed && !known.has(trimmed)) {
-          known.add(trimmed);
-          changed = true;
-        }
-      }
-      if (changed) {
-        window.localStorage.setItem(LAST_CC_EMAIL_STORAGE_KEY, JSON.stringify([...known]));
-      }
-    } catch {
-      // Best-effort only.
-    }
-  }, [ccEmails, open]);
 
   // ── Derived view-model ───────────────────────────────────────────────────
   // Hide 'unfound' once a real PO# is present — an order with a PO can't be

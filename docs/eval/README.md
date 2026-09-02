@@ -7,6 +7,17 @@ back into committed docs so the next agent session compounds.
 typed asks, session receipts, Host sequence, build order):
 [`FABLE-5.1-GAP-REPORT.md`](FABLE-5.1-GAP-REPORT.md).
 
+**Fable / new-model research brief** (oracles, vague-prompt router, KEEP vs
+DELETE, refuse list): [`FABLE-5.1-SYSTEM.md`](FABLE-5.1-SYSTEM.md).
+
+**Fable 5 research prompt** (gaps, autonomous Host, session receipts, yes/no
+queue): [`FABLE-5-RESEARCH-PROMPT.md`](FABLE-5-RESEARCH-PROMPT.md). Copy the
+block under “PASTE THIS INTO FABLE 5” into a new session.
+
+**2026 UI/UX contracts** (Manus / Lovable / Cursor / Stripe / Kiro as *quality*,
+not chrome to copy; heavy no-fork mounts for hover, `motionRole`, one icon
+button): [`UI-UX-2026-CONTRACTS.md`](UI-UX-2026-CONTRACTS.md).
+
 Two **sibling** cohorts under one CLI (`pnpm run eval:cohort <name>`).
 **Display SoT is slot-table only.** Overlay is not a display cohort.
 
@@ -46,6 +57,10 @@ docs/eval/
     ├── LEDGER.md              ← per-station mouth/domain + auto sections
     └── snapshots/
 
+FABLE-5.1-SYSTEM.md            ← research brief for new models
+FABLE-5-RESEARCH-PROMPT.md     ← paste-ready Fable 5 prompt
+UI-UX-2026-CONTRACTS.md        ← 2026 AI-app bar + no-fork interaction pins
+
 tools/eval-ledger/
 ├── registry.json              ← pointer only; authority is the TS cohorts
 ├── eval-core.mjs
@@ -71,6 +86,22 @@ Add a station: append a cohort row + mirror path in `tools/design-mcp/server.mjs
 
 Retired notice: [`cohorts/overlay/LEDGER.md`](cohorts/overlay/LEDGER.md).
 
+## Incoming add extract mouth
+
+Incoming’s paste/screenshot composer is **`StationComposerHost`**, the Unbox
+mouth — a desk adapter, not a floor overlay workspace. `verify:fast` /
+machine-gate only proves lint+type+unit. After edits to
+`IncomingAddExtractComposer` (or the triage footer that measures it), run:
+
+```bash
+pnpm run eval:station scan-out -- --skip-verify
+pnpm run eval:station scan-out
+```
+
+That station’s `critiqueExtra` + `incoming-add-composer-mouth.test.ts` are the
+mouth eval. Do **not** append Incoming to `SCAN_STATION_OVERLAY_COHORT` (that
+would demand idle `visibility` / `zIndex.panel` on a desk walk).
+
 ## Slot-table cohort
 
 **SoT:** engine (`CompoundItem`, `useSlotTableLayout`, `materializeTracks`,
@@ -80,6 +111,17 @@ Retired notice: [`cohorts/overlay/LEDGER.md`](cohorts/overlay/LEDGER.md).
 The filter icon always mounts beside search (`DATA_TABLE_FILTER_IDLE` when a
 family has no facets). Unbox Queue/Viewed/History share `?ukpi=` via
 `useReceivingTableChrome`. Do not fold page tabs into the funnel.
+
+Every painted DATA column header is click-to-sort
+(`SLOT_TABLE_PAINT_LAW.headerSort`). Chrome only: `select`, `actions`/`action`,
+`_fill`. The toolbar sort menu lists the same facts (`queueColumnSortOptions`)
+plus View / Platform / Carriers — Pick is a Columns row, not trigger-only.
+Graph KEEP: `engine:slot-table-header-sort`,
+`engine:queueSortForColumnKey`, `engine:LedgerGridColumnHeader`.
+
+**Hard gate:** `eval:cohort slot-table` `ok` is false if the tripwire fails, any
+`SLOT_TABLE_ENGINE_CONTRACT` grep fails, or any `graphSymbols` `find` returns no
+match (rebuild the Garisek index). Verify fail also fails unless `--skip-verify`.
 
 **Discover (delete vs keep):**
 [`src/lib/tables/slot-table-discover.ts`](../../src/lib/tables/slot-table-discover.ts).
@@ -196,7 +238,71 @@ pnpm run perf:overnight                            # nohup-friendly launcher
 
 Resume after a stop: same command; it re-reads baseline gaps. Win exit 0 when
 `perf-gate` Tier-1 debt is empty. Caps: `--max-hours` (default 12),
-`--max-rounds` (48). Does **not** lower floors or strip desk density.
+`--max-rounds` (48), `--max-no-progress` (3 — consecutive rounds whose attacked
+gap did not shrink; state `reason: "no-progress"`). Every round writes one
+`cf-session:v1` receipt through Garisek `scripts/session-receipt.ts`
+(`session_id` `perf:<run>:<round>`, joined by `LOOP_RUN_ID`). Does **not**
+lower floors or strip desk density.
+
+## Goal runner (Host = Garisek-OS)
+
+Gap report §D1–D7. A human commits `docs/eval/goals/<id>.goal.json`
+(`createdBy: "human"`, zod `.strict()` in `src/lib/eval/goal.ts`); the Host
+loads it from `HEAD` only — a worktree-only or dirty goal file refuses to start.
+
+```bash
+# from Garisek-OS
+npx tsx scripts/goal-run.ts --goal data-headers-sortable --dry --no-db   # hop 0: measure only
+npx tsx scripts/goal-run.ts --goal data-headers-sortable                 # Host loop: coder → measure → decide
+```
+
+Hop 0 runs every success predicate (`eval` scripts expanded to their node
+body — `pnpm run` is not on the path, see `resolveEvalCommand`; `test`,
+`invariant` KEEP ids, `router` refuse patterns on the diff). Decision
+(`nextHopDecision`, pure): all green + empty diff → **"goal already met,
+nothing to land"** (exit 0); green + diff → ask `land.apply`; red → coder hop
+(Hermes profile, `HERMES_CODER_BIN`) in `.claude/worktrees/goal-<run>`;
+timeout / runner infra (`isRunnerInfraFailure`) → **unmeasured**, ask
+`oracle.unavailable`, never repair. Stop conditions come from the goal
+(`maxHops`, `maxHours`, `maxNoProgressHops`; progress = fewer red predicates
+than the previous hop) and end in a `goal.stop` ask. Eval churn under
+`docs/eval/**` is excluded from the diff.
+
+Typed asks (`loop_run_blocks.kind`, migration 060, `approve` / `reject` only)
+reach the phone as a Buzz card and are answered in the Garisek cockpit
+(`POST /api/loops/runs/<runId>/answer`). One open ask per run. Every hop
+leaves a `cf-session:v1` receipt (`docs/eval/sessions/<month>.jsonl` mirror +
+`loop_run_steps`).
+
+Host helpers (`tools/eval-ledger/goal-cli.mjs`): `parse`, `classify`,
+`resolve-eval`, `next-hop`, `classify-output`, `detect-hop-asks`,
+`decide-find`, `keep`.
+
+Asks the loop can raise: `land.apply`, `goal.stop`, `oracle.unavailable`,
+`pin.promote` (yes → the Host writes the pin), `known_debt.append` (default
+no → hop reverted), `cohort.append_row` and `grep.retire` (no → the file is
+reverted and re-measured). Answer from the cockpit or the terminal:
+`npx tsx scripts/loop-answer.ts --run <id> --decision approve|reject`
+(Garisek). `--list` shows every waiting ask.
+
+Goals on file: `data-headers-sortable` (slot-table), `slot-action-overlay-labels`,
+`perf-tier1-95` (the Host-run form of perf-overnight: `eval:perf-gate --mode=strict`).
+
+Interactive sessions leave the same receipt shape: the Claude Code `Stop`
+hook and Cursor `stop` run `tools/eval-ledger/session-receipt-stop.mjs`
+(`run_id: null`, keyed `claude-code:<sid>` / `cursor:<id>`, deduped per session).
+Every receipt with a `run_id` is also one Langfuse trace (`cf-session`) in the
+run's session, beside the coder generations.
+
+### Gates the runner leans on (Cursor + Claude Code hooks)
+
+| Hook | Law |
+|------|-----|
+| `pretool-engine-graph.sh` | Write to a router `engineFiles` path needs a fresh `find_symbol` / `impact_analysis` / `search_code` stamp; `cg.mjs stamp` alone is denied |
+| `pretool-ui-design-mcp.sh` + `CYCLEFORGE_STAMP_STRICT=1` (or `.cursor/stamp-strict`) | design stamp must come from a `ds_*` call; session-start no longer pre-seeds |
+| `pretool-ledger-guard.sh` / `.claude/settings.json` | agents cannot write `docs/eval/**/LEDGER.md`, `docs/eval/goals/**`, `docs/eval/sessions/**` |
+
+`bash tools/eval-ledger/pretool-hooks.test.sh` replays every case.
 ```
 
 MLX env: `CYCLEFORGE_MLX_BASE` (OpenAI `/v1`) — **grader of the repair brief

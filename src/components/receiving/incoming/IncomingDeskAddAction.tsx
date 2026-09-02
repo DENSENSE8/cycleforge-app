@@ -1,15 +1,14 @@
 'use client';
 
 /**
- * Inbound desk header CTA — **Add purchase order** (primary) plus Import menu.
+ * Inbound desk header CTA — **Add purchase order** plus bulk Import menu.
  *
- * Opens the inline PO intake band under the Incoming grid (not a right-rail
- * form). Also consumes Global Header Add intents for Incoming.
+ * Pressed face swaps the Incoming sheet for the record walk (exceptions / Labels).
  */
 
 import { useCallback, useEffect, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { FileText, Package, RefreshCw, RotateCcw } from '@/components/Icons';
+import { FileText, Package, RefreshCw, RotateCcw, X } from '@/components/Icons';
 import { DeskActionSlotRegistrar } from '@/design-system/components/DeskActionSlot';
 import { SlicedActionDock } from '@/design-system/primitives';
 import {
@@ -17,16 +16,21 @@ import {
   consumeGlobalAddIntent,
   type GlobalAddIntent,
 } from '@/lib/global-add/catalog';
-import { openPoIntake } from '@/lib/inbound/po-intake-store';
 import { useIncomingSyncActions } from '@/components/sidebar/receiving/incoming/useIncomingSyncActions';
 import { IncomingSyncDialog } from '@/components/sidebar/receiving/IncomingSyncDialog';
 import { INBOUND_RETURNS_IMPORT_DESCRIPTOR } from '@/lib/inbound/inbound-returns-import-descriptor';
 import { useTableImportFilePicker } from '@/components/tables/import/TableImportFileButton';
+import {
+  parseIncomingIntake,
+  writeIncomingIntake,
+  type IncomingIntakeKind,
+} from '@/lib/inbound/incoming-intake';
+import { INCOMING_SURFACE_ROUTE } from '@/lib/receiving/surface-path';
 
 function applyIncomingGlobalIntent(
   intent: GlobalAddIntent,
   helpers: {
-    openIntake: () => void;
+    openIntake: (kind: IncomingIntakeKind) => void;
     armReturnsImport: () => void;
     importZoho: () => void;
     importEbay: () => void;
@@ -38,7 +42,7 @@ function applyIncomingGlobalIntent(
         helpers.armReturnsImport();
         return true;
       }
-      helpers.openIntake();
+      helpers.openIntake(intent.leaf === 'add-return' ? 'return' : 'po');
       return true;
     case 'incoming-import-zoho':
       helpers.importZoho();
@@ -57,10 +61,30 @@ export function IncomingDeskAddAction() {
   const searchParams = useSearchParams();
   const sync = useIncomingSyncActions();
   const returnsCsv = useTableImportFilePicker(INBOUND_RETURNS_IMPORT_DESCRIPTOR);
+  const intakeKind = parseIncomingIntake(searchParams.get('intake'));
+  const addInboundOpen = intakeKind != null;
 
-  const openIntake = useCallback(() => {
-    openPoIntake({ reset: true });
-  }, []);
+  const patchIntake = useCallback(
+    (kind: IncomingIntakeKind | null) => {
+      const params = new URLSearchParams(searchParams.toString());
+      writeIncomingIntake(params, kind);
+      const qs = params.toString();
+      const base = pathname || INCOMING_SURFACE_ROUTE;
+      router.replace(qs ? `${base}?${qs}` : base, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
+
+  const toggleIntake = useCallback(() => {
+    patchIntake(addInboundOpen ? null : 'po');
+  }, [addInboundOpen, patchIntake]);
+
+  const openIntake = useCallback(
+    (kind: IncomingIntakeKind) => {
+      patchIntake(kind);
+    },
+    [patchIntake],
+  );
 
   const armReturnsImport = useCallback(() => {
     returnsCsv.open();
@@ -104,8 +128,17 @@ export function IncomingDeskAddAction() {
         importZoho,
         importEbay,
       });
-      if (pathname && !pathname.startsWith('/incoming')) {
-        router.push('/incoming');
+      if (pathname && !pathname.startsWith(INCOMING_SURFACE_ROUTE)) {
+        const leaf = intent.kind === 'incoming-add' && intent.leaf === 'add-return'
+          ? 'return'
+          : 'po';
+        const intake =
+          intent.kind === 'incoming-add' && intent.leaf !== 'import-returns' ? leaf : null;
+        router.push(
+          intake
+            ? `${INCOMING_SURFACE_ROUTE}?intake=${intake}`
+            : INCOMING_SURFACE_ROUTE,
+        );
       }
     };
     window.addEventListener(GLOBAL_ADD_INTENT_EVENT, onGlobalAdd);
@@ -126,9 +159,10 @@ export function IncomingDeskAddAction() {
           embedded
           embeddedChrome="header"
           tone="blue"
-          icon={<Package aria-hidden className="h-3.5 w-3.5" />}
-          label="Add purchase order"
-          onClick={openIntake}
+          icon={addInboundOpen ? <X aria-hidden className="h-3.5 w-3.5" /> : <Package aria-hidden className="h-3.5 w-3.5" />}
+          label={addInboundOpen ? 'Close add purchase order' : 'Add purchase order'}
+          onClick={toggleIntake}
+          pressed={addInboundOpen}
           menuPlacement="bottom"
           menuChrome="dropdown"
           menuLabel="More inbound intake"
@@ -162,7 +196,7 @@ export function IncomingDeskAddAction() {
       </div>
     ),
     [
-      openIntake,
+      toggleIntake,
       armReturnsImport,
       importZoho,
       importEbay,
@@ -170,6 +204,7 @@ export function IncomingDeskAddAction() {
       sync.marketplaceRefreshing,
       returnsCsv.live,
       returnsCsv.input,
+      addInboundOpen,
     ],
   );
 

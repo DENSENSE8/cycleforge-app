@@ -139,6 +139,8 @@ interface LedgerGridSurfaceProps<Row, K extends string, C extends LedgerGridColu
   /** Optional ref on the outer shell. */
   shellRef?: RefObject<HTMLDivElement | null>;
   className?: string;
+  /** Domain content under the column header, inside the scroll body. */
+  bodyPrefix?: ReactNode;
   /**
    * Accessible name for the table — REQUIRED. `LedgerGrid` exposes
    * `role="table"`, and a table with no accessible name announces as a bare
@@ -194,6 +196,7 @@ export function LedgerGridSurface<Row, K extends string, C extends LedgerGridCol
   ariaLabel,
   testId,
   surface = 'framed',
+  bodyPrefix,
 }: LedgerGridSurfaceProps<Row, K, C>) {
   const descriptor = useMemo(() => makeDescriptor(columns), [makeDescriptor, columns]);
   // Hand back the DESCRIPTOR's own list rather than `columns` — the same array,
@@ -304,6 +307,7 @@ export function LedgerGridSurface<Row, K extends string, C extends LedgerGridCol
           emptyState={resolvedEmpty}
           isSearching={isSearching && hasSearchEmpty}
           searchEmptyState={resolvedSearchEmpty}
+          bodyPrefix={bodyPrefix}
         />
       )}
     </div>

@@ -52,6 +52,8 @@ must list `applyStationSkin('porcelain')` (and peers) plus `--ds-station-well`, 
 `src/design-system/themes/station-skins.ts`. Values on that axis must never contain a `#hex`
 (character fills stay in the catalog file; leaking them is how agents paste wood hex onto Unbox).
 `ds_contract("scan station theme skin porcelain packing bench")` must rank `station-skins` first.
+`ds_contract("staff reaction on the composer")` must rank `WeldedFeedbackPanel`
+first, home **staff mouth reaction**, file under `src/components/composer/`.
 
 Colour `value` fields must never contain a `#hex`. That check is **vacuous**
 unless a planted hex fails it. Smoke spawns a second server with

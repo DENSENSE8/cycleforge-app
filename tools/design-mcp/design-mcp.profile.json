@@ -1,0 +1,59 @@
+{
+  "$schema": "./design-mcp.profile.schema.json",
+  "v": "cf-design-profile:v1",
+  "serverName": "cycleforge-design-mcp",
+  "shadcnUi": "^(button|input|label|checkbox|badge|alert|skeleton|separator|dialog|command|popover|calendar)\\.tsx$",
+  "primitiveHomes": [
+    { "dir": "src/design-system/primitives", "label": "design-system primitive", "alias": "@/design-system/primitives" },
+    { "dir": "src/design-system/components", "label": "design-system component", "alias": "@/design-system/components" },
+    { "dir": "src/components/ui", "label": "shadcn primitive (new-york, house tokens)", "alias": "@/components/ui", "match": "$shadcnUi" },
+    { "dir": "src/components/ui", "label": "ui composite (house)", "alias": "@/components/ui", "match": "\\.tsx$", "exclude": "$shadcnUi" },
+    { "dir": "src/components/composer", "label": "composer surface", "alias": "@/components/composer", "match": "\\.tsx$", "exclude": "^WeldedFeedbackPanel\\.tsx$" },
+    { "dir": "src/components/composer", "label": "staff mouth reaction", "alias": "@/components/composer", "match": "^(WeldedFeedbackPanel)\\.tsx$" },
+    { "dir": "src/components/tables", "label": "table engine (house)", "alias": "@/components/tables" },
+    { "dir": "src/lib/tables", "label": "table engine (slot kernel)", "alias": "@/lib/tables", "match": "^(materialize-tracks|slot-layout|table-definition)\\.ts$" },
+    { "dir": "src/components/desk", "label": "desk frame (app adapter)", "alias": "@/components/desk", "match": "^DeskPageLayout\\.tsx$" },
+    { "dir": "src/components/labels", "label": "label face (house)", "alias": "@/components/labels", "match": "^(LabelFacePreview|LabelFaceSlotOverlay|LabelPlatformTypeMenu|LabelFaceReceivingSlots|LabelFaceProductSlots|WorkspaceLabelPreviewCard|LabelPreviewCard)\\.tsx$" },
+    { "dir": "src/lib/optimistic", "label": "write primitive", "alias": "@/lib/optimistic", "match": "^useOptimisticMutation\\.ts$" },
+    { "dir": "src/design-system/themes", "label": "theme catalog (house)", "alias": "@/design-system/themes", "match": "^station-skins\\.ts$" },
+    { "dir": "src/design-system/themes", "label": "theme catalog (house)", "alias": "@/design-system/themes", "match": "^station-depths\\.ts$" },
+    { "dir": "src/design-system/components/item-record", "label": "item-record face (house)", "alias": "@/design-system/components/item-record", "match": "^(ItemRecordQtyBadge|ItemRecordThumb|ItemRecordMobileMeta|ItemRecordMobileStage)\\.tsx$" }
+  ],
+  "tokenSources": {
+    "radius": "src/design-system/tokens/radius.ts",
+    "themes": "src/design-system/themes/registry.ts",
+    "stationSkins": "src/design-system/themes/station-skins.ts",
+    "stationDepths": "src/design-system/themes/station-depths.ts",
+    "spacing": "src/design-system/tokens/spacing.mjs",
+    "zIndex": "src/design-system/tokens/z-index.mjs",
+    "elevation": "src/design-system/tokens/shadows.ts",
+    "focus": "src/design-system/tokens/focus-ring.ts",
+    "border": "src/design-system/tokens/borders.ts",
+    "typePresets": "src/design-system/tokens/typography/presets.ts",
+    "typeSizes": "src/design-system/tokens/typography/sizes.ts",
+    "itemRecordFace": "src/design-system/components/item-record/item-record-face.ts",
+    "itemRecordMobile": "src/design-system/tokens/item-record-mobile.ts",
+    "deskStage": "src/design-system/tokens/desk-stage.ts",
+    "tailwind": "tailwind.config.mjs"
+  },
+  "overrides": "src/design-system/pinned.json",
+  "routerJson": "tools/design-mcp/router.json",
+  "overlayCohortSource": "src/lib/station/scan-station-overlay-cohort.ts",
+  "cohortWorkspaces": [],
+  "themeCatalogDir": "src/design-system/themes/",
+  "triageLayoutFiles": [
+    "src/design-system/components/TriageScrollLayout.tsx",
+    "src/design-system/components/TriageSections.tsx",
+    "src/design-system/components/TriageScrollKnobs.tsx"
+  ],
+  "centerLockXorDebt": [
+    "src/design-system/components/DeskRecordWalkHost.tsx",
+    "src/components/outbound/orders/exceptions/OrderExceptionsWorkbench.tsx",
+    "src/components/outbound/orders/paperwork/PaperworkWalkHost.tsx",
+    "src/components/receiving/incoming/IncomingPoIntakeBand.tsx"
+  ],
+  "adjudicator": {
+    "baseRules": ["no-suppression"],
+    "note": "Garisek RULES[] ids adopted for this target. no-new-component is NOT adopted (gap report G.3); its escape is the cohort.append_row ask. Router refuse[] entries with a diffPattern become project rules automatically."
+  }
+}

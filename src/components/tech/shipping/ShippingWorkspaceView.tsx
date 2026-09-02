@@ -22,18 +22,19 @@ import { useNewOrderParam } from '@/hooks/useNewOrderParam';
 import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
+import { LoaderFieldStatic } from '@/design-system/components/LoaderFieldStatic';
 import { Plus } from '@/components/Icons';
 import type { ShippingWorkspaceTab } from '@/utils/shipping-workspace-state';
 
-function TableFallback() {
-  return <div className="min-h-[240px] flex-1 bg-surface-canvas" aria-hidden />;
+function PickerTableFallback() {
+  return <LoaderFieldStatic label="Loading picker" />;
 }
 
 const TechTable = dynamic(
   () => import('@/components/TechTable').then((m) => m.TechTable),
   // SSR allowed — shipping history is not `/test` LCP (Testing centre is).
   // Loading fallback is the stand-in while the chunk resolves.
-  { loading: TableFallback },
+  { loading: PickerTableFallback },
 );
 
 export interface ShippingWorkspaceViewProps {
@@ -42,8 +43,8 @@ export interface ShippingWorkspaceViewProps {
 }
 
 /**
- * The bench strip. `pending` is the default body, so it lights no tab — the
- * same rule every other strip follows.
+ * The bench strip. `urgent` is the default body and is represented by the
+ * first visible tab, so direct `/test` links have a selected tab.
  *
  * There is no **All** entry: `all` is the absence of a narrowing, and the
  * unfiltered body is what shows when no tab is lit, so a tab for it is a
@@ -107,7 +108,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
               {...paneMotionProps}
               className="flex min-h-0 min-w-0 flex-1 flex-col"
             >
-              <Suspense fallback={<div className="min-h-[240px] bg-surface-canvas" aria-hidden />}>
+              <Suspense fallback={<LoaderFieldStatic label="Loading picker" />}>
                 {shipTab === 'history' ? (
                   <TechTable
                     testedBy={Number.isFinite(parsedTechId) ? parsedTechId : 0}

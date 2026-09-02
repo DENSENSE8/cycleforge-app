@@ -57,7 +57,6 @@ export const ORDERS_DEFAULT_TABLE_BINDING: TableSurfaceBinding<ShippedOrder, Ord
   definition: ORDERS_TABLE_DEFINITION,
   columns: ORDERS_COMPOUND_COLUMNS,
   makeDescriptor: makeOrdersGridDescriptor,
-  // Stable id on purpose: To-ship is walked record-by-record, and a per-order
-  // id would play exit → empty → enter on every ↑↓ step.
-  recordPlane: { kind: 'inspector', occupantId: 'detail:order' },
+  // Center Lock L2 — multi-field record form on the desk stage (law Q5).
+  recordPlane: { kind: 'stage-overlay', reason: 'To-ship queue walk — table stays mounted under overlay' },
 };

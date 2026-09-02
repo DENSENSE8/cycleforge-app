@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { AnimatePresence, motion } from '@/design-system/motion';
-import { Check, ChevronDown, FileText, Package } from '@/components/Icons';
+import { Check, FileText, Package } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { SkuScanRefChip, getLast8 } from '@/components/ui/CopyChip';
+
 import { InlineNotice } from '@/design-system/components';
 import { Button } from '@/design-system/primitives';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
@@ -13,11 +13,10 @@ import {
   useMotionPresence,
   useMotionTransition,
 } from '@/design-system/foundations/motion-framer-hooks';
-import { PoLineHeaderThumb } from '@/components/receiving/workspace/PoLineHeaderThumb';
-import { PO_LINE_HEADER_FACE } from '@/components/receiving/workspace/station-scan-face';
+import { ItemRecordRow } from '@/design-system/components/item-record/ItemRecordRow';
+import type { ItemRecord } from '@/design-system/components/item-record/item-record-types';
 import type { PackChecklistLineDto, PackKitPartDto, PackCheckDto } from '@/lib/packing/order-pack-checklist';
 import type { KitPartDocument } from '@/lib/packing/kit-part-document';
-import { orderRowConditionLabel } from '@/lib/conditions';
 import { cn } from '@/utils/_cn';
 
 interface PackChecklistLineRowProps {
@@ -221,90 +220,36 @@ export function PackChecklistLineRow({
   onToggleKitPart,
   tickedChecks,
   onToggleCheckItem,
-  variant,
+  variant: _variant,
   onOpenPartDocument,
   onPrintPartDocument,
 }: PackChecklistLineRowProps & { onToggleCheckItem: (checkId: number) => void }) {
-  const condLabel = orderRowConditionLabel(line.condition);
-  const sku = line.sku?.trim() ?? '';
-  const touchClass = variant === 'mobile' ? 'min-h-[44px]' : '';
+  const item: ItemRecord = {
+    id: line.orderRowId,
+    title: line.productTitle,
+    imageUrl: line.catalog.imageUrl,
+    sku: line.sku,
+    quantity: { expected: line.quantity },
+    conditionGrade: line.condition,
+    serials: line.serials,
+  };
 
   return (
-    <li className="border-b border-border-hairline last:border-b-0">
-      <div className={`flex items-stretch gap-2 px-3 py-2 ${checked ? 'bg-emerald-50/40' : ''}`}>
+    <ItemRecordRow
+      item={item}
+      className="border-b border-border-hairline last:border-b-0"
+      titleActions={
         <HoverTooltip label="Confirm this item is in the box" asChild>
-          <button
-            type="button"
-            onClick={onToggleCheck}
-            aria-pressed={checked}
-            aria-label="Confirm line item"
-            className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center self-start rounded-none border transition-colors ${touchClass} ${
-              checked
-                ? 'border-emerald-600 bg-emerald-600 text-white'
-                : 'border-border-default bg-surface-card hover:border-emerald-400'
-            }`}
-          >
-            {checked && <Check className="h-3 w-3" />}
+          <button type="button" aria-pressed={checked} aria-label="Confirm line item" onClick={onToggleCheck} className="mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-none border border-border-default">
+            {checked && <Check className="h-3 w-3 text-emerald-600" />}
           </button>
         </HoverTooltip>
-
-        {/* One-row anatomy: size-20 thumb | title top + qty/condition bottom.
-            SKU chip is a SIBLING of the expand control — never nested inside
-            `SkuScanRefChip`'s button (invalid DOM / hydration fight). */}
-        <div className="flex min-w-0 flex-1 items-stretch gap-2">
-          <button
-            type="button"
-            onClick={onToggleExpand}
-            aria-expanded={expanded}
-            className={cn(
-              'ds-raw-button grid min-w-0 flex-1 text-left',
-              PO_LINE_HEADER_FACE.minH,
-              PO_LINE_HEADER_FACE.thumbGrid,
-              touchClass,
-            )}
-          >
-            <PoLineHeaderThumb imageUrl={line.catalog.imageUrl} />
-            <div className="flex min-h-0 min-w-0 flex-col justify-between self-stretch">
-              <p
-                className={cn(
-                  'min-w-0 truncate px-2 py-1 text-role-caption font-semibold',
-                  checked ? 'text-emerald-700 line-through' : 'text-text-default',
-                )}
-              >
-                {line.productTitle}
-              </p>
-              <div className="flex flex-wrap items-center gap-1.5 px-2 py-1">
-                <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
-                  ×{line.quantity}
-                  <span className="px-1 text-text-faint">·</span>
-                  {condLabel}
-                </span>
-              </div>
-            </div>
-          </button>
-
-          {sku ? (
-            <div className="shrink-0 self-start pt-1">
-              <SkuScanRefChip value={sku} display={getLast8(sku)} />
-            </div>
-          ) : null}
-        </div>
-
-        <button
-          type="button"
-          onClick={onToggleExpand}
-          aria-label={expanded ? 'Collapse details' : 'Expand details'}
-          className={cn(
-            'flex h-7 w-7 shrink-0 items-center justify-center self-start rounded-none text-text-soft transition-transform hover:bg-surface-sunken',
-            expanded ? 'rotate-180' : '',
-          )}
-        >
-          <ChevronDown className="h-4 w-4" />
-        </button>
-      </div>
-
-      {expanded ? (
+      }
+      disclosure={{ expanded, onToggle: onToggleExpand, label: `${expanded ? 'Hide' : 'Show'} details for ${line.productTitle}` }}
+      body={
         <div className="space-y-3 border-t border-border-hairline bg-surface-canvas/60 px-3 py-3">
+
+
           {/* Larger photo + visual verification emphasis (top priority: confirm SKU photo matches physical) */}
           <div className="flex gap-3">
             <div className="relative h-28 w-28 shrink-0 overflow-hidden rounded-none border border-border-soft bg-surface-card ring-1 ring-inset ring-blue-100">
@@ -401,7 +346,7 @@ export function PackChecklistLineRow({
             </div>
           ) : null}
         </div>
-      ) : null}
-    </li>
+      }
+    />
   );
 }

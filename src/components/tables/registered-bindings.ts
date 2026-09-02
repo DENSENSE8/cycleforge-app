@@ -9,26 +9,10 @@
  *
  * ## Why this is its own module
  *
- * There were two lists: `REGISTERED_DEFINITIONS` inside the registry (which
- * mapped bindings to their `.definition`) and a hand-typed `BINDINGS` array
- * inside `table-definition-registry.guard.test.ts`. They were maintained by
- * hand, independently, and nothing compared them — so when `inventory.units`
- * and `outbound.csv-import-staging` were registered, the guard's copy was not
- * updated and those two surfaces silently escaped the definition↔columns drift
- * check for the whole of their life. The drift check is the guard's stated
- * reason for existing, so two tables had the protection its docblock promised
- * and none of the enforcement.
- *
- * One list, derived both ways, plus a coverage assertion in
- * `table-record-plane.guard.test.ts` that the registry and this array name the
- * same set. A hand-maintained "all of them" is only as good as the assertion
- * that it is all of them.
- *
- * Both of those guards — the drift check
- * (`table-definition-registry.guard.test.ts`) and that coverage assertion —
- * were named here for a long time and did not exist. They were written
- * 2026-08-31 (seller-table-program wave 1.5), which is the point at which this
- * docblock's account of what protects the list became true.
+ * There were two lists: `REGISTERED_DEFINITIONS` inside the registry and a
+ * second hand-typed copy in a structural guard. They drifted. This module is
+ * the one list; the registry derives from it. Structural `*.guard.test.ts`
+ * files are not part of the tree.
  *
  * ## Why `as const` and not an erased element type
  *
@@ -42,12 +26,14 @@
 import { INCOMING_TABLE_BINDING } from '@/components/station/incoming-grid/incoming-table-definition';
 import { DAILY_TABLE_BINDING } from '@/features/home/grid/daily-table-definition';
 import { TASKS_TABLE_BINDING } from '@/features/tasks/grid/tasks-table-definition';
+import { SESSIONS_TABLE_BINDING } from '@/features/reports/sessions/sessions-table-definition';
 import { RECEIVING_TABLE_BINDING } from '@/components/station/receiving-grid/receiving-table-definition';
 import { ORDERS_DEFAULT_TABLE_BINDING } from '@/components/dashboard/orders-queue/orders-table-definition';
 import { CATALOG_LINK_TABLE_BINDING } from '@/features/review/catalog-link/grid/catalog-link-table-definition';
 import { IMPORT_EXCEPTION_TABLE_BINDING } from '@/features/review/catalog-link/grid/import-exception-table-definition';
 import { UNITS_TABLE_BINDING } from '@/components/inventory/units-grid/units-table-definition';
 import { CSV_IMPORT_STAGING_TABLE_BINDING } from '@/components/outbound/orders/import-staging/csv-import-staging-table-definition';
+import { SHORTAGE_COVERAGE_STAGING_TABLE_BINDING } from '@/components/outbound/orders/shortage-coverage-staging/shortage-coverage-staging-table-definition';
 import { READY_TABLE_BINDING } from '@/components/outbound/ready/grid/ready-table-definition';
 import { CATALOG_TABLE_BINDING } from '@/components/products/catalog/catalog-grid/catalog-table-definition';
 import { PICKUP_TABLE_BINDING } from '@/components/receiving/pickup/grid/pickup-table-definition';
@@ -82,6 +68,7 @@ export const REGISTERED_BINDINGS = [
   // stores answering two questions (personal list vs the org's rostered shift
   // checklist), sharing this engine and nothing else.
   TASKS_TABLE_BINDING,
+  SESSIONS_TABLE_BINDING,
   // Review · Listing match + Missing item number — two queues on one page,
   // two prefs buckets, two record planes.
   CATALOG_LINK_TABLE_BINDING,
@@ -98,6 +85,8 @@ export const REGISTERED_BINDINGS = [
   // To-Ship CSV import staging — its OWN prefs bucket, never `orders`: hiding a
   // column while triaging a file must not change the live queue's density.
   CSV_IMPORT_STAGING_TABLE_BINDING,
+  // Shortage CSV coverage staging — own prefs bucket, never `orders`.
+  SHORTAGE_COVERAGE_STAGING_TABLE_BINDING,
   // Outbound › Ready / recently-tested history.
   READY_TABLE_BINDING,
   // Products › Catalog browse. Display-safe: no triage, no dispatch.

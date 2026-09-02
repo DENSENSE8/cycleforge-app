@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { normalizeShippedSearchField } from '@/lib/shipped-search';
 import {
@@ -107,7 +107,9 @@ export function useShippedTableFilters({
   const effectiveWeekStart = hasDateRange ? dateFrom : anyCarrierFilter ? '' : weekRange.startStr;
   const effectiveWeekEnd = hasDateRange ? dateTo : anyCarrierFilter ? '' : weekRange.endStr;
 
-  const search = searchParams.get('search') || '';
+  // Free-text search is local to the mounted table. Keep URL state for durable
+  // facets/date/sort, but never navigate once per typed character.
+  const [search, setSearchState] = useState('');
   const normalizedSearch = search.trim().toLowerCase();
 
   // Dashboard Shipped is list-only flat spreadsheet. Board layout URL is ignored.
@@ -153,20 +155,11 @@ export function useShippedTableFilters({
   );
 
   const clearSearch = useCallback(() => {
-    replaceParams((params) => { params.delete('search'); });
-  }, [replaceParams]);
+    setSearchState('');
+  }, []);
 
-  /** The find field writes here — same param the rest of the desk reads. */
-  const setSearch = useCallback(
-    (next: string) => {
-      replaceParams((params) => {
-        const trimmed = next.trim();
-        if (trimmed) params.set('search', trimmed);
-        else params.delete('search');
-      });
-    },
-    [replaceParams],
-  );
+  /** The find field writes local state; it must not navigate the desk. */
+  const setSearch = useCallback((next: string) => setSearchState(next), []);
 
   const applyShippedFilter = useCallback(
     (filter: string) => {

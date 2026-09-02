@@ -26,6 +26,7 @@ function PoMailboxAdminSectionInner() {
   const search = useSearchParams();
   const oauthReturn = !!(search.get('po_gmail_connected') || search.get('po_gmail_error'));
   const [view, setView] = useState<'queue' | 'connection'>(oauthReturn ? 'connection' : 'queue');
+  const [queueSearch, setQueueSearch] = useState('');
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-surface-canvas">
@@ -38,10 +39,16 @@ function PoMailboxAdminSectionInner() {
         {view === 'queue' ? (
           <div className="flex h-full min-h-0 w-full flex-col overflow-hidden md:flex-row">
             <aside className="shrink-0 overflow-y-auto border-b border-border-soft bg-surface-card md:w-72 md:border-b-0 md:border-r">
-              <UnfoundQueueSidebarToolbar />
+              <UnfoundQueueSidebarToolbar
+                searchValue={queueSearch}
+                onSearchChange={setQueueSearch}
+              />
             </aside>
             <div className="min-h-0 flex-1 overflow-hidden">
-              <UnfoundQueueTable />
+              <UnfoundQueueTable
+                searchValue={queueSearch}
+                onSearchChange={setQueueSearch}
+              />
             </div>
           </div>
         ) : (

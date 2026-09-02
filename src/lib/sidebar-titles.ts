@@ -1,42 +1,18 @@
-import { getSidebarRouteKey } from '@/lib/sidebar-navigation';
+import {
+  masterNavLabelForPath,
+} from '@/lib/sidebar-navigation';
 
 /**
- * Human-readable sidebar titles keyed by the canonical route key
- * (see {@link getSidebarRouteKey}). Pure data — no React.
- */
-export const SIDEBAR_TITLES: Record<string, string> = {
-  dashboard: 'Dashboard',
-  search: 'Search',
-  operations: 'Operations',
-  'ops-photos': 'Media',
-  studio: 'Operations Studio',
-  fba: 'Amazon Prep',
-  receiving: 'Receiving',
-  repair: 'Repair',
-  // The `/walk-in` main page is the front-desk transaction history — renamed
-  // "Sales". Local Pickup / Repair work lives in Receiving modes.
-  'walk-in': 'Sales',
-  'work-orders': 'Work Orders',
-  replenish: 'Replenish',
-  inventory: 'Inventory',
-  products: 'Products',
-  warehouse: 'Warehouse',
-  sourcing: 'Sourcing',
-  tech: 'Testing',
-  packer: 'Packing',
-  outbound: 'Shipping',
-  support: 'Support',
-  'ai-chat': 'Chat',
-  admin: 'Admin',
-  'audit-log': 'Audit Log',
-  settings: 'Settings',
-};
-
-/**
- * Resolve the sidebar title for a pathname, falling back to `'Home'`.
+ * Resolve the MasterNav L1 title for a pathname.
  *
- * @param pathname Current `usePathname()` value (may be `null`).
+ * SoT is {@link APP_SIDEBAR_NAV} via {@link masterNavLabelForPath} — never a
+ * parallel map (`Media` vs Media Library, `Testing` vs Quality Control).
+ * Pass search params so `/test?view=testing` and `/shipping/scan-out` resolve
+ * to the same words as the spine.
  */
-export function getSidebarTitle(pathname: string | null): string {
-  return SIDEBAR_TITLES[getSidebarRouteKey(pathname)] ?? 'Home';
+export function getSidebarTitle(
+  pathname: string | null,
+  searchParams?: Pick<URLSearchParams, 'get'> | null,
+): string {
+  return masterNavLabelForPath(pathname, searchParams);
 }

@@ -1,0 +1,139 @@
+{
+  "project": "cycleforge-app",
+  "target": "function:src/lib/tables/slot-table-header-sort.ts:isSlotTableChromeTrack",
+  "files_affected": 15,
+  "total_symbols": 26,
+  "files": [
+    {
+      "file": "src/lib/receiving/receiving-grid-layout.ts",
+      "nearest_depth": 1,
+      "affected_symbols": 4,
+      "symbols": [
+        "incomingSortFactFor",
+        "isIncomingChromeKey",
+        "isReceivingChromeKey",
+        "receivingSortFactFor"
+      ]
+    },
+    {
+      "file": "src/lib/sessions/sessions-grid-layout.ts",
+      "nearest_depth": 1,
+      "affected_symbols": 3,
+      "symbols": [
+        "isSessionsGridSortable",
+        "sessionsColumnKeyForSort",
+        "sessionsSortFactFor"
+      ]
+    },
+    {
+      "file": "src/lib/staff-todos/tasks-grid-layout.ts",
+      "nearest_depth": 1,
+      "affected_symbols": 3,
+      "symbols": [
+        "isTasksGridSortable",
+        "tasksColumnKeyForSort",
+        "tasksSortFactFor"
+      ]
+    },
+    {
+      "file": "src/lib/daily-checks/daily-grid-layout.ts",
+      "nearest_depth": 1,
+      "affected_symbols": 3,
+      "symbols": [
+        "dailyColumnKeyForSort",
+        "dailySortFactFor",
+        "isDailyGridSortable"
+      ]
+    },
+    {
+      "file": "src/lib/tables/slot-table-cohort.test.ts",
+      "nearest_depth": 1,
+      "affected_symbols": 2,
+      "symbols": [
+        "assertCompoundFamilyHeaderSort",
+        "slot-table-cohort.test.ts"
+      ]
+    },
+    {
+      "file": "src/utils/queue-display-sort.ts",
+      "nearest_depth": 1,
+      "affected_symbols": 2,
+      "symbols": [
+        "isQueueSortableColumnKey",
+        "queueSortForColumnKey"
+      ]
+    },
+    {
+      "file": "src/features/tasks/grid/tasks-grid-descriptor.ts",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "makeTasksGridDescriptor"
+      ]
+    },
+    {
+      "file": "src/components/dashboard/orders-queue/orders-queue-descriptor.ts",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "makeOrdersGridDescriptor"
+      ]
+    },
+    {
+      "file": "src/utils/queue-display-sort-compound.test.ts",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "queue-display-sort-compound.test.ts"
+      ]
+    },
+    {
+      "file": "src/features/tasks/TasksWorkbench.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "TasksWorkbench"
+      ]
+    },
+    {
+      "file": "src/components/dashboard/orders-queue/useOrdersSpreadsheet.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "useOrdersSpreadsheet"
+      ]
+    },
+    {
+      "file": "src/features/home/grid/daily-grid-descriptor.ts",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "makeDailyGridDescriptor"
+      ]
+    },
+    {
+      "file": "src/features/home/HomeDailyMode.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "HomeDailyMode"
+      ]
+    },
+    {
+      "file": "src/features/reports/sessions/sessions-grid-descriptor.ts",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "makeSessionsGridDescriptor"
+      ]
+    },
+    {
+      "file": "src/features/reports/sessions/SessionsReportTable.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "SessionsReportTable"
+      ]
+    }
+  ]
+}

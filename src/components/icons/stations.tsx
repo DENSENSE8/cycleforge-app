@@ -26,6 +26,7 @@ import {
   Package,
   PackageCheck,
   PackageOpen,
+  PackageSearch,
   Receipt,
   ShoppingCart,
   Store,
@@ -54,8 +55,8 @@ export const StationTesting: IconComponent = Wrench;
 /** Outbound Shipping station — `/shipping`. Truck = leave-the-building carrier. */
 export const StationShipping: IconComponent = Truck;
 
-/** Packing station — `/pack`. Plain Box (same family as PackingModeStandard). */
-export const StationPacking: IconComponent = Box;
+/** Packing station — `/pack`. Closed package with a completion check. */
+export const StationPacking: IconComponent = PackageCheck;
 
 // ── Sales mode mark ──────────────────────────────────────────────────────────
 
@@ -91,10 +92,10 @@ export const ReceivingModeRepair: IconComponent = Wrench;
 export const TechModeTesting: IconComponent = ShieldCheck;
 
 /**
- * Tech Ready to Pack queue (Pending · FBA) — package cleared for packers.
- * PackageCheck ≠ Packing Box, ≠ Arrival Truck, ≠ Shipping ClipboardList.
+ * Picker queue (Urgent · History) — search for a package to pick.
+ * PackageSearch ≠ Packing PackageCheck, ≠ Arrival Truck, ≠ Shipping ClipboardList.
  */
-export const TechModeShippingQueue: IconComponent = PackageCheck;
+export const TechModeShippingQueue: IconComponent = PackageSearch;
 
 // ── Shipping station L2 modes ────────────────────────────────────────────────
 

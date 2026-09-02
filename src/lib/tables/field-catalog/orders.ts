@@ -110,6 +110,14 @@ export const ORDERS_FIELD_CATALOG: FieldCatalog = [
     paths: { text: 'notes' },
   },
   {
+    id: 'orders.coverage',
+    family: 'orders',
+    label: 'Coverage',
+    displayType: 'text',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'shortage_coverage' },
+  },
+  {
     id: 'orders.amount',
     family: 'orders',
     label: 'Amount',
@@ -154,12 +162,40 @@ export const ORDERS_PRODUCT_LAYOUT: SlotLayout = {
  */
 export const SHIPPED_LANE_STATUS_FIELDS = ['orders.scanned_out'] as const;
 
+/** Shortage-only coverage face — To-ship / Packed / Labels / Shipped omit it. */
+export const SHORTAGE_LANE_STATUS_FIELDS = ['orders.coverage'] as const;
+
 /** Drop Shipped-only bindings so a working-queue layout cannot paint them. */
 export function omitShippedOnlyBindings(layout: SlotLayout): SlotLayout {
   const drop = new Set<string>(SHIPPED_LANE_STATUS_FIELDS);
   const statusBindings = layout.statusBindings.filter((b) => !drop.has(b.fieldId));
   if (statusBindings.length === layout.statusBindings.length) return layout;
   return { ...layout, statusBindings };
+}
+
+/** Drop coverage so To-ship cannot paint a Shortage-only fact. */
+export function omitShortageCoverageBindings(layout: SlotLayout): SlotLayout {
+  const drop = new Set<string>(SHORTAGE_LANE_STATUS_FIELDS);
+  const statusBindings = layout.statusBindings.filter((b) => !drop.has(b.fieldId));
+  const subtitleBindings = layout.subtitleBindings.filter((b) => !drop.has(b.fieldId));
+  if (
+    statusBindings.length === layout.statusBindings.length &&
+    subtitleBindings.length === layout.subtitleBindings.length
+  ) {
+    return layout;
+  }
+  return { ...layout, statusBindings, subtitleBindings };
+}
+
+/** Shortage desk always paints Coverage, even when the org layout omitted it. */
+export function ensureShortageCoverageBinding(layout: SlotLayout): SlotLayout {
+  const hasStatus = layout.statusBindings.some((b) => b.fieldId === 'orders.coverage');
+  const hasSubtitle = layout.subtitleBindings.some((b) => b.fieldId === 'orders.coverage');
+  if (hasStatus || hasSubtitle) return layout;
+  return {
+    ...layout,
+    statusBindings: [...layout.statusBindings, { fieldId: 'orders.coverage' }],
+  };
 }
 
 /** The one tableId this catalog serves — `PRODUCT_TABLES`' To-ship entry. */

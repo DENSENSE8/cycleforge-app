@@ -13,7 +13,9 @@
  * `ReceivingLineRailShell` on `RightRailHost` instead.
  */
 
-import { useSearchParams } from 'next/navigation';
+import { useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import ReceivingLinesTable from '@/components/station/ReceivingLinesTable';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { UnboxLineWorkspace } from '@/components/receiving/unbox/UnboxLineWorkspace';
@@ -32,6 +34,12 @@ import type { IncomingDetailsTarget } from '@/components/receiving/useReceivingD
 import type { UnboxLookupScanDetail } from '@/components/receiving/receiving-events';
 import { HistoryCartonTriagePanel } from '@/components/receiving/history/HistoryCartonTriagePanel';
 import type { HistoryTriageTarget } from '@/lib/receiving/history-triage-row';
+
+const REPAIR_BROWSE_TABS = [
+  { id: 'incoming', label: 'Incoming' },
+  { id: 'active', label: 'Active' },
+  { id: 'done', label: 'Done' },
+] as const;
 
 /**
  * Shared mount for {@link IncomingDetailsPanel} — Unbox, Triage, and
@@ -210,8 +218,21 @@ export function ReceivingRightPane({
   onCloseHistoryTriage,
   onCloseWorkspace,
 }: ReceivingRightPaneProps) {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const isUnboxMode = mode === 'receive';
+  const repairTab = parseRepairTab(searchParams.get('tab'));
+  const setRepairTab = useCallback(
+    (id: string) => {
+      if (!REPAIR_BROWSE_TABS.some((tab) => tab.id === id)) return;
+      const next = new URLSearchParams(searchParams.toString());
+      if (id === 'active') next.delete('tab');
+      else next.set('tab', id);
+      const qs = next.toString();
+      router.replace(qs ? `?${qs}` : '?', { scroll: false });
+    },
+    [router, searchParams],
+  );
 
   const showTable = isTableOnlyMode && mode !== 'repair';
   const showSelectionRail = showTable;
@@ -219,7 +240,14 @@ export function ReceivingRightPane({
   if (mode === 'repair') {
     return (
       <RightPaneOverlayHost className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <RepairTable filter={parseRepairTab(searchParams.get('tab'))} />
+        <DeskPageLayout
+          className="h-full"
+          tabs={REPAIR_BROWSE_TABS}
+          activeTab={repairTab}
+          onTabChange={setRepairTab}
+        >
+          <RepairTable filter={repairTab} />
+        </DeskPageLayout>
       </RightPaneOverlayHost>
     );
   }
@@ -227,7 +255,9 @@ export function ReceivingRightPane({
   if (mode === 'pickup') {
     return (
       <RightPaneOverlayHost className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <PickupWorkspace selectedOrderId={Number(searchParams.get('lcpu')) || null} />
+        <DeskPageLayout className="h-full" tabs={[]}>
+          <PickupWorkspace selectedOrderId={Number(searchParams.get('lcpu')) || null} />
+        </DeskPageLayout>
       </RightPaneOverlayHost>
     );
   }

@@ -8,13 +8,12 @@
  * open detail-plane row.
  *
  * Toolbar (filter pills, search, Refresh) lives in the sidebar via
- * UnfoundQueueSidebarToolbar. Filter state is URL-backed (`uf_kind` / `uf_q`)
- * so both share one source of truth. Data + mutations live in
+ * UnfoundQueueSidebarToolbar. Kind is URL-backed while search is supplied as
+ * local state by the host. Data + mutations live in
  * {@link useUnfoundQueueTable}. Column sort is DURABLE on `?colsort=`/`?coldir=`.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence } from '@/design-system/motion';
 import { DataTable } from '@/components/tables/DataTable';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
@@ -68,10 +67,18 @@ function compareUnfoundRows(
   }
 }
 
-export function UnfoundQueueTable() {
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
-  const router = useRouter();
+interface UnfoundQueueTableProps {
+  searchValue?: string;
+  onSearchChange?: (next: string) => void;
+}
+
+export function UnfoundQueueTable({
+  searchValue,
+  onSearchChange,
+}: UnfoundQueueTableProps = {}) {
+  const [localSearch, setLocalSearch] = useState('');
+  const search = searchValue ?? localSearch;
+  const setSearch = onSearchChange ?? setLocalSearch;
   const {
     rows,
     loading,
@@ -85,7 +92,7 @@ export function UnfoundQueueTable() {
     openSource,
     handleDeleted,
     handlePushedToZendesk,
-  } = useUnfoundQueueTable();
+  } = useUnfoundQueueTable(search);
 
   // ▦ portals into Band-1 controls (find / kind pills live in the admin sidebar).
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -127,23 +134,6 @@ export function UnfoundQueueTable() {
         : rows;
     return [['', ordered.map((row) => ({ key: `unfound:${unfoundRowKey(row)}`, rows: [row] }))]];
   }, [rows, columnSort, sortFactByKey, sortDir]);
-
-  // A filter is narrowing the list when search or a non-default kind tab is on —
-  // that is what picks "no matches" over "nothing in the queue".
-  const setUnfoundSearch = useCallback(
-    (next: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      const trimmed = next.trim();
-      if (trimmed) params.set('uf_q', trimmed);
-      else params.delete('uf_q');
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
-    [pathname, router, searchParams],
-  );
-
-  const kind = searchParams.get('uf_kind');
-  const search = (searchParams.get('uf_q') ?? '').trim();
 
   const renderLeaf = (row: QueueRow, visible: readonly UnfoundGridColumn[]) => {
     const key = unfoundRowKey(row);
@@ -192,7 +182,7 @@ export function UnfoundQueueTable() {
           loading={loading}
           emptyMessage={error ? '—' : 'Nothing in the unfound queue. Nice.'}
           searchEmptyMessage="No unfound items match these filters."
-          search={{ value: search, onChange: setUnfoundSearch, placeholder: 'Filter queue…' }}
+          search={{ value: search, onChange: setSearch, placeholder: 'Filter queue…' }}
           scrollRef={scrollRef}
           renderGroup={(group, _stripe, { columns: visible }) => (
             <>{group.rows.map((row) => renderLeaf(row, visible))}</>

@@ -76,6 +76,11 @@ interface WorkspaceNotesCardProps {
    * dock drops its top radius and the pair reads as one shape.
    */
   weldTop?: boolean;
+  /**
+   * Staff mouth reaction — WeldedFeedbackPanel on StationComposerHost `reaction`.
+   * Unbox receive confirm mounts here, not as a sibling above the dock.
+   */
+  reaction?: ReactNode;
   /** Terminal CTA for the composer's trailing edge (Unbox overview receive). */
   trailingAction?: ReactNode;
   /** Enter → same primary as the trailing Receive CTA (print + receive). */
@@ -109,6 +114,8 @@ interface WorkspaceNotesCardProps {
    * to hear about the new ticket number.
    */
   onTicketCreated?: (ticketNumber: string) => void;
+  /** RETURN match issue — forwarded to Ticket-mode AI draft. */
+  returnClaimPrefill?: string | null;
   /**
    * The operator typed into the note field. Unbox opens the Label band on this
    * so the sticker face shows the note as it is being written.
@@ -123,6 +130,7 @@ export function WorkspaceNotesCard({
   animateMount = true,
   chrome = 'raised',
   weldTop = false,
+  reaction,
   trailingAction,
   onPrimaryAction,
   primaryActionDisabled,
@@ -137,6 +145,7 @@ export function WorkspaceNotesCard({
   onProgressClick,
   onTicketCreated,
   onNoteTyped,
+  returnClaimPrefill,
 }: WorkspaceNotesCardProps) {
   return (
     <div id="zoho-notes-card">
@@ -144,6 +153,7 @@ export function WorkspaceNotesCard({
         row={row}
         onTicketCreated={onTicketCreated}
         onNoteTyped={onNoteTyped}
+        returnClaimPrefill={returnClaimPrefill}
         notes={c.itemNote}
         overallZohoNotes={row.receiving_zoho_notes ?? null}
         skuTitle={row.zoho_item_title || row.item_name || null}
@@ -173,6 +183,7 @@ export function WorkspaceNotesCard({
         animateMount={animateMount}
         chrome={chrome}
         weldTop={weldTop}
+        reaction={reaction}
         trailingAction={trailingAction}
         onPrimaryAction={onPrimaryAction}
         primaryActionDisabled={primaryActionDisabled}

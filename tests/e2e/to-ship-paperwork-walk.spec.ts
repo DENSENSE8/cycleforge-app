@@ -142,4 +142,36 @@ test.describe('To-ship · Labels paperwork walk', () => {
     await expect(grid(page)).toBeVisible();
     await expect(walk(page)).toHaveCount(0);
   });
+
+  test('tracking hover Label opens the walk over the table, with carton context', async ({
+    page,
+  }) => {
+    const probe = await page.request.get('/api/orders/queue-counts');
+    test.skip(!probe.ok(), 'no session');
+
+    await page.goto(ROUTE);
+    test.skip(/signin|login|account\/sign/i.test(page.url()), 'no session');
+    await expect(grid(page)).toBeVisible({ timeout: 30_000 });
+
+    const rowCount = await page.locator('[data-order-row-id]').count();
+    test.skip(rowCount === 0, 'no To-ship rows');
+
+    const firstRow = page.locator('[data-order-row-id]').first();
+    const fulfillment = firstRow.locator('[data-col="fulfillment"]');
+    await fulfillment.scrollIntoViewIfNeeded();
+    // Order chip is the first hover menu; tracking (or the empty-track dash) is last
+    // and owns the Label extra.
+    await fulfillment.locator('.group.relative.inline-flex').last().hover();
+    const trackingMenu = page.getByRole('menu', { name: 'Tracking actions' });
+    await expect(trackingMenu).toBeVisible({ timeout: 8_000 });
+    await trackingMenu.getByRole('menuitem', { name: 'Label' }).click();
+
+    await expect(page).toHaveURL(/[?&]paperwork=\d+/);
+    await expect(walk(page)).toBeVisible();
+    await expect(editor(page)).toBeVisible();
+    await expect(grid(page)).toHaveCount(0);
+    await expect(page.getByTestId('label-run-band')).toHaveCount(0);
+    await expect(page.getByTestId('carton-context-one-row')).toBeVisible();
+    await expect(page.getByTestId('carton-context-exit')).toBeVisible();
+  });
 });

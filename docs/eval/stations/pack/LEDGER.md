@@ -39,7 +39,7 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station pack` for full gate.
 ## Design critique (latest)
 
 <!-- eval-ledger:auto:design-critique -->
-- `src/components/packer/PackOrderWorkspace.tsx` — snapshot `docs/eval/stations/pack/snapshots/2026-09-01-critique-PackOrderWorkspace.txt`
+- `src/components/packer/PackOrderWorkspace.tsx` — snapshot `docs/eval/stations/pack/snapshots/2026-09-02-critique-PackOrderWorkspace.txt`
 ```
 {
   "file": "src/components/packer/PackOrderWorkspace.tsx",
@@ -53,18 +53,19 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station pack` for full gate.
 ## Graph impact (shared symbols)
 
 <!-- eval-ledger:auto:graph-impact -->
-- **PackOrderWorkspace** — 2 files, 2 symbols (`docs/eval/stations/pack/snapshots/2026-09-01-impact-PackOrderWorkspace.json`)
-- **useOverlaySwapHardCut** — 10 files, 12 symbols (`docs/eval/stations/pack/snapshots/2026-09-01-impact-useOverlaySwapHardCut.json`)
+- **PackOrderWorkspace** — 2 files, 2 symbols (`docs/eval/stations/pack/snapshots/2026-09-02-impact-PackOrderWorkspace.json`)
+- **useOverlaySwapHardCut** — 10 files, 12 symbols (`docs/eval/stations/pack/snapshots/2026-09-02-impact-useOverlaySwapHardCut.json`)
 <!-- /eval-ledger:auto:graph-impact -->
 
 ## Regression tripwires
 
 <!-- eval-ledger:auto:tripwires -->
+**pass** — snapshot `docs/eval/stations/pack/snapshots/2026-09-02-tripwire.log`
 - `src/lib/station/scan-station-overlay-cohort.test.ts`
 <!-- /eval-ledger:auto:tripwires -->
 
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-01T10:20:57.911Z · station `pack`_
+_Updated 2026-09-02T17:09:35.636Z · station `pack`_
 <!-- /eval-ledger:auto:last-run -->

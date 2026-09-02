@@ -58,8 +58,14 @@ test('Unbox rows carry PO-identity · stock · context groups', () => {
   assert.equal(rows.find((r) => r.id === 'photos')?.group, 'assets');
   assert.equal(rows.find((r) => r.id === 'units')?.group, 'assets');
   assert.equal(rows.find((r) => r.id === 'prebox')?.group, 'assets');
+  assert.equal(rows.find((r) => r.id === 'overview')?.group, 'context');
   assert.equal(rows.find((r) => r.id === 'ticket')?.group, 'context');
   assert.equal(rows.find((r) => r.id === 'tracking')?.group, 'context');
+  assert.deepEqual(
+    rows.filter((r) => r.group === 'context').map((r) => r.id),
+    ['overview', 'ticket', 'tracking', 'locations'],
+  );
+  assert.equal(rows.find((r) => r.id === 'overview')?.subtitle, 'Order · tracking · PO');
   assert.equal(rows.some((r) => r.id === 'timeline'), false);
   assert.equal(rows.some((r) => r.id === 'support'), false);
 });
@@ -74,6 +80,7 @@ test('sparse gates hide units · listings · tracking — Prebox stays', () => {
     hasTrackingTab: false,
   };
   const ids = buildUnboxDisplayIndexRows(sparse, BASE_SIGNALS).map((r) => r.id);
+  assert.ok(ids.includes('overview'));
   assert.ok(ids.includes('ticket'));
   assert.ok(ids.includes('photos'));
   assert.ok(ids.includes('prebox'));
@@ -104,6 +111,7 @@ test('ticket / photos / linkage subtitles + tones', () => {
   assert.equal(ok.find((r) => r.id === 'linkage')?.subtitle, 'Paired');
   assert.equal(ok.find((r) => r.id === 'units')?.subtitle, '2 serials');
   assert.equal(ok.find((r) => r.id === 'tracking')?.tone, 'ok');
+  assert.equal(ok.find((r) => r.id === 'tracking')?.subtitle, 'Events · attach');
 });
 
 test('Prebox with serials is quiet (no unit-ready chip / no action tone)', () => {
@@ -156,6 +164,9 @@ test('filterDisplayIndexRows matches label · subtitle · id on Unbox rows', () 
   const rows = buildUnboxDisplayIndexRows(MATCHED, BASE_SIGNALS);
   assert.equal(filterDisplayIndexRows(rows, '').length, rows.length);
   assert.equal(filterDisplayIndexRows(rows, '   ').length, rows.length);
+  const overview = filterDisplayIndexRows(rows, 'overview');
+  assert.equal(overview.length, 1);
+  assert.equal(overview[0]?.id, 'overview');
   const photo = filterDisplayIndexRows(rows, 'photo');
   assert.equal(photo.length, 1);
   assert.equal(photo[0]?.id, 'photos');

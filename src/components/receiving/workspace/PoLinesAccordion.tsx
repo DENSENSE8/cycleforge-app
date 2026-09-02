@@ -101,6 +101,8 @@ interface Props {
    * Omit on surfaces without a Displays host (Shipping, read-only triage).
    */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
+  /** Open the existing right-rail Locations display for this exact PO line. */
+  onOpenLocation?: (line: ReceivingLineRow) => void;
   /** Unbox Action Dock — PO meta condition/serial → focus dock step. */
   onEditConditionInDock?: (line: ReceivingLineRow) => void;
   onEditSerialInDock?: (line: ReceivingLineRow) => void;
@@ -153,6 +155,7 @@ export function PoLinesAccordion({
   headerRight,
   suppressHeader = false,
   onViewAllUnits,
+  onOpenLocation,
   onEditConditionInDock,
   onEditSerialInDock,
   unitsChrome = true,
@@ -284,6 +287,7 @@ export function PoLinesAccordion({
                   : undefined
               }
               onViewAllUnits={unitsChrome ? onViewAllUnits : undefined}
+              onOpenLocation={onOpenLocation}
               onEditConditionInDock={
                 unitsChrome ? onEditConditionInDock : undefined
               }

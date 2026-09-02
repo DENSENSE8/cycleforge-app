@@ -22,7 +22,7 @@
  * from the MOUNTED columns now, which every family already passes.
  */
 
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
@@ -35,6 +35,7 @@ import {
   Package,
   PackageSearch,
   PackingModeStandard,
+  Pencil,
   ShippingModeScanOut,
 } from '@/components/Icons';
 import type { FieldDisplayType } from '@/lib/tables/field-catalog/types';
@@ -44,7 +45,10 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { ITEM_RECORD_MOBILE_STAGE } from '@/design-system/tokens/item-record-mobile';
 import { GridClickSelectFace, GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { CopyChipHoverMenu } from '@/components/ui/CopyChipHoverMenu';
+import {
+  CopyChipHoverMenu,
+  type CopyChipHoverMenuItem,
+} from '@/components/ui/CopyChipHoverMenu';
 import { OrderNumberMenuChip } from '@/components/ui/OrderNumberMenuChip';
 import { TrackingNumberMenuChip } from '@/components/ui/TrackingNumberMenuChip';
 import { carrierBrandDotPaint, resolveCarrierBrand } from '@/lib/carrier-brand';
@@ -56,6 +60,7 @@ import { cn } from '@/utils/_cn';
 import { useSlotLayoutReorder } from '@/components/tables/SlotLayoutReorderContext';
 import { useSubtitlePointerReorder } from './useSubtitlePointerReorder';
 import { CompoundCell, CompoundLine } from './CompoundCell';
+import { ProductTitleLink } from './ProductTitleLink';
 import { COMPOUND_GUTTER_PX, COMPOUND_ROW_PX } from './compound-row-chrome';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import {
@@ -67,6 +72,7 @@ import {
 import { EMPTY_META_DASH } from '@/lib/conditions';
 import { dateKeyToLocalDate, localDateToDateKey } from '@/utils/date';
 import {
+  canAssignCompoundStage,
   formatCompoundDelayFace,
   formatCompoundStageStepLine,
   type CompoundRowAction,
@@ -74,13 +80,15 @@ import {
   type CompoundShipByEdit,
   type CompoundSlotValue,
   type CompoundStageAssign,
+  type CompoundStaffRoster,
   type CompoundStageStepFacts,
   type CompoundStateTone,
   type CompoundSubtitlePart,
   type CompoundSubtitleSelect,
   type CompoundSubtitleEdit,
-  type CompoundSubtitleCopy,
 } from './compound-row-model';
+import { StageStaffAssignPopover } from './StageStaffAssignPopover';
+import { CompoundStaffRosterButton } from './CompoundStaffRosterButton';
 
 /**
  * Column 2 — the photo, EDGE TO EDGE.
@@ -315,80 +323,53 @@ function CompoundSubtitleTextEditor({
   );
 }
 
-/**
- * A subtitle listing control.
- *
- * The face is ALWAYS the external-link glyph — never the word "Listing", never
- * the item number. Live listing → info blue, click opens. Missing item number
- * or missing URL → faint (grayed-out) icon, same box, so the slot does not
- * vanish and the line does not jump.
- */
-function CompoundSubtitleCopyChip({
-  copy,
-  skipClick,
-  dragActive,
-}: {
-  copy: CompoundSubtitleCopy;
-  /** True after a reorder drag — open-listing must not fire on drop. */
-  skipClick?: () => boolean;
-  /** Hide the hover copy menu while the subtitle line is being reordered. */
-  dragActive?: boolean;
-}) {
-  const href = String(copy.openHref ?? '').trim() || null;
-  const handle = String(copy.value ?? '').trim();
-  const live = Boolean(href);
-  const copyItems = handle
-    ? [
-        {
-          id: 'copy-item',
-          label: 'Copy item number',
-          icon: <Copy />,
-          onSelect: () => {
-            void copyToClipboard(handle, {
-              historyKind: 'sku',
-              historyDisplay: handle,
-            });
-          },
-        },
-      ]
-    : [];
-
-  const glyph = (
-    <span
-      role="button"
-      tabIndex={-1}
-      aria-label={live ? 'Open listing' : handle ? 'Listing' : 'No listing'}
-      aria-disabled={live ? undefined : true}
-      onClick={(event) => {
-        event.stopPropagation();
-        if (skipClick?.()) return;
-        if (href) window.open(href, '_blank', 'noopener,noreferrer');
-      }}
-      className={cn(
-        'ds-raw-button inline-flex h-3 w-3 shrink-0 items-center justify-center',
-        live ? 'text-text-info' : 'text-text-faint',
-        focusRing('control'),
-      )}
-    >
-      <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
-    </span>
-  );
-
-  return (
-    <span onClick={(event) => event.stopPropagation()}>
-      {copyItems.length > 0 && !dragActive ? (
-        <CopyChipHoverMenu menuLabel="Listing actions" denseLabel className="h-3" items={copyItems}>
-          {glyph}
-        </CopyChipHoverMenu>
-      ) : (
-        glyph
-      )}
-    </span>
-  );
+function isItemNumberSubtitlePart(key: string | undefined): boolean {
+  return Boolean(key?.endsWith('.item_number'));
 }
 
-function isListingSubtitlePart(key: string | undefined): boolean {
-  return Boolean(key?.endsWith('.item_number'));
+function CompoundItemNumberEditor({
+  edit,
+  onClose,
+}: {
+  edit: CompoundSubtitleEdit;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState(edit.value);
+
+  const commit = () => {
+    onClose();
+    const next = draft.trim();
+    if (next === edit.value.trim()) return;
+    edit.onCommit(next.length > 0 ? next : null);
+  };
+
+  return (
+    <input
+      autoFocus
+      value={draft}
+      aria-label={edit.label}
+      placeholder={edit.placeholder}
+      onChange={(event) => setDraft(event.target.value)}
+      onClick={(event) => event.stopPropagation()}
+      onPointerDown={(event) => event.stopPropagation()}
+      onBlur={commit}
+      onKeyDown={(event) => {
+        event.stopPropagation();
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          commit();
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          onClose();
+        }
+      }}
+      className={cn(
+        'm-0 h-3 min-w-0 appearance-none border-0 bg-transparent p-0',
+        'text-role-caption text-text-default shadow-none outline-none',
+      )}
+      size={Math.max(edit.value.length, 8)}
+    />
+  );
 }
 
 /**
@@ -582,7 +563,6 @@ export function CompoundItem({
   view,
   subtitleSelects,
   subtitleEdits,
-  subtitleCopies,
   subtitleNoteKey,
   noteText,
   onReorderSubtitle,
@@ -592,8 +572,6 @@ export function CompoundItem({
   subtitleSelects?: readonly CompoundSubtitleSelect[];
   /** Present ⇒ the parts these claim retype in place (free text / number). */
   subtitleEdits?: readonly CompoundSubtitleEdit[];
-  /** Present ⇒ the parts these claim paint as a copy chip. */
-  subtitleCopies?: readonly CompoundSubtitleCopy[];
   /** Part key of the NOTE fact — pinned right as a glyph instead of inline. */
   subtitleNoteKey?: string;
   /** The note's full text (the part's face may be truncated or a placeholder). */
@@ -606,17 +584,20 @@ export function CompoundItem({
   onReorderSubtitle?: (dragKey: string, dropKey: string) => void;
 }) {
   // Bound subtitles REPLACE the note line: parts in binding order, sitting
-  // LEFT under the title. Listing is the external-link glyph — never the
-  // item number. No middle dots. Notes stay in that cluster; the editor
-  // opens bottom-right of the glyph. Absent parts ⇒ the legacy note fallback.
+  // LEFT under the title. Item number is intentionally not painted here; its
+  // actions live on the product title hover surface. Notes stay in that
+  // cluster. Absent parts ⇒ the legacy note fallback.
   const parts = view.subtitleParts;
   const selectFor = (part: CompoundSubtitlePart): CompoundSubtitleSelect | undefined =>
     part.key ? subtitleSelects?.find((s) => s.partKey === part.key) : undefined;
 
   const editFor = (part: CompoundSubtitlePart): CompoundSubtitleEdit | undefined =>
     part.key ? subtitleEdits?.find((e) => e.partKey === part.key) : undefined;
-  const copyFor = (part: CompoundSubtitlePart): CompoundSubtitleCopy | undefined =>
-    part.key ? subtitleCopies?.find((c) => c.partKey === part.key) : undefined;
+  const itemNumberPart = parts?.find((part) => isItemNumberSubtitlePart(part.key));
+  const itemNumberEdit = subtitleEdits?.find((edit) => isItemNumberSubtitlePart(edit.partKey));
+  const itemNumberValue = String(itemNumberPart?.text ?? itemNumberEdit?.value ?? '').trim();
+  const listingHref = String(view.titleHref ?? '').trim() || null;
+  const [editingItemNumber, setEditingItemNumber] = useState(false);
 
   /*
    * Click-and-hold reorder of the under-title facts.
@@ -636,15 +617,6 @@ export function CompoundItem({
   const renderPart = (part: CompoundSubtitlePart, i: number) => {
     const select = selectFor(part);
     const edit = editFor(part);
-    const copy =
-      copyFor(part) ??
-      (isListingSubtitlePart(part.key)
-        ? {
-            partKey: part.key!,
-            value: String(part.text ?? '').trim(),
-            openHref: String(view.titleHref ?? '').trim() || null,
-          }
-        : undefined);
     const face = (
       <span
         className={cn(
@@ -672,13 +644,7 @@ export function CompoundItem({
           overKey === partKey && 'bg-surface-sunken',
         )}
       >
-        {copy ? (
-          <CompoundSubtitleCopyChip
-            copy={copy}
-            skipClick={skipClick}
-            dragActive={Boolean(draggingKey)}
-          />
-        ) : edit ? (
+        {edit ? (
           <CompoundSubtitleTextEditor
             part={part}
             edit={edit}
@@ -701,13 +667,15 @@ export function CompoundItem({
   };
 
   /*
-   * Notes stay in the left cluster (after qty / condition / listing). They
+   * Notes stay in the left cluster (after qty / condition). They
    * used to pin right, which is what made the under-title facts look like
    * they belonged to the identity column. The editor still opens to the
    * bottom-right of the glyph — that is a menu placement, not a face.
    */
   const noteKey = subtitleNoteKey;
-  const inlineParts = parts?.filter((p) => p.key !== noteKey);
+  const inlineParts = parts?.filter(
+    (p) => p.key !== noteKey && !isItemNumberSubtitlePart(p.key),
+  );
   const notePart = noteKey ? parts?.find((p) => p.key === noteKey) : undefined;
   const noteEdit = noteKey ? subtitleEdits?.find((e) => e.partKey === noteKey) : undefined;
   const noteBody = (() => {
@@ -721,12 +689,15 @@ export function CompoundItem({
   ) : null;
 
   /*
-   * LEFT under the title: qty, condition, listing glyph, notes glyph.
+   * LEFT under the title: qty, condition, and notes glyph.
    * Same `h-3` box, no middle dots. `justify-start` — a trailing cluster
    * was the wrong reading of "open the note to the bottom right".
    */
+  const itemNumberEditor = editingItemNumber && itemNumberEdit ? (
+    <CompoundItemNumberEditor edit={itemNumberEdit} onClose={() => setEditingItemNumber(false)} />
+  ) : null;
   const noteLine = parts ? (
-    inlineParts && (inlineParts.length > 0 || noteGlyph) ? (
+    inlineParts && (inlineParts.length > 0 || noteGlyph || itemNumberEditor) ? (
       <span
         className="flex h-3 min-w-0 items-center justify-start gap-1 whitespace-nowrap leading-none"
         data-subtitle-reorder={reorderable ? 'true' : undefined}
@@ -735,6 +706,7 @@ export function CompoundItem({
         onClick={(event) => event.stopPropagation()}
       >
         {inlineParts.map(renderPart)}
+        {itemNumberEditor}
         {noteGlyph ? (
           <span className="flex h-3 shrink-0 items-center">{noteGlyph}</span>
         ) : null}
@@ -747,33 +719,57 @@ export function CompoundItem({
   ) : null;
 
   const flagMark = view.flagMark ?? null;
-  const titleHref = String(view.titleHref ?? '').trim() || null;
+  const titleActions: CopyChipHoverMenuItem[] = [];
+  if (itemNumberEdit) {
+    titleActions.push({
+      id: 'edit-item-number',
+      label: 'Edit item number',
+      icon: <Pencil />,
+      onSelect: () => setEditingItemNumber(true),
+    });
+  }
+  if (itemNumberPart || itemNumberEdit || listingHref) {
+    titleActions.push({
+      id: 'open-listing',
+      label: 'Open listing',
+      icon: <ExternalLink />,
+      tone: 'accent',
+      disabled: !listingHref,
+      onSelect: () => {
+        if (listingHref) window.open(listingHref, '_blank', 'noopener,noreferrer');
+      },
+    });
+  }
+  if (itemNumberValue) {
+    titleActions.push({
+      id: 'copy-item-number',
+      label: 'Copy item number',
+      icon: <Copy />,
+      onSelect: () => {
+        void copyToClipboard(itemNumberValue, {
+          historyKind: 'sku',
+          historyDisplay: itemNumberValue,
+        });
+      },
+    });
+  }
+
   const titleLine = view.title ? (
-    titleHref ? (
-      <HoverTooltip label={titleHref} asChild>
-        <CompoundLine>
-          <a
-            href={titleHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(event) => event.stopPropagation()}
-            className={cn(
-              'min-w-0 truncate text-text-default hover:text-text-info hover:underline',
-              'focus-visible:text-text-info focus-visible:underline underline-offset-2',
-              focusRing('control'),
-            )}
-          >
-            {view.title}
-          </a>
-        </CompoundLine>
-      </HoverTooltip>
-    ) : (
-      <HoverTooltip label={view.title} asChild>
-        <CompoundLine>{view.title}</CompoundLine>
-      </HoverTooltip>
-    )
+    <ProductTitleLink title={view.title} href={listingHref} />
   ) : (
     <span className="text-text-faint">Untitled</span>
+  );
+  const titleWithActions = titleActions.length > 0 ? (
+    <CopyChipHoverMenu
+      menuLabel="Item number actions"
+      items={titleActions}
+      denseLabel
+      className="min-w-0"
+    >
+      {titleLine}
+    </CopyChipHoverMenu>
+  ) : (
+    titleLine
   );
 
   return (
@@ -786,10 +782,10 @@ export function CompoundItem({
                 <span className="sr-only">{`Flagged ${flagMark.label}`}</span>
               </span>
             </HoverTooltip>
-            {titleLine}
+            {titleWithActions}
           </span>
         ) : (
-          titleLine
+          titleWithActions
         )
       }
       secondary={noteLine}
@@ -820,8 +816,16 @@ export function CompoundItem({
  * routinely) there was nothing to infer from at all.
  *
  * Copy / Open / Edit verbs are not hand-rolled — the two menu chips own them.
+ * To-ship Label is an extraItems row: it opens the paperwork walk (table XOR
+ * {@link PaperworkWalkHost}), it does not paint a second chip or an in-row band.
  */
-export function CompoundFulfillment({ view }: { view: CompoundRowView }) {
+export function CompoundFulfillment({
+  view,
+  onOpenLabels,
+}: {
+  view: CompoundRowView;
+  onOpenLabels?: () => void;
+}) {
   const orderMeta = resolveMarketplacePlatformMeta(view.orderId, view.platformValue);
   const platformDot = platformMetaBrandDot(orderMeta);
   const orderOpenHref = view.orderId
@@ -830,6 +834,16 @@ export function CompoundFulfillment({ view }: { view: CompoundRowView }) {
   const carrierDot = view.tracking
     ? carrierBrandDotPaint(resolveCarrierBrand(view.tracking, view.carrier))
     : null;
+  const labelItems: CopyChipHoverMenuItem[] | undefined = onOpenLabels
+    ? [
+        {
+          id: 'open-labels',
+          label: 'Label',
+          icon: <FileText />,
+          onSelect: onOpenLabels,
+        },
+      ]
+    : undefined;
 
   return (
     <CompoundCell
@@ -863,8 +877,17 @@ export function CompoundFulfillment({ view }: { view: CompoundRowView }) {
               carrierHint={view.carrier}
               showIcon={false}
               dense
+              extraItems={labelItems}
             />
           </span>
+        ) : onOpenLabels && labelItems ? (
+          <CopyChipHoverMenu
+            menuLabel="Tracking actions"
+            items={labelItems}
+            denseLabel
+          >
+            <GridCellDash />
+          </CopyChipHoverMenu>
         ) : (
           <GridCellDash />
         )
@@ -1000,10 +1023,11 @@ export function CompoundState({
  *   survives as the circle's accessible name only, so AT still hears the
  *   state. An assigned-but-undone row keeps the assignee's mark beside the
  *   dash — "this is Michael's" is still the actionable read. When
- *   {@link CompoundStageAssign} is present and the step has no `at`, that
- *   mark (or the empty unclaimed circle) is display-only — assign commits from
- *   the column-foot person icons under Pick / Packed (bottom-up staff search,
- *   no cell popover). Full roster; no WorkOrder grid.
+ *   {@link CompoundStageAssign} is present and the step has no `at`, the
+ *   empty dashed mark (and the pending claimed mark) is the combo trigger:
+ *   click opens {@link StageStaffAssignPopover}. Stamped steps stay
+ *   read-only. Bulk assign stays the column-foot person icons. Full roster;
+ *   no WorkOrder grid.
  * - **The name lives in the tooltip.** Names are ragged; the mark is 28px
  *   always. The full `who · time · station` line rides the hover, and the
  *   mark's `alt` names the actor for screen readers.
@@ -1018,7 +1042,8 @@ export function CompoundState({
  *
  * An unclaimed / unstamped step paints an empty circle in the mark's slot
  * (same 28px as the `sm` avatar) and a dash next to the glyph — Pick and
- * Packed share this face; neither invents a blank cell.
+ * Packed share this face; neither invents a blank cell. That empty face is
+ * the assign combo when the host armed {@link CompoundStageAssign}.
  */
 export function CompoundStageStep({
   labels,
@@ -1034,6 +1059,9 @@ export function CompoundStageStep({
 }) {
   const tip = formatCompoundStageStepLine(facts);
   const filled = Boolean(facts?.at);
+  const assignable = canAssignCompoundStage(assign, facts?.at);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
   const assignedStaffId =
     assign?.selectedStaffId != null && assign.selectedStaffId > 0
       ? assign.selectedStaffId
@@ -1042,8 +1070,8 @@ export function CompoundStageStep({
   const actorName = (facts?.who ?? '').trim() || null;
   const hasActor = Boolean(actorId || actorName);
   // Past tense → exact stamp on the secondary. Pending claim → "Assigned".
-  // Stamp also rides the hover tip via `tip`. Assign commits from the
-  // column-foot person icons (bottom-up search) — never a cell popover.
+  // Stamp also rides the hover tip via `tip`. Pending cells with a host
+  // handler open the staff combo on the mark itself.
   const showAssigned = !filled && hasActor;
   const stampLine = filled ? (facts?.at ?? null) : null;
 
@@ -1065,50 +1093,101 @@ export function CompoundStageStep({
     />
   );
 
-  const body = (
+  const lines = (
+    <CompoundCell
+      className="flex-1"
+      primary={
+        filled ? (
+          <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-text-default">
+            <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <CompoundLine>{labels.done}</CompoundLine>
+          </span>
+        ) : showAssigned ? (
+          // Claimed but not stamped: keep the column verb (PICK / PACK), not a dash.
+          <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+            <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <CompoundLine>{labels.pending}</CompoundLine>
+          </span>
+        ) : (
+          <span className="inline-flex min-w-0 items-center gap-1 text-text-muted">
+            <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <GridCellDash />
+            <span className="sr-only">{labels.pending}</span>
+          </span>
+        )
+      }
+      secondary={
+        stampLine ? (
+          <CompoundLine className="text-text-muted" mono>
+            {stampLine}
+          </CompoundLine>
+        ) : showAssigned ? (
+          <CompoundLine className="text-text-muted">Assigned</CompoundLine>
+        ) : null
+      }
+    />
+  );
+
+  const face = (
     <div className="flex h-full min-w-0 items-center gap-1.5">
       {markFace}
-      <CompoundCell
-        className="flex-1"
-        primary={
-          filled ? (
-            <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-text-default">
-              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              <CompoundLine>{labels.done}</CompoundLine>
-            </span>
-          ) : showAssigned ? (
-            // Claimed but not stamped: keep the column verb (PICK / PACK), not a dash.
-            <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
-              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              <CompoundLine>{labels.pending}</CompoundLine>
-            </span>
-          ) : (
-            <span className="inline-flex min-w-0 items-center gap-1 text-text-muted">
-              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              <GridCellDash />
-              <span className="sr-only">{labels.pending}</span>
-            </span>
-          )
-        }
-        secondary={
-          stampLine ? (
-            <CompoundLine className="text-text-muted" mono>
-              {stampLine}
-            </CompoundLine>
-          ) : showAssigned ? (
-            <CompoundLine className="text-text-muted">Assigned</CompoundLine>
-          ) : null
-        }
-      />
+      {lines}
     </div>
   );
 
-  return tip ? (
-    <HoverTooltip label={tip} asChild>
+  const trigger =
+    assignable && assign ? (
+      <button
+        ref={triggerRef}
+        type="button"
+        className={cn(
+          'flex h-full min-w-0 w-full items-center gap-1.5 text-left',
+          'hover:bg-surface-hover',
+          focusRing,
+        )}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={hasActor ? `Reassign ${assign.label}` : `Assign ${assign.label}`}
+        data-testid="compound-stage-assign-trigger"
+        onClick={(event) => {
+          event.stopPropagation();
+          event.preventDefault();
+          setOpen((next) => !next);
+        }}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        {markFace}
+        {lines}
+      </button>
+    ) : (
+      face
+    );
+
+  const body =
+    tip && !assignable ? (
+      <HoverTooltip label={tip} asChild>
+        {trigger}
+      </HoverTooltip>
+    ) : (
+      trigger
+    );
+
+  return (
+    <>
       {body}
-    </HoverTooltip>
-  ) : (
-    body
+      {assignable && assign ? (
+        <StageStaffAssignPopover
+          open={open}
+          onClose={() => setOpen(false)}
+          anchorRef={triggerRef}
+          label={assign.label}
+          role={assign.role}
+          selectedStaffId={assign.selectedStaffId}
+          onCommit={assign.onCommit}
+          onSetLaneRole={assign.onSetLaneRole}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -1245,59 +1324,58 @@ export function CompoundActions({
   onOpen,
   actions,
   label,
+  staffRoster,
 }: {
   onOpen?: () => void;
   actions?: readonly CompoundRowAction[];
   /** Names WHICH row the menu belongs to, for screen readers. */
   label?: string;
+  staffRoster?: CompoundStaffRoster;
 }) {
   const items: CompoundRowAction[] = [
     ...(onOpen ? [{ key: 'open', label: 'Open', onSelect: onOpen }] : []),
     ...(actions ?? []),
   ];
-  if (items.length === 0) return null;
+  if (items.length === 0 && !staffRoster) return null;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          tabIndex={-1}
-          aria-label={label ? `Actions for ${label}` : 'Row actions'}
-          data-row-actions
-          className={cn(
-            'inline-flex h-6 w-6 items-center justify-center text-text-faint',
-            // Quiet until the row is hovered — a column of ⋮ on every row is
-            // ink competing with the data. Opacity composites off the main
-            // thread, so this costs no layout on a scrolling grid.
-            'opacity-0 transition-opacity group-hover/row:opacity-100',
-            // Opened from the keyboard or a right-click, the pointer is nowhere
-            // near this row — without this the menu would appear anchored to an
-            // invisible trigger.
-            'data-[state=open]:opacity-100',
-            'hover:text-text-default focus-visible:opacity-100',
-            focusRing('control'),
-          )}
-          // The row's own click would select or open — this is "show me the
-          // verbs", which is a third thing.
-          onClick={(event) => event.stopPropagation()}
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {items.map((action) => (
-          <DropdownMenuItem
-            key={action.key}
-            disabled={action.disabled}
-            onSelect={() => action.onSelect()}
-            className={cn(action.tone === 'danger' && 'text-text-danger')}
-          >
-            {action.label}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="flex items-center justify-end gap-0.5">
+      {staffRoster ? <CompoundStaffRosterButton roster={staffRoster} label={label} /> : null}
+      {items.length > 0 ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-label={label ? `Actions for ${label}` : 'Row actions'}
+              data-row-actions
+              className={cn(
+                'inline-flex h-6 w-6 items-center justify-center text-text-faint',
+                'opacity-0 transition-opacity group-hover/row:opacity-100',
+                'data-[state=open]:opacity-100',
+                'hover:text-text-default focus-visible:opacity-100',
+                focusRing('control'),
+              )}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            {items.map((action) => (
+              <DropdownMenuItem
+                key={action.key}
+                disabled={action.disabled}
+                onSelect={() => action.onSelect()}
+                className={cn(action.tone === 'danger' && 'text-text-danger')}
+              >
+                {action.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : null}
+    </div>
   );
 }
 

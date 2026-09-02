@@ -7,6 +7,14 @@
           {
             "type": "command",
             "command": "FP=$(jq -r '.tool_input.file_path // empty'); case \"$FP\" in *.env|*.env.*|*/certificates/*|*.pem|*.key|*/localhost+*.pem|*/localhost+*-key.pem) printf 'Blocked: %s is a secret/credential path. Edit it manually outside Claude.\\n' \"$FP\" >&2; exit 2 ;; esac"
+          },
+          {
+            "type": "command",
+            "command": "FP=$(jq -r '.tool_input.file_path // empty'); case \"$FP\" in *docs/eval/goals/*|*docs/eval/*LEDGER.md|*docs/eval/sessions/*) printf 'Blocked: %s is human- or Host-owned (LEDGER.md sections, goal files, session receipts). Runners write auto blocks with fs; propose changes through the typed ask queue.\\n' \"$FP\" >&2; exit 2 ;; esac"
+          },
+          {
+            "type": "command",
+            "command": "H=\"${GARISEK_OS_ROOT:-/home/michaelgarisek/Projects/Garisek-OS}/scripts/guard/adjudicate-hook.mjs\"; if [ -f \"$H\" ]; then DESIGN_MCP_TARGET=\"$CLAUDE_PROJECT_DIR\" node \"$H\"; fi"
           }
         ]
       },
@@ -27,6 +35,17 @@
           {
             "type": "command",
             "command": "FP=$(jq -r '.tool_input.file_path // empty'); case \"$FP\" in *.ts|*.tsx) cd \"$CLAUDE_PROJECT_DIR\" && REL=${FP#\"$CLAUDE_PROJECT_DIR\"/} && npx --no-install next lint --file \"$REL\" 2>&1 | tail -60 ;; esac"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && node tools/eval-ledger/session-receipt-stop.mjs --host claude-code 2>/dev/null; exit 0",
+            "timeout": 90
           }
         ]
       }

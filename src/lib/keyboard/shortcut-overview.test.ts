@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   closeShortcutOverview,
+  getServerShortcutOverviewGroups,
   getShortcutOverviewOpen,
   listShortcutOverviewGroups,
   openShortcutOverview,
@@ -25,6 +26,13 @@ describe('shortcut-overview store', () => {
     assert.equal(getShortcutOverviewOpen(), true);
     closeShortcutOverview();
     assert.equal(getShortcutOverviewOpen(), false);
+  });
+
+  it('getServerShortcutOverviewGroups is referentially stable', () => {
+    assert.equal(
+      getServerShortcutOverviewGroups(),
+      getServerShortcutOverviewGroups(),
+    );
   });
 
   it('registerShortcutOverviewGroup unregisters on dispose', () => {

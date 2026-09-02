@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import unusedImports from 'eslint-plugin-unused-imports';
 import globals from 'globals';
 import tsParser from '@typescript-eslint/parser';
@@ -25,6 +26,36 @@ import jsxA11yPlugin from 'eslint-plugin-jsx-a11y';
  * sequence it contains closes the comment early and makes the whole config
  * unparseable (Node ESM "Unexpected token"). Describe paths in prose instead.
  */
+
+/**
+ * Engine-file absence tripwires as AST rules (FABLE-5.1 D7 item 17; LAWS.md X1
+ * allows "an ESLint AST rule" where a readFileSync grep is forbidden). The file
+ * lists come from the generated prompt router (`tools/design-mcp/router.json`,
+ * emitted from the TypeScript cohorts), never from a hand list here. Missing
+ * router.json → no engine blocks (fail open on infrastructure; the cohort
+ * tripwires still hold the line).
+ */
+function routerEngineFiles(cohort) {
+  try {
+    const doc = JSON.parse(readFileSync(new URL('./tools/design-mcp/router.json', import.meta.url), 'utf8'));
+    const routes = (doc.routes ?? []).filter((r) => (cohort instanceof RegExp ? cohort.test(r.cohort) : r.cohort === cohort));
+    return [...new Set(routes.flatMap((r) => r.engineFiles ?? []))].filter((f) => /\.(ts|tsx)$/.test(f));
+  } catch {
+    return [];
+  }
+}
+const SLOT_TABLE_ENGINE_FILES = routerEngineFiles('slot-table');
+const STATION_WORKSPACE_FILES = routerEngineFiles(/^(station:|composer$)/);
+const engineBlock = (files, restrictions) =>
+  files.length === 0
+    ? []
+    : [
+        {
+          files,
+          languageOptions: { parser: tsParser, parserOptions: { ecmaFeatures: { jsx: true } } },
+          rules: { 'no-restricted-syntax': ['error', ...restrictions] },
+        },
+      ];
 
 export default [
   // Registering react-hooks/@next/next/jsx-a11y below (so their rule names
@@ -316,6 +347,45 @@ export default [
             'MemberExpression[object.object.name="process"][object.property.name="env"][property.name=/^(HERMES_API_URL|HERMES_MODEL|HERMES_API_KEY|AI_MODEL|AI_CHAT_BASE_URL|AI_CHAT_MODEL|AI_CHAT_API_KEY|ANTHROPIC_API_KEY)$/]',
           message:
             'Do not read an AI endpoint from env. Resolve it with resolveOrgAiConfig(orgId, capability) — src/lib/ai/provider.ts is the only legal env reader (the platform-default leaf).',
+        },
+      ],
+    },
+  },
+
+  // ── D7 item 17: engine-file absence tripwires ─────────────────────────────
+  ...engineBlock(SLOT_TABLE_ENGINE_FILES, [
+    {
+      selector: 'JSXAttribute[name.name="type"] > Literal[value="date"]',
+      message:
+        'Slot-table ship-by / in-cell date is <DateRangePickerField variant="compact" />, never a native input type="date" (SLOT_TABLE_PAINT_LAW.shipBy).',
+    },
+    {
+      selector: 'JSXAttribute[name.name="variant"] > Literal[value="range"]',
+      message:
+        'variant="range" is the filter face (presets + Apply). In a cell mount <DateRangePickerField variant="compact" /> (SLOT_TABLE_PAINT_LAW.shipBy).',
+    },
+  ]),
+  ...engineBlock(STATION_WORKSPACE_FILES, [
+    {
+      selector: 'JSXAttribute[name.name="showModeRow"] > JSXExpressionContainer > Literal[value=false]',
+      message:
+        'Dumb stations keep the mode row and set showModeFaces={false}. Never showModeRow={false} to hide the faces (keep the context ring).',
+    },
+  ]),
+  {
+    files: ['src/components/tables/**/*.ts', 'src/components/tables/**/*.tsx', 'src/lib/tables/**/*.ts'],
+    languageOptions: { parser: tsParser, parserOptions: { ecmaFeatures: { jsx: true } } },
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['*FilterRefinementBar*'],
+              message:
+                'The table filter is DataTableFilterMenu beside search (always mounted). FilterRefinementBar / hunt tiles are refused (SLOT_TABLE_PAINT_LAW.filter).',
+            },
+          ],
         },
       ],
     },

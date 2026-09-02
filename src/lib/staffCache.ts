@@ -35,6 +35,11 @@ function normalizeStaff(raw: any[]): StaffMember[] {
     : [];
 }
 
+/** Synced snapshot — skip a loading frame when the roster is already warm. */
+export function peekActiveStaff(): StaffMember[] | null {
+  return _data;
+}
+
 export function getActiveStaff(): Promise<StaffMember[]> {
   if (_data) return Promise.resolve(_data);
   if (!_promise) {
@@ -76,6 +81,23 @@ export function getPresentStaffForToday(): Promise<StaffMember[]> {
   }
 
   return _presentPromise;
+}
+
+const FLOOR_LANE_KEYS = new Set(['technician', 'picker', 'pick', 'tech', 'packer', 'pack']);
+
+/** Keep a warm roster after an inline Pick / Pack role write — no loading frame. */
+export function patchCachedStaffLaneRole(
+  staffId: number,
+  role: 'technician' | 'packer',
+): void {
+  const patch = (list: StaffMember[]): StaffMember[] =>
+    list.map((member) => {
+      if (member.id !== staffId) return member;
+      const kept = member.roles.filter((key) => !FLOOR_LANE_KEYS.has(key.trim().toLowerCase()));
+      return { ...member, role, roles: [role, ...kept] };
+    });
+  if (_data) _data = patch(_data);
+  if (_presentData) _presentData = patch(_presentData);
 }
 
 /** Call this when staff data changes (e.g. after a PUT/POST to /api/staff). */

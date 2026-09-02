@@ -1,22 +1,32 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+/**
+ * Incoming add form — desk triage cards + Omni Composer extract foot.
+ *
+ * Fields follow exceptions (`Label` + `Input` + `triagePanelControl` inside
+ * `TriageScrollLayout` / `cornerClass('surface')`). Flush floating labels stay
+ * on scan stations. Paste/screenshot extract uses `StationComposerHost`
+ * (`showModeFaces={false}`); Confirm still POSTs import-purchase.
+ */
+
+import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { SearchableSelectField } from '@/design-system/components';
-import { Button, FlushTerminalFooter, TextField } from '@/design-system/primitives';
+import { TriageScrollLayout } from '@/design-system/components/TriageScrollLayout';
+import { IncomingAddExtractComposer } from '@/components/receiving/incoming/IncomingAddExtractComposer';
+import { buildIncomingAddSections } from '@/components/receiving/incoming/IncomingAddInboundSections';
 import { useDebounce } from '@/hooks';
-import { usePlatformCatalog } from '@/hooks/useCatalog';
 import { useSkuCatalogSearch, type SkuCatalogItem } from '@/hooks/useSkuCatalogSearch';
+import { usePlatformCatalog } from '@/hooks/useCatalog';
+import { blobToBase64DataUrl, downscaleImageTo720 } from '@/lib/image/downscale';
+import { inboundFormPatchFromExtractDraft } from '@/lib/inbound/inbound-extract-apply';
 import { invalidateReceivingFeeds } from '@/lib/queries/receiving-queries';
-import { priorityOverrideTiersForPicker } from '@/lib/receiving/priority-override';
 import {
   buildAddInboundImportBody,
   canSubmitAddInbound,
 } from '@/lib/inbound/build-add-inbound-payload';
 import { toast } from '@/lib/toast';
-
-/** Prefer purchase sources operators fix unfound cartons with. */
-const INBOUND_PLATFORM_PRIORITY = ['amazon', 'goodwill', 'ebay', 'walmart', 'shopify'] as const;
+import { TRIAGE_PANEL_INNER_CORNER } from '@/design-system/tokens/triage-panel';
+import { cn } from '@/utils/_cn';
 
 const PRIORITY_AUTO = 'auto';
 
@@ -28,6 +38,7 @@ export interface IncomingAddInboundFormProps {
   initialPlatform?: string;
   autoFocus?: boolean;
   onClose: () => void;
+  header?: ReactNode;
 }
 
 export function IncomingAddInboundForm({
@@ -35,9 +46,12 @@ export function IncomingAddInboundForm({
   initialOrderId = '',
   initialPlatform = 'amazon',
   autoFocus = false,
-  onClose,
+  onClose: _onClose,
+  header,
 }: IncomingAddInboundFormProps) {
   const queryClient = useQueryClient();
+  const fieldId = useId();
+  const platformCatalog = usePlatformCatalog();
   const isReturn = receivingType === 'RETURN';
 
   const [platform, setPlatform] = useState(initialPlatform);
@@ -47,46 +61,52 @@ export function IncomingAddInboundForm({
   const [itemName, setItemName] = useState('');
   const [pickedItem, setPickedItem] = useState<SkuCatalogItem | null>(null);
   const [itemQuery, setItemQuery] = useState('');
-  const [manualMode, setManualMode] = useState(false);
   const [quantity, setQuantity] = useState('1');
   const [trackingNumber, setTrackingNumber] = useState('');
+  const [carrierCode, setCarrierCode] = useState('');
   const [listingUrl, setListingUrl] = useState('');
   const [seller, setSeller] = useState('');
   const [accountName, setAccountName] = useState('');
+  const [lineItemId, setLineItemId] = useState('');
   const [returnReason, setReturnReason] = useState('');
   const [rmaId, setRmaId] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [extracting, setExtracting] = useState(false);
+  const [extractText, setExtractText] = useState('');
+  const [extractHint, setExtractHint] = useState<string | null>(null);
+  const [pendingImages, setPendingImages] = useState<File[]>([]);
+  const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [ticketDraftBody, setTicketDraftBody] = useState<string | null>(null);
+
+  const resetIdentity = useCallback(() => {
+    setSku('');
+    setItemName('');
+    setPickedItem(null);
+    setItemQuery('');
+    setQuantity('1');
+    setTrackingNumber('');
+    setCarrierCode('');
+    setListingUrl('');
+    setSeller(initialPlatform === 'goodwill' ? 'Goodwill' : '');
+    setAccountName('');
+    setLineItemId('');
+    setReturnReason('');
+    setRmaId('');
+    setExtractText('');
+    setExtractHint(null);
+    setPendingImages([]);
+  }, [initialPlatform]);
 
   useEffect(() => {
     setPlatform(initialPlatform || 'amazon');
     setPriority(PRIORITY_AUTO);
     setOrderId(initialOrderId.trim());
-    setSku('');
-    setItemName('');
-    setPickedItem(null);
-    setItemQuery('');
-    setManualMode(false);
-    setQuantity('1');
-    setTrackingNumber('');
-    setListingUrl('');
-    setSeller(initialPlatform === 'goodwill' ? 'Goodwill' : '');
-    setAccountName('');
-    setReturnReason('');
-    setRmaId('');
+    resetIdentity();
     setError(null);
     setTicketDraftBody(null);
     setSubmitting(false);
-  }, [initialOrderId, initialPlatform, receivingType]);
-
-  useEffect(() => {
-    if (isReturn && manualMode) {
-      setManualMode(false);
-    }
-  }, [isReturn, manualMode]);
-
-  const platformCatalog = usePlatformCatalog();
+  }, [initialOrderId, initialPlatform, receivingType, resetIdentity]);
 
   const formInput = useMemo(
     () => ({
@@ -104,6 +124,8 @@ export function IncomingAddInboundForm({
       accountName,
       returnReason,
       rmaId,
+      carrierCode,
+      lineItemId,
     }),
     [
       platform,
@@ -120,45 +142,9 @@ export function IncomingAddInboundForm({
       accountName,
       returnReason,
       rmaId,
+      carrierCode,
+      lineItemId,
     ],
-  );
-
-  const platformOptions = useMemo(() => {
-    const catalog = platformCatalog.options ?? [];
-    const ranked = [...catalog].sort((a, b) => {
-      const ai = INBOUND_PLATFORM_PRIORITY.indexOf(
-        a.value.toLowerCase() as (typeof INBOUND_PLATFORM_PRIORITY)[number],
-      );
-      const bi = INBOUND_PLATFORM_PRIORITY.indexOf(
-        b.value.toLowerCase() as (typeof INBOUND_PLATFORM_PRIORITY)[number],
-      );
-      const ar = ai === -1 ? 99 : ai;
-      const br = bi === -1 ? 99 : bi;
-      return ar - br || a.label.localeCompare(b.label);
-    });
-    return ranked.map((o) => ({
-      value: o.value,
-      label: o.label,
-      group: 'Platforms',
-    }));
-  }, [platformCatalog.options]);
-
-  const priorityOptions = useMemo(
-    () => [
-      {
-        value: PRIORITY_AUTO,
-        label: 'Auto',
-        meta: 'Follows platform',
-        group: 'Platform',
-      },
-      ...priorityOverrideTiersForPicker().map((t) => ({
-        value: String(t.value),
-        label: t.label,
-        meta: t.title,
-        group: 'Manual override',
-      })),
-    ],
-    [],
   );
 
   const debouncedItemQuery = useDebounce(itemQuery, 250);
@@ -166,26 +152,12 @@ export function IncomingAddInboundForm({
     searchField: 'zoho_catalog',
     limit: 20,
   });
+  const hits = useMemo(() => itemSearch.data ?? [], [itemSearch.data]);
 
-  const itemOptions = useMemo(() => {
-    const rows = itemSearch.data ?? [];
-    const merged =
-      pickedItem && !rows.some((r) => r.id === pickedItem.id)
-        ? [pickedItem, ...rows]
-        : rows;
-    return merged.map((it) => ({
-      value: String(it.id),
-      label: it.product_title || it.sku,
-      meta: it.sku,
-      group: 'Zoho inventory',
-      data: it,
-    }));
-  }, [itemSearch.data, pickedItem]);
-
-  const canSubmit = canSubmitAddInbound(formInput) && !submitting;
+  const canSubmit = canSubmitAddInbound(formInput) && !submitting && !extracting;
 
   const handleSubmit = useCallback(async () => {
-    if (!canSubmit) return;
+    if (!canSubmitAddInbound(formInput) || submitting) return;
     setSubmitting(true);
     setError(null);
     setTicketDraftBody(null);
@@ -223,7 +195,8 @@ export function IncomingAddInboundForm({
       if (isReturn && data.ticket?.success && data.ticket_number) {
         toast.success(`Ticket ${data.ticket_number} linked`);
       }
-      onClose();
+      setOrderId('');
+      resetIdentity();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Import failed';
       setError(message);
@@ -231,245 +204,247 @@ export function IncomingAddInboundForm({
     } finally {
       setSubmitting(false);
     }
-  }, [canSubmit, formInput, isReturn, queryClient, onClose]);
+  }, [formInput, isReturn, queryClient, resetIdentity, submitting]);
 
-  const orderLabel =
-    platform === 'ebay'
-      ? 'eBay order #'
-      : platform === 'amazon' || platform === 'fba'
-        ? 'Amazon order #'
-        : platform === 'goodwill'
-          ? 'Goodwill order / PO #'
-          : 'Order / PO #';
+  const applyExtract = useCallback(
+    (draft: Parameters<typeof inboundFormPatchFromExtractDraft>[0]) => {
+      const next = inboundFormPatchFromExtractDraft(draft, {
+        platform,
+        orderId,
+        seller,
+        accountName,
+        trackingNumber,
+        carrierCode,
+        listingUrl,
+        returnReason,
+        rmaId,
+        sku,
+        itemName,
+        quantity,
+        lineItemId,
+      });
+      setPlatform(next.platform);
+      setOrderId(next.orderId);
+      setSeller(next.seller);
+      setAccountName(next.accountName);
+      setTrackingNumber(next.trackingNumber);
+      setCarrierCode(next.carrierCode);
+      setListingUrl(next.listingUrl);
+      setReturnReason(next.returnReason);
+      setRmaId(next.rmaId);
+      setSku(next.sku);
+      setItemName(next.itemName);
+      setQuantity(next.quantity);
+      setLineItemId(next.lineItemId);
+    },
+    [
+      accountName,
+      carrierCode,
+      itemName,
+      lineItemId,
+      listingUrl,
+      orderId,
+      platform,
+      quantity,
+      returnReason,
+      rmaId,
+      seller,
+      sku,
+      trackingNumber,
+    ],
+  );
+
+  const handleExtract = useCallback(
+    async (liveValue?: string) => {
+      const text = (liveValue ?? extractText).trim();
+      if (!text && pendingImages.length === 0) {
+        toast.error('Paste order text or attach a screenshot first.');
+        return;
+      }
+      setExtracting(true);
+      setExtractHint(null);
+      try {
+        const image_data_urls: string[] = [];
+        for (const file of pendingImages.slice(0, 6)) {
+          const scaled = await downscaleImageTo720(file);
+          image_data_urls.push(await blobToBase64DataUrl(scaled.blob));
+        }
+        const res = await fetch('/api/receiving/inbound/extract-po', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            kind: isReturn ? 'return' : 'purchase',
+            text: text || undefined,
+            image_data_urls: image_data_urls.length ? image_data_urls : undefined,
+          }),
+        });
+        const data = (await res.json().catch(() => null)) as {
+          success?: boolean;
+          error?: string;
+          draft?: Parameters<typeof inboundFormPatchFromExtractDraft>[0];
+          missing_prompt?: string;
+        } | null;
+        if (!res.ok || !data?.success || !data.draft) {
+          throw new Error(data?.error || `Extract failed (${res.status})`);
+        }
+        applyExtract(data.draft);
+        setExtractText('');
+        setPendingImages([]);
+        setExtractHint(data.missing_prompt?.trim() || 'Fields filled from the composer — review, then Add.');
+        toast.success('Extracted into the form');
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Extract failed';
+        toast.error(message);
+      } finally {
+        setExtracting(false);
+      }
+    },
+    [applyExtract, extractText, isReturn, pendingImages],
+  );
+
+  const pairTo = useCallback((it: SkuCatalogItem) => {
+    setPickedItem(it);
+    setSku(it.sku ?? '');
+    setItemName(it.product_title ?? it.sku ?? '');
+  }, []);
+
+  const createAndPair = useCallback(async () => {
+    const newSku = sku.trim();
+    const newTitle = (itemName || sku).trim();
+    if (!newSku || !newTitle) {
+      toast.error('A new catalog entry needs both a SKU and a title.');
+      return;
+    }
+    setCreating(true);
+    try {
+      const res = await fetch('/api/sku-catalog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sku: newSku, productTitle: newTitle }),
+      });
+      const created = (await res.json().catch(() => ({}))) as {
+        success?: boolean;
+        error?: string;
+        catalog?: { id?: number; sku?: string; product_title?: string };
+      };
+      if (!res.ok || created.success === false) {
+        throw new Error(created.error || `Create failed (${res.status})`);
+      }
+      const newId = Number(created.catalog?.id);
+      if (!Number.isFinite(newId) || newId <= 0) {
+        throw new Error('Catalog entry created but no id came back.');
+      }
+      pairTo({
+        id: newId,
+        sku: created.catalog?.sku ?? newSku,
+        zoho_sku: null,
+        product_title: created.catalog?.product_title ?? newTitle,
+        category: null,
+        upc: null,
+        image_url: null,
+        is_active: true,
+      });
+      toast.success('Created inventory item');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not create the catalog entry.');
+    } finally {
+      setCreating(false);
+    }
+  }, [itemName, pairTo, sku]);
+
+  const banner = (
+    <div className="space-y-2">
+      {extractHint ? (
+        <p className="text-role-caption text-text-muted">{extractHint}</p>
+      ) : null}
+      {error ? (
+        <p className="text-role-caption font-medium text-red-600" role="alert">
+          {error}
+        </p>
+      ) : null}
+      {ticketDraftBody ? (
+        <div className="space-y-1">
+          <p className="text-role-caption font-medium text-amber-700">
+            Return saved — copy this ticket draft if filing failed:
+          </p>
+          <textarea
+            readOnly
+            value={ticketDraftBody}
+            className={cn(
+              'min-h-24 w-full resize-y border border-border-soft bg-surface-sunken p-2 font-mono text-role-caption text-text-muted',
+              TRIAGE_PANEL_INNER_CORNER,
+            )}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+
+  const sections = buildIncomingAddSections({
+    fieldId,
+    isReturn,
+    platform,
+    platformOptions: platformCatalog.options,
+    onPlatform: setPlatform,
+    orderId,
+    onOrderId: setOrderId,
+    autoFocus,
+    sku,
+    onSku: (value) => {
+      setSku(value);
+      if (!pickedItem) setItemName(value);
+    },
+    quantity,
+    onQuantity: setQuantity,
+    listingUrl,
+    onListingUrl: setListingUrl,
+    seller,
+    onSeller: setSeller,
+    lineItemId,
+    onLineItemId: setLineItemId,
+    accountName,
+    onAccountName: setAccountName,
+    trackingNumber,
+    onTrackingNumber: setTrackingNumber,
+    carrierCode,
+    onCarrierCode: setCarrierCode,
+    rmaId,
+    onRmaId: setRmaId,
+    returnReason,
+    onReturnReason: setReturnReason,
+    pickedItem,
+    itemQuery,
+    onItemQuery: setItemQuery,
+    hits,
+    searching: debouncedItemQuery.length > 0 && itemSearch.isFetching,
+    onPair: pairTo,
+    creating,
+    onCreate: () => void createAndPair(),
+    onSubmit: () => void handleSubmit(),
+  });
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div
-          className="divide-y divide-border-hairline border-b border-border-hairline"
-          data-testid="add-inbound-classify"
-        >
-          <SearchableSelectField
-            appearance="flush"
-            label="Platform"
-            autoFocus={autoFocus}
-            testId="add-inbound-platform"
-            value={platform}
-            onChange={(id) => {
-              if (id == null) return;
-              const next = String(id);
-              setPlatform(next);
-              if (next === 'goodwill' && !seller.trim()) setSeller('Goodwill');
-            }}
-            options={platformOptions}
-            placeholder="Search or select…"
-            searchPlaceholder="Type to filter…"
-            emptyMessage="No platforms match"
-            ariaLabel="Platform"
-          />
-          <SearchableSelectField
-            appearance="flush"
-            label="Priority"
-            testId="add-inbound-priority"
-            value={priority}
-            onChange={(id) => {
-              if (id == null) return;
-              setPriority(String(id));
-            }}
-            options={priorityOptions}
-            placeholder="Search or select…"
-            searchPlaceholder="Type to filter…"
-            emptyMessage="No priorities match"
-            ariaLabel="Priority"
-          />
-        </div>
-
-        <div className="divide-y divide-border-hairline">
-          <TextField
-            label={orderLabel}
-            value={orderId}
-            onChange={setOrderId}
-            required
-            appearance="flush"
-          />
-          {manualMode && !isReturn ? (
-            <>
-              <TextField label="SKU" value={sku} onChange={setSku} appearance="flush" />
-              <TextField
-                label="Item title"
-                value={itemName}
-                onChange={setItemName}
-                appearance="flush"
-              />
-              <div className="flex items-center justify-between inset-cozy">
-                <span className="text-role-caption text-text-faint">
-                  Manual item — not paired to inventory.
-                </span>
-                <button
-                  type="button"
-                  className="shrink-0 text-role-caption font-medium text-blue-600 hover:underline"
-                  onClick={() => setManualMode(false)}
-                >
-                  Search inventory
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <SearchableSelectField
-                appearance="flush"
-                label="Product (Zoho inventory)"
-                value={pickedItem ? String(pickedItem.id) : null}
-                onChange={(_id, opt) => {
-                  const it = (opt?.data ?? null) as SkuCatalogItem | null;
-                  if (!it) return;
-                  setPickedItem(it);
-                  setSku(it.sku ?? '');
-                  setItemName(it.product_title ?? '');
-                }}
-                options={itemOptions}
-                onSearchChange={setItemQuery}
-                loading={itemSearch.isFetching}
-                placeholder="Search inventory by title or SKU…"
-                searchPlaceholder="Type a product title…"
-                emptyMessage={
-                  debouncedItemQuery.trim() ? 'No inventory matches' : 'Type to search inventory'
-                }
-                ariaLabel="Product"
-              />
-              <div className="flex items-center justify-between inset-cozy">
-                {pickedItem ? (
-                  <span className="min-w-0 truncate text-role-caption text-text-muted">
-                    Paired · <span className="font-mono">{pickedItem.sku}</span>
-                  </span>
-                ) : (
-                  <span className="text-role-caption text-text-faint">
-                    {isReturn
-                      ? 'Required — search Zoho inventory to pair the return SKU.'
-                      : 'Search Zoho inventory to pair a SKU.'}
-                  </span>
-                )}
-                {!isReturn ? (
-                  <button
-                    type="button"
-                    className="shrink-0 text-role-caption font-medium text-blue-600 hover:underline"
-                    onClick={() => {
-                      setManualMode(true);
-                      setPickedItem(null);
-                      setSku('');
-                      setItemName('');
-                    }}
-                  >
-                    Not in inventory?
-                  </button>
-                ) : null}
-              </div>
-            </>
-          )}
-          <TextField
-            label="Quantity"
-            type="number"
-            min={1}
-            value={quantity}
-            onChange={setQuantity}
-            appearance="flush"
-          />
-          <TextField
-            label="Tracking #"
-            value={trackingNumber}
-            onChange={setTrackingNumber}
-            required={isReturn}
-            appearance="flush"
-          />
-          <TextField
-            label="Listing URL"
-            value={listingUrl}
-            onChange={setListingUrl}
-            appearance="flush"
-          />
-          <TextField
-            label="Seller / vendor"
-            value={seller}
-            onChange={setSeller}
-            appearance="flush"
-          />
-          {platform === 'ebay' ? (
-            <TextField
-              label="Buyer account"
-              value={accountName}
-              onChange={setAccountName}
-              appearance="flush"
-            />
-          ) : null}
-          {isReturn ? (
-            <>
-              <TextField
-                label="RMA / return id"
-                value={rmaId}
-                onChange={setRmaId}
-                appearance="flush"
-              />
-              <TextField
-                label="Return reason"
-                value={returnReason}
-                onChange={setReturnReason}
-                appearance="flush"
-              />
-            </>
-          ) : null}
-        </div>
-
-        <div className="inset-cozy space-y-2">
-          {error ? (
-            <p className="text-role-caption font-medium text-red-600" role="alert">
-              {error}
-            </p>
-          ) : null}
-          {ticketDraftBody ? (
-            <div className="space-y-1">
-              <p className="text-role-caption font-medium text-amber-700">
-                Return saved — copy this ticket draft if filing failed:
-              </p>
-              <textarea
-                readOnly
-                value={ticketDraftBody}
-                className="min-h-24 w-full resize-y rounded border border-border-soft bg-surface-sunken p-2 font-mono text-role-caption text-text-muted"
-              />
-            </div>
-          ) : null}
-          {!error && !ticketDraftBody ? (
-            <p className="text-role-caption text-text-faint">
-              {isReturn
-                ? 'Return Add files an internal support ticket with order, tracking, and SKU context.'
-                : 'Amazon / Goodwill CSV bulk upload lives under Import → Upload CSV. Priority applies when a carton is linked (e.g. tracking).'}
-            </p>
-          ) : null}
-        </div>
-      </div>
-
-      <FlushTerminalFooter layout="bleed">
-        <Button
-          type="button"
-          variant="primary"
-          disabled={!canSubmit}
-          onClick={() => void handleSubmit()}
-          ariaLabel={
-            submitting
-              ? 'Saving inbound'
-              : isReturn
-                ? 'Add return and ticket'
-                : 'Add to Incoming'
-          }
-          className="min-h-9 w-full flex-1"
-          data-testid="add-inbound-submit"
-        >
-          {submitting
-            ? 'Saving…'
-            : isReturn
-              ? 'Add return + ticket'
-              : 'Add to Incoming'}
-        </Button>
-      </FlushTerminalFooter>
-    </div>
+    <TriageScrollLayout
+      knobs
+      header={header}
+      banner={banner}
+      sections={sections}
+      className="h-full"
+      data-testid="add-inbound-form"
+      footer={
+        <IncomingAddExtractComposer
+          extractText={extractText}
+          onExtractText={setExtractText}
+          onExtract={(live) => void handleExtract(live)}
+          extracting={extracting}
+          pendingCount={pendingImages.length}
+          onFiles={(files) => setPendingImages((prev) => [...prev, ...files].slice(0, 6))}
+          canSubmit={canSubmit}
+          submitting={submitting}
+          isReturn={isReturn}
+          onSubmit={() => void handleSubmit()}
+        />
+      }
+    />
   );
 }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useQuickAccess } from '@/lib/quick-access/use-quick-access';
+import { displayQuickAccessLabel, resolveQuickAccessLabel } from '@/lib/quick-access/page-label';
 import { MAX_PINS, type ActionToggles } from '@/lib/quick-access/types';
 import { Button, IconButton, Switch } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -77,7 +78,7 @@ export function QuickAccessSection() {
       setAddError('URL must start with /');
       return;
     }
-    const label = addLabel.trim() || href;
+    const label = addLabel.trim() || resolveQuickAccessLabel(href);
     const result = pin({ href, label });
     if (result === 'duplicate') setAddError('Already pinned');
     else if (result === 'full') setAddError(`Limit reached (${MAX_PINS})`);
@@ -159,7 +160,9 @@ export function QuickAccessSection() {
           </p>
         ) : (
           <ul className="space-y-1">
-            {settings.pinned.map((p, index) => (
+            {settings.pinned.map((p, index) => {
+              const faceLabel = displayQuickAccessLabel(p.href, p.label);
+              return (
               <li
                 key={p.id}
                 className="flex items-center gap-2 rounded-none border border-border-soft px-3 py-2"
@@ -168,7 +171,7 @@ export function QuickAccessSection() {
                   <IconButton
                     type="button"
                     size="xs"
-                    ariaLabel={`Move ${p.label} up`}
+                    ariaLabel={`Move ${faceLabel} up`}
                     disabled={index === 0}
                     onClick={() => movePin(p.id, -1)}
                     className="text-text-faint disabled:opacity-30"
@@ -177,7 +180,7 @@ export function QuickAccessSection() {
                   <IconButton
                     type="button"
                     size="xs"
-                    ariaLabel={`Move ${p.label} down`}
+                    ariaLabel={`Move ${faceLabel} down`}
                     disabled={index === settings.pinned.length - 1}
                     onClick={() => movePin(p.id, 1)}
                     className="text-text-faint disabled:opacity-30"
@@ -203,10 +206,10 @@ export function QuickAccessSection() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => startEdit(p.id, p.label)}
+                        onClick={() => startEdit(p.id, faceLabel)}
                         className="w-full justify-start text-left text-sm font-semibold text-text-default hover:text-blue-600"
                       >
-                        {p.label}
+                        {faceLabel}
                       </Button>
                     </HoverTooltip>
                   )}
@@ -221,7 +224,8 @@ export function QuickAccessSection() {
                   Unpin
                 </Button>
               </li>
-            ))}
+              );
+            })}
           </ul>
         )}
 

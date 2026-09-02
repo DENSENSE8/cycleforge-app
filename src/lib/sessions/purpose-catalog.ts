@@ -40,13 +40,13 @@ export interface SystemPurposeSeed {
 export const SYSTEM_PURPOSES: readonly SystemPurposeSeed[] = [
   /* ── scan benches (L0) ─────────────────────────────────────────────── */
   { key: 'unbox', label: 'Unbox', defaultKind: 'scan', defaultSurfaceKey: 'unbox', sortOrder: 10 },
-  { key: 'triage', label: 'Triage', defaultKind: 'scan', defaultSurfaceKey: 'triage', sortOrder: 20 },
-  { key: 'pickup', label: 'Pickup', defaultKind: 'scan', defaultSurfaceKey: 'pickup', sortOrder: 30 },
-  { key: 'test', label: 'Test', defaultKind: 'scan', defaultSurfaceKey: 'test', sortOrder: 40 },
-  { key: 'pack', label: 'Pack', defaultKind: 'scan', defaultSurfaceKey: 'pack', sortOrder: 50 },
-  { key: 'outbound', label: 'Outbound', defaultKind: 'scan', defaultSurfaceKey: 'outbound', sortOrder: 60 },
+  { key: 'triage', label: 'Arrival', defaultKind: 'scan', defaultSurfaceKey: 'triage', sortOrder: 20 },
+  { key: 'pickup', label: 'Local Pickup', defaultKind: 'scan', defaultSurfaceKey: 'pickup', sortOrder: 30 },
+  { key: 'test', label: 'Quality Control', defaultKind: 'scan', defaultSurfaceKey: 'test', sortOrder: 40 },
+  { key: 'pack', label: 'Packing', defaultKind: 'scan', defaultSurfaceKey: 'pack', sortOrder: 50 },
+  { key: 'outbound', label: 'Shipping', defaultKind: 'scan', defaultSurfaceKey: 'outbound', sortOrder: 60 },
   /* ── task surfaces that already exist ──────────────────────────────── */
-  { key: 'repair', label: 'Repair', defaultKind: 'task', defaultSurfaceKey: 'repair', sortOrder: 70 },
+  { key: 'repair', label: 'Repair Service', defaultKind: 'task', defaultSurfaceKey: 'repair', sortOrder: 70 },
   { key: 'support', label: 'Support', defaultKind: 'task', defaultSurfaceKey: 'support', sortOrder: 80 },
   { key: 'incoming', label: 'Inbound', defaultKind: 'task', defaultSurfaceKey: 'incoming', sortOrder: 90 },
   /* ── indirect / counter / marketplace (no bench; Virtual Kiosk shape) */

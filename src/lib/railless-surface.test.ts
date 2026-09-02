@@ -24,6 +24,7 @@ const params = (qs = '') => new URLSearchParams(qs);
 test('every Shipping desk segment is rail-less', () => {
   for (const path of [
     '/shipping/orders',
+    '/shipping/shortage',
     '/shipping/fba',
     '/shipping/shipped',
     '/shipping/labels',

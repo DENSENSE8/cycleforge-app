@@ -3,8 +3,8 @@
 /**
  * Column-foot staff assign — searchable list that grows UP from the person
  * icon under Pick / Pack. Portaled + fixed so the sticky foot's overflow and
- * table stacking cannot bury it. Full active roster; Enter / click commits
- * optimistically onto the current table selection.
+ * table stacking cannot bury it. Roster is role-filtered (pickers vs packers).
+ * Enter / click commits optimistically onto the current table selection.
  */
 
 import {
@@ -14,18 +14,18 @@ import {
   useMemo,
   useRef,
   useState,
-  type KeyboardEvent,
 } from 'react';
 import { createPortal } from 'react-dom';
-import { Command } from 'cmdk';
-import { Check, Search, User } from '@/components/Icons';
+import { User } from '@/components/Icons';
 import { StaffAvatar } from '@/components/identity';
+import { AssigneeComboboxPanel } from '@/design-system/components/AssigneeCombobox';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { KeyboardKey } from '@/design-system/primitives/KeyboardKey';
-import { DROPDOWN_ITEM_CORNER, DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { zIndex } from '@/design-system/tokens/z-index';
-import { getActiveStaff } from '@/lib/staffCache';
+import { getActiveStaff, peekActiveStaff, type StaffMember } from '@/lib/staffCache';
+import { staffLaneEmptyLabel, staffMatchesStageLane } from '@/components/tables/compound/staff-stage-lane';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
@@ -39,7 +39,7 @@ import {
 } from '@/lib/tables/stage-assign-panel-store';
 import { cn } from '@/utils/_cn';
 
-type StaffRow = { id: number; name: string };
+type StaffRow = StaffMember;
 
 export function ColumnStaffAssignControl({
   lane,
@@ -59,12 +59,11 @@ export function ColumnStaffAssignControl({
     (r) => Number(r.id),
   );
   const assignOrder = useOrderAssignment();
-  const [options, setOptions] = useState<StaffRow[]>([]);
+  const [options, setOptions] = useState<StaffRow[]>(() => peekActiveStaff() ?? []);
   const [query, setQuery] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(() => !peekActiveStaff());
   const [saving, setSaving] = useState(false);
   const [panelBox, setPanelBox] = useState<{ left: number; bottom: number } | null>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const listId = useId();
@@ -90,26 +89,26 @@ export function ColumnStaffAssignControl({
   }, [open]);
 
   useEffect(() => {
-    if (!open) {
-      setQuery('');
-      return;
-    }
-    const id = requestAnimationFrame(() => inputRef.current?.focus());
-    return () => cancelAnimationFrame(id);
+    if (!open) setQuery('');
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
+    const cached = peekActiveStaff();
+    if (cached) {
+      setOptions(cached);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     let cancelled = false;
-    setLoading(true);
     getActiveStaff()
       .then((members) => {
         if (cancelled) return;
         const list = Array.isArray(members) ? members : [];
         setOptions(
           list
-            .map((m) => ({ id: Number(m.id), name: String(m.name || '').trim() }))
-            .filter((m) => Number.isFinite(m.id) && m.id > 0 && m.name)
+            .filter((m) => Number.isFinite(m.id) && m.id > 0 && m.name.trim())
             .sort((a, b) => a.name.localeCompare(b.name)),
         );
       })
@@ -149,9 +148,13 @@ export function ColumnStaffAssignControl({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return options;
-    return options.filter((o) => o.name.toLowerCase().includes(q));
-  }, [options, query]);
+    const stageLane = lane === 'pack' ? 'packer' : 'technician';
+    return options.filter((o) => {
+      if (!staffMatchesStageLane(o, stageLane)) return false;
+      if (!q) return true;
+      return o.name.toLowerCase().includes(q);
+    });
+  }, [options, query, lane]);
 
   const commit = async (row: StaffRow) => {
     const orderIds = selectedRows
@@ -182,14 +185,6 @@ export function ColumnStaffAssignControl({
     }
   };
 
-  const onListKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
-    if (e.key === 'Escape') {
-      e.preventDefault();
-      e.stopPropagation();
-      closeStageAssignPanel();
-    }
-  };
-
   const letter = hotkey?.trim().toLowerCase();
   const showGlyph = Boolean(showHotkey && letter && letter.length === 1);
   const aria = letter ? `${label} (press ${letter.toUpperCase()})` : label;
@@ -215,66 +210,42 @@ export function ColumnStaffAssignControl({
               elevationClass('overlay'),
             )}
           >
-            <Command
-              shouldFilter={false}
-              className={cn('bg-surface-card', DROPDOWN_SHELL_CORNER)}
-              onKeyDown={onListKeyDown}
-              id={listId}
-            >
-              <div
-                className="flex items-center gap-2 border-b border-border-hairline px-2.5 py-2"
-                cmdk-input-wrapper=""
-              >
-                <Search className="h-3.5 w-3.5 shrink-0 text-text-faint" aria-hidden />
-                <Command.Input
-                  ref={inputRef}
-                  value={query}
-                  onValueChange={setQuery}
-                  placeholder="Search staff…"
-                  disabled={saving}
-                  className="w-full bg-transparent text-role-micro text-text-default outline-none placeholder:text-text-faint"
-                />
-              </div>
-              <Command.List className="max-h-56 overflow-y-auto py-1">
-                {loading ? (
-                  <div className="px-3 py-3 text-center text-role-micro text-text-faint">
-                    Loading…
-                  </div>
-                ) : (
-                  <Command.Empty className="px-3 py-4 text-center text-role-eyebrow uppercase tracking-wider text-text-faint">
-                    {options.length === 0 ? 'No staff' : 'No matches'}
-                  </Command.Empty>
-                )}
-                {filtered.map((row) => (
-                  <Command.Item
-                    key={row.id}
-                    value={`${row.name} ${row.id}`}
-                    disabled={saving}
-                    onSelect={() => {
-                      void commit(row);
-                    }}
-                    className={cn(
-                      'flex w-full cursor-pointer items-center gap-2 px-2.5 py-1.5 text-left outline-none transition-colors',
-                      DROPDOWN_ITEM_CORNER,
-                      'data-[selected=true]:bg-surface-hover text-text-default',
-                    )}
-                  >
-                    <StaffAvatar
-                      staffId={row.id}
-                      name={row.name}
-                      size="sm"
-                      colorRing
-                      avatarPhotoId={null}
-                      alt=""
-                    />
-                    <span className="min-w-0 flex-1 truncate text-role-micro font-medium">
-                      {row.name}
-                    </span>
-                    <Check className="h-3.5 w-3.5 shrink-0 opacity-0" aria-hidden />
-                  </Command.Item>
-                ))}
-              </Command.List>
-            </Command>
+            <AssigneeComboboxPanel
+              query={query}
+              onQueryChange={setQuery}
+              rows={filtered.map((row) => ({
+                id: row.id,
+                name: row.name,
+                assignable: true,
+                leading: (
+                  <StaffAvatar
+                    staffId={row.id}
+                    name={row.name}
+                    size="sm"
+                    colorRing
+                    avatarPhotoId={null}
+                    alt=""
+                  />
+                ),
+              }))}
+              loading={loading}
+              emptyMessage={
+                options.length === 0
+                  ? 'No staff'
+                  : query.trim()
+                    ? 'No matches'
+                    : staffLaneEmptyLabel(lane === 'pack' ? 'packer' : 'technician')
+              }
+              roster={false}
+              onSelect={(row) => {
+                const member = options.find((item) => item.id === row.id);
+                if (member) void commit(member);
+              }}
+              disabled={saving}
+              listId={listId}
+              className={DROPDOWN_SHELL_CORNER}
+              onEscape={closeStageAssignPanel}
+            />
           </div>,
           document.body,
         )

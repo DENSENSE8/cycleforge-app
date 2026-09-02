@@ -11,9 +11,16 @@
  *
  * Shell is flex-col (field above tools). Modes are Unbox | Ticket only —
  * leftmost cluster under the outline (icons left of labels; Unbox blue,
- * Ticket orange). Location pill sits in the bottom action bar left of Print.
+ * Location pill sits in the bottom action bar left of Print and remains
+ * mounted when the composer switches to Ticket.
  * Plus is circular. Enter is a bare gray icon. Unbox keeps Print·Receive;
  * Ticket hides it. Ring opens Displays (Info folded in).
+ *
+ * Staff reaction lives on this mouth: mount WeldedFeedbackPanel through
+ * `reaction` (any mode) so the operator sees what just happened / what to
+ * process next without leaving the composer. ds_contract("staff reaction on
+ * the composer") ranks WeldedFeedbackPanel first. Never a second card,
+ * caption band, toast, or popover.
  */
 
 import {
@@ -61,8 +68,9 @@ export type StationComposerHostProps = {
   /** @deprecated Info moved into the procedure ring — ignored. */
   headerEnd?: ReactNode;
   /**
-   * Quiet putaway pill left of Enter/Print inside the outline (Unbox only).
-   * Does not own the trailing commit slot — Print still does.
+   * Quiet putaway pill left of Enter/Print inside the outline. It remains
+   * mounted across Unbox and Ticket; mode-specific trailing actions may still
+   * be conditional.
    */
   locationAction?: ReactNode;
   trailingAction?: ReactNode;
@@ -97,6 +105,22 @@ export type StationComposerHostProps = {
    */
   ticketInsetTop?: ReactNode;
   /**
+   * Ticket-mode trailing accessories — icon cluster in the dock top-right
+   * ({@link OmnichannelComposerDock} `headerEnd`). Unbox never mounts this.
+   */
+  ticketHeaderEnd?: ReactNode;
+  /**
+   * Staff reaction welded above the dock — {@link WeldedFeedbackPanel}.
+   * Any mode. This is the SoT slot for “what just happened / what to do next.”
+   * Opening it flattens the dock top (`weldTop`).
+   */
+  reaction?: ReactNode;
+  /**
+   * Ticket-mode alias for {@link reaction} (claim type / link / seller).
+   * Prefer `reaction` on new call sites so Unbox / dumb mouths can mount too.
+   */
+  ticketAccessory?: ReactNode;
+  /**
    * Ticket-mode chrome on the bottom action bar, right of `+` (the
    * Internal/Public channel). Unbox has no channel, so it never mounts.
    */
@@ -113,6 +137,11 @@ export type StationComposerHostProps = {
    * the bottom-right context / procedure ring — dumb scan mouths.
    */
   showModeFaces?: boolean;
+  /**
+   * Pin Unbox vs Ticket regardless of `?composerMode=` / session.
+   * Incoming add extract is a dumb paste mouth — never Ticket.
+   */
+  forceMode?: StationComposerMode;
   progressPercent?: number;
   progressTone?: 'idle' | 'selected';
   onProgressClick?: () => void;
@@ -149,17 +178,22 @@ export function StationComposerHost({
   ticketCommitDisabled,
   ticketDrillNodes,
   ticketInsetTop,
+  ticketHeaderEnd,
+  reaction,
+  ticketAccessory,
   ticketFooterStart,
   onModeChange,
   modeRowLeading,
   showModeRow = true,
   showModeFaces = true,
+  forceMode,
   progressPercent = 0,
   progressTone = 'idle',
   onProgressClick,
   className,
 }: StationComposerHostProps) {
-  const { mode, setMode, cycleMode } = useStationComposerMode();
+  const { mode: sessionMode, setMode, cycleMode } = useStationComposerMode();
+  const mode = forceMode ?? sessionMode;
   const [internalTicketDraft, setInternalTicketDraft] = useState('');
   const [plusOpen, setPlusOpen] = useState(false);
   const ticketDraft = ticketDraftProp ?? internalTicketDraft;
@@ -199,7 +233,7 @@ export function StationComposerHost({
 
   const keepTrailing = stationComposerModeKeepsTrailingAction(mode);
   const printTrailing = keepTrailing ? trailingAction : undefined;
-  const locationFooter = keepTrailing ? locationAction : undefined;
+  const locationFooter = locationAction;
 
   const placeholder = isTicket
     ? stationComposerModePlaceholder(mode, { ticketLabel, hasTicket })
@@ -265,6 +299,10 @@ export function StationComposerHost({
     ? ticketCommitDisabled === true || ticketDraft.trim().length === 0
     : labelCommitDisabled;
 
+  const reactionNode = (isTicket ? ticketAccessory : undefined) ?? reaction ?? null;
+  const reactionOpen = reactionNode != null;
+  const dockWeldTop = weldTop || reactionOpen;
+
   return (
     <div
       className={cn(
@@ -273,12 +311,14 @@ export function StationComposerHost({
         // the dock's raised shadow). isolate keeps z-raised dock above z-base
         // modes so the shadow paints across the caption.
         'flex min-w-0 isolate flex-col gap-1 bg-surface-card pb-[max(0.25rem,env(safe-area-inset-bottom))]',
-        weldTop ? `${COMPOSER_SHELL_CORNER} rounded-t-none` : COMPOSER_SHELL_CORNER,
+        dockWeldTop ? `${COMPOSER_SHELL_CORNER} rounded-t-none` : COMPOSER_SHELL_CORNER,
         className,
       )}
       data-testid="station-composer-host"
       data-composer-mode={mode}
     >
+      <div className="flex min-w-0 flex-col gap-0">
+        {reactionOpen ? reactionNode : null}
       <OmnichannelComposerDock
         ref={dockRef}
         value={value}
@@ -310,6 +350,7 @@ export function StationComposerHost({
         hideCommitButton={Boolean(printTrailing)}
         leadingStart={leadingPlus}
         insetTop={isTicket ? ticketInsetTop : undefined}
+        headerEnd={isTicket ? ticketHeaderEnd : undefined}
         footerStart={isTicket ? ticketFooterStart : undefined}
         commitDisabled={
           commitDisabledResolved === true
@@ -333,7 +374,7 @@ export function StationComposerHost({
         footerEnd={locationFooter}
         trailingAction={printTrailing}
         chrome={chrome}
-        weldTop={weldTop}
+        weldTop={dockWeldTop}
         animateMount={animateMount}
         textareaRef={textareaRef}
         ghostSuffix={isTicket ? undefined : ghostSuffix}
@@ -342,6 +383,7 @@ export function StationComposerHost({
         onDismissGhost={isTicket ? undefined : onDismissGhost}
         onTextareaKeyDown={handleModeKey}
       />
+      </div>
       {showModeRow ? (
         <ComposerModeRow
           mode={mode}

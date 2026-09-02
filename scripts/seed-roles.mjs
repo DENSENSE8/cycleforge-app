@@ -104,6 +104,10 @@ const ADMIN_ONLY = [
   // Kiosk tablet enroll/revoke — admin short-circuit already grants this at
   // runtime; keep it in the seeded admin JSON so Roles UI stays honest.
   'walk_in.enroll_kiosk',
+  // QA tools are still sandbox-gated at request time. Keeping them in the
+  // seeded admin role makes the dedicated QA organization usable immediately
+  // without granting ordinary customer organizations access to the console.
+  'developer.qa_tools.view', 'developer.qa_tools.execute', 'developer.qa_tools.fixture_reset', 'developer.qa_tools.destructive',
 ];
 
 const ADMIN_PERMISSIONS = (() => {

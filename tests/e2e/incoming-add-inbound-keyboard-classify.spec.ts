@@ -1,33 +1,30 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Add purchase order classify — keyboard on the inline intake band.
+ * Add purchase order — keyboard through the shared inspector.
  *
- * Platform is a flush SearchableSelectField; Tab walks Order → Tracking.
+ * Amazon is the default source; Tab walks Order → SKU/item → Quantity.
  *
  * QA org only (global-setup handles auth).
  */
-test.describe('Add purchase order — keyboard classify', () => {
-  test('Tab walks Platform → Order → Tracking; typeahead selects platform', async ({
-    page,
-  }) => {
+test.describe('Add purchase order — keyboard quick add', () => {
+  test('focus starts on order and Tab walks the two required fields', async ({ page }) => {
     await page.goto('/incoming');
     await page.getByTestId('incoming-add-purchase-order').click();
-    const band = page.getByTestId('incoming-po-intake-band');
-    await expect(band).toBeVisible({ timeout: 15_000 });
+    const form = page.getByTestId('add-inbound-form');
+    await expect(form).toBeVisible({ timeout: 15_000 });
 
-    const platform = band.getByTestId('po-intake-platform');
-    await platform.focus();
-    await expect(platform).toBeFocused();
+    const order = form.getByLabel('Amazon order #');
+    const item = form.getByLabel('SKU or item name');
+    await expect(order).toBeFocused();
 
-    await page.keyboard.type('goodwill');
-    await page.keyboard.press('Enter');
-    await expect(platform).toContainText(/Goodwill/i);
-
+    await order.fill('111-222-333');
     await page.keyboard.press('Tab');
-    await expect(band.getByLabel('Order / PO #')).toBeFocused();
+    await expect(item).toBeFocused();
 
+    await item.fill('SKU-TEST-1');
     await page.keyboard.press('Tab');
-    await expect(band.getByLabel('Tracking')).toBeFocused();
+    await expect(form.getByLabel('Quantity')).toBeFocused();
+    await expect(form.getByTestId('add-inbound-submit')).toBeEnabled();
   });
 });

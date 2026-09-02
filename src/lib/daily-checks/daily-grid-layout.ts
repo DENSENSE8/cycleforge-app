@@ -14,12 +14,8 @@
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import { DAILY_FIELD_CATALOG, DAILY_PRODUCT_LAYOUT } from '@/lib/tables/field-catalog/daily';
 import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
+import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
-import {
-  GRID_FILL_COLUMN,
-} from '@/design-system/components/grid';
-
-
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -68,47 +64,6 @@ export interface DailyGridColumn extends SlotTrackFields {
  * answer on its own: whether *I* did it is `status`, whether the SHIFT did it
  * is a different question and gets a different track.
  */
-export const DAILY_GRID_COLUMNS: readonly DailyGridColumn[] = [
-  { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
-  {
-    key: 'task',
-    frozen: true,
-    // Content-hard, never `1fr` — a flex track inside the FROZEN pane puts every
-    // following frozen cell's sticky `left` out by the difference.
-    width: 'minmax(18rem, 18rem)',
-    label: 'Task',
-    type: 'text',
-    resizable: true,
-    labelFitRem: 8,
-  },
-  {
-    key: 'status',
-    width: 'minmax(6rem, 6rem)',
-    label: 'Status',
-    type: 'tag',
-    hideKey: 'status',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'team',
-    width: 'minmax(5rem, 5rem)',
-    label: 'Team',
-    type: 'number',
-    align: 'end',
-    hideKey: 'team',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'marked',
-    width: 'minmax(6.5rem, 6.5rem)',
-    label: 'Checked',
-    type: 'date',
-    hideKey: 'marked',
-    tier: 'optional',
-    labelFitRem: 4.5,
-  },
-  GRID_FILL_COLUMN,
-] as const;
 
 /**
  * COMPOUND (two-row) Daily columns.
@@ -156,21 +111,22 @@ export const DAILY_COMPOUND_COLUMNS: readonly DailyGridColumn[] =
  * `repair-display-sort` rule: a bookmarked `?colsort=marked` must keep meaning
  * `marked` after a rebind moves that fact to a different slot index.
  */
-export type DailySortFact = 'task' | 'status' | 'team' | 'marked';
+export type DailySortFact = 'task' | 'status' | 'team' | 'marked' | 'image' | 'order' | 'amount';
 
 /**
  * Compound track → the fact it carries.
  *
  * A compound track is a CONTAINER for facts the flat model already sorted by:
  * `item` carries the checklist title (`task`), `state` carries the done pill
- * (`status`). `fulfillment` and `amount` are absent because a shift-checklist
- * row has neither an order nor a price — the compound adapter sets them null on
- * purpose, and a header that sorts by nothing is worse than one that does not
- * offer to.
+ * (`status`). Empty identity / money / photo tracks still sort so every painted
+ * header is clickable.
  */
 const DAILY_TRACK_SORT_FACTS: Readonly<Record<string, DailySortFact>> = {
   item: 'task',
   state: 'status',
+  thumb: 'image',
+  fulfillment: 'order',
+  amount: 'amount',
 };
 
 /**
@@ -188,14 +144,22 @@ const DAILY_SLOT_SORT_FACTS: Readonly<Record<string, DailySortFact>> = {
 export function dailySortFactFor(
   col: Pick<DailyGridColumn, 'key' | 'sortable' | 'fieldId'>,
 ): DailySortFact | null {
-  if (col.sortable === false || col.key === 'select') return null;
+  if (isSlotTableChromeTrack(col.key) || col.sortable === false) return null;
   const slot = col.fieldId ? DAILY_SLOT_SORT_FACTS[col.fieldId] : undefined;
   if (slot) return slot;
   return DAILY_TRACK_SORT_FACTS[col.key] ?? null;
 }
 
 export function isDailySortFact(raw: string): raw is DailySortFact {
-  return raw === 'task' || raw === 'status' || raw === 'team' || raw === 'marked';
+  return (
+    raw === 'task' ||
+    raw === 'status' ||
+    raw === 'team' ||
+    raw === 'marked' ||
+    raw === 'image' ||
+    raw === 'order' ||
+    raw === 'amount'
+  );
 }
 
 /**
@@ -212,6 +176,9 @@ export const DAILY_SORT_FACT_TYPES: Readonly<Record<DailySortFact, ColumnType>> 
   status: 'tag',
   team: 'number',
   marked: 'date',
+  image: 'text',
+  order: 'text',
+  amount: 'price',
 };
 
 /** Header keys that sort — the descriptor's `isSortable` for this family. */
@@ -249,7 +216,7 @@ export function dailyColumnKeyForSort(
  * index (the wave-1.4 law — see `tech-all`'s urgency rank for the twin case).
  */
 export function defaultDirForDailyGridSort(fact: DailySortFact): GridSortDir {
-  return fact === 'marked' ? 'desc' : 'asc';
+  return fact === 'marked' || fact === 'amount' || fact === 'image' ? 'desc' : 'asc';
 }
 
 /**

@@ -9,9 +9,11 @@ import {
   parseQueueDisplaySortDir,
   QUEUE_CARRIER_SORT_GROUP,
   QUEUE_CHANNEL_SORT_GROUP,
+  QUEUE_COLUMN_SORT_GROUP,
   QUEUE_DISPLAY_SORT_OPTIONS,
   queueCarrierSortOptions,
   queueChannelSortOptions,
+  queueColumnSortOptions,
   queueDisplaySortFace,
 } from '@/utils/queue-display-sort';
 
@@ -81,8 +83,14 @@ describe('queue-display-sort', () => {
   it('identifies column sorts and default dirs', () => {
     assert.equal(isQueueColumnSort('title'), true);
     assert.equal(isQueueColumnSort('age'), true);
-    assert.equal(isQueueColumnSort('picked'), true);
-    assert.equal(isQueueColumnSort('packed'), true);
+    assert.equal(isQueueColumnSort('status'), true);
+    assert.equal(isQueueColumnSort('amount'), true);
+    assert.equal(isQueueColumnSort('image'), true);
+    assert.equal(isQueueColumnSort('scanned_out'), true);
+    assert.equal(defaultDirForQueueSort('amount'), 'desc');
+    assert.equal(defaultDirForQueueSort('image'), 'desc');
+    assert.equal(defaultDirForQueueSort('scanned_out'), 'desc');
+    assert.equal(defaultDirForQueueSort('status'), 'asc');
     assert.equal(isQueueColumnSort('carrier'), true);
     assert.equal(isQueueColumnSort('carrier:USPS'), true);
     assert.equal(isQueueColumnSort('channel:Amazon'), true);
@@ -136,7 +144,7 @@ describe('queue-display-sort', () => {
     assert.deepEqual(labels, sorted);
   });
 
-  it('View menu is Newest + ship-by only — no Priority, no Column rows', () => {
+  it('View menu is Newest + ship-by only — column facts live in Columns', () => {
     assert.deepEqual(
       QUEUE_DISPLAY_SORT_OPTIONS.map((o) => o.id),
       ['newest', 'deadline'],
@@ -144,8 +152,38 @@ describe('queue-display-sort', () => {
     for (const option of QUEUE_DISPLAY_SORT_OPTIONS) {
       assert.equal(option.group, 'View');
       assert.notEqual(option.id, 'priority');
-      assert.notEqual(option.group, 'Column');
+      assert.notEqual(option.group, QUEUE_COLUMN_SORT_GROUP);
     }
+  });
+
+  it('Columns menu lists every header-click fact including Pick', () => {
+    const columns = queueColumnSortOptions();
+    const ids = columns.map((o) => o.id);
+    assert.equal(QUEUE_COLUMN_SORT_GROUP, 'Columns');
+    for (const option of columns) {
+      assert.equal(option.group, QUEUE_COLUMN_SORT_GROUP);
+    }
+    for (const fact of [
+      'picked',
+      'packed',
+      'status',
+      'image',
+      'scanned_out',
+      'title',
+      'order',
+      'amount',
+      'qty',
+      'age',
+      'tracking',
+      'carrier',
+    ] as const) {
+      assert.ok(ids.includes(fact), `${fact} must be in the sort menu`);
+    }
+    const pick = columns.find((o) => o.id === 'picked');
+    assert.ok(pick);
+    assert.equal(pick.shortLabel, 'Pick');
+    const unique = new Set(ids);
+    assert.equal(unique.size, ids.length, 'no duplicate column sort rows');
   });
 
   it('lists Platform names — Amazon and eBay are Order-column faces', () => {
@@ -172,7 +210,8 @@ describe('queue-display-sort', () => {
     assert.equal(queueDisplaySortFace('deadline').shortLabel, 'Deadline');
     assert.equal(queueDisplaySortFace('title').shortLabel, 'Product');
     assert.equal(queueDisplaySortFace('age').shortLabel, 'Days late');
-    assert.equal(queueDisplaySortFace('order').shortLabel, 'Order');
+    assert.equal(queueDisplaySortFace('picked').shortLabel, 'Pick');
+    assert.equal(queueDisplaySortFace('status').shortLabel, 'Status');
     const amazon = queueDisplaySortFace('channel:Amazon');
     assert.equal(amazon.shortLabel, 'Amazon');
     assert.equal(amazon.identity?.kind, 'platform');

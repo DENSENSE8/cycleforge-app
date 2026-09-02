@@ -7,8 +7,8 @@
  * target `incoming-grid-body-scroll`). An absolute overlay over the stand-in
  * broke that flex chain and left the table at min-height.
  *
- * Also mounts the desk **Add purchase order** CTA (Global Add consume + intake
- * band open). The band itself lives under the Incoming DataTable card.
+ * Also mounts the desk **Add purchase order** CTA (Global Add consume + shared
+ * inspector form). The Incoming DataTable remains the primary surface.
  */
 
 import { useEffect, useState, type ReactNode } from 'react';

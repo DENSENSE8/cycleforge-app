@@ -13,6 +13,7 @@ import { MY_DAY_SAVED_VIEWS_KEY } from '@/lib/my-day/my-day-saved-views';
 import {
   GENERIC_SAVED_VIEW_SURFACES,
   SAVED_VIEW_SURFACES,
+  SHEET_SAVED_VIEW_KEY,
   isGenericSavedViewSurface,
   isSavedViewSurface,
   surfaceFromStorageKey,
@@ -131,7 +132,7 @@ test('surfaceFromStorageKey maps Home Today + outbound + station keys', () => {
   assert.equal(surfaceFromStorageKey(SAVED_VIEW_STORAGE_KEY.packer_history), 'packer_history');
   assert.equal(surfaceFromStorageKey(SAVED_VIEW_STORAGE_KEY.receiving_history), 'receiving_history');
   assert.equal(surfaceFromStorageKey(SAVED_VIEW_STORAGE_KEY.receiving_incoming), 'receiving_incoming');
-  assert.equal(surfaceFromStorageKey(SAVED_VIEW_STORAGE_KEY.testing_history), 'testing_history');
+  assert.equal(surfaceFromStorageKey(SHEET_SAVED_VIEW_KEY.reports_sessions), 'reports_sessions');
 });
 
 test('surfaceFromStorageKey returns null for unknown keys', () => {

@@ -33,7 +33,6 @@ import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { DateRangePickerPill } from '@/components/ui/DateRangeHeader';
 import { IncomingReturnsImportStagingHost } from '@/components/sidebar/receiving/incoming/IncomingReturnsImportStagingHost';
 import { IncomingReturnsImportStagingRail } from '@/components/sidebar/receiving/incoming/IncomingReturnsImportStagingRail';
-import { IncomingPoIntakeTableShell } from '@/components/receiving/incoming/IncomingPoIntakeBand';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { INBOUND_RETURNS_IMPORT_DESCRIPTOR } from '@/lib/inbound/inbound-returns-import-descriptor';
 import {
@@ -69,8 +68,14 @@ import {
   buildReceivingHistoryExportCsv,
   receivingHistoryExportFilename,
 } from '@/lib/receiving/history-export-csv';
+import { IncomingAddWalkHost } from '@/components/receiving/incoming/IncomingAddWalkHost';
+import {
+  parseIncomingIntake,
+  writeIncomingIntake,
+  type IncomingIntakeKind,
+} from '@/lib/inbound/incoming-intake';
 import { DataTable } from '@/components/tables/DataTable';
-import { RECEIVING_SEARCH_PARAM_KEY } from '@/lib/receiving/receiving-modes';
+
 
 import { useReceivingModeContext } from '@/components/station/useReceivingModeContext';
 import { useReceivingLinesData } from '@/components/station/useReceivingLinesData';
@@ -187,9 +192,21 @@ export default function ReceivingLinesTable({
   const router = useRouter();
   const pathname = usePathname() ?? '';
   const searchParams = useSearchParams();
+  const [receivingSearchValue, setReceivingSearchValue] = useState('');
   // Band-3 no longer hosts ▦ — Show inspector opens Column display.
   // Unbox embed still portals into the inspector View cluster.
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const intakeKind = parseIncomingIntake(searchParams.get('intake'));
+  const patchIntake = useCallback(
+    (kind: IncomingIntakeKind | null) => {
+      const params = new URLSearchParams(searchParams.toString());
+      writeIncomingIntake(params, kind);
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname || '/', { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
 
   const {
     mode,
@@ -355,9 +372,18 @@ export default function ReceivingLinesTable({
     });
   }, []);
 
+  const searchModeContext = useMemo(
+    () => ({
+      ...modeContext,
+      historySearch: isHistoryMode ? receivingSearchValue.trim() : modeContext.historySearch,
+      incomingSearch: isIncomingMode ? receivingSearchValue.trim() : modeContext.incomingSearch,
+    }),
+    [isHistoryMode, isIncomingMode, modeContext, receivingSearchValue],
+  );
+
   const { data, isLoading, isError, refetch, localRows } = useReceivingLinesData({
     mode,
-    modeContext,
+    modeContext: searchModeContext,
     isIncomingMode,
     isDeliveredUnscannedFacet,
     isDeliveredNotUnboxedFacet,
@@ -733,15 +759,8 @@ export default function ReceivingLinesTable({
   );
 
   const receivingSearch = {
-    value: searchParams.get(RECEIVING_SEARCH_PARAM_KEY) ?? '',
-    onChange: (next: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      const trimmed = next.trim();
-      if (trimmed) params.set(RECEIVING_SEARCH_PARAM_KEY, trimmed);
-      else params.delete(RECEIVING_SEARCH_PARAM_KEY);
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
+    value: receivingSearchValue,
+    onChange: setReceivingSearchValue,
     placeholder: isIncomingMode ? 'Filter incoming…' : 'Filter cartons…',
   };
   const incomingChrome = useIncomingTableChrome();
@@ -822,6 +841,15 @@ export default function ReceivingLinesTable({
   // Check/Import/Add CTA cluster on this tab (Unbox owns Band 1).
   if (embedded) {
     if (isIncomingMode) {
+      if (intakeKind) {
+        return (
+          <IncomingAddWalkHost
+            kind={intakeKind}
+            onKind={(next) => patchIntake(next)}
+            onExit={() => patchIntake(null)}
+          />
+        );
+      }
       return (
         <>
           {incomingDegraded ? (
@@ -829,7 +857,6 @@ export default function ReceivingLinesTable({
               <GridDegradedBox onRetry={refetch} />
             </div>
           ) : (
-            <IncomingPoIntakeTableShell>
             <DataTable<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
               binding={INCOMING_TABLE_BINDING}
               search={receivingSearch}
@@ -881,7 +908,6 @@ export default function ReceivingLinesTable({
                 />
               )}
             />
-            </IncomingPoIntakeTableShell>
           )}
         </>
       );
@@ -910,14 +936,19 @@ export default function ReceivingLinesTable({
         {
             showReturnsImportStaging ? (
               <IncomingReturnsImportStagingHost />
+            ) : isIncomingMode && intakeKind ? (
+              <IncomingAddWalkHost
+                kind={intakeKind}
+                onKind={(next) => patchIntake(next)}
+                onExit={() => patchIntake(null)}
+              />
             ) : isIncomingMode ? (
               incomingDegraded ? (
                 <div className="p-3">
                   <GridDegradedBox onRetry={refetch} />
                 </div>
               ) : (
-                <IncomingPoIntakeTableShell>
-                <DataTable<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
+                    <DataTable<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
                   binding={INCOMING_TABLE_BINDING}
                   search={receivingSearch}
                   filter={incomingChrome.filter}
@@ -964,8 +995,7 @@ export default function ReceivingLinesTable({
                     />
                   )}
                 />
-                </IncomingPoIntakeTableShell>
-              )
+                  )
             ) : (
               receivingGrid()
             )

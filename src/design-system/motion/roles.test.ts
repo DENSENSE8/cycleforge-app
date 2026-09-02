@@ -43,6 +43,8 @@ test('named spring / fade presets resolve to the house physics tokens — no cop
   assert.equal(framerTransition.sliderIndicator, springSnappy);
   assert.equal(framerTransition.workOrderModalSpring, springSnappy);
   assert.equal(framerTransition.commandBarDialog, springSnappy);
+  assert.equal(framerTransition.navPeekCorner, springSnappy);
+  assert.equal(framerTransition.navDropdownFromTop, springSnappy);
   assert.equal(framerTransition.routeHistoryMount, springSnappy);
   assert.equal(framerTransition.chipCopyFeedback, fadeInstant);
   assert.equal(framerTransition.overlayScrim, fadeInstant);

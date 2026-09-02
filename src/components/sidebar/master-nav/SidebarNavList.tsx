@@ -1,22 +1,19 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, type ReactNode } from 'react';
 import {
   DndContext,
   KeyboardSensor,
   PointerSensor,
   closestCenter,
+  pointerWithin,
+  useDraggable,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
 } from '@dnd-kit/core';
-import {
-  SortableContext,
-  arrayMove,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from '@dnd-kit/sortable';
+import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { ChevronLeft, ChevronsRight } from '@/components/Icons';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
@@ -27,16 +24,30 @@ import {
 import {
   resolveSpineMapEntries,
   spineStructuralTopPages,
+  SPINE_DESKS_SLOT_ID,
   SPINE_STATIONS_SLOT_ID,
 } from '@/lib/nav/spine-slots';
 import {
+  DESK_GROUPS,
   SPINE_SECTIONS,
+  applyChildTarget,
   hasDeskPageChrome,
+  isSpineDeskItem,
   isSpineMapTopRow,
   spineSectionIdForPage,
   type SidebarIconComponent,
   type SidebarPageNav,
 } from '@/lib/sidebar-navigation';
+import {
+  MASTER_NAV_PIN_DROP_ID,
+  isPinDropOverId,
+  isStructuralSpinePinHref,
+  navPinDragId,
+  pinIndexFromOverId,
+  type NavPinDragData,
+} from '@/lib/quick-access/nav-pin';
+import { pinsCoverHref } from '@/lib/quick-access/storage';
+import { useQuickAccess } from '@/lib/quick-access/use-quick-access';
 import {
   SPINE_DRILL_SCROLL_END_CLASS,
   SPINE_LABEL_CLASS,
@@ -46,16 +57,23 @@ import {
 } from '@/components/sidebar/sidebar-spine';
 import { cn } from '@/utils/_cn';
 import { StaffAccountFooter } from './StaffAccountFooter';
+import { MasterNavPinnedCluster } from './MasterNavPinnedCluster';
 
 /**
- * MasterNav page list — full catalog, hold-drag to reorder.
- *
- * Home · Media Library stay fixed at the top. Scan Stations is one parent
- * row that list-replaces into floor benches. Every other reachable L1 is a
- * sortable row: short click navigates (or opens a child drill); hold ~180ms
- * anywhere on the title row then drag reorders and persists to
- * `prefs.spineSlots`. No grip chrome — the whole label row is the handle.
+ * MasterNav page list — catalog is not sortable. Hold-drag a leaf onto Pinned
+ * (or a pin row). Reorder only inside that cluster. Scan Stations / Desks
+ * stay parent drills (not pin folders). Drill parents never take the
+ * current-page fill — if the leaf is already in Pinned, they stay idle.
  */
+/** Prefer the Pinned well / pin rows when the pointer is over them. */
+const pinCollisionDetection: CollisionDetection = (args) => {
+  const pointerHits = pointerWithin(args);
+  const pinHits = pointerHits.filter((hit) => isPinDropOverId(String(hit.id)));
+  if (pinHits.length > 0) return pinHits;
+  if (pointerHits.length > 0) return pointerHits;
+  return closestCenter(args);
+};
+
 interface SidebarNavListProps {
   activePage: SidebarPageNav;
   activeChildId: string | null;
@@ -65,12 +83,12 @@ interface SidebarNavListProps {
   drillId: string | null;
   onDrillChange: (id: string | null) => void;
   spineOrder: string[];
-  onSpineOrderChange: (ids: string[]) => void;
   className?: string;
 }
 
-function SortableTitleRow({
+function DraggableTitleRow({
   id,
+  href,
   label,
   icon: RowIcon,
   active,
@@ -79,8 +97,10 @@ function SortableTitleRow({
   onMouseEnter,
   accent,
   drill,
+  draggable,
 }: {
   id: string;
+  href: string;
   label: string;
   icon: SidebarIconComponent;
   active: boolean;
@@ -89,35 +109,30 @@ function SortableTitleRow({
   onMouseEnter?: () => void;
   accent: SpineAccentClasses;
   drill?: boolean;
+  draggable: boolean;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id });
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: navPinDragId(id),
+    data: { type: 'nav', href, label, iconKey: id } satisfies NavPinDragData,
+    disabled: !draggable,
+  });
 
   return (
     <div
       ref={setNodeRef}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-      }}
+      style={{ transform: CSS.Translate.toString(transform) }}
       className={cn('relative', isDragging && 'z-10 opacity-80')}
     >
       <button
         type="button"
-        {...attributes}
-        {...listeners}
+        {...(draggable ? { ...attributes, ...listeners } : {})}
         onClick={onActivate}
         onMouseEnter={onMouseEnter}
         aria-label={ariaLabel}
         aria-current={active ? 'page' : undefined}
         className={cn(
-          'ds-raw-button flex w-full items-center gap-2 px-2 text-left touch-none',
+          'ds-raw-button flex w-full items-center gap-2 px-2 text-left',
+          draggable && 'touch-none',
           SPINE_ROW_SHELL_CLASS,
           SPINE_ROW_FACE_CLASS,
           active ? accent.activePage : accent.idlePage,
@@ -152,15 +167,22 @@ export function SidebarNavList({
   drillId,
   onDrillChange,
   spineOrder,
-  onSpineOrderChange,
   className,
 }: SidebarNavListProps) {
+  const { settings, pinAt, reorder } = useQuickAccess();
+  const pinIds = useMemo(() => settings.pinned.map((p) => p.id), [settings.pinned]);
+  const currentPinned = pinsCoverHref(activePage.href, settings.pinned);
   const highlightedChildId = activeChildId ?? activePage.children?.[0]?.id ?? null;
   const topPages = spineStructuralTopPages(otherPages);
   const neutralAccent = spineAccentFor(null);
   const stationsSection = SPINE_SECTIONS.find((s) => s.id === 'floor');
+  const desksGroup = DESK_GROUPS[0];
   const floorPages = useMemo(
     () => otherPages.filter((p) => spineSectionIdForPage(p) === 'floor'),
+    [otherPages],
+  );
+  const deskPages = useMemo(
+    () => otherPages.filter((p) => isSpineDeskItem(p)),
     [otherPages],
   );
 
@@ -179,13 +201,33 @@ export function SidebarNavList({
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       const { active, over } = event;
-      if (!over || active.id === over.id) return;
-      const oldIndex = spineOrder.indexOf(String(active.id));
-      const newIndex = spineOrder.indexOf(String(over.id));
-      if (oldIndex < 0 || newIndex < 0) return;
-      onSpineOrderChange(arrayMove(spineOrder, oldIndex, newIndex));
+      if (!over) return;
+      const overId = String(over.id);
+      const activeId = String(active.id);
+      const data = active.data.current as NavPinDragData | { type: 'pin'; id: string } | undefined;
+      const pinning = isPinDropOverId(overId);
+
+      if (data?.type === 'pin' || activeId.startsWith('pin:')) {
+        const fromId = data?.type === 'pin' ? data.id : activeId.slice('pin:'.length);
+        const oldIndex = pinIds.indexOf(fromId);
+        const newIndex = pinIndexFromOverId(overId, pinIds);
+        if (oldIndex < 0 || newIndex == null) return;
+        const target = overId === MASTER_NAV_PIN_DROP_ID ? pinIds.length - 1 : newIndex;
+        if (oldIndex === target) return;
+        reorder(arrayMove([...pinIds], oldIndex, Math.min(target, pinIds.length - 1)));
+        return;
+      }
+
+      if (data?.type !== 'nav') return;
+      if (!pinning) return;
+      if (isStructuralSpinePinHref(data.href)) return;
+      const at = pinIndexFromOverId(overId, pinIds);
+      pinAt(
+        { href: data.href, label: data.label, iconKey: data.iconKey },
+        at ?? pinIds.length,
+      );
     },
-    [spineOrder, onSpineOrderChange],
+    [pinAt, pinIds, reorder],
   );
 
   const renderPageHeader = (
@@ -193,6 +235,8 @@ export function SidebarNavList({
       label: string;
       icon: SidebarPageNav['icon'];
       active: boolean;
+      /** Parent of the current page — quieter fill, never aria-current. */
+      owns?: boolean;
       ariaLabel: string;
       onClick: () => void;
       onMouseEnter?: () => void;
@@ -201,6 +245,11 @@ export function SidebarNavList({
     accent: SpineAccentClasses,
   ) => {
     const PageIcon = opts.icon;
+    const face = opts.active
+      ? accent.activePage
+      : opts.owns
+        ? accent.ownsActive
+        : accent.idlePage;
     return (
       <button
         type="button"
@@ -209,9 +258,10 @@ export function SidebarNavList({
         aria-label={opts.ariaLabel}
         aria-current={opts.active ? 'page' : undefined}
         className={cn(
+          'ds-raw-button w-full items-center gap-2 px-2 text-left',
           SPINE_ROW_SHELL_CLASS,
           SPINE_ROW_FACE_CLASS,
-          opts.active ? accent.activePage : accent.idlePage,
+          face,
         )}
       >
         <PageIcon
@@ -250,100 +300,171 @@ export function SidebarNavList({
     </button>
   );
 
-  const renderRow = (
+  const renderDraggablePage = (
     page: SidebarPageNav,
-    keyPrefix: string,
     accent: SpineAccentClasses,
-    opts?: { pinned?: boolean },
+    opts?: { drill?: boolean; onActivate?: () => void },
   ) => {
-    const isPageActive = page.id === activePage.id;
-    // Floor benches stay flat — QC / Ready to Pack are L1 rows, not a Testing
-    // drill. Desk-chrome pages stay flat too
-    // (`hasDeskPageChrome`): the desk draws those children as in-page tabs, so a
-    // drill here would be the nav tabbing them a second time.
     const drills =
-      !opts?.pinned &&
-      !isSpineMapTopRow(page) &&
-      page.kind !== 'station' &&
-      !hasDeskPageChrome(page) &&
-      (page.children?.length ?? 0) > 1;
+      opts?.drill ??
+      (!isSpineMapTopRow(page) &&
+        page.kind !== 'station' &&
+        !hasDeskPageChrome(page) &&
+        (page.children?.length ?? 0) > 1);
     return (
-      <div key={`${keyPrefix}-${page.id}`}>
-        {renderPageHeader(
-          {
-            label: page.label,
-            icon: page.icon,
-            active: isPageActive,
-            ariaLabel: drills ? `Open ${page.label}` : `Go to ${page.label}`,
-            onClick: () => {
-              if (drills) {
-                onDrillChange(page.id);
-                return;
-              }
-              onNavigate(page.id);
-            },
-            onMouseEnter: onRowHover ? () => onRowHover(page) : undefined,
-            drill: drills,
-          },
-          accent,
-        )}
-      </div>
+      <DraggableTitleRow
+        key={page.id}
+        id={page.id}
+        href={page.href}
+        label={page.label}
+        icon={page.icon}
+        active={page.id === activePage.id}
+        ariaLabel={drills ? `Open ${page.label}` : `Go to ${page.label}`}
+        accent={accent}
+        drill={drills}
+        draggable
+        onActivate={
+          opts?.onActivate ??
+          (() => {
+            if (drills) onDrillChange(page.id);
+            else onNavigate(page.id);
+          })
+        }
+        onMouseEnter={onRowHover ? () => onRowHover(page) : undefined}
+      />
     );
   };
 
   const renderDrillChild = (
-    pageId: string,
+    page: SidebarPageNav,
     child: NonNullable<SidebarPageNav['children']>[number],
     accent: SpineAccentClasses,
-  ) => (
-    <div key={`${pageId}-${child.id}`}>
-      {renderPageHeader(
-        {
-          label: child.label,
-          icon: child.icon,
-          active: pageId === activePage.id && highlightedChildId === child.id,
-          ariaLabel: `Go to ${child.label}`,
-          onClick: () => onNavigate(pageId, child.id),
-        },
-        accent,
-      )}
-    </div>
-  );
+  ) => {
+    const { pathname, search } = applyChildTarget(
+      { pathname: page.href, params: new URLSearchParams() },
+      child.to(),
+    );
+    const href = search ? `${pathname}?${search}` : pathname;
+    return (
+      <DraggableTitleRow
+        key={`${page.id}-${child.id}`}
+        id={`${page.id}:${child.id}`}
+        href={href}
+        label={child.label}
+        icon={child.icon}
+        active={page.id === activePage.id && highlightedChildId === child.id}
+        ariaLabel={`Go to ${child.label}`}
+        accent={accent}
+        draggable
+        onActivate={() => onNavigate(page.id, child.id)}
+      />
+    );
+  };
 
   const renderPageDrill = (page: SidebarPageNav) => {
     const accent = spineAccentFor(spineSectionIdForPage(page));
     return (
-      <div className={SPINE_DRILL_SCROLL_END_CLASS}>
+      <div data-spine-drill-pad className={SPINE_DRILL_SCROLL_END_CLASS}>
         {renderBackHeader(page.label, () => onDrillChange(null))}
         <div role="group" aria-label={page.label}>
-          {page.children?.map((child) => renderDrillChild(page.id, child, accent))}
+          {page.children?.map((child) => renderDrillChild(page, child, accent))}
         </div>
       </div>
     );
   };
 
-  /** Scan Stations list-replace — Back + flat benches (no nested drills). */
   const renderStationsDrill = () => {
     if (!stationsSection) return null;
     const accent = spineAccentFor('floor');
     return (
-      <div className={SPINE_DRILL_SCROLL_END_CLASS}>
+      <div data-spine-drill-pad className={SPINE_DRILL_SCROLL_END_CLASS}>
         {renderBackHeader(stationsSection.label, () => onDrillChange(null))}
         <div id="spine-section-floor" role="group" aria-label={stationsSection.label}>
           {floorPages.map((page) => (
-            <div key={page.id}>{renderRow(page, 'floor', accent)}</div>
+            <div key={page.id}>{renderDraggablePage(page, accent, { drill: false })}</div>
           ))}
         </div>
       </div>
     );
   };
 
-  const renderMap = () => {
-    if (drillId === SPINE_STATIONS_SLOT_ID) {
-      return renderStationsDrill();
-    }
+  const renderDesksDrill = () => (
+    <div data-spine-drill-pad className={SPINE_DRILL_SCROLL_END_CLASS}>
+      {renderBackHeader(desksGroup.label, () => onDrillChange(null))}
+      <div id="spine-section-desks" role="group" aria-label={desksGroup.label}>
+        {deskPages.map((page) => (
+          <div key={page.id}>
+            {renderDraggablePage(page, spineAccentFor(spineSectionIdForPage(page)), {
+              drill: false,
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
-    if (drillId != null) {
+  const renderCatalogMap = () => (
+    <div role="list" aria-label="Pages">
+      {mapEntries.map((entry) => {
+        if (entry.kind === 'stations') {
+          if (!stationsSection) return null;
+          const floorOwns = spineSectionIdForPage(activePage) === 'floor';
+          // Never aria-current / activePage: Scan Stations is a parent drill.
+          // When Unbox (etc.) is already current in Pinned, stay fully idle.
+          return (
+            <div key={SPINE_STATIONS_SLOT_ID}>
+              {renderPageHeader(
+                {
+                  label: stationsSection.label,
+                  icon: stationsSection.icon,
+                  active: false,
+                  owns: floorOwns && !currentPinned,
+                  ariaLabel: `Open ${stationsSection.label}`,
+                  onClick: () => onDrillChange(SPINE_STATIONS_SLOT_ID),
+                  drill: true,
+                },
+                spineAccentFor('floor'),
+              )}
+            </div>
+          );
+        }
+
+        if (entry.kind === 'desks') {
+          const desksOwn = isSpineDeskItem(activePage);
+          return (
+            <div key={SPINE_DESKS_SLOT_ID}>
+              {renderPageHeader(
+                {
+                  label: desksGroup.label,
+                  icon: desksGroup.icon,
+                  active: false,
+                  owns: desksOwn && !currentPinned,
+                  ariaLabel: `Open ${desksGroup.label}`,
+                  onClick: () => onDrillChange(SPINE_DESKS_SLOT_ID),
+                  drill: true,
+                },
+                neutralAccent,
+              )}
+            </div>
+          );
+        }
+
+        const page = entry.page;
+        const drills = !hasDeskPageChrome(page) && (page.children?.length ?? 0) > 1;
+        return renderDraggablePage(page, spineAccentFor(spineSectionIdForPage(page)), {
+          drill: drills,
+        });
+      })}
+    </div>
+  );
+
+  const renderMap = () => {
+    let drillBody: ReactNode = renderCatalogMap();
+    if (drillId === SPINE_STATIONS_SLOT_ID) {
+      drillBody = renderStationsDrill();
+    } else if (drillId === SPINE_DESKS_SLOT_ID) {
+      drillBody = renderDesksDrill();
+    } else if (drillId != null) {
       const drilledPage = otherPages.find(
         (p) =>
           p.id === drillId &&
@@ -351,65 +472,39 @@ export function SidebarNavList({
           !hasDeskPageChrome(p) &&
           (p.children?.length ?? 0) > 1,
       );
-      if (drilledPage) return renderPageDrill(drilledPage);
+      if (drilledPage) drillBody = renderPageDrill(drilledPage);
     }
 
     return (
-      <div>
-        {topPages.length > 0 ? (
-          <div id="spine-section-top" role="group" aria-label="Pinned">
-            {topPages.map((page) => (
-              <div key={page.id}>{renderRow(page, 'top', neutralAccent, { pinned: true })}</div>
-            ))}
-          </div>
-        ) : null}
-
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={spineOrder} strategy={verticalListSortingStrategy}>
-            <div role="list" aria-label="Pages">
-              {mapEntries.map((entry) => {
-                if (entry.kind === 'stations') {
-                  if (!stationsSection) return null;
-                  const floorActive = spineSectionIdForPage(activePage) === 'floor';
-                  return (
-                    <SortableTitleRow
-                      key={SPINE_STATIONS_SLOT_ID}
-                      id={SPINE_STATIONS_SLOT_ID}
-                      label={stationsSection.label}
-                      icon={stationsSection.icon}
-                      active={floorActive}
-                      ariaLabel={`Open ${stationsSection.label}`}
-                      accent={spineAccentFor('floor')}
-                      drill
-                      onActivate={() => onDrillChange(SPINE_STATIONS_SLOT_ID)}
-                    />
-                  );
-                }
-
-                const page = entry.page;
-                const drills = !hasDeskPageChrome(page) && (page.children?.length ?? 0) > 1;
-                return (
-                  <SortableTitleRow
-                    key={page.id}
-                    id={page.id}
-                    label={page.label}
-                    icon={page.icon}
-                    active={page.id === activePage.id}
-                    ariaLabel={drills ? `Open ${page.label}` : `Go to ${page.label}`}
-                    accent={spineAccentFor(spineSectionIdForPage(page))}
-                    drill={drills}
-                    onActivate={() => {
-                      if (drills) onDrillChange(page.id);
-                      else onNavigate(page.id);
-                    }}
-                    onMouseEnter={onRowHover ? () => onRowHover(page) : undefined}
-                  />
-                );
-              })}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={pinCollisionDetection}
+        onDragEnd={handleDragEnd}
+      >
+        <div>
+          {topPages.length > 0 ? (
+            <div id="spine-section-top" role="group" aria-label="Home and Media Library">
+              {topPages.map((page) => (
+                <div key={page.id}>
+                  {renderPageHeader(
+                    {
+                      label: page.label,
+                      icon: page.icon,
+                      active: page.id === activePage.id,
+                      ariaLabel: `Go to ${page.label}`,
+                      onClick: () => onNavigate(page.id),
+                      onMouseEnter: onRowHover ? () => onRowHover(page) : undefined,
+                    },
+                    neutralAccent,
+                  )}
+                </div>
+              ))}
             </div>
-          </SortableContext>
-        </DndContext>
-      </div>
+          ) : null}
+          <MasterNavPinnedCluster pinIds={pinIds} />
+          {drillBody}
+        </div>
+      </DndContext>
     );
   };
 
@@ -418,7 +513,7 @@ export function SidebarNavList({
       <div data-spine-scrollport className="min-h-0 flex-1 overflow-y-auto p-0">
         {renderMap()}
       </div>
-      <div className="flex w-full shrink-0 flex-col">
+      <div data-spine-account-footer className="flex w-full shrink-0 flex-col">
         <StaffAccountFooter />
       </div>
     </div>

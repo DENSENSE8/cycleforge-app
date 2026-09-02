@@ -39,7 +39,7 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station unbox` for full gate
 ## Design critique (latest)
 
 <!-- eval-ledger:auto:design-critique -->
-- `src/components/receiving/unbox/UnboxLineWorkspace.tsx` — snapshot `docs/eval/stations/unbox/snapshots/2026-09-01-critique-UnboxLineWorkspace.txt`
+- `src/components/receiving/unbox/UnboxLineWorkspace.tsx` — snapshot `docs/eval/stations/unbox/snapshots/2026-09-02-critique-UnboxLineWorkspace.txt`
 ```
 {
   "file": "src/components/receiving/unbox/UnboxLineWorkspace.tsx",
@@ -53,18 +53,19 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station unbox` for full gate
 ## Graph impact (shared symbols)
 
 <!-- eval-ledger:auto:graph-impact -->
-- **UnboxLineWorkspace** — 1 files, 2 symbols (`docs/eval/stations/unbox/snapshots/2026-09-01-impact-UnboxLineWorkspace.json`)
-- **useOverlaySwapHardCut** — 10 files, 12 symbols (`docs/eval/stations/unbox/snapshots/2026-09-01-impact-useOverlaySwapHardCut.json`)
+- **UnboxLineWorkspace** — 1 files, 2 symbols (`docs/eval/stations/unbox/snapshots/2026-09-02-impact-UnboxLineWorkspace.json`)
+- **useOverlaySwapHardCut** — 10 files, 12 symbols (`docs/eval/stations/unbox/snapshots/2026-09-02-impact-useOverlaySwapHardCut.json`)
 <!-- /eval-ledger:auto:graph-impact -->
 
 ## Regression tripwires
 
 <!-- eval-ledger:auto:tripwires -->
+**pass** — snapshot `docs/eval/stations/unbox/snapshots/2026-09-02-tripwire.log`
 - `src/lib/station/scan-station-overlay-cohort.test.ts`
 <!-- /eval-ledger:auto:tripwires -->
 
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-01T10:20:32.426Z · station `unbox`_
+_Updated 2026-09-02T17:09:16.301Z · station `unbox`_
 <!-- /eval-ledger:auto:last-run -->

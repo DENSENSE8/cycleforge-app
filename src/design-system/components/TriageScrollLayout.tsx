@@ -1,11 +1,17 @@
 'use client';
 
 import { useRef, type ReactNode } from 'react';
-import { cn } from '@/utils/_cn';
-import { TriageSections, type TriageSectionSpec } from './TriageSections';
+import { InspectorFormSurface } from './InspectorFormSurface';
+import {
+  triageMeasureClass,
+  TriageSections,
+  type TriageMeasureAlign,
+  type TriageSectionSpec,
+} from './TriageSections';
 import { TriageScrollKnobs } from './TriageScrollKnobs';
+import { cn } from '@/utils/_cn';
 
-export type { TriageSectionSpec };
+export type { TriageSectionSpec, TriageMeasureAlign };
 
 /**
  * Scroll host for a dense warehouse triage form. Distinct operational blocks
@@ -23,12 +29,18 @@ export type { TriageSectionSpec };
  * It rides the EDGE, never a button row across the top: vertical space is the
  * scarce axis in a dense form, and a top row either scrolls away or is made
  * sticky and spends that space permanently.
+ *
+ * With `knobs`, prefer `measureAlign="start"` so the form sits left of the
+ * sticky rail (Order intake stage-fill, Exceptions) instead of centering in
+ * the leftover column.
  */
 export function TriageScrollLayout({
   header,
   banner,
   sections,
+  footer,
   knobs = false,
+  measureAlign,
   className,
   'data-testid': testId,
 }: {
@@ -36,26 +48,53 @@ export function TriageScrollLayout({
   /** Record-level notice above the first card — see {@link TriageSections}. */
   banner?: ReactNode;
   sections: readonly TriageSectionSpec[];
+  /**
+   * Sticky foot in the SAME column as the cards (left of knobs). Incoming add
+   * parks StationComposerHost here so its width cannot be measured against the
+   * full pane. No extra `pb-*` — the host already owns Unbox mouth safe-area pad.
+   */
+  footer?: ReactNode;
   /** Show the edge jump rail. Off by default — see the note above. */
   knobs?: boolean;
+  /**
+   * Reading-measure alignment inside the scroll pane. Defaults to `start`
+   * when `knobs` is on (form left of the rail), otherwise `center`.
+   */
+  measureAlign?: TriageMeasureAlign;
   className?: string;
   'data-testid'?: string;
 }) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const align = measureAlign ?? (knobs ? 'start' : 'center');
 
   return (
-    <div className={cn('flex h-full min-h-0 flex-col', className)} data-testid={testId}>
-      {header ? <div className="shrink-0">{header}</div> : null}
+    <InspectorFormSurface
+      header={header}
+      className={className}
+      bodyClassName="flex min-h-0 overflow-hidden"
+      testId={testId}
+    >
       <div className="flex min-h-0 flex-1">
-        <div
-          ref={scrollRef}
-          className="min-h-0 flex-1 overflow-y-auto"
-          data-triage-scroll-root=""
-        >
-          <TriageSections sections={sections} banner={banner} />
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <div
+            ref={scrollRef}
+            className="min-h-0 flex-1 overflow-y-auto"
+            data-triage-scroll-root=""
+          >
+            <TriageSections
+              sections={sections}
+              banner={banner}
+              measureAlign={align}
+            />
+          </div>
+          {footer ? (
+            <div className={cn(triageMeasureClass(align), 'shrink-0')}>
+              {footer}
+            </div>
+          ) : null}
         </div>
         {knobs ? <TriageScrollKnobs sections={sections} scrollRef={scrollRef} /> : null}
       </div>
-    </div>
+    </InspectorFormSurface>
   );
 }

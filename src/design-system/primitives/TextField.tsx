@@ -11,9 +11,13 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 /**
- * `default` — soft card field (`rounded-xl` + border).
+ * `default` — soft card field (`rounded-xl` + border). Desk / triage forms.
  * `flush` — joined industrial bar cell (`rounded-none`, no outer border); host
  * owns the shared hairline. Floating label stays inside the field cell width.
+ *
+ * Flush is a scan-station (edge-to-edge) classification. Desk walks
+ * (exceptions, Labels, Incoming add) use Label + Input + `triagePanelControl`
+ * inside `cornerClass('surface')` cards — never this flush face.
  */
 type TextFieldAppearance = 'default' | 'flush';
 
@@ -45,6 +49,7 @@ export interface TextFieldProps
   /**
    * `flush` = joined scan-bar cell (square, borderless); host owns the outer
    * hairline. Label + fill stay inside the field width — no L/R bleed.
+   * Import flush only on scan stations / kiosk bars. Desk record walks refuse it.
    */
   appearance?: TextFieldAppearance;
   /** Render the input value in a monospace font (serial / tracking scans). */

@@ -24,7 +24,8 @@ description: >-
    Before editing CompoundItem / `useSlotTableLayout` / materialize / listing util /
    STATUS ship-by, impact **engine** symbols (`CompoundItem`, `CompoundState`,
    `DateRangePickerField`, `useSlotTableLayout`, `materializeTracks`,
-   `getExternalUrlByItemNumber`) — not `OrdersQueueTableRow` alone — or run
+   `getExternalUrlByItemNumber`, `queueSortForColumnKey`, `LedgerGridColumnHeader`,
+   `isSlotTableChromeTrack`) — not `OrdersQueueTableRow` alone — or run
    `pnpm run eval:cohort slot-table`. Compact ship-by is `DateRangePickerField`
    `variant="compact"` on `CompoundState`; the write is `useOptimisticMutation`
    in `useOrderAssignment`. Before deleting a family `*_GRID_COLUMNS`, run
@@ -49,6 +50,7 @@ node "$GARISEK_OS_ROOT/tools/code-graph/cg.mjs impact '<node_key>'"
 - Overlay shell → `eval:station <id>` or find each peer `*Workspace` / `TechRightPane`
 - Slot table paint → `find_symbol CompoundItem` → `impact_analysis` or `eval:cohort slot-table`
 - Slot-table ship-by / in-cell date → `find_symbol DateRangePickerField` and `CompoundState` (STATUS delay). Write is `useOptimisticMutation`. Not `calendar`, not `InlineEditableValue`.
+- Slot-table header click-to-sort → `find_symbol queueSortForColumnKey` and `LedgerGridColumnHeader` (or `isSlotTableChromeTrack`). Dead Image/Status headers are a cohort fail, not a one-desk paint. Empty `find` after adding a graphSymbols export: rebuild the index (`index-cli.mjs`); `eval:cohort slot-table` now fails on no-match.
 - Keybinds / `?` overview → `find_symbol KeyboardShortcutsCheatSheet` or `eval:cohort shortcuts`
 - Stale graph → rebuild from Garisek-OS `index-cli.mjs`
 

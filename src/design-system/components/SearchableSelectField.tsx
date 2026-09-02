@@ -56,7 +56,8 @@ interface SearchableSelectFieldProps<T = unknown> {
   tone?: 'default' | 'emerald';
   /**
    * `flush` — sheet-band / dense rail: no radius, no trigger pad, square panel
-   * (claim compose golden). Default keeps the padded rounded field chrome.
+   * (claim compose golden). Scan-station edge-to-edge only. Default keeps the
+   * padded rounded field chrome — that is the desk / triage face.
    */
   appearance?: 'default' | 'flush';
   /**

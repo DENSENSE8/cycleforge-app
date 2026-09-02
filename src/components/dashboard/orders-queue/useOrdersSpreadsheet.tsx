@@ -27,6 +27,7 @@ import {
   isQueueSortableColumnKey,
   queueCarrierSortOptions,
   queueChannelSortOptions,
+  queueColumnSortOptions,
   queueDisplaySortFace,
   queueSortForColumnKey,
   type QueueDisplaySort,
@@ -51,6 +52,7 @@ import { AddTrackingPopover } from '@/components/outbound/labels/AddTrackingPopo
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { refreshDomain } from '@/lib/refresh/bus';
 import { toast } from '@/lib/toast';
+import { patchCachedStaffLaneRole } from '@/lib/staffCache';
 
 /**
  * `getDaysLateNullable`, memoized on `(today, deadline)`.
@@ -115,6 +117,8 @@ export interface UseOrdersSpreadsheetOptions {
   railSelection?: boolean;
   /** Surface chrome (status dots, tracking/serial affordances). Default fulfillment. */
   queueMode?: OrdersQueueMode;
+  /** Shortage desk — paint the coverage SoT column; omit it everywhere else. */
+  shortageDesk?: boolean;
   /**
    * Staff-prefs identity for per-staff column config (visible fields + drag
    * order), i.e. `staff_preferences.tableColumns[tableId]`.
@@ -167,6 +171,11 @@ export interface UseOrdersSpreadsheetOptions {
    * the band host must not animate geometry (M1/M2/M5).
    */
   renderActiveWorkBand?: (record: ShippedOrder) => ReactNode;
+  /**
+   * To-ship tracking hover Label — opens the paperwork walk (`?paperwork=`),
+   * table XOR record + carton header. Omit on packed/shipped/history.
+   */
+  onOpenLabels?: (record: ShippedOrder) => void;
 }
 
 /**
@@ -215,6 +224,7 @@ export function useOrdersSpreadsheet({
   selectionScope,
   railSelection = false,
   queueMode = 'fulfillment',
+  shortageDesk = false,
   tableId = 'orders',
   sort: sortProp,
   ariaLabel,
@@ -223,6 +233,7 @@ export function useOrdersSpreadsheet({
   scrollParentRef,
   activeWorkRowId = null,
   renderActiveWorkBand,
+  onOpenLabels,
 }: UseOrdersSpreadsheetOptions): OrdersSpreadsheetFeed {
   // Resolved ONCE per table render and threaded into every row's lateness
   // lookup — see `daysLateOn`. Reading it per row is what made the civil-date
@@ -245,8 +256,8 @@ export function useOrdersSpreadsheet({
   // model. Rebinding changes bindings, never keys, so slot-keyed prefs hold.
   const { effectiveLayout, subtitleFieldIds, fields } = useOrdersTableLayout();
   const compoundColumns = useMemo(
-    () => ordersCompoundColumnsFor(effectiveLayout, { queueMode }),
-    [effectiveLayout, queueMode],
+    () => ordersCompoundColumnsFor(effectiveLayout, { queueMode, shortageDesk }),
+    [effectiveLayout, queueMode, shortageDesk],
   );
 
   const { orderGroupsByDate, displayedRecords } = useOrdersQueueRows({
@@ -324,6 +335,35 @@ export function useOrdersSpreadsheet({
       assignMutate({ orderId: id, packerId: staffId, packerName: staffName });
     },
     [assignMutate],
+  );
+
+  const handleSetStaffLaneRole = useCallback(
+    (
+      staffId: number,
+      role: 'technician' | 'packer',
+      staffName: string,
+      notice?: { face: 'technician' | 'packer'; eligible: boolean },
+    ) => {
+      void fetch('/api/staff', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: staffId, role }),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error(`staff role ${res.status}`);
+          patchCachedStaffLaneRole(staffId, role);
+          const job = (notice?.face ?? role) === 'packer' ? 'packer' : 'picker';
+          toast.success(
+            notice && !notice.eligible
+              ? `${staffName} is not a ${job}`
+              : `${staffName} is a ${job}`,
+          );
+        })
+        .catch((e) => {
+          toast.error(e instanceof Error ? e.message : 'Could not update staff role');
+        });
+    },
+    [],
   );
 
   /**
@@ -417,7 +457,12 @@ export function useOrdersSpreadsheet({
   );
 
   const sortMenuOptions = useMemo(
-    () => [...QUEUE_DISPLAY_SORT_OPTIONS, ...queueChannelSortOptions(), ...queueCarrierSortOptions()],
+    () => [
+      ...QUEUE_DISPLAY_SORT_OPTIONS,
+      ...queueColumnSortOptions(),
+      ...queueChannelSortOptions(),
+      ...queueCarrierSortOptions(),
+    ],
     [],
   );
 
@@ -461,7 +506,10 @@ export function useOrdersSpreadsheet({
         (Number(r.packer_id) > 0 ? getStaffName(Number(r.packer_id)) : '');
       const rowFillHex =
         clickSelect ? (fillsById[String(record.id)] ?? null) : null;
-      return (
+      // Label walk lives on `?paperwork=` (PaperworkWalkHost), not an in-row band.
+      const isActiveWork =
+        activeWorkRowId != null && String(record.id) === String(activeWorkRowId);
+      const row = (
         <OrdersQueueTableRow
           key={record.id}
           disableEnterAnimation
@@ -515,11 +563,28 @@ export function useOrdersSpreadsheet({
               ? handleRequestReplaceTracking
               : undefined
           }
+          onOpenLabels={queueMode === 'fulfillment' ? onOpenLabels : undefined}
           onCommitCondition={handleCommitCondition}
           onCommitSubtitleField={handleCommitSubtitleField}
           onCommitShipBy={handleCommitShipBy}
           onCommitStageAssign={handleCommitStageAssign}
+          onSetStaffLaneRole={handleSetStaffLaneRole}
         />
+      );
+
+      if (!isActiveWork) return row;
+      // Outline, never border (M3): the highlight must not move a pixel of the
+      // grid. The band is a sibling in normal flow — no height tween (M1), it
+      // is simply there or it is not.
+      return (
+        <div
+          key={`work:${record.id}`}
+          data-active-work="true"
+          className="outline outline-2 -outline-offset-2 outline-border-accent"
+        >
+          {row}
+          {renderActiveWorkBand?.(record)}
+        </div>
       );
     },
     [
@@ -537,10 +602,14 @@ export function useOrdersSpreadsheet({
       handleCommitSubtitleField,
       handleCommitShipBy,
       handleCommitStageAssign,
+      handleSetStaffLaneRole,
       queueMode,
       clickSelect,
       fillsById,
       subtitleFieldIds,
+      activeWorkRowId,
+      renderActiveWorkBand,
+      onOpenLabels,
     ],
   );
 

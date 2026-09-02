@@ -77,8 +77,11 @@ export function listShortcutOverviewGroups(): ShortcutOverviewGroup[] {
   return groupsCache;
 }
 
+/** Stable identity — a fresh `[]` each call loops `useSyncExternalStore`. */
+const SERVER_OVERVIEW_GROUPS: ShortcutOverviewGroup[] = [];
+
 export function getServerShortcutOverviewGroups(): ShortcutOverviewGroup[] {
-  return [];
+  return SERVER_OVERVIEW_GROUPS;
 }
 
 /**

@@ -1,7 +1,37 @@
 {
-  "generatedAt": "2026-09-01T19:42:01.774Z",
+  "generatedAt": "2026-09-02T01:19:14.390Z",
   "count": 197,
   "commits": [
+    {
+      "sha": "e578c64adf7b6f11a70befe63c2af8ab7fe704fd",
+      "shortSha": "e578c64ad",
+      "date": "2026-09-01T13:14:53-07:00",
+      "author": "DENSENSE8",
+      "subject": "Lock the pick-status pending verb to Pick in the materializer test.",
+      "body": "The orders catalog already ships Pick / Picked; the fixture asserted Needed and blocked the main push gate.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "other",
+      "title": "Lock the pick-status pending verb to Pick in the materializer test."
+    },
+    {
+      "sha": "d3505ed1ad0c9057ce9cdaab8a9e756656fef0b1",
+      "shortSha": "d3505ed1a",
+      "date": "2026-09-01T13:11:50-07:00",
+      "author": "DENSENSE8",
+      "subject": "Unblock the main push gate: lock item-record tokens and exempt tripwire copy.",
+      "body": "The Displays leaf test named the banned bg-white class, and the phone item-record tests lagged the sunken cluster / Picked verb.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "other",
+      "title": "Unblock the main push gate: lock item-record tokens and exempt tripwire copy."
+    },
+    {
+      "sha": "bfec3631c375ffb0951a9b28f37d2ddb5cabb983",
+      "shortSha": "bfec3631c",
+      "date": "2026-09-01T13:09:21-07:00",
+      "author": "DENSENSE8",
+      "subject": "Land the in-flight warehouse OS tree and staff switcher on main.",
+      "body": "Ship desk/table/station work already in the tree, plus Change staff in the account menu (session-scoped picker, click-off/Escape, searchable sheet) so production can take it.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
+      "type": "other",
+      "title": "Land the in-flight warehouse OS tree and staff switcher on main."
+    },
     {
       "sha": "77217905e6ac6cfb33d9489c3e00915875f31870",
       "shortSha": "77217905e",
@@ -1941,36 +1971,6 @@
       "body": "Park the large dogfood-lane working tree so topic/tables forest-burn commits can merge cleanly against a known tip.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
       "type": "chore",
       "title": "checkpoint main WIP across stations, tables SoT, and displays"
-    },
-    {
-      "sha": "5d94aad3a226612de5e7321ceddf1ffb13f57b85",
-      "shortSha": "5d94aad3a",
-      "date": "2026-08-08T15:34:05-07:00",
-      "author": "DENSENSE8",
-      "subject": "docs(tables): handoff to finish the *GridView forest burn (Receiving + Orders)",
-      "body": "12/14 wrappers burned (allowlist 14→2); only ReceivingGridView (4 consumers) and\nOrdersGridView (9 consumers) remain. Self-contained prompt for a fresh session:\nkeep every consumer/tab/layout, delete only the two wrapper FILES via a shared\nhost hook (no N× duplication), re-point the guards, verify tsc-no-new-errors +\nthe guard set, pathspec-commit. Records the FBA main-red blocker + the land\nrecipe.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "docs",
-      "title": "handoff to finish the *GridView forest burn (Receiving + Orders)"
-    },
-    {
-      "sha": "db3fd90c620529a9c3b4dfed52c863ce4b93c629",
-      "shortSha": "db3fd90c6",
-      "date": "2026-08-08T14:50:44-07:00",
-      "author": "DENSENSE8",
-      "subject": "refac(tables): burn IncomingGridView — ReceivingLinesTable binds the host",
-      "body": "Phase-B forest burn (12/14). The Incoming POS grid adapter (useUrlColumnSort,\nPO-fold / day-band memo, header + group-row renderers) merges from the\nIncomingGridView wrapper into ReceivingLinesTable, which now mounts\nNonlinearTableHost with INCOMING_TABLE_BINDING directly. The hook + memo hoist\nabove the first early return; deps (filteredGroupedRecords, emptyMessage) are\nalready resolved there. The Incoming hook stays always-live but its\nisIncomingGridSortable guard ignores receiving/history column keys, so it never\nacts while its grid is off screen. ReceivingGridView stays a component for now\n(its own burn is next).\n\n- delete src/components/station/incoming-grid/IncomingGridView.tsx\n- shrink GRID_VIEW_FOREST freeze allowlist by one (→ 2)\n- re-point capabilities MOUNTS, trailing-cluster view, incoming-grid-sheet\n  host-mount + clickSelect assertions at ReceivingLinesTable\n- import RECEIVING_SELECTION_SCOPE as a value (it was only re-exported)\n- refresh docblock / comments (wrapper retired)\n\nGuards green; tsc introduces no new erroring files.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "other",
-      "title": "refac(tables): burn IncomingGridView — ReceivingLinesTable binds the host"
-    },
-    {
-      "sha": "c1fd4f1537bf1a688c2692c11f332bdd84f42fc5",
-      "shortSha": "c1fd4f153",
-      "date": "2026-08-08T14:44:21-07:00",
-      "author": "DENSENSE8",
-      "subject": "refac(tables): burn ReviewCatalogLinkGridView — table binds the host directly",
-      "body": "Phase-B forest burn (11/14). The two mode-grids (CatalogLinkChoresGrid +\nImportExceptionsGrid) merge from the wrapper file into ReviewCatalogLinkTable,\nwhich now mounts NonlinearTableHost twice (once per binding) directly. Each tab\nkeeps its own useUrlColumnSort over the shared ?colsort= param — the disjoint\nisColumn guards + setSection's param clear keep them from mis-reading each\nother's sort (the interaction the table already documented). Comparators + the\nsettle helper move to the table's module scope.\n\n- delete src/features/review/catalog-link/grid/ReviewCatalogLinkGridView.tsx\n- shrink GRID_VIEW_FOREST freeze allowlist by one (→ 3)\n- re-point capabilities MOUNTS, trailing-cluster view, review-workspace-sheet\n  two-host-mount assertion at ReviewCatalogLinkTable\n- refresh descriptor + column-header comments (wrapper retired)\n\nGuards green; tsc introduces no new erroring files.\n\nCo-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>",
-      "type": "other",
-      "title": "refac(tables): burn ReviewCatalogLinkGridView — table binds the host directly"
     }
   ]
 }

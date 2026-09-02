@@ -106,6 +106,8 @@ export function TriageScrollKnobs({
                 onClick={() => jumpTo(section.id)}
                 aria-current={active ? 'true' : undefined}
                 data-testid={`triage-knob-${section.id}`}
+                // Intake e2e historically used the top-nav `triage-jump-*` ids.
+                data-triage-jump={section.id}
                 className={cn(
                   'ds-raw-button group flex w-full items-center gap-2 px-1 py-1 text-left',
                   'transition-colors duration-100 ease-out',

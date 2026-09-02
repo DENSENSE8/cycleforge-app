@@ -19,7 +19,7 @@
  * so the mutual-exclusion swap paints in the click commit.
  */
 
-import { startTransition, useCallback, useMemo } from 'react';
+import { startTransition, useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useOptimisticUrlParams } from '@/hooks/useOptimisticUrlParam';
 import { readLiveSearchParams } from '@/lib/routing/optimistic-url-param';
@@ -45,7 +45,7 @@ function detailEquals(a: DetailSnap, b: DetailSnap): boolean {
 export interface MyDayViewState {
   lane: MyDayLaneFilter;
   taskId: string | null;
-  /** Chrome search text (`?q=`) — a refinement of the rows on screen. */
+  /** Chrome search text — local refinement of the rows on screen. */
   query: string;
   /** KPI due-horizon refine (`?filter=`), or null when the band is not filtering. */
   horizon: MyDayDueHorizon | null;
@@ -64,10 +64,10 @@ export interface MyDayViewState {
 export function useMyDayView(): MyDayViewState {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [query, setQueryState] = useState('');
 
   const lane = parseMyDayLane(searchParams.get('scope'));
   const urlTaskId = searchParams.get('task');
-  const query = searchParams.get('q') ?? '';
   const horizon = parseMyDayDueHorizon(searchParams.get('filter'));
   const watchRaw = searchParams.get('watch');
   const urlWatchOpen = watchRaw === '1' || watchRaw === 'true';
@@ -87,7 +87,6 @@ export function useMyDayView(): MyDayViewState {
           filter: horizon,
           scope: lane === 'all' ? null : lane,
           task: params.get('task'),
-          q: query ? query : null,
           watch: params.get('watch'),
           staff: searchParams.get('staff') ?? searchParams.get('staffId'),
           [GRID_COLUMN_SORT_PARAM]: searchParams.get(GRID_COLUMN_SORT_PARAM),
@@ -96,7 +95,7 @@ export function useMyDayView(): MyDayViewState {
         { scroll: false },
       );
     },
-    [router, searchParams, lane, query, horizon],
+    [router, searchParams, lane, horizon],
   );
 
   const writeDetail = useCallback((params: URLSearchParams, next: DetailSnap) => {
@@ -124,12 +123,11 @@ export function useMyDayView(): MyDayViewState {
     (next: {
       scope?: MyDayLaneFilter | null;
       task?: string | null;
-      q?: string | null;
       filter?: MyDayDueHorizon | null;
       watch?: boolean | null;
     }) => {
       const nextLane = next.scope === undefined ? lane : next.scope;
-      const nextQuery = next.q === undefined ? query : next.q;
+
       const nextHorizon = next.filter === undefined ? horizon : next.filter;
       // Mutual exclusion: task inspector and Watch rail share one detail slot.
       let nextTask = next.task === undefined ? taskId : next.task;
@@ -142,7 +140,6 @@ export function useMyDayView(): MyDayViewState {
       const snap: DetailSnap = { taskId: nextTask, watchOpen: nextWatch };
       const onlyDetail =
         next.scope === undefined &&
-        next.q === undefined &&
         next.filter === undefined;
 
       if (onlyDetail) {
@@ -159,7 +156,6 @@ export function useMyDayView(): MyDayViewState {
             filter: nextHorizon,
             scope: nextLane === 'all' ? null : nextLane,
             task: nextTask,
-            q: nextQuery ? nextQuery : null,
             watch: nextWatch ? '1' : null,
             staff: searchParams.get('staff') ?? searchParams.get('staffId'),
             [GRID_COLUMN_SORT_PARAM]: searchParams.get(GRID_COLUMN_SORT_PARAM),
@@ -174,7 +170,6 @@ export function useMyDayView(): MyDayViewState {
       searchParams,
       lane,
       taskId,
-      query,
       horizon,
       watchOpen,
       setDetail,
@@ -189,13 +184,9 @@ export function useMyDayView(): MyDayViewState {
 
   const setTaskId = useCallback((next: string | null) => push({ task: next }), [push]);
 
-  // Deliberately does NOT clear `?task=` the way `setLane` does. A lane change
-  // is one deliberate click, but a search commits per debounced keystroke — so
-  // clearing there would destroy the operator's selection while they were still
-  // typing. The workspace instead resolves the selection against the VISIBLE
-  // rows, so a filtered-out row closes the inspector while its `?task=` survives
-  // in the URL and comes back when the query clears.
-  const setQuery = useCallback((next: string) => push({ q: next }), [push]);
+  // Search is local and never participates in URL writes. This keeps every
+  // keystroke in the mounted table instead of causing a route refresh.
+  const setQuery = useCallback((next: string) => setQueryState(next), []);
 
   // A KPI tile is a TOGGLE: clicking the lit one clears the refine, so the band
   // is its own escape hatch and the operator never has to hunt for "show all".

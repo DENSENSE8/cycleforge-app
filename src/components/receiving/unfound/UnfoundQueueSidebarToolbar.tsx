@@ -4,8 +4,8 @@
  * Sidebar toolbar for the Unfound queue.
  *
  * Renders the filter pills (kind), search box, and Refresh button. Writes
- * filter state to URL search params (uf_kind, uf_q) so UnfoundQueueTable —
- * which reads the same params — stays in lockstep without a shared store.
+ * kind state to URL search params (uf_kind). Search stays in the shared local
+ * state supplied by the PO Mailbox host so typing never navigates the route.
  *
  * The 'Checked' pill is a pseudo-kind: server-side the table translates it
  * to kind=all + checked=true. All other pills hide checked rows.
@@ -16,7 +16,7 @@
 
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Mail, RefreshCw, Search } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -29,7 +29,7 @@ import {
 } from '@/components/receiving/unfound/UnfoundQueueTable';
 
 const UNFOUND_QUEUE_REFRESH_EVENT = 'unfound-queue-refresh';
-const SEARCH_DEBOUNCE_MS = 300;
+
 
 function parseKind(raw: string | null): QueueKind {
   if (!raw) return 'all';
@@ -38,7 +38,15 @@ function parseKind(raw: string | null): QueueKind {
     : 'all';
 }
 
-export function UnfoundQueueSidebarToolbar() {
+interface UnfoundQueueSidebarToolbarProps {
+  searchValue?: string;
+  onSearchChange?: (next: string) => void;
+}
+
+export function UnfoundQueueSidebarToolbar({
+  searchValue,
+  onSearchChange,
+}: UnfoundQueueSidebarToolbarProps = {}) {
   const router = useRouter();
   const searchParams = useSearchParams();
   // Stay on the current route (now Admin › PO Mailbox) when writing filter
@@ -47,9 +55,9 @@ export function UnfoundQueueSidebarToolbar() {
   const pathname = usePathname();
 
   const kind = parseKind(searchParams.get('uf_kind'));
-  const q = searchParams.get('uf_q') ?? '';
+  const [localSearch, setLocalSearch] = useState('');
+  const q = searchValue ?? localSearch;
 
-  const searchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [scanning, setScanning] = useState(false);
   // How many emails to pull on the next scan. Persisted to localStorage so
   // an operator who picks "100" doesn't keep re-selecting it every visit.
@@ -85,13 +93,9 @@ export function UnfoundQueueSidebarToolbar() {
 
   const onSearch = useCallback(
     (raw: string) => {
-      if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
-      // Debounce so we don't push a new history entry on every keystroke.
-      searchDebounceRef.current = setTimeout(() => {
-        setParam('uf_q', raw.trim() || null);
-      }, SEARCH_DEBOUNCE_MS);
+      (onSearchChange ?? setLocalSearch)(raw);
     },
-    [setParam],
+    [onSearchChange],
   );
 
   const onRefresh = useCallback(() => {
@@ -226,7 +230,7 @@ export function UnfoundQueueSidebarToolbar() {
         <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint" />
         <input
           type="search"
-          defaultValue={q}
+          value={q}
           onChange={(e) => onSearch(e.target.value)}
           placeholder="Search title, serial, note, ticket…"
           className={cn(

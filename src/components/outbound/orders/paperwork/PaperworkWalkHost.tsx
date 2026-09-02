@@ -4,12 +4,14 @@
  * To-ship paperwork walk — table XOR (rail + editor).
  *
  * Clone of the exceptions workbench chrome: compare across rows in the table,
- * then walk one record. This host is the RECORD half. The door is the Labels
- * header CTA (`OrdersDeskLabelsAction`).
+ * then walk one record. This host is the RECORD half. Doors: header Labels CTA
+ * (`OrdersDeskLabelsAction`), tracking-hover Label, selection-bar Labels / `l`.
+ * The table is never shown at the same time — no in-row band, no modal.
  */
 
 import { PaperworkRecentRail } from './PaperworkRecentRail';
 import { PaperworkEditor } from './PaperworkEditor';
+import { DeskRecordWalkHost } from '@/design-system/components/DeskRecordWalkHost';
 import type { ShippedOrder } from '@/types/orders';
 
 export function PaperworkWalkHost({
@@ -47,32 +49,23 @@ export function PaperworkWalkHost({
   }
 
   return (
-    <div
-      className="flex h-full min-h-0 min-w-0 w-full flex-1 bg-surface-canvas"
-      data-testid="paperwork-walk"
-    >
-      <aside
-        className="flex w-[22rem] shrink-0 flex-col border-r border-border-hairline bg-surface-card"
-        aria-label="Labels queue"
-      >
-        <PaperworkRecentRail
-          rows={rows}
-          selectedId={selected.id}
-          onSelect={onSelect}
-          loading={loading}
-        />
-      </aside>
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-card">
-        <PaperworkEditor
-          key={selected.id}
-          row={selected}
-          index={index}
-          total={rows.length}
-          onAdvance={onAdvance}
-          onExit={onExit}
-          onFactsChanged={onFactsChanged}
-        />
-      </div>
-    </div>
+    <DeskRecordWalkHost testId="paperwork-walk" railLabel="Labels queue" rail={
+      <PaperworkRecentRail
+        rows={rows}
+        selectedId={selected.id}
+        onSelect={onSelect}
+        loading={loading}
+      />
+    }>
+      <PaperworkEditor
+        key={selected.id}
+        row={selected}
+        index={index}
+        total={rows.length}
+        onAdvance={onAdvance}
+        onExit={onExit}
+        onFactsChanged={onFactsChanged}
+      />
+    </DeskRecordWalkHost>
   );
 }

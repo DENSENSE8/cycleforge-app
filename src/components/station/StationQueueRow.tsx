@@ -2,8 +2,8 @@
 
 import { SerialChip } from '@/components/ui/CopyChip';
 import { OrdersQueueTableRow } from '@/components/dashboard/orders-queue/OrdersQueueTableRow';
-import { STATION_HISTORY_COLUMNS } from '@/components/station/station-history-columns';
 import { STATION_HISTORY_GRID_CAPABILITIES } from '@/components/station/station-history-capabilities';
+import { ORDERS_COMPOUND_COLUMNS } from '@/lib/dashboard-order-row-layout';
 import { resolveStationSource, SOURCE_DOT_BG, SOURCE_DOT_LABEL } from '@/utils/source-dot';
 import type { QueueRowRecord } from '@/components/dashboard/orders-queue/helpers';
 import type { OrdersQueueColumn } from '@/lib/dashboard-order-row-layout';
@@ -30,7 +30,7 @@ export function StationQueueRow({
   isChecked,
   isSelected,
   isMobile,
-  columns = STATION_HISTORY_COLUMNS,
+  columns = ORDERS_COMPOUND_COLUMNS,
   onToggleSelect,
   onRowClick,
 }: {
@@ -46,11 +46,8 @@ export function StationQueueRow({
   isSelected: boolean;
   isMobile: boolean;
   /**
-   * Visible column tracks — the bench-owned flat model
-   * (`STATION_HISTORY_COLUMNS`; per-staff hide/show went with the
-   * column-display rail, so the canonical list is what paints). The station
-   * benches are the one place `OrdersQueueTableRow` still renders the flat
-   * cell registry; the outbound desks all mount the compound slot model.
+   * Visible column tracks — the same compound slot materialization the
+   * outbound desks mount. Do not pass a hand fact-key array.
    */
   columns?: readonly OrdersQueueColumn[];
   /** Left-gutter checkbox — toggles selection without opening the row. */

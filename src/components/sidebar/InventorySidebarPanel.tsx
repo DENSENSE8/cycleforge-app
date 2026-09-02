@@ -11,8 +11,8 @@ import { appChromeClass } from '@/design-system/tokens/app-surface';
 
 /**
  * Sidebar panel for the inventory area. L2 modes (ledger · triage · pulse ·
- * graph · replenish · locations) live in GlobalHeader (`HeaderPageSwitcher` ←
- * SIDEBAR_PAGE_NAV) — no sidebar mode rail twin.
+ * graph · replenish · locations) live on DeskPageChrome tabs / MasterNav
+ * (SIDEBAR_PAGE_NAV) — no sidebar mode rail twin.
  *
  * Body switches on path / `?section=` the same way the main pane does.
  */

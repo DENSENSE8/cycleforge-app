@@ -132,6 +132,8 @@ export interface PoItemsSectionProps extends UnmatchedItemsSectionProps {
   /** Matched lane: meta chip → focus that step in the dock (Unbox dual loci). */
   onEditConditionInDock?: (line: ReceivingLineRow) => void;
   onEditSerialInDock?: (line: ReceivingLineRow) => void;
+  /** Open the existing right-rail Locations display for this exact PO line. */
+  onOpenLocation?: (line: ReceivingLineRow) => void;
   /**
    * Rendered above the UNFOUND lane only — a station's "what to do next" for a
    * carton with nothing on it yet. Never shown on the matched lane, which has
@@ -149,6 +151,7 @@ export function PoItemsSection({
   activeConditionOverride,
   onEditConditionInDock,
   onEditSerialInDock,
+  onOpenLocation,
   laneNotice,
   ...shared
 }: PoItemsSectionProps) {

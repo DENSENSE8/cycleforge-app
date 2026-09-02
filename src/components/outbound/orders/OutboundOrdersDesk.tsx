@@ -25,7 +25,6 @@ import { useSupportOrderOpenParam } from '@/hooks/useSupportOrderOpenParam';
 import { DashboardOrdersView } from '@/components/dashboard/DashboardOrdersView';
 import { DashboardOrderDetails } from '@/components/dashboard/DashboardOrderDetails';
 import { OrdersViewChromeProvider } from '@/components/outbound/orders/orders-view-chrome-context';
-import { ToShipWmsShell } from '@/components/outbound/orders/to-ship/ToShipWmsShell';
 import { OrderIntakeOverlay } from '@/components/outbound/orders/intake/OrderIntakeOverlay';
 import {
   OrdersDeskAddAction,
@@ -174,28 +173,38 @@ function OutboundOrdersDeskContent({
     );
   }
 
+  const intakeOpen =
+    !isSupportContext && showIngestRail && ingestLeaf === 'triage' && !importActive;
+  const paperworkOpen =
+    parsePaperworkOrderId(searchParams.get(PAPERWORK_PARAM)) != null;
+
   return (
     <OrdersViewChromeProvider>
-      <ToShipWmsShell
-        process={
-          <DashboardOrdersView
-            orderView={orderView}
-            onSelectView={setOrderView}
-            selectMode={selectMode}
-            selectionEnabled={selectionEnabled}
-            selectionOverlays={selectionOverlays}
-            onPrimaryPainted={onPrimaryPainted}
-          />
-        }
-        details={
-          !isSupportContext && parsePaperworkOrderId(searchParams.get(PAPERWORK_PARAM)) == null ? (
-            <DashboardOrderDetails
-              detailsEnabled={detailsEnabled}
-              selectedShipped={selectedShipped}
-              selectedContext={selectedContext}
-              onClose={requestCloseSelectedOrder}
-              onUpdate={refreshDashboard}
-            />
+      <DashboardOrdersView
+        orderView={orderView}
+        onSelectView={setOrderView}
+        selectMode={selectMode}
+        selectionEnabled={selectionEnabled}
+        selectionOverlays={selectionOverlays}
+        onPrimaryPainted={onPrimaryPainted}
+        stageOverlay={
+          !isSupportContext && !paperworkOpen ? (
+            intakeOpen ? (
+              <OrderIntakeOverlay
+                open
+                orderId={triageOrderId}
+                onClose={closeIntakeForm}
+                onOrderCreated={bindTriageOrder}
+              />
+            ) : (
+              <DashboardOrderDetails
+                detailsEnabled={detailsEnabled}
+                selectedShipped={selectedShipped}
+                selectedContext={selectedContext}
+                onClose={requestCloseSelectedOrder}
+                onUpdate={refreshDashboard}
+              />
+            )
           ) : null
         }
       />
@@ -217,18 +226,6 @@ function OutboundOrdersDeskContent({
           />
           {/* The picker's hidden <input>; `csv.open()` above clicks it. */}
           {csv.input}
-          {/*
-            The intake session is a CENTERED overlay (operator override
-            2026-08-30) — `?triage=` opens it in the middle of the desk. The
-            rail keeps the other ingest methods (hand entry, CSV, sync,
-            backfill) and never hosts triage any more.
-          */}
-          <OrderIntakeOverlay
-            open={showIngestRail && ingestLeaf === 'triage' && !importActive}
-            orderId={triageOrderId}
-            onClose={closeIntakeForm}
-            onOrderCreated={bindTriageOrder}
-          />
         </>
       ) : null}
     </OrdersViewChromeProvider>

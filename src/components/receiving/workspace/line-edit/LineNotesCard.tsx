@@ -22,12 +22,18 @@ import {
 } from '@/lib/receiving/recent-label-note';
 import { useReceivingEvents } from '@/hooks/useReceivingEvents';
 import {
+  ComposerAccessoryCluster,
+  ComposerAccessoryStage,
+  ComposerClaimInset,
+  composerAccessoryCaption,
   ComposerStagedPhotoStrip,
   ComposerTicketChannelToggle,
   ComposerTicketInsetChrome,
   StationComposerHost,
+  useComposerCcHistory,
 } from '@/components/composer';
 import type { StationComposerMode } from '@/lib/composer/station-composer-mode';
+import type { ComposerAccessoryFace } from '@/components/composer/composer-accessory-face';
 import { buildTicketComposerInsertTree } from '@/lib/composer/ticket-composer-insert-tree';
 import { buildComposerReplyVars } from '@/lib/composer/ticket-reply-payload';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -107,6 +113,7 @@ export function LineNotesCard({
   animateMount = true,
   chrome = 'raised',
   weldTop = false,
+  reaction,
   trailingAction,
   onOpenLocations,
   onPrimaryAction,
@@ -120,6 +127,7 @@ export function LineNotesCard({
   progressPercent = 0,
   progressTone = 'idle',
   onProgressClick,
+  returnClaimPrefill,
 }: {
   /**
    * The line the composer is on. Ticket mode reads it to build the CLAIM the
@@ -128,6 +136,12 @@ export function LineNotesCard({
   row?: ReceivingLineRow | null;
   /** A claim filed from the dock — same handler the claim form used. */
   onTicketCreated?: (ticketNumber: string) => void;
+  /**
+   * RETURN match issue line — the composer AI draft uses this as `reason`
+   * instead of leaving it only on the Displays claim form.
+   */
+  returnClaimPrefill?: string | null;
+
   /**
    * The operator typed into the note field. Unbox opens the Label band on this
    * so the sticker shows the note as it is written.
@@ -173,6 +187,12 @@ export function LineNotesCard({
    * welded to this composer's top edge, so the two share one silhouette.
    */
   weldTop?: boolean;
+  /**
+   * Staff mouth reaction — WeldedFeedbackPanel on StationComposerHost `reaction`.
+   * Receive confirm and any Unbox-mode update mount here, not as a sibling above
+   * this card.
+   */
+  reaction?: ReactNode;
   /**
    * Terminal CTA rendered at the composer's trailing edge (Unbox overview
    * mounts the Receive/Print split here). Replaces the blue Send — Enter
@@ -433,11 +453,19 @@ export function LineNotesCard({
   // The console composer keeps Internal-first; an agent triaging a queue is
   // not doing the same job.
   const [ticketPublic, setTicketPublic] = useState(true);
-  // CC is an AUDIENCE control: chips + the address still being typed. The draft
-  // is held here rather than inside the strip so send can fold a half-typed
-  // address in instead of dropping it (see resolveComposerCcPayload).
-  const [ticketCcs, setTicketCcs] = useState<string[]>([]);
-  const [ticketCcDraft, setTicketCcDraft] = useState('');
+  // CC is an AUDIENCE control: chips + the address still being typed. Seeded
+  // from the same operator history the claim rail uses — an empty composer
+  // row while the rail showed last-used public emails is how a filed ticket
+  // used to omit CCs. The draft stays here so send can fold a half-typed
+  // address in (see resolveComposerCcPayload).
+  const {
+    ccs: ticketCcs,
+    setCcs: setTicketCcs,
+    ccDraft: ticketCcDraft,
+    setCcDraft: setTicketCcDraft,
+  } = useComposerCcHistory({
+    identityKey: `${receivingId ?? ''}:${lineId ?? ''}`,
+  });
   const [photoLibraryOpen, setPhotoLibraryOpen] = useState(false);
   const reply = useSupportReply();
   const canPostTicket = !isLoaded || has('integrations.zendesk');
@@ -450,8 +478,15 @@ export function LineNotesCard({
     hasTicket,
     notePublic: ticketPublic,
     ccEmails: ticketCcs,
+    prefillReason: returnClaimPrefill,
     onTicketCreated,
   });
+  const [claimAccessory, setClaimAccessory] = useState<ComposerAccessoryFace | null>(null);
+  const showSellerAccessory =
+    claim.sellerApplicable && Boolean(claim.sellerMessage || claim.sellerLoading);
+  useEffect(() => {
+    if (showSellerAccessory) setClaimAccessory('seller');
+  }, [showSellerAccessory]);
   const canBrowsePhotoLibrary = isLoaded && has('photos.view');
   const staffName = user?.name?.trim() || '';
 
@@ -515,13 +550,6 @@ export function LineNotesCard({
   useEffect(() => {
     onTicketDraftFilledChange?.(ticketDraftFilled);
   }, [ticketDraftFilled, onTicketDraftFilledChange]);
-
-  // Reset the audience when the linked ticket identity changes — CCs belong to
-  // the ticket that was on screen, never to whichever line loads next.
-  useEffect(() => {
-    setTicketCcs([]);
-    setTicketCcDraft('');
-  }, [numericTicketId]);
 
   const ticketDrillNodes = useMemo(() => {
     const nodes = buildTicketComposerInsertTree({
@@ -691,6 +719,31 @@ export function LineNotesCard({
               ticketDraft.trim().length === 0
         }
         ticketDrillNodes={ticketDrillNodes}
+        ticketHeaderEnd={
+          claim.isClaim || showSellerAccessory ? (
+            <ComposerAccessoryCluster
+              face={claimAccessory}
+              onFaceChange={(next) => {
+                if (next === 'link') claim.setMode('link');
+                setClaimAccessory(next);
+              }}
+              showClaim={claim.isClaim}
+              showLink={claim.isClaim}
+              showSeller={showSellerAccessory}
+            />
+          ) : undefined
+        }
+        ticketAccessory={
+          claimAccessory && (claim.isClaim || showSellerAccessory) ? (
+            <ComposerAccessoryStage
+              caption={composerAccessoryCaption(claimAccessory, claim)}
+              cycling={claim.loading || claim.sellerLoading}
+              onDismiss={() => setClaimAccessory(null)}
+            >
+              <ComposerClaimInset claim={claim} face={claimAccessory} />
+            </ComposerAccessoryStage>
+          ) : null
+        }
         ticketFooterStart={
           <ComposerTicketChannelToggle
             isPublic={ticketPublic}
@@ -699,22 +752,22 @@ export function LineNotesCard({
         }
         ticketInsetTop={
           <ComposerTicketInsetChrome
-            isPublic={ticketPublic}
-            ccs={ticketCcs}
-            onCcsChange={setTicketCcs}
-            ccDraft={ticketCcDraft}
-            onCcDraftChange={setTicketCcDraft}
-            ticketId={numericTicketId}
-            trailing={
-              photoStaging.staged.length > 0 ? (
-                <ComposerStagedPhotoStrip
-                  staged={photoStaging.staged}
-                  onRemove={photoStaging.remove}
-                  size="compact"
-                />
-              ) : null
-            }
-          />
+              isPublic={ticketPublic}
+              ccs={ticketCcs}
+              onCcsChange={setTicketCcs}
+              ccDraft={ticketCcDraft}
+              onCcDraftChange={setTicketCcDraft}
+              ticketId={numericTicketId}
+              trailing={
+                photoStaging.staged.length > 0 ? (
+                  <ComposerStagedPhotoStrip
+                    staged={photoStaging.staged}
+                    onRemove={photoStaging.remove}
+                    size="compact"
+                  />
+                ) : null
+              }
+            />
         }
         locationAction={
           <UnboxNotesLocationControl
@@ -729,6 +782,7 @@ export function LineNotesCard({
         trailingAction={trailingAction}
         chrome={chrome}
         weldTop={weldTop}
+        reaction={reaction}
         animateMount={animateMount}
         textareaRef={textareaRef}
         ghostSuffix={paintGhostSuffix}

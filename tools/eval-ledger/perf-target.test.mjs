@@ -5,7 +5,18 @@ import {
   PERF_TARGET,
   analyzeBaselineGaps,
   formatGapReport,
+  noProgressDecision,
+  roundsFromHistory,
 } from "./perf-target.mjs";
+
+/** `.cursor/perf-overnight-state.json` history as it stood after the 2026-09-01 run (48 rounds, max-rounds). */
+const HISTORY_2026_09_01 = [
+  "/test:performance:15", "/test:performance:15", "/unbox:performance:12",
+  "/test:performance:10", "/test:performance:10", "/test:performance:10", "/test:performance:10", "/test:performance:10",
+  "/test:performance:9", "/test:performance:9", "/test:performance:9", "/test:performance:9", "/test:performance:9", "/test:performance:9", "/test:performance:9",
+  "/settings:performance:7",
+  ...Array.from({ length: 32 }, () => "/test:performance:6"),
+];
 
 describe("perf-target 95 north star", () => {
   test("targets are 95 / 2.5s LCP", () => {
@@ -51,5 +62,33 @@ describe("perf-target 95 north star", () => {
     });
     assert.equal(analysis.ok, true);
     assert.equal(analysis.tier1BelowTarget.length, 0);
+  });
+
+  test("no-progress exit: three flat rounds stop the loop", () => {
+    const flat = [
+      { route: "/a", key: "performance", before: 6, after: 6 },
+      { route: "/a", key: "performance", before: 6, after: 6 },
+      { route: "/a", key: "performance", before: 6, after: 6 },
+    ];
+    assert.deepEqual(noProgressDecision(flat, 3), { stop: true, round: 3, reason: "no-progress", streak: 3 });
+    const recovering = [
+      { route: "/a", key: "performance", before: 6, after: 6 },
+      { route: "/a", key: "performance", before: 6, after: 6 },
+      { route: "/a", key: "performance", before: 6, after: 5 },
+      { route: "/a", key: "performance", before: 5, after: null },
+    ];
+    assert.equal(noProgressDecision(recovering, 3).stop, false);
+  });
+
+  test("replay 2026-09-01: 48 rounds would have stopped at round 6 with reason no-progress", () => {
+    assert.equal(HISTORY_2026_09_01.length, 48);
+    const rounds = roundsFromHistory(HISTORY_2026_09_01);
+    // rounds 4–6 attacked /test performance gap=10 with no floor improvement
+    // (perf-overnight.log 11:29–11:34); the streak reaches 3 at round 6.
+    assert.deepEqual(noProgressDecision(rounds, 3), { stop: true, round: 6, reason: "no-progress", streak: 3 });
+    // The 31-round flat tail (rounds 18–48, gap=6) is what the operator saw;
+    // any max-no-progress ≤ 31 ends the run inside it at the latest.
+    const tailOnly = roundsFromHistory(HISTORY_2026_09_01.slice(16));
+    assert.equal(noProgressDecision(tailOnly, 3).round, 3);
   });
 });

@@ -120,7 +120,7 @@ export function stationComposerModePlaceholder(
     // No ticket yet → this field IS the claim body, seeded from the template.
     // It used to read "Create or link a ticket above — then send from here",
     // pointing at a claim form that no longer sits above it.
-    return 'Claim body — Enter to file the ticket';
+    return 'AI draft — Enter to file the ticket';
   }
   return 'Note for this item — shows on the sticker center';
 }

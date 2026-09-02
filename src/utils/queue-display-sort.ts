@@ -1,7 +1,9 @@
 /**
  * Shared display-sort vocabulary for Pending (To Ship) + Testing queue headers.
- * Quiet trailing dropdown — View composites (Newest | Deadline) plus
- * platform / carrier pins. Column sorts stay on header click, not in this menu.
+ * Quiet trailing dropdown — View composites (Newest | Deadline), every
+ * DATA-column fact (same vocabulary as header click), plus platform /
+ * carrier pins. A header-click sort (Pick, Status, Image, …) must appear
+ * as a selectable row in this menu — the trigger naming the column is not enough.
  * URL: `?sort=` (omit when `deadline`, the default); `?dir=asc|desc` only for
  * column sorts (omit when the column’s default direction). Legacy `priority`
  * and a missing param both parse as `deadline`.
@@ -9,6 +11,7 @@
 
 import { CARRIER_BRANDS, type DisplayCarrier } from '@/lib/carrier-brand';
 import { SOURCE_PLATFORMS } from '@/lib/source-platform';
+import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
 
 export type QueueDisplaySortComposite = 'newest' | 'deadline';
 
@@ -23,6 +26,16 @@ export type QueueDisplaySortColumn =
   | 'picked'
   /** Packed step — packer name, blanks last. */
   | 'packed'
+  /** Status pill label (queue-mode aware). */
+  | 'status'
+  /** Sale amount. */
+  | 'amount'
+  /** Catalog photo URL — blanks last. */
+  | 'image'
+  /** Scan-out stamp (`ship_confirmed_at`), blanks last. */
+  | 'scanned_out'
+  /** Shortage coverage face (`formatShortageCoverage`). */
+  | 'coverage'
   /** Carrier A–Z (no pin). A pin is `carrier:<DisplayCarrier label>`. */
   | 'carrier'
   /** Pin one carrier (tracking-ring face). */
@@ -32,6 +45,9 @@ export type QueueDisplaySortColumn =
 
 export type QueueDisplaySort = QueueDisplaySortComposite | QueueDisplaySortColumn;
 
+/** Group heading for header-click DATA facts — Image, Order, Pick, … */
+export const QUEUE_COLUMN_SORT_GROUP = 'Columns';
+
 /** Group heading for Order-column marketplace dots — Amazon, eBay, … */
 export const QUEUE_CHANNEL_SORT_GROUP = 'Platform';
 
@@ -40,7 +56,7 @@ export const QUEUE_CARRIER_SORT_GROUP = 'Carriers';
 
 export type QueueDisplaySortDir = 'asc' | 'desc';
 
-const QUEUE_COLUMN_SORTS: readonly QueueDisplaySortColumn[] = [
+const QUEUE_COLUMN_SORTS = [
   'title',
   'age',
   'qty',
@@ -48,6 +64,11 @@ const QUEUE_COLUMN_SORTS: readonly QueueDisplaySortColumn[] = [
   'tracking',
   'picked',
   'packed',
+  'status',
+  'amount',
+  'image',
+  'scanned_out',
+  'coverage',
   'carrier',
 ] as const;
 
@@ -130,15 +151,16 @@ export function isQueueColumnSort(sort: string): sort is QueueDisplaySortColumn 
  * product title (`title`). Mapping them re-connects existing comparators —
  * `queue-row-compare.ts` needs no new case.
  *
- * `state` and `amount` are deliberately ABSENT. Neither had a column sort in the
- * flat model either (`QUEUE_COLUMN_SORTS` never listed `status` or `amount`), so
- * leaving them out preserves the shipped behaviour exactly rather than inventing
- * an ordering nobody has asked for. Adding one later means adding a comparator
- * case too, which is the point at which it is a product decision.
+ * `select` / `actions` / `_fill` stay unmapped — they are chrome, not facts.
+ * Every painted data track (`thumb`, `state`, `amount`, and bound `status:N`
+ * fields) maps onto a comparator in `queue-row-compare.ts`.
  */
 export const COMPOUND_TRACK_SORT_KEYS: Readonly<Record<string, QueueDisplaySortColumn>> = {
   fulfillment: 'order',
   item: 'title',
+  state: 'status',
+  amount: 'amount',
+  thumb: 'image',
 };
 
 /**
@@ -149,6 +171,10 @@ export const COMPOUND_TRACK_SORT_KEYS: Readonly<Record<string, QueueDisplaySortC
 export const SLOT_FIELD_SORT_FACTS: Readonly<Record<string, QueueDisplaySortColumn>> = {
   'orders.picked': 'picked',
   'orders.packed': 'packed',
+  'orders.scanned_out': 'scanned_out',
+  'orders.qty': 'qty',
+  'orders.amount': 'amount',
+  'orders.coverage': 'coverage',
 };
 
 /** The `?sort=` value a header key drives, or null when it does not sort. */
@@ -156,6 +182,7 @@ export function queueSortForColumnKey(
   key: string,
   fieldId?: string | null,
 ): QueueDisplaySortColumn | null {
+  if (isSlotTableChromeTrack(key)) return null;
   if (isQueueColumnSort(key)) return key;
   if (COMPOUND_TRACK_SORT_KEYS[key]) return COMPOUND_TRACK_SORT_KEYS[key];
   if (fieldId && SLOT_FIELD_SORT_FACTS[fieldId]) return SLOT_FIELD_SORT_FACTS[fieldId];
@@ -174,12 +201,15 @@ function isQueueCompositeSort(sort: string): sort is QueueDisplaySortComposite {
 /**
  * Default direction when first activating a column sort.
  *
- * `age` defaults to DESC: larger days-late first (most overdue on top). Other
- * fact columns stay ASC.
+ * `age` defaults to DESC: larger days-late first (most overdue on top).
+ * Money, photos (has-image first under desc), and scan-out stamps open newest /
+ * highest first. Other fact columns stay ASC.
  */
 export function defaultDirForQueueSort(sort: QueueDisplaySort): QueueDisplaySortDir | null {
   if (!isQueueColumnSort(sort)) return null;
-  if (sort === 'age') return 'desc';
+  if (sort === 'age' || sort === 'amount' || sort === 'image' || sort === 'scanned_out') {
+    return 'desc';
+  }
   return 'asc';
 }
 
@@ -194,6 +224,26 @@ export const QUEUE_DISPLAY_SORT_OPTIONS: readonly {
   { id: 'deadline', label: 'By ship-by date', shortLabel: 'Deadline', group: 'View' },
 ] as const;
 
+const QUEUE_COLUMN_SORT_MENU_ORDER: readonly (typeof QUEUE_COLUMN_SORTS)[number][] = [
+  'image',
+  'order',
+  'title',
+  'status',
+  'picked',
+  'packed',
+  'scanned_out',
+  'qty',
+  'amount',
+  'age',
+  'tracking',
+  'coverage',
+  'carrier',
+];
+
+if (QUEUE_COLUMN_SORT_MENU_ORDER.length !== QUEUE_COLUMN_SORTS.length) {
+  throw new Error('queueColumnSortOptions must list every QUEUE_COLUMN_SORTS fact');
+}
+
 /**
  * Closed-control face for the active `?sort=` — including header-click
  * column sorts that are not rows in the dropdown. The trigger must name
@@ -207,7 +257,22 @@ export type QueueDisplaySortFace = {
 };
 
 const QUEUE_COLUMN_SORT_FACES: Readonly<
-  Record<'title' | 'age' | 'qty' | 'order' | 'tracking' | 'picked' | 'packed' | 'carrier', QueueDisplaySortFace>
+  Record<
+    | 'title'
+    | 'age'
+    | 'qty'
+    | 'order'
+    | 'tracking'
+    | 'picked'
+    | 'packed'
+    | 'status'
+    | 'amount'
+    | 'image'
+    | 'scanned_out'
+    | 'coverage'
+    | 'carrier',
+    QueueDisplaySortFace
+  >
 > = {
   title: { label: 'Product title', shortLabel: 'Product' },
   age: { label: 'Days late', shortLabel: 'Days late' },
@@ -216,8 +281,34 @@ const QUEUE_COLUMN_SORT_FACES: Readonly<
   tracking: { label: 'Tracking number', shortLabel: 'Tracking' },
   picked: { label: 'Pick', shortLabel: 'Pick' },
   packed: { label: 'Packer', shortLabel: 'Packer' },
+  status: { label: 'Status', shortLabel: 'Status' },
+  amount: { label: 'Amount', shortLabel: 'Amount' },
+  image: { label: 'Image', shortLabel: 'Image' },
+  scanned_out: { label: 'Scanned out', shortLabel: 'Scanned out' },
+  coverage: { label: 'Coverage', shortLabel: 'Coverage' },
   carrier: { label: 'Carrier', shortLabel: 'Carrier' },
 };
+
+/**
+ * DATA-column facts for the toolbar sort list — same ids as header click / `?sort=`.
+ * View composites and platform/carrier pins stay in their own bands.
+ */
+export function queueColumnSortOptions(): readonly {
+  id: (typeof QUEUE_COLUMN_SORTS)[number];
+  label: string;
+  shortLabel: string;
+  group: typeof QUEUE_COLUMN_SORT_GROUP;
+}[] {
+  return QUEUE_COLUMN_SORT_MENU_ORDER.map((id) => {
+    const face = QUEUE_COLUMN_SORT_FACES[id];
+    return {
+      id,
+      label: face.label,
+      shortLabel: face.shortLabel,
+      group: QUEUE_COLUMN_SORT_GROUP,
+    };
+  });
+}
 
 /** Exact trigger paint for the active sort, whether or not it is in the menu. */
 export function queueDisplaySortFace(sort: QueueDisplaySort): QueueDisplaySortFace {

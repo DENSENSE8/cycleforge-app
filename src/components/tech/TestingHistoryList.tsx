@@ -8,7 +8,7 @@ import { dispatchSelectLine } from '@/components/station/receiving-lines-table-h
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 import { useReceivingRowSelection } from '@/components/station/useReceivingRowSelection';
 import { ReceivingGridHost } from '@/components/station/receiving-grid/ReceivingGridHost';
-import { RECEIVING_GRID_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
+import { RECEIVING_COMPOUND_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { STATION_PIPELINE_BOARDS } from '@/lib/station/flags';
 import {
@@ -274,7 +274,7 @@ export function TestingHistoryList({
         // columns are the compound materialization the three station desks
         // mount; this history plane is a second mount of the same definition
         // and says so. (Plan §03 wave 1.3: it still owes its own layout id.)
-        columns={RECEIVING_GRID_COLUMNS}
+        columns={RECEIVING_COMPOUND_COLUMNS}
         daySections={daySections}
         loading={isLoading && rows.length === 0}
         emptyMessage={emptyMessage}

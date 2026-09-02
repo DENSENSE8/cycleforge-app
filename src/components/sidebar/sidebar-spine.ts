@@ -55,6 +55,13 @@ export const SIDEBAR_SPINE_RESIZE = {
 } as const;
 
 /**
+ * Hover-peek overlay inset from the viewport left / header bottom.
+ * The card hugs the destination list — it does not stretch to the account
+ * footer. Shell corner is `cornerClass('surface')`.
+ */
+export const SIDEBAR_SPINE_PEEK_INSET_PX = 8;
+
+/**
  * Chrome for MasterNav **identity menus** (org/workspace switch + staff ⋯ menu).
  *
  * The ⋯ panel is the shadcn/ui Popover (`radix-popover`), anchored to the
@@ -129,9 +136,9 @@ export const SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS =
  * glyph below pairs with it — back to 16px, proportionate at this text size
  * rather than the 20px the 24px-text pass needed.
  * Destination labels — bumped 2026-08-20 from `role-nav` (13px) to
- * `role-body` (14px), matching {@link PAGE_FACE_CLASS}'s same-day bump in
- * `HeaderPageSwitcher.tsx` so the two navigators keep reading as one size
- * system, not two. Regular weight (not title 18px/600).
+ * `role-body` (14px), matching the GlobalHeader recents session face so the
+ * two navigators keep reading as one size system, not two. Regular weight
+ * (not title 18px/600).
  */
 /**
  * End pad inside a spine drill (Scan Stations benches, page children) so the
@@ -147,6 +154,47 @@ export const SPINE_LABEL_CLASS = 'text-role-body font-normal';
 /**
  * The one row shell every spine destination shares: flush, full-width, dense.
  * Compose it with a `SPINE_ACCENT` state class; never restate the geometry.
+ * Pin rows use this same shell — same padding, same width as the catalog map.
  */
 export const SPINE_ROW_SHELL_CLASS =
   'ds-raw-button group flex w-full items-center gap-2 rounded-none px-2 text-left transition-colors duration-150';
+
+/**
+ * MasterNav Pinned well. No disclosure, no hairline — pin rows are always
+ * listed. Named `group/pinned` so cluster hover (pin-this-page) does not light
+ * every row’s X.
+ */
+export const SPINE_PINNED_CLUSTER_CLASS = 'group/pinned relative';
+
+/**
+ * Category title row. Same `px-2` as {@link SPINE_ROW_SHELL_CLASS} so the
+ * trailing pin and the per-row X share one right edge.
+ */
+export const SPINE_PINNED_TITLE_ROW_CLASS =
+  'relative flex w-full items-center px-2 py-1.5';
+
+/** Sentence-case category title — quieter than {@link SPINE_LABEL_CLASS}, never uppercase. */
+export const SPINE_PINNED_TITLE_CLASS = 'text-role-micro font-normal text-text-soft';
+
+/**
+ * Pin-this-page and unpin X. One slot: `IconButton` xs, same inset as the
+ * row’s `px-2` gutter.
+ */
+export const SPINE_PINNED_TRAIL_CLASS = 'absolute right-2 top-1/2 -translate-y-1/2';
+export const SPINE_PINNED_TRAIL_GLYPH_CLASS = 'h-3.5 w-3.5';
+
+const SPINE_PINNED_HOVER_BASE =
+  'pointer-events-none opacity-0 transition-opacity duration-100 [@media(hover:none)]:pointer-events-auto [@media(hover:none)]:opacity-100';
+
+/**
+ * Pin-this-page and empty hint — appear on well hover.
+ */
+export const SPINE_PINNED_CLUSTER_HOVER_CLASS =
+  `${SPINE_PINNED_HOVER_BASE} group-hover/pinned:pointer-events-auto group-hover/pinned:opacity-100 group-focus-within/pinned:pointer-events-auto group-focus-within/pinned:opacity-100`;
+
+/**
+ * Per-row X. Same fade as {@link SPINE_PINNED_CLUSTER_HOVER_CLASS}, keyed to
+ * the row’s own `group` on {@link SPINE_ROW_SHELL_CLASS}.
+ */
+export const SPINE_PINNED_ROW_ACTION_CLASS =
+  `${SPINE_PINNED_HOVER_BASE} group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100`;

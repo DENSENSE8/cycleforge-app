@@ -1,18 +1,25 @@
 'use client';
 
 import { Suspense, useCallback, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
+import { SessionsReportTable } from '@/features/reports/sessions/SessionsReportTable';
 
-type Tab = 'utilization' | 'velocity' | 'dead';
+type Tab = 'sessions' | 'utilization' | 'velocity' | 'dead';
 
 const TABS: ReadonlyArray<{ id: Tab; label: string }> = [
+  { id: 'sessions', label: 'Sessions' },
   { id: 'utilization', label: 'Bin Utilization' },
   { id: 'velocity', label: 'Velocity (30d)' },
   { id: 'dead', label: 'Dead Stock (90d+)' },
 ];
+
+function parseTab(raw: string | null): Tab {
+  return raw === 'utilization' || raw === 'velocity' || raw === 'dead' ? raw : 'sessions';
+}
 
 type ReportRow = Record<string, unknown>;
 
@@ -144,12 +151,31 @@ const DEAD_COLUMNS: AdminTableColumn<ReportRow>[] = [
 ];
 
 function ReportsPageInner() {
-  const [tab, setTab] = useState<Tab>('utilization');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const tab = parseTab(searchParams.get('tab'));
   const [rows, setRows] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const setTab = useCallback(
+    (id: string) => {
+      const next = new URLSearchParams(searchParams.toString());
+      next.set('tab', id);
+      if (id !== 'sessions') {
+        next.delete('staff');
+        next.delete('q');
+        next.delete('status');
+        next.delete('scan');
+      }
+      const qs = next.toString();
+      router.replace(qs ? `/reports?${qs}` : '/reports');
+    },
+    [router, searchParams],
+  );
+
   const load = useCallback(async () => {
+    if (tab === 'sessions') return;
     setLoading(true);
     setError(null);
     try {
@@ -173,44 +199,36 @@ function ReportsPageInner() {
   }, [tab]);
 
   useEffect(() => {
-    load();
+    void load();
   }, [load]);
 
-  /*
-   * The desk frame, not a second one (2026-08-31).
-   *
-   * This drew a `PageHeader` plus its own segmented tab strip — a filled-face
-   * selection (`bg-surface-inverse text-white`) beside the underline row every
-   * other page uses. Two tab vocabularies on one product is the fork the chrome
-   * moved into the design system to end.
-   *
-   * The tabs are passed EXPLICITLY because Reports' modes are local view state,
-   * not nav children: `/reports` has no spine drill-down to withdraw, so there
-   * is nothing for `deskChrome` to opt into. The frame takes them as data
-   * either way — which is the point of it taking data.
-   *
-   * `title` is passed for the same reason: the spine does not name this page,
-   * so the default (its nav label) would be empty.
-   */
   return (
     <DeskPageLayout
       title="Reports"
       tabs={TABS}
       activeTab={tab}
-      onTabChange={(id) => setTab(id as Tab)}
+      onTabChange={(id) => setTab(id)}
       className="h-full"
     >
-      <DeskActionSlotRegistrar>
-        <DeskHeaderAction variant="secondary" size="md" type="button" onClick={load}>
-          Refresh
-        </DeskHeaderAction>
-      </DeskActionSlotRegistrar>
-      <main className="min-h-0 flex-1 overflow-auto px-3 py-3">
-        {error && (
-          <p className="px-3 py-6 text-center text-sm font-semibold text-rose-600">{error}</p>
-        )}
-        {!error && <ReportTable tab={tab} rows={rows} loading={loading} />}
-      </main>
+      {tab === 'sessions' ? null : (
+        <DeskActionSlotRegistrar>
+          <DeskHeaderAction variant="secondary" size="md" type="button" onClick={load}>
+            Refresh
+          </DeskHeaderAction>
+        </DeskActionSlotRegistrar>
+      )}
+      {tab === 'sessions' ? (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <SessionsReportTable />
+        </div>
+      ) : (
+        <main className="min-h-0 flex-1 overflow-auto px-3 py-3">
+          {error && (
+            <p className="px-3 py-6 text-center text-sm font-semibold text-rose-600">{error}</p>
+          )}
+          {!error && <ReportTable tab={tab} rows={rows} loading={loading} />}
+        </main>
+      )}
     </DeskPageLayout>
   );
 }
@@ -220,7 +238,7 @@ function ReportTable({
   rows,
   loading,
 }: {
-  tab: Tab;
+  tab: Exclude<Tab, 'sessions'>;
   rows: ReportRow[];
   loading: boolean;
 }) {

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   addPin,
   getSettings,
+  insertPin,
   isPinned,
   QUICK_ACCESS_CHANGED_EVENT,
   removePin,
@@ -54,6 +55,16 @@ export function useQuickAccess() {
     return result;
   }, []);
 
+  const pinAt = useCallback(
+    (input: { label: string; href: string; iconKey?: string }, atIndex?: number) => {
+      const { settings: next, result } = insertPin(input, atIndex);
+      setSettingsState(next);
+      emitChanged();
+      return result;
+    },
+    [],
+  );
+
   const unpin = useCallback((id: string) => {
     setSettingsState(removePin(id));
     emitChanged();
@@ -77,6 +88,7 @@ export function useQuickAccess() {
     isPinnedSync: isPinned,
     updateSettings,
     pin,
+    pinAt,
     unpin,
     rename,
     reorder,

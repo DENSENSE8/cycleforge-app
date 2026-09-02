@@ -89,8 +89,8 @@ function compareUnitsRows(
 
 export function UnitsWorkspaceView() {
   const searchParams = useSearchParams();
-
-  const q = (searchParams.get('q') ?? '').trim();
+  const { searchQuery, setSearch } = useWorkbenchSearchParam();
+  const q = searchQuery.trim();
   const states = useMemo(() => parseList(searchParams.get('state')), [searchParams]);
   const conditions = useMemo(() => parseList(searchParams.get('condition')), [searchParams]);
 
@@ -142,8 +142,6 @@ export function UnitsWorkspaceView() {
     const raf = requestAnimationFrame(() => settleTick((t) => t + 1));
     return () => cancelAnimationFrame(raf);
   }, [loading, hasRows]);
-
-  const { searchQuery, setSearch } = useWorkbenchSearchParam();
 
   const orderGroupsByDate = useMemo<[string, RowGroup<UnitsOverviewRow>[]][]>(() => {
     const sortFact = columnSort ? (sortFactByKey.get(columnSort) ?? null) : null;

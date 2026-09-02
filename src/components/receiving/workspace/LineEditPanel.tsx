@@ -35,7 +35,7 @@ import {
   ReceiveFeedbackRegion,
   type ReceiveReconcileStatus,
 } from './ReceiveFeedbackRegion';
-import { WeldedStack } from './WeldedFeedbackPanel';
+import { WeldedStack } from '@/components/composer/WeldedFeedbackPanel';
 import type { ReceiveResult } from './line-edit/hooks/useReceiveAction';
 import { WorkspaceActionFeedbackSlot } from './WorkspaceActionFeedbackSlot';
 import type { InlineActionFeedbackPayload } from './InlineActionFeedbackCard';
@@ -72,7 +72,9 @@ import {
   patchReceivingRailTicketByCarton,
 } from '@/lib/queries/receiving-queries';
 import { stationComposerArrivalMode } from '@/lib/composer/station-composer-mode';
-import { StationContextBar } from '@/components/station/entity-context';
+import {
+  StationContextBar,
+} from '@/components/station/entity-context';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
 import {
   StationWorkbench,
@@ -853,6 +855,12 @@ export function LineEditPanel({
           }
           openDisplays('units');
         },
+        onOpenLocation: (line) => {
+          if (line.id !== row.id) {
+            dispatchSelectLine(line);
+          }
+          openDisplays('locations');
+        },
         collapse: {
           bands,
           collapseAll: bandCollapse.collapseAll,
@@ -1057,9 +1065,7 @@ export function LineEditPanel({
                     />
                   ) : null
                 }
-                // footer left null — ReceiveFeedbackRegion rides in the absolute
-                // dock float stack above the notes bubble (an absolute dock would
-                // cover an in-flow footer).
+                // ReceiveFeedbackRegion mounts on StationComposerHost `reaction`.
                 dock={
                   // Raised Omnichannel notes bubble + divided Print · Receive.
                   // Float uses the shared sliced-action gutters (pre–flush-floor).
@@ -1112,51 +1118,49 @@ export function LineEditPanel({
                           — and the focus ring lives out here, on the whole
                           shape, rather than around the composer half only. */}
                       <WeldedStack welded={showReceiveFeedback}>
-                      {showReceiveFeedback ? (
-                        <ReceiveFeedbackRegion
-                          receiving={c.receiving}
-                          receiveResult={feedbackResult}
-                          replay={replaying}
-                          reconcileStatus={recentVerdict?.reconcileStatus}
-                          onReconcileStatus={rememberReconcile}
-                          responseExpanded={c.responseExpanded}
-                          setResponseExpanded={c.setResponseExpanded}
-                          onDismiss={() => {
-                            // Clears what is SHOWN, never the memory — that is
-                            // what makes the ⓘ able to bring it back.
-                            setReplayFor(null);
-                            c.setReceiveResult(null);
-                            c.setResponseExpanded(false);
-                          }}
-                          onRetry={() => {
-                            // Replay the SAME intent the failed attempt used —
-                            // a retry must never silently upgrade a scan-only
-                            // or local receive into an inventory push.
-                            const attempted =
-                              feedbackResult?.kind === 'diagnostic'
-                                ? feedbackResult.intent
-                                : feedbackResult?.kind === 'success'
-                                  ? feedbackResult.summary.intent
-                                  : 'zoho_receive';
-                            void c.handleReceive(attempted);
-                          }}
-                          onPhotoPolicyOverride={(code) => {
-                            const blocked =
-                              feedbackResult?.kind === 'diagnostic'
-                                ? feedbackResult.intent
-                                : 'zoho_receive';
-                            void c.handleReceive(blocked, { photoPolicyOverride: code });
-                          }}
-                        />
-                      ) : null}
                       {terminalVm ? (
                         <WorkspaceNotesCard
                           onTicketCreated={onClaimTicketCreated}
                           onNoteTyped={() => bands.open('label')}
                           row={row}
                           c={c}
+                          returnClaimPrefill={c.returnClaimPrefill}
                           chrome="raised"
                           weldTop={showReceiveFeedback}
+                          reaction={
+                            showReceiveFeedback ? (
+                              <ReceiveFeedbackRegion
+                                receiving={c.receiving}
+                                receiveResult={feedbackResult}
+                                replay={replaying}
+                                reconcileStatus={recentVerdict?.reconcileStatus}
+                                onReconcileStatus={rememberReconcile}
+                                responseExpanded={c.responseExpanded}
+                                setResponseExpanded={c.setResponseExpanded}
+                                onDismiss={() => {
+                                  setReplayFor(null);
+                                  c.setReceiveResult(null);
+                                  c.setResponseExpanded(false);
+                                }}
+                                onRetry={() => {
+                                  const attempted =
+                                    feedbackResult?.kind === 'diagnostic'
+                                      ? feedbackResult.intent
+                                      : feedbackResult?.kind === 'success'
+                                        ? feedbackResult.summary.intent
+                                        : 'zoho_receive';
+                                  void c.handleReceive(attempted);
+                                }}
+                                onPhotoPolicyOverride={(code) => {
+                                  const blocked =
+                                    feedbackResult?.kind === 'diagnostic'
+                                      ? feedbackResult.intent
+                                      : 'zoho_receive';
+                                  void c.handleReceive(blocked, { photoPolicyOverride: code });
+                                }}
+                              />
+                            ) : null
+                          }
                           trailingAction={bubbleTerminal}
                           onPrimaryAction={() => {
                             if (c.isReceived) {

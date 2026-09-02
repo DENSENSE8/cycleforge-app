@@ -103,12 +103,12 @@ export function TasksWorkbench() {
   const { effectiveLayout: tasksLayout, fields: tasksFields } = useTasksTableLayout();
   const tasksColumns = useMemo(() => tasksCompoundColumnsFor(tasksLayout), [tasksLayout]);
   const [draft, setDraft] = useState('');
+  const [query, setQueryState] = useState('');
   /** Summoned by the page CTA rather than permanently docked under the grid. */
   const [composerOpen, setComposerOpen] = useState(false);
   const composerRef = useRef<HTMLInputElement>(null);
 
   const lane = parseLane(searchParams.get('filter'));
-  const query = searchParams.get('q') ?? '';
   const rawTask = searchParams.get('task');
   const selectedId = rawTask && /^\d+$/.test(rawTask) ? Number(rawTask) : null;
 
@@ -143,16 +143,7 @@ export function TasksWorkbench() {
     },
     [writeParams],
   );
-  const setQuery = useCallback(
-    (next: string) => {
-      writeParams((p) => {
-        const q = next.trim();
-        if (q) p.set('q', q);
-        else p.delete('q');
-      });
-    },
-    [writeParams],
-  );
+  const setQuery = useCallback((next: string) => setQueryState(next), []);
 
   const {
     sort: columnSort,

@@ -1,10 +1,10 @@
 {
   "file": "src/components/tables/DataTable.tsx",
-  "summary": "1 problem, worst first: 1684 lines — past the point reviewers read",
+  "summary": "1 problem, worst first: 1688 lines — past the point reviewers read",
   "problems": [
     {
       "severity": "size",
-      "what": "1684 lines — past the point reviewers read",
+      "what": "1688 lines — past the point reviewers read",
       "fix": "Split the leaf presentational parts out."
     }
   ],
@@ -26,7 +26,7 @@
     "TableStatusBar"
   ],
   "metrics": {
-    "lines": 1684,
+    "lines": 1688,
     "arbitrary_literals": 0
   },
   "notes": [

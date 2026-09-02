@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 # preToolUse — block UI file writes without a fresh design-mcp stamp.
 # Fail open on non-UI paths and on stamp/CLI infrastructure bugs.
+#
+# CYCLEFORGE_STAMP_STRICT=1 (set by the unattended rail; operator opt-in via
+# env or an empty `.cursor/stamp-strict` file) rejects a stamp whose
+# `source` is `stamp` or whose `lastTool` is not a `ds_*` oracle — a
+# liveness token is not proof the oracle was consulted (FABLE-5.1 D7 item 9).
 set -euo pipefail
 ROOT="${CURSOR_PROJECT_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}"
 INPUT=$(cat)
@@ -45,6 +50,7 @@ if re.search(
 
 stamp_path = root / ".cursor" / "design-mcp-session.json"
 max_age_ms = int(os.environ.get("CYCLEFORGE_DESIGN_MCP_STAMP_MAX_MS", str(45 * 60 * 1000)))
+strict = os.environ.get("CYCLEFORGE_STAMP_STRICT") == "1" or (root / ".cursor" / "stamp-strict").exists()
 now_ms = int(time.time() * 1000)
 fresh = False
 detail = "missing"
@@ -53,7 +59,12 @@ if stamp_path.exists():
         stamp = json.loads(stamp_path.read_text())
         age = now_ms - int(stamp.get("updatedMs") or 0)
         fresh = age >= 0 and age <= max_age_ms
-        detail = f"age_ms={age} source={stamp.get('source')} last={stamp.get('lastTool')}"
+        source = str(stamp.get("source") or "")
+        last = str(stamp.get("lastTool") or "")
+        detail = f"age_ms={age} source={source or 'none'} last={last or 'none'}"
+        if fresh and strict and (source == "stamp" or not last.startswith("ds_")):
+            fresh = False
+            detail += " strict=1 (stamp-only / non-oracle lastTool rejected)"
     except Exception as e:
         detail = f"unreadable:{e}"
 
@@ -61,9 +72,14 @@ if fresh:
     print(json.dumps({"permission": "allow"}))
     raise SystemExit(0)
 
+lead = (
+    "UI write blocked: strict stamps — the stamp must come from a ds_contract / ds_tokens / ds_critique call. "
+    if strict
+    else "UI write blocked: no fresh design-mcp stamp. "
+)
 msg = (
-    "UI write blocked: no fresh design-mcp stamp. "
-    "Call ds_contract + ds_tokens (native MCP) or "
+    lead
+    + "Call ds_contract + ds_tokens (native MCP) or "
     "`node tools/design-mcp/ds.mjs contract \"<job>\"` then "
     "`node tools/design-mcp/ds.mjs tokens <axis>` before editing "
     f"{path}. ({detail})"

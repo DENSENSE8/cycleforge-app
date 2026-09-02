@@ -1,0 +1,39 @@
+▶ find freshness location gate
+  ✔ rebuilds when find is empty (1.026492ms)
+  ✔ passes when expectedFile is empty (0.148087ms)
+  ✔ fails when every hit is outside the engine file (0.196555ms)
+  ✔ passes when the engine file is not matches[0] (0.159485ms)
+✔ find freshness location gate (2.537043ms)
+▶ slot-table cohort (SoT = engine + PRODUCT_TABLES)
+  ✔ peers are exactly PRODUCT_TABLES ids (no hand list) (1.185278ms)
+  ✔ every engine layout hook file exists and imports useSlotTableLayout (0.55025ms)
+  ✔ engine peers are a subset of PRODUCT_TABLES (opt-in map) (0.173663ms)
+  ✔ CompoundItem title hover actions satisfy paint contract (0.868168ms)
+  ✔ engine seam files export the shared hooks (imported, not grepped) (10.678219ms)
+  ✔ compact DateRangePickerField is the ship-by surface (0.251014ms)
+  ✔ ship-by writes through useOptimisticMutation (0.119672ms)
+  ✔ paint law constants document cohort scope (not To-ship alone) (0.206814ms)
+  ✔ graph + critique surfaces include compact ship-by (0.135396ms)
+  ✔ DataTable always mounts the filter funnel (0.318066ms)
+  ✔ every graphSymbol maps to an existing KEEP engine file (0.480495ms)
+  ✔ header click-to-sort is engine law (chrome only; every data track sorts) (1.300338ms)
+✔ slot-table cohort (SoT = engine + PRODUCT_TABLES) (17.483307ms)
+▶ slot-table header-sort law on compound PRODUCT_TABLES peers
+  ✔ orders / receiving / incoming / tasks / daily / review / sessions default mounts (0.574807ms)
+✔ slot-table header-sort law on compound PRODUCT_TABLES peers (0.65258ms)
+▶ slot-table discover (delete vs keep)
+  ✔ KEEP engine paths exist on disk (0.947707ms)
+  ✔ KEEP includes a materialization for every PRODUCT_TABLES peer on the engine (0.149222ms)
+  ✔ does not list KEEP symbols as DELETE (0.126627ms)
+  ✔ known-debt ratchet: no new drifts, no stale ids (0.54779ms)
+  ✔ has no unblocked hand-model deletes after the compound port (0.149882ms)
+  ✔ keeps only documented non-product table judgment items (0.115997ms)
+✔ slot-table discover (delete vs keep) (3.036469ms)
+ℹ tests 23
+ℹ suites 4
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 786.006771

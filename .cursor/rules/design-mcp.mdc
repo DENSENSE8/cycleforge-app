@@ -17,6 +17,22 @@ Naming: "Omni Composer" / station mouth = `StationComposerHost`, not raw
 the mode row to hide Unbox|Ticket. Floor stations clone Pack/Unbox; no invented
 rails or second mouths unless explicitly asked.
 
+Composer feedback / reaction / Zoho receive confirm on the mouth =
+`WeldedFeedbackPanel` from `@/components/composer/WeldedFeedbackPanel` on
+`StationComposerHost` `reaction` (`ds_contract "staff reaction on the composer"`).
+Staff look at the mouth all day for what just happened and what to process next.
+Never fork a caption band, second card, toast, or popover for that job.
+
 Scan-station materials: `ds_tokens({ axis: "station-skin" })` (catalog =
 `src/design-system/themes/station-skins.ts`). Call `applyStationSkin(name)`.
 Do not hex-fill a well or fork a packing-bench class on one station.
+
+DataTable / slot headers: every painted DATA track is click-to-sort
+(`SLOT_TABLE_PAINT_LAW.headerSort`). Chrome only: select / actions / `_fill`.
+Do not leave Image/Status/Amount headers dead; freeze is not unsortable.
+
+Center Lock (Q5): desk record forms → `DeskStageOverlay` on the table stage
+(`ds_contract "edit a row on the desk table"`). Forbidden on desks: `RightRailHost
+detail:*`, new `DeskRecordWalkHost`, Dialog as record plane. Scan stations: Displays
+stay right; L2 forms center; table stays visible under overlay. See
+`docs/warehouse-os/PLAN-center-lock.md`.

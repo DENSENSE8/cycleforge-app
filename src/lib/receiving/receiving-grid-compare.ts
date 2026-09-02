@@ -6,7 +6,7 @@
 import { CONDITION_GRADES, resolveConditionGrade } from '@/lib/conditions';
 import { displayTrackingNumber } from '@/lib/receiving/fulfillment-mode';
 import {
-  RECEIVING_GRID_COLUMNS,
+  RECEIVING_SORT_FACT_TYPES,
   receivingSortFactFor,
   type ReceivingGridColumnKey,
 } from '@/lib/receiving/receiving-grid-layout';
@@ -127,6 +127,7 @@ export function compareReceivingGridRows(
   column: ReceivingGridColumnKey,
   dir: GridSortDir,
   activityAxis: ReceivingActivityAxis = 'unboxed',
+  fieldId?: string | null,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
 
@@ -166,7 +167,7 @@ export function compareReceivingGridRows(
   // Normalize once so both the extractor and the `type` lookup below read one
   // vocabulary; without this the compound desks fell through to `default: null`
   // and every row compared equal.
-  const fact = receivingSortFactFor(column) ?? column;
+  const fact = receivingSortFactFor(column, fieldId) ?? column;
 
   const value = (row: ReceivingLineRow): GridSortValue => {
     switch (fact) {
@@ -193,6 +194,10 @@ export function compareReceivingGridRows(
         return trackingValue(row);
       case 'serial':
         return serialValue(row);
+      case 'status':
+        return (row.workflow_status || '').trim();
+      case 'thumb':
+        return (row.image_url || '').trim();
       default:
         return null;
     }
@@ -200,7 +205,7 @@ export function compareReceivingGridRows(
 
   // Type off the column MODEL, never a second hand-written map — the same
   // declaration that resolves this column's alignment and header glyph.
-  const type = RECEIVING_GRID_COLUMNS.find((c) => c.key === fact)?.type;
+  const type = RECEIVING_SORT_FACT_TYPES[fact as ReceivingGridColumnKey];
   const primary = compareGridValues(value(a), value(b), { type, dir });
 
   // `compareGridValues` already applied `dir` — re-signing here would

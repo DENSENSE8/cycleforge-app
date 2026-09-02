@@ -183,12 +183,14 @@ test('prebox is an always-on Assets peer leaf (not nested under Units)', () => {
   assert.deepEqual(resolveUnboxDisplayNav('prebox', SPARSE), { open: true, leaf: 'prebox' });
 });
 
-test('overview is NOT a side tab — the carton owns the centre', () => {
-  assert.equal(
-    UNBOX_SIDE_TAB_ORDER.includes('overview' as never),
-    false,
-    'moving overview into the Displays column would empty the workbench body',
-  );
+test('overview is a Displays READ leaf — centre carton work stays put', () => {
+  assert.equal(UNBOX_SIDE_TAB_ORDER.includes('overview'), true);
+  assert.equal(UNBOX_STRIP_TAB_ORDER.includes('overview'), true);
+  assert.equal(isUnboxSideTabVisible('overview', MATCHED), true);
+  const i = UNBOX_STRIP_TAB_ORDER.indexOf('overview');
+  assert.equal(UNBOX_STRIP_TAB_ORDER[i + 1], 'ticket');
+  assert.equal(UNBOX_STRIP_TAB_ORDER[i + 2], 'tracking');
+  assert.equal(UNBOX_STRIP_TAB_ORDER[i + 3], 'locations');
 });
 
 test('display=index opens Root Index with no leaf', () => {

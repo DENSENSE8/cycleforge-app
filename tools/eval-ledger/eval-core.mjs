@@ -1,7 +1,7 @@
 /**
  * Shared helpers for station + cohort eval runners.
  */
-import { spawn } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -9,6 +9,65 @@ import { fileURLToPath } from 'node:url'
 export const HERE = path.dirname(fileURLToPath(import.meta.url))
 export const REPO = path.resolve(HERE, '..', '..')
 export const GARISEK_OS = process.env.GARISEK_OS_ROOT ?? '/home/michaelgarisek/Projects/Garisek-OS'
+
+/**
+ * Index freshness as a Host step (FABLE-5.1 D7 item 10). An empty `find` is
+ * not a missing symbol until the index has been rebuilt once — the timer runs
+ * at 03:40 / 15:40 and a symbol added this morning is invisible until then.
+ * One rebuild per process, then re-find. `decideFind` also refuses a hit whose
+ * `location` is not the expected engine file: `matches[0]` for a common name
+ * can be the wrong node, and a wrong node's impact is not a measurement.
+ */
+/**
+ * `latest.json` per cohort / station (FABLE-5.1 D7 item 16): overwritten on
+ * every run, gitignored, so the Host reads one file instead of guessing the
+ * day suffix of the newest dated snapshot. Dated snapshots stay for humans.
+ */
+export function writeLatest(snapshotsDirRel, payload) {
+  try {
+    const dir = path.join(REPO, snapshotsDirRel)
+    mkdirSync(dir, { recursive: true })
+    const file = path.join(dir, 'latest.json')
+    writeFileSync(file, `${JSON.stringify({ at: new Date().toISOString(), ...payload }, null, 2)}\n`)
+    return path.join(snapshotsDirRel, 'latest.json')
+  } catch (err) {
+    console.error(`[eval-ledger] latest.json not written: ${err?.message ?? err}`)
+    return null
+  }
+}
+
+let graphRebuiltOnce = false
+export function rebuildGraphIndexOnce(project = 'cycleforge-app') {
+  if (graphRebuiltOnce) return { ran: false, code: null }
+  graphRebuiltOnce = true
+  console.error(`[eval-ledger] graph find empty → one rebuild (${project})…`)
+  const r = spawnSync('npx', ['tsx', 'scripts/code-graph-rebuild.ts', '--name', project, '--max-age-hours', '0'], {
+    cwd: GARISEK_OS,
+    encoding: 'utf8',
+    timeout: 180_000,
+    env: { ...process.env, NODE_NO_WARNINGS: '1' },
+  })
+  return { ran: true, code: r.status ?? (r.error ? 1 : 0) }
+}
+
+/** `find` → (rebuild once on empty → re-find) → location check. Returns `{ find, decision, match }`. */
+export async function graphFindFresh(cgCli, symbol, expectedFile) {
+  const { decideFind, pickFindMatch } = await import('../../src/lib/eval/find-freshness.ts')
+  let find = await runJson(cgCli, `find ${JSON.stringify(symbol)} --limit 3`, GARISEK_OS)
+  let decision = decideFind(find.data?.matches ?? [], expectedFile ?? '')
+  if ('rebuild' in decision && decision.rebuild) {
+    const rebuilt = rebuildGraphIndexOnce()
+    if (rebuilt.ran) {
+      find = await runJson(cgCli, `find ${JSON.stringify(symbol)} --limit 3`, GARISEK_OS)
+      decision = decideFind(find.data?.matches ?? [], expectedFile ?? '')
+    }
+  }
+  return {
+    find,
+    decision,
+    match: pickFindMatch(find.data?.matches ?? [], expectedFile ?? ''),
+  }
+}
 
 export function run(command, cwd = REPO) {
   return new Promise((resolve) => {
@@ -135,9 +194,35 @@ function relativeHandoff(handoff, stationId) {
   return `../../../${handoff.replace(/^docs\//, '')}`
 }
 
-export async function evalStationPass(manifest, { skipVerify, day, sharedVerify }) {
+export function critiquePass(critiques) {
+  return (critiques ?? []).every((c) => !c.error && c.ok !== false)
+}
+
+export function graphPass(impacts, expectedCount) {
+  if (!expectedCount) return true
+  return impacts.length === expectedCount && impacts.every((i) => !i.error)
+}
+
+export function stationEvalOk({ tripOk, verifyOk, critiqueOk, graphOk }) {
+  return Boolean(tripOk) && verifyOk !== false && Boolean(critiqueOk) && Boolean(graphOk)
+}
+
+export async function evalStationPass(manifest, { skipVerify, day, sharedVerify, skipTripwire }) {
   const snapshotsDir = path.join(REPO, manifest.snapshotsDir)
   mkdirSync(snapshotsDir, { recursive: true })
+
+  let tripOk = true
+  let tripSnapshot = null
+  let tripOutput = ''
+  if (!skipTripwire && (manifest.tripwires ?? []).length) {
+    const files = manifest.tripwires.map((t) => JSON.stringify(t)).join(' ')
+    console.error(`[eval-ledger] tripwire ${manifest.tripwires.join(' ')}…`)
+    const trip = await run(`node --import tsx --test ${files}`)
+    tripOk = trip.exitCode === 0
+    tripOutput = trip.output
+    tripSnapshot = path.join(manifest.snapshotsDir, `${day}-tripwire.log`)
+    writeFileSync(path.join(REPO, tripSnapshot), trip.output)
+  }
 
   let verifyOk = sharedVerify?.ok ?? null
   let verifySnapshot = sharedVerify?.snapshot ?? null
@@ -175,13 +260,23 @@ export async function evalStationPass(manifest, { skipVerify, day, sharedVerify 
   const cgCli = path.join(GARISEK_OS, 'tools/code-graph/cg.mjs')
   if (existsSync(cgCli)) {
     for (const symbol of manifest.graphSymbols ?? []) {
+      // Location is judged only where the cohort places the symbol
+      // (`graphExpectedFiles`) or for the station export in its workspace; a
+      // symbol the cohort does not place (e.g. useOverlaySwapHardCut on every
+      // station) is found, never location-judged.
+      const expectedFile =
+        manifest.graphExpectedFiles?.[symbol] ?? (symbol === manifest.exportName ? manifest.workspace : '')
       console.error(`[eval-ledger] graph find ${symbol}…`)
-      const find = await runJson(cgCli, `find ${JSON.stringify(symbol)} --limit 3`, GARISEK_OS)
+      const { find, decision, match } = await graphFindFresh(cgCli, symbol, expectedFile)
       const snapFind = path.join(manifest.snapshotsDir, `${day}-find-${symbol}.json`)
       writeFileSync(path.join(REPO, snapFind), find.raw)
-      const nodeKey = find.data?.matches?.[0]?.node_key
+      const nodeKey = match?.node_key ?? find.data?.matches?.[0]?.node_key
       if (!nodeKey) {
-        impacts.push({ symbol, error: 'no match', snapshot: snapFind })
+        impacts.push({ symbol, error: 'no match (after one rebuild)', snapshot: snapFind })
+        continue
+      }
+      if ('ok' in decision && decision.ok === false) {
+        impacts.push({ symbol, nodeKey, error: `location: not under ${expectedFile}`, snapshot: snapFind })
         continue
       }
       console.error(`[eval-ledger] graph impact ${nodeKey}…`)
@@ -221,15 +316,45 @@ export async function evalStationPass(manifest, { skipVerify, day, sharedVerify 
     })
     .join('\n')
 
-  const tripwireBlock = (manifest.tripwires ?? []).map((t) => `- \`${t}\``).join('\n')
+  const fileList = (manifest.tripwires ?? []).map((t) => `- \`${t}\``).join('\n')
+  let tripwireBlock = fileList || '_None configured._'
+  if (!skipTripwire && (manifest.tripwires ?? []).length) {
+    tripwireBlock = tripOk
+      ? `**pass** — snapshot \`${tripSnapshot}\`\n${fileList}`
+      : `**FAIL** — snapshot \`${tripSnapshot}\`\n${fileList}\n\n\`\`\`\n${tripOutput.slice(0, 2000)}\n\`\`\``
+  }
 
   patchLedger(ledgerPath, {
     'last-run': `_Updated ${new Date().toISOString()} · station \`${manifest.id}\`_`,
     'machine-gates': machineGates,
     'design-critique': critiqueBlock || '_No critique files configured._',
     'graph-impact': impactBlock || '_No graph symbols configured or code-graph CLI unavailable._',
-    tripwires: tripwireBlock || '_None configured._',
+    tripwires: tripwireBlock,
   })
 
-  return { verifyOk, critiques, impacts, exportImpact: impacts.find((i) => i.symbol === manifest.exportName) }
+  const critiqueOk = critiquePass(critiques)
+  const graphOk = graphPass(impacts, (manifest.graphSymbols ?? []).length)
+  writeLatest(manifest.snapshotsDir, {
+    kind: 'station',
+    id: manifest.id,
+    ok: stationEvalOk({ tripOk, verifyOk, critiqueOk, graphOk }),
+    tripOk,
+    verifyOk,
+    critiqueOk,
+    graphOk,
+    tripSnapshot,
+    verifySnapshot,
+    critiques: critiques.map((c) => ({ file: c.file, ok: c.ok, snapshot: c.snapshot })),
+    impacts,
+  })
+  return {
+    verifyOk,
+    critiques,
+    impacts,
+    tripOk,
+    tripSnapshot,
+    critiqueOk,
+    graphOk,
+    exportImpact: impacts.find((i) => i.symbol === manifest.exportName),
+  }
 }

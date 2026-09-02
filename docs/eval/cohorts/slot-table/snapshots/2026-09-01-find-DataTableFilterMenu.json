@@ -5,7 +5,7 @@
       "node_key": "component:src/components/tables/DataTable.tsx:DataTableFilterMenu",
       "kind": "component",
       "name": "DataTableFilterMenu",
-      "location": "src/components/tables/DataTable.tsx:711",
+      "location": "src/components/tables/DataTable.tsx:734",
       "exported": true,
       "signature": "function DataTableFilterMenu({ options, onToggle, onClearAll, }: DataTableFilterChrome)"
     }

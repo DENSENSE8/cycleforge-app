@@ -1,9 +1,25 @@
 {
   "project": "cycleforge-app",
   "target": "component:src/components/tables/TableStatusBar.tsx:TableStatusBar",
-  "files_affected": 22,
-  "total_symbols": 22,
+  "files_affected": 25,
+  "total_symbols": 25,
   "files": [
+    {
+      "file": "src/components/labels/LabelsProductsWorkspace.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "LabelsProductsWorkspace"
+      ]
+    },
+    {
+      "file": "src/components/photos/PhotoLibraryPage.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "PhotoLibraryPage"
+      ]
+    },
     {
       "file": "src/components/tables/DataTable.tsx",
       "nearest_depth": 1,
@@ -13,11 +29,11 @@
       ]
     },
     {
-      "file": "src/components/labels/LabelsProductsWorkspace.tsx",
-      "nearest_depth": 1,
+      "file": "src/components/inventory/UnitsWorkspaceView.tsx",
+      "nearest_depth": 2,
       "affected_symbols": 1,
       "symbols": [
-        "LabelsProductsWorkspace"
+        "UnitsWorkspaceView"
       ]
     },
     {
@@ -157,11 +173,11 @@
       ]
     },
     {
-      "file": "src/components/dashboard/orders-queue/OrdersGridHost.tsx",
+      "file": "src/app/kiosk/v2/KioskCartLedger.tsx",
       "nearest_depth": 2,
       "affected_symbols": 1,
       "symbols": [
-        "OrdersGridHost"
+        "KioskCartLedger"
       ]
     },
     {
@@ -173,11 +189,19 @@
       ]
     },
     {
-      "file": "src/components/inventory/UnitsWorkspaceView.tsx",
+      "file": "src/app/ops/photos/page.tsx",
       "nearest_depth": 2,
       "affected_symbols": 1,
       "symbols": [
-        "UnitsWorkspaceView"
+        "OpsPhotosPage"
+      ]
+    },
+    {
+      "file": "src/components/dashboard/orders-queue/OrdersGridHost.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "OrdersGridHost"
       ]
     }
   ]

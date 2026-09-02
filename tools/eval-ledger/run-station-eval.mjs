@@ -6,7 +6,7 @@
  *   node --import tsx tools/eval-ledger/run-station-eval.mjs scan-out --skip-verify
  */
 import { allStationEvalManifests } from '../../src/lib/station/scan-station-overlay-cohort.ts'
-import { evalStationPass, stamp } from './eval-core.mjs'
+import { evalStationPass, stamp, stationEvalOk } from './eval-core.mjs'
 
 function usage(code = 1) {
   const ids = allStationEvalManifests()
@@ -26,14 +26,23 @@ async function main() {
 
   const { day, ts } = stamp()
   const result = await evalStationPass(manifest, { skipVerify, day })
+  const ok = stationEvalOk({
+    tripOk: result.tripOk,
+    verifyOk: result.verifyOk,
+    critiqueOk: result.critiqueOk,
+    graphOk: result.graphOk,
+  })
   console.log(
     JSON.stringify(
       {
-        ok: result.verifyOk !== false,
+        ok,
         station: stationId,
         ledger: manifest.ledger,
         runId: ts,
+        tripwire: result.tripOk,
         verify: result.verifyOk,
+        critique: result.critiqueOk,
+        graph: result.graphOk,
         critiques: result.critiques.length,
         impacts: result.impacts.length,
       },
@@ -41,7 +50,7 @@ async function main() {
       2,
     ),
   )
-  process.exit(result.verifyOk === false ? 1 : 0)
+  process.exit(ok ? 0 : 1)
 }
 
 main().catch((e) => {

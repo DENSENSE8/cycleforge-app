@@ -53,7 +53,7 @@ function writeStamp(extra = {}) {
   return next
 }
 
-function rpcCall(name, args, timeoutMs = 30_000) {
+function rpcCall(name, args, timeoutMs = 90_000) {
   return new Promise((resolve, reject) => {
     const child = spawn(LAUNCHER, [], {
       stdio: ['pipe', 'pipe', 'pipe'],

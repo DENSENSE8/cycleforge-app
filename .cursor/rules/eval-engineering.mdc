@@ -17,9 +17,16 @@ Before marking a coding task complete:
    **slot-table only** — there is no `eval:cohort overlay`. Do not delete
    cohort-law `visibility` / `zIndex.panel` styles to silence critique.
 5. **Slot-table cohort (the only display eval):** after CompoundItem /
-   `useSlotTableLayout` / PRODUCT_TABLES / DataTable funnel engine edits, run
-   `pnpm run eval:cohort slot-table`. SoT is engine + every product table peer
-   — not To-ship alone. Hand-model leftovers:
+   `useSlotTableLayout` / PRODUCT_TABLES / DataTable funnel / header-sort
+   engine edits, run `pnpm run eval:cohort slot-table`. SoT is engine + every
+   product table peer — not To-ship alone. **Hard law:** every painted DATA
+   column header is click-to-sort (`SLOT_TABLE_PAINT_LAW.headerSort` /
+   `isSlotTableChromeTrack`). Chrome only: select / actions / `_fill`. Image is
+   DATA. Never `sortable: false` on a labeled fact — map the track. Toolbar sort
+   menu lists the same facts (`queueColumnSortOptions`); Pick/Status/Image are
+   rows, not trigger-only. Cohort `ok`
+   fails on tripwire, engine-contract grep, or graph `find` no-match (rebuild
+   the cycleforge-app index). Hand-model leftovers:
    `pnpm run eval:discover` — delete only listed DELETE ids; never KEEP rows.
 6. **Shortcut-display cohort:** after `?` / shortcut / TableStatusBar hotkey
    edits, run `pnpm run eval:cohort shortcuts`. Staff `?` reveals letters

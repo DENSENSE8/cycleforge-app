@@ -13,6 +13,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { ExternalLink, History, Check, AlertTriangle } from '@/components/Icons';
 import {
   StationPanelRoot,
@@ -35,11 +36,13 @@ import {
   type DisplayIndexRow,
 } from '@/components/station/displays';
 import { ListingLinksTab } from '@/components/receiving/workspace/line-edit/ListingLinksTab';
+import { PoItemsSection } from '@/components/receiving/workspace/PoItemsSection';
+import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { receivingSiblingsQueryKey } from '@/lib/queries/receiving-queries';
 import { ShippingEntityContextHeader } from '@/components/tech/shipping/ShippingEntityContextHeader';
 import { resolveShippingListingLinks } from '@/components/tech/shipping/shipping-listing-links';
 import { Button } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
-import { STATION_SCAN_WELL_CLASS } from '@/components/station/scan-depth';
 import { cn } from '@/utils/_cn';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import type { ScanOutActivePane } from '@/components/outbound/scan-out/scan-out-active';
@@ -112,6 +115,28 @@ export function ScanOutActivePanel({
   const activeOrder = useMemo(() => paneToStationOrder(pane), [pane]);
   const onExit = useCallback(() => dispatchScanOutActive(null), []);
   const [activeSideTab, setActiveSideTab] = useState<ScanOutDisplayNav | null>(null);
+  const receivingId = pane.receivingId;
+  const poLinesQuery = useQuery<{
+    success: boolean;
+    receiving_lines: ReceivingLineRow[];
+  }>({
+    queryKey: receivingId != null ? receivingSiblingsQueryKey(receivingId) : ['receiving-siblings', 'none'],
+    queryFn: async () => {
+      const response = await fetch(
+        `/api/receiving-lines?receiving_id=${receivingId}&include=serials`,
+        { cache: 'no-store' },
+      );
+      if (!response.ok) throw new Error('Failed to load purchase-order lines');
+      return response.json();
+    },
+    enabled: receivingId != null && receivingId > 0,
+    staleTime: 15_000,
+    refetchOnWindowFocus: false,
+  });
+  const activePoLine =
+    poLinesQuery.data?.receiving_lines?.find((line) => line.sku === pane.sku) ??
+    poLinesQuery.data?.receiving_lines?.[0] ??
+    null;
 
   const listingResolution = useMemo(
     () => resolveShippingListingLinks(activeOrder),
@@ -293,13 +318,27 @@ export function ScanOutActivePanel({
                 bodyGap="none"
               >
                 <div
-                  className={cn(STATION_SCAN_WELL_CLASS, "flex min-h-0 flex-1 flex-col items-center justify-center inset-empty text-center")}
+                  className="flex min-h-0 flex-1 flex-col items-center justify-center bg-surface-card inset-empty text-center"
                   data-testid="scan-out-ops-centre"
                 >
-                  <p className="text-role-caption text-text-muted">
-                    Scan the next carrier label below. Notes land on this package in the same
-                    field.
-                  </p>
+                  {activePoLine && receivingId != null ? (
+                    <div className="w-full max-w-4xl text-left" data-testid="scan-out-po-items">
+                      <PoItemsSection
+                        row={activePoLine}
+                        receivingId={receivingId}
+                        activeLineId={activePoLine.id}
+                        placeholderActiveRow={activePoLine}
+                        readOnly
+                        unitsChrome
+                      />
+                    </div>
+                  ) : poLinesQuery.isPending ? (
+                    <p className="text-role-caption text-text-muted">Loading purchase-order lines…</p>
+                  ) : (
+                    <p className="text-role-caption text-text-muted">
+                      No purchase-order lines are linked to this shipment.
+                    </p>
+                  )}
                 </div>
               </StationWorkbench>
             </div>

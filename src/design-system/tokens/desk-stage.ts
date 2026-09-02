@@ -61,7 +61,7 @@ export const DESK_STAGE_GUTTER_CLASS = 'px-4';
  * bottom is only half-detached, and the missing half is the one an operator
  * stares at while scrolling a queue.
  *
- * 16px, matching {@link DESK_STAGE_DETACH_CLASS} — the gap above the card and
+ * 20px, matching {@link DESK_STAGE_DETACH_CLASS} — the gap above the card and
  * the gap below it are the same measurement, or the card reads as sliding off
  * the screen rather than sitting on it.
  *
@@ -89,6 +89,13 @@ export const DESK_STAGE_FLOOR_CLASS = 'pb-4';
  *
  * Do not "unify" these back together. They were one token once, and unifying
  * them is what put a scan-bench measure on a triage desk in the first place.
+ *
+ * The same split applies to **fields**: `TextField appearance="flush"` (floating
+ * label, square cell) is the scan-station import. Desk record walks
+ * (exceptions, Labels, Incoming add) paint `TriageScrollLayout` cards with
+ * `cornerClass('surface')` and Label + Input via `triagePanelControl`. The
+ * Omni Composer (`StationComposerHost`) may sit at the foot of a desk walk —
+ * it already uses `COMPOSER_SHELL_CORNER`, not the flush field face.
  */
 
 /**
@@ -121,35 +128,55 @@ export const DESK_PAGE_HEADER_ROW_CLASS = 'py-3';
 export const DESK_TAB_ROW_CLASS = 'h-9 border-b border-border-soft';
 
 /**
+ * Shared tab-list geometry for every desk page. The list remains a normal
+ * left-to-right row; fixed-width triggers own their label alignment.
+ */
+export const DESK_TAB_LIST_CLASS =
+  'flex min-w-0 flex-1 items-stretch gap-1';
+
+/** Shared fixed-width desk-tab face with a centered label. */
+export const DESK_TAB_TRIGGER_CLASS =
+  'ds-raw-button inline-flex shrink-0 items-center justify-center gap-1 px-3 text-center text-role-caption';
+
+/**
  * The **detachment gap** between the tab row and the table card — the single
  * measurement this layout exists for.
  *
- * 16px, not 8. At 8 the column header still reads as a fourth chrome row in
- * one continuous slab and an operator scanning down cannot tell where the page
- * furniture stops and the data starts. The gap is what turns the table into an
- * object sitting on the page rather than the bottom of its header.
+ * 20px (`mt-5`), not 8. At 8 the column header still reads as a fourth chrome
+ * row in one continuous slab and an operator scanning down cannot tell where
+ * the page furniture stops and the data starts. The gap is what turns the
+ * table into an object sitting on the page rather than the bottom of its
+ * header.
  *
  * It carries more weight since the ground went white (2026-08-31): with no
- * fill contrast left, this gap and the card's hairline are the whole of the
- * detachment. Do not shrink it to buy a row back.
+ * fill contrast left, this gap is the whole of the detachment. Do not shrink
+ * it to buy a row back.
  */
-export const DESK_STAGE_DETACH_CLASS = 'mt-4';
+export const DESK_STAGE_DETACH_CLASS = 'mt-5';
 
 /**
- * The table **card** — the desk body, detached from the chrome above it.
+ * The desk **card shell** — rounded container detached from the chrome above.
  *
- * Rounded on all four corners now that nothing is squared into its top: the
- * tab band that used to sit flush on it moved up onto the page's ground.
- * `overflow-hidden` is what clips the grid to the radius (and the toolbar's
- * own hairline to the card's shoulders), so it is not decoration.
+ * Only THIS shell carries corner radius on a pointer desk. The tab band sits
+ * on the page ground above the detach gap; `overflow-hidden` + `rounded-xl`
+ * clips the toolbar and grid to the card's shoulders — the DataTable itself
+ * stays edge-to-edge inside (see {@link DESK_TABLE_SURFACE_CLASS}).
  *
- * NO outer border or hairline (operator ruling 2026-08-31). With the ground
- * white, a ring around the table drew a box the operator did not ask for; the
- * card is now carried by the detachment gap and its own internal rules. Do not
- * re-add `border-border-soft` here to "define" the edge.
+ * NO outer border or hairline (operator ruling 2026-08-31). Detachment is
+ * gap + soft geometry, not a ring around the grid.
  */
 export const DESK_CHROME_STAGE_BODY_CLASS =
-  'overflow-hidden rounded-lg bg-surface-card';
+  'overflow-hidden rounded-xl bg-surface-card';
+
+/**
+ * DataTable mount inside {@link DESK_CHROME_STAGE_BODY_CLASS} — flush, no inner
+ * rounded shell. Toolbar + grid bleed to the card edges; the card clips corners.
+ *
+ * Do not wrap DataTable in a second `rounded-*` / border / shadow — that reads
+ * as a box inside a box and breaks the breathable desk profile.
+ */
+export const DESK_TABLE_SURFACE_CLASS =
+  'flex min-h-0 min-w-0 flex-1 flex-col rounded-none';
 
 /**
  * The page **ground** the card sits on — WHITE (operator ruling 2026-08-31).

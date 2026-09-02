@@ -78,13 +78,17 @@ function log(step: string, detail?: string) {
 }
 
 async function setOrgGuc(client: PoolClient, orgId: string) {
-  await client.query(`SELECT set_config('app.current_org', $1, false)`, [orgId]);
+  // Keep the tenant identity inside the fixture transaction only. The seeder
+  // is also imported by the authenticated QA route; a session-scoped GUC would
+  // leak across pooled connections after that request completes.
+  await client.query(`SELECT set_config('app.current_org', $1, true)`, [orgId]);
 }
 
 async function ensureOrganization(pool: Pool, orgId: string) {
   // `individual` = email+password signs straight in as QA Admin (no umbrella
   // staff picker). Station PIN remains available as a secondary path.
   const settings = {
+    environment: 'sandbox',
     timezone: 'America/Los_Angeles',
     currency: 'USD',
     brand: { name: 'CycleForge QA' },
@@ -1128,7 +1132,7 @@ async function seedPhotoFixtures(client: PoolClient, orgId: string, adminStaffId
   );
 }
 
-async function seedFixtures(pool: Pool, orgId: string, adminStaffId: number) {
+export async function reseedQaFixtures(pool: Pool, orgId: string, adminStaffId: number) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -1190,6 +1194,8 @@ async function seedFixtures(pool: Pool, orgId: string, adminStaffId: number) {
   // uses the shared pool and its own encryption path.
   await seedHelpdeskConnection(orgId);
 }
+
+export default { reseedQaFixtures };
 
 async function verifyIsolation(pool: Pool, orgId: string) {
   const qaOrders = await pool.query<{ n: number }>(
@@ -1254,7 +1260,7 @@ async function main() {
       await seedCatalogAndWorkflow(orgId, staffId);
     }
 
-    await seedFixtures(pool, orgId, staffId);
+    await reseedQaFixtures(pool, orgId, staffId);
 
     if (process.argv.includes('--verify')) {
       await verifyIsolation(pool, orgId);
@@ -1273,7 +1279,11 @@ async function main() {
   }
 }
 
-main().catch((err) => {
-  console.error('provision-qa-org failed:', err instanceof Error ? err.message : err);
-  process.exit(1);
-});
+// Importing this file from the authenticated QA route must not execute the CLI.
+// The argv check keeps `pnpm provision:qa-org` behavior unchanged.
+if (process.argv[1]?.endsWith('provision-qa-org.ts')) {
+  main().catch((err) => {
+    console.error('provision-qa-org failed:', err instanceof Error ? err.message : err);
+    process.exit(1);
+  });
+}

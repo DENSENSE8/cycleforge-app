@@ -59,9 +59,9 @@ import type {
   CompoundRowView,
   CompoundSubtitleSelect,
   CompoundSubtitleEdit,
-  CompoundSubtitleCopy,
   CompoundShipByEdit,
   CompoundStageAssign,
+  CompoundStaffRoster,
 } from './compound-row-model';
 
 /**
@@ -132,8 +132,7 @@ export interface CompoundGridCellParams<C extends CompoundCellColumn> {
   subtitleSelects?: readonly CompoundSubtitleSelect[];
   /** Free-text / numeric in-place editors, matched to parts by key. */
   subtitleEdits?: readonly CompoundSubtitleEdit[];
-  /** Parts that paint as a copy chip, matched by key. */
-  subtitleCopies?: readonly CompoundSubtitleCopy[];
+
   /** Part key of the NOTE fact — pinned right as a glyph. */
   subtitleNoteKey?: string;
   /** The note's full text. */
@@ -143,11 +142,18 @@ export interface CompoundGridCellParams<C extends CompoundCellColumn> {
   /** Present ⇒ the status delay line mounts DateRangePickerField. */
   shipByEdit?: CompoundShipByEdit;
   /**
+   * To-ship identity tracking hover → paperwork walk. Omit on every other
+   * family — Receiving must not grow a Label verb.
+   */
+  onOpenLabels?: () => void;
+  /**
    * Stage-lane assign, keyed by catalog field id (`orders.picked` /
-   * `orders.packed`). Presence on a bound status track arms the mark popover
-   * while the step is still pending; done stages stay read-only.
+   * `orders.packed`). Presence on a bound status track arms the empty/pending
+   * mark as a staff combo; done stages stay read-only.
    */
   stageAssigns?: Readonly<Partial<Record<string, CompoundStageAssign>>>;
+  /** Present ⇒ the actions track mounts the all-staff Pick/Pack role roster. */
+  staffRoster?: CompoundStaffRoster;
 }
 
 /**
@@ -197,12 +203,13 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
   select,
   subtitleSelects,
   subtitleEdits,
-  subtitleCopies,
   subtitleNoteKey,
   noteText,
   onReorderSubtitle,
   shipByEdit,
   stageAssigns,
+  staffRoster,
+  onOpenLabels,
   formatClass,
 }: CompoundGridCellParams<C>): ReactNode {
   // `select` is only ours when a COMPOUND model is mounted — see
@@ -327,7 +334,7 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
     case 'fulfillment':
       return (
         <div data-col="fulfillment" data-frozen-edge={frozenEdge} className={className} style={style}>
-          <CompoundFulfillment view={view} />
+          <CompoundFulfillment view={view} onOpenLabels={onOpenLabels} />
         </div>
       );
     case 'item':
@@ -337,7 +344,6 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
             view={view}
             subtitleSelects={subtitleSelects}
             subtitleEdits={subtitleEdits}
-            subtitleCopies={subtitleCopies}
             subtitleNoteKey={subtitleNoteKey}
             noteText={noteText}
             onReorderSubtitle={onReorderSubtitle}
@@ -359,7 +365,12 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
     default:
       return (
         <div data-col="actions" data-frozen-edge={frozenEdge} className={cn(className, 'justify-end')} style={style}>
-          <CompoundActions onOpen={onOpen} actions={actions} label={view.title} />
+          <CompoundActions
+            onOpen={onOpen}
+            actions={actions}
+            label={view.title}
+            staffRoster={staffRoster}
+          />
         </div>
       );
   }

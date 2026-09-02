@@ -71,3 +71,104 @@ export function buildComposerCcSuggestions(opts: {
   ];
   return Array.from(new Set(pool)).filter((e) => !opts.ccs.includes(e));
 }
+
+/**
+ * Operator CC history — the same bank the claim rail and the Omni Composer
+ * Cc strip both seed from. The rail used to be the only reader
+ * (`receiving-claim:cc-emails`); filing from Ticket mode then emailed nobody
+ * until the operator retyped every address.
+ *
+ * Accumulated, not session-scoped: removing a chip from the current form does
+ * not forget the address. Next carton / next station still auto-fills it.
+ */
+export const COMPOSER_CC_HISTORY_STORAGE_KEY = 'receiving-claim:cc-emails';
+
+/** Broadcast so the rail and the composer Cc row stay one audience. */
+export const COMPOSER_CC_FORM_EVENT = 'cycleforge:composer-cc-form';
+
+export type ComposerCcStorage = {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+};
+
+function browserStorage(): ComposerCcStorage | null {
+  try {
+    if (typeof window === 'undefined') return null;
+    return window.localStorage;
+  } catch {
+    return null;
+  }
+}
+
+function uniqueEmails(raw: readonly unknown[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const value of raw) {
+    const email = String(value ?? '').trim();
+    if (!email || seen.has(email)) continue;
+    seen.add(email);
+    out.push(email);
+  }
+  return out;
+}
+
+/**
+ * Reads the operator's accumulated public-CC history. Tolerates the legacy
+ * single-email string this key used to hold (`receiving-claim:last-cc-email`).
+ */
+export function readComposerCcHistory(storage?: ComposerCcStorage | null): string[] {
+  const store = storage === undefined ? browserStorage() : storage;
+  if (!store) return [];
+  let stored: string | null;
+  try {
+    stored = store.getItem(COMPOSER_CC_HISTORY_STORAGE_KEY);
+  } catch {
+    return [];
+  }
+  if (!stored) return [];
+  try {
+    const parsed: unknown = JSON.parse(stored);
+    if (!Array.isArray(parsed)) return [];
+    return uniqueEmails(parsed);
+  } catch {
+    const trimmed = stored.trim();
+    return trimmed ? [trimmed] : [];
+  }
+}
+
+/**
+ * Merge newly entered addresses into history. Returns the stored set.
+ * An empty write is a no-op — clearing the form must not wipe the bank.
+ */
+export function rememberComposerCcHistory(
+  emails: readonly string[],
+  storage?: ComposerCcStorage | null,
+): string[] {
+  const store = storage === undefined ? browserStorage() : storage;
+  const incoming = uniqueEmails(emails);
+  if (!store) return incoming;
+  const known = new Set(readComposerCcHistory(store));
+  let changed = false;
+  for (const email of incoming) {
+    if (!known.has(email)) {
+      known.add(email);
+      changed = true;
+    }
+  }
+  const next = [...known];
+  if (changed) {
+    try {
+      store.setItem(COMPOSER_CC_HISTORY_STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      // Best-effort only (private mode / quota).
+    }
+  }
+  return next;
+}
+
+export function publishComposerCcForm(emails: readonly string[]): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(
+    new CustomEvent<string[]>(COMPOSER_CC_FORM_EVENT, { detail: [...emails] }),
+  );
+}

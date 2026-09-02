@@ -16,6 +16,7 @@ import {
 } from '@/lib/inbound/po-intake-draft';
 
 const Body = z.object({
+  kind: z.enum(['purchase', 'return']).optional().default('purchase'),
   text: z.string().trim().max(20_000).optional().nullable(),
   /** data:image/...;base64,... — keep under ~4MB of base64. */
   image_data_url: z.string().trim().max(6_000_000).optional().nullable(),
@@ -46,6 +47,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
 
   try {
     const result = await extractPoIntake(ctx.organizationId, {
+      kind: parsed.kind,
       text,
       imageDataUrl,
       imageDataUrls,
@@ -54,6 +56,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     return NextResponse.json({
       success: true,
       draft: {
+        kind: result.draft.kind,
         platform: result.draft.platform,
         order_id: result.draft.orderId,
         seller: result.draft.seller,
@@ -62,12 +65,16 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         carrier_code: result.draft.carrierCode,
         listing_url: result.draft.listingUrl,
         priority: result.draft.priority,
+        return_reason: result.draft.returnReason,
+        rma_id: result.draft.rmaId,
         notes: result.draft.notes,
         lines: result.draft.lines.map((l) => ({
           sku: l.sku,
           item_name: l.itemName,
           quantity: l.quantity,
           line_item_id: l.lineItemId,
+          sku_catalog_id: l.catalogId,
+          listing_url: l.listingUrl,
         })),
       },
       missing,

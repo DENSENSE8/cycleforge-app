@@ -1,0 +1,21 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "component:src/components/tables/compound/CompoundCells.tsx:CompoundItem",
+      "kind": "component",
+      "name": "CompoundItem",
+      "location": "src/components/tables/compound/CompoundCells.tsx:562",
+      "exported": true,
+      "signature": "function CompoundItem({ view, subtitleSelects, subtitleEdits, subtitleNoteKey, noteText, onReorderSubtitle, }: { view: CompoundRowView; /** Present ⇒ the parts these claim (by key) edit in place. */ subtitleSelects?: readonly CompoundSubtitleSelect[]; /** Present ⇒ the parts these claim retype in place (free text / number). */ subtitleEdits?: readonly CompoundSubtitleEdit[]; /** Part key of the NO"
+    },
+    {
+      "node_key": "component:src/components/tables/compound/CompoundCells.tsx:CompoundItemNumberEditor",
+      "kind": "component",
+      "name": "CompoundItemNumberEditor",
+      "location": "src/components/tables/compound/CompoundCells.tsx:330",
+      "exported": false,
+      "signature": "function CompoundItemNumberEditor({ edit, onClose, }: { edit: CompoundSubtitleEdit; onClose: () => void; })"
+    }
+  ]
+}

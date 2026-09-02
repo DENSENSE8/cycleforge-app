@@ -85,7 +85,7 @@ export function TriageWorkspaceView({
       toggleActive={toggleRailEditMode}
     >
       <DeskPageLayout
-        className="h-full"
+      className="h-full"
         tabs={tabs}
         activeTab={triageView === 'triage' ? '' : triageView}
         onTabChange={(id) =>

@@ -36,25 +36,20 @@ export interface ButtonProps
   /** Accessible label — required when `iconOnly` and children aren't a plain string. */
   ariaLabel?: string;
   /**
-   * Corner. Default `flush` — the zero-radius ops law, and what every existing
-   * call site keeps.
+   * Corner. Default `surface` — desk / workbench CTAs.
+   *
+   * Scan-station chrome that must sit flush on the bench passes `flush`.
+   * Composer-dock CTAs pass `composer`. Header desk actions stay `pill`
+   * (`DeskHeaderAction`).
    *
    * This is a PROP because the alternative is `className="rounded-2xl"`, and a
-   * radius override on a primitive is exactly what the DS bans. `Panel` has
-   * resolved its corner through a `radius` prop since it was written; this
-   * brings `Button` to the same API rather than leaving one primitive
-   * overridable and the other not.
+   * radius override on a primitive is exactly what the DS bans.
    *
-   * - `flush` — `cornerClass('flush')`. The default. Ops chrome.
+   * - `flush` — `cornerClass('flush')`. Scan stations, grid cells, hairline rows.
    * - `composer` — {@link COMPOSER_SHELL_CORNER}. ONLY for a CTA inside the
-   *   `OmnichannelComposerDock` shell family, where soft corners are the
-   *   declared house grammar (the footer track and the Send control are
-   *   already soft). Naming it after the family it belongs to is the point: a
-   *   workbench CTA reaching for `radius="composer"` is visibly claiming
-   *   something untrue.
-   * - `surface` — `cornerClass('surface')`. Soft rounded rectangle. Mobile
-   *   chrome that sits beside inset-grouped cards (hamburger · scan CTA).
-   * - `pill` — `cornerClass('pill')`. The surviving `rounded-full` role.
+   *   `OmnichannelComposerDock` shell family.
+   * - `surface` — `cornerClass('surface')`. Default desk CTA.
+   * - `pill` — `cornerClass('pill')`. Header actions.
    */
   radius?: 'flush' | 'composer' | 'surface' | 'pill';
 }
@@ -65,11 +60,8 @@ const variantClasses = BUTTON_VARIANTS;
 
 // ─── Size classes ────────────────────────────────────────────────────────────
 
-/** Solid CTAs are flush industrial squares; `radius` opts a shell family out. */
-const BUTTON_CORNER = cornerClass('flush');
-
 const BUTTON_RADIUS: Record<NonNullable<ButtonProps['radius']>, string> = {
-  flush: BUTTON_CORNER,
+  flush: cornerClass('flush'),
   composer: COMPOSER_SHELL_CORNER,
   surface: cornerClass('surface'),
   pill: cornerClass('pill'),
@@ -130,9 +122,9 @@ const PRESS_FEEDBACK =
  * `danger` · `success` · `execute`). Replaces the ~1,300 hand-rolled
  * `<button className="bg-… px-… rounded-…">` scattered across the app.
  *
- * - Corner SoT: `radius` prop, default `flush` → `rounded-none`. Soft opt-ins:
+ * - Corner SoT: `radius` prop, default `surface` → `rounded-xl`. Soft opt-ins:
  *   `radius="composer"` (the `OmnichannelComposerDock` shell family) and
- *   `radius="surface"` (mobile chrome beside inset-grouped cards).
+ *   `radius="flush"` (scan-station bleed chrome).
  * - Children-based API: `<Button variant="brand" icon={<Plus />}>Save</Button>`
  * - CSS press feedback (`active:scale`) on every variant — no motion engine
  * - Mode-aware: promotes to 44px+ touch targets on mobile via `UIModeProvider`
@@ -143,7 +135,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     children,
     variant = 'primary',
     size = 'md',
-    radius = 'flush',
+    radius = 'surface',
     icon,
     iconRight,
     loading = false,

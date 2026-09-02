@@ -30,6 +30,8 @@ interface OrderPackChecklistProps {
   isUnknownOrder?: boolean;
   /** Condition chip on the unknown-order empty row. */
   unknownCondition?: string;
+  /** Render as the body of the shared station Items band. */
+  embedded?: boolean;
 }
 
 function lineKey(line: PackChecklistLineDto): string {
@@ -51,6 +53,7 @@ export function OrderPackChecklist({
   highlightOrderRowId,
   isUnknownOrder = false,
   unknownCondition = '—',
+  embedded = false,
 }: OrderPackChecklistProps) {
   const [tickedLines, setTickedLines] = useState<Set<string>>(new Set());
   const [tickedKitParts, setTickedKitParts] = useState<Set<number>>(new Set());
@@ -141,8 +144,6 @@ export function OrderPackChecklist({
 
   const hasDocuments = documentItems.length > 0;
 
-  const doneCount = tickedLines.size;
-  const totalCount = lines.length;
 
   if (isLoading) {
     return (
@@ -175,19 +176,8 @@ export function OrderPackChecklist({
       {/* Flush sheet host — clip for accordion expand; slide-over is a sibling
           so nested overflow does not crop the document preview. */}
       <div
-        className={`rounded-none border border-border-soft bg-surface-card overflow-hidden ${className ?? ''}`}
+        className={`overflow-hidden ${embedded ? 'border-0 bg-transparent' : 'rounded-none border border-border-soft bg-surface-card'} ${className ?? ''}`}
       >
-        <div className="flex items-center justify-between gap-3 border-b border-border-hairline bg-surface-canvas px-3 py-2">
-          <p className="text-role-micro uppercase tracking-widest text-text-soft">Pack checklist</p>
-          <span
-            className={`text-role-eyebrow tabular-nums ${
-              doneCount === totalCount ? 'text-emerald-600' : 'text-text-soft'
-            }`}
-          >
-            {doneCount}/{totalCount} verified
-          </span>
-        </div>
-
         <ul>
           {lines.map((line) => {
             const key = lineKey(line);

@@ -5,7 +5,7 @@ import {
 } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { CatalogLinkChoreRow } from '@/features/review/catalog-link/types';
 import {
-  CATALOG_LINK_GRID_COLUMNS,
+  CATALOG_LINK_COMPOUND_COLUMNS,
   type CatalogLinkGridColumn,
 } from './catalog-link-grid-layout';
 
@@ -37,4 +37,4 @@ export function makeCatalogLinkGridDescriptor(
   );
 }
 
-export { CATALOG_LINK_GRID_COLUMNS };
+export { CATALOG_LINK_COMPOUND_COLUMNS };

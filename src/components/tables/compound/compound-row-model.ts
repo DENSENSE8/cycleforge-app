@@ -61,7 +61,8 @@ export interface CompoundRowView {
    *
    * Present ⇒ the title is an `<a>` to this href (new tab). Absent ⇒ the title
    * stays plain text. A join, not a second field: Orders derives it from the
-   * item number (`getExternalUrlByItemNumber`). Other families omit it.
+   * item number and Receiving derives its primary link from the receiving listing
+   * resolver.
    */
   titleHref?: string | null;
   /**
@@ -271,31 +272,6 @@ export interface CompoundShipByEdit {
 }
 
 /**
- * A subtitle part that paints as a copy chip instead of bare text.
- *
- * The face is always the listing glyph — never {@link value}. Live
- * {@link openHref} ⇒ info-blue, click opens. Missing URL or missing handle ⇒
- * faint (grayed-out) icon. Hover copies {@link value} only when a handle exists.
- */
-export interface CompoundSubtitleCopy {
-  /** The {@link CompoundSubtitlePart.key} this chip claims. */
-  partKey: string;
-  /**
-   * The full value to place on the clipboard. Never painted — the face is
-   * the listing icon.
-   */
-  value: string;
-  /** Unused. Kept so older call sites that passed a last-8 face still type-check. */
-  display?: string;
-  /**
-   * Listing URL. Present ⇒ click opens this href (info-blue icon). Absent ⇒
-   * grayed-out icon (missing item number or unjoinable listing). Hover copies
-   * {@link value} only when a handle exists.
-   */
-  openHref?: string | null;
-}
-
-/**
  * One resolved slot cell, discriminated by paint kind.
  *
  * `stage_event` is the two-row lifecycle step (icon + label over
@@ -327,11 +303,17 @@ export interface CompoundStageStepFacts {
 }
 
 /**
- * Presence ⇒ the stage MARK invites assign while the step is still pending
+ * Presence ⇒ the stage MARK is a staff combo while the step is still pending
  * (`!at`). Done stages stay read-only. One lane per column — never a dual
  * tester+packer picker inside a single Pick or Packed cell.
  */
 export type CompoundStageAssignRole = 'technician' | 'packer';
+
+/** Roster switch copy: Packed face = packer on/off, not the persisted opposite role. */
+export type StaffLaneRoleNotice = {
+  face: CompoundStageAssignRole;
+  eligible: boolean;
+};
 
 export interface CompoundStageAssign {
   /** Current assignee for this lane (not the scan-completion actor). */
@@ -340,6 +322,29 @@ export interface CompoundStageAssign {
   label: string;
   role: CompoundStageAssignRole;
   onCommit: (staffId: number | null, staffName: string | null) => void;
+  /**
+   * Persist a member's floor role from roster mode (All staff).
+   * Assign mode still name-clicks only when they already match `role`.
+   */
+  onSetLaneRole?: (
+    staffId: number,
+    role: CompoundStageAssignRole,
+    staffName: string,
+    notice?: StaffLaneRoleNotice,
+  ) => void;
+}
+
+/**
+ * Far-right actions-column roster. Sets a member's floor role (picker /
+ * packer) only — it does not assign the order.
+ */
+export interface CompoundStaffRoster {
+  onSetLaneRole: (
+    staffId: number,
+    role: CompoundStageAssignRole,
+    staffName: string,
+    notice?: StaffLaneRoleNotice,
+  ) => void;
 }
 
 /** Assign chrome only when the host armed a handler and the step has no stamp. */

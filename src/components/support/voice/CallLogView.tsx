@@ -6,12 +6,12 @@ import { Phone } from '@/components/Icons';
 import { EmptyState } from '@/design-system/primitives';
 import { SearchField } from '@/design-system/primitives/SearchField';
 import { TimelineSection } from '@/components/ui/TimelineSection';
-import { TableTabs } from '@/components/tables/TableStatusBar';
 import { callEventsToTimeline } from '@/lib/timeline';
 import {
   parseCallDirection,
   CALL_DIRECTION_ITEMS,
 } from '@/components/sidebar/support/support-sidebar-shared';
+import { ZendeskSelect } from '@/components/support/zendesk/ZendeskSelect';
 import { isNotConfigured, useCallEvents } from './useVoiceQueries';
 
 /**
@@ -41,8 +41,8 @@ export function CallLogView() {
 
   const items = useMemo(() => callEventsToTimeline(data?.items ?? []), [data?.items]);
 
-  const tabs = useMemo(
-    () => CALL_DIRECTION_ITEMS.map((item) => ({ id: item.id, label: item.label })),
+  const directionOptions = useMemo(
+    () => CALL_DIRECTION_ITEMS.map((item) => ({ value: item.id, label: item.label })),
     [],
   );
 
@@ -71,11 +71,11 @@ export function CallLogView() {
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-surface-canvas">
       <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-2 border-b border-border-soft bg-surface-card px-2 py-1">
-        <TableTabs
-          tabs={tabs}
-          activeTab={direction}
-          onTabChange={(id) => setParam('direction', id, 'all')}
-          className="shrink-0 border-0 bg-transparent"
+        <span className="text-role-micro font-semibold text-text-soft">Direction</span>
+        <ZendeskSelect
+          value={direction}
+          options={directionOptions}
+          onChange={(value) => setParam('direction', value, 'all')}
         />
         <SearchField
           value={query}

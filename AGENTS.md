@@ -10,6 +10,15 @@ design system **before** implementation:
 3. Do not guess Tailwind classes, corner radii, or component paths.
 4. Project hooks deny UI writes under `src/**/*.{tsx,jsx,css}` without a fresh
    design-mcp session stamp.
+5. The engine lives in Garisek-OS (`DESIGN_MCP_PROJECT=cycleforge-app`); the law
+   stays here (`pinned.json`, cohorts, `router.json`, `design-mcp.profile.json`).
+   `ds_adjudicate` answers "would this be allowed?" with the SAME rules the
+   write gate enforces on Cursor and Claude Code: every router `refuse[]` with a
+   `diffPattern` (`sortable: false` on a fact, native `type="date"`,
+   `showModeRow={false}`, `FilterRefinementBar`, …). Engine-file writes also
+   need a fresh `find_symbol` → `impact_analysis` stamp (`cg.mjs stamp` alone is
+   refused), and `docs/eval/**/LEDGER.md`, `docs/eval/goals/**`,
+   `docs/eval/sessions/**` are never agent-writable.
 
 ## Composer / station mouth naming
 
@@ -17,6 +26,12 @@ design system **before** implementation:
 - `OmnichannelComposerDock` alone is the outline — incomplete mouth.
 - "No modes" / dumb gun station → `showModeRow` + `showModeFaces={false}`
   (keep the bottom-right context ring). Never `showModeRow={false}` to hide faces.
+- Feedback / reaction / receive confirm on that mouth → **WeldedFeedbackPanel**
+  (`@/components/composer/WeldedFeedbackPanel`) on `StationComposerHost` `reaction`
+  (`ds_contract "staff reaction on the composer"`). Staff look at the mouth all
+  day for what just happened and what to process next. Never a second card,
+  caption band, toast, popover, or a new hinge. Dockless workbench feedback
+  stays `InlineActionFeedbackCard`.
 
 ## Floor stations
 
@@ -33,6 +48,15 @@ Slot-table ship-by, due date, or pick-a-date-in-a-cell is
 `mount`). Not `variant="range"` (filter: presets + Apply + X + year). Not a
 native `input type=date`. Not `InlineEditableValue`. Graph: `CompoundState` +
 `DateRangePickerField`. Eval: `pnpm run eval:cohort slot-table`.
+
+## Center Lock (Q5)
+
+Desk record edits stay on the table tile — eyes never leave the center. L1 =
+in-cell (`DateRangePickerField variant="compact"`, `InlineEditableValue`). L2 =
+`DeskStageOverlay` on the stage (`ds_contract "edit a row on the desk table"`).
+Forbidden on desks: `RightRailHost detail:*`, new `DeskRecordWalkHost`, Dialog
+as record plane. Scan stations: Displays stay right; table stays visible under
+overlay. Classifier: `docs/warehouse-os/PLAN-center-lock.md`.
 
 ## Code graph (Garisek-OS)
 
@@ -62,10 +86,17 @@ Before claiming a coding task is done:
    — not To-ship alone. Ship-by is `DateRangePickerField variant="compact"`.
    Filter icon is `DataTableFilterMenu` beside search (always mounted; idle
    chrome when a family has no facets). Never `FilterRefinementBar` / hunt tiles.
+   Every painted DATA column header is click-to-sort (`SLOT_TABLE_PAINT_LAW.headerSort`);
+   chrome only is `select` / `actions` / `_fill`. The toolbar sort menu lists the
+   same facts (`queueColumnSortOptions`) — Pick/Status/Image are rows, not trigger-only.
+   After header-sort / `queueSortForColumnKey` edits run `pnpm run eval:cohort slot-table`.
+   Graph: impact `queueSortForColumnKey`
+   and `LedgerGridColumnHeader`, not one desk row. KEEP `engine:slot-table-header-sort`.
    Hand GRID leftovers: `pnpm run eval:discover` (`slot-table-discover.ts`).
    Delete only unblocked DELETE ids; never KEEP (engine, `*COMPOUND_COLUMNS` /
    `*SHEET_COLUMNS` materializations, catalogs, layout hooks, `DateRangePickerField`,
-   `DataTableFilterMenu`).
+   `DataTableFilterMenu`, `slot-table-header-sort`, `queueSortForColumnKey`,
+   `LedgerGridColumnHeader`).
 6. **Shortcut-display cohort:** SoT is staff `?` **inline on the buttons**
    (`src/lib/keyboard/shortcut-display-cohort.ts`). After shortcut / `?` /
    TableStatusBar hotkey edits run `pnpm run eval:cohort shortcuts`. If asked

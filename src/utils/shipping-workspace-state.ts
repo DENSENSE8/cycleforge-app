@@ -1,6 +1,6 @@
 /**
  * Shipping-mode workspace tabs on `/test` (nested under top-level `?view=`).
- * Param: `?ship=urgent|pending|all|history` — absent defaults to Pending.
+ * Param: `?ship=urgent|pending|all|history` — absent defaults to Urgent.
  * FBA tab removed 2026-07-29 (IA row L) — FBA owns `/shipping/fba`.
  */
 
@@ -33,7 +33,7 @@ const VALID: ReadonlySet<string> = new Set(SHIPPING_WORKSPACE_TABS);
  */
 export function parseShippingWorkspaceTab(raw: string | null): ShippingWorkspaceTab {
   const value = String(raw || '').trim().toLowerCase();
-  return VALID.has(value) ? (value as ShippingWorkspaceTab) : 'pending';
+  return VALID.has(value) ? (value as ShippingWorkspaceTab) : 'urgent';
 }
 
 export function getShippingWorkspaceTabFromSearch(
@@ -45,9 +45,9 @@ export function getShippingWorkspaceTabFromSearch(
 /**
  * Normalize URL for a shipping workspace tab switch.
  * Clears tab-specific filters so they don't bleed across tables.
- * Omits `ship` when pending (default) so the default URL stays clean.
+ * Omits `ship` when urgent (default) so the default URL stays clean.
  * Urgent owns `?attention=1` (orders.is_urgent); cleared on every other tab.
- * Legacy `?ship=fba` normalizes to pending.
+ * Legacy `?ship=fba` normalizes to the Urgent default.
  */
 export function normalizeShippingWorkspaceTabParams(
   params: URLSearchParams,
@@ -74,7 +74,7 @@ export function normalizeShippingWorkspaceTabParams(
     params.delete('layout');
   }
 
-  if (nextTab !== 'pending') {
+  if (nextTab !== 'urgent') {
     params.set(SHIPPING_WORKSPACE_TAB_PARAM, nextTab);
   }
   return nextTab;

@@ -2,17 +2,22 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   APP_SIDEBAR_NAV,
+  getMasterNavItem,
+  masterNavLabelForPath,
   getSidebarNavItems,
   isSidebarRouteMobileRestricted,
   isSidebarNavActive,
   isSidebarTopPinActive,
   isSpineMapTopRow,
+  isSpineDeskItem,
+  isDeskSpineSection,
   SIDEBAR_PAGE_NAV,
   getSidebarPageNav,
   getSidebarHref,
   getSidebarRouteKey,
   getSidebarNavPageId,
   hasSidebarContextPanel,
+  isRaillessSurface,
   applyChildTarget,
   resolveSidebarChild,
   stationSubgroupMembers,
@@ -53,7 +58,7 @@ test('Home is top-pinned; Operations in Monitor; Sourcing under Inventory; Plans
   assert.equal(
     operations.kind === 'main' ? operations.mainGroup : null,
     'monitor',
-    'operations belongs to the Monitor drill',
+    'operations belongs to the Desks drill (monitor)',
   );
 
   const studio = items.find((item) => item.id === 'studio');
@@ -99,6 +104,16 @@ test('Search, Plans, Chat, and Settings stay in the registry but stay off the sp
   const items = getSidebarNavItems();
   const mapTopIds = items.filter(isSpineMapTopRow).map((item) => item.id);
   assert.deepEqual(mapTopIds, ['home', 'ops-photos']);
+
+  const incoming = items.find((item) => item.id === 'incoming');
+  const operations = items.find((item) => item.id === 'operations');
+  const studio = items.find((item) => item.id === 'studio');
+  assert.equal(incoming ? isSpineDeskItem(incoming) : false, true);
+  assert.equal(operations ? isSpineDeskItem(operations) : false, true);
+  assert.equal(studio ? isSpineDeskItem(studio) : true, false);
+  assert.equal(isDeskSpineSection('fulfillment'), true);
+  assert.equal(isDeskSpineSection('floor'), false);
+  assert.equal(isDeskSpineSection('admin'), false);
 
   const search = items.find((item) => item.id === 'search');
   const plans = items.find((item) => item.id === 'plans-live');
@@ -551,6 +566,10 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   // (Amazon DTC, eBay, Shopify) belong in the FACETS of To ship and Shipped,
   // never here.
   //
+  // **Shortage joined 2026-09-01** as the need-to-buy peer (OOS / backorder),
+  // same orders DataTable family, locked predicate — not extra columns on
+  // To-ship and not catalog pairing (Exceptions).
+  //
   // **Exceptions joined 2026-08-31**, and it passes the same test FBA passes:
   // a process fork whose queue semantics To ship cannot express. Caged and
   // unpaired orders are excluded from that queue by an explicit predicate
@@ -559,7 +578,7 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   // a facet narrows a queue and these rows are not in the queue at all.
   assert.deepEqual(
     getSidebarPageNav('outbound')?.children?.map((c) => c.id),
-    ['orders', 'fba', 'shipped', 'exceptions'],
+    ['orders', 'shortage', 'fba', 'shipped', 'exceptions'],
   );
   assert.ok(
     getSidebarPageNav('operations')?.children?.some((c) => c.id === 'packing-review'),
@@ -606,6 +625,7 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   // Exceptions needs its own clause for the same reason Shipped does: it is a
   // path, and without it the catch-all would light To ship on the workbench.
   assert.equal(resolveSidebarChild('outbound', at('/shipping/exceptions')), 'exceptions');
+  assert.equal(resolveSidebarChild('outbound', at('/shipping/shortage')), 'shortage');
   // Support alias is unaffected: `?context=support` is a ticket surface on the
   // orders desk and neither tab may claim it.
   assert.equal(
@@ -691,6 +711,22 @@ test('/search declares its own route key and is rail-less', () => {
   assert.equal(getSidebarRouteKey('/no-such-route'), 'unknown');
 });
 
+test('Scan Out is rail-less — the station owns the full left-to-right surface', () => {
+  assert.equal(isRaillessSurface('/shipping/scan-out'), true);
+  assert.equal(hasSidebarContextPanel('/shipping/scan-out'), false);
+});
+
+test('Settings and Admin are rail-less — house encyclopedias collapsed (Phase A)', () => {
+  assert.equal(getSidebarRouteKey('/settings'), 'settings');
+  assert.equal(getSidebarRouteKey('/settings/roles'), 'settings');
+  assert.equal(hasSidebarContextPanel('/settings'), false);
+  assert.equal(hasSidebarContextPanel('/settings/integrations'), false);
+  assert.equal(getSidebarRouteKey('/admin'), 'admin');
+  assert.equal(getSidebarRouteKey('/admin/inventory'), 'admin');
+  assert.equal(hasSidebarContextPanel('/admin'), false);
+  assert.equal(hasSidebarContextPanel('/admin/inventory'), false);
+});
+
 test('isSidebarNavActive is pathname-only (query strings do not change the match)', () => {
   assert.equal(isSidebarNavActive('/', '/'), true);
   assert.equal(isSidebarNavActive('/search', '/search'), true);
@@ -758,7 +794,7 @@ test('floorStationPages is the flat Scan Stations map for the header switcher', 
       ['pickup', 'Local Pickup'],
       ['repair', 'Repair Service'],
       ['testing', 'Quality Control'],
-      ['ready-to-pack', 'Ready to Pack'],
+      ['ready-to-pack', 'Picker'],
       ['packer', 'Packing'],
       ['scan-out', 'Scan out'],
     ],
@@ -770,7 +806,7 @@ test('Testing L1 benches are Quality Control and Ready to Pack', () => {
     stationSubgroupMembers('testing').map((p) => [p.id, p.label]),
     [
       ['testing', 'Quality Control'],
-      ['ready-to-pack', 'Ready to Pack'],
+      ['ready-to-pack', 'Picker'],
     ],
   );
   const tech = getSidebarPageNav('tech');
@@ -779,7 +815,38 @@ test('Testing L1 benches are Quality Control and Ready to Pack', () => {
     tech.children.map((child) => [child.id, child.label]),
     [
       ['testing', 'Quality Control'],
-      ['shipping', 'Ready to Pack'],
+      ['shipping', 'Picker'],
     ],
   );
+});
+
+test('Picker navigation enters its visible Urgent tab', () => {
+  assert.equal(getSidebarPageNav('ready-to-pack')?.href, '/test?ship=urgent');
+  const tech = getSidebarPageNav('tech');
+  assert.ok(tech?.children);
+  assert.deepEqual(tech.children.find((child) => child.id === 'shipping')?.to(), {
+    pathname: '/test',
+    params: { view: null, ship: 'urgent' },
+  });
+  assert.equal(
+    APP_SIDEBAR_NAV.find((item) => item.id === 'ready-to-pack')?.href,
+    '/test?ship=urgent',
+  );
+});
+
+test('masterNavLabelForPath uses APP_SIDEBAR_NAV L1, never desk tabs or SIDEBAR_TITLES', () => {
+  assert.equal(masterNavLabelForPath('/shipping/orders'), 'Shipping');
+  assert.equal(masterNavLabelForPath('/shipping/shipped'), 'Shipping');
+  assert.equal(masterNavLabelForPath('/shipping/scan-out'), 'Scan out');
+  assert.equal(masterNavLabelForPath('/ops/photos'), 'Media Library');
+  assert.equal(
+    masterNavLabelForPath('/test', new URLSearchParams('view=testing')),
+    'Quality Control',
+  );
+  assert.equal(masterNavLabelForPath('/test'), 'Picker');
+  assert.equal(masterNavLabelForPath('/unbox'), 'Unbox');
+  assert.equal(masterNavLabelForPath('/incoming'), 'Inbound');
+  assert.equal(getMasterNavItem('outbound')?.label, 'Shipping');
+  assert.equal(getMasterNavItem('scan-out')?.label, 'Scan out');
+  assert.equal(getMasterNavItem('ops-photos')?.label, 'Media Library');
 });

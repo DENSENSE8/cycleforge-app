@@ -1,15 +1,11 @@
 'use client';
 
 /**
- * Header pin stations — GlobalHeader SoT for Quick Access pins.
- * Closed = Pin glyph directly beside the page face; open = {@link HeaderChromeMenu} with
- * pin-current CTA + vertical drag-sortable rows. List order owns ⌘/Ctrl+1–9
- * ({@link pinHotkeyLabel} / {@link pinSlotFromKeyboardEvent}).
- * Data = {@link useQuickAccess} / `cf.quickAccess`. Never remount a pin list in
- * the avatar Quick Access popover.
+ * Retired header pin menu. Staff pins paint on {@link MasterNavPinnedCluster}
+ * in the MasterNav spine. Do not remount this in GlobalHeader.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   DndContext,
@@ -28,7 +24,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { AnchoredLayer, IconButton } from '@/design-system/primitives';
+import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { GripVertical, Pin, Star, X } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
@@ -39,16 +35,18 @@ import {
 } from '@/lib/quick-access/types';
 import {
   pinHotkeyLabel,
-  pinSlotFromKeyboardEvent,
 } from '@/lib/quick-access/pin-hotkeys';
 import {
   resolveQuickAccessHref,
   resolveQuickAccessLabelFromLocation,
+  displayQuickAccessLabel,
+  masterNavFaceForPinHref,
 } from '@/lib/quick-access/page-label';
 import {
   APP_SIDEBAR_NAV,
+  getMasterNavItem,
+  getSidebarNavPageId,
   getSidebarPageNav,
-  getSidebarRouteKey,
   type SidebarIconComponent,
 } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
@@ -56,6 +54,7 @@ import {
   HeaderChromeMenu,
   HeaderChromeMenuEmpty,
   HeaderChromeMenuItem,
+  HeaderChromeMenuLayer,
 } from './header-chrome-menu';
 import {
   HEADER_ICON_BTN_CLASS,
@@ -65,18 +64,12 @@ import {
 } from './header-shell';
 
 function resolvePinIcon(pin: PinnedPage): SidebarIconComponent {
-  let key = pin.iconKey;
-  if (!key) {
-    try {
-      key = getSidebarRouteKey(new URL(pin.href, 'http://local').pathname);
-    } catch {
-      key = undefined;
-    }
-  }
-  if (key && key !== 'unknown') {
-    const fromPage = getSidebarPageNav(key)?.icon;
-    if (fromPage) return fromPage;
-    const fromNav = APP_SIDEBAR_NAV.find((item) => item.id === key)?.icon;
+  const fromHref = masterNavFaceForPinHref(pin.href)?.icon;
+  if (fromHref) return fromHref;
+  if (pin.iconKey && pin.iconKey !== 'unknown') {
+    const fromNav = getMasterNavItem(pin.iconKey)?.icon
+      ?? getSidebarPageNav(pin.iconKey)?.icon
+      ?? APP_SIDEBAR_NAV.find((item) => item.id === pin.iconKey)?.icon;
     if (fromNav) return fromNav;
   }
   return Star;
@@ -96,6 +89,7 @@ function SortablePinRow({
   onUnpin: () => void;
 }) {
   const Icon = resolvePinIcon(pin);
+  const label = displayQuickAccessLabel(pin.href, pin.label);
   const {
     attributes,
     listeners,
@@ -118,13 +112,13 @@ function SortablePinRow({
     >
       <HeaderChromeMenuItem
         icon={<Icon />}
-        label={pin.label}
+        label={label}
         active={active}
         onClick={onNavigate}
         leading={
           <span
             className="inline-flex shrink-0 cursor-grab touch-none text-text-faint active:cursor-grabbing"
-            aria-label={`Reorder ${pin.label}`}
+            aria-label={`Reorder ${label}`}
             {...attributes}
             {...listeners}
           >
@@ -145,7 +139,7 @@ function SortablePinRow({
                 e.stopPropagation();
                 onUnpin();
               }}
-              ariaLabel={`Unpin ${pin.label}`}
+              ariaLabel={`Unpin ${label}`}
               className="text-text-faint hover:text-rose-600"
               icon={<X className="h-3.5 w-3.5" />}
             />
@@ -185,7 +179,7 @@ export function HeaderPinsSwitcher() {
     pin({
       label,
       href: currentHref,
-      iconKey: getSidebarRouteKey(pathname),
+      iconKey: getMasterNavItem(getSidebarNavPageId(pathname, searchParams))?.id,
     });
   }, [currentHref, pathname, searchParams, user?.organizationName, pin]);
 
@@ -201,21 +195,6 @@ export function HeaderPinsSwitcher() {
     [pinIds, pinned, reorder],
   );
 
-  // ⌘/Ctrl+1–9 — order owns the slot. Hooks above any early return so the
-  // chord stays live whenever GlobalHeader mounts this switcher.
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      const slot = pinSlotFromKeyboardEvent(e);
-      if (slot == null) return;
-      const target = settings.pinned[slot - 1];
-      if (!target) return;
-      e.preventDefault();
-      router.push(target.href);
-    }
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [router, settings.pinned]);
-
   const showGroup = canPin || pinned.length > 0;
   if (!showGroup) return null;
 
@@ -227,7 +206,7 @@ export function HeaderPinsSwitcher() {
 
   return (
     <div ref={wrapRef} className={HEADER_ICON_WRAP}>
-      <HoverTooltip label={tipLabel} asChild>
+      <HoverTooltip label={tipLabel} disabled={open} asChild>
         <IconButton
           size="md"
           ariaLabel="Pins"
@@ -239,12 +218,11 @@ export function HeaderPinsSwitcher() {
         />
       </HoverTooltip>
 
-      <AnchoredLayer
+      <HeaderChromeMenuLayer
         open={open}
         onClose={() => setOpen(false)}
         anchorRef={wrapRef}
         placement="bottom-start"
-        gap={0}
       >
         <HeaderChromeMenu ariaLabel="Pinned pages" className="min-w-[14rem]">
           {canPin ? (
@@ -281,7 +259,7 @@ export function HeaderPinsSwitcher() {
             </DndContext>
           )}
         </HeaderChromeMenu>
-      </AnchoredLayer>
+      </HeaderChromeMenuLayer>
     </div>
   );
 }

@@ -1,7 +1,7 @@
 /**
  * To-ship listing join: title is a black/blue-on-hover hyperlink. Under the
- * title, qty · condition · listing glyph · notes sit LEFT — never the item
- * number, never middle dots. The notes editor opens bottom-right of the glyph.
+ * title, qty · condition · notes sit LEFT — the item-number listing actions
+ * live on the product-title hover surface.
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -9,7 +9,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { COMPOUND_TRACKS } from './compound-columns';
 import { renderCompoundGridCell } from './CompoundGridCell';
-import type { CompoundRowView, CompoundSubtitleCopy } from './compound-row-model';
+import type { CompoundRowView, CompoundSubtitleEdit } from './compound-row-model';
 
 const VIEW: CompoundRowView = {
   id: '1',
@@ -33,10 +33,10 @@ const VIEW: CompoundRowView = {
 
 function paintItem(
   view: CompoundRowView,
-  copies?: readonly CompoundSubtitleCopy[],
   extras?: {
     subtitleNoteKey?: string;
     noteText?: string | null;
+    subtitleEdits?: readonly CompoundSubtitleEdit[];
   },
 ) {
   return renderToStaticMarkup(
@@ -48,7 +48,7 @@ function paintItem(
         columns: COMPOUND_TRACKS,
         rule: true,
         view,
-        subtitleCopies: copies,
+        subtitleEdits: extras?.subtitleEdits,
         subtitleNoteKey: extras?.subtitleNoteKey,
         noteText: extras?.noteText,
       }) as React.ReactElement,
@@ -74,21 +74,19 @@ describe('compound item listing join', () => {
     assert.match(html, /text-text-default hover:text-text-info/);
   });
 
-  it('paints the listing icon under the title and never the item number', () => {
+  it('removes the listing icon from under the title and keeps the item number hidden', () => {
     const html = paintItem(
       { ...VIEW, titleHref: 'https://www.ebay.com/itm/123456789012' },
-      [
-        {
+      {
+        subtitleEdits: [{
           partKey: 'orders.item_number',
+          label: 'Item number',
           value: '123456789012',
-          openHref: 'https://www.ebay.com/itm/123456789012',
-        },
-      ],
+          onCommit: () => undefined,
+        }],
+      },
     );
-    assert.doesNotMatch(html, />Listing</);
-    assert.match(html, /aria-label="Open listing"/);
-    assert.match(html, /text-text-info/);
-    assert.match(html, /h-3 w-3/);
+    assert.doesNotMatch(html, /aria-label="Open listing"/);
     assert.doesNotMatch(html, />56789012</);
     assert.match(html, />1</);
     assert.match(html, /Used/);
@@ -102,7 +100,7 @@ describe('compound item listing join', () => {
     assert.match(html, /Used/);
   });
 
-  it('paints a faint listing glyph when the item number is missing', () => {
+  it('does not paint a listing glyph when the item number is missing', () => {
     const html = paintItem({
       ...VIEW,
       subtitleParts: [
@@ -111,8 +109,7 @@ describe('compound item listing join', () => {
         { text: '', key: 'orders.item_number' },
       ],
     });
-    assert.match(html, /aria-label="No listing"/);
-    assert.match(html, /text-text-faint/);
+    assert.doesNotMatch(html, /aria-label="No listing"/);
   });
 
   it('paints written notes as muted subtitle text, not the glyph', () => {
@@ -124,7 +121,6 @@ describe('compound item listing join', () => {
           { text: 'leave at dock', key: 'orders.notes' },
         ],
       },
-      undefined,
       { subtitleNoteKey: 'orders.notes', noteText: 'leave at dock' },
     );
     assert.match(html, /leave at dock/);
@@ -138,7 +134,6 @@ describe('compound item listing join', () => {
         ...VIEW,
         subtitleParts: [...VIEW.subtitleParts, { text: '--', key: 'orders.notes' }],
       },
-      undefined,
       { subtitleNoteKey: 'orders.notes', noteText: '' },
     );
     assert.doesNotMatch(html, /leave at dock/);
@@ -163,7 +158,7 @@ describe('compound item listing join', () => {
     assert.match(html, /data-subtitle-reorder="true"/);
     assert.match(html, /data-subtitle-part="orders.qty"/);
     assert.match(html, /data-subtitle-part="orders.condition"/);
-    assert.match(html, /data-subtitle-part="orders.item_number"/);
+    assert.doesNotMatch(html, /data-subtitle-part="orders.item_number"/);
     assert.match(html, /justify-start/);
     assert.doesNotMatch(html, /draggable="true"/);
   });

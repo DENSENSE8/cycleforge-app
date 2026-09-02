@@ -264,7 +264,7 @@ Restoring it locally (do not commit it) is by far the fastest way to sit on the
 
 | File | Role |
 |---|---|
-| [`WeldedFeedbackPanel.tsx`](../../src/components/receiving/workspace/WeldedFeedbackPanel.tsx) | the panel + `WeldedStack`; peel motion, edge sweep |
+| [`WeldedFeedbackPanel.tsx`](../../src/components/composer/WeldedFeedbackPanel.tsx) | the panel + `WeldedStack`; peel motion, edge sweep |
 | [`OmnichannelComposerDock.tsx`](../../src/design-system/primitives/OmnichannelComposerDock.tsx) | `weldTop` (flattens top radius, drops its own halo) |
 | [`LineEditPanel.tsx`](../../src/components/receiving/workspace/LineEditPanel.tsx) | mounts `WeldedStack` around region + composer, no margin |
 | [`motion-framer.ts`](../../src/design-system/foundations/motion-framer.ts) | `framerPresence.weldedPanelPeel` · `framerTransition.weldedPanelPeel` · `framerPresence.composerDock` |

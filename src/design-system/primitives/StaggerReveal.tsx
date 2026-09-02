@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react';
 import { motion, type Variants } from '@/design-system/motion';
 import { motionBezier } from '../foundations/motion-framer';
+import { springSnappy } from '../motion/tokens';
 
 /**
  * Stagger reveal — list items cascade in for freshly-loaded queues.
@@ -102,6 +103,27 @@ export const staggerRevealRiseItem: Variants = {
   exit: { opacity: 0, transition: { duration: 0.12, ease: motionBezier.easeOut } },
 };
 
+/**
+ * Elevated drop-in — rows arrive slightly above + scaled, then settle into
+ * place (desk intake fact cards, staging inserts). Opacity is a short tween so
+ * spring completion cannot flash `hidden`; y/scale ride {@link springSnappy}.
+ * Pair with {@link staggerRevealContainer}.
+ */
+export const staggerRevealDropItem: Variants = {
+  hidden: { opacity: 0, y: -12, scale: 0.97 },
+  show: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      opacity: { duration: 0.2, ease: motionBezier.easeOut },
+      y: springSnappy,
+      scale: springSnappy,
+    },
+  },
+  exit: { opacity: 0, transition: { duration: 0.12, ease: motionBezier.easeOut } },
+};
+
 const CONTAINER_TAGS = { ul: motion.ul, ol: motion.ol, div: motion.div } as const;
 const ITEM_TAGS = { li: motion.li, div: motion.div } as const;
 
@@ -114,10 +136,18 @@ export interface StaggerRevealProps {
   as?: keyof typeof CONTAINER_TAGS;
   /** Change this value to replay the cascade (remounts the container). */
   replayKey?: string | number;
+  'data-testid'?: string;
 }
 
 /** Cascade container. Pair its children with {@link StaggerRevealItem}. */
-export function StaggerReveal({ children, step, className, as = 'ul', replayKey }: StaggerRevealProps) {
+export function StaggerReveal({
+  children,
+  step,
+  className,
+  as = 'ul',
+  replayKey,
+  'data-testid': testId,
+}: StaggerRevealProps) {
   const Tag = CONTAINER_TAGS[as];
   return (
     <Tag
@@ -126,6 +156,7 @@ export function StaggerReveal({ children, step, className, as = 'ul', replayKey 
       animate="show"
       variants={staggerRevealContainer(step)}
       className={className}
+      data-testid={testId}
     >
       {children}
     </Tag>
@@ -137,13 +168,22 @@ export interface StaggerRevealItemProps {
   className?: string;
   /** Item element — defaults to `li`. */
   as?: keyof typeof ITEM_TAGS;
+  /** Defaults to vertical rise. Pass {@link staggerRevealDropItem} for top-down settle. */
+  variants?: Variants;
+  'data-testid'?: string;
 }
 
 /** A single cascading row — inherits the parent {@link StaggerReveal}'s timeline. */
-export function StaggerRevealItem({ children, className, as = 'li' }: StaggerRevealItemProps) {
+export function StaggerRevealItem({
+  children,
+  className,
+  as = 'li',
+  variants = staggerRevealRiseItem,
+  'data-testid': testId,
+}: StaggerRevealItemProps) {
   const Tag = ITEM_TAGS[as];
   return (
-    <Tag variants={staggerRevealRiseItem} className={className}>
+    <Tag variants={variants} className={className} data-testid={testId}>
       {children}
     </Tag>
   );

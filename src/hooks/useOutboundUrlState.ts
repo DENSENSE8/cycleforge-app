@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   OUTBOUND_MODE_PATHS,
@@ -34,7 +34,9 @@ export function useOutboundUrlState() {
     () => outboundModeFromPath(pathname) ?? parseOutboundMode(searchParams.get('mode')),
     [pathname, searchParams],
   );
-  const q = useMemo(() => String(searchParams.get('q') || '').trim(), [searchParams]);
+  // Free-text table search is local. URL replacement per character causes a
+  // soft navigation/remount and can clear the controlled input mid-search.
+  const [q, setLocalQ] = useState('');
   const urlOpen = useMemo(
     () => parseOutboundOpen(searchParams.get('open')),
     [searchParams],
@@ -102,14 +104,8 @@ export function useOutboundUrlState() {
   );
 
   const setQ = useCallback(
-    (value: string) => {
-      replaceParams((params) => {
-        const trimmed = value.trim();
-        if (trimmed) params.set('q', trimmed);
-        else params.delete('q');
-      });
-    },
-    [replaceParams],
+    (value: string) => setLocalQ(value),
+    [],
   );
 
   const setSort = useCallback(

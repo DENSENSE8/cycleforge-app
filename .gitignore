@@ -28,6 +28,7 @@ firebase-debug.log
 firebase-debug.*.log
 
 # scratch / backups
+__ds_smoke*
 snapshot*.txt
 *.bak.*
 .env.bak*
@@ -149,3 +150,6 @@ sot-manifest.json
 # Playwright signed-in storage state for visual baselines — a REAL session.
 tests/visual/.auth.json
 tests/visual/**/*-snapshots/
+
+# eval runners overwrite one machine-readable summary per cohort (D7 item 16) — never tracked
+docs/eval/**/latest.json

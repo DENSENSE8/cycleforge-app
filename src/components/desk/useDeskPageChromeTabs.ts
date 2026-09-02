@@ -26,16 +26,21 @@
  * re-navigating to the lit tab would read as "clear my filters".
  */
 
-import { useCallback, useMemo } from 'react';
+import { createElement, useCallback, useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActiveSidebarChild } from '@/components/sidebar/master-nav/useActiveSidebarChild';
 import {
   applyChildTarget,
   filterPageChildren,
+  getMasterNavItem,
   getSidebarPageNav,
   hasDeskPageChrome,
 } from '@/lib/sidebar-navigation';
+import { applyOrgNavToPage, upsertChildOrder } from '@/lib/nav/org-nav';
+import { orgNavQuery, useOrgNavDefinition } from '@/hooks/useOrgNavItems';
+import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import type { DeskPageTab } from '@/design-system/components/DeskPageChrome';
 
 export interface DeskPageChromeTabs {
@@ -57,10 +62,13 @@ export interface DeskPageChromeTabs {
   tabs: DeskPageTab[];
   activeTab: string;
   onTabChange: (id: string) => void;
+  onTabsReorder?: (orderedIds: string[]) => void;
 }
 
 export function useDeskPageChromeTabs(): DeskPageChromeTabs {
   const { user } = useAuth();
+  const definition = useOrgNavDefinition();
+  const queryClient = useQueryClient();
   const pathname = usePathname() ?? '';
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -81,8 +89,9 @@ export function useDeskPageChromeTabs(): DeskPageChromeTabs {
   const page = useMemo(() => {
     const permissions = user?.permissions ? new Set(user.permissions) : undefined;
     const raw = getSidebarPageNav(pageId);
-    return raw ? filterPageChildren(raw, permissions) : null;
-  }, [user?.permissions, pageId]);
+    const merged = raw ? applyOrgNavToPage(raw, definition) : null;
+    return merged ? filterPageChildren(merged, permissions) : null;
+  }, [user?.permissions, pageId, definition]);
 
   /** Null unless this page draws its children as in-page tabs. */
   const tabbedPage = useMemo(
@@ -92,7 +101,16 @@ export function useDeskPageChromeTabs(): DeskPageChromeTabs {
 
   const tabs = useMemo<DeskPageTab[]>(
     () =>
-      (tabbedPage?.children ?? []).map((child) => ({ id: child.id, label: child.label })),
+      (tabbedPage?.children ?? []).map((child) => {
+        const ChildIcon = child.icon;
+        return {
+          id: child.id,
+          label: child.label,
+          icon: createElement(ChildIcon, {
+            className: navIconStrokeClass('h-3.5 w-3.5 shrink-0'),
+          }),
+        };
+      }),
     [tabbedPage],
   );
 
@@ -110,8 +128,30 @@ export function useDeskPageChromeTabs(): DeskPageChromeTabs {
     [childId, tabbedPage, pathname, router, searchParams],
   );
 
+  const onTabsReorder = useCallback(
+    (orderedIds: string[]) => {
+      if (!pageId || !tabbedPage) return;
+      const known = new Set(tabbedPage.children?.map((c) => c.id) ?? []);
+      if (orderedIds.length < 2 || orderedIds.some((id) => !known.has(id))) return;
+      const next = upsertChildOrder(definition, pageId, orderedIds);
+      queryClient.setQueryData(orgNavQuery().queryKey, next);
+      void fetch('/api/nav/child-order', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pageId, orderedIds }),
+      }).then((res) => {
+        if (!res.ok) {
+          void queryClient.invalidateQueries({ queryKey: orgNavQuery().queryKey });
+          return;
+        }
+        void queryClient.invalidateQueries({ queryKey: orgNavQuery().queryKey });
+      });
+    },
+    [definition, pageId, queryClient, tabbedPage],
+  );
+
   return {
-    title: page?.label ?? '',
+    title: getMasterNavItem(pageId)?.label ?? page?.label ?? '',
     tabs,
     // Nothing lit when no child resolves, rather than falling back to the first
     // tab. Today the Support alias (`/shipping/orders?context=support`, a ticket
@@ -122,5 +162,6 @@ export function useDeskPageChromeTabs(): DeskPageChromeTabs {
     // not is worse than an unlit band, which reads honestly as "none of these".
     activeTab: childId ?? '',
     onTabChange,
+    onTabsReorder: tabs.length > 1 ? onTabsReorder : undefined,
   };
 }

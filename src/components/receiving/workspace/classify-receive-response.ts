@@ -177,6 +177,16 @@ export function classifyReceiveResponse(
         'Lines were saved locally but no active inventory connection is available. Open Settings → Integrations, reconnect Zoho, then retry Receive on the PO.',
     };
   }
+  if (zoho.skip_reason === 'inventory_credentials_unreadable') {
+    return {
+      verdict: 'api_error',
+      headline: 'Could not receive in Zoho Inventory',
+      tone: 'rose',
+      detail:
+        zoho.error ||
+        'The Zoho vault row is Connected but this process cannot decrypt it. Local and production must share INTEGRATION_KMS_KEY (or set INTEGRATION_KMS_KEY_PREVIOUS to the other environment’s key), then retry Receive.',
+    };
+  }
   if (zoho.skip_reason === 'no_zoho_link') {
     return {
       verdict: 'skipped',

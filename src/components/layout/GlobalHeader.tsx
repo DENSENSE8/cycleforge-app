@@ -5,7 +5,6 @@ import { useHeader } from '@/contexts/HeaderContext';
 import { useAuth, isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalHeaderActions } from './GlobalHeaderActions';
 import { GlobalScanDock } from './GlobalScanDock';
-import { HeaderPageSwitcher } from './HeaderPageSwitcher';
 import { HeaderRecentsSwitcher } from './HeaderRecentsSwitcher';
 import {
   HEADER_ICON_CLUSTER,
@@ -22,9 +21,9 @@ import { cn } from '@/utils/_cn';
  *
  * Zone contract (left → right) — facts drive chrome; empty middle is OK when
  * the station/workbench band below already owns surface context:
- *   - **Nav** — toggle · Recents · Scan Stations page chip (floor benches
- *     only) in one {@link HEADER_ICON_CLUSTER}. Desks do not get a page-name
- *     chip; {@link DeskPageChrome} already owns the title. Find is **not** here.
+ *   - **Nav** — toggle · Recents (work sessions) in one
+ *     {@link HEADER_ICON_CLUSTER}. Staff pins live on MasterNav. Floor benches
+ *     switch via MasterNav hover peek, not a header chip. Find is **not** here.
  *   - **Find** — {@link GlobalHeaderSearch} / {@link CommandBar} on the
  *     right rail (⌘K). Icon opens a records popover.
  *   - **Scan** — {@link GlobalScanDock}: the persistent station scan input.
@@ -49,12 +48,20 @@ interface GlobalHeaderProps {
   canCollapseSidebar?: boolean;
   sidebarCollapsed?: boolean;
   onToggleSidebar?: () => void;
+  /** Collapsed hover peek of the MasterNav spine is visible. */
+  navPeeking?: boolean;
+  navPeekTriggerProps?: {
+    onMouseEnter?: () => void;
+    onMouseLeave?: () => void;
+  };
 }
 
 export function GlobalHeader({
   canCollapseSidebar = false,
   sidebarCollapsed = false,
   onToggleSidebar,
+  navPeeking = false,
+  navPeekTriggerProps,
 }: GlobalHeaderProps = {}) {
   const { panelContent } = useHeader();
   const { user } = useAuth();
@@ -76,26 +83,22 @@ export function GlobalHeader({
         appChromeMutedClass,
       )}
     >
-      {/* Toggle · Pins · Recents · page chip — one gap-0 cluster. */}
+      {/* Toggle · Recents — one gap-0 cluster. */}
       <div className={HEADER_ICON_CLUSTER} data-header-zone="nav">
         {canCollapseSidebar && onToggleSidebar ? (
           <SidebarCollapseControl
             sidebarCollapsed={sidebarCollapsed}
             onToggleSidebar={onToggleSidebar}
+            peeking={navPeeking}
+            peekTriggerProps={navPeekTriggerProps}
           />
         ) : null}
         {/*
-          The PIN switcher was here and is gone (operator ruling 2026-08-29).
-          Quick-access pins duplicated navigation the spine already carries, and
-          the control sat in the top-left corner an operator scans for "where am
-          I" — answering "where could I go" instead. Recents and the page
-          switcher remain: those answer where you WERE and where you ARE.
-
-          The pin DATA (`cf.quickAccess`, ⌘/Ctrl+1–9) is untouched — this
-          removes the header door, not the feature.
+          Scan Stations peer chip is gone (operator 2026-09-01): MasterNav
+          hover-peek already lists every floor bench. Recents is work sessions
+          (where you WERE). Staff pins live in MasterNav, not this bar.
         */}
         <HeaderRecentsSwitcher />
-        <HeaderPageSwitcher />
       </div>
 
       <GlobalScanDock />

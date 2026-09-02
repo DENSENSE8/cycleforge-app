@@ -7,6 +7,7 @@ test('resultToScanOutPane maps API carton fields onto the focus pane', () => {
     {
       shipmentId: 42,
       tracking: '1Z999AA10123456784',
+      receivingId: 19,
       orderRowId: 7,
       orderId: '67673063',
       productTitle: 'Bose SoundDock',
@@ -20,6 +21,7 @@ test('resultToScanOutPane maps API carton fields onto the focus pane', () => {
     '1Z999AA10123456784',
   );
   assert.equal(pane.shipmentId, 42);
+  assert.equal(pane.receivingId, 19);
   assert.equal(pane.orderRowId, 7);
   assert.equal(pane.orderId, '67673063');
   assert.equal(pane.qty, 2);

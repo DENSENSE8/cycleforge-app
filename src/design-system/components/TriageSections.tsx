@@ -7,8 +7,20 @@ import { cornerClass } from '@/design-system/tokens/radius';
 export type TriageSectionSpec = {
   id: string;
   label: string;
+  /** Optional trailing chrome on the heading row (e.g. a gate badge). */
+  labelEnd?: ReactNode;
   children: ReactNode;
 };
+
+export type TriageMeasureAlign = 'center' | 'start';
+
+/** Shared reading measure — section cards and a sticky foot (composer) must share this. */
+export function triageMeasureClass(align: TriageMeasureAlign = 'center'): string {
+  return cn(
+    'w-full max-w-4xl px-6',
+    align === 'center' ? 'mx-auto' : 'mr-auto',
+  );
+}
 
 /**
  * Right pane of {@link TriageScrollLayout}. Each block is a native
@@ -28,22 +40,22 @@ export type TriageSectionSpec = {
  * padding inside a card, so the grouping reads as grouping without needing a
  * rule or a heavier border to say it.
  *
- * ## The measure is centred in the pane
+ * ## Measure alignment
  *
- * `mx-auto`, not left-flush. The pane is full-bleed by design (the host reaches
- * the screen edge) while the content keeps a fixed measure — so on anything
- * wider than the measure, a left-flush column puts the whole form against one
- * edge with the entire remainder empty on the other. That reads as a layout
- * that failed rather than one that chose a measure. Centring splits the slack
- * into two equal gutters, which is what makes a fixed measure look deliberate.
+ * Default `center` (`mx-auto`) — for a lone scroll pane, equal gutters make a
+ * fixed measure look deliberate. Pass `start` when a sticky edge rail
+ * ({@link TriageScrollKnobs}) already occupies the right: then the form sits
+ * left of the knobs (Order intake / Exceptions on a wide stage), not floating
+ * in the middle of the leftover column.
  */
 export function TriageSections({
   sections,
   banner,
+  measureAlign = 'center',
 }: {
   sections: readonly TriageSectionSpec[];
   /**
-   * Rendered above the first card, inside the same centred measure.
+   * Rendered above the first card, inside the same measure.
    *
    * For the state of the RECORD, not of a section — "this order is unpaired"
    * is true of the order, so it outranks any one panel and must not be filed
@@ -52,13 +64,15 @@ export function TriageSections({
    * on a sentence the operator has already acted on.
    */
   banner?: ReactNode;
+  measureAlign?: TriageMeasureAlign;
 }) {
   return (
     // `max-w` on the CONTENT, not the pane: the surface reaches the screen
     // edge while the reading measure stays fixed, so a field never stretches
-    // across a 1600px monitor to hold an 8-character SKU. `mx-auto` centres
-    // that measure — see the note above.
-    <div className="mx-auto w-full max-w-4xl space-y-7 px-6 py-5">
+    // across a 1600px monitor to hold an 8-character SKU.
+    <div
+      className={cn(triageMeasureClass(measureAlign), 'space-y-7 py-5')}
+    >
       {banner}
       {sections.map((section) => (
         <section
@@ -67,12 +81,15 @@ export function TriageSections({
           className="scroll-mt-5"
           aria-labelledby={`${section.id}-heading`}
         >
-          <h3
-            id={`${section.id}-heading`}
-            className="text-role-body font-semibold text-text-default"
-          >
-            {section.label}
-          </h3>
+          <div className="flex items-center justify-between gap-2">
+            <h3
+              id={`${section.id}-heading`}
+              className="text-role-body font-semibold text-text-default"
+            >
+              {section.label}
+            </h3>
+            {section.labelEnd ?? null}
+          </div>
           <div
             className={cn(
               'mt-2.5 border border-border-soft bg-surface-card p-5',

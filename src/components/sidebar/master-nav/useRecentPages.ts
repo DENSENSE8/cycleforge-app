@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { getSidebarNavPageId, getSidebarPageNav } from '@/lib/sidebar-navigation';
 
 // Storage key is DELIBERATELY unchanged by the 2026-08-03 vocabulary rename:
 // it is a persistence contract, and renaming it would silently empty every
@@ -15,7 +16,7 @@ export const MAX_RECENT_PAGES = 5;
 const STORAGE_MAX = MAX_RECENT_PAGES + 1;
 
 /** A visited page + child-page pair for the GlobalHeader more-recent menu. */
-interface RecentPageRef {
+export interface RecentPageRef {
   pageId: string;
   /** Null = a page with no children (or “land on page default”). */
   childId: string | null;
@@ -23,6 +24,54 @@ interface RecentPageRef {
 
 function refKey(ref: RecentPageRef): string {
   return `${ref.pageId}:${ref.childId ?? ''}`;
+}
+
+/**
+ * True when this MRU row is the page the operator is already on.
+ * Same page id always counts (stations have no children, so a child-key-only
+ * skip left Shipping in the menu while the trigger already said Shipping).
+ * Href match covers aliases (`/shipping` ↔ `/outbound`).
+ */
+export function isCurrentRecentRef(
+  ref: RecentPageRef,
+  pageId: string,
+  _childId: string | null,
+  pathname?: string | null,
+): boolean {
+  const fromPath = pathname ? getSidebarNavPageId(pathname) : 'unknown';
+  const liveId =
+    pageId && pageId !== 'unknown' ? pageId : fromPath !== 'unknown' ? fromPath : '';
+  if (!liveId) return false;
+  if (ref.pageId === liveId) return true;
+  const current = getSidebarPageNav(liveId);
+  const other = getSidebarPageNav(ref.pageId);
+  if (current && other && current.href === other.href) return true;
+  if (fromPath !== 'unknown' && ref.pageId === fromPath) return true;
+  return false;
+}
+
+/**
+ * MRU refs for the Recents menu: one row per MasterNav L1 page (APP_SIDEBAR_NAV
+ * id), most-recent first. Desk children (`orders` / `shipped`) stay in storage
+ * for restore but must not paint as "Shipping · To ship".
+ */
+export function recentsAsMasterNavRows(
+  refs: readonly RecentPageRef[],
+  pageId: string,
+  childId: string | null,
+  pathname?: string | null,
+  max: number = MAX_RECENT_PAGES,
+): RecentPageRef[] {
+  const out: RecentPageRef[] = [];
+  const seen = new Set<string>();
+  for (const ref of refs) {
+    if (out.length >= max) break;
+    if (isCurrentRecentRef(ref, pageId, childId, pathname)) continue;
+    if (seen.has(ref.pageId)) continue;
+    seen.add(ref.pageId);
+    out.push(ref);
+  }
+  return out;
 }
 
 function isRecentPageRef(value: unknown): value is RecentPageRef {
@@ -40,17 +89,21 @@ function isRecentPageRef(value: unknown): value is RecentPageRef {
  */
 export function useRecentPages() {
   const [recents, setRecents] = useState<RecentPageRef[]>([]);
+  const [recentsReady, setRecentsReady] = useState(false);
 
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) return;
-      setRecents(parsed.filter(isRecentPageRef).slice(0, STORAGE_MAX));
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setRecents(parsed.filter(isRecentPageRef).slice(0, STORAGE_MAX));
+        }
+      }
     } catch {
       /* corrupt / unavailable storage — start empty */
     }
+    setRecentsReady(true);
   }, []);
 
   const pushRecent = useCallback((pageId: string, childId: string | null) => {
@@ -71,5 +124,5 @@ export function useRecentPages() {
     });
   }, []);
 
-  return { recents, pushRecent };
+  return { recents, recentsReady, pushRecent };
 }

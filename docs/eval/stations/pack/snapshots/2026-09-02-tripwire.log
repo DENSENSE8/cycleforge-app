@@ -1,0 +1,19 @@
+▶ scan-station overlay cohort (SoT = all stations)
+  ✔ registers every floor scan station that owns idle↔overlay (non-empty, unique ids) (0.701385ms)
+  ✔ design-mcp router.json overlayWorkspaces stays in sync with the cohort SoT (0.295956ms)
+  ✔ unbox (/unbox) satisfies the cohort overlay contract (0.383135ms)
+  ✔ triage (/triage) satisfies the cohort overlay contract (0.137013ms)
+  ✔ pack (/pack) satisfies the cohort overlay contract (0.134212ms)
+  ✔ testing (/test) satisfies the cohort overlay contract (0.111123ms)
+  ✔ shipping (/shipping) satisfies the cohort overlay contract (0.114926ms)
+  ✔ scan-out (/shipping/scan-out) satisfies the cohort overlay contract (0.111449ms)
+  ✔ no cohort member is privileged — every member is checked with the same predicates (0.344383ms)
+✔ scan-station overlay cohort (SoT = all stations) (3.416862ms)
+ℹ tests 9
+ℹ suites 1
+ℹ pass 9
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 120.264518

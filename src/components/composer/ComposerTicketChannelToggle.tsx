@@ -15,21 +15,13 @@
  * ({@link ComposerTicketInsetChrome}): recipients describe the message, so they
  * belong above it, next to the text they apply to.
  *
- * ROUNDED, not `appearance="flush"`. Flush is the industrial ops variant, and
- * this control is not in ops chrome — it is inside `OmnichannelComposerDock`,
- * which is the ONE named exemption from the flush-square law
- * (`COMPOSER_SHELL_CORNER`, operator 2026-08-24). The default appearance is also
- * concentrically correct for that shell: `radius.ts` puts the dock at 16px with
- * `p-1.5` (6px), so the inner control wants 16 − 6 = 10 → the 8px rung
- * (`rounded-lg`), and the toggle's own `p-0.5` (2px) puts its faces at
- * 8 − 2 = 6 → `rounded-md`. Those are exactly the default's values. It is also
- * what the console's `TicketComposer` renders, so the console and the station
- * stop diverging on the same control.
- *
- * `cornerClass()` cannot express this: every ladder rung renders `rounded-none`
- * under the zero-radius law, so the composer family carries its corners as
- * named literals. Reach for the component's own default variant here — never a
- * hand-written `rounded-*`.
+ * ROUNDED, not `appearance="flush"`. This control sits inside
+ * `OmnichannelComposerDock` (`COMPOSER_SHELL_CORNER`). The default appearance
+ * is concentrically correct for that shell: the dock is 16px with `p-1.5`
+ * (6px), so the inner control wants the 8px rung (`rounded-lg`), and the
+ * toggle's own `p-0.5` puts its faces at `rounded-md`. Scan-station segmented
+ * chrome may pass `appearance="flush"`. Reach for the component's own default
+ * variant here — never a hand-written `rounded-*`.
  */
 
 import { VisibilityToggle } from '@/components/ui/VisibilityToggle';

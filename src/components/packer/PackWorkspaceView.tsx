@@ -21,15 +21,13 @@ import { useNewOrderParam } from '@/hooks/useNewOrderParam';
 import { NewOrderEntryOverlay } from '@/components/orders/NewOrderEntryOverlay';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
+import { LoaderFieldStatic } from '@/design-system/components/LoaderFieldStatic';
 import { Plus } from '@/components/Icons';
 import { dispatchPackActiveOrder } from '@/components/packer/usePackerOrderPane';
 import { shippedOrderToPackPane } from '@/components/packer/shipped-order-to-pack-pane';
 import type { ShippedOrder } from '@/types/orders';
 import type { PackWorkspaceTab } from '@/utils/pack-workspace-state';
 
-function TableFallback() {
-  return <div className="min-h-[240px] flex-1 bg-surface-canvas" aria-hidden />;
-}
 
 /**
  * The bench strip. `queue` is the default body, so it lights no tab — the same
@@ -85,7 +83,7 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
               {...paneMotionProps}
               className="flex min-h-0 min-w-0 flex-1 flex-col"
             >
-              <Suspense fallback={<TableFallback />}>
+              <Suspense fallback={<LoaderFieldStatic label="Loading packing" />}>
                 {packView === 'history' ? (
                   <PackerTable
                     packedBy={Number.isFinite(packerId) ? packerId : 0}

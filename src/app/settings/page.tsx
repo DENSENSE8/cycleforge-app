@@ -1,5 +1,6 @@
 'use client';
 
+import type { ComponentType } from 'react';
 import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { HardwareSection } from '@/components/settings/sections/HardwareSection';
@@ -15,7 +16,14 @@ import { CatalogSection } from '@/components/settings/sections/CatalogSection';
 import { StationsSection } from '@/components/settings/sections/StationsSection';
 import { LegalSection } from '@/components/settings/sections/LegalSection';
 import { SettingsPanel } from '@/components/settings/SettingsPanel';
-import { getActiveSettingsSection } from '@/components/settings/settings-sections';
+import {
+  getActiveSettingsSection,
+  type SettingsSection,
+} from '@/components/settings/settings-sections';
+
+function ReceivingSettingsSection() {
+  return <SettingsPanel page="receiving" />;
+}
 
 const LEGACY_REDIRECTS: Record<string, string> = {
   staff: '/settings/staff',
@@ -27,6 +35,22 @@ const LEGACY_REDIRECTS: Record<string, string> = {
   roles: '/settings/roles',
   access: '/settings/access',
   'operations-log': '/admin?section=logs',
+};
+
+const INLINE_SECTIONS: Partial<Record<SettingsSection, ComponentType>> = {
+  hardware: HardwareSection,
+  workstation: WorkstationSection,
+  'quick-access': QuickAccessSection,
+  appearance: AppearanceSection,
+  keyboard: KeyboardSection,
+  receiving: ReceivingSettingsSection,
+  security: SecuritySection,
+  sessions: SessionsSection,
+  devices: KioskDevicesSection,
+  catalog: CatalogSection,
+  stations: StationsSection,
+  about: AboutSection,
+  legal: LegalSection,
 };
 
 export default function SettingsPage() {
@@ -45,23 +69,13 @@ export default function SettingsPage() {
     return null;
   }
 
+  const Section = INLINE_SECTIONS[active] ?? HardwareSection;
+
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-surface-canvas">
       <main className="flex-1 overflow-y-auto">
         <div className="mx-auto max-w-3xl px-6 py-8 sm:px-10">
-          {active === 'hardware' && <HardwareSection />}
-          {active === 'workstation' && <WorkstationSection />}
-          {active === 'quick-access' && <QuickAccessSection />}
-          {active === 'appearance' && <AppearanceSection />}
-          {active === 'keyboard' && <KeyboardSection />}
-          {active === 'receiving' && <SettingsPanel page="receiving" />}
-          {active === 'security' && <SecuritySection />}
-          {active === 'sessions' && <SessionsSection />}
-          {active === 'devices' && <KioskDevicesSection />}
-          {active === 'catalog' && <CatalogSection />}
-          {active === 'stations' && <StationsSection />}
-          {active === 'about' && <AboutSection />}
-          {active === 'legal' && <LegalSection />}
+          <Section />
         </div>
       </main>
     </div>

@@ -41,6 +41,7 @@ export const PERMISSION_CATEGORY_DEFS = [
   { id: 'sourcing',     label: 'Sourcing' },
   { id: 'ops',          label: 'Operations & Reports' },
   { id: 'integrations', label: 'Integrations' },
+  { id: 'developer',    label: 'Developer & QA' },
   { id: 'admin',        label: 'Admin' },
 ] as const;
 
@@ -233,6 +234,15 @@ export const PERMISSIONS = [
 
   // ─ Product manuals (cross-cutting, lives under "data sources" admin tab) ─
   { id: 'product_manuals.manage',   category: 'integrations', label: 'Manage product manuals (assign, upsert, sync)' },
+
+  // ─ Developer & QA ─
+  // These permissions are useful only inside a sandbox organization. The
+  // server-side QA capability resolver also requires settings.environment to
+  // be 'sandbox', so a role grant alone cannot expose QA controls to a customer.
+  { id: 'developer.qa_tools.view',          category: 'developer', label: 'View Developer / QA Console' },
+  { id: 'developer.qa_tools.execute',       category: 'developer', label: 'Execute QA scenarios' },
+  { id: 'developer.qa_tools.fixture_reset', category: 'developer', label: 'Reset QA fixtures', destructive: true, stepUp: true },
+  { id: 'developer.qa_tools.destructive',   category: 'developer', label: 'Run destructive QA scenarios', destructive: true, stepUp: true },
 
   // ─ Admin ─
   { id: 'settings.workstation',     category: 'admin', label: 'Workstation settings' },

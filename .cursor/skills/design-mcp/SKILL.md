@@ -31,8 +31,10 @@ node tools/design-mcp/ds.mjs critique src/components/outbound/scan-out/ScanOutCo
 
 - Floor scan mouth → contract intent `dumb station scan mouth gun only context ring`
 - Unbox mouth → mount `StationComposerHost` with faces on
+- Feedback / reaction / receive confirm on the composer → `ds_contract "staff reaction on the composer"` → mount `WeldedFeedbackPanel` from `@/components/composer/WeldedFeedbackPanel` on `StationComposerHost` `reaction` (any mode) with dock `weldTop`. Staff look at the mouth all day for what just happened and what to process next. Never a caption band, second card, toast, popover, or a new hinge. Dockless workbench feedback stays `InlineActionFeedbackCard`.
 - Ship-by / due date / pick a date in a cell → `ds_contract "ship-by date in a table cell"` → mount `DateRangePickerField variant="compact"` (never the range filter, never `input type=date`, never InlineEditableValue). Filter ranges stay `variant="range"`.
 - Filter a DataTable / Unbox Queue funnel → `ds_contract "data table filter icon"` → mount `DataTableFilterMenu` beside search (never FilterRefinementBar, never a hunt-tile strip)
+- DataTable column header sort → every painted DATA header is click-to-sort (`SLOT_TABLE_PAINT_LAW.headerSort`). Chrome only: select / actions / `_fill`. Image is DATA.
 - Scan-station theme → `ds.mjs tokens station-skin` then `applyStationSkin(name)` — never hex a well
 - Token lookup → `ds.mjs tokens elevation` before `elevationClass`
 

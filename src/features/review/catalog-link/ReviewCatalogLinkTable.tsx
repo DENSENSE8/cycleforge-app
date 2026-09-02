@@ -12,7 +12,7 @@
  * selection so a picked row survives a refresh and is linkable.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { DataTable } from '@/components/tables/DataTable';
 import { CompoundRow } from '@/components/tables/compound/CompoundRow';
@@ -100,7 +100,7 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
   const searchParams = useSearchParams();
 
   const section = parseSection(searchParams.get('section'));
-  const query = searchParams.get('search') ?? '';
+  const [query, setQueryState] = useState('');
   const choreId = parsePositiveId(searchParams.get('choreId'));
   const exceptionId = parsePositiveId(searchParams.get('exceptionId'));
 
@@ -131,16 +131,7 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
     [writeParams],
   );
 
-  const setQuery = useCallback(
-    (next: string) => {
-      writeParams((p) => {
-        const q = next.trim();
-        if (q) p.set('search', q);
-        else p.delete('search');
-      });
-    },
-    [writeParams],
-  );
+  const setQuery = useCallback((next: string) => setQueryState(next), []);
 
   const selectChore = useCallback(
     (id: number | null) => {
@@ -198,6 +189,8 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
         case 'last':
         case 'state':
           return Date.parse(r.lastSeenAt);
+        case 'thumb':
+          return null;
         default:
           return r.productTitle;
       }
@@ -234,6 +227,8 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
           return Date.parse(r.lastSeenAt);
         case 'item':
           return r.productTitle;
+        case 'thumb':
+          return null;
         default:
           return r.productTitle;
       }

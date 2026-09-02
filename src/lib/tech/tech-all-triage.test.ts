@@ -221,6 +221,7 @@ describe('tech-all-triage', () => {
           id: 21,
           sku: 'SCAN-1',
           zoho_item_title: 'Door scan',
+          receiving_listing_url: 'https://www.ebay.com/itm/SCAN-1',
           workflow_status: 'MATCHED',
         } as never,
       ],
@@ -259,5 +260,9 @@ describe('tech-all-triage', () => {
     });
     const types = rows.map((r) => r.type).sort();
     assert.deepEqual(types, ['purchase_order', 'repair']);
+    assert.equal(
+      rows.find((r) => r.type === 'purchase_order')?.titleHref,
+      'https://www.ebay.com/itm/SCAN-1',
+    );
   });
 });

@@ -309,7 +309,7 @@ export function dispatchAssistantDockOpen(): void {
 
 /**
  * Close whatever DESK occupant is holding `RightRailHost` on a station page —
- * Add inbound (`IncomingAddInboundOverlay`), Check receipts
+ * Add inbound (Incoming add walk), Check receipts
  * (`IncomingBulkTrackingPanel`), and any future Band-1 tool that mounts there.
  *
  * Dispatched when Station Displays open, so a desk occupant and the station's

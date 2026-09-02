@@ -67,7 +67,7 @@ export function defaultDisplayIndexGroup(id: string): DisplayIndexGroup {
     case 'manuals':
       return 'assets';
     default:
-      // ticket · tracking · timeline · support · look · unknown → context
+      // ticket · tracking · overview · timeline · support · look · unknown → context
       return 'context';
   }
 }
@@ -135,6 +135,8 @@ export const DISPLAY_LEAF_NAV_KEY: Record<string, string> = {
   order: 'o',
   documents: 'e',
   conversation: 'v',
+  // Unbox Context glance (copy chips). 'o' is the desk order inspector.
+  overview: 'f',
   // Scan-station skin try-on (injected on every PushStack host)
   look: 'w',
 };

@@ -35,6 +35,7 @@ import {
   analyzeBaselineGaps,
   formatGapReport,
   loadBaseline,
+  noProgressDecision,
 } from "./perf-target.mjs";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
@@ -55,6 +56,14 @@ const DRY = has("--dry-run");
 const IN_PLACE = has("--in-place") || process.env.PERF_OVERNIGHT_IN_PLACE === "1";
 const MAX_HOURS = Number(arg("--max-hours", process.env.PERF_OVERNIGHT_MAX_HOURS || "12"));
 const MAX_ROUNDS = Number(arg("--max-rounds", process.env.PERF_OVERNIGHT_MAX_ROUNDS || "48"));
+/** D7 item 13 — stop after this many consecutive rounds whose attacked gap did not shrink. */
+const MAX_NO_PROGRESS = Number(arg("--max-no-progress", process.env.PERF_OVERNIGHT_MAX_NO_PROGRESS || "3"));
+const GARISEK =
+  process.env.GARISEK_OS_ROOT || "/home/michaelgarisek/Projects/Garisek-OS";
+/** One join key for machine-gate, the coder trace, and the per-round receipts. */
+const RUN_ID =
+  process.env.LOOP_RUN_ID || `perf_${new Date().toISOString().slice(0, 10)}_${Date.now().toString(36)}`;
+process.env.LOOP_RUN_ID = RUN_ID;
 const HOPS_PER_GAP = Number(arg("--hops", process.env.PERF_OVERNIGHT_HOPS || "3"));
 const TIER = Number(arg("--tier", "1"));
 const ROUTES_FILTER = (arg("--routes", process.env.PERF_OVERNIGHT_ROUTES || "") || "")
@@ -105,7 +114,60 @@ function run(cmd, args, opts = {}) {
 
 function saveState(state) {
   mkdirSync(LOG_DIR, { recursive: true });
-  writeFileSync(STATE_FILE, JSON.stringify(state, null, 2) + "\n");
+  writeFileSync(STATE_FILE, JSON.stringify({ runId: RUN_ID, ...state }, null, 2) + "\n");
+}
+
+/**
+ * One `cf-session:v1` receipt per round through the Host writer
+ * (Garisek `scripts/session-receipt.ts` → loop_run_steps + JSONL mirror).
+ * Fail-soft: a receipt that cannot be written is logged, never fatal.
+ */
+function writeRoundReceipt({ round, gap, coderCode, gateCode, measured, progressed, startedAt }) {
+  const outcome =
+    gateCode === 124 || gateCode === 75 || measured?.code === 124
+      ? "unmeasured"
+      : progressed
+        ? "pass"
+        : "repair";
+  const gateLabel = `node tools/eval-ledger/machine-gate.mjs --force`;
+  const receipt = {
+    v: "cf-session:v1",
+    session_id: `perf:${RUN_ID}:${round}`,
+    run_id: RUN_ID,
+    goal_id: null,
+    host: "perf-overnight",
+    started_at: startedAt,
+    finished_at: new Date().toISOString(),
+    prompt_raw: `attack ${gap.route} ${gap.key} gap=${gap.gap}`,
+    prompt_expanded: { routes: [], unrouted: true },
+    oracles_called: [],
+    files_touched: [],
+    files_refused: [],
+    eval_runs: [
+      { command: gateLabel, exitCode: gateCode ?? null, durationMs: 0, snapshots: [], ok: gateCode === 0 ? true : gateCode == null ? null : false },
+      ...(measured && !measured.skipped
+        ? [{ command: `lighthouse ${gap.route}`, exitCode: measured.code ?? null, durationMs: 0, snapshots: [], ok: measured.code === 0 }]
+        : []),
+    ],
+    outcome,
+    outcome_sentence: `perf-overnight did perf for goal none because ${gap.route} ${gap.key} gap=${gap.gap}; ${gateLabel} exit ${gateCode ?? "none"}; ${outcome}${progressed ? " (floor improved)" : ""}`,
+    system_upgrade: progressed ? [{ kind: "cohort_row", target: `lighthouse-baseline:${gap.route}:${gap.key}`, reason: "floor ratcheted up", evidence: `coder exit ${coderCode}` }] : [],
+    law_hash: "",
+    prev_hash: null,
+    entry_hash: null,
+  };
+  const file = path.join(LOG_DIR, `perf-receipt-${RUN_ID}-${round}.json`);
+  writeFileSync(file, JSON.stringify(receipt));
+  const writer = path.join(GARISEK, "scripts", "session-receipt.ts");
+  if (!existsSync(writer)) {
+    log(`receipt: writer missing (${writer}) — kept ${file}`);
+    return;
+  }
+  const r = run("npx", ["tsx", writer, "--receipt", `@${file}`, "--run-id", RUN_ID, "--session-id", receipt.session_id, "--repo", ROOT], {
+    cwd: GARISEK,
+    timeoutMs: 60_000,
+  });
+  log(r.code === 0 ? `receipt: round ${round} written (${(r.stdout.match(/"persisted":(true|false)/) || [])[0] || "mirror"})` : `receipt: writer failed exit=${r.code} ${(r.stderr || r.stdout).slice(0, 200)}`);
 }
 
 function pickGap(analysis) {
@@ -232,7 +294,7 @@ function hermesCoder(worktree, prompt) {
 
 async function main() {
   log(
-    `start dry=${DRY} maxHours=${MAX_HOURS} maxRounds=${MAX_ROUNDS} hops=${HOPS_PER_GAP} tier=${TIER} routes=${ROUTES_FILTER.join(",") || "(all tier)"} targetPerf=${PERF_TARGET.performance}`,
+    `start run=${RUN_ID} dry=${DRY} maxHours=${MAX_HOURS} maxRounds=${MAX_ROUNDS} maxNoProgress=${MAX_NO_PROGRESS} hops=${HOPS_PER_GAP} tier=${TIER} routes=${ROUTES_FILTER.join(",") || "(all tier)"} targetPerf=${PERF_TARGET.performance}`,
   );
 
   if (!DRY) {
@@ -255,6 +317,8 @@ async function main() {
   let wins = 0;
   /** @type {string[]} */
   const history = [];
+  /** @type {{ route: string, key: string, before: number, after: number | null }[]} */
+  const rounds = [];
 
   while (round < MAX_ROUNDS && Date.now() < deadline) {
     round += 1;
@@ -287,6 +351,7 @@ async function main() {
     }
 
     log(`round ${round}/${MAX_ROUNDS}: attack ${gap.route} ${gap.key} gap=${gap.gap}`);
+    const roundStartedAt = new Date().toISOString();
     history.push(`${gap.route}:${gap.key}:${gap.gap}`);
     saveState({
       ok: false,
@@ -304,6 +369,8 @@ async function main() {
     }
 
     let lastLog = "";
+    let lastCoderCode = null;
+    let lastGateCode = null;
     for (let hop = 1; hop <= HOPS_PER_GAP; hop++) {
       if (Date.now() >= deadline) break;
       const git = run("git", ["status", "--porcelain"], { cwd: worktree, timeoutMs: 15_000 });
@@ -316,10 +383,12 @@ async function main() {
       });
       const coder = hermesCoder(worktree, prompt);
       lastLog = (coder.stdout + "\n" + coder.stderr).slice(0, 8000);
+      lastCoderCode = coder.code;
       log(`coder exit=${coder.code}`);
 
       const gate = machineGate(worktree);
       lastLog += "\n" + (gate.stdout + gate.stderr).slice(0, 4000);
+      lastGateCode = gate.code;
       log(`machine-gate exit=${gate.code}`);
       if (gate.code !== 0 && hop < HOPS_PER_GAP) continue;
       break;
@@ -353,11 +422,37 @@ async function main() {
     const still = after.gaps.find(
       (g) => g.route === gap.route && g.key === gap.key,
     );
-    if (!still || still.gap < gap.gap) {
+    const progressed = !still || still.gap < gap.gap;
+    rounds.push({ route: gap.route, key: gap.key, before: gap.gap, after: still ? still.gap : null });
+    if (progressed) {
       wins += 1;
       log(`progress on ${gap.route} ${gap.key}: ${gap.gap} → ${still ? still.gap : 0}`);
     } else {
       log(`no floor improvement yet for ${gap.route} ${gap.key}`);
+    }
+    writeRoundReceipt({
+      round,
+      gap,
+      coderCode: lastCoderCode,
+      gateCode: lastGateCode,
+      measured,
+      progressed,
+      startedAt: roundStartedAt,
+    });
+
+    const stall = noProgressDecision(rounds, MAX_NO_PROGRESS);
+    if (stall.stop) {
+      saveState({
+        ok: false,
+        round,
+        wins,
+        history,
+        finishedAt: new Date().toISOString(),
+        reason: "no-progress",
+        noProgressStreak: stall.streak,
+      });
+      log(`STOP — no-progress: ${stall.streak} consecutive rounds without a floor improvement (max ${MAX_NO_PROGRESS}); resume with same command after changing something`);
+      process.exit(1);
     }
   }
 

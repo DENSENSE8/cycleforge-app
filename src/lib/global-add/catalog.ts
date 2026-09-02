@@ -10,7 +10,7 @@ import { SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
 import { FBA_OUTBOUND_PATH } from '@/lib/fba/fba-modes';
 import { inventoryLocationsHref } from '@/lib/inventory/locations-path';
 
-/** Matches {@link IncomingAddInitialLeaf} without importing the overlay module. */
+/** Incoming add walk leaves (`?intake=`). */
 export type GlobalAddIncomingLeaf =
   | 'index'
   | 'add-po'

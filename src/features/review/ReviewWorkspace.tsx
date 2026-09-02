@@ -14,6 +14,8 @@ import { AnimatePresence, motion } from '@/design-system/motion';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { zIndex } from '@/design-system/tokens/z-index';
+import { Button } from '@/design-system/primitives';
+import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import { ClipboardList, Loader2 } from '@/components/Icons';
 import { ReviewPackingTable } from '@/features/review/ReviewPackingTable';
 import { PackerReviewMode } from '@/features/review/packer/PackerReviewMode';
@@ -34,6 +36,12 @@ import {
   shouldClearOptimisticParam,
 } from '@/lib/routing/optimistic-url-param';
 
+const REVIEW_MODE_TABS = [
+  { id: 'packer', label: 'Packing' },
+  { id: 'pairing', label: 'Pairing' },
+  { id: 'catalog-link', label: 'Catalog link' },
+] as const;
+
 type ReviewOpenSnap = {
   packerLogId: number | null;
   orderId: number | null;
@@ -53,6 +61,22 @@ export function ReviewWorkspace() {
   const pathname = usePathname();
   const router = useRouter();
   const mode = parseReviewMode(searchParams.get('mode'));
+  const setMode = useCallback(
+    (nextMode: string) => {
+      if (!REVIEW_MODE_TABS.some((tab) => tab.id === nextMode)) return;
+      const params = new URLSearchParams(searchParams.toString());
+      if (nextMode === 'packer') params.delete('mode');
+      else params.set('mode', nextMode);
+      params.delete('packerLogId');
+      params.delete('orderId');
+      params.delete('choreId');
+      params.delete('exceptionId');
+      params.delete('section');
+      const qs = params.toString();
+      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
   const urlOpen = useMemo<ReviewOpenSnap>(
     () => ({
       packerLogId: parsePositiveId(searchParams.get('packerLogId')),
@@ -139,20 +163,27 @@ export function ReviewWorkspace() {
 
   return (
     <div className="relative h-full min-h-0 w-full overflow-hidden bg-surface-canvas">
-      <div
-        className={`flex h-full min-h-0 w-full flex-col ${overlayOpen ? 'pointer-events-none' : ''}`}
-        aria-hidden={overlayOpen ? true : undefined}
-        inert={overlayOpen ? true : undefined}
-        style={{ visibility: overlayOpen ? 'hidden' : 'visible' }}
+      <DeskPageLayout
+        tabs={REVIEW_MODE_TABS}
+        activeTab={mode}
+        onTabChange={setMode}
+        className="h-full"
       >
-        {mode === 'pairing' ? (
-          <ReviewPairingTable onOpenOrder={openPairingOrder} onCloseOrder={clearSelection} />
-        ) : mode === 'catalog-link' ? (
-          <ReviewCatalogLinkTable />
-        ) : (
-          <ReviewPackingTable onOpenRow={openPackingRow} onCloseRow={clearSelection} />
-        )}
-      </div>
+        <div
+          className={`flex h-full min-h-0 w-full flex-col ${overlayOpen ? 'pointer-events-none' : ''}`}
+          aria-hidden={overlayOpen ? true : undefined}
+          inert={overlayOpen ? true : undefined}
+          style={{ visibility: overlayOpen ? 'hidden' : 'visible' }}
+        >
+          {mode === 'pairing' ? (
+            <ReviewPairingTable onOpenOrder={openPairingOrder} onCloseOrder={clearSelection} />
+          ) : mode === 'catalog-link' ? (
+            <ReviewCatalogLinkTable />
+          ) : (
+            <ReviewPackingTable onOpenRow={openPackingRow} onCloseRow={clearSelection} />
+          )}
+        </div>
+      </DeskPageLayout>
 
       <AnimatePresence initial={false} mode="wait">
         {packingOpen ? (
@@ -261,14 +292,9 @@ function PackingDetailOverlay({
         <p className="max-w-sm text-role-caption font-semibold text-text-muted">
           This order has no packer log yet — photos and Approve/Flag need a pack event.
         </p>
-        <button
-          type="button"
-          /* ds-raw-button */
-          onClick={onClose}
-          className="rounded-lg bg-blue-600 px-3 py-1.5 text-role-caption font-semibold text-white hover:bg-blue-700"
-        >
+        <Button type="button" variant="secondary" size="sm" onClick={onClose}>
           Back to table
-        </button>
+        </Button>
       </div>
     );
   }
@@ -299,14 +325,9 @@ function PairingDetailOverlay({ orderId, onClose }: { orderId: number; onClose: 
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
         <p className="text-role-caption font-semibold text-text-muted">Could not load that order.</p>
-        <button
-          type="button"
-          /* ds-raw-button */
-          onClick={onClose}
-          className="rounded-lg bg-blue-600 px-3 py-1.5 text-role-caption font-semibold text-white hover:bg-blue-700"
-        >
+        <Button type="button" variant="secondary" size="sm" onClick={onClose}>
           Back to table
-        </button>
+        </Button>
       </div>
     );
   }

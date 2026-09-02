@@ -9,7 +9,7 @@
  *
  * Two different scopes, two different controls (ruled 2026-08-09):
  *
- *   - `HeaderPinsSwitcher` (GlobalHeader) — WEBSITE-WIDE page pin.
+ *   - MasterNav Pinned cluster (`cf.quickAccess`) — WEBSITE-WIDE page pin.
  *   - `WorkbenchViewsMenu` (here) — PAGE-WIDE named FILTER COMBINATION on this
  *     surface's `paramKeys` (`useSavedViews`). Personal by default; optional
  *     org-share via `is_shared`.

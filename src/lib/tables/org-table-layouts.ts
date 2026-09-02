@@ -16,6 +16,10 @@ import {
   ORDERS_IMPORT_FIELD_CATALOG,
   ORDERS_IMPORT_TABLE_LAYOUT_ID,
 } from '@/lib/tables/field-catalog/orders-import';
+import {
+  SHORTAGE_COVERAGE_IMPORT_FIELD_CATALOG,
+  SHORTAGE_COVERAGE_IMPORT_TABLE_LAYOUT_ID,
+} from '@/lib/tables/field-catalog/shortage-coverage-import';
 import { ORDERS_FIELD_CATALOG, ORDERS_TABLE_LAYOUT_ID } from '@/lib/tables/field-catalog/orders';
 import { PICKUP_FIELD_CATALOG, PICKUP_TABLE_LAYOUT_ID } from '@/lib/tables/field-catalog/pickup';
 import {
@@ -33,6 +37,10 @@ import {
   IMPORT_EXCEPTION_TABLE_LAYOUT_ID,
 } from '@/lib/tables/field-catalog/import-exception';
 import { TASKS_FIELD_CATALOG, TASKS_TABLE_LAYOUT_ID } from '@/lib/tables/field-catalog/tasks';
+import {
+  SESSIONS_FIELD_CATALOG,
+  SESSIONS_TABLE_LAYOUT_ID,
+} from '@/lib/tables/field-catalog/sessions';
 import {
   TECH_ALL_FIELD_CATALOG,
   TECH_ALL_TABLE_LAYOUT_ID,
@@ -100,6 +108,7 @@ export const SLOT_LAYOUT_TABLES: Readonly<
   // Daily's sibling — same slots, different store, its OWN vocabulary: one is
   // the org's shift checklist with a roster, the other a staffer's own list.
   [TASKS_TABLE_LAYOUT_ID]: { catalog: TASKS_FIELD_CATALOG, morphs: ['compound'] },
+  [SESSIONS_TABLE_LAYOUT_ID]: { catalog: SESSIONS_FIELD_CATALOG, morphs: ['compound'] },
   // Review · Listing match — matching chores are facts; the strip is slots.
   [CATALOG_LINK_TABLE_LAYOUT_ID]: {
     catalog: CATALOG_LINK_FIELD_CATALOG,
@@ -129,6 +138,10 @@ export const SLOT_LAYOUT_TABLES: Readonly<
   // not densify live To-ship.
   [ORDERS_IMPORT_TABLE_LAYOUT_ID]: {
     catalog: ORDERS_IMPORT_FIELD_CATALOG,
+    morphs: ['sheet'],
+  },
+  [SHORTAGE_COVERAGE_IMPORT_TABLE_LAYOUT_ID]: {
+    catalog: SHORTAGE_COVERAGE_IMPORT_FIELD_CATALOG,
     morphs: ['sheet'],
   },
   // Later ports (receiving, customers, …) add one entry each, per the plan's

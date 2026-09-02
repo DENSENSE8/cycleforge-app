@@ -1,7 +1,7 @@
 /**
- * Pin slot chords for GlobalHeader — ⌘/Ctrl+1–9 from list order.
- * Label and binding share this module so hints cannot drift from the listener
- * in {@link HeaderPinsSwitcher}.
+ * Pin slot chords — ⌘/Ctrl+1–9 from list order.
+ * Label and binding share this module so hints cannot drift from
+ * PinHotkeysListener on MasterNav.
  */
 
 import { MAX_PIN_HOTKEY_SLOTS } from './types';

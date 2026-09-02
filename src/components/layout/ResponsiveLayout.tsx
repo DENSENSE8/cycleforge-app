@@ -22,6 +22,7 @@ import { appContentShellClass } from '@/components/layout/header-shell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 import { warmSpineChunk } from '@/components/sidebar/preload-spine';
+import { useHoverSurface } from '@/hooks/useHoverSurface';
 
 // The sidebar is its own chunk: desktop mounts it immediately (the whole shell
 // is client-gated behind `mounted`, so there is no SSR paint to preserve),
@@ -160,12 +161,17 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
   // It is a PUSH column (`SidebarNavColumn`), so it does not auto-close: it
   // covers nothing, and a navigator that collapsed on the first row you clicked
   // would reflow the frame twice per jump for no gain. Closing is the toggle
-  // (and nothing else). Reopen paths: GlobalHeader toggle, or ⌘K. The toggle is
-  // click-only — no collapsed hover peek of top destinations.
+  // (and nothing else). Reopen paths: GlobalHeader toggle, or ⌘K. Collapsed
+  // hover on the header sidebar button peeks a miniaturized overlay of the same spine; click
+  // pins the push column.
   // (The spine pre-expands the active page's modes on every route change, so
   // staying open stays coherent with where you are.)
   const [navOpen, setNavOpen] = useState(false);
   const toggleNav = useCallback(() => setNavOpen((prev) => !prev), []);
+  const navPeek = useHoverSurface({
+    id: 'master-nav-spine-peek',
+    disabled: navOpen,
+  });
   const drawerRef = useRef<HTMLDivElement>(null);
   // The CONTENT ROW, measured for the right rail's push/overlay decision. This
   // element and not a descendant: its width is invariant under everything the
@@ -352,7 +358,13 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
         {!chromeless && (
           <ErrorBoundary label="sidebar-nav-column" fallback={() => null}>
             <Suspense fallback={null}>
-              <SidebarNavColumn open={navOpen} onOpenChange={setNavOpen}>
+              <SidebarNavColumn
+                open={navOpen}
+                onOpenChange={setNavOpen}
+                peeking={navPeek.isOpen}
+                peekSurfaceProps={navPeek.surfaceProps}
+                onPeekDismiss={navPeek.close}
+              >
                 <DashboardSidebar />
               </SidebarNavColumn>
             </Suspense>
@@ -365,6 +377,8 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
             canCollapseSidebar
             sidebarCollapsed={!navOpen}
             onToggleSidebar={toggleNav}
+            navPeeking={navPeek.isOpen}
+            navPeekTriggerProps={navPeek.triggerProps}
           />
           )}
           <main className={cn(chromeless ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden' : appContentShellClass)}>

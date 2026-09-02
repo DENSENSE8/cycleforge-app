@@ -24,19 +24,20 @@ test('the compound tracks that carry a sortable fact resolve to it', () => {
 
 test('a flat sort value still resolves to itself', () => {
   // `?sort=` values in live bookmarks are facts, and must keep working.
-  for (const fact of ['title', 'age', 'qty', 'order', 'tracking', 'picked', 'packed', 'carrier'] as const) {
+  for (const fact of ['title', 'age', 'qty', 'order', 'tracking', 'picked', 'packed', 'status', 'amount', 'image', 'scanned_out', 'carrier'] as const) {
     assert.ok(isQueueColumnSort(fact));
     assert.equal(queueSortForColumnKey(fact), fact);
   }
 });
 
-test('tracks with no sortable fact stay unsortable', () => {
-  // `state` and `amount` had no column sort in the flat model either — leaving
-  // them out preserves shipped behaviour rather than inventing an ordering.
-  for (const key of ['state', 'amount', 'select', 'thumb', 'actions', '_fill']) {
+test('chrome tracks stay unsortable; every data track sorts', () => {
+  for (const key of ['select', 'actions', '_fill']) {
     assert.equal(queueSortForColumnKey(key), null, `${key} must not sort`);
     assert.equal(isQueueSortableColumnKey(key), false);
   }
+  assert.equal(queueSortForColumnKey('state'), 'status');
+  assert.equal(queueSortForColumnKey('amount'), 'amount');
+  assert.equal(queueSortForColumnKey('thumb'), 'image');
 });
 
 test('every mapped track is a real column of the mounted model', () => {
@@ -57,7 +58,8 @@ test('every mapped fact is a real sort value', () => {
 test('a slot field id maps onto the sort fact, so a rebind still sorts', () => {
   assert.equal(queueSortForColumnKey('status:1', 'orders.picked'), 'picked');
   assert.equal(queueSortForColumnKey('status:2', 'orders.packed'), 'packed');
-  assert.equal(queueSortForColumnKey('status:1', 'orders.qty'), null);
+  assert.equal(queueSortForColumnKey('status:3', 'orders.scanned_out'), 'scanned_out');
+  assert.equal(queueSortForColumnKey('status:1', 'orders.qty'), 'qty');
   assert.equal(isQueueSortableColumnKey('status:1', 'orders.picked'), true);
   assert.equal(isQueueSortableColumnKey('status:1'), false);
 });
@@ -69,9 +71,14 @@ test('the product-default Pick track is sortable through its bound field', () =>
   assert.equal(isQueueSortableColumnKey(pick.key, pick.fieldId), true);
 });
 
-test('at least one visible track sorts — the desk is not inert', () => {
-  const sortable = ORDERS_COMPOUND_COLUMNS.filter((c) =>
-    isQueueSortableColumnKey(c.key, c.fieldId),
-  );
-  assert.ok(sortable.length > 0, 'no compound track sorts — header clicks are inert');
+test('every painted data track on the product model sorts', () => {
+  const chrome = new Set(['select', 'actions', '_fill']);
+  for (const c of ORDERS_COMPOUND_COLUMNS) {
+    const sortable = isQueueSortableColumnKey(c.key, c.fieldId);
+    if (chrome.has(c.key)) {
+      assert.equal(sortable, false, `${c.key} is chrome`);
+    } else {
+      assert.equal(sortable, true, `${c.key} must sort`);
+    }
+  }
 });

@@ -25,9 +25,8 @@ export function getExternalUrlByItemNumber(itemNumber: string | null | undefined
  * Compact listing-URL face for diagnostics / non-table chrome — host + path,
  * no scheme, no `www.`.
  *
- * **Not** the compound Item subtitle face. Slot tables paint the listing
- * icon via `CompoundSubtitleCopyChip` (info when live, faint when missing).
- * Prefer that control in DataTable compound rows.
+ * **Not** a compound Item subtitle face. Slot tables use this URL in the
+ * product-title hover actions instead of painting a listing glyph under it.
  */
 export function listingChipDisplay(href: string | null | undefined): string {
   const raw = String(href ?? '').trim();

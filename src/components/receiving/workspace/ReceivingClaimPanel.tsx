@@ -49,13 +49,14 @@ export function ReceivingClaimPanel({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const mountedSteps = useMemo(
-    () => claimMountedSteps(c),
+    () => claimMountedSteps(c, chrome),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- derived from c fields below
     [
       c.mode,
       c.sellerStepApplicable,
       c.filedTicket,
       c.linkUpdateStatus,
+      chrome,
     ],
   );
 
@@ -103,7 +104,7 @@ export function ReceivingClaimPanel({
         ref={scrollRef}
         className="min-h-0 flex-1 overflow-y-auto px-0 py-0 text-role-data"
       >
-        <ClaimModeSelect c={c} />
+        {chrome === 'modal' ? <ClaimModeSelect c={c} /> : null}
         <ClaimEmptySeedCreateHelper c={c} />
         {mountedSteps.map((step) => {
           const def = stepDefs.find((s) => s.key === step);
@@ -117,29 +118,34 @@ export function ReceivingClaimPanel({
         })}
       </div>
 
-      <ClaimActionFooter c={c} onContinueToSeller={continueToSellerScroll} />
+      <ClaimActionFooter
+        c={c}
+        chrome={chrome}
+        onContinueToSeller={continueToSellerScroll}
+      />
     </div>
   );
 }
 
-function claimMountedSteps(c: ReceivingClaimController): ClaimWizardStep[] {
+function claimMountedSteps(
+  c: ReceivingClaimController,
+  chrome: 'modal' | 'display',
+): ClaimWizardStep[] {
   const all = claimWizardStepsForMode(c.mode, c.sellerStepApplicable).map((s) => s.key);
 
   if (c.mode === 'create') {
     const draft: ClaimWizardStep[] = ['compose'];
     if (c.filedTicket) {
       draft.push('filed');
-      if (c.sellerStepApplicable) draft.push('seller');
+      if (c.sellerStepApplicable && chrome === 'modal') draft.push('seller');
     }
     return draft.filter((s) => all.includes(s));
   }
 
-  // Link always shows picker + the same Compose stack as Create (template body
-  // is the linkage message). Filed/seller after send posts.
-  const out: ClaimWizardStep[] = ['find', 'compose'];
+  const out: ClaimWizardStep[] = chrome === 'modal' ? ['find', 'compose'] : ['compose'];
   if (c.linkUpdateStatus === 'posted') {
     out.push('filed');
-    if (c.sellerStepApplicable) out.push('seller');
+    if (c.sellerStepApplicable && chrome === 'modal') out.push('seller');
   }
   return out.filter((s) => all.includes(s));
 }

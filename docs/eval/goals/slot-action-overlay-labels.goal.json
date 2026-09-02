@@ -1,0 +1,20 @@
+{
+  "id": "slot-action-overlay-labels",
+  "statement": "To-ship tracking hover Label starts startLabelRun so LabelRunBand and OrderShippingPanel expand under that row. Do not open the paperwork walk from the cell.",
+  "createdBy": "human",
+  "createdAt": "2026-09-02T03:30:00Z",
+  "routerHint": "to-ship tracking hover label CopyChipHoverMenu startLabelRun LabelRunBand OrderShippingPanel",
+  "successPredicates": [
+    { "kind": "test", "file": "src/lib/tables/slot-action-overlay.test.ts" },
+    { "kind": "eval", "command": "verify:fast", "expect": "exit0" }
+  ],
+  "stopConditions": {
+    "maxHops": 6,
+    "maxHours": 4,
+    "maxNoProgressHops": 2,
+    "onUnmeasured": "block",
+    "onRed": "repair",
+    "maxRepairs": 2
+  },
+  "budget": {}
+}

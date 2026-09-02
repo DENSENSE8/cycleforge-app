@@ -188,7 +188,7 @@ interface OmnichannelComposerDockProps {
   chrome?: 'raised' | 'bare';
   /**
    * Flatten the TOP corners so a panel welded to this dock's upper edge shares
-   * one silhouette with it (Unbox receive feedback — `WeldedFeedbackPanel`).
+   * one silhouette with it (`WeldedFeedbackPanel` — staff mouth reaction).
    *
    * It is a PROP because a welded top is a state of this shell, not a second
    * shell. Only `raised` has top radius to flatten; `bare` is a no-op.
@@ -381,7 +381,9 @@ export const OmnichannelComposerDock = forwardRef<
   );
 
   const fieldPad = compact
-    ? 'px-1.5 py-1'
+    ? headerEnd
+      ? 'px-1.5 py-1 pr-24'
+      : 'px-1.5 py-1'
     : headerEnd
       ? 'px-3.5 pt-3 pb-1.5 pr-10'
       : 'px-3.5 pt-3 pb-1.5';

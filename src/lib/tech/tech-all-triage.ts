@@ -7,6 +7,7 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { PickupLine } from '@/components/receiving/pickup/pickup-lines';
 import type { RSRecord } from '@/lib/neon/repair-service-queries';
 import type { ShippedOrder } from '@/types/orders';
+import { listingLinksForReceivingRow } from '@/lib/receiving/listing-links';
 import {
   TECH_ALL_TRIAGE_TYPE_LABEL,
   type TechAllTriageType,
@@ -23,6 +24,8 @@ export interface TechAllTriageRow {
   title: string;
   /** Quiet second line (SKU · customer · tracking). */
   subtitle: string;
+  /** Primary marketplace listing for receiving-line product titles. */
+  titleHref?: string | null;
   stage: string;
   /** Lower = do first. */
   urgencyRank: number;
@@ -87,6 +90,7 @@ function triageRowFromReceivingLine(row: ReceivingLineRow): TechAllTriageRow {
     type,
     typeLabel: TECH_ALL_TRIAGE_TYPE_LABEL[type],
     title: receivingTitle(row),
+    titleHref: listingLinksForReceivingRow(row)[0]?.href ?? null,
     subtitle: [po && `PO ${po}`, sku && `SKU ${sku}`, tracking && `TRK ${tracking}`]
       .filter(Boolean)
       .join(' · '),

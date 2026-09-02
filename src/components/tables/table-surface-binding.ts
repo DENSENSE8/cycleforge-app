@@ -52,18 +52,25 @@ import type { TableDefinition } from '@/lib/tables/table-definition';
  * ## Absence is a legitimate answer, and it carries its reason
  *
  * Some of these surfaces are ruled honest-absence and must NOT grow a peek to
- * make the family look symmetrical — the reasons live in
- * `band3-find-only.guard.test.ts`'s `NO_DESK_PEEK_SURFACES` and are restated on
- * the binding so the next agent reads them at the mount they are about. That
- * guard was cited here for a long time without existing; it was written
- * 2026-08-31 (seller-table-program wave 1.5), and it is now the authority on
- * how many such surfaces there are — this sentence used to say "three", which
- * had already gone stale. The
- * `reason` string is the whole point of the non-`inspector` arms: a bare
- * `kind: 'none'` would be a silence with a type annotation.
+ * make the family look symmetrical — the `reason` on the binding is what you
+ * read at the mount. A bare `kind: 'none'` would be a silence with a type
+ * annotation.
  */
 export type TableRecordPlane =
-  /** A `RightRailHost` occupant — the house desk peek. */
+  /**
+   * Center Lock L2 — multi-field record form stacked on the desk stage (or the
+   * scan-station 720 center). The table stays mounted underneath. **This is the
+   * only record plane for new desk bindings** (law Q5).
+   */
+  | {
+      readonly kind: 'stage-overlay';
+      /** Why this surface opens a record overlay (optional audit trail). */
+      readonly reason?: string;
+    }
+  /**
+   * Legacy `RightRailHost` peek — **forbidden on new master-nav desk bindings.**
+   * Existing `detail:*` occupants (orders, incoming, repair, …) are migration debt.
+   */
   | {
       readonly kind: 'inspector';
       /**
@@ -105,7 +112,7 @@ export interface TableSurfaceBinding<Row, C extends LedgerGridColumnModel> {
   readonly makeDescriptor: (visible: readonly C[]) => GridSurfaceDescriptor<Row, C>;
   /**
    * What a picked row opens. See {@link TableRecordPlane} — every registered
-   * binding declares one, and the non-`inspector` arms state why.
+   * binding declares one. New desks use `stage-overlay`; `inspector` is legacy debt.
    */
   readonly recordPlane: TableRecordPlane;
 }

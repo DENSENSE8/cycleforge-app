@@ -5,7 +5,15 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeOrgNav, parseNavDefinition, type NavDefinition } from './org-nav';
+import { navChildDragId, parseNavChildDragId } from './nav-child-drag';
+import {
+  mergeOrgNav,
+  parseNavDefinition,
+  applyOrgNavToPage,
+  upsertChildOrder,
+  upsertChildIcon,
+  type NavDefinition,
+} from './org-nav';
 import type { SidebarNavItem } from '@/lib/sidebar-navigation';
 
 const Icon = () => null as unknown as JSX.Element;
@@ -69,4 +77,66 @@ test('parseNavDefinition narrows jsonb defensively', () => {
     parseNavDefinition({ entries: [{ id: 'a', hidden: true }, { id: 42 }, { bad: 1 }, { id: 'b', order: 2, label: 'B' }] }),
     { entries: [{ id: 'a', hidden: true }, { id: 'b', order: 2, label: 'B' }] },
   );
+});
+
+test('parseNavDefinition keeps catalog child icons and drops unknown keys', () => {
+  assert.deepEqual(
+    parseNavDefinition({
+      entries: [
+        {
+          id: 'outbound',
+          icon: 'NotAGlyph',
+          children: [
+            { id: 'shortage', icon: 'AlertCircle', order: 0 },
+            { id: 'orders', icon: 'bogus' },
+          ],
+        },
+      ],
+    }),
+    {
+      entries: [
+        {
+          id: 'outbound',
+          children: [
+            { id: 'shortage', icon: 'AlertCircle', order: 0 },
+            { id: 'orders' },
+          ],
+        },
+      ],
+    },
+  );
+});
+
+test('upsertChildIcon ignores keys outside the catalog', () => {
+  const next = upsertChildIcon(null, 'outbound', 'shortage', 'NotAGlyph');
+  assert.deepEqual(next, { entries: [] });
+});
+
+test('child drag ids round-trip', () => {
+  const id = navChildDragId('outbound', 'shortage');
+  assert.deepEqual(parseNavChildDragId(id), { pageId: 'outbound', childId: 'shortage' });
+  assert.equal(parseNavChildDragId('nav:outbound'), null);
+});
+
+test('child order and icon apply; unknown child ids are ignored', () => {
+  const page = {
+    id: 'outbound',
+    label: 'Shipping',
+    href: '/shipping/orders',
+    icon: Icon,
+    children: [
+      { id: 'orders', label: 'To ship', icon: Icon, to: () => ({ pathname: '/shipping/orders' }) },
+      { id: 'shortage', label: 'Shortage', icon: Icon, to: () => ({ pathname: '/shipping/shortage' }) },
+      { id: 'fba', label: 'Amazon Prep', icon: Icon, to: () => ({ pathname: '/shipping/fba' }) },
+    ],
+  };
+  const ordered = upsertChildOrder(null, 'outbound', ['shortage', 'orders', 'fba']);
+  const withIcon = upsertChildIcon(ordered, 'outbound', 'shortage', 'AlertCircle');
+  const merged = applyOrgNavToPage(page, withIcon);
+  assert.deepEqual(merged.children?.map((c) => c.id), ['shortage', 'orders', 'fba']);
+  assert.notEqual(merged.children?.[0]?.icon, Icon);
+  const ghost = applyOrgNavToPage(page, {
+    entries: [{ id: 'outbound', children: [{ id: 'not-a-tab', order: 0 }] }],
+  });
+  assert.deepEqual(ghost.children?.map((c) => c.id), ['orders', 'shortage', 'fba']);
 });

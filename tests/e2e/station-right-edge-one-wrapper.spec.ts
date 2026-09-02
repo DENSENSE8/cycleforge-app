@@ -17,7 +17,7 @@ import { test, expect, type APIRequestContext, type Page } from '@playwright/tes
  *
  * The law they violate is already written — Right-rail modality: exactly two
  * right-edge grammars exist, they are mutually exclusive, and opening one
- * REPLACES the other. `IncomingAddInboundOverlay` already honours it via
+ * REPLACES the other. Check honours it via
  * `yieldStationRightEdgeForAddInbound`; Check simply never claimed the edge.
  *
  * What is pinned here is the operator-visible contract — **at most one right

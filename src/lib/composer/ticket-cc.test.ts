@@ -9,10 +9,14 @@ import assert from 'node:assert/strict';
 import {
   addComposerCc,
   buildComposerCcSuggestions,
+  COMPOSER_CC_HISTORY_STORAGE_KEY,
   isComposerCcEmail,
   normalizeComposerCc,
+  readComposerCcHistory,
+  rememberComposerCcHistory,
   removeComposerCc,
   resolveComposerCcPayload,
+  type ComposerCcStorage,
 } from './ticket-cc';
 
 test('REQ-CC-01: a valid address is added once; junk and duplicates are refused', () => {
@@ -76,3 +80,41 @@ test('suggestions = requester + agents, minus what is already attached', () => {
     ['agent@co.com'],
   );
 });
+
+function memStore(init: Record<string, string> = {}): ComposerCcStorage & {
+  data: Record<string, string>;
+} {
+  const data = { ...init };
+  return {
+    data,
+    getItem: (key) => data[key] ?? null,
+    setItem: (key, value) => {
+      data[key] = value;
+    },
+  };
+}
+
+test('REQ-CC-05: composer and rail read the same accumulated public-CC bank', () => {
+  const store = memStore({
+    [COMPOSER_CC_HISTORY_STORAGE_KEY]: JSON.stringify(['vendor@co.com', 'ops@co.com']),
+  });
+  assert.deepEqual(readComposerCcHistory(store), ['vendor@co.com', 'ops@co.com']);
+
+  const legacy = memStore({ [COMPOSER_CC_HISTORY_STORAGE_KEY]: 'old@co.com' });
+  assert.deepEqual(readComposerCcHistory(legacy), ['old@co.com']);
+
+  assert.deepEqual(readComposerCcHistory(memStore()), []);
+});
+
+test('REQ-CC-06: new chips accumulate; clearing the form does not wipe history', () => {
+  const store = memStore({
+    [COMPOSER_CC_HISTORY_STORAGE_KEY]: JSON.stringify(['vendor@co.com']),
+  });
+  assert.deepEqual(rememberComposerCcHistory(['ops@co.com'], store), [
+    'vendor@co.com',
+    'ops@co.com',
+  ]);
+  assert.deepEqual(rememberComposerCcHistory([], store), ['vendor@co.com', 'ops@co.com']);
+  assert.deepEqual(readComposerCcHistory(store), ['vendor@co.com', 'ops@co.com']);
+});
+

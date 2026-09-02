@@ -4,7 +4,7 @@ import {
   type GridSurfaceDescriptor,
 } from '@/design-system/components/grid/grid-surface-descriptor';
 import {
-  DAILY_GRID_COLUMNS,
+  DAILY_COMPOUND_COLUMNS,
   dailySortFactFor,
   defaultDirForDailyGridSort,
   type DailyGridColumn,
@@ -55,4 +55,4 @@ export function makeDailyGridDescriptor(
   );
 }
 
-export { DAILY_GRID_COLUMNS };
+export { DAILY_COMPOUND_COLUMNS };

@@ -184,6 +184,12 @@ export function decryptIntegrationPayload<T = unknown>(envelope: string): T {
   );
 }
 
+/** True when vault lookup failed because this process cannot open the ciphertext. */
+export function isIntegrationPayloadDecryptError(err: unknown): boolean {
+  const message = (err instanceof Error ? err.message : String(err)).toLowerCase();
+  return message.includes('could not be decrypted with integration_kms_key');
+}
+
 /**
  * Store an integration payload. Encrypts when INTEGRATION_KMS_KEY is configured;
  * otherwise JSON-stringifies for local dev (mirrors writeEbayToken).

@@ -130,3 +130,45 @@ function main() {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   main();
 }
+
+/**
+ * No-progress exit (FABLE-5.1 D7 item 13; same rule as goal
+ * `stopConditions.maxNoProgressHops`). A round is progress when the gap it
+ * attacked shrank or vanished after the measure. `rounds` is chronological:
+ * `{ route, key, before, after }` with `after: null` meaning the gap is gone.
+ * Returns the first round at which the streak reached `maxNoProgress`.
+ */
+export function noProgressDecision(rounds, maxNoProgress = 3) {
+  const max = Number.isFinite(maxNoProgress) && maxNoProgress > 0 ? Math.floor(maxNoProgress) : 3;
+  let streak = 0;
+  for (let i = 0; i < rounds.length; i += 1) {
+    const r = rounds[i];
+    const progressed = r.after == null || r.after < r.before;
+    streak = progressed ? 0 : streak + 1;
+    if (streak >= max) {
+      return { stop: true, round: i + 1, reason: "no-progress", streak };
+    }
+  }
+  return { stop: false, round: rounds.length, reason: null, streak };
+}
+
+/**
+ * Replay helper for `.cursor/perf-overnight-state.json` `history`
+ * (`"<route>:<key>:<gap>"` per round). Round i attacked history[i]; it
+ * progressed when the next round's worst gap is a different route/key or a
+ * smaller gap. The final round has no successor and is not judged.
+ */
+export function roundsFromHistory(history) {
+  const parsed = history.map((h) => {
+    const [route, key, gap] = String(h).split(":");
+    return { route, key, gap: Number(gap) };
+  });
+  const rounds = [];
+  for (let i = 0; i + 1 < parsed.length; i += 1) {
+    const cur = parsed[i];
+    const next = parsed[i + 1];
+    const same = next.route === cur.route && next.key === cur.key;
+    rounds.push({ route: cur.route, key: cur.key, before: cur.gap, after: same ? next.gap : null });
+  }
+  return rounds;
+}

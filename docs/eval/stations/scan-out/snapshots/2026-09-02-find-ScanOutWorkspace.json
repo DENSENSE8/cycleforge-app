@@ -1,0 +1,21 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "component:src/components/outbound/workspaces/ScanOutWorkspace.tsx:ScanOutWorkspace",
+      "kind": "component",
+      "name": "ScanOutWorkspace",
+      "location": "src/components/outbound/workspaces/ScanOutWorkspace.tsx:30",
+      "exported": true,
+      "signature": "function ScanOutWorkspace()"
+    },
+    {
+      "node_key": "file:src/components/outbound/workspaces/ScanOutWorkspace.tsx",
+      "kind": "file",
+      "name": "ScanOutWorkspace.tsx",
+      "location": "src/components/outbound/workspaces/ScanOutWorkspace.tsx:1",
+      "exported": false,
+      "signature": null
+    }
+  ]
+}

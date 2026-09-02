@@ -60,6 +60,8 @@ interface Props {
    * first when inactive. Omit on surfaces without a Displays host.
    */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
+  /** Open the existing right-rail Locations display for this exact PO line. */
+  onOpenLocation?: (line: ReceivingLineRow) => void;
   /**
    * Unbox dual loci: condition / serial meta click → focus that step in the
    * dock (and select the line so the under-row mouse editor shows). When the
@@ -125,6 +127,7 @@ export function PoLineRow({
   onSerialAbsentChange: _onSerialAbsentChange,
   animateLayout: _animateLayout,
   onViewAllUnits,
+  onOpenLocation,
   onEditConditionInDock,
   onEditSerialInDock,
   unitsChrome = true,
@@ -142,6 +145,21 @@ export function PoLineRow({
     !readOnly &&
     (serialNumbers.length > 0 || expectedQty > 1 || (line.units?.length ?? 0) > 0);
   const canEditSerialInDock = !!onEditSerialInDock && !readOnly;
+  const locationLabel =
+    line.staged_location_name?.trim() ||
+    line.staged_location_row_label?.trim() ||
+    line.staged_location_code?.trim() ||
+    null;
+  const locationDetails = [
+    line.staged_location_name,
+    line.staged_location_code,
+    line.staged_location_room,
+    line.staged_location_row_label,
+    line.staged_location_col_label,
+  ]
+    .map((value) => value?.trim())
+    .filter((value, index, values): value is string => Boolean(value) && values.indexOf(value) === index)
+    .join(' · ');
 
   // Transient match acknowledgement — inset emerald ring, never a persistent
   // green card border. Fired by {@link pulseScanLine} after a successful scan.
@@ -199,6 +217,9 @@ export function PoLineRow({
     serials: serialNumbers,
     serialAbsent: line.serial_absent ?? false,
     unitPrice: line.unit_price,
+    locationLabel,
+    locationDetails: locationDetails || null,
+    locationPending: line.staged_location_id == null,
   };
 
   const serialCellHasContent =
@@ -216,6 +237,13 @@ export function PoLineRow({
       serialsLoading={unitsChrome && serialsLoading}
       onSelect={readOnly ? undefined : () => activateLineForSerial()}
       onFocus={readOnly ? undefined : () => setActiveSinkId(`po-line:${line.id}`)}
+      locationAction={{
+        label: `Open location for ${item.title}`,
+        onClick: () => {
+          if (!isActive) dispatchSelectLine(line);
+          onOpenLocation?.(line);
+        },
+      }}
       titleActions={
         !readOnly ? <PoLineTitleMenu line={line} serialSplit={serialSplit} /> : null
       }

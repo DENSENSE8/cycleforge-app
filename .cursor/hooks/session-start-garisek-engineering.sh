@@ -10,7 +10,11 @@ STATS=""
 if [ -x "$NODE" ] && [ -f "$CG" ]; then
   export CODE_GRAPH_TARGET_REPO="$ROOT"
   export CODE_GRAPH_PROJECT="${CODE_GRAPH_PROJECT:-cycleforge-app}"
-  "$NODE" "$CG" stamp >/dev/null 2>&1 || true
+  # No pre-seeded graph stamp under strict stamps (D7 items 8/9): the engine
+  # graph gate accepts only find_symbol / impact_analysis / search_code.
+  if [ "${CYCLEFORGE_STAMP_STRICT:-0}" != "1" ] && [ ! -e "$ROOT/.cursor/stamp-strict" ]; then
+    "$NODE" "$CG" stamp >/dev/null 2>&1 || true
+  fi
   STATS="$("$NODE" "$CG" stats 2>/dev/null || true)"
 fi
 

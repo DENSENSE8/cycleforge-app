@@ -29,6 +29,11 @@ the agent (only marketplace `plugin-*` namespaces appear). Close that gap with:
 - Raw `OmnichannelComposerDock` alone → incomplete mouth
 - Dumb / gun station → `showModeFaces={false}` (keep context ring); never
   `showModeRow={false}` to hide Unbox|Ticket
+- Feedback / reaction / receive confirm on the mouth → **WeldedFeedbackPanel**
+  (`src/components/composer/WeldedFeedbackPanel.tsx`, catalog home **staff mouth reaction**).
+  Mount on `StationComposerHost` `reaction`. `ds_contract "staff reaction on the composer"`.
+  Staff look at the mouth all day for what just happened and what to process next.
+  Do not fork a caption band. Dockless action feedback stays `InlineActionFeedbackCard`.
 
 ## The contract is derived, not written
 
@@ -65,9 +70,10 @@ shadcn-lane chrome → `@/components/ui/button`. Pin keys are **filename ids**
 Four homes sit outside those two because the thing an agent needs to find lives
 there: `src/components/tables` (the one table engine), `src/lib/tables` (its slot
 kernel, three files), `src/components/composer`, `src/components/desk` — the
-`DeskPageLayout` a page mounts to wear the desk frame — and `src/components/labels`
+`DeskPageLayout` a page mounts to wear the desk frame — `src/components/labels`
 (the print-faithful 2×1" sticker + slot overlay; matched files only, the walk
-is still non-recursive). The frame itself
+is still non-recursive), and `src/components/composer/WeldedFeedbackPanel.tsx`
+(staff mouth reaction — catalogued separately from other composer surfaces). The frame itself
 (`DeskPageChrome`) is catalogued from `src/design-system/components`; its adapter
 cannot live there because it reads `SIDEBAR_PAGE_NAV` and `AuthContext`, and the
 system must not import the app's spine.
@@ -101,3 +107,27 @@ not a frozen count of 9.
 `ds_critique` names the `ds_tokens` axis on each literal (not a generic
 `var(--token)`). Plant `tools/design-mcp/fixtures/token-literal-violation.tsx`
 if that ever regresses.
+
+## Engine in Garisek-OS, law here (2026-09-02, gap report §G)
+
+`server.mjs` is now a shim: it sets `DESIGN_MCP_PROJECT=cycleforge-app` and
+imports Garisek-OS `tools/design-mcp/server.mjs`, whose `project-server.mjs`
+runs the profile-driven engine (`target-engine.mjs` — the former body of this
+file with every hardcoded path replaced by a field of
+[`design-mcp.profile.json`](design-mcp.profile.json)). `.cursor/mcp.json`
+launches Garisek's `run-mcp.sh` directly with the same env. `ds.mjs`,
+`smoke.mjs` and the session hooks are unchanged.
+
+What stays in this repo and is read by path: `src/design-system/pinned.json`,
+the four cohort modules, the generated `router.json`, and the profile
+(primitive homes, token sources, cohort workspaces, triage / center-lock
+lists, and `adjudicator.baseRules` — the Garisek rule ids adopted here;
+`no-new-component` is deliberately not adopted, its escape is the
+`cohort.append_row` ask).
+
+`ds_adjudicate` is available again: every `router.json` `refuse[]` entry with
+a `diffPattern` is a Garisek adjudicator rule scoped to that route's
+`engineFiles`, and the SAME rules run as the write gate on both hosts
+(`.cursor/hooks/pretool-adjudicate.sh` → Garisek `adjudicate-hook.mjs --cursor`;
+`.claude/settings.json` → the same script). Closed on rules, open on
+infrastructure, logged to Garisek's `design-guard.jsonl` with `project`.

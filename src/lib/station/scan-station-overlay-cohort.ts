@@ -115,6 +115,8 @@ export const SCAN_STATION_OVERLAY_COHORT: readonly ScanStationOverlayMember[] = 
     critiqueExtra: [
       'src/components/outbound/scan-out/ScanOutComposerDock.tsx',
       'src/components/composer/ComposerModeRow.tsx',
+      // Desk adapter of the same mouth — not an overlay-cohort member.
+      'src/components/receiving/incoming/IncomingAddExtractComposer.tsx',
     ],
     graphSymbolsExtra: [
       'StationComposerHost',
@@ -125,6 +127,7 @@ export const SCAN_STATION_OVERLAY_COHORT: readonly ScanStationOverlayMember[] = 
     tripwiresExtra: [
       'src/components/outbound/scan-out/scan-out-commit.test.ts',
       'src/components/composer/composer-mode-row.test.tsx',
+      'src/components/receiving/incoming/incoming-add-composer-mouth.test.ts',
     ],
   },
 ] as const;

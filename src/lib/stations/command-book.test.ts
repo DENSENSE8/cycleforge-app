@@ -42,7 +42,7 @@ describe('command-book', () => {
     const compound = listCommandBookEntries().find((e) => e.code === 'CMD-PASS-GO-READY');
     assert.ok(compound);
     assert.match(compound!.effect, /Record PASS/);
-    assert.match(compound!.effect, /Ready to Pack/);
+    assert.match(compound!.effect, /Picker/);
   });
 
   it('orders each section by the registry sort order', () => {

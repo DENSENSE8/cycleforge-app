@@ -9,6 +9,9 @@ import {
   addPin,
   getSettings,
   hydratePinned,
+  hrefPathname,
+  insertPin,
+  pinsCoverHref,
   reorderPins,
   sanitizePinned,
   setSettings,
@@ -87,6 +90,27 @@ test('hydratePinned replaces local order without duplicating', () => {
   );
 });
 
+test('insertPin appends and moves an existing href', () => {
+  addPin({ label: 'A', href: '/a' });
+  addPin({ label: 'B', href: '/b' });
+  insertPin({ label: 'C', href: '/c' });
+  assert.deepEqual(
+    getSettings().pinned.map((p) => p.href),
+    ['/b', '/a', '/c'],
+  );
+  insertPin({ label: 'A', href: '/a' }, 0);
+  assert.deepEqual(
+    getSettings().pinned.map((p) => p.href),
+    ['/a', '/b', '/c'],
+  );
+});
+
+test('insertPin ignores Home and Media Library', () => {
+  insertPin({ label: 'Home', href: '/' });
+  insertPin({ label: 'Media Library', href: '/ops/photos' });
+  assert.deepEqual(getSettings().pinned.map((p) => p.href), []);
+});
+
 test('reorderPins respects id order', () => {
   addPin({ label: 'A', href: '/a' });
   addPin({ label: 'B', href: '/b' });
@@ -96,5 +120,21 @@ test('reorderPins respects id order', () => {
   assert.deepEqual(
     getSettings().pinned.map((p) => p.href),
     ['/a', '/b'],
+  );
+});
+
+test('pinsCoverHref matches the leaf path so a pin does not double-paint the catalog parent', () => {
+  assert.equal(hrefPathname('/unbox?openReceivingId=1'), '/unbox');
+  assert.equal(
+    pinsCoverHref('/unbox', [{ href: '/unbox' }]),
+    true,
+  );
+  assert.equal(
+    pinsCoverHref('/unbox', [{ href: '/unbox?openReceivingId=1' }]),
+    true,
+  );
+  assert.equal(
+    pinsCoverHref('/unbox', [{ href: '/packing' }]),
+    false,
   );
 });

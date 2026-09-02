@@ -116,6 +116,7 @@ export function compareIncomingGridRows(
   b: ReceivingLineRow,
   column: IncomingGridColumnKey,
   dir: GridSortDir,
+  fieldId?: string | null,
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
   let primary = 0;
@@ -123,7 +124,7 @@ export function compareIncomingGridRows(
   // The header may speak in COMPOUND track keys (`item`, `fulfillment`,
   // `state`) or in this family's flat words. Normalize once — without it the
   // compound mount fell through to `default` and every row compared equal.
-  const fact = incomingSortFactFor(column) ?? column;
+  const fact = incomingSortFactFor(column, fieldId) ?? column;
 
   switch (fact) {
     case 'title':
@@ -160,6 +161,18 @@ export function compareIncomingGridRows(
         numeric: true,
         sensitivity: 'base',
       });
+      break;
+    case 'thumb': {
+      const ua = (a.image_url || '').trim();
+      const ub = (b.image_url || '').trim();
+      if (!ua && !ub) primary = 0;
+      else if (!ua) return 1;
+      else if (!ub) return -1;
+      else primary = ua.localeCompare(ub, undefined, { sensitivity: 'base' });
+      break;
+    }
+    case 'amount':
+      primary = (Number(a.unit_price) || 0) - (Number(b.unit_price) || 0);
       break;
     case 'select':
     default:

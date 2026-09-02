@@ -40,16 +40,19 @@ import {
   formatShortcutDiscoverMarkdown,
   nextShortcutDeleteGap,
   shortcutDisplayEvalManifest,
+  shortcutEngineContractSource,
+  shortcutEngineForbiddenSource,
 } from '../../src/lib/keyboard/shortcut-display-cohort.ts'
 import {
   GARISEK_OS,
+  graphPass,
   REPO,
   evalStationPass,
   ensureLedgerSeed,
   patchLedger,
   run,
   runJson,
-  stamp,
+  stamp, writeLatest,
 } from './eval-core.mjs'
 
 function usage(code = 1) {
@@ -75,6 +78,8 @@ Pin: \`CompoundItem\` + \`DateRangePickerField\` in \`src/design-system/pinned.j
 - ${SLOT_TABLE_PAINT_LAW.listingChip}
 - ${SLOT_TABLE_PAINT_LAW.shipBy}
 - ${SLOT_TABLE_PAINT_LAW.filter}
+- ${SLOT_TABLE_PAINT_LAW.headerSort}
+- ${SLOT_TABLE_PAINT_LAW.stageAssign}
 - ${SLOT_TABLE_PAINT_LAW.scope}
 <!-- /eval-ledger:auto:paint-law -->
 
@@ -87,6 +92,7 @@ Pin: \`CompoundItem\` + \`DateRangePickerField\` in \`src/design-system/pinned.j
 - Layout hooks wrap \`useSlotTableLayout\`
 - Discover names DELETE vs KEEP (\`src/lib/tables/slot-table-discover.ts\`)
 - Ship-by delay: \`DateRangePickerField variant="compact"\` (no X, no year, click commits; \`useOptimisticMutation\`)
+- Header click-to-sort every DATA track (chrome only: select / actions / _fill)
 - Tripwire: \`${SLOT_TABLE_COHORT_TRIPWIRE}\`
 
 ## Operator verdict
@@ -245,12 +251,14 @@ async function runSlotTable(skipVerify) {
       snapshotsDir: manifest.snapshotsDir,
       critiqueFiles: [...manifest.critiqueFiles],
       graphSymbols: [...manifest.graphSymbols],
+      graphExpectedFiles: { ...manifest.graphExpectedFiles },
       tripwires: [...manifest.tripwires],
       workspace: SLOT_TABLE_ENGINE.compoundCells,
       exportName: 'CompoundItem',
     },
     {
       skipVerify: true,
+      skipTripwire: true,
       day,
       sharedVerify: skipVerify ? undefined : { ok: verifyOk, snapshot: verifySnapshot },
     },
@@ -268,6 +276,7 @@ async function runSlotTable(skipVerify) {
 
   const compoundSrc = readFileSync(path.join(REPO, SLOT_TABLE_ENGINE.compoundCells), 'utf8')
   const srcByPath = new Map([[SLOT_TABLE_ENGINE.compoundCells, compoundSrc]])
+  let contractOk = true
   const engineContract = [
     `| Predicate | File | Result |`,
     `|---|---|---|`,
@@ -278,7 +287,9 @@ async function runSlotTable(skipVerify) {
         src = readFileSync(path.join(REPO, rel), 'utf8')
         srcByPath.set(rel, src)
       }
-      return `| ${name} | \`${rel}\` | ${re.test(src) ? 'pass' : '**FAIL**'} |`
+      const pass = re.test(src)
+      if (!pass) contractOk = false
+      return `| ${name} | \`${rel}\` | ${pass ? 'pass' : '**FAIL**'} |`
     }),
   ].join('\n')
 
@@ -287,6 +298,8 @@ async function runSlotTable(skipVerify) {
     `- ${SLOT_TABLE_PAINT_LAW.listingChip}`,
     `- ${SLOT_TABLE_PAINT_LAW.shipBy}`,
     `- ${SLOT_TABLE_PAINT_LAW.filter}`,
+    `- ${SLOT_TABLE_PAINT_LAW.headerSort}`,
+    `- ${SLOT_TABLE_PAINT_LAW.stageAssign}`,
     `- ${SLOT_TABLE_PAINT_LAW.scope}`,
   ].join('\n')
 
@@ -348,7 +361,11 @@ async function runSlotTable(skipVerify) {
     'graph-stats': statsBlock,
   })
 
-  const ok = tripOk && verifyOk !== false
+  const expectedGraph = manifest.graphSymbols.length
+  const graphOk =
+    result.impacts.length === expectedGraph && result.impacts.every((i) => !i.error)
+  const ok = tripOk && verifyOk !== false && contractOk && graphOk
+  writeLatest(manifest.snapshotsDir, { kind: 'cohort', id: manifest.id ?? manifest.cohort ?? null, ok, tripOk, verifyOk, contractOk, graphOk, tripSnapshot: tripSnap, verifySnapshot })
   console.log(
     JSON.stringify(
       {
@@ -356,6 +373,8 @@ async function runSlotTable(skipVerify) {
         cohort: 'slot-table',
         tripwire: tripOk,
         verify: verifyOk,
+        engineContract: contractOk,
+        graph: graphOk,
         peers: slotTablePeerIds().length,
         enginePeers: slotTableEnginePeerIds().length,
         discoverDelete: discovered.delete.length,
@@ -522,25 +541,38 @@ async function runShortcuts(skipVerify) {
     },
     {
       skipVerify: true,
+      skipTripwire: true,
       day,
       sharedVerify: skipVerify ? undefined : { ok: verifyOk, snapshot: verifySnapshot },
     },
   )
 
-  const cheatSrc = readFileSync(path.join(REPO, SHORTCUT_DISPLAY_ENGINE.cheatSheet), 'utf8')
-  const barSrc = readFileSync(path.join(REPO, SHORTCUT_DISPLAY_ENGINE.statusBar), 'utf8')
-  const hookSrc = readFileSync(path.join(REPO, SHORTCUT_DISPLAY_ENGINE.inlineHotkeys), 'utf8')
+  const srcByPath = new Map()
+  let contractOk = true
   const engineContract = [
-    `| Predicate | Result |`,
-    `|---|---|`,
+    `| Predicate | File | Result |`,
+    `|---|---|---|`,
     ...Object.entries(SHORTCUT_DISPLAY_ENGINE_CONTRACT).map(([name, re]) => {
-      let src = barSrc
-      if (name === 'cheatSheetYields') src = cheatSrc
-      else if (name === 'hookToggle') src = hookSrc
-      return `| ${name} | ${re.test(src) ? 'pass' : '**FAIL**'} |`
+      const rel = shortcutEngineContractSource(name)
+      let src = srcByPath.get(rel)
+      if (src === undefined) {
+        src = readFileSync(path.join(REPO, rel), 'utf8')
+        srcByPath.set(rel, src)
+      }
+      const pass = re.test(src)
+      if (!pass) contractOk = false
+      return `| ${name} | \`${rel}\` | ${pass ? 'pass' : '**FAIL**'} |`
     }),
     ...Object.entries(SHORTCUT_DISPLAY_FORBIDDEN).map(([name, re]) => {
-      return `| absent:${name} | ${!re.test(barSrc) ? 'pass' : '**FAIL**'} |`
+      const rel = shortcutEngineForbiddenSource(name)
+      let src = srcByPath.get(rel)
+      if (src === undefined) {
+        src = readFileSync(path.join(REPO, rel), 'utf8')
+        srcByPath.set(rel, src)
+      }
+      const pass = !re.test(src)
+      if (!pass) contractOk = false
+      return `| absent:${name} | \`${rel}\` | ${pass ? 'pass' : '**FAIL**'} |`
     }),
   ].join('\n')
 
@@ -600,7 +632,10 @@ async function runShortcuts(skipVerify) {
     'graph-stats': statsBlock,
   })
 
-  const ok = tripOk && verifyOk !== false
+  const expectedGraph = manifest.graphSymbols.length
+  const graphOk = graphPass(result.impacts, expectedGraph)
+  const ok = tripOk && verifyOk !== false && contractOk && graphOk
+  writeLatest(manifest.snapshotsDir, { kind: 'cohort', id: manifest.id ?? manifest.cohort ?? null, ok, tripOk, verifyOk, contractOk, graphOk, tripSnapshot: tripSnap, verifySnapshot })
   console.log(
     JSON.stringify(
       {
@@ -608,6 +643,8 @@ async function runShortcuts(skipVerify) {
         cohort: 'shortcuts',
         tripwire: tripOk,
         verify: verifyOk,
+        engineContract: contractOk,
+        graph: graphOk,
         discoverDelete: discovered.delete.length,
         discoverNext: nextShortcutDeleteGap(discovered)?.id ?? null,
         ledger: manifest.ledger,

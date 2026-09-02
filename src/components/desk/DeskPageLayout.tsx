@@ -58,6 +58,12 @@ export interface DeskPageLayoutProps {
    */
   title?: string;
   /**
+   * Replaces the `<h1>` — for a find surface whose query IS its identity.
+   * See {@link DeskPageChromeProps.titleSlot}. Pass `title` too, as the
+   * accessible name.
+   */
+  titleSlot?: ReactNode;
+  /**
    * Optional line under the title — a count, a scope. Omit it when there is
    * nothing true to say; a placeholder subtitle is worse than none.
    */
@@ -92,6 +98,11 @@ export interface DeskPageLayoutProps {
    * {@link DeskPageChromeProps.tabsLead}. Not a second CTA slot.
    */
   tabsLead?: ReactNode;
+  /**
+   * Same-axis overflow at the end of the tab row — not a create CTA.
+   * See {@link DeskPageChromeProps.tabsTrail}.
+   */
+  tabsTrail?: ReactNode;
   className?: string;
 }
 
@@ -107,12 +118,14 @@ export function DeskPageLayout(props: DeskPageLayoutProps) {
 function DeskPageFrame({
   children,
   title: titleOverride,
+  titleSlot,
   subtitle,
   decorateTabs,
   tabs: tabsOverride,
   activeTab: activeTabOverride,
   onTabChange: onTabChangeOverride,
   tabsLead,
+  tabsTrail,
   className,
 }: DeskPageLayoutProps) {
   const nav = useDeskPageChromeTabs();
@@ -120,6 +133,7 @@ function DeskPageFrame({
   const tabs = tabsOverride ?? nav.tabs;
   const activeTab = tabsOverride ? (activeTabOverride ?? '') : nav.activeTab;
   const onTabChange = tabsOverride ? (onTabChangeOverride ?? noop) : nav.onTabChange;
+  const onTabsReorder = tabsOverride ? undefined : nav.onTabsReorder;
   const [fullscreen, setFullscreen] = useState(false);
   const toggleFullscreen = useCallback(() => setFullscreen((v) => !v), []);
   const addSlot = useDeskActionSlotNode();
@@ -132,12 +146,15 @@ function DeskPageFrame({
   return (
     <DeskPageChrome
       title={title}
+      titleSlot={titleSlot}
       subtitle={subtitle}
       tabs={decorated}
       activeTab={activeTab}
       onTabChange={onTabChange}
+      onTabsReorder={onTabsReorder}
       addSlot={addSlot}
       tabsLead={tabsLead}
+      tabsTrail={tabsTrail}
       fullscreen={fullscreen}
       onToggleFullscreen={toggleFullscreen}
       className={className}

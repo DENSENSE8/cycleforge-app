@@ -48,6 +48,9 @@
     "build:turbo": "NODE_OPTIONS='--max-old-space-size=8192' next build",
     "release-notes:generate": "node scripts/generate-release-notes.mjs",
     "start": "next start",
+    "vercel": "vercel --archive=tgz",
+    "vercel:login": "vercel login",
+    "vercel:prod": "vercel --prod --archive=tgz --yes",
     "vercel:env:push": "node scripts/push-vercel-env.js",
     "manuals:convert-upload": "node scripts/convert-and-upload-manuals.mjs",
     "manuals:backfill-db": "node scripts/backfill-manual-blob-urls.mjs",
@@ -288,6 +291,6 @@
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vercel": "^32.3.0"
+    "vercel": "^59.11.0"
   }
 }

@@ -20,6 +20,7 @@ import {
 } from '@/lib/zoho';
 import { withZohoOrg } from '@/lib/zoho/tenant-context';
 import { getInventoryProvider, type InventoryProvider } from '@/lib/integrations/inventory';
+import { getIntegrationCredentials } from '@/lib/integrations/credentials';
 
 /** Keep the isolate alive long enough for a slow Zoho purchase-receive POST. */
 export const maxDuration = 120;
@@ -899,13 +900,38 @@ export const POST = withAuth(async (request, ctx) => {
     // inventory integration is connected — Zoho-linked lines stay UNBOXED.
     const inventory = await getInventoryProvider(ctx.organizationId);
 
+    // listConnections treats an `active` vault row as connected without decrypting
+    // it. Local Next and Vercel have historically used different INTEGRATION_KMS_KEY
+    // values against the same Neon row — decrypt fails, env has no ZOHO_REFRESH_TOKEN,
+    // and after() used to throw ZohoNotConnectedError ("could not receive in Zoho").
+    let inventoryCredsError: string | null = null;
+    if (
+      inventory &&
+      attemptedPoIds.size > 0 &&
+      !localReceive &&
+      !skipZohoReceive &&
+      !isUnreceive
+    ) {
+      try {
+        const creds = await getIntegrationCredentials(ctx.organizationId, 'zoho');
+        if (!creds) {
+          inventoryCredsError =
+            'No active Zoho connection — reconnect in Settings → Integrations.';
+        }
+      } catch (err) {
+        inventoryCredsError = err instanceof Error ? err.message : String(err);
+      }
+    }
+
     // Re-bind the tenant inside after(): the callback runs outside the
     // request's async context, so the Zoho client would otherwise see no org
     // binding (getPurchaseOrderById / createPurchaseReceive / updatePurchaseOrder).
     // scheduleAfterResponse: on local Next, plain `after()` holds the HTTP
     // response open until Zoho finishes — Unbox's 30s AbortSignal then aborts
     // mid-flight as a "network timeout". Detach locally; waitUntil on Vercel.
-    scheduleAfterResponse(async () => withZohoOrg(ctx.organizationId, async () => {
+    scheduleAfterResponse(async () => {
+      if (inventoryCredsError) return;
+      await withZohoOrg(ctx.organizationId, async () => {
       // Mirror newly-created serial units into the operations graph
       // (fire-and-forget — tapWorkflow never throws).
       for (const tap of workflowTapQueue) {
@@ -1473,7 +1499,8 @@ export const POST = withAuth(async (request, ctx) => {
       } catch (err) {
         console.warn('mark-received-po: cache/realtime failed', err);
       }
-    }));
+    });
+    });
 
     // Audit one row per touched line. Source = mobile-scanner when the call
     // came from the phone station, else receiving-station. Action =
@@ -1580,6 +1607,8 @@ export const POST = withAuth(async (request, ctx) => {
       // Unfound carton received locally — lines are RECEIVED (DONE), Zoho is
       // intentionally untouched. Emerald success, not a "no PO link" warning.
       skipReason = 'received_local';
+    } else if (inventoryCredsError) {
+      skipReason = 'inventory_credentials_unreadable';
     } else if (!inventory && attemptedPoIds.size > 0) {
       // Vault disconnected / poisoned — local receive stands; operator must
       // reconnect inventory before a purchase receive can land.
@@ -1637,11 +1666,11 @@ export const POST = withAuth(async (request, ctx) => {
       },
       zoho: {
         attempted: attemptedPoIds.size,
-        ok: true, // HTTP contract; pending=true means inventory receive is in after()
+        ok: !inventoryCredsError, // HTTP contract; pending=true means inventory receive is in after()
         pending: zohoPending,
         rate_limited: false,
         results: [],
-        error: null,
+        error: inventoryCredsError,
         ...(skipReason ? { skip_reason: skipReason } : {}),
         ...(circuitOpen && circuitStatus
           ? {

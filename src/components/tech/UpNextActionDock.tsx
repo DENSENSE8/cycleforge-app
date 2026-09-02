@@ -2,7 +2,7 @@
 
 import { useCallback, useState } from 'react';
 import { StationTerminalDock, useStationTerminalAction } from '@/components/station/terminal';
-import { OmnichannelComposerDock } from '@/design-system/primitives';
+import { StationComposerHost } from '@/components/composer';
 import { slicedActionDockWrapperClass } from '@/design-system/primitives/SlicedActionDock';
 import { STATION_WORKBENCH_COLUMN } from '@/components/station/workbench';
 import { useAppendOrderNote } from '@/hooks/useOrderNotes';
@@ -23,12 +23,18 @@ interface UpNextActionDockProps {
    * sidebar-originated action.
    */
   order: Order;
+  /** Opens the station Displays index from the composer context ring. */
+  onProgressClick?: () => void;
+  /** Keeps the context ring selected while the Displays stack is open. */
+  displaysOpen?: boolean;
 }
 
 /**
  * Ready-to-Pack preview waist — the Unbox/Triage/Testing shape: ONE raised
- * {@link OmnichannelComposerDock} for the order note, with Start (+ the Out of
- * Stock split menu) mounted as the embedded pill on its trailing edge.
+ * {@link StationComposerHost} for the order note, with Start (+ the Out of
+ * Stock split menu) mounted as the embedded pill on its trailing edge. The
+ * mode faces stay hidden because Picker is a dumb scan mouth, but the host's
+ * bottom-right context ring remains present and opens Displays.
  *
  * It used to be a bare bottom-of-page `StationTerminalDock` float. That green
  * capsule was the old page chrome — the verb now rides the composer, the same
@@ -46,7 +52,11 @@ interface UpNextActionDockProps {
  *  - `tech-upnext-action-start` → starts the previewed order
  *  - `tech-upnext-action-oos-set` → toggles orders.is_out_of_stock
  */
-export function UpNextActionDock({ order }: UpNextActionDockProps) {
+export function UpNextActionDock({
+  order,
+  onProgressClick,
+  displaysOpen = false,
+}: UpNextActionDockProps) {
   const hasOutOfStock = orderIsOutOfStock(order);
   const [note, setNote] = useState('');
   const appendNote = useAppendOrderNote(order.id);
@@ -114,15 +124,21 @@ export function UpNextActionDock({ order }: UpNextActionDockProps) {
             {terminalVm.disabledReason}
           </p>
         ) : null}
-        <OmnichannelComposerDock
-          value={note}
-          onChange={setNote}
-          onCommit={commitNote}
-          disabled={appendNote.isPending}
-          placeholder="Add a note for this order…"
-          ariaLabel="Order note"
+        <StationComposerHost
+          showModeRow
+          showModeFaces={false}
+          labelValue={note}
+          onLabelChange={setNote}
+          onLabelCommit={commitNote}
+          labelCommitDisabled={appendNote.isPending || note.trim().length === 0}
+          labelPlaceholder="Add a note for this order…"
+          labelCommitAriaLabel="Save order note"
+          labelCommitTooltip="Save order note (Enter)"
           trailingAction={bubbleTerminal}
           chrome="raised"
+          animateMount={false}
+          progressTone={displaysOpen ? 'selected' : 'idle'}
+          onProgressClick={onProgressClick}
         />
       </div>
     </div>

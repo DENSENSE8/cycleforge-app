@@ -376,6 +376,20 @@ export const framerTransition = {
    */
   commandBarDialog: springSnappy,
 
+  /**
+   * MasterNav collapsed hover-peek — scale from the top-left origin (21st.dev
+   * corner pop). Physics = `springSnappy`. Pair with
+   * `framerPresence.navPeekCorner`.
+   */
+  navPeekCorner: springSnappy,
+
+  /**
+   * Header Recents / Page / Pins hover menu — drops from the top edge of the
+   * trigger (scale + y). Physics = `springSnappy`. Pair with
+   * `framerPresence.navDropdownFromTop`. Host pins `originX={0.5} originY={0}`.
+   */
+  navDropdownFromTop: springSnappy,
+
   /** Horizontal slide between rows inside the modal — `springSnappy` */
   workOrderSlideSpring: springSnappy,
 
@@ -734,6 +748,27 @@ export const framerPresence = {
     initial: { opacity: 0, y: -4 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -6 },
+  },
+  /**
+   * Collapsed MasterNav hover-peek — grows from the top-left corner and
+   * dismisses back into it (21st.dev / origin-ui popover sidebar). Host MUST
+   * pin `style.transformOrigin: '0 0'` so scale is not centered. Pair with
+   * `framerTransition.navPeekCorner`. No `x`/`y`: translation would read as a
+   * slide, not a corner pop.
+   */
+  navPeekCorner: {
+    initial: { opacity: 0, scale: 0.92 },
+    animate: { opacity: 1, scale: 1 },
+    exit: { opacity: 0, scale: 0.92 },
+  },
+  /**
+   * Header nav hover menus — unfold downward from the trigger's top edge.
+   * Pair with `framerTransition.navDropdownFromTop` and origin-top.
+   */
+  navDropdownFromTop: {
+    initial: { opacity: 0, scale: 0.96, y: -8 },
+    animate: { opacity: 1, scale: 1, y: 0 },
+    exit: { opacity: 0, scale: 0.96, y: -8 },
   },
   /** Sidebar section — height expand/collapse */
   sidebarSection: {
@@ -1209,6 +1244,16 @@ export const framerVariants: Record<string, Variants> = {
     initial: framerPresence.dropdownPanel.initial,
     animate: framerPresence.dropdownPanel.animate,
     exit: framerPresence.dropdownPanel.exit,
+  },
+  navPeekCorner: {
+    initial: framerPresence.navPeekCorner.initial,
+    animate: framerPresence.navPeekCorner.animate,
+    exit: framerPresence.navPeekCorner.exit,
+  },
+  navDropdownFromTop: {
+    initial: framerPresence.navDropdownFromTop.initial,
+    animate: framerPresence.navDropdownFromTop.animate,
+    exit: framerPresence.navDropdownFromTop.exit,
   },
   sidebarSection: {
     initial: framerPresence.sidebarSection.initial,

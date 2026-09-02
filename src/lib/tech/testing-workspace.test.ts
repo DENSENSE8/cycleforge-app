@@ -17,8 +17,8 @@ import {
 } from '@/lib/tech/testing-workspace-query';
 
 describe('testing-workspace-state', () => {
-  it('defaults to Returns and reads Urgent / Pending / All / History', () => {
-    assert.equal(getTestingWorkspaceTabFromSearch(new URLSearchParams()), 'returns');
+  it('defaults to All and reads Urgent / Pending / Returns / History', () => {
+    assert.equal(getTestingWorkspaceTabFromSearch(new URLSearchParams()), 'all');
     assert.equal(
       getTestingWorkspaceTabFromSearch(new URLSearchParams('testTab=urgent')),
       'urgent',
@@ -41,7 +41,7 @@ describe('testing-workspace-state', () => {
     const params = new URLSearchParams(
       'testTab=history&staff=12&layout=board&weekOffset=2&search=bose',
     );
-    normalizeTestingWorkspaceTabParams(params, 'returns');
+    normalizeTestingWorkspaceTabParams(params, 'all');
     assert.equal(params.has('testTab'), false);
     assert.equal(params.get('staff'), '12');
     assert.equal(params.has('layout'), false);

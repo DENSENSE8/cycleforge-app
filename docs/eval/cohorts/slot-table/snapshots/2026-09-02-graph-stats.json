@@ -1,0 +1,72 @@
+{
+  "project": "cycleforge-app",
+  "path": "/home/michaelgarisek/Projects/cycleforge-app",
+  "status": "ready",
+  "last_built_at": "2026-09-02T07:55:05.107Z",
+  "totals": {
+    "files": "7105",
+    "nodes": "38192",
+    "edges": "178443",
+    "embedded": "38192"
+  },
+  "nodesByKind": [
+    {
+      "kind": "function",
+      "n": 14717
+    },
+    {
+      "kind": "file",
+      "n": 7105
+    },
+    {
+      "kind": "variable",
+      "n": 5814
+    },
+    {
+      "kind": "interface",
+      "n": 4573
+    },
+    {
+      "kind": "component",
+      "n": 2907
+    },
+    {
+      "kind": "type",
+      "n": 2796
+    },
+    {
+      "kind": "method",
+      "n": 184
+    },
+    {
+      "kind": "class",
+      "n": 96
+    }
+  ],
+  "edgesByKind": [
+    {
+      "kind": "calls",
+      "n": 106552
+    },
+    {
+      "kind": "imports",
+      "n": 31998
+    },
+    {
+      "kind": "contains",
+      "n": 31087
+    },
+    {
+      "kind": "renders",
+      "n": 8726
+    },
+    {
+      "kind": "extends",
+      "n": 70
+    },
+    {
+      "kind": "implements",
+      "n": 10
+    }
+  ]
+}

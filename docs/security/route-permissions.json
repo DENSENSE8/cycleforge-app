@@ -1,9 +1,9 @@
 {
   "version": 1,
   "generatedAt": "2026-08-21T01:05:42Z",
-  "totalRoutes": 971,
+  "totalRoutes": 977,
   "summary": {
-    "permissionGated": 829,
+    "permissionGated": 831,
     "authenticatedNoPermission": 53,
     "anonymousIntentional": 87,
     "serviceToService": 2,
@@ -3531,6 +3531,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/nav/child-order/route.ts",
+      "methods": [
+        "PATCH"
+      ],
+      "gate": "withAuth",
+      "permission": "dashboard.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/nav/route.ts",
       "methods": [
         "GET",
@@ -4114,21 +4123,21 @@
       "exemptReason": null
     },
     {
-      "path": "/api/orders/notes/bulk/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "requireRoutePerm",
-      "permission": "orders.create",
-      "exemptReason": null
-    },
-    {
       "path": "/api/orders/next/route.ts",
       "methods": [
         "GET"
       ],
       "gate": "withAuth",
       "permission": "orders.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/notes/bulk/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "requireRoutePerm",
+      "permission": "orders.create",
       "exemptReason": null
     },
     {
@@ -4183,6 +4192,15 @@
       ],
       "gate": "withAuth",
       "permission": "orders.create",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/shortage-coverage-import/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.import",
       "exemptReason": null
     },
     {
@@ -5431,6 +5449,24 @@
       "exemptReason": null
     },
     {
+      "path": "/api/receiving/inbound/confirm-po/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/receiving/inbound/extract-po/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "receiving.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/receiving/inbound/import-csv/route.ts",
       "methods": [
         "POST"
@@ -5450,24 +5486,6 @@
     },
     {
       "path": "/api/receiving/inbound/import-purchase/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "receiving.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/receiving/inbound/extract-po/route.ts",
-      "methods": [
-        "POST"
-      ],
-      "gate": "withAuth",
-      "permission": "receiving.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/receiving/inbound/confirm-po/route.ts",
       "methods": [
         "POST"
       ],
@@ -6713,6 +6731,15 @@
       "exemptReason": null
     },
     {
+      "path": "/api/sessions/daily/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "reports.view",
+      "exemptReason": null
+    },
+    {
       "path": "/api/settings/route.ts",
       "methods": [
         "GET",
@@ -6934,15 +6961,6 @@
       ],
       "gate": "withAuth",
       "permission": "sku_stock.view",
-      "exemptReason": null
-    },
-    {
-      "path": "/api/sku-kit-parts/[id]/document/route.ts",
-      "methods": [
-        "GET"
-      ],
-      "gate": "withAuth",
-      "permission": null,
       "exemptReason": null
     },
     {
@@ -7208,6 +7226,15 @@
       ],
       "gate": "withAuth",
       "permission": "sku_stock.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/sku-kit-parts/[id]/document/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": null,
       "exemptReason": null
     },
     {

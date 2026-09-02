@@ -3,29 +3,24 @@
 /**
  * The claim, headless, for the station composer's Ticket tab.
  *
- * Before this, filing a claim meant a separate form — subject field, body
- * field, its own File footer — mounted above the composer while the composer
- * sat there with a disabled Enter and a placeholder pointing UP at that form
- * ("Create or link a ticket above"). Two text surfaces, one message.
- *
- * Now the composer IS the claim on an unlinked carton (operator ruling,
- * 2026-08-30): the textarea holds the template BODY, the subject rides above it
- * in the dock's own inset, and Enter files the ticket. There is no second
- * editor, which is what {@link OmnichannelComposerDock}'s one-composer law asks
- * for anyway.
- *
- * Linked carton → this goes quiet (`isClaim` false) and the composer keeps its
- * reply path. Nothing here fetches or fires in that case.
+ * The deterministic Zendesk template is FACT input for Hermes — it is not
+ * dumped into the textarea. Ticket mode drafts via
+ * POST /api/receiving/zendesk-claim/draft, then Enter files (create) or
+ * links + posts (link). Claim type, return-issue prefill, Create|Link, and
+ * the post-file seller copy all live here so the Displays form cannot drift.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from '@/lib/toast';
-import { defaultReceivingClaimType } from '@/lib/receiving-claim-type';
-import { isReturnIntake } from '@/lib/receiving/triage-intake-kind';
+import { defaultReceivingClaimType, type ClaimType } from '@/lib/receiving-claim-type';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import { useClaimTemplate } from '../../claim/hooks/useClaimTemplate';
+import type { ClaimModalMode, LinkCandidate } from '../../claim/claim-types';
+import { useClaimTicketSearch } from '../../claim/hooks/useClaimTicketSearch';
+import {
+  copySellerClaimMessageWithPersist,
+  persistSellerClaimMessageDraft,
+} from '@/lib/receiving-claim-seller-copy';
 
-/** Server error text, falling back to a caller-supplied line. */
 function claimErrorText(data: unknown, fallback: string): string {
   if (data && typeof data === 'object') {
     const error = (data as { error?: unknown }).error;
@@ -34,27 +29,41 @@ function claimErrorText(data: unknown, fallback: string): string {
   return fallback;
 }
 
+function ticketIdFromNumber(ticketNumber: string): number | null {
+  const n = Number(String(ticketNumber).replace(/^#/, '').trim());
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 export interface ComposerTicketClaim {
-  /** True when the composer's Ticket tab is a CLAIM (no linked ticket yet). */
   isClaim: boolean;
-  /** Template subject — displayed above the draft, not edited in the dock. */
+  claimType: ClaimType;
+  setClaimType: (next: ClaimType) => void;
+  hasPo: boolean;
+  mode: ClaimModalMode;
+  setMode: (next: ClaimModalMode) => void;
+  reason: string;
+  search: ReturnType<typeof useClaimTicketSearch>;
   subject: string;
-  /** The claim body. This is the composer's textarea value. */
   body: string;
   setBody: (next: string) => void;
-  /** Template preview still in flight — the body is empty until it lands. */
   loading: boolean;
+  draftModel: string;
+  draftDegraded: boolean;
+  redraft: () => void;
   filing: boolean;
-  /** Enter is live only with a body to file. */
   canFile: boolean;
   file: () => void;
-  /**
-   * Developer "Test create" — assembles the ticket and builds the REAL photo
-   * share pack, but files nothing. Dev builds only.
-   */
   canTest: boolean;
   testing: boolean;
   testCreate: () => void;
+  sellerMessage: string;
+  setSellerMessage: (next: string) => void;
+  sellerLoading: boolean;
+  sellerApplicable: boolean;
+  copySellerMessage: () => void;
+  redraftSeller: () => void;
+  persistSeller: () => void;
+  contextLine: string;
 }
 
 export function useComposerTicketClaim({
@@ -62,127 +71,331 @@ export function useComposerTicketClaim({
   hasTicket,
   notePublic = false,
   ccEmails,
+  prefillReason,
   onTicketCreated,
 }: {
   row?: ReceivingLineRow | null;
-  /** A linked ticket means the composer replies instead of filing. */
   hasTicket: boolean;
   notePublic?: boolean;
   ccEmails?: string[];
+  /** RETURN match issue line — rides into the AI draft as `reason`. */
+  prefillReason?: string | null;
   onTicketCreated?: (ticketNumber: string) => void;
 }): ComposerTicketClaim {
   const receivingId = row?.receiving_id ?? null;
   const lineId = row?.id ?? null;
-  // No row → nothing to claim about. The hook still runs (hooks are not
-  // conditional); it just never fetches and never files.
   const isClaim = !hasTicket && row != null && receivingId != null;
-
-  // Same default the claim form derives — RETURNED → RTS, return intake →
-  // return, unmatched without a PO → unfound, else damage. Read from the row so
-  // the composer files the same claim type the form would have.
-  const claimType = defaultReceivingClaimType({
+  const hasPo = Boolean(row?.zoho_purchaseorder_number || row?.zoho_purchaseorder_id);
+  const defaultType = defaultReceivingClaimType({
     shipmentStatus: row?.shipment_status,
     receivingType: row?.receiving_type,
     cartonIntakeType: row?.carton_intake_type,
     intakeType: row?.intake_type,
     receivingSource: row?.receiving_source,
-    hasPo: Boolean(row?.zoho_purchaseorder_number || row?.zoho_purchaseorder_id),
+    hasPo,
   });
 
-  const template = useClaimTemplate({
-    open: isClaim,
-    active: isClaim,
-    receivingId,
-    lineId,
-    claimType,
-    initialSourcePlatform: row?.source_platform ?? null,
-    initialReceivingType: row?.receiving_type ?? null,
-    initialIsReturn: row != null ? isReturnIntake(row) : null,
-  });
-
+  const [claimType, setClaimTypeState] = useState<ClaimType>(defaultType);
+  const [mode, setMode] = useState<ClaimModalMode>('create');
+  const [reason, setReason] = useState((prefillReason ?? '').trim());
+  const [subject, setSubject] = useState('');
+  const [body, setBodyState] = useState('');
+  const [edited, setEdited] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [draftModel, setDraftModel] = useState('');
+  const [draftDegraded, setDraftDegraded] = useState(false);
   const [filing, setFiling] = useState(false);
   const [testing, setTesting] = useState(false);
-  // One key per carton+line: a double Enter must not file two tickets.
-  const idempotencyKey = useRef<string>('');
-  if (!idempotencyKey.current) {
-    idempotencyKey.current = `composer-claim-${receivingId ?? 'x'}-${lineId ?? 'x'}`;
+  const [sellerMessage, setSellerMessage] = useState('');
+  const [sellerMessageId, setSellerMessageId] = useState<number | null>(null);
+  const [sellerLoading, setSellerLoading] = useState(false);
+  const [filedTicket, setFiledTicket] = useState<{
+    number: string;
+    id: number | null;
+  } | null>(null);
+
+  const trackingSeed =
+    typeof row?.tracking_number === 'string' ? row.tracking_number.trim() : '';
+  const search = useClaimTicketSearch({
+    open: isClaim,
+    enabled: isClaim && mode === 'link',
+    receivingId,
+    lineId,
+    initialQuery: trackingSeed || null,
+  });
+
+  const identityKey = `${receivingId ?? ''}:${lineId ?? ''}`;
+  const idempotencyKey = useRef(`composer-claim-${identityKey}`);
+  const lastIdentity = useRef(identityKey);
+  if (lastIdentity.current !== identityKey) {
+    lastIdentity.current = identityKey;
+    idempotencyKey.current = `composer-claim-${identityKey}`;
   }
+  const draftGen = useRef(0);
+  const editedRef = useRef(edited);
+  editedRef.current = edited;
 
-  const file = useCallback(() => {
-    if (!isClaim || filing || receivingId == null) return;
-    const description = template.readDescription().trim();
-    if (!description) return;
+  useEffect(() => {
+    setClaimTypeState(defaultType);
+    setMode('create');
+    setReason((prefillReason ?? '').trim());
+    setSubject('');
+    setBodyState('');
+    setEdited(false);
+    setDraftModel('');
+    setDraftDegraded(false);
+    setSellerMessage('');
+    setSellerMessageId(null);
+    setFiledTicket(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- carton/line swap only
+  }, [identityKey]);
 
-    setFiling(true);
-    void (async () => {
+  useEffect(() => {
+    setReason((prefillReason ?? '').trim());
+  }, [prefillReason]);
+
+  const setClaimType = useCallback((next: ClaimType) => {
+    setClaimTypeState(next);
+    setEdited(false);
+  }, []);
+
+  const setBody = useCallback((next: string) => {
+    setBodyState(next);
+    setEdited(true);
+  }, []);
+
+  const runDraft = useCallback(async () => {
+    if (!isClaim || receivingId == null) return;
+    const gen = ++draftGen.current;
+    setLoading(true);
+    try {
+      const res = await fetch('/api/receiving/zendesk-claim/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          receivingId,
+          lineId,
+          claimType,
+          reason: reason.trim() || undefined,
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (gen !== draftGen.current) return;
+      if (editedRef.current) return;
+      if (!res.ok || !data?.success) {
+        toast.error(claimErrorText(data, 'Could not draft the claim'));
+        return;
+      }
+      setSubject(typeof data.subject === 'string' ? data.subject : '');
+      setBodyState(typeof data.description === 'string' ? data.description : '');
+      setDraftModel(typeof data.model === 'string' ? data.model : '');
+      setDraftDegraded(data.degraded === true);
+      setEdited(false);
+      if (data.degraded === true) {
+        toast.warning('AI draft kept the factual template — review before filing');
+      }
+    } catch {
+      if (gen !== draftGen.current) return;
+      toast.error('Could not draft the claim');
+    } finally {
+      if (gen === draftGen.current) setLoading(false);
+    }
+  }, [isClaim, receivingId, lineId, claimType, reason]);
+
+  useEffect(() => {
+    if (!isClaim) return;
+    void runDraft();
+  }, [isClaim, claimType, reason, identityKey, runDraft]);
+
+  const sellerApplicable = claimType !== 'return';
+
+  const draftSeller = useCallback(
+    async (ticketNumber: string, ticketId: number | null) => {
+      if (!sellerApplicable || !receivingId || !ticketNumber || ticketNumber === '#TEST') {
+        return;
+      }
+      setSellerLoading(true);
       try {
-        const res = await fetch('/api/receiving/zendesk-claim', {
+        const res = await fetch('/api/receiving/zendesk-claim/assist-seller', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Idempotency-Key': idempotencyKey.current,
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             receivingId,
             lineId,
             claimType,
-            subject: template.readSubject().trim(),
-            description,
-            notePublic,
-            ccEmails: notePublic ? (ccEmails ?? []) : [],
+            reason: reason.trim(),
+            subject: subject.trim(),
+            description: body.trim(),
+            zendeskTicketNumber: ticketNumber,
+            zendeskTicketId: ticketId,
           }),
         });
         const data = await res.json().catch(() => null);
         if (!res.ok || !data?.success) {
-          toast.error(claimErrorText(data, 'Could not file the claim'));
+          toast.error(claimErrorText(data, 'Could not draft seller message'));
           return;
         }
-        const ticketNumber = data.ticketNumber ? String(data.ticketNumber) : '';
-        const ticketUrl = typeof data.ticketUrl === 'string' ? data.ticketUrl : null;
-        if (ticketNumber) {
-          toast.success(`Ticket ${ticketNumber} filed`, {
-            action: ticketUrl
-              ? { label: 'Open', onClick: () => window.open(ticketUrl, '_blank', 'noopener') }
-              : undefined,
-          });
-          onTicketCreated?.(ticketNumber);
-        } else {
-          toast.success('Claim filed');
+        setSellerMessage(typeof data.sellerMessage === 'string' ? data.sellerMessage : '');
+        if (typeof data.sellerMessageId === 'number' && data.sellerMessageId > 0) {
+          setSellerMessageId(data.sellerMessageId);
         }
-        const archiveWarning =
-          typeof data.archiveWarning === 'string' && data.archiveWarning.trim()
-            ? data.archiveWarning.trim()
-            : null;
-        if (archiveWarning) {
-          toast.warning(archiveWarning, { duration: 8000 });
+        if (data.linksStripped) {
+          toast.warning('Links were removed from the seller message (marketplace TOS)', {
+            duration: 6000,
+          });
         }
       } catch {
-        toast.error('Could not file the claim');
+        toast.error('Could not draft seller message');
       } finally {
-        setFiling(false);
+        setSellerLoading(false);
       }
-    })();
+    },
+    [sellerApplicable, receivingId, lineId, claimType, reason, subject, body],
+  );
+
+  const afterFiled = useCallback(
+    (ticketNumber: string, ticketId: number | null) => {
+      setFiledTicket({ number: ticketNumber, id: ticketId });
+      onTicketCreated?.(ticketNumber);
+      void draftSeller(ticketNumber, ticketId);
+    },
+    [onTicketCreated, draftSeller],
+  );
+
+  const fileCreate = useCallback(async () => {
+    if (receivingId == null) return;
+    const description = body.trim();
+    if (!description) return;
+    setFiling(true);
+    try {
+      const res = await fetch('/api/receiving/zendesk-claim', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': idempotencyKey.current,
+        },
+        body: JSON.stringify({
+          receivingId,
+          lineId,
+          claimType,
+          reason: reason.trim() || undefined,
+          subject: subject.trim(),
+          description,
+          notePublic,
+          ccEmails: notePublic ? (ccEmails ?? []) : [],
+        }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.success) {
+        toast.error(claimErrorText(data, 'Could not file the claim'));
+        return;
+      }
+      const ticketNumber = data.ticketNumber ? String(data.ticketNumber) : '';
+      const ticketUrl = typeof data.ticketUrl === 'string' ? data.ticketUrl : null;
+      const ticketId =
+        typeof data.ticketId === 'number' ? data.ticketId : ticketIdFromNumber(ticketNumber);
+      if (ticketNumber) {
+        toast.success(`Ticket ${ticketNumber} filed`, {
+          action: ticketUrl
+            ? { label: 'Open', onClick: () => window.open(ticketUrl, '_blank', 'noopener') }
+            : undefined,
+        });
+        afterFiled(ticketNumber, ticketId);
+      } else {
+        toast.success('Claim filed');
+      }
+      const archiveWarning =
+        typeof data.archiveWarning === 'string' && data.archiveWarning.trim()
+          ? data.archiveWarning.trim()
+          : null;
+      if (archiveWarning) toast.warning(archiveWarning, { duration: 8000 });
+    } catch {
+      toast.error('Could not file the claim');
+    } finally {
+      setFiling(false);
+    }
   }, [
-    isClaim,
-    filing,
     receivingId,
     lineId,
     claimType,
-    template,
+    reason,
+    subject,
+    body,
     notePublic,
     ccEmails,
-    onTicketCreated,
+    afterFiled,
   ]);
 
-  /**
-   * Test create — the same POST with `dryRun`, which assembles the subject and
-   * body and BUILDS THE SHARE PACK but creates no ticket.
-   *
-   * The result replaces the composer draft, deliberately: the thing under test
-   * is what the vendor will actually read, so the way to check it is to put it
-   * in the field the operator is already looking at — pack link folded in, one
-   * message. Nothing is filed, so the draft is safe to overwrite.
-   */
+  const fileLink = useCallback(async () => {
+    const selected = search.selectedTicket;
+    if (receivingId == null || !selected) return;
+    const description = body.trim();
+    if (!description) return;
+    setFiling(true);
+    try {
+      const linkRes = await fetch('/api/receiving/zendesk-claim/link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receivingId, lineId, ticketId: selected.id }),
+      });
+      const linkData = await linkRes.json().catch(() => null);
+      if (!linkRes.ok || !linkData?.success) {
+        toast.error(claimErrorText(linkData, 'Could not link the ticket'));
+        return;
+      }
+      const ticketNumber = String(linkData.ticketNumber ?? `#${selected.id}`);
+      const threadRes = await fetch('/api/receiving/zendesk-claim/thread', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticketId: selected.id,
+          receivingId,
+          lineId,
+          claimType,
+          body: description,
+          subject: subject.trim(),
+          public: notePublic,
+          emailCcs: notePublic && ccEmails?.length ? ccEmails : undefined,
+        }),
+      });
+      const threadData = await threadRes.json().catch(() => null);
+      if (!threadRes.ok || !threadData?.success) {
+        toast.error(claimErrorText(threadData, 'Linked, but could not post the draft'));
+        afterFiled(ticketNumber, selected.id);
+        return;
+      }
+      toast.success(
+        notePublic
+          ? `Ticket ${ticketNumber} linked — customer emailed`
+          : `Ticket ${ticketNumber} linked`,
+      );
+      afterFiled(ticketNumber, selected.id);
+    } catch {
+      toast.error('Could not link the ticket');
+    } finally {
+      setFiling(false);
+    }
+  }, [
+    search.selectedTicket,
+    receivingId,
+    lineId,
+    body,
+    subject,
+    claimType,
+    notePublic,
+    ccEmails,
+    afterFiled,
+  ]);
+
+  const file = useCallback(() => {
+    if (!isClaim || filing || receivingId == null) return;
+    if (mode === 'link') {
+      void fileLink();
+      return;
+    }
+    void fileCreate();
+  }, [isClaim, filing, receivingId, mode, fileLink, fileCreate]);
+
   const testCreate = useCallback(() => {
     if (!isClaim || testing || receivingId == null) return;
     setTesting(true);
@@ -195,8 +408,9 @@ export function useComposerTicketClaim({
             receivingId,
             lineId,
             claimType,
-            subject: template.readSubject().trim(),
-            description: template.readDescription().trim(),
+            reason: reason.trim() || undefined,
+            subject: subject.trim(),
+            description: body.trim(),
             notePublic,
             ccEmails: notePublic ? (ccEmails ?? []) : [],
             dryRun: true,
@@ -208,7 +422,8 @@ export function useComposerTicketClaim({
           return;
         }
         if (typeof data.description === 'string') {
-          template.onDescriptionChange(data.description);
+          setBodyState(data.description);
+          setEdited(true);
         }
         const packUrl = typeof data.sharePackUrl === 'string' ? data.sharePackUrl : null;
         const packCount = Number(data.sharePackPhotoCount ?? 0);
@@ -229,20 +444,109 @@ export function useComposerTicketClaim({
         setTesting(false);
       }
     })();
-  }, [isClaim, testing, receivingId, lineId, claimType, template, notePublic, ccEmails]);
+  }, [isClaim, testing, receivingId, lineId, claimType, reason, subject, body, notePublic, ccEmails]);
+
+  const contextLine = useMemo(() => {
+    const title =
+      (typeof row?.catalog_product_title === 'string' && row.catalog_product_title.trim()) ||
+      (typeof row?.zoho_item_title === 'string' && row.zoho_item_title.trim()) ||
+      (typeof row?.item_name === 'string' && row.item_name.trim()) ||
+      (typeof row?.sku === 'string' && row.sku.trim()) ||
+      '';
+    const po =
+      typeof row?.zoho_purchaseorder_number === 'string' && row.zoho_purchaseorder_number.trim()
+        ? `PO ${row.zoho_purchaseorder_number.trim()}`
+        : '';
+    const trk =
+      typeof row?.tracking_number === 'string' && row.tracking_number.trim()
+        ? `TRK ${row.tracking_number.trim()}`
+        : '';
+    return [title, po, trk].filter(Boolean).join(' · ');
+  }, [row]);
+
+  const persistSeller = useCallback(() => {
+    const text = sellerMessage.trim();
+    if (!text || !receivingId) return;
+    void (async () => {
+      const id = await persistSellerClaimMessageDraft({
+        receivingId,
+        lineId: lineId ?? null,
+        sellerMessage: text,
+        subjectSnapshot: subject.trim(),
+      });
+      if (id != null) {
+        setSellerMessageId(id);
+        toast.success(`Seller draft saved · #${id}`);
+      } else {
+        toast.error('Could not save seller draft');
+      }
+    })();
+  }, [sellerMessage, receivingId, lineId, subject]);
+
+  const copySellerMessage = useCallback(() => {
+    const text = sellerMessage.trim();
+    if (!text || !receivingId) return;
+    void (async () => {
+      const { ok, messageId } = await copySellerClaimMessageWithPersist({
+        text,
+        messageId: sellerMessageId,
+        receivingId,
+        lineId: lineId ?? null,
+        subjectSnapshot: subject.trim(),
+      });
+      if (messageId != null) setSellerMessageId(messageId);
+      if (ok) toast.success('Copied seller message');
+      else toast.error('Could not copy');
+    })();
+  }, [sellerMessage, sellerMessageId, receivingId, lineId, subject]);
+
+  const redraftSeller = useCallback(() => {
+    if (!filedTicket?.number) return;
+    void draftSeller(filedTicket.number, filedTicket.id);
+  }, [filedTicket, draftSeller]);
+
+  const canFile = useMemo(() => {
+    if (!isClaim || filing || loading) return false;
+    if (!body.trim()) return false;
+    if (mode === 'link') return Boolean(search.selectedTicket);
+    return true;
+  }, [isClaim, filing, loading, body, mode, search.selectedTicket]);
 
   return {
     isClaim,
-    subject: template.subject,
-    body: template.description,
-    setBody: template.onDescriptionChange,
-    loading: template.previewLoading,
+    claimType,
+    setClaimType,
+    hasPo,
+    mode,
+    setMode,
+    reason,
+    search,
+    subject,
+    body,
+    setBody,
+    loading,
+    draftModel,
+    draftDegraded,
+    redraft: () => {
+      editedRef.current = false;
+      setEdited(false);
+      void runDraft();
+    },
     filing,
-    canFile: isClaim && !filing && template.description.trim().length > 0,
+    canFile,
     file,
-    // Dev builds only — this is a developer tool, not floor chrome.
     canTest: isClaim && process.env.NODE_ENV !== 'production',
     testing,
     testCreate,
+    sellerMessage,
+    setSellerMessage,
+    sellerLoading,
+    sellerApplicable,
+    copySellerMessage,
+    redraftSeller,
+    persistSeller,
+    contextLine,
   };
 }
+
+export type { LinkCandidate };

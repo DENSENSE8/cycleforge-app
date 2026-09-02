@@ -110,7 +110,7 @@ test.describe('Import / Add Order — non-modal right rail', () => {
     await expect(row).toBeVisible({ timeout: 20_000 });
     await row.locator('[data-col="item"]').click();
 
-    const orderInspector = page.locator('aside[role="region"][aria-label^="Order "]');
+    const orderInspector = page.getByTestId('desk-order-stage-overlay');
     await expect(orderInspector).toBeVisible({ timeout: 20_000 });
 
     // Import + Add are one Band-1 control now: open it, pick Add, then enter.
@@ -120,8 +120,8 @@ test.describe('Import / Add Order — non-modal right rail', () => {
 
     const intake = page.locator('aside[role="region"][aria-label="New order entry"]');
     await expect(intake).toBeVisible({ timeout: 20_000 });
-    // One aside region at a time — store top-occupant exclusivity.
+    // Order stage overlay yields to intake — one right-rail region at a time.
     await expect(page.locator('aside[role="region"]')).toHaveCount(1);
-    await expect(page.locator(BACKDROP_SELECTOR)).toHaveCount(0);
+    await expect(orderInspector).toBeHidden();
   });
 });

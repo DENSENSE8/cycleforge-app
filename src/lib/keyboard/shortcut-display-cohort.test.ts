@@ -16,6 +16,8 @@ import {
   SHORTCUT_DISPLAY_PAINT_LAW,
   assertShortcutKnownDebtRatchet,
   discoverShortcutDisplay,
+  shortcutEngineContractSource,
+  shortcutEngineForbiddenSource,
 } from './shortcut-display-cohort';
 
 const ROOT = join(process.cwd());
@@ -81,9 +83,11 @@ describe('shortcut-display cohort (SoT = KeyboardKey inside-right overlays)', ()
     assert.doesNotMatch(src, SHORTCUT_DISPLAY_FORBIDDEN.translucentOverlay);
   });
 
-  it('hook owns bind + reveal; ignores key-repeat; cheat sheet yields + KeyboardKey', () => {
+  it('hook owns bind + reveal; ignores key-repeat; cheat sheet yields + KeyboardKey', async () => {
     const hook = read(SHORTCUT_DISPLAY_ENGINE.inlineHotkeys);
-    assert.match(hook, SHORTCUT_DISPLAY_ENGINE_CONTRACT.hookToggle);
+    // X1: the toggle seam is proven by importing it (was a grep for its export line).
+    const mod = await import('@/hooks/useSelectionStatusBarHotkeys');
+    assert.equal(typeof mod.toggleSelectionInlineHotkeys, 'function');
     assert.match(hook, SHORTCUT_DISPLAY_ENGINE_CONTRACT.ignoreKeyRepeat);
     const src = read(SHORTCUT_DISPLAY_ENGINE.cheatSheet);
     assert.match(src, SHORTCUT_DISPLAY_ENGINE_CONTRACT.cheatSheetYields);
@@ -96,6 +100,33 @@ describe('shortcut-display cohort (SoT = KeyboardKey inside-right overlays)', ()
     assert.match(SHORTCUT_DISPLAY_PAINT_LAW.overview, /inside/i);
     assert.match(SHORTCUT_DISPLAY_PAINT_LAW.refuse, /refuse/i);
     assert.match(SHORTCUT_DISPLAY_PAINT_LAW.refuse, /outside/i);
+  });
+
+  it('shortcutEngineContractSource greps the same files the tripwire already reads', () => {
+    assert.equal(
+      shortcutEngineContractSource('opaqueKeycap'),
+      SHORTCUT_DISPLAY_ENGINE.keyboardKey,
+    );
+    assert.equal(
+      shortcutEngineContractSource('ignoreKeyRepeat'),
+      SHORTCUT_DISPLAY_ENGINE.inlineHotkeys,
+    );
+    assert.equal(
+      shortcutEngineContractSource('cheatSheetYields'),
+      SHORTCUT_DISPLAY_ENGINE.cheatSheet,
+    );
+    assert.equal(
+      shortcutEngineContractSource('hotkeyGlyph'),
+      SHORTCUT_DISPLAY_ENGINE.statusBar,
+    );
+    assert.equal(
+      shortcutEngineForbiddenSource('mutedTeachingLetter'),
+      SHORTCUT_DISPLAY_ENGINE.keyboardKey,
+    );
+    assert.equal(
+      shortcutEngineForbiddenSource('staffQuestionOpensSheet'),
+      SHORTCUT_DISPLAY_ENGINE.statusBar,
+    );
   });
 
   it('discover KEEP paths exist; known-debt ratchet holds', () => {

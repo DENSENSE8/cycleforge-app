@@ -34,6 +34,21 @@
         "command": ".cursor/hooks/pretool-ui-design-mcp.sh",
         "matcher": "Write|StrReplace|EditNotebook|Delete",
         "timeout": 8
+      },
+      {
+        "command": ".cursor/hooks/pretool-ledger-guard.sh",
+        "matcher": "Write|StrReplace|EditNotebook|Delete",
+        "timeout": 8
+      },
+      {
+        "command": ".cursor/hooks/pretool-engine-graph.sh",
+        "matcher": "Write|StrReplace|EditNotebook|Delete",
+        "timeout": 8
+      },
+      {
+        "command": ".cursor/hooks/pretool-adjudicate.sh",
+        "matcher": "Write|StrReplace|EditNotebook",
+        "timeout": 8
       }
     ],
     "stop": [
@@ -41,6 +56,10 @@
         "command": ".cursor/hooks/stop-eval-gate.sh",
         "timeout": 300,
         "loop_limit": 1
+      },
+      {
+        "command": ".cursor/hooks/stop-session-receipt.sh",
+        "timeout": 90
       }
     ]
   }

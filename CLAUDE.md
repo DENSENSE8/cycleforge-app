@@ -11,7 +11,10 @@ be rejected (project hooks enforce a session stamp).
 
 "Omni Composer" / station mouth = `StationComposerHost`. Dumb stations use
 `showModeFaces={false}` (keep the context ring). Clone Pack/Unbox for floor
-stations — do not invent rails or second mouths.
+stations — do not invent rails or second mouths. Composer feedback / receive
+confirm on the mouth = `WeldedFeedbackPanel` on `StationComposerHost` `reaction`
+(`@/components/composer/WeldedFeedbackPanel`). Staff look at the mouth all day
+for what just happened and what to process next — do not fork a hinge.
 
 The repo is mid-refactor into a Warehouse OS shell. Read
 [`docs/warehouse-os/`](docs/warehouse-os/) before building UI — it is the plan of
@@ -28,7 +31,8 @@ record. The old house-law corpus was deleted 2026-08-21; do not reconstruct it.
   **slot-table only** — there is no `eval:cohort overlay`.
 - **Slot-table cohort (the only display eval):** SoT is engine + `PRODUCT_TABLES`
   (`slot-table-cohort.ts`). After CompoundItem / slot-layout / DataTable funnel
-  edits: `pnpm run eval:cohort slot-table`. Hand GRID leftovers:
+  / header-sort edits: `pnpm run eval:cohort slot-table`. Every DATA header
+  click-sorts (`SLOT_TABLE_PAINT_LAW.headerSort`). Hand GRID leftovers:
   `pnpm run eval:discover` — delete only listed DELETE ids; never KEEP.
 - **Shortcut-display cohort:** SoT is staff `?` inline on the buttons
   (`shortcut-display-cohort.ts`). After shortcut / TableStatusBar hotkey edits:

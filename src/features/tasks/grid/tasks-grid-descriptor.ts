@@ -4,7 +4,7 @@ import {
   type GridSurfaceDescriptor,
 } from '@/design-system/components/grid/grid-surface-descriptor';
 import {
-  TASKS_GRID_COLUMNS,
+  TASKS_COMPOUND_COLUMNS,
   tasksSortFactFor,
   defaultDirForTasksGridSort,
   type TasksGridColumn,
@@ -58,4 +58,4 @@ export function makeTasksGridDescriptor(
   );
 }
 
-export { TASKS_GRID_COLUMNS };
+export { TASKS_COMPOUND_COLUMNS };

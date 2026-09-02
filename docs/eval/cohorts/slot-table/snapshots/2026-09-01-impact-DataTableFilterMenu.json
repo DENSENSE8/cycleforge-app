@@ -1,8 +1,8 @@
 {
   "project": "cycleforge-app",
   "target": "component:src/components/tables/DataTable.tsx:DataTableFilterMenu",
-  "files_affected": 21,
-  "total_symbols": 21,
+  "files_affected": 22,
+  "total_symbols": 22,
   "files": [
     {
       "file": "src/components/tables/DataTable.tsx",
@@ -10,6 +10,14 @@
       "affected_symbols": 1,
       "symbols": [
         "DataTable"
+      ]
+    },
+    {
+      "file": "src/components/dashboard/orders-queue/OrdersGridHost.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "OrdersGridHost"
       ]
     },
     {
@@ -157,11 +165,11 @@
       ]
     },
     {
-      "file": "src/components/dashboard/orders-queue/OrdersGridHost.tsx",
+      "file": "src/app/kiosk/v2/KioskCartLedger.tsx",
       "nearest_depth": 2,
       "affected_symbols": 1,
       "symbols": [
-        "OrdersGridHost"
+        "KioskCartLedger"
       ]
     },
     {

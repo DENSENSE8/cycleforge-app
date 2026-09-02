@@ -5,7 +5,7 @@ import {
 } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { ImportExceptionRow } from '@/features/review/catalog-link/import-exception-types';
 import {
-  IMPORT_EXCEPTION_GRID_COLUMNS,
+  IMPORT_EXCEPTION_COMPOUND_COLUMNS,
   type ImportExceptionGridColumn,
 } from './import-exception-grid-layout';
 
@@ -37,4 +37,4 @@ export function makeImportExceptionGridDescriptor(
   );
 }
 
-export { IMPORT_EXCEPTION_GRID_COLUMNS };
+export { IMPORT_EXCEPTION_COMPOUND_COLUMNS };

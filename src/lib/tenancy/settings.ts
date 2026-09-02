@@ -93,6 +93,12 @@ export const DEFAULT_NAS_STORAGE_TARGETS = {
 } as const;
 
 export const OrgSettingsSchema = z.object({
+  /**
+   * Organization environment. Customer is the safe default for all existing
+   * tenants; sandbox unlocks the server-gated Developer / QA Console only
+   * when the operator also holds developer.qa_tools.* permissions.
+   */
+  environment: z.enum(['customer', 'sandbox']).default('customer'),
   timezone: z.string().default('America/Los_Angeles'),
   currency: z.string().length(3).default('USD'),
   locale: z.string().default('en-US'),
@@ -364,6 +370,12 @@ export const OrgSettingsSchema = z.object({
 }).passthrough();
 
 export type OrgSettings = z.infer<typeof OrgSettingsSchema>;
+
+export type OrganizationEnvironment = OrgSettings['environment'];
+
+export function getOrganizationEnvironment(settings: OrgSettings): OrganizationEnvironment {
+  return settings.environment;
+}
 
 export function parseOrgSettings(raw: unknown): OrgSettings {
   // Tolerant parse: invalid persisted settings fall back to defaults rather

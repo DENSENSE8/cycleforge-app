@@ -18,8 +18,8 @@
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import { TASKS_FIELD_CATALOG, TASKS_PRODUCT_LAYOUT } from '@/lib/tables/field-catalog/tasks';
 import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
+import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
-import { GRID_FILL_COLUMN } from '@/design-system/components/grid';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
@@ -70,63 +70,6 @@ export interface TasksGridColumn extends SlotTrackFields {
  * A recurring task has no deadline; it has a period, and the honest column says
  * when the period turns over rather than inventing a date.
  */
-export const TASKS_GRID_COLUMNS: readonly TasksGridColumn[] = [
-  { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
-  {
-    key: 'task',
-    frozen: true,
-    // Content-hard, never `1fr` — a flex track inside the FROZEN pane puts every
-    // following frozen cell's sticky `left` out by the difference.
-    width: 'minmax(20rem, 20rem)',
-    label: 'Task',
-    type: 'text',
-    resizable: true,
-    labelFitRem: 8,
-  },
-  {
-    key: 'status',
-    width: 'minmax(6rem, 6rem)',
-    label: 'Status',
-    type: 'tag',
-    hideKey: 'status',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'kind',
-    width: 'minmax(6.5rem, 6.5rem)',
-    label: 'Kind',
-    type: 'tag',
-    hideKey: 'kind',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'station',
-    width: 'minmax(6rem, 6rem)',
-    label: 'Station',
-    type: 'text',
-    hideKey: 'station',
-    labelFitRem: 5,
-  },
-  {
-    key: 'due',
-    width: 'minmax(7rem, 7rem)',
-    label: 'Resets',
-    type: 'date',
-    hideKey: 'due',
-    tier: 'optional',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'updated',
-    width: 'minmax(7rem, 7rem)',
-    label: 'Checked',
-    type: 'date',
-    hideKey: 'updated',
-    tier: 'optional',
-    labelFitRem: 4.5,
-  },
-  GRID_FILL_COLUMN,
-] as const;
 
 /**
  * COMPOUND (two-row) Tasks columns.
@@ -177,21 +120,32 @@ export const TASKS_COMPOUND_COLUMNS: readonly TasksGridColumn[] =
  * `repair-display-sort` reason: a bookmarked `?colsort=updated` must keep
  * meaning `updated` after a rebind moves that fact to another slot index.
  */
-export type TasksSortFact = 'task' | 'status' | 'kind' | 'station' | 'due' | 'updated';
+export type TasksSortFact =
+  | 'task'
+  | 'status'
+  | 'kind'
+  | 'station'
+  | 'due'
+  | 'updated'
+  | 'image'
+  | 'order'
+  | 'amount';
 
 const TASKS_SORT_FACTS: readonly TasksSortFact[] = [
-  'task', 'status', 'kind', 'station', 'due', 'updated',
+  'task', 'status', 'kind', 'station', 'due', 'updated', 'image', 'order', 'amount',
 ];
 
 /**
  * Compound track → the fact it carries. `item` holds the task text, `state`
- * holds the done/archived pill. `fulfillment` and `amount` stay absent: a
- * staffer's task has no order and no price, and a header that sorts by nothing
- * is worse than one that never offered.
+ * holds the done/archived pill. Empty identity / money / photo tracks still
+ * sort (all-blank → stable id) so every painted header is clickable.
  */
 const TASKS_TRACK_SORT_FACTS: Readonly<Record<string, TasksSortFact>> = {
   item: 'task',
   state: 'status',
+  thumb: 'image',
+  fulfillment: 'order',
+  amount: 'amount',
 };
 
 /**
@@ -212,7 +166,7 @@ const TASKS_SLOT_SORT_FACTS: Readonly<Record<string, TasksSortFact>> = {
 export function tasksSortFactFor(
   col: Pick<TasksGridColumn, 'key' | 'sortable' | 'fieldId'>,
 ): TasksSortFact | null {
-  if (col.sortable === false || col.key === 'select') return null;
+  if (isSlotTableChromeTrack(col.key) || col.sortable === false) return null;
   const slot = col.fieldId ? TASKS_SLOT_SORT_FACTS[col.fieldId] : undefined;
   if (slot) return slot;
   return TASKS_TRACK_SORT_FACTS[col.key] ?? null;
@@ -252,6 +206,9 @@ export const TASKS_SORT_FACT_TYPES: Readonly<Record<TasksSortFact, ColumnType>> 
   station: 'text',
   due: 'date',
   updated: 'date',
+  image: 'text',
+  order: 'text',
+  amount: 'price',
 };
 
 /**
@@ -259,7 +216,7 @@ export const TASKS_SORT_FACT_TYPES: Readonly<Record<TasksSortFact, ColumnType>> 
  * rebind carries the rule instead of leaving it on a slot index.
  */
 export function defaultDirForTasksGridSort(fact: TasksSortFact): GridSortDir {
-  return fact === 'updated' || fact === 'due' ? 'desc' : 'asc';
+  return fact === 'updated' || fact === 'due' || fact === 'amount' || fact === 'image' ? 'desc' : 'asc';
 }
 
 /**

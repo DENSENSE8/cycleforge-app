@@ -34,9 +34,12 @@ const LineSchema = z.object({
   item_name: z.string().trim().max(500).optional().default(''),
   quantity: z.string().trim().max(20),
   line_item_id: z.string().trim().max(200).optional().default(''),
+  sku_catalog_id: z.coerce.number().int().positive().optional().nullable(),
+  listing_url: z.string().trim().max(2000).optional().default(''),
 });
 
 const Body = z.object({
+  kind: z.enum(['purchase', 'return']).default('purchase'),
   platform: z.string().trim().min(1).max(40),
   order_id: z.string().trim().min(1).max(200),
   seller: z.string().trim().max(200).optional().default(''),
@@ -45,6 +48,8 @@ const Body = z.object({
   carrier_code: z.string().trim().max(40).optional().default(''),
   listing_url: z.string().trim().max(2000).optional().default(''),
   priority: z.string().trim().max(10).optional().default('auto'),
+  return_reason: z.string().trim().max(500).optional().default(''),
+  rma_id: z.string().trim().max(200).optional().default(''),
   lines: z.array(LineSchema).min(1).max(100),
 });
 
@@ -54,6 +59,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
   if (parsed instanceof NextResponse) return parsed;
 
   const draft: PoIntakeDraft = {
+    kind: parsed.kind,
     platform: parsed.platform,
     orderId: parsed.order_id,
     seller: parsed.seller,
@@ -62,12 +68,16 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     carrierCode: parsed.carrier_code,
     listingUrl: parsed.listing_url,
     priority: parsed.priority || 'auto',
+    returnReason: parsed.return_reason,
+    rmaId: parsed.rma_id,
     notes: '',
     lines: parsed.lines.map((l) => ({
       sku: l.sku,
       itemName: l.item_name,
       quantity: l.quantity,
       lineItemId: l.line_item_id,
+      catalogId: l.sku_catalog_id ?? null,
+      listingUrl: l.listing_url,
     })),
   };
 
@@ -111,7 +121,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     const body = bodies[i]!;
     try {
       const outcome = await importDeskInboundRow(ctx.organizationId, {
-        kind: 'purchase',
+        kind: body.kind,
         sourceType: body.source_type,
         sourcePlatform: body.source_platform,
         receivingType: body.receiving_type,
@@ -120,12 +130,15 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         lineItemId: body.line_item_id ?? null,
         sku: body.sku ?? null,
         itemName: body.item_name ?? null,
+        skuCatalogId: body.sku_catalog_id ?? null,
         quantity: body.quantity,
         trackingNumber: body.tracking_number ?? null,
         carrierCode: body.carrier_code ?? null,
         seller: body.seller ?? null,
         listingUrl: body.listing_url ?? null,
         accountName: body.account_name ?? null,
+        returnReason: body.return_reason ?? null,
+        rmaId: body.rma_id ?? null,
       });
       if (isDeskImportSkip(outcome)) {
         failed += 1;

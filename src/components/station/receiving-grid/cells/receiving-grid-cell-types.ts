@@ -10,7 +10,7 @@ import type { ReceivingActivityAxis } from '@/components/station/receiving-lines
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import { gridFrozenLeft } from '@/design-system/components/grid/grid-column-geometry';
 import {
-  RECEIVING_GRID_COLUMNS,
+  RECEIVING_COMPOUND_COLUMNS,
   RECEIVING_GRID_FROZEN_CELL,
   RECEIVING_GRID_FROZEN_EDGE_KEY,
   type IncomingGridColumn,
@@ -104,9 +104,8 @@ export type ReceivingGridCellCtx = {
   /** Live defs for `custom:*` columns — type lookup for {@link CustomFieldCell}. */
   customFieldDefs?: readonly CustomFieldDef[];
   /**
-   * Incoming POS is `'expected'` (delivery_state status, Age / Platform /
-   * Removed / attach-tracking). History / Unbox / Testing omit or pass
-   * `'landed'` so `status` stays {@link ReceivingStatusCell}.
+   * Incoming POS is `'expected'` (delivery_state on the compound state face).
+   * History / Unbox / Testing omit or pass `'landed'` (workflow_status).
    */
   linePhase?: 'expected' | 'landed';
   daysLate?: number | null;
@@ -119,13 +118,6 @@ export type ReceivingGridCellCtx = {
 
 /** Column model a cell may receive — Incoming keys stay a separate array. */
 export type ReceivingGridCellColumn = ReceivingGridColumn | IncomingGridColumn;
-
-export type ReceivingGridCellProps = {
-  col: ReceivingGridCellColumn;
-  /** When false, omit the trailing column rule (last visible column). */
-  rule: boolean;
-  ctx: ReceivingGridCellCtx;
-};
 
 export function receivingDataCellClass(col: ReceivingGridCellColumn, rule = true, _ctx?: ReceivingGridCellCtx): string {
   // Delegates to the shared composition — this file assembled the concerns by
@@ -147,7 +139,7 @@ export function receivingDataCellStyle(
   ctx?: ReceivingGridCellCtx,
 ): CSSProperties | undefined {
   if (!col.frozen) return undefined;
-  return { left: gridFrozenLeft(ctx?.columns ?? RECEIVING_GRID_COLUMNS, col.key) };
+  return { left: gridFrozenLeft(ctx?.columns ?? RECEIVING_COMPOUND_COLUMNS, col.key) };
 }
 
 /** `data-frozen-edge` only on the trailing frozen identity cell. */

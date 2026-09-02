@@ -5,12 +5,13 @@
  * StationScanPaneHost + StationPanelRoot; checklist (or UNIT peek) owns the
  * locked 720 centre; Photos · Timeline · Listings (scan/pack only — no Ticket ·
  * Support) live on StationDisplaysPushStack. Sibling to LineEditPanel /
- * TriagePanel; binds PackActiveOrderPane, not ReceivingLineRow. No sticky
- * terminal dock (Tier C).
+ * TriagePanel; binds PackActiveOrderPane, not ReceivingLineRow. Its order-note
+ * mouth is the shared StationComposerHost, with the context ring opening
+ * Displays.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Camera, ExternalLink, History, MapPin } from '@/components/Icons';
+import { Camera, ExternalLink, History, Warehouse } from '@/components/Icons';
 import {
   buildSectionTabs,
   StationPanelRoot,
@@ -18,7 +19,7 @@ import {
   StationWorkbench,
   WorkspaceTimelineTab,
 } from '@/components/station/workbench';
-import { STATION_SCAN_WELL_CLASS } from '@/components/station/scan-depth';
+
 import { OrderPackChecklist } from '@/components/packing/OrderPackChecklist';
 import { ListingLinksTab } from '@/components/receiving/workspace/line-edit/ListingLinksTab';
 import { useOrderPackChecklist } from '@/hooks/useOrderPackChecklist';
@@ -26,6 +27,7 @@ import { usePackingPolicy } from '@/hooks/usePackingPolicy';
 import type { PackActiveOrderPane } from '@/components/packer/usePackerOrderPane';
 import { PackOrderIdentity } from '@/components/packer/PackOrderIdentity';
 import { PackPapersStatusCard } from '@/components/packer/PackPapersStatusCard';
+import { EbayPackLabelCard } from '@/components/packer/EbayPackLabelCard';
 import { UnitPackPhotoPeek } from '@/components/packer/UnitPackPhotoPeek';
 import { StationContextBar } from '@/components/station/entity-context';
 import {
@@ -40,6 +42,11 @@ import { PackLocationsLeaf } from '@/components/tech/shipping/PackLocationsLeaf'
 import { usePackOrderPlacement } from '@/components/tech/shipping/usePackOrderPlacement';
 import { buildPackDisplayIndexRows } from '@/components/packer/pack-display-index';
 import { packListingIdentity } from '@/components/packer/pack-listing-identity';
+import { StationBandStack, useAutoCollapse, useBandCollapse } from '@/components/station/collapse';
+import { StationComposerHost } from '@/components/composer';
+import { slicedActionDockWrapperClass } from '@/design-system/primitives/SlicedActionDock';
+import { STATION_WORKBENCH_COLUMN } from '@/components/station/workbench';
+import { useAppendOrderNote } from '@/hooks/useOrderNotes';
 
 /** Scan/pack Displays only — no Ticket · Support hubs. */
 type PackDisplayTab = 'photos' | 'timeline' | 'listings';
@@ -48,11 +55,12 @@ type PackDisplayTab = 'photos' | 'timeline' | 'listings';
 type PackDisplayNav = typeof STATION_DISPLAY_INDEX | PackDisplayTab;
 
 interface PackOrderPanelProps {
+  packerId: number;
   activeOrder: PackActiveOrderPane;
   onClose: () => void;
 }
 
-export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
+export function PackOrderPanel({ packerId, activeOrder, onClose }: PackOrderPanelProps) {
   const { data: packingPolicy } = usePackingPolicy();
   const { data: checklist, isLoading } = useOrderPackChecklist({
     orderRowId: activeOrder.orderRowId,
@@ -160,7 +168,7 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
         {
           id: 'locations',
           label: 'Locations',
-          icon: MapPin,
+          icon: Warehouse,
           visible: packOrderId != null,
           content: (
             <PackLocationsLeaf placement={placement} onPlaced={closePackDisplays} />
@@ -203,6 +211,42 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
 
   const packedCount = checklist?.progress.packedLines ?? 0;
   const totalCount = checklist?.progress.total ?? 0;
+  const bandCollapse = useAutoCollapse();
+  const bands = useBandCollapse(bandCollapse);
+
+  const [note, setNote] = useState('');
+  const packNoteOrderId = activeOrder.orderRowId ?? 0;
+  const appendNote = useAppendOrderNote(packNoteOrderId);
+  const commitNote = useCallback(() => {
+    const text = note.trim();
+    if (!text || appendNote.isPending) return;
+    appendNote.mutate(text, { onSuccess: () => setNote('') });
+  }, [note, appendNote]);
+
+  const dock = (
+    <div
+      className={slicedActionDockWrapperClass({ docked: false })}
+      data-pack-composer-dock
+    >
+      <div className={`pointer-events-auto w-full min-w-0 ${STATION_WORKBENCH_COLUMN}`}>
+        <StationComposerHost
+          showModeRow
+          showModeFaces={false}
+          labelValue={note}
+          onLabelChange={setNote}
+          onLabelCommit={commitNote}
+          labelCommitDisabled={appendNote.isPending || note.trim().length === 0}
+          labelPlaceholder="Add a note for this order…"
+          labelCommitAriaLabel="Save order note"
+          labelCommitTooltip="Save order note (Enter)"
+          chrome="raised"
+          animateMount={false}
+          progressTone={resolvedSideTab ? 'selected' : 'idle'}
+          onProgressClick={openDisplaysIndex}
+        />
+      </div>
+    </div>
+  );
 
   const displayIndexRows = useMemo(
     () =>
@@ -270,8 +314,8 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
                 feedback={
                   <PackPapersStatusCard orderRowId={activeOrder.orderRowId} />
                 }
+                dock={dock}
               >
-                <div className={STATION_SCAN_WELL_CLASS}>
                 {isUnitScan ? (
                   <div className="space-y-3">
                     <p className="text-role-caption font-semibold text-text-muted">
@@ -286,19 +330,40 @@ export function PackOrderPanel({ activeOrder, onClose }: PackOrderPanelProps) {
                     ) : null}
                   </div>
                 ) : (
-                  <OrderPackChecklist
-                    lines={checklist?.lines ?? []}
-                    enforcement={
-                      packingPolicy?.enforcement ?? checklist?.enforcement ?? 'advisory'
-                    }
-                    resetKey={resetKey}
-                    isLoading={isLoading}
-                    variant="panel"
-                    isUnknownOrder={Boolean(activeOrder.isUnknownOrder)}
-                    unknownCondition={activeOrder.condition}
+                  <StationBandStack
+                    collapse={bands}
+                    bands={[
+                      {
+                        id: 'items',
+                        label: 'Items',
+                        body: (
+                          <div className="space-y-3">
+                            {packOrderId != null ? (
+                              <EbayPackLabelCard
+                                orderId={packOrderId}
+                                orderRef={activeOrder.orderId}
+                                packerId={packerId}
+                              />
+                            ) : null}
+                            <OrderPackChecklist
+                              lines={checklist?.lines ?? []}
+                              enforcement={
+                                packingPolicy?.enforcement ?? checklist?.enforcement ?? 'advisory'
+                              }
+                              resetKey={resetKey}
+                              isLoading={isLoading}
+                              variant="panel"
+                              embedded
+                              isUnknownOrder={Boolean(activeOrder.isUnknownOrder)}
+                              unknownCondition={activeOrder.condition}
+                            />
+                          </div>
+                        ),
+                        testId: 'pack-items-band',
+                      },
+                    ]}
                   />
                 )}
-                </div>
               </StationWorkbench>
             </div>
           </StationPanelRoot>

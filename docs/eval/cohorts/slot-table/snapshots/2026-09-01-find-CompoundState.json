@@ -5,7 +5,7 @@
       "node_key": "component:src/components/tables/compound/CompoundCells.tsx:CompoundState",
       "kind": "component",
       "name": "CompoundState",
-      "location": "src/components/tables/compound/CompoundCells.tsx:900",
+      "location": "src/components/tables/compound/CompoundCells.tsx:892",
       "exported": true,
       "signature": "function CompoundState({ view, shipByEdit, }: { view: CompoundRowView; shipByEdit?: CompoundShipByEdit; })"
     },

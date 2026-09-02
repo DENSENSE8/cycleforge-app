@@ -17,11 +17,14 @@ import {
   compoundColumnsFor,
   type CompoundColumnKey,
 } from '@/components/tables/compound/compound-columns';
+import type { LedgerGridColumnModel } from '@/design-system/components/grid';
+import { makeGridSurfaceDescriptor } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { ColumnType } from '@/lib/tables/table-columns';
+import type { KioskCartLine } from './cart-line';
 
 export type CartGridColumnKey = CompoundColumnKey;
 
-export interface CartGridColumn {
+export interface CartGridColumn extends LedgerGridColumnModel {
   key: CartGridColumnKey;
   width: string;
   label?: string;
@@ -38,3 +41,13 @@ export interface CartGridColumn {
 
 export const CART_COMPOUND_COLUMNS: readonly CartGridColumn[] =
   compoundColumnsFor<CartGridColumn>();
+
+/** Canonical grid descriptor for the transient kiosk cart surface. */
+export const makeKioskCartGridDescriptor = (visible: readonly CartGridColumn[]) =>
+  makeGridSurfaceDescriptor<KioskCartLine, CartGridColumn>('kiosk.cart', visible, undefined, {
+    rowTriageFlags: false,
+    multiSelect: false,
+    inCellEdit: false,
+    fieldsMenu: false,
+    dayBands: false,
+  });

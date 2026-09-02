@@ -20,7 +20,9 @@ import {
 import { StationDisplaysUtilityRail } from '@/components/station/displays';
 import { UnboxLabelPreview } from '@/components/receiving/workspace/line-edit/UnboxLabelPreview';
 import { WorkspaceNotesCard } from '@/components/receiving/workspace/line-edit/WorkspaceNotesCard';
-import { StationContextBar } from '@/components/station/entity-context';
+import {
+  StationContextBar,
+} from '@/components/station/entity-context';
 import { Boxes, Tag } from '@/components/Icons';
 import {
   StationBandStack,

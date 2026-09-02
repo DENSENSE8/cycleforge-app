@@ -11,6 +11,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
+import { Button } from '@/design-system/primitives';
 
 
 import { useBinsOverview, type BinsOverviewRow } from '@/hooks/useBinsOverview';
@@ -65,12 +66,12 @@ export function LocationsWorkspace() {
         </div>
       </DashboardScrollShell>
       <TableTabs
-        tabs={LOCATIONS_TABS.filter((id) => id !== 'bins').map((id) => ({
+        tabs={LOCATIONS_TABS.map((id) => ({
           id,
-          label: id.charAt(0).toUpperCase() + id.slice(1),
+          label: id === 'labels' ? 'Bin Tags' : id.charAt(0).toUpperCase() + id.slice(1),
         }))}
-        activeTab={tab === 'bins' ? undefined : tab}
-        onTabChange={(id) => setTab(id === tab ? 'bins' : (id as LocationsTab))}
+        activeTab={tab}
+        onTabChange={(id) => setTab(id as LocationsTab)}
         className="border-t border-border-soft bg-surface-card"
       />
     </div>
@@ -79,7 +80,8 @@ export function LocationsWorkspace() {
 
 
 function BinsTabSheet() {
-  const { status, room, q, onParamChange } = useBinsFilterParams();
+  const { status, room } = useBinsFilterParams();
+  const [q, setQ] = useState('');
   const { rows, loading, refetch } = useBinsOverview({ room, q });
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [flyoutRow, setFlyoutRow] = useState<BinsOverviewRow | null>(null);
@@ -108,7 +110,7 @@ function BinsTabSheet() {
         loading={loading}
         search={{
           value: q,
-          onChange: (v) => onParamChange('q', v),
+          onChange: setQ,
           placeholder: 'Filter bins…',
         }}
         selected={reconciledSelected}
@@ -151,18 +153,20 @@ function MapTabBody() {
   return (
     <>
       <div className="flex justify-end border-b border-border-soft px-3 py-2">
-        <button
+        <Button
           type="button"
+          variant="secondary"
+          size="sm"
           onClick={toggleEmpty}
-          className={`ds-raw-button rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+          className={`px-3 py-1 text-xs font-medium transition-colors ${
             showEmpty
-              ? 'border-blue-500 bg-blue-50 text-blue-700'
-              : 'border-border-soft bg-surface-card text-text-muted hover:bg-surface-hover'
+              ? 'border-blue-500 bg-blue-50 text-blue-700 hover:bg-blue-50'
+              : 'text-text-muted hover:bg-surface-hover'
           }`}
           aria-pressed={showEmpty}
         >
           {showEmpty ? 'Hide' : 'Show'} empty bins
-        </button>
+        </Button>
       </div>
       {view === 'floorplan' ? (
         <WarehouseFloorPlan

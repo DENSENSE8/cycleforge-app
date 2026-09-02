@@ -14,6 +14,9 @@ import {
   ReceivingModeUnbox,
   StationReceiving,
   StationShipping,
+  StationPacking,
+  PackageCheck,
+  PackageSearch,
   TechModeShippingQueue,
 } from '@/components/Icons';
 
@@ -33,12 +36,16 @@ test('every floor-station mode glyph key is unique', () => {
   );
 });
 
-test('Arrival Truck is not reused by Tech Ready to Pack (PackageCheck)', () => {
+test('Picker and Packing use distinct package workflow glyphs', () => {
   assert.equal(STATION_GLYPH_KEYS['receiving.triage'], 'Truck');
-  assert.equal(STATION_GLYPH_KEYS['tech.shipping'], 'PackageCheck');
+  assert.equal(STATION_GLYPH_KEYS['tech.shipping'], 'PackageSearch');
   assert.notEqual(STATION_GLYPH_KEYS['receiving.triage'], STATION_GLYPH_KEYS['tech.shipping']);
   assert.equal(RECEIVING_NAV_ICONS.triage, ReceivingModeArrival);
   assert.equal(TECH_NAV_ICONS.shipping, TechModeShippingQueue);
+  assert.equal(STATION_PAGE_ICONS.packer, StationPacking);
+  assert.equal(STATION_GLYPH_KEYS['packing.standard'], 'Box');
+  assert.equal(TechModeShippingQueue, PackageSearch);
+  assert.equal(StationPacking, PackageCheck);
 });
 
 /**

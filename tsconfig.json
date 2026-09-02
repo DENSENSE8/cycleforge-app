@@ -42,7 +42,15 @@
     ".next-crashfix/types/**/*.ts",
     ".next-crashfix/dev/types/**/*.ts",
     ".next-perf-lh/types/**/*.ts",
-    ".next-perf-lh/dev/types/**/*.ts"
+    ".next-perf-lh/dev/types/**/*.ts",
+    ".next-phase2/types/**/*.ts",
+    ".next-phase2/dev/types/**/*.ts",
+    ".next-phase2-final/types/**/*.ts",
+    ".next-phase2-final/dev/types/**/*.ts",
+    ".next-phase3-replay/types/**/*.ts",
+    ".next-phase3-replay/dev/types/**/*.ts",
+    ".next-phase3-final/types/**/*.ts",
+    ".next-phase3-final/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

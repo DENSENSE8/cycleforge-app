@@ -181,6 +181,10 @@ const nextConfig: NextConfig = {
     async redirects() {
         return [];
     },
+    // Turbopack refuses route-to-route imports; keep the legacy path alive.
+    async rewrites() {
+        return [{ source: '/api/tech-logs', destination: '/api/tech/logs' }];
+    },
     async headers() {
         // Cloudflare was honouring a 4h cache on the committed Workbox file.
         // A stale sw.js keeps CacheFirst `/_next/static` alive on usav-dev.

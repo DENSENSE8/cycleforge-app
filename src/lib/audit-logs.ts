@@ -627,6 +627,7 @@ export const AUDIT_ACTION = {
   STATION_PUBLISH:    'station.publish',
   // Navigation as data (operator-surfaces refactor Phase 4)
   NAV_PUBLISH:        'nav.publish',
+  NAV_TAB_REORDER:    'nav.tab_reorder',
   // Workflow graphs (Operations Studio layer 1) — draft/publish lifecycle
   WORKFLOW_DRAFT_CREATE: 'workflow.draft.create',
   WORKFLOW_DRAFT_SAVE:   'workflow.draft.save',

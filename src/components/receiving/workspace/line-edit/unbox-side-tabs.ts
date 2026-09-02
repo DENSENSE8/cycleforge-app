@@ -1,9 +1,9 @@
 /**
  * Unbox side displays — which surface the right-edge Displays push column shows.
  *
- * Pure: no React. The workbench body no longer hosts a tab strip
- * (`overview` IS the centre), so this vocabulary covers only the surfaces
- * that live in {@link StationDisplaysPushStack}.
+ * Pure: no React. The workbench body is still the carton (no tab strip).
+ * Displays `overview` is a **read** identity leaf (copy/glance) — it does not
+ * replace the centre. Ticket · Tracking · Locations stay verb doors.
  *
  * Navigation is Root-to-Leaf drill-down (local React state via
  * `useUnboxDisplayView` — Arrival parity; never URL wires):
@@ -12,7 +12,8 @@
  *   - `null` → column CLOSED
  *
  * Index / leaf order (PO-identity first): Listings · Pairing · Inventory ·
- * Units · Prebox · Photos · Ticket · Tracking. Ticket is
+ * Units · Prebox · Photos · Overview · Ticket · Tracking · Locations.
+ * Overview is copy/glance (chips). Ticket is
  * presence-exclusive (Claim vs Chat). Inventory is a **secondary vertical drill**
  * (Information · Lines · PO notes · Activity) via `useDisplaysLeafChrome` — never
  * a nested switcher strip and never a second LeafHeader. Photos · Linkage are
@@ -42,6 +43,7 @@ import {
 export const UNBOX_DISPLAY_INDEX = STATION_DISPLAY_INDEX;
 
 export type UnboxSideTab =
+  | 'overview'
   | 'ticket'
   | 'photos'
   | 'linkage'
@@ -116,6 +118,7 @@ export const UNBOX_SIDE_TAB_ORDER: readonly UnboxSideTab[] = [
   'units',
   'prebox',
   'photos',
+  'overview',
   'ticket',
   'tracking',
   'locations',
@@ -133,6 +136,7 @@ export const UNBOX_STRIP_TAB_ORDER: readonly UnboxSideTab[] = [
   'units',
   'prebox',
   'photos',
+  'overview',
   'ticket',
   'tracking',
   // Locations is a TOOL (place · reprint · mint), so it sits below the
@@ -262,10 +266,11 @@ export function isUnboxSideTabVisible(tab: UnboxSideTab, gates: UnboxSideTabGate
       return gates.hasUnits;
     case 'tracking':
       return gates.hasTrackingTab;
-    // Ticket · Photos · Prebox · Checklist — always on an open carton.
+    // Overview · Ticket · Photos · Prebox · Checklist — always on an open carton.
     // Prebox is an Assets peer leaf (empty body when no serials — never gated off).
     // Locations is a TOOL, not a beat of the carton's procedure — always
     // reachable so the putaway pill's New location has somewhere to land.
+    case 'overview':
     case 'ticket':
     case 'photos':
     case 'prebox':

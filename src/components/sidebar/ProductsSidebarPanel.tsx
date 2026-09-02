@@ -2,8 +2,8 @@
 
 /**
  * Sidebar surface for `/products`. Hosts pickers / rails per view. L2 views
- * (Catalog · Manuals · Labels · Pairing · QC · Kit) live in GlobalHeader
- * (`HeaderPageSwitcher` ← SIDEBAR_PAGE_NAV) — no sidebar mode rail twin.
+ * (Catalog · Manuals · Labels · Pairing · QC · Kit) live on DeskPageChrome
+ * tabs / MasterNav (SIDEBAR_PAGE_NAV) — no sidebar mode rail twin.
  *
  * Mounted by DashboardSidebar when routeKey === 'products'.
  */

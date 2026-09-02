@@ -91,7 +91,7 @@ export const PACKING_MODE_ICONS = {
 
 /**
  * Underlying primitive name for every floor-station L2 mode.
- * Uniqueness is the hard law — Arrival Truck ≠ Tech Ready-to-Pack PackageCheck, etc.
+ * Uniqueness is the hard law — Arrival Truck ≠ Picker PackageSearch, etc.
  * Pages may reuse a glyph with their default mode (data only — chrome renders modes).
  */
 export const STATION_GLYPH_KEYS = {
@@ -101,7 +101,7 @@ export const STATION_GLYPH_KEYS = {
   'receiving.pickup': 'ShoppingCart',
   'receiving.repair': 'Wrench',
   'tech.testing': 'ShieldCheck',
-  'tech.shipping': 'PackageCheck',
+  'tech.shipping': 'PackageSearch',
   'shipping.labels': 'Printer',
   'shipping.ready': 'ClipboardList',
   'shipping.fba': 'Boxes',

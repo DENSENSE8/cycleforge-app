@@ -9,16 +9,20 @@
  * feeds). Repairs composes the shared {@link RepairTable} workbench as the
  * **history door** — Scan Stations `/repair` remains the intake/task door.
  *
- * Layout for Sales/Pickup is the Sheets flush stack: pinned flush
- * `WalkInDeskHeader` (Band 1 tabs) above the mode feed. Repairs skips that
- * header — `RepairTable` owns `RepairWorkspaceHeader` / triage.
+ * Layout for Sales/Pickup is the Sheets flush stack: the mode's status tabs
+ * sit above the feed as legal second-level sub-modes. Repairs mounts the same
+ * sub-mode strip above `RepairTable`.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { zIndex } from '@/design-system/tokens/z-index';
-import { WalkInDeskHeader } from '@/components/walk-in/WalkInDeskHeader';
+import { ExternalLink } from '@/components/Icons';
+import {
+  DeskActionSlotRegistrar,
+  DeskHeaderAction,
+} from '@/design-system/components/DeskActionSlot';
+import { TableTabs } from '@/components/tables/TableStatusBar';
 import { SalesHistoryTable } from '@/components/walk-in/SalesHistoryTable';
 import {
   DEFAULT_SALES_REPAIR_TAB,
@@ -39,8 +43,8 @@ function TableFallback() {
 }
 
 // Non-default tables are code-split so their chunks load only on mode switch.
-const PickupOrdersTable = dynamic(
-  () => import('@/components/walk-in/PickupOrdersTable').then((m) => m.PickupOrdersTable),
+const PickupWorkspace = dynamic(
+  () => import('@/components/receiving/pickup/PickupWorkspace').then((m) => m.PickupWorkspace),
   { ssr: false, loading: TableFallback },
 );
 
@@ -54,7 +58,13 @@ function tabItemsForMode(mode: WalkInHistoryMode): WalkInModeTab[] {
   return SALES_TAB_ITEMS;
 }
 
-/** The station job to open from the header for Sales / Pickup modes. */
+const REPAIR_TAB_ITEMS: WalkInModeTab[] = [
+  { id: 'incoming', label: 'Incoming' },
+  { id: 'active', label: 'Active' },
+  { id: 'done', label: 'Done' },
+];
+
+/** The station job to open from the Sales desk action. */
 const MODE_JOB: Record<'pickup' | 'sales', WalkInJob> = {
   pickup: 'pickup',
   sales: 'sales',
@@ -69,55 +79,93 @@ export function WalkInHistoryHub() {
   const tabRaw = searchParams.get('tab');
   const isRepairs = mode === 'repairs';
   const feedMode: 'pickup' | 'sales' = mode === 'pickup' ? 'pickup' : 'sales';
-  const tabItems = tabItemsForMode(feedMode);
-  const activeTab =
-    feedMode === 'pickup' ? parsePickupTab(tabRaw) : parseSalesTab(tabRaw);
+  const tabItems = isRepairs ? REPAIR_TAB_ITEMS : tabItemsForMode(feedMode);
+  const activeTab = isRepairs
+    ? parseRepairTab(tabRaw, DEFAULT_SALES_REPAIR_TAB)
+    : feedMode === 'pickup'
+      ? parsePickupTab(tabRaw)
+      : parseSalesTab(tabRaw);
+  const defaultTab = isRepairs
+    ? DEFAULT_SALES_REPAIR_TAB
+    : defaultTabForMode(feedMode);
 
   const setTab = useCallback(
     (next: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (next === defaultTabForMode(feedMode)) params.delete('tab');
+      if (next === defaultTab) params.delete('tab');
       else params.set('tab', next);
       const qs = params.toString();
       router.replace(qs ? `${pathname}?${qs}` : pathname);
     },
-    [feedMode, pathname, router, searchParams],
+    [defaultTab, pathname, router, searchParams],
   );
 
   const openStation = useCallback(() => {
-    router.push(walkInStationHref(MODE_JOB[feedMode]));
-  }, [feedMode, router]);
+    router.push(
+      isRepairs
+        ? walkInStationHref('repair', { new: 'true' })
+        : walkInStationHref(MODE_JOB[feedMode]),
+    );
+  }, [feedMode, isRepairs, router]);
 
-  // Repairs: RepairTable owns its chrome — no WalkInDeskHeader double band.
+  const stationAction = useMemo(
+    () => (
+      <DeskHeaderAction
+        type="button"
+        variant="secondary"
+        size="sm"
+        icon={<ExternalLink aria-hidden className="h-3.5 w-3.5" />}
+        onClick={openStation}
+      >
+        Open station
+      </DeskHeaderAction>
+    ),
+    [openStation],
+  );
+
+  const submodeTabs = (
+    <div className="shrink-0 border-b border-border-soft bg-surface-card">
+      <TableTabs
+        tabs={tabItems}
+        activeTab={activeTab}
+        onTabChange={setTab}
+        className="border-0 bg-transparent"
+      />
+    </div>
+  );
+
+  // Repairs: the shared table owns the table surface; its Incoming / Active /
+  // Done filters stay as second-level sub-modes inside the Repair Service page tab.
   if (isRepairs) {
     return (
-      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
-        <RepairTable filter={parseRepairTab(tabRaw, DEFAULT_SALES_REPAIR_TAB)} />
-      </div>
+      <>
+        <DeskActionSlotRegistrar>{stationAction}</DeskActionSlotRegistrar>
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
+          {submodeTabs}
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+            <RepairTable filter={parseRepairTab(tabRaw, DEFAULT_SALES_REPAIR_TAB)} />
+          </div>
+        </div>
+      </>
     );
   }
 
   return (
-    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
-      <div className="relative shrink-0" style={{ zIndex: zIndex.header }}>
-        <div className="relative w-full min-w-0">
-          <WalkInDeskHeader
-            tabs={tabItems}
-            activeTab={activeTab}
-            onSelectTab={setTab}
-            onOpenStation={openStation}
-            className="rounded-none border-l-0 border-t-0 shadow-sm"
-          />
+    <>
+      <DeskActionSlotRegistrar>{stationAction}</DeskActionSlotRegistrar>
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
+        {submodeTabs}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          {feedMode === 'pickup' ? (
+            <PickupWorkspace
+              statusTabOverride={parsePickupTab(tabRaw) === 'completed' ? 'done' : 'draft'}
+              showStatusFilter={false}
+            />
+          ) : (
+            <SalesHistoryTable tab={parseSalesTab(tabRaw)} />
+          )}
         </div>
       </div>
-
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {feedMode === 'pickup' ? (
-          <PickupOrdersTable tab={parsePickupTab(tabRaw)} />
-        ) : (
-          <SalesHistoryTable tab={parseSalesTab(tabRaw)} />
-        )}
-      </div>
-    </div>
+    </>
   );
 }

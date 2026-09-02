@@ -20,9 +20,7 @@ import { cornerClass } from '@/design-system/tokens/radius';
 // Do NOT hand-roll `border border-border-soft bg-surface-card shadow-sm` again —
 // reach for <Panel> (and <PanelHeader> / <PanelFooter>) instead.
 //
-// Zero-radius law: the default corner is `none` (flush-square, `cornerClass('flush')`).
-// Ops chrome is flush; `lg`/`xl`/`2xl` remain as opt-ins for a genuine soft
-// surface (a mobile sheet, a marketing card) — never the ops default.
+// Default corner is `lg` (desk / workbench cards). Scan stations pass `none`.
 
 export type PanelPadding = 'none' | 'sm' | 'md' | 'lg';
 export type PanelRadius = 'none' | 'lg' | 'xl' | '2xl';
@@ -66,7 +64,7 @@ export interface PanelProps extends HTMLAttributes<HTMLDivElement> {
   children?: ReactNode;
   /** Inner padding from the spacing scale. Default `md`. */
   padding?: PanelPadding;
-  /** Corner radius from the radius scale. Default `none` (flush-square). */
+  /** Corner radius from the radius scale. Default `lg` (desk cards). Scan-station hosts pass `none`. */
   radius?: PanelRadius;
   /** Drop shadow from the elevation scale. Default `sm`. */
   elevation?: PanelElevation;
@@ -75,7 +73,7 @@ export interface PanelProps extends HTMLAttributes<HTMLDivElement> {
 }
 
 export const Panel = forwardRef<HTMLDivElement, PanelProps>(function Panel(
-  { children, padding = 'md', radius = 'none', elevation = 'sm', borderless = false, className, ...rest },
+  { children, padding = 'md', radius = 'lg', elevation = 'sm', borderless = false, className, ...rest },
   ref,
 ) {
   return (

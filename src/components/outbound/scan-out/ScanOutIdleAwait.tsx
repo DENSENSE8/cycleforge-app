@@ -17,7 +17,6 @@ import {
   StationScanPaneHost,
   StationWorkbench,
 } from '@/components/station/workbench';
-import { STATION_SCAN_WELL_CLASS } from '@/components/station/scan-depth';
 import {
   StationDisplaysParkedRail,
   StationDisplaysPushStack,
@@ -109,7 +108,7 @@ export function ScanOutIdleAwait({
               >
                 <div
                   className={cn(
-                    STATION_SCAN_WELL_CLASS,
+                    'bg-surface-card',
                     'flex min-h-0 flex-1 flex-col items-center justify-center inset-empty text-center',
                   )}
                 >

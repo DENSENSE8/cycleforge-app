@@ -140,7 +140,7 @@ export function useOrdersQueueRows({
     if (isQueueColumnSort(sort)) {
       const resolvedDir = dir ?? defaultDirForQueueSort(sort) ?? 'asc';
       const sorted = [...visibleRecords].sort((a, b) =>
-        compareQueueColumnRows(a, b, sort, resolvedDir),
+        compareQueueColumnRows(a, b, sort, resolvedDir, queueMode),
       );
       const groups = groupRowsBy(sorted, (r) => String(r.order_id || '').trim() || `id:${r.id}`);
       const orderGroupsByDate: [string, RowGroup<ShippedOrder>[]][] = [['', groups]];

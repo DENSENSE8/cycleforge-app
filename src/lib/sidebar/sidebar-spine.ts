@@ -129,9 +129,9 @@ export const SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS =
  * glyph below pairs with it — back to 16px, proportionate at this text size
  * rather than the 20px the 24px-text pass needed.
  * Destination labels — bumped 2026-08-20 from `role-nav` (13px) to
- * `role-body` (14px), matching {@link PAGE_FACE_CLASS}'s same-day bump in
- * `HeaderPageSwitcher.tsx` so the two navigators keep reading as one size
- * system, not two. Regular weight (not title 18px/600).
+ * `role-body` (14px), matching the GlobalHeader recents session face so the
+ * two navigators keep reading as one size system, not two. Regular weight
+ * (not title 18px/600).
  */
 export const SPINE_ROW_FACE_CLASS = 'h-10 shrink-0';
 export const SPINE_ROW_ICON_CLASS = 'h-4 w-4 shrink-0';

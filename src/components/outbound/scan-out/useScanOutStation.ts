@@ -32,6 +32,7 @@ export interface ScanOutResult {
   alreadyDelivered?: boolean;
   shipmentId?: number;
   tracking?: string | null;
+  receivingId?: number | null;
   orderRowId?: number | null;
   orderId?: string | null;
   productTitle?: string | null;

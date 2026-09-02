@@ -1,6 +1,9 @@
 # Build and dependency artifacts
 .next
 .next-perf
+.next-perf-lh
+.next-perf-si
+lighthouse-baseline.json.bak
 node_modules
 desktop-dist
 build
@@ -42,3 +45,25 @@ vision/data
 # Electron/desktop extras not needed for web deploy
 /electron
 server/storage
+
+# Local perf / Playwright / agent scratch — gitignored but .vercelignore
+# replaces .gitignore, so these must be named or the CLI uploads 25k+ files.
+playwright-report
+test-results
+.playwright-mcp
+.playwright
+reports
+.jscpd
+logs
+certificates
+converted-manuals
+apps/desktop
+.crush
+.research
+.claude/worktrees
+tests/visual
+scripts/_screenshots
+scripts/_verify-*
+scripts/_mint-*
+scripts/_fix-*
+__ds_smoke*

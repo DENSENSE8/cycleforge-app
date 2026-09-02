@@ -19,7 +19,11 @@
  */
 
 import pool from '@/lib/db';
-import { parseIntegrationPayload, serializeIntegrationPayload } from './crypto';
+import {
+  isIntegrationPayloadDecryptError,
+  parseIntegrationPayload,
+  serializeIntegrationPayload,
+} from './crypto';
 import { DOGFOOD_ORG_ID, type OrgId } from '../tenancy/constants';
 import { getValidatedAblyApiKey } from '@/lib/realtime/ably-key';
 import { captureError } from '@/lib/observability/errors';
@@ -493,6 +497,7 @@ export async function getIntegrationCredentials<T = unknown>(
   const cached = credCache.get(key);
   if (cached && cached.expiresAt > Date.now()) return cached.value as T | null;
 
+  let vaultDecryptError: unknown = null;
   try {
     const r = await pool.query<IntegrationDbRow>(
       `SELECT payload_encrypted, display_label, status, scope
@@ -511,8 +516,11 @@ export async function getIntegrationCredentials<T = unknown>(
       return value;
     }
   } catch (err) {
-    // Decryption or DB errors are loud but non-fatal — fall through to env.
+    // Decryption or DB errors are loud. Env bootstrap may still work for USAV;
+    // if it does not, rethrow decrypt so Unbox Receive is not told "not connected"
+    // while Settings still shows Connected (KMS mismatch across shared Neon).
     console.warn(`[integrations] credentials lookup failed for ${orgId}/${provider}:`, err instanceof Error ? err.message : err);
+    if (isIntegrationPayloadDecryptError(err)) vaultDecryptError = err;
   }
 
   // Zoho: if a vault row exists but is error/revoked, do NOT fall through to
@@ -557,6 +565,12 @@ export async function getIntegrationCredentials<T = unknown>(
         return legacy;
       }
     }
+  }
+
+  if (vaultDecryptError) {
+    // Do not cache null — a PREVIOUS key added on the next process start must
+    // be retried immediately, not after the 5-minute miss TTL.
+    throw vaultDecryptError;
   }
 
   credCache.set(key, { value: null, expiresAt: Date.now() + CACHE_TTL_MS });

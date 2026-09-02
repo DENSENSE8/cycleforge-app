@@ -15,6 +15,7 @@ import {
 } from './types';
 
 import { readMigratedItem } from '@/lib/storage/migrate-key';
+import { isStructuralSpinePinHref } from './nav-pin';
 
 const SETTINGS_KEY = 'cf.quickAccess';
 const LEGACY_SETTINGS_KEY = 'usav.quickAccess';
@@ -105,6 +106,7 @@ export function sanitizePinned(pinned: PinnedPage[]): PinnedPage[] {
     if (typeof p.id !== 'string' || !p.id) continue;
     if (typeof p.label !== 'string' || !p.label.trim()) continue;
     if (typeof p.href !== 'string' || !p.href.startsWith('/')) continue;
+    if (isStructuralSpinePinHref(p.href)) continue;
     if (seenHref.has(p.href)) continue;
     seenHref.add(p.href);
     out.push({
@@ -158,6 +160,28 @@ export function isPinned(href: string): boolean {
   return getSettings().pinned.some((p) => p.href === href);
 }
 
+/** Path only — pins may keep a query; the leaf is the page. */
+export function hrefPathname(href: string): string {
+  try {
+    return new URL(href, 'http://local').pathname;
+  } catch {
+    const q = href.indexOf('?');
+    return q >= 0 ? href.slice(0, q) : href;
+  }
+}
+
+/**
+ * True when Pinned already paints this page. Catalog drill parents
+ * (Scan Stations / Desks) must stay idle then — one current-page fill.
+ */
+export function pinsCoverHref(
+  href: string,
+  pins: readonly { href: string }[],
+): boolean {
+  const path = hrefPathname(href);
+  return pins.some((p) => hrefPathname(p.href) === path);
+}
+
 export function findPinByHref(href: string): PinnedPage | null {
   return getSettings().pinned.find((p) => p.href === href) ?? null;
 }
@@ -168,6 +192,9 @@ export function addPin(input: {
   iconKey?: string;
 }): { settings: QuickAccessSettings; result: 'added' | 'duplicate' | 'full' } {
   const current = getSettings();
+  if (isStructuralSpinePinHref(input.href)) {
+    return { settings: current, result: 'duplicate' };
+  }
   if (current.pinned.some((p) => p.href === input.href)) {
     return { settings: current, result: 'duplicate' };
   }
@@ -182,6 +209,49 @@ export function addPin(input: {
     addedAt: Date.now(),
   };
   const settings = setSettings({ pinned: [pin, ...current.pinned] });
+  persistPinsToServer(settings.pinned);
+  return { settings, result: 'added' };
+}
+
+/**
+ * Drop onto the MasterNav Pinned cluster: insert at `atIndex` (append when
+ * omitted). A href that is already pinned moves to that index.
+ */
+export function insertPin(
+  input: { label: string; href: string; iconKey?: string },
+  atIndex?: number,
+): { settings: QuickAccessSettings; result: 'added' | 'moved' | 'full' } {
+  const current = getSettings();
+  if (isStructuralSpinePinHref(input.href)) {
+    return { settings: current, result: 'moved' };
+  }
+  const existing = current.pinned.find((p) => p.href === input.href);
+  if (existing) {
+    const without = current.pinned.filter((p) => p.id !== existing.id);
+    const idx =
+      atIndex == null ? without.length : Math.max(0, Math.min(atIndex, without.length));
+    const next = [...without.slice(0, idx), existing, ...without.slice(idx)];
+    const settings = setSettings({ pinned: next });
+    persistPinsToServer(settings.pinned);
+    return { settings, result: 'moved' };
+  }
+  if (current.pinned.length >= MAX_PINS) {
+    return { settings: current, result: 'full' };
+  }
+  const pin: PinnedPage = {
+    id: makeId(),
+    label: input.label.trim() || input.href,
+    href: input.href,
+    iconKey: input.iconKey,
+    addedAt: Date.now(),
+  };
+  const idx =
+    atIndex == null
+      ? current.pinned.length
+      : Math.max(0, Math.min(atIndex, current.pinned.length));
+  const settings = setSettings({
+    pinned: [...current.pinned.slice(0, idx), pin, ...current.pinned.slice(idx)],
+  });
   persistPinsToServer(settings.pinned);
   return { settings, result: 'added' };
 }

@@ -101,17 +101,6 @@ const SKIP_DIR = new Set(['node_modules', '.git', 'dist', '.next']);
  */
 export const SLOT_TABLE_KNOWN_DEBT: readonly string[] = [
   'catalog-orphan:fba:FBA_FIELD_CATALOG',
-  'flat-mount:receiving:TestingHistoryList',
-  'grid-default:incoming:IncomingGridRow',
-  'grid-default:incoming:incoming-grid-descriptor',
-  'grid-default:receiving:ReceivingGridRow',
-  'hand-grid-export:catalog-link:CATALOG_LINK_GRID_COLUMNS',
-  'hand-grid-export:daily:DAILY_GRID_COLUMNS',
-  'hand-grid-export:import-exception:IMPORT_EXCEPTION_GRID_COLUMNS',
-  'hand-grid-export:incoming:INCOMING_GRID_COLUMNS',
-  'hand-grid-export:receiving:RECEIVING_GRID_COLUMNS',
-  'hand-grid-export:tasks:TASKS_GRID_COLUMNS',
-  'out-of-waist-hand-model:station-history:STATION_HISTORY_COLUMNS',
   'table-columns-zombie:support-tickets',
 ];
 
@@ -366,31 +355,8 @@ function scanCatalogOrphans(root: string): SlotTableFinding[] {
   return findings;
 }
 
-function scanOutOfWaistHandModels(files: { rel: string; src: string }[]): SlotTableFinding[] {
-  const findings: SlotTableFinding[] = [];
-  for (const f of files) {
-    if (f.rel.endsWith('station-history-columns.ts') && /export const STATION_HISTORY_COLUMNS/.test(f.src)) {
-      findings.push({
-        id: 'out-of-waist-hand-model:station-history:STATION_HISTORY_COLUMNS',
-        scanner: 'out-of-waist-hand-model',
-        verdict: 'judgment',
-        priority: 9,
-        tableId: null,
-        symbol: 'STATION_HISTORY_COLUMNS',
-        path: f.rel,
-        refs: [
-          'src/components/station/StationHistoryTable.tsx',
-          'src/components/station/StationListTable.tsx',
-          'src/components/station/StationQueueRow.tsx',
-        ],
-        why: 'Bench history is a third engine (LedgerGrid + field-key tracks) outside PRODUCT_TABLES / REGISTERED_BINDINGS. Kill-list 07 §5.',
-        keep: 'OrdersQueueTableRow, ORDERS_COMPOUND_COLUMNS, DataTable waist. Do not copy this array onto a product desk.',
-        next: 'Human: register a real binding+catalog for station-history, or delete the host fork. Not a mechanical GRID delete.',
-        blockedBy: [],
-      });
-    }
-  }
-  return findings;
+function scanOutOfWaistHandModels(_files: { rel: string; src: string }[]): SlotTableFinding[] {
+  return [];
 }
 
 function scanTableColumnZombies(peers: Set<string>): SlotTableFinding[] {
@@ -428,12 +394,17 @@ function keepInventory(root: string): SlotTableKeepItem[] {
     {
       id: 'engine:CompoundItem',
       path: SLOT_TABLE_ENGINE.compoundCells,
-      why: 'One Item cell for every PRODUCT_TABLES peer. Title/listing paint lives here.',
+      why: 'One Item cell for every PRODUCT_TABLES peer. Listing hover menu lives here; title face is ProductTitleLink.',
+    },
+    {
+      id: 'engine:ProductTitleLink',
+      path: SLOT_TABLE_ENGINE.productTitleLink,
+      why: 'Shared title listing face. Idle text-text-default; hover/focus text-text-info + underline. Do not fork per desk.',
     },
     {
       id: 'engine:CompoundStageStep',
       path: SLOT_TABLE_ENGINE.compoundCells,
-      why: 'Parameterized stage paint. Feed from FieldDef — never if (fieldId === …).',
+      why: 'Parameterized stage paint. Empty/pending mark is the staff combo (StageStaffAssignPopover); stamped stays read-only. Feed from FieldDef — never if (fieldId === …).',
     },
     {
       id: 'engine:useSlotTableLayout',
@@ -454,6 +425,21 @@ function keepInventory(root: string): SlotTableKeepItem[] {
       id: 'engine:DataTableFilterMenu',
       path: 'src/components/tables/DataTable.tsx',
       why: 'Toolbar funnel always mounts beside SearchField. Idle chrome when a family has no facets. Not FilterRefinementBar.',
+    },
+    {
+      id: 'engine:slot-table-header-sort',
+      path: 'src/lib/tables/slot-table-header-sort.ts',
+      why: 'Header click-to-sort law. Chrome keys only; every painted DATA track sorts. Do not delete to silence a dead header.',
+    },
+    {
+      id: 'engine:queueSortForColumnKey',
+      path: 'src/utils/queue-display-sort.ts',
+      why: 'Orders/To-ship/Shipped track→fact sort bridge. Compound header keys are tracks; ?sort= is facts. Impact this, not one desk row.',
+    },
+    {
+      id: 'engine:LedgerGridColumnHeader',
+      path: 'src/design-system/components/grid/LedgerGridColumnHeader.tsx',
+      why: 'The one header click surface. isSortable(key) is the offer; a labeled data track that returns false is a dead header.',
     },
     {
       id: 'engine:NonlinearTableHost',
@@ -501,6 +487,11 @@ function keepInventory(root: string): SlotTableKeepItem[] {
       why: 'STATUS ship-by / inline civil date. variant=compact in the cell (no X, no year, click commits). variant=range is the filter. Do not hand-roll type=date.',
     },
     {
+      id: 'engine:useOptimisticMutation',
+      path: SLOT_TABLE_ENGINE.useOptimisticMutation,
+      why: 'Ship-by / in-cell writes go through this hook (useOrderAssignment). Do not replace with a silent fetch.',
+    },
+    {
       id: 'engine:CompoundState',
       path: SLOT_TABLE_ENGINE.compoundCells,
       why: 'STATUS column. Editable delay mounts DateRangePickerField variant=compact.',
@@ -508,7 +499,7 @@ function keepInventory(root: string): SlotTableKeepItem[] {
     {
       id: 'engine:CART_COMPOUND_COLUMNS',
       path: 'src/lib/kiosk/cart-grid-layout.ts',
-      why: 'Kiosk uses compoundColumnsFor (shared skeleton), not a field-key GRID. Keep until kiosk is in PRODUCT_TABLES — do not copy as “small tables skip slots”.',
+      why: 'Kiosk cart is a transient DataTable binding. Its compound columns come from compoundColumnsFor, so the surface shares the canonical grid skeleton without pretending session rows are a staff PRODUCT_TABLES desk.',
     },
   ];
 

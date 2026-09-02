@@ -178,8 +178,21 @@ this test at the eBay lane** — its orders arrive already shipped.
    `nasBaseUrl`), and the tracking/label state readout. Contract: takes
    `orderId`/`orderRef` + an `onFactsChanged` callback; every write re-reads
    the server facts (the `useOrderTriage` discipline — never patch locally).
-2. **Host A** — the exceptions/intake editor's Shipping (G3) card imports it,
-   replacing its inline shipping markup.
+2. **Host A** — the intake editor's Shipping (G3) card imports it, replacing
+   its inline shipping markup. **BLOCKED 2026-09-01, design snag found in
+   implementation — do not force this swap.** `OrderIntakeForm`'s parcel state
+   (`weightText`/`dimLText`/…) does DOUBLE DUTY: it feeds the pre-creation
+   draft passed to `triage.createCaged` (`OrderIntakeForm.tsx:294-297`) as
+   well as the post-creation order parcel, and it is the source of
+   `currentWeightOz`/`currentDims` handed to `BuyLabelSection` (:316-324).
+   `OrderShippingPanel` owns its parcel state internally, so a naive swap
+   forks it — the operator would type a weight the draft path never sees.
+   Two honest options, operator's call: **(a)** mount the panel only once an
+   order is bound (`boundOrderId != null`) and leave the form's own fields for
+   the draft-create case; or **(b)** give the panel optional controlled parcel
+   props so the form stays the single owner. (b) is the real de-duplication;
+   (a) is the cheap one. Until then there is no *engine* fork — both paths
+   already compose the same `BuyLabelSection` and `OrderDocumentsSection`.
 3. **Host B** — inline in the one data table (amended R-FLOW-6): a **Labels**
    selection verb (`selectionActions` on `DataTable`/`TableStatusBar`) +
    hotkey `L` (keyboard registry + `registerShortcutOverviewGroup`; inert

@@ -40,13 +40,13 @@ describe('scan-station overlay cohort (SoT = all stations)', () => {
     assert.equal(new Set(paths).size, paths.length, 'cohort workspaces must be unique');
   });
 
-  it('design-mcp OVERLAY_COHORT_WORKSPACES stays in sync with the cohort SoT', () => {
-    const server = readFileSync(join(ROOT, 'tools/design-mcp/server.mjs'), 'utf8');
+  it('design-mcp router.json overlayWorkspaces stays in sync with the cohort SoT', () => {
+    const doc = JSON.parse(readFileSync(join(ROOT, 'tools/design-mcp/router.json'), 'utf8')) as {
+      overlayWorkspaces?: string[];
+    };
+    const fromJson = new Set(doc.overlayWorkspaces ?? []);
     for (const p of overlayCohortWorkspacePaths()) {
-      assert.ok(
-        server.includes(`'${p}'`),
-        `tools/design-mcp/server.mjs missing cohort workspace ${p} — update OVERLAY_COHORT_WORKSPACES`,
-      );
+      assert.ok(fromJson.has(p), `tools/design-mcp/router.json missing cohort workspace ${p}`);
     }
   });
 

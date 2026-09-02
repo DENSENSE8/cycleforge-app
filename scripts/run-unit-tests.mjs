@@ -1,18 +1,9 @@
 #!/usr/bin/env node
 // Unit-test runner for verify/CI.
 //
-// Runs every src test file ending in .test.ts, INCLUDING "*.guard.test.ts",
-// except an explicit, shrink-only QUARANTINE of guards that are red today.
-//
-// The default was inverted 2026-08-19. The governance reset (2026-08-12) had
-// allowlisted four structural keepers and skipped every other guard, which
-// meant a guard written AFTER the reset was silently not enforced: the Preview
-// stance shipped 12 passing guard tests and a 10-test E2E, and `npm run verify`
-// ran neither. A gate you have to remember to opt into is not a gate.
-//
-// Adding a guard file is now enough to enforce it. A guard that is red goes in
-// QUARANTINE with a reason and a fix owner — never silently skipped, and the
-// list only shrinks.
+// Runs every src `*.test.ts` except `*.guard.test.ts` (structural guard fleet
+// deleted 2026-08-19; leftovers purged 2026-09-01 — do not re-add) and the
+// jscpd integration driver (verify already runs `jscpd-gate.mjs`).
 import { spawnSync } from 'node:child_process';
 import { readdirSync, statSync } from 'node:fs';
 import { availableParallelism } from 'node:os';
@@ -20,19 +11,6 @@ import { join, relative } from 'node:path';
 
 const ROOT = process.cwd();
 const SRC = join(ROOT, 'src');
-
-/**
- * Guards that are RED against the current tree. Each records the drift it is
- * reporting, so the next agent fixes the code or the guard rather than deleting
- * one of them. SHRINK-ONLY: never add a line to make a change land.
- *
- * EMPTY as of 2026-08-19: every `*.guard.test.ts` in src/ was deleted at the
- * operator's explicit request (structural guards removed for iteration speed).
- * The five entries that lived here named files that no longer exist, and the
- * ghost check below would exit 2 on them. The machinery is intentionally kept —
- * adding a guard file back is still enough to enforce it.
- */
-const QUARANTINE = new Map([]);
 
 function walk(dir, out = []) {
   for (const entry of readdirSync(dir)) {
@@ -47,38 +25,16 @@ function walk(dir, out = []) {
 const files = walk(SRC)
   .map((abs) => relative(ROOT, abs).split('\\').join('/'))
   .filter((rel) => {
+    if (rel.endsWith('.guard.test.ts')) return false;
     // Integration driver: writes src/ probe files and shells the real jscpd
-    // gate. `npm run verify` already runs `jscpd-gate.mjs` after unit tests;
-    // keeping this file in the unit pass races leftover probes into that
-    // later scan (ENOENT on deleted probes). Run it directly when changing
-    // the gate: node --import tsx --test src/lib/governance/jscpd-gate.test.ts
+    // gate. `npm run verify` already runs `jscpd-gate.mjs` after unit tests.
     if (rel === 'src/lib/governance/jscpd-gate.test.ts') return false;
-    if (!rel.endsWith('.guard.test.ts')) return true;
-    return !QUARANTINE.has(rel);
+    return true;
   })
   .sort();
 
 if (files.length < 50) {
   console.error(`run-unit-tests: suspiciously few files (${files.length})`);
-  process.exit(2);
-}
-
-const onDisk = new Set(
-  walk(SRC)
-    .map((abs) => relative(ROOT, abs).split('\\').join('/'))
-    .filter((rel) => rel.endsWith('.guard.test.ts')),
-);
-const quarantined = [...QUARANTINE.keys()].filter((rel) => onDisk.has(rel));
-if (quarantined.length) {
-  console.log(`run-unit-tests: ${quarantined.length} guard(s) QUARANTINED (red, shrink-only):`);
-  for (const rel of quarantined) console.log(`  - ${rel} — ${QUARANTINE.get(rel)}`);
-}
-// A quarantine entry for a guard nobody deleted is one thing; an entry for a
-// file that no longer exists is a stale excuse. Fail rather than carry it.
-const ghosts = [...QUARANTINE.keys()].filter((rel) => !onDisk.has(rel));
-if (ghosts.length) {
-  console.error(`run-unit-tests: QUARANTINE names ${ghosts.length} file(s) that do not exist:`);
-  for (const rel of ghosts) console.error(`  - ${rel}`);
   process.exit(2);
 }
 

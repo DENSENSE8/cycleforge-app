@@ -19,6 +19,8 @@ import {
   Images,
   Link2,
   MapPin,
+  Warehouse,
+  Info,
   Boxes,
   Package,
   Tag,
@@ -34,6 +36,7 @@ import type {
 import { TrackingNumbersTab } from '../TrackingNumbersTab';
 import { ListingLinksTab } from '../ListingLinksTab';
 import { UnboxLocationsLeaf } from '../UnboxLocationsLeaf';
+import { UnboxOverviewLeaf } from '../UnboxOverviewLeaf';
 import type { ClaimModalMode } from '../../claim/claim-types';
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 import {
@@ -146,6 +149,8 @@ export interface BuildUnboxTabsInput {
   }) => void;
   /** Serials cell click → Units Displays. */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
+  /** Open the existing right-rail Locations display for this exact PO line. */
+  onOpenLocation?: (line: ReceivingLineRow) => void;
 }
 
 /**
@@ -164,6 +169,7 @@ export function buildUnboxOverview(
     | 'accordionBootstrap'
     | 'onEditFilledSerial'
     | 'onViewAllUnits'
+    | 'onOpenLocation'
   > & {
     /** Click ledger chips → focus the matching procedure step in the dock. */
     onFocusCaptureStep?: (key: 'serial' | 'condition' | 'item_photos') => void;
@@ -199,6 +205,7 @@ export function buildUnboxOverview(
     accordionBootstrap = 'default',
     onEditFilledSerial,
     onViewAllUnits,
+    onOpenLocation,
     onFocusCaptureStep,
     activeStep = null,
     collapse,
@@ -222,6 +229,7 @@ export function buildUnboxOverview(
       accordionBootstrap={accordionBootstrap}
       onEditFilledSerial={onEditFilledSerial}
       onViewAllUnits={onViewAllUnits}
+      onOpenLocation={onOpenLocation}
       lineCollapse={lineCollapse}
     />
   );
@@ -480,6 +488,12 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
       content: <UnboxProcedureChecklist row={row} />,
     },
     {
+      id: 'overview',
+      label: 'Overview',
+      icon: Info,
+      content: <UnboxOverviewLeaf row={row} />,
+    },
+    {
       id: 'tracking',
       label: 'Tracking',
       icon: MapPin,
@@ -505,7 +519,7 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
     {
       id: 'locations',
       label: 'Locations',
-      icon: MapPin,
+      icon: Warehouse,
       priority: 'overflow',
       // Mount only while showing — the catalog read is a station-wide list and
       // has no business firing behind every other leaf.

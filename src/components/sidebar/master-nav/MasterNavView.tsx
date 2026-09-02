@@ -7,9 +7,9 @@ import { SidebarNavList } from './SidebarNavList';
 /**
  * The **sidebar spine** — page map in a resident push column.
  *
- * Home · Media Library stay structural; Scan Stations is one parent drill;
- * everything else is a staff-ordered list (hold the title row to reorder).
- * Settings lives in the account ⋯ menu.
+ * Home · Media Library stay structural at the top of every drill. Pinned is
+ * a drop-in cluster. Scan Stations and Desks are parent drills; Studio · Admin
+ * stay L1. Settings lives in the account ⋯ menu.
  */
 export function MasterNavView({
   activePage,
@@ -20,7 +20,6 @@ export function MasterNavView({
   drillId,
   onDrillChange,
   spineOrder,
-  onSpineOrderChange,
   className,
 }: {
   activePage: SidebarPageNav;
@@ -31,7 +30,6 @@ export function MasterNavView({
   drillId: string | null;
   onDrillChange: (id: string | null) => void;
   spineOrder: string[];
-  onSpineOrderChange: (ids: string[]) => void;
   className?: string;
 }) {
   return (
@@ -45,7 +43,6 @@ export function MasterNavView({
         drillId={drillId}
         onDrillChange={onDrillChange}
         spineOrder={spineOrder}
-        onSpineOrderChange={onSpineOrderChange}
       />
     </div>
   );

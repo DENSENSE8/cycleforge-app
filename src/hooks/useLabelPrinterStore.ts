@@ -60,6 +60,7 @@ function createStore<T extends object>(key: string, eventName: string) {
   // reference between renders (required to avoid infinite loops).
   let cached: T = {} as T;
   let cachedReady = false;
+  const serverSnapshot: T = {} as T;
 
   function refreshCache(): T {
     cached = readJson<T>(key);
@@ -73,7 +74,7 @@ function createStore<T extends object>(key: string, eventName: string) {
   }
 
   function getServerSnapshot(): T {
-    return {} as T;
+    return serverSnapshot;
   }
 
   function subscribe(cb: () => void): () => void {

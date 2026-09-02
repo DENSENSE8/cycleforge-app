@@ -58,7 +58,7 @@ import {
 import { parseHomeMode } from '@/features/home/home-modes';
 import { parseProductsView } from '@/components/products/products-view';
 import { OUTBOUND_MODE_PATHS, outboundModeFromPath } from '@/components/outbound/outbound-sidebar-shared';
-import { SHIPPING_EXCEPTIONS_PATH, SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
+import { SHIPPING_EXCEPTIONS_PATH, SHIPPING_ORDERS_PATH, SHIPPING_SHORTAGE_PATH } from '@/lib/shipping/orders-desk';
 import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
 import { routeParamsFor } from '@/lib/routing/registry';
 import { parseRouteParams } from '@/lib/routing/route-params';
@@ -95,14 +95,11 @@ export type SidebarIconComponent = (props: { className?: string }) => JSX.Elemen
 /**
  * Stations category under the spine (`SidebarNavList` + guard).
  *
- * **`floor` is the only station group.** The old `desk` twin was a grab-bag —
- * "everything pointer-driven" is not a domain, so it collected Incoming, Review,
- * Support, Shipping, Dashboard, Stock and Products behind one label an operator
- * could not predict. Those pages moved to {@link DOMAIN_GROUPS} (2026-08-01,
- * `docs/todo/desk-domain-spine-split-CLAUDE-CODE-PROMPT.md`). Scan Stations
- * stays a group of its own because it is not a domain either: it is the
- * scanner-driven INPUT MODEL, and a bench must never be reachable only by way
- * of the domain whose records it happens to touch.
+ * **`floor` is the only station group.** Pointer desks are not stations: they
+ * live behind the sibling {@link DESK_GROUPS} parent (`Desks`) and stay named
+ * by {@link DOMAIN_GROUPS} inside that drill. Scan Stations is the
+ * scanner-driven INPUT MODEL; a bench must never be reachable only by way of
+ * the domain whose records it happens to touch.
  */
 export type StationGroupId = 'floor';
 
@@ -114,6 +111,22 @@ export const STATION_GROUPS = [
   { id: 'floor', label: 'Scan Stations', icon: ScanBarcode },
 ] as const satisfies ReadonlyArray<{
   id: StationGroupId;
+  label: string;
+  icon: SidebarIconComponent;
+}>;
+
+/**
+ * MasterNav parent for pointer desks — the Scan Stations twin, not a domain.
+ *
+ * Rows inside the drill keep their domain names (Inbound, Products, …).
+ * Studio and Admin stay ordinary L1 map rows (define / configure, not a desk).
+ */
+export type DeskGroupId = 'desks';
+
+export const DESK_GROUPS = [
+  { id: 'desks', label: 'Desks', icon: LayoutDashboard },
+] as const satisfies ReadonlyArray<{
+  id: DeskGroupId;
   label: string;
   icon: SidebarIconComponent;
 }>;
@@ -400,7 +413,7 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // Quality Control + Ready to Pack are first-class Scan Stations rows (no
   // parent Testing). Route key still resolves to `tech` for the shared panel.
   { id: 'testing',           label: 'Quality Control', href: '/test?view=testing', icon: TECH_NAV_ICONS.testing,  kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view' },
-  { id: 'ready-to-pack',     label: 'Ready to Pack',   href: '/test',               icon: TECH_NAV_ICONS.shipping, kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view' },
+  { id: 'ready-to-pack',     label: 'Picker',          href: '/test?ship=urgent',    icon: TECH_NAV_ICONS.shipping, kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view' },
   // Points at the first-class Pack surface (`/pack`) so the primary nav lands on
   // the canonical URL without a redirect hop. Route key still resolves to
   // 'packer' (reuses the packer panel), so the item stays active on /pack + /packer.
@@ -781,6 +794,41 @@ export function getSidebarNavPageId(
   return getSidebarRouteKey(pathname);
 }
 
+/**
+ * MasterNav L1 row ({@link APP_SIDEBAR_NAV}) for a page id.
+ * Desk children and legacy `SIDEBAR_PAGE_NAV` family pages (`tech`, `receiving`)
+ * are not faces — Recents, Pins, and chrome titles must use this, not a
+ * parallel title map.
+ */
+export function getMasterNavItem(pageId: string): SidebarNavItem | undefined {
+  if (!pageId || pageId === 'unknown') return undefined;
+  return APP_SIDEBAR_NAV.find((item) => item.id === pageId);
+}
+
+export function masterNavItemForPath(
+  pathname: string | null,
+  searchParams?: Pick<URLSearchParams, 'get'> | null,
+): SidebarNavItem | undefined {
+  return getMasterNavItem(getSidebarNavPageId(pathname, searchParams ?? null));
+}
+
+/** Path + query → live MasterNav L1 label (`Shipping`, `Scan out`, `Media Library`). */
+export function masterNavLabelForPath(
+  pathname: string | null,
+  searchParams?: Pick<URLSearchParams, 'get'> | null,
+): string {
+  return masterNavItemForPath(pathname, searchParams)?.label ?? 'Home';
+}
+
+export function masterNavItemForHref(href: string): SidebarNavItem | undefined {
+  try {
+    const url = new URL(href, 'http://local');
+    return masterNavItemForPath(url.pathname, url.searchParams);
+  } catch {
+    return undefined;
+  }
+}
+
 function getFirstPathSegment(path: string): string {
   const [segment = ''] = path.split('/').filter(Boolean);
   // Normalize the Packing surface aliases (`/pack`, `/packer`, `/packers`) to a
@@ -846,6 +894,23 @@ export function isSpineMapTopRow(item: SidebarNavItem): boolean {
   return item.kind === 'top' && item.spineBand !== false;
 }
 
+/**
+ * Pointer desk on the MasterNav map — domain rows plus Operations (monitor).
+ * Floor benches, Studio, and Admin are not desks.
+ */
+export function isSpineDeskItem(
+  item: Pick<SidebarNavItem, 'kind'> & { mainGroup?: MainGroupId },
+): boolean {
+  if (item.kind === 'domain') return true;
+  return item.kind === 'main' && item.mainGroup === 'monitor';
+}
+
+/** Section ids that open the Desks drill (not Scan Stations / Studio / Admin). */
+export function isDeskSpineSection(id: SpineSectionId | null): boolean {
+  if (!id || id === 'floor' || id === 'studio' || id === 'admin') return false;
+  return true;
+}
+
 /** @deprecated Prefer {@link isSpineMapTopRow} — the spine band icons are gone. */
 export const isSpineBandTopPin = isSpineMapTopRow;
 
@@ -893,6 +958,8 @@ export const ROUTE_PERMISSIONS: ReadonlyArray<{ prefix: string; permission: stri
   // To-ship desk is orders-entity gated (shared with Support › Inquiries).
   // Longer prefix must beat `/shipping` → shipping.view.
   { prefix: '/shipping/orders',    permission: 'orders.view' },
+  { prefix: '/shipping/shortage',  permission: 'orders.view' },
+  { prefix: '/shipping/exceptions', permission: 'orders.view' },
   { prefix: '/shipping',           permission: 'shipping.view' },
   { prefix: '/outbound',           permission: 'shipping.view' },
   { prefix: '/products',           permission: 'sku_stock.view' },
@@ -1076,15 +1143,15 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // mode rail as a twin of the header control". The band also stacked a second
   // pinned row above every Home region, costing 60px of vertical space on the
   // one screen an operator opens first. Registering here is what the page's own
-  // docblock called the house-final placement; `HeaderPageSwitcher` +
-  // `HeaderRecentsSwitcher` now serve them like every other modeful page.
+  // docblock called the house-final placement; Home modes now live on
+  // DeskPageChrome tabs. `HeaderRecentsSwitcher` is sessions only.
   {
     id: 'home', label: 'Home', href: '/', icon: Home, kind: 'top',
     // Desk page chrome (2026-08-31): Daily · Today · Tasks are drawn as IN-PAGE
     // tabs by the Home page itself, so the header switcher stops serving them.
     //
     // They moved once before, off a full-width `HorizontalButtonSlider` and
-    // into `HeaderPageSwitcher`, because a page-local mode rail that twins the
+    // into the header page chip, because a page-local mode rail that twins the
     // GlobalHeader control is banned. This is not that: the frame's tab row is
     // the ONE page chrome every desk and station now wears, sized to the stage
     // rather than the canvas, and it is where a page's modes live product-wide.
@@ -1227,7 +1294,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view',
   },
   {
-    id: 'ready-to-pack', label: 'Ready to Pack', href: TECH, icon: TECH_NAV_ICONS.shipping,
+    id: 'ready-to-pack', label: 'Picker', href: `${TECH}?ship=urgent`, icon: TECH_NAV_ICONS.shipping,
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view',
   },
   // ── Inbound (Manage Inbound) ──────────────────────────────────────────────
@@ -1251,7 +1318,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   },
   // Legacy family entry — deep-link / mode-resolution COMPATIBILITY ONLY.
   // Not in APP_SIDEBAR_NAV. Do NOT use as a display or header-family source:
-  // MasterNav + HeaderPageSwitcher derive peers from `stationSubgroup` via
+  // MasterNav (hover-peek) derives peers from `stationSubgroup` via
   // {@link stationSubgroupMembers} (Receiving = Arrival·Unbox; Walk-In =
   // Local Pickup·Repair Service). The `incoming` child below is retained for old
   // `?mode=incoming` bookmarks; Inbound is a separate domain row above.
@@ -1368,6 +1435,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     railless: true,
     children: [
       { id: 'orders',   label: 'To ship',   icon: LayoutDashboard,              requires: 'orders.view', to: () => ({ pathname: SHIPPING_ORDERS_PATH, params: {} }) },
+      { id: 'shortage', label: 'Shortage',  icon: AlertCircle,                  requires: 'orders.view', to: () => ({ pathname: SHIPPING_SHORTAGE_PATH, params: {} }) },
       { id: 'fba',      label: 'Amazon Prep', icon: SHIPPING_NAV_ICONS.fba,      to: () => ({ pathname: OUTBOUND_MODE_PATHS.fba }) },
       // `packing.view` because the archive IS the packer log: `/api/packerlogs`
       // already enforces it, and a tab that 403s is worse than an absent one.
@@ -1391,9 +1459,14 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       ) {
         return 'shipped';
       }
-      // Exceptions is its own path and must resolve BEFORE the orders
-      // catch-all below, or the workbench would light "To ship" — a tab for a
-      // page the operator is not on, the same bug the Shipped clause fixes.
+      // Shortage and Exceptions are their own paths and must resolve BEFORE
+      // the orders catch-all, or those workbenches would light "To ship".
+      if (
+        pathname === SHIPPING_SHORTAGE_PATH ||
+        pathname.startsWith(`${SHIPPING_SHORTAGE_PATH}/`)
+      ) {
+        return 'shortage';
+      }
       if (
         pathname === SHIPPING_EXCEPTIONS_PATH ||
         pathname.startsWith(`${SHIPPING_EXCEPTIONS_PATH}/`)
@@ -1544,7 +1617,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     id: 'tech', label: 'Testing', href: TECH, icon: STATION_PAGE_ICONS.tech, kind: 'station', stationGroup: 'floor', requires: 'tech.view',
     children: [
       { id: 'testing',  label: 'Quality Control', icon: TECH_NAV_ICONS.testing,  to: () => ({ pathname: TECH, params: { view: 'testing' } }) },
-      { id: 'shipping', label: 'Ready to Pack',   icon: TECH_NAV_ICONS.shipping, to: () => ({ pathname: TECH, params: { view: null } }) },
+      { id: 'shipping', label: 'Picker',          icon: TECH_NAV_ICONS.shipping, to: () => ({ pathname: TECH, params: { view: null, ship: 'urgent' } }) },
     ],
     resolveChild: ({ params }) =>
       params.get('view') === 'testing' || params.get('view') === 'testing-history'
@@ -1639,7 +1712,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Operations Studio (map L1) ────────────────────────────────────────────
   // Studio is an ordinary map row (2026-08-29). `/studio/catalog` stays a named
   // L2 child for ⌘K, the header Mode switcher, and the URL. Face matches
-  // SIDEBAR_TITLES.studio.
+  // {@link APP_SIDEBAR_NAV} studio (`Operations Studio`).
   //
   // Modes are SUB-PATHS, not `?params`, so `to()` names a pathname and sets no
   // delta — `/studio` and `/studio/catalog` are two routes, not two views of one.

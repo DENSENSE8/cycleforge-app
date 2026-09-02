@@ -22,7 +22,7 @@ describe('po-intake-draft completeness', () => {
       orderId: '111-222-333',
       platform: 'amazon',
       trackingNumber: '1Z999',
-      lines: [{ sku: 'SKU-1', itemName: '', quantity: '', lineItemId: '' }],
+      lines: [{ sku: 'SKU-1', itemName: '', quantity: '', lineItemId: '', catalogId: null, listingUrl: '' }],
     };
     assert.deepEqual(missingPoIntakeFields(draft), ['quantity']);
     assert.equal(canConfirmPoIntake(draft), false);
@@ -41,7 +41,7 @@ describe('po-intake-draft completeness', () => {
       orderId: 'PO-9',
       platform: 'ebay',
       trackingNumber: '940011189922',
-      lines: [{ sku: 'A', itemName: 'Dock', quantity: '2', lineItemId: 'L1' }],
+      lines: [{ sku: 'A', itemName: 'Dock', quantity: '2', lineItemId: 'L1', catalogId: null, listingUrl: '' }],
     };
     assert.deepEqual(missingPoIntakeFields(draft), []);
     assert.equal(canConfirmPoIntake(draft), true);
@@ -59,7 +59,7 @@ describe('po-intake-draft completeness', () => {
       ...EMPTY_PO_INTAKE_DRAFT(),
       platform: 'amazon',
       trackingNumber: '1Z',
-      lines: [{ sku: 'S', itemName: '', quantity: '1', lineItemId: '' }],
+      lines: [{ sku: 'S', itemName: '', quantity: '1', lineItemId: '', catalogId: null, listingUrl: '' }],
     };
     const next = applyPoIntakeReply(draft, '111-000', missingPoIntakeFields(draft));
     assert.equal(next.orderId, '111-000');
@@ -70,6 +70,34 @@ describe('po-intake-draft completeness', () => {
     assert.match(poIntakeMissingPrompt(['quantity', 'tracking_number']), /tracking/);
   });
 
+  it('buildPoIntakeImportBodies preserves return type and return metadata', () => {
+    const bodies = buildPoIntakeImportBodies(
+      {
+        ...EMPTY_PO_INTAKE_DRAFT(),
+        kind: 'return',
+        orderId: 'R-1',
+        trackingNumber: 'T1',
+        returnReason: 'Damaged',
+        rmaId: 'RMA-1',
+        lines: [{ sku: 'A', itemName: '', quantity: '1', lineItemId: '', catalogId: null, listingUrl: '' }],
+      },
+      () => ({ sourceType: 'amazon', sourcePlatform: 'amazon' }),
+    );
+    assert.deepEqual(bodies[0], {
+      kind: 'return',
+      source_type: 'amazon',
+      source_platform: 'amazon',
+      receiving_type: 'RETURN',
+      priority_tier: null,
+      order_id: 'R-1',
+      quantity: 1,
+      sku: 'A',
+      tracking_number: 'T1',
+      return_reason: 'Damaged',
+      rma_id: 'RMA-1',
+    });
+  });
+
   it('buildPoIntakeImportBodies emits one body per line', () => {
     const bodies = buildPoIntakeImportBodies(
       {
@@ -78,8 +106,8 @@ describe('po-intake-draft completeness', () => {
         platform: 'amazon',
         trackingNumber: 'T1',
         lines: [
-          { sku: 'A', itemName: '', quantity: '1', lineItemId: '' },
-          { sku: '', itemName: 'Cable', quantity: '4', lineItemId: 'x' },
+          { sku: 'A', itemName: '', quantity: '1', lineItemId: '', catalogId: 9, listingUrl: 'https://a.example/x' },
+          { sku: '', itemName: 'Cable', quantity: '4', lineItemId: 'x', catalogId: null, listingUrl: '' },
         ],
       },
       (platform) => ({
@@ -91,6 +119,8 @@ describe('po-intake-draft completeness', () => {
     assert.equal(bodies[0]?.quantity, 1);
     assert.equal(bodies[1]?.quantity, 4);
     assert.equal(bodies[1]?.item_name, 'Cable');
+    assert.equal(bodies[0]?.sku_catalog_id, 9);
+    assert.equal(bodies[0]?.listing_url, 'https://a.example/x');
   });
 
   it('add/remove line helpers keep at least one blank line', () => {
@@ -108,7 +138,7 @@ describe('po-intake-draft completeness', () => {
       ...EMPTY_PO_INTAKE_DRAFT(),
       orderId: '111-222-33344455',
       trackingNumber: '1Z',
-      lines: [{ sku: 'A', itemName: '', quantity: '1', lineItemId: '' }],
+      lines: [{ sku: 'A', itemName: '', quantity: '1', lineItemId: '', catalogId: null, listingUrl: '' }],
     };
     const incomplete = EMPTY_PO_INTAKE_DRAFT();
     assert.equal(countReadyPoIntakeOrders([ready, incomplete]), 1);

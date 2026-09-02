@@ -5,6 +5,7 @@ import {
   isDashboardOutboundOrdersUrl,
   parseOrdersDeskContext,
   shippingOrdersHref,
+  SHIPPING_SHORTAGE_PATH,
 } from './orders-desk';
 
 describe('orders-desk', () => {
@@ -17,6 +18,7 @@ describe('orders-desk', () => {
 
   it('builds canonical hrefs', () => {
     assert.equal(shippingOrdersHref(), '/shipping/orders');
+    assert.equal(SHIPPING_SHORTAGE_PATH, '/shipping/shortage');
     assert.equal(
       shippingOrdersHref({ context: 'support' }),
       '/shipping/orders?context=support',

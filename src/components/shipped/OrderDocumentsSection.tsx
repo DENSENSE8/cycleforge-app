@@ -43,6 +43,8 @@ interface DocumentTypeGroupProps {
   readOnly: boolean;
   isLoading: boolean;
   onChange: () => void;
+  /** Platform metadata for marketplace label uploads. */
+  documentPlatform?: string | null;
   flush?: boolean;
 }
 
@@ -57,6 +59,7 @@ function DocumentTypeGroup({
   readOnly,
   isLoading,
   onChange,
+  documentPlatform,
   flush = false,
 }: DocumentTypeGroupProps) {
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -81,7 +84,12 @@ function DocumentTypeGroup({
       const res = await fetch(`/api/orders/${orderId}/documents`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentType, url: put.url, filename: file.name }),
+        body: JSON.stringify({
+          documentType,
+          platform: documentPlatform ?? undefined,
+          url: put.url,
+          filename: file.name,
+        }),
       });
       if (res.status === 409) return; // already attached — idempotent
       if (!res.ok) {
@@ -280,6 +288,8 @@ export interface OrderDocumentsSectionProps {
    * sections on one surface would be two mouths for one purchase.
    */
   showBuySection?: boolean;
+  /** Platform metadata for labels manually attached from a marketplace. */
+  documentPlatform?: string | null;
   /**
    * Fired alongside the internal cache invalidation after any tray write
    * (upload, delete, fetch, buy/void) — a host that reads gate facts re-reads
@@ -302,6 +312,7 @@ export function OrderDocumentsSection({
   showPreview = false,
   flush = false,
   showBuySection = true,
+  documentPlatform = null,
   onChanged,
 }: OrderDocumentsSectionProps) {
   const queryClient = useQueryClient();
@@ -429,6 +440,7 @@ export function OrderDocumentsSection({
           readOnly={readOnly}
           isLoading={isLoading}
           onChange={onChange}
+          documentPlatform={documentPlatform}
           flush={flush}
         />
       </div>
@@ -444,6 +456,7 @@ export function OrderDocumentsSection({
           readOnly={readOnly}
           isLoading={isLoading}
           onChange={onChange}
+          documentPlatform={documentPlatform}
           flush={flush}
         />
       </div>

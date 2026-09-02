@@ -38,14 +38,14 @@ describe('radius SoT', () => {
     assert.deepEqual(
       roles.map(cornerClass),
       [
-        'rounded-none', // flush
-        'rounded-none', // chip   (flushed 0c)
-        'rounded-none', // row    (flushed 0c)
-        'rounded-none', // control (flushed 0b)
-        'rounded-none', // field  (flushed 0b)
-        'rounded-none', // card   (flushed 0d)
-        'rounded-none', // canvas (flushed 0e)
-        'rounded-full', // pill   (status dots · avatars · Switch only)
+        'rounded-none', // flush — scan stations + grid cells
+        'rounded', // chip
+        'rounded-md', // row
+        'rounded-lg', // control
+        'rounded-xl', // field
+        'rounded-2xl', // card
+        'rounded-3xl', // canvas
+        'rounded-full', // pill
       ],
     );
   });
@@ -57,12 +57,8 @@ describe('radius SoT', () => {
 
   describe('nestedCorner — concentric inner = outer − padding', () => {
     it('reproduces the one pairing the house already documents by hand', () => {
-      // nestedCorner keys off CORNER_PX (untouched by the zero-radius staging),
-      // so the returned ROLE is still `field` for a canvas + p-3 nest. But the
-      // `field` role now renders `rounded-none` (flushed in Wave 0b), so the
-      // nested field is flush — WORKSPACE_NESTED_FIELD is `rounded-none`.
       assert.equal(nestedCorner('canvas', 3), 'field');
-      assert.equal(nestedCornerClass('canvas', 3), 'rounded-none');
+      assert.equal(nestedCornerClass('canvas', 3), 'rounded-xl');
     });
 
     it('steps down the ladder as padding grows', () => {

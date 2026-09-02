@@ -44,7 +44,7 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station scan-out` for full g
 ## Design critique (latest)
 
 <!-- eval-ledger:auto:design-critique -->
-- `src/components/outbound/workspaces/ScanOutWorkspace.tsx` — snapshot `docs/eval/stations/scan-out/snapshots/2026-09-01-critique-ScanOutWorkspace.txt`
+- `src/components/outbound/workspaces/ScanOutWorkspace.tsx` — snapshot `docs/eval/stations/scan-out/snapshots/2026-09-02-critique-ScanOutWorkspace.txt`
 ```
 {
   "file": "src/components/outbound/workspaces/ScanOutWorkspace.tsx",
@@ -53,7 +53,7 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station scan-out` for full g
     {
       "severity": "no-system-usage",
 ```
-- `src/components/outbound/scan-out/ScanOutComposerDock.tsx` — snapshot `docs/eval/stations/scan-out/snapshots/2026-09-01-critique-ScanOutComposerDock.txt`
+- `src/components/outbound/scan-out/ScanOutComposerDock.tsx` — snapshot `docs/eval/stations/scan-out/snapshots/2026-09-02-critique-ScanOutComposerDock.txt`
 ```
 {
   "file": "src/components/outbound/scan-out/ScanOutComposerDock.tsx",
@@ -62,7 +62,7 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station scan-out` for full g
   "design_system_used": [
     "CopyChip"
 ```
-- `src/components/composer/ComposerModeRow.tsx` — snapshot `docs/eval/stations/scan-out/snapshots/2026-09-01-critique-ComposerModeRow.txt`
+- `src/components/composer/ComposerModeRow.tsx` — snapshot `docs/eval/stations/scan-out/snapshots/2026-09-02-critique-ComposerModeRow.txt`
 ```
 {
   "file": "src/components/composer/ComposerModeRow.tsx",
@@ -71,28 +71,39 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station scan-out` for full g
   "design_system_used": [],
   "metrics": {
 ```
+- `src/components/receiving/incoming/IncomingAddExtractComposer.tsx` — snapshot `docs/eval/stations/scan-out/snapshots/2026-09-02-critique-IncomingAddExtractComposer.txt`
+```
+{
+  "file": "src/components/receiving/incoming/IncomingAddExtractComposer.tsx",
+  "summary": "1 problem, worst first: a raw <input> where the system has TextField",
+  "problems": [
+    {
+      "severity": "forks-the-system",
+```
 <!-- /eval-ledger:auto:design-critique -->
 
 ## Graph impact (shared symbols)
 
 <!-- eval-ledger:auto:graph-impact -->
-- **ScanOutWorkspace** — 1 files, 1 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-01-impact-ScanOutWorkspace.json`)
-- **StationComposerHost** — 2 files, 2 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-01-impact-StationComposerHost.json`)
-- **ComposerModeRow** — 3 files, 3 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-01-impact-ComposerModeRow.json`)
-- **ScanStationProgressRing** — 1 files, 2 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-01-impact-ScanStationProgressRing.json`)
-- **useOverlaySwapHardCut** — 10 files, 12 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-01-impact-useOverlaySwapHardCut.json`)
+- **ScanOutWorkspace** — 1 files, 1 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-02-impact-ScanOutWorkspace.json`)
+- **StationComposerHost** — 11 files, 11 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-02-impact-StationComposerHost.json`)
+- **ComposerModeRow** — 8 files, 8 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-02-impact-ComposerModeRow.json`)
+- **ScanStationProgressRing** — 1 files, 2 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-02-impact-ScanStationProgressRing.json`)
+- **useOverlaySwapHardCut** — 10 files, 12 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-02-impact-useOverlaySwapHardCut.json`)
 <!-- /eval-ledger:auto:graph-impact -->
 
 ## Regression tripwires
 
 <!-- eval-ledger:auto:tripwires -->
+**pass** — snapshot `docs/eval/stations/scan-out/snapshots/2026-09-02-tripwire.log`
 - `src/lib/station/scan-station-overlay-cohort.test.ts`
 - `src/components/outbound/scan-out/scan-out-commit.test.ts`
 - `src/components/composer/composer-mode-row.test.tsx`
+- `src/components/receiving/incoming/incoming-add-composer-mouth.test.ts`
 <!-- /eval-ledger:auto:tripwires -->
 
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-01T10:05:38.439Z · station `scan-out`_
+_Updated 2026-09-02T17:10:16.926Z · station `scan-out`_
 <!-- /eval-ledger:auto:last-run -->

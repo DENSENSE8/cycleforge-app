@@ -105,6 +105,8 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
      * — see `utils/unbox-workspace-state.ts`. Never a hand-copied enum.
      */
     unboxview: unboxViewParam(),
+    /** Incoming add walk while Inbound tab is up. */
+    intake: paramEnum(['po', 'return'] as const),
     /**
      * Desk mode — workbench tables after Back to list. Absent = station-first
      * (MRU carton or empty scan bench). See `unbox-selection-url.ts`.
@@ -215,6 +217,8 @@ export const INCOMING_ROUTE_PARAMS = defineRouteParams({
     inkind: paramEnum(['all', 'purchase', 'return'] as const),
     /** Returns CSV/TSV staging owns the desk centre while set. */
     import: paramEnum(['csv'] as const),
+    /** Add-PO / add-return walk (table XOR rail+form). */
+    intake: paramEnum(['po', 'return'] as const),
     /**
      * Server ORDER BY — Pipeline ∪ Docked union so hygiene does not strip the
      * other lane’s sort on a deep link. Lane switch clears the incompatible id

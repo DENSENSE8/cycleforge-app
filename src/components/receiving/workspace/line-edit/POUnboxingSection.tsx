@@ -63,6 +63,8 @@ interface POUnboxingSectionProps {
   }) => void;
   /** Serials cell click → Units Displays. */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
+  /** Open the existing right-rail Locations display for this exact PO line. */
+  onOpenLocation?: (line: ReceivingLineRow) => void;
   /** RETURN match → Displays Timeline. */
   onOpenReturnHistory?: () => void;
   /**
@@ -90,6 +92,7 @@ export function POUnboxingSection({
   accordionBootstrap = 'default',
   onEditFilledSerial,
   onViewAllUnits,
+  onOpenLocation,
   onOpenReturnHistory,
   lineCollapse,
 }: POUnboxingSectionProps) {
@@ -119,6 +122,7 @@ export function POUnboxingSection({
         accordionBootstrap={accordionBootstrap}
         onEditFilledSerial={unitsChrome ? onEditFilledSerial : undefined}
         onViewAllUnits={unitsChrome ? onViewAllUnits : undefined}
+        onOpenLocation={onOpenLocation}
         onOpenReturnHistory={onOpenReturnHistory}
       />
     </div>

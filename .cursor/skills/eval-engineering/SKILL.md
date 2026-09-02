@@ -47,9 +47,10 @@ pnpm run eval:cohort slot-table
    paint lives on CompoundItem. STATUS ship-by is `DateRangePickerField
    variant="compact"` (no X, no year, click commits) via `useOptimisticMutation`.
    Filter icon is `DataTableFilterMenu` beside search (always mounted;
-   `DATA_TABLE_FILTER_IDLE` when a family has no facets). Ledger:
+   `DATA_TABLE_FILTER_IDLE` when a family has no facets). Never FilterRefinementBar, never a hunt-tile strip. Every painted DATA column header is click-to-sort (`SLOT_TABLE_PAINT_LAW.headerSort`); chrome only: select / actions / `_fill`. Ledger:
    `docs/eval/cohorts/slot-table/LEDGER.md` (paint law + KEEP
-   `engine:DateRangePickerField` / `engine:DataTableFilterMenu`).
+   `engine:DateRangePickerField` / `engine:DataTableFilterMenu` /
+   `engine:slot-table-header-sort` / `engine:queueSortForColumnKey`).
 
    **Discover (hand-model leftovers):** before deleting a `*_GRID_COLUMNS` array
    or emptying `TABLE_COLUMNS`, run:
@@ -103,10 +104,12 @@ pnpm run eval:cohort shortcuts
 - Overlay shell change on Scan-out → `eval:station scan-out` (peers must stay green)
 - CompoundItem listing face / slot layout / table filter funnel → `eval:cohort slot-table`
 - Compact ship-by in STATUS → `eval:cohort slot-table`. Paint law `SLOT_TABLE_PAINT_LAW.shipBy`. KEEP `engine:DateRangePickerField`. Never a range filter or `type=date`.
+- Dead / missing column-header sort on a DataTable → `eval:cohort slot-table`. Paint law `SLOT_TABLE_PAINT_LAW.headerSort`. KEEP `engine:slot-table-header-sort`. Map the track; do not set `sortable:false` on a labeled fact.
 - "Show the shortcut on the button" (standing) → **refuse**; teach via `?` inline; `eval:cohort shortcuts`
 - Cheat sheet from the table-foot `?` → **refuse**; `eval:cohort shortcuts`
 - Hand GRID leftover / dual SoT → `eval:discover` then one DELETE id
 - Composer mouth only → `eval:station scan-out`
+- Incoming add extract composer (`IncomingAddExtractComposer`) → `eval:station scan-out` (same `StationComposerHost` SoT as Unbox / scan-out; **not** `SCAN_STATION_OVERLAY_COHORT`, **not** `verify:fast` alone)
 - Table layout refactor → `--full` + `eval:cohort slot-table`
 
 ## Performance Notes

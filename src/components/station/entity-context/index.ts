@@ -22,7 +22,10 @@
  *    `reserveIdentityClearance={false}` so the identity hairline abuts the
  *    work surface (zero air). Do not put identity in the workbench
  *    `entityContext` / `toolbar` slots for Unbox-family stations.
- * 3. **Corner utilities** — Unbox / Arrival / Testing / Pack leave the slot
+ * 3. **Inline location** — location movement is handled by the shared
+ *    `useMoveLocation` hook and the item-row location affordance. It does not
+ *    add a collapsible task bar above station work.
+ * 4. **Corner utilities** — Unbox / Arrival / Testing / Pack leave the slot
  *    empty (Pack exit is the card back chevron). Packer review may still mount
  *    pack-size controls via {@link StationMoreDetails}. Workspace mode
  *    registry ({@link WORKSPACE_MODES}) still owns terminal-slice / nav metadata.

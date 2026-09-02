@@ -13,8 +13,16 @@ import { Button } from '@/design-system/primitives';
 import { KioskCustomerIntake } from '@/components/kiosk/KioskCustomerIntake';
 import { KioskCartLineEditor } from '@/components/kiosk/KioskCartLineEditor';
 import { CompoundRow } from '@/components/tables/compound/CompoundRow';
+import { DataTable } from '@/components/tables/DataTable';
 import { cartLineCompoundView } from '@/lib/kiosk/cart-compound-view';
-import { CART_COMPOUND_COLUMNS } from '@/lib/kiosk/cart-grid-layout';
+import {
+  CART_COMPOUND_COLUMNS,
+  type CartGridColumn,
+  type CartGridColumnKey,
+} from '@/lib/kiosk/cart-grid-layout';
+import { KIOSK_CART_TABLE_BINDING } from './kiosk-cart-table-definition';
+import type { RowGroup } from '@/lib/group-rows';
+import type { KioskCartLine } from '@/lib/kiosk/cart-line';
 import { Loader2 } from '@/components/Icons';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
@@ -215,6 +223,75 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
     [postIntake, actions],
   );
 
+  const renderCartLine = useCallback(
+    (line: (typeof session.lines)[number], visible: readonly CartGridColumn[]) => (
+      <div key={line.id}>
+        <CompoundRow
+          data-cart-line-id={line.id}
+          data-testid="kiosk-cart-line"
+          role="button"
+          tabIndex={0}
+          aria-expanded={editingLineId === line.id}
+          aria-label={`Cart line ${line.title}`}
+          className="group/row cursor-pointer"
+          onClick={() =>
+            setEditingLineId((prev) => (prev === line.id ? null : line.id))
+          }
+          onKeyDown={(event: React.KeyboardEvent<HTMLDivElement>) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              setEditingLineId((prev) => (prev === line.id ? null : line.id));
+            }
+          }}
+          columns={visible}
+          capabilities={KIOSK_CART_CAPABILITIES}
+          selected={selectedLineIds.has(line.id)}
+          view={cartLineCompoundView(line)}
+          select={{
+            checked: selectedLineIds.has(line.id),
+            onToggle: () => toggleLineSelected(line.id),
+            label: selectedLineIds.has(line.id)
+              ? `Deselect ${line.title}`
+              : `Select ${line.title}`,
+          }}
+          onOpen={() => setEditingLineId(line.id)}
+          actions={
+            session.sharedSessionId === null
+              ? [
+                  {
+                    key: 'void',
+                    label: `Void ${lineTypeLabel(line.type).toLowerCase()} line`,
+                    tone: 'danger' as const,
+                    onSelect: () => actions.removeLine(line.id),
+                  },
+                ]
+              : undefined
+          }
+        />
+        {editingLineId === line.id && (
+          <KioskCartLineEditor
+            line={line}
+            focusField={editFocusField ?? undefined}
+            onDone={() => setEditingLineId(null)}
+          />
+        )}
+      </div>
+    ),
+    [
+      actions,
+      editFocusField,
+      editingLineId,
+      selectedLineIds,
+      session.sharedSessionId,
+      toggleLineSelected,
+    ],
+  );
+
+  const orderGroupsByDate = useMemo<[string, RowGroup<KioskCartLine>[]][]>(
+    () => [['', session.lines.map((line) => ({ key: line.id, rows: [line] }))]],
+    [session.lines],
+  );
+
   if (result) {
     return (
       <aside className={KIOSK_UTILITY_PANEL_FACE} data-testid="kiosk-cart-ledger">
@@ -288,87 +365,25 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
         className="mx-auto w-full max-w-3xl shrink-0 border-b border-border-hairline"
       />
 
-      {/*
-        The cart LINE LIST is the shared compound table — the same row Unbox,
-        Incoming, To-Ship, Tasks and Daily paint. It used to be a hand-rolled
-        `<li>` with a title, a meta line, a figure and a naked ✕. That row had
-        no selection at all (so nothing could be voided or discounted in bulk)
-        and exactly one verb, because a bare ✕ can only ever say one thing.
-
-        `counter_session_lines` is a DB table, so it reads as one.
-      */}
-      <div
-        role="table"
-        aria-label="Cart lines"
+      <DataTable<KioskCartLine, CartGridColumnKey, CartGridColumn>
+        binding={KIOSK_CART_TABLE_BINDING}
+        hideToolbar
+        columns={CART_COMPOUND_COLUMNS}
+        rows={session.lines}
+        orderGroupsByDate={orderGroupsByDate}
+        getRowId={(line) => line.id}
+        loading={false}
+        emptyMessage="Scan a UPC or pick from the catalog."
+        search={{ value: '', onChange: () => undefined }}
+        sort={null}
+        dir={null}
+        onSortChange={() => undefined}
+        renderGroup={(group, _stripe, { columns: visible }) =>
+          renderCartLine(group.rows[0]!, visible)
+        }
+        renderRow={(line, _stripe, { columns: visible }) => renderCartLine(line, visible)}
         className="mx-auto min-h-0 w-full max-w-3xl flex-1 overflow-y-auto"
-      >
-        {session.lines.length === 0 ? (
-          <p className="px-4 py-8 text-center text-sm font-semibold text-text-soft">
-            Scan a UPC or pick from the catalog.
-          </p>
-        ) : (
-          session.lines.map((line) => (
-            <div key={line.id}>
-              <CompoundRow
-                data-cart-line-id={line.id}
-                data-testid="kiosk-cart-line"
-                role="button"
-                tabIndex={0}
-                aria-expanded={editingLineId === line.id}
-                aria-label={`Cart line ${line.title}`}
-                className="group/row cursor-pointer"
-                // The row IS the edit affordance (tap to correct) — the same
-                // gesture the hand-rolled row had, kept.
-                onClick={() =>
-                  setEditingLineId((prev) => (prev === line.id ? null : line.id))
-                }
-                onKeyDown={(event: React.KeyboardEvent<HTMLDivElement>) => {
-                  if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    setEditingLineId((prev) => (prev === line.id ? null : line.id));
-                  }
-                }}
-                columns={CART_COMPOUND_COLUMNS}
-                capabilities={KIOSK_CART_CAPABILITIES}
-                selected={selectedLineIds.has(line.id)}
-                // The family's only contribution: its DATA.
-                view={cartLineCompoundView(line)}
-                select={{
-                  checked: selectedLineIds.has(line.id),
-                  onToggle: () => toggleLineSelected(line.id),
-                  label: selectedLineIds.has(line.id)
-                    ? `Deselect ${line.title}`
-                    : `Select ${line.title}`,
-                }}
-                onOpen={() => setEditingLineId(line.id)}
-                actions={
-                  // Removing a line the customer already saw priced is a VOID,
-                  // and a void is staff work (session plan D5/P7). While a desk
-                  // holds this tablet the verb is ABSENT rather than dead — a
-                  // control that quietly does nothing is worse than no control.
-                  session.sharedSessionId === null
-                    ? [
-                        {
-                          key: 'void',
-                          label: `Void ${lineTypeLabel(line.type).toLowerCase()} line`,
-                          tone: 'danger' as const,
-                          onSelect: () => actions.removeLine(line.id),
-                        },
-                      ]
-                    : undefined
-                }
-              />
-              {editingLineId === line.id && (
-                <KioskCartLineEditor
-                  line={line}
-                  focusField={editFocusField ?? undefined}
-                  onDone={() => setEditingLineId(null)}
-                />
-              )}
-            </div>
-          ))
-        )}
-      </div>
+      />
 
       <div className="mx-auto w-full max-w-3xl shrink-0 border-t border-border-soft px-4 py-3">
         <div className="flex items-baseline justify-between gap-3">

@@ -28,10 +28,14 @@ const SYSTEM_PROMPT = [
   '- When multiple images are provided, treat them as pages of the SAME order',
   '  (scroll captures). Merge line_items across pages; do not invent a second order.',
   '- platform is one of: amazon, ebay, goodwill, walmart, shopify, manual (lowercase).',
-  '- order_id is the marketplace order number or PO number.',
+  '- order_id is the marketplace order number, vendor PO number, or eBay order id.',
+  '- seller is the vendor / eBay seller username, Amazon seller, or supplier name.',
+  '- listing_url is the product page (eBay /itm/…, Amazon /dp/…, vendor catalog URL).',
+  '- For eBay, sku is the Custom label (SKU). line_item_id is the eBay item number.',
   '- line_items must list each product with sku and/or item_name. Include quantity',
   '  only when the document states it clearly — never guess quantity.',
   '- tracking_number is a carrier tracking id when present.',
+  '- carrier_code is UPS, USPS, FedEx, DHL, or the named carrier when labeled.',
   '- Confidence: high = explicit label; medium = inferred from layout; low = guessed.',
   '',
   'Call the `report_po_intake_fields` tool exactly once and stop. Do not reply with prose.',
@@ -152,6 +156,8 @@ interface OpenAiChatResponse {
 }
 
 export type ExtractPoIntakeInput = {
+  /** The operator-selected document type. */
+  kind?: 'purchase' | 'return' | null;
   /** Pasted / typed order text. */
   text?: string | null;
   /** data:image/...;base64,... or https URL the model can fetch. */
@@ -182,6 +188,8 @@ export function draftFromExtractArgs(raw: RawExtract): PoIntakeDraft {
           ? String(Math.floor(li.quantity))
           : '',
       lineItemId: String(li.line_item_id ?? '').trim(),
+      catalogId: null,
+      listingUrl: '',
     }))
     .filter((l) => l.sku || l.itemName || l.quantity);
 
@@ -211,6 +219,7 @@ export async function extractPoIntake(
   orgId: OrgId,
   input: ExtractPoIntakeInput,
 ): Promise<ExtractPoIntakeResult> {
+  const kind = input.kind === 'return' ? 'return' : 'purchase';
   const text = String(input.text ?? '').trim();
   const imageUrls = normalizeImageUrls(input);
   if (!text && imageUrls.length === 0) {
@@ -221,13 +230,17 @@ export async function extractPoIntake(
     | { type: 'text'; text: string }
     | { type: 'image_url'; image_url: { url: string } }
   > = [];
+  const kindInstruction = kind === 'return'
+    ? 'The operator selected RETURN. Extract return/order fields, including any RMA or return reason if visible.'
+    : 'The operator selected PURCHASE ORDER. Extract purchase-order fields.';
   if (text) {
     userContent.push({
       type: 'text',
-      text:
+      text: `${kindInstruction}\n\n${
         text.length > 12_000
           ? `${text.slice(0, 12_000)}\n\n[…truncated]`
-          : text,
+          : text
+      }`,
     });
   } else if (imageUrls.length > 1) {
     userContent.push({
@@ -295,8 +308,9 @@ export async function extractPoIntake(
     );
   }
 
+  const draft = draftFromExtractArgs(parsed as RawExtract);
   return {
-    draft: draftFromExtractArgs(parsed as RawExtract),
+    draft: { ...draft, kind },
     model: data.model ?? model,
     usage: {
       input_tokens: data.usage?.prompt_tokens ?? 0,

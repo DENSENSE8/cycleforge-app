@@ -28,6 +28,7 @@
 export const TABLE_IMPORT_LIVE_SURFACES = [
   'orders-import',
   'receiving-returns-import',
+  'shortage-coverage-import',
 ] as const;
 
 export function isTableImportLive(

@@ -3,14 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import {
-  Clipboard,
-  MessageSquare,
-  MoreHorizontal,
-  Power,
-  RefreshCw,
-  Settings,
-} from '@/components/Icons';
+import { ArrowUpDown, Clipboard, MessageSquare, MoreHorizontal, Power, RefreshCw, Settings } from '@/components/Icons';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import {
   SIDEBAR_SPINE_MENU_ACTION_CLASS,
@@ -39,6 +32,7 @@ import { FeedbackPopover } from '@/components/quick-access/FeedbackWidget';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStaffSwitcher } from '@/contexts/StaffSwitcherContext';
 import { cn } from '@/utils/_cn';
+import { useNavArrange } from './nav-arrange-context';
 
 type OpenMenu = 'none' | 'more' | 'feedback';
 
@@ -54,7 +48,7 @@ type OpenMenu = 'none' | 'more' | 'feedback';
  * still opens as a sibling layer because it is a panel, not a menu row.
  *
  * Daily account actions only: report an issue, clipboard history (⌘⇧V),
- * change staff, Settings last. Change staff opens {@link SwitchStaffSheet}
+ * change staff, Arrange tabs (`studio.manage`), Settings last. Change staff opens {@link SwitchStaffSheet}
  * (PIN pick) so the station stays signed in. Throw lives on
  * {@link HeaderGoalChip}; phone QR / kiosk preview / desktop download live on
  * Settings → Workstation. Phone scan history is not an account-menu row.
@@ -76,6 +70,7 @@ type OpenMenu = 'none' | 'more' | 'feedback';
 export function StaffAccountFooter({ className }: { className?: string }) {
   const pathname = usePathname();
   const { user, signOut } = useAuth();
+  const { canArrange, arranging, setArranging } = useNavArrange();
   const { openSwitcher } = useStaffSwitcher();
   const [menu, setMenu] = useState<OpenMenu>('none');
   const rowRef = useRef<HTMLDivElement>(null);
@@ -91,7 +86,11 @@ export function StaffAccountFooter({ className }: { className?: string }) {
   const displayName = staffName || `Staff #${user.staffId}`;
 
   return (
-    <div className={cn('w-full shrink-0', className)} data-staff-account-footer>
+    <div
+      className={cn('w-full shrink-0', className)}
+      data-staff-account-footer
+      data-spine-account-footer
+    >
       <Popover
         modal={false}
         open={moreOpen}
@@ -221,6 +220,23 @@ export function StaffAccountFooter({ className }: { className?: string }) {
                 Change staff
               </span>
             </button>
+            {canArrange ? (
+              <button
+                type="button"
+                role="menuitem"
+                aria-pressed={arranging}
+                onClick={() => {
+                  setArranging(!arranging);
+                  setMenu('none');
+                }}
+                className={cn('ds-raw-button', SIDEBAR_SPINE_MENU_ACTION_CLASS)}
+              >
+                <ArrowUpDown className="h-3 w-3 shrink-0 text-text-muted" />
+                <span className={SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS}>
+                  {arranging ? 'Done arranging tabs' : 'Arrange tabs'}
+                </span>
+              </button>
+            ) : null}
             <Link
               href="/settings"
               role="menuitem"

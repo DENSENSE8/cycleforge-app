@@ -1,51 +1,38 @@
 import { test, expect } from '@playwright/test';
 
 /**
- * Add purchase order — intake band lifecycle (replaced the right-rail Add overlay).
- *
- * Predictive UX contract:
- *   - Header CTA opens the inline band under the grid
- *   - Band closes cleanly (no orphaned right-rail create)
- *   - Reopen works immediately
+ * Add purchase order — table XOR record walk (exceptions / Labels chrome).
  *
  * QA org only (global-setup handles auth).
  */
-test.describe('Add purchase order intake lifecycle', () => {
-  test('opens band, closes cleanly, reopens', async ({ page }) => {
+test.describe('Add purchase order walk', () => {
+  test('opens the desk form beside the kind rail', async ({ page }) => {
     await page.goto('/incoming');
     await page.getByTestId('incoming-add-purchase-order').click();
 
-    const band = page.getByTestId('incoming-po-intake-band');
-    await expect(band).toBeVisible({ timeout: 15_000 });
-    await expect(
-      page.locator('aside[role="region"][aria-label="Add inbound purchase or return"]'),
-    ).toHaveCount(0);
-
-    await band.getByLabel('Close add purchase order').click();
-    await expect(band).toBeHidden({ timeout: 10_000 });
-
-    await page.getByTestId('incoming-add-purchase-order').click();
-    await expect(page.getByTestId('incoming-po-intake-band')).toBeVisible({
-      timeout: 15_000,
-    });
+    await expect(page.getByTestId('incoming-add-walk')).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('add-inbound-form')).toBeVisible();
+    await expect(page.getByTestId('incoming-add-kind-po')).toBeVisible();
+    await expect(page.getByTestId('data-table-toolbar')).toHaveCount(0);
   });
 
-  test('inspector Column display stays independent of intake band', async ({ page }) => {
+  test('return is a rail row on the same walk', async ({ page }) => {
+    await page.goto('/incoming');
+    await page.getByTestId('incoming-add-purchase-order').click();
+    await expect(page.getByTestId('incoming-add-walk')).toBeVisible({ timeout: 15_000 });
+    await page.getByTestId('incoming-add-kind-return').click();
+    await expect(page.getByTestId('add-inbound-form').getByLabel('RMA / return id')).toBeVisible();
+  });
+
+  test('the header CTA toggles the walk off', async ({ page }) => {
     await page.goto('/incoming');
 
-    await page.getByTestId('incoming-inspector-toggle').click();
-    await expect(page.getByText('Column display')).toBeVisible({ timeout: 15_000 });
+    const add = page.getByTestId('incoming-add-purchase-order');
+    await add.getByRole('button', { name: 'Add purchase order' }).click();
+    await expect(page.getByTestId('incoming-add-walk')).toBeVisible({ timeout: 15_000 });
 
-    await page.getByTestId('incoming-add-purchase-order').click();
-    await expect(page.getByTestId('incoming-po-intake-band')).toBeVisible({
-      timeout: 15_000,
-    });
-    // Create no longer steals the right edge — Column display can stay up.
-    await expect(page.getByText('Column display')).toBeVisible();
-
-    await page.getByTestId('incoming-po-intake-band').getByLabel('Close add purchase order').click();
-    await expect(page.getByTestId('incoming-po-intake-band')).toBeHidden({
-      timeout: 10_000,
-    });
+    await add.getByRole('button', { name: 'Close add purchase order' }).click();
+    await expect(page.getByTestId('incoming-add-walk')).toHaveCount(0);
+    await expect(page.getByTestId('data-table-toolbar')).toBeVisible();
   });
 });

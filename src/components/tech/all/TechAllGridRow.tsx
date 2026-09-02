@@ -18,6 +18,7 @@ import {
 } from '@/lib/tech/tech-all-grid-layout';
 import { cn } from '@/utils/_cn';
 import { TECH_ALL_GRID_CAPABILITIES } from './tech-all-grid-descriptor';
+import { ProductTitleLink } from '@/components/tables/compound/ProductTitleLink';
 
 const dataCell = (col: TechAllGridColumn, rule = true) =>
   cn(techAllGridCell({ rule, inset: 'grid' }), gridCellAlignClass(col));
@@ -94,9 +95,11 @@ export const TechAllGridRow = memo(function TechAllGridRow({
             style={{ left: techAllGridFrozenLeft(columns, 'identity') }}
             data-frozen-edge
           >
-            <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
-              {row.title}
-            </span>
+            <ProductTitleLink
+              title={row.title}
+              href={row.titleHref}
+              className="flex-1 text-role-data"
+            />
             {row.subtitle ? (
               <CopyableCellValue
                 value={row.subtitle}

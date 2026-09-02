@@ -78,6 +78,8 @@ export interface SlicedActionDockProps {
   onClick: () => void;
   /** Leading icon node. */
   icon?: ReactNode;
+  /** Exposes pressed state when the CTA toggles an adjacent surface. */
+  pressed?: boolean;
   disabled?: boolean;
   loading?: boolean;
   /** Title attribute for the CTA (explains disabled states). */
@@ -296,6 +298,7 @@ export function SlicedActionDock({
   label,
   onClick,
   icon,
+  pressed,
   disabled = false,
   loading = false,
   title,
@@ -553,6 +556,7 @@ export function SlicedActionDock({
         }
         setMenuOpen((open) => !open);
       }}
+      aria-pressed={pressed}
       disabled={isDisabled}
       title={title}
       className={cn(
@@ -616,6 +620,7 @@ export function SlicedActionDock({
         <motion.button
           type="button"
           onClick={onClick}
+          aria-pressed={pressed}
           disabled={isDisabled}
           title={title}
           whileTap={isDisabled ? undefined : { scale: 0.99 }}

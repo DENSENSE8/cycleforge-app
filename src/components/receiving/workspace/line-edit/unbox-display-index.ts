@@ -33,6 +33,7 @@ export interface UnboxDisplayIndexSignals {
 
 const LABELS: Record<UnboxSideTab, string> = {
   checklist: 'Checklist',
+  overview: 'Overview',
   ticket: 'Ticket',
   photos: 'Photos',
   linkage: 'Pairing',
@@ -53,6 +54,7 @@ const GROUPS: Record<UnboxSideTab, DisplayIndexGroup> = {
   units: 'assets',
   prebox: 'assets',
   photos: 'assets',
+  overview: 'context',
   ticket: 'context',
   tracking: 'context',
   locations: 'context',
@@ -126,9 +128,13 @@ function listingsRow(): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
 
 function trackingRow(signals: UnboxDisplayIndexSignals): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
   if (signals.trackingPresent) {
-    return { subtitle: 'Tracking on file', tone: 'ok' };
+    return { subtitle: 'Events · attach', tone: 'ok' };
   }
   return { subtitle: 'No tracking', tone: 'neutral' };
+}
+
+function overviewRow(): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
+  return { subtitle: 'Order · tracking · PO', tone: 'neutral' };
 }
 
 function locationsRow(): Pick<DisplayIndexRow, 'subtitle' | 'tone'> {
@@ -147,6 +153,8 @@ function rowMeta(
   switch (id) {
     case 'checklist':
       return checklistRow();
+    case 'overview':
+      return overviewRow();
     case 'ticket':
       return ticketRow(signals);
     case 'photos':

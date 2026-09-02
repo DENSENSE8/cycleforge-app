@@ -3,9 +3,11 @@
   "source": "cli",
   "lastCommand": "pnpm run verify:fast",
   "mode": "fast",
+  "station": "unbox",
   "exitCode": 0,
-  "durationMs": 14996,
+  "runId": "2026-09-02T03-17-58-423Z",
   "repo": "/home/michaelgarisek/Projects/cycleforge-app",
-  "updatedAt": "2026-09-01T19:15:20.487Z",
-  "updatedMs": 1788290120488
+  "updatedAt": "2026-09-02T06:53:56.843Z",
+  "updatedMs": 1788332036843,
+  "durationMs": 9948
 }

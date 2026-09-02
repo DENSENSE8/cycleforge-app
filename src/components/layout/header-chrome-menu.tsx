@@ -1,21 +1,146 @@
 'use client';
 
 /**
- * Shared GlobalHeader chrome menu — panel + row SoT for Page · Recents · Pins.
- * Industrial flush column: zero radius, zero outer pad, square row hover.
- * Never fork local panel/row classes in those three switchers.
+ * Shared GlobalHeader chrome menu — padded overlay + row SoT for Recents · Pins.
+ * Click opens `HeaderChromeMenuLayer` (dropdown shell radius, wrapping outline, top-down
+ * Motion). Hover-peek of MasterNav is the sidebar collapse button only.
+ * Inner list is `HeaderChromeMenu`. Never fork panel classes in the switchers.
  */
 
 import {
   forwardRef,
+  useLayoutEffect,
+  useState,
   type ButtonHTMLAttributes,
+  type CSSProperties,
+  type HTMLAttributes,
   type ReactNode,
+  type RefObject,
 } from 'react';
 import { Check } from '@/components/Icons';
+import { SIDEBAR_SPINE_PEEK_INSET_PX } from '@/components/sidebar/sidebar-spine';
+import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
+import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import {
+  useMotionPresence,
+  useMotionTransition,
+} from '@/design-system/foundations/motion-framer-hooks';
+import {
+  AnchoredLayer,
+  type AnchoredPlacement,
+} from '@/design-system/primitives/AnchoredLayer';
+import {
+  DROPDOWN_ITEM_CORNER,
+  DROPDOWN_SHELL_CORNER,
+} from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { cn } from '@/utils/_cn';
 import { TOP_CHROME_ICON_FACE } from './header-shell';
+
+/** {@link DROPDOWN_SHELL_CORNER} → `rounded-lg` (8px). SVG wrap uses the px twin. */
+const HEADER_CHROME_MENU_SURFACE_RX_PX = 8;
+
+function HeaderChromeWrapOutline() {
+  const reduce = useReducedMotion();
+  const transition = useMotionTransition(framerTransition.navDropdownFromTop);
+  return (
+    <motion.svg
+      aria-hidden
+      className="pointer-events-none absolute -inset-px h-[calc(100%+2px)] w-[calc(100%+2px)] overflow-visible text-border-default"
+    >
+      <motion.rect
+        x="0.5"
+        y="0.5"
+        width="calc(100% - 1px)"
+        height="calc(100% - 1px)"
+        rx={HEADER_CHROME_MENU_SURFACE_RX_PX}
+        ry={HEADER_CHROME_MENU_SURFACE_RX_PX}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1}
+        vectorEffect="non-scaling-stroke"
+        initial={reduce ? { pathLength: 1 } : { pathLength: 0 }}
+        animate={{ pathLength: 1 }}
+        exit={reduce ? { pathLength: 1 } : { pathLength: 0 }}
+        transition={transition}
+      />
+    </motion.svg>
+  );
+}
+
+export function HeaderChromeMenuLayer({
+  open,
+  onClose,
+  anchorRef,
+  placement,
+  matchWidth,
+  surfaceProps,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  anchorRef: RefObject<HTMLElement | null>;
+  placement: AnchoredPlacement;
+  matchWidth?: boolean;
+  surfaceProps?: HTMLAttributes<HTMLElement> & { 'data-hover-surface'?: '' };
+  children: ReactNode;
+}) {
+  const presence = useMotionPresence(framerPresence.navDropdownFromTop);
+  const transition = useMotionTransition(framerTransition.navDropdownFromTop);
+  const [layerOpen, setLayerOpen] = useState(open);
+  const { className: surfaceClassName, style: surfaceStyle, onMouseEnter, onMouseLeave } =
+    surfaceProps ?? {};
+
+  useLayoutEffect(() => {
+    if (open) setLayerOpen(true);
+  }, [open]);
+
+  if (!layerOpen) return null;
+
+  return (
+    <AnchoredLayer
+      open={layerOpen}
+      onClose={onClose}
+      anchorRef={anchorRef}
+      placement={placement}
+      gap={SIDEBAR_SPINE_PEEK_INSET_PX}
+      matchWidth={matchWidth}
+    >
+      <AnimatePresence
+        onExitComplete={() => {
+          if (!open) setLayerOpen(false);
+        }}
+      >
+        {open ? (
+          <motion.div
+            key="header-chrome-menu"
+            {...presence}
+            transition={transition}
+            className="origin-top"
+            style={{ transformOrigin: '50% 0' }}
+          >
+            <div
+              data-hover-surface=""
+              onMouseEnter={onMouseEnter}
+              onMouseLeave={onMouseLeave}
+              style={surfaceStyle as CSSProperties | undefined}
+              className={cn(
+                'relative overflow-hidden bg-surface-card p-1',
+                DROPDOWN_SHELL_CORNER,
+                elevationClass('overlay'),
+                surfaceClassName,
+              )}
+            >
+              <HeaderChromeWrapOutline />
+              {children}
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </AnchoredLayer>
+  );
+}
 
 export function HeaderChromeMenu({
   ariaLabel,
@@ -30,11 +155,7 @@ export function HeaderChromeMenu({
     <div
       role="menu"
       aria-label={ariaLabel}
-      className={cn(
-        'min-w-[11rem] overflow-y-auto rounded-none border border-border-default border-t-0 bg-surface-card p-0',
-        elevationClass('raised', 'soft'),
-        className,
-      )}
+      className={cn('min-w-[11rem] overflow-y-auto', className)}
     >
       {children}
     </div>
@@ -105,7 +226,8 @@ export const HeaderChromeMenuItem = forwardRef<HTMLButtonElement, HeaderChromeMe
           // 12px trigger reads as a different system, not a second door.
           // `active` marks itself via the `bg-surface-sunken` fill below,
           // never a font-weight bump.
-          'ds-raw-button flex min-w-0 flex-1 items-center gap-2 rounded-none px-3 py-2.5 text-left text-role-nav text-text-default',
+          'ds-raw-button flex min-w-0 flex-1 items-center gap-2 px-3 py-2.5 text-left text-role-nav text-text-default last:border-b-0',
+          DROPDOWN_ITEM_CORNER,
           focusRing('control', 'accent'),
           !hasSideSlots && 'w-full border-b border-border-hairline hover:bg-surface-sunken',
           !hasSideSlots && active && 'bg-surface-sunken',
@@ -148,7 +270,8 @@ export const HeaderChromeMenuItem = forwardRef<HTMLButtonElement, HeaderChromeMe
     return (
       <div
         className={cn(
-          'flex w-full items-center gap-0.5 rounded-none border-b border-border-hairline',
+          'flex w-full items-center gap-0.5 border-b border-border-hairline last:border-b-0',
+          DROPDOWN_ITEM_CORNER,
           'hover:bg-surface-sunken',
           active && 'bg-surface-sunken',
         )}

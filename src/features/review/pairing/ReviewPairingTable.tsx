@@ -5,9 +5,9 @@
  * allocate-serial detail overlay. Uses existing allocate API + OrdersGridHost.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import { packedOrdersQuery } from '@/lib/queries/dashboard-queries';
@@ -22,10 +22,8 @@ interface ReviewPairingTableProps {
 }
 
 export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingTableProps) {
-  const pathname = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const searchQuery = String(searchParams.get('search') || '').trim();
+  const [searchQuery, setSearchQuery] = useState('');
   const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
 
 
@@ -49,17 +47,7 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
 
   const loading = stagedQuery.isLoading || awaitingQuery.isLoading;
 
-  const setSearch = useCallback(
-    (next: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      const trimmed = next.trim();
-      if (trimmed) params.set('search', trimmed);
-      else params.delete('search');
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
-    [pathname, router, searchParams],
-  );
+  const setSearch = useCallback((next: string) => setSearchQuery(next), []);
   const clearSearch = useCallback(() => setSearch(''), [setSearch]);
 
   return (

@@ -16,9 +16,10 @@
  * about CCs. The behaviour is the SoT; the chrome follows it.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
+import { useComposerCcHistory } from './useComposerCcHistory';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
 import { useSupportReply } from '@/hooks/useSupportReply';
 import { useTicketPhotoStaging, type TicketPhotoStaging } from '@/hooks/useTicketPhotoStaging';
@@ -55,10 +56,9 @@ export function useTicketComposer({
   // exists to reach a seller and a reply answers one, so Internal-first put the
   // extra tap on the common case.
   const [isPublic, setIsPublic] = useState(true);
-  const [ccs, setCcs] = useState<string[]>([]);
-  // Held here, not inside the strip, so send can fold a half-typed address in
-  // rather than dropping it.
-  const [ccDraft, setCcDraft] = useState('');
+  const { ccs, setCcs, ccDraft, setCcDraft } = useComposerCcHistory({
+    identityKey: ticketId,
+  });
   const [libraryOpen, setLibraryOpen] = useState(false);
 
   const queryClient = useQueryClient();
@@ -80,13 +80,6 @@ export function useTicketComposer({
     () => new Set(stagedDone.map((s) => s.photoId!)),
     [stagedDone],
   );
-
-  // A new ticket is a new audience. CCs belong to the thread that was on
-  // screen, never to whichever one loads next.
-  useEffect(() => {
-    setCcs([]);
-    setCcDraft('');
-  }, [ticketId]);
 
   const busy = !canPost || reply.isPending || staging.uploading;
 

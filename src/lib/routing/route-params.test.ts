@@ -365,6 +365,17 @@ test('/shipping/orders declares the params its own components read', () => {
   assert.equal(parse('paperwork=0'), null);
 });
 
+test('/shipping/shortage keeps the To-ship param contract', () => {
+  const spec = routeParamsFor('/shipping/shortage')!;
+  assert.equal(spec.route, '/shipping/shortage');
+  const parsed = parseRouteParams(
+    spec,
+    new URLSearchParams('ustatus=BLOCKED&openOrderId=7'),
+  );
+  assert.equal(parsed.get('ustatus'), 'BLOCKED');
+  assert.equal(parsed.get('openOrderId'), '7');
+});
+
 test('routeParamsFor resolves the longest route first', () => {
   assert.equal(routeParamsFor('/receiving/history')?.route, '/receiving/history');
   assert.equal(routeParamsFor('/unbox')?.route, '/unbox');

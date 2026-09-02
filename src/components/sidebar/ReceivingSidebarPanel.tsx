@@ -511,8 +511,8 @@ export function ReceivingSidebarPanel() {
         setMany={setManyRailSelected}
         toggleActive={toggleRailEditMode}
       >
-        {/* L2 Mode + Recents live in GlobalHeader house-wide
-            (HeaderPageSwitcher). Do not remount ReceivingModeSwitcher. */}
+        {/* L2 Mode lives on MasterNav / DeskPageChrome. Recents is sessions
+            only. Do not remount ReceivingModeSwitcher. */}
 
         {mode === 'incoming' ? (
           // Inbound desk is rail-less (Pattern E). Pipeline POS / Email / Removed

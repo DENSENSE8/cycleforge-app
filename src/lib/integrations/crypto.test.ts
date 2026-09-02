@@ -16,6 +16,7 @@ import { randomBytes } from 'node:crypto';
 import {
   encryptIntegrationPayload,
   decryptIntegrationPayload,
+  isIntegrationPayloadDecryptError,
   resetIntegrationKeyCacheForTests,
 } from './crypto';
 
@@ -137,4 +138,15 @@ test('a wrong key names the key mismatch, not "unsupported state"', () => {
     /encrypted under a different key/,
     'the error must point at the key, not at the ciphertext',
   );
+});
+
+test('isIntegrationPayloadDecryptError matches the KMS mismatch message', () => {
+  ok(
+    isIntegrationPayloadDecryptError(
+      new Error(
+        'integration payload could not be decrypted with INTEGRATION_KMS_KEY — it was encrypted under a different key.',
+      ),
+    ),
+  );
+  ok(!isIntegrationPayloadDecryptError(new Error('No active Zoho connection for org x')));
 });

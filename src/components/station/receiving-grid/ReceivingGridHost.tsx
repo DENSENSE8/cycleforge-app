@@ -277,7 +277,14 @@ export function ReceivingGridHost({
 
     if (columnSort && sortDir) {
       const sorted = [...flat].sort((a, b) =>
-        compareReceivingGridRows(a, b, columnSort, sortDir, activityAxis),
+        compareReceivingGridRows(
+          a,
+          b,
+          columnSort,
+          sortDir,
+          activityAxis,
+          allColumns.find((c) => c.key === columnSort)?.fieldId,
+        ),
       );
       const groups = groupRowsBy(sorted, poFoldKey);
       return {

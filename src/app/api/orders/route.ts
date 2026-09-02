@@ -447,6 +447,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         COALESCE(sc.sku, o.sku) AS sku,
         o.condition,
         o.is_out_of_stock,
+        o.shortage_coverage,
         o.status,
         o.notes,
         /*

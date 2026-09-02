@@ -13,6 +13,7 @@ import {
   type CompoundStateTone,
 } from '@/components/tables/compound/compound-row-model';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+import { listingLinksForReceivingRow } from './listing-links';
 import { formatCurrency } from '@/utils/_number';
 
 /**
@@ -103,10 +104,12 @@ export function receivingCompoundView(
   row: ReceivingLineRow,
   parts: ReceivingCompoundParts,
 ): CompoundRowView {
+  const titleHref = listingLinksForReceivingRow(row)[0]?.href ?? null;
   return {
     id: String(row.id),
     thumbUrl: row.image_url || null,
     title: parts.title,
+    titleHref,
     // The LINE note first, then the carton-level note it inherits — an operator
     // reading a row wants what was said about THIS line before what was said
     // about the box it came in.

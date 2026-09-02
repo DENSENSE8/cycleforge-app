@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { WorkOrderCalendar } from '@/components/work-orders/calendar/WorkOrderCalendar';
+import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 
 export const metadata: Metadata = {
   title: 'Scheduling Calendar',
@@ -16,10 +17,12 @@ export const metadata: Metadata = {
  */
 export default function CalendarPage() {
   return (
-    <main className="mx-auto w-full max-w-6xl px-4 py-6">
-      <Suspense>
-        <WorkOrderCalendar />
-      </Suspense>
-    </main>
+    <DeskPageLayout title="Scheduling Calendar" tabs={[]} className="h-full">
+      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+        <Suspense>
+          <WorkOrderCalendar />
+        </Suspense>
+      </div>
+    </DeskPageLayout>
   );
 }

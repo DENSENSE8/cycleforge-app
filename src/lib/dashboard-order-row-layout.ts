@@ -9,12 +9,7 @@
  * keys are slot indices (`status:1…N`), never field ids, and what shows is an
  * org/staff/product layout document, not a deploy.
  *
- * The old flat `ORDERS_QUEUE_COLUMNS` array (tracks whose keys WERE fields:
- * `tester`, `testedAt`, `packStation`, …) moved to the station benches — the
- * one surface still painting it — as `STATION_HISTORY_COLUMNS`
- * (`src/components/station/station-history-columns.ts`), and dies with the
- * kill list's separate station-history item. Do not re-add a hand fact-track
- * array here; bind a catalog field instead.
+ * Do not re-add a hand fact-track array here; bind a catalog field instead.
  *
  * The legacy two-zone shell helpers at the bottom serve the board / walk-in
  * rows that never joined the grid.
@@ -23,6 +18,8 @@
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import {
   omitShippedOnlyBindings,
+  omitShortageCoverageBindings,
+  ensureShortageCoverageBinding,
   ORDERS_FIELD_CATALOG,
   ORDERS_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/orders';
@@ -33,10 +30,8 @@ import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid
 /**
  * Stable key set for the orders-queue columns (scan order).
  *
- * The compound + slot keys are the Orders desk's whole vocabulary. The flat
- * fact keys after them survive ONLY for the station benches'
- * `STATION_HISTORY_COLUMNS` (typed against this model so the shared row can
- * render either); they leave with the station-history kill item.
+ * The compound + slot keys are the Orders desk's whole vocabulary. Legacy
+ * fact keys after them remain on the type for URL/sort compatibility.
  */
 export type OrdersQueueColumnKey =
   | 'select'
@@ -55,7 +50,7 @@ export type OrdersQueueColumnKey =
   | `subtitle:${number}`
   | 'amount'
   | 'actions'
-  // ── Station-bench flat legacy keys (STATION_HISTORY_COLUMNS only) ─────────
+  // ── Legacy fact keys (URL/sort compatibility only) ─────────
   | 'title'
   /** Derived days past ship-by (`0d` / `3d` / …). Replaced fused `sla` / `date`. */
   | 'age'
@@ -105,10 +100,16 @@ export interface OrdersQueueColumn extends Omit<LedgerGridColumnModel, 'key'>, S
  */
 export function ordersCompoundColumnsFor(
   layout: SlotLayout,
-  options?: { queueMode?: 'fulfillment' | 'labels' | 'staged' | 'shipped' },
+  options?: {
+    queueMode?: 'fulfillment' | 'labels' | 'staged' | 'shipped';
+    shortageDesk?: boolean;
+  },
 ): readonly OrdersQueueColumn[] {
-  const resolved =
+  let resolved =
     options?.queueMode === 'shipped' ? layout : omitShippedOnlyBindings(layout);
+  resolved = options?.shortageDesk
+    ? ensureShortageCoverageBinding(resolved)
+    : omitShortageCoverageBindings(resolved);
   /*
    * No `actions` track on Orders (operator ruling 2026-08-31 — "remove the
    * three dots on the most right side").

@@ -2,7 +2,7 @@
 $ node scripts/verify.mjs --fast
 ▶ verify profile: fast · 2 gates, 4 at a time
 
-▶ Lint ✗
+▶ Lint
 
 /home/michaelgarisek/Projects/cycleforge-app/src/components/dashboard/orders-queue/useOrdersSpreadsheet.tsx
   224:3  warning  'activeWorkRowId' is assigned a value but never used. Allowed unused args must match /^_/u  unused-imports/no-unused-vars
@@ -69,7 +69,7 @@ $ node scripts/verify.mjs --fast
   110:23  warning  'setPeriodWeek' is assigned a value but never used. Allowed unused vars must match /^_/u        unused-imports/no-unused-vars
 
 /home/michaelgarisek/Projects/cycleforge-app/src/components/station/ReceivingLinesTable.tsx
-  623:9  warning  'handleIncomingCommitNote' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+  622:9  warning  'handleIncomingCommitNote' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
 
 /home/michaelgarisek/Projects/cycleforge-app/src/components/station/StationHistoryTable.tsx
   103:3  warning  'tableId' is defined but never used. Allowed unused args must match /^_/u               unused-imports/no-unused-vars
@@ -100,9 +100,6 @@ $ node scripts/verify.mjs --fast
 /home/michaelgarisek/Projects/cycleforge-app/src/components/support/zendesk/SupportTicketsBoard.tsx
   72:7  warning  'TAB_COLOR' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
 
-/home/michaelgarisek/Projects/cycleforge-app/src/components/tables/compound/CompoundCells.tsx
-  25:10  error  'useRef' is defined but never used  unused-imports/no-unused-imports
-
 /home/michaelgarisek/Projects/cycleforge-app/src/components/tables/useSlotTableLayout.ts
   292:9  warning  'onSaveAsOrgDefault' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
 
@@ -120,7 +117,7 @@ $ node scripts/verify.mjs --fast
   415:3  warning  'navClassName' is defined but never used. Allowed unused args must match /^_/u                           unused-imports/no-unused-vars
 
 /home/michaelgarisek/Projects/cycleforge-app/src/components/unshipped/UnshippedTable.tsx
-  808:3  warning  'onLoadMore' is defined but never used. Allowed unused args must match /^_/u  unused-imports/no-unused-vars
+  833:3  warning  'onLoadMore' is defined but never used. Allowed unused args must match /^_/u  unused-imports/no-unused-vars
 
 /home/michaelgarisek/Projects/cycleforge-app/src/components/walk-in/WalkInFeedPane.tsx
   39:3  warning  'label' is defined but never used. Allowed unused args must match /^_/u  unused-imports/no-unused-vars
@@ -155,8 +152,7 @@ $ node scripts/verify.mjs --fast
 /home/michaelgarisek/Projects/cycleforge-app/src/lib/tables/org-tables-queries.ts
   61:33  warning  'i' is defined but never used. Allowed unused args must match /^_/u  unused-imports/no-unused-vars
 
-✖ 71 problems (1 error, 70 warnings)
-  1 error and 0 warnings potentially fixable with the `--fix` option.
+✖ 70 problems (0 errors, 70 warnings)
 
 
 ▶ Typecheck
@@ -164,17 +160,16 @@ $ node scripts/verify.mjs --fast
 ────────────────────────────────────────────────────
   verify — inner loop (lint + typecheck)
 ────────────────────────────────────────────────────
-  ✗ Lint
+  ✓ Lint
   ✓ Typecheck
 ────────────────────────────────────────────────────
 
-verify FAILED — fix lint/typecheck, then re-run. This is not CI.
+verify PASSED (fast) — inner loop only; not CI.
 
-[ELIFECYCLE] Command failed with exit code 1.
 {
-  "ok": false,
+  "ok": true,
   "command": "pnpm run verify:fast",
-  "exitCode": 1,
-  "durationMs": 19549,
+  "exitCode": 0,
+  "durationMs": 8127,
   "stamp": "/home/michaelgarisek/Projects/cycleforge-app/.cursor/eval-session.json"
 }

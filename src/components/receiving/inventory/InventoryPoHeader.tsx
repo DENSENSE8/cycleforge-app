@@ -16,7 +16,7 @@ import {
 } from '@/components/sidebar/receiving/incoming-details/incoming-details-shared';
 import { Empty } from '@/components/sidebar/receiving/incoming-details/incoming-details-primitives';
 import { StationDenseFactStrip } from '@/components/station/displays';
-import { ZohoReceiptChip } from '@/components/station/receiving-grid/cells/ReceivingZohoCell';
+import { ZohoReceiptChip } from '@/components/receiving/ZohoReceiptChip';
 
 export function InventoryPoHeader({
   data,

@@ -3,11 +3,11 @@
 /**
  * Unbox page-header CTAs — **Unbox** (resume last carton), **Check**
  * (unreceived-orders rail), and on the Inbound tab **Add purchase order**
- * (inline intake band under the Incoming embed).
+ * (inline Incoming add walk on the Incoming embed).
  */
 
 import { useCallback, useMemo, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { ClipboardList, Package, ReceivingModeUnbox } from '@/components/Icons';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import {
@@ -19,14 +19,22 @@ import { useUnboxWorkspaceTab } from '@/hooks/useUnboxWorkspaceTab';
 import { emitReceiving } from '@/components/receiving/receiving-events';
 import { fetchUnboxOpenedRows } from '@/lib/receiving/rail/feeds';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
-import { openPoIntake } from '@/lib/inbound/po-intake-store';
+import {
+  parseIncomingIntake,
+  writeIncomingIntake,
+} from '@/lib/inbound/incoming-intake';
+import { normalizeUnboxWorkspaceTabParams } from '@/utils/unbox-workspace-state';
+import { receivingSurfaceBasePath } from '@/lib/receiving/surface-path';
 
 export function UnboxDeskActions() {
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const staffId = parseStaffParam(searchParams.get('staff') ?? searchParams.get('staffId'));
   const { unboxView, setUnboxView } = useUnboxWorkspaceTab();
   const [deskRail, setDeskRail] = useState<IncomingDeskRailTool | null>(null);
   const isIncoming = unboxView === 'incoming';
+  const intakeOpen = parseIncomingIntake(searchParams.get('intake')) != null;
 
   const handleCheck = useCallback(() => {
     setDeskRail((current) =>
@@ -35,9 +43,17 @@ export function UnboxDeskActions() {
   }, []);
 
   const handleAddPo = useCallback(() => {
-    setUnboxView('incoming', { clearLine: false });
-    openPoIntake({ reset: true });
-  }, [setUnboxView]);
+    const params = new URLSearchParams(searchParams.toString());
+    if (parseIncomingIntake(params.get('intake'))) {
+      writeIncomingIntake(params, null);
+    } else {
+      normalizeUnboxWorkspaceTabParams(params, 'incoming');
+      writeIncomingIntake(params, 'po');
+    }
+    const qs = params.toString();
+    const base = receivingSurfaceBasePath(pathname) || '/unbox';
+    router.replace(qs ? `${base}?${qs}` : base, { scroll: false });
+  }, [pathname, router, searchParams]);
 
   const handleUnbox = useCallback(() => {
     void (async () => {
@@ -67,11 +83,12 @@ export function UnboxDeskActions() {
             variant="primary"
             size="md"
             icon={<Package className="h-3.5 w-3.5" aria-hidden />}
-            ariaLabel="Add purchase order"
+            ariaLabel={intakeOpen ? 'Close add purchase order' : 'Add purchase order'}
             onClick={handleAddPo}
+            aria-pressed={intakeOpen}
             data-testid="incoming-add-purchase-order"
           >
-            Add purchase order
+            {intakeOpen ? 'Close add purchase order' : 'Add purchase order'}
           </DeskHeaderAction>
         ) : null}
         <DeskHeaderAction
@@ -95,7 +112,7 @@ export function UnboxDeskActions() {
         </DeskHeaderAction>
       </div>
     ),
-    [handleCheck, handleUnbox, handleAddPo, isIncoming],
+    [handleCheck, handleUnbox, handleAddPo, isIncoming, intakeOpen],
   );
 
   return (

@@ -107,7 +107,13 @@ const RETIRED: RetiredSymbol[] = [
     symbol: 'ORDERS_QUEUE_COLUMNS',
     since: '2026-08-30',
     retiredBy:
-      'kill-list 07 §1 — the Orders flat fact-track array; mount ordersCompoundColumnsFor(SlotLayout). The benches keep their own STATION_HISTORY_COLUMNS until the station-history kill.',
+      'kill-list 07 §1 — the Orders flat fact-track array; mount ordersCompoundColumnsFor(SlotLayout).',
+  },
+  {
+    symbol: 'STATION_HISTORY_COLUMNS',
+    since: '2026-09-02',
+    retiredBy:
+      'Station benches mount ORDERS_COMPOUND_COLUMNS through OrdersQueueTableRow compound cells. Do not re-add a hand fact-key array.',
   },
   {
     symbol: 'ORDERS_QUEUE_TESTED_COLUMNS',

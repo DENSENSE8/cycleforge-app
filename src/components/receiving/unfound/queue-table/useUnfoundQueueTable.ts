@@ -13,17 +13,16 @@ import {
 } from './unfound-queue-shared';
 
 /**
- * Owns the unfound-queue table's data + mutations: URL-param filter state
- * (kind/search are the source of truth), the abortable/debounced fetch +
+ * Owns the unfound-queue table's data + mutations: URL-param kind filter and
+ * local search state supplied by the table host, the abortable/debounced fetch +
  * sidebar-refresh-event wiring, the inline-edit PATCH (optimistic with per-row
  * revert + "Saved" pulse), push-to-Zendesk, and the slide-in details panel's
  * open/deleted/pushed callbacks. Returns a controller bag the thin shell renders.
  */
-export function useUnfoundQueueTable() {
+export function useUnfoundQueueTable(search: string) {
   const searchParams = useSearchParams();
 
   const kind = parseKind(searchParams.get('uf_kind'));
-  const search = searchParams.get('uf_q') ?? '';
 
   const [rows, setRows] = useState<QueueRow[]>([]);
   const [loading, setLoading] = useState(false);

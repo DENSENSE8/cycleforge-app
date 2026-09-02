@@ -42,7 +42,13 @@ import {
 } from '@/design-system/components/grid';
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import { renderCompoundGridCell } from './CompoundGridCell';
-import type { CompoundRowAction, CompoundRowView } from './compound-row-model';
+import type { FieldDisplayType } from '@/lib/tables/field-catalog/types';
+import type {
+  CompoundRowAction,
+  CompoundRowView,
+  CompoundStageAssign,
+  CompoundStaffRoster,
+} from './compound-row-model';
 
 /** Structural — every family's column interface satisfies it. */
 interface CompoundRowColumn {
@@ -51,6 +57,11 @@ interface CompoundRowColumn {
   frozen?: boolean;
   hideKey?: string;
   align?: 'start' | 'end';
+  label?: string;
+  fieldId?: string;
+  slotIconKey?: string;
+  slotDisplayType?: FieldDisplayType;
+  slotStageLabels?: Readonly<{ done: string; pending: string }>;
 }
 
 export interface CompoundRowProps<C extends CompoundRowColumn>
@@ -73,6 +84,13 @@ export interface CompoundRowProps<C extends CompoundRowColumn>
   onOpen?: () => void;
   /** Extra verbs for this row's ⋮ menu, after "Open". */
   actions?: readonly CompoundRowAction[];
+  /**
+   * Stage-lane assign, keyed by catalog field id. Presence on a bound
+   * `stage_event` track arms the empty/pending mark as a staff combo.
+   */
+  stageAssigns?: Readonly<Partial<Record<string, CompoundStageAssign>>>;
+  /** Present ⇒ the actions column mounts the all-staff role roster. */
+  staffRoster?: CompoundStaffRoster;
   /** Override mobile stacking (almost always false under LedgerGrid). */
   isMobile?: boolean;
 }
@@ -85,6 +103,8 @@ export function CompoundRow<C extends CompoundRowColumn>({
   select,
   onOpen,
   actions,
+  stageAssigns,
+  staffRoster,
   isMobile = false,
   className,
   ...rowProps
@@ -102,6 +122,8 @@ export function CompoundRow<C extends CompoundRowColumn>({
       select,
       onOpen,
       actions,
+      stageAssigns,
+      staffRoster,
     });
     if (cell) return cell;
 

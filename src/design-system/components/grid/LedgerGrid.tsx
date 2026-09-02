@@ -131,6 +131,7 @@ interface LedgerGridProps<T> {
   'aria-label'?: string;
   /** Test hook on the scroll body. */
   'data-testid'?: string;
+  bodyPrefix?: ReactNode;
 }
 
 /** Retired 2026-08-31 — see `stickyXEnabled`. Flip to restore the synthetic bar. */
@@ -161,6 +162,7 @@ export function LedgerGrid<T>({
   gridSkin,
   'aria-label': ariaLabel,
   'data-testid': dataTestId = 'ledger-grid-body',
+  bodyPrefix,
 }: LedgerGridProps<T>) {
   // Outer shell — edge-shadow classes + CSS vars. Self-scroll with scrollX
   // keeps Y/X on an INNER port so the sticky X gutter can sit as a flex sibling.
@@ -174,7 +176,8 @@ export function LedgerGrid<T>({
   // that always emits one band (`[['', groups]]`, the natural shape for a flat
   // list) render its column headers over a void whenever it had nothing to show,
   // instead of the teaching box the caller passed in `emptyState`.
-  const empty = !hasGridRows({ orderGroupsByDate, daySections });
+  const noRows = !hasGridRows({ orderGroupsByDate, daySections });
+  const empty = noRows && !bodyPrefix;
   const rowCount = countGridRows({ orderGroupsByDate, daySections, showDayHeaders, sectionHeaders });
   // Self-scrolling body owns the virtualizer scroll unless an ancestor is passed.
   const useAncestorScroll = Boolean(scrollParentRef);
@@ -484,6 +487,7 @@ export function LedgerGrid<T>({
             onWheel={onWheelShiftX}
             onScroll={(e) => syncSplitScroll(e.currentTarget)}
           >
+            {bodyPrefix}
             {body}
           </div>
           {stickyGutter}
@@ -514,6 +518,7 @@ export function LedgerGrid<T>({
               surfaceRef.current?.classList.toggle('cf-grid-scrolled-y', el.scrollTop > 0);
             }}
           >
+            {bodyPrefix}
             {body}
           </div>
           {stickyGutter}
@@ -521,6 +526,7 @@ export function LedgerGrid<T>({
       ) : (
         <>
           {headerBand}
+          {bodyPrefix}
           {body}
         </>
       )}

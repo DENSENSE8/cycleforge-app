@@ -120,6 +120,11 @@ export type TableId =
    */
   | 'orders-import'
   /**
+   * Shortage CSV coverage staging — own bucket, never `orders`: hiding a
+   * coverage column while triaging a file must not densify live Shortage.
+   */
+  | 'shortage-coverage-import'
+  /**
    * Home → Daily shift checklist. Its OWN bucket: hiding `team` on a personal
    * checklist must not touch any operator queue's density, and no queue shares
    * these keys.
@@ -133,10 +138,17 @@ export type TableId =
    */
   | 'tasks'
   /**
+   * Reports › Sessions — staff × warehouse-day active time. Its OWN bucket,
+   * never Daily's: different store (`work_sessions`) and a different question.
+   */
+  | 'sessions'
+  /**
    * Amazon Prep › shipment board. The KEY stays because `TableId`'s runtime
    * vocabulary derives from this record — the display is being rebuilt.
    */
-  | 'fba';
+  | 'fba'
+  /** Customer-facing kiosk cart. Transient session rows; no staff field menu. */
+  | 'kiosk-cart';
 
 /** Canonical meta-slot keys (the left-side qty | condition | rest grid). */
 export const META_KEYS = {
@@ -300,6 +312,12 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
    */
   tasks: [],
   /**
+   * Reports › Sessions — **deliberately empty**. Duration and station are
+   * catalog facts (`sessions.duration`, `sessions.station`); hiding them is
+   * unbinding. The KEY stays for the `TableId` union.
+   */
+  sessions: [],
+  /**
    * Order import staging — **deliberately empty** since the wave 1.4 slot port.
    * The separate bucket was always the point (hiding a staging column must not
    * densify live To-ship); it is now a separate LAYOUT DOCUMENT, which is what
@@ -307,6 +325,7 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
    * vocabulary derives from this record's keys.
    */
   'orders-import': [],
+  'shortage-coverage-import': [],
   // Keys are the `hideKey`s in
   // `src/components/receiving/unfound/grid/unfound-grid-layout.ts`. The `action`
   // track (Push / Synced) has no `hideKey` — structural, never offered.
@@ -366,6 +385,8 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
     GRID_COL('ticket', 'Ticket', 'id'),
     GRID_COL('updated', 'Updated', 'date'),
   ],
+  /** Transient kiosk-session rows mounted through the shared DataTable waist. */
+  'kiosk-cart': [],
 };
 
 export function tableColumnsFor(tableId: TableId): TableColumnSpec[] {

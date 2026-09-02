@@ -132,6 +132,7 @@ test('DISPLAY_LEAF_NAV_KEY letters are unique', () => {
   const letters = Object.values(DISPLAY_LEAF_NAV_KEY);
   assert.equal(letters.length, new Set(letters).size);
   assert.equal(DISPLAY_LEAF_NAV_KEY[STATION_LOOK_DISPLAY_ID], 'w');
+  assert.equal(DISPLAY_LEAF_NAV_KEY.overview, 'f');
 });
 
 test('Look is a Displays-hosted leaf — stations must not canonicalize it', () => {

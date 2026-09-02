@@ -123,7 +123,6 @@ describe('scan-station depth tokens', () => {
     const hosts: Array<[string, string]> = [
       ['src/components/receiving/triage/TriagePanel.tsx', 'Arrival'],
       ['src/components/packer/PackOrderPanel.tsx', 'Pack'],
-      ['src/components/outbound/scan-out/ScanOutActivePanel.tsx', 'Scan-out'],
       ['src/components/tech/ActiveOrderWorkspace.tsx', 'Ready-to-pack'],
       ['src/components/station/entity/EntityStationPane.tsx', 'Search/Support host'],
       ['src/features/review/packer/PackerReviewMode.tsx', 'Packer review'],
@@ -135,6 +134,18 @@ describe('scan-station depth tokens', () => {
         /STATION_SCAN_WELL_CLASS/,
         `${label} (${path}) must import the shared well, not retype a fill`,
       );
+    }
+  });
+
+  it('Scan Out uses a continuous white plane instead of the configurable well', () => {
+    for (const path of [
+      'src/components/outbound/scan-out/ScanOutIdleAwait.tsx',
+      'src/components/outbound/scan-out/ScanOutActivePanel.tsx',
+    ]) {
+      const src = readFileSync(path, 'utf8');
+      assert.match(src, /bg-surface-card/);
+      assert.doesNotMatch(src, /STATION_SCAN_WELL_CLASS/);
+      assert.doesNotMatch(src, /bg-surface-station-well/);
     }
   });
 

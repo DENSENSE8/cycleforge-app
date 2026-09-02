@@ -1,34 +1,20 @@
 'use client';
 
 /**
- * **Order Intake & Acknowledgment** form body — shadcn-lane chrome.
+ * **Order Intake & Acknowledgment** form body — desk stage scroll page.
  *
  * Plans: `docs/todo/order-intake-acknowledgment-PLAN.md` (acknowledgment) on
  * top of `docs/todo/non-scan-desk-chrome-caged-release-PLAN.md` (cage).
- * Operator override (2026-08-30, in chat): the intake session is a CENTERED
- * OVERLAY, not a right-rail leaf, and its chrome is built from the shadcn
- * `ui/*` primitives (`ui/input`, `ui/label`, `ui/checkbox`, `ui/badge`,
- * `ui/button`, the Popover+Command combobox) rather than the design-system
- * primitives. This file is the form BODY; `OrderIntakeOverlay` is the centered
- * host, and the CSV staging row inspector mounts this same body — one schema,
- * two densities, one field list (`CanonicalOrderIntake`).
+ * Operator 2026-09-02: host is stage-filling {@link DeskStageOverlay} over the
+ * To-ship DataTable (Center Lock). Section cards use `cornerClass('surface')`;
+ * fields + ConditionPills use {@link triagePanelControl} /
+ * `corner="panel"` (desk soft radius — never flush-square Input defaults).
+ * Domain locks unchanged (create path, gates, BuyLabelSection). Condition stays
+ * {@link ConditionPills} (fixed 7-grade enum with tone) — not a combobox.
  *
- * What did NOT move an inch (domain locks):
- *   - create path `POST /api/orders/add` (+ set-item-number, cage) via
- *     `useOrderTriage`;
- *   - gates render `evaluateReleaseGates` results, never re-derive;
- *   - label buying COMPOSES `BuyLabelSection` (rate-shop + purchase + void);
- *   - platform inference is `inferMarketplaceFromOrderId` via
- *     `intakePlatformState` — the regex lives in one place;
- *   - condition is the canonical `ConditionPills` control, staff pick is
- *     `StaffButtonGrid` → `saveWorkOrder`, the platform mark is `PlatformMark`
- *     (domain vocabulary controls, not chrome);
- *   - every locked `data-testid` (`order-intake-form` + the
- *     `order-triage-form` alias, `triage-*`, `intake-*`).
- *
- * Six sections, one scroll: Identity → Links → Documents → Shipping →
- * Assignment → Review. The jump rail keeps Release ≤3 interactions from form
- * open. `scrollIntoView({ block: 'start' })` only — no geometry tweens.
+ * Six sections via TriageScrollLayout + sticky right knobs (exceptions grammar):
+ * Identity → Links → Documents → Shipping → Assign → Review — all spies always
+ * mount. Measure left of the rail (`measureAlign="start"`). No top button row.
  */
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
@@ -60,6 +46,14 @@ import { sourcePlatformMeta } from '@/lib/source-platform';
 import { saveWorkOrder } from '@/lib/work-orders/saveWorkOrder';
 import { staffHasRole } from '@/utils/staff';
 import { cn } from '@/utils/_cn';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { triagePanelControl } from '@/design-system/tokens/triage-panel';
+import { TriageScrollLayout } from '@/design-system/components/TriageScrollLayout';
+import {
+  StaggerReveal,
+  StaggerRevealItem,
+  staggerRevealDropItem,
+} from '@/design-system/primitives/StaggerReveal';
 import { IntakeCombobox } from './IntakeCombobox';
 import {
   lookupExistingOrder,
@@ -67,16 +61,6 @@ import {
   useOrderTriage,
 } from './useOrderTriage';
 
-const SECTIONS = [
-  { id: 'identity', label: 'Identity' },
-  { id: 'links', label: 'Links' },
-  { id: 'documents', label: 'Documents' },
-  { id: 'shipping', label: 'Shipping' },
-  { id: 'assignment', label: 'Assign' },
-  { id: 'review', label: 'Review' },
-] as const;
-
-type SectionId = (typeof SECTIONS)[number]['id'];
 
 const FULFILLMENT_CHANNEL_OPTIONS = [
   { value: 'shipstation', label: 'ShipStation (buy label)', group: 'Fulfillment channel' },
@@ -127,7 +111,6 @@ export function OrderIntakeForm({
     ...emptyCanonicalOrderIntake(),
     ...initialDraft,
   }));
-  const sectionRefs = useRef<Partial<Record<SectionId, HTMLElement | null>>>({});
 
   const record = triage.record;
   const gates = record?.gates;
@@ -235,12 +218,6 @@ export function OrderIntakeForm({
       });
   }, [boundOrderId]);
 
-  const jumpTo = useCallback((id: SectionId) => {
-    // `scrollIntoView` moves the SCROLL PORT, not the section — no geometry is
-    // animated and no neighbour moves, so this stays inside the no-layout-tween
-    // law. `block: 'start'` lands the heading at the top of the port.
-    sectionRefs.current[id]?.scrollIntoView({ block: 'start' });
-  }, []);
 
   /* ── Identity actions ──────────────────────────────────────────────── */
 
@@ -461,12 +438,6 @@ export function OrderIntakeForm({
     return map;
   }, [gates]);
 
-  const registerSection = useCallback(
-    (id: SectionId) => (node: HTMLElement | null) => {
-      sectionRefs.current[id] = node;
-    },
-    [],
-  );
 
   const inferredMeta = platformState.inferred
     ? sourcePlatformMeta(platformState.inferred)
@@ -475,558 +446,578 @@ export function OrderIntakeForm({
     duplicate != null
     || (platformState.requiresChoice && !draft.platformChosen.trim());
 
+  const intakeSections = [
+    {
+      id: 'identity',
+      label: 'Identity',
+      children: (
+        <>
+        {boundOrderId ? (
+                      <div className="space-y-3">
+                        <PlatformAcknowledgeRow
+                          inferredLabel={inferredMeta?.label ?? null}
+                          inferredValue={platformState.inferred}
+                        />
+                        {/*
+                          Rounded fact cards + Motion drop-in (not boxy divide-y).
+                          Replay when the session binds so Start triage reads as rows
+                          settling into the page from above.
+                        */}
+                        <StaggerReveal
+                          className="space-y-2"
+                          replayKey={boundOrderId}
+                          data-testid="intake-identity-facts"
+                        >
+                          <IdentityRow label="Order number" value={record?.orderNumber} mono />
+                          {/*
+                            Item number and SKU sit ADJACENT on purpose. They are two
+                            different keys — a marketplace listing id vs the internal
+                            catalog key — but a single-identifier channel (Ecwid) writes
+                            one value into both, so the pair reads as confirmation when
+                            they match and as a question when they do not. `pairedWith`
+                            marks the disagreement instead of leaving the operator to
+                            diff two mono strings by eye.
+                          */}
+                          <IdentityRow
+                            label="Item number"
+                            value={record?.itemNumber}
+                            mono
+                            pairedWith={record?.sku}
+                          />
+                          <IdentityRow
+                            label="SKU"
+                            value={record?.sku}
+                            mono
+                            pairedWith={record?.itemNumber}
+                          />
+                          <IdentityRow label="Title" value={record?.productTitle} />
+                          <IdentityRow label="Quantity" value={record?.quantity} />
+                          <IdentityRow label="Condition" value={record?.condition} />
+                          <IdentityRow label="Source" value={record?.accountSource} />
+                        </StaggerReveal>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
+                          <div className="space-y-1.5 sm:col-span-2">
+                            <Label htmlFor={`${fieldId}-order-number`}>Order number</Label>
+                            <Input
+                              id={`${fieldId}-order-number`}
+                              value={draft.orderNumber}
+                              onChange={(e) => {
+                                setDuplicate(null);
+                                setField('orderNumber')(e.target.value);
+                              }}
+                              onBlur={() => void acknowledgeOrderNumber()}
+                              className={triagePanelControl('font-mono')}
+                              data-testid="intake-order-number"
+                            />
+                            <PlatformAcknowledgeRow
+                              inferredLabel={inferredMeta?.label ?? null}
+                              inferredValue={platformState.inferred}
+                              origin={draft.importOrigin}
+                            />
+                          </div>
+
+                          {duplicate ? (
+                            <div
+                              className={cn(
+                                'flex items-center justify-between gap-2 border border-amber-200 bg-amber-50 px-3 py-2 sm:col-span-2',
+                                cornerClass('control'),
+                              )}
+                            >
+                              <p className="min-w-0 text-role-caption text-amber-800" role="status">
+                                This org already has order{' '}
+                                <span className="font-mono font-semibold">{duplicate.orderNumber}</span>
+                                {' '}— it will not be inserted twice.
+                              </p>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className={triagePanelControl()}
+                                onClick={() => onOrderCreated?.(duplicate.id)}
+                                data-testid="intake-open-existing"
+                              >
+                                Open it
+                              </Button>
+                            </div>
+                          ) : null}
+
+                          {platformState.requiresChoice ? (
+                            <div className="space-y-1.5">
+                              <Label htmlFor={`${fieldId}-platform-chosen`}>Platform</Label>
+                              <IntakeCombobox
+                                triggerId={`${fieldId}-platform-chosen`}
+                                value={draft.platformChosen || null}
+                                onChange={(value) => setField('platformChosen')(value)}
+                                options={platformOptions}
+                                placeholder="Search or select…"
+                                searchPlaceholder="Type to filter…"
+                                emptyMessage="No platforms match"
+                                ariaLabel="Platform"
+                                testId="intake-platform-chosen"
+                              />
+                            </div>
+                          ) : null}
+
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`${fieldId}-channel`}>Fulfillment channel</Label>
+                            <IntakeCombobox
+                              triggerId={`${fieldId}-channel`}
+                              value={channel}
+                              onChange={(value) => {
+                                setChannel(value as IntakeFulfillmentChannel);
+                                if (value === 'shipstation') setShipstationDown(null);
+                                setDraft((prev) => ({
+                                  ...prev,
+                                  fulfillmentChannel: value as IntakeFulfillmentChannel,
+                                }));
+                              }}
+                              options={FULFILLMENT_CHANNEL_OPTIONS}
+                              placeholder="Search or select…"
+                              searchPlaceholder="Type to filter…"
+                              emptyMessage="No channels match"
+                              ariaLabel="Fulfillment channel"
+                              testId="intake-fulfillment-channel"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`${fieldId}-item-number`}>Item number</Label>
+                            <Input
+                              id={`${fieldId}-item-number`}
+                              value={draft.itemNumber}
+                              onChange={(e) => {
+                                setPaired(null);
+                                setField('itemNumber')(e.target.value);
+                              }}
+                              onBlur={() => void pairItemNumber()}
+                              className={triagePanelControl('font-mono')}
+                              data-testid="intake-item-number"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`${fieldId}-sku`}>SKU</Label>
+                            <Input
+                              id={`${fieldId}-sku`}
+                              value={draft.sku}
+                              onChange={(e) => setField('sku')(e.target.value)}
+                              className={triagePanelControl('font-mono')}
+                              data-testid="intake-sku"
+                            />
+                          </div>
+
+                          {paired ? (
+                            <p className="text-role-caption text-emerald-700 sm:col-span-2" role="status">
+                              Paired to catalog: <span className="font-mono">{paired.sku}</span>
+                              {paired.productTitle ? ` · ${paired.productTitle}` : ''}
+                            </p>
+                          ) : null}
+
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`${fieldId}-title`}>Title</Label>
+                            <Input
+                              id={`${fieldId}-title`}
+                              value={draft.productTitle}
+                              onChange={(e) => setField('productTitle')(e.target.value)}
+                              className={triagePanelControl()}
+                            />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label htmlFor={`${fieldId}-qty`}>Quantity</Label>
+                            <div data-testid="intake-qty">
+                              <Input
+                                id={`${fieldId}-qty`}
+                                type="number"
+                                min={1}
+                                step={1}
+                                value={draft.quantity}
+                                onChange={(e) => setField('quantity')(e.target.value)}
+                                onBlur={() => {
+                                  // Deferred clamp: commit a whole number ≥ 1, revert junk.
+                                  const parsed = parseInt(draft.quantity, 10);
+                                  setField('quantity')(
+                                    String(Number.isFinite(parsed) ? Math.max(1, parsed) : 1),
+                                  );
+                                }}
+                                className={triagePanelControl('w-28')}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5 sm:col-span-2">
+                            {/* Group heading, not a form label — the pills are their own radiogroup. */}
+                            <p className="text-role-micro font-semibold uppercase tracking-wide text-text-soft">
+                              Condition
+                            </p>
+                            {/*
+                              Keep ConditionPills (plan REQ-LINE-05 / allowlist). Fixed
+                              7-grade enum needs grade tone on the face — a combobox
+                              would bury colour and add a click for a short closed set.
+                              `corner="panel"` = desk triage soft ends (not scan flush).
+                            */}
+                            <ConditionPills
+                              value={draft.condition}
+                              onChange={(next) => setField('condition')(next)}
+                              corner="panel"
+                            />
+                          </div>
+
+                          <div className="space-y-1.5 sm:col-span-2">
+                            <Label htmlFor={`${fieldId}-tracking`}>Tracking number</Label>
+                            <Input
+                              id={`${fieldId}-tracking`}
+                              value={draft.trackingNumbers[0] ?? ''}
+                              onChange={(e) =>
+                                setDraft((prev) => ({
+                                  ...prev,
+                                  trackingNumbers: e.target.value.trim() ? [e.target.value] : [],
+                                }))
+                              }
+                              className={triagePanelControl('font-mono')}
+                            />
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        <div>
+                          <Button
+                            variant="default"
+                            size="md"
+                            className={triagePanelControl()}
+                            disabled={startBlocked || triage.creating}
+                            onClick={() => void handleStartTriage()}
+                            data-testid="triage-start"
+                          >
+                            {triage.creating ? 'Starting…' : 'Start triage'}
+                          </Button>
+                          {duplicate ? (
+                            <p className="pt-2 text-role-caption text-amber-800">
+                              That order already exists — open it above instead of creating a twin.
+                            </p>
+                          ) : platformState.requiresChoice && !draft.platformChosen.trim() ? (
+                            <p className="pt-2 text-role-caption text-rose-700">
+                              Pick a platform — this order number&rsquo;s shape doesn&rsquo;t name one.
+                            </p>
+                          ) : (
+                            <p className="pt-2 text-role-caption text-text-soft">
+                              Creates the order <strong>caged</strong> — it stays out of the To-ship
+                              queue until all three gates below are green.
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+        </>
+      ),
+    },
+    {
+      id: 'links',
+      label: 'Links',
+      labelEnd: gateById.get('G1') ? <GateBadge passed={gateById.get('G1')!.passed} withLabel /> : null,
+      children: (
+        <div className="space-y-3">
+                      <StaggerReveal
+                        className="space-y-2"
+                        replayKey={boundOrderId ?? 'links-empty'}
+                        data-testid="intake-links-facts"
+                      >
+                        <IdentityRow label="Item number" value={record?.itemNumber} mono />
+                        <IdentityRow label="Order number" value={record?.orderNumber} mono />
+                        <IdentityRow label="Tracking number" value={record?.trackingNumber} mono />
+                      </StaggerReveal>
+                      <p className="text-role-caption text-text-soft">
+                        All three must be present and on this record. Tracking is registered from the
+                        order&rsquo;s own tracking field — add it on the order to close this gate.
+                      </p>
+                    </div>
+      ),
+    },
+    {
+      id: 'documents',
+      label: 'Documents',
+      labelEnd: gateById.get('G2') ? <GateBadge passed={gateById.get('G2')!.passed} withLabel /> : null,
+      children: (
+        <div className="space-y-3">
+                      <p className="text-role-caption text-text-soft">
+                        {record
+                          ? `${record.linkedDocumentCount} document${record.linkedDocumentCount === 1 ? '' : 's'} linked to this item.`
+                          : 'No order yet.'}
+                      </p>
+                      <div className={cn('flex items-start gap-2.5', !boundOrderId && 'opacity-50')}>
+                        <Checkbox
+                          id={`${fieldId}-docs-exempt`}
+                          checked={record?.docsNotRequired ?? false}
+                          disabled={!boundOrderId || triage.savingDocsFlag || released}
+                          onCheckedChange={(next) => triage.setDocsNotRequired(next === true)}
+                          data-testid="triage-docs-not-required"
+                          className="mt-0.5"
+                        />
+                        <label htmlFor={`${fieldId}-docs-exempt`} className="min-w-0 cursor-pointer">
+                          <span className="block text-role-body text-text-default">
+                            Item number does not require documents
+                          </span>
+                          <span className="block text-role-caption text-text-soft">
+                            An explicit decision, not an absence. It is recorded on the order and shown
+                            in the release audit.
+                          </span>
+                        </label>
+                      </div>
+                    </div>
+      ),
+    },
+    {
+      id: 'shipping',
+      label: 'Shipping',
+      labelEnd: gateById.get('G3') ? <GateBadge passed={gateById.get('G3')!.passed} withLabel /> : null,
+      children: (
+        <div className="space-y-4">
+                      {/* Parcel — weight + dims persist on the order and ride the rate
+                          request (dim-weight pricing). Commit on blur/Enter. */}
+                      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                        <ParcelField
+                          id={`${fieldId}-weight`}
+                          label="Weight oz"
+                          value={weightText}
+                          onChange={touchParcel(setWeightText)}
+                          onCommit={commitParcel}
+                          testId="intake-weight"
+                        />
+                        <ParcelField
+                          id={`${fieldId}-dim-l`}
+                          label="L in"
+                          value={dimLText}
+                          onChange={touchParcel(setDimLText)}
+                          onCommit={commitParcel}
+                          testId="intake-dim-l"
+                        />
+                        <ParcelField
+                          id={`${fieldId}-dim-w`}
+                          label="W in"
+                          value={dimWText}
+                          onChange={touchParcel(setDimWText)}
+                          onCommit={commitParcel}
+                          testId="intake-dim-w"
+                        />
+                        <ParcelField
+                          id={`${fieldId}-dim-h`}
+                          label="H in"
+                          value={dimHText}
+                          onChange={touchParcel(setDimHText)}
+                          onCommit={commitParcel}
+                          testId="intake-dim-h"
+                        />
+                      </div>
+                      {triage.savingParcel ? (
+                        <p className="text-role-micro text-text-faint">Saving parcel…</p>
+                      ) : null}
+
+                      <p className="text-role-caption text-text-soft">
+                        {record?.shippingLabelPurchased
+                          ? 'Label bought through the existing label path.'
+                          : record?.shippingLabelLinked
+                            ? 'Label linked to this order.'
+                            : 'No shipping label on this order yet.'}
+                      </p>
+
+                      {/* Link vs Buy — one mode, two panes; the buy pane COMPOSES the
+                          existing BuyLabelSection (never a second engine). */}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                          variant={labelMode === 'link' ? 'default' : 'outline'}
+                          size="sm"
+                          onClick={() => setLabelMode('link')}
+                          data-testid="intake-label-link"
+                        >
+                          Link label
+                        </Button>
+                        <Button
+                          variant={labelMode === 'buy' ? 'default' : 'outline'}
+                          size="sm"
+                          disabled={buyBlockedReason != null}
+                          onClick={() => setLabelMode('buy')}
+                          data-testid="intake-label-buy-toggle"
+                        >
+                          Buy label
+                        </Button>
+                        {buyBlockedReason ? (
+                          <p className="w-full text-role-caption text-amber-800" role="status">
+                            {buyBlockedReason}
+                          </p>
+                        ) : null}
+                      </div>
+
+                      {labelMode === 'buy' && boundOrderId && buyBlockedReason == null ? (
+                        <div
+                          className={cn(
+                            'border border-border-hairline p-3',
+                            cornerClass('control'),
+                          )}
+                          data-testid="intake-label-buy"
+                        >
+                          <BuyLabelSection
+                            orderId={boundOrderId}
+                            orderRef={record?.orderNumber ?? `#${boundOrderId}`}
+                            flush
+                            weightOz={currentWeightOz}
+                            dimensions={currentDims}
+                            onChange={triage.refresh}
+                            onRatesError={handleRatesError}
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={!boundOrderId}
+                            onClick={openLabelsWorkbench}
+                            data-testid="triage-open-labels"
+                          >
+                            Link or buy a label
+                          </Button>
+                          <Button variant="ghost" size="sm" onClick={triage.refresh} disabled={!boundOrderId}>
+                            Re-check
+                          </Button>
+                        </div>
+                      )}
+                      <p className="text-role-caption text-text-soft">
+                        Buying rate-shops the existing ShipStation engine with this parcel&rsquo;s
+                        weight and dimensions. Linking attaches a label that already exists. Either
+                        closes G3 — Re-check re-reads the gates.
+                      </p>
+                    </div>
+      ),
+    },
+    {
+      id: 'assignment',
+      label: 'Assign',
+      children: (
+        <>
+        {!boundOrderId ? (
+                      <p className="text-role-caption text-text-soft">
+                        Start triage above to assign who fulfills and who packs.
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div data-testid="intake-assign-tech">
+                            <StaffButtonGrid
+                              label="Fulfillment / test"
+                              options={techOptions}
+                              selectedId={techId}
+                              onSelect={selectTech}
+                              columns={2}
+                              emptyMessage="No technicians present today"
+                            />
+                          </div>
+                          <div data-testid="intake-assign-packer">
+                            <StaffButtonGrid
+                              label="Pack"
+                              options={packerOptions}
+                              selectedId={packerId}
+                              onSelect={selectPacker}
+                              columns={2}
+                              emptyMessage="No packers present today"
+                            />
+                          </div>
+                        </div>
+                        {assignError ? (
+                          <p className="text-role-caption text-rose-700">{assignError}</p>
+                        ) : null}
+                        {assignSaving ? (
+                          <p className="text-role-micro text-text-faint">Saving…</p>
+                        ) : null}
+                        <p className="text-role-caption text-text-soft">
+                          Operational, not a gate — unassigned work is valid and Release does not wait
+                          on it.
+                        </p>
+                      </div>
+                    )}
+        </>
+      ),
+    },
+    {
+      id: 'review',
+      label: 'Review',
+      children: (
+        <>
+        {!boundOrderId ? (
+                      <p className="text-role-caption text-text-soft">
+                        Start triage above to evaluate the release gates.
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        <ul className="divide-y divide-border-hairline border-y border-border-hairline">
+                          {(gates?.gates ?? []).map((gate) => (
+                            <li key={gate.id} className="flex items-start gap-2.5 px-3 py-2.5">
+                              <GateBadge passed={gate.passed} />
+                              <span className="min-w-0">
+                                <span className="block text-role-body text-text-default">
+                                  {gate.id} · {gate.label}
+                                </span>
+                                {gate.reason ? (
+                                  <span className="block text-role-caption text-text-soft">
+                                    {gate.reason}
+                                  </span>
+                                ) : null}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                        <div>
+                          {released ? (
+                            <p className="text-role-body font-semibold text-emerald-700">
+                              Released — this order is in the To-ship queue.
+                            </p>
+                          ) : (
+                            <>
+                              <Button
+                                variant="default"
+                                size="md"
+                                className={triagePanelControl()}
+                                disabled={!gates?.canRelease || triage.releasing}
+                                onClick={handleRelease}
+                                data-testid="triage-release"
+                              >
+                                {triage.releasing ? 'Releasing…' : 'Release'}
+                              </Button>
+                              {/*
+                                The plan forbids a silently-disabled Release, so the
+                                blockers are printed next to it — the checklist above
+                                says WHICH, this says THAT.
+                              */}
+                              {!gates?.canRelease && gates ? (
+                                <p className="pt-2 text-role-caption text-rose-700" role="status">
+                                  Blocked by {gates.failing.map((gate) => gate.id).join(', ')}.
+                                </p>
+                              ) : null}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )}
+        </>
+      ),
+    },
+  ] as const;
+
+  // All six sections always mount — sticky knobs are the jump map for the
+  // whole form (Identity → Review), bound or not. Unbound bodies already
+  // state "No order yet" / disable their controls; do not hide the spies.
   return (
     // `order-intake-form` is the acknowledgment surface's own id;
-    // `order-triage-form` stays on the inner root so every pre-existing
-    // locator keeps resolving. Same DOM, two names, zero forked markup.
+    // `order-triage-form` stays so every pre-existing locator keeps resolving.
     <div className="flex h-full min-h-0 flex-col" data-testid="order-intake-form">
-      <div className="flex h-full min-h-0 flex-col" data-testid="order-triage-form">
-        <nav
-          aria-label="Intake sections"
-          className="flex shrink-0 items-stretch gap-0 border-b border-border-hairline bg-surface-card"
-        >
-          {SECTIONS.map((section) => {
-            const enabled = section.id === 'identity' || Boolean(boundOrderId);
-            return (
-              <Button
-                key={section.id}
-                variant="ghost"
-                size="sm"
-                disabled={!enabled}
-                onClick={() => jumpTo(section.id)}
-                data-testid={`triage-jump-${section.id}`}
-                className="h-8 flex-1"
-              >
-                {section.label}
-              </Button>
-            );
-          })}
-        </nav>
-
-        <div className="min-h-0 flex-1 overflow-y-auto">
-          {/* ── 1. Identity ─────────────────────────────────────────────── */}
-          <IntakeSection id="identity" title="Identity" registerRef={registerSection('identity')}>
-            {boundOrderId ? (
-              <div className="space-y-3 px-5 py-4">
-                <PlatformAcknowledgeRow
-                  inferredLabel={inferredMeta?.label ?? null}
-                  inferredValue={platformState.inferred}
-                />
-                <dl className="divide-y divide-border-hairline border-y border-border-hairline">
-                  <IdentityRow label="Order number" value={record?.orderNumber} mono />
-                  {/*
-                    Item number and SKU sit ADJACENT on purpose. They are two
-                    different keys — a marketplace listing id vs the internal
-                    catalog key — but a single-identifier channel (Ecwid) writes
-                    one value into both, so the pair reads as confirmation when
-                    they match and as a question when they do not. `pairedWith`
-                    marks the disagreement instead of leaving the operator to
-                    diff two mono strings by eye.
-                  */}
-                  <IdentityRow
-                    label="Item number"
-                    value={record?.itemNumber}
-                    mono
-                    pairedWith={record?.sku}
-                  />
-                  <IdentityRow
-                    label="SKU"
-                    value={record?.sku}
-                    mono
-                    pairedWith={record?.itemNumber}
-                  />
-                  <IdentityRow label="Title" value={record?.productTitle} />
-                  <IdentityRow label="Quantity" value={record?.quantity} />
-                  <IdentityRow label="Condition" value={record?.condition} />
-                  <IdentityRow label="Source" value={record?.accountSource} />
-                </dl>
-              </div>
-            ) : (
-              <div className="space-y-4 px-5 py-4">
-                <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <Label htmlFor={`${fieldId}-order-number`}>Order number</Label>
-                    <Input
-                      id={`${fieldId}-order-number`}
-                      value={draft.orderNumber}
-                      onChange={(e) => {
-                        setDuplicate(null);
-                        setField('orderNumber')(e.target.value);
-                      }}
-                      onBlur={() => void acknowledgeOrderNumber()}
-                      className="font-mono"
-                      data-testid="intake-order-number"
-                    />
-                    <PlatformAcknowledgeRow
-                      inferredLabel={inferredMeta?.label ?? null}
-                      inferredValue={platformState.inferred}
-                      origin={draft.importOrigin}
-                    />
-                  </div>
-
-                  {duplicate ? (
-                    <div className="flex items-center justify-between gap-2 border border-amber-200 bg-amber-50 px-3 py-2 sm:col-span-2">
-                      <p className="min-w-0 text-role-caption text-amber-800" role="status">
-                        This org already has order{' '}
-                        <span className="font-mono font-semibold">{duplicate.orderNumber}</span>
-                        {' '}— it will not be inserted twice.
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => onOrderCreated?.(duplicate.id)}
-                        data-testid="intake-open-existing"
-                      >
-                        Open it
-                      </Button>
-                    </div>
-                  ) : null}
-
-                  {platformState.requiresChoice ? (
-                    <div className="space-y-1.5">
-                      <Label htmlFor={`${fieldId}-platform-chosen`}>Platform</Label>
-                      <IntakeCombobox
-                        triggerId={`${fieldId}-platform-chosen`}
-                        value={draft.platformChosen || null}
-                        onChange={(value) => setField('platformChosen')(value)}
-                        options={platformOptions}
-                        placeholder="Search or select…"
-                        searchPlaceholder="Type to filter…"
-                        emptyMessage="No platforms match"
-                        ariaLabel="Platform"
-                        testId="intake-platform-chosen"
-                      />
-                    </div>
-                  ) : null}
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`${fieldId}-channel`}>Fulfillment channel</Label>
-                    <IntakeCombobox
-                      triggerId={`${fieldId}-channel`}
-                      value={channel}
-                      onChange={(value) => {
-                        setChannel(value as IntakeFulfillmentChannel);
-                        if (value === 'shipstation') setShipstationDown(null);
-                        setDraft((prev) => ({
-                          ...prev,
-                          fulfillmentChannel: value as IntakeFulfillmentChannel,
-                        }));
-                      }}
-                      options={FULFILLMENT_CHANNEL_OPTIONS}
-                      placeholder="Search or select…"
-                      searchPlaceholder="Type to filter…"
-                      emptyMessage="No channels match"
-                      ariaLabel="Fulfillment channel"
-                      testId="intake-fulfillment-channel"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`${fieldId}-item-number`}>Item number</Label>
-                    <Input
-                      id={`${fieldId}-item-number`}
-                      value={draft.itemNumber}
-                      onChange={(e) => {
-                        setPaired(null);
-                        setField('itemNumber')(e.target.value);
-                      }}
-                      onBlur={() => void pairItemNumber()}
-                      className="font-mono"
-                      data-testid="intake-item-number"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`${fieldId}-sku`}>SKU</Label>
-                    <Input
-                      id={`${fieldId}-sku`}
-                      value={draft.sku}
-                      onChange={(e) => setField('sku')(e.target.value)}
-                      className="font-mono"
-                      data-testid="intake-sku"
-                    />
-                  </div>
-
-                  {paired ? (
-                    <p className="text-role-caption text-emerald-700 sm:col-span-2" role="status">
-                      Paired to catalog: <span className="font-mono">{paired.sku}</span>
-                      {paired.productTitle ? ` · ${paired.productTitle}` : ''}
-                    </p>
-                  ) : null}
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`${fieldId}-title`}>Title</Label>
-                    <Input
-                      id={`${fieldId}-title`}
-                      value={draft.productTitle}
-                      onChange={(e) => setField('productTitle')(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor={`${fieldId}-qty`}>Quantity</Label>
-                    <div data-testid="intake-qty">
-                      <Input
-                        id={`${fieldId}-qty`}
-                        type="number"
-                        min={1}
-                        step={1}
-                        value={draft.quantity}
-                        onChange={(e) => setField('quantity')(e.target.value)}
-                        onBlur={() => {
-                          // Deferred clamp: commit a whole number ≥ 1, revert junk.
-                          const parsed = parseInt(draft.quantity, 10);
-                          setField('quantity')(
-                            String(Number.isFinite(parsed) ? Math.max(1, parsed) : 1),
-                          );
-                        }}
-                        className="w-28"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5 sm:col-span-2">
-                    {/* Group heading, not a form label — the pills are their own radiogroup. */}
-                    <p className="text-role-micro font-semibold uppercase tracking-wide text-text-soft">
-                      Condition
-                    </p>
-                    <ConditionPills
-                      value={draft.condition}
-                      onChange={(next) => setField('condition')(next)}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5 sm:col-span-2">
-                    <Label htmlFor={`${fieldId}-tracking`}>Tracking number</Label>
-                    <Input
-                      id={`${fieldId}-tracking`}
-                      value={draft.trackingNumbers[0] ?? ''}
-                      onChange={(e) =>
-                        setDraft((prev) => ({
-                          ...prev,
-                          trackingNumbers: e.target.value.trim() ? [e.target.value] : [],
-                        }))
-                      }
-                      className="font-mono"
-                    />
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <Button
-                    variant="default"
-                    size="md"
-                    disabled={startBlocked || triage.creating}
-                    onClick={() => void handleStartTriage()}
-                    data-testid="triage-start"
-                  >
-                    {triage.creating ? 'Starting…' : 'Start triage'}
-                  </Button>
-                  {duplicate ? (
-                    <p className="pt-2 text-role-caption text-amber-800">
-                      That order already exists — open it above instead of creating a twin.
-                    </p>
-                  ) : platformState.requiresChoice && !draft.platformChosen.trim() ? (
-                    <p className="pt-2 text-role-caption text-rose-700">
-                      Pick a platform — this order number&rsquo;s shape doesn&rsquo;t name one.
-                    </p>
-                  ) : (
-                    <p className="pt-2 text-role-caption text-text-soft">
-                      Creates the order <strong>caged</strong> — it stays out of the To-ship
-                      queue until all three gates below are green.
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-          </IntakeSection>
-
-          {/* ── 2. Links (G1) ───────────────────────────────────────────── */}
-          <IntakeSection
-            id="links"
-            title="Links"
-            gate={gateById.get('G1')}
-            registerRef={registerSection('links')}
-          >
-            <div className="space-y-3 px-5 py-4">
-              <dl className="divide-y divide-border-hairline border-y border-border-hairline">
-                <IdentityRow label="Item number" value={record?.itemNumber} mono />
-                <IdentityRow label="Order number" value={record?.orderNumber} mono />
-                <IdentityRow label="Tracking number" value={record?.trackingNumber} mono />
-              </dl>
-              <p className="text-role-caption text-text-soft">
-                All three must be present and on this record. Tracking is registered from the
-                order&rsquo;s own tracking field — add it on the order to close this gate.
-              </p>
-            </div>
-          </IntakeSection>
-
-          {/* ── 3. Documents (G2) ───────────────────────────────────────── */}
-          <IntakeSection
-            id="documents"
-            title="Documents"
-            gate={gateById.get('G2')}
-            registerRef={registerSection('documents')}
-          >
-            <div className="space-y-3 px-5 py-4">
-              <p className="text-role-caption text-text-soft">
-                {record
-                  ? `${record.linkedDocumentCount} document${record.linkedDocumentCount === 1 ? '' : 's'} linked to this item.`
-                  : 'No order yet.'}
-              </p>
-              <div className={cn('flex items-start gap-2.5', !boundOrderId && 'opacity-50')}>
-                <Checkbox
-                  id={`${fieldId}-docs-exempt`}
-                  checked={record?.docsNotRequired ?? false}
-                  disabled={!boundOrderId || triage.savingDocsFlag || released}
-                  onCheckedChange={(next) => triage.setDocsNotRequired(next === true)}
-                  data-testid="triage-docs-not-required"
-                  className="mt-0.5"
-                />
-                <label htmlFor={`${fieldId}-docs-exempt`} className="min-w-0 cursor-pointer">
-                  <span className="block text-role-body text-text-default">
-                    Item number does not require documents
-                  </span>
-                  <span className="block text-role-caption text-text-soft">
-                    An explicit decision, not an absence. It is recorded on the order and shown
-                    in the release audit.
-                  </span>
-                </label>
-              </div>
-            </div>
-          </IntakeSection>
-
-          {/* ── 4. Shipping (G3) ────────────────────────────────────────── */}
-          <IntakeSection
-            id="shipping"
-            title="Shipping"
-            gate={gateById.get('G3')}
-            registerRef={registerSection('shipping')}
-          >
-            <div className="space-y-4 px-5 py-4">
-              {/* Parcel — weight + dims persist on the order and ride the rate
-                  request (dim-weight pricing). Commit on blur/Enter. */}
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                <ParcelField
-                  id={`${fieldId}-weight`}
-                  label="Weight oz"
-                  value={weightText}
-                  onChange={touchParcel(setWeightText)}
-                  onCommit={commitParcel}
-                  testId="intake-weight"
-                />
-                <ParcelField
-                  id={`${fieldId}-dim-l`}
-                  label="L in"
-                  value={dimLText}
-                  onChange={touchParcel(setDimLText)}
-                  onCommit={commitParcel}
-                  testId="intake-dim-l"
-                />
-                <ParcelField
-                  id={`${fieldId}-dim-w`}
-                  label="W in"
-                  value={dimWText}
-                  onChange={touchParcel(setDimWText)}
-                  onCommit={commitParcel}
-                  testId="intake-dim-w"
-                />
-                <ParcelField
-                  id={`${fieldId}-dim-h`}
-                  label="H in"
-                  value={dimHText}
-                  onChange={touchParcel(setDimHText)}
-                  onCommit={commitParcel}
-                  testId="intake-dim-h"
-                />
-              </div>
-              {triage.savingParcel ? (
-                <p className="text-role-micro text-text-faint">Saving parcel…</p>
-              ) : null}
-
-              <p className="text-role-caption text-text-soft">
-                {record?.shippingLabelPurchased
-                  ? 'Label bought through the existing label path.'
-                  : record?.shippingLabelLinked
-                    ? 'Label linked to this order.'
-                    : 'No shipping label on this order yet.'}
-              </p>
-
-              {/* Link vs Buy — one mode, two panes; the buy pane COMPOSES the
-                  existing BuyLabelSection (never a second engine). */}
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant={labelMode === 'link' ? 'default' : 'outline'}
-                  size="sm"
-                  onClick={() => setLabelMode('link')}
-                  data-testid="intake-label-link"
-                >
-                  Link label
-                </Button>
-                <Button
-                  variant={labelMode === 'buy' ? 'default' : 'outline'}
-                  size="sm"
-                  disabled={buyBlockedReason != null}
-                  onClick={() => setLabelMode('buy')}
-                  data-testid="intake-label-buy-toggle"
-                >
-                  Buy label
-                </Button>
-                {buyBlockedReason ? (
-                  <p className="w-full text-role-caption text-amber-800" role="status">
-                    {buyBlockedReason}
-                  </p>
-                ) : null}
-              </div>
-
-              {labelMode === 'buy' && boundOrderId && buyBlockedReason == null ? (
-                <div
-                  className="border border-border-hairline p-3"
-                  data-testid="intake-label-buy"
-                >
-                  <BuyLabelSection
-                    orderId={boundOrderId}
-                    orderRef={record?.orderNumber ?? `#${boundOrderId}`}
-                    flush
-                    weightOz={currentWeightOz}
-                    dimensions={currentDims}
-                    onChange={triage.refresh}
-                    onRatesError={handleRatesError}
-                  />
-                </div>
-              ) : (
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={!boundOrderId}
-                    onClick={openLabelsWorkbench}
-                    data-testid="triage-open-labels"
-                  >
-                    Link or buy a label
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={triage.refresh} disabled={!boundOrderId}>
-                    Re-check
-                  </Button>
-                </div>
-              )}
-              <p className="text-role-caption text-text-soft">
-                Buying rate-shops the existing ShipStation engine with this parcel&rsquo;s
-                weight and dimensions. Linking attaches a label that already exists. Either
-                closes G3 — Re-check re-reads the gates.
-              </p>
-            </div>
-          </IntakeSection>
-
-          {/* ── 5. Assignment (not a gate) ──────────────────────────────── */}
-          <IntakeSection
-            id="assignment"
-            title="Assignment"
-            registerRef={registerSection('assignment')}
-          >
-            {!boundOrderId ? (
-              <p className="px-5 py-4 text-role-caption text-text-soft">
-                Start triage above to assign who fulfills and who packs.
-              </p>
-            ) : (
-              <div className="space-y-3 px-5 py-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div data-testid="intake-assign-tech">
-                    <StaffButtonGrid
-                      label="Fulfillment / test"
-                      options={techOptions}
-                      selectedId={techId}
-                      onSelect={selectTech}
-                      columns={2}
-                      emptyMessage="No technicians present today"
-                    />
-                  </div>
-                  <div data-testid="intake-assign-packer">
-                    <StaffButtonGrid
-                      label="Pack"
-                      options={packerOptions}
-                      selectedId={packerId}
-                      onSelect={selectPacker}
-                      columns={2}
-                      emptyMessage="No packers present today"
-                    />
-                  </div>
-                </div>
-                {assignError ? (
-                  <p className="text-role-caption text-rose-700">{assignError}</p>
-                ) : null}
-                {assignSaving ? (
-                  <p className="text-role-micro text-text-faint">Saving…</p>
-                ) : null}
-                <p className="text-role-caption text-text-soft">
-                  Operational, not a gate — unassigned work is valid and Release does not wait
-                  on it.
-                </p>
-              </div>
-            )}
-          </IntakeSection>
-
-          {/* ── 6. Review / Release ─────────────────────────────────────── */}
-          <IntakeSection id="review" title="Review" registerRef={registerSection('review')}>
-            {!boundOrderId ? (
-              <p className="px-5 py-4 text-role-caption text-text-soft">
-                Start triage above to evaluate the release gates.
-              </p>
-            ) : (
-              <div className="space-y-3 px-5 py-4">
-                <ul className="divide-y divide-border-hairline border-y border-border-hairline">
-                  {(gates?.gates ?? []).map((gate) => (
-                    <li key={gate.id} className="flex items-start gap-2.5 px-3 py-2.5">
-                      <GateBadge passed={gate.passed} />
-                      <span className="min-w-0">
-                        <span className="block text-role-body text-text-default">
-                          {gate.id} · {gate.label}
-                        </span>
-                        {gate.reason ? (
-                          <span className="block text-role-caption text-text-soft">
-                            {gate.reason}
-                          </span>
-                        ) : null}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                <div>
-                  {released ? (
-                    <p className="text-role-body font-semibold text-emerald-700">
-                      Released — this order is in the To-ship queue.
-                    </p>
-                  ) : (
-                    <>
-                      <Button
-                        variant="default"
-                        size="md"
-                        disabled={!gates?.canRelease || triage.releasing}
-                        onClick={handleRelease}
-                        data-testid="triage-release"
-                      >
-                        {triage.releasing ? 'Releasing…' : 'Release'}
-                      </Button>
-                      {/*
-                        The plan forbids a silently-disabled Release, so the
-                        blockers are printed next to it — the checklist above
-                        says WHICH, this says THAT.
-                      */}
-                      {!gates?.canRelease && gates ? (
-                        <p className="pt-2 text-role-caption text-rose-700" role="status">
-                          Blocked by {gates.failing.map((gate) => gate.id).join(', ')}.
-                        </p>
-                      ) : null}
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-          </IntakeSection>
-        </div>
-      </div>
+      <TriageScrollLayout
+        data-testid="order-triage-form"
+        knobs
+        measureAlign="start"
+        sections={intakeSections}
+      />
     </div>
   );
 }
@@ -1111,35 +1102,10 @@ function ParcelField({
         onKeyDown={(e) => {
           if (e.key === 'Enter') e.currentTarget.blur();
         }}
+        className={triagePanelControl()}
         data-testid={testId}
       />
     </div>
-  );
-}
-
-function IntakeSection({
-  id,
-  title,
-  gate,
-  registerRef,
-  children,
-}: {
-  id: SectionId;
-  title: string;
-  gate?: EvaluatedReleaseGate;
-  registerRef: (node: HTMLElement | null) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <section ref={registerRef} data-intake-section={id} className="scroll-mt-0">
-      <header className="sticky top-0 z-raised flex items-center justify-between gap-2 border-b border-border-hairline bg-surface-card px-5 py-2">
-        <h3 className="text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-          {title}
-        </h3>
-        {gate ? <GateBadge passed={gate.passed} withLabel /> : null}
-      </header>
-      {children}
-    </section>
   );
 }
 
@@ -1174,9 +1140,16 @@ function IdentityRow({
   const differs =
     present && counterpart.length > 0 && counterpart !== (value ?? '').trim();
   return (
-    <div className="flex items-baseline justify-between gap-3 px-3 py-2">
-      <dt className="shrink-0 text-role-caption text-text-soft">{label}</dt>
-      <dd
+    <StaggerRevealItem
+      variants={staggerRevealDropItem}
+      className={cn(
+        'flex items-baseline justify-between gap-3 border border-border-soft bg-surface-sunken px-3 py-2.5',
+        cornerClass('row'),
+      )}
+      data-testid="intake-fact-row"
+    >
+      <span className="shrink-0 text-role-caption text-text-soft">{label}</span>
+      <span
         className={cn(
           'flex min-w-0 items-baseline justify-end gap-1.5 text-right text-role-body',
           present ? 'text-text-default' : 'text-text-faint',
@@ -1191,7 +1164,7 @@ function IdentityRow({
             differs
           </Badge>
         ) : null}
-      </dd>
-    </div>
+      </span>
+    </StaggerRevealItem>
   );
 }

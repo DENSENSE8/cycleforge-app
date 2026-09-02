@@ -125,6 +125,7 @@ import {
   DROPDOWN_SHELL_CORNER,
 } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { DESK_TABLE_SURFACE_CLASS } from '@/design-system/tokens/desk-stage';
 import { cn } from '@/utils/_cn';
 import { copyToClipboard } from '@/utils/_dom';
 import { toast } from '@/lib/toast';
@@ -400,6 +401,9 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
   /** Definition + typed columns + descriptor factory. The data waist. */
   binding: TableSurfaceBinding<Row, C>;
 
+  /** Compact surfaces can keep their own controls without forking the grid. */
+  hideToolbar?: boolean;
+
   // ── Feed ───────────────────────────────────────────────────────────────────
   /**
    * Mounted column model. Defaults to the binding's canonical list; pass the
@@ -435,8 +439,9 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
   /**
    * The one sort control (data, not a node). Omit and the table derives a
    * menu from sortable mounted columns so every desk gets the same chrome;
-   * pass it when the surface has named modes that are not column keys
-   * (To-ship's Newest / Platform pin / USPS).
+   * pass it when the surface adds named modes that are not column keys
+   * (To-ship's Newest / Platform pin / USPS) — still include every DATA
+   * column fact in `options` (see `queueColumnSortOptions`).
    */
   sortMenu?: {
     options: readonly DataTableSortOption[];
@@ -450,9 +455,9 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
     hot?: boolean;
     onSelect: (id: string) => void;
     /**
-     * Trigger face when `active` is not in {@link options} — header-click
-     * column sorts stay off the menu but still name themselves on the
-     * closed control (Product, Days late, …), never a bare "custom".
+     * Trigger face when `active` is not in {@link options} (legacy pins /
+     * retired aliases). DATA column facts belong in `options` so the open
+     * list can check Pick / Status / Image — never only name them on the trigger.
      */
     activeFace?: Pick<DataTableSortOption, 'label' | 'shortLabel' | 'identity'>;
   };
@@ -550,6 +555,10 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
    * A surface overrides it only when its header keys and its sort vocabulary
    * are different alphabets: the compound Orders row is keyed by TRACK while
    * the sort is written in FACTS, and `queueSortForColumnKey` bridges them.
+   *
+   * Law (`SLOT_TABLE_PAINT_LAW.headerSort`): every painted DATA header must
+   * return true here. Only `select` / `actions` / `_fill` stay false. A labeled
+   * Image/Status/Amount header that is not sortable is a fail.
    */
   isSortable?: (key: string) => boolean;
   sort: K | null;
@@ -593,6 +602,11 @@ export interface DataTableProps<Row, K extends string, C extends LedgerGridColum
   /** Accessible name override for a shared parametric grid. */
   ariaLabel?: string;
   className?: string;
+  /**
+   * Domain content painted under the column header, inside the scroll body
+   * (Incoming PO intake). Not chrome — never search/filter/sort.
+   */
+  bodyPrefix?: ReactNode;
 }
 
 /**
@@ -877,10 +891,10 @@ export function DataTableFilterMenu({
 /**
  * The one SORT control — a peer of the filter, not a second toolbar.
  *
- * Groups (View · Platform · Carriers) are CATEGORY HEADINGS in one list,
- * the same banded-popover grammar as the filter next door. A pick here
- * reorders every row; a pick in the funnel hides some. Column sorts live
- * on header click, not in this menu.
+ * Groups (View · Columns · Platform · Carriers) are CATEGORY HEADINGS in one
+ * list, the same banded-popover grammar as the filter next door. A pick here
+ * reorders every row; a pick in the funnel hides some. Every click-sortable
+ * DATA header is also a Columns row — header click and this menu share facts.
  *
  * The list is a combobox listbox ({@link ToolbarListboxOption}): dense rows,
  * trailing check on the selected value, full-width hover, arrow-key roving.
@@ -1321,6 +1335,7 @@ export type { DataTableTab };
 
 export function DataTable<Row, K extends string, C extends LedgerGridColumnModel>({
   binding,
+  hideToolbar = false,
   columns,
   rows,
   orderGroupsByDate,
@@ -1367,6 +1382,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   scrollToKey,
   ariaLabel,
   className,
+  bodyPrefix,
 }: DataTableProps<Row, K, C>) {
   const selectedRows = useTableSelection<Row>(selectionScope ?? '__idle__');
   const selectedCount = selectionScope ? selectedRows.length : 0;
@@ -1542,9 +1558,9 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
         {exportInHeader ? (
           <DeskActionSlotRegistrar role="overall">{exportControl}</DeskActionSlotRegistrar>
         ) : null}
-        <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col', className)}>
+        <div className={cn(DESK_TABLE_SURFACE_CLASS, className)}>
       {/* ── One row, two controls ──────────────────────────────────────────── */}
-      <div
+      {!hideToolbar ? <div
         data-testid="data-table-toolbar"
         className={cn(
           // `pr-0`: the trailing control sits ON the card's edge (operator
@@ -1600,7 +1616,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           {/* Renders nothing at all off a desk stage — see the component. */}
           <DataTableFullscreenToggle />
         </span>
-      </div>
+      </div> : null}
 
       {/* ── The grid ───────────────────────────────────────────────────────── */}
       <div ref={gridHostRef} className="relative flex min-h-0 min-w-0 flex-1 flex-col">
@@ -1630,6 +1646,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           scrollRef={scrollRef}
           scrollParentRef={scrollParentRef}
           scrollToKey={scrollToKey}
+          bodyPrefix={bodyPrefix}
         />
       </div>
 

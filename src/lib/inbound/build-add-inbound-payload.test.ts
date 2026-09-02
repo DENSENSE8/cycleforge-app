@@ -39,17 +39,48 @@ describe('buildAddInboundImportBody', () => {
     assert.equal(body.tracking_number, '1Z999');
   });
 
-  it('purchase omits sku_catalog_id', () => {
+  it('purchase includes sku_catalog_id when inventory is paired', () => {
     const body = buildAddInboundImportBody({
       ...base,
       pickedCatalogId: 42,
+      carrierCode: 'UPS',
+      lineItemId: 'itm-9',
     });
     assert.equal(body.kind, 'purchase');
-    assert.equal(body.sku_catalog_id, undefined);
+    assert.equal(body.sku_catalog_id, 42);
+    assert.equal(body.carrier_code, 'UPS');
+    assert.equal(body.line_item_id, 'itm-9');
   });
 });
 
 describe('canSubmitAddInbound', () => {
+  it('purchase needs only order and item', () => {
+    assert.equal(
+      canSubmitAddInbound({
+        ...base,
+        itemName: '',
+        quantity: '1',
+        trackingNumber: '',
+      }),
+      true,
+    );
+    assert.equal(
+      canSubmitAddInbound({
+        ...base,
+        orderId: '',
+      }),
+      false,
+    );
+    assert.equal(
+      canSubmitAddInbound({
+        ...base,
+        sku: '',
+        itemName: '',
+      }),
+      false,
+    );
+  });
+
   it('return requires tracking and catalog pick', () => {
     assert.equal(
       canSubmitAddInbound({

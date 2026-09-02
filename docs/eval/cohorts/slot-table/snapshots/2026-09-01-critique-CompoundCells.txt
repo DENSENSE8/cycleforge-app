@@ -16,7 +16,7 @@
     },
     {
       "severity": "size",
-      "what": "1333 lines — past the point reviewers read",
+      "what": "1325 lines — past the point reviewers read",
       "fix": "Split the leaf presentational parts out."
     }
   ],
@@ -33,7 +33,7 @@
     "SlotLayoutReorderContext"
   ],
   "metrics": {
-    "lines": 1333,
+    "lines": 1325,
     "arbitrary_literals": 3
   },
   "notes": [

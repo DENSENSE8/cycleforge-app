@@ -16,7 +16,7 @@ import {
   type OutboundMode,
 } from '@/components/outbound/outbound-sidebar-shared';
 import { parseFbaModeWire } from '@/lib/fba/fba-modes';
-import { SHIPPING_EXCEPTIONS_PATH, SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
+import { SHIPPING_EXCEPTIONS_PATH, SHIPPING_ORDERS_PATH, SHIPPING_SHORTAGE_PATH } from '@/lib/shipping/orders-desk';
 import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
 import { parseShippedSearchFieldWire } from '@/lib/shipped-search';
 import { parseReadyWorkspaceTabWire } from '@/utils/ready-workspace-state';
@@ -132,6 +132,13 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
     c2: paramText,
     c3: paramText,
   },
+  carries: SHIPPING_CARRIES,
+});
+
+/** Same queue family as To-ship; hygiene must keep `ustatus` / `openOrderId`. */
+const SHORTAGE_ROUTE_PARAMS = defineRouteParams({
+  route: SHIPPING_SHORTAGE_PATH,
+  owns: ORDERS_ROUTE_PARAMS.owns,
   carries: SHIPPING_CARRIES,
 });
 
@@ -255,6 +262,7 @@ export const OUTBOUND_MODE_ROUTE_PARAMS = {
 /** Every shipping route spec. Resolution order is the registry's job. */
 export const OUTBOUND_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   ORDERS_ROUTE_PARAMS,
+  SHORTAGE_ROUTE_PARAMS,
   EXCEPTIONS_ROUTE_PARAMS,
   FBA_ROUTE_PARAMS,
   SHIPPED_ROUTE_PARAMS,

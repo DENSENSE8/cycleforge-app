@@ -1,0 +1,16 @@
+{
+  "id": "data-headers-sortable",
+  "statement": "Every PRODUCT_TABLES DATA header click-sorts; no dual SoT; overlay peers stay on contract.",
+  "createdBy": "human",
+  "createdAt": "2026-09-02T00:00:00Z",
+  "successPredicates": [
+    { "kind": "eval", "command": "eval:cohort slot-table", "expect": "exit0" },
+    { "kind": "test", "file": "src/lib/tables/slot-table-cohort.test.ts" },
+    { "kind": "eval", "command": "eval:discover", "expect": "exit0" },
+    { "kind": "eval", "command": "eval:station pack", "expect": "exit0" },
+    { "kind": "invariant", "keepIds": ["engine:slot-table-header-sort", "engine:queueSortForColumnKey", "engine:LedgerGridColumnHeader"] },
+    { "kind": "router", "refuse": ["slot-table.sortable-false-on-fact", "slot-table.new-grid-columns-array"] }
+  ],
+  "stopConditions": { "maxHops": 8, "maxHours": 6, "maxNoProgressHops": 3, "onUnmeasured": "block", "onRed": "repair", "maxRepairs": 2 },
+  "budget": { "maxCostUsd": 15 }
+}

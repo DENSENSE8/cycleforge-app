@@ -211,6 +211,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
     <motion.div
       ref={trapRef}
       data-testid="photo-lightbox"
+      data-photo-portal=""
       role="dialog"
       aria-modal="true"
       aria-label="Photo viewer"

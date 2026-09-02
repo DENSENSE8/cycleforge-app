@@ -21,6 +21,10 @@ export const zIndex = {
   // Mirror the panel/panelBackdrop pairing (backdrop one below its surface).
   detailStackBackdrop: 150,
   detailStack: 160,
+  // Collapsed MasterNav hover-peek. Must sit above station `panel` overlays
+  // (Unbox item rail, green tag, etc.) or those paint through the card.
+  // Below modalBackdrop so a real dialog still wins.
+  navPeek: 170,
   modalBackdrop: 190,
   modal: 200,
   elevatedModal: 300,

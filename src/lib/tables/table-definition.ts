@@ -93,6 +93,11 @@ const TABLE_ENTITY_FAMILIES = [
   'orders',
   /** To-Ship CSV import staging — parsed rows + triage state, not live orders. */
   'orders-import',
+  /**
+   * Shortage CSV coverage staging — Amazon OOS demand rows + Ready/Action
+   * required. Own family so hiding a staging column cannot densify live Shortage.
+   */
+  'shortage-coverage-import',
   'catalog',
   'repair',
   'pickup',
@@ -108,6 +113,8 @@ const TABLE_ENTITY_FAMILIES = [
   /** Home → Tasks: one staffer's own `staff_todos`. A SIBLING of `daily`, not
    *  a view of it — different store, different question, different row shape. */
   'tasks',
+  /** Reports › Sessions: org-wide staff × warehouse-day, not Daily. */
+  'sessions',
   'catalog-link',
   /**
    * Review → Missing item number. Sibling of `catalog-link`, never a merge:
@@ -119,6 +126,8 @@ const TABLE_ENTITY_FAMILIES = [
   'station-history',
   'fba',
   'units',
+  /** Customer-facing kiosk cart lines; transient session data, not a staff desk. */
+  'kiosk',
 ] as const;
 
 /**

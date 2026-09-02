@@ -428,6 +428,17 @@ test('regression: node-bound station writes are studio.manage (ST5 / Phase D)', 
   assert.ok(writeFile!.methods.includes('PUT'), 'the node-station file exposes a PUT write');
 });
 
+test('regression: reports.view gates the sessions daily report', () => {
+  const r = routeByPath('/api/sessions/daily/route.ts');
+  assert.ok(r);
+  assert.equal(r.permission, 'reports.view');
+  assert.deepEqual(r.methods, ['GET']);
+  assert.ok(
+    routesGatedBy('reports.view').some((row) => row.path === r.path),
+    'reports.view should include /api/sessions/daily',
+  );
+});
+
 test('regression: orders.view gates the To-ship order-sources menu', () => {
   const r = routeByPath('/api/integrations/order-sources/route.ts');
   assert.ok(r);

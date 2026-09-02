@@ -1,6 +1,6 @@
 /**
  * Testing-mode workspace tabs on `/test?view=testing`.
- * Param: `?testTab=urgent|returns|pending|all|history` — absent defaults to Returns.
+ * Param: `?testTab=urgent|returns|pending|all|history` — absent defaults to All.
  */
 
 export type TestingWorkspaceTab =
@@ -39,7 +39,7 @@ const VALID: ReadonlySet<string> = new Set(TESTING_WORKSPACE_TABS);
  */
 export function parseTestingWorkspaceTab(raw: string | null): TestingWorkspaceTab {
   const value = String(raw || '').trim().toLowerCase();
-  return VALID.has(value) ? (value as TestingWorkspaceTab) : 'returns';
+  return VALID.has(value) ? (value as TestingWorkspaceTab) : 'all';
 }
 
 export function getTestingWorkspaceTabFromSearch(
@@ -68,7 +68,7 @@ export function normalizeTestingWorkspaceTabParams(
 
   params.delete('search');
 
-  if (nextTab !== 'returns') {
+  if (nextTab !== 'all') {
     params.set(TESTING_WORKSPACE_TAB_PARAM, nextTab);
   }
   return nextTab;

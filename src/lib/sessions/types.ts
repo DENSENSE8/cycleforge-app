@@ -7,7 +7,7 @@
  * other server-only graph (build-gotchas.md → bundle altitude). The domain
  * writer lives next door in `work-sessions.ts`, which does.
  *
- * Table: `work_sessions` (src/lib/migrations/2026-08-22b_work_sessions.sql).
+ * Table: `work_sessions` (src/lib/migrations/2026-09-02_work_sessions.sql).
  * Spec: docs/warehouse-os/02-target-architecture.md §2.
  */
 
@@ -16,7 +16,7 @@
  * the seven competing "what kind of surface is this" vocabularies, and it is
  * the whole scan-ownership model:
  *
- *   'scan' → carries a scanType. EXACTLY ONE armed per org, app-wide.
+ *   'scan' → carries a scanType. At most ONE armed per staff (silent timekeeping).
  *   'task' → carries none.       N may be open at once.
  */
 export const SESSION_KINDS = ['scan', 'task'] as const;
@@ -66,7 +66,7 @@ export interface WorkSession {
   kind: SessionKind;
   /** Non-null iff `kind === 'scan'` (DB CHECK enforces the iff). */
   scanType: ScanSessionType | null;
-  /** True on at most ONE scan session per org (DB partial unique index). */
+  /** True on at most ONE scan session per staff (DB partial unique index). */
   armed: boolean;
   /** `SURFACE_REGISTRY` key this session is doing the job of, if any. */
   surfaceKey: string | null;
@@ -152,7 +152,7 @@ export type SessionResult<T> =
 
 /**
  * `work_session_intervals.kind`. Mirrors work_session_intervals_kind_chk
- * (src/lib/migrations/2026-08-23e_work_session_intervals.sql).
+ * (src/lib/migrations/2026-09-02_work_sessions.sql).
  *
  * The two kinds TILE a session's wall clock: at any instant between
  * `started_at` and `ended_at` the session is in exactly one of them. That is

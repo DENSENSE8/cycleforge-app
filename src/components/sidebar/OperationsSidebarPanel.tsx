@@ -3,8 +3,8 @@
 /**
  * Operations master-page sidebar — the single contextual panel for `/operations`.
  *
- * L2 modes (Live · Analytics · Insights · History · Signals) live in GlobalHeader
- * (`HeaderPageSwitcher`). Per mode, this panel owns local filters / quick-nav
+ * L2 modes (Live · Analytics · Insights · History · Signals) live on
+ * DeskPageChrome tabs / MasterNav. Per mode, this panel owns local filters / quick-nav
  * (History paste-a-number, Signals note filter). Cross-entity search lives in the
  * global header → Dashboard Search. The right pane (OperationsWorkspace) is purely
  * visual and reacts to the same `?mode=` / `?range=` / `?section=` URL params.

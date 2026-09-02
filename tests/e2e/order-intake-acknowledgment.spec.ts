@@ -121,8 +121,8 @@ async function attachLabelFixture(page: Page, pk: number, s: string, tracking?: 
 async function openBoundTriage(page: Page, pk: number, orderNumber: string) {
   await page.goto(`${DESK}?triage=${pk}`);
   await expect(page.getByTestId('order-intake-form')).toBeVisible({ timeout: 20_000 });
-  await expect(page.getByTestId('triage-jump-review')).toBeEnabled({ timeout: 15_000 });
-  // The jump rail enables off the URL alone — wait for the RECORD to paint
+  await expect(page.getByTestId('triage-knob-review')).toBeVisible({ timeout: 15_000 });
+  // Knobs enable off the bound session — wait for the RECORD to paint
   // (the Identity read rows carry the order number) before typing, so the
   // first gates fetch cannot land mid-fill.
   await expect(page.getByTestId('order-intake-form')).toContainText(orderNumber, {
@@ -141,6 +141,93 @@ function reviewGateRow(page: Page, gateId: 'G1' | 'G2' | 'G3') {
 test.describe('Order Intake & Acknowledgment', () => {
   test.skip(({ browserName }) => browserName === 'webkit', 'desk rail is a desktop layout');
   test.skip(({ isMobile }) => !!isMobile, 'desk rail is a desktop layout');
+
+  test('E2E-STAGE: intake mounts stage-filling DeskStageOverlay (not an inset popover)', async ({
+    page,
+  }) => {
+    await probeSession(page);
+    const s = stamp();
+    const orderNumber = amazonShaped(s);
+    const pk = await createCagedFixture(page, {
+      orderNumber,
+      title: `Stage radius probe ${s}`,
+    });
+
+    await openBoundTriage(page, pk, orderNumber);
+
+    const overlay = page.getByTestId('order-intake-overlay');
+    await expect(overlay).toBeVisible({ timeout: 20_000 });
+    await expect(overlay).toHaveAttribute('data-desk-stage-fill', 'stage');
+
+    // Stage fill = same footprint as the desk stage card (no inset gutters).
+    const geometry = await overlay.evaluate((el) => {
+      const parent = el.parentElement;
+      if (!parent) return null;
+      const a = el.getBoundingClientRect();
+      const b = parent.getBoundingClientRect();
+      return {
+        widthDelta: Math.abs(a.width - b.width),
+        heightDelta: Math.abs(a.height - b.height),
+        leftDelta: Math.abs(a.left - b.left),
+        topDelta: Math.abs(a.top - b.top),
+      };
+    });
+    expect(geometry).not.toBeNull();
+    expect(geometry!.widthDelta, 'overlay must match stage width').toBeLessThan(2);
+    expect(geometry!.heightDelta, 'overlay must match stage height').toBeLessThan(2);
+    expect(geometry!.leftDelta, 'overlay must be flush left').toBeLessThan(2);
+    expect(geometry!.topDelta, 'overlay must be flush top').toBeLessThan(2);
+
+    const facts = page.getByTestId('intake-identity-facts');
+    await expect(facts).toBeVisible();
+    await expect(facts.getByTestId('intake-fact-row').first()).toBeVisible();
+    await expect(facts).toContainText(orderNumber);
+
+    const rowRadius = await facts.getByTestId('intake-fact-row').first().evaluate((el) => {
+      return getComputedStyle(el).borderRadius;
+    });
+    // cornerClass('row') → rounded-md (6px)
+    expect(rowRadius, `expected row corner, got "${rowRadius}"`).toMatch(
+      /^(6px|0\.375rem)( (6px|0\.375rem)){0,3}$/,
+    );
+  });
+
+  test('E2E-KNOBS: all six section spies render on create and jump to their sections', async ({
+    page,
+  }) => {
+    await probeSession(page);
+    await openTriageForm(page);
+
+    const knobs = page.getByTestId('triage-scroll-knobs');
+    await expect(knobs).toBeVisible({ timeout: 20_000 });
+
+    const ids = [
+      'identity',
+      'links',
+      'documents',
+      'shipping',
+      'assignment',
+      'review',
+    ] as const;
+    for (const id of ids) {
+      await expect(page.getByTestId(`triage-knob-${id}`)).toBeVisible();
+    }
+
+    // Click Review — section id must enter the scroll viewport.
+    await page.getByTestId('triage-knob-review').click();
+    await expect(page.locator('#review')).toBeInViewport({ timeout: 10_000 });
+    await expect(page.getByTestId('triage-knob-review')).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+
+    await page.getByTestId('triage-knob-shipping').click();
+    await expect(page.locator('#shipping')).toBeInViewport({ timeout: 10_000 });
+    await expect(page.getByTestId('triage-knob-shipping')).toHaveAttribute(
+      'aria-current',
+      'true',
+    );
+  });
 
   test('E2E-ID-AMZ: Amazon 3-7-7 paste infers Amazon with no platform click', async ({ page }) => {
     await probeSession(page);
@@ -269,7 +356,7 @@ test.describe('Order Intake & Acknowledgment', () => {
     await exempt.click();
     await saved;
 
-    await page.getByTestId('triage-jump-review').click();
+    await page.getByTestId('triage-knob-review').click();
     await expect(reviewGateRow(page, 'G2')).toContainText('Green', { timeout: 15_000 });
   });
 
@@ -289,7 +376,7 @@ test.describe('Order Intake & Acknowledgment', () => {
     await expect(
       page.getByTestId('order-intake-form').getByText('Label linked to this order.'),
     ).toBeVisible({ timeout: 15_000 });
-    await page.getByTestId('triage-jump-review').click();
+    await page.getByTestId('triage-knob-review').click();
     await expect(reviewGateRow(page, 'G3')).toContainText('Green');
   });
 
@@ -383,10 +470,10 @@ test.describe('Order Intake & Acknowledgment', () => {
     // cannot see it — close G3 with a REAL label fixture, then Re-check.
     await attachLabelFixture(page, pk, s, tracking);
     await page.unroute('**/api/shipping/order-rates');
-    await page.getByTestId('triage-jump-review').click();
+    await page.getByTestId('triage-knob-review').click();
     await page.reload();
     await expect(page.getByTestId('order-intake-form')).toBeVisible({ timeout: 20_000 });
-    await page.getByTestId('triage-jump-review').click();
+    await page.getByTestId('triage-knob-review').click();
     await expect(reviewGateRow(page, 'G3')).toContainText('Green', { timeout: 15_000 });
   });
 
@@ -439,7 +526,7 @@ test.describe('Order Intake & Acknowledgment', () => {
       tracking: `CFWHO${s}TRACK1`,
     });
     await openBoundTriage(page, pk, `CFWHO-${s}`);
-    await page.getByTestId('triage-jump-assignment').click();
+    await page.getByTestId('triage-knob-assignment').click();
 
     const techGrid = page.getByTestId('intake-assign-tech');
     const packerGrid = page.getByTestId('intake-assign-packer');
@@ -531,7 +618,7 @@ test.describe('Order Intake & Acknowledgment', () => {
     expect(exempt.ok()).toBeTruthy();
 
     await openBoundTriage(page, pk, orderNumber);
-    await page.getByTestId('triage-jump-review').click();
+    await page.getByTestId('triage-knob-review').click();
     const releasePosted = page.waitForResponse(
       (res) =>
         res.url().includes(`/api/orders/${pk}/cage-release`)
@@ -621,7 +708,7 @@ test.describe('Order Intake & Acknowledgment', () => {
 
     await openBoundTriage(page, pk, `CFBGT-${s}`);
     // Click 1: jump to Review. Click 2: Release. (Open Add was the entry.)
-    await page.getByTestId('triage-jump-review').click();
+    await page.getByTestId('triage-knob-review').click();
     await expect(page.getByTestId('triage-release')).toBeEnabled({ timeout: 15_000 });
     await page.getByTestId('triage-release').click();
     await expect(page.getByTestId('order-intake-form')).toBeHidden({ timeout: 15_000 });

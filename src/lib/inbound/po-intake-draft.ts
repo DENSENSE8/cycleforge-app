@@ -13,15 +13,22 @@ export type PoIntakeFieldConfidence = {
   confidence: PoIntakeConfidence;
 };
 
+export type PoIntakeKind = 'purchase' | 'return';
+
 export type PoIntakeLineDraft = {
   sku: string;
   itemName: string;
   /** Explicit qty string — empty means "still need quantity". */
   quantity: string;
   lineItemId: string;
+  /** Local sku_catalog id after pairing or create. */
+  catalogId: number | null;
+  /** Marketplace listing URL for this line (falls back to the order listing). */
+  listingUrl: string;
 };
 
 export type PoIntakeDraft = {
+  kind: PoIntakeKind;
   platform: string;
   orderId: string;
   seller: string;
@@ -31,6 +38,9 @@ export type PoIntakeDraft = {
   listingUrl: string;
   priority: string;
   lines: PoIntakeLineDraft[];
+  /** Return metadata used when kind is `return`. */
+  returnReason: string;
+  rmaId: string;
   /** Freeform notes from the model (not persisted). */
   notes: string;
 };
@@ -48,9 +58,12 @@ export const EMPTY_PO_INTAKE_LINE = (): PoIntakeLineDraft => ({
   itemName: '',
   quantity: '',
   lineItemId: '',
+  catalogId: null,
+  listingUrl: '',
 });
 
 export const EMPTY_PO_INTAKE_DRAFT = (): PoIntakeDraft => ({
+  kind: 'purchase',
   platform: 'amazon',
   orderId: '',
   seller: '',
@@ -60,6 +73,8 @@ export const EMPTY_PO_INTAKE_DRAFT = (): PoIntakeDraft => ({
   listingUrl: '',
   priority: 'auto',
   lines: [EMPTY_PO_INTAKE_LINE()],
+  returnReason: '',
+  rmaId: '',
   notes: '',
 });
 
@@ -178,7 +193,7 @@ export function applyPoIntakeReply(
 }
 
 export type PoIntakeImportBody = {
-  kind: 'purchase';
+  kind: PoIntakeKind;
   source_type: string;
   source_platform: string | null;
   receiving_type: string;
@@ -187,12 +202,15 @@ export type PoIntakeImportBody = {
   line_item_id?: string;
   sku?: string;
   item_name?: string;
+  sku_catalog_id?: number;
   quantity: number;
   tracking_number?: string;
   carrier_code?: string;
   seller?: string;
   listing_url?: string;
   account_name?: string;
+  return_reason?: string;
+  rma_id?: string;
 };
 
 export function addPoIntakeLine(draft: PoIntakeDraft): PoIntakeDraft {
@@ -246,6 +264,7 @@ export function buildPoIntakeImportBodies(
     draft.priority === 'auto' || !draft.priority.trim()
       ? null
       : Number(draft.priority);
+  const receivingType = draft.kind === 'return' ? 'RETURN' : 'PO';
   const lines = draft.lines.filter((l) => lineHasIdentity(l));
   return lines.map((line, index) => {
     const qty = parseExplicitQuantity(line.quantity);
@@ -253,10 +272,10 @@ export function buildPoIntakeImportBodies(
       throw new Error(`Line ${index + 1} is missing an explicit quantity`);
     }
     const body: PoIntakeImportBody = {
-      kind: 'purchase',
+      kind: draft.kind,
       source_type: sourceType,
       source_platform: sourcePlatform,
-      receiving_type: 'PO',
+      receiving_type: receivingType,
       priority_tier:
         priorityTier != null && Number.isFinite(priorityTier) ? priorityTier : null,
       order_id: draft.orderId.trim(),
@@ -265,11 +284,19 @@ export function buildPoIntakeImportBodies(
     if (line.lineItemId.trim()) body.line_item_id = line.lineItemId.trim();
     if (line.sku.trim()) body.sku = line.sku.trim();
     if (line.itemName.trim()) body.item_name = line.itemName.trim();
+    if (line.catalogId != null && Number.isFinite(line.catalogId)) {
+      body.sku_catalog_id = line.catalogId;
+    }
     if (draft.trackingNumber.trim()) body.tracking_number = draft.trackingNumber.trim();
     if (draft.carrierCode.trim()) body.carrier_code = draft.carrierCode.trim();
     if (draft.seller.trim()) body.seller = draft.seller.trim();
-    if (draft.listingUrl.trim()) body.listing_url = draft.listingUrl.trim();
+    const listing = (line.listingUrl.trim() || draft.listingUrl.trim());
+    if (listing) body.listing_url = listing;
     if (draft.accountName.trim()) body.account_name = draft.accountName.trim();
+    if (draft.kind === 'return') {
+      if (draft.returnReason.trim()) body.return_reason = draft.returnReason.trim();
+      if (draft.rmaId.trim()) body.rma_id = draft.rmaId.trim();
+    }
     return body;
   });
 }

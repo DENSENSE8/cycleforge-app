@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 /**
  * The PO-items lane decision is LAW, not per-station taste.
  *
- * Unbox, Testing and `/search` each used to route matched-vs-unfound
+ * Unbox, Testing, `/search`, and Scan Out each used to route matched-vs-unfound
  * themselves, and Testing's copy omitted the lineless-real-PO probe — so a real
  * PO carton whose lines had not landed yet offered the add / pair path on two
  * stations and read as a dead end on the third. Nothing could notice, because
@@ -20,6 +20,7 @@ const CALLERS = {
   unbox: 'src/components/receiving/workspace/line-edit/LinePoItemsSection.tsx',
   testing: 'src/components/tech/testing-panel/TestingPoItemsSection.tsx',
   search: 'src/components/search/station/SearchReceivingPoItems.tsx',
+  'scan-out': 'src/components/outbound/scan-out/ScanOutActivePanel.tsx',
 } as const;
 
 const read = (p: string) => readFileSync(p, 'utf8');

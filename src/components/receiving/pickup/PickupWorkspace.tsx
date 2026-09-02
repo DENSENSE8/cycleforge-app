@@ -108,16 +108,24 @@ function rowMatchesQuery(line: PickupLine, q: string): boolean {
 interface PickupWorkspaceProps {
   /** Highlight the rows of this order (sidebar selection, `?lcpu=`). */
   selectedOrderId?: number | null;
+  /** External status selection used by the dashboard history header. */
+  statusTabOverride?: PickupStatusTab;
+  /** The dashboard header owns this filter when the workspace is embedded there. */
+  showStatusFilter?: boolean;
 }
 
-export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps) {
+export function PickupWorkspace({
+  selectedOrderId = null,
+  statusTabOverride,
+  showStatusFilter = true,
+}: PickupWorkspaceProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
 
-  const statusTab = parsePickupStatusTab(searchParams.get('status'));
-  const query = searchParams.get('q') ?? '';
+  const statusTab = statusTabOverride ?? parsePickupStatusTab(searchParams.get('status'));
+  const [query, setQuery] = useState('');
   const normalizedQuery = query.trim().toLowerCase();
 
   const { data: lines, isLoading, isError } = usePickupLines();
@@ -308,10 +316,10 @@ export function PickupWorkspace({ selectedOrderId = null }: PickupWorkspaceProps
             searchEmptyMessage={searchEmptyMessage}
             search={{
               value: query,
-              onChange: (v) => setParam('q', v.trim() ? v : null),
+              onChange: setQuery,
               placeholder: 'Filter pickup items…',
             }}
-            filter={statusFilter}
+            filter={showStatusFilter ? statusFilter : undefined}
             totalCount={allRows.length}
             scrollRef={scrollRef}
             renderGroup={(group, baseStripeIndex, { columns: visible }) => (

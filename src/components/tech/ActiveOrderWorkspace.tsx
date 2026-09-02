@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ExternalLink, History, MapPin, Package, Tags } from '@/components/Icons';
+import { AlertTriangle, ExternalLink, History, Package, Tags, Warehouse } from '@/components/Icons';
 import {
   StationContextBar,
   StationMoreDetails,
@@ -28,8 +28,11 @@ import { ListingLinksTab } from '@/components/receiving/workspace/line-edit/List
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
+import { StationComposerHost } from '@/components/composer';
+import { slicedActionDockWrapperClass } from '@/design-system/primitives/SlicedActionDock';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import type { Order } from '@/components/station/upnext/upnext-types';
+import { useAppendOrderNote } from '@/hooks/useOrderNotes';
 import { UpNextActionDock } from './UpNextActionDock';
 import { ShippingScanWorkspace } from './shipping/ShippingScanWorkspace';
 import { ShippingCapturedUnits } from './shipping/ShippingCapturedUnits';
@@ -61,11 +64,12 @@ interface ActiveOrderWorkspaceProps {
   onClose: () => void;
   onRemoveSerial?: (serial: string, index: number) => Promise<void> | void;
   /**
-   * `active` — order has been scanned and is in progress (default).
+   * `active` — order has been scanned and is in progress (default); the shared
+   *  order-note composer stays at the waist with the Displays context ring.
    * `preview` — user clicked an Up Next card to inspect it; nothing has been
-   *  scanned yet. Header changes to "Preview" and the notes composer mounts at
-   *  the waist with Start / Out of Stock on its trailing edge (they no longer
-   *  live on the sidebar card, and never as a floating bottom CTA).
+   *  scanned yet. Header changes to "Preview" and the shared notes composer
+   *  mounts at the waist with Start / Out of Stock on its trailing edge (they no
+   *  longer live on the sidebar card, and never as a floating bottom CTA).
    */
   mode?: 'active' | 'preview';
   /**
@@ -102,6 +106,12 @@ export function ActiveOrderWorkspace({
   const isPreview = mode === 'preview';
 
   const [activeSideTab, setActiveSideTab] = useState<ShippingDisplayNav | null>(null);
+  const [note, setNote] = useState('');
+  const activeOrderRowId =
+    !isPreview && activeOrder.id != null && Number(activeOrder.id) > 0
+      ? Number(activeOrder.id)
+      : 0;
+  const appendNote = useAppendOrderNote(activeOrderRowId);
 
   const listingResolution = useMemo(
     () => resolveShippingListingLinks(activeOrder),
@@ -288,7 +298,7 @@ export function ActiveOrderWorkspace({
         {
           id: 'locations',
           label: 'Locations',
-          icon: MapPin,
+          icon: Warehouse,
           visible: packOrderId != null,
           // Placing the order on a bench is a completed errand — hand the
           // operator back to the work instead of leaving the column parked
@@ -344,6 +354,37 @@ export function ActiveOrderWorkspace({
       ),
     [activeSideTab, displayTabs],
   );
+
+  const commitNote = useCallback(() => {
+    const text = note.trim();
+    if (!text || appendNote.isPending) return;
+    appendNote.mutate(text, { onSuccess: () => setNote('') });
+  }, [note, appendNote]);
+
+  const activeDock = !isPreview ? (
+    <div
+      className={slicedActionDockWrapperClass({ docked: false })}
+      data-shipping-composer-dock
+    >
+      <div className="pointer-events-auto w-full min-w-0">
+        <StationComposerHost
+          showModeRow
+          showModeFaces={false}
+          labelValue={note}
+          onLabelChange={setNote}
+          onLabelCommit={commitNote}
+          labelCommitDisabled={appendNote.isPending || note.trim().length === 0}
+          labelPlaceholder="Add a note for this order…"
+          labelCommitAriaLabel="Save order note"
+          labelCommitTooltip="Save order note (Enter)"
+          chrome="raised"
+          animateMount={false}
+          progressTone={resolvedSideTab ? 'selected' : 'idle'}
+          onProgressClick={openDisplaysIndex}
+        />
+      </div>
+    </div>
+  ) : null;
 
   const utilityRailBody = !resolvedSideTab ? (
     <StationDisplaysUtilityRail
@@ -440,7 +481,17 @@ export function ActiveOrderWorkspace({
               // Notes composer + embedded Start pill (Unbox/Testing waist
               // shape). Not a floating terminal dock — that green capsule was
               // the old page chrome.
-              dock={isPreview && previewOrder ? <UpNextActionDock order={previewOrder} /> : null}
+              dock={
+                isPreview && previewOrder ? (
+                  <UpNextActionDock
+                    order={previewOrder}
+                    displaysOpen={Boolean(resolvedSideTab)}
+                    onProgressClick={openDisplaysIndex}
+                  />
+                ) : (
+                  activeDock
+                )
+              }
             >
               {substitution.show && substitution.orderId !== null ? (
                 <TechSubstituteSection

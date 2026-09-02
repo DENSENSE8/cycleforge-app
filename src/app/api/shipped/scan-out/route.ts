@@ -150,7 +150,13 @@ export const POST = withAuth(
                 o.item_number           AS item_number,
                 o.condition             AS condition,
                 o.quantity              AS quantity,
-                o.account_source        AS account_source
+                o.account_source        AS account_source,
+                (SELECT r.id
+                   FROM receiving_carton r
+                  WHERE r.shipment_id = stn.id
+                    AND r.organization_id = stn.organization_id
+                  ORDER BY r.id DESC
+                  LIMIT 1)              AS receiving_id
          FROM shipping_tracking_numbers stn
          LEFT JOIN orders o ON o.shipment_id = stn.id
          WHERE stn.id = $1
@@ -164,6 +170,7 @@ export const POST = withAuth(
     const cartonPayload = {
       shipmentId,
       tracking: (ctxRow?.tracking as string | null) ?? raw,
+      receivingId: ctxRow?.receiving_id != null ? Number(ctxRow.receiving_id) : null,
       orderRowId: ctxRow?.order_row_id != null ? Number(ctxRow.order_row_id) : null,
       orderId: (ctxRow?.order_id as string | null) ?? null,
       productTitle: (ctxRow?.product_title as string | null) ?? null,

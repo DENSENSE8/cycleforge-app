@@ -22,6 +22,8 @@ export interface BuildAddInboundImportBodyInput {
   accountName: string;
   returnReason: string;
   rmaId: string;
+  carrierCode?: string;
+  lineItemId?: string;
 }
 
 const PRIORITY_AUTO = 'auto';
@@ -48,14 +50,17 @@ export function buildAddInboundImportBody(input: BuildAddInboundImportBodyInput)
     listing_url: input.listingUrl.trim() || undefined,
     seller: input.seller.trim() || undefined,
     account_name: input.accountName.trim() || undefined,
+    carrier_code: input.carrierCode?.trim() || undefined,
+    line_item_id: input.lineItemId?.trim() || undefined,
   };
+
+  if (input.pickedCatalogId != null) {
+    body.sku_catalog_id = input.pickedCatalogId;
+  }
 
   if (isReturn) {
     body.return_reason = input.returnReason.trim() || undefined;
     body.rma_id = input.rmaId.trim() || undefined;
-    if (input.pickedCatalogId != null) {
-      body.sku_catalog_id = input.pickedCatalogId;
-    }
   }
 
   return body;

@@ -66,14 +66,12 @@ Everything currently sits under `src/components/receiving/workspace/`, which
 makes Testing importing it read as borrowing. Same problem, same fix, as
 `StationComposerDock` → `OmnichannelComposerDock` (2026-08-01).
 
-**Moves to `src/design-system/components/feedback/`:**
+**Moves to `src/components/composer/` (staff mouth reaction SoT):**
 
 | File | Note |
 |---|---|
 | `inline-action-feedback-tone.ts` | already React-free; the guard test moves with it |
-| `InlineActionFeedbackCard.tsx` | + `InlineActionFeedbackChecklist` |
-| `WeldedFeedbackPanel.tsx` | the peel, the row, the disclosure, `edgeProgress` |
-| `WorkspaceActionFeedbackSlot.tsx` | rename → `InlineFeedbackSlot`; `Workspace` records where it was born |
+| `WeldedFeedbackPanel.tsx` | the peel, the row, the disclosure, `edgeProgress`, `WeldedStack` |
 
 **Stays in receiving** (domain, not chrome): `ReceiveFeedbackRegion`,
 `receive-phase-steps.ts`, `classify-receive-response.ts`, `ReceiveResponsePanel`.
@@ -86,6 +84,8 @@ catalogue and do not move.
 
 **Done when:** `npm run verify` green, no import of the panel resolves into
 `components/receiving/`, and the golden surface is pixel-unchanged.
+
+`InlineActionFeedbackCard` stays in receiving for dockless saves (D9); it imports the shared tone from composer.
 
 ---
 

@@ -7,10 +7,15 @@ NODE="${DESIGN_MCP_NODE:-$HOME/.local/share/mise/shims/node}"
 DS="$ROOT/tools/design-mcp/ds.mjs"
 
 CONTRACT=""
+STRICT=0
+if [ "${CYCLEFORGE_STAMP_STRICT:-0}" = "1" ] || [ -e "$ROOT/.cursor/stamp-strict" ]; then STRICT=1; fi
 if [ -x "$NODE" ] && [ -f "$DS" ]; then
-  # Always leave a stamp so the first UI write in a fresh session is not blocked
-  # solely because MCP tools were missing from the catalog.
-  "$NODE" "$DS" stamp >/dev/null 2>&1 || true
+  # Leave a stamp so the first UI write in a fresh session is not blocked solely
+  # because MCP tools were missing from the catalog — unless stamps are strict
+  # (D7 item 9): then only a real oracle call may stamp, never session start.
+  if [ "$STRICT" != "1" ]; then
+    "$NODE" "$DS" stamp >/dev/null 2>&1 || true
+  fi
   CONTRACT="$("$NODE" "$DS" contract "dumb station scan mouth gun only context ring" --limit 5 2>/dev/null || true)"
 fi
 # Keep the injected blob bounded — top match + naming law only.

@@ -39,7 +39,7 @@ test.describe('History carton delete', () => {
     const tracking = `QA-DEL-TRK-${stamp}`;
     const orderId = `QA-DEL-ORD-${stamp}`;
 
-    // 1. Add — the Band-1 "Add" flow (IncomingAddInboundOverlay → this endpoint),
+    // 1. Add — Incoming add walk → this endpoint,
     //    a manual inbound carton carrying a tracking number. Unique order_id so it
     //    gets its OWN carton (created:true) and delete cannot touch a fixture.
     const add = await request.post('/api/receiving/inbound/import-purchase', {

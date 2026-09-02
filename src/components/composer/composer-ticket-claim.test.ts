@@ -19,6 +19,7 @@ const src = (rel: string) => readFileSync(resolve(here, rel), 'utf8');
 const UNBOX = '../receiving/workspace/LineEditPanel.tsx';
 const TESTING = '../tech/TestingPanel.tsx';
 const NOTES = '../receiving/workspace/line-edit/LineNotesCard.tsx';
+const COMPOSER_HOST = './StationComposerHost.tsx';
 
 test('the commit CTA names the OUTCOME, on both faces', () => {
   // It is a labelled button in the dock now, not a bare return arrow, so the
@@ -92,6 +93,23 @@ test('no station lets the composer collapse the context bands', () => {
   }
 });
 
+test('the putaway location control stays mounted across Unbox and Ticket', () => {
+  const host = src(COMPOSER_HOST);
+  assert.match(host, /const locationFooter = locationAction;/);
+  assert.doesNotMatch(
+    host,
+    /const locationFooter = keepTrailing \? locationAction : undefined;/,
+    'Ticket must not remove the location scan control',
+  );
+});
+
+test('Unbox keeps location inline in the item row instead of adding a task context bar', () => {
+  const panel = src(UNBOX);
+  assert.doesNotMatch(panel, /TaskContextBar/);
+  assert.match(panel, /buildUnboxOverview/);
+  assert.match(panel, /onOpenLocation/);
+});
+
 test('the dock carries NO subject slice — the title lives in the display', () => {
   // Operator ruling 2026-08-31. A title strip at the top of the composer made
   // the dock read as a form and duplicated the title the ticket display already
@@ -142,8 +160,8 @@ test('filing a ticket archives carton photos on the same create POST', () => {
   // fileReceivingClaim → archivePhotos. The ticket-chip Archive row is the
   // retry, not the first copy.
   const hook = src('../receiving/workspace/line-edit/hooks/useComposerTicketClaim.ts');
-  const fileBody = hook.slice(hook.indexOf('const file ='), hook.indexOf('  const testCreate ='));
-  assert.match(fileBody, /\/api\/receiving\/zendesk-claim/);
+  const fileBody = hook.slice(hook.indexOf('const fileCreate ='), hook.indexOf('  const fileLink ='));
+  assert.match(fileBody, /\/api\/receiving\/zendesk-claim'/);
   assert.doesNotMatch(fileBody, /dryRun:\s*true/);
   assert.match(fileBody, /data\.archiveWarning/, 'failed NAS copy must surface on file');
 
@@ -167,7 +185,7 @@ test('Test create is a DEV tool — it never reaches a production dock', () => {
   assert.match(body, /dryRun: true/);
   assert.doesNotMatch(body, /onTicketCreated/, 'a dry run must not announce a ticket');
   // And it shows the operator the real assembled message.
-  assert.match(body, /template\.onDescriptionChange\(data\.description\)/);
+  assert.match(body, /setBodyState\(data\.description\)/);
 
   const notes = src(NOTES);
   assert.match(notes, /if \(claim\.canTest\) \{/, 'the drill row must be gated on canTest');
@@ -180,4 +198,46 @@ test('typing a note opens the Label band so the sticker shows it', () => {
   // left it, which is why this hangs off onChange and not an effect on value.
   assert.match(notes, /if \(next\.trim\(\)\) onNoteTyped\?\.\(\)/);
   assert.match(src(UNBOX), /onNoteTyped=\{\(\) => bands\.open\('label'\)\}/);
+});
+
+test('Omni Composer Ticket Cc seeds the same public-email history as the claim rail', () => {
+  // The rail restored receiving-claim:cc-emails; Ticket mode started []. Filing
+  // from StationComposerHost then omitted CCs the operator already saw on the ticket.
+  assert.match(
+    src('../../lib/composer/ticket-cc.ts'),
+    /COMPOSER_CC_HISTORY_STORAGE_KEY = 'receiving-claim:cc-emails'/,
+  );
+  assert.match(src(NOTES), /useComposerCcHistory/);
+  assert.match(src('./useTicketComposer.ts'), /useComposerCcHistory/);
+  assert.match(
+    src('../receiving/workspace/claim/hooks/useReceivingClaimController.ts'),
+    /useComposerCcHistory/,
+  );
+});
+
+test('Ticket claim drafts via AI from template facts — not a dumped template body', () => {
+  const hook = src('../receiving/workspace/line-edit/hooks/useComposerTicketClaim.ts');
+  assert.match(hook, /\/api\/receiving\/zendesk-claim\/draft/);
+  assert.doesNotMatch(hook, /useClaimTemplate/);
+  assert.match(hook, /prefillReason/);
+  assert.match(hook, /fileLink/);
+  assert.match(hook, /assist-seller/);
+  assert.match(src(NOTES), /ComposerClaimInset/);
+  assert.match(src(NOTES), /ComposerAccessoryStage/);
+  assert.match(src(NOTES), /ComposerAccessoryCluster/);
+  assert.match(src(NOTES), /returnClaimPrefill/);
+  assert.match(src(COMPOSER_HOST), /ticketHeaderEnd/);
+  assert.match(src(COMPOSER_HOST), /ticketAccessory/);
+  assert.match(src('./ComposerAccessoryStage.tsx'), /WeldedFeedbackPanel/);
+  assert.match(src('./ComposerAccessoryStage.tsx'), /disclose="always"/);
+  assert.doesNotMatch(src('./ComposerAccessoryStage.tsx'), /matchWidth/);
+  assert.match(hook, /persistSellerClaimMessageDraft/);
+  assert.match(
+    src('../receiving/workspace/claim/components/ClaimComposeStep.tsx'),
+    /claim-compose-composer-cue/,
+  );
+  assert.doesNotMatch(
+    src('../receiving/workspace/claim/components/ClaimComposeStep.tsx'),
+    /ClaimTemplateEditor/,
+  );
 });

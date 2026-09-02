@@ -34,6 +34,8 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { triagePanelControl } from '@/design-system/tokens/triage-panel';
+import { TRIAGE_PANEL_INNER_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 export interface IntakeComboboxOption {
@@ -124,7 +126,7 @@ export function IntakeCombobox({
           aria-label={ariaLabel ?? placeholder}
           disabled={disabled}
           data-testid={testId}
-          className={cn('h-9 w-full justify-between px-3 font-normal', className)}
+          className={cn(triagePanelControl('w-full justify-between px-3 font-normal'), className)}
         >
           <span className={cn('truncate', selected ? 'text-text-default' : 'text-text-faint')}>
             {selected ? selected.label : placeholder}
@@ -136,7 +138,11 @@ export function IntakeCombobox({
         align="start"
         // Full var() form — the bare `--var` arbitrary-value shorthand does
         // not compile in this Tailwind setup, which left the panel widthless.
-        className={cn('w-[var(--radix-popover-trigger-width)] p-0', contentClassName)}
+        className={cn(
+          'w-[var(--radix-popover-trigger-width)] overflow-hidden p-0',
+          TRIAGE_PANEL_INNER_CORNER,
+          contentClassName,
+        )}
       >
         <Command shouldFilter={!async}>
           <CommandInput

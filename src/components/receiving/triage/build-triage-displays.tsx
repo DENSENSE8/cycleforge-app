@@ -20,7 +20,7 @@
  */
 
 import dynamic from 'next/dynamic';
-import { History, Link2, MapPin, Ticket } from '@/components/Icons';
+import { History, Link2, Ticket, Warehouse } from '@/components/Icons';
 import { type SectionTab } from '@/design-system/components';
 import { buildSectionTabs } from '@/components/station/workbench';
 import { shouldUseUnmatchedItemsSurface } from '@/lib/receiving/intake-items-routing';
@@ -160,7 +160,7 @@ export function buildTriageDisplayTabs({
     {
       id: 'location',
       label: 'Locations',
-      icon: MapPin,
+      icon: Warehouse,
       // Two grains behind one leaf: the CARTON's door shelf (triage
       // `staging_location_id`, lane auto-routed) and each PRODUCT's putaway bin
       // (`receiving_line_putaway`). The subject select lives in the adapter;

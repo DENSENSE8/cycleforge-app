@@ -6,10 +6,11 @@
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { resolveDisplayCarrier } from '@/lib/carrier-brand';
 import { resolveMarketplacePlatformMeta } from '@/lib/marketplace-order-id';
+import { shortageCoverageFromWire } from '@/lib/orders/shortage-coverage';
 import { getDaysLateNullable } from '@/utils/date';
 import type { QueueDisplaySortColumn, QueueDisplaySortDir } from '@/utils/queue-display-sort';
 import { queueCarrierPin, queueChannelPin } from '@/utils/queue-display-sort';
-import type { QueueRowRecord } from './helpers';
+import { resolveRowStatus, type OrdersQueueMode, type QueueRowRecord } from './helpers';
 
 function deadlineTime(r: ShippedOrder): number {
   return new Date(r.deadline_at || r.created_at || 0).getTime();
@@ -43,6 +44,20 @@ function pickerName(record: QueueRowRecord): string {
 
 function packerName(record: QueueRowRecord): string {
   return personName(record, ['packed_by_name', 'packer_name']);
+}
+
+function amountValue(record: QueueRowRecord): number | null {
+  const n = Number(record.sale_amount);
+  return Number.isFinite(n) ? n : null;
+}
+
+function imageUrl(record: QueueRowRecord): string {
+  return String(record.catalog_image_url ?? '').trim();
+}
+
+function scannedOutMs(record: QueueRowRecord): number | null {
+  const t = Date.parse(String(record.ship_confirmed_at ?? ''));
+  return Number.isFinite(t) ? t : null;
 }
 
 /**
@@ -96,6 +111,7 @@ export function compareQueueColumnRows(
   b: ShippedOrder,
   column: QueueDisplaySortColumn,
   dir: QueueDisplaySortDir,
+  queueMode: OrdersQueueMode = 'fulfillment',
 ): number {
   const sign = dir === 'asc' ? 1 : -1;
   const ra = a as QueueRowRecord;
@@ -147,6 +163,43 @@ export function compareQueueColumnRows(
       const blank = compareBlankLast(!na, !nb);
       if (blank !== null) return blank;
       primary = na.localeCompare(nb, undefined, { sensitivity: 'base' });
+      break;
+    }
+    case 'status':
+      primary = (resolveRowStatus(ra, queueMode)?.label ?? '').localeCompare(
+        resolveRowStatus(rb, queueMode)?.label ?? '',
+        undefined,
+        { sensitivity: 'base' },
+      );
+      break;
+    case 'amount': {
+      const na = amountValue(ra);
+      const nb = amountValue(rb);
+      const blank = compareBlankLast(na == null, nb == null);
+      if (blank !== null) return blank;
+      primary = (na as number) - (nb as number);
+      break;
+    }
+    case 'image': {
+      const ua = imageUrl(ra);
+      const ub = imageUrl(rb);
+      const blank = compareBlankLast(!ua, !ub);
+      if (blank !== null) return blank;
+      primary = ua.localeCompare(ub, undefined, { sensitivity: 'base' });
+      break;
+    }
+    case 'scanned_out': {
+      const ta = scannedOutMs(ra);
+      const tb = scannedOutMs(rb);
+      const blank = compareBlankLast(ta == null, tb == null);
+      if (blank !== null) return blank;
+      primary = (ta as number) - (tb as number);
+      break;
+    }
+    case 'coverage': {
+      const ca = shortageCoverageFromWire(ra.shortage_coverage).label;
+      const cb = shortageCoverageFromWire(rb.shortage_coverage).label;
+      primary = ca.localeCompare(cb, undefined, { sensitivity: 'base' });
       break;
     }
     case 'carrier': {

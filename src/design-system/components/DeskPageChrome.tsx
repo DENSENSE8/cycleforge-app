@@ -18,7 +18,7 @@
  * ```text
  *      ┌ stage measure ─────────────────────────────────────────────┐
  *      │ Shipping                         [ Export ] [ Add order ]  │  ← page header
- *      │ To ship   Amazon Prep                                      │  ← tab row
+ *      │ To ship   Amazon Prep                                      │  ← fixed-width tab row
  *      │ ───────                                                    │     underline = active
  *      │                     ↕ detachment gap                       │
  *      │ ┌────────────────────────────────────────────────────────┐ │
@@ -37,6 +37,28 @@
  * The tab row is the only optional one. A single-surface page passes `tabs={[]}`
  * and wears the other three — which is what lets a page with no modes still be
  * this frame rather than a hand-rolled title over a bare table.
+ *
+ * ## This frame is ALWAYS the desk measure
+ *
+ * There is no edge-to-edge mode, and a `bleed` prop was added and removed on
+ * 2026-09-01 once the rule was stated precisely: *"the scan station's import a
+ * desk component, which is the data table, which should not be edge to edge.
+ * Only the scan station itself processing and triaging information — unboxing,
+ * quality control — should be edge to edge."*
+ *
+ * The line is not per-page, it is per-SURFACE-KIND, and it already falls where
+ * the code does:
+ *
+ * - A **bench** — the locked-720 scan/triage composition (`StationWorkbench`,
+ *   `StationPanelRoot`, `PackOrderPanel`, `LineEditPanel`, `TriagePanel`) — is
+ *   edge-to-edge and **does not mount this frame at all**. Nothing to configure.
+ * - A station's **browse side** — Unbox's lines table, Testing's history,
+ *   Packing's queue — imports DESK components (`ReceivingLinesTable`,
+ *   `TechAllTriageTable`, `UnshippedTable`). A desk table is a desk table
+ *   wherever it is mounted, so it wears the desk measure like every other one.
+ *
+ * So a prop was the wrong shape for the answer: the two kinds never meet in one
+ * component, and a flag would only let someone put a bench measure on a table.
  *
  * **Scan stations wear it too, as of 2026-08-31.** The rule used to be the
  * opposite — `docs/todo/desk-page-chrome-fixed-width-PLAN.md` §0 said a station
@@ -72,8 +94,9 @@
  * of it. Before this split, the tabs, the CTA, the table toolbar and the column
  * header were four chrome rows in one continuous slab, and an operator scanning
  * down could not tell where the page furniture stopped and the data started.
- * Every row above the card shares the card's measure, so the title, the tabs
- * and the first column all start on one vertical line.
+ * Every row above the card shares the card's measure. The title and card share
+ * their edge; tab labels are centered inside fixed-width trigger faces.
+ * Hold-drag those same faces to reorder — the tab row is the editor.
  *
  * ## Fullscreen swaps the frame — it does not widen it
  *
@@ -107,9 +130,9 @@
  */
 
 import { useEffect, type ReactNode } from 'react';
-import { cornerClass } from '../tokens/radius';
-import { focusRing } from '../tokens/focus-ring';
 import { DeskStageProvider } from './DeskStageContext';
+import { DeskTabList } from './DeskTabList';
+import type { DeskPageTab } from './DeskTab';
 import {
   DESK_CHROME_STAGE_BODY_CLASS,
   DESK_PAGE_HEADER_ROW_CLASS,
@@ -123,12 +146,7 @@ import {
 } from '../tokens/desk-stage';
 import { cn } from '@/utils/_cn';
 
-export interface DeskPageTab {
-  id: string;
-  label: string;
-  /** Rows behind the tab. Omit for honest absence — never print a fake 0. */
-  count?: number;
-}
+export type { DeskPageTab } from './DeskTab';
 
 export interface DeskPageChromeProps {
   /**
@@ -138,6 +156,22 @@ export interface DeskPageChromeProps {
    * cannot drift.
    */
   title: string;
+  /**
+   * Replaces the `<h1>` in the title position.
+   *
+   * For a FIND surface, the query is the page's identity — `/search` with
+   * `?q=stapler` is not "Search", it is that search. Printing a static title
+   * over the field that actually names the page spends the most valuable row on
+   * a constant (operator ruling 2026-09-01: *"with search on the top left"*).
+   *
+   * Pass `title` as well: it is the accessible name the slot cannot carry, and
+   * the fallback if the slot renders nothing.
+   *
+   * This is not a general-purpose header slot. A page whose identity is a NAME
+   * uses `title`; only a surface whose identity is the operator's own input
+   * earns this.
+   */
+  titleSlot?: ReactNode;
   /**
    * Optional line under the title — a count, a scope. Omit it when there is
    * nothing true to say; a placeholder subtitle is worse than none.
@@ -155,6 +189,11 @@ export interface DeskPageChromeProps {
   tabs: readonly DeskPageTab[];
   activeTab: string;
   onTabChange: (id: string) => void;
+  /**
+   * Hold-drag drop on this same tab row. Existing ids only — never mint or
+   * delete. Omit on scan-station / explicit tab rows that are not nav children.
+   */
+  onTabsReorder?: (orderedIds: string[]) => void;
   /**
    * Header action cluster, top-right (overall actions such as **Export**, then
    * the primary CTA). Composed by {@link useDeskActionSlotNode}. A node rather
@@ -181,6 +220,13 @@ export interface DeskPageChromeProps {
    * control that answers the same question as the tabs belongs here.
    */
   tabsLead?: ReactNode;
+  /**
+   * A control at the END of the tab row, on the SAME axis as the tabs.
+   *
+   * Same-axis overflow of the tab vocabulary (see {@link tabsLead}). Not a
+   * create-table plus and not a page-level CTA — intake stays in {@link addSlot}.
+   */
+  tabsTrail?: ReactNode;
   fullscreen: boolean;
   onToggleFullscreen: () => void;
   /** The desk body — a grid, a board, a form host. Mounted inside the card. */
@@ -190,12 +236,15 @@ export interface DeskPageChromeProps {
 
 export function DeskPageChrome({
   title,
+  titleSlot,
   subtitle,
   tabs,
   activeTab,
   onTabChange,
+  onTabsReorder,
   addSlot,
   tabsLead,
+  tabsTrail,
   fullscreen,
   onToggleFullscreen,
   children,
@@ -245,8 +294,10 @@ export function DeskPageChrome({
                 DESK_PAGE_HEADER_ROW_CLASS,
               )}
             >
-              <div className="min-w-0">
-                <h1 className="truncate text-role-title text-text-default">{title}</h1>
+              <div className="min-w-0 flex-1">
+                {titleSlot ?? (
+                  <h1 className="truncate text-role-title text-text-default">{title}</h1>
+                )}
                 {subtitle ? (
                   <p className="truncate text-role-caption text-text-soft">{subtitle}</p>
                 ) : null}
@@ -261,7 +312,7 @@ export function DeskPageChrome({
             </div>
 
             {/* ── Tab row — tabs (+ same-axis overflow), underline selection ── */}
-            {tabs.length === 0 && !tabsLead ? null : (
+            {tabs.length === 0 && !tabsLead && !tabsTrail ? null : (
             <div
               data-testid="desk-page-chrome-band"
               className={cn(
@@ -271,77 +322,26 @@ export function DeskPageChrome({
               )}
             >
               {/*
-                First tab is `pl-0` so its LABEL shares the title's left edge
-                without pulling the tablist off the row. A `-ml-3` on this
-                tablist used to cancel `px-3`, but the active tab's `border-b`
-                is on the HIT box — so the selection hung 12px left of the
-                row's hairline (operator 2026-08-31).
-              */}
-              {/*
                 Same-axis overflow, abutting the tablist with no gap — it reads
                 as the head of the tab vocabulary rather than a control beside
-                it. When present it also takes the row's left edge, so the
-                first tab drops its `first:pl-0` alignment claim to the lead.
+                it. The tablist owns the remaining width while each trigger keeps
+                its fixed width and centers its label with or without a lead.
               */}
               {tabsLead}
-              <div
-                role="tablist"
-                className={cn(
-                  'flex min-w-0 flex-1 items-stretch gap-1',
-                  tabsLead && '[&>button:first-child]:pl-3',
-                )}
-              >
-                {tabs.map((tab) => {
-                  const active = tab.id === activeTab;
-                  return (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      role="tab"
-                      aria-selected={active}
-                      onClick={() => onTabChange(tab.id)}
-                      data-testid={`desk-tab-${tab.id}`}
-                      data-active={active ? '' : undefined}
-                      className={cn(
-                        'ds-raw-button inline-flex shrink-0 items-center gap-1 px-3 first:pl-0 text-role-caption',
-                        /*
-                          Selection IS the rule, not a bar above it.
-                          `DESK_TAB_ROW_CLASS` draws the full-width hairline on
-                          this row's bottom border; `-mb-px` pulls each tab's own
-                          bottom border down onto that exact pixel, so the dark
-                          segment REPLACES the soft rule under the active tab
-                          instead of stacking a second line on top of it. That
-                          stack is what read as an underline floating off the
-                          hairline.
-                        */
-                        '-mb-px border-b',
-                        // Colour only. A tab that slid or grew would move its
-                        // neighbours, which ops chrome forbids (AGENTS.md) —
-                        // every tab carries the border, inactive ones
-                        // transparent, so activating one changes no geometry.
-                        'transition-colors duration-100 ease-out',
-                        cornerClass('flush'),
-                        focusRing('control'),
-                        active
-                          ? 'border-text-default font-semibold text-text-default'
-                          : 'border-transparent text-text-muted hover:text-text-default',
-                      )}
-                    >
-                      <span className="truncate">{tab.label}</span>
-                      {typeof tab.count === 'number' ? (
-                        <span
-                          className={cn(
-                            'tabular-nums text-role-micro',
-                            active ? 'text-text-soft' : 'text-text-faint',
-                          )}
-                        >
-                          {tab.count > 99 ? '99+' : tab.count}
-                        </span>
-                      ) : null}
-                    </button>
-                  );
-                })}
-              </div>
+              <DeskTabList
+                tabs={tabs}
+                activeTab={activeTab}
+                onTabChange={onTabChange}
+                onTabsReorder={onTabsReorder}
+              />
+              {tabsTrail ? (
+                <div
+                  data-testid="desk-page-tabs-trail"
+                  className="flex shrink-0 items-center pl-1"
+                >
+                  {tabsTrail}
+                </div>
+              ) : null}
             </div>
             )}
           </>

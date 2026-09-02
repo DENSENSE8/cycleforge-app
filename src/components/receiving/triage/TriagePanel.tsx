@@ -55,7 +55,9 @@ import {
   StationScanPaneHost,
   STATION_WORKBENCH_COLUMN,
 } from '@/components/station/workbench';
-import { StationContextBar } from '@/components/station/entity-context';
+import {
+  StationContextBar,
+} from '@/components/station/entity-context';
 import { resolveTriageTerminal } from './terminal/triage-terminal';
 import { invalidateSupportContextCaches } from '@/hooks';
 import {
@@ -522,6 +524,7 @@ export function TriagePanel({
                       editLines
                       serialScan={false}
                       unitsChrome={false}
+                      onOpenLocation={() => openDisplays('location')}
                       c={c}
                     />
                     {/* Nothing stacks under the items. Shelf + lane left the

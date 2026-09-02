@@ -14,7 +14,14 @@ import {
   buildOrderExportRow,
 } from '@/lib/dashboard/order-export-csv';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
+import { useTableSelection } from '@/hooks/useTableSelection';
+import { OrdersCaughtUpEmptyState } from '@/components/dashboard/OrdersCaughtUpEmptyState';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
+import { isOrdersQueueCaughtUp } from '@/lib/orders/orders-caught-up-copy';
+import {
+  EMPTY_ONBOARDING_STATS,
+  type OnboardingStats,
+} from '@/lib/onboarding/steps';
 import { dispatchCloseShippedDetails, dispatchOpenShippedDetails } from '@/utils/events';
 import { unshippedOrdersQuery, unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 import {
@@ -38,7 +45,7 @@ import {
   insertUnshippedOrderIntoCache,
 } from '@/lib/queries/dashboard-cache-patch';
 import { SHIPPING_PATH } from '@/components/outbound/outbound-sidebar-shared';
-import { SHIPPING_ORDERS_PATH, ORDERS_DESK_CONTEXT_KEY, ORDERS_DESK_SUPPORT_CONTEXT, parseOrdersDeskContext } from '@/lib/shipping/orders-desk';
+import { SHIPPING_ORDERS_PATH, SHIPPING_SHORTAGE_PATH, ORDERS_DESK_CONTEXT_KEY, ORDERS_DESK_SUPPORT_CONTEXT, parseOrdersDeskContext } from '@/lib/shipping/orders-desk';
 import type { ShippedOrder } from '@/types/orders';
 import type {
   OrdersQueueColumn,
@@ -147,25 +154,25 @@ export function UnshippedTable({
   onPrimaryPainted,
 }: UnshippedTableProps = {}) {
   const pathname = usePathname();
+  const isShortageDesk =
+    pathname === SHIPPING_SHORTAGE_PATH ||
+    pathname.startsWith(`${SHIPPING_SHORTAGE_PATH}/`);
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const orgId = user?.organizationId;
-  const searchQuery = String(searchParams.get('search') || '').trim();
+  const [searchQuery, setSearchQuery] = useState('');
   // Non-scan-critical: keep the prior list paintable while the typed query catches up.
-  const deferredSearchQuery = useDeferredValue(searchQuery);
+  const deferredSearchQuery = useDeferredValue(searchQuery.trim());
   // Fulfillment queue stages: pending (not tested) and tested (packing now).
   const stageParam = String(searchParams.get('stage') || 'all').toLowerCase();
 
   // Legacy `?stage=awaiting` → Outbound · Labels (awaiting moved off Unshipped).
   useEffect(() => {
     if (stageParam !== 'awaiting') return;
-    const params = new URLSearchParams();
-    if (searchQuery) params.set('q', searchQuery);
-    const qs = params.toString();
-    router.replace(qs ? `${SHIPPING_PATH}?${qs}` : SHIPPING_PATH, { scroll: false });
-  }, [stageParam, searchQuery, router]);
+    router.replace(SHIPPING_PATH, { scroll: false });
+  }, [stageParam, router]);
 
   const stageFilter: 'all' | 'pending' | 'tested' | 'packed' =
     stageParam === 'pending' ? 'pending'
@@ -305,6 +312,18 @@ export function UnshippedTable({
     enabled: !deferredSearchQuery,
   });
 
+  const onboardingStatsQuery = useQuery({
+    queryKey: ['onboarding-stats'],
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+    queryFn: async (): Promise<OnboardingStats> => {
+      const res = await fetch('/api/onboarding/stats');
+      if (!res.ok) return EMPTY_ONBOARDING_STATS;
+      const body = (await res.json()) as { stats?: OnboardingStats };
+      return body.stats ?? EMPTY_ONBOARDING_STATS;
+    },
+  });
+
   const ordersChannelName = safeChannelName(() => getOrdersChannelName(orgId!));
 
   useAblyChannel(
@@ -401,12 +420,8 @@ export function UnshippedTable({
   // where the grouped row model is built. A fresh closure per render there is the
   // same defeat-the-memo problem as an unmemoized `records`.
   const clearSearch = useCallback(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('search');
-    const nextSearch = params.toString();
-    const nextPath = pathname || '/shipping/orders';
-    router.replace(nextSearch ? `${nextPath}?${nextSearch}` : nextPath);
-  }, [searchParams, pathname, router]);
+    setSearchQuery('');
+  }, []);
 
   const handleOpenRecord = useCallback(
     (record: ShippedOrder) => {
@@ -483,6 +498,8 @@ export function UnshippedTable({
           hasTechScan: Boolean(row.has_tech_scan),
           isOutOfStock: Boolean(row.is_out_of_stock),
         });
+
+        if (isShortageDesk && state !== 'BLOCKED') return false;
 
         if (fulfillmentLane === 'tested') {
           if (lifecycle === 'PACKED_STAGED') return false;
@@ -577,6 +594,19 @@ export function UnshippedTable({
     patchPaperwork(null);
   }, [patchPaperwork]);
 
+  const openLabelsForRecord = useCallback(
+    (record: ShippedOrder) => {
+      if (cagedOnly) return;
+      const id = Number(record.id);
+      if (!Number.isFinite(id) || id <= 0) return;
+      // Same XOR as exceptions: the current table is the rail, this row is
+      // the record. Do not expand a band under the grid.
+      setWalkIds(null);
+      patchPaperwork(id);
+    },
+    [cagedOnly, patchPaperwork],
+  );
+
   const openLabelsWalk = useCallback(() => {
     if (cagedOnly || paperworkId != null) return;
     const selected = selectedRailRows
@@ -627,11 +657,12 @@ export function UnshippedTable({
     [],
   );
 
-  // First-run teaching state: a brand-new org with zero unshipped orders and no
-  // active search/filter sees the "connect a sales channel" CTA instead of three
-  // empty lanes that read as broken. Any active search/status/staff filter falls
-  // through to the board, which owns its own typed "no matches" empty per lane.
-  const isFirstRunEmpty =
+  // Idle empty (no search/filter): either first-run (connect a channel) or
+  // inbox-zero (channel already linked, queue is clear). Any active
+  // search/status/staff/late/cage filter falls through to the board's typed
+  // "no matches" empty.
+  const isIdleEmptyQueue =
+    !isShortageDesk &&
     // An empty cage is not a brand-new org — showing "connect a sales channel"
     // there would answer a question nobody asked.
     !cagedOnly &&
@@ -642,32 +673,25 @@ export function UnshippedTable({
     !queueError &&
     !query.isLoading &&
     allRecords.length === 0 &&
-    !searchQuery &&
+    !searchQuery.trim() &&
     !statusFilter &&
     !urgentOnly &&
+    !lateOnly &&
+    !rowFlagFilter &&
+    !packPlacedOnly &&
+    packStationId == null &&
     stageFilter === 'all' &&
     staffId === undefined;
-
-  // Degraded outranks every absence state: with nothing to show and a failed
-  // read, the only honest screen is the one that says so and offers the retry.
-  if (queueError && records.length === 0) {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-surface-card p-6">
-        <GridDegradedBox
-          message="Couldn't load the queue. This is not an empty queue — the orders could not be read."
-          onRetry={retryQueue}
-        />
-      </div>
-    );
-  }
-
-  if (isFirstRunEmpty) {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-surface-card p-6">
-        <OrdersFirstRunEmptyState />
-      </div>
-    );
-  }
+  const shippedToday = queueCounts?.shippedToday ?? 0;
+  const onboardingStats = onboardingStatsQuery.data ?? EMPTY_ONBOARDING_STATS;
+  const channelLinked = isOrdersQueueCaughtUp({
+    shippedToday,
+    ordersEver: onboardingStats.orders,
+    integrationsConnected: onboardingStats.integrationsConnected,
+  });
+  const isCaughtUpEmpty = isIdleEmptyQueue && channelLinked;
+  const isFirstRunEmpty =
+    isIdleEmptyQueue && !onboardingStatsQuery.isLoading && !channelLinked;
 
   // Phase 2 "Load more": the stage-aware total (server, dedup-independent) exceeds
   // the loaded ceiling ⇒ more rows exist. Bumping the ceiling refetches the wider
@@ -691,14 +715,7 @@ export function UnshippedTable({
               ? (queueCounts?.byStage as { packed?: number } | undefined)?.packed ??
                 records.length
               : (queueCounts?.total ?? 0);
-  // The caged endpoint returns the whole held set (bounded at 500) in one
-  // read, so there is no second page to offer.
-  // The control moved INTO the status bar's count sentence. It used to be a
-  // band below the bar carrying its own "Showing N of M" against a different
-  // denominator than the bar's — two answers to "how many are left", stacked.
-  // It also mounted after first paint, shoving the last data row down while the
-  // operator was already reading.
-  const showLoadMore = !cagedOnly && !searchQuery && stageTotal > rowLimit;
+  const showLoadMore = !cagedOnly && !searchQuery.trim() && stageTotal > rowLimit;
   const onLoadMore = showLoadMore ? () => setRowLimit((n) => n + 200) : undefined;
 
   const onToShipDesk =
@@ -733,6 +750,35 @@ export function UnshippedTable({
     />
   ) : null;
 
+  // Degraded outranks every absence state: with nothing to show and a failed
+  // read, the only honest screen is the one that says so and offers the retry.
+  if (queueError && records.length === 0) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-surface-card p-6">
+        <GridDegradedBox
+          message="Couldn't load the queue. This is not an empty queue — the orders could not be read."
+          onRetry={retryQueue}
+        />
+      </div>
+    );
+  }
+
+  if (isCaughtUpEmpty) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-surface-card p-6">
+        <OrdersCaughtUpEmptyState shippedToday={shippedToday} />
+      </div>
+    );
+  }
+
+  if (isFirstRunEmpty) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-surface-card p-6">
+        <OrdersFirstRunEmptyState />
+      </div>
+    );
+  }
+
   if (paperworkId != null && onToShipDesk) {
     return (
       <>
@@ -765,14 +811,17 @@ export function UnshippedTable({
         railSelection={railSelection}
         onOpenRecord={handleOpenRecord}
         onClearSearch={clearSearch}
-        searchEmptyTitle={searchEmptyTitle}
-        searchResultLabel={searchResultLabel}
+        searchEmptyTitle={isShortageDesk ? 'No shortages' : searchEmptyTitle}
+        searchResultLabel={isShortageDesk ? 'shortages' : searchResultLabel}
         clearSearchLabel={clearSearchLabel}
         onLoadMore={onLoadMore}
         copyExport={copyExport}
         copyExportPlacement={onToShipDesk ? 'menu' : 'header'}
         stale={queueError}
         onRetryStale={retryQueue}
+        onOpenLabels={onToShipDesk ? openLabelsForRecord : undefined}
+        onStartLabelsWalk={onToShipDesk ? openLabelsWalk : undefined}
+        shortageDesk={isShortageDesk}
       />
     </>
   );
@@ -811,7 +860,8 @@ function QueueStaleBand({ onRetry }: { onRetry: () => void }) {
  * the same grid over filtered records.
  *
  * Local to this file on purpose. The feed above gates a brand-new org onto
- * `OrdersFirstRunEmptyState` BEFORE any grid mounts, so the spreadsheet hook
+ * `OrdersFirstRunEmptyState` (and a linked org onto `OrdersCaughtUpEmptyState`)
+ * BEFORE any grid mounts, so the spreadsheet hook
  * (which publishes a grid-priority record cursor) has to sit behind that gate
  * rather than run unconditionally in the feed. The old `UnshippedShelfBoard`
  * module was deleted into this component
@@ -837,11 +887,13 @@ function UnshippedSheet({
   clearSearchLabel = 'Show All Pending Orders',
   selectMode = false,
   railSelection = false,
-  onLoadMore,
   copyExport,
   copyExportPlacement = 'header',
   stale = false,
   onRetryStale,
+  onOpenLabels,
+  onStartLabelsWalk,
+  shortageDesk = false,
 }: {
   records: ShippedOrder[];
   loading: boolean;
@@ -862,7 +914,14 @@ function UnshippedSheet({
   /** A read failed while these rows were already painted — see {@link QueueStaleBand}. */
   stale?: boolean;
   onRetryStale?: () => void;
+  /** Tracking hover Label → paperwork walk (table XOR), not an in-row band. */
+  onOpenLabels?: (record: ShippedOrder) => void;
+  /** Selection-bar Labels / `l` → same walk as the header CTA. */
+  onStartLabelsWalk?: () => void;
+  shortageDesk?: boolean;
 }) {
+  const selectedRows = useTableSelection<ShippedOrder>(DASHBOARD_ORDERS_SELECTION_SCOPE);
+
   const sheet = useOrdersSpreadsheet({
     ariaLabel: 'Shelved unshipped orders',
     records,
@@ -877,15 +936,34 @@ function UnshippedSheet({
     selectionScope: DASHBOARD_ORDERS_SELECTION_SCOPE,
     railSelection,
     queueMode: 'fulfillment',
+    shortageDesk,
     searchEmptyTitle,
     searchResultLabel,
     clearSearchLabel,
     'data-testid': 'pending-grid-body',
+    onOpenLabels,
   });
   const chrome = useToShipChrome();
   // Live verbs from the first checkbox — Assign / Listing → staff / … sit
   // flush-left on the status bar. The rail still owns the long form at 3+.
-  const selectionActions = useRailStatusBarActions();
+  const railActions = useRailStatusBarActions();
+  // Appended lane-locally rather than registered globally: label work belongs
+  // to the outbound queue, not to every surface that supports rail selection.
+  // `hotkey: 'l'` is bound (and painted on the button by the staff `?`) by
+  // TableStatusBar's own useSelectionStatusBarHotkeys — no second listener.
+  const selectionActions = useMemo(() => {
+    if (selectedRows.length === 0 || !onStartLabelsWalk) return railActions;
+    return [
+      ...railActions,
+      {
+        key: 'labels',
+        label: 'Labels',
+        variant: 'primary' as const,
+        hotkey: 'l',
+        onClick: onStartLabelsWalk,
+      },
+    ];
+  }, [railActions, selectedRows.length, onStartLabelsWalk]);
 
   // The spreadsheet hook publishes the cursor (it owns grouping + folds);
   // this lane only turns the keyboard on.

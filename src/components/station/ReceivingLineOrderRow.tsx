@@ -16,6 +16,8 @@ import {
   shouldShowWorkflowStatusIcon,
 } from '@/components/station/receiving-constants';
 import { ReceivingIdentityChips } from '@/components/receiving/ReceivingIdentityChips';
+import { listingLinksForReceivingRow } from '@/lib/receiving/listing-links';
+import { ProductTitleLink } from '@/components/tables/compound/ProductTitleLink';
 import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import {
   RowTitle,
@@ -136,6 +138,7 @@ export function ReceivingLineOrderRow({
   // Unfound cartons (no Zoho PO) arrive labelled "Unfound PO" from the server
   // (buildUnmatchedEmptyReceivingLine / UNMATCHED_EMPTY_LINE_LABEL).
   const productTitle = receivingProductTitle(row);
+  const productTitleHref = listingLinksForReceivingRow(row)[0]?.href ?? null;
   const quantityText = `${row.quantity_received}/${row.quantity_expected ?? '?'}`;
   const qtyExpected = row.quantity_expected ?? 0;
   const workflowLabel = workflowStatusTableLabel(row.workflow_status || 'EXPECTED');
@@ -226,7 +229,13 @@ export function ReceivingLineOrderRow({
           }
           dotTitle={coarseLabel ?? workflowLabel}
           dotTrack={META_COL.dotTrackWide}
-          title={productTitle}
+          title={
+            <ProductTitleLink
+              title={productTitle}
+              href={productTitleHref}
+              className="text-role-data"
+            />
+          }
         />
         <RowMetaColumns
           indent={metaIndentFor('wide', selectMode)}

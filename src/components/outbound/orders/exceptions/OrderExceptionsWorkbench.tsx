@@ -104,6 +104,7 @@ import { SHIPPING_EXCEPTIONS_PATH } from '@/lib/shipping/orders-desk';
 import type { OrderExceptionRow } from '@/lib/orders/order-exception-types';
 import type { ShippedOrder } from '@/types/orders';
 import { ExceptionEditor } from './ExceptionEditor';
+import { DeskRecordWalkHost } from '@/design-system/components/DeskRecordWalkHost';
 
 interface ExceptionsPayload {
   ok: boolean;
@@ -123,9 +124,9 @@ export function OrderExceptionsWorkbench() {
 
   const selectedParam = Number(searchParams.get('order'));
   const selectedId = Number.isFinite(selectedParam) && selectedParam > 0 ? selectedParam : null;
-  const search = searchParams.get('search') ?? '';
+  const [search, setSearch] = useState('');
 
-  const [debounced, setDebounced] = useState(search);
+  const [debounced, setDebounced] = useState('');
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search), 250);
     return () => clearTimeout(t);
@@ -205,7 +206,7 @@ export function OrderExceptionsWorkbench() {
     loading: query.isLoading,
     searchValue: search,
     onOpenRecord: openRecord,
-    onClearSearch: () => patchParams({ search: null }),
+    onClearSearch: () => setSearch(''),
     emptyMessage: 'Nothing blocked — every order has what it needs to ship.',
     searchEmptyTitle: 'No held order found',
     searchResultLabel: 'held orders',
@@ -261,28 +262,26 @@ export function OrderExceptionsWorkbench() {
         // The FORM display: rail beside the record. `min-h-0` is load-bearing —
         // TriageScrollLayout's scrollport will not scroll without a
         // height-constrained flex parent.
-        <div className="flex min-h-0 min-w-0 flex-1">
-          <aside
-            className="flex w-[22rem] shrink-0 flex-col border-r border-border-hairline bg-surface-card"
-            aria-label="Exception queue"
-            data-testid="exceptions-rail"
-          >
-            <ExceptionsRecentRail
-              rows={exceptions}
-              selectedId={selectedId}
-              onSelect={(id) => patchParams({ order: String(id) })}
-              loading={query.isLoading}
-            />
-          </aside>
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-card">
-            <ExceptionEditor
-              key={selected.id}
-              row={selected}
-              onChanged={handleChanged}
-              onExit={closeRecord}
-            />
-          </div>
-        </div>
+        <DeskRecordWalkHost
+          railLabel="Exception queue"
+          rail={
+            <div data-testid="exceptions-rail" className="flex min-h-0 min-w-0 flex-1 flex-col">
+              <ExceptionsRecentRail
+                rows={exceptions}
+                selectedId={selectedId}
+                onSelect={(id) => patchParams({ order: String(id) })}
+                loading={query.isLoading}
+              />
+            </div>
+          }
+        >
+          <ExceptionEditor
+            key={selected.id}
+            row={selected}
+            onChanged={handleChanged}
+            onExit={closeRecord}
+          />
+        </DeskRecordWalkHost>
       ) : (
         // The TABLE display, small by default now that the route has a stage.
         <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="exceptions-queue">
@@ -311,7 +310,7 @@ export function OrderExceptionsWorkbench() {
             columns={columns}
             search={{
               value: search,
-              onChange: (value) => patchParams({ search: value || null }),
+              onChange: setSearch,
               placeholder: 'Search order #, item #, SKU or title…',
             }}
           />

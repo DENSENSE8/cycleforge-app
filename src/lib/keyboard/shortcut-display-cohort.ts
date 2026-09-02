@@ -69,7 +69,6 @@ export const SHORTCUT_DISPLAY_ENGINE_CONTRACT = {
   hotkeyCapTestId: /data-testid="data-table-selection-hotkey-cap"/,
   ignoreKeyRepeat: /e\.repeat/,
   cheatSheetYields: /isSelectionInlineHotkeySurfaceActive/,
-  hookToggle: /export function toggleSelectionInlineHotkeys/,
 } as const;
 
 /** Absence predicates — standing chrome / sheet / foot `?` / layout-shifting park. */
@@ -85,6 +84,38 @@ export const SHORTCUT_DISPLAY_FORBIDDEN = {
   whiteTeachingFace: /bg-surface-canvas/,
   mutedTeachingLetter: /text-text-muted/,
 } as const;
+
+export type ShortcutEngineContractName = keyof typeof SHORTCUT_DISPLAY_ENGINE_CONTRACT;
+export type ShortcutForbiddenName = keyof typeof SHORTCUT_DISPLAY_FORBIDDEN;
+
+/** Which file each presence predicate greps — same files the tripwire already reads. */
+export function shortcutEngineContractSource(name: ShortcutEngineContractName): string {
+  switch (name) {
+    case 'opaqueKeycap':
+    case 'softKeyRim':
+    case 'blackLetter':
+    case 'keyElevation':
+    case 'squaredKeycap':
+      return SHORTCUT_DISPLAY_ENGINE.keyboardKey;
+    case 'cheatSheetYields':
+      return SHORTCUT_DISPLAY_ENGINE.cheatSheet;
+    case 'ignoreKeyRepeat':
+      return SHORTCUT_DISPLAY_ENGINE.inlineHotkeys;
+    default:
+      return SHORTCUT_DISPLAY_ENGINE.statusBar;
+  }
+}
+
+/** Which file each absence predicate greps. KeyboardKey paint must not be scored against the status bar. */
+export function shortcutEngineForbiddenSource(name: ShortcutForbiddenName): string {
+  switch (name) {
+    case 'whiteTeachingFace':
+    case 'mutedTeachingLetter':
+      return SHORTCUT_DISPLAY_ENGINE.keyboardKey;
+    default:
+      return SHORTCUT_DISPLAY_ENGINE.statusBar;
+  }
+}
 
 export const SHORTCUT_DISPLAY_PAINT_LAW = {
   overview:

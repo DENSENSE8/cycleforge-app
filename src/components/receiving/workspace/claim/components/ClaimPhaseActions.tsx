@@ -228,13 +228,18 @@ function ClaimPhaseActions({
 /** Sticky footer — backup note (ticket phase) + phase CTA (no Cancel). */
 export function ClaimActionFooter({
   c,
+  chrome = 'modal',
   onContinueToSeller,
 }: {
   c: ReceivingClaimController;
+  chrome?: 'modal' | 'display';
   onContinueToSeller?: () => void;
 }) {
   const phase = resolveClaimFooterPhase(c);
   if (!phase) return null;
+  // Ticket File / Link & send live on the Omni Composer. Displays keeps backup
+  // chrome out of a second footer so Enter in Ticket is the only file.
+  if (chrome === 'display' && phase === 'ticket') return null;
   return (
     <ClaimPhaseActions
       c={c}

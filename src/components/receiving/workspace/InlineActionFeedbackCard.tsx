@@ -7,9 +7,8 @@
  * description save, etc.).
  *
  * TONE is the shared four-state machine — `loading` · `success` · `warning` ·
- * `error`, defined in the React-free sibling
- * {@link ./inline-action-feedback-tone} so guards can import it. This file
- * re-exports it for the callers that already reach for it here.
+ * `error`, defined in `@/components/composer/inline-action-feedback-tone`.
+ * This file re-exports it for callers that already reach for it here.
  */
 
 import type { ReactNode } from 'react';
@@ -21,7 +20,7 @@ import { useMotionPresence } from '@/design-system/foundations/motion-framer-hoo
 import {
   INLINE_ACTION_FEEDBACK_TONE,
   type InlineActionFeedbackTone,
-} from './inline-action-feedback-tone';
+} from '@/components/composer/inline-action-feedback-tone';
 
 // Re-exported so the ~5 existing `from './InlineActionFeedbackCard'` imports
 // keep resolving; the map itself lives in the React-free sibling above.
@@ -30,7 +29,7 @@ export {
   toneFromVerdictHue,
   type InlineActionFeedbackTone,
   type InlineActionFeedbackPalette,
-} from './inline-action-feedback-tone';
+} from '@/components/composer/inline-action-feedback-tone';
 
 export type InlineActionFeedbackPayload = {
   tone: InlineActionFeedbackTone;

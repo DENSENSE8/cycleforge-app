@@ -84,6 +84,7 @@ export function HomeDailyMode() {
   const searchParams = useSearchParams();
   const { has } = useAuth();
   const canManage = has('admin.manage_staff');
+  const canReports = has('reports.view');
   const composerRef = useRef<HTMLInputElement>(null);
 
   const todayKey = getCurrentPSTDateKey();
@@ -127,6 +128,7 @@ export function HomeDailyMode() {
   const toggle = useToggleCheck(dateKey);
   const { addItem, retireItem } = useItemActions(dateKey);
   const [draft, setDraft] = useState('');
+  const [query, setQueryState] = useState('');
   /**
    * The composer is summoned by the page CTA rather than permanently docked.
    * Home is the first screen of a shift and this file's own frame docblock
@@ -136,7 +138,6 @@ export function HomeDailyMode() {
 
   const mine = data?.mine;
   const doneSet = useMemo(() => new Set(mine?.doneItemIds ?? []), [mine]);
-  const query = searchParams.get('q') ?? '';
   const status = parseDailyStatusFilter(searchParams.get('filter')) === 'done' ? 'done' : 'open';
   const visibleItems = useMemo(
     () => filterDailyCheckItems(data?.items ?? [], doneSet, query, status),
@@ -204,16 +205,7 @@ export function HomeDailyMode() {
 
   const selected = data?.items.find((item) => item.id === selectedId) ?? null;
 
-  const setQuery = useCallback(
-    (next: string) => {
-      writeParams((p) => {
-        const q = next.trim();
-        if (q) p.set('q', q);
-        else p.delete('q');
-      });
-    },
-    [writeParams],
-  );
+  const setQuery = useCallback((next: string) => setQueryState(next), []);
 
   const setStatus = useCallback(
     (next: ReturnType<typeof parseDailyStatusFilter>) => {
@@ -280,6 +272,22 @@ export function HomeDailyMode() {
         </DeskHeaderAction>
       ) : null,
     [canManage, isToday, openComposer],
+  );
+
+  const sessionsHref = `/reports?tab=sessions&date=${encodeURIComponent(dateKey)}`;
+  const sessionsAction = useMemo(
+    () =>
+      canReports ? (
+        <DeskHeaderAction
+          variant="secondary"
+          size="sm"
+          type="button"
+          onClick={() => router.push(sessionsHref)}
+        >
+          Sessions
+        </DeskHeaderAction>
+      ) : null,
+    [canReports, router, sessionsHref],
   );
 
   return (
@@ -394,6 +402,7 @@ export function HomeDailyMode() {
           />
         )}
       />
+      <DeskActionSlotRegistrar role="overall">{sessionsAction}</DeskActionSlotRegistrar>
       <DeskActionSlotRegistrar>{addAction}</DeskActionSlotRegistrar>
 
       {canManage && isToday && composerOpen ? (

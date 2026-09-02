@@ -3,7 +3,8 @@
  *
  * System rows are ensured on read so a new tenant is never empty. Custom
  * purposes are created at session-start (POST /api/sessions), not here.
- * Gate rationale (no per-session permission): ../route.ts.
+ * Gate rationale (no per-session permission): same as POST /api/sessions/sync
+ * — this is the operator's own catalog read, not an admin report.
  */
 
 import { NextResponse } from 'next/server';

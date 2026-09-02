@@ -17,7 +17,7 @@ import { QA_FIXTURE_ORDERS } from '@/lib/tenancy/qa-org';
 test.describe('Pending / To Ship — docs-first inspector', () => {
   test.skip(({ browserName }) => browserName === 'webkit', 'queue grid is a desktop layout');
 
-  const inspectorFor = (page: Page) => page.locator('aside[role="region"]');
+  const inspectorFor = (page: Page) => page.getByTestId('desk-order-stage-overlay');
 
   /**
    * Open the QA fixture order when it is on the lane, else the first row — the
@@ -47,7 +47,7 @@ test.describe('Pending / To Ship — docs-first inspector', () => {
     await openPendingRow(page);
     const inspector = inspectorFor(page);
 
-    // Non-modal region, not a blocking dialog (the lane's standing contract).
+    // Center Lock stage overlay — named region on the desk table, not a right rail aside.
     await expect(inspector).toHaveAttribute('aria-label', /^Order .+ details$/);
     expect(await inspector.getAttribute('aria-modal')).toBeNull();
 

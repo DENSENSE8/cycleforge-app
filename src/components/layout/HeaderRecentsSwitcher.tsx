@@ -1,19 +1,17 @@
 'use client';
 
 /**
- * Cross-page MRU jump control for GlobalHeader (house SoT).
- * Closed = History icon ("More recent"); open = up to {@link MAX_RECENT_PAGES}
- * prior displays from {@link useRecentPages}. Navigates via
- * {@link useSidebarChildNav}. Collapsed by default — no always-visible chips
- * in the spine header (those were removed; this popover is the only MRU face).
+ * Header door for this staffer's work sessions.
  *
- * Menu chrome = {@link HeaderChromeMenu} / {@link HeaderChromeMenuItem} (shared
- * with Page + Pins).
+ * Closed face / menu copy and glyphs come from {@link APP_SIDEBAR_NAV}
+ * MasterNav L1 rows — never desk-tab compounds (`Shipping · To ship`) and
+ * never session.title.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { AnchoredLayer, IconButton } from '@/design-system/primitives';
+import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { History } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,6 +19,7 @@ import { useOrgNavItems } from '@/hooks/useOrgNavItems';
 import { prefetchNavData } from '@/lib/nav/nav-data-prefetch';
 import {
   filterPageChildren,
+  getMasterNavItem,
   getSidebarPageNav,
   type SidebarNavItem,
   type SidebarPageNav,
@@ -28,7 +27,7 @@ import {
 import { useActiveSidebarChild } from '@/components/sidebar/master-nav/useActiveSidebarChild';
 import { useSidebarChildNav } from '@/components/sidebar/master-nav/useSidebarChildNav';
 import {
-  MAX_RECENT_PAGES,
+  recentsAsMasterNavRows,
   useRecentPages,
 } from '@/components/sidebar/master-nav/useRecentPages';
 import { cn } from '@/utils/_cn';
@@ -36,11 +35,14 @@ import {
   HeaderChromeMenu,
   HeaderChromeMenuEmpty,
   HeaderChromeMenuItem,
+  HeaderChromeMenuLayer,
 } from './header-chrome-menu';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
 import {
   HEADER_ICON_BTN_CLASS,
   HEADER_ICON_BTN_OPEN_CLASS,
   HEADER_ICON_WRAP,
+  HEADER_PAGE_FACE_WIDTH,
   TOP_CHROME_ICON_FACE,
 } from './header-shell';
 
@@ -56,15 +58,15 @@ export function HeaderRecentsSwitcher() {
     [user?.permissions],
   );
   const { pageId, childId } = useActiveSidebarChild();
+  const pathname = usePathname();
   const navigate = useSidebarChildNav();
-  const { recents: recentPageRefs, pushRecent } = useRecentPages();
+  const { recents: recentPageRefs, recentsReady, pushRecent } = useRecentPages();
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  // Header is always-visible chrome — keep MRU fresh even when the spine is
-  // collapsed (MasterNav no longer owns pushRecent).
   useEffect(() => {
+    if (!pageId || pageId === 'unknown') return;
     pushRecent(pageId, childId);
   }, [pageId, childId, pushRecent]);
 
@@ -74,13 +76,8 @@ export function HeaderRecentsSwitcher() {
     [navItems, permissions],
   );
 
-  const hasChildPages = Boolean(
-    pages.find((p) => p.id === pageId)?.children &&
-      (pages.find((p) => p.id === pageId)?.children?.length ?? 0) > 1,
-  );
-
   const entries = useMemo(() => {
-    const currentKey = `${pageId}:${childId ?? ''}`;
+    if (!recentsReady) return [];
     const out: {
       key: string;
       label: string;
@@ -89,30 +86,21 @@ export function HeaderRecentsSwitcher() {
       childId: string | null;
       href: string;
     }[] = [];
-    for (const ref of recentPageRefs) {
-      if (out.length >= MAX_RECENT_PAGES) break;
-      const key = `${ref.pageId}:${ref.childId ?? ''}`;
-      if (key === currentKey) continue;
-      if (hasChildPages && ref.pageId === pageId) continue;
+    for (const ref of recentsAsMasterNavRows(recentPageRefs, pageId, childId, pathname)) {
       const page = pages.find((p) => p.id === ref.pageId);
       if (!page) continue;
       const child = ref.childId ? page.children?.find((c) => c.id === ref.childId) : undefined;
-      if (ref.childId && !child && page.children && page.children.length > 0) continue;
-      const label =
-        child && page.children && page.children.length > 1
-          ? `${page.label} · ${child.label}`
-          : child?.label ?? page.label;
       out.push({
-        key,
-        label,
-        icon: child?.icon ?? page.icon,
-        pageId: ref.pageId,
-        childId: ref.childId,
+        key: page.id,
+        label: page.label,
+        icon: page.icon,
+        pageId: page.id,
+        childId: child?.id ?? null,
         href: page.href,
       });
     }
     return out;
-  }, [hasChildPages, recentPageRefs, pages, pageId, childId]);
+  }, [recentPageRefs, recentsReady, pages, pageId, childId, pathname]);
 
   const select = useCallback(
     (entry: (typeof entries)[number]) => {
@@ -122,29 +110,65 @@ export function HeaderRecentsSwitcher() {
     [navigate],
   );
 
-  return (
-    <div ref={wrapRef} className={HEADER_ICON_WRAP}>
-      <HoverTooltip label="More recent" asChild>
-        <IconButton
-          size="md"
-          ariaLabel="More recent"
-          aria-expanded={open}
-          aria-haspopup="menu"
-          onClick={() => setOpen((o) => !o)}
-          className={cn(HEADER_ICON_BTN_CLASS, open && HEADER_ICON_BTN_OPEN_CLASS)}
-          icon={<History className={TOP_CHROME_ICON_FACE} />}
-        />
-      </HoverTooltip>
+  const currentNav = pageId !== 'unknown' ? getMasterNavItem(pageId) : undefined;
+  const FaceIcon = currentNav?.icon;
+  const faceLabel = currentNav?.label ?? null;
 
-      <AnchoredLayer
+  return (
+    <div
+      ref={wrapRef}
+      className={cn(HEADER_ICON_WRAP, faceLabel && HEADER_PAGE_FACE_WIDTH)}
+    >
+      {faceLabel ? (
+        <HoverTooltip label={faceLabel} disabled={open} asChild>
+          <button
+            type="button"
+            aria-label={faceLabel}
+            aria-expanded={open}
+            aria-haspopup="menu"
+            onClick={() => setOpen((o) => !o)}
+            className={cn(
+              HEADER_ICON_BTN_CLASS,
+              DROPDOWN_SHELL_CORNER,
+              open && HEADER_ICON_BTN_OPEN_CLASS,
+      'flex h-full min-w-0 w-full select-none items-center justify-start gap-1 px-1.5',
+              'text-role-body font-medium leading-none',
+            )}
+          >
+            {FaceIcon ? (
+              <FaceIcon className={cn(TOP_CHROME_ICON_FACE, 'shrink-0')} />
+            ) : (
+              <History className={cn(TOP_CHROME_ICON_FACE, 'shrink-0')} />
+            )}
+            <span className="min-w-0 flex-1 truncate text-left text-text-muted">{faceLabel}</span>
+          </button>
+        </HoverTooltip>
+      ) : (
+        <HoverTooltip label="More recent" disabled={open} asChild>
+          <IconButton
+            size="md"
+            ariaLabel="More recent"
+            aria-expanded={open}
+            aria-haspopup="menu"
+            onClick={() => setOpen((o) => !o)}
+            className={cn(
+              HEADER_ICON_BTN_CLASS,
+              DROPDOWN_SHELL_CORNER,
+              open && HEADER_ICON_BTN_OPEN_CLASS,
+            )}
+            icon={<History className={TOP_CHROME_ICON_FACE} />}
+          />
+        </HoverTooltip>
+      )}
+
+      <HeaderChromeMenuLayer
         open={open}
         onClose={() => setOpen(false)}
         anchorRef={wrapRef}
         placement="bottom-start"
-        gap={0}
       >
-        <HeaderChromeMenu ariaLabel="More recent displays">
-          {entries.length === 0 ? (
+        <HeaderChromeMenu ariaLabel="More recent">
+          {!recentsReady ? null : entries.length === 0 ? (
             <HeaderChromeMenuEmpty>No recent displays</HeaderChromeMenuEmpty>
           ) : (
             entries.map((entry) => {
@@ -161,7 +185,7 @@ export function HeaderRecentsSwitcher() {
             })
           )}
         </HeaderChromeMenu>
-      </AnchoredLayer>
+      </HeaderChromeMenuLayer>
     </div>
   );
 }

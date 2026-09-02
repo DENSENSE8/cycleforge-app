@@ -5,7 +5,7 @@
  * History tabs. Selection writes `?packerLogId=` / `?orderId=` for the overlay.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
@@ -44,7 +44,7 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
   const router = useRouter();
   const searchParams = useSearchParams();
   const tab = parseReviewPackingTab(searchParams.get('rtab'));
-  const searchQuery = String(searchParams.get('search') || '').trim();
+  const [searchQuery, setSearchQuery] = useState('');
   const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
 
   const week = useMemo(() => getWeekRangeForOffset(0), []);
@@ -144,17 +144,7 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
     [pathname, router, searchParams],
   );
 
-  const setSearch = useCallback(
-    (next: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      const trimmed = next.trim();
-      if (trimmed) params.set('search', trimmed);
-      else params.delete('search');
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
-    [pathname, router, searchParams],
-  );
+  const setSearch = useCallback((next: string) => setSearchQuery(next), []);
   const clearSearch = useCallback(() => setSearch(''), [setSearch]);
 
   const emptyCopy =

@@ -24,6 +24,7 @@ import { conditionGradeTextClass, orderRowQtyTone } from '@/lib/condition-tone';
 import { conditionGradeTableLabel, EMPTY_META_DASH } from '@/lib/conditions';
 import { catalogById, type FieldDef } from '@/lib/tables/field-catalog/types';
 import { ORDERS_FIELD_CATALOG } from '@/lib/tables/field-catalog/orders';
+import { shortageCoverageFromWire } from '@/lib/orders/shortage-coverage';
 import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
 import type { ShippedOrder } from '@/types/orders';
 import { formatCurrency } from '@/utils/_number';
@@ -152,6 +153,11 @@ export function resolveOrdersSlotValue(
     }
     case 'orders.notes':
       return { kind: 'value', text: str(row, 'notes') };
+    case 'orders.coverage':
+      return {
+        kind: 'value',
+        text: shortageCoverageFromWire(row.shortage_coverage).label,
+      };
     case 'orders.amount':
       return { kind: 'value', text: moneyText(record.sale_amount) };
     case 'orders.order_id':
@@ -210,8 +216,10 @@ export function ordersSubtitleParts(
     const field: FieldDef | undefined = ORDERS_FIELDS_BY_ID.get(fieldId);
     if (!field) continue;
     if (fieldId === 'orders.item_number') {
-      // Face is the listing glyph in the trailing cluster — never the id.
-      parts.push({ text: '', key: fieldId });
+      // The item number is consumed by the product-title hover actions. Keep
+      // its raw value in the view model so the shared cell can edit/copy it,
+      // but do not paint it in the under-title line.
+      parts.push({ text: str(row, 'item_number') ?? '', key: fieldId });
       continue;
     }
     const value = resolveOrdersSlotValue(record, fieldId, ctx);

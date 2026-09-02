@@ -21,10 +21,13 @@
       "url": "https://mcp.figma.com/mcp"
     },
     "design-mcp": {
-      "command": "/home/michaelgarisek/.local/share/mise/shims/node",
-      "args": [
-        "/home/michaelgarisek/Projects/cycleforge-app/tools/design-mcp/server.mjs"
-      ]
+      "type": "stdio",
+      "command": "/home/michaelgarisek/Projects/Garisek-OS/tools/design-mcp/run-mcp.sh",
+      "args": [],
+      "env": {
+        "DESIGN_MCP_PROJECT": "cycleforge-app",
+        "DESIGN_MCP_REPO": "/home/michaelgarisek/Projects/cycleforge-app"
+      }
     }
   }
 }

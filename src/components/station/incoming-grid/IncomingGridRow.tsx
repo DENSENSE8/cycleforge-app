@@ -22,7 +22,7 @@ import {
   isLocalPickupFulfillment,
 } from '@/lib/receiving/fulfillment-mode';
 import {
-  INCOMING_GRID_COLUMNS,
+  INCOMING_COMPOUND_COLUMNS,
   incomingGridTemplate,
   incomingRowDateSource,
   type IncomingGridColumn,
@@ -55,7 +55,7 @@ interface IncomingGridRowProps {
 }
 
 /**
- * Incoming POS leaf row — CSS-grid columns matching {@link INCOMING_GRID_COLUMNS}.
+ * Incoming POS leaf row — CSS-grid columns matching {@link INCOMING_COMPOUND_COLUMNS}.
  * Desktop cells paint through `renderReceivingGridCell` with `linePhase: 'expected'`.
  * Mobile falls back to the legacy {@link ReceivingLineOrderRow} stack.
  */
@@ -70,7 +70,7 @@ export const IncomingGridRow = memo(function IncomingGridRow({
   onToggle,
   clickSelect = false,
   selectGutterChrome = 'always',
-  columns = INCOMING_GRID_COLUMNS,
+  columns = INCOMING_COMPOUND_COLUMNS,
 }: IncomingGridRowProps) {
   const resolvePlatformMeta = usePlatformMeta();
   /** A gutter handler IS the signal that this surface split the two planes. */

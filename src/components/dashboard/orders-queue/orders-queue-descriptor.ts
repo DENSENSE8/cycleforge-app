@@ -18,7 +18,7 @@
 import { makeGridSurfaceDescriptor, type GridSurfaceCapabilities, type GridSurfaceDescriptor } from '@/design-system/components/grid';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import type { OrdersQueueColumn } from '@/lib/dashboard-order-row-layout';
-import { isQueueSortableColumnKey } from '@/utils/queue-display-sort';
+import { defaultDirForQueueSort, isQueueSortableColumnKey, queueSortForColumnKey } from '@/utils/queue-display-sort';
 
 /** Orders Workbench spreadsheet capabilities — triage wash, read-only cells. */
 export const ORDERS_GRID_CAPABILITIES: GridSurfaceCapabilities = {
@@ -41,6 +41,13 @@ function accessorFor(key: OrdersQueueColumn['key']): (row: ShippedOrder) => unkn
       return (row) => String(row.product_title ?? '');
     case 'fulfillment':
       return (row) => String(row.order_id ?? '');
+    case 'thumb':
+      return (row) => String(row.catalog_image_url ?? '');
+    case 'amount':
+      return (row) => {
+        const n = Number(row.sale_amount);
+        return Number.isFinite(n) ? n : null;
+      };
     default:
       return () => null;
   }
@@ -66,6 +73,11 @@ export function makeOrdersGridDescriptor(
       isSortable: (key) => {
         const col = columns.find((c) => c.key === key);
         return isQueueSortableColumnKey(key, col?.fieldId);
+      },
+      sortDescFirst: (key) => {
+        const col = columns.find((c) => c.key === key);
+        const fact = queueSortForColumnKey(key, col?.fieldId);
+        return fact ? defaultDirForQueueSort(fact) === 'desc' : false;
       },
       // Locked = the mounted model's own frozen prefix, never a static list.
       isLocked: (key) => columns.some((c) => c.key === key && c.frozen === true),

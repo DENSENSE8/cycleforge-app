@@ -2,6 +2,7 @@ export * from './DetailsPanelRow';
 export * from './DateTimeValue';
 export * from './LedgerValue';
 export * from './PanelSection';
+export * from './InspectorFormSurface';
 export * from './TriageScrollLayout';
 export * from './TriageScrollKnobs';
 export * from './TriageSections';
@@ -37,6 +38,7 @@ export * from './StickyActionBar';
 export * from './FilterRefinementBar';
 export * from './VerticalSplitStack';
 export * from './SearchableSelectField';
+export * from './AssigneeCombobox';
 export * from './AdminTable';
 export * from './monitor';
 export * from './DocumentPreviewFrame';
@@ -52,6 +54,8 @@ export * from './milestone-pipeline';
 // FLAT, not a `desk/` subdirectory: design-mcp's catalog walk is a
 // non-recursive readdir over this folder, so a nested file is a primitive the
 // contract server can never serve — and unservable law is not law.
-export * from './DeskPageChrome';
+export * from './DeskRecordWalkHost';
+export * from './DeskStageOverlay';
+export * from './DeskTab';
 export * from './DeskStageContext';
 export * from './DeskActionSlot';

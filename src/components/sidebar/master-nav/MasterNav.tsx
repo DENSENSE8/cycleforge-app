@@ -11,12 +11,14 @@ import {
   type SidebarNavItem,
   type SidebarPageNav,
 } from '@/lib/sidebar-navigation';
-import { useOrgNavItems } from '@/hooks/useOrgNavItems';
+import { useOrgNavDefinition, useOrgNavItems } from '@/hooks/useOrgNavItems';
+import { applyOrgNavToPage } from '@/lib/nav/org-nav';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
 import { prefetchNavData } from '@/lib/nav/nav-data-prefetch';
-import { hydrateSpineSlots, SPINE_STATIONS_SLOT_ID } from '@/lib/nav/spine-slots';
+import { hydrateSpineSlots, spineParentDrillId } from '@/lib/nav/spine-slots';
 import { useActiveSidebarChild } from './useActiveSidebarChild';
 import { useSidebarChildNav } from './useSidebarChildNav';
+import { PinHotkeysListener } from '@/components/layout/PinHotkeysListener';
 import { MasterNavView } from './MasterNavView';
 
 /** Merge a flat nav item with its child-page metadata (if the page has any). */
@@ -27,8 +29,9 @@ function toPageNav(item: SidebarNavItem): SidebarPageNav {
 
 /**
  * Router-wired master nav. Org hide/rename via {@link useOrgNavItems}; staff
- * `prefs.spineSlots` only reorders the map (Scan Stations is one slot).
- * Absent prefs → full catalog order. Scan Stations list-replaces into benches.
+ * `prefs.spineSlots` hydrates catalog *display* order only — the map is not
+ * sortable. Pins drop onto the Pinned cluster (per-staff `quickAccess`).
+ * Home · Media Library stay at the top of every drill.
  */
 export function MasterNav({
   permissions,
@@ -43,7 +46,8 @@ export function MasterNav({
 }) {
   const { pageId, childId } = useActiveSidebarChild();
   const navigate = useSidebarChildNav();
-  const { prefs, update: updatePrefs } = useStaffPreferences();
+  const { prefs } = useStaffPreferences();
+  const definition = useOrgNavDefinition();
 
   const [drillId, setDrillId] = useState<string | null>(null);
 
@@ -52,21 +56,15 @@ export function MasterNav({
     () =>
       navItems
         .map(toPageNav)
+        .map((page) => applyOrgNavToPage(page, definition))
         .map((page) => filterPageChildren(page, permissions))
         .filter(isSidebarPageReachable),
-    [navItems, permissions],
+    [navItems, permissions, definition],
   );
 
   const spineOrder = useMemo(
     () => hydrateSpineSlots(prefs?.spineSlots, navItems),
     [prefs?.spineSlots, navItems],
-  );
-
-  const handleSpineOrderChange = useCallback(
-    (next: string[]) => {
-      updatePrefs({ spineSlots: next });
-    },
-    [updatePrefs],
   );
 
   const activePage = useMemo<SidebarPageNav>(() => {
@@ -81,15 +79,16 @@ export function MasterNav({
 
   const activeSection = spineSectionIdForPage(activePage);
 
-  // Enter Scan Stations when navigating onto a floor bench from another
-  // section. Manual Back leaves the root map while the URL can stay on a
-  // bench — do not force-reopen until the next cross-section floor entry.
+  // Enter Scan Stations / Desks when navigating onto that family from another
+  // section. Manual Back leaves the root map while the URL can stay on the
+  // surface — do not force-reopen until the next cross-section entry.
   const prevSectionRef = useRef<typeof activeSection>(null);
   useEffect(() => {
-    if (activeSection === 'floor' && activeSection !== prevSectionRef.current) {
-      setDrillId(SPINE_STATIONS_SLOT_ID);
-    } else if (activeSection !== 'floor') {
-      setDrillId((current) => (current === SPINE_STATIONS_SLOT_ID ? null : current));
+    const nextDrill = spineParentDrillId(activeSection);
+    if (nextDrill && activeSection !== prevSectionRef.current) {
+      setDrillId(nextDrill);
+    } else if (!nextDrill) {
+      setDrillId(null);
     }
     prevSectionRef.current = activeSection;
   }, [activeSection]);
@@ -111,17 +110,19 @@ export function MasterNav({
   if (!activePage) return null;
 
   return (
-    <MasterNavView
-      activePage={activePage}
-      activeChildId={childId}
-      otherPages={pages}
-      onNavigate={handleNavigate}
-      onRowHover={handleRowHover}
-      drillId={drillId}
-      onDrillChange={setDrillId}
-      spineOrder={spineOrder}
-      onSpineOrderChange={handleSpineOrderChange}
-      className={className}
-    />
+    <>
+      <PinHotkeysListener />
+      <MasterNavView
+        activePage={activePage}
+        activeChildId={childId}
+        otherPages={pages}
+        onNavigate={handleNavigate}
+        onRowHover={handleRowHover}
+        drillId={drillId}
+        onDrillChange={setDrillId}
+        spineOrder={spineOrder}
+        className={className}
+      />
+    </>
   );
 }

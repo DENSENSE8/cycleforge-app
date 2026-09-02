@@ -308,11 +308,11 @@ export const TOP_CHROME_ICON_FACE = cn(TOP_CHROME_ICON_GLYPH, NAV_ICON_STROKE_CL
  * Shared IconButton chrome for GlobalHeader — square hit wash filling the beam
  * cell (never a circle, never a floated h-8 island), sunken hover.
  * `h-full w-full` overrides IconButton `size="md"` box so the wash meets the
- * header hairlines. Page identity uses this wash inside a fixed
+ * header hairlines. Session recents uses this wash inside a fixed
  * {@link HEADER_PAGE_FACE_WIDTH} chip, not a beam-filling flex child.
  *
  * **Ink is `text-text-default` (2026-08-16), not the previous mute tone.**
- * `HeaderPageSwitcher`'s `PAGE_FACE_CLASS` had already overridden this same
+ * `HeaderRecentsSwitcher`'s session face had already overridden this same
  * base to `text-text-default` so the page name (icon + label) matched the
  * rail's bold title treatment — which left every OTHER header icon
  * (sidebar toggle, Pins, Recents, WO, clipboard, inbox) visibly lighter than
@@ -322,20 +322,10 @@ export const TOP_CHROME_ICON_FACE = cn(TOP_CHROME_ICON_GLYPH, NAV_ICON_STROKE_CL
  * of the toggle: header and sidebar read as one ink system, not two.
  */
 /**
- * Page-identity face and its child menu — one compact width. Find lives on
+ * Session-identity face (Recents) — one compact width. Find lives on
  * the right rail ({@link CommandBar}), not beside this chip.
  */
 export const HEADER_PAGE_FACE_WIDTH = 'w-[11rem]';
-
-/**
- * Scan Stations (and any other long page menu) — cap height to the viewport
- * under the header. End clearance is scroll-padding, not layout padding:
- * `pb-8` painted an empty row under short menus (Ready to Pack · Packing ·
- * Scan out). `scroll-pb-8` still lets a tall list scroll the last row fully
- * into view.
- */
-export const HEADER_PAGE_MENU_SCROLL_CLASS =
-  'max-h-[calc(100dvh-theme(spacing.20))] overflow-y-auto overscroll-contain scroll-pb-8';
 
 export const HEADER_ICON_BTN_CLASS =
   'h-full min-h-8 w-full rounded-none text-text-default hover:bg-surface-sunken';

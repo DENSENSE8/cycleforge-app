@@ -84,6 +84,15 @@ export interface ShippedOrder {
   is_shipped?: boolean;
   /** Operator blocked the line — `orders.is_out_of_stock`. */
   is_out_of_stock?: boolean;
+  /**
+   * Backorder coverage facts (PO / inbound tracking / ETA). Painted only via
+   * {@link formatShortageCoverage} — never concatenate in a cell.
+   */
+  shortage_coverage?: {
+    po_number?: string | null;
+    inbound_tracking?: string | null;
+    eta?: string | null;
+  } | null;
   /** Catalog listing image from `sku_catalog.image_url` (orders queue join). */
   catalog_image_url?: string | null;
   shipment_status?: string | null;

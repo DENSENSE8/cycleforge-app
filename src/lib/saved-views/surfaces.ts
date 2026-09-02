@@ -52,6 +52,7 @@ export const SAVED_VIEW_SURFACES = [
   'pickup_queue',
   'unfound_queue',
   'tech_all',
+  'reports_sessions',
 ] as const;
 
 export type SavedViewSurface = (typeof SAVED_VIEW_SURFACES)[number];
@@ -86,6 +87,7 @@ export const GENERIC_SAVED_VIEW_SURFACES = [
   'pickup_queue',
   'unfound_queue',
   'tech_all',
+  'reports_sessions',
 ] as const;
 
 type GenericSavedViewSurface = (typeof GENERIC_SAVED_VIEW_SURFACES)[number];
@@ -112,6 +114,7 @@ export const SHEET_SAVED_VIEW_KEY = {
   pickup_queue: 'pickup_queue_saved_views',
   unfound_queue: 'unfound_queue_saved_views',
   tech_all: 'tech_all_saved_views',
+  reports_sessions: 'reports_sessions_saved_views',
 } as const satisfies Record<string, string>;
 
 /** Storage key → DB surface (the `useSavedViews` consumers). */
@@ -138,6 +141,7 @@ const STORAGE_KEY_TO_SURFACE: Readonly<Record<string, GenericSavedViewSurface>> 
   [SHEET_SAVED_VIEW_KEY.pickup_queue]: 'pickup_queue',
   [SHEET_SAVED_VIEW_KEY.unfound_queue]: 'unfound_queue',
   [SHEET_SAVED_VIEW_KEY.tech_all]: 'tech_all',
+  [SHEET_SAVED_VIEW_KEY.reports_sessions]: 'reports_sessions',
 };
 
 const SURFACE_SET = new Set<string>(SAVED_VIEW_SURFACES);

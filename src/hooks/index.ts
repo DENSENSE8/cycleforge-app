@@ -54,4 +54,5 @@ export {
 } from './useLinkTicketTrackingReference';
 
 export { useOrderAssignment } from './useOrderAssignment';
+export { useMoveLocation, resolveLocationScan } from './useMoveLocation';
 export { useDeleteOrderRow } from './useDeleteOrderRow';

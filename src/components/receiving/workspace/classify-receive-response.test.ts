@@ -28,3 +28,26 @@ test('classifyReceiveResponse: networkError stays rose', () => {
   assert.equal(c.verdict, 'network');
   assert.equal(c.tone, 'rose');
 });
+
+test('classifyReceiveResponse: undecryptable Zoho vault is receive-in-inventory, not reconnect', () => {
+  const c = classifyReceiveResponse({
+    at: Date.now(),
+    durationMs: 80,
+    httpStatus: 200,
+    ok: true,
+    body: {
+      success: true,
+      zoho: {
+        attempted: 1,
+        ok: false,
+        skip_reason: 'inventory_credentials_unreadable',
+        error:
+          'integration payload could not be decrypted with INTEGRATION_KMS_KEY — it was encrypted under a different key.',
+      },
+    },
+  });
+  assert.equal(c.verdict, 'api_error');
+  assert.equal(c.tone, 'rose');
+  assert.match(c.headline, /Could not receive in Zoho Inventory/i);
+  assert.match(c.detail, /could not be decrypted/i);
+});

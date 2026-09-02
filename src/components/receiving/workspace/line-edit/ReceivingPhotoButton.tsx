@@ -91,8 +91,8 @@ const PHONE_CLICK_DEFER_MS = 280;
  * tip readable; longer hover still lands the action strip.
  */
 const GALLERY_OPEN_DELAY_MS = 420;
-/** Gap between the pill and the portaled gallery — ~6px, same as carton chip menus. */
-const GALLERY_GAP_PX = 6;
+/** Keep the portaled gallery flush to the photo trigger — no inter-control air. */
+const GALLERY_GAP_PX = 0;
 
 function galleryAnchoredPlacement(
   placement: 'below' | 'above' | 'right' | 'left',
@@ -542,6 +542,11 @@ export const ReceivingPhotoButton = memo(function ReceivingPhotoButton({
         placement={galleryAnchoredPlacement(galleryPlacement)}
         level="panelPopover"
         gap={GALLERY_GAP_PX}
+        // The fullscreen viewer is a second body portal mounted by PhotoGallery.
+        // Keep clicks inside that nested surface from looking like outside clicks
+        // to this enclosing hover peek; the viewer owns its own close button and
+        // scrim dismissal.
+        ignoreClickSelector="[data-photo-portal]"
         avoidCollisions={appearance !== 'chrome'}
         closeOnEscape={!galleryUploadPinned && !galleryMovePinned}
         className="w-max max-w-[18rem]"

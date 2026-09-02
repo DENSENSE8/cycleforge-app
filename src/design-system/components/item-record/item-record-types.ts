@@ -70,6 +70,12 @@ export interface ItemRecord {
   serialAbsent?: boolean;
   /** Per-unit price. */
   unitPrice?: number | string | null;
+  /** Human-facing bin/location label shown in the row's trailing meta face. */
+  locationLabel?: string | null;
+  /** Additional location context exposed by the row's hover affordance. */
+  locationDetails?: string | null;
+  /** Paint the location pin as an unresolved amber action when no location exists. */
+  locationPending?: boolean;
   /** Reference facts rendered under the row by {@link ItemRecordCard}. */
   facts?: ItemRecordFact[];
 }

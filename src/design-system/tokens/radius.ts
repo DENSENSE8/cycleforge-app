@@ -31,8 +31,8 @@
 /** Tailwind's stock borderRadius values — the typed mirror of what classes render. */
 export const radius = {
   /**
-   * Flush — data rows, table cells, solid {@link Button} CTAs
-   * (`cornerClass('flush')`), industrial instrument chrome.
+   * Flush — scan-station edge-to-edge chrome, grid cells, hairline rows.
+   * Desks use the ladder (`chip`…`canvas`). Do not default ops CTAs here.
    */
   none: '0px',
   /** 2px — hairline softening, rarely the right call */
@@ -59,20 +59,19 @@ export type Radius = typeof radius;
  * Interaction/containment role → corner. Pick by what the element IS, not by a
  * pixel value. Ordered smallest to largest; `pill` is outside the ladder.
  *
- * Prefer {@link cornerClass}(`'flush'`) for new industrial chrome (Kinetic
- * Ledger / Stitch zero-radius). Soft ladder steps remain for chips · legacy
- * card·canvas shells · true pills (avatars · switches) until those surfaces
- * migrate call-site by call-site — remapping `field`/`control` here would
- * silently rewrite `nestedCornerClass('card', …)` consumers.
+ * Prefer {@link cornerClass}(`'flush'`) only on scan stations (bleed benches)
+ * and true grid cells. Desk / workbench chrome uses the ladder
+ * (`chip` · `row` · `control` · `field` · `card` · `canvas`). `pill` is avatars
+ * and switches. {@link Button} defaults to `surface`.
  */
 export type CornerRole =
-  /** Flush with its container — grid cells, full-bleed rows, solid Button CTAs */
+  /** Flush with its container — scan-station bleed, grid cells, hairline rows */
   | 'flush'
   /** Chips, badges, copy chips */
   | 'chip'
   /** List rows, menu items */
   | 'row'
-  /** Soft menus / dropdown chrome (`rounded-lg`). Solid {@link Button} uses `flush`. */
+  /** Soft menus / dropdown chrome (`rounded-lg`). Desk {@link Button} uses `surface`. */
   | 'control'
   /** Form fields, ops-table surfaces, popovers */
   | 'field'
@@ -89,19 +88,16 @@ export type CornerRole =
   /** Pills, dots, avatars */
   | 'pill';
 
-// Zero-radius industrial: ops chrome is flush-square. Every LADDER role
-// (flush…canvas) renders `rounded-none` (Wave 0b/0c/0d/0e). Two roles sit off
-// that ladder: `pill` (dots · avatars · Switch) and `surface` (TriageScrollLayout
-// right-pane panels). COMPOSER_SHELL_CORNER is a named constant, not a role.
-// CORNER_PX is untouched for ladder math; `surface` is 12px to match `rounded-xl`.
+// Desk ladder uses the real Tailwind rungs. `flush` stays `rounded-none` for
+// scan-station bleed and grid cells. `surface` matches `field` (12px).
 const CORNER_CLASS: Record<CornerRole, string> = {
   flush: 'rounded-none',
-  chip: 'rounded-none',
-  row: 'rounded-none',
-  control: 'rounded-none',
-  field: 'rounded-none',
-  card: 'rounded-none',
-  canvas: 'rounded-none',
+  chip: 'rounded',
+  row: 'rounded-md',
+  control: 'rounded-lg',
+  field: 'rounded-xl',
+  card: 'rounded-2xl',
+  canvas: 'rounded-3xl',
   surface: 'rounded-xl',
   pill: 'rounded-full',
 };
@@ -128,25 +124,9 @@ export function cornerClass(role: CornerRole): string {
 }
 
 /**
- * The ONE soft corner on an ops surface: the composer-shell family.
- *
- * `OmnichannelComposerDock` is a declared carve-out from the zero-radius law —
- * it is the ChatGPT-style prompt dock, and its shell (`rounded-2xl`), its
- * commit control (`rounded-full`) and its footer track
- * (`SlicedActionDock`'s `COMPOSER_PILL_TRACK`) have always been soft. Three
- * places had that corner as a literal and nothing named it, so a fourth
- * surface welded to the same shell had no way to match it except by guessing.
- *
- * It is deliberately NOT a `CornerRole`. The role ladder is the ops scale and
- * every non-`pill` rung renders flush; adding a soft rung there would hand
- * every workbench CTA a way to round itself. This is a named exemption for one
- * shell family, and a call site that reaches for it is claiming membership in
- * that family — which is checkable in review, unlike `rounded-2xl`.
- *
- * Law: ops chrome is flush-square; the composer dock, the kiosk counter face,
- * `cornerClass('surface')` (TriageScrollLayout panels only) and
- * {@link TRIAGE_PANEL_INNER_CORNER} (what sits inside those panels) are the
- * exemptions. None of them is a licence to round anything else.
+ * Composer-shell family corner — {@link OmnichannelComposerDock}.
+ * Named so a call site claims that shell, not a guessed `rounded-2xl`.
+ * Scan stations stay flush via {@link cornerClass}(`'flush'`) and `bleed`.
  */
 export const COMPOSER_SHELL_CORNER = 'rounded-2xl';
 
@@ -155,10 +135,8 @@ export const COMPOSER_SHELL_CORNER = 'rounded-2xl';
  *
  * Inner = outer − padding: 16px − 4px = 12px (`rounded-xl`). A square
  * highlight (`rounded-none`) inside that shell leaves a white sliver at each
- * corner; equal radii (`rounded-2xl` on the row) read as too round. The
- * ladder cannot express this pair — `nestedCornerClass('card', 1)` returns
- * flush — so it is a named exemption, same hatch as
- * {@link SEGMENTED_CONTROL_FACE_CORNER}.
+ * corner; equal radii (`rounded-2xl` on the row) read as too round.
+ * Same hatch as {@link SEGMENTED_CONTROL_FACE_CORNER}.
  */
 export const COMPOSER_MENU_ITEM_CORNER = 'rounded-xl';
 
@@ -177,13 +155,8 @@ export const COMPOSER_MENU_ITEM_CORNER = 'rounded-xl';
  * padding: the composer dock is {@link COMPOSER_SHELL_CORNER} (16px) with
  * `p-1.5` (6px), so the track wants 16 − 6 = 10 → the 8px rung → `rounded-lg`;
  * the track's own `p-0.5` (2px) puts the faces at 8 − 2 = 6 → `rounded-md`.
- * That is exactly {@link nestedCorner}('card', 1.5) then ('control', 0.5) —
- * except {@link cornerClass} cannot express it, because every ladder rung
- * renders `rounded-none` under the zero-radius law. Hence named constants,
- * the same escape hatch {@link COMPOSER_SHELL_CORNER} uses.
- *
- * NOT a licence to round a control that is not inside a soft shell. Ops chrome
- * segmented controls take `appearance="flush"` and stay square.
+ * Named constants so VisibilityToggle and the composer dock cannot disagree.
+ * Scan-station segmented chrome may still pass `appearance="flush"`.
  */
 export const SEGMENTED_CONTROL_CORNER = 'rounded-lg';
 
@@ -194,15 +167,9 @@ export const SEGMENTED_CONTROL_FACE_CORNER = 'rounded-md';
  * Floating menu / dropdown / popover panel — the 8px control rung the scale
  * already names for "soft menus / dropdown chrome".
  *
- * Named exemption, same hatch as {@link COMPOSER_SHELL_CORNER}: the ops ladder
- * stays flush-square (kiosk + desk surfaces), and a call site that reaches for
- * this constant is claiming to be a **drop panel**, which is checkable in
- * review. FilterMenu already shipped `rounded-lg` as a literal; this is that
- * face, once, so DropdownMenu / ContextMenu / the table chrome popovers cannot
- * disagree about whether a menu in this product has corners.
- *
- * Not a licence to round a table or a workbench card. Find-row tokens
- * (search, filter, sort, views, …) use {@link DATA_TABLE_TOOLBAR_CORNER}.
+ * Same 8px rung as {@link cornerClass}(`'control'`). A call site that reaches
+ * for this constant is a drop panel. Find-row tokens use
+ * {@link DATA_TABLE_TOOLBAR_CORNER}.
  */
 export const DROPDOWN_SHELL_CORNER = 'rounded-lg';
 
@@ -211,8 +178,7 @@ export const DROPDOWN_SHELL_CORNER = 'rounded-lg';
  *
  * Inner = outer − padding: 8px − 4px = 4px (`rounded`). Square
  * (`rounded-none`) highlights leave a sliver at each corner of the shell.
- * `nestedCornerClass('control', 1)` cannot express this: the ladder renders
- * flush. Same hatch as {@link COMPOSER_MENU_ITEM_CORNER}.
+ * Same hatch as {@link COMPOSER_MENU_ITEM_CORNER}.
  */
 export const DROPDOWN_ITEM_CORNER = 'rounded';
 
@@ -244,10 +210,7 @@ export const DATA_TABLE_TOOLBAR_CORNER = 'rounded-lg';
  * 8px, one rung under the panel's 12px — the same relationship, and the same
  * value, as {@link SEGMENTED_CONTROL_CORNER} inside the composer shell.
  *
- * Like its two neighbours this is a NAMED exemption, not a `CornerRole`: the
- * ladder stays zero-radius, and a call site reaching for this constant is
- * claiming to be inside a triage panel — checkable in review, unlike a bare
- * `rounded-lg`. It is not a licence to round ops chrome that is not.
+ * Same 8px rung as {@link cornerClass}(`'control'`).
  */
 export const TRIAGE_PANEL_INNER_CORNER = 'rounded-lg';
 

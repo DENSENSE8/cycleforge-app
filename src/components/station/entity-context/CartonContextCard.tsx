@@ -710,7 +710,6 @@ export function CartonContextCard({
         }
         tone="tracking"
         carrierHint={carrierHint}
-        showCarrierBrand
         lockLast8Width
         disableCopy={!primaryTrackingTrimmed}
         onEdit={onEditTracking}

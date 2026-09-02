@@ -173,4 +173,31 @@ describe('compareQueueColumnRows', () => {
     assert.ok(compareQueueColumnRows(usps, ups, 'carrier:USPS', 'asc') < 0);
     assert.ok(compareQueueColumnRows(usps, ups, 'carrier', 'asc') > 0, 'A–Z remainder: UPS before USPS');
   });
+
+  it('sorts status labels and scanned-out stamps', () => {
+    const scanned = row({
+      id: 1,
+      outboundState: 'SCANNED_OUT',
+      ship_confirmed_at: '2026-08-20T12:00:00Z',
+    });
+    const packed = row({
+      id: 2,
+      outboundState: 'PACKED_STAGED',
+      ship_confirmed_at: '2026-09-01T12:00:00Z',
+    });
+    assert.ok(compareQueueColumnRows(packed, scanned, 'status', 'asc', 'shipped') !== 0);
+    assert.ok(compareQueueColumnRows(scanned, packed, 'scanned_out', 'asc') < 0);
+    const nobody = row({ id: 3, ship_confirmed_at: null });
+    assert.ok(compareQueueColumnRows(scanned, nobody, 'scanned_out', 'desc') < 0);
+  });
+
+  it('sorts amount and image with blanks last', () => {
+    const cheap = row({ id: 1, sale_amount: 10 });
+    const dear = row({ id: 2, sale_amount: 90 });
+    assert.ok(compareQueueColumnRows(cheap, dear, 'amount', 'asc') < 0);
+    const photo = row({ id: 3, catalog_image_url: 'https://cdn.example/a.jpg' });
+    const blank = row({ id: 4, catalog_image_url: '' });
+    assert.ok(compareQueueColumnRows(photo, blank, 'image', 'asc') < 0);
+    assert.ok(compareQueueColumnRows(photo, blank, 'image', 'desc') < 0);
+  });
 });

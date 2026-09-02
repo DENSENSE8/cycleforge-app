@@ -15,7 +15,8 @@
 
 import { memo } from 'react';
 import { CopyableCellValue } from '@/components/ui/CopyChip';
-import { GridCellDash, GridPlatformMarkValue, GridStatusCellValue } from '@/components/ui/grid-cells';
+import { GridCellDash, GridPlatformMarkValue } from '@/components/ui/grid-cells';
+import { TableImportTriageStatusCell } from '@/components/tables/import/TableImportTriageStatusCell';
 import { sourcePlatformMeta } from '@/lib/source-platform';
 import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
 import {
@@ -102,18 +103,7 @@ export const CsvImportStagingGridRow = memo(function CsvImportStagingGridRow({
           <GridCellDash />
         );
       case 'status':
-        return (
-          <GridStatusCellValue
-            label={row.status === 'ready' ? 'Ready' : 'Action required'}
-            toneClass={
-              row.status === 'ready'
-                ? 'bg-emerald-50 text-emerald-700'
-                : 'bg-amber-50 text-amber-800'
-            }
-            dotClass={row.status === 'ready' ? 'bg-emerald-500' : 'bg-amber-500'}
-            tooltip={missingLabel}
-          />
-        );
+        return <TableImportTriageStatusCell status={row.status} tooltip={missingLabel} />;
       case 'orders-import.sku':
         return row.sku ? <CopyableCellValue value={row.sku} dense /> : <GridCellDash />;
       case 'orders-import.qty':

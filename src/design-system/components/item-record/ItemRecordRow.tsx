@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Barcode, ChevronDown } from '@/components/Icons';
+import { Barcode, ChevronDown, MapPin } from '@/components/Icons';
 import {
   ConditionGradeChip,
   EmptySkuChipFace,
@@ -100,6 +100,7 @@ export function ItemRecordRow({
   qtyAction,
   conditionAction,
   serialAction,
+  locationAction,
   overlay,
   body,
   bodyClassName,
@@ -127,6 +128,8 @@ export function ItemRecordRow({
   conditionAction?: ItemRecordCellAction | null;
   /** Make the serials cell activatable. The last-8 face is not replaceable. */
   serialAction?: ItemRecordCellAction | null;
+  /** Make the location face open the host's exact-line location display. */
+  locationAction?: ItemRecordCellAction | null;
   /**
    * Absolutely-positioned chrome inside the row (a scan-acknowledgement ring).
    * Opacity/colour only — never anything that moves the row.
@@ -173,6 +176,69 @@ export function ItemRecordRow({
         {serialText}
       </span>
     </>
+  );
+
+  const locationLabel = String(item.locationLabel ?? '').trim();
+  const locationPending = item.locationPending === true || !locationLabel;
+  const locationFace = (
+    <span
+      data-testid="item-record-location"
+      data-location-pending={locationPending ? 'true' : undefined}
+      className={cn(
+        'flex min-w-0 items-center justify-end gap-1.5 text-right normal-case tracking-normal',
+        locationPending ? 'text-amber-500' : 'text-text-muted',
+      )}
+    >
+      {locationLabel ? (
+        <span className="min-w-0 truncate" data-location-label>
+          {locationLabel}
+        </span>
+      ) : null}
+      <span data-testid="item-record-location-icon">
+        <MapPin
+          aria-hidden
+          className={cn(
+            'h-3.5 w-3.5 shrink-0',
+            locationPending && 'drop-shadow-[0_0_5px_theme(colors.amber.400)]',
+          )}
+        />
+      </span>
+    </span>
+  );
+  const locationContent = locationAction ? (
+    <HoverTooltip
+      label={
+        item.locationDetails ||
+        (locationLabel ? `Location: ${locationLabel}` : 'Set location')
+      }
+      asChild
+    >
+      <button
+        type="button"
+        aria-label={locationAction.label}
+        data-testid="item-record-location-action"
+        className={cn(
+          'ds-raw-button flex h-full min-w-0 max-w-full items-center',
+          focusRing('control', 'neutral'),
+        )}
+        onClick={(e) => {
+          e.stopPropagation();
+          locationAction.onClick();
+        }}
+      >
+        {locationFace}
+      </button>
+    </HoverTooltip>
+  ) : (
+    <HoverTooltip
+      label={
+        item.locationDetails ||
+        (locationLabel ? `Location: ${locationLabel}` : 'Location not set')
+      }
+      asChild
+    >
+      <span>{locationFace}</span>
+    </HoverTooltip>
   );
 
   /** Wrap a meta cell's fixed face in an activator, or leave it inert. */
@@ -329,6 +395,7 @@ export function ItemRecordRow({
                 )
               }
               price={<UnitPriceChip amount={item.unitPrice} dense />}
+              location={locationContent}
             />
           </div>
         </div>

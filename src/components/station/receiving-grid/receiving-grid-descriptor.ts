@@ -35,7 +35,10 @@ export function makeReceivingGridDescriptor(
     'receiving.browse',
     columns,
     {
-      isSortable: isReceivingGridSortable,
+      isSortable: (key) => {
+        const col = columns.find((c) => c.key === key);
+        return isReceivingGridSortable(key, col?.fieldId);
+      },
       sortDescFirst: (key) => defaultDirForReceivingGridSort(key) === 'desc',
       isLocked: isReceivingGridFrozen,
     },

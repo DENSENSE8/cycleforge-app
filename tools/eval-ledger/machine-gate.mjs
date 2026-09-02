@@ -32,6 +32,8 @@ const NODE =
 
 const args = new Set(process.argv.slice(2));
 const DRY_FAIL = args.has("--dry-fail");
+/** D7 item 15 — the one repair-law source. Hosts spawn this once and hash it. */
+const PRINT_LAW = args.has("--print-law");
 const FORCE =
   args.has("--force") ||
   Boolean(process.env.LOOP_RUN_ID) ||
@@ -54,28 +56,21 @@ export const CYCLEFORGE_REPAIR_LAW = [
   PERF_REPAIR_LAW,
 ].join(" ");
 
-const STATION_WORKSPACES = {
-  unbox: "src/components/receiving/unbox/UnboxLineWorkspace.tsx",
-  triage: "src/components/receiving/triage/TriageLineWorkspace.tsx",
-  pack: "src/components/packer/PackOrderWorkspace.tsx",
-  testing: "src/components/tech/TestingLineWorkspace.tsx",
-  shipping: "src/components/tech/TechRightPane.tsx",
-  "scan-out": "src/components/outbound/workspaces/ScanOutWorkspace.tsx",
-};
-
-const TABLE_MARKERS = [
-  "src/components/tables/",
-  "src/lib/tables/",
-  "CompoundCells",
-  "DataTable",
-  "DateRangePickerField",
-  "useSlotTableLayout",
-  "materialize-tracks",
-  "slot-table-cohort",
-];
-
 function log(msg) {
   process.stderr.write(`[machine-gate] ${msg}\n`);
+}
+
+if (PRINT_LAW) {
+  process.stdout.write(`${CYCLEFORGE_REPAIR_LAW}\n`);
+  process.exit(0);
+}
+
+function unmeasured(code, why) {
+  if (process.env.LOOP_UNATTENDED === "1") {
+    process.stdout.write("UNMEASURED\n");
+    log(`UNMEASURED (${why})`);
+  }
+  process.exit(code);
 }
 
 function pathEnv() {
@@ -105,16 +100,36 @@ function porcelainPaths() {
   return paths;
 }
 
-function needsSlotTable(paths) {
-  return paths.some((p) => TABLE_MARKERS.some((m) => p.includes(m)));
-}
-
-function stationIds(paths) {
-  return Object.entries(STATION_WORKSPACES)
-    .filter(([, ws]) =>
-      paths.some((p) => p === ws || p.endsWith("/" + path.basename(ws))),
-    )
-    .map(([id]) => id);
+/** Cohort/station evals derived from the prompt router (no hand list). */
+function dirtyEvals(paths) {
+  const payload = JSON.stringify(paths)
+  const r = spawnSync(
+    NODE,
+    ["--import", "tsx", "tools/eval-ledger/route.mjs", "--dirty-paths", payload],
+    {
+      cwd: ROOT,
+      encoding: "utf8",
+      timeout: 30_000,
+      env: { ...process.env, PATH: pathEnv(), NODE_NO_WARNINGS: "1" },
+    },
+  );
+  if (r.error && r.error.code === "ETIMEDOUT") {
+    return { code: 124, evals: null, text: `route.mjs timeout: ${r.error}` };
+  }
+  if (r.status !== 0) {
+    return {
+      code: 75,
+      evals: null,
+      text: `${r.stdout || ""}${r.stderr || ""}`.trim() || "route.mjs failed",
+    };
+  }
+  try {
+    const evals = JSON.parse(r.stdout || "[]");
+    if (!Array.isArray(evals)) throw new Error("not an array");
+    return { code: 0, evals, text: "" };
+  } catch (e) {
+    return { code: 75, evals: null, text: `route.mjs JSON: ${e}` };
+  }
 }
 
 function run(cmd, cmdArgs, timeoutSec = VERIFY_TIMEOUT_SEC) {
@@ -122,6 +137,7 @@ function run(cmd, cmdArgs, timeoutSec = VERIFY_TIMEOUT_SEC) {
     cwd: ROOT,
     encoding: "utf8",
     timeout: timeoutSec * 1000,
+    maxBuffer: 32 * 1024 * 1024,
     env: { ...process.env, PATH: pathEnv() },
   });
   if (r.error && r.error.code === "ETIMEDOUT") {
@@ -199,7 +215,7 @@ function main() {
     dirty = porcelainPaths();
   } catch (e) {
     log(`git status failed (${e}) — infra`);
-    process.exit(75);
+    unmeasured(75, "git status failed");
   }
 
   if (!FORCE && dirty.length === 0) {
@@ -210,55 +226,71 @@ function main() {
   const evalCli = path.join(GARISEK, "tools/eval-engineering/cursor-eval.mjs");
   if (!existsSync(evalCli)) {
     log(`missing ${evalCli}`);
-    process.exit(75);
+    unmeasured(75, "cursor-eval missing");
   }
 
   log(`cursor-eval --fast timeout=${VERIFY_TIMEOUT_SEC}s`);
   const fast = run(NODE, [evalCli, "--root", ROOT, "--fast"]);
   if (fast.code === 124) {
     log("cursor-eval timed out");
-    process.exit(124);
+    unmeasured(124, "cursor-eval timeout");
   }
   if (fast.code !== 0) {
     fail(".cursor/eval-session.json", fast.text);
   }
 
-  if (needsSlotTable(dirty) || args.has("--slot-table")) {
-    log("eval:cohort slot-table --skip-verify");
-    const r = run(NODE, [
-      "--import",
-      "tsx",
-      "tools/eval-ledger/run-cohort-eval.mjs",
-      "slot-table",
-      "--skip-verify",
-    ]);
-    if (r.code === 124) process.exit(124);
-    if (r.code !== 0) {
-      const snapDir = path.join(ROOT, "docs/eval/cohorts/slot-table/snapshots");
-      let snap = "docs/eval/cohorts/slot-table/snapshots/";
-      if (existsSync(snapDir)) {
-        const logs = readdirSync(snapDir)
-          .filter((f) => f.endsWith("-tripwire.log"))
-          .sort()
-          .reverse();
-        if (logs[0]) snap = path.join("docs/eval/cohorts/slot-table/snapshots", logs[0]);
-      }
-      fail(snap, r.text);
-    }
+  const routed = dirtyEvals(dirty);
+  if (routed.code === 124) unmeasured(124, "route.mjs timeout");
+  if (routed.code !== 0) {
+    log(routed.text);
+    unmeasured(75, "route.mjs");
+  }
+  let evals = routed.evals ?? [];
+  if (args.has("--slot-table") && !evals.some((e) => e.kind === "cohort" && e.name === "slot-table")) {
+    evals = [
+      ...evals,
+      { kind: "cohort", name: "slot-table", evalCommand: "pnpm run eval:cohort slot-table" },
+    ];
   }
 
-  for (const sid of stationIds(dirty)) {
-    log(`eval:station ${sid} --skip-verify`);
-    const r = run(NODE, [
-      "--import",
-      "tsx",
-      "tools/eval-ledger/run-station-eval.mjs",
-      sid,
-      "--skip-verify",
-    ]);
-    if (r.code === 124) process.exit(124);
-    if (r.code !== 0) {
-      fail(`docs/eval/stations/${sid}/snapshots/`, r.text);
+  for (const item of evals) {
+    if (item.kind === "cohort") {
+      log(`eval:cohort ${item.name} --skip-verify`);
+      const r = run(NODE, [
+        "--import",
+        "tsx",
+        "tools/eval-ledger/run-cohort-eval.mjs",
+        item.name,
+        "--skip-verify",
+      ]);
+      if (r.code === 124) unmeasured(124, `eval:cohort ${item.name} timeout`);
+      if (r.code !== 0) {
+        const snapDir = path.join(ROOT, `docs/eval/cohorts/${item.name}/snapshots`);
+        let snap = `docs/eval/cohorts/${item.name}/snapshots/`;
+        if (existsSync(snapDir)) {
+          const logs = readdirSync(snapDir)
+            .filter((f) => f.endsWith("-tripwire.log"))
+            .sort()
+            .reverse();
+          if (logs[0]) snap = path.join(`docs/eval/cohorts/${item.name}/snapshots`, logs[0]);
+        }
+        fail(snap, r.text);
+      }
+      continue;
+    }
+    if (item.kind === "station") {
+      log(`eval:station ${item.name} --skip-verify`);
+      const r = run(NODE, [
+        "--import",
+        "tsx",
+        "tools/eval-ledger/run-station-eval.mjs",
+        item.name,
+        "--skip-verify",
+      ]);
+      if (r.code === 124) unmeasured(124, `eval:station ${item.name} timeout`);
+      if (r.code !== 0) {
+        fail(`docs/eval/stations/${item.name}/snapshots/`, r.text);
+      }
     }
   }
 
@@ -278,7 +310,7 @@ function main() {
       log(`perf-gate --mode=${mode}`);
       const timeoutSec = mode === "check" ? 900 : 30;
       const perf = run(NODE, ["tools/eval-ledger/perf-gate.mjs", `--mode=${mode}`], timeoutSec);
-      if (perf.code === 124) process.exit(124);
+      if (perf.code === 124) unmeasured(124, "perf-gate timeout");
       if (perf.code !== 0 && (mode === "strict" || mode === "check")) {
         process.stdout.write(perf.text || "");
         process.exit(1);

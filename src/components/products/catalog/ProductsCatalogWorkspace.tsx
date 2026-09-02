@@ -59,7 +59,7 @@ const PLATFORM_TABS = catalogPlatformTabs();
 export function ProductsCatalogWorkspace() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const q = searchParams.get('q') || '';
+  const [q, setQ] = useState('');
   const platform = parseCatalogPlatform(searchParams.get('platform'));
   const refine = useMemo(() => parseCatalogRefine(searchParams), [searchParams]);
   const refineHot = catalogRefineIsHot(refine);
@@ -108,12 +108,7 @@ export function ProductsCatalogWorkspace() {
     [router, searchParams],
   );
 
-  const setCatalogSearch = useCallback(
-    (next: string) => {
-      updateParams({ q: next.trim() || null });
-    },
-    [updateParams],
-  );
+  const setCatalogSearch = useCallback((next: string) => setQ(next), []);
 
   const load = useCallback(async () => {
     setLoading(true);

@@ -50,8 +50,8 @@ import {
   INLINE_ACTION_FEEDBACK_TONE,
   toneFromVerdictHue,
   type InlineActionFeedbackTone,
-} from './inline-action-feedback-tone';
-import { WeldedFeedbackPanel, type WeldedFeedbackCta } from './WeldedFeedbackPanel';
+} from '@/components/composer/inline-action-feedback-tone';
+import { WeldedFeedbackPanel, type WeldedFeedbackCta } from '@/components/composer/WeldedFeedbackPanel';
 import { ReceiveResponsePanel } from './ReceiveResponsePanel';
 import { classifyReceiveResponse } from './classify-receive-response';
 import { receivePhaseSteps } from './receive-phase-steps';

@@ -5,17 +5,17 @@ import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import type { DeskPageTab } from '@/design-system/components/DeskPageChrome';
 
 /**
- * The Shipping **desk** frame — To ship · Amazon Prep · Shipped · Exceptions.
+ * The Shipping **desk** frame — To ship · Shortage · Amazon Prep · Shipped ·
+ * Exceptions.
  *
  * A route GROUP, so every desk segment shares one {@link DeskPageLayout} mount
  * while `/shipping/scan-out` — a Scan Station — sits outside it and keeps its
- * edge-to-edge station shell. The group adds no URL segment: the routes are
- * still `/shipping/orders|fba|shipped|exceptions`.
+ * edge-to-edge station shell (`bleed`). The group adds no URL segment: the
+ * routes are still `/shipping/orders|shortage|fba|shipped|exceptions`.
  *
- * Everything generic (tabs, title, CTA slot, fullscreen) moved into
- * `DeskPageLayout` on 2026-08-31 when the chrome became the design system's
- * (`@/design-system/components/desk`). What is left here is the ONE thing that
- * is Shipping's alone: the held-order count on the Exceptions tab.
+ * Everything generic (tabs, title, CTA slot, fullscreen) lives in
+ * `DeskPageLayout`. What is left here is Shipping's own: the held-order count
+ * on the Exceptions tab.
  */
 export default function ShippingDeskLayout({ children }: { children: ReactNode }) {
   /**

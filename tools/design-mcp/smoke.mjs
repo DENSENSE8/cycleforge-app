@@ -88,6 +88,7 @@ send({ jsonrpc: '2.0', id: 28, method: 'tools/call', params: { name: 'ds_critiqu
 send({ jsonrpc: '2.0', id: 48, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'shadcn dialog', limit: 5 } } })
 send({ jsonrpc: '2.0', id: 49, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'copy chip last-8 tracking serial', limit: 5 } } })
 send({ jsonrpc: '2.0', id: 50, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'page header with title and primary action and in-page tabs', limit: 5 } } })
+send({ jsonrpc: '2.0', id: 51, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'fixed width centered desk tab label', limit: 5 } } })
 send({ jsonrpc: '2.0', id: 29, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'mount the desk frame on a route group layout', limit: 5 } } })
 send({ jsonrpc: '2.0', id: 31, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'table status bar row counts selected', limit: 5 } } })
 send({ jsonrpc: '2.0', id: 30, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'inline edit printed sticker label face corners', limit: 5 } } })
@@ -107,8 +108,17 @@ send({ jsonrpc: '2.0', id: 44, method: 'resources/read', params: { uri: 'design:
 send({ jsonrpc: '2.0', id: 45, method: 'tools/call', params: { name: 'ds_tokens', arguments: { axis: 'item-record' } } })
 send({ jsonrpc: '2.0', id: 46, method: 'resources/read', params: { uri: 'design://tokens/item-record' } })
 send({ jsonrpc: '2.0', id: 47, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'mobile to-ship qty condition notes pick packed', limit: 5 } } })
+send({ jsonrpc: '2.0', id: 56, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'scan station displays', limit: 5 } } })
+send({ jsonrpc: '2.0', id: 59, method: 'tools/call', params: { name: 'ds_tokens', arguments: { axis: 'desk-stage' } } })
+send({ jsonrpc: '2.0', id: 60, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'comfortable breathable desk display card on canvas', limit: 5 } } })
+send({ jsonrpc: '2.0', id: 61, method: 'resources/read', params: { uri: 'design://tokens/desk-stage' } })
+send({ jsonrpc: '2.0', id: 62, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'feedback above composer', limit: 5 } } })
+send({ jsonrpc: '2.0', id: 63, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'composer reaction', limit: 5 } } })
+send({ jsonrpc: '2.0', id: 64, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'reaction from the composer', limit: 5 } } })
+send({ jsonrpc: '2.0', id: 65, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'confirm Zoho inventory received', limit: 5 } } })
+send({ jsonrpc: '2.0', id: 66, method: 'tools/call', params: { name: 'ds_contract', arguments: { intent: 'staff reaction on the composer', limit: 5 } } })
 
-await new Promise((r) => setTimeout(r, 35000))
+await new Promise((r) => setTimeout(r, 45000))
 child.kill()
 
 const msgs = out.split('\n').filter(Boolean).map((l) => { try { return JSON.parse(l) } catch { return { RAW: l.slice(0, 120) } } })
@@ -116,11 +126,16 @@ let fails = 0
 const check = (label, ok, detail) => { console.log(`${ok ? '  ok  ' : '  FAIL'} ${label}${detail ? ' — ' + detail : ''}`); if (!ok) fails++ }
 const byId = (id) => msgs.find((m) => m.id === id)
 const body = (id) => JSON.parse(byId(id)?.result?.content?.[0]?.text ?? '{}')
-const TOKEN_AXES_EXPECT = ['color', 'radius', 'spacing', 'typography', 'z-index', 'elevation', 'border', 'focus', 'station-skin', 'station-depth', 'item-record']
+const TOKEN_AXES_EXPECT = ['color', 'radius', 'spacing', 'typography', 'z-index', 'elevation', 'border', 'focus', 'station-skin', 'station-depth', 'item-record', 'desk-stage']
 
 check('every stdout line is valid JSON-RPC', !msgs.some((m) => m.RAW), msgs.find((m) => m.RAW)?.RAW)
 check('initialize', !!byId(1)?.result?.serverInfo, byId(1)?.result?.serverInfo?.name)
-check('tools/list returns 3 tools', byId(2)?.result?.tools?.length === 3, (byId(2)?.result?.tools ?? []).map((t) => t.name).join(', '))
+{
+  const names = (byId(2)?.result?.tools ?? []).map((t) => t.name)
+  // Project mode (engine in Garisek-OS) adds ds_adjudicate from the shared
+  // rule module; the three catalog tools must always be present.
+  check('tools/list returns the three catalog tools (+ ds_adjudicate in project mode)', ['ds_contract', 'ds_tokens', 'ds_critique'].every((n) => names.includes(n)) && names.length <= 4, names.join(', '))
+}
 
 const contract = body(3)
 check('ds_contract finds primitives', (contract.matches ?? []).length > 0, `${contract.catalog_size} in catalog`)
@@ -324,6 +339,13 @@ check('ds_contract ranks DeskPageChrome first for a page header',
   (deskChrome.matches ?? [])[0]?.id === 'DeskPageChrome',
   (deskChrome.matches ?? []).map((m) => m.id).join(', '))
 
+const deskTab = body(51)
+check('ds_contract ranks DeskTab first for a centered fixed-width tab',
+  (deskTab.matches ?? [])[0]?.id === 'DeskTab'
+    && /centered tab label/i.test(deskTab.matches?.[0]?.useWhen ?? '')
+    && /shrink-0/.test(deskTab.matches?.[0]?.doNot ?? ''),
+  (deskTab.matches ?? []).map((m) => m.id).join(', '))
+
 // The rule REVERSED on 2026-08-31 (stations used to be forbidden this frame),
 // so assert what it says now: stations mount it, and their tabs ride the top
 // row rather than a TableStatusBar foot strip.
@@ -414,6 +436,9 @@ check('non-cohort style={{ color }} still flags as inline-style drift',
   check('pinned.json declares station-skins as the scan-station theme SoT',
     /"station-skins"/.test(pinned) && /ds_tokens\(\{ axis: 'station-skin' \}\)/.test(pinned),
     'missing station-skins pin')
+  check('pinned.json declares WeldedFeedbackPanel as the composer-hinge SoT',
+    /"WeldedFeedbackPanel"/.test(pinned) && /weldTop/.test(pinned) && /composer reaction/.test(pinned),
+    'missing WeldedFeedbackPanel pin')
 }
 
 const skinContract = body(37)
@@ -538,6 +563,50 @@ const mobileMetaContract = body(47)
 check('ds_contract ranks ItemRecordMobileMeta for phone qty-condition-notes',
   (mobileMetaContract.matches ?? []).some((m) => m.id === 'ItemRecordMobileMeta'),
   (mobileMetaContract.matches ?? []).map((m) => m.id).join(', '))
+
+const scanDisplaysContract = body(56)
+check('ds_contract does not rank DeskPageChrome first for scan station displays',
+  (scanDisplaysContract.matches ?? [])[0]?.id !== 'DeskPageChrome',
+  (scanDisplaysContract.matches ?? []).map((m) => m.id).join(', '))
+
+const deskStageTokens = body(59)
+check('ds_tokens desk-stage lists card shell and flush table surface',
+  (deskStageTokens.tokens ?? []).some((t) => t.token === 'DESK_CHROME_STAGE_BODY_CLASS' && /rounded-xl/.test(String(t.value)))
+    && (deskStageTokens.tokens ?? []).some((t) => t.token === 'DESK_TABLE_SURFACE_CLASS' && /rounded-none/.test(String(t.value))),
+  (deskStageTokens.tokens ?? []).slice(0, 4).map((t) => t.token).join(', '))
+
+const deskProfileContract = body(60)
+check('ds_contract ranks DeskPageChrome first for comfortable desk display',
+  (deskProfileContract.matches ?? [])[0]?.id === 'DeskPageChrome',
+  (deskProfileContract.matches ?? []).map((m) => m.id).join(', '))
+check('DeskPageChrome pin states table flush inside card shell',
+  /DESK_TABLE_SURFACE_CLASS|edge-to-edge inside/.test((deskProfileContract.matches ?? []).find((m) => m.id === 'DeskPageChrome')?.doNot ?? ''),
+  ((deskProfileContract.matches ?? []).find((m) => m.id === 'DeskPageChrome')?.doNot ?? 'no pin').slice(0, 96))
+
+const deskStageResource = byId(61)?.result?.contents?.[0]?.text ?? ''
+check('resources/read desk-stage exposes profile law',
+  /DESK_TABLE_SURFACE_CLASS|desk-profile/.test(deskStageResource),
+  deskStageResource.slice(0, 80))
+
+for (const [id, label] of [
+  [62, 'feedback above composer'],
+  [63, 'composer reaction'],
+  [64, 'reaction from the composer'],
+  [65, 'confirm Zoho inventory received'],
+  [66, 'staff reaction on the composer'],
+]) {
+  const row = body(id)
+  const top = (row.matches ?? [])[0]
+  check(`ds_contract ranks WeldedFeedbackPanel first for ${label}`,
+    top?.id === 'WeldedFeedbackPanel',
+    (row.matches ?? []).map((m) => m.id).join(', '))
+  check(`WeldedFeedbackPanel refuse forbids a hinge fork (${label})`,
+    Array.isArray(top?.refuse) && top.refuse.some((r) => /caption band/i.test(r)),
+    (top?.refuse ?? []).join(', ') || 'no refuse')
+  check(`WeldedFeedbackPanel file is composer SoT (${label})`,
+    /src\/components\/composer\/WeldedFeedbackPanel\.tsx/.test(top?.file ?? ''),
+    top?.file ?? 'no file')
+}
 
 console.log(fails === 0 ? '\nsmoke: all good' : `\nsmoke: ${fails} failed`)
 process.exit(fails === 0 ? 0 : 1)

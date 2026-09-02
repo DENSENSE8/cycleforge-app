@@ -154,7 +154,6 @@ export const COMPOUND_TRACKS: readonly CompoundTrack[] = [
     type: 'image',
     headerForceLabel: true,
     align: 'start',
-    sortable: false,
     // NOT resizable, and that is the point: `isGridColumnResizable` refuses
     // `select` unconditionally, so a draggable photo track could only ever end
     // up a different width from the checkmark track beside it.

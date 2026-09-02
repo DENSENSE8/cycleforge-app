@@ -1,8 +1,8 @@
 {
   "project": "cycleforge-app",
   "target": "function:src/lib/optimistic/useOptimisticMutation.ts:useOptimisticMutation",
-  "files_affected": 10,
-  "total_symbols": 10,
+  "files_affected": 11,
+  "total_symbols": 11,
   "files": [
     {
       "file": "src/hooks/useOrderAssignment.ts",
@@ -50,6 +50,14 @@
       "affected_symbols": 1,
       "symbols": [
         "ShippedDetailsPanel"
+      ]
+    },
+    {
+      "file": "src/components/tables/ColumnStaffAssignControl.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "ColumnStaffAssignControl"
       ]
     },
     {

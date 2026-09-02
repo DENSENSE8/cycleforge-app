@@ -65,7 +65,7 @@ export function PhotoLauncher({ g }: { g: PhotoGalleryController }) {
     const items: CopyChipHoverMenuItem[] = [
       {
         id: 'view',
-        label: String(photoItems.length),
+        label: 'View',
         tone: 'accent',
         icon: <ImageIcon />,
         disabled: !hasPhotos,

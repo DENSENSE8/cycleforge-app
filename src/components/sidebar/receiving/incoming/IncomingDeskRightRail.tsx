@@ -14,7 +14,6 @@ import { yieldStationRightEdgeForDeskOccupant } from '@/components/receiving/wor
 import { setDetailInspectorCollapsed } from '@/design-system/shells/detail-stack';
 import { openPanel } from '@/lib/right-rail/panel-store';
 import { STATION_DESK_OCCUPANT_CLOSE_EVENT } from '@/utils/events';
-import { IncomingAddInboundOverlay } from './IncomingAddInboundOverlay';
 import { IncomingBulkTrackingPanel } from './IncomingBulkTrackingPanel';
 import {
   INCOMING_DESK_RAIL_ID,
@@ -80,16 +79,6 @@ export function IncomingDeskRightRail({
           embedded
           open
           initialAction="filter"
-          onClose={handleClose}
-        />
-      ) : null}
-      {tool.kind === 'add' ? (
-        <IncomingAddInboundOverlay
-          embedded
-          open
-          initialOrderId={tool.orderId ?? ''}
-          initialPlatform={tool.platform ?? 'amazon'}
-          initialLeaf={tool.leaf ?? 'index'}
           onClose={handleClose}
         />
       ) : null}

@@ -7,8 +7,7 @@
  *
  * Two hosts import this same file:
  *  (a) the order-intake editor's Shipping (G3) card (`OrderIntakeForm.tsx`),
- *  (b) the To-ship queue's inline label band (`LabelRunBand`), expanded
- *      beneath the active row of the one data table.
+ *  (b) the To-ship paperwork walk (`PaperworkEditor` via `PaperworkWalkHost`).
  *
  * The exceptions desk does **not** host this panel (R-FLOW-7, 2026-09-01):
  * that form pairs the item number to the Zoho catalog SKU only.

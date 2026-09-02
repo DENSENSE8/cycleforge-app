@@ -27,8 +27,7 @@
  *                built from several boxes (`:focus-within`): a 2px tinted ring
  *                and no border shift, because the halo's job is to trace the
  *                whole silhouette while each part keeps its own edge.
- *                (`WeldedStack` — the receive panel welded to the notes
- *                composer.)
+ *                (`WeldedStack` — staff reaction welded to the composer.)
  *  - `grouped` — a part INSIDE such a composite, following its container's
  *                focus (`group-focus-within:`): the same border shift as
  *                `wrapper`, scoped to the Tailwind `group` on that container.

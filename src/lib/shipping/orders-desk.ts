@@ -12,6 +12,14 @@
 export const SHIPPING_ORDERS_PATH = '/shipping/orders';
 
 /**
+ * Shortage / need-to-buy workbench. A Shipping PEER, not a To-ship facet:
+ * out-of-stock lines are the procurement queue (qty short · vendor · ETA),
+ * while To-ship is pack-and-ship. Same `orders` DataTable family — locked to
+ * the blocked (OOS) predicate. Not catalog pairing (`/shipping/exceptions`).
+ */
+export const SHIPPING_SHORTAGE_PATH = '/shipping/shortage';
+
+/**
  * The order-exception workbench. A Shipping PEER, not a To-ship lens: caged and
  * unpaired orders are excluded from the To-ship queue by predicate, so its
  * queue semantics genuinely cannot express them.

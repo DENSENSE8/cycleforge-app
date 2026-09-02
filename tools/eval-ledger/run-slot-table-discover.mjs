@@ -15,7 +15,7 @@ import {
   formatDiscoverMarkdown,
   nextDeleteGap,
 } from '../../src/lib/tables/slot-table-discover.ts'
-import { REPO, stamp } from './eval-core.mjs'
+import { REPO, stamp, writeLatest } from './eval-core.mjs'
 
 const json = process.argv.includes('--json')
 const report = discoverSlotTable(REPO)
@@ -58,5 +58,6 @@ writeFileSync(
   path.join(snapDir, `${day}-discover.json`),
   JSON.stringify(payload, null, 2) + '\n',
 )
+writeLatest('docs/eval/cohorts/slot-table/snapshots', { kind: 'discover', ...payload })
 
 process.exit(ratchet.ok ? 0 : 1)

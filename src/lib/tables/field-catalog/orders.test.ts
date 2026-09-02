@@ -10,7 +10,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ShippedOrder } from '@/types/orders';
-import { ORDERS_FIELD_CATALOG, ORDERS_PRODUCT_LAYOUT, omitShippedOnlyBindings } from './orders';
+import { ORDERS_FIELD_CATALOG, ORDERS_PRODUCT_LAYOUT, omitShippedOnlyBindings, omitShortageCoverageBindings, ensureShortageCoverageBinding } from './orders';
 import {
   ordersSlotValues,
   ordersSubtitleParts,
@@ -52,7 +52,7 @@ describe('orders catalog', () => {
     }
   });
 
-  it('product default parses against the catalog (picked in status:1, qty · condition · item # · notes under the title)', () => {
+  it('product default parses against the catalog (picked in status:1, qty · condition · item # · notes binding)', () => {
     const parsed = parseSlotLayout(ORDERS_PRODUCT_LAYOUT, ORDERS_FIELD_CATALOG);
     assert.equal(parsed.morph, 'compound');
     assert.deepEqual(parsed.statusBindings, [{ fieldId: 'orders.picked' }]);
@@ -82,6 +82,22 @@ describe('orders catalog', () => {
       { fieldId: 'orders.packed' },
     ]);
     assert.equal(omitShippedOnlyBindings(ORDERS_PRODUCT_LAYOUT), ORDERS_PRODUCT_LAYOUT);
+  });
+
+  it('omitShortageCoverageBindings drops coverage; ensureShortageCoverageBinding appends it', () => {
+    const withCoverage = {
+      ...ORDERS_PRODUCT_LAYOUT,
+      statusBindings: [
+        { fieldId: 'orders.picked' },
+        { fieldId: 'orders.coverage' },
+      ],
+    };
+    assert.deepEqual(omitShortageCoverageBindings(withCoverage).statusBindings, [
+      { fieldId: 'orders.picked' },
+    ]);
+    const ensured = ensureShortageCoverageBinding(ORDERS_PRODUCT_LAYOUT);
+    assert.ok(ensured.statusBindings.some((b) => b.fieldId === 'orders.coverage'));
+    assert.equal(omitShortageCoverageBindings(ORDERS_PRODUCT_LAYOUT), ORDERS_PRODUCT_LAYOUT);
   });
 
   it('every stage_event field carries an iconKey and one-word verb faces', () => {
@@ -216,6 +232,26 @@ describe('resolveOrdersSlotValue — value fields', () => {
   it('unknown field id resolves null, never throws', () => {
     assert.equal(resolveOrdersSlotValue(row(), 'orders.ghost'), null);
   });
+
+  it('coverage paints the SoT face from jsonb facts', () => {
+    assert.deepEqual(
+      resolveOrdersSlotValue(
+        row({
+          shortage_coverage: {
+            po_number: '4501',
+            inbound_tracking: '9261290983197850083534',
+            eta: null,
+          },
+        }),
+        'orders.coverage',
+      ),
+      { kind: 'value', text: 'Awaiting inbound · PO 4501' },
+    );
+    assert.deepEqual(resolveOrdersSlotValue(row(), 'orders.coverage'), {
+      kind: 'value',
+      text: 'Uncovered',
+    });
+  });
 });
 
 describe('ordersSlotValues', () => {
@@ -252,10 +288,10 @@ describe('ordersSubtitleParts', () => {
     ]);
   });
 
-  it('emits an empty item_number part so the listing glyph owns the face, even when the number is missing', () => {
+  it('keeps the item_number value available to title hover actions, even when missing', () => {
     assert.deepEqual(ordersSubtitleParts(row({ item_number: '123456789012' }), [
       'orders.item_number',
-    ]), [{ text: '', key: 'orders.item_number' }]);
+    ]), [{ text: '123456789012', key: 'orders.item_number' }]);
     assert.deepEqual(ordersSubtitleParts(row({ item_number: '' }), ['orders.item_number']), [
       { text: '', key: 'orders.item_number' },
     ]);

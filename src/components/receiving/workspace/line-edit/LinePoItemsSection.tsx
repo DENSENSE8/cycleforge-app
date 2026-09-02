@@ -82,6 +82,8 @@ interface LinePoItemsSectionProps {
   }) => void;
   /** Serials cell click → Units Displays. */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
+  /** Open the existing right-rail Locations display for this exact PO line. */
+  onOpenLocation?: (line: ReceivingLineRow) => void;
   /**
    * When false (Arrival door flow), unit editors / serial stamp stay off;
    * PoLineRow still paints Unbox five-track meta. Defaults true.
@@ -113,6 +115,7 @@ export function LinePoItemsSection({
   accordionBootstrap = "default",
   onEditFilledSerial,
   onViewAllUnits,
+  onOpenLocation,
   unitsChrome = true,
   onOpenReturnHistory,
   lineCollapse,
@@ -167,6 +170,7 @@ export function LinePoItemsSection({
         zoho_purchaseorder_number: row.zoho_purchaseorder_number ?? null,
       }}
       onViewAllUnits={unitsChrome ? onViewAllUnits : undefined}
+      onOpenLocation={onOpenLocation}
       onLinked={({ carton, line }) => {
         const cartonPatch = {
           zoho_purchaseorder_number: carton.zoho_purchaseorder_number,
