@@ -1047,12 +1047,6 @@ export type SidebarPageNav = SidebarNavItem & {
    * for pages that have `children`.
    */
   resolveChild?: (loc: ChildLocation) => string | null;
-  /**
-   * Opt the page into {@link DeskPageChrome} tabs drawn from `children`.
-   * Scan stations that pass explicit `tabs` to {@link DeskPageLayout} leave
-   * this unset — their modes are body-switchers, not spine children.
-   */
-  deskChrome?: true;
 };
 
 // Page hrefs are repeated from APP_SIDEBAR_NAV so each mode's `to()` is a pure,
@@ -1859,13 +1853,4 @@ export function resolveSidebarChild(pageId: string, loc: ChildLocation): string 
   const page = getSidebarPageNav(pageId);
   if (!page?.resolveChild) return null;
   return page.resolveChild(loc);
-}
-
-/**
- * True when a page draws its `children` as {@link DeskPageChrome} tabs (and
- * therefore withdraws those children from the spine drill-down). Scan stations
- * that pass explicit tabs keep `deskChrome` unset.
- */
-export function hasDeskPageChrome(page: SidebarPageNav | null | undefined): boolean {
-  return Boolean(page?.deskChrome) && (page?.children?.length ?? 0) > 1;
 }

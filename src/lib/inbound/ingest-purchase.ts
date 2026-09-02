@@ -215,6 +215,7 @@ export async function ingestPurchase(
     if (input.preview) {
       return {
         receivingLineId: receivingLineId ?? 0,
+        receivingId: null,
         created,
         platformAccountId,
         sourceType,
