@@ -73,13 +73,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         durationMs: null,
         requestHash: delivery.requestHash,
         errorClass: ok ? null : 'WebhookAuthenticFailed',
-        redacted: delivery,
+        redacted: { ...delivery } as Record<string, unknown>,
       });
       const completed = await completeQaTestRun(ctx.organizationId, run.id, {
         status: ok ? 'passed' : 'failed',
         providerRequestCount: 1,
         internalWrites: delivery.body.deduped === true ? 0 : 1,
-        result: delivery,
+        result: { ...delivery } as Record<string, unknown>,
         errorClass: ok ? null : 'WebhookAuthenticFailed',
       });
       await recordAudit(pool, ctx, req, {
