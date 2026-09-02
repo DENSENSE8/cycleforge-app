@@ -3,6 +3,10 @@
 Introspective eval — machine gates, design critique, and graph impact written
 back into committed docs so the next agent session compounds.
 
+**Fable 5.1 gap report** (measured architecture, P0–P2 gaps, goal object,
+typed asks, session receipts, Host sequence, build order):
+[`FABLE-5.1-GAP-REPORT.md`](FABLE-5.1-GAP-REPORT.md).
+
 Two **sibling** cohorts under one CLI (`pnpm run eval:cohort <name>`).
 **Display SoT is slot-table only.** Overlay is not a display cohort.
 
