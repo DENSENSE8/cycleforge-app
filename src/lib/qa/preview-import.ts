@@ -10,13 +10,17 @@
 import type { OrgId } from '@/lib/tenancy/constants';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { getEbayAppCreds, EBAY_PLATFORM_PREDICATE, EBAY_SELLER_ROLE_PREDICATE } from '@/lib/ebay/credentials';
-import { isEbaySandbox } from '@/lib/ebay/oauth-config';
 import { ingestRecentSellerOrders } from '@/lib/ebay/sync';
 import { syncEbayPurchasesToReceiving } from '@/lib/inbound/sync-ebay-purchases';
 import { applyAdapterInjection, InjectedProviderFailure } from './adapter-injection';
-import { emptyDryRunPreview, type DryRunPreview } from './dry-run';
+import {
+  emptyDryRunPreview,
+  refuseExecuteReason,
+  type DryRunPreview,
+  type QaImportOperation,
+} from './dry-run';
 
-export type QaImportOperation = 'ebay.buyer-import' | 'ebay.seller-sync';
+export type { QaImportOperation };
 
 export class QaExecuteRefused extends Error {
   constructor(message: string) {
@@ -144,19 +148,6 @@ async function previewSellerSync(orgId: OrgId, environment: string): Promise<Dry
     ...(errors.length ? [`Fetch/normalize notes: ${errors.slice(0, 5).join('; ')}`] : []),
   ];
   return preview;
-}
-
-export function refuseExecuteReason(
-  operation: QaImportOperation,
-  ebayEnvironment: string | null | undefined,
-): string | null {
-  if (operation === 'ebay.seller-sync') {
-    return 'Seller exception-first sync is not an execute action on this console. It writes orders and deletes matched exceptions. Preview only.';
-  }
-  if (!ebayEnvironment || !isEbaySandbox(ebayEnvironment)) {
-    return 'Execute is refused unless this organization\'s eBay app is SANDBOX. Production credentials are not a console execute target.';
-  }
-  return null;
 }
 
 export async function executeImportOperation(

@@ -28,6 +28,22 @@ export interface DryRunPreview {
   notes?: string[];
 }
 
+export type QaImportOperation = 'ebay.buyer-import' | 'ebay.seller-sync';
+
+export function refuseExecuteReason(
+  operation: QaImportOperation,
+  ebayEnvironment: string | null | undefined,
+): string | null {
+  if (operation === 'ebay.seller-sync') {
+    return 'Seller exception-first sync is not an execute action on this console. It writes orders and deletes matched exceptions. Preview only.';
+  }
+  const env = String(ebayEnvironment ?? '').trim().toUpperCase();
+  if (env !== 'SANDBOX') {
+    return 'Execute is refused unless this organization\'s eBay app is SANDBOX. Production credentials are not a console execute target.';
+  }
+  return null;
+}
+
 export function emptyDryRunPreview(): DryRunPreview {
   return { wouldCreate: [], wouldUpdate: [], wouldSkip: [], wouldCall: [] };
 }

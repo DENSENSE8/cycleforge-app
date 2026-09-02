@@ -4,7 +4,8 @@ import { parseBody } from '@/lib/schemas/parse';
 import { QaWebhookReplayBody } from '@/lib/schemas/qa-console';
 import { assertQaCapability } from '@/lib/qa/assert-capability';
 import { listStoredWebhooks, replayStoredWebhook } from '@/lib/qa/webhook-replay';
-import { startQaTestRun, completeQaTestRun } from '@/lib/qa/test-run';
+import { deliverAuthenticZohoWebhook } from '@/lib/qa/webhook-authentic';
+import { startQaTestRun, completeQaTestRun, appendQaTestRunEvent } from '@/lib/qa/test-run';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import pool from '@/lib/db';
 
@@ -31,9 +32,9 @@ export const GET = withAuth(async (_req, ctx) => {
 }, { permission: 'developer.qa_tools.view' });
 
 /**
- * POST /api/developer/qa/webhooks — application replay against the handler.
- * Requires acknowledgeApplicationReplay: true so the UI cannot pretend this
- * is a provider-authentic delivery.
+ * POST /api/developer/qa/webhooks — application replay OR provider-authentic
+ * signed delivery. The two paths are labeled separately; application replay
+ * cannot be presented as authentic.
  */
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   const gate = await assertQaCapability(
@@ -47,15 +48,58 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   const parsed = parseBody(QaWebhookReplayBody, raw);
   if (parsed instanceof NextResponse) return parsed;
 
+  const authentic = parsed.kind !== 'application';
   const run = await startQaTestRun({
     orgId: ctx.organizationId,
     staffId: ctx.staffId,
-    kind: 'webhook_replay',
+    kind: authentic ? 'webhook_authentic' : 'webhook_replay',
     connectionProvider: 'zoho',
-    scenarioId: `zoho.replay.${parsed.mode}`,
+    scenarioId: authentic ? `zoho.authentic.${parsed.kind}` : `zoho.replay.${parsed.mode}`,
   });
 
   try {
+    if (authentic) {
+      const delivery = await deliverAuthenticZohoWebhook(ctx.organizationId, {
+        eventId: parsed.eventId,
+        expect: parsed.kind === 'signature_mismatch' ? 'rejected_signature' : 'accepted',
+      });
+      const ok = parsed.kind === 'signature_mismatch'
+        ? delivery.httpStatus === 401
+        : delivery.httpStatus < 500;
+      await appendQaTestRunEvent(ctx.organizationId, run.id, {
+        provider: 'zoho',
+        operation: parsed.kind,
+        httpStatus: delivery.httpStatus,
+        durationMs: null,
+        requestHash: delivery.requestHash,
+        errorClass: ok ? null : 'WebhookAuthenticFailed',
+        redacted: delivery,
+      });
+      const completed = await completeQaTestRun(ctx.organizationId, run.id, {
+        status: ok ? 'passed' : 'failed',
+        providerRequestCount: 1,
+        internalWrites: delivery.body.deduped === true ? 0 : 1,
+        result: delivery,
+        errorClass: ok ? null : 'WebhookAuthenticFailed',
+      });
+      await recordAudit(pool, ctx, req, {
+        source: 'qa-console',
+        action: AUDIT_ACTION.QA_WEBHOOK_AUTHENTIC,
+        entityType: AUDIT_ENTITY.QA_TEST_RUN,
+        entityId: completed.runId,
+        after: {
+          runId: completed.runId,
+          authentic: true,
+          label: delivery.label,
+          kind: parsed.kind,
+          eventId: parsed.eventId,
+          httpStatus: delivery.httpStatus,
+        },
+      });
+      ctx.markAuditWritten();
+      return NextResponse.json({ success: true, delivery, run: completed });
+    }
+
     const replay = await replayStoredWebhook(ctx.organizationId, {
       eventId: parsed.eventId,
       mode: parsed.mode,
@@ -84,11 +128,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   } catch (err) {
     await completeQaTestRun(ctx.organizationId, run.id, {
       status: 'failed',
-      errorClass: 'WebhookReplayFailed',
+      errorClass: authentic ? 'WebhookAuthenticFailed' : 'WebhookReplayFailed',
       result: { error: err instanceof Error ? err.message : String(err) },
     }).catch(() => undefined);
     return NextResponse.json(
-      { success: false, error: err instanceof Error ? err.message : 'Application replay failed' },
+      { success: false, error: err instanceof Error ? err.message : 'Webhook action failed' },
       { status: 500 },
     );
   }

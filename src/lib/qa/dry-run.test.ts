@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { summarizeDryRun, type DryRunPreview } from './dry-run';
-import { refuseExecuteReason } from './preview-import';
+import { refuseExecuteReason } from './dry-run';
 
 test('summarizeDryRun matches the operator-facing preview shape', () => {
   const preview: DryRunPreview = {
