@@ -26,6 +26,7 @@ import { isIncomingUniversal } from '@/lib/feature-flags';
 // implementation detail on top of it. The withZohoCredential wrapping
 // (operation allowlist + credential-usage audit) is kept at each call site.
 import { requireInventoryProvider, type InventoryProvider } from '@/lib/integrations/inventory';
+import { applyAdapterInjection } from '@/lib/qa/adapter-injection';
 import { formatApiOffsetTimestamp, formatPSTTimestamp } from '@/utils/date';
 // Wave-3 writer inversion: zoho-cluster + testing facts are written directly to
 // the 1:1 facts tables (receiving_line_zoho / receiving_line_testing) — the spine
@@ -214,6 +215,11 @@ function factsTxDeps(client: PoolClient): FactsDeps {
 type SyncPOLinesOptions = {
   receivingId?: number | null;
   workflowStatus?: WorkflowStatus;
+  /**
+   * QA / tests: skip the live inventory GET and feed the same PO shape
+   * production would have fetched. The line upsert still runs.
+   */
+  fetchPurchaseOrder?: (purchaseOrderId: string) => Promise<unknown>;
 };
 
 type SyncPOLinesResult = {
@@ -232,7 +238,7 @@ type SyncPOLinesResult = {
 async function syncPurchaseOrderLines(
   client: PoolClient,
   orgId: OrgId,
-  inventory: InventoryProvider,
+  inventory: InventoryProvider | null,
   purchaseOrderId: string,
   options: SyncPOLinesOptions = {}
 ): Promise<SyncPOLinesResult> {
@@ -249,9 +255,13 @@ async function syncPurchaseOrderLines(
 
   // Scope the Zoho fetch to this tenant's credential + allowlisted operation
   // (per-org creds via withZohoOrg, audited, deny-by-default on the operation).
-  const detail = await withZohoCredential(orgId, 'purchaseorders.read', () =>
-    inventory.getPurchaseOrder(poId),
-  );
+  // QA may inject a snapshot so the production line upsert runs without a live GET.
+  const detail = options.fetchPurchaseOrder
+    ? await options.fetchPurchaseOrder(poId)
+    : await withZohoCredential(orgId, 'purchaseorders.read', () => {
+        if (!inventory) throw new Error('inventory provider is required for a live PO fetch');
+        return inventory.getPurchaseOrder(poId);
+      });
   const po = asObject((detail as AnyRow)?.purchaseorder);
   if (!po) throw new Error(`Zoho purchase order not found: ${poId}`);
 
@@ -590,9 +600,13 @@ export async function importZohoPurchaseOrderToReceiving(
   purchaseOrderId: string,
   options: SyncPOLinesOptions = {}
 ): Promise<ImportPOResult> {
+  await applyAdapterInjection(orgId, 'zoho');
   // Resolve the org's inventory provider once, outside the transaction — a
   // not-connected org fails fast with the typed error instead of holding a txn.
-  const inventory = await requireInventoryProvider(orgId);
+  // A QA snapshot skip the live connector; the upsert still uses this writer.
+  const inventory = options.fetchPurchaseOrder
+    ? null
+    : await requireInventoryProvider(orgId);
 
   // withTenantTransaction opens the transaction, sets the `app.current_org`
   // GUC via SET LOCAL, and uses the tenant pool — so every write inside (incl.
@@ -693,6 +707,7 @@ export async function syncZohoPurchaseOrdersToReceiving(
   orgId: OrgId,
   opts: BulkSyncOptions = {}
 ): Promise<BulkSyncSummary> {
+  await applyAdapterInjection(orgId, 'zoho');
   const perPage = Math.min(200, Math.max(1, Number(opts.per_page) || 200));
   const maxPages = Math.min(100, Math.max(1, Number(opts.max_pages) || 50));
   const maxItems = Math.min(10000, Math.max(1, Number(opts.max_items) || 5000));

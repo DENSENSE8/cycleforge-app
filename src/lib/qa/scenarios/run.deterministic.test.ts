@@ -10,7 +10,7 @@ test('deterministic suite passes without a provider or QA org', async () => {
   assert.equal(missing?.status, 'passed');
   const label = report.results.find((r) => r.scenarioId === 'shipping.successful-label-purchase');
   assert.equal(label?.status, 'passed');
-  assert.match(label?.detail ?? '', /will not buy live postage/i);
+  assert.match(label?.detail ?? '', /live postage refused/i);
   const dup = report.results.find((r) => r.scenarioId === 'zoho.duplicate-webhook');
   assert.equal(dup?.status, 'passed');
   const qty = report.results.find((r) => r.scenarioId === 'zoho.changed-line-quantity');

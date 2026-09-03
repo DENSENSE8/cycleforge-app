@@ -30,6 +30,17 @@ test('create opens on the ticket draft, link still opens on the picker', () => {
   assert.equal(claimSectionDomId('compose'), 'claim-section-compose');
 });
 
+test('the claim panel is create-only — no Create|Link combobox', () => {
+  const panel = src('../ReceivingClaimPanel.tsx');
+  assert.doesNotMatch(panel, /ClaimModeSelect/);
+  assert.match(panel, /initialMode: 'create'/);
+  const header = src('components/ClaimModalHeader.tsx');
+  assert.match(header, /Create ticket/);
+  const editor = src('components/ClaimTemplateEditor.tsx');
+  assert.match(editor, /Draft with AI/);
+  assert.match(editor, /draftWithAi/);
+});
+
 test('the claim panel mounts no photo grid and the controller holds no photo state', () => {
   // The panel renders in BOTH the rail and the centre, so a grid here is one
   // mount and one /api/receiving-photos pull per surface. Attaching is the

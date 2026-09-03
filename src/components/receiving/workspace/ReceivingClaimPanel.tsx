@@ -13,7 +13,6 @@ import {
   type ReceivingClaimController,
 } from './claim/hooks/useReceivingClaimController';
 import { ClaimModalHeader } from './claim/components/ClaimModalHeader';
-import { ClaimModeSelect } from './claim/components/ClaimModeSelect';
 import { ClaimEmptySeedCreateHelper } from './claim/components/ClaimEmptySeedCreateHelper';
 import { ClaimComposeStep } from './claim/components/ClaimComposeStep';
 import { ClaimFiledStep } from './claim/components/ClaimFiledStep';
@@ -23,14 +22,10 @@ import { ClaimActionFooter } from './claim/components/ClaimPhaseActions';
 import { cn } from '@/utils/_cn';
 
 /**
- * Claim wizard body — Create|Link mode combobox + stacked scroll sections +
- * sticky File / Link & send footer. Ticket is editable fields only (no
- * duplicate review preview). Backup note sits on the sticky footer (leading).
- * Dismiss via header X / Displays →| (no Cancel).
- *
- * Create and Link share Claim type · Subject · Body · Recipients. Link adds
- * the ticket picker above that stack. Mode is a body flush combobox (never a
- * leaf-header New·Link segment twin).
+ * Create-ticket body — subject · body · recipients, no Create|Link combobox.
+ * Sticky File footer. Backup note sits on the sticky footer (leading).
+ * Dismiss via header X / Displays →| (no Cancel). Header paints
+ * "Create ticket" top-right. Hermes AI draft lives on the template itself.
  *
  * No photo picker: attaching is the composer's job, and this panel mounts in
  * both the rail and the centre — a grid here rendered (and re-fetched) once per
@@ -45,7 +40,7 @@ export function ReceivingClaimPanel({
   /** See {@link ClaimModalHeader} — Displays omits the gray identity band. */
   chrome?: 'modal' | 'display';
 }) {
-  const c = useReceivingClaimController(props);
+  const c = useReceivingClaimController({ ...props, initialMode: 'create' });
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const mountedSteps = useMemo(
@@ -87,7 +82,10 @@ export function ReceivingClaimPanel({
 
   return (
     <div
-      className={cn('flex h-full min-h-0 flex-col', className)}
+      className={cn(
+        'flex h-full min-h-0 flex-col bg-surface-card text-text-default',
+        className,
+      )}
       data-testid="receiving-claim-panel"
       data-claim-chrome={chrome}
     >
@@ -103,7 +101,6 @@ export function ReceivingClaimPanel({
         ref={scrollRef}
         className="min-h-0 flex-1 overflow-y-auto px-0 py-0 text-role-data"
       >
-        <ClaimModeSelect c={c} />
         <ClaimEmptySeedCreateHelper c={c} />
         {mountedSteps.map((step) => {
           const def = stepDefs.find((s) => s.key === step);

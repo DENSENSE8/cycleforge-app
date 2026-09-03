@@ -2,21 +2,24 @@
 /**
  * CI / operator entry for named QA scenarios.
  *
- *   pnpm test:qa-scenarios           # deterministic, no secrets
- *   pnpm test:qa-scenarios -- --org  # QA tenant (DATABASE_URL + provisioned org)
+ *   pnpm test:qa-scenarios              # deterministic, no secrets
+ *   pnpm test:qa-scenarios -- --org     # QA tenant (DATABASE_URL + provisioned org)
+ *   pnpm test:qa-scenarios -- --sandbox # connected sandbox providers; skip when absent
  *
  * Exit 1 if any scenario failed. Blocked/skipped required items are reported
- * but only `--org` treats blocked required as a red gate.
+ * but only `--org` treats blocked required as a red gate. `--sandbox` fails
+ * on failed scenarios only — skipped (no creds) is allowed.
  */
 
 import { QA_ORG_ID } from '@/lib/tenancy/qa-org';
 import { runScenarioSuite } from '@/lib/qa/scenarios/run';
 
 const wantOrg = process.argv.includes('--org');
-const suite = wantOrg ? 'qa-org' : 'deterministic';
+const wantSandbox = process.argv.includes('--sandbox');
+const suite = wantSandbox ? 'sandbox' : wantOrg ? 'qa-org' : 'deterministic';
 
 async function main() {
-  const orgId = wantOrg ? QA_ORG_ID : undefined;
+  const orgId = wantOrg || wantSandbox ? QA_ORG_ID : undefined;
   const report = await runScenarioSuite({
     suite,
     orgId,

@@ -547,6 +547,37 @@ export function QaConsoleClient({ initialPermissions }: Props) {
               </Button>
               <Button
                 size="sm"
+                disabled={!perms.webhookReplay || busy !== null}
+                loading={busy === 'wh-dispatch'}
+                onClick={() => void run('wh-dispatch', async () => {
+                  const res = await fetch('/api/developer/qa/webhooks', {
+                    method: 'POST',
+                    headers: { 'content-type': 'application/json' },
+                    body: JSON.stringify({
+                      kind: 'provider_authentic',
+                      fixture: 'deleted_missing_po',
+                      mintFreshEventId: true,
+                      acknowledgeProviderAuthentic: true,
+                    }),
+                  });
+                  const data = await readJson<{
+                    success?: boolean;
+                    error?: string;
+                    delivery?: { httpStatus: number; verified: boolean; body?: { deduped?: boolean; action?: string } };
+                  }>(res);
+                  if (!res.ok) throw new Error(data.error ?? 'Authentic dispatch failed');
+                  const d = data.delivery;
+                  setAuthenticNote(
+                    d
+                      ? `Provider-authentic dispatch: HTTP ${d.httpStatus}, action ${d.body?.action ?? '—'}, deduped ${d.body?.deduped === true ? 'yes' : 'no'}.`
+                      : 'Provider-authentic dispatch completed.',
+                  );
+                })}
+              >
+                Send signed dispatch (fresh event id, missing PO delete)
+              </Button>
+              <Button
+                size="sm"
                 variant="secondary"
                 disabled={!perms.webhookReplay || busy !== null || !webhookId}
                 loading={busy === 'wh-mismatch'}

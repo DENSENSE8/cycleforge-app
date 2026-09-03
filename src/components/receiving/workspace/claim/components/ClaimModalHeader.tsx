@@ -17,7 +17,7 @@ interface Props {
   chrome?: 'modal' | 'display';
 }
 
-/** Claim title chrome — modal only; Displays hosts omit this band. */
+/** Create-ticket header — "Create ticket" top-right on both chrome faces. */
 export function ClaimModalHeader({
   row,
   submitting,
@@ -25,29 +25,39 @@ export function ClaimModalHeader({
   onClose,
   chrome = 'modal',
 }: Props) {
-  if (chrome === 'display') return null;
+  const identity =
+    row.receiving_source === 'unmatched'
+      ? 'Unmatched carton'
+      : row.zoho_purchaseorder_number
+        ? `PO ${row.zoho_purchaseorder_number}`
+        : row.tracking_number
+          ? `Carton · ${String(row.tracking_number).slice(-8)}`
+          : 'Unmatched carton';
 
   return (
-    <div className="flex shrink-0 items-center justify-between border-b border-border-hairline bg-surface-canvas px-4 py-3">
-      <div>
-        <p className="text-role-micro uppercase tracking-[0.14em] text-rose-700">File a claim</p>
-        <p className="mt-0.5 text-sm font-semibold tracking-tight text-text-default">
-          {row.receiving_source === 'unmatched'
-            ? 'Unmatched carton'
-            : row.zoho_purchaseorder_number
-              ? `PO ${row.zoho_purchaseorder_number}`
-              : row.tracking_number
-                ? `Carton · ${String(row.tracking_number).slice(-8)}`
-                : 'Unmatched carton'}
-        </p>
+    <div className="flex shrink-0 items-center justify-between gap-3 border-b border-border-hairline bg-surface-card px-4 py-3 text-text-default">
+      {chrome === 'modal' ? (
+        <div className="min-w-0">
+          <p className="text-role-micro uppercase tracking-[0.14em] text-text-faint">Ticket</p>
+          <p className="mt-0.5 truncate text-sm font-semibold tracking-tight text-text-default">
+            {identity}
+          </p>
+        </div>
+      ) : (
+        <div />
+      )}
+      <div className="flex shrink-0 items-center gap-2">
+        <p className="text-sm font-semibold tracking-tight text-text-default">Create ticket</p>
+        {chrome === 'modal' ? (
+          <IconButton
+            onClick={onClose}
+            disabled={submitting || archiveSubmitting}
+            ariaLabel="Cancel"
+            icon={<X className="h-4 w-4" />}
+            className="rounded-lg p-1.5 text-text-faint hover:bg-surface-card hover:text-text-muted disabled:opacity-50"
+          />
+        ) : null}
       </div>
-      <IconButton
-        onClick={onClose}
-        disabled={submitting || archiveSubmitting}
-        ariaLabel="Cancel"
-        icon={<X className="h-4 w-4" />}
-        className="rounded-lg p-1.5 text-text-faint hover:bg-surface-card hover:text-text-muted disabled:opacity-50"
-      />
     </div>
   );
 }

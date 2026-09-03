@@ -25,6 +25,10 @@ import { hashPayload } from './test-run-id';
 
 export type AuthenticWebhookExpect = 'accepted' | 'rejected_signature';
 
+export function freshAuthenticEventId(now = Date.now()): string {
+  return `qa-auth-${now.toString(36)}`;
+}
+
 export interface AuthenticWebhookResult {
   authentic: true;
   label: 'Provider-authentic signed delivery';
@@ -94,7 +98,12 @@ export function buildSignedZohoWebhookRequest(args: {
 
 export async function deliverAuthenticZohoWebhook(
   orgId: OrgId,
-  input: { eventId: string; expect?: AuthenticWebhookExpect },
+  input: {
+    eventId?: string;
+    envelope?: Record<string, unknown>;
+    mintFreshEventId?: boolean;
+    expect?: AuthenticWebhookExpect;
+  },
   deps: AuthenticWebhookDeps = defaultDeps,
 ): Promise<AuthenticWebhookResult> {
   const identity = await deps.loadIdentity(orgId);
@@ -104,7 +113,19 @@ export async function deliverAuthenticZohoWebhook(
     );
   }
 
-  const rawBody = await deps.loadRawBody(orgId, input.eventId);
+  let rawBody: string;
+  if (input.envelope) {
+    rawBody = JSON.stringify(input.envelope);
+  } else if (input.eventId) {
+    rawBody = await deps.loadRawBody(orgId, input.eventId);
+  } else {
+    throw new Error('eventId or envelope is required');
+  }
+  if (input.mintFreshEventId) {
+    const parsed = JSON.parse(rawBody) as Record<string, unknown>;
+    parsed.event_id = freshAuthenticEventId();
+    rawBody = JSON.stringify(parsed);
+  }
   const expect = input.expect ?? 'accepted';
   const signingSecret = expect === 'rejected_signature' ? 'qa-wrong-secret' : identity.secret;
   const signature = signZohoWebhookBody(rawBody, signingSecret);
@@ -139,7 +160,11 @@ export async function deliverAuthenticZohoWebhook(
     httpStatus: processed.status,
     tokenPath: `/api/zoho/webhooks/${identity.token.slice(0, 6)}…`,
     requestHash: hashPayload(rawBody),
-    eventId: input.eventId,
+    eventId: String(
+      (JSON.parse(rawBody) as { event_id?: string }).event_id
+        ?? input.eventId
+        ?? 'unknown',
+    ),
     body,
     notes,
   };

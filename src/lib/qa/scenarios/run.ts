@@ -10,7 +10,19 @@ import { ingestPurchase } from '@/lib/inbound/ingest-purchase';
 import { normalizeZohoWebhook } from '@/lib/zoho/webhooks/normalize';
 import { dispatchWebhookEvent } from '@/lib/zoho/webhooks/handlers';
 import { signZohoWebhookBody, verifyZohoWebhookSignature } from '@/lib/zoho/webhooks/verify';
-import { QA_FIXTURE_ORDERS, QA_FIXTURE_PO_NUMBER, QA_FIXTURE_TRACKING } from '@/lib/tenancy/qa-org';
+import {
+  QA_FIXTURE_ORDERS,
+  QA_FIXTURE_PO_ID,
+  QA_FIXTURE_PO_NUMBER,
+  QA_FIXTURE_SKUS,
+  QA_FIXTURE_TRACKING,
+} from '@/lib/tenancy/qa-org';
+import { importZohoPurchaseOrderToReceiving } from '@/lib/zoho-receiving-sync';
+import { upsertReceivingLineZoho } from '@/lib/receiving/facts/narrow';
+import { deliverAuthenticZohoWebhook } from '@/lib/qa/webhook-authentic';
+import { purchaseMockLabel, resetMockLabelIdempotency } from '@/lib/qa/shipping-mock';
+import { getEbayAppCreds } from '@/lib/ebay/credentials';
+import { isEbaySandbox } from '@/lib/ebay/oauth-config';
 import { createFailureInjection, clearFailureInjection } from '@/lib/qa/failure-injection';
 import { runConnectionHealthChecks } from '@/lib/qa/health';
 import { previewImportOperation } from '@/lib/qa/preview-import';
@@ -85,9 +97,13 @@ async function runHandler(id: string, ctx: HandlerCtx): Promise<never> {
     }
     case 'ingest-duplicate-preview': {
       if (!ctx.orgId) blocked('Needs the QA organization');
-      const existing = await tenantQuery<{ source_order_id: string; source_type: string }>(
+      const existing = await tenantQuery<{
+        source_order_id: string;
+        source_type: string;
+        source_line_item_id: string | null;
+      }>(
         ctx.orgId,
-        `SELECT source_order_id, source_type
+        `SELECT source_order_id, source_type, source_line_item_id
            FROM inbound_purchase_order_links
           WHERE organization_id = $1
           LIMIT 1`,
@@ -98,6 +114,7 @@ async function runHandler(id: string, ctx: HandlerCtx): Promise<never> {
       const r = await ingestPurchase(ctx.orgId, {
         sourceType: row.source_type,
         sourceOrderId: row.source_order_id,
+        sourceLineItemId: row.source_line_item_id,
         preview: true,
       });
       if (r.created) fail('preview reported would-create for an existing inbound identity');
@@ -134,14 +151,21 @@ async function runHandler(id: string, ctx: HandlerCtx): Promise<never> {
     }
     case 'dry-run-ebay-buyer': {
       if (!ctx.orgId) blocked('Needs the QA organization');
+      const app = await getEbayAppCreds(ctx.orgId);
+      if (!app) skip('No eBay app credentials on this organization');
+      if (!isEbaySandbox(app.environment)) {
+        skip('eBay app is PRODUCTION — sandbox proof only');
+      }
       const preview = await previewImportOperation(ctx.orgId, 'ebay.buyer-import');
       const notes = preview.notes?.join('; ') ?? '';
       if (/Injected failure/.test(notes)) {
         fail(notes, 'ProviderFailure');
       }
+      const wouldLand =
+        preview.wouldCreate.reduce((n, b) => n + b.count, 0)
+        + preview.wouldUpdate.reduce((n, b) => n + b.count, 0);
       pass(
-        `would create ${preview.wouldCreate.reduce((n, b) => n + b.count, 0)}, ` +
-          `update ${preview.wouldUpdate.reduce((n, b) => n + b.count, 0)}; ${notes}`,
+        `sandbox GetOrders (buyer) ran; would land ${wouldLand} line(s). ${notes}`,
       );
     }
     case 'assert-orders': {
@@ -261,37 +285,209 @@ async function runHandler(id: string, ctx: HandlerCtx): Promise<never> {
       if (a.eventType !== 'purchaseorder.updated' || b.eventType !== 'purchaseorder.updated') {
         fail(`expected purchaseorder.updated, got ${a.eventType}/${b.eventType}`);
       }
-      pass(`qty 1 → 3 keeps objectId ${a.objectId}; production upsert is keyed on that identity, not a duplicate row`);
-    }
-    case 'zoho-delete-missing-po': {
-      if (!ctx.orgId) blocked('Needs the QA organization');
-      const before = await tenantQuery<{ n: string }>(
+      if (!ctx.orgId) {
+        pass(`qty 1 → 3 keeps objectId ${a.objectId}; production upsert is keyed on that identity`);
+      }
+      const line = await tenantQuery<{
+        receiving_line_id: number;
+        quantity_expected: number;
+        sku: string | null;
+        item_name: string | null;
+      }>(
         ctx.orgId,
-        `SELECT count(*)::text AS n FROM receiving_line WHERE organization_id = $1`,
-        [ctx.orgId],
+        `SELECT rz.receiving_line_id, rl.quantity_expected, rl.sku, rl.item_name
+           FROM receiving_line_zoho rz
+           JOIN receiving_line rl ON rl.id = rz.receiving_line_id
+          WHERE rz.organization_id = $1
+            AND rz.zoho_purchaseorder_id = $2
+            AND rz.zoho_line_item_id = $3
+          LIMIT 1`,
+        [ctx.orgId, QA_FIXTURE_PO_ID, 'QA-MOCK-LINE-1'],
       );
-      const event = normalizeZohoWebhook({
-        event_id: `qa-deleted-missing-${Date.now()}`,
-        event_type: 'purchaseorder.deleted',
-        data: { purchaseorder: { purchaseorder_id: 'QA-MISSING-PO' } },
+      const row = line.rows[0];
+      if (!row) blocked(`Fixture PO ${QA_FIXTURE_PO_NUMBER} line QA-MOCK-LINE-1 not provisioned`);
+      const originalQty = Number(row.quantity_expected);
+      const nextQty = originalQty + 1;
+      const snapshot = (qty: number) => ({
+        purchaseorder: {
+          purchaseorder_id: QA_FIXTURE_PO_ID,
+          purchaseorder_number: QA_FIXTURE_PO_NUMBER,
+          line_items: [{
+            item_id: 'QA-MOCK-ITEM-1',
+            line_item_id: 'QA-MOCK-LINE-1',
+            name: row.item_name ?? 'QA Bose SoundLink Mini II',
+            sku: row.sku ?? QA_FIXTURE_SKUS.speaker,
+            quantity: qty,
+          }],
+        },
       });
-      const result = await dispatchWebhookEvent(event, ctx.orgId);
-      const after = await tenantQuery<{ n: string }>(
-        ctx.orgId,
-        `SELECT count(*)::text AS n FROM receiving_line WHERE organization_id = $1`,
-        [ctx.orgId],
-      );
-      if (result.action !== 'po.deleted') fail(`expected po.deleted, got ${result.action}`);
-      if (Number(result.detail?.rows_detached ?? -1) !== 0) {
-        fail(`missing PO detached ${String(result.detail?.rows_detached)} rows`);
+      try {
+        await importZohoPurchaseOrderToReceiving(ctx.orgId, QA_FIXTURE_PO_ID, {
+          fetchPurchaseOrder: async () => snapshot(nextQty),
+        });
+        const after = await tenantQuery<{ receiving_line_id: number; quantity_expected: number; n: string }>(
+          ctx.orgId,
+          `SELECT rz.receiving_line_id, rl.quantity_expected,
+                  (SELECT count(*)::text FROM receiving_line_zoho
+                    WHERE organization_id = $1 AND zoho_purchaseorder_id = $2) AS n
+             FROM receiving_line_zoho rz
+             JOIN receiving_line rl ON rl.id = rz.receiving_line_id
+            WHERE rz.organization_id = $1
+              AND rz.zoho_purchaseorder_id = $2
+              AND rz.zoho_line_item_id = $3
+            LIMIT 1`,
+          [ctx.orgId, QA_FIXTURE_PO_ID, 'QA-MOCK-LINE-1'],
+        );
+        const updated = after.rows[0];
+        if (!updated) fail('fixture line disappeared after qty upsert');
+        if (Number(updated.receiving_line_id) !== Number(row.receiving_line_id)) {
+          fail('qty edit created a different receiving_line_id');
+        }
+        if (Number(updated.quantity_expected) !== nextQty) {
+          fail(`expected qty ${nextQty}, got ${updated.quantity_expected}`);
+        }
+        pass(
+          `production upsert updated line ${row.receiving_line_id} ${originalQty} → ${nextQty}; same identity, no duplicate`,
+        );
+      } finally {
+        await importZohoPurchaseOrderToReceiving(ctx.orgId, QA_FIXTURE_PO_ID, {
+          fetchPurchaseOrder: async () => snapshot(originalQty),
+        }).catch(() => undefined);
       }
-      if (Number(before.rows[0]?.n ?? 0) !== Number(after.rows[0]?.n ?? 0)) {
-        fail('deleted missing PO invented receiving_line rows');
-      }
-      pass('purchaseorder.deleted on an unknown PO detaches 0 rows and does not invent receipts');
     }
-    case 'refuse-live-label': {
-      pass('QA Console will not buy live postage. Use a carrier sandbox or mock — never a paid production label from this surface.');
+    case 'zoho-delete-fixture-po': {
+      if (!ctx.orgId) blocked('Needs the QA organization');
+      const lines = await tenantQuery<{
+        receiving_line_id: number;
+        quantity_received: number;
+        zoho_sync_source: string | null;
+      }>(
+        ctx.orgId,
+        `SELECT rz.receiving_line_id, rl.quantity_received, rz.zoho_sync_source
+           FROM receiving_line_zoho rz
+           JOIN receiving_line rl ON rl.id = rz.receiving_line_id
+          WHERE rz.organization_id = $1 AND rz.zoho_purchaseorder_id = $2
+          ORDER BY rz.receiving_line_id`,
+        [ctx.orgId, QA_FIXTURE_PO_ID],
+      );
+      if (lines.rows.length === 0) {
+        const before = await tenantQuery<{ n: string }>(
+          ctx.orgId,
+          `SELECT count(*)::text AS n FROM receiving_line WHERE organization_id = $1`,
+          [ctx.orgId],
+        );
+        const event = normalizeZohoWebhook({
+          event_id: `qa-deleted-missing-${Date.now()}`,
+          event_type: 'purchaseorder.deleted',
+          data: { purchaseorder: { purchaseorder_id: 'QA-MISSING-PO' } },
+        });
+        const result = await dispatchWebhookEvent(event, ctx.orgId);
+        const after = await tenantQuery<{ n: string }>(
+          ctx.orgId,
+          `SELECT count(*)::text AS n FROM receiving_line WHERE organization_id = $1`,
+          [ctx.orgId],
+        );
+        if (result.action !== 'po.deleted') fail(`expected po.deleted, got ${result.action}`);
+        if (Number(before.rows[0]?.n ?? 0) !== Number(after.rows[0]?.n ?? 0)) {
+          fail('deleted missing PO invented receiving_line rows');
+        }
+        pass('purchaseorder.deleted on an unknown PO detaches 0 rows and does not invent receipts');
+      }
+      const receivedBefore = lines.rows.map((r) => Number(r.quantity_received));
+      const event = normalizeZohoWebhook({
+        event_id: `qa-deleted-fixture-${Date.now()}`,
+        event_type: 'purchaseorder.deleted',
+        data: { purchaseorder: { purchaseorder_id: QA_FIXTURE_PO_ID } },
+      });
+      try {
+        const result = await dispatchWebhookEvent(event, ctx.orgId);
+        if (result.action !== 'po.deleted') fail(`expected po.deleted, got ${result.action}`);
+        const after = await tenantQuery<{
+          receiving_line_id: number;
+          quantity_received: number;
+          zoho_sync_source: string | null;
+        }>(
+          ctx.orgId,
+          `SELECT rz.receiving_line_id, rl.quantity_received, rz.zoho_sync_source
+             FROM receiving_line_zoho rz
+             JOIN receiving_line rl ON rl.id = rz.receiving_line_id
+            WHERE rz.organization_id = $1 AND rz.zoho_purchaseorder_id = $2
+            ORDER BY rz.receiving_line_id`,
+          [ctx.orgId, QA_FIXTURE_PO_ID],
+        );
+        if (after.rows.length !== lines.rows.length) {
+          fail('deleted PO dropped or invented receiving_line rows');
+        }
+        if (after.rows.some((r) => r.zoho_sync_source !== 'deleted')) {
+          fail('fixture lines were not marked zoho_sync_source=deleted');
+        }
+        if (after.rows.some((r, i) => Number(r.quantity_received) !== receivedBefore[i])) {
+          fail('warehouse quantity_received changed on a Zoho delete');
+        }
+        pass(
+          `purchaseorder.deleted marked ${after.rows.length} fixture line(s) deleted; receipts unchanged`,
+        );
+      } finally {
+        for (const row of lines.rows) {
+          await upsertReceivingLineZoho(ctx.orgId, row.receiving_line_id, {
+            zohoSyncSource: row.zoho_sync_source ?? 'purchase_order',
+          }).catch(() => undefined);
+        }
+      }
+    }
+    case 'webhook-authentic-dispatch': {
+      if (!ctx.orgId) skip('Needs the QA organization and a Zoho webhook identity');
+      try {
+        const delivery = await deliverAuthenticZohoWebhook(ctx.orgId, {
+          envelope: {
+            event_type: 'purchaseorder.deleted',
+            data: { purchaseorder: { purchaseorder_id: 'QA-MISSING-PO' } },
+          },
+          mintFreshEventId: true,
+        });
+        if (!delivery.verified) fail('signed body did not verify against the org secret');
+        if (delivery.httpStatus >= 500) fail(`authentic pipeline HTTP ${delivery.httpStatus}`);
+        if (delivery.body.deduped === true) {
+          fail('fresh event_id was treated as a duplicate — dispatch never ran');
+        }
+        pass(
+          `processZohoWebhook HTTP ${delivery.httpStatus} action=${String(delivery.body.action ?? 'ok')} (not deduped)`,
+        );
+      } catch (err) {
+        if (err instanceof Outcome) throw err;
+        const msg = err instanceof Error ? err.message : String(err);
+        if (/not provisioned/.test(msg)) skip(msg);
+        fail(msg);
+      }
+    }
+    case 'mock-label': {
+      const outcome = runner.labelMock ?? 'success';
+      const live = purchaseMockLabel({ outcome, environment: 'production' });
+      if (!live.refusedLive) fail('production environment was not refused');
+      resetMockLabelIdempotency();
+      const first = purchaseMockLabel({
+        outcome,
+        environment: 'mock',
+        idempotencyKey: `qa-${outcome}`,
+      });
+      if (outcome === 'success' || outcome === 'duplicate_idempotency') {
+        if (!first.ok || !first.result) fail(`mock ${outcome} did not return a label`);
+        if (first.result.cost !== 0) fail('mock label cost must be 0');
+        if (outcome === 'duplicate_idempotency') {
+          const second = purchaseMockLabel({
+            outcome,
+            environment: 'mock',
+            idempotencyKey: `qa-${outcome}`,
+          });
+          if (second.result?.labelId !== first.result.labelId) {
+            fail('duplicate idempotency key minted a second label');
+          }
+        }
+        pass(`mock ${outcome}: label ${first.result.labelId}; live postage refused`);
+      }
+      if (first.ok) fail(`mock ${outcome} should have classified a failure`);
+      if (!first.errorClass) fail(`mock ${outcome} missing error class`);
+      pass(`mock ${outcome}: ${first.errorClass}; live postage refused`);
     }
     case 'not-wired':
       skip('No production handler to exercise yet — listed for coverage, not executed');

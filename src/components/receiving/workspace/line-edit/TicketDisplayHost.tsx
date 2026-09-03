@@ -4,9 +4,8 @@
  * Unbox Displays → Ticket topic — presence-exclusive body.
  *
  * Strip cell is "Ticket". No Chat · Claim tab row on the topic plate:
- * - No linked ticket → {@link ReceivingClaimPanel} with body **Create | Link**
- *   flush combobox (`ClaimModeSelect`, ⌥1/⌥2) — shared photos · claim type ·
- *   subject · body · recipients (Pairing no longer hosts a Tickets avenue).
+ * - No linked ticket → {@link ReceivingClaimPanel} create-only (no Create|Link
+ *   combobox) — claim type · subject · body · recipients · Hermes AI draft.
  * - Linked ticket → Chat only
  *
  * Nest: `ticket` leaf (+ `claimMode` while on the claim surface).

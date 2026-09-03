@@ -86,6 +86,40 @@ test('missing webhook identity fails closed without calling process', async () =
   assert.equal(cap.processed.length, 0);
 });
 
+test('mintFreshEventId rewrites event_id so production dedupe will dispatch', async () => {
+  const { deps, cap } = fakes({
+    raw: '{"event_id":"evt-1","event_type":"purchaseorder.deleted"}',
+    body: { ok: true, deduped: false, action: 'po.deleted' },
+  });
+  const result = await deliverAuthenticZohoWebhook(
+    ORG,
+    { eventId: 'evt-1', mintFreshEventId: true },
+    deps,
+  );
+  assert.equal(result.httpStatus, 200);
+  const sent = JSON.parse(cap.processed[0]!.body) as { event_id: string };
+  assert.match(sent.event_id, /^qa-auth-/);
+  assert.notEqual(sent.event_id, 'evt-1');
+  assert.equal(result.eventId, sent.event_id);
+});
+
+test('envelope fixture does not load a stored event', async () => {
+  const { deps, cap } = fakes({ body: { ok: true, action: 'po.deleted', skipped: false } });
+  const result = await deliverAuthenticZohoWebhook(
+    ORG,
+    {
+      envelope: {
+        event_id: 'qa-auth-fixed',
+        event_type: 'purchaseorder.deleted',
+        data: { purchaseorder: { purchaseorder_id: 'QA-MISSING-PO' } },
+      },
+    },
+    deps,
+  );
+  assert.equal(result.eventId, 'qa-auth-fixed');
+  assert.equal(JSON.parse(cap.processed[0]!.body).event_type, 'purchaseorder.deleted');
+});
+
 test('buildSignedZohoWebhookRequest posts the raw body on the token URL', () => {
   const req: NextRequest = buildSignedZohoWebhookRequest({
     token: 'tok',

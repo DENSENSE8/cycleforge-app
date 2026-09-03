@@ -27,6 +27,7 @@ test('deterministic suite is secret-free and non-empty', () => {
   assert.ok(ids.includes('zoho.changed-line-quantity'));
   assert.ok(ids.includes('zoho.provider-authentic-signature'));
   assert.ok(!ids.includes('ebay.successful-order-import'));
+  assert.ok(!ids.includes('zoho.provider-authentic-dispatch'));
 });
 
 test('playwrightCommand is the qa-desktop invocation', () => {

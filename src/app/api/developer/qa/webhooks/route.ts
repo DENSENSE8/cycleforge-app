@@ -61,6 +61,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     if (authentic) {
       const delivery = await deliverAuthenticZohoWebhook(ctx.organizationId, {
         eventId: parsed.eventId,
+        mintFreshEventId: parsed.mintFreshEventId === true || parsed.fixture === 'deleted_missing_po',
+        envelope: parsed.fixture === 'deleted_missing_po'
+          ? {
+              event_type: 'purchaseorder.deleted',
+              data: { purchaseorder: { purchaseorder_id: 'QA-MISSING-PO' } },
+            }
+          : undefined,
         expect: parsed.kind === 'signature_mismatch' ? 'rejected_signature' : 'accepted',
       });
       const ok = parsed.kind === 'signature_mismatch'
@@ -101,7 +108,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     }
 
     const replay = await replayStoredWebhook(ctx.organizationId, {
-      eventId: parsed.eventId,
+      eventId: parsed.eventId!,
       mode: parsed.mode,
       modifyNonSecretFields: parsed.modifyNonSecretFields,
     });

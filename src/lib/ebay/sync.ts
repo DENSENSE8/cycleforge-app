@@ -10,6 +10,7 @@ import { logger } from '@/lib/observability/logger';
 import { formatApiInstant, normalizePSTTimestamp } from '@/utils/date';
 import { resolveOrCreateSkuCatalogId } from '@/lib/neon/sku-catalog-queries';
 import { isEbaySandbox } from './oauth-config';
+import { applyAdapterInjection } from '@/lib/qa/adapter-injection';
 
 export interface SyncResult {
   accountName: string;
@@ -165,6 +166,7 @@ export async function ingestRecentSellerOrders(
   orgId: string,
   options?: { limit?: number; preview?: boolean },
 ): Promise<{ fetched: number; created: number; updated: number; skipped: number; errors: string[] }> {
+  await applyAdapterInjection(orgId, 'ebay');
   const limit = Math.max(1, Math.min(options?.limit ?? RECENT_SELLER_INGEST_LIMIT, 50));
   const client = new EbayClient(accountName, orgId);
   const { accessToken } = await client.getValidAccessToken();

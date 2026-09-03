@@ -12,7 +12,7 @@ import { tenantQuery } from '@/lib/tenancy/db';
 import { getEbayAppCreds, EBAY_PLATFORM_PREDICATE, EBAY_SELLER_ROLE_PREDICATE } from '@/lib/ebay/credentials';
 import { ingestRecentSellerOrders } from '@/lib/ebay/sync';
 import { syncEbayPurchasesToReceiving } from '@/lib/inbound/sync-ebay-purchases';
-import { applyAdapterInjection, InjectedProviderFailure } from './adapter-injection';
+import { InjectedProviderFailure } from './adapter-injection';
 import {
   emptyDryRunPreview,
   refuseExecuteReason,
@@ -86,15 +86,6 @@ export async function previewImportOperation(
 }
 
 async function previewSellerSync(orgId: OrgId, environment: string): Promise<DryRunPreview> {
-  try {
-    await applyAdapterInjection(orgId, 'ebay');
-  } catch (err) {
-    if (err instanceof InjectedProviderFailure) {
-      return injectedPreview(environment, 'Fulfillment getOrders (seller)', err);
-    }
-    throw err;
-  }
-
   const accounts = await tenantQuery<{ account_name: string }>(
     orgId,
     `SELECT account_name
@@ -134,6 +125,9 @@ async function previewSellerSync(orgId: OrgId, environment: string): Promise<Dry
       skipped += result.skipped;
       errors.push(...result.errors);
     } catch (err) {
+      if (err instanceof InjectedProviderFailure) {
+        return injectedPreview(environment, 'Fulfillment getOrders (seller)', err);
+      }
       errors.push(`${row.account_name}: ${err instanceof Error ? err.message : String(err)}`);
     }
   }

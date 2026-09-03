@@ -24,9 +24,10 @@ export type ScenarioHandlerId =
   | 'webhook-replay-twice'
   | 'webhook-replay-out-of-order'
   | 'webhook-authentic-signature'
+  | 'webhook-authentic-dispatch'
   | 'zoho-qty-same-line'
-  | 'zoho-delete-missing-po'
-  | 'refuse-live-label'
+  | 'zoho-delete-fixture-po'
+  | 'mock-label'
   | 'not-wired';
 
 export interface ScenarioRunnerDef {
@@ -35,6 +36,7 @@ export interface ScenarioRunnerDef {
   releaseRequired: boolean;
   playwright?: { spec: string; project: string };
   injectionProfile?: 'http_401' | 'http_429' | 'http_500';
+  labelMock?: 'success' | 'invalid_address' | 'carrier_unavailable' | 'timeout' | 'duplicate_idempotency';
 }
 
 export const QA_SCENARIO_RUNNERS: Record<string, ScenarioRunnerDef> = {
@@ -85,14 +87,19 @@ export const QA_SCENARIO_RUNNERS: Record<string, ScenarioRunnerDef> = {
     releaseRequired: true,
   },
   'zoho.deleted-item': {
-    handler: 'zoho-delete-missing-po',
+    handler: 'zoho-delete-fixture-po',
     suite: 'qa-org',
-    releaseRequired: false,
+    releaseRequired: true,
   },
   'zoho.provider-authentic-signature': {
     handler: 'webhook-authentic-signature',
     suite: 'deterministic',
     releaseRequired: true,
+  },
+  'zoho.provider-authentic-dispatch': {
+    handler: 'webhook-authentic-dispatch',
+    suite: 'sandbox',
+    releaseRequired: false,
   },
   'zoho.duplicate-webhook': {
     handler: 'webhook-normalize-idempotency',
@@ -105,29 +112,34 @@ export const QA_SCENARIO_RUNNERS: Record<string, ScenarioRunnerDef> = {
     releaseRequired: false,
   },
   'shipping.successful-label-purchase': {
-    handler: 'refuse-live-label',
+    handler: 'mock-label',
     suite: 'deterministic',
     releaseRequired: true,
+    labelMock: 'success',
   },
   'shipping.invalid-address': {
-    handler: 'refuse-live-label',
+    handler: 'mock-label',
     suite: 'deterministic',
     releaseRequired: true,
+    labelMock: 'invalid_address',
   },
   'shipping.carrier-unavailable': {
-    handler: 'refuse-live-label',
+    handler: 'mock-label',
     suite: 'deterministic',
     releaseRequired: true,
+    labelMock: 'carrier_unavailable',
   },
   'shipping.label-purchase-timeout': {
-    handler: 'refuse-live-label',
+    handler: 'mock-label',
     suite: 'deterministic',
     releaseRequired: true,
+    labelMock: 'timeout',
   },
   'shipping.duplicate-idempotency-key': {
-    handler: 'refuse-live-label',
+    handler: 'mock-label',
     suite: 'deterministic',
     releaseRequired: true,
+    labelMock: 'duplicate_idempotency',
   },
   'fixtures.e2e-outbound': {
     handler: 'assert-orders',

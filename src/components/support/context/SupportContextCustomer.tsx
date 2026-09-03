@@ -1,21 +1,18 @@
 'use client';
 
 import { SupportTicketDetail } from '@/components/support/zendesk/chat/SupportTicketDetail';
-import { EmptyState } from '@/design-system/primitives';
-import { Ticket } from '@/components/Icons';
 import type { SupportContextBundle } from '@/lib/support/context-types';
-import { TicketLinkPopover } from './TicketLinkPopover';
-import { DashedLinkChip } from './LinkageStrip';
-import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import type { ThreadComposerBridge } from '@/components/threads/ThreadPanel';
+import { SupportCreateTicketModal } from '@/components/support/service-workspace/SupportCreateTicketModal';
+import { useSupportTicketClaimHost } from '@/components/support/service-workspace/useSupportTicketClaimHost';
 
 export function SupportContextCustomer({
   bundle,
   embedded = false,
   receivingId,
   onBridgeChange,
-  onRequestLinkTicket,
+  onRequestLinkTicket: _onRequestLinkTicket,
   /** Station host owns floating {@link SupportTicketComposerDock}. */
   hostComposer = false,
   /**
@@ -29,53 +26,48 @@ export function SupportContextCustomer({
   receivingId?: number;
   onBridgeChange?: (bridge: ThreadComposerBridge | null) => void;
   /**
-   * Station hosts (Unbox / Testing) open {@link ReceivingClaimModal} on the
-   * Link-existing tab. When set, the empty-state chip calls this instead of the
-   * inline {@link TicketLinkPopover}.
+   * Kept for station callers. Empty state is create-only (no Link combobox).
    */
   onRequestLinkTicket?: () => void;
   hostComposer?: boolean;
   mergeFloorTimeline?: boolean;
 }) {
-  const [pickerOpen, setPickerOpen] = useState(false);
   const { has, isLoaded } = useAuth();
   const canZendesk = !isLoaded || has('integrations.zendesk');
   const ticketId = bundle.ticket?.providerTicketId;
-  const canLink = Boolean(canZendesk && bundle.linkable?.canLinkTicket);
-  const useStationClaimModal = typeof onRequestLinkTicket === 'function';
+  const claim = useSupportTicketClaimHost();
 
   if (ticketId == null) {
+    const orderNumber = bundle.linkage.order?.orderId ?? null;
+    const trackingNumber = bundle.linkage.trackings.find((t) => t.isPrimary)?.tracking
+      ?? bundle.linkage.trackings[0]?.tracking
+      ?? null;
+    const serialNumber = bundle.linkage.serials[0]?.serial ?? null;
+    if (!canZendesk) {
+      return (
+        <div className="flex flex-1 flex-col bg-surface-card p-6 text-text-default">
+          <p className="text-role-caption text-text-muted">Helpdesk isn’t connected.</p>
+        </div>
+      );
+    }
     return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6">
-        <EmptyState
-          icon={<Ticket className="h-6 w-6 text-text-faint" />}
-          title="No customer ticket linked"
-          description="Link an existing ticket to see the conversation here."
+      <div
+        className="flex h-full min-h-0 flex-1 flex-col bg-surface-card text-text-default"
+        data-testid="support-create-ticket-empty"
+      >
+        <SupportCreateTicketModal
+          open
+          surface="inline"
+          defaultSubject={orderNumber ? `Order #${orderNumber}` : undefined}
+          defaultOrderNumber={orderNumber}
+          defaultTrackingNumber={trackingNumber}
+          defaultSerialNumber={serialNumber}
+          submitting={claim.createTicket.isPending}
+          onClose={() => undefined}
+          onCreate={({ subject, note, linkages }) =>
+            claim.createTicket.mutate({ subject, note, linkages })
+          }
         />
-        {canLink && bundle.linkable ? (
-          useStationClaimModal ? (
-            <DashedLinkChip label="Link ticket" onClick={onRequestLinkTicket} />
-          ) : (
-            <div className="relative w-full max-w-sm">
-              <div className="flex justify-center">
-                <DashedLinkChip
-                  label="Link ticket"
-                  onClick={() => setPickerOpen((o) => !o)}
-                  aria-expanded={pickerOpen}
-                />
-              </div>
-              {pickerOpen ? (
-                <div className="mt-2">
-                  <TicketLinkPopover
-                    linkable={bundle.linkable}
-                    open={pickerOpen}
-                    onClose={() => setPickerOpen(false)}
-                  />
-                </div>
-              ) : null}
-            </div>
-          )
-        ) : null}
       </div>
     );
   }

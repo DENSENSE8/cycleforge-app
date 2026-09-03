@@ -27,8 +27,11 @@ export const QaFailureInjectionBody = z.object({
 });
 
 export const QaWebhookReplayBody = z.object({
-  eventId: z.string().min(1).max(200),
+  eventId: z.string().min(1).max(200).optional(),
   kind: z.enum(['application', 'provider_authentic', 'signature_mismatch']).default('application'),
+  /** Fresh event_id through processZohoWebhook, including dispatch. */
+  mintFreshEventId: z.boolean().optional(),
+  fixture: z.enum(['deleted_missing_po']).optional(),
   mode: z.enum(['once', 'twice', 'out_of_order']).default('once'),
   modifyNonSecretFields: z.boolean().optional(),
   /** Application replay is never presented as provider-authentic. */
@@ -43,11 +46,29 @@ export const QaWebhookReplayBody = z.object({
       path: ['acknowledgeApplicationReplay'],
     });
   }
+  if (value.kind === 'application' && !value.eventId) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'eventId is required for application replay',
+      path: ['eventId'],
+    });
+  }
   if (value.kind === 'provider_authentic' && value.acknowledgeProviderAuthentic !== true) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: 'acknowledgeProviderAuthentic must be true',
       path: ['acknowledgeProviderAuthentic'],
+    });
+  }
+  if (
+    (value.kind === 'provider_authentic' || value.kind === 'signature_mismatch')
+    && !value.eventId
+    && !value.fixture
+  ) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'eventId or fixture is required',
+      path: ['eventId'],
     });
   }
 });

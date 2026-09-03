@@ -12,10 +12,11 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { X } from '@/components/Icons';
+import { Sparkles, X } from '@/components/Icons';
 import { RightPaneOverlay } from '@/components/ui/RightPaneOverlay';
 import { Button, IconButton } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import type { OrderLinkage } from '@/lib/order-linkage';
 import {
@@ -83,8 +84,11 @@ export function SupportCreateTicketModal({
   open,
   defaultSubject,
   defaultOrderNumber,
+  defaultTrackingNumber,
+  defaultSerialNumber,
   orderFieldLocked = false,
   submitting = false,
+  surface = 'overlay',
   onClose,
   onCreate,
 }: {
@@ -93,9 +97,13 @@ export function SupportCreateTicketModal({
   defaultSubject?: string;
   /** Prefill the order linkage field (Orders focus). */
   defaultOrderNumber?: string | null;
+  defaultTrackingNumber?: string | null;
+  defaultSerialNumber?: string | null;
   /** When true, order # is read-only (order-anchored create). */
   orderFieldLocked?: boolean;
   submitting?: boolean;
+  /** `inline` fills the parent (search / station empty ticket). Overlay is the Support board. */
+  surface?: 'overlay' | 'inline';
   onClose: () => void;
   onCreate: (args: { subject: string; note: string; linkages: SupportTicketLinkages }) => void;
 }) {
@@ -116,15 +124,15 @@ export function SupportCreateTicketModal({
     setSubject(defaultSubject ?? '');
     setNote('');
     setOrderNumber((defaultOrderNumber ?? '').trim());
-    setTrackingNumber('');
-    setSerialNumber('');
+    setTrackingNumber((defaultTrackingNumber ?? '').trim());
+    setSerialNumber((defaultSerialNumber ?? '').trim());
     setDebouncedOrder((defaultOrderNumber ?? '').trim());
-    setDebouncedTracking('');
-    setDebouncedSerial('');
+    setDebouncedTracking((defaultTrackingNumber ?? '').trim());
+    setDebouncedSerial((defaultSerialNumber ?? '').trim());
     setSubjectTouched(Boolean(defaultSubject?.trim()));
     const t = setTimeout(() => inputRef.current?.focus(), 0);
     return () => clearTimeout(t);
-  }, [open, defaultSubject, defaultOrderNumber]);
+  }, [open, defaultSubject, defaultOrderNumber, defaultTrackingNumber, defaultSerialNumber]);
 
   useEffect(() => {
     const h = setTimeout(() => setDebouncedOrder(orderNumber.trim()), 300);
@@ -161,7 +169,53 @@ export function SupportCreateTicketModal({
     if (seeded) setSubject(seeded);
   }, [open, subjectTouched, linkageQuery.data]);
 
+  const [aiDrafting, setAiDrafting] = useState(false);
+
   const canSubmit = subject.trim().length > 0 && !submitting;
+
+  const draftWithAi = async () => {
+    if (aiDrafting || submitting) return;
+    const liveSubject = subject.trim();
+    const liveNote = note.trim();
+    if (!liveSubject && !liveNote) {
+      toast.error('Add a subject or note first');
+      return;
+    }
+    setAiDrafting(true);
+    try {
+      const res = await fetch('/api/support/tickets/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          context: 'Support ticket',
+          subject: liveSubject,
+          description: liveNote || liveSubject,
+        }),
+      });
+      const data = (await res.json().catch(() => null)) as {
+        success?: boolean;
+        subject?: string;
+        description?: string;
+        error?: string;
+      } | null;
+      if (!res.ok || !data?.success) {
+        toast.error(data?.error || 'AI draft failed');
+        return;
+      }
+      if (typeof data.subject === 'string' && data.subject.trim()) {
+        setSubjectTouched(true);
+        setSubject(data.subject);
+      }
+      if (typeof data.description === 'string' && data.description.trim()) {
+        setNote(data.description);
+      }
+      toast.success('Drafted with AI — review before creating');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'AI draft failed');
+    } finally {
+      setAiDrafting(false);
+    }
+  };
 
   const linkages: SupportTicketLinkages = {
     order: orderNumber.trim() || undefined,
@@ -169,42 +223,50 @@ export function SupportCreateTicketModal({
     serial: serialNumber.trim() || undefined,
   };
 
-  return (
-    <RightPaneOverlay
-      open={open}
-      onClose={onClose}
-      align="center"
-      resizable
-      storageKey="support-create-ticket-modal-size"
-      minWidth={460}
-      minHeight={420}
-      className="-mt-8 h-[min(86vh,44rem)] w-[min(94vw,52rem)]"
-      aria-label="Create ticket"
-    >
-      <div className="flex shrink-0 items-center justify-between border-b border-border-hairline bg-surface-canvas px-4 py-3">
-        <div>
-          <p className="text-role-micro uppercase tracking-[0.14em] text-emerald-700">New ticket</p>
-          <p className="mt-0.5 text-sm font-semibold tracking-tight text-text-default">
-            Support station entry
-          </p>
-        </div>
-        <IconButton
-          onClick={onClose}
-          disabled={submitting}
-          ariaLabel="Cancel"
-          icon={<X className="h-4 w-4" />}
-          className="rounded-lg p-1.5 text-text-faint hover:bg-surface-card hover:text-text-muted disabled:opacity-50"
-        />
-      </div>
+  if (surface === 'inline' && !open) return null;
 
+  const form = (
       <form
         onSubmit={(e) => {
           e.preventDefault();
           if (canSubmit) onCreate({ subject: subject.trim(), note, linkages });
         }}
-        className="flex min-h-0 flex-1 flex-col"
+        className="flex min-h-0 flex-1 flex-col bg-surface-card text-text-default"
+        data-testid="support-create-ticket-form"
       >
+      <div className="flex shrink-0 items-center justify-between border-b border-border-hairline bg-surface-card px-4 py-3">
+        {surface === 'overlay' ? (
+          <p className="text-role-micro uppercase tracking-[0.14em] text-text-faint">Ticket</p>
+        ) : (
+          <div />
+        )}
+        <div className="flex items-center gap-2">
+          <p className="text-sm font-semibold tracking-tight text-text-default">Create ticket</p>
+          {surface === 'overlay' ? (
+            <IconButton
+              onClick={onClose}
+              disabled={submitting}
+              ariaLabel="Cancel"
+              icon={<X className="h-4 w-4" />}
+              className="rounded-lg p-1.5 text-text-faint hover:bg-surface-card hover:text-text-muted disabled:opacity-50"
+            />
+          ) : null}
+        </div>
+      </div>
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-3 text-role-data">
+          <Button
+            type="button"
+            variant="primary"
+            size="lg"
+            className="w-full"
+            icon={<Sparkles className="h-4 w-4" />}
+            loading={aiDrafting}
+            disabled={aiDrafting || submitting}
+            onClick={() => void draftWithAi()}
+            ariaLabel="Draft ticket with AI"
+          >
+            Draft with AI
+          </Button>
           <label className="block space-y-1">
             <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">
               Subject
@@ -287,15 +349,34 @@ export function SupportCreateTicketModal({
           </div>
         </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-hairline bg-surface-canvas px-4 py-3">
-          <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={submitting}>
-            Cancel
-          </Button>
+        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-border-hairline bg-surface-card px-4 py-3">
+          {surface === 'overlay' ? (
+            <Button type="button" variant="ghost" size="sm" onClick={onClose} disabled={submitting}>
+              Cancel
+            </Button>
+          ) : null}
           <Button type="submit" size="sm" loading={submitting} disabled={!canSubmit}>
             Create ticket
           </Button>
         </div>
       </form>
+  );
+
+  if (surface === 'inline') return form;
+
+  return (
+    <RightPaneOverlay
+      open={open}
+      onClose={onClose}
+      align="center"
+      resizable
+      storageKey="support-create-ticket-modal-size"
+      minWidth={460}
+      minHeight={420}
+      className="-mt-8 h-[min(86vh,44rem)] w-[min(94vw,52rem)] bg-surface-card text-text-default"
+      aria-label="Create ticket"
+    >
+      {form}
     </RightPaneOverlay>
   );
 }
