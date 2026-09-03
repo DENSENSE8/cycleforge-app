@@ -101,11 +101,7 @@ export function PackOrderWorkspace({
             style={{ zIndex: zIndex.panel + (entitySwapHardCut ? 1 : 0) }}
             className={cn('absolute inset-0 flex min-h-0 flex-col', appSurfaceFillClass('canvas'))}
           >
-            <PackOrderPanel
-              packerId={packerId}
-              activeOrder={activeOrder}
-              onClose={onCloseActiveOrder}
-            />
+            <PackOrderPanel activeOrder={activeOrder} onClose={onCloseActiveOrder} />
           </motion.div>
         ) : null}
       </AnimatePresence>

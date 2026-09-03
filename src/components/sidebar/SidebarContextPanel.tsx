@@ -1,6 +1,6 @@
 'use client';
 
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/contexts/AuthContext';
 import { getSidebarRouteKey } from '@/lib/sidebar-navigation';
@@ -38,7 +38,6 @@ const ReviewSidebarPanel = dynamic(() => import('@/components/sidebar/review/Rev
  */
 export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () => void } = {}) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { user } = useAuth();
   const routeKey = getSidebarRouteKey(pathname);
 
@@ -74,7 +73,7 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
       <TechSidebarPanel
         techId={techId}
         onBackToAppNav={onBackToAppNav}
-        contextNavTitle={getSidebarTitle(pathname, searchParams)}
+        contextNavTitle={getSidebarTitle(pathname)}
       />
     );
   }
