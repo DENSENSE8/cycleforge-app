@@ -132,14 +132,28 @@ const filesTouched = git(['status', '--porcelain'])
   .map((l) => (l.includes(' -> ') ? l.split(' -> ').pop() : l))
   .filter((p) => p && !isEvalChurn(p))
 
-// Dedup: nothing changed since the last receipt for this session → no line.
+// Dedup + throttle. A Stop fires every turn, and in a shared checkout the
+// dirty tree changes every turn even when THIS session did nothing — so the
+// fingerprint is the session's measurable events only (the eval / design /
+// graph stamps), never the file list, and a session writes at most one
+// receipt per THROTTLE_MS unless a new eval result arrived. A hook that
+// floods the mirror is a hook that gets deleted.
+const THROTTLE_MS = Number(process.env.CYCLEFORGE_SESSION_RECEIPT_THROTTLE_MS || 15 * 60_000)
 const fingerprint = createHash('sha256')
-  .update(JSON.stringify({ filesTouched, e: evalStamp?.updatedMs ?? null, d: designStamp?.updatedMs ?? null, g: graphStamp?.updatedMs ?? null }))
+  .update(JSON.stringify({ e: evalStamp?.updatedMs ?? null, d: designStamp?.lastTool ?? null, g: graphStamp?.lastTool ?? null }))
   .digest('hex')
 const markerDir = path.join(ROOT, '.cursor', 'session-receipts')
 mkdirSync(markerDir, { recursive: true })
-const marker = path.join(markerDir, `${sid}.last`)
-if (existsSync(marker) && readFileSync(marker, 'utf8').trim() === fingerprint) process.exit(0)
+const marker = path.join(markerDir, `${HOST}-${sid}.last`)
+let last = { fingerprint: '', at: 0, eval: null }
+try {
+  last = JSON.parse(readFileSync(marker, 'utf8'))
+} catch {
+  /* first receipt for this session */
+}
+const evalChanged = (evalStamp?.updatedMs ?? null) !== (last.eval ?? null)
+if (last.fingerprint === fingerprint) process.exit(0)
+if (!evalChanged && Date.now() - (last.at || 0) < THROTTLE_MS) process.exit(0)
 
 const prompt = String(payload.prompt ?? '') || lastUserPrompt(payload.transcript_path)
 const expanded = routePrompt(prompt)
@@ -187,7 +201,9 @@ const receipt = {
   entry_hash: null,
 }
 
-const tmp = path.join(markerDir, `${sid}.receipt.json`)
+// Keyed by host too: when Cursor hosts a Claude Code session both stop hooks
+// fire for the same sid, and a shared tmp file let one writer read the other's receipt.
+const tmp = path.join(markerDir, `${HOST}-${sid}.receipt.json`)
 writeFileSync(tmp, JSON.stringify(receipt))
 const writer = path.join(GARISEK, 'scripts', 'session-receipt.ts')
 if (existsSync(writer)) {
@@ -197,7 +213,7 @@ if (existsSync(writer)) {
     timeout: 120_000,
     env: { ...process.env, NODE_NO_WARNINGS: '1', PATH: [path.join(process.env.HOME || '', '.npm-global/bin'), path.join(process.env.HOME || '', '.local/share/mise/shims'), process.env.PATH || ''].join(path.delimiter) },
   })
-  if (r.status === 0) writeFileSync(marker, fingerprint)
+  if (r.status === 0) writeFileSync(marker, JSON.stringify({ fingerprint, at: Date.now(), eval: evalStamp?.updatedMs ?? null }))
   else process.stderr.write(`session-receipt-stop: writer exit ${r.status} ${(r.stderr || '').slice(0, 200)}\n`)
 }
 process.exit(0)

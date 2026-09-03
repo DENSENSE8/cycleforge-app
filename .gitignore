@@ -108,6 +108,10 @@ scripts/.shipped-test-snapshot.json
 /.next-perf-si/
 /.next-perf-lh/
 
+# Side-by-side dev servers run with NEXT_DIST_DIR so they cannot clobber the
+# `.next` the :3050 server is using (docs/integrations/realtime-ai.md).
+/.next-*/
+
 # Desktop shell app-manifest deps (installed by `pnpm desktop:deps`)
 electron/node_modules/
 electron/package-lock.json

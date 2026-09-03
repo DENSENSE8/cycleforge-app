@@ -292,7 +292,11 @@ Interactive sessions leave the same receipt shape: the Claude Code `Stop`
 hook and Cursor `stop` run `tools/eval-ledger/session-receipt-stop.mjs`
 (`run_id: null`, keyed `claude-code:<sid>` / `cursor:<id>`, deduped per session).
 Every receipt with a `run_id` is also one Langfuse trace (`cf-session`) in the
-run's session, beside the coder generations.
+run's session, beside the coder generations. The Garisek cockpit's Sessions tab
+(`/system?tab=sessions`) lists a session's receipts under its row
+(`GET /api/sessions/receipts`). A goal born from a Linear issue runs with
+`--issue <id> --composio-user <id>`: asks are mirrored as comments and
+`agent:accept` / `agent:iterate` answer `land.apply`.
 
 ### Gates the runner leans on (Cursor + Claude Code hooks)
 
