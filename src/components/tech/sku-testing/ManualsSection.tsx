@@ -9,7 +9,7 @@ import {
 } from '@/design-system/components/DocumentSlideOver';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { toast } from '@/lib/toast';
-import { unpairManual } from './sku-testing-api';
+import { pairManual, unpairManual } from './sku-testing-api';
 import { EYEBROW, SECTION, type Bundle } from './sku-testing-types';
 import { ManualPicker } from './ManualPicker';
 import { productManualContentPath } from '@/lib/blob/vercel-blob-url';
@@ -117,7 +117,7 @@ export function ManualsSection({
 
       {pairing ? (
         <ManualPicker
-          receivingLineId={receivingLineId}
+          onPair={(manualId) => pairManual(receivingLineId, manualId)}
           onPaired={async () => {
             setPairing(false);
             await onChanged();

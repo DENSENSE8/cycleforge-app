@@ -36,6 +36,7 @@ function clearLegacyCookie(res: NextResponse): void {
 }
 import { getCurrentUserBySid } from '@/lib/auth/current-user';
 import { getOrganization } from '@/lib/tenancy/organizations';
+import { loadOrgEnvironment } from '@/lib/qa/environment';
 import { resolveEnvelopeMemberships } from '@/lib/identity/memberships';
 
 export const runtime = 'nodejs';
@@ -97,6 +98,9 @@ export async function GET() {
   // getOrganization() is cached in-process for 30s. Best-effort — a lookup
   // miss must never break session hydration.
   const org = await getOrganization(user.organizationId).catch(() => null);
+  const organizationEnvironment = await loadOrgEnvironment(user.organizationId).catch(
+    () => 'customer' as const,
+  );
 
   // All workspaces this account can act in. Best-effort + always ≥1 entry
   // (falls back to the current org pre-migration). Never throws.
@@ -116,6 +120,7 @@ export async function GET() {
         organizationName: org?.name ?? 'Workspace',
         organizationSlug: org?.slug ?? null,
         organizationPlan: org?.plan ?? null,
+        organizationEnvironment,
         memberships,
         name: user.name,
         role: user.role,

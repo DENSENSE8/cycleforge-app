@@ -26,10 +26,26 @@ import {
 } from '@/lib/sidebar-navigation';
 import { routeParamsFor } from '@/lib/routing/registry';
 
-test('getSidebarNavItems returns the full sidebar list by default', () => {
-  // Dogfood parking is retired, so no rows are filtered out any more: the
-  // default call returns APP_SIDEBAR_NAV verbatim.
-  assert.deepEqual(getSidebarNavItems(), APP_SIDEBAR_NAV);
+test('getSidebarNavItems returns the full sidebar list by default, minus sandbox-only rows', () => {
+  // Sandbox-only rows (QA Console) stay off customer nav even when the
+  // caller has not passed an environment — that is the safe default.
+  const expected = APP_SIDEBAR_NAV.filter((item) => !item.sandboxOnly);
+  assert.deepEqual(getSidebarNavItems(), expected);
+});
+
+test('QA Console nav is sandbox-only', () => {
+  const customer = getSidebarNavItems({
+    permissions: new Set(['developer.qa_tools.view']),
+    organizationEnvironment: 'customer',
+  });
+  assert.equal(customer.some((item) => item.id === 'qa-console'), false);
+
+  const sandbox = getSidebarNavItems({
+    permissions: new Set(['developer.qa_tools.view']),
+    organizationEnvironment: 'sandbox',
+  });
+  assert.equal(sandbox.some((item) => item.id === 'qa-console'), true);
+  assert.equal(sandbox.find((item) => item.id === 'qa-console')?.href, '/developer');
 });
 
 test('Home is top-pinned; Operations in Monitor; Sourcing under Inventory; Plans between Media and Chat', () => {
@@ -164,6 +180,7 @@ test('prod nav ships every unparked page; only redirect surfaces stay off', () =
   // account ⋯ menu. Studio must still be present on prod nav.
   assert.equal(navIds.has('studio'), true, 'studio ships as a live nav page');
   assert.equal(navIds.has('admin'), true, 'admin ships as a live nav page');
+  assert.equal(navIds.has('qa-console'), false, 'QA Console is sandbox-only');
   // Home is top-pinned; Operations stays an Overview page.
   assert.equal(navIds.has('home'), true, 'home ships as a top-pinned page');
   assert.equal(navIds.has('operations'), true, 'operations ships as a live Overview page');

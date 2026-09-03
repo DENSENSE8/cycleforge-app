@@ -26,3 +26,6 @@ export type PlatformPlan = (typeof PLATFORM_PLANS)[number];
 
 export const ORG_STATUSES = ['active', 'suspended', 'deleted'] as const;
 export type OrgStatus = (typeof ORG_STATUSES)[number];
+
+export const ORG_ENVIRONMENTS = ['sandbox', 'customer'] as const;
+export type OrgEnvironment = (typeof ORG_ENVIRONMENTS)[number];

@@ -13,7 +13,6 @@ import {
   type SpineAccentClasses,
 } from '@/lib/nav/spine-section-accent';
 import {
-  APP_SIDEBAR_NAV,
   filterPageChildren,
   getSidebarNavItems,
   getSidebarPageNav,
@@ -70,8 +69,11 @@ function toPageRow(item: SidebarNavItem): CommandBarNavPageRow {
  */
 export function buildCommandBarNavGroups(
   permissions?: ReadonlySet<string>,
+  organizationEnvironment?: 'sandbox' | 'customer' | null,
 ): CommandBarNavGroup[] {
-  const base = permissions ? getSidebarNavItems({ permissions }) : APP_SIDEBAR_NAV;
+  const base = permissions
+    ? getSidebarNavItems({ permissions, organizationEnvironment })
+    : getSidebarNavItems({ organizationEnvironment });
   // Same reachability rule the spine applies: a page whose every mode was
   // permission-filtered is absent from the palette, not a row that opens onto a
   // denial state. Rows without a mode registry pass through untouched.

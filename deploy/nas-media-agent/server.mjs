@@ -1,16 +1,24 @@
 #!/usr/bin/env node
 import http from 'node:http';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { mkdir, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readdir, rm, stat, writeFile, unlink } from 'node:fs/promises';
 import { basename, extname, join, resolve, sep } from 'node:path';
+import { tmpdir } from 'node:os';
+import { spawn } from 'node:child_process';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { fileURLToPath } from 'node:url';
+import { configuredQueueAllowlist, resolvePrintQueue } from './print-queues.mjs';
 
 const PORT = Number(process.env.PORT || process.env.NAS_AGENT_PORT || 8787);
 const TOKEN = process.env.NAS_AGENT_TOKEN || '';
 const ALLOW_UNAUTH = process.env.NAS_AGENT_ALLOW_UNAUTH === 'true';
 const MAX_UPLOAD_BYTES = Number(process.env.NAS_AGENT_MAX_UPLOAD_BYTES || 50 * 1024 * 1024);
+const MAX_PRINT_PDF_BYTES = Number(process.env.NAS_AGENT_MAX_PRINT_PDF_BYTES || 20 * 1024 * 1024);
+const PRINT_QUEUES = {
+  label: process.env.PRINT_QUEUE_LABEL || '',
+  paper: process.env.PRINT_QUEUE_PAPER || '',
+};
 const ALLOWED_REQUEST_ROOT_PREFIXES = (process.env.NAS_AGENT_ALLOWED_ROOT_PREFIXES || '/Volumes,/volume1')
   .split(',')
   .map((s) => s.trim().replace(/\/+$/, ''))
@@ -57,14 +65,66 @@ function text(res, status, body, headers = {}) {
   res.end(body);
 }
 
-function authenticate(req, res) {
+/** Packing Chrome on this Mac may POST /print without a token (loopback only). */
+const ALLOW_LOOPBACK_PRINT =
+  process.env.NAS_AGENT_ALLOW_LOOPBACK_PRINT === 'true' ||
+  process.env.NAS_AGENT_ALLOW_LOOPBACK_PRINT === '1';
+
+const PRINT_CORS_ORIGINS = (process.env.NAS_AGENT_PRINT_CORS_ORIGINS ||
+  [
+    'http://localhost:3050',
+    'http://127.0.0.1:3050',
+    'https://usav-dev.michaelgarisek.com',
+    'https://usav.app.cycleforge.ai',
+    'https://app.cycleforge.ai',
+    'https://cycleforge-app.vercel.app',
+  ].join(','))
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+function requestIsLoopback(req) {
+  const raw = String(req.socket?.remoteAddress || '');
+  return raw === '127.0.0.1' || raw === '::1' || raw === '::ffff:127.0.0.1';
+}
+
+/** Packing Chrome origins allowed to call loopback /health + /print. */
+function printCorsOriginAllowed(origin) {
+  if (!origin) return false;
+  if (PRINT_CORS_ORIGINS.includes(origin)) return true;
+  try {
+    const host = new URL(origin).hostname;
+    if (host === 'localhost' || host === '127.0.0.1') return true;
+    if (host === 'app.cycleforge.ai' || host.endsWith('.app.cycleforge.ai')) return true;
+    if (host.endsWith('.michaelgarisek.com')) return true;
+    if (host.endsWith('.vercel.app') && host.includes('cycleforge')) return true;
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+function printCorsHeaders(req, { methods = 'GET, POST, OPTIONS' } = {}) {
+  const origin = String(req.headers.origin || '').trim();
+  if (!printCorsOriginAllowed(origin)) return {};
+  return {
+    'access-control-allow-origin': origin,
+    'access-control-allow-methods': methods,
+    'access-control-allow-headers': 'content-type, x-agent-token',
+    'access-control-max-age': '600',
+    vary: 'Origin',
+  };
+}
+
+function authenticate(req, res, { allowLoopbackPrint = false } = {}) {
   if (ALLOW_UNAUTH && !TOKEN) return true;
+  if (allowLoopbackPrint && ALLOW_LOOPBACK_PRINT && requestIsLoopback(req)) return true;
   if (!TOKEN) {
     json(res, 503, { ok: false, error: 'NAS_AGENT_TOKEN is required unless NAS_AGENT_ALLOW_UNAUTH=true' });
     return false;
   }
   if (req.headers['x-agent-token'] === TOKEN) return true;
-  json(res, 401, { ok: false, error: 'unauthorized' });
+  json(res, 401, { ok: false, error: 'unauthorized' }, printCorsHeaders(req));
   return false;
 }
 
@@ -387,6 +447,167 @@ async function handleTestFolder(req, res) {
   return json(res, 200, { ok: true, folder, name });
 }
 
+function listCupsPrinters() {
+  return new Promise((resolvePromise) => {
+    const child = spawn('lpstat', ['-a'], { stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '';
+    let err = '';
+    child.stdout?.on('data', (d) => {
+      out += d;
+    });
+    child.stderr?.on('data', (d) => {
+      err += d;
+    });
+    child.on('error', () => resolvePromise([]));
+    child.on('close', (code) => {
+      if (code !== 0 && !out.trim()) {
+        if (err.trim()) console.warn('[nas-media-agent] lpstat:', err.trim().slice(0, 200));
+        return resolvePromise([]);
+      }
+      const names = out
+        .split('\n')
+        .map((line) => line.trim().split(/\s+/)[0])
+        .filter(Boolean);
+      resolvePromise(names);
+    });
+  });
+}
+
+function runLp(queue, title, pdfPath) {
+  return new Promise((resolvePromise) => {
+    const args = ['-d', queue, '-t', title, '-o', 'job-sheets=none', '--', pdfPath];
+    const child = spawn('lp', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '';
+    let err = '';
+    child.stdout?.on('data', (d) => {
+      out += d;
+    });
+    child.stderr?.on('data', (d) => {
+      err += d;
+    });
+    child.on('error', (e) => {
+      resolvePromise({
+        ok: false,
+        error: e instanceof Error ? e.message : 'lp spawn failed',
+      });
+    });
+    child.on('close', (code) => {
+      if (code === 0) {
+        const m = out.match(/request id is\s+(\S+)/i);
+        return resolvePromise({
+          ok: true,
+          jobId: m?.[1] ?? (out.trim().slice(0, 120) || null),
+        });
+      }
+      resolvePromise({
+        ok: false,
+        error: (err || out || `lp exited ${code}`).trim().slice(0, 300),
+      });
+    });
+  });
+}
+
+async function readPrintJson(req) {
+  const chunks = [];
+  let total = 0;
+  // Cap slightly above MAX_PRINT_PDF_BYTES to account for base64 expansion (~4/3).
+  const maxBody = Math.ceil(MAX_PRINT_PDF_BYTES * 1.4) + 4096;
+  for await (const chunk of req) {
+    total += chunk.length;
+    if (total > maxBody) throw new Error('print body too large');
+    chunks.push(chunk);
+  }
+  return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}');
+}
+
+async function handlePrint(req, res) {
+  const cors = printCorsHeaders(req);
+  let body;
+  try {
+    body = await readPrintJson(req);
+  } catch (err) {
+    return json(res, 400, {
+      ok: false,
+      error: err instanceof Error ? err.message : 'invalid JSON',
+    }, cors);
+  }
+
+  const documentType = String(body.documentType || '').trim();
+  const title = String(body.title || documentType || 'Cycle Forge print').trim().slice(0, 200);
+  const pdfBase64 = String(body.pdfBase64 || '').trim();
+  if (!pdfBase64) return json(res, 400, { ok: false, error: 'pdfBase64 is required' }, cors);
+
+  let bytes;
+  try {
+    bytes = Buffer.from(pdfBase64, 'base64');
+  } catch {
+    return json(res, 400, { ok: false, error: 'pdfBase64 is not valid base64' }, cors);
+  }
+  if (!bytes.length) return json(res, 400, { ok: false, error: 'empty PDF' }, cors);
+  if (bytes.length > MAX_PRINT_PDF_BYTES) {
+    return json(res, 413, { ok: false, error: `PDF exceeds ${MAX_PRINT_PDF_BYTES} bytes` }, cors);
+  }
+
+  const configured = configuredQueueAllowlist(PRINT_QUEUES);
+  if (configured.length === 0) {
+    return json(res, 503, {
+      ok: false,
+      error: 'PRINT_QUEUE_LABEL and/or PRINT_QUEUE_PAPER must be set on the agent',
+    }, cors);
+  }
+
+  const override = String(body.queue || '').trim() || null;
+  const queue = override || resolvePrintQueue(documentType, PRINT_QUEUES);
+  if (!queue) {
+    return json(res, 400, { ok: false, error: 'could not resolve print queue' }, cors);
+  }
+  if (!configured.includes(queue)) {
+    return json(res, 400, {
+      ok: false,
+      error: `queue not allowlisted: ${queue}`,
+      allowlist: configured,
+    }, cors);
+  }
+
+  const cups = await listCupsPrinters();
+  if (cups.length > 0 && !cups.includes(queue)) {
+    return json(res, 400, {
+      ok: false,
+      error: `CUPS does not list queue: ${queue}`,
+      printers: cups,
+    }, cors);
+  }
+
+  const pdfPath = join(
+    tmpdir(),
+    `cf-print-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.pdf`,
+  );
+  try {
+    await writeFile(pdfPath, bytes);
+    const result = await runLp(queue, title, pdfPath);
+    if (!result.ok) {
+      return json(res, 502, {
+        ok: false,
+        dispatched: false,
+        queue,
+        documentType: documentType || null,
+        error: result.error,
+      }, cors);
+    }
+    return json(res, 200, {
+      ok: true,
+      dispatched: true,
+      queue,
+      documentType: documentType || null,
+      jobId: result.jobId,
+      title,
+      bytes: bytes.length,
+    }, cors);
+  } finally {
+    await unlink(pdfPath).catch(() => undefined);
+  }
+}
+
 async function handlePutRoots(req, res) {
   let body;
   try {
@@ -417,8 +638,43 @@ async function handlePutRoots(req, res) {
 async function route(req, res) {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
 
+  if (url.pathname === '/health' && req.method === 'OPTIONS') {
+    res.writeHead(204, printCorsHeaders(req, { methods: 'GET, OPTIONS' }));
+    res.end();
+    return;
+  }
+
   if (url.pathname === '/health') {
-    return json(res, 200, { ok: true, roots: Object.keys(ROOTS) });
+    const printers = await listCupsPrinters();
+    return json(
+      res,
+      200,
+      {
+        ok: true,
+        roots: Object.keys(ROOTS),
+        printers,
+        printQueues: {
+          label: PRINT_QUEUES.label || null,
+          paper: PRINT_QUEUES.paper || null,
+        },
+      },
+      printCorsHeaders(req, { methods: 'GET, OPTIONS' }),
+    );
+  }
+
+  // Pack station browser → loopback agent (CORS preflight + POST).
+  if (url.pathname === '/print' && req.method === 'OPTIONS') {
+    res.writeHead(204, printCorsHeaders(req, { methods: 'POST, OPTIONS' }));
+    res.end();
+    return;
+  }
+
+  if (url.pathname === '/print' && req.method === 'POST') {
+    if (!authenticate(req, res, { allowLoopbackPrint: true })) return;
+    const out = await handlePrint(req, res);
+    // handlePrint already wrote the body; re-apply CORS on the same response
+    // by patching headers only when still writable is impossible — wrap instead.
+    return out;
   }
 
   if (!authenticate(req, res)) return;
@@ -466,4 +722,10 @@ server.listen(PORT, () => {
   console.log(`[nas-media-agent] listening on :${PORT}`);
   console.log(`[nas-media-agent] script=${here}`);
   console.log(`[nas-media-agent] roots=${JSON.stringify(ROOTS)}`);
+  console.log(
+    `[nas-media-agent] printQueues=${JSON.stringify({
+      label: PRINT_QUEUES.label || null,
+      paper: PRINT_QUEUES.paper || null,
+    })}`,
+  );
 });

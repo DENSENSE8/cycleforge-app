@@ -112,6 +112,35 @@ export function pairManual(receivingLineId: number, manualId: number): Promise<v
   );
 }
 
+/** Pair a library manual to a SKU (order intake / details — no receiving line). */
+export async function pairManualBySku(input: {
+  manualId: number;
+  sku: string;
+  productTitle?: string;
+  itemNumber?: string;
+  orderId?: string;
+}): Promise<ManualRow> {
+  const res = await fetch('/api/product-manuals/pair', {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify(input),
+  });
+  const data = await res.json().catch(() => null);
+  if (!res.ok || !data?.ok) {
+    throw new Error(data?.error || `Pair failed (${res.status})`);
+  }
+  const m = data.manual ?? {};
+  return {
+    id: Number(m.id ?? input.manualId),
+    display_name: m.display_name ?? null,
+    type: m.type ?? null,
+    source_url: m.source_url ?? null,
+    thumbnail_url: m.thumbnail_url ?? null,
+    file_name: m.file_name ?? null,
+    document_id: data.documentId ?? null,
+  };
+}
+
 export function unpairManual(receivingLineId: number, manualId: number): Promise<void> {
   return postOk(
     `/api/receiving-lines/${receivingLineId}/manuals`,

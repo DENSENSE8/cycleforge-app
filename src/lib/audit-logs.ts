@@ -181,6 +181,8 @@ export const AUDIT_ENTITY = {
   USER_ISSUE: 'user_issue',
   // Pick-face (bin-to-bin) replenishment task (replenishment_tasks)
   REPLENISHMENT_TASK: 'replenishment_task',
+  // QA Console test run (sandbox orgs only)
+  QA_TEST_RUN: 'qa_test_run',
   // A work_assignments row. Covers both bench assignments and the ad-hoc
   // FOLLOW_UP task one operator throws at another (WS-TASKS, 2026-08-08).
   WORK_ASSIGNMENT: 'work_assignment',
@@ -666,6 +668,15 @@ export const AUDIT_ACTION = {
   // Pick-face replenishment task — reversibility 5.7: undo a claim
   // (IN_PROGRESS → REQUESTED, clears assigned_staff_id).
   REPLENISH_TASK_RELEASE: 'replenish_task.release',
+  // QA Console (sandbox organizations only). Values are append-only.
+  QA_HEALTH_CHECK: 'qa.health_check',
+  QA_DRY_RUN: 'qa.dry_run',
+  QA_FIXTURE_RESET: 'qa.fixture_reset',
+  QA_FAILURE_INJECT: 'qa.failure_inject',
+  QA_WEBHOOK_REPLAY: 'qa.webhook_replay',
+  QA_WEBHOOK_AUTHENTIC: 'qa.webhook_authentic',
+  QA_IMPORT_EXECUTE: 'qa.import_execute',
+  QA_SCENARIO_RUN: 'qa.scenario_run',
 } as const;
 
 export type AuditEntity = (typeof AUDIT_ENTITY)[keyof typeof AUDIT_ENTITY];

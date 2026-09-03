@@ -5,6 +5,10 @@
  * (`printBundleSuggested`). Status + Reprint live in the middle
  * {@link PackPapersStatusCard} so a pointer click never sits next to the
  * focus-locked scan bar.
+ *
+ * When the server cannot reach the office agent (remote NAS_AGENT_URL without
+ * `/print`), the packing Chrome on the agent Mac tries loopback
+ * `http://127.0.0.1:8787/print` before opening a browser dialog.
  */
 
 import { printPackBundleFallback } from '@/lib/print/printPackBundleFallback';
@@ -30,6 +34,17 @@ export interface PrintBundleUiState {
 
 const PACK_PRINT_BUNDLE_UI_EVENT = 'pack-print-bundle-ui';
 export const PACKER_FOCUS_SCAN_EVENT = 'packer-focus-scan';
+
+/** Local NAS media agent (same Mac as the packing Chrome). */
+const LOCAL_AGENT_PRINT_URL = 'http://127.0.0.1:8787/print';
+
+type FallbackDoc = {
+  kind?: string;
+  documentId?: number;
+  productManualId?: number;
+  documentType?: string;
+  isPdf?: boolean;
+};
 
 function printBundleMessage(
   status: string,
@@ -60,6 +75,76 @@ function printBundleMessage(
   }
 }
 
+function contentUrlForFallbackDoc(doc: FallbackDoc): string | null {
+  if (Number(doc.documentId) > 0) return `/api/documents/${Number(doc.documentId)}/content`;
+  if (doc.kind === 'manual' && Number(doc.productManualId) > 0) {
+    return `/api/product-manuals/${Number(doc.productManualId)}/content`;
+  }
+  return null;
+}
+
+function documentTypeForFallbackDoc(doc: FallbackDoc): 'shipping_label' | 'packing_slip' | 'manual' {
+  const t = String(doc.documentType || '').trim();
+  if (t === 'shipping_label' || t === 'packing_slip' || t === 'manual') return t;
+  return doc.kind === 'manual' ? 'manual' : 'packing_slip';
+}
+
+async function arrayBufferToBase64(buf: ArrayBuffer): Promise<string> {
+  const bytes = new Uint8Array(buf);
+  const chunk = 0x8000;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+/**
+ * When Cycle Forge fell back to the browser dialog, try the office agent on
+ * loopback (packing station Mac). Returns true when every fallback doc printed.
+ */
+export async function tryLocalAgentPrintFallback(docs: FallbackDoc[]): Promise<boolean> {
+  if (typeof window === 'undefined' || docs.length === 0) return false;
+
+  let probeOk = false;
+  try {
+    const probe = await fetch('http://127.0.0.1:8787/health', {
+      method: 'GET',
+      mode: 'cors',
+      cache: 'no-store',
+    });
+    probeOk = probe.ok;
+  } catch {
+    return false;
+  }
+  if (!probeOk) return false;
+
+  for (const doc of docs) {
+    const url = contentUrlForFallbackDoc(doc);
+    if (!url) return false;
+    const pdfRes = await fetch(url, { cache: 'no-store' });
+    if (!pdfRes.ok) return false;
+    const buf = await pdfRes.arrayBuffer();
+    if (!buf.byteLength) return false;
+    const pdfBase64 = await arrayBufferToBase64(buf);
+    const documentType = documentTypeForFallbackDoc(doc);
+    const printRes = await fetch(LOCAL_AGENT_PRINT_URL, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        documentType,
+        title: `Pack ${documentType}`,
+        pdfBase64,
+        source: 'cycleforge.pack.loopback',
+      }),
+    });
+    const body = await printRes.json().catch(() => ({}));
+    if (!printRes.ok || !body?.ok || !body?.dispatched) return false;
+  }
+  return true;
+}
+
 export async function triggerPackPrintBundle(input: {
   orderRowId: number;
   packerLogId: number | null;
@@ -84,15 +169,36 @@ export async function triggerPackPrintBundle(input: {
     };
   }
   const pb = data?.printBundle ?? {};
-  const status = String(pb.status || 'failed') as PrintBundleUiStatus;
+  let status = String(pb.status || 'failed') as PrintBundleUiStatus;
   const missingTypes = Array.isArray(pb.missingTypes)
     ? pb.missingTypes.map(String)
     : [];
   const manualsResolved = Number(pb.manualsResolved ?? 0) || 0;
-  const fallback = Array.isArray(pb.browserFallbackDocs) ? pb.browserFallbackDocs : [];
-  if (fallback.length > 0) {
-    printPackBundleFallback(fallback);
+  const fallback = Array.isArray(pb.browserFallbackDocs)
+    ? (pb.browserFallbackDocs as FallbackDoc[])
+    : [];
+
+  if (status === 'fallback_browser' && fallback.length > 0) {
+    const localOk = await tryLocalAgentPrintFallback(fallback).catch(() => false);
+    if (localOk) {
+      status = 'dispatched';
+      const jobIds = (Array.isArray(pb.jobs) ? pb.jobs : [])
+        .map((j: { jobRow?: { id?: number | string }; id?: number | string }) =>
+          Number(j?.jobRow?.id ?? j?.id),
+        )
+        .filter((n: number) => Number.isFinite(n) && n > 0);
+      if (jobIds.length > 0) {
+        void fetch(`/api/orders/${input.orderRowId}/documents/print/ack-local`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ jobIds }),
+        }).catch(() => {});
+      }
+    } else {
+      printPackBundleFallback(fallback);
+    }
   }
+
   return {
     status,
     missingTypes,

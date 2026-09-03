@@ -3,9 +3,14 @@ import { describe, it } from 'node:test';
 import {
   getPackWorkspaceTabFromSearch,
   normalizePackWorkspaceTabParams,
+  PACK_WORKSPACE_TABS,
 } from './pack-workspace-state';
 
 describe('pack-workspace-state', () => {
+  it('keeps Queue leftmost in the desk tab order', () => {
+    assert.deepEqual([...PACK_WORKSPACE_TABS], ['queue', 'history']);
+  });
+
   it('defaults absent packview to queue', () => {
     assert.equal(getPackWorkspaceTabFromSearch(new URLSearchParams()), 'queue');
   });

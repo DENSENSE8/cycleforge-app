@@ -88,6 +88,7 @@ export type SidebarRouteKey =
   | 'audit-log'
   | 'settings'
   | 'search'
+  | 'qa-console'
   | 'unknown';
 
 export type SidebarIconComponent = (props: { className?: string }) => JSX.Element;
@@ -301,6 +302,12 @@ type SidebarNavItemFields = {
    */
   requires?: string;
   /**
+   * Hide unless the active organization is a sandbox tenant. Combined with
+   * `requires` — a customer-org admin who holds every permission still does
+   * not see the QA Console.
+   */
+  sandboxOnly?: boolean;
+  /**
    * `kind: 'top'` only. When `false`, the pin stays in the registry (⌘K,
    * dest search, deep links) but is not painted as a spine map row.
    * Omit / `true` = paint Home / Media Library at the top of the map.
@@ -341,6 +348,7 @@ const MOBILE_RESTRICTED_SIDEBAR_IDS = new Set<SidebarRouteKey>([
   'studio',
   'support',
   'admin',
+  'qa-console',
   'audit-log',
   // Review station is desktop-only (packer capture stays on /m/pack). Plan §4d.
   'review',
@@ -465,6 +473,7 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // (AdminLogsTab, with the Audit filter). The /settings/audit and /audit-log/*
   // routes still resolve directly; only the nav row was removed.
   { id: 'admin',             label: 'Admin',       href: '/admin',              icon: ShieldCheck,     kind: 'main', mainGroup: 'admin', requires: 'admin.view' },
+  { id: 'qa-console',        label: 'QA Console',  href: '/developer',          icon: Activity,        kind: 'bottom', requires: 'developer.qa_tools.view', sandboxOnly: true },
 ];
 
 export function isSidebarRouteMobileRestricted(routeKey: SidebarRouteKey): boolean {
@@ -480,10 +489,12 @@ export interface GetSidebarNavItemsOpts {
    * is applied — preserves legacy behavior for the rollout window.
    */
   permissions?: ReadonlySet<string>;
+  /** Active org environment. Sandbox-only items hide unless this is 'sandbox'. */
+  organizationEnvironment?: 'sandbox' | 'customer' | null;
 }
 
 export function getSidebarNavItems(opts: GetSidebarNavItemsOpts = {}): SidebarNavItem[] {
-  const { mobileRestricted = false, permissions } = opts;
+  const { mobileRestricted = false, permissions, organizationEnvironment } = opts;
   let items: SidebarNavItem[] = APP_SIDEBAR_NAV;
   if (mobileRestricted) {
     items = items.filter((item) => !isSidebarRouteMobileRestricted(item.id as SidebarRouteKey));
@@ -495,6 +506,7 @@ export function getSidebarNavItems(opts: GetSidebarNavItemsOpts = {}): SidebarNa
   if (permissions) {
     items = items.filter((item) => !item.requires || permissions.has(item.requires));
   }
+  items = items.filter((item) => !item.sandboxOnly || organizationEnvironment === 'sandbox');
   return items;
 }
 
@@ -718,6 +730,7 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   if (pathname === '/outbound' || pathname.startsWith('/outbound/')) return 'outbound';
   // /manuals now redirects to /products (see src/app/manuals/page.tsx)
   if (pathname === '/manuals' || pathname.startsWith('/manuals/')) return 'products';
+  if (pathname === '/developer' || pathname.startsWith('/developer/')) return 'qa-console';
   if (pathname === '/settings' || pathname.startsWith('/settings/')) return 'settings';
   // `/search` — header find + SearchBrowseShell; `?sel=type:id` opens full-bleed detail.
   if (pathname === '/search' || pathname.startsWith('/search/')) return 'search';

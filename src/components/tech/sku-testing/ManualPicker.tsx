@@ -4,18 +4,18 @@ import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import { Panel } from '@/design-system/primitives';
 
-
-
-
-/** Inline manuals-library search + pair picker. */
+/** Inline manuals-library search + pair picker (QC + order intake). */
 export function ManualPicker({
-  receivingLineId,
+  onPair,
   onPaired,
 }: {
-  receivingLineId: number;
+  onPair: (manualId: number) => Promise<void>;
   onPaired: () => Promise<void>;
 }) {
-  const { query, setQuery, results, searching, pairingId, pair } = useManualPicker(receivingLineId, onPaired);
+  const { query, setQuery, results, searching, pairingId, pair } = useManualPicker(
+    onPair,
+    onPaired,
+  );
 
   return (
     <div className="mb-3 rounded-none border border-border-soft/70 bg-surface-canvas/60 p-2">
@@ -26,7 +26,10 @@ export function ManualPicker({
           onChange={(e) => setQuery(e.target.value)}
           autoFocus
           placeholder="Search manuals library…"
-          className={cn("w-full bg-transparent text-role-caption font-medium text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
+          className={cn(
+            'w-full bg-transparent text-role-caption font-medium text-text-default placeholder:text-text-faint',
+            focusRing('field', 'accent'),
+          )}
         />
         {searching ? <Loader2 className="h-4 w-4 shrink-0 animate-spin text-text-faint" /> : null}
       </Panel>
@@ -43,7 +46,9 @@ export function ManualPicker({
                   className="ds-raw-button flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left hover:bg-surface-card"
                 >
                   <FileText className="h-4 w-4 shrink-0 text-text-faint" />
-                  <span className="min-w-0 flex-1 truncate text-role-caption font-medium text-text-default">{name}</span>
+                  <span className="min-w-0 flex-1 truncate text-role-caption font-medium text-text-default">
+                    {name}
+                  </span>
                   {pairingId === m.id ? (
                     <Loader2 className="h-4 w-4 shrink-0 animate-spin text-text-faint" />
                   ) : (

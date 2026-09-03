@@ -70,6 +70,22 @@ export interface VerifyOptions {
   secret?: string;
 }
 
+export function zohoWebhookSignatureEncoding(): 'hex' | 'base64' {
+  return (process.env.ZOHO_WEBHOOK_SIGNATURE_ENCODING || 'hex').toLowerCase() === 'base64'
+    ? 'base64'
+    : 'hex';
+}
+
+/** HMAC used by production verification — QA signs with the same function. */
+export function signZohoWebhookBody(
+  rawBody: string | Buffer,
+  secret: string,
+  encoding: 'hex' | 'base64' = zohoWebhookSignatureEncoding(),
+): string {
+  const bodyBuf = typeof rawBody === 'string' ? Buffer.from(rawBody, 'utf8') : rawBody;
+  return createHmac('sha256', secret).update(bodyBuf).digest(encoding);
+}
+
 export function verifyZohoWebhookSignature(
   rawBody: string | Buffer,
   headers: Headers,
@@ -79,10 +95,7 @@ export function verifyZohoWebhookSignature(
   if (!secret) return { ok: false, reason: 'no signing secret available (per-org or ZOHO_WEBHOOK_SECRET)' };
 
   const headerName = (process.env.ZOHO_WEBHOOK_SIGNATURE_HEADER || 'x-zoho-webhook-signature').trim();
-  const encoding: 'hex' | 'base64' =
-    (process.env.ZOHO_WEBHOOK_SIGNATURE_ENCODING || 'hex').toLowerCase() === 'base64'
-      ? 'base64'
-      : 'hex';
+  const encoding = zohoWebhookSignatureEncoding();
 
   const sigRaw = readSignature(headers, headerName);
   if (!sigRaw) return { ok: false, reason: 'missing signature header' };

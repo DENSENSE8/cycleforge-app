@@ -1,9 +1,8 @@
 /**
  * POST /api/receiving/zendesk-claim/draft
  *
- * Builds the deterministic claim template (PO, tracking, serials, issue) and
- * asks Hermes to rewrite it into the operator-facing subject + body.
- * Nothing is filed. Station Ticket mode lands this text in the Omni Composer.
+ * Rewrites the receiving-claim ticket template via the local Hermes agent.
+ * Nothing is filed — the create-ticket surface reviews the draft first.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -11,8 +10,7 @@ import { ApiError, errorResponse } from '@/lib/api';
 import { withAuth } from '@/lib/auth/withAuth';
 import { CLAIM_TYPE_LABEL, type ClaimType } from '@/lib/zendesk-claim-template';
 import { poReceivingLink } from '@/lib/receiving-claim-photos';
-import { buildReceivingClaimTemplate } from '@/lib/zendesk-claim-template';
-import { draftReceivingClaimWithLlm } from '@/lib/receiving/draft-receiving-claim';
+import { draftReceivingClaimTicket } from '@/lib/receiving/draft-receiving-claim-ticket';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,6 +21,8 @@ interface DraftRequest {
   lineId?: number | null;
   claimType: ClaimType;
   reason?: string;
+  subject?: string;
+  description?: string;
 }
 
 export const POST = withAuth(async (req: NextRequest, ctx) => {
@@ -37,23 +37,18 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     if (!body.claimType || !(body.claimType in CLAIM_TYPE_LABEL)) {
       throw ApiError.badRequest('Invalid claimType');
     }
-    const lineId = body.lineId != null ? Number(body.lineId) : null;
 
-    const result = await draftReceivingClaimWithLlm(ctx.organizationId, {
+    const draft = await draftReceivingClaimTicket(ctx.organizationId, {
       receivingId,
-      lineId,
+      lineId: body.lineId != null ? Number(body.lineId) : null,
       claimType: body.claimType,
       reason: body.reason,
+      subject: body.subject,
+      description: body.description,
       poReceivingLink: poReceivingLink(req, receivingId),
-    }, { buildTemplate: buildReceivingClaimTemplate });
-
-    return NextResponse.json({
-      success: true,
-      subject: result.subject,
-      description: result.description,
-      model: result.model,
-      degraded: result.degraded,
     });
+
+    return NextResponse.json({ success: true, ai: true, ...draft });
   } catch (error) {
     return errorResponse(error, 'POST /api/receiving/zendesk-claim/draft');
   }

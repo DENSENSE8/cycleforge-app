@@ -48,14 +48,15 @@ test('Locations appears only for a real order row, and never nags', () => {
     hasListing: false,
     hasPlaceableOrder: true,
   });
-  // Ahead of the trailing Listings slot, and an `assets` tool rather than an
-  // outstanding step — same contract as Arrival's and Ready-to-Pack's row.
+  // Documents + Locations ahead of trailing Listings; both are `assets` tools
+  // rather than outstanding steps — same contract as Arrival / Ready-to-Pack.
   assert.deepEqual(
     withOrder.map((r) => r.id),
-    ['locations', 'listings'],
+    ['documents', 'locations', 'listings'],
   );
-  assert.equal(withOrder[0]?.tone, 'neutral');
-  assert.equal(withOrder[0]?.group, 'assets');
+  assert.equal(withOrder.find((r) => r.id === 'locations')?.tone, 'neutral');
+  assert.equal(withOrder.find((r) => r.id === 'locations')?.group, 'assets');
+  assert.equal(withOrder.find((r) => r.id === 'documents')?.group, 'assets');
 
   // A UNIT scan or an unknown order has no `order_pack_placements` key, so the
   // leaf would have nothing to write — it must not offer the row at all.
@@ -68,4 +69,5 @@ test('Locations appears only for a real order row, and never nags', () => {
     hasPlaceableOrder: false,
   });
   assert.equal(withoutOrder.some((r) => r.id === 'locations'), false);
+  assert.equal(withoutOrder.some((r) => r.id === 'documents'), false);
 });

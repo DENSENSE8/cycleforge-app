@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Barcode, Download, FileText, Pencil, Receipt, Tag, User } from '@/components/Icons';
+import { Barcode, Download, FileText, Pencil, Receipt, Sparkles, Tag, User } from '@/components/Icons';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -59,9 +59,11 @@ export function ClaimTemplateEditor({
     subject,
     description,
     previewLoading,
+    aiDrafting,
     edited,
     onSubjectChange,
     onDescriptionChange,
+    draftWithAi,
     resetTemplate,
   } = template;
 
@@ -232,6 +234,25 @@ export function ClaimTemplateEditor({
   return (
     <div className="space-y-0">
       {beforeSubject}
+
+      <div className="px-3 pt-3">
+        <Button
+          type="button"
+          variant="primary"
+          size="lg"
+          className="w-full"
+          icon={<Sparkles className="h-4 w-4" />}
+          loading={aiDrafting}
+          disabled={previewLoading || aiDrafting}
+          onClick={() => void draftWithAi()}
+          ariaLabel="Draft ticket template with AI"
+        >
+          Draft with AI
+        </Button>
+        <p className="mt-1.5 text-role-micro text-text-faint">
+          Rewrites this template through Hermes. Review the draft before filing.
+        </p>
+      </div>
 
       <div className="space-y-3 px-3 pt-3">
         <div>

@@ -118,7 +118,7 @@ export function TriagePanel({
   // The right-edge Displays push (Ticket + Pairing). `null` IS closed; `index`
   // is Root Index; a leaf id is the open body. No second `pairingOpen` flag.
   const [activeSideTab, setActiveSideTab] = useState<string | null>(null);
-  const [claimMode, setClaimMode] = useState<ClaimModalMode>('link');
+  const [claimMode, setClaimMode] = useState<ClaimModalMode>('create');
   const [pairingFocus, setPairingFocus] = useState<{
     tab: 'zoho_po' | null;
     requestId: number;

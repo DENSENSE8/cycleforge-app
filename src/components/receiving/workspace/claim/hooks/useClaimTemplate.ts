@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { toast } from '@/lib/toast';
 import type { ClaimType } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { CLAIM_TYPE_LABEL } from '@/lib/receiving-claim-type';
 import {
@@ -21,10 +22,13 @@ export interface UseClaimTemplate {
   subject: string;
   description: string;
   previewLoading: boolean;
+  aiDrafting: boolean;
   /** True once the operator has manually edited subject or body. */
   edited: boolean;
   onSubjectChange: (v: string) => void;
   onDescriptionChange: (v: string) => void;
+  /** Hermes rewrite of the current template (operator still reviews before file). */
+  draftWithAi: () => Promise<void>;
   /** Re-fetch the server template and overwrite the editable fields. */
   resetTemplate: () => void;
   /**
@@ -98,6 +102,7 @@ export function useClaimTemplate({
   const [subject, setSubject] = useState('');
   const [description, setDescription] = useState('');
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [aiDrafting, setAiDrafting] = useState(false);
   const [edited, setEdited] = useState(false);
   const subjectTouched = useRef(false);
   const descriptionTouched = useRef(false);
@@ -384,13 +389,63 @@ export function useClaimTemplate({
     setResetNonce((n) => n + 1);
   };
 
+  const draftWithAi = useCallback(async () => {
+    if (!receivingId || aiDrafting) return;
+    setAiDrafting(true);
+    try {
+      const res = await fetch('/api/receiving/zendesk-claim/draft', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          receivingId,
+          lineId,
+          claimType,
+          subject: subjectRef.current,
+          description: descriptionRef.current,
+        }),
+      });
+      const data = (await res.json().catch(() => null)) as {
+        success?: boolean;
+        subject?: string;
+        description?: string;
+        degraded?: boolean;
+        error?: string;
+      } | null;
+      if (!res.ok || !data?.success) {
+        toast.error(data?.error || 'AI draft failed');
+        return;
+      }
+      if (typeof data.subject === 'string') {
+        subjectTouched.current = true;
+        setEdited(true);
+        setSubject(data.subject);
+      }
+      if (typeof data.description === 'string') {
+        descriptionTouched.current = true;
+        setEdited(true);
+        setDescription(data.description);
+      }
+      if (data.degraded) {
+        toast.warning('AI draft dropped a reference — kept the template. Edit as needed.');
+      } else {
+        toast.success('Drafted with AI — review before filing');
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'AI draft failed');
+    } finally {
+      setAiDrafting(false);
+    }
+  }, [receivingId, lineId, claimType, aiDrafting]);
+
   return {
     subject,
     description,
     previewLoading,
+    aiDrafting,
     edited,
     onSubjectChange,
     onDescriptionChange,
+    draftWithAi,
     resetTemplate,
     applyCartonIdentity,
     readSubject: () => subjectRef.current,

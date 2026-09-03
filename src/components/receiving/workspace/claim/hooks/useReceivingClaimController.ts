@@ -58,8 +58,8 @@ export interface ClaimModalProps {
   /** Seeds the "What happened?" note when the modal opens (RETURN match CTA). */
   prefillReason?: string;
   /**
-   * Which wizard tab to land on when the modal opens. Defaults to `link`
-   * (existing ticket). Create remains available via the mode combobox.
+   * Which wizard tab to land on when the modal opens. Defaults to `create`.
+   * The create-ticket surface no longer mounts a Create|Link combobox.
    */
   initialMode?: ClaimModalMode;
   onClose: () => void;
@@ -81,7 +81,7 @@ export function useReceivingClaimController({
   row,
   lineIdOverride,
   prefillReason,
-  initialMode = 'link',
+  initialMode = 'create',
   onClose,
   onTicketCreated,
   onTicketUnlinked,

@@ -1,25 +1,36 @@
 'use client';
 
 /**
- * Silent scan-session face for Recents. Duration never paints here.
- * Empty until the recorder client is mounted; Recents still uses MasterNav.
+ * Silent scan session — header MRU companion for in-progress scan surfaces.
+ *
+ * Stubbed safe defaults: Pack (and other desks) must render even when no scan
+ * session is active. A fuller persistence layer can replace this later without
+ * changing the `{ session, recent, loadRecent }` face.
  */
 
 import { useCallback, useState } from 'react';
 
-export type SilentScanSessionFace = {
-  id: number;
-  surfaceKey: string | null;
-  scanType: string | null;
+export type SilentScanSession = {
+  id: string;
+  surfaceKey?: string | null;
+  scanType?: string | null;
+} | null;
+
+export type SilentScanRecentRow = {
+  id: string;
+  surfaceKey?: string | null;
+  scanType?: string | null;
 };
 
-export function useSilentScanSession() {
-  const [session] = useState<SilentScanSessionFace | null>(null);
-  const [recent] = useState<SilentScanSessionFace[]>([]);
-
+export function useSilentScanSession(): {
+  session: SilentScanSession;
+  recent: SilentScanRecentRow[];
+  loadRecent: () => Promise<void>;
+} {
+  const [session] = useState<SilentScanSession>(null);
+  const [recent] = useState<SilentScanRecentRow[]>([]);
   const loadRecent = useCallback(async () => {
-    /* Recents face is MasterNav identity; list fetch is optional. */
+    /* no-op stub — no persisted silent-scan sessions yet */
   }, []);
-
   return { session, recent, loadRecent };
 }

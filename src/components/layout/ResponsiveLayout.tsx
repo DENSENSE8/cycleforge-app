@@ -18,6 +18,7 @@ import { GlobalWedgeScannerMount, PhoneScanBridgeMount } from '@/components/layo
 import { setRightRailFrameWidth } from '@/lib/right-rail/frame';
 import { isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalHeader } from '@/components/layout/GlobalHeader';
+import { QaSandboxBanner } from '@/components/qa/QaSandboxBanner';
 import { appContentShellClass } from '@/components/layout/header-shell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
@@ -381,6 +382,7 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
             navPeekTriggerProps={navPeek.triggerProps}
           />
           )}
+          {!chromeless && <QaSandboxBanner />}
           <main className={cn(chromeless ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden' : appContentShellClass)}>
             {/* The route's own sidebar rides HERE, beside the workspace — one
                 wrapper for every route, benches included. See

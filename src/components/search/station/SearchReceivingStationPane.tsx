@@ -61,6 +61,8 @@ import { CopyableValueFieldBlock } from '@/components/shipped/details-panel/bloc
 import { formatDateTimePST } from '@/utils/date';
 import { cartonEventSignature, cartonEventTitle } from '@/components/receiving/inspector/carton-inspector-model';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
+import { searchReceivingActiveRow } from './search-receiving-active-row';
+import { parseZendeskTicketId } from '@/components/receiving/workspace/note-composer-helpers';
 
 const loadSupportContextHub = () =>
   import('@/components/support/context').then((m) => m.SupportContextHub);
@@ -72,6 +74,10 @@ const loadStationUnitJourneys = () =>
   import('@/components/station/workbench/StationUnitJourneys').then((m) => m.StationUnitJourneys);
 const loadWarrantyLogClaimDialog = () =>
   import('@/components/warranty/WarrantyLogClaimDialog').then((m) => m.WarrantyLogClaimDialog);
+const loadTicketDisplayHost = () =>
+  import('@/components/receiving/workspace/line-edit/TicketDisplayHost').then(
+    (m) => m.TicketDisplayHost,
+  );
 
 function LeafBodyLoading() {
   return <UniversalLoader isLoading label="Loading display" />;
@@ -82,12 +88,14 @@ const PhotoGallery = dynamic(loadPhotoGallery, { loading: LeafBodyLoading });
 const OrderTimelineSection = dynamic(loadOrderTimelineSection, { loading: LeafBodyLoading });
 const StationUnitJourneys = dynamic(loadStationUnitJourneys, { loading: LeafBodyLoading });
 const WarrantyLogClaimDialog = dynamic(loadWarrantyLogClaimDialog);
+const TicketDisplayHost = dynamic(loadTicketDisplayHost, { loading: LeafBodyLoading });
 
 function preloadSearchReceivingLeafChunks(): void {
   void loadSupportContextHub();
   void loadPhotoGallery();
   void loadOrderTimelineSection();
   void loadStationUnitJourneys();
+  void loadTicketDisplayHost();
 }
 
 function CartonActivityList({ events }: { events: CartonInspectorEvent[] }) {
@@ -177,6 +185,7 @@ export function SearchReceivingStationPane({
   const [activeSideTab, setActiveSideTab] = useState<StationDisplayNav | null>(null);
   const [logWarrantyOpen, setLogWarrantyOpen] = useState(false);
   const [warrantyDialogMounted, setWarrantyDialogMounted] = useState(false);
+  const [createdTicketId, setCreatedTicketId] = useState<number | null>(null);
   const collapse = useAutoCollapse();
 
   const receivingQuery = useQuery(searchReceivingQuery(receivingId));
@@ -261,6 +270,11 @@ export function SearchReceivingStationPane({
         .map((s) => s.trim())
         .filter(Boolean),
     [linkedOrder?.serial_number],
+  );
+
+  const receivingRow = useMemo(
+    () => (receiving ? searchReceivingActiveRow(receiving, lines) : null),
+    [receiving, lines],
   );
 
   const detailsLog = useMemo(
@@ -371,11 +385,31 @@ export function SearchReceivingStationPane({
           id: 'ticket',
           label: 'Customer ticket',
           icon: Ticket,
-          visible: hasLinkedOrder,
-          content: (
-            <div className="space-y-3 pb-4">
+          visible: true,
+          content: receivingRow && !hasLinkedOrder ? (
+            <div className="h-full min-h-0 pb-0">
+              <TicketDisplayHost
+                row={receivingRow}
+                ticketId={createdTicketId}
+                claimMode="create"
+                onCloseClaim={() => undefined}
+                onCloseTicket={() => setCreatedTicketId(null)}
+                onClaimTicketCreated={(num) => {
+                  const id = parseZendeskTicketId(num);
+                  if (id) setCreatedTicketId(Number(id));
+                }}
+                onClaimTicketUnlinked={() => setCreatedTicketId(null)}
+                showReplyPresets={false}
+              />
+            </div>
+          ) : (
+            <div className="h-full min-h-0 space-y-3 pb-4">
               <SupportContextHub
-                anchor={orderAnchor}
+                anchor={
+                  hasLinkedOrder
+                    ? orderAnchor
+                    : { receivingId: receiving?.id ?? null }
+                }
                 variant="station"
                 onlySegment="customer"
                 hideLinkage={false}
@@ -440,6 +474,9 @@ export function SearchReceivingStationPane({
       detailsLog,
       readiness,
       events,
+      receivingRow,
+      receiving?.id,
+      createdTicketId,
     ],
   );
 
@@ -460,7 +497,7 @@ export function SearchReceivingStationPane({
       photosSettled,
       hasWarrantyOrReturns: false,
       serialCount: 0,
-    }).filter((row) => ['photos', 'status', 'timeline'].includes(row.id));
+    }).filter((row) => ['photos', 'status', 'timeline', 'ticket'].includes(row.id));
 
     const timeline = rows.find((row) => row.id === 'timeline');
     if (timeline) {
@@ -472,6 +509,11 @@ export function SearchReceivingStationPane({
     const status = rows.find((row) => row.id === 'status');
     if (status) {
       status.subtitle = 'Inbound · QA · disposition';
+    }
+    const ticket = rows.find((row) => row.id === 'ticket');
+    if (ticket) {
+      ticket.subtitle = 'Create ticket';
+      ticket.tone = 'ok';
     }
     return rows;
   }, [

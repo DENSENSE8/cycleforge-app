@@ -95,13 +95,14 @@ async function ensureOrganization(pool: Pool, orgId: string) {
     staffLoginModel: 'individual',
   };
   await pool.query(
-    `INSERT INTO organizations (id, slug, name, plan, status, trial_ends_at, settings, billing_email)
-     VALUES ($1, $2, $3, 'enterprise', 'active', NULL, $4::jsonb, $5)
+    `INSERT INTO organizations (id, slug, name, plan, status, environment, trial_ends_at, settings, billing_email)
+     VALUES ($1, $2, $3, 'enterprise', 'active', 'sandbox', NULL, $4::jsonb, $5)
      ON CONFLICT (id) DO UPDATE SET
        slug = EXCLUDED.slug,
        name = EXCLUDED.name,
        plan = 'enterprise',
        status = 'active',
+       environment = 'sandbox',
        trial_ends_at = NULL,
        settings = organizations.settings || EXCLUDED.settings,
        billing_email = COALESCE(organizations.billing_email, EXCLUDED.billing_email),

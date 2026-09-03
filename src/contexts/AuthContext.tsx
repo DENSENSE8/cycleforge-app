@@ -67,6 +67,8 @@ export interface AuthSessionUser {
    *  when the org row is unavailable. */
   organizationSlug: string | null;
   organizationPlan: string | null;
+  /** sandbox | customer — server-stamped. QA Console is sandbox-only. */
+  organizationEnvironment: 'sandbox' | 'customer';
   /** Every workspace this account can act in (≥1; the current org is flagged
    *  isCurrent). Drives the Settings → Organization switcher. Pre-migration
    *  this is always a single synthesized entry for the current org. */

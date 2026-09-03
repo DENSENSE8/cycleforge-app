@@ -123,3 +123,34 @@ export async function listDocumentPrintJobsForOrder(
   );
   return res.rows;
 }
+
+/**
+ * Packing Chrome loopback: after `fallback_browser` jobs print via local agent,
+ * promote matching rows to `dispatched` (clears stale browser-fallback status).
+ */
+export async function markDocumentPrintJobsDispatched(
+  orgId: OrgId,
+  orderId: number,
+  jobIds: number[],
+): Promise<number[]> {
+  const ids = [
+    ...new Set(
+      jobIds
+        .map((n) => Math.floor(Number(n)))
+        .filter((n) => Number.isFinite(n) && n > 0),
+    ),
+  ];
+  if (ids.length === 0) return [];
+  const res = await tenantQuery<{ id: number }>(
+    orgId,
+    `UPDATE document_print_jobs
+        SET status = 'dispatched', error = NULL
+      WHERE organization_id = $1
+        AND order_id = $2
+        AND id = ANY($3::bigint[])
+        AND status = 'fallback_browser'
+      RETURNING id`,
+    [orgId, orderId, ids],
+  );
+  return res.rows.map((r) => Number(r.id));
+}

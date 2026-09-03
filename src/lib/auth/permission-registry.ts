@@ -43,6 +43,7 @@ export const PERMISSION_CATEGORY_DEFS = [
   { id: 'integrations', label: 'Integrations' },
   { id: 'developer',    label: 'Developer & QA' },
   { id: 'admin',        label: 'Admin' },
+  { id: 'developer',    label: 'Developer / QA' },
 ] as const;
 
 export type PermissionCategoryId = (typeof PERMISSION_CATEGORY_DEFS)[number]['id'];
@@ -259,6 +260,18 @@ export const PERMISSIONS = [
   // (beta_applications is org-less; reviewing it is a platform job, not a
   // tenant-admin job — grant on the platform org's owner roles only).
   { id: 'beta.review',              category: 'admin', label: 'Review beta applications (platform funnel)' },
+
+  // ─ Developer / QA ─
+  // Authorization for the QA Console — not an organization setting. The
+  // server-side capability resolver ALSO requires organizations.environment
+  // = 'sandbox', so granting these on a customer org is a no-op. Do not add
+  // them to production role templates.
+  { id: 'developer.qa_tools.view',              category: 'developer', label: 'View QA Console' },
+  { id: 'developer.qa_tools.execute',           category: 'developer', label: 'Execute QA Console actions' },
+  { id: 'developer.qa_tools.destructive',       category: 'developer', label: 'Destructive QA actions (reset fixtures)', destructive: true, stepUp: true },
+  { id: 'developer.qa_tools.connection_debug',  category: 'developer', label: 'Check connection health (live provider probe)' },
+  { id: 'developer.qa_tools.webhook_replay',    category: 'developer', label: 'Replay stored webhooks (application) or send a provider-authentic signed delivery' },
+  { id: 'developer.qa_tools.fixture_reset',     category: 'developer', label: 'Reset QA fixtures', destructive: true, stepUp: true },
 ] as const satisfies ReadonlyArray<PermissionDef>;
 
 // ─── Derived shapes ─────────────────────────────────────────────────────────

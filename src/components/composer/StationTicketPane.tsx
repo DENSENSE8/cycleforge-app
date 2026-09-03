@@ -20,7 +20,7 @@ import { cn } from '@/utils/_cn';
 export function StationTicketPane({
   row,
   ticketId,
-  claimMode = 'link',
+  claimMode = 'create',
   onCloseClaim,
   onClaimTicketCreated,
   onClaimTicketUnlinked,
