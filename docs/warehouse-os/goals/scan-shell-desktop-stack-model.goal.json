@@ -1,0 +1,20 @@
+{
+  "id": "scan-shell-desktop-stack-model",
+  "statement": "Create src/lib/nav/stack-model.ts, a pure module with no imports from React or the DOM, exporting stackModel(input) where input is { armed: { id, title, state, intervals: Array<{ startedAt: string, endedAt: string | null }> } | null, earlier: Array<{ id, title, state, intervals }>, queues: Array<{ id, label, tableId }>, now: string }. It returns { bands: [ { kind: 'now', block }, { kind: 'earlier', blocks }, { kind: 'queues', queues }, { kind: 'find' } ] } in exactly that order, where each block carries elapsedMs = the SUM of its interval lengths (endedAt null means running until now), earlier blocks sorted newest-first by their last interval start, and a helper resumeBlock(model, id) that returns { arm: id, park: previousArmedId | null }. Write src/lib/nav/stack-model.test.ts with node:test covering band order, summed intervals across a parked gap, newest-first ordering, resume parks the current block, and an empty input. Touch no other file.",
+  "createdBy": "human",
+  "createdAt": "2026-09-04T12:10:00Z",
+  "routerHint": "pure model stack bands now earlier queues find work_sessions intervals elapsed sum resume park node:test",
+  "successPredicates": [
+    { "kind": "test", "file": "src/lib/nav/stack-model.test.ts" },
+    { "kind": "eval", "command": "verify:fast", "expect": "exit0" }
+  ],
+  "stopConditions": {
+    "maxHops": 6,
+    "maxHours": 3,
+    "maxNoProgressHops": 2,
+    "onUnmeasured": "block",
+    "onRed": "repair",
+    "maxRepairs": 2
+  },
+  "budget": {}
+}
