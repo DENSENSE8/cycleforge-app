@@ -35,6 +35,28 @@ class NoopResizeObserver {
 }
 
 /**
+ * jsdom ships no `matchMedia` AT ALL — there is nothing on `dom.window` to bind,
+ * which is what took the whole file down before a single test ran. An inert
+ * always-false list is the right answer rather than a real one: the reduced-motion
+ * and breakpoint reads on the way to the mouth only ask whether a query matches,
+ * and nothing under test branches on the answer.
+ */
+function noopMediaQueryList(query: string) {
+  return {
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener() {},
+    removeListener() {},
+    addEventListener() {},
+    removeEventListener() {},
+    dispatchEvent() {
+      return false;
+    },
+  };
+}
+
+/**
  * Install one jsdom global, by name. One property at a time rather than
  * `Object.assign(globalThis, {…})`: on Node 26 `navigator` is an accessor with
  * no setter, so a bulk assign throws before a single test runs and takes the
@@ -50,6 +72,15 @@ Object.defineProperty(dom.window, 'ResizeObserver', {
   writable: true,
 });
 
+// On the window as well as the global: the dock's motion layer asks
+// `window.matchMedia` for prefers-reduced-motion, and `window` here is the jsdom
+// window — a global-only stub would leave that read undefined.
+Object.defineProperty(dom.window, 'matchMedia', {
+  value: noopMediaQueryList,
+  configurable: true,
+  writable: true,
+});
+
 installGlobal('window', dom.window);
 installGlobal('document', dom.window.document);
 installGlobal('navigator', dom.window.navigator);
@@ -60,7 +91,7 @@ installGlobal('Node', dom.window.Node);
 installGlobal('MouseEvent', dom.window.MouseEvent);
 installGlobal('KeyboardEvent', dom.window.KeyboardEvent);
 installGlobal('getComputedStyle', dom.window.getComputedStyle.bind(dom.window));
-installGlobal('matchMedia', dom.window.matchMedia.bind(dom.window));
+installGlobal('matchMedia', noopMediaQueryList);
 // The dock paints through `motion.div`, and framer drives its frame loop off the
 // GLOBAL rAF — which jsdom only hangs on its own window.
 installGlobal('requestAnimationFrame', dom.window.requestAnimationFrame.bind(dom.window));

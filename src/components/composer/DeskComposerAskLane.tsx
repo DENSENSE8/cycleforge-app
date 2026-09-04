@@ -18,7 +18,7 @@
  *
  * **It does not fork a mouth.** The field IS `StationComposerHost`, with the
  * Unbox | Ticket faces off (`showModeFaces={false}`) and the context ring kept,
- * exactly as a dumb gun station mounts it. Never `showModeRow={false}`.
+ * exactly as a dumb gun station mounts it — never hide the mode row.
  *
  * **It does not decide against a station.** A floor station carries its own
  * `StationComposerHost`, and one screen gets one mouth — the station-mouth count
