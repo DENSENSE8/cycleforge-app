@@ -31,6 +31,9 @@ import {
 } from '@/components/mobile/redesign/scan-verdict';
 import { useRegisterNewScan } from '@/components/mobile/redesign/mobile-scan-cta';
 import { NetworkChip } from '@/components/mobile/NetworkChip';
+import { ArrivalCard } from '@/components/mobile/scan/ArrivalCard';
+import { dispatchScan } from '@/lib/scan/dispatch-table';
+import { routeScan } from '@/lib/barcode-routing';
 import { resolveViaLookupPo, type ScanResolutionMode } from '@/lib/receiving/scan';
 import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
 import { useAuth } from '@/contexts/AuthContext';
@@ -55,7 +58,15 @@ export default function RedesignedMobileUniversalScan() {
    * looks identical to a scan the gun never read.
    */
   const [verdict, setVerdict] = useState<{ value: MobileScanVerdict; seq: number } | null>(null);
+  /** The raw string of the last scan, so the dispatch table can be asked about it. */
+  const [lastScan, setLastScan] = useState<string | null>(null);
   const [resolving, setResolving] = useState(false);
+  /**
+   * Photos captured on the Arrival Card. A ref, not state: nothing on this
+   * surface paints them yet (the upload rung is a later goal), and holding them
+   * here is what keeps a shutter press from being thrown away in the meantime.
+   */
+  const arrivalPhotos = useRef<File[]>([]);
   const queryClient = useQueryClient();
   const router = useRouter();
   const { user } = useAuth();
@@ -175,6 +186,7 @@ export default function RedesignedMobileUniversalScan() {
       const raw = value.trim();
       if (!raw || inFlight.current) return;
       inFlight.current = true;
+      setLastScan(raw);
 
       const detected = detectScanMode(raw);
       const target: ScanMode = detected ?? mode;
@@ -226,11 +238,35 @@ export default function RedesignedMobileUniversalScan() {
    */
   const startNewScan = useCallback(() => {
     setVerdict(null);
+    setLastScan(null);
+    arrivalPhotos.current = [];
     setTestingQuery('');
     setPrepackScan(null);
     changeMode('receiving');
   }, [changeMode]);
   useRegisterNewScan(startNewScan);
+
+  /**
+   * What the dispatch table says the last scan opens.
+   *
+   * `trackingSeen` is not guessed: a scan that resolved to a carton HAS been
+   * seen, so the table returns `carton` for it and the Arrival Card stays shut.
+   * Only a never-seen tracking number returns `arrival`.
+   */
+  const lastDispatch = useMemo(
+    () =>
+      lastScan
+        ? dispatchScan({
+            scan: lastScan,
+            state: { trackingSeen: verdict?.value.receivingId != null },
+          })
+        : null,
+    [lastScan, verdict],
+  );
+
+  const stageArrivalPhotos = useCallback((files: File[]) => {
+    arrivalPhotos.current = [...arrivalPhotos.current, ...files];
+  }, []);
 
   // Prepacked "Recent Scans" is the only in-component feed left (label history).
   const { rows: feedRows, scrollRef } = useCaptureStackWindow(prepackScans, { limit: 12, anchor: 'top', freshPulse: false });
@@ -270,13 +306,37 @@ export default function RedesignedMobileUniversalScan() {
             is already looking at. Station law: a state-changing scan lands as a
             card, never a toast that expires while their eyes are on the carton.
             Keyed by `seq` so a repeat scan of the same label replays. */}
-        {mode === 'receiving' && verdict && (
+        {/* A never-seen tracking number gets the Arrival Card instead — it IS
+            the answer to that scan, and it carries the same "open the carton"
+            verb the banner did. Every other scan renders exactly what it
+            rendered before. */}
+        {mode === 'receiving' && verdict && lastScan && lastDispatch?.card === 'arrival' ? (
+          <ArrivalCard
+            key={verdict.seq}
+            tracking={lastScan}
+            carrier={routeScan(lastScan)?.carrier ?? 'Unknown'}
+            // Counts nothing on this surface has yet: zero is the model's own
+            // cautious default ("nothing waiting, rack has room"), not an
+            // invented fact. Wiring them is the receiving-data goal.
+            expectedCartons={0}
+            arrivedCartons={0}
+            pendingOrdersForCarton={0}
+            rackHasSpace
+            onUnboxNow={() => {
+              const receivingId = verdict.value.receivingId;
+              if (receivingId != null) router.push(`/m/r/${receivingId}`);
+              else startNewScan();
+            }}
+            onRack={startNewScan}
+            onPhotos={stageArrivalPhotos}
+          />
+        ) : mode === 'receiving' && verdict ? (
           <MobileScanVerdictBanner
             key={verdict.seq}
             verdict={verdict.value}
             onOpenCarton={(receivingId) => router.push(`/m/r/${receivingId}`)}
           />
-        )}
+        ) : null}
       </div>
 
       {/* Result area — a swipeable pager across the three scan modes. Drag
