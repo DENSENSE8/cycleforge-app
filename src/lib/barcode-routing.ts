@@ -14,6 +14,15 @@
  */
 
 import { inventoryLocationsHref } from '@/lib/inventory/locations-path';
+// Carrier vocabulary has ONE home (`@/utils/carrier-patterns`, shared with
+// `tracking-format.ts` and `scan-resolver.ts`). This module borrows the naming
+// from it and never re-derives a carrier regex: the shapes below decide the
+// *class*, that module decides *which carrier*.
+import {
+  detectCarrierFromTracking,
+  toDisplayCarrier,
+  type DisplayCarrier,
+} from '@/utils/carrier-patterns';
 
 export type ScanType =
   | 'sku'
@@ -23,13 +32,65 @@ export type ScanType =
   | 'serial-unit'      // U-class — one physical unit
   | 'handling-unit'    // H-class — a license-plated box/tray (LPN)
   | 'manifest'         // KIT-class — a preboxed kit master label (label_manifests)
-  | 'support-ticket';   // T-class — provider ticket id → /support?ticket=
+  | 'support-ticket'   // T-class — provider ticket id → /support?ticket=
+  // ── Added 2026-09-04 for the scan dispatch table (PLAN-scan-shell-mobile) ──
+  //
+  // APPENDED, never re-ordered or renamed: the eight members above are the
+  // installed vocabulary and every consumer above compares against them by
+  // string. These three widen the union; they take nothing from the eight.
+  //
+  // What they could have taken and did not: all three are decided AFTER every
+  // existing branch has had its say, so a house handle, a GS1 element string, a
+  // location code and a colon-SKU still answer exactly what they answered
+  // before. The only arm they draw from is rule 7 — the bare `sku` default that
+  // a 10/12/15/18/20/22-digit payload used to fall into, which was never a
+  // matcher, only a shrug.
+  /**
+   * A CARRIER tracking number (UPS `1Z…`, USPS 20/22-digit, FedEx 12/15/20-digit,
+   * DHL 10-digit) — someone else's label on the outside of a box.
+   *
+   * Deliberately carries **no `redirect`**: a tracking number resolves to a
+   * carton only against state this module must never fetch. `decodedHandle`
+   * therefore still refuses it, which is what keeps `detectStationScanType`,
+   * `resolveFindFieldScan` and every other `decodedHandle` consumer answering
+   * exactly what they answered before this class existed.
+   */
+  | 'carrier-tracking'
+  /**
+   * A GS1 SSCC — the licence plate of a logistic unit (AI 00 + 18 digits).
+   * The outside-the-house twin of our own `handling-unit` LPN, and the reason
+   * a pallet from a supplier can enter QC without us having printed anything.
+   * Also carries no `redirect` — there is no local page for a foreign SSCC.
+   */
+  | 'sscc'
+  /**
+   * A bin / tote that is PAIRED to a pending order.
+   *
+   * `routeScan` never returns this — pairing is a fact about the order book,
+   * not about the bytes on the label, and this module does not read the order
+   * book. It comes only out of {@link routeScanPaired}, which takes the lookup
+   * as an injected dep. That split is the whole reason the class is safe to
+   * add: every existing `bin` assertion still holds, because a state-free
+   * decode still answers `bin`.
+   */
+  | 'bin-paired-order';
 
 export interface ScanRoute {
   type: ScanType;
   value: string;
   /** When set, callers should navigate here (relative path within the app). */
   redirect?: string;
+  /**
+   * Display carrier for a `carrier-tracking` scan (`UPS`, `FedEx`, …), or
+   * `Unknown` when the shape reads as tracking but no carrier pattern claims
+   * it. Never set for any other class.
+   */
+  carrier?: DisplayCarrier;
+  /**
+   * The pending order a `bin-paired-order` scan is paired to — the value the
+   * injected lookup returned. Never set for any other class.
+   */
+  orderRef?: string;
 }
 
 // The one shared answer to "is this GLN real?" — see the note where
@@ -83,6 +144,89 @@ const LOCATION_FLAT_RE = /^[A-Z]\d{7,8}$/i;
 // `routeScan`. Right-anchored so a tenant slug containing `m` ("mycompany")
 // cannot be mistaken for the `/m/` path segment.
 const FLATTENED_MOBILE_LINK_RE = /^https?.*m([rluh])(\d+)$/i;
+
+// ─── Foreign labels — carrier tracking + SSCC ──────────────────────────────
+//
+// Everything above this block is a payload WE printed. These two are the
+// opposite: labels applied by somebody else that a receiver still has to
+// dispatch on. They sit last in `routeScan` for exactly that reason — a
+// foreign shape must never outrank one of our own decodes.
+
+/**
+ * Scanner punctuation only. Carriers print tracking in human groups
+ * (`1Z 999 AA1 01 2345 4471`, `9400 1118 …`) and a wedge forwards the spaces;
+ * hyphens show up in hand-typed entry. Nothing else is stripped — a wider
+ * normalisation (the all-non-alphanumeric one `classifyInput` uses) would let
+ * a colon-SKU or a dashed location code reach these shapes.
+ */
+function normalizeForeignLabel(value: string): string {
+  return value.replace(/[\s-]/g, '').toUpperCase();
+}
+
+// GS1 SSCC — AI 00 + an 18-digit serial shipping container code.
+//   • parens form  `(00)123456789012345678`  — paste / human-readable print
+//   • FNC1 form    `<GS>00123456789012345678` — what a DataMatrix scanner emits
+//   • bare form    `123456789012345678`      — the 18 digits alone
+// The AI-tagged FNC1 form REQUIRES its leading FNC1: without it, `00` + 18
+// digits is 20 digits beginning `00`, which is also the FedEx Custom Critical
+// tracking shape. Demanding the separator keeps the two apart instead of
+// guessing between them.
+const SSCC_PARENS_RE = /^\(00\)(\d{18})$/;
+const SSCC_FNC1_RE = /^\x1D00(\d{18})$/;
+const SSCC_BARE_RE = /^(\d{18})$/;
+
+/**
+ * Carrier tracking SHAPES — length-anchored, one per printed form we accept.
+ *
+ * Deliberately narrower than `TRACKING_PATTERNS`: that list also carries the
+ * two-leading-letter forms (GSO `^[A-Z]{2}\d{14}$`, UPU `^[A-Z]{2}\d{9}[A-Z]{2}$`),
+ * and a leading letter is exactly what rule 6 reads as a legacy bin barcode.
+ * Matching those here would move `AB12345678901234` out of `bin`, which is a
+ * change to one of the eight existing classes. These six shapes all start with
+ * a digit, so the only arm they can draw from is the rule-7 `sku` default.
+ */
+const CARRIER_TRACKING_SHAPES: ReadonlyArray<RegExp> = [
+  /^1Z[A-Z0-9]{16}$/, // UPS
+  /^\d{10}$/,         // DHL Express
+  /^\d{12}$/,         // FedEx Express
+  /^\d{15}$/,         // FedEx Ground
+  /^\d{20}$/,         // FedEx Ground Economy / USPS IMpb
+  /^\d{22}$/,         // USPS IMpb
+];
+
+/**
+ * The SSCC an inbound logistic-unit label carries, or `null`.
+ *
+ * Checked BEFORE carrier tracking in `routeScan`, and the order is load-bearing:
+ * USPS's broadest IMpb pattern (`9\d{15,21}`) also matches an 18-digit SSCC
+ * that happens to start with 9. None of the six carrier shapes above is 18
+ * digits long, so putting SSCC first costs the carrier arm nothing.
+ */
+export function scannedSscc(raw: string): string | null {
+  const v = normalizeForeignLabel(String(raw ?? '').trim());
+  if (!v) return null;
+  const m = SSCC_PARENS_RE.exec(v) ?? SSCC_FNC1_RE.exec(v) ?? SSCC_BARE_RE.exec(v);
+  return m ? m[1] : null;
+}
+
+/**
+ * The carrier tracking number a foreign shipping label carries, with the
+ * display carrier, or `null`.
+ *
+ * `tracking` is the NORMALISED value — the key a caller stores and compares —
+ * because there is no `redirect` to carry it (same precedent as
+ * `routeLocationCode`, which returns the flat code rather than the raw URL).
+ * `carrier` is best-effort: a shape can read as tracking while no carrier
+ * pattern claims the digits, and `Unknown` is the honest answer for that.
+ */
+export function scannedCarrierTracking(
+  raw: string,
+): { tracking: string; carrier: DisplayCarrier } | null {
+  const v = normalizeForeignLabel(String(raw ?? '').trim());
+  if (!v) return null;
+  if (!CARRIER_TRACKING_SHAPES.some((re) => re.test(v))) return null;
+  return { tracking: v, carrier: toDisplayCarrier(detectCarrierFromTracking(v)) };
+}
 
 function pathToRoute(path: string, value: string): ScanRoute | null {
   const m = MOBILE_PATH_RE.exec(path);
@@ -324,6 +468,30 @@ export function routeScan(raw: string): ScanRoute | null {
   // 6. Bin (legacy fallback): starts with a letter.
   if (/^[A-Za-z]/.test(value)) return { type: 'bin', value };
 
+  // 6b. FOREIGN labels — somebody else's SSCC or carrier tracking number.
+  //
+  //     LAST before the default, and that position is the whole safety argument:
+  //     every payload this app has ever printed has already had its say above,
+  //     so the only arm these two can draw from is rule 7 — the bare `sku`
+  //     shrug, which was never a matcher. All six carrier shapes and all three
+  //     SSCC forms are digit- or FNC1-leading, so rule 6's letter fallback is
+  //     untouched too.
+  //
+  //     SSCC first: USPS's broadest IMpb pattern also matches an 18-digit run
+  //     that happens to start with 9, and none of the six carrier shapes is 18
+  //     digits long — see {@link scannedSscc}.
+  //
+  //     Neither carries a `redirect`: there is no local page for a foreign
+  //     label, which is exactly what keeps `decodedHandle` (and therefore
+  //     `detectStationScanType`, `resolveFindFieldScan` and every other consumer
+  //     of it) answering what it answered before these classes existed.
+  const sscc = scannedSscc(value);
+  if (sscc) return { type: 'sscc', value: sscc };
+  const tracking = scannedCarrierTracking(value);
+  if (tracking) {
+    return { type: 'carrier-tracking', value: tracking.tracking, carrier: tracking.carrier };
+  }
+
   // 7. Default fallback → SKU.
   return { type: 'sku', value };
 }
@@ -331,6 +499,39 @@ export function routeScan(raw: string): ScanRoute | null {
 /** Back-compat shim for callers that only need the type. */
 export function detectScanType(raw: string): ScanType {
   return routeScan(raw)?.type ?? 'sku';
+}
+
+/**
+ * The ONE fact a bin label's bytes cannot carry: the pending order that bin or
+ * tote is paired to, or `null`/`undefined` when it is unpaired.
+ *
+ * Injected rather than imported. Pairing is a fact about the order book, and
+ * this module is pure, synchronous and client-safe — it decides *what the label
+ * says*, never *what the warehouse thinks about it*. See the `bin-paired-order`
+ * note on {@link ScanType}.
+ */
+export interface BinPairingLookup {
+  (binCode: string): string | null | undefined;
+}
+
+/**
+ * {@link routeScan} plus that one injected fact — the only way a
+ * `bin-paired-order` route is ever produced.
+ *
+ * A strict widening of `routeScan`: every class but `bin` is returned
+ * unchanged, and so is an UNPAIRED bin. That is what makes the third new class
+ * safe to add — every existing `bin` assertion still holds, because a
+ * state-free decode still answers `bin`.
+ */
+export function routeScanPaired(
+  raw: string,
+  lookup: BinPairingLookup,
+): ScanRoute | null {
+  const route = routeScan(raw);
+  if (!route || route.type !== 'bin') return route;
+  const orderRef = lookup(route.value);
+  if (!orderRef) return route;
+  return { ...route, type: 'bin-paired-order', orderRef };
 }
 
 /**

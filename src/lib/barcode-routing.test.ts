@@ -7,10 +7,14 @@
  */
 
 import { test } from 'node:test';
-import { strictEqual, ok } from 'node:assert';
+import { strictEqual, deepStrictEqual, ok } from 'node:assert';
 
 import {
   routeScan,
+  routeScanPaired,
+  decodedHandle,
+  scannedSscc,
+  scannedCarrierTracking,
   type ScanType,
   receivingHandle,
   receivingLineHandle,
@@ -627,4 +631,104 @@ test('the flat-code branch does not swallow other printed handles', () => {
   strictEqual(routeScan('H-12')?.type, 'handling-unit');
   strictEqual(routeScan('T-9395')?.type, 'support-ticket');
   strictEqual(routeScan('IPH13-128-BLU-2601-000042')?.type, 'serial-unit');
+});
+
+// ─── Foreign labels — carrier tracking, SSCC, bin-paired-to-order ────────────
+//
+// Three classes added 2026-09-04 for the scan dispatch table. Everything above
+// this line is the installed vocabulary and must read identically afterwards,
+// which is what the last test in this block pins.
+
+test('a carrier tracking number classes as carrier-tracking, with its carrier', () => {
+  // Printed in human groups; an HID wedge forwards the spaces verbatim.
+  const ups = routeScan('1Z 999 AA1 01 2345 4471');
+  strictEqual(ups?.type, 'carrier-tracking');
+  strictEqual(ups?.value, '1Z999AA10123454471', 'normalised — the key a caller stores');
+  strictEqual(ups?.carrier, 'UPS');
+
+  strictEqual(routeScan('123456789012')?.carrier, 'FedEx', '12-digit FedEx Express');
+  strictEqual(routeScan('1234567890')?.type, 'carrier-tracking', '10-digit DHL Express');
+  strictEqual(routeScan('9400111899223197428490')?.type, 'carrier-tracking', '22-digit USPS');
+  strictEqual(routeScan('92612345678901234567')?.type, 'carrier-tracking', '20-digit FedEx');
+
+  // A shape that reads as tracking but that no carrier pattern claims still
+  // classes — `Unknown` is the honest carrier, not a reason to refuse the class.
+  // (15 digits that start with neither 96 nor 7: FedEx Ground's shape, but no
+  // carrier pattern owns those digits.)
+  strictEqual(routeScan('123456789012345')?.type, 'carrier-tracking');
+  strictEqual(scannedCarrierTracking('123456789012345')?.carrier, 'Unknown');
+});
+
+test('a GS1 SSCC classes as sscc in all three printed forms', () => {
+  const digits = '123456789012345678';
+  strictEqual(routeScan(`(00)${digits}`)?.type, 'sscc');
+  strictEqual(routeScan(`${FNC1}00${digits}`)?.type, 'sscc');
+  strictEqual(routeScan(digits)?.type, 'sscc');
+  // The value is the bare 18 digits in every form — same precedent as a
+  // location label, which returns the flat code rather than the raw payload.
+  strictEqual(routeScan(`(00)${digits}`)?.value, digits);
+  strictEqual(scannedSscc(`  (00)${digits}  `), digits);
+});
+
+test('an 18-digit run is a licence plate, not a tracking number', () => {
+  // USPS's broadest IMpb pattern also matches an 18-digit run starting with 9,
+  // which is why `scannedSscc` runs first. None of the six carrier shapes is 18
+  // digits long, so putting SSCC first costs the carrier arm nothing.
+  strictEqual(routeScan('940011189922319742')?.type, 'sscc');
+  strictEqual(scannedCarrierTracking('940011189922319742'), null);
+});
+
+test('neither foreign class carries a redirect — decodedHandle still refuses them', () => {
+  // This is what keeps every existing `decodedHandle` consumer answering what
+  // it answered before these classes existed.
+  strictEqual(routeScan('1Z999AA10123454471')?.redirect, undefined);
+  strictEqual(decodedHandle('1Z999AA10123454471'), null);
+  strictEqual(decodedHandle('123456789012345678'), null);
+});
+
+test('bin-paired-order comes ONLY from the injected lookup, never from the bytes', () => {
+  // A state-free decode still answers `bin` — that is why the class is safe.
+  strictEqual(routeScan('A12')?.type, 'bin');
+  strictEqual(routeScanPaired('A12', () => null)?.type, 'bin');
+
+  const paired = routeScanPaired('A12', (code) => (code === 'A12' ? '04-1234' : null));
+  strictEqual(paired?.type, 'bin-paired-order');
+  strictEqual(paired?.value, 'A12');
+  strictEqual(paired?.orderRef, '04-1234');
+
+  // Every other class passes through untouched, lookup or no lookup.
+  strictEqual(routeScanPaired('H-12', () => '04-1234')?.type, 'handling-unit');
+  strictEqual(routeScanPaired('T-9395', () => '04-1234')?.type, 'support-ticket');
+  strictEqual(routeScanPaired('', () => '04-1234'), null);
+
+  // The lookup is handed the DECODED code, not the raw scan.
+  const seen: string[] = [];
+  routeScanPaired('a0101101', (code) => { seen.push(code); return null; });
+  deepStrictEqual(seen, ['A0101101']);
+});
+
+test('the eight installed classes answer exactly what they answered before', () => {
+  // The three new arms are decided after every existing branch has had its say.
+  // Nothing above rule 6 can reach them, and rule 6's letter fallback is
+  // digit-free by construction — so the only arm they drew from is rule 7's
+  // bare `sku` shrug.
+  const unchanged: Array<[string, ScanType]> = [
+    ['1809:A03', 'sku'],
+    ['A12', 'bin'],
+    ['R-1234', 'receiving'],
+    ['L-567', 'receiving-line'],
+    ['U-CN1A2B3', 'serial-unit'],
+    ['H-12', 'handling-unit'],
+    ['KIT-SKU1-2601-000042', 'manifest'],
+    ['T-9395', 'support-ticket'],
+    // Digit-leading payloads the existing branches already claimed, above 6b.
+    ['A0101101', 'bin'],
+    [`(01)${GTIN}(21)SN123`, 'serial-unit'],
+    ['00098-2621-000142', 'serial-unit'],
+    // A hand-typed serial that is not a tracking length still shrugs to sku.
+    ['12345', 'sku'],
+  ];
+  for (const [payload, type] of unchanged) {
+    strictEqual(routeScan(payload)?.type, type, `${payload} → ${type}`);
+  }
 });
