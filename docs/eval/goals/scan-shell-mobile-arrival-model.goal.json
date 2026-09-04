@@ -1,0 +1,20 @@
+{
+  "id": "scan-shell-mobile-arrival-model",
+  "statement": "Create src/lib/scan/arrival-card.ts, a pure module with no React, DOM, fetch or database imports, exporting arrivalRecommendation(input) where input is { pendingOrdersForCarton: number, rackHasSpace: boolean, expectedCartons: number, arrivedCartons: number } and the result is { action: 'unbox_now' | 'rack', reason: string, secondary: 'rack' | 'unbox_now' }: unbox_now when pendingOrdersForCarton >= 1 with reason like '3 orders are waiting on this carton', otherwise rack when rackHasSpace with reason 'Nothing is waiting on it — rack it for later', and unbox_now with reason 'Rack is full' when nothing waits but the rack has no space. Also export arrivalTitle({ carrier, tracking }) returning 'Arrival · UPS 4471' using the carrier display name and the last four characters of the tracking string, and arrivalFacts({ seller, expectedCartons, arrivedCartons }) returning at most three short strings. Write src/lib/scan/arrival-card.test.ts with node:test covering all three recommendation branches, the title, and facts capped at three. Touch no other file.",
+  "createdBy": "human",
+  "createdAt": "2026-09-04T13:00:00Z",
+  "routerHint": "pure arrival recommendation unbox now rack it reason title carrier last4 facts node:test",
+  "successPredicates": [
+    { "kind": "test", "file": "src/lib/scan/arrival-card.test.ts" },
+    { "kind": "eval", "command": "verify:fast", "expect": "exit0" }
+  ],
+  "stopConditions": {
+    "maxHops": 6,
+    "maxHours": 3,
+    "maxNoProgressHops": 2,
+    "onUnmeasured": "block",
+    "onRed": "repair",
+    "maxRepairs": 2
+  },
+  "budget": {}
+}
