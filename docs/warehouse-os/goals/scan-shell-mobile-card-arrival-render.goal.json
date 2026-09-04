@@ -1,0 +1,21 @@
+{
+  "id": "scan-shell-mobile-card-arrival-render",
+  "statement": "Render the Arrival Card on the phone. FIRST, before writing any .tsx, call the design MCP tools ds_contract (intent: 'arrival card on the mobile universal scan, one primary action'), ds_tokens (axis: radius, then axis: spacing) and ds_critique on src/components/receiving/incoming/IncomingAddExtractComposer.tsx — the PreToolUse hook refuses .tsx writes without that stamp, so do these calls first and again if a write is denied. Then create src/components/mobile/scan/ArrivalCard.tsx: props { tracking: string, carrier: string, seller?: string, expectedCartons: number, arrivedCartons: number, pendingOrdersForCarton: number, rackHasSpace: boolean, onUnboxNow(): void, onRack(): void, onPhotos(files: File[]): void }. It renders a header 'Arrival · {carrier} {last4}' from arrivalTitle in src/lib/scan/arrival-card.ts, the tracking string, arrivalFacts, a photo dropzone via usePhotoDropzone from @/hooks/usePhotoDropzone (label + box), then ONE primary design-system Button (variant='primary') whose label and reason come from arrivalRecommendation, and one secondary Button (variant='secondary') for the other action. No toast, no dialog, no second textarea, no geometry animation, no showModeRow={false}. Mount it in src/components/mobile/redesign/RedesignedMobileUniversalScan.tsx only when the last scan's dispatch (dispatchScan from src/lib/scan/dispatch-table.ts) returns card 'arrival'; otherwise render exactly what renders today. Write src/components/mobile/scan/ArrivalCard.test.ts using node:test with jsdom and React.createElement (no JSX in the test) asserting the header text, that exactly one primary button is rendered, and that its label is 'Unbox now' when pendingOrdersForCarton is 2. Touch no other file.",
+  "createdBy": "human",
+  "createdAt": "2026-09-04T13:20:00Z",
+  "routerHint": "mobile universal scan RedesignedMobileUniversalScan ArrivalCard Button primary secondary usePhotoDropzone arrivalRecommendation arrivalTitle dispatchScan ds_contract ds_tokens ds_critique design stamp jsdom createElement",
+  "successPredicates": [
+    { "kind": "test", "file": "src/components/mobile/scan/ArrivalCard.test.ts" },
+    { "kind": "eval", "command": "verify:fast", "expect": "exit0" },
+    { "kind": "router", "refuse": ["composer.show-mode-row-false", "composer.notes-composer"] }
+  ],
+  "stopConditions": {
+    "maxHops": 6,
+    "maxHours": 4,
+    "maxNoProgressHops": 2,
+    "onUnmeasured": "block",
+    "onRed": "repair",
+    "maxRepairs": 2
+  },
+  "budget": {}
+}
