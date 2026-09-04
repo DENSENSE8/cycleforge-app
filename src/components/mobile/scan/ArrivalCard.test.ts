@@ -21,21 +21,49 @@ import { act, createElement as h } from 'react';
 import { BUTTON_VARIANTS } from '@/design-system/primitives/button-variants';
 import { arrivalRecommendation, arrivalTitle } from '@/lib/scan/arrival-card';
 
-const dom = new JSDOM('<!doctype html><html><body></body></html>', { pretendToBeVisual: true });
-
-// `Object.assign` rather than a cast of `globalThis` — the DOM these components
-// mount into is jsdom's, and installing it is a write, not a lie about a type.
-Object.assign(globalThis, {
-  window: dom.window,
-  document: dom.window.document,
-  navigator: dom.window.navigator,
-  HTMLElement: dom.window.HTMLElement,
-  Element: dom.window.Element,
-  Node: dom.window.Node,
-  MouseEvent: dom.window.MouseEvent,
-  PointerEvent: dom.window.MouseEvent,
-  IS_REACT_ACT_ENVIRONMENT: true,
+const dom = new JSDOM('<!doctype html><html><body></body></html>', {
+  pretendToBeVisual: true,
 });
+
+/**
+ * Install one jsdom global, by name.
+ *
+ * One property at a time rather than `Object.assign(globalThis, {…})`: on Node
+ * 26 `navigator` is an accessor with no setter, so a bulk assign throws
+ * `Cannot set property navigator of #<Object> which has only a getter` before a
+ * single test runs and takes the whole file with it. `defineProperty` installs
+ * jsdom's over the top of it — and it is a write, not a cast, so nothing here
+ * has to lie about a type to `globalThis`.
+ */
+function installGlobal(name: string, value: unknown) {
+  Object.defineProperty(globalThis, name, { value, configurable: true, writable: true });
+}
+
+installGlobal('window', dom.window);
+installGlobal('document', dom.window.document);
+installGlobal('navigator', dom.window.navigator);
+installGlobal('HTMLElement', dom.window.HTMLElement);
+installGlobal('Element', dom.window.Element);
+installGlobal('Node', dom.window.Node);
+installGlobal('MouseEvent', dom.window.MouseEvent);
+installGlobal('KeyboardEvent', dom.window.KeyboardEvent);
+installGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+
+// jsdom has no layout, so anything that measures itself reads a 0×0 rect. Give
+// the document a plausible on-screen box — the same stub the composer
+// drill-menu test mounts under.
+const RECT = {
+  x: 100,
+  y: 100,
+  top: 100,
+  left: 100,
+  bottom: 120,
+  right: 200,
+  width: 100,
+  height: 20,
+  toJSON: () => ({}),
+} as DOMRect;
+dom.window.Element.prototype.getBoundingClientRect = () => RECT;
 
 let createRoot: typeof import('react-dom/client').createRoot;
 let ArrivalCard: typeof import('./ArrivalCard').ArrivalCard;
@@ -53,6 +81,7 @@ before(async () => {
 after(() => {
   act(() => root.unmount());
   container.remove();
+  dom.window.close();
 });
 
 /** A real UPS 1Z number, so the route decodes to `carrier-tracking` for real. */
