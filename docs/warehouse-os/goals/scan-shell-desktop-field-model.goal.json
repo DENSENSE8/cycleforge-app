@@ -1,0 +1,20 @@
+{
+  "id": "scan-shell-desktop-field-model",
+  "statement": "Create src/lib/composer/desk-field.ts, a pure module with no React, DOM or fetch imports, exporting deskFieldPlacement(input) where input is { pathname: string, stationMouths: number, importDraftOpen: boolean, armedSessionTitle: string | null } and the result is { mount: boolean, placeholder: string, reason: string }. Rules: mount is false whenever stationMouths >= 1 (a floor station's own mouth wins) and false on /m/ routes and on the public GS1 resolver routes (/01, /414, /l, /p, /s, /q); otherwise mount is true. The placeholder always names the destination of the next input in words: 'Paste orders to stage' when importDraftOpen is true; 'Scan a carton or type to ask · lands in {armedSessionTitle}' when a session is armed; 'Scan, type or say — ask about this desk' otherwise; on /shipping/orders with no draft and no session it is 'Paste a CSV or a screenshot of orders to stage them'. Write src/lib/composer/desk-field.test.ts with node:test covering: station mouth suppresses the desk mount, /m/ suppresses, a resolver route suppresses, the four placeholder branches, and that reason is a non-empty sentence in every case. Touch no other file.",
+  "createdBy": "human",
+  "createdAt": "2026-09-04T15:00:00Z",
+  "routerHint": "pure desk field placement placeholder destination station mouth presence count /m routes GS1 resolver routes node:test",
+  "successPredicates": [
+    { "kind": "test", "file": "src/lib/composer/desk-field.test.ts" },
+    { "kind": "eval", "command": "verify:fast", "expect": "exit0" }
+  ],
+  "stopConditions": {
+    "maxHops": 5,
+    "maxHours": 3,
+    "maxNoProgressHops": 2,
+    "onUnmeasured": "block",
+    "onRed": "repair",
+    "maxRepairs": 2
+  },
+  "budget": {}
+}
