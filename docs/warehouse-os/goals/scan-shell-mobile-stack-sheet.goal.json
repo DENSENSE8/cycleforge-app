@@ -1,0 +1,21 @@
+{
+  "id": "scan-shell-mobile-stack-sheet",
+  "statement": "Render the Stack sheet on the phone over the pure model that already exists in src/lib/nav/stack-model.ts (stackModel, resumeBlock). FIRST, before writing any .tsx, call the design MCP tools ds_contract (intent: 'mobile sheet opened from the top-left back control: now, earlier today, queues, find'), ds_tokens (axis: radius, then axis: elevation) and ds_critique on src/components/mobile/redesign/MobileSidebarDrawer.tsx — the PreToolUse hook refuses .tsx writes without that stamp, so do these calls first and again if a write is denied. Then create src/components/mobile/redesign/MobileStackSheet.tsx: props { model: ReturnType<typeof stackModel>, onResume(id: string): void, onOpenQueue(tableId: string): void, onFind(): void, onClose(): void }. It renders four labelled bands in the model's order — NOW (the armed block: title, state, elapsed as mm:ss), EARLIER TODAY (blocks newest-first, each a design-system Button that calls onResume), QUEUES (one Button per queue calling onOpenQueue), FIND (one Button calling onFind) — uppercase band labels, no new colours, no geometry animation, no tooltips, no second textarea. Mount it in src/components/mobile/redesign/MobileTopBar.tsx so the existing top-left back control opens the sheet instead of the drawer, fed by stackModel over the sessions the shell can already read; leave MobileSidebarDrawer.tsx untouched in this goal. Write src/components/mobile/redesign/MobileStackSheet.test.ts using node:test with jsdom and React.createElement (no JSX), copying the global setup pattern of src/components/composer/composer-drill-menu.test.ts, asserting the four band labels render in order and that clicking an earlier block calls onResume with its id. Touch no other file.",
+  "createdBy": "human",
+  "createdAt": "2026-09-04T14:10:00Z",
+  "routerHint": "MobileTopBar MobileSidebarDrawer MobileStackSheet stackModel resumeBlock Button uppercase bands ds_contract ds_tokens ds_critique jsdom createElement",
+  "successPredicates": [
+    { "kind": "test", "file": "src/components/mobile/redesign/MobileStackSheet.test.ts" },
+    { "kind": "test", "file": "src/lib/nav/stack-model.test.ts" },
+    { "kind": "eval", "command": "verify:fast", "expect": "exit0" }
+  ],
+  "stopConditions": {
+    "maxHops": 6,
+    "maxHours": 4,
+    "maxNoProgressHops": 3,
+    "onUnmeasured": "block",
+    "onRed": "repair",
+    "maxRepairs": 2
+  },
+  "budget": {}
+}
