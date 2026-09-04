@@ -1,0 +1,21 @@
+{
+  "id": "scan-shell-mobile-stack",
+  "statement": "On every /m/* route the top-left back control opens the Stack, a sheet with four bands: Now (the armed block: title, state, elapsed), Earlier today (blocks in reverse order, each resumable in place), Queues (Tasks, Work orders, Picker queue, To-ship, each opening as the existing table), Find (the launch index search). Long-press on back jumps to any block. A pure stackModel builds the bands; elapsed is the sum of intervals, never wall time. The drawer's page tree is removed; its leaves stay reachable from Find and by scanning.",
+  "createdBy": "human",
+  "createdAt": "2026-09-04T11:30:00Z",
+  "routerHint": "mobile drawer MobileSidebarDrawer MobileTopBar back stack sheet work_sessions work_session_intervals launch-index searchNav tasks my-day orders picker queue",
+  "successPredicates": [
+    { "kind": "test", "file": "src/lib/scan/stack-model.test.ts" },
+    { "kind": "eval", "command": "verify:fast", "expect": "exit0" },
+    { "kind": "router", "refuse": ["shortcuts.standing-keycaps"] }
+  ],
+  "stopConditions": {
+    "maxHops": 8,
+    "maxHours": 5,
+    "maxNoProgressHops": 3,
+    "onUnmeasured": "block",
+    "onRed": "repair",
+    "maxRepairs": 2
+  },
+  "budget": {}
+}

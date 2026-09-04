@@ -1,0 +1,23 @@
+{
+  "id": "scan-dispatch-table",
+  "statement": "A pure scan dispatch table decides the Card and session title from scan class × object state: carrier tracking never seen → arrival; tracking known → the carton's stage; LPN or SSCC with open QC → qc; LPN staged for pack → pack; bin paired to a pending order → pack; bin unpaired, serial, SKU, kit, ticket → preview. No armed session → every scan previews; armed session → an expected class acts, any other class previews and parks nothing; prior state wins and a tie asks. Add carrier-tracking, sscc and bin-paired-order classes to src/lib/barcode-routing.ts without changing the eight existing classes.",
+  "createdBy": "human",
+  "createdAt": "2026-09-04T11:30:00Z",
+  "routerHint": "scan dispatch table barcode-routing routeScan detectScanType carrier tracking SSCC bin paired order work_sessions title surface_key preview act ask",
+  "successPredicates": [
+    { "kind": "test", "file": "src/lib/scan/dispatch-table.test.ts" },
+    { "kind": "test", "file": "src/lib/barcode-routing.test.ts" },
+    { "kind": "eval", "command": "verify:fast", "expect": "exit0" },
+    { "kind": "invariant", "keepIds": ["engine:slot-table-header-sort"] },
+    { "kind": "router", "refuse": ["composer.show-mode-row-false", "composer.notes-composer"] }
+  ],
+  "stopConditions": {
+    "maxHops": 8,
+    "maxHours": 5,
+    "maxNoProgressHops": 3,
+    "onUnmeasured": "block",
+    "onRed": "repair",
+    "maxRepairs": 2
+  },
+  "budget": {}
+}
