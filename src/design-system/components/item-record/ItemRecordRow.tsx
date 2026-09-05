@@ -26,6 +26,7 @@ import { ItemRecordMetaGrid } from './ItemRecordMetaGrid';
 import { ItemRecordQtyBadge } from './ItemRecordQtyBadge';
 import { ItemRecordThumb } from './ItemRecordThumb';
 import { ITEM_RECORD_FACE } from './item-record-face';
+import { itemRecordRowPaintClass } from './item-record-row-paint';
 import type { ItemRecord, ItemRecordReceiveState } from './item-record-types';
 
 /** Max serials shown in the meta preview. */
@@ -371,11 +372,14 @@ export function ItemRecordRow({
       }
       className={cn(
         // Idle rows are transparent in the well. The active row is the raised
-        // plate (`selectedStationClass`). No radius, no drop shadow — bevel
-        // lives on the active class.
+        // plate (`selectedStationClass`). Receive heat/recede is fill + inset
+        // outline (M3). No radius, no box-shadow (F3) — bevel lives on mill.
         'relative min-w-0 overflow-hidden rounded-none transition-colors',
-        active ? QUEUE_ROW.selectedStationClass : 'border-0 bg-transparent',
-        selectable && !active ? 'hover:bg-surface-station-row-hover' : null,
+        active ? QUEUE_ROW.selectedStationClass : null,
+        itemRecordRowPaintClass({ active, receiveState: item.receiveState }),
+        selectable && !active && !item.receiveState
+          ? 'hover:bg-surface-station-row-hover'
+          : null,
         className,
       )}
     >

@@ -73,9 +73,9 @@ describe('scan-station depth tokens', () => {
     assert.equal(STATION_DISPLAYS_BAND_CLASS, STATION_SCAN_BENCH_CLASS);
   });
 
-  it('industrial Color + flat Depth are the defaults', () => {
+  it('industrial Color + mill Depth are the defaults', () => {
     assert.equal(DEFAULT_STATION_SKIN, 'industrial');
-    assert.equal(DEFAULT_STATION_DEPTH, 'flat');
+    assert.equal(DEFAULT_STATION_DEPTH, 'mill');
     assert.match(STATION_SKINS.industrial.vars.well, /surface-strong/);
     assert.match(STATION_SKINS.industrial.vars.plate, /surface-accent/);
     assert.match(STATION_SKINS.industrial.vars['bevel-highlight'], /background-canvas/);

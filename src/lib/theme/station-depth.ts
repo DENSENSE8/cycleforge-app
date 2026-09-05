@@ -4,7 +4,7 @@
  * this module only flips `data-station-depth` and mirrors the choice to
  * localStorage for no-flash reloads.
  *
- * Flat is the default and is the ABSENCE of the attribute.
+ * Mill is the default and is the ABSENCE of the attribute.
  */
 
 import {

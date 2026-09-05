@@ -2,8 +2,9 @@
  * Scan-station depth — a second Look axis beside Color (`station-skins.ts`).
  *
  * Color owns fills / bevel hue / ink. Depth owns relief: bevel width and ply
- * grain. Flat is the default and is the ABSENCE of `data-station-depth`, the
- * same way industrial is the absence of `data-station-skin`.
+ * grain. Mill is the default and is the ABSENCE of `data-station-depth`, the
+ * same way industrial is the absence of `data-station-skin`. Do not set the
+ * default back to flat to silence bevel bugs. Grain paints only at Deep.
  *
  * design-mcp introspects this file as `ds_tokens({ axis: 'station-depth' })`.
  * Do not bake grain back onto a color row.
@@ -32,7 +33,7 @@ export const STATION_DEPTHS: Record<StationDepthName, StationDepth> = {
   mill: {
     name: 'mill',
     label: 'Mill',
-    hint: 'Industrial relief — 2px bevel, no grain.',
+    hint: 'Default industrial relief — 2px bevel, no grain. Absence of data-station-depth.',
     bevelWidth: '2px',
     grain: false,
   },
@@ -46,7 +47,7 @@ export const STATION_DEPTHS: Record<StationDepthName, StationDepth> = {
 };
 
 export const STATION_DEPTH_NAMES = Object.keys(STATION_DEPTHS) as StationDepthName[];
-export const DEFAULT_STATION_DEPTH: StationDepthName = 'flat';
+export const DEFAULT_STATION_DEPTH: StationDepthName = 'mill';
 
 export function isStationDepthName(value: unknown): value is StationDepthName {
   return typeof value === 'string' && value in STATION_DEPTHS;
