@@ -13,7 +13,6 @@ import {
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/components/ui/button';
 import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
-import { receiveStateHeatClass } from '@/lib/item-record/receive-state';
 import { cn } from '@/utils/_cn';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -27,6 +26,7 @@ import { ItemRecordMetaGrid } from './ItemRecordMetaGrid';
 import { ItemRecordQtyBadge } from './ItemRecordQtyBadge';
 import { ItemRecordThumb } from './ItemRecordThumb';
 import { ITEM_RECORD_FACE } from './item-record-face';
+import { itemRecordRowPaintClass } from './item-record-row-paint';
 import type { ItemRecord, ItemRecordReceiveState } from './item-record-types';
 
 /** Max serials shown in the meta preview. */
@@ -114,12 +114,12 @@ function ReceiveStateMark({ state }: { state?: ItemRecordReceiveState | null }) 
 }
 
 /**
- * One item row — thumb | wrapping title | boxed six-track meta.
+ * One item row — thumb | wrapping title | boxed five-track meta.
  *
  * Ported from the scan-station PO line (`receiving/workspace/PoLineRow`). What
  * came across is the FACE: the nested `5rem | 1fr` grid, the title band with a
- * trailing control slot, and the qty · price · condition · SKU · serials ·
- * location ledger. What did not come across is every reason that row could only ever be
+ * trailing control slot, and the qty · SKU · condition · serials · price
+ * ledger. What did not come across is every reason that row could only ever be
  * a PO line — the scan-sink arming, `receiving-select-line`, the unlink ⋮
  * menu, the dock-focus wiring and the `ReceivingLineRow` type. Those are host
  * behaviours, and hosts pass them in.
@@ -371,14 +371,15 @@ export function ItemRecordRow({
         canDisclose && !disclosure.expanded ? 'true' : undefined
       }
       className={cn(
-        // Idle rows: well shows through unless receiveState heats the line.
-        // Active row is the raised plate. No radius, no drop shadow — mill
-        // bevel lives on the active class. Received recedes (no heat fill).
+        // Idle rows are transparent in the well. The active row is the raised
+        // plate (`selectedStationClass`). Receive heat/recede is fill + inset
+        // outline (M3). No radius, no box-shadow (F3) — bevel lives on mill.
         'relative min-w-0 overflow-hidden rounded-none transition-colors',
-        active
-          ? QUEUE_ROW.selectedStationClass
-          : cn('border-0', receiveStateHeatClass(item.receiveState) ?? 'bg-transparent'),
-        selectable && !active ? 'hover:bg-surface-station-row-hover' : null,
+        active ? QUEUE_ROW.selectedStationClass : null,
+        itemRecordRowPaintClass({ active, receiveState: item.receiveState }),
+        selectable && !active && !item.receiveState
+          ? 'hover:bg-surface-station-row-hover'
+          : null,
         className,
       )}
     >

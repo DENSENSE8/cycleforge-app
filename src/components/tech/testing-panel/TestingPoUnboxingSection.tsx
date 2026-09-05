@@ -19,14 +19,13 @@ export function TestingPoUnboxingSection({
   row,
   staffId,
   c,
-  suppressItemsHeader = false,
   onViewAllUnits,
   lineCollapse,
 }: {
   row: ReceivingLineRow;
   staffId: string;
   c: TestingController;
-  /** Hide "PO items · N" — the parent overview owns the label. */
+  /** Kept for caller compat. The receive meter always paints. */
   suppressItemsHeader?: boolean;
   /** Serials-cell / edit click → open the right-edge Units Display. */
   onViewAllUnits?: (line: ReceivingLineRow) => void;
@@ -40,7 +39,6 @@ export function TestingPoUnboxingSection({
         staffId={staffId}
         c={c}
         embedded
-        suppressHeader={suppressItemsHeader}
         lineCollapse={lineCollapse}
         onViewAllUnits={onViewAllUnits}
       />

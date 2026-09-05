@@ -16,7 +16,7 @@ interface Props {
   c: TestingController;
   embedded?: boolean;
   headerRight?: React.ReactNode;
-  /** Hide the "PO items · N" header — parent tab row owns the pencil. */
+  /** Hide the receive-meter eyebrow — parent tab row owns the pencil. */
   suppressHeader?: boolean;
   /**
    * Open the right-edge Units Display for a line (serials-cell / edit click).

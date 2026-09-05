@@ -23,6 +23,7 @@ describe('station-depths catalog', () => {
   it('CSS uses mill as :root and stamps only non-mill depths', () => {
     const css = stationDepthCssText();
     assert.match(css, /:root \{[\s\S]*--ds-station-bevel-width: 2px/);
+    assert.match(css, /:root \{[\s\S]*--ds-station-grain-alpha: 0/);
     assert.doesNotMatch(css, /html\[data-station-depth='mill'\]/);
     assert.match(css, /html\[data-station-depth='flat'\]/);
     assert.match(css, /html\[data-station-depth='deep'\]/);

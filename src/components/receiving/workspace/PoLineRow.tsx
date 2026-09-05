@@ -82,7 +82,7 @@ interface Props {
   onEditSerialInDock?: (line: ReceivingLineRow) => void;
   /**
    * When false (Arrival door flow), omit interactive condition · serial /
-   * Units editors — meta still paints the six-track face with read-only chips
+   * Units editors — meta still paints the five-track face with read-only chips
    * / honest empty serial. Defaults true.
    */
   unitsChrome?: boolean;
@@ -110,7 +110,7 @@ interface Props {
 /**
  * One PO-item row — a thin adapter over the shared item face.
  *
- * The geometry, the six-track ledger and the last-8 identifier rule all live
+ * The geometry, the five-track ledger and the last-8 identifier rule all live
  * in `design-system/components/item-record` now; this file is what makes that
  * face a RECEIVING row. It maps `ReceivingLineRow` onto the neutral
  * {@link ItemRecord} shape and supplies the behaviours the shared row has no
@@ -209,9 +209,9 @@ export function PoLineRow({
   };
 
   /**
-   * Got vs listed from the line itself. Door-scan / triage used to paint
-   * counted = expected so a live Unbox row read as `1/1` before anyone
-   * counted. Receive face plus remaining lives on the shared qty badge.
+   * Live Unbox and triage both use actual got. Door-scan must not paint
+   * listed-as-got (`1/1` emerald Open). ReceivingQty sets receive so remaining
+   * is visible. Serial-unit 1/1 is a different mapper and stays off this flag.
    */
   const item: ItemRecord = {
     id: line.id,

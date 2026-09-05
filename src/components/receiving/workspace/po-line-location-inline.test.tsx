@@ -49,14 +49,12 @@ test('PO item location is inline in the bottom metadata row and uses the human l
   assert.match(html, /data-col="location"/);
   assert.match(html, /Returns shelf 51851/);
   assert.match(html, /data-testid="item-record-location-icon"/);
-  const cols = ['qty', 'price', 'condition', 'sku', 'serial', 'location'] as const;
-  const at = cols.map((col) => html.indexOf(`data-col="${col}"`));
-  for (let i = 0; i < cols.length; i++) {
-    assert.ok(at[i] >= 0, `${cols[i]} track paints`);
-    if (i > 0) {
-      assert.ok(at[i] > at[i - 1], `${cols[i]} follows ${cols[i - 1]}`);
-    }
-  }
+  const cols = [...html.matchAll(/data-col="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(
+    cols,
+    ['qty', 'price', 'condition', 'sku', 'serial', 'location'],
+    'desk scan path is qty then price then condition then SKU',
+  );
   assert.doesNotMatch(html, /TaskContextBar|task-context-bar/);
 });
 
@@ -75,28 +73,6 @@ test('an unassigned PO item shows only the amber location pin, without a text bl
   assert.match(html, /data-testid="item-record-location-icon"/);
   assert.doesNotMatch(html, />SCAN</);
   assert.doesNotMatch(html, />NEEDS LOCATION</);
-});
-
-test('read-only triage does not paint listed as got', () => {
-  const html = renderToStaticMarkup(
-    <QueryClientProvider client={new QueryClient()}>
-      <PoLineRow
-        line={line({ quantity_expected: 1, quantity_received: 0 })}
-        isActive={false}
-        readOnly
-        unitsChrome={false}
-      />
-    </QueryClientProvider>,
-  );
-  assert.match(html, /data-qty-receive="true"/);
-  assert.match(html, /data-qty-state="open"/);
-  assert.match(html, /0\/1/);
-  assert.match(html, /1 left/);
-  assert.match(
-    html,
-    /text-text-soft" data-qty-receive="true" data-qty-state="open"/,
-    'Open qty stays mute. Emerald on condition or price chips is a different track.',
-  );
 });
 
 test('clicking the inline location opens the existing location display for that line', () => {

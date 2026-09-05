@@ -67,7 +67,7 @@ interface LinePoItemsSectionProps {
   editLines: boolean;
   embedded?: boolean;
   headerRight?: React.ReactNode;
-  /** Hide the embedded "PO items · N" eyebrow — the tab slider owns the label. */
+  /** Hide the embedded receive-meter eyebrow — the tab slider owns the label. */
   suppressHeader?: boolean;
   /** Carton-open snapshot of `receiving.accordionExpand`. */
   accordionBootstrap?: "default" | "all";

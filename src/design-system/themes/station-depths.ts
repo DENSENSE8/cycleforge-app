@@ -4,7 +4,7 @@
  * Color owns fills / bevel hue / ink. Depth owns relief: bevel width and ply
  * grain. Mill is the default and is the ABSENCE of `data-station-depth`, the
  * same way industrial is the absence of `data-station-skin`. Do not default
- * back to flat to silence bevel bugs.
+ * back to flat to silence bevel bugs. Grain paints only at Deep.
  *
  * design-mcp introspects this file as `ds_tokens({ axis: 'station-depth' })`.
  * Do not bake grain back onto a color row.
@@ -33,7 +33,7 @@ export const STATION_DEPTHS: Record<StationDepthName, StationDepth> = {
   mill: {
     name: 'mill',
     label: 'Mill',
-    hint: 'Industrial relief — 2px bevel, no grain.',
+    hint: 'Default industrial relief — 2px bevel, no grain. Absence of data-station-depth.',
     bevelWidth: '2px',
     grain: false,
   },

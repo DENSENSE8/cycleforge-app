@@ -61,9 +61,8 @@ import { StaffAvatar } from '@/components/identity';
 import { TIMELINE_GLYPH_ICONS } from '@/components/ui/timeline-glyph-icons';
 import { resolveStationGlyph } from '@/lib/timeline/timeline-glyphs';
 import { ReceivingAuditRail } from '@/components/receiving/workspace/ReceivingAuditRail';
-import { ProgressBadge } from '@/components/receiving/workspace/PoLineBadges';
-import { ReceivingLineContentsRow } from '@/components/receiving/contents/ReceivingLineContentsRow';
-import { receivingLineContentsTitle } from '@/components/receiving/contents/receiving-line-contents-title';
+import { ItemRecordRow } from '@/design-system/components/item-record';
+import { receivingLinesToItemRecords } from '@/lib/item-record/receiving-line-item-record';
 import { PhotoViewerPortal } from '@/components/shipped/photo-gallery/PhotoViewerPortal';
 import { usePhotoGallery } from '@/components/shipped/photo-gallery/usePhotoGallery';
 import { ReceivingCartonPipeline } from '@/components/station/receiving/ReceivingCartonPipeline';
@@ -559,14 +558,11 @@ function ProgressRail({
 }
 
 /**
- * CONTENTS items — one card per line via {@link ReceivingLineContentsRow}.
- *
- * Shared ATOMS only, never `PoLinesAccordion` / `PoLineRow` (no lobotomized
- * work chrome). It also deliberately does not mount `PoLineMetaGrid`: that is
- * the Unbox accordion's FIXED-TRACK grid. House one-row anatomy: Zoho thumb ·
- * title pinned top · details pinned bottom.
+ * CONTENTS items — shared {@link ItemRecordRow}, never a contents-row fork.
+ * Search receiving omits receiveState. Qty still uses receivingQty.
  */
 function ContentsList({ lines }: { lines: CartonInspectorLine[] }) {
+  const items = useMemo(() => receivingLinesToItemRecords(lines), [lines]);
   const galleryPhotos = useMemo(
     () =>
       lines
@@ -575,40 +571,20 @@ function ContentsList({ lines }: { lines: CartonInspectorLine[] }) {
     [lines],
   );
   const gallery = usePhotoGallery({ photos: galleryPhotos });
+  const byId = useMemo(() => new Map(lines.map((line) => [line.id, line])), [lines]);
 
   return (
     <>
-      {/*
-        Rows on the shared plane, not a stack of cards. A list of bordered cards
-        inside a section IS the nested-cards-as-rows ban — and the card's own
-        `overflow-hidden` (there to clip the radius) was shearing the focus ring
-        off the thumb button inside it.
-      */}
       <ul className="flex min-w-0 flex-col divide-y divide-border-hairline">
-        {lines.map((line) => {
-          const imageUrl = (line.image_url || '').trim() || null;
+        {items.map((item) => {
+          const line = byId.get(Number(item.id));
+          const imageUrl = (line?.image_url || '').trim() || null;
           const galleryIndex = imageUrl ? galleryPhotos.indexOf(imageUrl) : -1;
-          const serials = (line.serials ?? [])
-            .map((s) => (s.serial_number || '').trim())
-            .filter(Boolean);
           return (
-            <li key={line.id} className="relative min-w-0 py-2">
-              <ReceivingLineContentsRow
-                title={receivingLineContentsTitle(line)}
-                imageUrl={imageUrl}
-                sku={(line.sku || '').trim()}
-                conditionGrade={line.condition_grade}
-                serials={serials}
-                qtySlot={
-                  <span className="tabular-nums text-role-eyebrow uppercase tracking-widest">
-                    <ProgressBadge
-                      received={line.quantity_received ?? 0}
-                      expected={line.quantity_expected}
-                    />
-                  </span>
-                }
-                titleMode="wrap"
-                onOpenImage={
+            <li key={item.id} className="relative min-w-0 py-2">
+              <ItemRecordRow
+                item={item}
+                onSelect={
                   galleryIndex >= 0
                     ? () => gallery.openViewer(galleryIndex)
                     : undefined

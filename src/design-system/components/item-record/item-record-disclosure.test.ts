@@ -131,6 +131,10 @@ describe('ItemRecordRow disclosure', () => {
     const html = render({ disclosure: { expanded: false, onToggle: () => {} } });
     assert.match(html, /ThinkPad X1 Carbon Gen 9/);
     assert.match(html, /LEN-X1C-G9|X1C-G9/, 'the SKU ledger cell still paints');
+    assert.deepEqual(
+      [...html.matchAll(/data-col="([^"]+)"/g)].map((m) => m[1]),
+      ['qty', 'price', 'condition', 'sku', 'serial', 'location'],
+    );
   });
 
   it('desk meta tracks are qty | price | condition | sku | serial | location', () => {

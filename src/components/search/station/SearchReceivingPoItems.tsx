@@ -36,7 +36,6 @@ export function SearchReceivingPoItems({
       row={row}
       receivingId={receiving.id}
       embedded
-      suppressHeader
       readOnly
       showSerialScan={false}
       unitsChrome={false}
