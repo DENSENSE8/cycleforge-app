@@ -1,0 +1,23 @@
+{
+  "id": "scan-shell-desktop-stack-render",
+  "statement": "Render the Stack bands in the desk's left rail over the pure model that already exists in src/lib/nav/stack-model.ts (stackModel, resumeBlock). FIRST, before writing any .tsx, call the design MCP tools ds_contract (intent: 'left rail stack bands: now, earlier today, queues, find'), ds_tokens (axis: spacing, then axis: typography) and ds_critique on src/components/sidebar/SidebarNavColumn.tsx — the PreToolUse hook refuses .tsx writes without that stamp, so do these calls first and again if a write is denied. Then create src/components/sidebar/RailStackBands.tsx: props { model: ReturnType<typeof stackModel>, onResume(id: string): void, onOpenQueue(tableId: string): void, onFind(): void }. It renders four labelled bands in the model's order — NOW (the armed block: title, state, elapsed as mm:ss), EARLIER TODAY (blocks newest-first, each a button that calls onResume), QUEUES (one button per queue that calls onOpenQueue), FIND (one button that calls onFind) — using the design-system Button and existing rail label styles; uppercase band labels; no new colours, no geometry animation, no tooltips. Mount it in src/components/sidebar/SidebarNavColumn.tsx directly below the pinned block and above the recents block, fed by stackModel over the current work sessions the column can already read; do not remove or reorder any existing nav leaf in this goal. Write src/components/sidebar/RailStackBands.test.ts using node:test with jsdom and React.createElement (no JSX) asserting the four band labels render in order and that clicking an earlier block calls onResume with its id. Touch no other file.",
+  "createdBy": "human",
+  "createdAt": "2026-09-04T13:30:00Z",
+  "routerHint": "SidebarNavColumn left rail RailStackBands stackModel resumeBlock Button uppercase band label pins recents launch-index ds_contract ds_tokens ds_critique design stamp jsdom createElement",
+  "successPredicates": [
+    { "kind": "test", "file": "src/components/sidebar/RailStackBands.test.ts" },
+    { "kind": "test", "file": "src/lib/nav/stack-model.test.ts" },
+    { "kind": "eval", "command": "verify:fast", "expect": "exit0" },
+    { "kind": "invariant", "keepIds": ["engine:slot-table-header-sort"] },
+    { "kind": "router", "refuse": ["shortcuts.standing-keycaps", "slot-table.filter-refinement-bar"] }
+  ],
+  "stopConditions": {
+    "maxHops": 6,
+    "maxHours": 4,
+    "maxNoProgressHops": 2,
+    "onUnmeasured": "block",
+    "onRed": "repair",
+    "maxRepairs": 2
+  },
+  "budget": {}
+}

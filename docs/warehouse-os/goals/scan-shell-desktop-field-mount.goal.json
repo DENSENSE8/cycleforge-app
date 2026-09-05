@@ -1,0 +1,22 @@
+{
+  "id": "scan-shell-desktop-field-mount",
+  "statement": "Dock one desk Field using the pure placement that already exists in src/lib/composer/desk-field.ts (deskFieldPlacement). FIRST, before writing any .tsx, call the design MCP tools ds_contract (intent: 'one docked desk composer at the bottom of every desk route'), ds_tokens (axis: radius, then axis: elevation) and ds_critique on src/components/composer/DeskComposerAskLane.tsx — the PreToolUse hook refuses .tsx writes without that stamp, so do these calls first and again if a write is denied. Then change src/components/composer/DeskComposerAskLane.tsx so that it (a) computes deskFieldPlacement({ pathname: usePathname(), stationMouths: useStationComposerStationCount(), importDraftOpen: false, armedSessionTitle: null }) and renders nothing when mount is false, (b) mounts StationComposerHost with presenceKind='desk', showModeFaces={false}, chrome='raised', animateMount={false} and labelPlaceholder set to the placement's placeholder, (c) no longer requires the composer mode to be 'ask' to render, so the desk mouth is present on every desk route, and (d) keeps the existing data-testid 'desk-composer-ask-lane'. Do not pass showModeRow={false}. Do not touch StationComposerHost, AssistantDock, AssistantFabHost or any station workspace. Write src/components/composer/desk-composer-ask-lane.test.ts using node:test with jsdom and React.createElement (no JSX), copying the global setup pattern of src/components/composer/composer-drill-menu.test.ts, that stubs next/navigation usePathname (via a small module mock or by wrapping the lane in a component that supplies the pathname through props if you add an optional pathname prop for tests) and asserts: on pathname /shipping/orders with zero station mouths the lane renders a textarea with placeholder 'Paste a CSV or a screenshot of orders to stage them'; on pathname /m/scan it renders nothing. Touch only DeskComposerAskLane.tsx and the new test.",
+  "createdBy": "human",
+  "createdAt": "2026-09-04T15:40:00Z",
+  "routerHint": "DeskComposerAskLane StationComposerHost presenceKind desk showModeFaces deskFieldPlacement usePathname useStationComposerStationCount placeholder ds_contract ds_tokens ds_critique jsdom createElement",
+  "successPredicates": [
+    { "kind": "test", "file": "src/components/composer/desk-composer-ask-lane.test.ts" },
+    { "kind": "test", "file": "src/lib/composer/desk-field.test.ts" },
+    { "kind": "eval", "command": "verify:fast", "expect": "exit0" },
+    { "kind": "eval", "command": "eval:station scan-out", "expect": "exit0" }
+  ],
+  "stopConditions": {
+    "maxHops": 6,
+    "maxHours": 4,
+    "maxNoProgressHops": 3,
+    "onUnmeasured": "block",
+    "onRed": "repair",
+    "maxRepairs": 2
+  },
+  "budget": {}
+}

@@ -1,0 +1,22 @@
+{
+  "id": "scan-shell-desktop-field-test",
+  "statement": "Make src/components/composer/desk-composer-ask-lane.test.ts pass without changing the behaviour of src/components/composer/DeskComposerAskLane.tsx. The test currently throws 'TypeError: Cannot read properties of undefined (reading bind)' at the line installGlobal('matchMedia', dom.window.matchMedia.bind(dom.window)) because jsdom has no window.matchMedia. Replace that line with a stub: installGlobal('matchMedia', (query: string) => ({ matches: false, media: query, onchange: null, addListener() {}, removeListener() {}, addEventListener() {}, removeEventListener() {}, dispatchEvent() { return false; } })). Keep getComputedStyle, requestAnimationFrame, cancelAnimationFrame and ResizeObserver stubs as they are. If the next failure is a missing next/navigation router or pathname, satisfy it the way the test already intends (a module mock or an optional pathname prop on the lane used only by tests). If a StationComposerHost dependency needs another browser global (IntersectionObserver, scrollTo, PointerEvent), stub it the same way. Also reword the doc comment in DeskComposerAskLane.tsx that contains the literal text showModeRow={false} so the literal does not appear (say 'never hide the mode row' instead) — that literal trips the router refuse grep for every later goal touching this file. Keep the two assertions: on /shipping/orders with zero station mouths a textarea with placeholder 'Paste a CSV or a screenshot of orders to stage them' renders; on /m/scan nothing renders. Touch only the test file and that one comment.",
+  "createdBy": "human",
+  "createdAt": "2026-09-04T16:20:00Z",
+  "routerHint": "desk-composer-ask-lane.test.ts jsdom matchMedia stub installGlobal StationComposerHost DeskComposerAskLane next/navigation usePathname",
+  "successPredicates": [
+    { "kind": "test", "file": "src/components/composer/desk-composer-ask-lane.test.ts" },
+    { "kind": "test", "file": "src/lib/composer/desk-field.test.ts" },
+    { "kind": "eval", "command": "verify:fast", "expect": "exit0" },
+    { "kind": "eval", "command": "eval:station scan-out", "expect": "exit0" }
+  ],
+  "stopConditions": {
+    "maxHops": 5,
+    "maxHours": 3,
+    "maxNoProgressHops": 3,
+    "onUnmeasured": "block",
+    "onRed": "repair",
+    "maxRepairs": 2
+  },
+  "budget": {}
+}

@@ -1,0 +1,21 @@
+{
+  "id": "scan-shell-mobile-card-arrival",
+  "statement": "On /m/scan a carrier tracking number that has never been seen opens the Arrival Card: header ◀ Stack · Arrival · {carrier} {last4}, the tracking string, one to three facts, two photo inputs (label, box) through usePhotoDropzone and downscaleImageTo720, then one primary action preselected with its reason — Unbox now · N orders waiting, or Rack it for later — decided by a pure arrivalRecommendation. Choosing either writes one ops event and titles the armed session from the dispatch table. The Field stays the phone's StationComposerHost with faces off and its placeholder names Arrival.",
+  "createdBy": "human",
+  "createdAt": "2026-09-04T11:30:00Z",
+  "routerHint": "mobile universal scan RedesignedMobileUniversalScan arrival card tracking photos usePhotoDropzone downscaleImageTo720 StationComposerHost showModeFaces WeldedFeedbackPanel work_sessions title dispatch-table",
+  "successPredicates": [
+    { "kind": "test", "file": "src/lib/scan/arrival-card.test.ts" },
+    { "kind": "eval", "command": "verify:fast", "expect": "exit0" },
+    { "kind": "router", "refuse": ["composer.show-mode-row-false", "composer.notes-composer"] }
+  ],
+  "stopConditions": {
+    "maxHops": 8,
+    "maxHours": 5,
+    "maxNoProgressHops": 3,
+    "onUnmeasured": "block",
+    "onRed": "repair",
+    "maxRepairs": 2
+  },
+  "budget": {}
+}

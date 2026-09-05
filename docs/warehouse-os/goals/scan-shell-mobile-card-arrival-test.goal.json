@@ -1,0 +1,21 @@
+{
+  "id": "scan-shell-mobile-card-arrival-test",
+  "statement": "Make src/components/mobile/scan/ArrivalCard.test.ts pass. The component src/components/mobile/scan/ArrivalCard.tsx and its mount in src/components/mobile/redesign/UniversalScan.tsx already exist and are correct; do not change their behaviour. The test currently throws 'TypeError: Cannot set property navigator of #<Object> which has only a getter' because it installs jsdom globals with Object.assign(globalThis, {...}). Replace that setup with the exact pattern used by src/components/composer/composer-drill-menu.test.ts lines 15 to 56: create the JSDOM once, assign window, document, HTMLElement, Element, Node, MouseEvent and KeyboardEvent as individual properties on a `const g = globalThis as any`, install navigator with Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, configurable: true }) instead of assignment, stub getBoundingClientRect the same way, and close the window in after(). Keep the three assertions: header text is the arrivalTitle string, exactly one button carries the primary variant, and its label is 'Unbox now' when pendingOrdersForCarton is 2. If a React act() warning appears, wrap render and clicks in act from 'react'. Touch only the test file unless a one-line prop rename in ArrivalCard.tsx is strictly required to mount.",
+  "createdBy": "human",
+  "createdAt": "2026-09-04T13:50:00Z",
+  "routerHint": "ArrivalCard.test.ts jsdom globals navigator defineProperty composer-drill-menu.test.ts pattern node:test act createElement",
+  "successPredicates": [
+    { "kind": "test", "file": "src/components/mobile/scan/ArrivalCard.test.ts" },
+    { "kind": "eval", "command": "verify:fast", "expect": "exit0" },
+    { "kind": "router", "refuse": ["composer.show-mode-row-false", "composer.notes-composer"] }
+  ],
+  "stopConditions": {
+    "maxHops": 5,
+    "maxHours": 3,
+    "maxNoProgressHops": 3,
+    "onUnmeasured": "block",
+    "onRed": "repair",
+    "maxRepairs": 2
+  },
+  "budget": {}
+}

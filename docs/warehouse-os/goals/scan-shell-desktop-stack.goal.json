@@ -1,0 +1,22 @@
+{
+  "id": "scan-shell-desktop-stack",
+  "statement": "On desk routes the left column becomes the Stack: Now (the armed block), Earlier today (blocks, resumable in place), Queues (Tasks, Work orders, Picker queue, To-ship as the existing tables), Find (the launch index). The sidebar page tree rendered by SidebarNavColumn is removed from the rail; every leaf stays in launch-index.ts so ⌘K and Find reach it. Pins and recents keep their positions. A pure stackModel is shared with the phone.",
+  "createdBy": "human",
+  "createdAt": "2026-09-04T11:30:00Z",
+  "routerHint": "SidebarNavColumn RailSessions left rail pins recents launch-index searchNav stack bands work_sessions intervals product tables tasks orders",
+  "successPredicates": [
+    { "kind": "test", "file": "src/lib/nav/stack-model.test.ts" },
+    { "kind": "eval", "command": "verify:fast", "expect": "exit0" },
+    { "kind": "invariant", "keepIds": ["engine:slot-table-header-sort"] },
+    { "kind": "router", "refuse": ["shortcuts.standing-keycaps", "slot-table.filter-refinement-bar"] }
+  ],
+  "stopConditions": {
+    "maxHops": 8,
+    "maxHours": 5,
+    "maxNoProgressHops": 3,
+    "onUnmeasured": "block",
+    "onRed": "repair",
+    "maxRepairs": 2
+  },
+  "budget": {}
+}

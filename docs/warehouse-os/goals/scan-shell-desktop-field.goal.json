@@ -1,0 +1,22 @@
+{
+  "id": "scan-shell-desktop-field",
+  "statement": "Every desk route mounts exactly one StationComposerHost, docked to the bottom of the shell, faces off, never unmounted on navigation, its placeholder naming the destination of the next input. The floating assistant circle becomes the thread latch and owns no textarea; DeskComposerAskLane is folded into the shell mount; station routes keep their own mouth and the desk mount yields to it through the presence count. A pure deskFieldPlacement decides mount and placeholder.",
+  "createdBy": "human",
+  "createdAt": "2026-09-04T11:30:00Z",
+  "routerHint": "StationComposerHost DeskComposerAskLane AssistantFabHost AssistantDock ContextPanelLayout WarehouseShell station-composer-presence showModeFaces presenceKind desk docked composer placeholder destination",
+  "successPredicates": [
+    { "kind": "test", "file": "src/lib/composer/desk-field.test.ts" },
+    { "kind": "eval", "command": "verify:fast", "expect": "exit0" },
+    { "kind": "eval", "command": "eval:station scan-out", "expect": "exit0" },
+    { "kind": "router", "refuse": ["composer.show-mode-row-false", "composer.notes-composer"] }
+  ],
+  "stopConditions": {
+    "maxHops": 8,
+    "maxHours": 5,
+    "maxNoProgressHops": 3,
+    "onUnmeasured": "block",
+    "onRed": "repair",
+    "maxRepairs": 2
+  },
+  "budget": {}
+}

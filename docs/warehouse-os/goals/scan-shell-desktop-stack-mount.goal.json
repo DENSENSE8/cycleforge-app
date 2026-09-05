@@ -1,0 +1,22 @@
+{
+  "id": "scan-shell-desktop-stack-mount",
+  "statement": "Mount the existing src/components/sidebar/RailStackBands.tsx inside src/components/sidebar/SidebarNavColumn.tsx, directly below the pinned block and above the recents block, fed by stackModel from src/lib/nav/stack-model.ts over the work sessions the column (or its providers) can already read; pass onResume, onOpenQueue and onFind handlers that use the column's existing navigation helpers (open the queue's table route, open the launcher for Find, re-arm a session for Resume — if no session write helper is reachable from the column, onResume may navigate to that session's route). Give the mounted wrapper data-testid='rail-stack-bands'. FIRST, before writing any .tsx, call the design MCP tools ds_contract (intent: 'left rail stack bands between pins and recents'), ds_tokens (axis: spacing) and ds_critique on src/components/sidebar/SidebarNavColumn.tsx — the PreToolUse hook refuses .tsx writes without that stamp, so do these calls first and again if a write is denied. Do not remove or reorder any existing nav leaf. Write src/components/sidebar/sidebar-nav-column.stack.test.ts using node:test with jsdom and React.createElement (no JSX), copying the global setup of src/components/composer/composer-drill-menu.test.ts, that renders SidebarNavColumn inside whatever minimal providers it requires (stub them with createElement of their real Provider components and inert values, or a small fake context if the real providers need a router) and asserts an element with data-testid 'rail-stack-bands' is in the document and that its first band label is NOW. Touch only SidebarNavColumn.tsx and the new test.",
+  "createdBy": "human",
+  "createdAt": "2026-09-04T15:00:00Z",
+  "routerHint": "SidebarNavColumn RailStackBands stackModel pins recents launcher data-testid rail-stack-bands jsdom createElement providers ds_contract ds_tokens ds_critique",
+  "successPredicates": [
+    { "kind": "test", "file": "src/components/sidebar/sidebar-nav-column.stack.test.ts" },
+    { "kind": "test", "file": "src/components/sidebar/RailStackBands.test.ts" },
+    { "kind": "eval", "command": "verify:fast", "expect": "exit0" },
+    { "kind": "invariant", "keepIds": ["engine:slot-table-header-sort"] }
+  ],
+  "stopConditions": {
+    "maxHops": 6,
+    "maxHours": 4,
+    "maxNoProgressHops": 3,
+    "onUnmeasured": "block",
+    "onRed": "repair",
+    "maxRepairs": 2
+  },
+  "budget": {}
+}
