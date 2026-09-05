@@ -38,8 +38,9 @@ interface TrackingNumberMenuChipProps {
    */
   onEdit?: () => void;
   /**
-   * Extra hover-menu rows after Open / Edit (To-ship Label run). Omit on
-   * receiving / inbound chips — those hosts do not own LabelRunBand.
+   * Extra hover-menu rows after Open / Edit (To-ship **Label**, which opens
+   * the paperwork walk on `?paperwork=`). Omit on receiving / inbound chips —
+   * those hosts have no walk to open.
    */
   extraItems?: readonly CopyChipHoverMenuItem[];
   onMenuOpenChange?: (open: boolean) => void;

@@ -31,13 +31,11 @@ import {
   queueDisplaySortFace,
   queueSortForColumnKey,
   type QueueDisplaySort,
-  type QueueDisplaySortDir,
 } from '@/utils/queue-display-sort';
 import {
   normalizePersonName,
   resolveRowStatus,
   type OrdersQueueMode,
-  type OrdersQueueSort,
   type QueueRowRecord,
 } from './helpers';
 import { OrdersQueueTableRow } from './OrdersQueueTableRow';
@@ -134,11 +132,6 @@ export interface UseOrdersSpreadsheetOptions {
    */
   tableId?: TableId;
   /**
-   * Sort for row order / Date-column banding keys. When omitted, reads `?sort=`
-   * via {@link useQueueDisplaySort} (Pending / To Ship).
-   */
-  sort?: OrdersQueueSort;
-  /**
    * Accessible name for the table — REQUIRED. `LedgerGrid` exposes
    * `role="table"`; one shared grid serves every outbound lane, so the lane must
    * name itself ("Packed orders", "Labels queue") or a screen reader announces
@@ -159,18 +152,6 @@ export interface UseOrdersSpreadsheetOptions {
    * Inspector View topics controls portal — when set, ▦ portals there. To Ship
    * always uses portal-only mode (no card-corner hover fallback).
    */
-  /**
-   * Label-run active row (R-FLOW-6 host b): the row id carrying the
-   * active-work highlight while the To-ship Labels band is open. Highlight is
-   * an OUTLINE (law M3) — colour only, no geometry, no tween.
-   */
-  activeWorkRowId?: string | null;
-  /**
-   * The expansion band rendered BENEATH the active-work row (the shared
-   * `OrderShippingPanel` via `LabelRunBand`). Appears/disappears instantly —
-   * the band host must not animate geometry (M1/M2/M5).
-   */
-  renderActiveWorkBand?: (record: ShippedOrder) => ReactNode;
   /**
    * To-ship tracking hover Label — opens the paperwork walk (`?paperwork=`),
    * table XOR record + carton header. Omit on packed/shipped/history.
@@ -205,8 +186,9 @@ export type OrdersSpreadsheetFeed = Omit<
  * Shared by Pending, Packed, Labels, Staged, Review, and Shipped — ONE
  * binding ({@link ORDERS_DEFAULT_TABLE_BINDING}); the selection / cursor /
  * inspector plane lives in {@link useOrdersQueuePlane} (it encodes documented
- * race bug-fixes). This hook keeps only what family glue owns: the feed, URL
- * sort, and the row / header renderers.
+ * race bug-fixes). This hook keeps only what family glue owns: the feed,
+ * `?sort=` (every lane — a parent `sort=` freeze is a dead-header fork), and
+ * the row / header renderers.
  */
 export function useOrdersSpreadsheet({
   records,
@@ -226,13 +208,10 @@ export function useOrdersSpreadsheet({
   queueMode = 'fulfillment',
   shortageDesk = false,
   tableId = 'orders',
-  sort: sortProp,
   ariaLabel,
   className,
   'data-testid': dataTestId = 'orders-grid-body',
   scrollParentRef,
-  activeWorkRowId = null,
-  renderActiveWorkBand,
   onOpenLabels,
 }: UseOrdersSpreadsheetOptions): OrdersSpreadsheetFeed {
   // Resolved ONCE per table render and threaded into every row's lateness
@@ -241,11 +220,7 @@ export function useOrdersSpreadsheet({
   const todayKey = getCurrentPSTDateKey();
   const { isMobile } = useUIModeOptional();
   const { getStaffName } = useStaffNameMap();
-  const { sort: urlSort, dir: urlDir, setSort } = useQueueDisplaySort();
-  // Parent-supplied sort (Labels / Packed) owns row order — no URL column sort.
-  const urlDriven = sortProp === undefined;
-  const sort = sortProp ?? urlSort;
-  const dir: QueueDisplaySortDir | null = urlDriven ? urlDir : null;
+  const { sort, dir, setSort } = useQueueDisplaySort();
 
   // ONE Orders binding (Wave-1 hand-model kill). `?ustatus=TESTED` narrows
   // ROWS (`UnshippedTable`'s lane predicate) — it never swaps column models;
@@ -280,6 +255,7 @@ export function useOrdersSpreadsheet({
     handleRowAction,
     handleRowOpen,
     handleToggleSelect,
+    handleToggleGroup,
     handleRequestReplaceTracking,
   } = useOrdersQueuePlane({
     displayedRecords,
@@ -315,6 +291,25 @@ export function useOrdersSpreadsheet({
       if (!Number.isFinite(id)) return;
       if (!dateKey) return;
       assignMutate({ orderId: id, shipByDate: dateKey });
+    },
+    [assignMutate],
+  );
+
+  /**
+   * Correct the ORDER DATE in place. Same waist as ship-by and condition
+   * (`/api/orders/assign`), so one route owns every scalar patch on an order
+   * and the optimistic cache update is the one that already exists.
+   *
+   * A cleared date is refused rather than written: the top line falls back to
+   * the import stamp when there is no order date, so committing `null` would
+   * silently swap the fact under the operator instead of editing it.
+   */
+  const handleCommitOrderedAt = useCallback(
+    (record: ShippedOrder, dateKey: string | null) => {
+      const id = Number(record.id);
+      if (!Number.isFinite(id)) return;
+      if (!dateKey) return;
+      assignMutate({ orderId: id, orderDate: dateKey });
     },
     [assignMutate],
   );
@@ -403,7 +398,9 @@ export function useOrdersSpreadsheet({
           ? { orderId: id, quantity: value }
           : fieldId === 'orders.item_number'
             ? { orderId: id, itemNumber: value }
-            : null;
+            : fieldId === 'orders.amount'
+              ? { orderId: id, saleAmount: value }
+              : null;
       if (!patch) return;
       assignMutate(patch);
     },
@@ -425,7 +422,6 @@ export function useOrdersSpreadsheet({
 
   const handleSortChange = useCallback(
     (key: OrdersQueueColumnKey, nextDir: 'asc' | 'desc') => {
-      if (!urlDriven) return;
       // Resolve through the compound map: the header's key is a TRACK
       // (`fulfillment`, `item`, `status:1`), and the `?sort=` vocabulary is in
       // FACTS (`order`, `title`, `picked`). Slot tracks resolve via fieldId.
@@ -434,12 +430,11 @@ export function useOrdersSpreadsheet({
       if (!resolved) return;
       setSort(resolved, nextDir);
     },
-    [urlDriven, setSort, compoundColumns],
+    [setSort, compoundColumns],
   );
 
   const handleSortMenuSelect = useCallback(
     (id: string) => {
-      if (!urlDriven) return;
       const next = id as QueueDisplaySort;
       // A name pin is a face, not a direction. Re-selecting "Amazon" must
       // keep Amazon on top — flipping would bury the name the operator chose.
@@ -453,7 +448,7 @@ export function useOrdersSpreadsheet({
         setSort(next);
       }
     },
-    [urlDriven, sort, dir, setSort],
+    [sort, dir, setSort],
   );
 
   const sortMenuOptions = useMemo(
@@ -481,10 +476,10 @@ export function useOrdersSpreadsheet({
     compoundColumns.find((c) => queueSortForColumnKey(c.key, c.fieldId) === sort)?.key ??
     Object.entries(COMPOUND_TRACK_SORT_KEYS).find(([, fact]) => fact === sort)?.[0];
   const columnSort =
-    urlDriven && isQueueColumnSort(sort) && !isQueueNamePinSort(sort)
+    isQueueColumnSort(sort) && !isQueueNamePinSort(sort)
       ? ((sortedTrack ?? sort) as OrdersQueueColumnKey)
       : null;
-  const columnSortDir = urlDriven && columnSort ? dir : null;
+  const columnSortDir = columnSort ? dir : null;
 
   const renderLeaf = useCallback(
     (
@@ -492,6 +487,7 @@ export function useOrdersSpreadsheet({
       stripeIndex: number,
       visible: readonly OrdersQueueColumn[],
       rowIndex?: number,
+      quietIdentity = false,
     ) => {
       const r = record as QueueRowRecord;
       const testerName =
@@ -506,10 +502,11 @@ export function useOrdersSpreadsheet({
         (Number(r.packer_id) > 0 ? getStaffName(Number(r.packer_id)) : '');
       const rowFillHex =
         clickSelect ? (fillsById[String(record.id)] ?? null) : null;
-      // Label walk lives on `?paperwork=` (PaperworkWalkHost), not an in-row band.
-      const isActiveWork =
-        activeWorkRowId != null && String(record.id) === String(activeWorkRowId);
-      const row = (
+      // The Label walk lives on `?paperwork=` (PaperworkWalkHost) — a stage
+      // overlay over the mounted table, never an in-row expansion band. The
+      // band host and its active-work outline were removed 2026-09-05; a row
+      // here renders alone.
+      return (
         <OrdersQueueTableRow
           key={record.id}
           disableEnterAnimation
@@ -525,6 +522,7 @@ export function useOrdersSpreadsheet({
           isSelected={selectedRecord?.id === record.id || selectedIds.has(Number(record.id))}
           selectMode={selectMode}
           isChecked={selectedIds.has(Number(record.id))}
+          quietIdentity={quietIdentity}
           isMobile={isMobile}
           useAlternateStripe={stripeIndex % 2 === 1}
           testerDisplay={normalizePersonName(testerName)}
@@ -567,24 +565,10 @@ export function useOrdersSpreadsheet({
           onCommitCondition={handleCommitCondition}
           onCommitSubtitleField={handleCommitSubtitleField}
           onCommitShipBy={handleCommitShipBy}
+          onCommitOrderedAt={handleCommitOrderedAt}
           onCommitStageAssign={handleCommitStageAssign}
           onSetStaffLaneRole={handleSetStaffLaneRole}
         />
-      );
-
-      if (!isActiveWork) return row;
-      // Outline, never border (M3): the highlight must not move a pixel of the
-      // grid. The band is a sibling in normal flow — no height tween (M1), it
-      // is simply there or it is not.
-      return (
-        <div
-          key={`work:${record.id}`}
-          data-active-work="true"
-          className="outline outline-2 -outline-offset-2 outline-border-accent"
-        >
-          {row}
-          {renderActiveWorkBand?.(record)}
-        </div>
       );
     },
     [
@@ -607,8 +591,6 @@ export function useOrdersSpreadsheet({
       clickSelect,
       fillsById,
       subtitleFieldIds,
-      activeWorkRowId,
-      renderActiveWorkBand,
       onOpenLabels,
     ],
   );
@@ -643,20 +625,22 @@ export function useOrdersSpreadsheet({
       : null,
     dir: columnSortDir,
     onSortChange: handleSortChange,
-    sortMenu: urlDriven
-      ? {
-          options: sortMenuOptions,
-          active: sort,
-          hot: sort !== 'deadline',
-          onSelect: handleSortMenuSelect,
-          activeFace: queueDisplaySortFace(sort),
-        }
-      : undefined,
+    sortMenu: {
+      options: sortMenuOptions,
+      active: sort,
+      hot: sort !== 'deadline',
+      onSelect: handleSortMenuSelect,
+      activeFace: queueDisplaySortFace(sort),
+    },
     views:
       queueMode === 'fulfillment'
         ? {
             ...outboundSavedViewsConfig('unshipped'),
             emptyHint: 'Save a filter and sort combination to come back to it.',
+            // Capture the COLUMNS too. Params already round-trip through the
+            // URL; a slot layout cannot, so the view stores it and
+            // `saved-view-layout-store` hands it back to the cascade.
+            layout: effectiveLayout,
           }
         : undefined,
     loading,
@@ -693,8 +677,11 @@ export function useOrdersSpreadsheet({
         group={group}
         baseStripeIndex={baseStripeIndex}
         rowIndex={rowIndex}
-        renderRow={(record, stripeIndex, leafRowIndex) =>
-          renderLeaf(record, stripeIndex, visible, leafRowIndex)
+        columns={visible}
+        selectedIds={selectedIds}
+        onToggleGroup={handleToggleGroup}
+        renderRow={(record, stripeIndex, leafRowIndex, quietIdentity) =>
+          renderLeaf(record, stripeIndex, visible, leafRowIndex, quietIdentity)
         }
       />
     ),

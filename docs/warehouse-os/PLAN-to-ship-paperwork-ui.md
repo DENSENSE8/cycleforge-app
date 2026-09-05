@@ -123,8 +123,9 @@ walk in this plan is what finally mounts manage.
 | File | Job | Status |
 |---|---|---|
 | `src/components/outbound/labels/OrderShippingPanel.tsx` | Parcel + buy + upload tray (`OrderDocumentsSection` `readOnly={false}`) | Built. Intake host (a) mounts it. |
-| `src/components/outbound/labels/LabelRunBand.tsx` | Thin caption + Skip/Next/Exit + lazy `OrderShippingPanel` | Built. **Zero callers.** |
-| `useOrdersSpreadsheet` `activeWorkRowId` + `renderActiveWorkBand` | Outline the working row; render the band beneath it | **Declared, unused.** `renderLeaf` never reads them. |
+| ~~`src/components/outbound/labels/LabelRunBand.tsx`~~ | ~~Thin caption + Skip/Next/Exit + lazy `OrderShippingPanel`~~ | **DELETED 2026-09-05.** Never had a caller. Superseded by the walk — see "Lane 0 is closed" below. |
+| ~~`useOrdersSpreadsheet` `activeWorkRowId` + `renderActiveWorkBand`~~ | ~~Outline the working row; render the band beneath it~~ | **DELETED 2026-09-05** with the band. `renderLeaf` never read them and no mount ever passed them. |
+| ~~`src/components/outbound/labels/label-run.ts`~~ | ~~Pure stepper (queue captured once, advance / skip / exit)~~ | **DELETED 2026-09-05.** `UnshippedTable`'s `advancePaperworkWalk` / `retreatPaperworkWalk` is the surviving stepper. |
 | `SELECTION_STATUS_BAR_META.labels` hotkey `l` | Presentation SoT for the foot verb | Meta exists. `useDashboardBulkSelection` has **no** `key: 'labels'` action — only `print-shipping` (print already-bought labels). |
 | `DocumentSlideOver` + `DocumentPreviewFrame` | Closable right viewer | Built. Used by `OrderDocumentsSection`, Testing `ManualsSection`. |
 | `ShippingEntityContextHeader` / `CartonContextCard` | Title · item · listing · order id | Built. Exceptions editor already uses it. |
@@ -249,8 +250,8 @@ The right viewer is **`DocumentSlideOver`**, already closable. Items: shipping
 label, packing slip, each assigned manual. Empty types still appear in the
 type switcher (existing contract). Do not invent a second iframe pane.
 
-Form column stays `max-w` of a single record (LabelRunBand already uses
-`max-w-3xl` for the inline band). The full walk may use the exceptions editor
+Form column stays `max-w` of a single record (`max-w-3xl` was the width the
+since-deleted inline band used). The full walk may use the exceptions editor
 column width; the viewer is the overlay, not a 50/50 split that fights the
 desk inspector.
 
@@ -262,24 +263,32 @@ record. One occupant.
 
 ## 7 · Build lanes
 
-### Lane 0 — Wire the designed label run (smallest, unblocks B)
+### ~~Lane 0 — Wire the designed label run~~ · CLOSED, NOT BUILT (2026-09-05)
 
-**Files:** `useOrdersSpreadsheet.tsx` (`renderLeaf`), `UnshippedTable.tsx`,
-`useDashboardBulkSelection.tsx`, `order-inspector-context.ts`, possibly
-`OrdersQueueTableRow` for the M3 outline class.
+**Lane 0 is closed. Do not build it, and do not resurrect the band.**
 
-1. Honor `activeWorkRowId` + `renderActiveWorkBand`.
-2. Add `labels` selection action on the fulfillment lane; `run` sets the run
-   to the checked ids, starting at the first.
-3. Mount `LabelRunBand` as the band. Skip/Next/buy advances; Exit/Esc clears
-   the run.
-4. Bind `L` through `SELECTION_STATUS_BAR_META` (already `l`). Inert while an
-   input/scan sink holds focus.
-5. `pnpm run eval:cohort shortcuts`. Design-mcp session stamp before any
-   `src/**/*.{tsx,jsx,css}` write.
+The in-row expansion band lost to the paperwork walk. Lanes 1–3 landed the
+walk (`?paperwork=` → `PaperworkWalkHost` → `PaperworkEditor`) as a
+`DeskStageOverlay` over the mounted table, and the walk absorbed all three
+doors Lane 0 was going to feed: the header Labels CTA, the tracking-hover
+**Label** row, and the selection-bar Labels / `l`. Q5 Center Lock settled the
+record plane on the stage overlay, so a second in-row plane would be a fork.
 
-**Done when:** select rows on `/shipping/orders` → Labels / `L` → band under
-the active row with `OrderShippingPanel` (upload + buy). No new route.
+What that means concretely, so nobody re-derives it from the table above:
+
+- `LabelRunBand.tsx`, `label-run.ts` and its unit test are **deleted**. They
+  were built on 2026-09-01, never gained a caller, and were removed on
+  2026-09-05.
+- `activeWorkRowId` / `renderActiveWorkBand` are **gone** from
+  `useOrdersSpreadsheet` — no mount ever passed them.
+- `tests/e2e/to-ship-slot-label-run.spec.ts` is **deleted**. It asserted the
+  band and the *absence* of `?paperwork=`, directly contradicting
+  `to-ship-paperwork-walk.spec.ts`, which asserts the walk from the same
+  control. The walk spec is the surviving pin for that door.
+- `OrderShippingPanel` survives and is still the one shipping form —
+  `PaperworkEditor` mounts it. Nothing about the form was lost.
+
+The law now says this in code: `src/lib/tables/slot-action-overlay.ts`.
 
 ### Lane 1 — Packet facts + count + facet
 
@@ -365,11 +374,12 @@ Do not `git add -A`. Concurrent dirty tree. Stage only paperwork files.
 
 1. Re-read this file + R-FLOW-6/7 in the 3h plan.
 2. Stamp design-mcp **before** the first `src/` write.
-3. Build **one lane**. Lane 0 is the honest first PR: it mounts what is
-   already written (`LabelRunBand`) instead of designing a third shipping UI.
-4. Browser-verify `/shipping/orders`: selection Labels run **and** (once Lane
-   2 exists) header Paperwork walk. Then `/shipping/exceptions` still pairing-
-   only.
+3. Build **one lane**. Lane 0 is closed — the walk replaced it; start from
+   the lane that is actually open, and never design a third shipping UI
+   (`OrderShippingPanel` is the one form).
+4. Browser-verify `/shipping/orders`: the paperwork walk from all three doors
+   (header CTA, tracking-hover Label, selection bar / `l`). Then
+   `/shipping/exceptions` still pairing-only.
 5. Do not claim done on a red `--fast` you introduced. Foreign red (other
    untracked files) — record and skip.
 
