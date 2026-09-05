@@ -7,28 +7,15 @@
  * is the cross-cutting "what's linked to what" table with inline delete.
  */
 
-import { useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { qk } from '@/queries/keys';
-import { Layers } from '@/components/Icons';
-import { Button } from '@/design-system/primitives';
-import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
+import { DataTable } from '@/components/tables/DataTable';
+import { useCompatibilitySpreadsheet } from '@/components/admin/sourcing/compatibility/useCompatibilitySpreadsheet';
+import type { CompoundRowAction } from '@/components/tables/compound/compound-row-model';
+import type { CompatibilityEdgeRow } from '@/lib/sourcing/compatibility-edge-row';
 
-interface EdgeRow {
-  id: number;
-  bose_model_id: number;
-  sku_id: number;
-  part_role: string;
-  is_oem: boolean;
-  fit: string;
-  confidence: string;
-  source: string;
-  model_number: string;
-  model_name: string;
-  sku: string;
-  product_title: string;
-}
 
 async function jsonFetch(url: string, init?: RequestInit) {
   const res = await fetch(url, init);
@@ -46,7 +33,7 @@ export function CompatibilityManagementTab() {
     ? qk.partCompatibility.forModel(Number(boseModelId))
     : qk.partCompatibility.all;
 
-  const { data, isLoading } = useQuery<{ items: EdgeRow[] }>({
+  const { data, isLoading } = useQuery<{ items: CompatibilityEdgeRow[] }>({
     queryKey,
     queryFn: () =>
       jsonFetch(boseModelId ? `/api/part-compatibility?boseModelId=${boseModelId}` : '/api/part-compatibility'),
@@ -62,72 +49,24 @@ export function CompatibilityManagementTab() {
 
   const rows = useMemo(() => data?.items ?? [], [data]);
 
-  const columns: AdminTableColumn<EdgeRow>[] = useMemo(
-    () => [
+  /*
+    The one VERB, resolved per row. It was a trailing ACTIONS cell with a delete
+    button — a per-family cell, and the reason this tab could not mount the
+    shared row.
+  */
+  const rowActions = useCallback(
+    (row: CompatibilityEdgeRow): readonly CompoundRowAction[] => [
       {
-        key: 'model',
-        header: 'Model',
-        type: 'text',
-        cell: (r) => (
-          <div>
-            <div className="font-semibold text-text-default">{r.model_name}</div>
-            <div className="text-role-caption text-text-soft">{r.model_number}</div>
-          </div>
-        ),
-      },
-      {
-        key: 'part',
-        header: 'Part',
-        type: 'text',
-        cell: (r) => (
-          <div>
-            <div className="font-semibold text-text-default">{r.product_title}</div>
-            <div className="text-role-caption text-text-soft">{r.sku}</div>
-          </div>
-        ),
-      },
-      {
-        key: 'role',
-        header: 'Role',
-        type: 'tag',
-        cell: (r) => <span className="text-text-muted">{r.part_role}</span>,
-      },
-      {
-        key: 'fit',
-        header: 'Fit',
-        type: 'tag',
-        cell: (r) => (
-          <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-semibold text-text-muted">
-            {r.is_oem ? 'OEM ' : ''}
-            {r.fit}
-          </span>
-        ),
-      },
-      {
-        key: 'source',
-        header: 'Source',
-        type: 'text',
-        cell: (r) => <span className="text-role-caption text-text-soft">{r.source}</span>,
-      },
-      {
-        key: 'actions',
-        header: '',
-        align: 'right',
-        cell: (r) => (
-          <Button
-            variant="ghost"
-            size="sm"
-            type="button"
-            onClick={() => remove.mutate(r.id)}
-            className="text-rose-600 hover:text-rose-700"
-          >
-            Remove
-          </Button>
-        ),
+        key: 'remove',
+        label: 'Delete rule',
+        tone: 'danger',
+        onSelect: () => remove.mutate(row.id),
       },
     ],
     [remove],
   );
+
+  const sheet = useCompatibilitySpreadsheet({ rows, loading: isLoading, rowActions });
 
   return (
     <div className="flex h-full flex-col overflow-y-auto p-6">
@@ -136,26 +75,7 @@ export function CompatibilityManagementTab() {
           Compatibility edges{' '}
           {!isLoading ? <span className="text-text-faint">({rows.length})</span> : null}
         </h2>
-        <AdminTable
-          columns={columns}
-          rows={rows}
-          rowKey={(r) => r.id}
-          loading={isLoading}
-          isSearching={Boolean(boseModelId)}
-          searchEmptyMessage="No compatibility edges for this model."
-          emptyMessage="Link parts to models in the Bose Models section, then audit them here."
-          empty={
-            boseModelId ? undefined : (
-              <div className="flex flex-col items-center gap-2 px-6 py-10 text-center">
-                <Layers className="h-6 w-6 text-text-faint" />
-                <p className="text-sm font-medium text-text-default">No compatibility edges</p>
-                <p className="text-xs text-text-muted">
-                  Link parts to models in the Bose Models section, then audit them here.
-                </p>
-              </div>
-            )
-          }
-        />
+        <DataTable {...sheet} totalCount={rows.length} />
       </div>
     </div>
   );

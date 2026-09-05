@@ -119,6 +119,61 @@ export const VERB_CATALOG_MODULES = [
 export const VERB_DECLARATION_DEBT: readonly { file: string; why: string }[] = [];
 
 /**
+ * Remaining `AdminTable` mounts — a second table engine with JSX cells.
+ *
+ * Settings/admin desks already left it (audit, AI usage, staff, kiosk,
+ * sessions, compatibility). Inventory's per-SKU ops page is the last consumer.
+ * The tripwire's contract: this set may never GROW. An id leaves when the page
+ * mounts PRODUCT_TABLES families (bins, units, inventory-events) instead.
+ */
+export const ADMIN_TABLE_DEBT: readonly { file: string; why: string }[] = [
+  {
+    file: 'src/app/admin/inventory/sku/[sku]/page.tsx',
+    why: 'Five AdminTable mounts (bins, units, allocations, sku_stock_ledger, events) with JSX cells. Events duplicates inventory-events; bins/units already have families. Port those three first; allocations and stock-ledger need catalogs.',
+  },
+];
+
+/**
+ * Raw `<table>` product row lists — the same second-engine class as
+ * {@link ADMIN_TABLE_DEBT}, without the AdminTable wrapper.
+ *
+ * Staff inventory units (`ByUnitView`) reprints allocations the admin SKU page
+ * already dumps through AdminTable. Incoming returns staging reprints
+ * `CsvImportStagingHost` as a hand HTML grid. The tripwire's contract: this
+ * set may never GROW. An id leaves when the surface mounts a PRODUCT_TABLES
+ * family (or the orders-import staging host) instead.
+ */
+export const HAND_HTML_TABLE_DEBT: readonly { file: string; why: string }[] = [
+  {
+    file: 'src/components/inventory/ByUnitView.tsx',
+    why: 'Staff unit detail paints allocations and TSN links as hand HTML tables. Same facts as admin SKU AdminTable allocations — needs an allocations family, not a second grid.',
+  },
+  {
+    file: 'src/components/sidebar/receiving/incoming/IncomingReturnsImportStagingHost.tsx',
+    why: 'Incoming returns CSV staging is a hand HTML grid. To-ship already mounts CsvImportStagingHost → DataTable / orders-import. Reuse that host (or register an incoming-import family); do not grow a third staging engine.',
+  },
+];
+
+/**
+ * `<table>` that is not a product-family desk: print HTML, markdown, maps,
+ * KPI, mail, QA, and the AdminTable primitive itself (mounts stay in
+ * {@link ADMIN_TABLE_DEBT}).
+ */
+export const HAND_HTML_TABLE_ALLOW: readonly string[] = [
+  'src/design-system/components/AdminTable/AdminTable.tsx',
+  'src/components/ai/MarkdownRenderer.tsx',
+  'src/components/warehouse/WarehouseMap.tsx',
+  'src/components/po-gmail/mailbox/ScannedMode.tsx',
+  'src/features/operations/workspace/PackingKpiSection.tsx',
+  'src/app/developer/QaConsoleClient.tsx',
+  'src/app/api/walk-in/receipt/[id]/route.tsx',
+  'src/lib/counter/visit-receipt-html.ts',
+  'src/lib/serial/serial-journey.ts',
+  'src/lib/sheet/sheet-print.ts',
+];
+
+
+/**
  * The reversible verb that PROVES the fourth invariant, and the two properties
  * that make it one verb instead of two.
  *
@@ -173,11 +228,62 @@ export const FORBIDDEN_LANE_KEY_LISTS = [
  * adapter, writer map, permissions — and nothing else. Everything named here is
  * already built and shared; a family that re-implements one has forked.
  */
+/**
+ * Mounts that strip chrome tracks off `compoundColumnsFor` before materializing.
+ * Same class of fork as the Orders-only Amount drop: the family pretends it is
+ * a different table. Shrink-only — un-filter a desk onto the shared skeleton,
+ * then delete the row. A new `key !== 'dates'` (or select/thumb/item/state/
+ * fulfillment) filter on a compoundColumnsFor mount fails the tripwire the day
+ * it lands.
+ *
+ * Named 2026-09-05 from the session-law scan. Do not grow this list to paint
+ * fewer columns; hide a track with layout/data, not a per-family geometry cut.
+ */
+export const COMPOUND_SKELETON_FILTER_DEBT: readonly { file: string; drops: string; why: string }[] = [
+  {
+    file: 'src/components/settings/ai-usage/ai-usage-grid-layout.ts',
+    drops: 'dates, select, thumb',
+    why: 'Admin usage desk cut Dates / select / Image off the shared skeleton.',
+  },
+  {
+    file: 'src/components/settings/kiosk-devices/kiosk-devices-grid-layout.ts',
+    drops: 'dates, select, thumb',
+    why: 'Kiosk devices copied the admin usage filter.',
+  },
+  {
+    file: 'src/components/settings/sessions/auth-sessions-grid-layout.ts',
+    drops: 'dates, select, thumb',
+    why: 'Auth sessions copied the admin usage filter.',
+  },
+  {
+    file: 'src/components/settings/staff-table/staff-directory-grid-layout.ts',
+    drops: 'dates, select',
+    why: 'Staff directory drops Dates and the select gutter.',
+  },
+  {
+    file: 'src/components/admin/sourcing/compatibility/compatibility-grid-layout.ts',
+    drops: 'dates, select, thumb',
+    why: 'Compatibility copied the admin usage filter.',
+  },
+  {
+    file: 'src/components/settings/audit/audit-log-grid-layout.ts',
+    drops: 'dates, select, thumb',
+    why: 'Audit log drops Dates / select / Image; comment claims thumb would be grey.',
+  },
+  {
+    file: 'src/components/inventory/events-grid/inventory-events-grid-layout.ts',
+    drops: 'dates, select',
+    why: 'Inventory events drops Dates and select after the sheet→compound port.',
+  },
+];
+
 export const ENGINE_OWNED_SEAMS = [
   'geometry (compound-columns.ts)',
   'materialization (materialize-tracks.ts)',
   'layout cascade (resolve-effective-layout.ts: savedView ?? staff ?? org ?? product)',
   'header sort (slot-table-header-sort.ts)',
+  'line identity (slot-table-line-qty.ts + slot-table-line-money.ts)',
+  'session laws (slot-table-session-laws.ts)',
   'selection + the action plane (selection-actions.tsx)',
   'record plane (TableSurfaceBinding.recordPlane)',
   'cells (compound/CompoundCells.tsx)',

@@ -13,6 +13,7 @@ import {
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/components/ui/button';
 import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
+import { receiveStateHeatClass } from '@/lib/item-record/receive-state';
 import { cn } from '@/utils/_cn';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -370,11 +371,13 @@ export function ItemRecordRow({
         canDisclose && !disclosure.expanded ? 'true' : undefined
       }
       className={cn(
-        // Idle rows are transparent in the well. The active row is the raised
-        // plate (`selectedStationClass`). No radius, no drop shadow — bevel
-        // lives on the active class.
+        // Idle rows: well shows through unless receiveState heats the line.
+        // Active row is the raised plate. No radius, no drop shadow — mill
+        // bevel lives on the active class. Received recedes (no heat fill).
         'relative min-w-0 overflow-hidden rounded-none transition-colors',
-        active ? QUEUE_ROW.selectedStationClass : 'border-0 bg-transparent',
+        active
+          ? QUEUE_ROW.selectedStationClass
+          : cn('border-0', receiveStateHeatClass(item.receiveState) ?? 'bg-transparent'),
         selectable && !active ? 'hover:bg-surface-station-row-hover' : null,
         className,
       )}

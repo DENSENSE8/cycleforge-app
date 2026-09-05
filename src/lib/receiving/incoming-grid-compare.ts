@@ -171,9 +171,6 @@ export function compareIncomingGridRows(
       else primary = ua.localeCompare(ub, undefined, { sensitivity: 'base' });
       break;
     }
-    case 'amount':
-      primary = (Number(a.unit_price) || 0) - (Number(b.unit_price) || 0);
-      break;
     case 'select':
     default:
       primary = 0;

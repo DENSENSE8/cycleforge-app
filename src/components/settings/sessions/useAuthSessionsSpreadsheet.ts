@@ -57,7 +57,7 @@ export function useAuthSessionsSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, fields } = useAuthSessionsTableLayout();
+  const { effectiveLayout, subtitleFieldIds, fields } = useAuthSessionsTableLayout();
   const columns = useMemo(() => authSessionsCompoundColumnsFor(effectiveLayout), [effectiveLayout]);
 
   const onSortChange = useCallback((key: AuthSessionsGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -77,6 +77,7 @@ export function useAuthSessionsSpreadsheet({
     rows,
     getRowId: (row) => String(row.sid),
     adapter: authSessionCompoundView,
+    subtitleFieldIds,
     resolve: resolveAuthSessionsSlotValue,
     sortFactFor: authSessionsSortFactFor,
     capabilities: AUTHSESSIONS_GRID_CAPABILITIES,

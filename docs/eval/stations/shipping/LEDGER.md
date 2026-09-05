@@ -39,7 +39,7 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station shipping` for full g
 ## Design critique (latest)
 
 <!-- eval-ledger:auto:design-critique -->
-- `src/components/tech/TechRightPane.tsx` — snapshot `docs/eval/stations/shipping/snapshots/2026-09-02-critique-TechRightPane.txt`
+- `src/components/tech/TechRightPane.tsx` — snapshot `docs/eval/stations/shipping/snapshots/2026-09-05-critique-TechRightPane.txt`
 ```
 {
   "file": "src/components/tech/TechRightPane.tsx",
@@ -53,19 +53,22 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station shipping` for full g
 ## Graph impact (shared symbols)
 
 <!-- eval-ledger:auto:graph-impact -->
-- **TechRightPane** — 2 files, 2 symbols (`docs/eval/stations/shipping/snapshots/2026-09-02-impact-TechRightPane.json`)
-- **useOverlaySwapHardCut** — 10 files, 12 symbols (`docs/eval/stations/shipping/snapshots/2026-09-02-impact-useOverlaySwapHardCut.json`)
+- **TechRightPane** — 2 files, 2 symbols (`docs/eval/stations/shipping/snapshots/2026-09-05-impact-TechRightPane.json`)
+- **idleBrowseLayerProps** — 12 files, 14 symbols (`docs/eval/stations/shipping/snapshots/2026-09-05-impact-idleBrowseLayerProps.json`)
+- **overlayPaneStyle** — 12 files, 14 symbols (`docs/eval/stations/shipping/snapshots/2026-09-05-impact-overlayPaneStyle.json`)
+- **ItemRecordQtyBadge** — 17 files, 20 symbols (`docs/eval/stations/shipping/snapshots/2026-09-05-impact-ItemRecordQtyBadge.json`)
+- **useOverlaySwapHardCut** — 10 files, 12 symbols (`docs/eval/stations/shipping/snapshots/2026-09-05-impact-useOverlaySwapHardCut.json`)
 <!-- /eval-ledger:auto:graph-impact -->
 
 ## Regression tripwires
 
 <!-- eval-ledger:auto:tripwires -->
-**pass** — snapshot `docs/eval/stations/shipping/snapshots/2026-09-02-tripwire.log`
+**pass** — snapshot `docs/eval/stations/shipping/snapshots/2026-09-05-tripwire.log`
 - `src/lib/station/scan-station-overlay-cohort.test.ts`
 <!-- /eval-ledger:auto:tripwires -->
 
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-02T17:09:51.824Z · station `shipping`_
+_Updated 2026-09-05T17:35:48.339Z · station `shipping`_
 <!-- /eval-ledger:auto:last-run -->

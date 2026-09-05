@@ -30,7 +30,7 @@ const VIEW: CompoundRowView = {
   stateLabel: 'PENDING',
   stateTone: 'neutral',
   delay: null,
-  amount: '$10.00',
+  amount: null,
 };
 
 const paint = (key: string) =>

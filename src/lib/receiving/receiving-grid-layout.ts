@@ -66,7 +66,6 @@ export type ReceivingGridColumnKey =
   | 'fulfillment'
   | 'dates'
   | 'state'
-  | 'amount'
   | 'actions'
   | '_fill'
   /** Materialized slot tracks — keys are slot indices, never field ids. */
@@ -187,7 +186,6 @@ const RECEIVING_GRID_SORTABLE_KEYS: readonly ReceivingGridColumnKey[] = [
   'zoho',
   'fulfillment',
   'item',
-  'amount',
   'status',
 ];
 
@@ -204,7 +202,6 @@ export const RECEIVING_SORT_FACT_TYPES: Readonly<Partial<Record<ReceivingGridCol
   serial: 'id',
   fulfillment: 'id',
   item: 'text',
-  amount: 'price',
   status: 'tag',
 };
 
@@ -318,7 +315,7 @@ export const RECEIVING_GRID_FROZEN_EDGE_KEY: ReceivingGridColumnKey = 'thumb';
 /** Default direction when first activating a column sort. */
 export function defaultDirForReceivingGridSort(key: ReceivingGridColumnKey): GridSortDir {
   // Date: most recent first (ops scan). Price / qty: highest first.
-  if (key === 'date' || key === 'price' || key === 'qty' || key === 'amount') {
+  if (key === 'date' || key === 'price' || key === 'qty') {
     return 'desc';
   }
   return 'asc';
@@ -356,7 +353,6 @@ export type IncomingGridColumnKey =
   | 'fulfillment'
   | 'dates'
   | 'state'
-  | 'amount'
   | 'actions'
   | '_fill'
   /** Materialized slot tracks — keys are slot indices, never field ids. */
@@ -453,7 +449,6 @@ export const INCOMING_GRID_SORTABLE_KEYS: readonly IncomingGridColumnKey[] = [
   'fulfillment',
   'item',
   'state',
-  'amount',
 ];
 
 /**
@@ -461,7 +456,6 @@ export const INCOMING_GRID_SORTABLE_KEYS: readonly IncomingGridColumnKey[] = [
  * reason (see {@link receivingSortFactFor}).
  *
  * `state` IS mapped here: `compareIncomingGridRows` carries a real `statusRank`.
- * `amount` (unit price when present) is clickable on the compound row.
  */
 const INCOMING_TRACK_SORT_FACTS: Readonly<Record<string, IncomingGridColumnKey>> = {
   // The DATES track's second line is the DEADLINE, so it sorts by the deadline
@@ -470,7 +464,6 @@ const INCOMING_TRACK_SORT_FACTS: Readonly<Record<string, IncomingGridColumnKey>>
   fulfillment: 'order',
   item: 'title',
   state: 'status',
-  amount: 'amount',
 };
 
 const INCOMING_SLOT_SORT_FACTS: Readonly<Record<string, IncomingGridColumnKey>> = {
@@ -545,7 +538,7 @@ export function incomingGridFrozenLeft(key: string): string {
 /** Default direction when first activating a column sort. */
 export function defaultDirForIncomingGridSort(key: IncomingGridColumnKey): GridSortDir {
   // Age: most overdue / oldest first (urgency scan), matching Pending.
-  if (key === 'age' || key === 'amount') return 'desc';
+  if (key === 'age') return 'desc';
   return 'asc';
 }
 

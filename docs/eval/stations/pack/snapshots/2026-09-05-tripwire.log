@@ -1,16 +1,16 @@
 ▶ scan-station overlay cohort (SoT = all stations)
-  ✔ registers every floor scan station that owns idle↔overlay (non-empty, unique ids) (1.056871ms)
-  ✔ idle-overlay helper owns visibility / inert / pointer-events / zIndex.panel (0.370935ms)
-  ✔ design-mcp router.json overlayWorkspaces stays in sync with the cohort SoT (0.54302ms)
-  ✔ unbox (/unbox) satisfies the cohort overlay contract (0.424159ms)
-  ✔ triage (/triage) satisfies the cohort overlay contract (0.196979ms)
-  ✔ pack (/pack) satisfies the cohort overlay contract (0.19145ms)
-  ✔ testing (/test) satisfies the cohort overlay contract (0.178433ms)
-  ✔ shipping (/shipping) satisfies the cohort overlay contract (0.191144ms)
-  ✔ scan-out (/shipping/scan-out) satisfies the cohort overlay contract (0.320391ms)
-  ✔ qty face is cohort-wide. Every station eval impacts ItemRecordQtyBadge (0.429899ms)
-  ✔ no cohort member is privileged — every member is checked with the same predicates (0.539056ms)
-✔ scan-station overlay cohort (SoT = all stations) (6.095198ms)
+  ✔ registers every floor scan station that owns idle↔overlay (non-empty, unique ids) (1.214848ms)
+  ✔ idle-overlay helper owns visibility / inert / pointer-events / zIndex.panel (0.456733ms)
+  ✔ design-mcp router.json overlayWorkspaces stays in sync with the cohort SoT (0.725003ms)
+  ✔ unbox (/unbox) satisfies the cohort overlay contract (0.430809ms)
+  ✔ triage (/triage) satisfies the cohort overlay contract (0.189943ms)
+  ✔ pack (/pack) satisfies the cohort overlay contract (0.177644ms)
+  ✔ testing (/test) satisfies the cohort overlay contract (0.169719ms)
+  ✔ shipping (/shipping) satisfies the cohort overlay contract (0.196111ms)
+  ✔ scan-out (/shipping/scan-out) satisfies the cohort overlay contract (0.189873ms)
+  ✔ qty face is cohort-wide. Every station eval impacts ItemRecordQtyBadge (0.708995ms)
+  ✔ no cohort member is privileged — every member is checked with the same predicates (0.552861ms)
+✔ scan-station overlay cohort (SoT = all stations) (7.345183ms)
 ℹ tests 11
 ℹ suites 1
 ℹ pass 11
@@ -18,4 +18,4 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 494.420334
+ℹ duration_ms 497.517337

@@ -51,7 +51,10 @@ pnpm run eval:cohort slot-table
    `docs/eval/cohorts/slot-table/LEDGER.md` (paint law + KEEP
    `engine:DateRangePickerField` / `engine:DataTableFilterMenu` /
    `engine:slot-table-header-sort` / `engine:queueSortForColumnKey` /
-   `engine:ordersCompoundColumnsFor`). Orders / To-ship: never remount the ⋮;
+   `engine:ordersCompoundColumnsFor` / `engine:slot-table-session-laws`).
+   Session laws (`src/lib/tables/slot-table-session-laws.ts`) are greps for
+   recent operator rulings (Dates header, inbound `.price` under title, no
+   Orders-only Amount drop). Orders / To-ship: never remount the ⋮;
    copy lives on identity chips. Selecting a row always opens the left Morphing
    menu on To-ship **and** Shipped (`OrdersGridHost`). Gating Morphing on
    `queueMode === 'fulfillment'` is a cohort fail.

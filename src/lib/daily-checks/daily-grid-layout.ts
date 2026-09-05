@@ -31,7 +31,6 @@ export type DailyGridColumnKey =
   | 'fulfillment'
   | 'dates'
   | 'state'
-  | 'amount'
   | 'actions'
   | '_fill'
   /** Materialized slot tracks — keys are slot indices, never field ids. */

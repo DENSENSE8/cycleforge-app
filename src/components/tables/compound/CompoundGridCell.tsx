@@ -46,7 +46,6 @@ import {
   CompoundFulfillment,
   CompoundItem,
   CompoundActions,
-  CompoundAmount,
   CompoundDates,
   CompoundSelect,
   CompoundSlotCell,
@@ -185,7 +184,6 @@ export function isCompoundCellKey(key: string): boolean {
     key === 'state' ||
     // Materialized slot tracks (`status:1…N`) — the old hard-coded `tested`.
     key.startsWith('status:') ||
-    key === 'amount' ||
     key === 'actions'
   );
 }
@@ -390,12 +388,6 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
           onClick={onStateOpen ? (event) => event.stopPropagation() : undefined}
         >
           <CompoundState view={view} onOpen={onStateOpen} />
-        </div>
-      );
-    case 'amount':
-      return (
-        <div data-col="amount" data-frozen-edge={frozenEdge} className={cn(className, 'justify-end')} style={style}>
-          <CompoundAmount view={view} />
         </div>
       );
     case 'actions':

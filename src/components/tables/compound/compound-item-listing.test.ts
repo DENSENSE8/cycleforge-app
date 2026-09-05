@@ -23,7 +23,7 @@ const VIEW: CompoundRowView = {
   stateLabel: 'PENDING',
   stateTone: 'neutral',
   delay: null,
-  amount: '$49.99',
+  amount: null,
   subtitleParts: [
     { text: '1', key: 'orders.qty', widthCh: 2 },
     { text: 'Used', key: 'orders.condition' },

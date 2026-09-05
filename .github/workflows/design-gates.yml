@@ -82,6 +82,20 @@ jobs:
       - name: Law checksums
         run: node scripts/ci/check-law-checksums.mjs
 
+      # Operator session rulings as greps (Dates header, inbound price, overlay
+      # is not a display cohort). Graph find is the self-hosted cohort job —
+      # this step is the half GitHub can always run.
+      - name: Session laws (slot-table · overlay · engine)
+        run: |
+          node --import tsx --test \
+            src/lib/tables/slot-table-session-laws.test.ts \
+            src/lib/tables/slot-table-line-qty.test.ts \
+            src/lib/tables/slot-table-line-money.test.ts \
+            src/lib/tables/table-engine-law.test.ts \
+            src/lib/tables/slot-table-cohort.test.ts \
+            src/lib/station/scan-station-overlay-cohort.test.ts \
+            src/lib/keyboard/shortcut-display-cohort.test.ts
+
       - name: Hardcoded design values
         run: node scripts/ci/check-hardcoded-design.mjs
 

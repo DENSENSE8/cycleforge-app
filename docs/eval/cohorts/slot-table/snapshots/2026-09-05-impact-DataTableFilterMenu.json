@@ -1,8 +1,8 @@
 {
   "project": "cycleforge-app",
   "target": "component:src/components/tables/DataTable.tsx:DataTableFilterMenu",
-  "files_affected": 32,
-  "total_symbols": 32,
+  "files_affected": 37,
+  "total_symbols": 37,
   "files": [
     {
       "file": "src/components/support/zendesk/SupportTicketsBoard.tsx",
@@ -18,6 +18,22 @@
       "affected_symbols": 1,
       "symbols": [
         "DataTable"
+      ]
+    },
+    {
+      "file": "src/components/admin/sourcing/CompatibilityManagementTab.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "CompatibilityManagementTab"
+      ]
+    },
+    {
+      "file": "src/components/dashboard/orders-queue/OrdersGridHost.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "OrdersGridHost"
       ]
     },
     {
@@ -117,11 +133,35 @@
       ]
     },
     {
+      "file": "src/components/settings/ai-usage/AiUsageTable.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "AiUsageTable"
+      ]
+    },
+    {
       "file": "src/components/settings/audit/AuditLogTable.tsx",
       "nearest_depth": 2,
       "affected_symbols": 1,
       "symbols": [
         "AuditLogTable"
+      ]
+    },
+    {
+      "file": "src/components/settings/sections/KioskDevicesSection.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "KioskDevicesSection"
+      ]
+    },
+    {
+      "file": "src/components/settings/sections/SessionsSection.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "SessionsSection"
       ]
     },
     {
@@ -253,11 +293,11 @@
       ]
     },
     {
-      "file": "src/components/dashboard/orders-queue/OrdersGridHost.tsx",
+      "file": "src/app/settings/staff/StaffTable.tsx",
       "nearest_depth": 2,
       "affected_symbols": 1,
       "symbols": [
-        "OrdersGridHost"
+        "StaffTable"
       ]
     }
   ]

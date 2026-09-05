@@ -152,6 +152,11 @@ describe('ordersCompoundView', () => {
     assert.deepEqual(view.subtitleParts, [{ text: '3', toneClass: 'text-text-warning' }]);
   });
 
+  it('does not dual-write sale_amount onto view.amount — money is a subtitle', () => {
+    const view = ordersCompoundView(baseOrder(), { stateLabel: 'Awaiting test' });
+    assert.equal(view.amount, null);
+  });
+
   it('keeps the operator note on the secondary and parks identity in the state tip', () => {
     const view = ordersCompoundView(
       baseOrder({

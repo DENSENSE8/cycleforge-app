@@ -109,10 +109,9 @@ describe('ItemRecordRow disclosure', () => {
     );
   });
 
-  it('draws no hairlines — not on the row, the thumb, the meta, or the body', () => {
-    // Operator ruling 2026-08-30: the PO line display carries no rules. What
-    // separates one line from the next is the thumb's height and the active
-    // row's fill, the same way the station plane carries no tone changes.
+  it('draws no border hairlines — meta columns use outline (M3)', () => {
+    // Border/divide shift layout. Meta tracks separate with outline instead.
+    // The empty thumb's inset bevel is the cube carve, not a row hairline.
     const html = render({ disclosure: { expanded: true, onToggle: () => {} } });
     // A rule is a non-zero WIDTH utility (`border`, `border-t`, `border-2`,
     // `divide-x`). `border-0` is a removal. The empty thumb's inset bevel is
@@ -160,5 +159,22 @@ describe('ItemRecordRow disclosure', () => {
       src,
       /grid-cols-\[auto_auto_auto_auto_minmax\(2\.5rem,1fr\)_minmax\(5rem,auto\)\]/,
     );
+    assert.match(src, /outline outline-1 -outline-offset-1 outline-border-subtle/);
+    assert.doesNotMatch(src, /box-shadow|shadow-elev|shadow-sm/);
+  });
+
+  it('Open heats; Received recedes; active plate outranks heat', () => {
+    const open = render({ item: { ...ITEM, receiveState: 'open' } });
+    assert.match(open, /data-receive-state="open"/);
+    assert.match(open, /bg-surface-station-row-hover/);
+    const received = render({ item: { ...ITEM, receiveState: 'received' } });
+    assert.match(received, /data-receive-state="received"/);
+    assert.doesNotMatch(received, /bg-surface-warning|bg-surface-danger|bg-surface-station-row-hover/);
+    const activeOpen = render({
+      item: { ...ITEM, receiveState: 'open' },
+      active: true,
+    });
+    assert.match(activeOpen, /bg-surface-station-plate/);
+    assert.doesNotMatch(activeOpen, /shadow-elev|shadow-sm|shadow-md/);
   });
 });

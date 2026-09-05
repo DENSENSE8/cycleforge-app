@@ -27,6 +27,11 @@ const LEDGER = 'docs/eval/law-checksums.json';
 const LAWS = [
   'src/lib/mobile/mobile-display-cohort.ts',
   'src/lib/tables/slot-table-cohort.ts',
+  'src/lib/tables/slot-table-session-laws.ts',
+  'src/lib/tables/table-engine-law.ts',
+  'src/lib/tables/slot-table-line-qty.ts',
+  'src/lib/tables/slot-table-line-money.ts',
+  'src/lib/tables/slot-table-header-sort.ts',
   'src/lib/keyboard/shortcut-display-cohort.ts',
   'src/lib/station/scan-station-overlay-cohort.ts',
 ];

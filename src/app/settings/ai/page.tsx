@@ -21,10 +21,11 @@ import { requirePermission } from '@/lib/auth/page-guard';
 import { PageHeader } from '@/components/ui/pane-header';
 import { resolveOrgAiChain, type OrgAiConfig } from '@/lib/ai/org-provider';
 import { resolveAiProviderOrderForOrg } from '@/lib/ai/provider-order-deps';
-import { getAiUsageMarginPercent, summarizeAiUsage, type AiUsageSummaryRow } from '@/lib/ai/usage';
+import { getAiUsageMarginPercent, summarizeAiUsage } from '@/lib/ai/usage';
 import { applyMarginMicrocents, microcentsToUsd } from '@/lib/ai/model-pricing';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
+import { AiUsageTable } from '@/components/settings/ai-usage/AiUsageTable';
+import type { AiUsageTableRow } from '@/lib/ai/ai-usage-row';
 import { AiProviderOrderCard } from '@/components/settings/sections/AiProviderOrderCard';
 
 export const dynamic = 'force-dynamic';
@@ -42,55 +43,14 @@ function sourceLabel(source: string): string {
   return SOURCE_LABELS[source] ?? source;
 }
 
-function contextLabel(context: string): string {
-  if (context === 'ask_ai') return 'Ask AI';
-  if (context === 'query_embed') return 'Search queries';
-  return 'Index embedding';
-}
 
-const USAGE_COLUMNS: AdminTableColumn<AiUsageSummaryRow>[] = [
-  {
-    key: 'use',
-    header: 'Use',
-    type: 'text',
-    cell: (row) => <span className="font-semibold">{contextLabel(row.context)}</span>,
-  },
-  {
-    key: 'provider',
-    header: 'Provider',
-    type: 'text',
-    cell: (row) => sourceLabel(row.provider),
-  },
-  {
-    key: 'model',
-    header: 'Model',
-    type: 'id',
-    cell: (row) => <span className="font-mono text-role-micro">{row.model}</span>,
-  },
-  {
-    key: 'calls',
-    header: 'Calls',
-    type: 'number',
-    cell: (row) => row.calls.toLocaleString(),
-  },
-  {
-    key: 'tokens',
-    header: 'Tokens in / out',
-    type: 'number',
-    cell: (row) => `${row.inputTokens.toLocaleString()} / ${row.outputTokens.toLocaleString()}`,
-  },
-  {
-    key: 'cost',
-    header: 'Est. cost',
-    type: 'number',
-    cell: (row) => (
-      <span className="font-semibold">
-        {microcentsToUsd(row.costMicrocents)}
-        {row.unknownRateCalls > 0 ? ' *' : ''}
-      </span>
-    ),
-  },
-];
+/*
+  The six hand-written `AdminTableColumn` objects that used to live here are
+  gone. Columns are DATA now: `field-catalog/ai-usage.ts` names the facts,
+  `ai-usage-resolve.ts` reads them, and the shared engine paints them — so this
+  page gained header sort, search and a Fields picker the second table engine was
+  never going to grow for one surface.
+*/
 
 function ProviderCard({ title, chain, note }: { title: string; chain: OrgAiConfig[]; note?: string }) {
   const config = chain[0] ?? null;
@@ -145,6 +105,24 @@ export default async function AiSettingsPage() {
   const billed = applyMarginMicrocents(platformCost, marginPercent) + (estimated - platformCost);
   const totalCalls = summary.reduce((sum, r) => sum + r.calls, 0);
   const unknownRateCalls = summary.reduce((sum, r) => sum + r.unknownRateCalls, 0);
+
+  /*
+    Give each roll-up row a stable id at the boundary. The summary is a GROUP BY
+    with no key of its own, and the engine needs one — the same tuple the retired
+    display used for `rowKey`, named once instead of rebuilt in the mount.
+  */
+  const usageRows: AiUsageTableRow[] = summary.map((row) => ({
+    key: `${row.context}:${row.provider}:${row.model}`,
+    capability: row.capability,
+    provider: row.provider,
+    model: row.model,
+    context: row.context,
+    calls: row.calls,
+    inputTokens: row.inputTokens,
+    outputTokens: row.outputTokens,
+    costMicrocents: row.costMicrocents,
+    unknownRateCalls: row.unknownRateCalls,
+  }));
 
   return (
     <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-surface-canvas">
@@ -216,16 +194,7 @@ export default async function AiSettingsPage() {
             </div>
           </div>
 
-          <AdminTable
-            columns={USAGE_COLUMNS}
-            rows={summary}
-            rowKey={(row) => `${row.context}:${row.provider}:${row.model}`}
-            empty={
-              <div className="px-4 py-6 text-center text-role-caption font-medium text-text-soft">
-                No AI usage recorded in this window yet — usage appears here as staff search.
-              </div>
-            }
-          />
+          <AiUsageTable rows={usageRows} />
           {unknownRateCalls > 0 && (
             <p className="text-role-caption font-medium text-text-soft">
               * {unknownRateCalls.toLocaleString()} call(s) used a model without a published rate —

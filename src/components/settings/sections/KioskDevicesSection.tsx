@@ -20,16 +20,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { resolveKioskDogfoodUrl } from '@/lib/tenancy/kiosk-host';
 import { cn } from '@/utils/_cn';
 
-interface KioskDeviceRow {
-  id: number;
-  label: string;
-  status: 'enrolled' | 'active' | 'revoked';
-  lastSeenAt: string | null;
-  createdAt: string;
-  enrolledByStaffId: number | null;
-  /** Square Terminal paired to this lane; null = cash / payment-link only. */
-  squareTerminalDeviceId: string | null;
-}
+/*
+  `KioskDeviceRow`, the two STATUS lookup maps and `fmtRelative` are gone. The
+  shape is `KioskDeviceTableRow` (the family's, shared with the catalog and the
+  resolver); the status LABEL and TONE live in the row adapter, where every other
+  table's state pill is resolved; and "16m ago" is the engine's `date` face.
+*/
 
 interface FreshCode {
   deviceId: number;
@@ -37,33 +33,10 @@ interface FreshCode {
   expiresAt: string;
 }
 
-const STATUS_TONE: Record<KioskDeviceRow['status'], string> = {
-  active: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  enrolled: 'bg-amber-50 text-amber-700 ring-amber-200',
-  revoked: 'bg-surface-sunken text-text-muted ring-border-soft',
-};
-
-const STATUS_LABEL: Record<KioskDeviceRow['status'], string> = {
-  active: 'Paired',
-  enrolled: 'Awaiting pairing',
-  revoked: 'Revoked',
-};
-
-function fmtRelative(when: string | null): string {
-  if (!when) return '—';
-  const ms = Date.now() - new Date(when).getTime();
-  const s = Math.floor(ms / 1000);
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
 
 export function KioskDevicesSection() {
   const { user } = useAuth();
-  const [rows, setRows] = useState<KioskDeviceRow[]>([]);
+  const [rows, setRows] = useState<KioskDeviceTableRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [label, setLabel] = useState('');
@@ -81,7 +54,7 @@ export function KioskDevicesSection() {
         setErr(r.status === 401 || r.status === 403 ? "You don't have access to this." : 'Could not load devices.');
         return;
       }
-      const data = (await r.json()) as { devices: KioskDeviceRow[] };
+      const data = (await r.json()) as { devices: KioskDeviceTableRow[] };
       setRows(data.devices || []);
     } finally {
       setLoading(false);

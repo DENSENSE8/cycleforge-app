@@ -1,6 +1,6 @@
 # Self-hosted CI + fork teardown — PLAN
 
-**Date:** 2026-09-04 · **Status:** in progress — §2 payload cap, §3.3 runner/cache/queue/timer/`ci-status`/affected tests/flake quarantine/merge-queue (`lane land` worktree), §5.1–5.2.3 (law, scan-out, media catalog) landed; §5.2.4 Testing bind BLOCKED on receiving assign-panel host; §5.2.5 host sweep deferred (OrdersGridHost is already DataTable glue — NonlinearTableHost collapse is stale vs the slot-table engine); §7.4 fixtures + axe ratchet + sibling pairs + `ds_critique` gate + deep reviewer slot wired; visual baselines still operator-approved and uncommitted · **Validated:** 2026-09-04 against industry CI practice (§4) — four gaps found, build order amended · **Reviewed:** 2026-09-05 (§0 corrections)
+**Date:** 2026-09-04 · **Status:** in progress — §2 payload cap, §3.3 runner/cache/queue/timer/`ci-status`/affected tests/flake quarantine/merge-queue (`lane land` worktree), §5.1–5.2.4 + 5.2.6 (law, scan-out, media catalog, Testing bind, `VERB_DECLARATION_DEBT` `[]`) landed; §5.2.5 host sweep deferred (OrdersGridHost is already DataTable glue — NonlinearTableHost collapse is stale vs the slot-table engine; ReceivingGridHost later); §7.4 fixtures + axe ratchet + sibling pairs + `ds_critique` gate + deep reviewer slot wired; visual baselines still operator-approved and uncommitted; nightly deep timer not installed · **Validated:** 2026-09-04 against industry CI practice (§4) — four gaps found, build order amended · **Reviewed:** 2026-09-05 (§0 corrections)
 **Related:** [`nonlinear-data-table-engine-PLAN.md`](nonlinear-data-table-engine-PLAN.md) · [`one-table-sot-teardown-HANDOFF.md`](one-table-sot-teardown-HANDOFF.md) · law: `src/lib/tables/table-engine-law.ts` · tripwire: `src/lib/tables/table-engine-law.test.ts`
 
 Three questions, answered in order: is the toolchain eating the agent's context,
@@ -319,7 +319,10 @@ Each step is independently shippable and leaves the tree green.
    module; the page binds keys. Remove its debt line. *(Unblocked and
    mechanical; not done 2026-09-05 — see §5.4.)*
 4. **Testing binds, stops declaring.** Same for `useTechTestingSelection`.
-   **BLOCKED on a missing engine capability — see §5.4.**
+   Landed 2026-09-05: `receiving-assign-panel-store` + `ReceivingAssignPanel`
+   (AssigneeCombobox) mounted in `ReceivingLineRailShell`; catalog declares
+   assign / assign-me on `receiving.assigned_tech`; `mapActions` deleted;
+   `TestingAssignDialog` deleted. Product default still paints no Tech track.
 5. **Host sweep.** Remaining family hosts: `OrdersGridHost` (already DataTable
    glue — do not collapse onto `NonlinearTableHost`; that plan is stale vs the
    slot-table engine) and `ReceivingGridHost` (later pass, same as
@@ -343,11 +346,11 @@ staff picker. The other two would paint a button that sets state nothing
 displays. Gating the verb per surface would be a lane list, which is the fork
 this whole section deletes.
 
-**The missing capability:** a shared receiving assign-panel store plus a host
+**The missing capability (built 2026-09-05):** a shared receiving assign-panel store plus a host
 mounted once in `ReceivingLineRailShell` (which already hosts `RailActionRegion`
 for all three) — the receiving twin of `stage-assign-panel-store` and the orders
 column-foot panel. Per ruling 5 this is surfaced rather than improvised on one
-family: build the host, then step 4 is a deletion.
+family: the host landed, then step 4 was a deletion (`VERB_DECLARATION_DEBT` is `[]`).
 
 Step 3 (media catalog) is NOT blocked by anything — only one surface mounts those
 verbs, and `PhotoBatchInspectorPanel` already consumes the array rather than
@@ -440,7 +443,8 @@ Use the judge — but as the **reviewer**, not the gate. The gate is determinist
 
 | layer | what it is | hard / advisory | exists? |
 |---|---|---|---|
-| **Law tripwires** | the rulings already made, as code (`slot-table` paint law, `table-engine-law`, header-sort, shortcut display) | hard | ✓ |
+| **Law tripwires** | the rulings already made, as code (`slot-table` paint law, `table-engine-law`, header-sort, shortcut display, **session laws** in `slot-table-session-laws.ts`) | hard | ✓ |
+| **Session-law checksums** | hash of the law sources (`check-law-checksums.mjs` — cohort + session laws + engine law + line qty/money + overlay + shortcuts). Editing the law to make a violation legal is a reviewable checksum line | hard | ✓ GitHub `design-gates` + self-hosted |
 | **Token drift** | `ds_critique` on changed `.tsx`: arbitrary literals, forked primitives | hard on **new** literals (ratchet), advisory on existing | ✓ by hand → wire |
 | **Visual regression** | screenshot every `PRODUCT_TABLES` peer + every station shell at one viewport, two states (idle · selection), diff against an **operator-approved baseline** | hard on drift > threshold; a change is a diff a human approves, not a score | idle + fixtures wired; baselines uncommitted; selection state next |
 | **a11y** | axe on the same screens; zero new violations | hard (ratchet) | ✗ — To-ship already lost 10 points once (`aria-required-children`) |

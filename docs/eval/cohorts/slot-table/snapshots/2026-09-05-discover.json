@@ -2,20 +2,9 @@
   "next": "_No unblocked mechanical deletes._",
   "delete": [],
   "judgment": [
-    "catalog-orphan:ai-usage:AIUSAGE_FIELD_CATALOG",
-    "catalog-orphan:auth-sessions:AUTHSESSIONS_FIELD_CATALOG",
-    "catalog-orphan:compatibility:COMPATIBILITY_FIELD_CATALOG",
     "catalog-orphan:fba:FBA_FIELD_CATALOG",
-    "catalog-orphan:kiosk-devices:KIOSKDEVICES_FIELD_CATALOG",
-    "catalog-orphan:staff-directory:STAFFDIRECTORY_FIELD_CATALOG",
     "table-columns-zombie:support-tickets"
   ],
-  "unexpected": [
-    "catalog-orphan:ai-usage:AIUSAGE_FIELD_CATALOG",
-    "catalog-orphan:auth-sessions:AUTHSESSIONS_FIELD_CATALOG",
-    "catalog-orphan:compatibility:COMPATIBILITY_FIELD_CATALOG",
-    "catalog-orphan:kiosk-devices:KIOSKDEVICES_FIELD_CATALOG",
-    "catalog-orphan:staff-directory:STAFFDIRECTORY_FIELD_CATALOG"
-  ],
+  "unexpected": [],
   "staleKnownDebt": []
 }

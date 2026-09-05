@@ -13,10 +13,14 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 import {
+  ADMIN_TABLE_DEBT,
+  HAND_HTML_TABLE_ALLOW,
+  HAND_HTML_TABLE_DEBT,
+  COMPOUND_SKELETON_FILTER_DEBT,
   ENGINE_OWNED_SEAMS,
   FORBIDDEN_LANE_KEY_LISTS,
   REVERSIBLE_VERB_PROOF,
@@ -195,6 +199,125 @@ describe('one table engine — the descriptor carries data, not behavior', () =>
     );
   });
 
+  it('no NEW mount strips Dates/select/thumb off the shared skeleton', () => {
+    const dropChrome = /key !== ['"](?:dates|select|thumb|item|state|fulfillment)['"]/;
+    const usesCompound = /compoundColumnsFor/;
+    const offenders = SOURCES.filter(
+      (file) => usesCompound.test(read(file)) && dropChrome.test(code(file)),
+    ).sort();
+    const allowed = new Set(COMPOUND_SKELETON_FILTER_DEBT.map((d) => d.file));
+    const rogue = offenders.filter((file) => !allowed.has(file));
+    assert.deepEqual(
+      rogue,
+      [],
+      `these cut chrome tracks off compoundColumnsFor — un-filter or name them in COMPOUND_SKELETON_FILTER_DEBT:\n${rogue.join('\n')}`,
+    );
+    for (const { file, why } of COMPOUND_SKELETON_FILTER_DEBT) {
+      assert.ok(existsSync(path.join(REPO, file)), `${file} gone — delete it from COMPOUND_SKELETON_FILTER_DEBT`);
+      assert.ok(offenders.includes(file), `${file} no longer filters the skeleton — delete the debt row (${why})`);
+      assert.ok(why.length > 20, `${file} debt must say why`);
+    }
+  });
+
+  it('field catalogs do not revive the Amount COLUMN slot kind', () => {
+    const catalogDir = path.join(REPO, 'src/lib/tables/field-catalog');
+    const catalogFiles = readdirSync(catalogDir)
+      .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts') && name !== 'types.ts')
+      .map((name) => `src/lib/tables/field-catalog/${name}`);
+    const revived = catalogFiles.filter((file) =>
+      /slotKinds:\s*\[[^\]]*amount/.test(code(file)),
+    );
+    assert.deepEqual(
+      revived,
+      [],
+      `these catalogs still allow slotKinds amount (the Amount column door):\n${revived.join('\n')}`,
+    );
+  });
+
+  it('settings/admin compound key unions do not keep a dead amount track', () => {
+    // Copy-paste of the deleted skeleton: state · amount · (actions) · _fill.
+    // OrdersQueueColumnKey may still name amount as a LEGACY sort/URL key later
+    // in the union — that is bookmark compat, not a chrome track.
+    const paste = /'state'\s*\|\s*'amount'\s*\|\s*(?:'actions'\s*\|\s*)?'_fill'/;
+    const offenders = SOURCES.filter((file) => paste.test(code(file))).sort();
+    assert.deepEqual(
+      offenders,
+      [],
+      `these still type amount as a compound chrome track (copy-paste of the deleted skeleton):\n${offenders.join('\n')}`,
+    );
+  });
+
+  it('every compound spreadsheet passes subtitleFieldIds so under-title facts paint', () => {
+    const callers = SOURCES.filter(
+      (file) =>
+        file !== 'src/components/tables/useCompoundSpreadsheet.tsx' &&
+        /useCompoundSpreadsheet\s*</.test(read(file)),
+    ).sort();
+    assert.ok(callers.length > 0, 'expected useCompoundSpreadsheet callers');
+    const missing = callers.filter((file) => !/\bsubtitleFieldIds\b/.test(read(file)));
+    assert.deepEqual(
+      missing,
+      [],
+      `these mount the spreadsheet without layout subtitleFieldIds — under-title bindings will not paint:\n${missing.join('\n')}`,
+    );
+  });
+
+  it('AdminTable mounts never grow — remaining sites are named debt', () => {
+    const mounts = SOURCES.filter((file) =>
+      /from ['"]@\/design-system\/components\/AdminTable['"]/.test(read(file)),
+    ).sort();
+    const allowed = new Set(ADMIN_TABLE_DEBT.map((d) => d.file));
+    const rogue = mounts.filter((file) => !allowed.has(file));
+    assert.deepEqual(
+      rogue,
+      [],
+      `new AdminTable mount — a second table engine. Port it or name it in ADMIN_TABLE_DEBT:\n${rogue.join('\n')}`,
+    );
+    for (const { file, why } of ADMIN_TABLE_DEBT) {
+      assert.ok(existsSync(path.join(REPO, file)), `${file} gone — delete it from ADMIN_TABLE_DEBT`);
+      assert.ok(mounts.includes(file), `${file} no longer imports AdminTable — delete the debt row`);
+      assert.ok(why.length > 40, `${file}: name the fork, not just the file`);
+    }
+  });
+
+  it('raw HTML product tables never grow — remaining sites are named debt', () => {
+    const hits = SOURCES.filter((file) => /<table\b/.test(code(file))).sort();
+    const allowed = new Set<string>([
+      ...HAND_HTML_TABLE_DEBT.map((d) => d.file),
+      ...HAND_HTML_TABLE_ALLOW,
+    ]);
+    const rogue = hits.filter((file) => !allowed.has(file));
+    assert.deepEqual(
+      rogue,
+      [],
+      `new hand HTML table — a second table engine. Port it or name it in HAND_HTML_TABLE_DEBT / ALLOW:\n${rogue.join('\n')}`,
+    );
+    for (const { file, why } of HAND_HTML_TABLE_DEBT) {
+      assert.ok(existsSync(path.join(REPO, file)), `${file} gone — delete it from HAND_HTML_TABLE_DEBT`);
+      assert.ok(hits.includes(file), `${file} no longer paints a <table> — delete the debt row`);
+      assert.ok(why.length > 40, `${file}: name the fork, not just the file`);
+    }
+    for (const file of HAND_HTML_TABLE_ALLOW) {
+      assert.ok(existsSync(path.join(REPO, file)), `${file} gone — delete it from HAND_HTML_TABLE_ALLOW`);
+      assert.ok(hits.includes(file), `${file} no longer paints a <table> — delete the allow row`);
+    }
+  });
+
+  it('GridColumnKey sortable lists do not revive the Amount track', () => {
+    // Only the array literal — bookmark aliases like TRACK_SORT_FACTS
+    // `amount: 'price'` stay (URL `?sort=amount`).
+    const offenders = SOURCES.filter((file) =>
+      /GRID_SORTABLE_KEYS(?:\s*:\s*readonly \w+\[\])?\s*=\s*\[(?:(?!\])[\s\S])*'amount'/.test(
+        code(file),
+      ),
+    ).sort();
+    assert.deepEqual(
+      offenders,
+      [],
+      `these still list amount as a clickable column key after the Amount track died:\n${offenders.join('\n')}`,
+    );
+  });
+
   it('no mount filters amount off the skeleton — COMPOUND_TRACKS has none', () => {
     // The 2026-09-04 Orders-only `c.key !== 'amount'` drop is the hole that
     // left Unbox with a green Amount column. Settings/admin copies of that
@@ -206,6 +329,15 @@ describe('one table engine — the descriptor carries data, not behavior', () =>
       [],
       `these still drop an Amount track the engine no longer has:\n${offenders.join('\n')}`,
     );
+  });
+
+  it('the compound cell does not paint an Amount track', () => {
+    const cell = read('src/components/tables/compound/CompoundGridCell.tsx');
+    const bodies = read('src/components/tables/compound/CompoundCells.tsx');
+    assert.doesNotMatch(cell, /CompoundAmount/);
+    assert.doesNotMatch(cell, /key === ['"]amount['"]/);
+    assert.doesNotMatch(cell, /case ['"]amount['"]/);
+    assert.doesNotMatch(bodies, /export function CompoundAmount/);
   });
 
   it('the compound view model stays strings and enums — no JSX crosses the seam', () => {

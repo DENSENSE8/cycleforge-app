@@ -43,6 +43,10 @@ export const SLOT_TABLE_ENGINE = {
   ledgerGridColumnHeader: 'src/design-system/components/grid/LedgerGridColumnHeader.tsx',
   lineQty: 'src/lib/tables/slot-table-line-qty.ts',
   lineMoney: 'src/lib/tables/slot-table-line-money.ts',
+  sessionLaws: 'src/lib/tables/slot-table-session-laws.ts',
+  compoundRowModel: 'src/components/tables/compound/compound-row-model.ts',
+  incomingCatalog: 'src/lib/tables/field-catalog/incoming.ts',
+  receivingCatalog: 'src/lib/tables/field-catalog/receiving.ts',
   ordersLayout: 'src/lib/dashboard-order-row-layout.ts',
   ordersQueueRow: 'src/components/dashboard/orders-queue/OrdersQueueTableRow.tsx',
   compoundColumns: 'src/components/tables/compound/compound-columns.ts',
@@ -204,6 +208,10 @@ export const SLOT_TABLE_ENGINE_CONTRACT = {
   lineMoneyEnsure: /ensureLineMoneySubtitle/,
   compoundSkeletonNoActions: /A ⋮ `actions` track is/,
   compoundSkeletonNoAmount: /A money `amount`/,
+  datesGridLabelDates: /gridLabel:\s*'Dates'/,
+  datesDueHover: /COMPOUND_DATES_DUE_HOVER = 'Due date'/,
+  incomingPriceField: /id:\s*'incoming\.price'/,
+  receivingPriceField: /id:\s*'receiving\.price'/,
 } as const;
 
 export type SlotTableEngineContractName = keyof typeof SLOT_TABLE_ENGINE_CONTRACT;
@@ -238,7 +246,14 @@ export function slotTableEngineContractSource(name: SlotTableEngineContractName)
       return SLOT_TABLE_ENGINE.lineMoney;
     case 'compoundSkeletonNoActions':
     case 'compoundSkeletonNoAmount':
+    case 'datesGridLabelDates':
       return SLOT_TABLE_ENGINE.compoundColumns;
+    case 'datesDueHover':
+      return SLOT_TABLE_ENGINE.compoundRowModel;
+    case 'incomingPriceField':
+      return SLOT_TABLE_ENGINE.incomingCatalog;
+    case 'receivingPriceField':
+      return SLOT_TABLE_ENGINE.receivingCatalog;
     default:
       return SLOT_TABLE_ENGINE.compoundCells;
   }
@@ -305,6 +320,7 @@ export function slotTableEvalManifest(): SlotTableEvalManifest {
       SLOT_TABLE_COHORT_TRIPWIRE,
       'src/lib/tables/slot-table-line-qty.test.ts',
       'src/lib/tables/slot-table-line-money.test.ts',
+      'src/lib/tables/slot-table-session-laws.test.ts',
       'src/lib/tables/slot-table-discover.test.ts',
       // The engine law around the grid — who may declare a verb, and whether
       // the descriptor has grown a behaviour hook. Same cohort because it is
@@ -322,7 +338,9 @@ export const SLOT_TABLE_PAINT_LAW = {
   listingChip:
     'openHref subtitle: ExternalLink glyph (never the word Listing, never item # / host path as face); live text-text-info, missing text-text-faint same box; copy = raw item_number.',
   shipBy:
-    'STATUS delay line: DateRangePickerField variant=compact when editable (no X, no year, no presets/Apply, click commits one day). Always a face. Write through useOptimisticMutation (useOrderAssignment). DATES glyphs: Hash on order date, CalendarClock on due date; one glyph, ink follows the age face (no swap when late). Hover always names the line (`Order date` / `Due date`) via HoverTooltip so MorphCursorLayer carries the chip; clickCursor on the compact trigger. Form compact mounts keep the default calendar.',
+    'STATUS delay line: DateRangePickerField variant=compact when editable (no X, no year, no presets/Apply, click commits one day). Always a face. Write through useOptimisticMutation (useOrderAssignment). Form compact mounts keep the default calendar.',
+  dates:
+    'Dates COLUMN header stays Dates on every table (`COMPOUND_TRACKS`). Do not rename it per page. Top line is the start fact (Hash / Order date); bottom line is the deadline (CalendarClock / Due date). One glyph each; ink follows the age face — no swap when late. Hover always names the line via compoundDatesHoverLabel so MorphCursorLayer carries the chip. CSV/import may still say Ship by date. Operator 2026-09-05.',
   filter:
     'Toolbar funnel: DataTableFilterMenu always mounts beside SearchField (DATA_TABLE_FILTER_IDLE when a family has no facets). Job verbs (`actions`) paint immediately after the funnel — search · filter · actions · sort · views · date. Never FilterRefinementBar, never a hunt-tile strip, never a funnel inside SearchField. Unbox Queue/Viewed/History share ?ukpi= with KPI tiles via useReceivingTableChrome.',
   headerSort:

@@ -57,7 +57,7 @@ export function useKioskDevicesSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, fields } = useKioskDevicesTableLayout();
+  const { effectiveLayout, subtitleFieldIds, fields } = useKioskDevicesTableLayout();
   const columns = useMemo(() => kioskDevicesCompoundColumnsFor(effectiveLayout), [effectiveLayout]);
 
   const onSortChange = useCallback((key: KioskDevicesGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -77,6 +77,7 @@ export function useKioskDevicesSpreadsheet({
     rows,
     getRowId: (row) => String(row.id),
     adapter: kioskDeviceCompoundView,
+    subtitleFieldIds,
     resolve: resolveKioskDevicesSlotValue,
     sortFactFor: kioskDevicesSortFactFor,
     capabilities: KIOSKDEVICES_GRID_CAPABILITIES,

@@ -4,49 +4,33 @@ $ node scripts/verify.mjs --fast
 
 ▶ Lint
 
-/home/michaelgarisek/Projects/cycleforge-app/src/components/sidebar/master-nav/SidebarNavList.tsx
-  116:46  warning  'transform' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+/home/michaelgarisek/Projects/cycleforge-app/src/app/settings/staff/StaffTable.tsx
+   47:10  warning  'fmtLogin' is defined but never used. Allowed unused vars must match /^_/u                   unused-imports/no-unused-vars
+   55:10  warning  'busy' is assigned a value but never used. Allowed unused vars must match /^_/u              unused-imports/no-unused-vars
+   89:9   warning  'updateAuthPolicy' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+  126:9   warning  'isSearching' is assigned a value but never used. Allowed unused vars must match /^_/u       unused-imports/no-unused-vars
+  181:10  warning  'StatusPill' is defined but never used. Allowed unused vars must match /^_/u                 unused-imports/no-unused-vars
+  198:10  warning  'AuthPolicyCell' is defined but never used. Allowed unused vars must match /^_/u             unused-imports/no-unused-vars
 
-✖ 1 problem (0 errors, 1 warning)
+✖ 6 problems (0 errors, 6 warnings)
 
 
-▶ Typecheck ✗
-src/components/admin/sourcing/compatibility/compatibility-grid-layout.ts(14,8): error TS2307: Cannot find module '@/lib/tables/field-catalog/compatibility' or its corresponding type declarations.
-src/components/admin/sourcing/compatibility/useCompatibilitySpreadsheet.ts(23,47): error TS2307: Cannot find module '@/lib/tables/field-catalog/compatibility-resolve' or its corresponding type declarations.
-src/components/admin/sourcing/compatibility/useCompatibilitySpreadsheet.ts(24,43): error TS2307: Cannot find module '@/lib/sourcing/compatibility-edge-row-adapter' or its corresponding type declarations.
-src/components/admin/sourcing/compatibility/useCompatibilityTableLayout.ts(16,8): error TS2307: Cannot find module '@/lib/tables/field-catalog/compatibility' or its corresponding type declarations.
-src/components/settings/ai-usage/ai-usage-grid-layout.ts(14,8): error TS2307: Cannot find module '@/lib/tables/field-catalog/ai-usage' or its corresponding type declarations.
-src/components/settings/ai-usage/useAiUsageSpreadsheet.ts(23,41): error TS2307: Cannot find module '@/lib/tables/field-catalog/ai-usage-resolve' or its corresponding type declarations.
-src/components/settings/ai-usage/useAiUsageSpreadsheet.ts(24,37): error TS2307: Cannot find module '@/lib/ai/ai-usage-row-adapter' or its corresponding type declarations.
-src/components/settings/ai-usage/useAiUsageTableLayout.ts(16,8): error TS2307: Cannot find module '@/lib/tables/field-catalog/ai-usage' or its corresponding type declarations.
-src/components/settings/kiosk-devices/kiosk-devices-grid-layout.ts(14,8): error TS2307: Cannot find module '@/lib/tables/field-catalog/kiosk-devices' or its corresponding type declarations.
-src/components/settings/kiosk-devices/useKioskDevicesSpreadsheet.ts(23,46): error TS2307: Cannot find module '@/lib/tables/field-catalog/kiosk-devices-resolve' or its corresponding type declarations.
-src/components/settings/kiosk-devices/useKioskDevicesSpreadsheet.ts(24,41): error TS2307: Cannot find module '@/lib/kiosk/kiosk-device-row-adapter' or its corresponding type declarations.
-src/components/settings/kiosk-devices/useKioskDevicesTableLayout.ts(16,8): error TS2307: Cannot find module '@/lib/tables/field-catalog/kiosk-devices' or its corresponding type declarations.
-src/components/settings/sessions/auth-sessions-grid-layout.ts(14,8): error TS2307: Cannot find module '@/lib/tables/field-catalog/auth-sessions' or its corresponding type declarations.
-src/components/settings/sessions/useAuthSessionsSpreadsheet.ts(23,46): error TS2307: Cannot find module '@/lib/tables/field-catalog/auth-sessions-resolve' or its corresponding type declarations.
-src/components/settings/sessions/useAuthSessionsSpreadsheet.ts(24,41): error TS2307: Cannot find module '@/lib/auth/auth-session-row-adapter' or its corresponding type declarations.
-src/components/settings/sessions/useAuthSessionsTableLayout.ts(16,8): error TS2307: Cannot find module '@/lib/tables/field-catalog/auth-sessions' or its corresponding type declarations.
-src/components/settings/staff-table/staff-directory-grid-layout.ts(14,8): error TS2307: Cannot find module '@/lib/tables/field-catalog/staff-directory' or its corresponding type declarations.
-src/components/settings/staff-table/useStaffDirectorySpreadsheet.ts(23,48): error TS2307: Cannot find module '@/lib/tables/field-catalog/staff-directory-resolve' or its corresponding type declarations.
-src/components/settings/staff-table/useStaffDirectorySpreadsheet.ts(24,44): error TS2307: Cannot find module '@/lib/staff/staff-directory-row-adapter' or its corresponding type declarations.
-src/components/settings/staff-table/useStaffDirectoryTableLayout.ts(16,8): error TS2307: Cannot find module '@/lib/tables/field-catalog/staff-directory' or its corresponding type declarations.
+▶ Typecheck
 
 ────────────────────────────────────────────────────
   verify — inner loop (lint + typecheck)
 ────────────────────────────────────────────────────
   ✓ Lint
-  ✗ Typecheck
+  ✓ Typecheck
 ────────────────────────────────────────────────────
 
-verify FAILED — fix lint/typecheck, then re-run. This is not CI.
+verify PASSED (fast) — inner loop only; not CI.
 
-[ELIFECYCLE] Command failed with exit code 1.
 {
-  "ok": false,
+  "ok": true,
   "command": "pnpm --config.verify-deps-before-run=false run verify:fast",
-  "exitCode": 1,
-  "durationMs": 20259,
+  "exitCode": 0,
+  "durationMs": 13542,
   "stamp": "/home/michaelgarisek/Projects/cycleforge-app/.garisek/eval-session.json",
   "cursorMirror": "/home/michaelgarisek/Projects/cycleforge-app/.cursor/eval-session.json"
 }

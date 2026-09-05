@@ -126,6 +126,10 @@ export function slotTableRefuseSkipFiles(): string[] {
     'src/lib/tables/slot-table-discover.test.ts',
     'src/lib/eval/prompt-router.ts',
     'src/lib/eval/prompt-router.test.ts',
+    'src/lib/tables/slot-table-session-laws.ts',
+    'src/lib/tables/slot-table-session-laws.test.ts',
+    'src/lib/tables/table-engine-law.ts',
+    'src/lib/tables/table-engine-law.test.ts',
   ]);
 }
 
@@ -200,6 +204,16 @@ const SLOT_TABLE_REFUSE: RefuseRule[] = [
     why: SLOT_TABLE_PAINT_LAW.lineMoney,
     diffPattern: /'amount',\s*'_fill'/,
   },
+  {
+    id: 'slot-table.dates-column-rename',
+    why: SLOT_TABLE_PAINT_LAW.dates,
+    diffPattern: /gridLabel:\s*['"](?:Ship by|Due date)['"]/,
+  },
+  {
+    id: 'slot-table.orders-only-amount-drop',
+    why: SLOT_TABLE_PAINT_LAW.lineMoney,
+    diffPattern: /key\s*!==\s*['"]amount['"]/,
+  },
 ];
 
 const COMPOSER_REFUSE: RefuseRule[] = [
@@ -250,6 +264,9 @@ function slotTableRoute(): InternalRoute {
       'ellipsis',
       'amount',
       'price',
+      'due',
+      'dates',
+      'inbound',
     ],
     evalCommand: 'pnpm run eval:cohort slot-table',
     graphSymbols: [

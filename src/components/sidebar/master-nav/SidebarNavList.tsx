@@ -113,7 +113,7 @@ function DraggableTitleRow({
   onMouseEnter?: () => void;
   draggable: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+  const { attributes, listeners, setNodeRef, transform: _transform, isDragging } = useDraggable({
     id: navPinDragId(id),
     data: { type: 'nav', href, label, iconKey: id } satisfies NavPinDragData,
     disabled: !draggable,

@@ -5,10 +5,10 @@
  * checkboxes + contextual action bar). Both the Receiving dashboard's History /
  * Incoming list and the Tech dashboard's testing browse list select
  * `ReceivingLineRow`s with the IDENTICAL action set — Copy / Print / Create
- * support ticket / Send to staff / Send to phone — and the same single-line
- * claim modal. They differ only in the selection scope and the per-row copy
- * format. Selection is always on while `active`; this hook owns the clear +
- * bulk actions so neither dashboard hand-rolls its own copy.
+ * support ticket / Assign to me / Assign to… / Send to phone — and the same
+ * single-line claim modal. They differ only in the selection scope and the
+ * per-row copy format. Selection is always on while `active`; this hook owns
+ * the clear + bulk actions so neither dashboard hand-rolls its own copy.
  *
  * **Always-on select is the GUTTER, not the row.** `selectMode` means the
  * left-gutter checkboxes are live — the same contract
@@ -24,14 +24,29 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { emitToggleAll } from '@/lib/selection/table-selection';
-import type { SelectionAction } from '@/lib/selection/selection-actions';
+import {
+  offeredSelectionActions,
+  type SelectionAction,
+} from '@/lib/selection/selection-actions';
 import { printProductLabel, printProductLabels } from '@/lib/print/printProductLabel';
-import { Copy, Printer, TicketHelp, User, Smartphone } from '@/components/Icons';
+import { Copy, Printer, TicketHelp, User, Check, Smartphone } from '@/components/Icons';
 import { toast } from '@/lib/toast';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { useAuth } from '@/contexts/AuthContext';
+import { assignReceivingLines } from '@/lib/receiving/assign-receiving-lines';
+import { RECEIVING_FIELD_CATALOG } from '@/lib/tables/field-catalog/receiving';
+import { openReceivingAssignPanel } from '@/lib/tables/receiving-assign-panel-store';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
+
+/**
+ * Facts every receiving-line mount can RESOLVE — the whole family catalog, not
+ * the product default's empty band. Assign verbs write `receiving.assigned_tech`
+ * without painting a Tech column (same split as orders scan-out).
+ */
+const RECEIVING_RESOLVABLE_FIELD_IDS = RECEIVING_FIELD_CATALOG.map((f) => f.id);
 
 interface UseReceivingLineBulkSelectionArgs {
   /** table-selection scope shared by the table and the action bar. */
@@ -62,6 +77,8 @@ export function useReceivingLineBulkSelection({
   const selectMode = active;
   const selectedRows = useTableSelection<ReceivingLineRow>(scope, (r) => r.id);
   const [claimRow, setClaimRow] = useState<ReceivingLineRow | null>(null);
+  const queryClient = useQueryClient();
+  const staffId = useAuth().user?.staffId ?? 0;
 
   const exitSelectMode = useCallback(() => {
     emitToggleAll(scope, 'none');
@@ -188,7 +205,7 @@ export function useReceivingLineBulkSelection({
     }
   }, []);
 
-  const bulkActions = useMemo<SelectionAction<ReceivingLineRow>[]>(
+  const verbCatalog = useMemo<SelectionAction<ReceivingLineRow>[]>(
     () => [
       {
         key: 'copy',
@@ -215,13 +232,30 @@ export function useReceivingLineBulkSelection({
         },
       },
       {
-        key: 'staff',
-        label: 'Send to staff',
+        key: 'assign-me',
+        label: 'Assign to me',
+        icon: <Check className="h-4 w-4" />,
+        tone: 'blue',
+        writesField: 'receiving.assigned_tech',
+        enabled: () => staffId > 0,
+        disabledReason: 'Sign in as a technician to claim lines',
+        run: (rows) => {
+          if (!(staffId > 0)) return;
+          void assignReceivingLines({
+            rows,
+            techId: staffId,
+            queryClient,
+            selectionScope: scope,
+          });
+        },
+      },
+      {
+        key: 'assign',
+        label: 'Assign to…',
         icon: <User className="h-4 w-4" />,
-        enabled: () => false,
-        disabledReason: 'Coming next — needs assignment backend',
+        writesField: 'receiving.assigned_tech',
         run: () => {
-          /* disabled until the backend lands */
+          openReceivingAssignPanel();
         },
       },
       {
@@ -235,7 +269,12 @@ export function useReceivingLineBulkSelection({
         },
       },
     ],
-    [handleCopyDetails, handlePrintLabels],
+    [handleCopyDetails, handlePrintLabels, queryClient, scope, staffId],
+  );
+
+  const bulkActions = useMemo(
+    () => offeredSelectionActions(verbCatalog, RECEIVING_RESOLVABLE_FIELD_IDS),
+    [verbCatalog],
   );
 
   return {

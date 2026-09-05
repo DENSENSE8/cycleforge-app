@@ -18,29 +18,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/design-system/components/Dialog';
-import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { DataTable } from '@/components/tables/DataTable';
+import { useStaffDirectorySpreadsheet } from '@/components/settings/staff-table/useStaffDirectorySpreadsheet';
+import type { CompoundRowAction } from '@/components/tables/compound/compound-row-model';
+import type { StaffDirectoryRow } from '@/lib/staff/staff-directory-row';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 
-interface StaffRow {
-  id: number;
-  name: string;
-  role: string;
-  status: string;
-  active: boolean;
-  has_pin: boolean;
-  last_login_at: string | null;
-  default_home_path: string | null;
-  color_hex: string;
-  // WS6.1 per-staff auth policy.
-  auth_method: string;               // 'pin' | 'password'
-  requires_sensitive_stepup: boolean;
-}
+/*
+  The local `StaffDirectoryRow` interface is gone — the shape is `StaffDirectoryRow`, the
+  family's, shared with the catalog, the resolver and the adapter. A row type
+  declared next to a display is how two surfaces of the same entity drift.
+*/
 
 interface StaffTableProps {
-  initialStaff: StaffRow[];
+  initialStaff: StaffDirectoryRow[];
 }
 
 // Initial role for the invite modal. Editing existing staff happens in
@@ -50,13 +43,9 @@ const ROLE_OPTIONS: ReadonlyArray<string> = [
   'inventory_manager', 'sales', 'viewer',
 ];
 
-function fmtLogin(iso: string | null): string {
-  if (!iso) return 'Never';
-  return new Date(iso).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' });
-}
 
 export function StaffTable({ initialStaff }: StaffTableProps) {
-  const [staff, setStaff] = useState<StaffRow[]>(initialStaff);
+  const [staff, setStaff] = useState<StaffDirectoryRow[]>(initialStaff);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [busy, setBusy] = useState<number | 'invite' | null>(null);
   const [filter, setFilter] = useState('');
@@ -129,93 +118,69 @@ export function StaffTable({ initialStaff }: StaffTableProps) {
     );
   }, [staff, filter]);
 
-  const isSearching = filter.trim().length > 0;
 
-  const columns: AdminTableColumn<StaffRow>[] = [
-    {
-      key: 'name',
-      header: 'Name',
-      type: 'text',
-      cell: (s) => (
-        <div className={cn('flex items-center gap-2.5', !s.active && 'text-text-faint')}>
-          <span className="inline-block h-2 w-2 rounded-full" style={{ background: s.color_hex }} />
-          <span className="font-medium">{s.name}</span>
-        </div>
-      ),
+  /*
+    Staff VERBS, resolved per row.
+
+    Deactivate was a trailing ACTIONS column of buttons — a per-family cell, and
+    the reason this page owned a second table engine. Direction comes from row
+    STATE (an already-inactive teammate is not offered deactivation), never from
+    the route, which is the same rule that forbids a per-lane key list.
+  */
+  /*
+    Staff VERBS, resolved per row.
+
+    All three were CELLS before — Deactivate in a trailing actions column, and
+    the WS6.1 auth policy as a `<select>` plus a checkbox living inside a data
+    cell (`AuthPolicyCell`). A control inside a data cell is a per-family cell by
+    another name, and it is the reason this page owned a second table engine.
+
+    The two policy toggles are REVERSIBLE VERBS, which law §4 says are one verb
+    with two directions, not two verbs: the label reads off row STATE, so the
+    same declaration serves both directions and there is no route branch. Same
+    for deactivation — an already-inactive teammate is simply not offered it.
+
+    `/api/admin/staff/update` still answers `STEP_UP_REQUIRED`; that path is
+    untouched, and `updateAuthPolicy` already surfaces it as a toast.
+  */
+  const rowActions = useCallback(
+    (row: StaffDirectoryRow): readonly CompoundRowAction[] => {
+      const usesPassword = row.auth_method === 'password';
+      const verbs: CompoundRowAction[] = [
+        {
+          key: 'auth-method',
+          label: usesPassword ? 'Switch to PIN sign-in' : 'Switch to password sign-in',
+          onSelect: () =>
+            void updateAuthPolicy(row.id, { authMethod: usesPassword ? 'pin' : 'password' }),
+          disabled: busy === row.id,
+        },
+        {
+          key: 'sensitive-stepup',
+          label: row.requires_sensitive_stepup
+            ? 'Drop the sensitive step-up wall'
+            : 'Require step-up for sensitive screens',
+          onSelect: () =>
+            void updateAuthPolicy(row.id, {
+              requiresSensitiveStepUp: !row.requires_sensitive_stepup,
+            }),
+          disabled: busy === row.id,
+        },
+      ];
+      if (row.active) {
+        verbs.push({
+          key: 'deactivate',
+          label: 'Deactivate',
+          tone: 'danger',
+          onSelect: () => void deactivate(row.id, row.name),
+          disabled: busy === row.id,
+        });
+      }
+      return verbs;
     },
-    {
-      key: 'role',
-      header: 'Role',
-      type: 'tag',
-      cell: (s) => (
-        // Role is derived from staff_roles[0]. To edit, jump to the access
-        // detail page where the Roles card is the authoritative editor.
-        <HoverTooltip label="Edit roles in Settings → Access" asChild>
-          <a
-            href={`/settings/access?staffId=${s.id}`}
-            className={cn(
-              'inline-flex items-center gap-1 rounded-lg border border-transparent px-2 py-0.5 text-role-caption font-medium text-text-muted hover:border-border-soft hover:bg-surface-hover hover:text-text-default',
-              !s.active && 'text-text-faint',
-            )}
-          >
-            {s.role}
-            <span className="text-text-faint">›</span>
-          </a>
-        </HoverTooltip>
-      ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      type: 'tag',
-      cell: (s) => <StatusPill status={s.status} active={s.active} />,
-    },
-    {
-      key: 'pin',
-      header: 'PIN',
-      type: 'tag',
-      cell: (s) => (
-        <span className={cn('text-role-caption text-text-soft', !s.active && 'text-text-faint')}>
-          {s.has_pin ? 'Set' : '—'}
-        </span>
-      ),
-    },
-    {
-      key: 'auth',
-      header: 'Auth',
-      type: 'text',
-      cell: (s) => (
-        <AuthPolicyCell row={s} disabled={busy === s.id} onChange={updateAuthPolicy} />
-      ),
-    },
-    {
-      key: 'last_login',
-      header: 'Last login',
-      type: 'date',
-      cell: (s) => (
-        <span className={cn('text-role-caption text-text-soft', !s.active && 'text-text-faint')}>
-          {fmtLogin(s.last_login_at)}
-        </span>
-      ),
-    },
-    {
-      key: 'actions',
-      header: '',
-      align: 'right',
-      cell: (s) =>
-        s.active ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => deactivate(s.id, s.name)}
-            disabled={busy === s.id}
-            className="text-text-soft hover:text-red-600"
-          >
-            Deactivate
-          </Button>
-        ) : null,
-    },
-  ];
+    [deactivate, updateAuthPolicy, busy],
+  );
+
+  const sheet = useStaffDirectorySpreadsheet({ rows: filtered, rowActions });
 
   return (
     <>
@@ -231,14 +196,7 @@ export function StaffTable({ initialStaff }: StaffTableProps) {
         </Button>
       </div>
 
-      <AdminTable
-        columns={columns}
-        rows={filtered}
-        rowKey={(s) => s.id}
-        emptyMessage="No teammates yet."
-        searchEmptyMessage="No teammates match."
-        isSearching={isSearching}
-      />
+      <DataTable {...sheet} totalCount={filtered.length} />
 
       <InviteModal
         open={inviteOpen}
@@ -252,60 +210,9 @@ export function StaffTable({ initialStaff }: StaffTableProps) {
   );
 }
 
-function StatusPill({ status, active }: { status: string; active: boolean }) {
-  const effective = active ? status : 'deactivated';
-  const styles: Record<string, string> = {
-    active:       'bg-emerald-50 text-emerald-700',
-    invited:      'bg-amber-50 text-amber-700',
-    deactivated:  'bg-surface-sunken text-text-soft',
-  };
-  const css = styles[effective] ?? 'bg-surface-canvas text-text-soft';
-  return (
-    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-role-micro ${css}`}>
-      {effective}
-    </span>
-  );
-}
 
 // WS6.1 per-staff auth policy control: sign-in method (PIN vs password) plus the
 // sensitive-information step-up wall. Both persist via /api/admin/staff/update.
-function AuthPolicyCell({
-  row,
-  disabled,
-  onChange,
-}: {
-  row: StaffRow;
-  disabled: boolean;
-  onChange: (id: number, patch: { authMethod?: 'pin' | 'password'; requiresSensitiveStepUp?: boolean }) => void;
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <HoverTooltip label="Sign-in method for this teammate" asChild>
-        <select
-          value={row.auth_method === 'password' ? 'password' : 'pin'}
-          disabled={disabled}
-          onChange={(e) => onChange(row.id, { authMethod: e.target.value as 'pin' | 'password' })}
-          className={cn("rounded-lg border border-border-soft bg-surface-card px-2 py-1 text-role-caption text-text-muted disabled:opacity-50", focusRing("field", "neutral"))}
-        >
-          <option value="pin">PIN</option>
-          <option value="password">Password</option>
-        </select>
-      </HoverTooltip>
-      <HoverTooltip label="Require password step-up before sensitive screens" asChild>
-        <label className="inline-flex items-center gap-1 text-role-caption text-text-soft">
-          <input
-            type="checkbox"
-            checked={row.requires_sensitive_stepup}
-            disabled={disabled}
-            onChange={(e) => onChange(row.id, { requiresSensitiveStepUp: e.target.checked })}
-            className={cn("h-3.5 w-3.5 rounded border-border-default text-text-muted disabled:opacity-50", focusRing("control", "neutral"))}
-          />
-          Wall
-        </label>
-      </HoverTooltip>
-    </div>
-  );
-}
 
 interface InviteModalProps {
   open: boolean;

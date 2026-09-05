@@ -9,6 +9,7 @@ import {
   deriveReceiveState,
   leftoverRemaining,
   lineOsdMouthHeadline,
+  receiveStateHeatClass,
   shortRemainingConfirmCopy,
 } from './receive-state';
 
@@ -67,4 +68,15 @@ test('search / pack / shipped hosts omit receiveState', () => {
   assert.doesNotMatch(searchOrder, /receiveState/);
   assert.doesNotMatch(searchUnit, /receiveState/);
   assert.doesNotMatch(searchReceiving, /receiveState/);
+});
+
+test('Open / Partial / exception heat; Received recedes; omit is no heat', () => {
+  assert.equal(receiveStateHeatClass(undefined), null);
+  assert.equal(receiveStateHeatClass('received'), null);
+  assert.equal(receiveStateHeatClass('open'), 'bg-surface-station-row-hover');
+  assert.equal(receiveStateHeatClass('partial'), 'bg-surface-warning');
+  assert.equal(receiveStateHeatClass('over'), 'bg-surface-warning');
+  assert.equal(receiveStateHeatClass('short'), 'bg-surface-danger');
+  assert.equal(receiveStateHeatClass('damaged'), 'bg-surface-danger');
+  assert.equal(receiveStateHeatClass('wrong_item'), 'bg-surface-danger');
 });

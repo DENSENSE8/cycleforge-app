@@ -25,7 +25,6 @@ export type AuditLogGridColumnKey =
   | 'item'
   | 'dates'
   | 'state'
-  | 'amount'
   | '_fill'
   | `status:${number}`
   | `subtitle:${number}`;

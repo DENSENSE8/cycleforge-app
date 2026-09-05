@@ -37,7 +37,6 @@ export type InventoryEventsGridColumnKey =
   | 'item'
   | 'dates'
   | 'state'
-  | 'amount'
   | '_fill'
   /** Materialized slot tracks — keys are slot indices, never field ids. */
   | `status:${number}`

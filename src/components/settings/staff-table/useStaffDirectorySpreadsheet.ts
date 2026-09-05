@@ -57,7 +57,7 @@ export function useStaffDirectorySpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, fields } = useStaffDirectoryTableLayout();
+  const { effectiveLayout, subtitleFieldIds, fields } = useStaffDirectoryTableLayout();
   const columns = useMemo(() => staffDirectoryCompoundColumnsFor(effectiveLayout), [effectiveLayout]);
 
   const onSortChange = useCallback((key: StaffDirectoryGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -77,6 +77,7 @@ export function useStaffDirectorySpreadsheet({
     rows,
     getRowId: (row) => String(row.id),
     adapter: staffDirectoryCompoundView,
+    subtitleFieldIds,
     resolve: resolveStaffDirectorySlotValue,
     sortFactFor: staffDirectorySortFactFor,
     capabilities: STAFFDIRECTORY_GRID_CAPABILITIES,

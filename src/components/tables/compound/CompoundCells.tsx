@@ -92,7 +92,6 @@ import {
   formatCompoundDelayAgeFace,
   formatCompoundStageStampFace,
   formatCompoundStageStepLine,
-  COMPOUND_MONEY_TONE_CLASS,
   type CompoundOrderedAtEdit,
   type CompoundRowAction,
   type CompoundRowView,
@@ -1485,43 +1484,6 @@ function compoundSlotPrimary(
     <HoverTooltip label={text} asChild>
       <CompoundLine>{text}</CompoundLine>
     </HoverTooltip>
-  );
-}
-
-/**
- * AMOUNT column — the money, end-aligned, over the arithmetic behind it.
- *
- * End-aligned and `tabular-nums` because that is what a money column is FOR: a
- * digit lines up under a digit, so an operator scanning a cart or a queue can
- * see which row is the big one without reading any of them. Left-aligned
- * currency in a ragged column defeats the only reason to have the column.
- *
- * A CREDIT (a trade-in, a refund) paints differently as well as carrying its
- * minus sign. One character of difference at the head of a tabular figure is
- * exactly the thing a tired eye slides over, and mistaking a −$120 trade-in for
- * a $120 sale is the expensive direction to be wrong in.
- *
- * `null` renders an empty track. A checklist item has no money, and an empty
- * cell is the honest answer — a `$0.00` would be a number nobody entered.
- */
-export function CompoundAmount({ view }: { view: CompoundRowView }) {
-  return (
-    <CompoundCell
-      align="end"
-      primary={
-        view.amount ? (
-          <CompoundLine
-            mono
-            className={COMPOUND_MONEY_TONE_CLASS}
-          >
-            {view.amount}
-          </CompoundLine>
-        ) : null
-      }
-      secondary={
-        view.amountNote ? <CompoundLine mono>{view.amountNote}</CompoundLine> : null
-      }
-    />
   );
 }
 

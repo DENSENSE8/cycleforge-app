@@ -46,15 +46,9 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
     testingSelectMode,
     testingClaimRow,
     setTestingClaimRow,
-    testingAssignRows,
-    setTestingAssignRows,
-    assignTestingLines,
     exitTestingSelect,
     openTestingLine,
-  } = useTechTestingSelection(
-    browseActive,
-    Number.isFinite(Number(techId)) && Number(techId) > 0 ? Number(techId) : null,
-  );
+  } = useTechTestingSelection(browseActive);
 
   const { activeOrderPane, setActiveOrderPane, previewOrder, setPreviewOrder } = useTechOrderPanes();
 
@@ -64,9 +58,10 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
     loadingRepair,
   } = useTechDetailOverlays();
 
-  // Suppress batch rail while claim / assign picker owns the edge (line open
-  // already gates via browseActive → publish false inside the selection hook).
-  const railEnabled = browseActive && testingClaimRow == null && testingAssignRows == null;
+  // Suppress batch rail while the claim modal owns the edge (line open already
+  // gates via browseActive → publish false inside the selection hook). Assign
+  // to… opens AssigneeCombobox inside this shell — do not unmount it.
+  const railEnabled = browseActive && testingClaimRow == null;
 
   return (
     <div className="relative flex h-full w-full flex-col">
@@ -112,11 +107,6 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
         onClaimFiled={() => {
           setTestingClaimRow(null);
           exitTestingSelect();
-        }}
-        testingAssignRows={testingAssignRows}
-        onCloseAssign={() => setTestingAssignRows(null)}
-        onAssignPick={(assigneeId) => {
-          if (testingAssignRows) void assignTestingLines(testingAssignRows, assigneeId);
         }}
       />
     </div>

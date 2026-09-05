@@ -18,7 +18,7 @@ import type { LedgerGridColumnModel } from '@/design-system/components/grid/grid
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 
 export type StaffDirectoryGridColumnKey =
-  | 'select' | 'fulfillment' | 'thumb' | 'item' | 'dates' | 'state' | 'amount' | '_fill'
+  | 'select' | 'fulfillment' | 'thumb' | 'item' | 'dates' | 'state' | '_fill'
   | `status:${number}`
   | `subtitle:${number}`;
 

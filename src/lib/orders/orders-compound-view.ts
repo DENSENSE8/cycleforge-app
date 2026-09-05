@@ -20,7 +20,6 @@ import {
 import { ordersNextStep } from '@/lib/orders/orders-next-step';
 import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
 import type { ShippedOrder } from '@/types/orders';
-import { formatCurrency } from '@/utils/_number';
 import {
   formatDateKeyMedium,
   formatDateKeyShort,
@@ -366,17 +365,9 @@ export function ordersCompoundView(
     // the same signals `resolveRowStatus` reads for the pill above it, so the
     // two lines of the status cell can never disagree about the stage.
     nextStep: ordersNextStep(record as Parameters<typeof ordersNextStep>[0]),
-    // What the order sold for. `sale_amount` arrives as a string or a number
-    // depending on the query path, and an order with no recorded sale renders an
-    // empty cell rather than a `$0.00` nobody charged.
-    amount: (() => {
-      // Absent is not zero — the same rule the subtitle money slot follows
-      // (`moneyText`). `Number(null)` is 0, and a `$0.00` nobody charged is
-      // worse than an empty track.
-      if (record.sale_amount == null || String(record.sale_amount).trim() === '') return null;
-      const sale = Number(record.sale_amount);
-      return Number.isFinite(sale) ? formatCurrency(sale) : null;
-    })(),
+    // Line money is a subtitle (`orders.amount` via ensureLineMoneySubtitle).
+    // Do not dual-write sale_amount onto a dead Amount track.
+    amount: null,
     slots: parts.slots,
     subtitleParts: parts.subtitleParts,
   };

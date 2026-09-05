@@ -4,8 +4,8 @@
  * Counts resolve as plain integers with thousands separators: a token count is
  * read for its MAGNITUDE, and `1843201` is harder to size at a glance than
  * `1,843,201`. Cost is formatted here rather than in the adapter because it is a
- * bound FACT (an org can put it in a status slot as well as the amount track),
- * and a fact must read the same wherever it is bound.
+ * bound FACT (under the title today), and a fact must read the same wherever
+ * it is bound.
  */
 
 import type { CompoundSlotValue } from '@/components/tables/compound/compound-row-model';

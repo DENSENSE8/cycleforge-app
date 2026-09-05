@@ -57,7 +57,7 @@ export function useCompatibilitySpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, fields } = useCompatibilityTableLayout();
+  const { effectiveLayout, subtitleFieldIds, fields } = useCompatibilityTableLayout();
   const columns = useMemo(() => compatibilityCompoundColumnsFor(effectiveLayout), [effectiveLayout]);
 
   const onSortChange = useCallback((key: CompatibilityGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -77,6 +77,7 @@ export function useCompatibilitySpreadsheet({
     rows,
     getRowId: (row) => String(row.id),
     adapter: compatibilityCompoundView,
+    subtitleFieldIds,
     resolve: resolveCompatibilitySlotValue,
     sortFactFor: compatibilitySortFactFor,
     capabilities: COMPATIBILITY_GRID_CAPABILITIES,

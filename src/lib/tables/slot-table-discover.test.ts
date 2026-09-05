@@ -34,6 +34,7 @@ describe('slot-table discover (delete vs keep)', () => {
       'engine:slot-table-header-sort',
       'engine:slot-table-line-qty',
       'engine:slot-table-line-money',
+      'engine:slot-table-session-laws',
       'engine:ordersCompoundColumnsFor',
       'engine:COMPOUND_COLUMN_KEYS',
       'engine:queueSortForColumnKey',

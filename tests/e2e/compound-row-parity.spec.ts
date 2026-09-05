@@ -23,8 +23,8 @@ import { test, expect, type Page } from '@playwright/test';
 /** The row box every compound table must paint — `COMPOUND_ROW_PX`. */
 const COMPOUND_ROW_PX = 48;
 
-/** Canonical track order. Identity pane (ids) precedes the photo. No Amount — line money lives under the title. */
-const EXPECTED_TRACKS = ['fulfillment', 'thumb', 'item', 'state'];
+/** Canonical track order. Identity pane (ids) precedes the photo. Dates stays Dates. No Amount — line money lives under the title. */
+const EXPECTED_TRACKS = ['fulfillment', 'thumb', 'item', 'dates', 'state'];
 
 interface Surface {
   name: string;

@@ -29,7 +29,6 @@ export type CatalogLinkGridColumnKey =
   | 'fulfillment'
   | 'dates'
   | 'state'
-  | 'amount'
   | 'actions'
   | '_fill'
   /** Materialized slot tracks — keys are slot indices, never field ids. */
@@ -85,7 +84,7 @@ export const CATALOG_LINK_COMPOUND_COLUMNS: readonly CatalogLinkGridColumn[] =
  *
  * Two spellings reach the same fact and both are kept alive on purpose: the
  * FLAT words (`sku`, `orders`, `last`) are what live bookmarks carry, and the
- * compound TRACK keys (`fulfillment`, `state`, `amount`) are what the mounted
+ * compound TRACK keys (`fulfillment`, `state`) are what the mounted
  * header emits since wave 1.3. Dropping either half breaks somebody — a saved
  * link, or every header on the desk.
  *
@@ -105,7 +104,6 @@ const CATALOG_LINK_GRID_SORTABLE_KEYS: readonly CatalogLinkGridColumnKey[] = [
   'item',
   'fulfillment',
   'state',
-  'amount',
 ];
 
 export function isCatalogLinkGridSortable(key: string): key is CatalogLinkGridColumnKey {
@@ -129,14 +127,13 @@ export const CATALOG_LINK_SORT_TYPES: Readonly<Record<string, ColumnType>> = {
   source: 'external',
   sku: 'id',
   orders: 'number',
-  amount: 'number',
   first: 'date',
   last: 'date',
   state: 'date',
 };
 
 export function defaultDirForCatalogLinkGridSort(key: CatalogLinkGridColumnKey): GridSortDir {
-  return key === 'last' || key === 'first' || key === 'orders' || key === 'amount' || key === 'state'
+  return key === 'last' || key === 'first' || key === 'orders' || key === 'state'
     ? 'desc'
     : 'asc';
 }

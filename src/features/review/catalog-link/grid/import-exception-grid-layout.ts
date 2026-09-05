@@ -30,7 +30,6 @@ export type ImportExceptionGridColumnKey =
   | 'fulfillment'
   | 'dates'
   | 'state'
-  | 'amount'
   | 'actions'
   | '_fill'
   /** Materialized slot tracks — keys are slot indices, never field ids. */
@@ -86,7 +85,6 @@ const IMPORT_EXCEPTION_GRID_SORTABLE_KEYS: readonly ImportExceptionGridColumnKey
   'item',
   'fulfillment',
   'state',
-  'amount',
 ];
 
 export function isImportExceptionGridSortable(key: string): key is ImportExceptionGridColumnKey {
@@ -113,7 +111,6 @@ export const IMPORT_EXCEPTION_SORT_TYPES: Readonly<Record<string, ColumnType>> =
   tracking: 'tracking',
   sheet: 'number',
   seen: 'number',
-  amount: 'number',
   first: 'date',
   last: 'date',
   state: 'date',
@@ -122,7 +119,7 @@ export const IMPORT_EXCEPTION_SORT_TYPES: Readonly<Record<string, ColumnType>> =
 export function defaultDirForImportExceptionGridSort(
   key: ImportExceptionGridColumnKey,
 ): GridSortDir {
-  return key === 'last' || key === 'first' || key === 'seen' || key === 'amount' || key === 'state'
+  return key === 'last' || key === 'first' || key === 'seen' || key === 'state'
     ? 'desc'
     : 'asc';
 }

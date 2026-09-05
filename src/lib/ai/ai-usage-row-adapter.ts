@@ -1,14 +1,15 @@
 /**
  * `AiUsageTableRow → CompoundRowView` — pure, strings and enums, no JSX.
  *
- * The amount is PRE-FORMATTED by the adapter, per the view model's contract:
- * currency is a tenant/locale decision that belongs to the family's own SoT, not
- * to a table cell that would have to grow an opinion about minor units.
+ * Estimated cost is PRE-FORMATTED here (tenant/locale belongs to the family
+ * SoT) and painted under the title via {@link lineMoneySubtitlePart}. Calls
+ * stay on the status band — do not duplicate them as an Amount-column note.
  */
 
 import type { CompoundRowView } from '@/components/tables/compound/compound-row-model';
 import { formatAiUsageCost } from '@/lib/tables/field-catalog/ai-usage-resolve';
 import type { AiUsageTableRow } from '@/lib/ai/ai-usage-row';
+import { lineMoneySubtitlePart } from '@/lib/tables/slot-table-line-money';
 
 export function aiUsageCompoundView(row: AiUsageTableRow): CompoundRowView {
   const capability = String(row.capability ?? '').trim();
@@ -31,7 +32,7 @@ export function aiUsageCompoundView(row: AiUsageTableRow): CompoundRowView {
         ? `${row.unknownRateCalls} call(s) at an unknown rate — excluded from the cost`
         : undefined,
     delay: null,
-    amount: formatAiUsageCost(row.costMicrocents),
-    amountNote: `${Number(row.calls ?? 0).toLocaleString('en-US')} calls`,
+    amount: null,
+    subtitleParts: [lineMoneySubtitlePart('ai-usage.cost', formatAiUsageCost(row.costMicrocents))],
   };
 }

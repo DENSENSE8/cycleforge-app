@@ -54,33 +54,54 @@ export function ItemRecordMetaGrid({
     >
       <span
         data-col="qty"
-        className="flex min-w-0 items-center justify-start truncate tabular-nums px-2 py-1 pb-[0.375rem] font-semibold text-text-muted"
+        className={cn(
+          'flex min-w-0 items-center justify-start truncate tabular-nums px-2 py-1 pb-[0.375rem] font-semibold text-text-muted',
+          META_TRACK_RULE,
+        )}
       >
         {qty}
       </span>
       <span
-        className="flex items-center justify-end text-right tabular-nums px-2 py-1"
+        className={cn(
+          'flex items-center justify-end text-right tabular-nums px-2 py-1',
+          META_TRACK_RULE,
+        )}
         data-col="price"
       >
         {price ?? <UnitPriceChip amount={null} dense />}
       </span>
       <span
         data-col="condition"
-        className="flex min-w-0 items-center justify-start truncate px-2 py-1"
+        className={cn(
+          'flex min-w-0 items-center justify-start truncate px-2 py-1',
+          META_TRACK_RULE,
+        )}
       >
         {condition}
       </span>
-      <span data-col="sku" className="flex min-w-0 items-center justify-start truncate px-2 py-1">
+      <span
+        data-col="sku"
+        className={cn(
+          'flex min-w-0 items-center justify-start truncate px-2 py-1',
+          META_TRACK_RULE,
+        )}
+      >
         {sku ?? <EmptySkuChipFace dense />}
       </span>
       <span
         data-col="serial"
-        className="flex min-w-0 items-stretch justify-start overflow-hidden p-0"
+        className={cn(
+          'flex min-w-0 items-stretch justify-start overflow-hidden p-0',
+          META_TRACK_RULE,
+        )}
       >
         {serial ?? <span className="px-2 py-1 text-text-faint/40">—</span>}
       </span>
       <span
-        className="flex min-w-0 items-center justify-end px-2 py-1 text-right"
+        className={cn(
+          'flex min-w-0 items-center justify-end px-2 py-1 text-right',
+          META_TRACK_RULE,
+        )}
         data-col="location"
       >
         {location}

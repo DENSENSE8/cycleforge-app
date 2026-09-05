@@ -71,7 +71,7 @@ export function useInventoryEventsSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, fields } = useInventoryEventsTableLayout();
+  const { effectiveLayout, subtitleFieldIds, fields } = useInventoryEventsTableLayout();
   const columns = useMemo(
     () => inventoryEventsCompoundColumnsFor(effectiveLayout),
     [effectiveLayout],
@@ -101,6 +101,7 @@ export function useInventoryEventsSpreadsheet({
     rows: events,
     getRowId: (row) => String(row.id),
     adapter: inventoryEventCompoundView,
+    subtitleFieldIds,
     resolve: resolveInventoryEventsSlotValue,
     sortFactFor: inventoryEventsSortFactFor,
     capabilities: INVENTORY_EVENTS_GRID_CAPABILITIES,

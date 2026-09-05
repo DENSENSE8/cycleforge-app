@@ -20,7 +20,6 @@ export type DeadStockGridColumnKey =
   | 'fulfillment'
   | 'dates'
   | 'state'
-  | 'amount'
   | 'actions'
   | '_fill'
   | `status:${number}`

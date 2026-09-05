@@ -2,7 +2,12 @@
   "_README": "Content hashes of the design-law sources. A changed hash means a LAW changed — review it as law, not as code. Re-record with `node scripts/ci/check-law-checksums.mjs --update`.",
   "laws": {
     "src/lib/mobile/mobile-display-cohort.ts": "490d29f1ad2fe2cc",
-    "src/lib/tables/slot-table-cohort.ts": "447882ea2b300a21",
+    "src/lib/tables/slot-table-cohort.ts": "1cb07992a9f5e8ff",
+    "src/lib/tables/slot-table-session-laws.ts": "44422802bcc6edfb",
+    "src/lib/tables/table-engine-law.ts": "8408fe2ffad61643",
+    "src/lib/tables/slot-table-line-qty.ts": "943caf9fc5be9758",
+    "src/lib/tables/slot-table-line-money.ts": "4516f0a1f8a8769a",
+    "src/lib/tables/slot-table-header-sort.ts": "f21fe77b2142f51a",
     "src/lib/keyboard/shortcut-display-cohort.ts": "e93001e006e733b3",
     "src/lib/station/scan-station-overlay-cohort.ts": "696903867678efec"
   }

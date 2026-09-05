@@ -67,7 +67,7 @@ export function useAuditLogSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, fields } = useAuditLogTableLayout();
+  const { effectiveLayout, subtitleFieldIds, fields } = useAuditLogTableLayout();
   const columns = useMemo(
     () => auditLogCompoundColumnsFor(effectiveLayout),
     [effectiveLayout],
@@ -93,6 +93,7 @@ export function useAuditLogSpreadsheet({
     rows,
     getRowId: (row) => String(row.id),
     adapter: auditLogCompoundView,
+    subtitleFieldIds,
     resolve: resolveAuditLogSlotValue,
     sortFactFor: auditLogSortFactFor,
     capabilities: AUDIT_LOG_GRID_CAPABILITIES,

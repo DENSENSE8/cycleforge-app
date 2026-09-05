@@ -1,8 +1,8 @@
 {
   "project": "cycleforge-app",
   "target": "function:src/lib/tables/slot-table-line-qty.ts:ensureLineQtySubtitle",
-  "files_affected": 5,
-  "total_symbols": 5,
+  "files_affected": 8,
+  "total_symbols": 8,
   "files": [
     {
       "file": "src/lib/tables/resolve-effective-layout.ts",
@@ -21,11 +21,35 @@
       ]
     },
     {
+      "file": "src/lib/tables/field-catalog/incoming.test.ts",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "incoming.test.ts"
+      ]
+    },
+    {
+      "file": "src/lib/tables/field-catalog/receiving.test.ts",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "receiving.test.ts"
+      ]
+    },
+    {
       "file": "src/components/tables/useSlotTableLayout.ts",
       "nearest_depth": 2,
       "affected_symbols": 1,
       "symbols": [
         "useSlotTableLayout"
+      ]
+    },
+    {
+      "file": "src/lib/tables/slot-table-line-money.test.ts",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "slot-table-line-money.test.ts"
       ]
     },
     {
@@ -37,11 +61,11 @@
       ]
     },
     {
-      "file": "src/lib/tables/slot-table-line-money.test.ts",
+      "file": "src/lib/tables/field-catalog/ai-usage.test.ts",
       "nearest_depth": 2,
       "affected_symbols": 1,
       "symbols": [
-        "slot-table-line-money.test.ts"
+        "ai-usage.test.ts"
       ]
     }
   ]

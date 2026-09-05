@@ -1,0 +1,24 @@
+{
+  "id": "scan-shell-mobile-scan-surface",
+  "statement": "Rebuild the phone scan surface src/components/mobile/redesign/UniversalScan.tsx (/m/scan) around three primitives: the Stack behind the top-left control (a sheet over src/lib/nav/stack-model.ts with NOW, EARLIER TODAY, QUEUES holding the receiving Prioritize list, FIND); one Card in the middle (empty-state sentence before a scan; after a scan the Card named by dispatchScan in src/lib/scan/dispatch-table.ts — the existing ArrivalCard for arrival, a new CartonCard with the same object → facts → one preselected primary Button shape for everything else; 'Rescan' is a secondary verb; not_found reads 'Not on any inbound'); and the Field as a fixed bottom dock padded with env(safe-area-inset-bottom) holding the one ScanInput with a destination-naming placeholder and a 56px camera cell at its right end, the viewfinder opening upward. Remove the '+ New' button, the three-icon mode row, the Prioritize dropdown and the receiving list from this surface. No text input above the dock. Keep the wedge path, detectScanMode, the carrier-overrides rule and previewTrackingSeen so an Arrival Card opens before anything is minted. FIRST, before any .tsx write, call ds_contract (intent: 'phone scan surface: fixed bottom scan dock, one card, stack sheet from the top-left control'), ds_tokens (radius, spacing, elevation) and ds_critique on UniversalScan.tsx and ArrivalCard.tsx; call them again if a write is denied. Every tap target at least 48px; no icon-only tabs; no showModeRow={false}; no second textarea; no toast; nothing animates geometry. Write src/components/mobile/redesign/scan-surface-layout.test.ts and src/components/mobile/redesign/scan-surface-card.test.ts with node:test + jsdom + createElement (copy the global setup of src/components/composer/composer-drill-menu.test.ts) asserting: the dock is last and fixed-bottom with safe-area padding, exactly one input in the tree, no 'New' button and no tablist in the header, one sentence before a scan, section[aria-label^='Arrival'] with exactly one primary Button after an arrival dispatch, and 'Not on any inbound' never 'not_found' for an unfound carton. Touch only UniversalScan.tsx, ScanInput.tsx, MobileTopBar.tsx, new MobileStackSheet.tsx, new ScanDock.tsx, new src/components/mobile/scan/CartonCard.tsx and the two tests.",
+  "createdBy": "human",
+  "createdAt": "2026-09-05T04:00:00Z",
+  "routerHint": "UniversalScan ScanInput MobileTopBar StationScanBar ArrivalCard CartonCard ScanDock MobileStackSheet stackModel dispatchScan previewTrackingSeen fixed bottom safe-area Button ds_contract ds_tokens ds_critique jsdom createElement",
+  "successPredicates": [
+    { "kind": "test", "file": "src/components/mobile/redesign/scan-surface-layout.test.ts" },
+    { "kind": "test", "file": "src/components/mobile/redesign/scan-surface-card.test.ts" },
+    { "kind": "test", "file": "src/components/mobile/scan/ArrivalCard.test.ts" },
+    { "kind": "test", "file": "src/lib/scan/dispatch-table.test.ts" },
+    { "kind": "test", "file": "src/lib/nav/stack-model.test.ts" },
+    { "kind": "eval", "command": "verify:fast", "expect": "exit0" }
+  ],
+  "stopConditions": {
+    "maxHops": 8,
+    "maxHours": 5,
+    "maxNoProgressHops": 3,
+    "onUnmeasured": "block",
+    "onRed": "repair",
+    "maxRepairs": 2
+  },
+  "budget": {}
+}

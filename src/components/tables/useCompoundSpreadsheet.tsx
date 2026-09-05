@@ -56,6 +56,7 @@ import { compareGridValues } from '@/design-system/components/grid';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import { singleBand, type RowGroup } from '@/lib/group-rows';
 import type { SlotTrackFields } from '@/lib/tables/materialize-tracks';
+import { slotSubtitlePartsFor } from '@/lib/tables/slot-table-line-qty';
 
 /**
  * Structural shape of a mounted compound column. Every family's column
@@ -86,6 +87,12 @@ export interface UseCompoundSpreadsheetOptions<
   getRowId: (row: Row) => string;
   /** The family's pure `row → CompoundRowView` adapter. */
   adapter: CompoundRowAdapter<Row>;
+  /**
+   * Bound under-title field ids from `useSlotTableLayout`. Compound morph
+   * paints these inside the item cell — they are not tracks. When the adapter
+   * already supplies `subtitleParts`, those win (family face: qty/money).
+   */
+  subtitleFieldIds?: readonly string[];
   /**
    * `(row, fieldId) → resolved fact`. The family's pure resolver, and the ONE
    * source for both the search index and the sort comparator — a search that
@@ -166,6 +173,7 @@ export function useCompoundSpreadsheet<
   rows,
   getRowId,
   adapter,
+  subtitleFieldIds,
   resolve,
   sortFactFor,
   capabilities,
@@ -240,8 +248,15 @@ export function useCompoundSpreadsheet<
    */
   const paintRow = useCallback(
     (row: Row, visible: readonly C[]): ReactNode => {
+      const adapted = adapter(row);
+      const subtitleParts =
+        adapted.subtitleParts ??
+        (subtitleFieldIds && subtitleFieldIds.length > 0
+          ? slotSubtitlePartsFor(subtitleFieldIds, (fieldId) => resolve(row, fieldId))
+          : undefined);
       const view: CompoundRowView = {
-        ...adapter(row),
+        ...adapted,
+        ...(subtitleParts ? { subtitleParts } : null),
         slots: Object.fromEntries(
           visible
             .filter((c) => Boolean(c.fieldId))
@@ -265,7 +280,7 @@ export function useCompoundSpreadsheet<
         />
       );
     },
-    [adapter, resolve, getRowId, capabilities, onOpenRow, rowActions, binding.rowPlane],
+    [adapter, subtitleFieldIds, resolve, getRowId, capabilities, onOpenRow, rowActions, binding.rowPlane],
   );
 
   return {

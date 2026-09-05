@@ -288,6 +288,8 @@ describe('slot-table cohort (SoT = engine + PRODUCT_TABLES)', () => {
     assert.match(SLOT_TABLE_PAINT_LAW.lineQty, /ensureLineQtySubtitle/);
     assert.match(SLOT_TABLE_PAINT_LAW.lineQty, /\{family\}\.qty/);
     assert.match(SLOT_TABLE_PAINT_LAW.lineQty, /PRODUCT_TABLES/);
+    assert.match(SLOT_TABLE_PAINT_LAW.dates, /gridLabel stays Dates|header stays Dates/);
+    assert.match(SLOT_TABLE_PAINT_LAW.dates, /Due date/);
     assert.match(SLOT_TABLE_PAINT_LAW.lineMoney, /CompoundItem/);
     assert.match(SLOT_TABLE_PAINT_LAW.lineMoney, /ensureLineMoneySubtitle/);
     assert.match(SLOT_TABLE_PAINT_LAW.lineMoney, /COMPOUND_COLUMN_KEYS has no amount/);

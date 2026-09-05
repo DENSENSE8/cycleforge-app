@@ -184,7 +184,6 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
         case 'sku':
           return r.sku;
         case 'orders':
-        case 'amount':
           return r.orderCount;
         case 'first':
           return Date.parse(r.firstSeenAt);
@@ -220,7 +219,6 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
         case 'sheet':
           return r.sheetRow;
         case 'seen':
-        case 'amount':
           return r.seenCount;
         case 'first':
           return Date.parse(r.firstSeenAt);

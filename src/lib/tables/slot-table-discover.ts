@@ -507,6 +507,11 @@ function keepInventory(root: string): SlotTableKeepItem[] {
       why: 'Blanket `{family}.amount` / `{family}.price` subtitle identity. New tables inherit the place; do not fork an Amount column.',
     },
     {
+      id: 'engine:slot-table-session-laws',
+      path: SLOT_TABLE_ENGINE.sessionLaws,
+      why: 'Operator session rulings as greps (Dates header, inbound price, no Orders-only Amount drop, overlay is not a display cohort). Do not delete the catalog to silence a red tripwire.',
+    },
+    {
       id: 'engine:COMPOUND_COLUMN_KEYS',
       path: SLOT_TABLE_ENGINE.compoundColumns,
       why: 'Shared compound geometry. No ⋮ actions track. No Amount track — line money is under the title. Do not put actions or amount back on COMPOUND_COLUMN_KEYS.',

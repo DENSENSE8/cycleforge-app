@@ -39,7 +39,7 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station pack` for full gate.
 ## Design critique (latest)
 
 <!-- eval-ledger:auto:design-critique -->
-- `src/components/packer/PackOrderWorkspace.tsx` — snapshot `docs/eval/stations/pack/snapshots/2026-09-02-critique-PackOrderWorkspace.txt`
+- `src/components/packer/PackOrderWorkspace.tsx` — snapshot `docs/eval/stations/pack/snapshots/2026-09-05-critique-PackOrderWorkspace.txt`
 ```
 {
   "file": "src/components/packer/PackOrderWorkspace.tsx",
@@ -53,19 +53,22 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station pack` for full gate.
 ## Graph impact (shared symbols)
 
 <!-- eval-ledger:auto:graph-impact -->
-- **PackOrderWorkspace** — 2 files, 2 symbols (`docs/eval/stations/pack/snapshots/2026-09-02-impact-PackOrderWorkspace.json`)
-- **useOverlaySwapHardCut** — 10 files, 12 symbols (`docs/eval/stations/pack/snapshots/2026-09-02-impact-useOverlaySwapHardCut.json`)
+- **PackOrderWorkspace** — 2 files, 2 symbols (`docs/eval/stations/pack/snapshots/2026-09-05-impact-PackOrderWorkspace.json`)
+- **idleBrowseLayerProps** — 12 files, 14 symbols (`docs/eval/stations/pack/snapshots/2026-09-05-impact-idleBrowseLayerProps.json`)
+- **overlayPaneStyle** — 12 files, 14 symbols (`docs/eval/stations/pack/snapshots/2026-09-05-impact-overlayPaneStyle.json`)
+- **ItemRecordQtyBadge** — 17 files, 20 symbols (`docs/eval/stations/pack/snapshots/2026-09-05-impact-ItemRecordQtyBadge.json`)
+- **useOverlaySwapHardCut** — 10 files, 12 symbols (`docs/eval/stations/pack/snapshots/2026-09-05-impact-useOverlaySwapHardCut.json`)
 <!-- /eval-ledger:auto:graph-impact -->
 
 ## Regression tripwires
 
 <!-- eval-ledger:auto:tripwires -->
-**pass** — snapshot `docs/eval/stations/pack/snapshots/2026-09-02-tripwire.log`
+**pass** — snapshot `docs/eval/stations/pack/snapshots/2026-09-05-tripwire.log`
 - `src/lib/station/scan-station-overlay-cohort.test.ts`
 <!-- /eval-ledger:auto:tripwires -->
 
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-02T17:09:35.636Z · station `pack`_
+_Updated 2026-09-05T17:51:45.990Z · station `pack`_
 <!-- /eval-ledger:auto:last-run -->

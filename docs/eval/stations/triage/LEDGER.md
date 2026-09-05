@@ -39,7 +39,7 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station triage` for full gat
 ## Design critique (latest)
 
 <!-- eval-ledger:auto:design-critique -->
-- `src/components/receiving/triage/TriageLineWorkspace.tsx` — snapshot `docs/eval/stations/triage/snapshots/2026-09-02-critique-TriageLineWorkspace.txt`
+- `src/components/receiving/triage/TriageLineWorkspace.tsx` — snapshot `docs/eval/stations/triage/snapshots/2026-09-05-critique-TriageLineWorkspace.txt`
 ```
 {
   "file": "src/components/receiving/triage/TriageLineWorkspace.tsx",
@@ -53,19 +53,22 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station triage` for full gat
 ## Graph impact (shared symbols)
 
 <!-- eval-ledger:auto:graph-impact -->
-- **TriageLineWorkspace** — 2 files, 2 symbols (`docs/eval/stations/triage/snapshots/2026-09-02-impact-TriageLineWorkspace.json`)
-- **useOverlaySwapHardCut** — 10 files, 12 symbols (`docs/eval/stations/triage/snapshots/2026-09-02-impact-useOverlaySwapHardCut.json`)
+- **TriageLineWorkspace** — 2 files, 2 symbols (`docs/eval/stations/triage/snapshots/2026-09-05-impact-TriageLineWorkspace.json`)
+- **idleBrowseLayerProps** — 12 files, 14 symbols (`docs/eval/stations/triage/snapshots/2026-09-05-impact-idleBrowseLayerProps.json`)
+- **overlayPaneStyle** — 12 files, 14 symbols (`docs/eval/stations/triage/snapshots/2026-09-05-impact-overlayPaneStyle.json`)
+- **ItemRecordQtyBadge** — 17 files, 20 symbols (`docs/eval/stations/triage/snapshots/2026-09-05-impact-ItemRecordQtyBadge.json`)
+- **useOverlaySwapHardCut** — 10 files, 12 symbols (`docs/eval/stations/triage/snapshots/2026-09-05-impact-useOverlaySwapHardCut.json`)
 <!-- /eval-ledger:auto:graph-impact -->
 
 ## Regression tripwires
 
 <!-- eval-ledger:auto:tripwires -->
-**pass** — snapshot `docs/eval/stations/triage/snapshots/2026-09-02-tripwire.log`
+**pass** — snapshot `docs/eval/stations/triage/snapshots/2026-09-05-tripwire.log`
 - `src/lib/station/scan-station-overlay-cohort.test.ts`
 <!-- /eval-ledger:auto:tripwires -->
 
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-02T17:09:25.977Z · station `triage`_
+_Updated 2026-09-05T17:50:23.280Z · station `triage`_
 <!-- /eval-ledger:auto:last-run -->

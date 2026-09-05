@@ -1,0 +1,20 @@
+{
+  "id": "sheets-sync-inline-triage",
+  "statement": "Sync Google Sheet on To-ship lands manual-sheet orders as an inline LedgerGrid triage board: left checkmark column, right equal-square approve (green check) and reject (X). Imported rows enter the table body via Motion+ MCP-guided list insert (layout + AnimatePresence + stagger) through @/design-system/motion DenseList/StaggerReveal/AnimatedCheck; existing rows make room. Approve/unapprove because the sheet is not an API feed. Do not leave results only in OrderSyncDialog.",
+  "createdBy": "human",
+  "createdAt": "2026-09-03T05:45:00Z",
+  "routerHint": "google sheets transfer-orders To-ship LedgerGrid CsvImportStagingHost GridRowCheckbox AnimatedCheck DenseList StaggerReveal LayoutGroup motion-plus MCP AnimatePresence useOrdersSync OrderSyncDialog PRODUCT_TABLES",
+  "successPredicates": [
+    { "kind": "test", "file": "src/lib/orders-sync/sheets-inline-triage.test.ts" },
+    { "kind": "eval", "command": "verify:fast", "expect": "exit0" }
+  ],
+  "stopConditions": {
+    "maxHops": 8,
+    "maxHours": 6,
+    "maxNoProgressHops": 3,
+    "onUnmeasured": "block",
+    "onRed": "repair",
+    "maxRepairs": 2
+  },
+  "budget": {}
+}

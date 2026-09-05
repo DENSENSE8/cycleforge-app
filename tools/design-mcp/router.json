@@ -1,859 +1,833 @@
 {
- "v": "cf-router:v1",
- "overlayWorkspaces": [
-  "src/components/outbound/workspaces/ScanOutWorkspace.tsx",
-  "src/components/packer/PackOrderWorkspace.tsx",
-  "src/components/receiving/triage/TriageLineWorkspace.tsx",
-  "src/components/receiving/unbox/UnboxLineWorkspace.tsx",
-  "src/components/tech/TechRightPane.tsx",
-  "src/components/tech/TestingLineWorkspace.tsx"
- ],
- "surfaces": [
-  {
-   "id": "unbox",
-   "kind": "station",
-   "route": "/unbox",
-   "workspace": "src/components/receiving/unbox/UnboxLineWorkspace.tsx",
-   "exportName": "UnboxLineWorkspace",
-   "evalCommand": "pnpm run eval:station unbox",
-   "cohort": "station:unbox",
-   "graphSymbols": [
-    "UnboxLineWorkspace",
-    "idleBrowseLayerProps",
-    "overlayPaneStyle",
-    "ItemRecordQtyBadge",
-    "useOverlaySwapHardCut"
-   ]
-  },
-  {
-   "id": "triage",
-   "kind": "station",
-   "route": "/triage",
-   "workspace": "src/components/receiving/triage/TriageLineWorkspace.tsx",
-   "exportName": "TriageLineWorkspace",
-   "evalCommand": "pnpm run eval:station triage",
-   "cohort": "station:triage",
-   "graphSymbols": [
-    "TriageLineWorkspace",
-    "idleBrowseLayerProps",
-    "overlayPaneStyle",
-    "ItemRecordQtyBadge",
-    "useOverlaySwapHardCut"
-   ]
-  },
-  {
-   "id": "pack",
-   "kind": "station",
-   "route": "/pack",
-   "workspace": "src/components/packer/PackOrderWorkspace.tsx",
-   "exportName": "PackOrderWorkspace",
-   "evalCommand": "pnpm run eval:station pack",
-   "cohort": "station:pack",
-   "graphSymbols": [
-    "PackOrderWorkspace",
-    "idleBrowseLayerProps",
-    "overlayPaneStyle",
-    "ItemRecordQtyBadge",
-    "useOverlaySwapHardCut"
-   ]
-  },
-  {
-   "id": "testing",
-   "kind": "station",
-   "route": "/test",
-   "workspace": "src/components/tech/TestingLineWorkspace.tsx",
-   "exportName": "TestingLineWorkspace",
-   "evalCommand": "pnpm run eval:station testing",
-   "cohort": "station:testing",
-   "graphSymbols": [
-    "TestingLineWorkspace",
-    "idleBrowseLayerProps",
-    "overlayPaneStyle",
-    "ItemRecordQtyBadge"
-   ]
-  },
-  {
-   "id": "shipping",
-   "kind": "station",
-   "route": "/shipping",
-   "workspace": "src/components/tech/TechRightPane.tsx",
-   "exportName": "TechRightPane",
-   "evalCommand": "pnpm run eval:station shipping",
-   "cohort": "station:shipping",
-   "graphSymbols": [
-    "TechRightPane",
-    "idleBrowseLayerProps",
-    "overlayPaneStyle",
-    "ItemRecordQtyBadge",
-    "useOverlaySwapHardCut"
-   ]
-  },
-  {
-   "id": "scan-out",
-   "kind": "station",
-   "route": "/shipping/scan-out",
-   "workspace": "src/components/outbound/workspaces/ScanOutWorkspace.tsx",
-   "exportName": "ScanOutWorkspace",
-   "evalCommand": "pnpm run eval:station scan-out",
-   "cohort": "station:scan-out",
-   "graphSymbols": [
-    "ScanOutWorkspace",
-    "idleBrowseLayerProps",
-    "overlayPaneStyle",
-    "ItemRecordQtyBadge",
-    "StationComposerHost",
-    "ComposerModeRow",
-    "ScanStationProgressRing",
-    "useOverlaySwapHardCut"
-   ]
-  },
-  {
-   "id": "slot-table",
-   "kind": "slot-table-engine",
-   "route": null,
-   "workspace": "src/components/tables/compound/CompoundCells.tsx",
-   "exportName": "CompoundItem",
-   "evalCommand": "pnpm run eval:cohort slot-table",
-   "cohort": "slot-table",
-   "graphSymbols": [
-    "CompoundItem",
-    "CompoundState",
-    "useSlotTableLayout",
-    "materializeTracks",
-    "getExternalUrlByItemNumber",
-    "DateRangePickerField",
-    "useOptimisticMutation",
-    "DataTableFilterMenu",
-    "queueSortForColumnKey",
-    "LedgerGridColumnHeader",
-    "isSlotTableChromeTrack",
-    "AssigneeCombobox",
-    "ensureLineQtySubtitle",
-    "pinLineQtyFirst",
-    "ensureLineMoneySubtitle",
-    "pinLineMoneyAfterQty",
-    "ordersCompoundColumnsFor",
-    "COMPOUND_COLUMN_KEYS"
-   ]
-  },
-  {
-   "id": "shortcuts",
-   "kind": "shortcuts-engine",
-   "route": null,
-   "workspace": "src/design-system/primitives/KeyboardKey.tsx",
-   "exportName": "KeyboardKey",
-   "evalCommand": "pnpm run eval:cohort shortcuts",
-   "cohort": "shortcuts",
-   "graphSymbols": [
-    "KeyboardKey",
-    "KeyboardShortcutsCheatSheet",
-    "useSelectionStatusBarHotkeys",
-    "TableStatusBar"
-   ]
-  },
-  {
-   "id": "composer",
-   "kind": "composer",
-   "route": null,
-   "workspace": "src/components/composer/StationComposerHost.tsx",
-   "exportName": "StationComposerHost",
-   "evalCommand": "pnpm run eval:station scan-out",
-   "cohort": "composer",
-   "graphSymbols": [
-    "StationComposerHost",
-    "ComposerModeRow"
-   ]
-  }
- ],
- "routes": [
-  {
-   "cohort": "composer",
-   "keywords": [
-    "modes",
-    "dumb",
-    "gun",
-    "faces",
-    "composer",
-    "mouth"
-   ],
-   "evalCommand": "pnpm run eval:station scan-out",
-   "graphSymbols": [
-    "StationComposerHost",
-    "ComposerModeRow"
-   ],
-   "engineFiles": [
-    "src/components/composer/StationComposerHost.tsx",
-    "src/components/composer/ComposerModeRow.tsx",
+  "v": "cf-router:v1",
+  "overlayWorkspaces": [
     "src/components/outbound/workspaces/ScanOutWorkspace.tsx",
-    "src/components/outbound/scan-out/ScanOutComposerDock.tsx",
-    "src/components/receiving/incoming/IncomingAddExtractComposer.tsx",
-    "src/lib/station/scan-station-overlay-cohort.test.ts",
-    "src/design-system/motion/idle-overlay.ts"
-   ],
-   "mounts": [
-    "showModeFaces={false}"
-   ],
-   "refuse": [
-    {
-     "id": "composer.show-mode-row-false",
-     "why": "Dumb stations keep the mode row and set showModeFaces={false}. Never showModeRow={false} to hide Unbox|Ticket.",
-     "diffPattern": "showModeRow=\\{false\\}"
-    },
-    {
-     "id": "composer.notes-composer",
-     "why": "Clone Pack/Unbox. Do not invent a *NotesComposer shell or a second mouth.",
-     "diffPattern": "\\w+NotesComposer"
-    }
-   ]
-  },
-  {
-   "cohort": "discover",
-   "keywords": [
-    "discover",
-    "leftover",
-    "handmodel"
-   ],
-   "evalCommand": "pnpm run eval:discover",
-   "graphSymbols": [],
-   "engineFiles": [
-    "src/lib/tables/slot-table-discover.ts"
-   ],
-   "mounts": [],
-   "refuse": []
-  },
-  {
-   "cohort": "shortcuts",
-   "keywords": [
-    "shortcut",
-    "hotkey",
-    "overlay",
-    "keycap",
-    "cheat"
-   ],
-   "evalCommand": "pnpm run eval:cohort shortcuts",
-   "graphSymbols": [
-    "KeyboardKey",
-    "KeyboardShortcutsCheatSheet",
-    "useSelectionStatusBarHotkeys",
-    "TableStatusBar"
-   ],
-   "engineFiles": [
-    "src/design-system/primitives/KeyboardKey.tsx",
-    "src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx",
-    "src/lib/keyboard/shortcut-overview.ts",
-    "src/components/tables/TableStatusBar.tsx",
-    "src/components/tables/DataTableColumnActionRow.tsx",
-    "src/hooks/useSelectionStatusBarHotkeys.ts",
-    "src/hooks/useSelectionActionHotkeys.ts",
-    "src/lib/keyboard/shortcut-display-cohort.ts"
-   ],
-   "mounts": [
-    "HotkeyGlyph"
-   ],
-   "refuse": [
-    {
-     "id": "shortcuts.standing-keycaps",
-     "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey."
-    },
-    {
-     "id": "shortcuts.forbidden.hotkeyPopover",
-     "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-     "diffPattern": "function HotkeyPopoverLabel"
-    },
-    {
-     "id": "shortcuts.forbidden.staffQuestionOpensSheet",
-     "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-     "diffPattern": "toggleShortcutOverview"
-    },
-    {
-     "id": "shortcuts.forbidden.footQuestionButton",
-     "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-     "diffPattern": "data-testid=\"data-table-selection-hotkey-hints\""
-    },
-    {
-     "id": "shortcuts.forbidden.translucentOverlay",
-     "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-     "diffPattern": "bg-black\\/25"
-    },
-    {
-     "id": "shortcuts.forbidden.iconRightKeySlot",
-     "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-     "diffPattern": "iconRight=\\{keySlot\\}"
-    },
-    {
-     "id": "shortcuts.forbidden.reservedHotkeySlot",
-     "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-     "diffPattern": "data-testid=\"data-table-selection-hotkey-slot\""
-    },
-    {
-     "id": "shortcuts.forbidden.outsideAnchor",
-     "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-     "diffPattern": "absolute left-full"
-    },
-    {
-     "id": "shortcuts.forbidden.revealGapWiden",
-     "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-     "diffPattern": "inlineHotkeys \\? 'gap-7"
-    },
-    {
-     "id": "shortcuts.forbidden.whiteTeachingFace",
-     "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-     "diffPattern": "bg-surface-canvas"
-    },
-    {
-     "id": "shortcuts.forbidden.mutedTeachingLetter",
-     "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-     "diffPattern": "text-text-muted"
-    }
-   ]
-  },
-  {
-   "cohort": "slot-table",
-   "keywords": [
-    "sort",
-    "column",
-    "header",
-    "image",
-    "thumb",
-    "date",
-    "cell",
-    "ship",
-    "compact",
-    "filter",
-    "sortable",
-    "listing",
-    "compound",
-    "table",
-    "dots",
-    "ellipsis",
-    "amount",
-    "price"
-   ],
-   "evalCommand": "pnpm run eval:cohort slot-table",
-   "graphSymbols": [
-    "isSlotTableChromeTrack",
-    "queueSortForColumnKey",
-    "LedgerGridColumnHeader",
-    "CompoundItem",
-    "DateRangePickerField",
-    "CompoundState",
-    "useOptimisticMutation",
-    "ordersCompoundColumnsFor",
-    "COMPOUND_COLUMN_KEYS"
-   ],
-   "engineFiles": [
-    "src/components/tables/compound/CompoundCells.tsx",
-    "src/components/tables/compound/CompoundRow.tsx",
-    "src/components/tables/compound/StageStaffAssignPopover.tsx",
-    "src/design-system/components/AssigneeCombobox.tsx",
-    "src/components/tables/compound/ProductTitleLink.tsx",
-    "src/components/tables/useSlotTableLayout.ts",
-    "src/lib/tables/materialize-tracks.ts",
-    "src/utils/external-item-url.ts",
-    "src/design-system/components/DateRangePickerField.tsx",
-    "src/hooks/useOrderAssignment.ts",
-    "src/lib/optimistic/useOptimisticMutation.ts",
-    "src/components/tables/DataTable.tsx",
-    "src/utils/queue-display-sort.ts",
-    "src/lib/tables/slot-table-header-sort.ts",
-    "src/design-system/components/grid/LedgerGridColumnHeader.tsx",
-    "src/lib/tables/slot-table-line-qty.ts",
-    "src/lib/tables/slot-table-line-money.ts",
-    "src/lib/dashboard-order-row-layout.ts",
-    "src/components/dashboard/orders-queue/OrdersQueueTableRow.tsx",
-    "src/components/tables/compound/compound-columns.ts",
-    "src/components/tables/compound/CompoundStaffRosterButton.tsx",
-    "src/components/dashboard/orders-queue/useOrdersTableLayout.ts",
-    "src/components/outbound/orders/import-staging/useOrdersImportTableLayout.ts",
-    "src/components/outbound/orders/shortage-coverage-staging/useShortageCoverageImportTableLayout.ts",
-    "src/components/station/receiving-grid/useReceivingTableLayout.ts",
-    "src/components/station/incoming-grid/useIncomingTableLayout.ts",
-    "src/components/outbound/ready/grid/useReadyTableLayout.ts",
-    "src/components/receiving/pickup/grid/usePickupTableLayout.ts",
-    "src/components/receiving/unfound/grid/useUnfoundTableLayout.ts",
-    "src/features/review/catalog-link/grid/useCatalogLinkTableLayout.ts",
-    "src/features/review/catalog-link/grid/useImportExceptionTableLayout.ts",
-    "src/components/inventory/units-grid/useUnitsTableLayout.ts",
-    "src/components/products/catalog/catalog-grid/useCatalogTableLayout.ts",
-    "src/components/warehouse/bins-grid/useBinsTableLayout.ts",
-    "src/components/inventory/events-grid/useInventoryEventsTableLayout.ts",
-    "src/components/settings/audit/useAuditLogTableLayout.ts",
-    "src/components/repair/repair-grid/useRepairTableLayout.ts",
-    "src/components/warranty/grid/useWarrantyTableLayout.ts",
-    "src/components/tech/all/useTechAllTableLayout.ts",
-    "src/components/tracking-exceptions/grid/useTrackingExceptionsTableLayout.ts",
-    "src/features/tasks/grid/useTasksTableLayout.ts",
-    "src/features/reports/sessions/useSessionsTableLayout.ts",
-    "src/features/reports/metrics/useSkuVelocityTableLayout.ts",
-    "src/features/reports/metrics/useDeadStockTableLayout.ts",
-    "src/features/home/grid/useDailyTableLayout.ts",
-    "src/features/my-day/grid/useMyDayTableLayout.ts",
-    "src/lib/tables/slot-table-cohort.test.ts",
-    "src/lib/tables/slot-table-cohort.ts",
-    "src/lib/tables/slot-table-discover.ts",
-    "src/lib/eval/prompt-router.ts"
-   ],
-   "refuseSkipFiles": [
-    "src/lib/tables/slot-table-cohort.ts",
-    "src/lib/tables/slot-table-cohort.test.ts",
-    "src/lib/tables/slot-table-discover.ts",
-    "src/lib/tables/slot-table-discover.test.ts",
-    "src/lib/eval/prompt-router.ts",
-    "src/lib/eval/prompt-router.test.ts"
-   ],
-   "mounts": [],
-   "refuse": [
-    {
-     "id": "slot-table.sortable-false-on-fact",
-     "why": "Every painted DATA column header is click-to-sort (family isSortable + comparator + URL fact map). The toolbar sort menu lists those same facts (`queueColumnSortOptions`) plus View composites / pins — a header-click sort (Pick, Status) must be a selectable row, not trigger-only. Chrome only: select, actions/action, _fill, thumb (Image photo gutter). Header is the Image type glyph on every PRODUCT_TABLES peer and every tab mount; tabs fork row data only — never drop the thumb track. Dead headers (click does nothing) are a fail — map the track, do not mark Status/Item/Order unsortable. There is no Amount column: line money is CompoundItem subtitle identity. Outbound `OrdersGridHost` lanes share `?sort=` via useQueueDisplaySort — do not pass a frozen `sort=` (that was the Shipped / Review / Staged dead-header fork). Operator 2026-09-04: Image/thumb is chrome.",
-     "diffPattern": "sortable:\\s*false"
-    },
-    {
-     "id": "slot-table.new-grid-columns-array",
-     "why": "Do not author a second GRID_COLUMNS SoT. Discover names DELETE; KEEP engine materializations.",
-     "diffPattern": "export const \\w+_GRID_COLUMNS"
-    },
-    {
-     "id": "slot-table.new-grid-row",
-     "why": "A *GridRow.tsx with a switch over column keys is a second table. To-ship sheet sync mounts UnshippedTable → useOrdersSpreadsheet → OrdersQueueTableRow. Adapt the row (cagedRecordToQueueRow). File CSV may keep CsvImportStagingGridRow; do not import it from DashboardOrdersView. New *GridRow files fail the slot-table tripwire allowlist.",
-     "diffPattern": "CsvImportStagingGridRow|export (?:function|const) \\w+GridRow"
-    },
-    {
-     "id": "slot-table.new-sheet-columns",
-     "why": "Do not author a parallel *_SHEET_COLUMNS / *_SHEET_BASE column SoT. Bind a catalog field and materializeTracks. To-ship display is ordersCompoundColumnsFor, never a staging sheet model.",
-     "diffPattern": "export const \\w+_SHEET_(?:COLUMNS|BASE)"
-    },
-    {
-     "id": "slot-table.native-date-input",
-     "why": "STATUS delay line: DateRangePickerField variant=compact when editable (no X, no year, no presets/Apply, click commits one day). Always a face. Write through useOptimisticMutation (useOrderAssignment). DATES glyphs: Hash on order date, CalendarClock on due date; one glyph, ink follows the age face (no swap when late). Hover always names the line (`Order date` / `Due date`) via HoverTooltip so MorphCursorLayer carries the chip; clickCursor on the compact trigger. Form compact mounts keep the default calendar.",
-     "diffPattern": "type=[\"']date[\"']"
-    },
-    {
-     "id": "slot-table.range-variant-in-cell",
-     "why": "STATUS delay line: DateRangePickerField variant=compact when editable (no X, no year, no presets/Apply, click commits one day). Always a face. Write through useOptimisticMutation (useOrderAssignment). DATES glyphs: Hash on order date, CalendarClock on due date; one glyph, ink follows the age face (no swap when late). Hover always names the line (`Order date` / `Due date`) via HoverTooltip so MorphCursorLayer carries the chip; clickCursor on the compact trigger. Form compact mounts keep the default calendar.",
-     "diffPattern": "variant=[\"']range[\"']"
-    },
-    {
-     "id": "slot-table.inline-editable-date",
-     "why": "STATUS delay line: DateRangePickerField variant=compact when editable (no X, no year, no presets/Apply, click commits one day). Always a face. Write through useOptimisticMutation (useOrderAssignment). DATES glyphs: Hash on order date, CalendarClock on due date; one glyph, ink follows the age face (no swap when late). Hover always names the line (`Order date` / `Due date`) via HoverTooltip so MorphCursorLayer carries the chip; clickCursor on the compact trigger. Form compact mounts keep the default calendar.",
-     "diffPattern": "InlineEditableValue"
-    },
-    {
-     "id": "slot-table.filter-refinement-bar",
-     "why": "Toolbar funnel: DataTableFilterMenu always mounts beside SearchField (DATA_TABLE_FILTER_IDLE when a family has no facets). Job verbs (`actions`) paint immediately after the funnel — search · filter · actions · sort · views · date. Never FilterRefinementBar, never a hunt-tile strip, never a funnel inside SearchField. Unbox Queue/Viewed/History share ?ukpi= with KPI tiles via useReceivingTableChrome.",
-     "diffPattern": "FilterRefinementBar"
-    },
-    {
-     "id": "slot-table.orders-row-dots-menu",
-     "why": "No standing ⋮ on the compound skeleton (`COMPOUND_COLUMN_KEYS` has no actions; `ordersCompoundColumnsFor` never remounts that track). No Amount track on the shared skeleton (`COMPOUND_COLUMN_KEYS` has no amount). Copy order / copy tracking live on CompoundFulfillment chips (click); other row verbs ride the title hover and the checkbox Morphing menu. Selecting a row ALWAYS opens that left manifold on every outbound OrdersGridHost lane (To-ship AND Shipped — `queueMode` must not disable Morphing). Do not remount the actions column, a Copy order number row menu, or rowMenuActions on OrdersQueueTableRow. Exceptions: no DataTable `actions=` — Resolve is DeskHeaderAction; Paste item # morphs the checkbox menu (`commitExceptionsItemPaste`). Operator 2026-09-04.",
-     "diffPattern": "Copy order number|rowMenuActions"
-    },
-    {
-     "id": "slot-table.amount-column",
-     "why": "Line price/amount is CompoundItem subtitle identity after qty. Catalog `{family}.amount` or `{family}.price` (money, subtitle) is pinned via ensureLineMoneySubtitle — every PRODUCT_TABLES peer, including a table added later. COMPOUND_COLUMN_KEYS has no amount track. Occupancy (sku-velocity.stock, dead-stock.stock) is not line money. catalog.cost is not a line price. Face: COMPOUND_MONEY_TONE_CLASS, widthCh 8, empty `$-` (lineMoneySubtitlePart). Org cannot unbind it. A green Amount column while Unbox still has one is a cohort fail — the 2026-09-04 Orders-only drop was the hole. Operator 2026-09-05.",
-     "diffPattern": "'amount',\\s*'_fill'"
-    }
-   ],
-   "tokenAxes": [
-    "color",
-    "radius"
-   ],
-   "graphExpectedFiles": {
-    "CompoundItem": "src/components/tables/compound/CompoundCells.tsx",
-    "CompoundState": "src/components/tables/compound/CompoundCells.tsx",
-    "useSlotTableLayout": "src/components/tables/useSlotTableLayout.ts",
-    "materializeTracks": "src/lib/tables/materialize-tracks.ts",
-    "getExternalUrlByItemNumber": "src/utils/external-item-url.ts",
-    "DateRangePickerField": "src/design-system/components/DateRangePickerField.tsx",
-    "useOptimisticMutation": "src/lib/optimistic/useOptimisticMutation.ts",
-    "DataTableFilterMenu": "src/components/tables/DataTable.tsx",
-    "queueSortForColumnKey": "src/utils/queue-display-sort.ts",
-    "LedgerGridColumnHeader": "src/design-system/components/grid/LedgerGridColumnHeader.tsx",
-    "isSlotTableChromeTrack": "src/lib/tables/slot-table-header-sort.ts",
-    "AssigneeCombobox": "src/design-system/components/AssigneeCombobox.tsx",
-    "ensureLineQtySubtitle": "src/lib/tables/slot-table-line-qty.ts",
-    "pinLineQtyFirst": "src/lib/tables/slot-table-line-qty.ts",
-    "ensureLineMoneySubtitle": "src/lib/tables/slot-table-line-money.ts",
-    "pinLineMoneyAfterQty": "src/lib/tables/slot-table-line-money.ts",
-    "ordersCompoundColumnsFor": "src/lib/dashboard-order-row-layout.ts",
-    "COMPOUND_COLUMN_KEYS": "src/components/tables/compound/compound-columns.ts"
-   }
-  },
-  {
-   "cohort": "station:pack",
-   "keywords": [
-    "pack",
-    "pack",
-    "floor",
-    "station",
-    "pack"
-   ],
-   "evalCommand": "pnpm run eval:station pack",
-   "graphSymbols": [
-    "PackOrderWorkspace",
-    "idleBrowseLayerProps",
-    "overlayPaneStyle",
-    "ItemRecordQtyBadge",
-    "useOverlaySwapHardCut"
-   ],
-   "engineFiles": [
     "src/components/packer/PackOrderWorkspace.tsx",
-    "src/lib/station/scan-station-overlay-cohort.test.ts",
-    "src/design-system/motion/idle-overlay.ts"
-   ],
-   "mounts": [],
-   "refuse": [
-    {
-     "id": "composer.show-mode-row-false",
-     "why": "Dumb stations keep the mode row and set showModeFaces={false}. Never showModeRow={false} to hide Unbox|Ticket.",
-     "diffPattern": "showModeRow=\\{false\\}"
-    },
-    {
-     "id": "composer.notes-composer",
-     "why": "Clone Pack/Unbox. Do not invent a *NotesComposer shell or a second mouth.",
-     "diffPattern": "\\w+NotesComposer"
-    }
-   ],
-   "graphExpectedFiles": {
-    "PackOrderWorkspace": "src/components/packer/PackOrderWorkspace.tsx",
-    "idleBrowseLayerProps": "src/design-system/motion/idle-overlay.ts",
-    "overlayPaneStyle": "src/design-system/motion/idle-overlay.ts",
-    "useOverlaySwapHardCut": "src/design-system/motion/use-overlay-swap-hard-cut.ts"
-   }
-  },
-  {
-   "cohort": "station:scan-out",
-   "keywords": [
-    "scan",
-    "out",
-    "scan",
-    "out",
-    "floor",
-    "station",
-    "shipping",
-    "scan",
-    "out"
-   ],
-   "evalCommand": "pnpm run eval:station scan-out",
-   "graphSymbols": [
-    "ScanOutWorkspace",
-    "idleBrowseLayerProps",
-    "overlayPaneStyle",
-    "ItemRecordQtyBadge",
-    "StationComposerHost",
-    "ComposerModeRow",
-    "ScanStationProgressRing",
-    "useOverlaySwapHardCut"
-   ],
-   "engineFiles": [
-    "src/components/outbound/workspaces/ScanOutWorkspace.tsx",
-    "src/components/outbound/scan-out/ScanOutComposerDock.tsx",
-    "src/components/composer/ComposerModeRow.tsx",
-    "src/components/receiving/incoming/IncomingAddExtractComposer.tsx",
-    "src/lib/station/scan-station-overlay-cohort.test.ts",
-    "src/design-system/motion/idle-overlay.ts"
-   ],
-   "mounts": [],
-   "refuse": [
-    {
-     "id": "composer.show-mode-row-false",
-     "why": "Dumb stations keep the mode row and set showModeFaces={false}. Never showModeRow={false} to hide Unbox|Ticket.",
-     "diffPattern": "showModeRow=\\{false\\}"
-    },
-    {
-     "id": "composer.notes-composer",
-     "why": "Clone Pack/Unbox. Do not invent a *NotesComposer shell or a second mouth.",
-     "diffPattern": "\\w+NotesComposer"
-    }
-   ],
-   "graphExpectedFiles": {
-    "ScanOutWorkspace": "src/components/outbound/workspaces/ScanOutWorkspace.tsx",
-    "idleBrowseLayerProps": "src/design-system/motion/idle-overlay.ts",
-    "overlayPaneStyle": "src/design-system/motion/idle-overlay.ts",
-    "useOverlaySwapHardCut": "src/design-system/motion/use-overlay-swap-hard-cut.ts"
-   }
-  },
-  {
-   "cohort": "station:shipping",
-   "keywords": [
-    "shipping",
-    "shipping",
-    "scan",
-    "station",
-    "shipping"
-   ],
-   "evalCommand": "pnpm run eval:station shipping",
-   "graphSymbols": [
-    "TechRightPane",
-    "idleBrowseLayerProps",
-    "overlayPaneStyle",
-    "ItemRecordQtyBadge",
-    "useOverlaySwapHardCut"
-   ],
-   "engineFiles": [
-    "src/components/tech/TechRightPane.tsx",
-    "src/lib/station/scan-station-overlay-cohort.test.ts",
-    "src/design-system/motion/idle-overlay.ts"
-   ],
-   "mounts": [],
-   "refuse": [
-    {
-     "id": "composer.show-mode-row-false",
-     "why": "Dumb stations keep the mode row and set showModeFaces={false}. Never showModeRow={false} to hide Unbox|Ticket.",
-     "diffPattern": "showModeRow=\\{false\\}"
-    },
-    {
-     "id": "composer.notes-composer",
-     "why": "Clone Pack/Unbox. Do not invent a *NotesComposer shell or a second mouth.",
-     "diffPattern": "\\w+NotesComposer"
-    }
-   ],
-   "graphExpectedFiles": {
-    "TechRightPane": "src/components/tech/TechRightPane.tsx",
-    "idleBrowseLayerProps": "src/design-system/motion/idle-overlay.ts",
-    "overlayPaneStyle": "src/design-system/motion/idle-overlay.ts",
-    "useOverlaySwapHardCut": "src/design-system/motion/use-overlay-swap-hard-cut.ts"
-   }
-  },
-  {
-   "cohort": "station:testing",
-   "keywords": [
-    "testing",
-    "testing",
-    "floor",
-    "station",
-    "test"
-   ],
-   "evalCommand": "pnpm run eval:station testing",
-   "graphSymbols": [
-    "TestingLineWorkspace",
-    "idleBrowseLayerProps",
-    "overlayPaneStyle",
-    "ItemRecordQtyBadge"
-   ],
-   "engineFiles": [
-    "src/components/tech/TestingLineWorkspace.tsx",
-    "src/lib/station/scan-station-overlay-cohort.test.ts",
-    "src/design-system/motion/idle-overlay.ts"
-   ],
-   "mounts": [],
-   "refuse": [
-    {
-     "id": "composer.show-mode-row-false",
-     "why": "Dumb stations keep the mode row and set showModeFaces={false}. Never showModeRow={false} to hide Unbox|Ticket.",
-     "diffPattern": "showModeRow=\\{false\\}"
-    },
-    {
-     "id": "composer.notes-composer",
-     "why": "Clone Pack/Unbox. Do not invent a *NotesComposer shell or a second mouth.",
-     "diffPattern": "\\w+NotesComposer"
-    }
-   ],
-   "graphExpectedFiles": {
-    "TestingLineWorkspace": "src/components/tech/TestingLineWorkspace.tsx",
-    "idleBrowseLayerProps": "src/design-system/motion/idle-overlay.ts",
-    "overlayPaneStyle": "src/design-system/motion/idle-overlay.ts",
-    "useOverlaySwapHardCut": "src/design-system/motion/use-overlay-swap-hard-cut.ts"
-   }
-  },
-  {
-   "cohort": "station:triage",
-   "keywords": [
-    "triage",
-    "arrival",
-    "triage",
-    "floor",
-    "station",
-    "triage"
-   ],
-   "evalCommand": "pnpm run eval:station triage",
-   "graphSymbols": [
-    "TriageLineWorkspace",
-    "idleBrowseLayerProps",
-    "overlayPaneStyle",
-    "ItemRecordQtyBadge",
-    "useOverlaySwapHardCut"
-   ],
-   "engineFiles": [
     "src/components/receiving/triage/TriageLineWorkspace.tsx",
-    "src/lib/station/scan-station-overlay-cohort.test.ts",
-    "src/design-system/motion/idle-overlay.ts"
-   ],
-   "mounts": [],
-   "refuse": [
-    {
-     "id": "composer.show-mode-row-false",
-     "why": "Dumb stations keep the mode row and set showModeFaces={false}. Never showModeRow={false} to hide Unbox|Ticket.",
-     "diffPattern": "showModeRow=\\{false\\}"
-    },
-    {
-     "id": "composer.notes-composer",
-     "why": "Clone Pack/Unbox. Do not invent a *NotesComposer shell or a second mouth.",
-     "diffPattern": "\\w+NotesComposer"
-    }
-   ],
-   "graphExpectedFiles": {
-    "TriageLineWorkspace": "src/components/receiving/triage/TriageLineWorkspace.tsx",
-    "idleBrowseLayerProps": "src/design-system/motion/idle-overlay.ts",
-    "overlayPaneStyle": "src/design-system/motion/idle-overlay.ts",
-    "useOverlaySwapHardCut": "src/design-system/motion/use-overlay-swap-hard-cut.ts"
-   }
-  },
-  {
-   "cohort": "station:unbox",
-   "keywords": [
-    "unbox",
-    "unbox",
-    "floor",
-    "station",
-    "unbox"
-   ],
-   "evalCommand": "pnpm run eval:station unbox",
-   "graphSymbols": [
-    "UnboxLineWorkspace",
-    "idleBrowseLayerProps",
-    "overlayPaneStyle",
-    "ItemRecordQtyBadge",
-    "useOverlaySwapHardCut"
-   ],
-   "engineFiles": [
     "src/components/receiving/unbox/UnboxLineWorkspace.tsx",
-    "src/lib/station/scan-station-overlay-cohort.test.ts",
-    "src/design-system/motion/idle-overlay.ts"
-   ],
-   "mounts": [],
-   "refuse": [
+    "src/components/tech/TechRightPane.tsx",
+    "src/components/tech/TestingLineWorkspace.tsx"
+  ],
+  "surfaces": [
     {
-     "id": "composer.show-mode-row-false",
-     "why": "Dumb stations keep the mode row and set showModeFaces={false}. Never showModeRow={false} to hide Unbox|Ticket.",
-     "diffPattern": "showModeRow=\\{false\\}"
+      "id": "unbox",
+      "kind": "station",
+      "route": "/unbox",
+      "workspace": "src/components/receiving/unbox/UnboxLineWorkspace.tsx",
+      "exportName": "UnboxLineWorkspace",
+      "evalCommand": "pnpm run eval:station unbox",
+      "cohort": "station:unbox",
+      "graphSymbols": [
+        "UnboxLineWorkspace",
+        "idleBrowseLayerProps",
+        "overlayPaneStyle",
+        "ItemRecordQtyBadge",
+        "useOverlaySwapHardCut"
+      ]
     },
     {
-     "id": "composer.notes-composer",
-     "why": "Clone Pack/Unbox. Do not invent a *NotesComposer shell or a second mouth.",
-     "diffPattern": "\\w+NotesComposer"
+      "id": "triage",
+      "kind": "station",
+      "route": "/triage",
+      "workspace": "src/components/receiving/triage/TriageLineWorkspace.tsx",
+      "exportName": "TriageLineWorkspace",
+      "evalCommand": "pnpm run eval:station triage",
+      "cohort": "station:triage",
+      "graphSymbols": [
+        "TriageLineWorkspace",
+        "idleBrowseLayerProps",
+        "overlayPaneStyle",
+        "ItemRecordQtyBadge",
+        "useOverlaySwapHardCut"
+      ]
+    },
+    {
+      "id": "pack",
+      "kind": "station",
+      "route": "/pack",
+      "workspace": "src/components/packer/PackOrderWorkspace.tsx",
+      "exportName": "PackOrderWorkspace",
+      "evalCommand": "pnpm run eval:station pack",
+      "cohort": "station:pack",
+      "graphSymbols": [
+        "PackOrderWorkspace",
+        "idleBrowseLayerProps",
+        "overlayPaneStyle",
+        "ItemRecordQtyBadge",
+        "useOverlaySwapHardCut"
+      ]
+    },
+    {
+      "id": "testing",
+      "kind": "station",
+      "route": "/test",
+      "workspace": "src/components/tech/TestingLineWorkspace.tsx",
+      "exportName": "TestingLineWorkspace",
+      "evalCommand": "pnpm run eval:station testing",
+      "cohort": "station:testing",
+      "graphSymbols": [
+        "TestingLineWorkspace",
+        "idleBrowseLayerProps",
+        "overlayPaneStyle",
+        "ItemRecordQtyBadge"
+      ]
+    },
+    {
+      "id": "shipping",
+      "kind": "station",
+      "route": "/shipping",
+      "workspace": "src/components/tech/TechRightPane.tsx",
+      "exportName": "TechRightPane",
+      "evalCommand": "pnpm run eval:station shipping",
+      "cohort": "station:shipping",
+      "graphSymbols": [
+        "TechRightPane",
+        "idleBrowseLayerProps",
+        "overlayPaneStyle",
+        "ItemRecordQtyBadge",
+        "useOverlaySwapHardCut"
+      ]
+    },
+    {
+      "id": "scan-out",
+      "kind": "station",
+      "route": "/shipping/scan-out",
+      "workspace": "src/components/outbound/workspaces/ScanOutWorkspace.tsx",
+      "exportName": "ScanOutWorkspace",
+      "evalCommand": "pnpm run eval:station scan-out",
+      "cohort": "station:scan-out",
+      "graphSymbols": [
+        "ScanOutWorkspace",
+        "idleBrowseLayerProps",
+        "overlayPaneStyle",
+        "ItemRecordQtyBadge",
+        "StationComposerHost",
+        "ComposerModeRow",
+        "ScanStationProgressRing",
+        "useOverlaySwapHardCut"
+      ]
+    },
+    {
+      "id": "slot-table",
+      "kind": "slot-table-engine",
+      "route": null,
+      "workspace": "src/components/tables/compound/CompoundCells.tsx",
+      "exportName": "CompoundItem",
+      "evalCommand": "pnpm run eval:cohort slot-table",
+      "cohort": "slot-table",
+      "graphSymbols": [
+        "CompoundItem",
+        "CompoundState",
+        "useSlotTableLayout",
+        "materializeTracks",
+        "getExternalUrlByItemNumber",
+        "DateRangePickerField",
+        "useOptimisticMutation",
+        "DataTableFilterMenu",
+        "queueSortForColumnKey",
+        "LedgerGridColumnHeader",
+        "isSlotTableChromeTrack",
+        "AssigneeCombobox",
+        "ensureLineQtySubtitle",
+        "pinLineQtyFirst",
+        "ensureLineMoneySubtitle",
+        "pinLineMoneyAfterQty",
+        "ordersCompoundColumnsFor",
+        "COMPOUND_COLUMN_KEYS"
+      ]
+    },
+    {
+      "id": "shortcuts",
+      "kind": "shortcuts-engine",
+      "route": null,
+      "workspace": "src/design-system/primitives/KeyboardKey.tsx",
+      "exportName": "KeyboardKey",
+      "evalCommand": "pnpm run eval:cohort shortcuts",
+      "cohort": "shortcuts",
+      "graphSymbols": [
+        "KeyboardKey",
+        "KeyboardShortcutsCheatSheet",
+        "useSelectionStatusBarHotkeys",
+        "TableStatusBar"
+      ]
+    },
+    {
+      "id": "composer",
+      "kind": "composer",
+      "route": null,
+      "workspace": "src/components/composer/StationComposerHost.tsx",
+      "exportName": "StationComposerHost",
+      "evalCommand": "pnpm run eval:station scan-out",
+      "cohort": "composer",
+      "graphSymbols": [
+        "StationComposerHost",
+        "ComposerModeRow"
+      ]
     }
-   ],
-   "graphExpectedFiles": {
-    "UnboxLineWorkspace": "src/components/receiving/unbox/UnboxLineWorkspace.tsx",
-    "idleBrowseLayerProps": "src/design-system/motion/idle-overlay.ts",
-    "overlayPaneStyle": "src/design-system/motion/idle-overlay.ts",
-    "useOverlaySwapHardCut": "src/design-system/motion/use-overlay-swap-hard-cut.ts"
-   }
-  },
-  {
-   "cohort": "mobile-display",
-   "keywords": [
-    "mobile",
-    "phone",
-    "/m",
-    "handheld",
-    "touch target",
-    "tap target",
-    "button size",
-    "font size",
-    "type scale",
-    "apple",
-    "hig",
-    "44",
-    "mobile button",
-    "mobile text",
-    "small button"
-   ],
-   "evalCommand": "pnpm run eval:cohort mobile-display",
-   "graphSymbols": [
-    "MobileStationSheet",
-    "MobileStationTapeItem",
-    "MobileCaptureWindow"
-   ],
-   "engineFiles": [
-    "src/lib/mobile/mobile-display-cohort.ts",
-    "src/components/mobile/station/MobileStationSheet.tsx",
-    "src/components/mobile/station/MobileStationTapeItem.tsx",
-    "src/components/mobile/station/MobileCaptureWindow.tsx"
-   ],
-   "mounts": [
-    "/m/scan-out"
-   ],
-   "refuse": [
+  ],
+  "routes": [
     {
-     "id": "mobile.size-lg",
-     "why": "size=\"lg\" resolves to h-14 (56px) in mobile mode. The phone ladder is 28/36/44 painted; expand the HIT area with padding, never the paint. Apple HIG: 44x44 is the hit region, the visible control may be smaller.",
-     "diffPattern": "size=\\\"lg\\\""
+      "cohort": "composer",
+      "keywords": [
+        "modes",
+        "dumb",
+        "gun",
+        "faces",
+        "composer",
+        "mouth"
+      ],
+      "evalCommand": "pnpm run eval:station scan-out",
+      "graphSymbols": [
+        "StationComposerHost",
+        "ComposerModeRow"
+      ],
+      "engineFiles": [
+        "src/components/composer/StationComposerHost.tsx",
+        "src/components/composer/ComposerModeRow.tsx",
+        "src/components/outbound/workspaces/ScanOutWorkspace.tsx",
+        "src/components/outbound/scan-out/ScanOutComposerDock.tsx",
+        "src/components/receiving/incoming/IncomingAddExtractComposer.tsx",
+        "src/lib/station/scan-station-overlay-cohort.test.ts",
+        "src/design-system/motion/idle-overlay.ts"
+      ],
+      "mounts": [
+        "showModeFaces={false}"
+      ],
+      "refuse": [
+        {
+          "id": "composer.show-mode-row-false",
+          "why": "Dumb stations keep the mode row and set showModeFaces={false}. Never showModeRow={false} to hide Unbox|Ticket.",
+          "diffPattern": "showModeRow=\\{false\\}"
+        },
+        {
+          "id": "composer.notes-composer",
+          "why": "Clone Pack/Unbox. Do not invent a *NotesComposer shell or a second mouth.",
+          "diffPattern": "\\w+NotesComposer"
+        }
+      ]
     },
     {
-     "id": "mobile.h-14",
-     "why": "h-14 paints 56px on a phone. Top of the ladder is 44 (cta). Use size=\"sm\" plus an explicit min-h-11 hit area.",
-     "diffPattern": "[\\\"'\\\\s]min-h-14|[\\\"'\\\\s]h-14[\\\\s\\\"']"
+      "cohort": "discover",
+      "keywords": [
+        "discover",
+        "leftover",
+        "handmodel"
+      ],
+      "evalCommand": "pnpm run eval:discover",
+      "graphSymbols": [],
+      "engineFiles": [
+        "src/lib/tables/slot-table-discover.ts"
+      ],
+      "mounts": [],
+      "refuse": []
     },
     {
-     "id": "mobile.text-role-micro",
-     "why": "text-role-micro is 10px, under Apple's 11pt legibility floor (\"Text should be at least 11 points\"). Floor on /m is text-role-eyebrow.",
-     "diffPattern": "text-role-micro"
+      "cohort": "shortcuts",
+      "keywords": [
+        "shortcut",
+        "hotkey",
+        "overlay",
+        "keycap",
+        "cheat"
+      ],
+      "evalCommand": "pnpm run eval:cohort shortcuts",
+      "graphSymbols": [
+        "KeyboardKey",
+        "KeyboardShortcutsCheatSheet",
+        "useSelectionStatusBarHotkeys",
+        "TableStatusBar"
+      ],
+      "engineFiles": [
+        "src/design-system/primitives/KeyboardKey.tsx",
+        "src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx",
+        "src/lib/keyboard/shortcut-overview.ts",
+        "src/components/tables/TableStatusBar.tsx",
+        "src/components/tables/DataTableColumnActionRow.tsx",
+        "src/hooks/useSelectionStatusBarHotkeys.ts",
+        "src/hooks/useSelectionActionHotkeys.ts",
+        "src/lib/keyboard/shortcut-display-cohort.ts"
+      ],
+      "mounts": [
+        "HotkeyGlyph"
+      ],
+      "refuse": [
+        {
+          "id": "shortcuts.standing-keycaps",
+          "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey."
+        },
+        {
+          "id": "shortcuts.forbidden.hotkeyPopover",
+          "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+          "diffPattern": "function HotkeyPopoverLabel"
+        },
+        {
+          "id": "shortcuts.forbidden.staffQuestionOpensSheet",
+          "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+          "diffPattern": "toggleShortcutOverview"
+        },
+        {
+          "id": "shortcuts.forbidden.footQuestionButton",
+          "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+          "diffPattern": "data-testid=\"data-table-selection-hotkey-hints\""
+        },
+        {
+          "id": "shortcuts.forbidden.translucentOverlay",
+          "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+          "diffPattern": "bg-black\\/25"
+        },
+        {
+          "id": "shortcuts.forbidden.iconRightKeySlot",
+          "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+          "diffPattern": "iconRight=\\{keySlot\\}"
+        },
+        {
+          "id": "shortcuts.forbidden.reservedHotkeySlot",
+          "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+          "diffPattern": "data-testid=\"data-table-selection-hotkey-slot\""
+        },
+        {
+          "id": "shortcuts.forbidden.outsideAnchor",
+          "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+          "diffPattern": "absolute left-full"
+        },
+        {
+          "id": "shortcuts.forbidden.revealGapWiden",
+          "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+          "diffPattern": "inlineHotkeys \\? 'gap-7"
+        },
+        {
+          "id": "shortcuts.forbidden.whiteTeachingFace",
+          "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+          "diffPattern": "bg-surface-canvas"
+        },
+        {
+          "id": "shortcuts.forbidden.mutedTeachingLetter",
+          "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+          "diffPattern": "text-text-muted"
+        }
+      ]
+    },
+    {
+      "cohort": "slot-table",
+      "keywords": [
+        "sort",
+        "column",
+        "header",
+        "image",
+        "thumb",
+        "date",
+        "cell",
+        "ship",
+        "compact",
+        "filter",
+        "sortable",
+        "listing",
+        "compound",
+        "table",
+        "dots",
+        "ellipsis",
+        "amount",
+        "price",
+        "due",
+        "dates",
+        "inbound"
+      ],
+      "evalCommand": "pnpm run eval:cohort slot-table",
+      "graphSymbols": [
+        "isSlotTableChromeTrack",
+        "queueSortForColumnKey",
+        "LedgerGridColumnHeader",
+        "CompoundItem",
+        "DateRangePickerField",
+        "CompoundState",
+        "useOptimisticMutation",
+        "ordersCompoundColumnsFor",
+        "COMPOUND_COLUMN_KEYS"
+      ],
+      "engineFiles": [
+        "src/components/tables/compound/CompoundCells.tsx",
+        "src/components/tables/compound/CompoundRow.tsx",
+        "src/components/tables/compound/StageStaffAssignPopover.tsx",
+        "src/design-system/components/AssigneeCombobox.tsx",
+        "src/components/tables/compound/ProductTitleLink.tsx",
+        "src/components/tables/useSlotTableLayout.ts",
+        "src/lib/tables/materialize-tracks.ts",
+        "src/utils/external-item-url.ts",
+        "src/design-system/components/DateRangePickerField.tsx",
+        "src/hooks/useOrderAssignment.ts",
+        "src/lib/optimistic/useOptimisticMutation.ts",
+        "src/components/tables/DataTable.tsx",
+        "src/utils/queue-display-sort.ts",
+        "src/lib/tables/slot-table-header-sort.ts",
+        "src/design-system/components/grid/LedgerGridColumnHeader.tsx",
+        "src/lib/tables/slot-table-line-qty.ts",
+        "src/lib/tables/slot-table-line-money.ts",
+        "src/lib/tables/slot-table-session-laws.ts",
+        "src/components/tables/compound/compound-row-model.ts",
+        "src/lib/tables/field-catalog/incoming.ts",
+        "src/lib/tables/field-catalog/receiving.ts",
+        "src/lib/dashboard-order-row-layout.ts",
+        "src/components/dashboard/orders-queue/OrdersQueueTableRow.tsx",
+        "src/components/tables/compound/compound-columns.ts",
+        "src/components/tables/compound/CompoundStaffRosterButton.tsx",
+        "src/components/dashboard/orders-queue/useOrdersTableLayout.ts",
+        "src/components/outbound/orders/import-staging/useOrdersImportTableLayout.ts",
+        "src/components/outbound/orders/shortage-coverage-staging/useShortageCoverageImportTableLayout.ts",
+        "src/components/station/receiving-grid/useReceivingTableLayout.ts",
+        "src/components/station/incoming-grid/useIncomingTableLayout.ts",
+        "src/components/outbound/ready/grid/useReadyTableLayout.ts",
+        "src/components/receiving/pickup/grid/usePickupTableLayout.ts",
+        "src/components/receiving/unfound/grid/useUnfoundTableLayout.ts",
+        "src/features/review/catalog-link/grid/useCatalogLinkTableLayout.ts",
+        "src/features/review/catalog-link/grid/useImportExceptionTableLayout.ts",
+        "src/components/inventory/units-grid/useUnitsTableLayout.ts",
+        "src/components/products/catalog/catalog-grid/useCatalogTableLayout.ts",
+        "src/components/warehouse/bins-grid/useBinsTableLayout.ts",
+        "src/components/inventory/events-grid/useInventoryEventsTableLayout.ts",
+        "src/components/settings/audit/useAuditLogTableLayout.ts",
+        "src/components/settings/sessions/useAuthSessionsTableLayout.ts",
+        "src/components/settings/kiosk-devices/useKioskDevicesTableLayout.ts",
+        "src/components/settings/staff-table/useStaffDirectoryTableLayout.ts",
+        "src/components/settings/ai-usage/useAiUsageTableLayout.ts",
+        "src/components/admin/sourcing/compatibility/useCompatibilityTableLayout.ts",
+        "src/components/repair/repair-grid/useRepairTableLayout.ts",
+        "src/components/warranty/grid/useWarrantyTableLayout.ts",
+        "src/components/tech/all/useTechAllTableLayout.ts",
+        "src/components/tracking-exceptions/grid/useTrackingExceptionsTableLayout.ts",
+        "src/features/tasks/grid/useTasksTableLayout.ts",
+        "src/features/reports/sessions/useSessionsTableLayout.ts",
+        "src/features/reports/metrics/useSkuVelocityTableLayout.ts",
+        "src/features/reports/metrics/useDeadStockTableLayout.ts",
+        "src/features/home/grid/useDailyTableLayout.ts",
+        "src/features/my-day/grid/useMyDayTableLayout.ts",
+        "src/lib/tables/slot-table-cohort.test.ts",
+        "src/lib/tables/slot-table-cohort.ts",
+        "src/lib/tables/slot-table-discover.ts",
+        "src/lib/eval/prompt-router.ts"
+      ],
+      "refuseSkipFiles": [
+        "src/lib/tables/slot-table-cohort.ts",
+        "src/lib/tables/slot-table-cohort.test.ts",
+        "src/lib/tables/slot-table-discover.ts",
+        "src/lib/tables/slot-table-discover.test.ts",
+        "src/lib/eval/prompt-router.ts",
+        "src/lib/eval/prompt-router.test.ts",
+        "src/lib/tables/slot-table-session-laws.ts",
+        "src/lib/tables/slot-table-session-laws.test.ts",
+        "src/lib/tables/table-engine-law.ts",
+        "src/lib/tables/table-engine-law.test.ts"
+      ],
+      "mounts": [],
+      "refuse": [
+        {
+          "id": "slot-table.sortable-false-on-fact",
+          "why": "Every painted DATA column header is click-to-sort (family isSortable + comparator + URL fact map). The toolbar sort menu lists those same facts (`queueColumnSortOptions`) plus View composites / pins — a header-click sort (Pick, Status) must be a selectable row, not trigger-only. Chrome only: select, actions/action, _fill, thumb (Image photo gutter). Header is the Image type glyph on every PRODUCT_TABLES peer and every tab mount; tabs fork row data only — never drop the thumb track. Dead headers (click does nothing) are a fail — map the track, do not mark Status/Item/Order unsortable. There is no Amount column: line money is CompoundItem subtitle identity. Outbound `OrdersGridHost` lanes share `?sort=` via useQueueDisplaySort — do not pass a frozen `sort=` (that was the Shipped / Review / Staged dead-header fork). Operator 2026-09-04: Image/thumb is chrome.",
+          "diffPattern": "sortable:\\s*false"
+        },
+        {
+          "id": "slot-table.new-grid-columns-array",
+          "why": "Do not author a second GRID_COLUMNS SoT. Discover names DELETE; KEEP engine materializations.",
+          "diffPattern": "export const \\w+_GRID_COLUMNS"
+        },
+        {
+          "id": "slot-table.new-grid-row",
+          "why": "A *GridRow.tsx with a switch over column keys is a second table. To-ship sheet sync mounts UnshippedTable → useOrdersSpreadsheet → OrdersQueueTableRow. Adapt the row (cagedRecordToQueueRow). File CSV may keep CsvImportStagingGridRow; do not import it from DashboardOrdersView. New *GridRow files fail the slot-table tripwire allowlist.",
+          "diffPattern": "CsvImportStagingGridRow|export (?:function|const) \\w+GridRow"
+        },
+        {
+          "id": "slot-table.new-sheet-columns",
+          "why": "Do not author a parallel *_SHEET_COLUMNS / *_SHEET_BASE column SoT. Bind a catalog field and materializeTracks. To-ship display is ordersCompoundColumnsFor, never a staging sheet model.",
+          "diffPattern": "export const \\w+_SHEET_(?:COLUMNS|BASE)"
+        },
+        {
+          "id": "slot-table.native-date-input",
+          "why": "STATUS delay line: DateRangePickerField variant=compact when editable (no X, no year, no presets/Apply, click commits one day). Always a face. Write through useOptimisticMutation (useOrderAssignment). Form compact mounts keep the default calendar.",
+          "diffPattern": "type=[\"']date[\"']"
+        },
+        {
+          "id": "slot-table.range-variant-in-cell",
+          "why": "STATUS delay line: DateRangePickerField variant=compact when editable (no X, no year, no presets/Apply, click commits one day). Always a face. Write through useOptimisticMutation (useOrderAssignment). Form compact mounts keep the default calendar.",
+          "diffPattern": "variant=[\"']range[\"']"
+        },
+        {
+          "id": "slot-table.inline-editable-date",
+          "why": "STATUS delay line: DateRangePickerField variant=compact when editable (no X, no year, no presets/Apply, click commits one day). Always a face. Write through useOptimisticMutation (useOrderAssignment). Form compact mounts keep the default calendar.",
+          "diffPattern": "InlineEditableValue"
+        },
+        {
+          "id": "slot-table.filter-refinement-bar",
+          "why": "Toolbar funnel: DataTableFilterMenu always mounts beside SearchField (DATA_TABLE_FILTER_IDLE when a family has no facets). Job verbs (`actions`) paint immediately after the funnel — search · filter · actions · sort · views · date. Never FilterRefinementBar, never a hunt-tile strip, never a funnel inside SearchField. Unbox Queue/Viewed/History share ?ukpi= with KPI tiles via useReceivingTableChrome.",
+          "diffPattern": "FilterRefinementBar"
+        },
+        {
+          "id": "slot-table.orders-row-dots-menu",
+          "why": "No standing ⋮ on the compound skeleton (`COMPOUND_COLUMN_KEYS` has no actions; `ordersCompoundColumnsFor` never remounts that track). No Amount track on the shared skeleton (`COMPOUND_COLUMN_KEYS` has no amount). Copy order / copy tracking live on CompoundFulfillment chips (click); other row verbs ride the title hover and the checkbox Morphing menu. Selecting a row ALWAYS opens that left manifold on every outbound OrdersGridHost lane (To-ship AND Shipped — `queueMode` must not disable Morphing). Do not remount the actions column, a Copy order number row menu, or rowMenuActions on OrdersQueueTableRow. Exceptions: no DataTable `actions=` — Resolve is DeskHeaderAction; Paste item # morphs the checkbox menu (`commitExceptionsItemPaste`). Operator 2026-09-04.",
+          "diffPattern": "Copy order number|rowMenuActions"
+        },
+        {
+          "id": "slot-table.amount-column",
+          "why": "Line price/amount is CompoundItem subtitle identity after qty. Catalog `{family}.amount` or `{family}.price` (money, subtitle) is pinned via ensureLineMoneySubtitle — every PRODUCT_TABLES peer, including a table added later. COMPOUND_COLUMN_KEYS has no amount track. Occupancy (sku-velocity.stock, dead-stock.stock) is not line money. catalog.cost is not a line price. Face: COMPOUND_MONEY_TONE_CLASS, widthCh 8, empty `$-` (lineMoneySubtitlePart). Org cannot unbind it. A green Amount column while Unbox still has one is a cohort fail — the 2026-09-04 Orders-only drop was the hole. Operator 2026-09-05.",
+          "diffPattern": "'amount',\\s*'_fill'"
+        },
+        {
+          "id": "slot-table.dates-column-rename",
+          "why": "Dates COLUMN header stays Dates on every table (`COMPOUND_TRACKS`). Do not rename it per page. Top line is the start fact (Hash / Order date); bottom line is the deadline (CalendarClock / Due date). One glyph each; ink follows the age face — no swap when late. Hover always names the line via compoundDatesHoverLabel so MorphCursorLayer carries the chip. CSV/import may still say Ship by date. Operator 2026-09-05.",
+          "diffPattern": "gridLabel:\\s*['\"](?:Ship by|Due date)['\"]"
+        },
+        {
+          "id": "slot-table.orders-only-amount-drop",
+          "why": "Line price/amount is CompoundItem subtitle identity after qty. Catalog `{family}.amount` or `{family}.price` (money, subtitle) is pinned via ensureLineMoneySubtitle — every PRODUCT_TABLES peer, including a table added later. COMPOUND_COLUMN_KEYS has no amount track. Occupancy (sku-velocity.stock, dead-stock.stock) is not line money. catalog.cost is not a line price. Face: COMPOUND_MONEY_TONE_CLASS, widthCh 8, empty `$-` (lineMoneySubtitlePart). Org cannot unbind it. A green Amount column while Unbox still has one is a cohort fail — the 2026-09-04 Orders-only drop was the hole. Operator 2026-09-05.",
+          "diffPattern": "key\\s*!==\\s*['\"]amount['\"]"
+        }
+      ],
+      "tokenAxes": [
+        "color",
+        "radius"
+      ],
+      "graphExpectedFiles": {
+        "CompoundItem": "src/components/tables/compound/CompoundCells.tsx",
+        "CompoundState": "src/components/tables/compound/CompoundCells.tsx",
+        "useSlotTableLayout": "src/components/tables/useSlotTableLayout.ts",
+        "materializeTracks": "src/lib/tables/materialize-tracks.ts",
+        "getExternalUrlByItemNumber": "src/utils/external-item-url.ts",
+        "DateRangePickerField": "src/design-system/components/DateRangePickerField.tsx",
+        "useOptimisticMutation": "src/lib/optimistic/useOptimisticMutation.ts",
+        "DataTableFilterMenu": "src/components/tables/DataTable.tsx",
+        "queueSortForColumnKey": "src/utils/queue-display-sort.ts",
+        "LedgerGridColumnHeader": "src/design-system/components/grid/LedgerGridColumnHeader.tsx",
+        "isSlotTableChromeTrack": "src/lib/tables/slot-table-header-sort.ts",
+        "AssigneeCombobox": "src/design-system/components/AssigneeCombobox.tsx",
+        "ensureLineQtySubtitle": "src/lib/tables/slot-table-line-qty.ts",
+        "pinLineQtyFirst": "src/lib/tables/slot-table-line-qty.ts",
+        "ensureLineMoneySubtitle": "src/lib/tables/slot-table-line-money.ts",
+        "pinLineMoneyAfterQty": "src/lib/tables/slot-table-line-money.ts",
+        "ordersCompoundColumnsFor": "src/lib/dashboard-order-row-layout.ts",
+        "COMPOUND_COLUMN_KEYS": "src/components/tables/compound/compound-columns.ts"
+      }
+    },
+    {
+      "cohort": "station:pack",
+      "keywords": [
+        "pack",
+        "pack",
+        "floor",
+        "station",
+        "pack"
+      ],
+      "evalCommand": "pnpm run eval:station pack",
+      "graphSymbols": [
+        "PackOrderWorkspace",
+        "idleBrowseLayerProps",
+        "overlayPaneStyle",
+        "ItemRecordQtyBadge",
+        "useOverlaySwapHardCut"
+      ],
+      "engineFiles": [
+        "src/components/packer/PackOrderWorkspace.tsx",
+        "src/lib/station/scan-station-overlay-cohort.test.ts",
+        "src/design-system/motion/idle-overlay.ts"
+      ],
+      "mounts": [],
+      "refuse": [
+        {
+          "id": "composer.show-mode-row-false",
+          "why": "Dumb stations keep the mode row and set showModeFaces={false}. Never showModeRow={false} to hide Unbox|Ticket.",
+          "diffPattern": "showModeRow=\\{false\\}"
+        },
+        {
+          "id": "composer.notes-composer",
+          "why": "Clone Pack/Unbox. Do not invent a *NotesComposer shell or a second mouth.",
+          "diffPattern": "\\w+NotesComposer"
+        }
+      ],
+      "graphExpectedFiles": {
+        "PackOrderWorkspace": "src/components/packer/PackOrderWorkspace.tsx",
+        "idleBrowseLayerProps": "src/design-system/motion/idle-overlay.ts",
+        "overlayPaneStyle": "src/design-system/motion/idle-overlay.ts",
+        "useOverlaySwapHardCut": "src/design-system/motion/use-overlay-swap-hard-cut.ts"
+      }
+    },
+    {
+      "cohort": "station:scan-out",
+      "keywords": [
+        "scan",
+        "out",
+        "scan",
+        "out",
+        "floor",
+        "station",
+        "shipping",
+        "scan",
+        "out"
+      ],
+      "evalCommand": "pnpm run eval:station scan-out",
+      "graphSymbols": [
+        "ScanOutWorkspace",
+        "idleBrowseLayerProps",
+        "overlayPaneStyle",
+        "ItemRecordQtyBadge",
+        "StationComposerHost",
+        "ComposerModeRow",
+        "ScanStationProgressRing",
+        "useOverlaySwapHardCut"
+      ],
+      "engineFiles": [
+        "src/components/outbound/workspaces/ScanOutWorkspace.tsx",
+        "src/components/outbound/scan-out/ScanOutComposerDock.tsx",
+        "src/components/composer/ComposerModeRow.tsx",
+        "src/components/receiving/incoming/IncomingAddExtractComposer.tsx",
+        "src/lib/station/scan-station-overlay-cohort.test.ts",
+        "src/design-system/motion/idle-overlay.ts"
+      ],
+      "mounts": [],
+      "refuse": [
+        {
+          "id": "composer.show-mode-row-false",
+          "why": "Dumb stations keep the mode row and set showModeFaces={false}. Never showModeRow={false} to hide Unbox|Ticket.",
+          "diffPattern": "showModeRow=\\{false\\}"
+        },
+        {
+          "id": "composer.notes-composer",
+          "why": "Clone Pack/Unbox. Do not invent a *NotesComposer shell or a second mouth.",
+          "diffPattern": "\\w+NotesComposer"
+        }
+      ],
+      "graphExpectedFiles": {
+        "ScanOutWorkspace": "src/components/outbound/workspaces/ScanOutWorkspace.tsx",
+        "idleBrowseLayerProps": "src/design-system/motion/idle-overlay.ts",
+        "overlayPaneStyle": "src/design-system/motion/idle-overlay.ts",
+        "useOverlaySwapHardCut": "src/design-system/motion/use-overlay-swap-hard-cut.ts"
+      }
+    },
+    {
+      "cohort": "station:shipping",
+      "keywords": [
+        "shipping",
+        "shipping",
+        "scan",
+        "station",
+        "shipping"
+      ],
+      "evalCommand": "pnpm run eval:station shipping",
+      "graphSymbols": [
+        "TechRightPane",
+        "idleBrowseLayerProps",
+        "overlayPaneStyle",
+        "ItemRecordQtyBadge",
+        "useOverlaySwapHardCut"
+      ],
+      "engineFiles": [
+        "src/components/tech/TechRightPane.tsx",
+        "src/lib/station/scan-station-overlay-cohort.test.ts",
+        "src/design-system/motion/idle-overlay.ts"
+      ],
+      "mounts": [],
+      "refuse": [
+        {
+          "id": "composer.show-mode-row-false",
+          "why": "Dumb stations keep the mode row and set showModeFaces={false}. Never showModeRow={false} to hide Unbox|Ticket.",
+          "diffPattern": "showModeRow=\\{false\\}"
+        },
+        {
+          "id": "composer.notes-composer",
+          "why": "Clone Pack/Unbox. Do not invent a *NotesComposer shell or a second mouth.",
+          "diffPattern": "\\w+NotesComposer"
+        }
+      ],
+      "graphExpectedFiles": {
+        "TechRightPane": "src/components/tech/TechRightPane.tsx",
+        "idleBrowseLayerProps": "src/design-system/motion/idle-overlay.ts",
+        "overlayPaneStyle": "src/design-system/motion/idle-overlay.ts",
+        "useOverlaySwapHardCut": "src/design-system/motion/use-overlay-swap-hard-cut.ts"
+      }
+    },
+    {
+      "cohort": "station:testing",
+      "keywords": [
+        "testing",
+        "testing",
+        "floor",
+        "station",
+        "test"
+      ],
+      "evalCommand": "pnpm run eval:station testing",
+      "graphSymbols": [
+        "TestingLineWorkspace",
+        "idleBrowseLayerProps",
+        "overlayPaneStyle",
+        "ItemRecordQtyBadge"
+      ],
+      "engineFiles": [
+        "src/components/tech/TestingLineWorkspace.tsx",
+        "src/lib/station/scan-station-overlay-cohort.test.ts",
+        "src/design-system/motion/idle-overlay.ts"
+      ],
+      "mounts": [],
+      "refuse": [
+        {
+          "id": "composer.show-mode-row-false",
+          "why": "Dumb stations keep the mode row and set showModeFaces={false}. Never showModeRow={false} to hide Unbox|Ticket.",
+          "diffPattern": "showModeRow=\\{false\\}"
+        },
+        {
+          "id": "composer.notes-composer",
+          "why": "Clone Pack/Unbox. Do not invent a *NotesComposer shell or a second mouth.",
+          "diffPattern": "\\w+NotesComposer"
+        }
+      ],
+      "graphExpectedFiles": {
+        "TestingLineWorkspace": "src/components/tech/TestingLineWorkspace.tsx",
+        "idleBrowseLayerProps": "src/design-system/motion/idle-overlay.ts",
+        "overlayPaneStyle": "src/design-system/motion/idle-overlay.ts",
+        "useOverlaySwapHardCut": "src/design-system/motion/use-overlay-swap-hard-cut.ts"
+      }
+    },
+    {
+      "cohort": "station:triage",
+      "keywords": [
+        "triage",
+        "arrival",
+        "triage",
+        "floor",
+        "station",
+        "triage"
+      ],
+      "evalCommand": "pnpm run eval:station triage",
+      "graphSymbols": [
+        "TriageLineWorkspace",
+        "idleBrowseLayerProps",
+        "overlayPaneStyle",
+        "ItemRecordQtyBadge",
+        "useOverlaySwapHardCut"
+      ],
+      "engineFiles": [
+        "src/components/receiving/triage/TriageLineWorkspace.tsx",
+        "src/lib/station/scan-station-overlay-cohort.test.ts",
+        "src/design-system/motion/idle-overlay.ts"
+      ],
+      "mounts": [],
+      "refuse": [
+        {
+          "id": "composer.show-mode-row-false",
+          "why": "Dumb stations keep the mode row and set showModeFaces={false}. Never showModeRow={false} to hide Unbox|Ticket.",
+          "diffPattern": "showModeRow=\\{false\\}"
+        },
+        {
+          "id": "composer.notes-composer",
+          "why": "Clone Pack/Unbox. Do not invent a *NotesComposer shell or a second mouth.",
+          "diffPattern": "\\w+NotesComposer"
+        }
+      ],
+      "graphExpectedFiles": {
+        "TriageLineWorkspace": "src/components/receiving/triage/TriageLineWorkspace.tsx",
+        "idleBrowseLayerProps": "src/design-system/motion/idle-overlay.ts",
+        "overlayPaneStyle": "src/design-system/motion/idle-overlay.ts",
+        "useOverlaySwapHardCut": "src/design-system/motion/use-overlay-swap-hard-cut.ts"
+      }
+    },
+    {
+      "cohort": "station:unbox",
+      "keywords": [
+        "unbox",
+        "unbox",
+        "floor",
+        "station",
+        "unbox"
+      ],
+      "evalCommand": "pnpm run eval:station unbox",
+      "graphSymbols": [
+        "UnboxLineWorkspace",
+        "idleBrowseLayerProps",
+        "overlayPaneStyle",
+        "ItemRecordQtyBadge",
+        "useOverlaySwapHardCut"
+      ],
+      "engineFiles": [
+        "src/components/receiving/unbox/UnboxLineWorkspace.tsx",
+        "src/lib/station/scan-station-overlay-cohort.test.ts",
+        "src/design-system/motion/idle-overlay.ts"
+      ],
+      "mounts": [],
+      "refuse": [
+        {
+          "id": "composer.show-mode-row-false",
+          "why": "Dumb stations keep the mode row and set showModeFaces={false}. Never showModeRow={false} to hide Unbox|Ticket.",
+          "diffPattern": "showModeRow=\\{false\\}"
+        },
+        {
+          "id": "composer.notes-composer",
+          "why": "Clone Pack/Unbox. Do not invent a *NotesComposer shell or a second mouth.",
+          "diffPattern": "\\w+NotesComposer"
+        }
+      ],
+      "graphExpectedFiles": {
+        "UnboxLineWorkspace": "src/components/receiving/unbox/UnboxLineWorkspace.tsx",
+        "idleBrowseLayerProps": "src/design-system/motion/idle-overlay.ts",
+        "overlayPaneStyle": "src/design-system/motion/idle-overlay.ts",
+        "useOverlaySwapHardCut": "src/design-system/motion/use-overlay-swap-hard-cut.ts"
+      }
     }
-   ]
-  }
- ],
- "standingKeycaps": {
-  "id": "shortcuts.standing-keycaps",
-  "topId": "TableStatusBar",
-  "cohort": "shortcuts",
-  "evalCommand": "pnpm run eval:cohort shortcuts",
-  "refuse": [
-   {
+  ],
+  "standingKeycaps": {
     "id": "shortcuts.standing-keycaps",
-    "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey."
-   },
-   {
-    "id": "shortcuts.forbidden.hotkeyPopover",
-    "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-    "diffPattern": "function HotkeyPopoverLabel"
-   },
-   {
-    "id": "shortcuts.forbidden.staffQuestionOpensSheet",
-    "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-    "diffPattern": "toggleShortcutOverview"
-   },
-   {
-    "id": "shortcuts.forbidden.footQuestionButton",
-    "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-    "diffPattern": "data-testid=\"data-table-selection-hotkey-hints\""
-   },
-   {
-    "id": "shortcuts.forbidden.translucentOverlay",
-    "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-    "diffPattern": "bg-black\\/25"
-   },
-   {
-    "id": "shortcuts.forbidden.iconRightKeySlot",
-    "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-    "diffPattern": "iconRight=\\{keySlot\\}"
-   },
-   {
-    "id": "shortcuts.forbidden.reservedHotkeySlot",
-    "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-    "diffPattern": "data-testid=\"data-table-selection-hotkey-slot\""
-   },
-   {
-    "id": "shortcuts.forbidden.outsideAnchor",
-    "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-    "diffPattern": "absolute left-full"
-   },
-   {
-    "id": "shortcuts.forbidden.revealGapWiden",
-    "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-    "diffPattern": "inlineHotkeys \\? 'gap-7"
-   },
-   {
-    "id": "shortcuts.forbidden.whiteTeachingFace",
-    "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-    "diffPattern": "bg-surface-canvas"
-   },
-   {
-    "id": "shortcuts.forbidden.mutedTeachingLetter",
-    "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
-    "diffPattern": "text-text-muted"
-   }
-  ]
- }
+    "topId": "TableStatusBar",
+    "cohort": "shortcuts",
+    "evalCommand": "pnpm run eval:cohort shortcuts",
+    "refuse": [
+      {
+        "id": "shortcuts.standing-keycaps",
+        "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey."
+      },
+      {
+        "id": "shortcuts.forbidden.hotkeyPopover",
+        "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+        "diffPattern": "function HotkeyPopoverLabel"
+      },
+      {
+        "id": "shortcuts.forbidden.staffQuestionOpensSheet",
+        "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+        "diffPattern": "toggleShortcutOverview"
+      },
+      {
+        "id": "shortcuts.forbidden.footQuestionButton",
+        "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+        "diffPattern": "data-testid=\"data-table-selection-hotkey-hints\""
+      },
+      {
+        "id": "shortcuts.forbidden.translucentOverlay",
+        "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+        "diffPattern": "bg-black\\/25"
+      },
+      {
+        "id": "shortcuts.forbidden.iconRightKeySlot",
+        "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+        "diffPattern": "iconRight=\\{keySlot\\}"
+      },
+      {
+        "id": "shortcuts.forbidden.reservedHotkeySlot",
+        "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+        "diffPattern": "data-testid=\"data-table-selection-hotkey-slot\""
+      },
+      {
+        "id": "shortcuts.forbidden.outsideAnchor",
+        "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+        "diffPattern": "absolute left-full"
+      },
+      {
+        "id": "shortcuts.forbidden.revealGapWiden",
+        "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+        "diffPattern": "inlineHotkeys \\? 'gap-7"
+      },
+      {
+        "id": "shortcuts.forbidden.whiteTeachingFace",
+        "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+        "diffPattern": "bg-surface-canvas"
+      },
+      {
+        "id": "shortcuts.forbidden.mutedTeachingLetter",
+        "why": "If asked to leave keybinds standing on buttons, refuse. If asked to open a cheat sheet from staff `?` while CTAs are mounted, refuse. If asked to add a foot `?` control, refuse. If asked to park keycaps outside or widen gaps/iconRight, refuse — overlay inside, right edge only. If asked to fork a white/muted teaching kbd, refuse — import KeyboardKey.",
+        "diffPattern": "text-text-muted"
+      }
+    ]
+  }
 }

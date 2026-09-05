@@ -37,6 +37,8 @@ import { usePlatformMeta } from '@/hooks/useCatalog';
 import { getReceivingPoIdentityParts, receivingProductTitle } from '@/lib/receiving/po-group-title';
 import { platformMetaIconTone } from '@/lib/source-platform';
 import { emitToggleAll } from '@/lib/selection/table-selection';
+import { closeReceivingAssignPanel } from '@/lib/tables/receiving-assign-panel-store';
+import { ReceivingAssignPanel } from '@/components/receiving/rail/ReceivingAssignPanel';
 import {
   isReceivingRailBatchActive,
   resolveReceivingRailOccupancy,
@@ -117,6 +119,7 @@ export function ReceivingLineRailShell({
   );
 
   const handleClose = useCallback(() => {
+    closeReceivingAssignPanel();
     if (scope) emitToggleAll(scope, 'none');
   }, [scope]);
 
@@ -146,6 +149,7 @@ export function ReceivingLineRailShell({
           ))}
         </RailSelectionRoster>
 
+        <ReceivingAssignPanel />
         <RailActionRegion />
       </div>
     </DetailStackRailRegistrar>

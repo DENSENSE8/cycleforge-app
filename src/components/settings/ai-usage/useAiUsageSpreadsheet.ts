@@ -57,7 +57,7 @@ export function useAiUsageSpreadsheet({
   const [dir, setDir] = useState<GridSortDir | null>(null);
   const [query, setQuery] = useState('');
 
-  const { effectiveLayout, fields } = useAiUsageTableLayout();
+  const { effectiveLayout, subtitleFieldIds, fields } = useAiUsageTableLayout();
   const columns = useMemo(() => aiUsageCompoundColumnsFor(effectiveLayout), [effectiveLayout]);
 
   const onSortChange = useCallback((key: AiUsageGridColumnKey, nextDir: 'asc' | 'desc') => {
@@ -77,6 +77,7 @@ export function useAiUsageSpreadsheet({
     rows,
     getRowId: (row) => String(row.key),
     adapter: aiUsageCompoundView,
+    subtitleFieldIds,
     resolve: resolveAiUsageSlotValue,
     sortFactFor: aiUsageSortFactFor,
     capabilities: AIUSAGE_GRID_CAPABILITIES,

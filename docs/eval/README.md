@@ -138,6 +138,30 @@ Shipped. `queueMode` must not disable it (`SLOT_TABLE_PAINT_LAW.ordersActions`).
 `SLOT_TABLE_ENGINE_CONTRACT` grep fails, or any `graphSymbols` `find` returns no
 match (rebuild the Garisek index). Verify fail also fails unless `--skip-verify`.
 
+### Auditable session laws
+
+Recent operator rulings that must stay machine-checkable live in
+[`src/lib/tables/slot-table-session-laws.ts`](../../src/lib/tables/slot-table-session-laws.ts).
+Each `id` is a grep. CI hashes that file (`scripts/ci/check-law-checksums.mjs`)
+and GitHub `design-gates` runs the tripwire without the graph. Self-hosted
+`full` still runs `eval:cohort slot-table` (includes this tripwire).
+
+| id | ruling |
+|----|--------|
+| `dates.header-is-dates` | Dates column header stays Dates on every table |
+| `dates.due-hover-due-date` | Grid hover is Due date (CSV may still say Ship by) |
+| `line-money.no-amount-track` | No Amount column on `COMPOUND_COLUMN_KEYS` |
+| `line-money.inbound-incoming-price` | Incoming is `incoming.price` under the title |
+| `engine.no-orders-only-amount-drop` | Do not treat Orders as a different table |
+| `header.no-frozen-sort-prop` | Never pass `sort=` into `OrdersGridHost` |
+| `morphing.not-queueMode-gated` | Morphing on To-ship and Shipped |
+| `overlay.no-display-cohort` | `eval:cohort overlay` stays refused |
+
+```bash
+node --import tsx --test src/lib/tables/slot-table-session-laws.test.ts
+pnpm run eval:cohort slot-table -- --skip-verify
+```
+
 **Discover (delete vs keep):**
 [`src/lib/tables/slot-table-discover.ts`](../../src/lib/tables/slot-table-discover.ts).
 Walks the tree. Agents pick one unblocked DELETE id, never a KEEP row.

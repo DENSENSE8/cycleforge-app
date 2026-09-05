@@ -5,7 +5,7 @@
       "node_key": "component:src/components/tables/compound/CompoundCells.tsx:CompoundState",
       "kind": "component",
       "name": "CompoundState",
-      "location": "src/components/tables/compound/CompoundCells.tsx:1102",
+      "location": "src/components/tables/compound/CompoundCells.tsx:1101",
       "exported": true,
       "signature": "function CompoundState({ view, onOpen, }: { view: CompoundRowView; /** Present ⇒ the cell opens the carrier trail (orders desks). */ onOpen?: () => void; })"
     },
