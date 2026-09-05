@@ -30,6 +30,7 @@ import {
   OrdersDeskAddAction,
   type OrderIntakeMethod,
 } from '@/components/outbound/orders/OrdersDeskAddAction';
+import { OrderPasteIntake } from '@/components/outbound/orders/OrderPasteIntake';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { useTableImportFilePicker } from '@/components/tables/import/TableImportFileButton';
 import { useOrdersSync } from '@/hooks/useOrdersSync';
@@ -226,6 +227,9 @@ function OutboundOrdersDeskContent({
           />
           {/* The picker's hidden <input>; `csv.open()` above clicks it. */}
           {csv.input}
+          {/* Paste / drop a screenshot or CSV onto the mouth → the same draft
+              the picker builds. Mount-only; nothing painted. */}
+          {canImportOrders && csv.live ? <OrderPasteIntake /> : null}
         </>
       ) : null}
     </OrdersViewChromeProvider>

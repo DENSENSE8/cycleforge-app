@@ -1,9 +1,9 @@
 {
   "version": 1,
   "generatedAt": "2026-08-21T01:05:42Z",
-  "totalRoutes": 977,
+  "totalRoutes": 978,
   "summary": {
-    "permissionGated": 831,
+    "permissionGated": 832,
     "authenticatedNoPermission": 53,
     "anonymousIntentional": 87,
     "serviceToService": 2,
@@ -4079,6 +4079,15 @@
     },
     {
       "path": "/api/orders/import-csv/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.import",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/import/extract-capture/route.ts",
       "methods": [
         "POST"
       ],
