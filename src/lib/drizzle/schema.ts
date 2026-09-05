@@ -1115,7 +1115,15 @@ export const orders = pgTable('orders', {
    * that reaches account → platform → integration.
    */
   typeId: bigint('type_id', { mode: 'number' }),
-});
+  externalLineId: text('external_line_id').notNull().default(''),
+}, (table) => ({
+  orgAccountOrderLineUx: uniqueIndex('idx_orders_unique_org_account_order_line').on(
+    table.organizationId,
+    table.orderId,
+    table.accountSource,
+    table.externalLineId,
+  ),
+}));
 
 // order_shipment_links — DROPPED 2026-06-28. Subsumed by shipment_links
 // (owner_type='ORDER', OUTBOUND). orders.shipment_id stays as the primary cache.
