@@ -33,6 +33,24 @@ describe('packing station display layout', () => {
     );
   });
 
+  it('inherits desk six-track order from ItemRecordMetaGrid', () => {
+    const meta = read('src/design-system/components/item-record/ItemRecordMetaGrid.tsx');
+    assert.deepEqual(
+      [...meta.matchAll(/data-col="([^"]+)"/g)].map((m) => m[1]),
+      ['qty', 'price', 'condition', 'sku', 'serial', 'location'],
+    );
+    assert.doesNotMatch(
+      PACK_ROW,
+      /<ItemRecordMetaGrid\b/,
+      'Pack must not remount the desk six-track; ItemRecordRow owns it',
+    );
+    assert.doesNotMatch(
+      read('src/design-system/components/item-record/ItemRecordMobileMeta.tsx'),
+      /<ItemRecordMetaGrid\b/,
+      'phone cluster must never mount the desk six-track',
+    );
+  });
+
   it('does not add a packing-local station well or layout animation', () => {
     assert.doesNotMatch(PACK_PANEL, /STATION_BAND_BODY_WELL_CLASS/);
     assert.doesNotMatch(PACK_ROW, /layout=|animate-\[?height|transition-\[?height/);

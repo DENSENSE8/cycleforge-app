@@ -446,6 +446,11 @@ export function ItemRecordRow({
             </div>
             <ItemRecordMetaGrid
               qty={qtyCell}
+              price={<UnitPriceChip amount={item.unitPrice} dense />}
+              condition={withAction(
+                conditionAction,
+                <ConditionGradeChip grade={item.conditionGrade} dense />,
+              )}
               sku={
                 skuValue ? (
                   // Last-8, fixed footprint, no truncation. No caller says otherwise.
@@ -459,10 +464,6 @@ export function ItemRecordRow({
                   <EmptySkuChipFace dense />
                 )
               }
-              condition={withAction(
-                conditionAction,
-                <ConditionGradeChip grade={item.conditionGrade} dense />,
-              )}
               serial={
                 serialsLoading ? (
                   <SerialChipSkeleton width="w-fit max-w-full" dense />
@@ -490,7 +491,6 @@ export function ItemRecordRow({
                   </span>
                 )
               }
-              price={<UnitPriceChip amount={item.unitPrice} dense />}
               location={locationContent}
             />
           </div>

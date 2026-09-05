@@ -49,9 +49,11 @@ test('PO item location is inline in the bottom metadata row and uses the human l
   assert.match(html, /data-col="location"/);
   assert.match(html, /Returns shelf 51851/);
   assert.match(html, /data-testid="item-record-location-icon"/);
-  assert.ok(
-    html.indexOf('data-col="location"') > html.indexOf('data-col="price"'),
-    'location belongs after the existing price/cash-receipt metadata track',
+  const cols = [...html.matchAll(/data-col="([^"]+)"/g)].map((m) => m[1]);
+  assert.deepEqual(
+    cols,
+    ['qty', 'price', 'condition', 'sku', 'serial', 'location'],
+    'desk scan path is qty then price then condition then SKU',
   );
   assert.doesNotMatch(html, /TaskContextBar|task-context-bar/);
 });
