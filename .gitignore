@@ -162,3 +162,6 @@ docs/eval/**/latest.json
 
 # Self-hosted CI state (queue, receipts, cache, logs) — box-local, written by scripts/ci-runner.mjs
 /.ci/
+
+# accidental nested clone / inner cursor stamp
+cycleforge-app/
