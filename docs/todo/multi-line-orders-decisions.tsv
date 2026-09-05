@@ -10,3 +10,4 @@ ts	phase	decision	why	evidence	result
 2026-09-05T04:32:30Z	kickoff	Phase 0 is the db-migrate confirmation gate, not a silent migrate	skill never applies without dry-run plus the word apply	.claude/skills/db-migrate/SKILL.md	open
 2026-09-05T04:32:30Z	kickoff	design-mcp only on Layer 3, slot-table eval after display PRs, ingest is not UI	AGENTS.md and eval-engineering.mdc	src/lib/tables/slot-table-cohort.ts	open
 2026-09-05T04:32:30Z	kickoff	check-plan.mjs reports 0 problems on the plan file	encode the skeleton in a script, do not eyeball	check-plan.mjs stdout 5 PR sections, 0 problems	tests green
+2026-09-05T04:33:20Z	kickoff	committed plan note and decisions trail at c9ba2cc85	predicate moved, artifacts exist in git, no product code in the commit	git show c9ba2cc85 --stat	plan committed
