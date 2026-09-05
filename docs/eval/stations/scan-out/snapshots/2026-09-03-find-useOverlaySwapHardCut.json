@@ -1,0 +1,13 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "function:src/design-system/motion/use-overlay-swap-hard-cut.ts:useOverlaySwapHardCut",
+      "kind": "function",
+      "name": "useOverlaySwapHardCut",
+      "location": "src/design-system/motion/use-overlay-swap-hard-cut.ts:40",
+      "exported": true,
+      "signature": "function useOverlaySwapHardCut(overlayOpen: boolean): boolean"
+    }
+  ]
+}

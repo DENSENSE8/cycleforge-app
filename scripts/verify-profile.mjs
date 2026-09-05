@@ -1,18 +1,25 @@
 /**
- * Verify profile selection — shared by `scripts/verify.mjs` and its unit test.
+ * Verify profile selection — shared by `scripts/verify.mjs`, the self-hosted
+ * runner (`scripts/ci-runner.mjs`) and the tripwire `src/lib/ci/ci-core.test.ts`.
  *
- *   fast     lint + typecheck
+ *   fast     lint + typecheck                                   (every commit)
  *   dogfood  same as fast (the route-auth / schema gates were removed 2026-08-20)
- *   full     + unit tests
+ *   full     + unit tests + the two display cohorts             (main, on demand)
+ *
+ * ONE gate list. The pre-push hook (`verify.mjs`) and the runner read the same
+ * array so the two can never drift — that is the whole point of this module
+ * (plan §3.3 step 1: "reuse `gatesForProfile()`; do not fork the gate list").
  *
  * @typedef {'fast' | 'dogfood' | 'full'} VerifyProfile
  * @typedef {{
  *   name: string,
  *   cmd: string,
  *   args: string[],
+ *   keyArgs?: string[],
  *   env?: Record<string, string>,
  *   advisory?: boolean,
  *   profiles: 'always' | 'dogfood' | 'full',
+ *   inputs: readonly string[],
  * }} VerifyGate
  */
 
@@ -26,10 +33,14 @@ import path from 'node:path';
  * 2026-09-01 machine-eval red: `Cannot find module …/typescript/bin/tsc` and
  * `Cannot find package …/@typescript-eslint/parser/index.js` under ESLint 10.9.1.
  * `node_modules/.bin/*` is the install we already paid for.
+ *
+ * @param {string} root the checkout the gate runs in (the live tree for
+ *   verify, a per-sha worktree for the runner)
+ * @param {string} name
  */
-function localBin(name) {
+function localBin(root, name) {
   const file = process.platform === 'win32' ? `${name}.CMD` : name;
-  return path.join(process.cwd(), 'node_modules', '.bin', file);
+  return path.join(root, 'node_modules', '.bin', file);
 }
 
 /**
@@ -60,13 +71,34 @@ export function gateInProfile(gate, profile) {
 }
 
 /**
- * Each gate mirrors one step in ci.yml's `ci` job. Keep this list in sync with
- * that workflow — the whole point is that the two never drift.
+ * Inputs shared by every gate that compiles `src/`: the sources, the TS and
+ * ESLint config, and — the one people forget — the LOCKFILE. A dependency bump
+ * changes what `tsc` says about `src/` without touching `src/`, so a receipt
+ * keyed on sources alone would serve a stale pass across it (plan §4.1).
+ *
+ * Pathspecs, not globs: `git ls-files -s -- src` is recursive on its own.
+ */
+const COMPILE_INPUTS = Object.freeze([
+  'src',
+  'tsconfig.json',
+  'eslint.config.mjs',
+  'package.json',
+  'pnpm-lock.yaml',
+]);
+
+/**
+ * Build the gate list for a checkout root.
  *
  * `profiles`: which verify profiles include this gate.
  *   always  → fast + dogfood + full
  *   dogfood → dogfood + full
  *   full    → full only
+ *
+ * `inputs`: the tracked paths whose blob ids key the runner's cache for this
+ * gate (plus toolchain + the gate's own definition — see `ci-core.mjs`). A
+ * gate with no inputs runs every time; the tripwire refuses to let one land
+ * undeclared. `keyArgs` names the args that carry meaning for the RESULT when
+ * `args` also carries one the runner varies (the ESLint cache dir).
  *
  * The hygiene / drift gates (knip, jscpd, depcruise, route-auth, tenancy,
  * schema drift + model parity, integration manifest, doc catalog) and their
@@ -75,46 +107,80 @@ export function gateInProfile(gate, profile) {
  * invariants automatically any more; those rules were review-only and the
  * doctrine was deleted with the Warehouse OS refactor.
  *
+ * @param {string} [root]
+ * @param {{ eslintCacheDir?: string }} [options]
+ * @returns {VerifyGate[]}
+ */
+export function buildGates(root = process.cwd(), options = {}) {
+  // --cache: eslint re-lints only files whose content or resolved config changed
+  // (the per-file cache entry carries a config hash, so a flat-config edit
+  // invalidates on its own). Cache lives under node_modules/.cache so it is
+  // wiped by a fresh install — same cold-run semantics as a clean checkout.
+  // The runner points it at a per-sha directory it deletes afterwards.
+  const eslintCacheDir = options.eslintCacheDir ?? 'node_modules/.cache/eslint/';
+  return [
+    {
+      name: 'Lint',
+      cmd: localBin(root, 'eslint'),
+      args: ['src', '--max-warnings=10000', '--cache', '--cache-location', eslintCacheDir],
+      keyArgs: ['src', '--max-warnings=10000'],
+      profiles: 'always',
+      inputs: COMPILE_INPUTS,
+    },
+    {
+      name: 'Typecheck',
+      cmd: localBin(root, 'tsc'),
+      args: ['--noEmit', '-p', 'tsconfig.json'],
+      env: { NODE_OPTIONS: '--max-old-space-size=6144' },
+      profiles: 'always',
+      inputs: COMPILE_INPUTS,
+    },
+    {
+      name: 'Unit tests',
+      cmd: 'node',
+      args: ['scripts/run-unit-tests.mjs'],
+      // NODE_COMPILE_CACHE (Node 22+): persist V8 bytecode for every module the
+      // runner loads. `node --test` spawns one child per test file and each child
+      // re-boots tsx + esbuild from scratch, so the compile cache is paid once and
+      // reused ~770 times. Inherited by the children through the environment.
+      env: { NODE_COMPILE_CACHE: 'node_modules/.cache/node-compile' },
+      profiles: 'full',
+      inputs: [...COMPILE_INPUTS, 'scripts/run-unit-tests.mjs', 'scripts/register-server-only-shim.cjs', 'scripts/ci'],
+    },
+    // The display cohorts (plan §3.2 full tier). `--skip-verify`: lint and
+    // typecheck are already gates here, so the cohort must not run them a
+    // second time inside itself. Inputs are declared coarse on purpose — any
+    // engine, catalog or runner change re-runs the cohort; a docs-only commit
+    // hits. Both write their auto-blocks under docs/eval/** (never read by
+    // another gate).
+    {
+      name: 'Cohort: slot-table',
+      cmd: 'node',
+      args: ['--import', 'tsx', 'tools/eval-ledger/run-cohort-eval.mjs', 'slot-table', '--skip-verify'],
+      profiles: 'full',
+      inputs: [...COMPILE_INPUTS, 'tools/eval-ledger', 'tools/design-mcp'],
+    },
+    {
+      name: 'Cohort: shortcuts',
+      cmd: 'node',
+      args: ['--import', 'tsx', 'tools/eval-ledger/run-cohort-eval.mjs', 'shortcuts', '--skip-verify'],
+      profiles: 'full',
+      inputs: [...COMPILE_INPUTS, 'tools/eval-ledger', 'tools/design-mcp'],
+    },
+  ];
+}
+
+/**
+ * The gate list for the LIVE tree — what `verify.mjs` runs. Each gate mirrors
+ * one step of the receipt the runner writes for a commit.
  * @type {VerifyGate[]}
  */
-export const ALL_GATES = [
-  {
-    name: 'Lint',
-    cmd: localBin('eslint'),
-    // --cache: eslint re-lints only files whose content or resolved config changed
-    // (the per-file cache entry carries a config hash, so a flat-config edit
-    // invalidates on its own). Cache lives under node_modules/.cache so it is
-    // wiped by `npm ci` in CI — same cold-run semantics there as before.
-    args: [
-      'src',
-      '--max-warnings=10000',
-      '--cache',
-      '--cache-location',
-      'node_modules/.cache/eslint/',
-    ],
-    profiles: 'always',
-  },
-  {
-    name: 'Typecheck',
-    cmd: localBin('tsc'),
-    args: ['--noEmit', '-p', 'tsconfig.json'],
-    env: { NODE_OPTIONS: '--max-old-space-size=6144' },
-    profiles: 'always',
-  },
-  {
-    name: 'Unit tests',
-    cmd: 'node',
-    args: ['scripts/run-unit-tests.mjs'],
-    // NODE_COMPILE_CACHE (Node 22+): persist V8 bytecode for every module the
-    // runner loads. `node --test` spawns one child per test file and each child
-    // re-boots tsx + esbuild from scratch, so the compile cache is paid once and
-    // reused ~770 times. Inherited by the children through the environment.
-    env: { NODE_COMPILE_CACHE: 'node_modules/.cache/node-compile' },
-    profiles: 'full',
-  },
-];
+export const ALL_GATES = buildGates();
 
-/** @param {VerifyProfile} profile */
-export function gatesForProfile(profile) {
-  return ALL_GATES.filter((g) => gateInProfile(g, profile));
+/**
+ * @param {VerifyProfile} profile
+ * @param {VerifyGate[]} [gates] a `buildGates()` list for another root
+ */
+export function gatesForProfile(profile, gates = ALL_GATES) {
+  return gates.filter((g) => gateInProfile(g, profile));
 }

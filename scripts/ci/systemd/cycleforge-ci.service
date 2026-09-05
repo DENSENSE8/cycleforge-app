@@ -1,0 +1,39 @@
+# CycleForge self-hosted CI — drain `.ci/queue`, one worktree per sha.
+#
+# Plan: docs/todo/self-hosted-ci-and-fork-teardown-PLAN.md §3.1, §3.3 step 4.
+# Started by cycleforge-ci.timer (every 30 s) and kicked immediately by the
+# post-commit hook. `--user` so it dies with the session and needs no root;
+# Linger=yes is set on this box so it also survives logout.
+#
+# Install (from the repo root):
+#   mkdir -p ~/.config/systemd/user
+#   cp scripts/ci/systemd/cycleforge-ci.{service,timer} ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now cycleforge-ci.timer
+#   journalctl --user -u cycleforge-ci -f
+#
+# Node is resolved through the mise shim so a pinned upgrade follows without
+# editing this unit; PATH also carries the current install for the gates'
+# `#!/usr/bin/env node` shebangs.
+
+[Unit]
+Description=CycleForge self-hosted CI (drain .ci/queue → .ci/receipts)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/michaelgarisek/Projects/cycleforge-app
+Environment=PATH=/home/michaelgarisek/.local/share/mise/shims:/home/michaelgarisek/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=GARISEK_OS_ROOT=/home/michaelgarisek/Projects/Garisek-OS
+Environment=NEXT_TELEMETRY_DISABLED=1
+# Half the cores were still too many next to three agent sessions and a dev
+# server; four test workers keeps the box usable (run-unit-tests.mjs reads it).
+Environment=TEST_CONCURRENCY=4
+ExecStart=/home/michaelgarisek/.local/share/mise/shims/node scripts/ci-runner.mjs --drain
+# Background work: never compete with the operator's foreground.
+Nice=10
+IOSchedulingClass=idle
+# A full profile is unit tests + two cohorts; a stuck gate is cut at 45 min by
+# the runner itself, this is the backstop for the whole drain.
+TimeoutStartSec=4h
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cycleforge-ci

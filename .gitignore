@@ -134,6 +134,7 @@ vision/data/
 # `.mcp.json` be a symlink to it — one file, both clients. Operator 2026-08-31:
 # also track hooks + rules that enforce design-mcp (plugin load, session stamp,
 # UI write gate). Session receipts stay banned under the blanket `.cursor/*`.
+.garisek/
 .cursor/*
 !.cursor/mcp.json
 !.cursor/hooks.json
@@ -157,3 +158,6 @@ tests/visual/**/*-snapshots/
 
 # eval runners overwrite one machine-readable summary per cohort (D7 item 16) — never tracked
 docs/eval/**/latest.json
+
+# Self-hosted CI state (queue, receipts, cache, logs) — box-local, written by scripts/ci-runner.mjs
+/.ci/

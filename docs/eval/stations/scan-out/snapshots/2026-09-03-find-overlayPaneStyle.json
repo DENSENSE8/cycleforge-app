@@ -1,0 +1,13 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "function:src/design-system/motion/idle-overlay.ts:overlayPaneStyle",
+      "kind": "function",
+      "name": "overlayPaneStyle",
+      "location": "src/design-system/motion/idle-overlay.ts:33",
+      "exported": true,
+      "signature": "function overlayPaneStyle(hardCut = false): { zIndex: number }"
+    }
+  ]
+}

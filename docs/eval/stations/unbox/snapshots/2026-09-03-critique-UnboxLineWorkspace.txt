@@ -1,0 +1,17 @@
+{
+  "file": "src/components/receiving/unbox/UnboxLineWorkspace.tsx",
+  "summary": "No design-system problems found. That is not a claim the component is GOOD — only that it does not fork or drift.",
+  "problems": [],
+  "design_system_used": [
+    "AppSurfaceFill",
+    "UniversalLoader"
+  ],
+  "metrics": {
+    "lines": 279,
+    "arbitrary_literals": 0
+  },
+  "notes": [
+    "Everything here is HEURISTIC — text matches, not AST proof, and this repo has no shared adjudicator for this server to borrow a verdict from. Treat each as \"go look at this line\".",
+    "ESLint is the gate in this repo. A clean result here does not mean a clean lint."
+  ]
+}

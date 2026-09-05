@@ -1,0 +1,28 @@
+✔ ComposerModeRow clusters Unbox | Ticket leftmost; only the SELECTED glyph carries colour (13.855679ms)
+✔ procedure ring and Unbox glyph share one toolbar item box (1.127209ms)
+✔ showModeFaces=false keeps Ask + bottom-right context ring (0.891346ms)
+✔ UPS 1Z and long alnum blobs are tracking commits (1.291509ms)
+✔ prose and multi-line are notes, not scans (0.256589ms)
+✔ marketplace order shapes are never treated as carrier tracking (0.159803ms)
+✔ IncomingAddExtractComposer mounts StationComposerHost with faces off, row on (0.912025ms)
+✔ TriageScrollLayout footer does not add extra bottom pad under the mouth (0.274462ms)
+▶ scan-station overlay cohort (SoT = all stations)
+  ✔ registers every floor scan station that owns idle↔overlay (non-empty, unique ids) (0.743488ms)
+  ✔ design-mcp router.json overlayWorkspaces stays in sync with the cohort SoT (0.322066ms)
+  ✔ unbox (/unbox) satisfies the cohort overlay contract (0.298182ms)
+  ✔ triage (/triage) satisfies the cohort overlay contract (0.13449ms)
+  ✔ pack (/pack) satisfies the cohort overlay contract (0.126831ms)
+  ✔ testing (/test) satisfies the cohort overlay contract (0.111239ms)
+  ✔ shipping (/shipping) satisfies the cohort overlay contract (0.109701ms)
+  ✔ scan-out (/shipping/scan-out) satisfies the cohort overlay contract (0.125136ms)
+  ✔ workspaces call the helper instead of re-typing idle hide styles (0.372838ms)
+  ✔ no cohort member is privileged — every member is checked with the same predicates (0.338403ms)
+✔ scan-station overlay cohort (SoT = all stations) (3.966433ms)
+ℹ tests 18
+ℹ suites 1
+ℹ pass 18
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 342.981544

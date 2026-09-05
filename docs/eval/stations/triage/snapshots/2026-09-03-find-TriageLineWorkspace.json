@@ -1,0 +1,29 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "component:src/components/receiving/triage/TriageLineWorkspace.tsx:TriageLineWorkspace",
+      "kind": "component",
+      "name": "TriageLineWorkspace",
+      "location": "src/components/receiving/triage/TriageLineWorkspace.tsx:61",
+      "exported": true,
+      "signature": "function TriageLineWorkspace({ staffId, workspace, nav, scanInFlight, onCloseWorkspace, }: TriageLineWorkspaceProps)"
+    },
+    {
+      "node_key": "file:src/components/receiving/triage/TriageLineWorkspace.tsx",
+      "kind": "file",
+      "name": "TriageLineWorkspace.tsx",
+      "location": "src/components/receiving/triage/TriageLineWorkspace.tsx:1",
+      "exported": false,
+      "signature": null
+    },
+    {
+      "node_key": "interface:src/components/receiving/triage/TriageLineWorkspace.tsx:TriageLineWorkspaceProps",
+      "kind": "interface",
+      "name": "TriageLineWorkspaceProps",
+      "location": "src/components/receiving/triage/TriageLineWorkspace.tsx:53",
+      "exported": false,
+      "signature": "interface TriageLineWorkspaceProps"
+    }
+  ]
+}

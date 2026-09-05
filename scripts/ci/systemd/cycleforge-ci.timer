@@ -1,0 +1,16 @@
+# Drain the CycleForge CI queue every 30 s (plan §3.1 / §3.3 step 4).
+#
+# OnUnitInactiveSec: 30 s after the previous drain FINISHED — a long drain can
+# never overlap itself, and an idle box costs one empty-queue read per tick.
+
+[Unit]
+Description=Drain the CycleForge CI queue
+
+[Timer]
+OnBootSec=1min
+OnUnitInactiveSec=30s
+AccuracySec=5s
+Unit=cycleforge-ci.service
+
+[Install]
+WantedBy=timers.target

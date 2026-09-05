@@ -58,6 +58,35 @@ Forbidden on desks: `RightRailHost detail:*`, new `DeskRecordWalkHost`, Dialog
 as record plane. Scan stations: Displays stay right; table stays visible under
 overlay. Classifier: `docs/warehouse-os/PLAN-center-lock.md`.
 
+## One table engine (never fork a table, a column, or a verb)
+
+`src/lib/tables/table-engine-law.ts` is the law; `table-engine-law.test.ts` is
+the tripwire (runs under `pnpm run eval:cohort slot-table`).
+
+1. **One engine, generic over the row.** Polymorphism lives in the ADAPTER
+   (`row -> CompoundRowView`, strings and enums only). A family contributes an
+   adapter + a column array. Never a cell, never a row component, never a host.
+2. **Register to ENTITIES, mount on pages.** One entity -> one registration ->
+   many mounts. Scope, lane lock and layout are parameters of the MOUNT
+   (`/shipping/exceptions` is `tableId: 'orders'` with a different row source).
+   A registration keyed by page is a fork.
+3. **The descriptor carries DATA, never BEHAVIOR.** No render props, no
+   per-family cell, no override hook. If a mount needs behaviour the engine
+   lacks, the engine gains it for everyone or the mount does without.
+4. **Verbs bind to FIELDS, not to lanes.** Declare an action ONCE in the
+   family's verb catalog (`VERB_CATALOG_MODULES`), naming the field it writes.
+   It is offered wherever the mounted layout resolves that field; its direction
+   (do / undo / already-done) comes from row STATE, never from the route.
+   Bulk is a cardinality, not a mode — the row menu is the same catalog at n=1.
+   A reversible verb is ONE verb with two directions.
+
+Adding a backend table = a field catalog + a resolver + an adapter + a registry
+entry. **Zero new `.tsx`.** If you must touch a component to add a table, the
+ENGINE is missing a capability — fix that, and say so.
+
+Never add a `SelectionAction` literal at a page or a mount. Never add a per-lane
+action key list. Both fail the cohort.
+
 ## Code graph (Garisek-OS)
 
 Before non-trivial edits to shared components, hooks, or table infrastructure:
@@ -73,6 +102,14 @@ Before non-trivial edits to shared components, hooks, or table infrastructure:
 
 Before claiming a coding task is done:
 
+0. **Read the receipt, do not run the gate.** Every commit gets a receipt
+   from the self-hosted runner (`.ci/receipts/<sha>.json`, plan
+   `docs/todo/self-hosted-ci-and-fork-teardown-PLAN.md` §3). Run
+   `node scripts/ci-status.mjs` for HEAD's gates (lint · typecheck · unit ·
+   cohorts, cache hit/ran) instead of re-running the full profile in your
+   session; run `verify:fast` only on the files you just touched. Gates
+   declare their inputs in `scripts/verify-profile.mjs` — a new gate with no
+   `inputs` fails `src/lib/ci/ci-core.test.ts`.
 1. Run `node "$GARISEK_OS_ROOT/tools/eval-engineering/cursor-eval.mjs" --root . --fast`
 2. On failure: fix or report — do not claim done.
 3. Cross-cutting refactors: use `--full` instead of `--fast`.
@@ -87,16 +124,19 @@ Before claiming a coding task is done:
    Filter icon is `DataTableFilterMenu` beside search (always mounted; idle
    chrome when a family has no facets). Never `FilterRefinementBar` / hunt tiles.
    Every painted DATA column header is click-to-sort (`SLOT_TABLE_PAINT_LAW.headerSort`);
-   chrome only is `select` / `actions` / `_fill`. The toolbar sort menu lists the
-   same facts (`queueColumnSortOptions`) — Pick/Status/Image are rows, not trigger-only.
+   chrome only is `select` / `actions` / `_fill` / `thumb` (Image photo gutter). The toolbar sort menu lists the
+   same facts (`queueColumnSortOptions`) — Pick/Status are rows, not trigger-only.
    After header-sort / `queueSortForColumnKey` edits run `pnpm run eval:cohort slot-table`.
    Graph: impact `queueSortForColumnKey`
    and `LedgerGridColumnHeader`, not one desk row. KEEP `engine:slot-table-header-sort`.
+   Outbound `OrdersGridHost` never passes a frozen `sort=` — `useQueueDisplaySort` / `?sort=` is the SoT (passing `sort` made Shipped headers inert).
+   Orders / To-ship never remounts the shared actions ⋮ — impact `ordersCompoundColumnsFor`. KEEP `engine:ordersCompoundColumnsFor`. Copy lives on CompoundFulfillment chips.
+   Selecting a row always opens the left Morphing menu on every outbound `OrdersGridHost` lane (To-ship **and** Shipped). `queueMode` must not disable it. Graph: impact `OrdersQueueTableRow` / `MorphingRowActionMenu`.
    Hand GRID leftovers: `pnpm run eval:discover` (`slot-table-discover.ts`).
    Delete only unblocked DELETE ids; never KEEP (engine, `*COMPOUND_COLUMNS` /
    `*SHEET_COLUMNS` materializations, catalogs, layout hooks, `DateRangePickerField`,
    `DataTableFilterMenu`, `slot-table-header-sort`, `queueSortForColumnKey`,
-   `LedgerGridColumnHeader`).
+   `LedgerGridColumnHeader`, `ordersCompoundColumnsFor`).
 6. **Shortcut-display cohort:** SoT is staff `?` **inline on the buttons**
    (`src/lib/keyboard/shortcut-display-cohort.ts`). After shortcut / `?` /
    TableStatusBar hotkey edits run `pnpm run eval:cohort shortcuts`. If asked

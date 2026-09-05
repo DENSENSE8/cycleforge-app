@@ -1,0 +1,17 @@
+{
+  "project": "cycleforge-app",
+  "target": "component:src/components/receiving/unbox/UnboxLineWorkspace.tsx:UnboxLineWorkspace",
+  "files_affected": 1,
+  "total_symbols": 2,
+  "files": [
+    {
+      "file": "src/components/receiving/ReceivingRightPane.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 2,
+      "symbols": [
+        "UnboxHistoryHost",
+        "UnboxHistoryHostInner"
+      ]
+    }
+  ]
+}

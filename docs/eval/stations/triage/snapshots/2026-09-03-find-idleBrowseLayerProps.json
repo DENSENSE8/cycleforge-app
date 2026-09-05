@@ -1,0 +1,13 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "function:src/design-system/motion/idle-overlay.ts:idleBrowseLayerProps",
+      "kind": "function",
+      "name": "idleBrowseLayerProps",
+      "location": "src/design-system/motion/idle-overlay.ts:17",
+      "exported": true,
+      "signature": "function idleBrowseLayerProps( overlayOpen: boolean, className?: string, ): { className: string; 'aria-hidden'?: true; inert?: true; style: { visibility: 'hidden' | 'visible' }; }"
+    }
+  ]
+}

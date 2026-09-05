@@ -24,6 +24,9 @@ record. The old house-law corpus was deleted 2026-08-21; do not reconstruct it.
 
 - **Code graph:** `find_symbol` → `impact_analysis` before shared component edits.
   CLI: `node "$GARISEK_OS_ROOT/tools/code-graph/cg.mjs" …`
+- **CI receipt:** `node scripts/ci-status.mjs` — HEAD's gates from the
+  self-hosted runner (`.ci/receipts/<sha>.json`). Read it; do not re-run full
+  verify in-session. Gate list + inputs: `scripts/verify-profile.mjs`.
 - **Eval:** run `node "$GARISEK_OS_ROOT/tools/eval-engineering/cursor-eval.mjs" --root . --fast`
   before claiming a task is done.
 - **Overlay shell:** SoT is `SCAN_STATION_OVERLAY_COHORT` (all floor peers).
@@ -32,7 +35,9 @@ record. The old house-law corpus was deleted 2026-08-21; do not reconstruct it.
 - **Slot-table cohort (the only display eval):** SoT is engine + `PRODUCT_TABLES`
   (`slot-table-cohort.ts`). After CompoundItem / slot-layout / DataTable funnel
   / header-sort edits: `pnpm run eval:cohort slot-table`. Every DATA header
-  click-sorts (`SLOT_TABLE_PAINT_LAW.headerSort`). Hand GRID leftovers:
+  click-sorts (`SLOT_TABLE_PAINT_LAW.headerSort`). Do not freeze `OrdersGridHost`
+  with a `sort=` prop. Orders / To-ship drops the
+  shared ⋮ (`SLOT_TABLE_PAINT_LAW.ordersActions`). Hand GRID leftovers:
   `pnpm run eval:discover` — delete only listed DELETE ids; never KEEP.
 - **Shortcut-display cohort:** SoT is staff `?` inline on the buttons
   (`shortcut-display-cohort.ts`). After shortcut / TableStatusBar hotkey edits:

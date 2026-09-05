@@ -1,0 +1,28 @@
+#!/bin/sh
+#
+# post-commit — enqueue this commit for the self-hosted runner.
+#
+# Appends one line (`<sha> <branch> <epoch>`) to `.ci/queue` in the MAIN
+# checkout and returns. A commit never waits on CI: the `cycleforge-ci.timer`
+# (`scripts/ci/systemd/`) drains the queue and writes `.ci/receipts/<sha>.json`;
+# `node scripts/ci-status.mjs` reads it. Plan:
+# docs/todo/self-hosted-ci-and-fork-teardown-PLAN.md §3.1, §3.3 step 3.
+#
+# Runs from any worktree (core.hooksPath is repo config): the queue path is
+# resolved through the git COMMON dir so a hop worktree's commit lands in the
+# same queue as one made here. Every failure path exits 0 — a hook that can
+# fail a commit is a hook that gets --no-verify'd.
+#
+common=$(git rev-parse --git-common-dir 2>/dev/null) || exit 0
+root=$(cd "$common/.." 2>/dev/null && pwd -P) || exit 0
+sha=$(git rev-parse HEAD 2>/dev/null) || exit 0
+branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo detached)
+[ "$branch" = "HEAD" ] && branch=detached
+mkdir -p "$root/.ci" 2>/dev/null || exit 0
+printf '%s %s %s\n' "$sha" "$branch" "$(date +%s)" >> "$root/.ci/queue" 2>/dev/null
+# Kick the drain now rather than waiting for the next timer tick (best effort;
+# a running service simply stays running and the timer picks the line up).
+if command -v systemctl >/dev/null 2>&1; then
+  systemctl --user start --no-block cycleforge-ci.service >/dev/null 2>&1
+fi
+exit 0
