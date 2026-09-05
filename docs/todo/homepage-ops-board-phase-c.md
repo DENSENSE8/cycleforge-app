@@ -18,11 +18,15 @@ At `/?mode=tasks` a staffer can, without hunting: create a project, add a task, 
 | Assign in this org | Morphing Assign → `getActiveStaff()` (`QA Packer` id 69). Not Ajax / USAV name lists |
 | See assignee on the row | Playwright: `Desk repro project · QA Packer` on task `8b340740-15c0-49be-8867-05fd570935c2` |
 
-Reuse: `DataTable` + `TaskMorphingRowActionMenu` (typed sibling of To-ship Morphing; `MorphingRowActionMenu` stays bound to `ShippedOrder`) + `DeskComposerAskLane`. Center Lock: `recordPlane.kind: 'none'`.
+Reuse: `DataTable` + `TaskMorphingRowActionMenu` (typed sibling because `MorphingRowActionMenu` is bound to `ShippedOrder`; same gutter + `cyc-82-morphing-action-menu` event). Not a second manifold. `DeskComposerAskLane`. Center Lock: `recordPlane.kind: 'none'`.
+
+Earlier combined Playwright scripts in this session timed out on People `getByText`. The predicate proof that counted is the later script: task `8b340740-15c0-49be-8867-05fd570935c2`, row text `Desk repro project · QA Packer`.
 
 ## Bug that blocked the row-paint job
 
-PATCH stored Packer. The Open lane refetch could still paint Admin. `writeTaskIntoLists` lost to a stale GET. Fix on dirty main: overlay the newer `TaskRow` by `updatedAt`, `cache: 'no-store'` on the list fetch, `Cache-Control: no-store` on `GET /api/ops-plans/tasks`.
+PATCH stored Packer. The Open lane refetch could still paint Admin. `writeTaskIntoLists` lost to a stale GET. Fix on dirty main: overlay the newer `TaskRow` by `updatedAt`, prune the overlay once a non-fetching list is caught up or the row leaves the lane, `cache: 'no-store'` on the list fetch, `Cache-Control: no-store` on `GET /api/ops-plans/tasks`.
+
+`verify:fast` after the overlay write: `.cursor/eval-session.json` `updatedAt` `2026-09-05T04:53:41.726Z`, `ok: true`.
 
 ## Do not
 
@@ -32,4 +36,4 @@ PATCH stored Packer. The Open lane refetch could still paint Admin. `writeTaskIn
 
 ## Next paste
 
-Phase D. Org roster + `ops_plan_members`.
+Phase D. Org roster + `ops_plan_members`. Already done. See `homepage-ops-board-phase-d.md`.

@@ -10,7 +10,7 @@ Polish paint if a real visual bug remains after C/D. Do not run Keygraph Shannon
 
 ## Result
 
-**Skip.** C/D operator jobs already work on the live desk (create, add, status, assign, People, assignee visible on the row). No remaining paint bug that needs an Impeccable pass. Shannon stays forbidden. Lighthouse floors untouched.
+**Skip Impeccable / Shannon.** Operator jobs already work. Visual look (Playwright 1440×900, `/?mode=tasks&scope=all&project=da30e8be…`, networkidle): Ask on the left, Kinetic Ledger table, New project + Add task, Everyone filter, 11 compound rows with `Desk repro project · QA Admin|QA Packer`, ACTIVE/OPEN pills. No Zoho board. No right-rail inspector. No standing keycaps. Loading skeletons can flash before rows; that is not an Impeccable pass. Lighthouse floors untouched.
 
 ## Next paste
 
