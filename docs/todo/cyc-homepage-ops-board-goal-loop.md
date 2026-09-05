@@ -16,10 +16,10 @@
 | Phase | Job | Status |
 |---|---|---|
 | A | Investigation spike. Reusable shipping/action components. Staff directory gaps. Schema UNKNOWN marked. `decisions.tsv` started. Next paste named. No product UI. | done |
-| B | Slot-table bugs. Discover DELETE = 0. `eval:cohort slot-table` green. Do not touch JUDGMENT rows. | this run |
-| C | Home Tasks uses To-ship gutter + row actions. Create project, add task, change status, assign a coworker in this org. No Zoho board. No right-rail inspector. | after B |
-| D | Staff directory and project roster. Assign from org `getActiveStaff()`, not USAV name lists. Project members via `ops_plan_members` when present. | after C |
-| E | Impeccable visual polish only. No Shannon. No Lighthouse floor drop. | after D |
+| B | Slot-table bugs. Discover DELETE = 0. `eval:cohort slot-table` green. Do not touch JUDGMENT rows. | done |
+| C | Home Tasks uses To-ship gutter + row actions. Create project, add a task, change status, assign a coworker in this org. No Zoho board. No right-rail inspector. | done (product on dirty main, uncommitted) |
+| D | Staff directory and project roster. Assign from org `getActiveStaff()`, not USAV name lists. Project members via `ops_plan_members` when present. | done (product on dirty main, uncommitted) |
+| E | Impeccable visual polish only. No Shannon. No Lighthouse floor drop. | skipped with reason |
 
 ## Phase A done
 
