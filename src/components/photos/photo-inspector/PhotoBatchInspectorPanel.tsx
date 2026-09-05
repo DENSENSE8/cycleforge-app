@@ -222,12 +222,15 @@ export function PhotoBatchInspectorPanel<T>({
       const resolved = resolveSelectionAction(action, rows);
       out.push({
         id: action.key,
-        label: action.label,
+        // Direction-aware face and direction-aware call: the media verbs are
+        // all one-way today, but a plane that drops the resolved direction is
+        // a plane where a reversible verb would silently do the wrong half.
+        label: resolved.label,
         // The action set already carries house glyphs; wrap so every row's icon
         // takes the same size from one place rather than N call sites.
         icon: () => action.icon,
         disabled: resolved.disabled,
-        run: () => action.run(rows),
+        run: () => action.run(rows, resolved.direction ? { direction: resolved.direction } : undefined),
       });
     }
 
@@ -400,8 +403,13 @@ export function PhotoBatchInspectorPanel<T>({
                 icon={action.icon}
                 // A disabled peer says WHY on hover — the reason is the only
                 // thing an icon-only control can still tell you.
-                label={resolved.disabled ? (resolved.reason ?? action.label) : action.label}
-                onClick={() => void action.run(rows)}
+                label={resolved.disabled ? (resolved.reason ?? resolved.label) : resolved.label}
+                onClick={() =>
+                  void action.run(
+                    rows,
+                    resolved.direction ? { direction: resolved.direction } : undefined,
+                  )
+                }
                 disabled={resolved.disabled}
                 data-testid={`photo-batch-floor-${action.key}`}
               />
