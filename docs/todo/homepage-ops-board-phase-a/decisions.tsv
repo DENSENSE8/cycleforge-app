@@ -10,3 +10,8 @@ ts	phase	decision	why	evidence	result
 2026-09-05T04:58:00Z	next	next paste is Phase B slot-table bugs, not Phase C	Daily/Tasks/My Day already on the engine, sequence engine bugs before new board verbs	src/lib/tables/slot-table-cohort.ts SLOT_TABLE_ENGINE_LAYOUT_HOOKS tasks/daily/my-day	Phase B
 2026-09-05T05:00:00Z	scope	skip Opening a PR	investigation playbook says no PR, operator said Phase A is a spike not a product ship	playbooks/investigation.md	no PR
 2026-09-05T04:34:04Z	close	committed 3618fecdb three docs files no product UI	Phase A predicate met, next paste is Phase B	git show 3618fecdb340c08b6749c4dd4b487d72cc576b12	predicate met
+2026-09-05T04:41:53Z	B	exit predicate is Discover DELETE 0 plus eval:cohort slot-table skip-verify ok true	checkable stop so Phase C cannot start on a broken waist	docs/todo/homepage-ops-board-phase-b.md	open
+2026-09-05T04:41:53Z	B	reconstruct C-E from spike plus operator Zoho paste because original goal file is still missing	never-block, Linear MCP still needs auth	docs/todo/cyc-homepage-ops-board-goal-loop.md	inferred
+2026-09-05T04:41:53Z	B	leave FBA catalog and support-tickets TABLE_COLUMNS bucket to a human	agents do not invent a tableId or delete KEEP/JUDGMENT	eval:discover JUDGMENT rows	untouched
+2026-09-05T04:41:53Z	B	do not commit eval LEDGER or 2026-09-05 snapshots	docs/eval LEDGER is not agent-writable	git checkout LEDGER.md	discarded
+2026-09-05T04:41:53Z	B	Discover DELETE 0 and skip-verify ok true on worktree off daeb1c1f2	prove the engine before board verbs	runId 2026-09-05T04-39-22-734Z	predicate met
