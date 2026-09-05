@@ -2,8 +2,8 @@
  * `tasks.mine` — Home → Tasks table definition.
  *
  * Rows are org `ops_plan_tasks`. The id stays `tasks.mine` so the registered
- * family does not fork. Record plane is none: triage is Morphing + the desk
- * mouth, not a right-rail inspector (Center Lock).
+ * family does not fork. Record plane is Center Lock L2: row click opens the
+ * project on `DeskStageOverlay`; gutter Morphing stays the row verbs.
  */
 
 import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
@@ -33,7 +33,7 @@ export const TASKS_TABLE_BINDING: TableSurfaceBinding<TaskRow, TasksGridColumn> 
   columns: TASKS_COMPOUND_COLUMNS,
   makeDescriptor: makeTasksGridDescriptor,
   recordPlane: {
-    kind: 'none',
-    reason: 'Home Tasks triage is the left Morphing menu and the desk composer, not a right-rail inspector',
+    kind: 'stage-overlay',
+    reason: 'Home Tasks row click opens the project on DeskStageOverlay; gutter Morphing stays the verbs',
   },
 };

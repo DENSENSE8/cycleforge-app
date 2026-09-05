@@ -8,7 +8,8 @@
  * OWN-WORLD: compound tracks, Morphing left-start, DataTableFilterMenu funnel.
  * STORY: pick a row, act, ping in the left mouth — stay in Cycle Forge.
  * FIRST VIEWPORT: search · filter · Open/Done/Canceled · compound rows; Add
- * task / New project in the desk header; composer summoned under the grid.
+ * task / New project in the desk header; row click opens the project on the
+ * stage; checkbox opens Morphing. Composer summoned under the grid.
  * FORM: extension of Home Tasks inside the incumbent Warehouse OS world.
  */
 
@@ -38,6 +39,7 @@ import { projectTaskCompoundView } from './grid/project-task-compound-view';
 import { TASKS_GRID_CAPABILITIES } from './grid/tasks-grid-descriptor';
 import { TasksComposerRow, type TasksComposerKind } from './TasksComposerRow';
 import { TaskMorphingRowActionMenu } from './TaskMorphingRowActionMenu';
+import { TasksProjectStageOverlay } from './TasksProjectStageOverlay';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { Plus } from '@/components/Icons';
 import { useProjectTasks, type TasksDeskLane, type TasksDeskScope } from './useProjectTasks';
@@ -98,6 +100,9 @@ export function TasksWorkbench() {
   const [composerKind, setComposerKind] = useState<TasksComposerKind>('task');
   const [morphingTaskId, setMorphingTaskId] = useState<string | null>(null);
   const [morphingAnchorReady, setMorphingAnchorReady] = useState(false);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsPlanId, setDetailsPlanId] = useState<string | null>(null);
+  const [detailsTask, setDetailsTask] = useState<TaskRow | null>(null);
   const [nowMs, setNowMs] = useState(() => Date.now());
   const composerRef = useRef<HTMLInputElement>(null);
   const morphingAnchorRef = useRef<HTMLElement | null>(null);
@@ -165,18 +170,27 @@ export function TasksWorkbench() {
     [writeParams],
   );
 
+  const openProjectDetails = useCallback((id: string | null, task?: TaskRow | null) => {
+    setDetailsPlanId(id);
+    setDetailsOpen(Boolean(id));
+    if (id) setMorphingTaskId(null);
+    if (task !== undefined) setDetailsTask(task);
+    else if (!id) setDetailsTask(null);
+  }, []);
+
   const setProject = useCallback(
-    (id: string | null) => {
+    (id: string | null, opts?: { keepTask?: boolean }) => {
       writeParams((p) => {
         if (!id) p.delete('project');
         else {
           p.set('project', id);
           p.set('scope', 'all');
         }
-        p.delete('task');
+        if (!opts?.keepTask) p.delete('task');
       });
+      openProjectDetails(id, null);
     },
-    [writeParams],
+    [openProjectDetails, writeParams],
   );
 
   const setQuery = useCallback((next: string) => setQueryState(next), []);
@@ -233,6 +247,11 @@ export function TasksWorkbench() {
 
   const selected = rows.find((r) => r.id === selectedId) ?? null;
   const morphingTask = rows.find((r) => r.id === morphingTaskId) ?? null;
+  const detailsTaskLive =
+    (detailsTask ? rows.find((r) => r.id === detailsTask.id) ?? detailsTask : null) ??
+    (selected?.planId === detailsPlanId ? selected : null);
+  const walkId = detailsTaskLive?.id ?? selectedId;
+  const detailIndex = walkId ? rows.findIndex((r) => r.id === walkId) : -1;
 
   useLayoutEffect(() => {
     if (!morphingTaskId) {
@@ -290,7 +309,6 @@ export function TasksWorkbench() {
       setDraft('');
       setComposerOpen(false);
       selectTask(created.task.id, created.task);
-      setMorphingTaskId(created.task.id);
       toast.success('Task added');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not save');
@@ -390,13 +408,13 @@ export function TasksWorkbench() {
         }}
         onClick={() => {
           selectTask(row.id, row);
-          setMorphingTaskId(row.id);
+          openProjectDetails(row.planId, row);
         }}
         onKeyDown={(e) => {
           if (e.key === 'Enter' || e.key === ' ') {
             e.preventDefault();
             selectTask(row.id, row);
-            setMorphingTaskId(row.id);
+            openProjectDetails(row.planId, row);
           }
         }}
         columns={visible}
@@ -408,11 +426,11 @@ export function TasksWorkbench() {
         }}
         onOpen={() => {
           selectTask(row.id, row);
-          setMorphingTaskId(row.id);
+          openProjectDetails(row.planId, row);
         }}
         onStateOpen={() => {
           selectTask(row.id, row);
-          setMorphingTaskId(row.id);
+          openProjectDetails(row.planId, row);
         }}
         select={{
           checked,
@@ -433,14 +451,14 @@ export function TasksWorkbench() {
             });
           },
           disabled: tasks.pending,
-          label: checked ? `Deselect "${row.title}"` : `Select "${row.title}" and open actions`,
+          label: checked ? `Deselect "${row.title}"` : `Select "${row.title}" and open row actions`,
         }}
       />
     );
   };
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-col bg-surface-card">
+    <div className="relative flex h-full min-h-0 min-w-0 flex-1 flex-col bg-surface-card">
       <DataTable<TaskRow, TasksGridColumnKey, TasksGridColumn>
         binding={TASKS_TABLE_BINDING}
         columns={tasksColumns}
@@ -502,6 +520,60 @@ export function TasksWorkbench() {
           onComplete={() => tasks.complete(morphingTask.id)}
         />
       ) : null}
+      <TasksProjectStageOverlay
+        open={detailsOpen}
+        planId={detailsPlanId}
+        planTitle={
+          (detailsPlanId
+            ? tasks.plans.find((p) => p.id === detailsPlanId)?.title
+            : undefined) ||
+          (detailsTaskLive?.planId === detailsPlanId ? detailsTaskLive.planTitle : '') ||
+          ''
+        }
+        task={detailsTaskLive?.planId === detailsPlanId ? detailsTaskLive : null}
+        onClose={() => setDetailsOpen(false)}
+        indexLabel={
+          detailIndex >= 0 ? `${detailIndex + 1} of ${rows.length}` : undefined
+        }
+        onPrev={
+          detailIndex > 0
+            ? () => {
+                const prev = rows[detailIndex - 1];
+                if (!prev) return;
+                selectTask(prev.id, prev);
+                openProjectDetails(prev.planId, prev);
+              }
+            : undefined
+        }
+        onNext={
+          detailIndex >= 0 && detailIndex < rows.length - 1
+            ? () => {
+                const next = rows[detailIndex + 1];
+                if (!next) return;
+                selectTask(next.id, next);
+                openProjectDetails(next.planId, next);
+              }
+            : undefined
+        }
+        prevDisabled={detailIndex <= 0}
+        nextDisabled={detailIndex < 0 || detailIndex >= rows.length - 1}
+        onPlanTitle={() => tasks.refresh()}
+        onPatchTask={async (body) => {
+          if (!detailsTaskLive) return;
+          const result = await tasks.patch({ taskId: detailsTaskLive.id, body });
+          if (
+            body.assigneeStaffId != null &&
+            staffId != null &&
+            body.assigneeStaffId !== staffId
+          ) {
+            setScope('all', { keepTask: true });
+          }
+          return result;
+        }}
+        onCompleteTask={() =>
+          detailsTaskLive ? tasks.complete(detailsTaskLive.id) : Promise.resolve()
+        }
+      />
       <DeskActionSlotRegistrar>{headerActions}</DeskActionSlotRegistrar>
 
       {!composerOpen ? null : (

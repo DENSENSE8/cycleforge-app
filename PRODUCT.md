@@ -27,7 +27,7 @@ The desk reuses the Kinetic Ledger DataTable + To-ship Morphing manifold + Stati
 - Do not replace Daily or Today. Tasks remains the Home desk tab (`/?mode=tasks`).
 - One DataTable (`tableId: tasks`). No new `*GridRow` / `*_GRID_COLUMNS`.
 - Selection verbs on the **left Morphing gutter**, not DataTable `selectionActions`. Clone To-ship; do not change `MorphingRowActionMenu` (typed to `ShippedOrder`).
-- Center Lock: no new `detail:*` right rail, no Dialog as the record plane. `recordPlane.kind: 'none'`.
+- Center Lock: row click opens the project on `DeskStageOverlay` (`recordPlane.kind: 'stage-overlay'`). No `detail:*` right rail, no Dialog as the record plane. Gutter checkbox still opens Morphing.
 - Composer stays the existing left `DeskComposerAskLane` / `StationComposerHost`. Dumb faces stay off; Staff is `modeRowLeading`, not a new `STATION_COMPOSER_MODES` id.
 - Staff `?` paints letters on buttons; no standing keycaps; no cheat sheet from the table-foot `?`.
 - Every painted DATA header is click-to-sort. Chrome only: select / actions / `_fill` / `thumb`.
@@ -44,10 +44,11 @@ The desk reuses the Kinetic Ledger DataTable + To-ship Morphing manifold + Stati
 ## Workflows
 
 1. Open Home → Tasks (`/?mode=tasks`). Default: my open tasks.
-2. Filter Everyone / a project from the funnel beside search. Lanes: Open / Done / Canceled.
-3. Tick a row (or click it) → Morphing on the left: Done, In progress, Open, Assign, Ping, Cancel (+ keyboard).
-4. Drag a row onto Ask → it stays in the working set; Ask answers with that task as context.
-5. Switch Staff on the mode row, type `@Name` and a note, Enter → ping that staffer (and assign the selected/dropped task when one is in play).
+2. Filter Everyone / a project from the funnel beside search. Picking a project opens it on the stage. Lanes: Open / Done / Canceled.
+3. Click a row (or press Enter) → project details on the stage: rename, People, this task’s status and assignee. The table stays mounted underneath and is not filtered away.
+4. Tick the gutter checkbox → Morphing on the left: Done, In progress, Open, Assign, Ping, Cancel (+ keyboard).
+5. Drag a row onto Ask → it stays in the working set; Ask answers with that task as context.
+6. Switch Staff on the mode row, type `@Name` and a note, Enter → ping that staffer (and assign the selected/dropped task when one is in play).
 
 ## Accessibility
 

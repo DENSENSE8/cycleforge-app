@@ -80,9 +80,9 @@ test('an archived row is carried as history, not silently reopened', () => {
   assert.equal(row.done, true, 'it was checked off before it was deleted, and still was');
 });
 
-test('the registered definition keeps triage on Morphing, not a right-rail inspector', () => {
+test('the registered definition opens the project on the stage, not a right-rail inspector', () => {
   assert.equal(TASKS_TABLE_BINDING.definition.id, 'tasks.mine');
-  assert.equal(TASKS_TABLE_BINDING.recordPlane.kind, 'none');
+  assert.equal(TASKS_TABLE_BINDING.recordPlane.kind, 'stage-overlay');
   assert.equal(TASKS_TABLE_BINDING.definition.capabilities?.multiSelect, false);
   assert.equal(TASKS_TABLE_BINDING.definition.capabilities?.inCellEdit, false);
 });
