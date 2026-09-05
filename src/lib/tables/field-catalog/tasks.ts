@@ -78,6 +78,30 @@ export const TASKS_FIELD_CATALOG: FieldCatalog = [
     slotKinds: ['status', 'subtitle'],
     paths: { value: 'checkedAtMs' },
   },
+  {
+    id: 'tasks.project',
+    family: 'tasks',
+    label: 'Project',
+    displayType: 'text',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'planTitle' },
+  },
+  {
+    id: 'tasks.assignee',
+    family: 'tasks',
+    label: 'Assignee',
+    displayType: 'person',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'assigneeName' },
+  },
+  {
+    id: 'tasks.due',
+    family: 'tasks',
+    label: 'Due',
+    displayType: 'date',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'dueAt' },
+  },
 ];
 
 /**

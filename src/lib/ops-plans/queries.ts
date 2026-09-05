@@ -15,6 +15,8 @@ import type {
   TaskRow,
 } from './types';
 import type { OpsPlanPhaseStatus, OpsPlanStatus, OpsPlanTaskStatus } from './constants';
+import { DEFAULT_PLAN_TASK_PHASE } from './constants';
+import { insertPlanMembersOnClient } from './members';
 import { getPlanTemplate, normalizeTemplateTask } from './templates';
 
 function toIso(v: unknown): string | null {
@@ -99,6 +101,26 @@ function mapTaskRow(row: Record<string, unknown>): TaskRow {
     createdAt: toIso(row.created_at) ?? '',
     updatedAt: toIso(row.updated_at) ?? '',
   };
+}
+
+const TASK_DETAIL_SQL = `SELECT t.id, t.phase_id, p.plan_id, pl.title AS plan_title, p.station,
+            t.title, t.assignee_staff_id, st.name AS assignee_name,
+            t.status::text AS status, t.due_at, t.started_at, t.completed_at,
+            t.completed_by_staff_id, t.notes, t.sort_order, t.created_at, t.updated_at
+       FROM ops_plan_tasks t
+       JOIN ops_plan_phases p ON p.id = t.phase_id AND p.organization_id = t.organization_id
+       JOIN ops_plans pl ON pl.id = p.plan_id AND pl.organization_id = p.organization_id
+       LEFT JOIN staff st ON st.id = t.assignee_staff_id
+      WHERE t.id = $1::uuid AND t.organization_id = $2::uuid`;
+
+/** Same connection as the writer — tenantQuery cannot see an uncommitted insert. */
+async function fetchTaskOnClient(
+  client: PoolClient,
+  orgId: OrgId,
+  taskId: string,
+): Promise<TaskRow | null> {
+  const result = await client.query(TASK_DETAIL_SQL, [taskId, orgId]);
+  return result.rows[0] ? mapTaskRow(result.rows[0]) : null;
 }
 
 export async function listPlans(
@@ -242,20 +264,32 @@ export async function createPlan(
     description?: string | null;
     targetDate?: string | null;
     createdByStaffId?: number | null;
+    memberStaffIds?: readonly number[] | null;
   },
 ): Promise<{ plan: PlanRow }> {
-  return withTenantTransaction(orgId, async (client) => {
+  const planId = await withTenantTransaction(orgId, async (client) => {
     const inserted = await client.query(
       `INSERT INTO ops_plans (organization_id, title, description, target_date, created_by_staff_id, status)
        VALUES ($1::uuid, $2, $3, $4::date, $5, 'draft'::ops_plan_status)
        RETURNING id`,
       [orgId, input.title, input.description ?? null, input.targetDate ?? null, input.createdByStaffId ?? null],
     );
-    const planId = String(inserted.rows[0].id);
-    const detail = await getPlanDetail(orgId, planId);
-    if (!detail) throw new Error('PLAN_NOT_FOUND');
-    return { plan: detail.plan };
+    const id = String(inserted.rows[0].id);
+    await client.query(
+      `INSERT INTO ops_plan_phases (organization_id, plan_id, station, title, sort_order)
+       VALUES ($1::uuid, $2::uuid, $3, $4, 100)`,
+      [orgId, id, DEFAULT_PLAN_TASK_PHASE.station, DEFAULT_PLAN_TASK_PHASE.title],
+    );
+    const memberIds = [
+      ...(input.createdByStaffId != null ? [input.createdByStaffId] : []),
+      ...(input.memberStaffIds ?? []),
+    ];
+    await insertPlanMembersOnClient(client, orgId, id, memberIds, input.createdByStaffId ?? null);
+    return id;
   });
+  const detail = await getPlanDetail(orgId, planId);
+  if (!detail) throw new Error('PLAN_NOT_FOUND');
+  return { plan: detail.plan };
 }
 
 export async function createPlanFromTemplate(
@@ -481,8 +515,7 @@ export async function createTask(
         [orgId, input.clientEventId],
       );
       if (existing.rows[0]) {
-        const tasks = await listTasksForInbox(orgId, { planId: String(existing.rows[0].plan_id) });
-        const task = tasks.find((t) => t.id === String(existing.rows[0].id));
+        const task = await fetchTaskOnClient(client, orgId, String(existing.rows[0].id));
         if (task) {
           return { task, planId: String(existing.rows[0].plan_id), idempotent: true };
         }
@@ -529,11 +562,13 @@ export async function createTask(
       ],
     );
     const taskId = String(inserted.rows[0].id);
+    if (input.assigneeStaffId != null) {
+      await insertPlanMembersOnClient(client, orgId, planId, [input.assigneeStaffId], input.assigneeStaffId);
+    }
     await reconcilePhase(client, orgId, phaseId);
     await reconcilePlan(client, orgId, planId);
 
-    const tasks = await listTasksForInbox(orgId, { planId });
-    const task = tasks.find((t) => t.id === taskId);
+    const task = await fetchTaskOnClient(client, orgId, taskId);
     if (!task) throw new Error('TASK_NOT_FOUND');
     return { task, planId };
   });
@@ -615,11 +650,19 @@ export async function updateTask(
         WHERE id = $1::uuid AND organization_id = $2::uuid`,
       params,
     );
+    if (patch.assigneeStaffId != null) {
+      await insertPlanMembersOnClient(
+        client,
+        orgId,
+        planId,
+        [patch.assigneeStaffId],
+        patch.actorStaffId ?? null,
+      );
+    }
     await reconcilePhase(client, orgId, phaseId);
     await reconcilePlan(client, orgId, planId);
 
-    const tasks = await listTasksForInbox(orgId, { planId });
-    const task = tasks.find((t) => t.id === taskId);
+    const task = await fetchTaskOnClient(client, orgId, taskId);
     if (!task) throw new Error('TASK_NOT_FOUND');
     return { task, planId };
   });
@@ -667,9 +710,56 @@ export async function completeTask(
   });
 }
 
+export async function ensureDefaultTaskPhase(orgId: OrgId, planId: string): Promise<string | null> {
+  return withTenantTransaction(orgId, async (client) => {
+    const plan = await client.query(
+      `SELECT id FROM ops_plans WHERE id = $1::uuid AND organization_id = $2::uuid`,
+      [planId, orgId],
+    );
+    if (plan.rows.length === 0) return null;
+    const existing = await client.query(
+      `SELECT id FROM ops_plan_phases
+        WHERE plan_id = $1::uuid AND organization_id = $2::uuid
+        ORDER BY sort_order ASC, created_at ASC
+        LIMIT 1`,
+      [planId, orgId],
+    );
+    if (existing.rows[0]) return String(existing.rows[0].id);
+    const inserted = await client.query(
+      `INSERT INTO ops_plan_phases (organization_id, plan_id, station, title, sort_order)
+       VALUES ($1::uuid, $2::uuid, $3, $4, 100)
+       RETURNING id`,
+      [orgId, planId, DEFAULT_PLAN_TASK_PHASE.station, DEFAULT_PLAN_TASK_PHASE.title],
+    );
+    return String(inserted.rows[0].id);
+  });
+}
+
+export async function createTaskForPlan(
+  orgId: OrgId,
+  planId: string,
+  input: {
+    title: string;
+    assigneeStaffId?: number | null;
+    dueAt?: string | null;
+    notes?: string | null;
+    sortOrder?: number;
+    clientEventId?: string | null;
+  },
+): Promise<{ task: TaskRow; planId: string; idempotent?: boolean } | null> {
+  const phaseId = await ensureDefaultTaskPhase(orgId, planId);
+  if (!phaseId) return null;
+  return createTask(orgId, phaseId, input);
+}
+
 export async function listTasksForInbox(
   orgId: OrgId,
-  filters: { planId?: string | null; staffId?: number | null; station?: string | null; status?: 'open' | 'all' } = {},
+  filters: {
+    planId?: string | null;
+    staffId?: number | null;
+    station?: string | null;
+    status?: 'open' | 'all' | 'done' | 'canceled';
+  } = {},
 ): Promise<TaskRow[]> {
   const params: unknown[] = [orgId];
   const clauses = ['t.organization_id = $1::uuid'];
@@ -685,7 +775,11 @@ export async function listTasksForInbox(
     params.push(filters.station);
     clauses.push(`p.station = $${params.length}`);
   }
-  if (filters.status !== 'all') {
+  if (filters.status === 'done') {
+    clauses.push(`t.status = 'done'::ops_plan_task_status`);
+  } else if (filters.status === 'canceled') {
+    clauses.push(`t.status = 'canceled'::ops_plan_task_status`);
+  } else if (filters.status !== 'all') {
     clauses.push(`t.status IN ('open'::ops_plan_task_status, 'in_progress'::ops_plan_task_status)`);
   }
   const where = clauses.join(' AND ');

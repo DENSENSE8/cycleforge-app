@@ -60,8 +60,11 @@ describe('tasks catalog', () => {
     assert.deepEqual(parsed.subtitleBindings, []);
   });
 
-  it('names no lateness fact — the shared clock owns that, on the state cell', () => {
+  it('names project, assignee, and due as bindable facts without a lateness column', () => {
     const ids = TASKS_FIELD_CATALOG.map((f) => f.id);
+    assert.ok(ids.includes('tasks.project'));
+    assert.ok(ids.includes('tasks.assignee'));
+    assert.ok(ids.includes('tasks.due'));
     assert.ok(!ids.includes('tasks.overdue'));
     assert.ok(!ids.includes('tasks.late'));
   });
@@ -83,7 +86,7 @@ describe('tasksCompoundColumnsFor — the compound materialization', () => {
     });
     assert.deepEqual(
       columns.map((c) => c.key),
-      ['select', 'thumb', 'fulfillment', 'item', 'state', 'status:1', 'status:2', 'amount', 'actions', '_fill'],
+      ['select', 'fulfillment', 'thumb', 'item', 'dates', 'state', 'status:1', 'status:2', 'amount', '_fill'],
     );
     assert.equal(columns.find((c) => c.key === 'status:2')?.slotDisplayType, 'date');
   });

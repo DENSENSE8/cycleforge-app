@@ -1,43 +1,22 @@
 'use client';
 
 /**
- * Home → Tasks — one staffer's `staff_todos` as a flush workbench sheet.
+ * Home → Tasks — org project tasks as a Kinetic Ledger sheet.
  *
- * ## Why this surface exists
- *
- * The personal task list only ever had one face: a hand-rolled `<div>` list
- * inside a 290px header popover. That is fine as a *preview* and useless as a
- * triage surface — no sort, no columns, no record plane, no way to see every
- * station's list at once, and a delete you could not inspect or undo. The list
- * is a collection, so it gets the collection engine: the table definition
- * registry + {@link NonlinearTableHost} over `LedgerGridSurface`, like every
- * other operator queue. No `*GridView` twin.
- *
- * It draws no chrome of its own — {@link DataTable} does, from the lanes and
- * the query this page resolves. Home → Daily is the same shape of thing one
- * page over, and reading two checklists that look different is a tax paid on
- * every shift.
- *
- * ## Two stores, still not merged
- *
- * Daily (`daily_check_items` + `daily_check_marks`) is the ORG's shift list with
- * a roster behind every row; this is one staffer's own list (`staff_todos`).
- * Sibling tables over one engine — never one table with a source switch. The
- * roster question and the personal question are not the same question.
- *
- * ## Record plane
- *
- * A row click opens {@link StaffTaskInspectorRail} in the single `RightRailHost`
- * slot, which is also where the task's writes live (rename, delete, restore,
- * cycle). `?task=` carries the selection so a picked row survives a refresh and
- * is linkable, exactly like Daily's `?item=`.
+ * THESIS: triage project work on the same DataTable + left Morphing grammar as
+ * To-ship, not a Zoho board and not a personal checkbox list.
+ * OWN-WORLD: compound tracks, Morphing left-start, DataTableFilterMenu funnel.
+ * STORY: pick a row, act, ping in the left mouth — stay in Cycle Forge.
+ * FIRST VIEWPORT: search · filter · Open/Done/Canceled · compound rows; Add
+ * task / New project in the desk header; composer summoned under the grid.
+ * FORM: extension of Home Tasks inside the incumbent Warehouse OS world.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { DataTable } from '@/components/tables/DataTable';
-import { rowGroupTotals, singleBand, type RowGroup } from '@/lib/group-rows';
+import { singleBand, type RowGroup } from '@/lib/group-rows';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import { compareGridValues } from '@/design-system/components/grid';
 import {
@@ -55,39 +34,54 @@ import { TASKS_TABLE_BINDING } from './grid/tasks-table-definition';
 import { CompoundRow } from '@/components/tables/compound/CompoundRow';
 import { useTasksTableLayout } from '@/features/tasks/grid/useTasksTableLayout';
 import { tasksSlotValuesFor } from '@/lib/tables/field-catalog/tasks-resolve';
-import { staffTaskCompoundView } from './grid/staff-task-compound-view';
+import { projectTaskCompoundView } from './grid/project-task-compound-view';
 import { TASKS_GRID_CAPABILITIES } from './grid/tasks-grid-descriptor';
-import type { StaffTaskRow } from './grid/staff-task-row';
-import { StaffTaskInspectorRail } from './StaffTaskInspector';
-import { TasksComposerRow } from './TasksComposerRow';
+import { TasksComposerRow, type TasksComposerKind } from './TasksComposerRow';
+import { TaskMorphingRowActionMenu } from './TaskMorphingRowActionMenu';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { Plus } from '@/components/Icons';
-import { useStaffTasks } from './useStaffTasks';
+import { useProjectTasks, type TasksDeskLane, type TasksDeskScope } from './useProjectTasks';
+import { applyMorphingGutterClick } from '@/lib/outbound/morphing-row-action';
+import type { TaskRow } from '@/lib/ops-plans/types';
+import {
+  PROJECT_TASK_MIME,
+  setSelectedWorkingTask,
+  type WorkingTaskRef,
+} from '@/lib/ops-plans/working-set';
+import { toast } from '@/lib/toast';
+import type { DataTableFilterChrome } from '@/components/tables/DataTable';
 
-/**
- * Band-1 lanes. `deleted` is the archived half — "view everything", as a tab.
- *
- * Carried on `?filter=`, the key Home already owns for exactly this question
- * ("the surface's own named filter set" — Daily spends it on `done`). A new
- * `?lane=` key would make `lane` a SHARED owned key with `/incoming`, which
- * costs a `SHARED_OWNED_KEYS` entry and an argument, to ask a question the
- * route already has a word for.
- */
-type TasksLane = 'open' | 'done' | 'deleted';
+const TASK_ID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function parseLane(raw: string | null): TasksLane {
-  return raw === 'done' || raw === 'deleted' ? raw : 'open';
+function parseLane(raw: string | null): TasksDeskLane {
+  return raw === 'done' || raw === 'canceled' ? raw : 'open';
 }
 
-/**
- * The lane strip. `open` is the default, so it IS the unfiltered list and the
- * strip lights nothing when it is active — see {@link DataTable}.
- * "Deleted" is a lane, not a hidden menu item: a delete that archives is only
- * honestly reversible if the archive is a place you can go.
- */
+function parseScope(raw: string | null): TasksDeskScope {
+  return raw === 'all' ? 'all' : 'mine';
+}
+
+function parseTaskId(raw: string | null): string | null {
+  return raw && TASK_ID_RE.test(raw) ? raw : null;
+}
+
+function parseProjectId(raw: string | null): string | null {
+  return raw && TASK_ID_RE.test(raw) ? raw : null;
+}
+
+function toRef(row: TaskRow): WorkingTaskRef {
+  return {
+    id: row.id,
+    title: row.title,
+    planId: row.planId,
+    planTitle: row.planTitle,
+  };
+}
+
 const TASK_LANE_TABS = [
   { id: 'done', label: 'Done' },
-  { id: 'deleted', label: 'Deleted' },
+  { id: 'canceled', label: 'Canceled' },
 ] as const;
 
 export function TasksWorkbench() {
@@ -96,21 +90,35 @@ export function TasksWorkbench() {
   const { user } = useAuth();
   const staffId = user?.staffId ?? null;
 
-  const tasks = useStaffTasks(staffId);
-
-  // The effective slot layout (staff ?? org ?? product) materialized into the
-  // compound tracks — a staffer's own list, and its own document.
   const { effectiveLayout: tasksLayout, fields: tasksFields } = useTasksTableLayout();
   const tasksColumns = useMemo(() => tasksCompoundColumnsFor(tasksLayout), [tasksLayout]);
   const [draft, setDraft] = useState('');
   const [query, setQueryState] = useState('');
-  /** Summoned by the page CTA rather than permanently docked under the grid. */
   const [composerOpen, setComposerOpen] = useState(false);
+  const [composerKind, setComposerKind] = useState<TasksComposerKind>('task');
+  const [morphingTaskId, setMorphingTaskId] = useState<string | null>(null);
+  const [morphingAnchorReady, setMorphingAnchorReady] = useState(false);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const composerRef = useRef<HTMLInputElement>(null);
+  const morphingAnchorRef = useRef<HTMLElement | null>(null);
 
   const lane = parseLane(searchParams.get('filter'));
-  const rawTask = searchParams.get('task');
-  const selectedId = rawTask && /^\d+$/.test(rawTask) ? Number(rawTask) : null;
+  const scope = parseScope(searchParams.get('scope'));
+  const projectId = parseProjectId(searchParams.get('project'));
+  const selectedId = parseTaskId(searchParams.get('task'));
+
+  const tasks = useProjectTasks({
+    lane,
+    scope,
+    planId: projectId,
+    query,
+    enabled: staffId != null,
+  });
+
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   const writeParams = useCallback(
     (mutate: (next: URLSearchParams) => void) => {
@@ -123,170 +131,323 @@ export function TasksWorkbench() {
   );
 
   const selectTask = useCallback(
-    (id: number | null) => {
+    (id: string | null, row?: TaskRow | null) => {
       writeParams((p) => {
         if (id == null) p.delete('task');
-        else p.set('task', String(id));
+        else p.set('task', id);
+      });
+      setSelectedWorkingTask(row ? toRef(row) : null);
+    },
+    [writeParams],
+  );
+
+  const setLane = useCallback(
+    (next: TasksDeskLane) => {
+      writeParams((p) => {
+        if (next === 'open') p.delete('filter');
+        else p.set('filter', next);
+        p.delete('task');
+      });
+      setMorphingTaskId(null);
+      setSelectedWorkingTask(null);
+    },
+    [writeParams],
+  );
+
+  const setScope = useCallback(
+    (next: TasksDeskScope, opts?: { keepTask?: boolean }) => {
+      writeParams((p) => {
+        if (next === 'mine') p.delete('scope');
+        else p.set('scope', next);
+        if (!opts?.keepTask) p.delete('task');
       });
     },
     [writeParams],
   );
-  const setLane = useCallback(
-    (next: TasksLane) => {
+
+  const setProject = useCallback(
+    (id: string | null) => {
       writeParams((p) => {
-        if (next === 'open') p.delete('filter');
-        else p.set('filter', next);
-        // A row from the previous lane is not in this one; keeping `?task=`
-        // would leave the rail open on a record the grid no longer shows.
+        if (!id) p.delete('project');
+        else {
+          p.set('project', id);
+          p.set('scope', 'all');
+        }
         p.delete('task');
       });
     },
     [writeParams],
   );
+
   const setQuery = useCallback((next: string) => setQueryState(next), []);
 
   const {
     sort: columnSort,
     dir: sortDir,
     setSort,
-    toggleColumnSort,
   } = useUrlColumnSort<TasksSortFact>({
     isColumn: isTasksSortFact,
     defaultDir: defaultDirForTasksGridSort,
   });
 
-  const laneRows = useMemo(() => {
-    const source = lane === 'deleted' ? tasks.archivedRows : tasks.liveRows;
-    const byLane =
-      lane === 'done' ? source.filter((r) => r.done)
-      : lane === 'open' ? source.filter((r) => !r.done)
-      : source;
-    const q = query.trim().toLowerCase();
-    return q ? byLane.filter((r) => r.text.toLowerCase().includes(q)) : byLane;
-  }, [lane, query, tasks.archivedRows, tasks.liveRows]);
-
   const rows = useMemo(() => {
+    const source = tasks.rows;
     if (!columnSort || !sortDir) {
-      // No sort = the list as the staffer authored it, station by station.
-      return [...laneRows].sort(
-        (a, b) => a.station.localeCompare(b.station) || a.sortOrder - b.sortOrder || a.id - b.id,
-      );
+      return [...source].sort((a, b) => a.sortOrder - b.sortOrder || a.id.localeCompare(b.id));
     }
     const type = TASKS_SORT_FACT_TYPES[columnSort];
-    const value = (r: StaffTaskRow) => {
+    const value = (r: TaskRow) => {
       switch (columnSort) {
         case 'task':
-          return r.text;
-        // Sort by the STATE, not the word.
+          return r.title;
         case 'status':
-          return r.archived ? 2 : r.done ? 1 : 0;
+          return r.status;
         case 'kind':
-          return r.kind;
         case 'station':
           return r.station;
         case 'due':
-          return r.resetsAtMs;
+          return r.dueAt ? Date.parse(r.dueAt) : null;
         case 'updated':
-          return r.checkedAtMs;
+          return Date.parse(r.updatedAt);
+        case 'project':
+        case 'order':
+          return r.planTitle;
+        case 'assignee':
+          return r.assigneeName;
+        case 'amount':
+          return null;
         default:
           return null;
       }
     };
-    return [...laneRows].sort((a, b) => {
+    return [...source].sort((a, b) => {
       const primary = compareGridValues(value(a), value(b), { type, dir: sortDir });
-      // `compareGridValues` already applied `dir` — re-signing here would
-      // re-invert blanks and undo the blanks-last ruling.
-      return primary !== 0 ? primary : a.sortOrder - b.sortOrder || a.id - b.id;
+      return primary !== 0 ? primary : a.sortOrder - b.sortOrder || a.id.localeCompare(b.id);
     });
-  }, [laneRows, columnSort, sortDir]);
+  }, [tasks.rows, columnSort, sortDir]);
 
-  const totals = useMemo(
-    () => rowGroupTotals({ key: 'tasks', rows }, { done: (r) => (r.done ? 1 : 0) }),
-    [rows],
-  );
-
-  /** One band, one row per group — the group IS the task. */
   const groups = useMemo(
-    () => singleBand(rows, (r) => String(r.id)) as [string, RowGroup<StaffTaskRow>[]][],
+    () => singleBand(rows, (r) => r.id) as [string, RowGroup<TaskRow>[]][],
     [rows],
   );
 
-  const selected =
-    [...tasks.liveRows, ...tasks.archivedRows].find((r) => r.id === selectedId) ?? null;
+  const selected = rows.find((r) => r.id === selectedId) ?? null;
+  const morphingTask = rows.find((r) => r.id === morphingTaskId) ?? null;
 
-  /** New tasks land on the station the picked row belongs to, else the first. */
-  const composerStation = selected?.station || tasks.liveRows[0]?.station || 'UNBOX';
-
-  const submitDraft = useCallback(
-    (kind: 'general' | 'recurring') => {
-      const text = draft.trim();
-      if (!text) return;
-      tasks.create({ station: composerStation, kind, text });
-      setDraft('');
-    },
-    [composerStation, draft, tasks],
-  );
-
-  /**
-   * The page CTA's handler — open the composer and put the caret in it.
-   *
-   * Creating a task is what this page CREATES, so the control is page-level and
-   * top-right (operator ruling; `DeskActionSlot`'s own law), registered into the
-   * desk chrome's slot rather than docked under the grid. The composer stays
-   * under the table where a composer belongs — it is summoned, not permanent.
-   *
-   * With text already typed it COMMITS a general task instead of re-focusing:
-   * the operator has said what they want twice. Recurring stays a deliberate
-   * choice inside the composer, because a period is not something to infer.
-   */
-  const openComposer = useCallback(() => {
-    setComposerOpen(true);
-    if (draft.trim()) {
-      submitDraft('general');
+  useLayoutEffect(() => {
+    if (!morphingTaskId) {
+      morphingAnchorRef.current = null;
+      setMorphingAnchorReady(false);
       return;
     }
-    composerRef.current?.focus();
-  }, [draft, submitDraft]);
+    const row = document.querySelector(
+      `[data-ops-plan-task-id="${CSS.escape(morphingTaskId)}"]`,
+    );
+    if (!(row instanceof HTMLElement)) {
+      morphingAnchorRef.current = null;
+      setMorphingAnchorReady(false);
+      return;
+    }
+    const gutter = row.querySelector(
+      'button[aria-label*="Select"], button[aria-label*="Deselect"], input[type="checkbox"]',
+    );
+    morphingAnchorRef.current = gutter instanceof HTMLElement ? gutter : row;
+    setMorphingAnchorReady(true);
+  }, [morphingTaskId, rows]);
 
-  // Focus lands after the composer has actually mounted — on the first open
-  // the ref is still null when the click handler runs.
+  const activeProject =
+    tasks.plans.find((p) => p.id === projectId) ??
+    (selected ? tasks.plans.find((p) => p.id === selected.planId) : undefined) ??
+    tasks.plans[0] ??
+    null;
+  const planIdForCreate =
+    projectId ?? selected?.planId ?? activeProject?.id ?? rows[0]?.planId ?? null;
+  const planTitleForCreate =
+    activeProject?.title || selected?.planTitle || rows[0]?.planTitle || 'a project';
+
+  const submitDraft = useCallback(async () => {
+    const text = draft.trim();
+    if (!text) return;
+    try {
+      if (composerKind === 'project') {
+        const { plan } = await tasks.createPlan({ title: text });
+        setDraft('');
+        setComposerOpen(false);
+        setProject(plan.id);
+        toast.success('Project created');
+        return;
+      }
+      if (!planIdForCreate) {
+        toast.error('Create a project first');
+        setComposerKind('project');
+        return;
+      }
+      const created = await tasks.createTask({
+        planId: planIdForCreate,
+        title: text,
+        assigneeStaffId: staffId,
+      });
+      setDraft('');
+      setComposerOpen(false);
+      selectTask(created.task.id, created.task);
+      setMorphingTaskId(created.task.id);
+      toast.success('Task added');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not save');
+    }
+  }, [composerKind, draft, planIdForCreate, selectTask, setProject, staffId, tasks]);
+
+  const openComposer = useCallback(
+    (kind: TasksComposerKind) => {
+      setComposerKind(kind);
+      setComposerOpen(true);
+      if (draft.trim() && composerKind === kind) {
+        void submitDraft();
+        return;
+      }
+      composerRef.current?.focus();
+    },
+    [composerKind, draft, submitDraft],
+  );
+
   useEffect(() => {
     if (composerOpen) composerRef.current?.focus();
   }, [composerOpen]);
 
-  /** Memoized — a fresh identity every render re-registers through the slot. */
-  const addAction = useMemo(
-    () =>
-      lane === 'deleted' ? null : (
+  const filter = useMemo<DataTableFilterChrome>(() => {
+    const options = [
+      {
+        id: 'scope:all',
+        label: 'Everyone',
+        group: 'Scope',
+        active: scope === 'all',
+      },
+      ...tasks.plans.map((plan) => ({
+        id: `project:${plan.id}`,
+        label: plan.title,
+        group: 'Project',
+        active: projectId === plan.id,
+      })),
+    ];
+    return {
+      options,
+      onToggle: (id) => {
+        if (id === 'scope:all') {
+          setScope(scope === 'all' ? 'mine' : 'all');
+          return;
+        }
+        if (id.startsWith('project:')) {
+          const next = id.slice('project:'.length);
+          setProject(projectId === next ? null : next);
+        }
+      },
+      onClearAll: () => {
+        setScope('mine');
+        setProject(null);
+      },
+    };
+  }, [projectId, scope, setProject, setScope, tasks.plans]);
+
+  const headerActions = useMemo(
+    () => (
+      <>
+        <DeskHeaderAction
+          variant="secondary"
+          size="sm"
+          onClick={() => openComposer('project')}
+        >
+          New project
+        </DeskHeaderAction>
         <DeskHeaderAction
           variant="primary"
           size="sm"
           icon={<Plus aria-hidden className="h-3.5 w-3.5" />}
-          onClick={openComposer}
+          onClick={() => openComposer('task')}
+          data-testid="tasks-header-add-task"
         >
           Add task
         </DeskHeaderAction>
-      ),
-    [lane, openComposer],
+      </>
+    ),
+    [openComposer],
   );
+
+  const renderTaskRow = (row: TaskRow, visible: readonly TasksGridColumn[]) => {
+    const checked = selectedId === row.id;
+    return (
+      <CompoundRow
+        key={row.id}
+        data-ops-plan-task-id={row.id}
+        role="button"
+        tabIndex={0}
+        draggable
+        aria-pressed={checked}
+        aria-label={`Task ${row.title}`}
+        className="group/row cursor-pointer"
+        onDragStart={(event) => {
+          event.dataTransfer.setData(PROJECT_TASK_MIME, JSON.stringify(toRef(row)));
+          event.dataTransfer.effectAllowed = 'copy';
+        }}
+        onClick={() => {
+          selectTask(row.id, row);
+          setMorphingTaskId(row.id);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            selectTask(row.id, row);
+            setMorphingTaskId(row.id);
+          }
+        }}
+        columns={visible}
+        capabilities={TASKS_GRID_CAPABILITIES}
+        selected={checked}
+        view={{
+          slots: tasksSlotValuesFor(row, visible),
+          ...projectTaskCompoundView(row, { nowMs }),
+        }}
+        onOpen={() => {
+          selectTask(row.id, row);
+          setMorphingTaskId(row.id);
+        }}
+        onStateOpen={() => {
+          selectTask(row.id, row);
+          setMorphingTaskId(row.id);
+        }}
+        select={{
+          checked,
+          onToggle: (event) => {
+            applyMorphingGutterClick({
+              isChecked: checked,
+              shiftKey: event.shiftKey,
+              onToggle: () => {
+                if (checked) {
+                  selectTask(null);
+                  setMorphingTaskId(null);
+                } else {
+                  selectTask(row.id, row);
+                }
+              },
+              onOpenMenu: () => setMorphingTaskId(row.id),
+              onCloseMenu: () => setMorphingTaskId(null),
+            });
+          },
+          disabled: tasks.pending,
+          label: checked ? `Deselect "${row.title}"` : `Select "${row.title}" and open actions`,
+        }}
+      />
+    );
+  };
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col bg-surface-card">
-      <DataTable<StaffTaskRow, TasksGridColumnKey, TasksGridColumn>
+      <DataTable<TaskRow, TasksGridColumnKey, TasksGridColumn>
         binding={TASKS_TABLE_BINDING}
-        // COMPOUND (two-row) WMS layout — the SAME tracks Unbox,
-        // History, Testing, To-Ship and Incoming mount. A task has no
-        // photo, no order and no carrier, so those tracks read empty:
-        // that is a data difference, and it is the only kind of
-        // difference between two of these tables there is meant to be.
         columns={tasksColumns}
         fields={tasksFields}
         orderGroupsByDate={groups}
         rows={rows}
-        getRowId={(r) => String(r.id)}
-        // A header click speaks in TRACK keys; `?colsort=` speaks in Tasks'
-        // own words. Map both ways through the MOUNTED model so a bookmarked
-        // sort keeps its meaning after a rebind moves the fact to a new slot.
+        getRowId={(r) => r.id}
         sort={tasksColumnKeyForSort(tasksColumns, columnSort)}
         dir={sortDir}
         onSortChange={(key, nextDir) => {
@@ -297,122 +458,63 @@ export function TasksWorkbench() {
         }}
         loading={tasks.loading}
         search={{ value: query, onChange: setQuery, placeholder: 'Filter tasks…' }}
+        filter={filter}
         tabs={TASK_LANE_TABS}
         activeTab={lane === 'open' ? undefined : lane}
         onTabChange={(id) => setLane(id === lane ? 'open' : parseLane(id))}
         emptyMessage={
           tasks.isError
-            ? 'Could not load your tasks.'
+            ? 'Could not load tasks.'
             : query.trim() !== ''
               ? 'No task matches that search.'
-              : lane === 'deleted'
-                ? 'Nothing deleted.'
+              : lane === 'canceled'
+                ? 'Nothing canceled.'
                 : lane === 'done'
-                  ? 'Nothing checked off yet.'
-                  : 'No open tasks.'
+                  ? 'Nothing done yet.'
+                  : projectId
+                    ? 'No open tasks in this project. Use Add task.'
+                    : scope === 'mine'
+                      ? 'No tasks assigned to you. Use Add task, or filter to Everyone.'
+                      : 'No open tasks. Use Add task.'
         }
         renderGroup={(group, _stripe, { columns: visible }) => (
-          <>
-            {group.rows.map((row) => (
-            <CompoundRow
-              key={row.id}
-              data-staff-task-id={row.id}
-              role="button"
-              tabIndex={0}
-              aria-pressed={selectedId === row.id}
-              aria-label={`Task ${row.text}`}
-              className="group/row cursor-pointer"
-              onClick={() => selectTask(row.id)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  selectTask(row.id);
-                }
-              }}
-              columns={visible}
-              capabilities={TASKS_GRID_CAPABILITIES}
-              selected={selectedId === row.id}
-              // The family's only contribution: its DATA.
-              view={{
-                // Materialized slot tracks — one resolved value per BOUND slot,
-                // keyed by track key. Empty on the product default.
-                slots: tasksSlotValuesFor(row, visible),
-                ...staffTaskCompoundView(row, { nowMs: tasks.nowMs }),
-              }}
-              onOpen={() => selectTask(row.id)}
-              // The tick means "this task is done", not "this row is
-              // selected" — same control, same picture, a different handler.
-              select={{
-                checked: row.done,
-                onToggle: () => tasks.toggle(row, !row.done),
-                disabled: row.archived || tasks.pending,
-                label: `Mark "${row.text}" ${row.done ? 'not done' : 'done'}`,
-              }}
-      />
-            ))}
-          </>
+          <>{group.rows.map((row) => renderTaskRow(row, visible))}</>
         )}
-        renderRow={(row, _stripe, { columns: visible }) => (
-          <CompoundRow
-            key={row.id}
-            data-staff-task-id={row.id}
-            role="button"
-            tabIndex={0}
-            aria-pressed={selectedId === row.id}
-            aria-label={`Task ${row.text}`}
-            className="group/row cursor-pointer"
-            onClick={() => selectTask(row.id)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                selectTask(row.id);
-              }
-            }}
-            columns={visible}
-            capabilities={TASKS_GRID_CAPABILITIES}
-            selected={selectedId === row.id}
-            // The family's only contribution: its DATA.
-            view={{
-              slots: tasksSlotValuesFor(row, visible),
-              ...staffTaskCompoundView(row, { nowMs: tasks.nowMs }),
-            }}
-            onOpen={() => selectTask(row.id)}
-            // The tick means "this task is done", not "this row is
-            // selected" — same control, same picture, a different handler.
-            select={{
-              checked: row.done,
-              onToggle: () => tasks.toggle(row, !row.done),
-              disabled: row.archived || tasks.pending,
-              label: `Mark "${row.text}" ${row.done ? 'not done' : 'done'}`,
-            }}
-          />
-        )}
+        renderRow={(row, _stripe, { columns: visible }) => renderTaskRow(row, visible)}
       />
-      <DeskActionSlotRegistrar>{addAction}</DeskActionSlotRegistrar>
+      {morphingTask && morphingAnchorReady ? (
+        <TaskMorphingRowActionMenu
+          task={morphingTask}
+          open
+          onClose={() => setMorphingTaskId(null)}
+          anchorRef={morphingAnchorRef}
+          onPatch={async (body) => {
+            const result = await tasks.patch({ taskId: morphingTask.id, body });
+            if (
+              body.assigneeStaffId != null &&
+              staffId != null &&
+              body.assigneeStaffId !== staffId
+            ) {
+              setScope('all', { keepTask: true });
+            }
+            return result;
+          }}
+          onComplete={() => tasks.complete(morphingTask.id)}
+        />
+      ) : null}
+      <DeskActionSlotRegistrar>{headerActions}</DeskActionSlotRegistrar>
 
-            {lane === 'deleted' || !composerOpen ? null : (
-              <TasksComposerRow
-                draft={draft}
-                onDraftChange={setDraft}
-                onSubmit={submitDraft}
-                pending={tasks.createPending}
-                stationLabel={composerStation}
-                inputRef={composerRef}
-              />
+      {!composerOpen ? null : (
+        <TasksComposerRow
+          kind={composerKind}
+          draft={draft}
+          onDraftChange={setDraft}
+          onSubmit={() => void submitDraft()}
+          pending={tasks.createPending}
+          contextLabel={planTitleForCreate}
+          inputRef={composerRef}
+        />
       )}
-
-      <StaffTaskInspectorRail
-        row={selected}
-        onClose={() => selectTask(null)}
-        actions={{
-          onToggle: (row, done) => tasks.toggle(row, done),
-          onRename: (row, text) => tasks.rename(row, text),
-          onDelete: (row) => tasks.remove(row),
-          onRestore: (row) => tasks.restore(row),
-          onChangeInterval: (row, ms) => tasks.changeInterval(row, ms),
-          pending: tasks.pending,
-        }}
-      />
     </div>
   );
 }

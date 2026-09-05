@@ -24,6 +24,12 @@ export type OpsPlanTaskLinkType = (typeof OPS_PLAN_TASK_LINK_TYPES)[number];
 export const INBOX_ITEM_SOURCES = ['plan_task', 'work_assignment'] as const;
 export type InboxItemSource = (typeof INBOX_ITEM_SOURCES)[number];
 
+/** Default phase Home Tasks uses when a plan has none yet. */
+export const DEFAULT_PLAN_TASK_PHASE = {
+  station: 'ADMIN',
+  title: 'Tasks',
+} as const satisfies { station: OpsPlanStation; title: string };
+
 /** Maps work-order queue keys to operations-catalog stations for inbox filtering. */
 export const QUEUE_KEY_TO_STATION: Record<string, OpsPlanStation | null> = {
   orders: 'TECH',

@@ -376,6 +376,8 @@ export const AUDIT_ACTION = {
   OPS_PLAN_TASK_COMPLETE:  'ops_plan_task.complete',
   OPS_PLAN_TASK_CANCEL:    'ops_plan_task.cancel',
   OPS_PLAN_TASK_LINK:      'ops_plan_task.link',
+  OPS_PLAN_MEMBER_ADD:     'ops_plan.member_add',
+  OPS_PLAN_MEMBER_REMOVE:  'ops_plan.member_remove',
   // Throwable task — one operator hands a record to another (WS-TASKS).
   // Distinct from OPS_PLAN_TASK_* (planning) and from the bench assignment
   // paths: this is the ad-hoc FOLLOW_UP handoff that replaced paper + texts.
@@ -604,6 +606,8 @@ export const AUDIT_ACTION = {
   AUTOMATION_RULE_DELETE: 'automation_rule.delete',
   // Dock scan-out: the package physically left the warehouse (SHIP_CONFIRM event)
   SHIP_CONFIRM_SCAN: 'shipment.scan_out',
+  /** Reversal of a scan-out. The commit is audited; so is taking it back. */
+  SHIP_CONFIRM_UNDO: 'shipment.scan_out.undo',
   // Bose Sourcing Engine — compatibility DB + alternative sourcing
   BOSE_MODEL_CREATE: 'bose_model.create',
   BOSE_MODEL_UPDATE: 'bose_model.update',

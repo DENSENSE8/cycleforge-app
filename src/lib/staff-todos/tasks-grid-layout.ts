@@ -35,6 +35,7 @@ export type TasksGridColumnKey =
   | 'thumb'
   | 'item'
   | 'fulfillment'
+  | 'dates'
   | 'state'
   | 'amount'
   | 'actions'
@@ -62,9 +63,8 @@ export interface TasksGridColumn extends SlotTrackFields {
 /**
  * Canonical Tasks columns, in scan order.
  *
- * `select` carries the surface's primary VERB — ticking the box checks the task
- * off — exactly as it does on Daily, which is why the capability bag below
- * declares `multiSelect: false` rather than mounting select-all over it.
+ * The `select` gutter selects the row and opens Morphing (To-ship grammar).
+ * `multiSelect` stays false so select-all does not sit on top of that control.
  *
  * `due` is the recurring cycle's next reset, and reads `—` for a general task.
  * A recurring task has no deadline; it has a period, and the honest column says
@@ -85,15 +85,14 @@ export interface TasksGridColumn extends SlotTrackFields {
  * shared layout is supposed to show. Hiding the track for this one family, or
  * giving Tasks a shorter array, would be a LAYOUT difference, which it is not.
  *
- * The `select` gutter keeps its meaning: on Tasks the checkbox is the surface's
- * primary VERB (it checks the task off), not a selection. The compound model
+ * The `select` gutter opens Morphing the way To-ship does. The compound model
  * governs the geometry of that track, never what clicking it does.
  */
 export function tasksCompoundColumnsFor(layout: SlotLayout): readonly TasksGridColumn[] {
   return materializeTracks<TasksGridColumn>({
     layout,
     catalog: TASKS_FIELD_CATALOG,
-    base: compoundColumnsFor<TasksGridColumn>(),
+    base: compoundColumnsFor(),
   });
 }
 
@@ -127,23 +126,26 @@ export type TasksSortFact =
   | 'station'
   | 'due'
   | 'updated'
-  | 'image'
   | 'order'
-  | 'amount';
+  | 'amount'
+  | 'project'
+  | 'assignee';
 
 const TASKS_SORT_FACTS: readonly TasksSortFact[] = [
-  'task', 'status', 'kind', 'station', 'due', 'updated', 'image', 'order', 'amount',
+  'task', 'status', 'kind', 'station', 'due', 'updated', 'order', 'amount', 'project', 'assignee',
 ];
 
 /**
  * Compound track → the fact it carries. `item` holds the task text, `state`
- * holds the done/archived pill. Empty identity / money / photo tracks still
- * sort (all-blank → stable id) so every painted header is clickable.
+ * holds the done/archived pill. Empty identity / money tracks still sort
+ * (all-blank → stable id) so every painted DATA header is clickable.
  */
 const TASKS_TRACK_SORT_FACTS: Readonly<Record<string, TasksSortFact>> = {
+  // The DATES track's second line is the DEADLINE, so it sorts by the deadline
+  // fact this family already compares by — the start date above it is context.
+  dates: 'due',
   item: 'task',
   state: 'status',
-  thumb: 'image',
   fulfillment: 'order',
   amount: 'amount',
 };
@@ -160,6 +162,9 @@ const TASKS_SLOT_SORT_FACTS: Readonly<Record<string, TasksSortFact>> = {
   'tasks.station': 'station',
   'tasks.resets': 'due',
   'tasks.checked': 'updated',
+  'tasks.project': 'project',
+  'tasks.assignee': 'assignee',
+  'tasks.due': 'due',
 };
 
 /** The `?colsort=` word a mounted track drives, or null when it does not sort. */
@@ -206,9 +211,10 @@ export const TASKS_SORT_FACT_TYPES: Readonly<Record<TasksSortFact, ColumnType>> 
   station: 'text',
   due: 'date',
   updated: 'date',
-  image: 'text',
   order: 'text',
   amount: 'price',
+  project: 'text',
+  assignee: 'text',
 };
 
 /**
@@ -216,7 +222,7 @@ export const TASKS_SORT_FACT_TYPES: Readonly<Record<TasksSortFact, ColumnType>> 
  * rebind carries the rule instead of leaving it on a slot index.
  */
 export function defaultDirForTasksGridSort(fact: TasksSortFact): GridSortDir {
-  return fact === 'updated' || fact === 'due' || fact === 'amount' || fact === 'image' ? 'desc' : 'asc';
+  return fact === 'updated' || fact === 'due' || fact === 'amount' ? 'desc' : 'asc';
 }
 
 /**

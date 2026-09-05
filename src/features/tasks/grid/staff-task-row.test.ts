@@ -80,14 +80,9 @@ test('an archived row is carried as history, not silently reopened', () => {
   assert.equal(row.done, true, 'it was checked off before it was deleted, and still was');
 });
 
-test('the registered definition sends a row click to the right-rail record plane', () => {
+test('the registered definition keeps triage on Morphing, not a right-rail inspector', () => {
   assert.equal(TASKS_TABLE_BINDING.definition.id, 'tasks.mine');
-  assert.deepEqual(TASKS_TABLE_BINDING.recordPlane, {
-    kind: 'inspector',
-    occupantId: 'detail:staff-task',
-  });
-  // The checkbox is the row's verb, so selection must not be mounted over it.
+  assert.equal(TASKS_TABLE_BINDING.recordPlane.kind, 'none');
   assert.equal(TASKS_TABLE_BINDING.definition.capabilities?.multiSelect, false);
-  // Renaming is the inspector's job — one editor, not two that can drift.
   assert.equal(TASKS_TABLE_BINDING.definition.capabilities?.inCellEdit, false);
 });

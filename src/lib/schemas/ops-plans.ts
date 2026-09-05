@@ -7,6 +7,7 @@ export const CreatePlanBody = z.object({
   title: z.string().trim().min(1).max(200),
   description: z.string().trim().max(5000).optional().nullable(),
   targetDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  memberStaffIds: z.array(z.number().int().positive()).max(50).optional(),
 });
 
 export const UpdatePlanBody = z.object({
@@ -67,4 +68,20 @@ export const InboxQuerySchema = z.object({
   planId: z.string().uuid().optional(),
   cursor: z.string().trim().max(200).optional(),
   limit: z.coerce.number().int().min(1).max(200).optional(),
+});
+
+export const DeskTasksQuerySchema = z.object({
+  scope: z.enum(['mine', 'all']).optional(),
+  staffId: z.union([z.literal('mine'), z.coerce.number().int().positive()]).optional(),
+  status: z.enum(['open', 'done', 'canceled', 'all']).optional(),
+  q: z.string().trim().max(200).optional(),
+  planId: z.string().uuid().optional(),
+});
+
+export const CreateDeskTaskBody = CreateTaskBody.extend({
+  planId: z.string().uuid(),
+});
+
+export const AddPlanMemberBody = z.object({
+  staffId: z.number().int().positive(),
 });

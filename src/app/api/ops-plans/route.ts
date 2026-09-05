@@ -30,6 +30,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       description: parsed.description ?? null,
       targetDate: parsed.targetDate ?? null,
       createdByStaffId: ctx.staffId,
+      memberStaffIds: parsed.memberStaffIds,
     });
     scheduleOpsPlanSideEffects(ctx.organizationId, plan.id, 'plan_updated', {
       ctx,
