@@ -20,7 +20,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CI_PATHS, formatDuration, hitRatio, parseQueue, summarizeGates } from './ci/ci-core.mjs';
+import { CI_PATHS, attributeFailures, formatDuration, hitRatio, parseQueue, summarizeGates } from './ci/ci-core.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const abs = (rel) => path.join(ROOT, rel);
@@ -148,8 +148,22 @@ if (targetReceipt) {
       (targetReceipt.selection ? ` · unit selection: ${targetReceipt.selection}` : ''),
   );
   for (const w of targetReceipt.warnings ?? []) out.push(c('33', `  ⚠ ${w}`));
+  // Culprit finding: the parent's receipt already says whether this commit
+  // broke the gate or walked into an existing red.
+  const parentSha = resolveSha(`${target}^`);
+  const parentReceipt = parentSha ? (receipts.find((r) => r.sha === parentSha) ?? null) : null;
+  const blame = new Map(attributeFailures(targetReceipt, parentReceipt).map((a) => [a.gate, a]));
   for (const g of targetReceipt.gates.filter((g) => g.status !== 'pass')) {
-    out.push(`  ${g.status === 'fail' ? c('31', '✗') : c('33', '!')} ${g.gate} — ${g.logPath || 'no log'}`);
+    const a = blame.get(g.gate);
+    const verdict =
+      a?.verdict === 'inherited'
+        ? c('33', ` (inherited from ${a.parentSha.slice(0, 7)} — not this commit)`)
+        : a?.verdict === 'introduced'
+          ? c('31', ` (INTRODUCED here — green at ${a.parentSha.slice(0, 7)})`)
+          : a
+            ? c('2', ' (parent not measured)')
+            : '';
+    out.push(`  ${g.status === 'fail' ? c('31', '✗') : c('33', '!')} ${g.gate}${verdict} — ${g.logPath || 'no log'}`);
   }
 } else {
   const queued = queue.find((q) => target?.startsWith(q.sha) || q.sha.startsWith(target ?? '—'));

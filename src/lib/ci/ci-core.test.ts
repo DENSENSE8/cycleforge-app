@@ -19,6 +19,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  attributeFailures,
   buildReceipt,
   detectFlakes,
   gateInputHash,
@@ -297,3 +298,53 @@ describe('ci-core — flake quarantine (§4.3)', () => {
     assert.equal(mergeFlakes(merged, detectFlakes('Unit tests', history)).length, 2);
   });
 });
+
+describe('ci-core — culprit finding (§4)', () => {
+  const receipt = {
+    sha: 'child',
+    gates: [
+      { gate: 'Lint', status: 'pass' },
+      { gate: 'Typecheck', status: 'fail' },
+      { gate: 'Unit tests', status: 'fail' },
+    ],
+  };
+
+  it('separates the red this commit caused from the red it walked into', () => {
+    const parent = {
+      sha: 'parentsha',
+      gates: [
+        { gate: 'Lint', status: 'pass' },
+        { gate: 'Typecheck', status: 'pass' },
+        { gate: 'Unit tests', status: 'fail' },
+      ],
+    };
+    const blame = attributeFailures(receipt, parent);
+    assert.deepEqual(
+      blame.map((b) => [b.gate, b.verdict]),
+      [
+        ['Typecheck', 'introduced'],
+        ['Unit tests', 'inherited'],
+      ],
+    );
+    assert.equal(blame[0].parentSha, 'parentsha');
+  });
+
+  it('says unknown rather than guessing when the parent was never measured', () => {
+    assert.deepEqual(
+      attributeFailures(receipt, null).map((b) => b.verdict),
+      ['unknown', 'unknown'],
+    );
+    // A parent receipt that simply lacks the gate (profile differed) is also
+    // unknown — "the fast profile did not run unit tests" is not evidence the
+    // commit is clean.
+    assert.deepEqual(
+      attributeFailures(receipt, { sha: 'p', gates: [{ gate: 'Lint', status: 'pass' }] }).map((b) => b.verdict),
+      ['unknown', 'unknown'],
+    );
+  });
+
+  it('reports nothing for a green receipt', () => {
+    assert.deepEqual(attributeFailures({ gates: [{ gate: 'Lint', status: 'pass' }] }, null), []);
+  });
+});
+

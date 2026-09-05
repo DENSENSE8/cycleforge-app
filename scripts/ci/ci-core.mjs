@@ -380,3 +380,35 @@ export function mergeFlakes(stored, found) {
   return out;
 }
 
+// ─── culprit finding (§4) ────────────────────────────────────────────────────
+
+/**
+ * Did THIS commit break the gate, or did it inherit the red?
+ *
+ * Falls out of sha-indexed receipts for free: compare the gate's status here
+ * with its status on the parent. No re-runs, no bisect — the answer is already
+ * on disk. It is the difference between "your change is broken" and "you are
+ * standing in someone else's crater", which on a tree three sessions commit
+ * into is the first question worth answering.
+ *
+ * `unknown` when the parent was never measured; that is honest, and a caller
+ * that prints "introduced here" on a guess would be worse than silent.
+ *
+ * @param {{ gates?: {gate: string, status: string}[] }} receipt
+ * @param {{ sha?: string, gates?: {gate: string, status: string}[] } | null} parent
+ * @returns {{ gate: string, verdict: 'introduced' | 'inherited' | 'unknown', parentSha?: string }[]}
+ */
+export function attributeFailures(receipt, parent) {
+  const failing = (receipt?.gates ?? []).filter((g) => g.status === 'fail');
+  return failing.map(({ gate }) => {
+    if (!parent) return { gate, verdict: 'unknown' };
+    const before = (parent.gates ?? []).find((g) => g.gate === gate);
+    if (!before) return { gate, verdict: 'unknown', parentSha: parent.sha };
+    return {
+      gate,
+      verdict: before.status === 'fail' ? 'inherited' : 'introduced',
+      parentSha: parent.sha,
+    };
+  });
+}
+
