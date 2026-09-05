@@ -38,6 +38,20 @@ export interface ItemRecordQuantity {
 }
 
 /**
+ * Exclusive receiving-line state. Other domains omit this; the face must not
+ * invent receive chrome when the field is absent. Search / pack / shipped
+ * never set it.
+ */
+export type ItemRecordReceiveState =
+  | 'open'
+  | 'partial'
+  | 'received'
+  | 'short'
+  | 'over'
+  | 'wrong_item'
+  | 'damaged';
+
+/**
  * One labelled fact under the row — the reference band that a station row has
  * no space for (item numbers, marketplace identifiers, external listings).
  */
@@ -65,6 +79,11 @@ export interface ItemRecord {
   imageUrl?: string | null;
   sku?: string | null;
   quantity?: ItemRecordQuantity | null;
+  /**
+   * Receiving-line state for L0 marks (Received / SHORT / OVER / …).
+   * Omit on search, pack, and shipped — those inherit qty face only.
+   */
+  receiveState?: ItemRecordReceiveState | null;
   /**
    * Condition grade CODE (not a label) — the chip resolves hue and copy from
    * the shared condition registry.

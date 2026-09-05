@@ -16,11 +16,17 @@ import { QUEUE_ROW } from '@/components/ui/queue-row-chrome';
 import { cn } from '@/utils/_cn';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/design-system/primitives/DropdownMenu';
 import { ItemRecordMetaGrid } from './ItemRecordMetaGrid';
 import { ItemRecordQtyBadge } from './ItemRecordQtyBadge';
 import { ItemRecordThumb } from './ItemRecordThumb';
 import { ITEM_RECORD_FACE } from './item-record-face';
-import type { ItemRecord } from './item-record-types';
+import type { ItemRecord, ItemRecordReceiveState } from './item-record-types';
 
 /** Max serials shown in the meta preview. */
 const SERIAL_PREVIEW_CAP = 2;
@@ -65,6 +71,47 @@ export interface ItemRecordCellAction {
   onClick: () => void;
 }
 
+/** Qty-cell L1 menu — Received / Not received / OS&D. Face stays the badge. */
+export interface ItemRecordQtyMenuItem {
+  label: string;
+  onClick: () => void;
+  tone?: 'default' | 'danger';
+  disabled?: boolean;
+}
+
+export interface ItemRecordQtyMenu {
+  /** Tooltip + accessible name on the qty trigger. */
+  label: string;
+  items: readonly ItemRecordQtyMenuItem[];
+}
+
+const RECEIVE_STATE_MARK: Record<
+  Exclude<ItemRecordReceiveState, 'open' | 'partial'>,
+  { label: string; className: string }
+> = {
+  received: { label: 'Received', className: 'text-emerald-600/80' },
+  short: { label: 'SHORT', className: 'text-rose-700' },
+  over: { label: 'OVER', className: 'text-amber-700' },
+  damaged: { label: 'DAMAGED', className: 'text-red-700' },
+  wrong_item: { label: 'WRONG ITEM', className: 'text-orange-700' },
+};
+
+function ReceiveStateMark({ state }: { state?: ItemRecordReceiveState | null }) {
+  if (!state || state === 'open' || state === 'partial') return null;
+  const mark = RECEIVE_STATE_MARK[state];
+  return (
+    <span
+      data-receive-state-mark={state}
+      className={cn(
+        'shrink-0 text-role-micro font-semibold uppercase tracking-widest',
+        mark.className,
+      )}
+    >
+      {mark.label}
+    </span>
+  );
+}
+
 /**
  * One item row — thumb | wrapping title | boxed five-track meta.
  *
@@ -98,6 +145,7 @@ export function ItemRecordRow({
   titleActions,
   serialsLoading = false,
   qtyAction,
+  qtyMenu,
   conditionAction,
   serialAction,
   locationAction,
@@ -124,6 +172,11 @@ export function ItemRecordRow({
   serialsLoading?: boolean;
   /** Make the qty cell activatable. The badge itself is not replaceable. */
   qtyAction?: ItemRecordCellAction | null;
+  /**
+   * L1 receive verbs on the qty cell (Received / Not received / OS&D).
+   * When set, outranks {@link qtyAction}. Search / pack / shipped omit this.
+   */
+  qtyMenu?: ItemRecordQtyMenu | null;
   /** Make the condition cell activatable. The chip itself is not replaceable. */
   conditionAction?: ItemRecordCellAction | null;
   /** Make the serials cell activatable. The last-8 face is not replaceable. */
@@ -264,12 +317,55 @@ export function ItemRecordRow({
     );
   };
 
+  const qtyFace = (
+    <span className="flex min-w-0 items-center gap-1.5">
+      <ItemRecordQtyBadge quantity={item.quantity} />
+      <ReceiveStateMark state={item.receiveState} />
+    </span>
+  );
+  const qtyCell =
+    qtyMenu && qtyMenu.items.length > 0 ? (
+      <DropdownMenu>
+        <HoverTooltip label={qtyMenu.label} asChild>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              aria-label={qtyMenu.label}
+              data-item-record-qty-menu
+              className={cn(
+                'ds-raw-button flex h-full min-w-0 items-center',
+                focusRing('control', 'neutral'),
+              )}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {qtyFace}
+            </button>
+          </DropdownMenuTrigger>
+        </HoverTooltip>
+        <DropdownMenuContent align="start" onClick={(event) => event.stopPropagation()}>
+          {qtyMenu.items.map((entry) => (
+            <DropdownMenuItem
+              key={entry.label}
+              tone={entry.tone}
+              disabled={entry.disabled}
+              onSelect={() => entry.onClick()}
+            >
+              {entry.label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    ) : (
+      withAction(qtyAction, qtyFace)
+    );
+
   return (
     <li
       aria-current={active ? 'true' : undefined}
       data-item-record-row
       data-item-record-id={item.id}
       data-item-record-active={active ? 'true' : undefined}
+      data-receive-state={item.receiveState ?? undefined}
       data-item-record-collapsed={
         canDisclose && !disclosure.expanded ? 'true' : undefined
       }
@@ -349,7 +445,7 @@ export function ItemRecordRow({
               ) : null}
             </div>
             <ItemRecordMetaGrid
-              qty={withAction(qtyAction, <ItemRecordQtyBadge quantity={item.quantity} />)}
+              qty={qtyCell}
               sku={
                 skuValue ? (
                   // Last-8, fixed footprint, no truncation. No caller says otherwise.

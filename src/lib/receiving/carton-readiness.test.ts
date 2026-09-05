@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { deriveCartonReadiness } from './carton-readiness';
+import { readFileSync } from 'node:fs';
+import { cartonGrIncompleteBlockers, cartonLinesReadyForGr, deriveCartonReadiness } from './carton-readiness';
 
 test('awaiting_scan when no tracking_scanned_at', () => {
   const r = deriveCartonReadiness({ tracking_scanned_at: null, unboxed_at: null, received_at: null });
@@ -81,5 +82,45 @@ test('carton_received when carton received and all lines complete', () => {
   assert.equal(r.stage, 'carton_received');
   assert.equal(r.cta, 'none');
   assert.equal(r.pillTone, 'emerald');
+});
+
+test('leftover SHORT counts as linesComplete', () => {
+  const r = deriveCartonReadiness(
+    { tracking_scanned_at: '2026-07-06T00:00:00Z', unboxed_at: '2026-07-06T01:00:00Z', received_at: '2026-07-06T02:00:00Z' },
+    [
+      { quantity_expected: 2, quantity_received: 2, workflow_status: 'DONE' },
+      { quantity_expected: 5, quantity_received: 3, exception_code: 'SHORT', workflow_status: 'UNBOXED' },
+    ],
+  );
+  assert.equal(r.linesComplete, 2);
+  assert.equal(r.stage, 'carton_received');
+});
+
+test('cartonLinesReadyForGr blocks Open remaining without OS&D', () => {
+  assert.equal(
+    cartonLinesReadyForGr([{ quantity_expected: 2, quantity_received: 1 }]),
+    false,
+  );
+  assert.equal(
+    cartonLinesReadyForGr([{ quantity_expected: 2, quantity_received: 1, exception_code: 'SHORT' }]),
+    true,
+  );
+  assert.equal(cartonLinesReadyForGr([]), true);
+});
+
+test('cartonGrIncompleteBlockers names remaining leftover', () => {
+  assert.deepEqual(
+    cartonGrIncompleteBlockers([
+      { sku: 'SKU-1', quantity_expected: 5, quantity_received: 3 },
+    ]),
+    ['SKU-1: 2 remaining'],
+  );
+});
+
+test('mark-received-po gates GR on cartonLinesReadyForGr + LINES_INCOMPLETE', () => {
+  const src = readFileSync('src/app/api/receiving/mark-received-po/route.ts', 'utf8');
+  assert.match(src, /cartonLinesReadyForGr/);
+  assert.match(src, /LINES_INCOMPLETE/);
+  assert.match(src, /releaseIdempotencyClaim/);
 });
 

@@ -446,6 +446,30 @@ function ReceiveDiagnosticPanel({
   );
 }
 
+function ReceiveLineOsdPanel({
+  result,
+  onDismiss,
+}: {
+  result: Extract<ReceiveResult, { kind: 'line' }>;
+  onDismiss: () => void;
+}) {
+  const tone: InlineActionFeedbackTone = result.tone === 'success' ? 'success' : 'warning';
+  return (
+    <WeldedFeedbackPanel
+      tone={tone}
+      steps={[result.headline]}
+      leading={
+        tone === 'success' ? (
+          <Check className="h-3.5 w-3.5" />
+        ) : (
+          <AlertTriangle className="h-3.5 w-3.5" />
+        )
+      }
+      onDismiss={onDismiss}
+    />
+  );
+}
+
 /* ── Region switcher ─────────────────────────────────────────────────────── */
 
 export function ReceiveFeedbackRegion({
@@ -489,13 +513,15 @@ export function ReceiveFeedbackRegion({
   /** Report the verdict up so a later replay can restore it. */
   onReconcileStatus?: (status: ReceiveReconcileStatus) => void;
 }) {
-  const phase: 'progress' | 'success' | 'diagnostic' | 'none' = receiving
+  const phase: 'progress' | 'success' | 'diagnostic' | 'line' | 'none' = receiving
     ? 'progress'
     : receiveResult?.kind === 'success'
       ? 'success'
       : receiveResult?.kind === 'diagnostic'
         ? 'diagnostic'
-        : 'none';
+        : receiveResult?.kind === 'line'
+          ? 'line'
+          : 'none';
 
   // Key the SUCCESS child by its timestamp so a fresh receive replays the
   // stagger; progress / diagnostic are stable. The panel peels once per key,
@@ -505,7 +531,9 @@ export function ReceiveFeedbackRegion({
   const childKey =
     phase === 'success' && receiveResult?.kind === 'success'
       ? `success-${receiveResult.at}${replay ? '-replay' : ''}`
-      : phase;
+      : phase === 'line' && receiveResult?.kind === 'line'
+        ? `line-${receiveResult.at}`
+        : phase;
 
   const toggleMore = () => setResponseExpanded(!responseExpanded);
 
@@ -540,6 +568,8 @@ export function ReceiveFeedbackRegion({
           onRetry={onRetry}
           onPhotoPolicyOverride={onPhotoPolicyOverride}
         />
+      ) : phase === 'line' && receiveResult?.kind === 'line' ? (
+        <ReceiveLineOsdPanel key={childKey} result={receiveResult} onDismiss={onDismiss} />
       ) : null}
     </AnimatePresence>
   );

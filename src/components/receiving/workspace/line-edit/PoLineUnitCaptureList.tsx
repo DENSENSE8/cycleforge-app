@@ -13,6 +13,7 @@ import { Button } from '@/design-system/primitives';
 import { useScopedReceivingPhotos } from '@/hooks/useScopedReceivingPhotos';
 import { getLast8Serial } from '@/lib/copy-chip-format';
 import { BulkQuantityPanel } from '../BulkQuantityPanel';
+import { markLineShortRemaining } from '../line-receive-actions';
 import {
   UNIT_ROW_DISPLAY_CAP,
   resolveLineReceiveMode,
@@ -173,6 +174,12 @@ export function PoLineUnitCaptureList({
           progressive
           onApply={applyBulk}
           onTrackEachUnit={() => setForceUnitMode(true)}
+          onShortRemaining={(_remaining, got) => {
+            void markLineShortRemaining(
+              { id: lineId, quantity_expected: quantityExpected },
+              got,
+            );
+          }}
         />
       </div>
     );

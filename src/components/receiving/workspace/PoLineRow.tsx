@@ -16,6 +16,15 @@ import { dispatchSelectLine } from '@/components/station/receiving-lines-table-h
 import { setActiveSinkId } from '@/lib/station-scan-sink';
 import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
 import { receivingQty } from '@/lib/item-record/receiving-qty';
+import { deriveReceiveState, leftoverRemaining } from '@/lib/item-record/receive-state';
+import { isLineLeftoverOsdCode } from '@/lib/receiving/line-leftover-osd';
+import {
+  markLineDamaged,
+  markLineOverage,
+  markLineReceived,
+  markLineShortRemaining,
+  markLineWrongItem,
+} from './line-receive-actions';
 import {
   SCAN_LINE_PULSE_EVENT,
   type ScanLinePulseDetail,
@@ -218,7 +227,58 @@ export function PoLineRow({
     locationLabel,
     locationDetails: locationDetails || null,
     locationPending: line.staged_location_id == null,
+    receiveState: deriveReceiveState({
+      counted: Number(line.quantity_received) || 0,
+      expected: expectedQty > 0 ? expectedQty : null,
+      exceptionCode: line.exception_code,
+    }),
   };
+
+  const leftoverCoded = isLineLeftoverOsdCode(line.exception_code);
+  const remaining = leftoverRemaining(Number(line.quantity_received) || 0, expectedQty || null);
+  const qtyMenuItems =
+    !readOnly && !leftoverCoded
+      ? [
+          ...(remaining > 0
+            ? [
+                {
+                  label: 'Received',
+                  onClick: () => {
+                    void markLineReceived(line);
+                  },
+                },
+                {
+                  label: 'Not received',
+                  tone: 'danger' as const,
+                  onClick: () => {
+                    void markLineShortRemaining(line, Number(line.quantity_received) || 0);
+                  },
+                },
+              ]
+            : Number(line.quantity_received) > expectedQty
+              ? [
+                  {
+                    label: 'Confirm overage',
+                    onClick: () => {
+                      void markLineOverage(line);
+                    },
+                  },
+                ]
+              : []),
+          {
+            label: 'Damaged',
+            onClick: () => {
+              void markLineDamaged(line);
+            },
+          },
+          {
+            label: 'Wrong item',
+            onClick: () => {
+              void markLineWrongItem(line);
+            },
+          },
+        ]
+      : [];
 
   const serialCellHasContent =
     serialNumbers.length > 0 ||
@@ -245,11 +305,12 @@ export function PoLineRow({
       titleActions={
         !readOnly ? <PoLineTitleMenu line={line} serialSplit={serialSplit} /> : null
       }
-      qtyAction={
-        !readOnly && activeRowSlot
-          ? { label: 'Focus serial for this unit', onClick: activateLineForSerial }
+      qtyMenu={
+        qtyMenuItems.length > 0
+          ? { label: 'Line receive — Received or Not received', items: qtyMenuItems }
           : null
       }
+      qtyAction={null}
       conditionAction={
         unitsChrome && onEditConditionInDock && !readOnly
           ? {

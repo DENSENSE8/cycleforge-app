@@ -33,6 +33,8 @@ interface Props {
   }) => void;
   /** Escape hatch into capped per-unit / serial mode. */
   onTrackEachUnit: () => void;
+  /** Write leftover remaining as SHORT (`listed − got`). */
+  onShortRemaining?: (remaining: number, got: number) => void;
 }
 
 /**
@@ -53,6 +55,7 @@ export function BulkQuantityPanel({
   progressive = false,
   onApply,
   onTrackEachUnit,
+  onShortRemaining,
 }: Props) {
   const expected = Math.max(1, Math.floor(quantityExpected) || 1);
   const [primaryGrade, setPrimaryGrade] = useState<string | null>(
@@ -246,6 +249,19 @@ export function BulkQuantityPanel({
           >
             Track each unit
           </Button>
+
+          {onShortRemaining && remainder > 0 && !splitOpen ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="danger"
+              className={progressive ? 'h-full rounded-none px-3' : undefined}
+              disabled={disabled}
+              onClick={() => onShortRemaining(remainder, primaryCount)}
+            >
+              Short remaining
+            </Button>
+          ) : null}
 
           <Button
             type="button"

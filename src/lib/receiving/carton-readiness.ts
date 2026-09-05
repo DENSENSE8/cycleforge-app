@@ -1,5 +1,6 @@
 import { workflowStage } from '@/lib/receiving/workflow-stages';
 import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
+import { isLineLeftoverOsdCode } from '@/lib/receiving/line-leftover-osd';
 
 export type CartonPipelineKey = 'scanned' | 'unboxed' | 'received';
 export type CartonPipelineState = 'done' | 'active' | 'pending';
@@ -30,7 +31,46 @@ export type ReceivingMatchLine = {
   quantity_expected?: number | null;
   quantity_received?: number | null;
   workflow_status?: string | null;
+  /** Line OS&D leftover (`SHORT` / `OVER` / `DAMAGED` / `WRONG_ITEM`). */
+  exception_code?: string | null;
 };
+
+/**
+ * A line is complete for carton GR when remaining = 0 or leftovers are
+ * exception-coded with the existing OS&D leftover slice.
+ */
+export function lineCountsAsComplete(line: ReceivingMatchLine): boolean {
+  if (isLineLeftoverOsdCode(line.exception_code)) return true;
+  const expected = typeof line.quantity_expected === 'number' ? line.quantity_expected : null;
+  const received = typeof line.quantity_received === 'number' ? line.quantity_received : 0;
+  return expected != null && expected > 0 && received >= expected;
+}
+
+/** Carton Print · Receive may run when every line is complete, or there are no lines. */
+export function cartonLinesReadyForGr(
+  lines: ReadonlyArray<ReceivingMatchLine> | null | undefined,
+): boolean {
+  const arr = Array.isArray(lines) ? lines : [];
+  if (arr.length === 0) return true;
+  return arr.every(lineCountsAsComplete);
+}
+
+/** Mouth / 409 copy for leftover lines that still block carton GR. */
+export function cartonGrIncompleteBlockers(
+  lines: ReadonlyArray<ReceivingMatchLine & { sku?: string | null; item_name?: string | null }>,
+): string[] {
+  return lines
+    .filter((line) => !lineCountsAsComplete(line))
+    .map((line) => {
+      const listed = typeof line.quantity_expected === 'number' ? line.quantity_expected : 0;
+      const got = typeof line.quantity_received === 'number' ? line.quantity_received : 0;
+      const remaining = Math.max(0, listed - got);
+      const name = String(line.sku || line.item_name || 'Line').trim() || 'Line';
+      return remaining > 0
+        ? `${name}: ${remaining} remaining`
+        : `${name}: leftover not exception-coded`;
+    });
+}
 
 function hasStamp(value: string | null | undefined): boolean {
   return Boolean(value && String(value).trim());
@@ -44,9 +84,7 @@ function summarizeReceivingMatchLines(
   let slowest: { status: string | null; order: number } | null = null;
 
   for (const line of arr) {
-    const expected = typeof line.quantity_expected === 'number' ? line.quantity_expected : null;
-    const received = typeof line.quantity_received === 'number' ? line.quantity_received : 0;
-    if (expected != null && expected > 0 && received >= expected) linesComplete += 1;
+    if (lineCountsAsComplete(line)) linesComplete += 1;
 
     const status = line.workflow_status ?? null;
     const meta = workflowStage(status);

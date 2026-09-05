@@ -34,6 +34,7 @@ test('a unit maps to exactly one item record', () => {
   const rows = serialUnitToItemRecords(unit());
   assert.equal(rows.length, 1, 'a serial unit is one physical thing');
   assert.equal(rows[0].id, 2451);
+  assert.equal(rows[0].receiveState, undefined, 'serial-unit 1/1 is not PO receive');
 });
 
 test('the product title leads, and carries the sku + grade code', () => {

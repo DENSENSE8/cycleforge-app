@@ -33,6 +33,7 @@ type ReceiveResponseClassification = {
     | 'http_error'
     | 'network'
     | 'photo_policy'
+    | 'lines_incomplete'
     | 'sync_pending';
   headline: string;
   detail: string;
@@ -75,6 +76,20 @@ export function classifyReceiveResponse(
         photoBlock.blockers.length > 0
           ? photoBlock.blockers.join(' · ')
           : 'This carton is missing the photos your org requires at receive.',
+    };
+  }
+  if (!r.ok && r.httpStatus === 409 && body.error === 'LINES_INCOMPLETE') {
+    const blockers = Array.isArray(body.blockers)
+      ? body.blockers.filter((b): b is string => typeof b === 'string' && b.trim().length > 0)
+      : [];
+    return {
+      verdict: 'lines_incomplete',
+      headline: 'Finish line remaining before receive',
+      tone: 'amber',
+      detail:
+        blockers.length > 0
+          ? blockers.join(' · ')
+          : 'Remaining qty must be 0 or leftover SHORT / OVER / DAMAGED / WRONG_ITEM.',
     };
   }
   if (!r.ok) {

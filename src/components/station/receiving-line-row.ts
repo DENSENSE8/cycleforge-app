@@ -82,6 +82,11 @@ export interface ReceivingLineRow {
   sku: string | null;
   quantity_received: number;
   quantity_expected: number | null;
+  /**
+   * Per-line OS&D (`SHORT` / `OVER` / `DAMAGED` / `WRONG_ITEM`). Orthogonal to
+   * workflow_status. Null when the line has no leftover exception.
+   */
+  exception_code?: string | null;
   qa_status: string;
   workflow_status: string | null;
   disposition_code: string;

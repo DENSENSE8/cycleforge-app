@@ -1,10 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, skipToken } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
-import { receivingPhotosQueryKey } from '@/lib/queries/receiving-queries';
+import {
+  receivingPhotosQueryKey,
+  receivingSiblingsQueryKey,
+  type ReceivingSiblingsCache,
+} from '@/lib/queries/receiving-queries';
 import {
   deriveReceivingPhotoStageCounts,
   evaluateReceivingPhotoPolicy,
@@ -36,6 +40,7 @@ import type { AsListedLabelDraft } from '@/components/labels/AsListedEditPopover
 import { shouldUseLocalReceiveOnly } from '@/lib/receiving/intake-items-routing';
 import { isUnreceiveSerialBlocking } from '@/lib/receiving/unreceive-serial-guard';
 import type { PhotoPolicyOverrideCode } from '@/lib/receiving/exception-codes';
+import { cartonLinesReadyForGr } from '@/lib/receiving/carton-readiness';
 import {
   UNBOX_LABEL_KINDS,
   labelOptionsForSelect,
@@ -728,12 +733,28 @@ export function useUnboxLineController(
     });
     return verdict.ok ? null : verdict.blockers[0] ?? null;
   }, [photoStageCounts, photoPolicy, row.id, row.sku, lineItemPhotoCount]);
+
+  const siblingReceivingId = row.receiving_id ?? 0;
+  const { data: siblingCache } = useQuery<ReceivingSiblingsCache<ReceivingLineRow>>({
+    queryKey: receivingSiblingsQueryKey(siblingReceivingId),
+    queryFn: skipToken,
+    enabled: siblingReceivingId > 0,
+  });
+  const siblingLines = siblingCache?.receiving_lines;
+  const linesReadyForGr = cartonLinesReadyForGr(
+    siblingLines && siblingLines.length > 0 ? siblingLines : [row],
+  );
+
   // Once received the primary action is print-only, so the receive-side gates
   // (shipment link, serial confirmation, photo policy) must stop blocking it —
   // otherwise a received line with no serial could never reprint its label.
   const combinedReviewDisabled = isReceived
     ? !canPrintReview
-    : !canReceiveReview || !canPrintReview || !serialConfirmed || photoPolicyDisabledReason != null;
+    : !canReceiveReview ||
+      !canPrintReview ||
+      !serialConfirmed ||
+      photoPolicyDisabledReason != null ||
+      !linesReadyForGr;
   // Bench-visible reason for the disabled Receive bar. A hover `title` is
   // invisible to an operator standing at a station — the bar renders this
   // line above the pill so the blocker names itself.
@@ -747,7 +768,9 @@ export function useUnboxLineController(
           : 'Link this carton to a shipment to receive'
       : !serialConfirmed
         ? 'Scan a serial — or mark “No serial” with a reason — to receive'
-        : photoPolicyDisabledReason;
+        : !linesReadyForGr
+          ? 'Finish remaining qty or mark leftovers SHORT / OVER / DAMAGED / WRONG_ITEM'
+          : photoPolicyDisabledReason;
   // itemTotal is PO-scoped (workspace nav / useReceivingWorkspaceBridge) so
   // "Receive all" never claims lines from a different PO on a mixed carton.
   const isSinglePoItem = itemTotal === 1;

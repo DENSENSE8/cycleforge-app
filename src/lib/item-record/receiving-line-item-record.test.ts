@@ -37,6 +37,7 @@ test('receivingLinesToItemRecords maps title precedence and quantities', () => {
   assert.equal(item.conditionGrade, 'B');
   assert.deepEqual(item.serials, ['SN-1']);
   assert.equal(item.imageUrl, 'https://example.com/thumb.jpg');
+  assert.equal(item.receiveState, undefined);
 });
 
 test('a missing received count is got 0, not listed-as-got', () => {

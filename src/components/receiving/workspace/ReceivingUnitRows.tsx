@@ -20,6 +20,7 @@ import { ConditionPills } from "./ConditionPills";
 import { UnitSlotList, type UnitLike, type UnitSlotView } from "./UnitSlotList";
 import { ConditionBadge } from "./ConditionBadge";
 import { BulkQuantityPanel } from "./BulkQuantityPanel";
+import { markLineShortRemaining } from "./line-receive-actions";
 import { UnitSlotsManageOverlay } from "./UnitSlotsManageOverlay";
 import {
   UNIT_ROW_DISPLAY_CAP,
@@ -350,6 +351,12 @@ export function ReceivingUnitRows({
           noSerialControl={noSerialControl}
           onApply={applyBulk}
           onTrackEachUnit={() => setForceUnitMode(true)}
+          onShortRemaining={(_remaining, got) => {
+            void markLineShortRemaining(
+              { id: lineId, quantity_expected: quantityExpected },
+              got,
+            );
+          }}
         />
       </div>
     );

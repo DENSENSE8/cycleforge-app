@@ -49,6 +49,7 @@ test('maps a sales order onto a single item record', () => {
   assert.equal(item.conditionGrade, 'USED_GOOD');
   assert.deepEqual(item.serials, ['SN-1', 'SN-2']);
   assert.deepEqual(item.quantity, { expected: 2 });
+  assert.equal(item.receiveState, undefined);
 });
 
 test('quantity is expected-only — an order counts nothing on the floor', () => {

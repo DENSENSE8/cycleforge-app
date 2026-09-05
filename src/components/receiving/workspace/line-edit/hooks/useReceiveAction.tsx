@@ -8,6 +8,7 @@ import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unb
 import { deferInvalidateReceivingFeeds, patchUnboxRailQtyByCarton } from '@/lib/queries/receiving-queries';
 import { randomId } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { classifyReceiveResponse } from '../../classify-receive-response';
+import { useReceivingEvents } from '@/hooks/useReceivingEvents';
 import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
 import { pulseScanLine } from '@/lib/scan-feedback/visual';
 import { shouldUseLocalReceiveOnly } from '@/lib/receiving/intake-items-routing';
@@ -89,6 +90,7 @@ export type ReceiveSummary = {
  * bottom-right toast entirely:
  *   - `success`    → animated ReceiveSuccessChecklist (green checks)
  *   - `diagnostic` → the existing ReceiveResponsePanel (skip / cooldown / error)
+ *   - `line`       → WeldedFeedbackPanel line OS&D (not carton GR, not a toast)
  */
 export type ReceiveResult =
   | {
@@ -112,6 +114,12 @@ export type ReceiveResult =
        * must never silently upgrade a scan-only or local receive.
        */
       intent: ReceiveIntent;
+    }
+  | {
+      kind: 'line';
+      headline: string;
+      tone: 'success' | 'warning';
+      at: number;
     };
 
 export type ReceiveInFlight = { startedAt: number; intent: ReceiveIntent };
@@ -158,6 +166,18 @@ export function useReceiveAction(
   const orgId = user?.organizationId ?? null;
   // Kept only for the diagnostic panel's raw-response expander.
   const [responseExpanded, setResponseExpanded] = useState(false);
+
+  useReceivingEvents({
+    'receiving-line-osd': (detail) => {
+      if (receiveInFlightRef.current) return;
+      setReceiveResult({
+        kind: 'line',
+        headline: detail.headline,
+        tone: detail.tone,
+        at: Date.now(),
+      });
+    },
+  });
 
   // Unfound, return, and sales-order-linked cartons receive locally — never Zoho.
   const isUnfound = shouldUseLocalReceiveOnly(row);
