@@ -20,6 +20,7 @@ import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { setActiveSinkId } from '@/lib/station-scan-sink';
 import { useLineCollapse, type LineCollapseController } from '@/components/station/collapse';
 import { scheduleFocusUnboxCaptureSerialInLine } from './line-edit/focus-unbox-capture-serial';
+import { itemsReceiveMeterCopy } from '@/lib/item-record/items-receive-meter';
 
 // Type re-exports — ActiveLineConditionSerial / Units hosts import from here.
 export type {
@@ -77,12 +78,12 @@ interface Props {
    */
   embedded?: boolean;
   /**
-   * Embedded-only: node rendered at the right of the "PO items · N" header row
+   * Embedded-only: node rendered at the right of the receive-meter header
    * (e.g. the wrapper's shared edit pencil). Lets the unified wrapper place its
-   * single control on the same row as the item count.
+   * single control on the same row as the meter.
    */
   headerRight?: React.ReactNode;
-  /** Hide the embedded "PO items · N" eyebrow — the tab slider owns the label. */
+  /** Hide the receive-meter eyebrow — the Items band already owns the label. */
   suppressHeader?: boolean;
   /**
    * Carton-open snapshot of `receiving.accordionExpand`. Currently inert — the
@@ -186,6 +187,7 @@ export function PoLinesAccordion({
   }, [rows, placeholderActiveRow]);
 
   const siblingOrder = useMemo(() => singleBand(paintRows), [paintRows]);
+  const receiveMeter = useMemo(() => itemsReceiveMeterCopy(paintRows), [paintRows]);
 
   const openSiblingLine = useCallback(
     (line: ReceivingLineRow) => {
@@ -244,7 +246,7 @@ export function PoLinesAccordion({
       {suppressHeader ? null : (
         <div className="mb-0 flex items-center justify-between">
           <h3 className={WORKSPACE_SECTION_TITLE_CLASS}>
-            PO items · {paintRows.length}
+            {receiveMeter}
           </h3>
           {embedded ? (
             headerRight ?? null

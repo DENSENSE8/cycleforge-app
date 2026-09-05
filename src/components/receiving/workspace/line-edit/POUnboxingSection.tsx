@@ -49,8 +49,9 @@ interface POUnboxingSectionProps {
   c: UnboxLineController;
   includeLinkedPoItems?: boolean;
   /**
-   * Hide the "PO items · N" header — Unbox overview + Arrival own the label
-   * via identity / Displays; an empty unfound carton must not show "PO ITEMS · 0".
+   * Kept for caller compat. Hop 5 always paints the receive meter
+   * (`2 lines · 1 received · 1 open`). Empty cartons still return null from
+   * the accordion, so this never becomes `0 lines`.
    */
   suppressItemsHeader?: boolean;
   /** Carton-open snapshot of `receiving.accordionExpand`. */
@@ -88,7 +89,6 @@ export function POUnboxingSection({
   unitsChrome = true,
   c,
   includeLinkedPoItems = true,
-  suppressItemsHeader = false,
   accordionBootstrap = 'default',
   onEditFilledSerial,
   onViewAllUnits,
@@ -118,7 +118,6 @@ export function POUnboxingSection({
         c={c}
         embedded
         lineCollapse={lineCollapse}
-        suppressHeader={suppressItemsHeader}
         accordionBootstrap={accordionBootstrap}
         onEditFilledSerial={unitsChrome ? onEditFilledSerial : undefined}
         onViewAllUnits={unitsChrome ? onViewAllUnits : undefined}
