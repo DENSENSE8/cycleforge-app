@@ -117,11 +117,11 @@ export const VERB_CATALOG_MODULES = [
 export const VERB_DECLARATION_DEBT: readonly { file: string; why: string }[] = [
   {
     file: 'src/components/photos/PhotoLibraryPage.tsx',
-    why: 'A PAGE mints five photo verbs. The clearest instance of the fork: the media family has no catalog module, so the page became one.',
+    why: 'A PAGE mints five photo verbs. The clearest instance of the fork: the media family has no catalog module, so the page became one. Unblocked and mechanical — extract them into a `useMediaLibrarySelection` hook that OWNS the claim / label-editor state (the shape useReceivingLineBulkSelection already uses for claimRow) and returns it for the page to render; PhotoBatchInspectorPanel already consumes the array, so it binds unchanged. Add the module to VERB_CATALOG_MODULES and delete this line.',
   },
   {
     file: 'src/components/tech/useTechTestingSelection.tsx',
-    why: 'Testing decorates the receiving-line catalog by declaring two assign verbs of its own rather than binding keys from it.',
+    why: 'Testing decorates the receiving-line catalog by declaring two assign verbs of its own rather than binding keys from it, through the `mapActions` override on useReceivingLineRailSelection — which is itself the behaviour hook invariant 3 forbids. BLOCKED on an ENGINE capability, 2026-09-05: moving the verbs into the catalog puts "Assign to…" on all three receiving surfaces (Tech, ReceivingRightPane, UnboxWorkspaceView), and only TechDashboard renders the staff picker, so the other two would paint a dead button. The missing piece is a shared assign-panel store + a host mounted in ReceivingLineRailShell — the receiving twin of `stage-assign-panel-store` + the orders column-foot panel. Build that first, then this entry is a deletion: catalog declares assign / assign-me, `mapActions` is deleted with them, and Testing keeps only its own overlay state.',
   },
 ];
 

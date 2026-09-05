@@ -317,12 +317,40 @@ Each step is independently shippable and leaves the tree green.
    `orders.scanned_out`. It must appear on To-ship **and** Shipped from one
    declaration, with the direction resolved per row.
 3. **Media family catalog.** Move `PhotoLibraryPage`'s five verbs into a catalog
-   module; the page binds keys. Remove its debt line.
+   module; the page binds keys. Remove its debt line. *(Unblocked and
+   mechanical; not done 2026-09-05 — see §5.4.)*
 4. **Testing binds, stops declaring.** Same for `useTechTestingSelection`.
+   **BLOCKED on a missing engine capability — see §5.4.**
 5. **Host sweep.** Any remaining `*GridHost` for a registered family collapses
    onto `NonlinearTableHost` (already planned as `one-table-engine-orders-host-PLAN.md`).
 6. **Ratchet to zero.** `VERB_DECLARATION_DEBT` empties; the tripwire's allowlist
    is then the catalogs alone.
+
+### 5.4 Finding (2026-09-05): step 4 needs an engine capability, not a migration
+
+`useTechTestingSelection` declares its two assign verbs through `mapActions`, an
+override callback on `useReceivingLineRailSelection` described in its own
+docblock as *"Replace or extend the default Copy/Print/Ticket/… set before
+publish."* That callback is the behaviour hook invariant 3 forbids, and it is
+the mechanism the debt uses — so the fix deletes `mapActions`, not just the two
+literals.
+
+Moving the verbs into `useReceivingLineBulkSelection` puts **"Assign to…" on all
+three surfaces that mount the receiving catalog** — `TechDashboard`,
+`ReceivingRightPane`, `UnboxWorkspaceView` — and only `TechDashboard` renders the
+staff picker. The other two would paint a button that sets state nothing
+displays. Gating the verb per surface would be a lane list, which is the fork
+this whole section deletes.
+
+**The missing capability:** a shared receiving assign-panel store plus a host
+mounted once in `ReceivingLineRailShell` (which already hosts `RailActionRegion`
+for all three) — the receiving twin of `stage-assign-panel-store` and the orders
+column-foot panel. Per ruling 5 this is surfaced rather than improvised on one
+family: build the host, then step 4 is a deletion.
+
+Step 3 (media catalog) is NOT blocked by anything — only one surface mounts those
+verbs, and `PhotoBatchInspectorPanel` already consumes the array rather than
+declaring it. It was left undone for budget, not for design.
 
 ### 5.3 Definition of done
 
