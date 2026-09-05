@@ -317,7 +317,7 @@ of one tone. These are wired as semantic Tailwind utilities (CSS vars curated in
 > triad (`success` / `warning` / `cancel`) with a hair of air between pills.
 > Accent verbs rest as ink (`text-text-default`) and wash only on hover / focus /
 > `data-highlighted` (hold-key then mouse). Hints sit **under** the verb
-> (`text-role-caption`, `text-current/70` — never gray-on-fill). Group with
+> (`text-role-caption`, `text-current` — never gray-on-fill). Group with
 > `MorphingMenuSeparator`. DropdownMenuItem, ContextMenuItem, and Popover
 > menuitems consume the same map — never a per-desk paint.
 

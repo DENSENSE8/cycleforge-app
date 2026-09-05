@@ -93,6 +93,12 @@ describe('MENU_ITEM_TONE_CLASS', () => {
     assert.match(MENU_ITEM_TONE_CLASS.accent, /text-text-default/);
     assert.match(MENU_ITEM_TONE_CLASS.accent, /data-\[highlighted\]:text-text-accent/);
     assert.match(MENU_ITEM_TONE_CLASS.danger, /text-text-danger/);
+    assert.match(MENU_ITEM_TONE_CLASS.danger, /data-\[highlighted\]:bg-surface-hover/);
+    assert.doesNotMatch(
+      MENU_ITEM_TONE_CLASS.danger,
+      /bg-surface-danger/,
+      'danger verb must not steal cancel-pill fill',
+    );
   });
 
   it('every tone keeps Radix pointer highlight (hold-key + mouse)', () => {
@@ -109,12 +115,13 @@ describe('MENU_ITEM_TONE_CLASS', () => {
 describe('menu row chrome', () => {
   it('hints sit under the verb as caption, inheriting current ink', () => {
     assert.match(MENU_ITEM_HINT_CLASS, /text-role-caption/);
-    assert.match(MENU_ITEM_HINT_CLASS, /text-current\/70/);
-    assert.doesNotMatch(MENU_ITEM_HINT_CLASS, /text-text-muted|text-text-faint|text-text-soft/);
+    assert.match(MENU_ITEM_HINT_CLASS, /text-current/);
+    assert.doesNotMatch(MENU_ITEM_HINT_CLASS, /text-current\/70|text-text-muted|text-text-faint|text-text-soft/);
     assert.doesNotMatch(MENU_ITEM_HINT_CLASS, /KeyboardKey|kbd/);
     assert.match(ROW, /MENU_ITEM_HINT_CLASS/);
     assert.match(ROW, /font-medium/);
-    assert.doesNotMatch(ROW, /KeyboardKey/);
+    const jsx = ROW.slice(ROW.indexOf('return ('));
+    assert.doesNotMatch(jsx, /KeyboardKey/);
   });
 
   it('groups with the shared separator token', () => {

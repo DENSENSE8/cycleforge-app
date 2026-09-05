@@ -18,7 +18,7 @@
   "MorphingMenuRow": {
     "useWhen": "menu row, dropdown item, context menu item, popover menuitem, row action menu, status commit Done In progress Cancel, accent verb, morphing menu",
     "doNot": "Do not restyle one Tasks or To-ship file. Do not paint KeyboardKey on a menu row. Do not use hex, rose/emerald/color literals, or ghost Button rows. Do not invent a second menu row component. Status commits rest as theme pills (bg-surface-* + text-text-* + ring-border-*). Accent verbs are ink until hover. Hints go under the verb (text-role-caption). Group with MorphingMenuSeparator. Tone lives on MENU_ITEM_TONE_CLASS; DropdownMenuItem, ContextMenuItem, and Popover menuitems consume that map.",
-    "law": "src/design-system/tokens/menu-tone.ts + src/design-system/primitives/MorphingMenuRow.tsx. Operator 2026-09-05: shared wrapper only — hold-F then mouse across rows keeps data-[highlighted] wash. Captions inherit current ink at 70%; status pills are discrete (my-0.5) with ring-2 on highlight."
+    "law": "src/design-system/tokens/menu-tone.ts + src/design-system/primitives/MorphingMenuRow.tsx. Operator 2026-09-05: shared wrapper only — hold-F then mouse across rows keeps data-[highlighted] wash. Captions inherit current ink (no /70 fade). Status pills are discrete (my-0.5) with ring-2 on highlight. Danger verbs wash with surface-hover so they never look like Cancel pills."
   },
   "MENU_ITEM_TONE_CLASS": {
     "useWhen": "menu item tone, dropdown danger, context menu danger, status pill menu row, accent ink until hover",
