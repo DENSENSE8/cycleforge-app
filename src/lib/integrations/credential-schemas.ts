@@ -95,6 +95,18 @@ const AnthropicCredentialSchema = z.object({
   chatModel: optionalNonEmpty,
 });
 
+const GrokCredentialSchema = z.object({
+  accessToken: nonEmpty,
+  refreshToken: nonEmpty,
+  expiresAt: z.number().int().positive(),
+  accountEmail: optionalNonEmpty,
+  accountName: optionalNonEmpty,
+  oidcIssuer: nonEmpty,
+  oidcClientId: nonEmpty,
+  chatModel: optionalNonEmpty,
+  connectedVia: z.enum(['oauth', 'host']).optional(),
+});
+
 const StripeCredentialSchema = z.object({
   secretKey: nonEmpty,
   publishableKey: nonEmpty,
@@ -145,6 +157,7 @@ const INTEGRATION_PAYLOAD_SCHEMAS = {
   ai_gateway: AiGatewayCredentialSchema,
   openai: OpenAiCredentialSchema,
   anthropic: AnthropicCredentialSchema,
+  grok: GrokCredentialSchema,
   stripe: StripeCredentialSchema,
   ably: AblyCredentialSchema,
   square: NangoMarkerSchema,
@@ -164,6 +177,7 @@ const CREDENTIAL_SECRET_KEYS: Partial<Record<IntegrationProvider, readonly strin
   ai_gateway: ['apiKey'],
   openai: ['apiKey'],
   anthropic: ['apiKey'],
+  grok: ['accessToken', 'refreshToken'],
   stripe: ['secretKey', 'webhookSecret'],
   ably: ['apiKey'],
 };

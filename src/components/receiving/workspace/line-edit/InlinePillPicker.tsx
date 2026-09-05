@@ -171,7 +171,7 @@ export function InlinePillPicker({
   placeholder = '—',
   collapsedLabel,
   collapsedFullLabel,
-  collapsedClass,
+  collapsedClass: _collapsedClass,
   leadingIcon,
   collapsedFace = 'label',
   expandedFace = 'label',

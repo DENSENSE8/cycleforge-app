@@ -15,6 +15,7 @@
     { "dir": "src/components/desk", "label": "desk frame (app adapter)", "alias": "@/components/desk", "match": "^DeskPageLayout\\.tsx$" },
     { "dir": "src/components/labels", "label": "label face (house)", "alias": "@/components/labels", "match": "^(LabelFacePreview|LabelFaceSlotOverlay|LabelPlatformTypeMenu|LabelFaceReceivingSlots|LabelFaceProductSlots|WorkspaceLabelPreviewCard|LabelPreviewCard)\\.tsx$" },
     { "dir": "src/lib/optimistic", "label": "write primitive", "alias": "@/lib/optimistic", "match": "^useOptimisticMutation\\.ts$" },
+    { "dir": "src/design-system/motion", "label": "motion roles (house)", "alias": "@/design-system/motion", "match": "^(roles|idle-overlay)\\.ts$" },
     { "dir": "src/design-system/themes", "label": "theme catalog (house)", "alias": "@/design-system/themes", "match": "^station-skins\\.ts$" },
     { "dir": "src/design-system/themes", "label": "theme catalog (house)", "alias": "@/design-system/themes", "match": "^station-depths\\.ts$" },
     { "dir": "src/design-system/components/item-record", "label": "item-record face (house)", "alias": "@/design-system/components/item-record", "match": "^(ItemRecordQtyBadge|ItemRecordThumb|ItemRecordMobileMeta|ItemRecordMobileStage)\\.tsx$" }

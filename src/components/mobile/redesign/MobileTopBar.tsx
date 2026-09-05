@@ -4,6 +4,7 @@ import { Suspense, type ReactNode } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { ChevronLeft, Menu } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives';
+import { cn } from '@/utils/_cn';
 import { getMobileAppTitle } from '@/lib/mobile-context-navigation';
 import { MobileScanCta } from './mobile-scan-cta';
 
@@ -61,6 +62,7 @@ export const MobileTopBar = ({
   onBack,
   onMenu,
   actions,
+  overlay = false,
 }: {
   /** When provided, renders a back button on the far left. */
   onBack?: () => void;
@@ -68,9 +70,37 @@ export const MobileTopBar = ({
   onMenu?: () => void;
   /** Page-specific controls, placed left of the scan CTA. */
   actions?: ReactNode;
+  /**
+   * Float the bar OVER the page instead of stacking above it.
+   *
+   * Opt-in, and off by default on purpose: every `/m` page currently lays out
+   * below a bar that occupies space, so flipping this globally would slide
+   * twenty screens' first rows under the header at once. A page opts in when
+   * its content is bottom-anchored (a station tape) and therefore has something
+   * worth showing through the blur.
+   */
+  overlay?: boolean;
 }) => {
   return (
-    <header className="sticky top-0 z-header flex w-full shrink-0 items-center justify-between gap-2 border-b border-border-soft bg-surface-card/90 px-4 py-2.5 backdrop-blur-xl supports-[backdrop-filter]:bg-surface-card/80">
+    <header
+      className={cn(
+        'top-0 z-header flex w-full shrink-0 items-center justify-between gap-2 px-4 py-2.5',
+        // The blur is the whole point, so the ground has to be see-through
+        // enough for something to show through it. Where the browser cannot do
+        // backdrop-filter the fallback is nearly opaque, because an unblurred
+        // 55% wash over scrolling text is unreadable, not "slightly softer".
+        'bg-surface-card/95 backdrop-blur-xl',
+        'supports-[backdrop-filter]:bg-surface-card/55',
+        overlay
+          ? // Out of flow: content passes UNDER the bar and is read through it.
+            // No bottom rule — the blur boundary is the edge, and a hairline on
+            // top of it reads as a seam.
+            'absolute inset-x-0'
+          : // In flow, so the page below starts under it. Keeps the rule, which
+            // is the only thing separating two opaque surfaces.
+            'sticky border-b border-border-soft',
+      )}
+    >
       <div className="flex min-w-0 items-center gap-2">
         {onMenu && (
           <IconButton

@@ -569,3 +569,80 @@ test('revert is refused when the actor lacks the KIND permission (gap 3, on the 
   assert.equal(out.status, 403);
   assert.ok(!cap.queries.some((q) => q.text.includes('UPDATE photo_entity_links')));
 });
+
+// ─── automation_rule.* (the "always this staff for this product" rule) ──────
+
+test('auto-class (automation_rule.upsert_item_staff): creates the rule in-tx, stamps the delete inverse', async () => {
+  const { deps, cap } = fakes((text) => {
+    if (text.includes('FROM staff')) return [{ id: 4 }];
+    if (text.includes('FROM automation_rules')) return []; // no active rule for this item yet
+    if (text.includes('INSERT INTO automation_rules')) return [{ id: 91 }];
+    return []; // no pending orders → no assignment sweep, no after-commit tail
+  });
+  const out = await applyAgentMutation(
+    {
+      organizationId: ORG,
+      mutationKind: 'automation_rule.upsert_item_staff',
+      payload: { itemNumber: 'b07zy7-dwt6', techStaffId: 4, packerStaffId: 4 },
+      proposedByStaffId: 9,
+    },
+    deps,
+  );
+  assert.deepEqual(out, { ok: true, status: 'applied', mutationId: 500, trust: 'auto', targetRef: '91' });
+
+  const ruleInsert = cap.queries.find((q) => q.text.includes('INSERT INTO automation_rules'))!;
+  assert.equal(ruleInsert.params[0], ORG);
+  assert.deepEqual(JSON.parse(String(ruleInsert.params[3])), { item_number: 'B07ZY7DWT6' });
+  assert.equal(ruleInsert.params[5], 9, 'created_by is the proposing staff from ctx');
+
+  const mut = cap.queries.find((q) => q.text.includes('INSERT INTO agent_mutations'))!;
+  assert.ok(mut.text.includes("'applied'"));
+  const extra = JSON.parse(String(mut.params[5])) as { inverse: { kind: string; payload: { ruleId: number } } };
+  assert.equal(extra.inverse.kind, 'automation_rule.delete');
+  assert.equal(extra.inverse.payload.ruleId, 91);
+  const affects = cap.queries.find((q) => q.text.includes('INSERT INTO agent_mutation_affects'))!;
+  assert.ok(affects, 'affects row names the rule');
+  assert.equal(cap.side[0].action, 'agent_mutation.apply');
+  assert.equal(cap.side[0].targetRef, '91');
+});
+
+test('auto-class (automation_rule.upsert_item_staff): unknown staff fails the whole tx, nothing recorded', async () => {
+  const { deps, cap } = fakes((text) => (text.includes('FROM staff') ? [{ id: 4 }] : []));
+  const out = await applyAgentMutation(
+    {
+      organizationId: ORG,
+      mutationKind: 'automation_rule.upsert_item_staff',
+      payload: { itemNumber: 'B07ZY7DWT6', techStaffId: 4, packerStaffId: 999 },
+    },
+    deps,
+  );
+  assert.deepEqual(out, { ok: false, status: 404, error: 'staff not found or inactive in this org: 999' });
+  assert.ok(!cap.queries.some((q) => q.text.includes('INSERT INTO agent_mutations')));
+  assert.ok(!cap.queries.some((q) => q.text.includes('INSERT INTO automation_rules')));
+  assert.equal(cap.side.length, 0);
+});
+
+test('auto-class (automation_rule.delete): soft-deletes and stamps the re-create inverse', async () => {
+  const { deps, cap } = fakes((text) =>
+    text.includes('UPDATE automation_rules')
+      ? [{
+          id: 91,
+          when_json: { item_number: 'B07ZY7DWT6' },
+          then_json: [
+            { type: 'assign_work', work_type: 'TEST', staff_id: 4 },
+            { type: 'assign_work', work_type: 'PACK', staff_id: 5 },
+          ],
+        }]
+      : [],
+  );
+  const out = await applyAgentMutation(
+    { organizationId: ORG, mutationKind: 'automation_rule.delete', payload: { ruleId: 91 } },
+    deps,
+  );
+  assert.equal(out.ok, true);
+  assert.equal((out as { targetRef: string }).targetRef, '91');
+  const mut = cap.queries.find((q) => q.text.includes('INSERT INTO agent_mutations'))!;
+  const extra = JSON.parse(String(mut.params[5])) as { inverse: { kind: string; payload: Record<string, unknown> } };
+  assert.equal(extra.inverse.kind, 'automation_rule.upsert_item_staff');
+  assert.deepEqual(extra.inverse.payload, { itemNumber: 'B07ZY7DWT6', techStaffId: 4, packerStaffId: 5, assignPending: false });
+});

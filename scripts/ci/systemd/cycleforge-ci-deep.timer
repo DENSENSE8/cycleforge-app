@@ -1,0 +1,17 @@
+# Nightly deep CI — design review over visual diffs (plan §7.4 step 6).
+#
+# Install (from the repo root):
+#   cp scripts/ci/systemd/cycleforge-ci-deep.{service,timer} ~/.config/systemd/user/
+#   systemctl --user daemon-reload && systemctl --user enable --now cycleforge-ci-deep.timer
+
+[Unit]
+Description=Nightly CycleForge deep CI (design review)
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+Persistent=true
+AccuracySec=5min
+Unit=cycleforge-ci-deep.service
+
+[Install]
+WantedBy=timers.target

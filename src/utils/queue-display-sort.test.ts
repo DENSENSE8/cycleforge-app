@@ -40,6 +40,7 @@ describe('queue-display-sort', () => {
     assert.equal(parseQueueDisplaySort('sla'), 'age', 'retired fused Ship-by → Late');
     assert.equal(parseQueueDisplaySort('date'), 'age', 'retired civil-date column → Late');
     assert.equal(parseQueueDisplaySort('condition'), 'title', 'retired Cond column → Product sort');
+    assert.equal(parseQueueDisplaySort('image'), 'deadline', 'retired photo-gutter sort');
     assert.equal(parseQueueDisplaySort('nope'), 'deadline');
   });
 
@@ -85,10 +86,9 @@ describe('queue-display-sort', () => {
     assert.equal(isQueueColumnSort('age'), true);
     assert.equal(isQueueColumnSort('status'), true);
     assert.equal(isQueueColumnSort('amount'), true);
-    assert.equal(isQueueColumnSort('image'), true);
+    assert.equal(isQueueColumnSort('image'), false);
     assert.equal(isQueueColumnSort('scanned_out'), true);
     assert.equal(defaultDirForQueueSort('amount'), 'desc');
-    assert.equal(defaultDirForQueueSort('image'), 'desc');
     assert.equal(defaultDirForQueueSort('scanned_out'), 'desc');
     assert.equal(defaultDirForQueueSort('status'), 'asc');
     assert.equal(isQueueColumnSort('carrier'), true);
@@ -167,7 +167,6 @@ describe('queue-display-sort', () => {
       'picked',
       'packed',
       'status',
-      'image',
       'scanned_out',
       'title',
       'order',

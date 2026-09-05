@@ -42,4 +42,18 @@ describe('derivedPackerRecordToQueueRow', () => {
     const status = resolveRowStatus(row, 'shipped');
     assert.equal(status.label, 'Delivered');
   });
+
+  it('resolveRowStatus(shipped) paints Pre-Transit after dock scan with no carrier scan', () => {
+    const row = derivedPackerRecordToQueueRow(fakePacker({ outboundState: 'SCANNED_OUT' }));
+    const status = resolveRowStatus(row, 'shipped');
+    assert.equal(status?.label, 'Pre-Transit');
+  });
+
+  it('resolveRowStatus(shipped) paints the carrier category once it exists', () => {
+    const row = derivedPackerRecordToQueueRow(
+      fakePacker({ outboundState: 'IN_CUSTODY', latest_status_category: 'OUT_FOR_DELIVERY' }),
+    );
+    const status = resolveRowStatus(row, 'shipped');
+    assert.equal(status?.label, 'Out for Delivery');
+  });
 });

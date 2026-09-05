@@ -9,9 +9,7 @@ import {
   addPin,
   getSettings,
   hydratePinned,
-  hrefPathname,
   insertPin,
-  pinsCoverHref,
   reorderPins,
   sanitizePinned,
   setSettings,
@@ -105,10 +103,16 @@ test('insertPin appends and moves an existing href', () => {
   );
 });
 
-test('insertPin ignores Home and Media Library', () => {
+test('insertPin ignores Home — the spine root is not a shortcut', () => {
   insertPin({ label: 'Home', href: '/' });
-  insertPin({ label: 'Media Library', href: '/ops/photos' });
   assert.deepEqual(getSettings().pinned.map((p) => p.href), []);
+});
+
+test('insertPin accepts Media Library', () => {
+  // It stopped being structural on 2026-09-05: staff who live in it hoist it
+  // themselves, and it leaves the top group when they do (pagesNotPinned).
+  insertPin({ label: 'Media Library', href: '/ops/photos' });
+  assert.deepEqual(getSettings().pinned.map((p) => p.href), ['/ops/photos']);
 });
 
 test('reorderPins respects id order', () => {
@@ -120,21 +124,5 @@ test('reorderPins respects id order', () => {
   assert.deepEqual(
     getSettings().pinned.map((p) => p.href),
     ['/a', '/b'],
-  );
-});
-
-test('pinsCoverHref matches the leaf path so a pin does not double-paint the catalog parent', () => {
-  assert.equal(hrefPathname('/unbox?openReceivingId=1'), '/unbox');
-  assert.equal(
-    pinsCoverHref('/unbox', [{ href: '/unbox' }]),
-    true,
-  );
-  assert.equal(
-    pinsCoverHref('/unbox', [{ href: '/unbox?openReceivingId=1' }]),
-    true,
-  );
-  assert.equal(
-    pinsCoverHref('/unbox', [{ href: '/packing' }]),
-    false,
   );
 });

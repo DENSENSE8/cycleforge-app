@@ -9,13 +9,14 @@
  *   └─────────────────────────────────────────┘
  *   [ Unbox ] [ Ticket ]              ( ◠ ring )
  *
- * Unbox + Ticket clustered leftmost; icon always left of label.
- * Unbox glyph blue; Ticket glyph carton orange. Ring far right.
+ * Unbox + Ticket + Ask clustered leftmost; icon always left of label.
+ * Unbox glyph blue; Ticket glyph carton orange; Ask glyph purple. Ring far right.
  */
 
 import { type ComponentType, type ReactNode } from 'react';
-import { PackageOpen, Ticket } from '@/components/Icons';
+import { PackageOpen, Sparkles, Ticket } from '@/components/Icons';
 import { ScanStationProgressRing } from '@/components/station/ScanStationProgressRing';
+import { cursorClickTarget } from '@/design-system/motion/cursor-scrub';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { COMPOSER_SHELL_CORNER } from '@/design-system/tokens/radius';
@@ -31,11 +32,13 @@ const MODE_ICON: Record<
 > = {
   unbox: PackageOpen,
   ticket: Ticket,
+  ask: Sparkles,
 };
 
 const MODE_ICON_TONE: Record<StationComposerMode, string> = {
   unbox: 'text-blue-600',
   ticket: 'text-orange-500',
+  ask: 'text-purple-600',
 };
 
 /**
@@ -91,6 +94,7 @@ function ModeFace({
       aria-pressed={active}
       data-testid={`composer-mode-${id}`}
       data-composer-mode-face={id}
+      {...cursorClickTarget(entry.label)}
       onClick={onSelect}
       className={cn(
         COMPOSER_TOOLBAR_ITEM,
@@ -142,6 +146,7 @@ export function ComposerProcedureRingButton({
       aria-pressed={pressed}
       onClick={onClick}
       disabled={!onClick}
+      {...(onClick ? cursorClickTarget(ringLabel) : null)}
       className={cn(
         COMPOSER_TOOLBAR_ITEM,
         COMPOSER_DOCK_ICON_COLUMN,
@@ -160,10 +165,10 @@ export function ComposerProcedureRingButton({
 }
 
 /**
- * Horizontal Unbox | Ticket (left cluster) + procedure ring BELOW the outline.
+ * Horizontal Unbox | Ticket | Ask (left cluster) + procedure ring BELOW the outline.
  *
- * `showModeFaces={false}` keeps the same row plate and trailing ring but hides
- * Unbox | Ticket — scan-out / dumb mouths that only need the context ring.
+ * `showModeFaces={false}` hides Unbox | Ticket but keeps Ask + the trailing
+ * ring — dumb / gun mouths still reach the assistant without a second dock.
  */
 export function ComposerModeRow({
   mode,
@@ -211,6 +216,11 @@ export function ComposerModeRow({
               active={mode === 'ticket'}
               onSelect={() => onModeChange('ticket')}
             />
+            <ModeFace
+              id="ask"
+              active={mode === 'ask'}
+              onSelect={() => onModeChange('ask')}
+            />
           </div>
           <div className="flex min-w-0 flex-1 items-center gap-1">
             {leading}
@@ -223,7 +233,15 @@ export function ComposerModeRow({
           </div>
         </>
       ) : (
-        <div className="min-w-0 flex-1" aria-hidden />
+        <>
+          <ModeFace
+            id="ask"
+            active={mode === 'ask'}
+            onSelect={() => onModeChange('ask')}
+          />
+          {leading}
+          <div className="min-w-0 flex-1" aria-hidden />
+        </>
       )}
       <ComposerProcedureRingButton
         percent={progressPercent}

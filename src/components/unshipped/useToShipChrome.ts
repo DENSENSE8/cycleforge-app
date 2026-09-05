@@ -80,7 +80,7 @@ export interface ToShipChrome {
   totalCount: number | undefined;
 }
 
-export function useToShipChrome(): ToShipChrome {
+export function useToShipChrome(options?: { blockedQueue?: boolean }): ToShipChrome {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -130,14 +130,17 @@ export function useToShipChrome(): ToShipChrome {
           : undefined;
   const facetActive = activeFacet !== 'all';
   const stageActive = stageTotal !== undefined;
+  const blockedQueue = options?.blockedQueue === true;
   const narrowedTotal =
-    facetActive && stageActive
-      ? undefined // two narrowings, no count for their intersection
-      : facetActive
-        ? facetTotal
-        : stageActive
-          ? stageTotal
-          : queueCounts?.total;
+    blockedQueue
+      ? laneTotals.blocked
+      : facetActive && stageActive
+        ? undefined // two narrowings, no count for their intersection
+        : facetActive
+          ? facetTotal
+          : stageActive
+            ? stageTotal
+            : queueCounts?.total;
 
   const replaceParams = useCallback(
     (mutate: (params: URLSearchParams) => void) => {

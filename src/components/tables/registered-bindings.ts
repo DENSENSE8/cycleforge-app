@@ -27,6 +27,8 @@ import { INCOMING_TABLE_BINDING } from '@/components/station/incoming-grid/incom
 import { DAILY_TABLE_BINDING } from '@/features/home/grid/daily-table-definition';
 import { TASKS_TABLE_BINDING } from '@/features/tasks/grid/tasks-table-definition';
 import { SESSIONS_TABLE_BINDING } from '@/features/reports/sessions/sessions-table-definition';
+import { SKU_VELOCITY_TABLE_BINDING } from '@/features/reports/metrics/sku-velocity-table-definition';
+import { DEAD_STOCK_TABLE_BINDING } from '@/features/reports/metrics/dead-stock-table-definition';
 import { RECEIVING_TABLE_BINDING } from '@/components/station/receiving-grid/receiving-table-definition';
 import { ORDERS_DEFAULT_TABLE_BINDING } from '@/components/dashboard/orders-queue/orders-table-definition';
 import { CATALOG_LINK_TABLE_BINDING } from '@/features/review/catalog-link/grid/catalog-link-table-definition';
@@ -42,6 +44,13 @@ import { REPAIR_TABLE_BINDING } from '@/components/repair/repair-grid/repair-tab
 import { TECH_ALL_TABLE_BINDING } from '@/components/tech/all/tech-all-table-definition';
 import { TRACKING_EXCEPTIONS_TABLE_BINDING } from '@/components/tracking-exceptions/grid/tracking-exceptions-table-definition';
 import { BINS_TABLE_BINDING } from '@/components/warehouse/bins-grid/bins-table-definition';
+import { INVENTORY_EVENTS_TABLE_BINDING } from '@/components/inventory/events-grid/inventory-events-table-definition';
+import { AUDIT_LOG_TABLE_BINDING } from '@/components/settings/audit/audit-log-table-definition';
+import { AUTHSESSIONS_TABLE_BINDING } from '@/components/settings/sessions/auth-sessions-table-definition';
+import { KIOSKDEVICES_TABLE_BINDING } from '@/components/settings/kiosk-devices/kiosk-devices-table-definition';
+import { STAFFDIRECTORY_TABLE_BINDING } from '@/components/settings/staff-table/staff-directory-table-definition';
+import { AIUSAGE_TABLE_BINDING } from '@/components/settings/ai-usage/ai-usage-table-definition';
+import { COMPATIBILITY_TABLE_BINDING } from '@/components/admin/sourcing/compatibility/compatibility-table-definition';
 import { WARRANTY_TABLE_BINDING } from '@/components/warranty/grid/warranty-table-definition';
 import { MY_DAY_TABLE_BINDING } from '@/features/my-day/grid/my-day-table-definition';
 
@@ -69,6 +78,9 @@ export const REGISTERED_BINDINGS = [
   // checklist), sharing this engine and nothing else.
   TASKS_TABLE_BINDING,
   SESSIONS_TABLE_BINDING,
+  // Reports › SKU velocity / dead stock — ranking sheets, not the catalog.
+  SKU_VELOCITY_TABLE_BINDING,
+  DEAD_STOCK_TABLE_BINDING,
   // Review · Listing match + Missing item number — two queues on one page,
   // two prefs buckets, two record planes.
   CATALOG_LINK_TABLE_BINDING,
@@ -103,6 +115,14 @@ export const REGISTERED_BINDINGS = [
   TRACKING_EXCEPTIONS_TABLE_BINDING,
   // Warehouse › Bins overview.
   BINS_TABLE_BINDING,
+  // Inventory › Ledger activity — the event feed that used to be a card list.
+  INVENTORY_EVENTS_TABLE_BINDING,
+  AUDIT_LOG_TABLE_BINDING,
+  AUTHSESSIONS_TABLE_BINDING,
+  KIOSKDEVICES_TABLE_BINDING,
+  STAFFDIRECTORY_TABLE_BINDING,
+  AIUSAGE_TABLE_BINDING,
+  COMPATIBILITY_TABLE_BINDING,
   // Support › Warranty claims.
   WARRANTY_TABLE_BINDING,
   // Home › Today. Sibling of `home.daily`, never a merge with it — two stores

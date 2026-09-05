@@ -34,6 +34,11 @@ Do not rename. Old triage ids must keep working.
 | `intake-assign-tech` | Fulfillment/test assignee |
 | `intake-assign-packer` | Pack assignee |
 | `intake-bulk-grid` | CSV staging grid body |
+| `csv-import-staging-identity` | Staging/board identity band (file name or synced sheet tab) |
+| `csv-import-staging-confirm` | Batch CTA (`Confirm N ready` on a file draft, `Accept N approved` on a sheet board) |
+| `sheet-triage-tally` | Sheet board's approved / rejected / to-review count (sheet origin only) |
+| `import-triage-approve` | Per-row approve square — pressed = approved, press again unapproves |
+| `import-triage-reject` | Per-row reject square — pressed = rejected, press again clears |
 | `orders-desk-add` | Tab-band Add |
 
 ---

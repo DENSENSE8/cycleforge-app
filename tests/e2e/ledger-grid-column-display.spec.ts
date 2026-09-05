@@ -116,8 +116,8 @@ test.describe('ledger grid column display SoT', () => {
 
       This waited on `title`, a track of the RETIRED flat model, so it timed out
       on a healthy surface and took all six tests with it. Unbox History renders
-      `RECEIVING_COMPOUND_COLUMNS` (`select · thumb · fulfillment · item · state
-      · amount · actions · _fill`) and has since before this spec last passed.
+      `RECEIVING_COMPOUND_COLUMNS` (`select · fulfillment · thumb · item · state
+      · amount · _fill`) and has since before this spec last passed.
       Everything below scans `[data-col]` generically, so this one line was the
       whole staleness.
     */

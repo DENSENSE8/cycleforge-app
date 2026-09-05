@@ -43,17 +43,18 @@ expect "8: stale impact stamp → deny" pretool-engine-graph.sh "$ENGINE" deny
 rm -f "$TMP/.cursor/code-graph-session.json"
 expect "8: non-engine file → allow (fail open)" pretool-engine-graph.sh "$PLAIN" allow
 rm -f "$TMP/tools/design-mcp/router.json"
-expect "8: router.json missing → allow (fail open)" pretool-engine-graph.sh "$ENGINE" allow
+expect "8: router.json missing on engine path → deny" pretool-engine-graph.sh "$ENGINE" deny "router.json missing"
+expect "8: router.json missing on non-engine path → allow" pretool-engine-graph.sh "$PLAIN" allow
 cp "$REPO/tools/design-mcp/router.json" "$TMP/tools/design-mcp/router.json"
 
 # ---- item 9: strict design stamps ---------------------------------------
 printf '{"source":"stamp","lastTool":null,"updatedMs":%s}\n' "$NOW_MS" > "$TMP/.cursor/design-mcp-session.json"
-expect "9: lax, ds.mjs stamp only → allow (unchanged)" pretool-ui-design-mcp.sh "$UI" allow
-out="$(printf '%s' "$UI" | CURSOR_PROJECT_DIR="$TMP" CYCLEFORGE_STAMP_STRICT=1 bash "$REPO/.cursor/hooks/pretool-ui-design-mcp.sh")"
-if printf '%s' "$out" | grep -q '"deny"' && printf '%s' "$out" | grep -q 'strict'; then pass "9: strict + ds.mjs stamp only → deny"; else fail "9: strict + stamp only" "$out"; fi
+expect "9: default strict, ds.mjs stamp only → deny" pretool-ui-design-mcp.sh "$UI" deny "strict"
+out="$(printf '%s' "$UI" | CURSOR_PROJECT_DIR="$TMP" CYCLEFORGE_STAMP_STRICT=0 bash "$REPO/.cursor/hooks/pretool-ui-design-mcp.sh")"
+if printf '%s' "$out" | grep -q '"allow"'; then pass "9: STAMP_STRICT=0 + stamp only → allow"; else fail "9: opt-out stamp" "$out"; fi
 printf '{"source":"cli","lastTool":"ds_contract","updatedMs":%s}\n' "$NOW_MS" > "$TMP/.cursor/design-mcp-session.json"
-out="$(printf '%s' "$UI" | CURSOR_PROJECT_DIR="$TMP" CYCLEFORGE_STAMP_STRICT=1 bash "$REPO/.cursor/hooks/pretool-ui-design-mcp.sh")"
-if printf '%s' "$out" | grep -q '"allow"'; then pass "9: strict + ds.mjs contract → allow"; else fail "9: strict + contract" "$out"; fi
+out="$(printf '%s' "$UI" | CURSOR_PROJECT_DIR="$TMP" bash "$REPO/.cursor/hooks/pretool-ui-design-mcp.sh")"
+if printf '%s' "$out" | grep -q '"allow"'; then pass "9: default strict + ds_contract → allow"; else fail "9: default + contract" "$out"; fi
 printf '{"source":"cli","lastTool":"stamp","updatedMs":%s}\n' "$NOW_MS" > "$TMP/.cursor/design-mcp-session.json"
 touch "$TMP/.cursor/stamp-strict"
 expect "9: .cursor/stamp-strict file + non-oracle lastTool → deny" pretool-ui-design-mcp.sh "$UI" deny "strict"

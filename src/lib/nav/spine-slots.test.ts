@@ -32,7 +32,7 @@ const catalog: SidebarNavItem[] = [
   { id: 'studio', label: 'Operations Studio', href: '/studio', icon: Icon, kind: 'main', mainGroup: 'studio' },
 ];
 
-test('null / empty / absent hydrate to Scan Stations then Desks then remaining L1', () => {
+test('null / empty / absent hydrate to Stations then Desks then remaining L1', () => {
   assert.deepEqual(hydrateSpineSlots(null, catalog), [
     SPINE_STATIONS_SLOT_ID,
     SPINE_DESKS_SLOT_ID,
@@ -117,10 +117,10 @@ test('resolveSpineMapEntries emits stations and desks among remaining L1', () =>
   );
 });
 
-test('spineParentDrillId maps floor to Scan Stations and domains to Desks', () => {
-  assert.equal(spineParentDrillId('floor'), SPINE_STATIONS_SLOT_ID);
-  assert.equal(spineParentDrillId('fulfillment'), SPINE_DESKS_SLOT_ID);
-  assert.equal(spineParentDrillId('monitor'), SPINE_DESKS_SLOT_ID);
+test('spineParentDrillId is unused — groups render inline', () => {
+  assert.equal(spineParentDrillId('floor'), null);
+  assert.equal(spineParentDrillId('fulfillment'), null);
+  assert.equal(spineParentDrillId('monitor'), null);
   assert.equal(spineParentDrillId('studio'), null);
   assert.equal(spineParentDrillId(null), null);
 });

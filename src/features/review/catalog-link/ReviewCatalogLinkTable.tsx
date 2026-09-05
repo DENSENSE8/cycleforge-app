@@ -14,7 +14,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { DataTable } from '@/components/tables/DataTable';
+import { DataTable, type DataTableToolbarAction } from '@/components/tables/DataTable';
 import { CompoundRow } from '@/components/tables/compound/CompoundRow';
 import { compareGridValues } from '@/design-system/components/grid';
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
@@ -56,6 +56,8 @@ import {
   useCatalogLinkQueueActions,
   useImportExceptionQueue,
 } from '@/features/review/catalog-link/useCatalogLinkQueues';
+import { itemNumberFromPaste } from '@/lib/inventory/listing-candidate';
+import { toast } from '@/lib/toast';
 
 type CatalogLinkSection = 'catalog-link' | 'missing-item-number';
 
@@ -249,11 +251,11 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
     [exceptionRows],
   );
 
-  const choreTotals = useMemo(
+  const _choreTotals = useMemo(
     () => rowGroupTotals({ key: 'catalog-link', rows: choreRows }, { orders: (r) => r.orderCount }),
     [choreRows],
   );
-  const exceptionTotals = useMemo(
+  const _exceptionTotals = useMemo(
     () => rowGroupTotals({ key: 'import-exception', rows: exceptionRows }, {}),
     [exceptionRows],
   );
@@ -261,6 +263,64 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
   const selectedChore = choreRows.find((r) => r.id === choreId) ?? null;
   const selectedException = exceptionRows.find((r) => r.id === exceptionId) ?? null;
   const missingSection = section === 'missing-item-number';
+  const [pasting, setPasting] = useState(false);
+
+  const commitImportPaste = useCallback(
+    async (raw: string) => {
+      const itemNumber = itemNumberFromPaste(raw);
+      if (!itemNumber) return;
+      const target = selectedException ?? exceptionRows[0] ?? null;
+      if (!target) {
+        toast.error('Nothing in the queue to import.');
+        return;
+      }
+      setPasting(true);
+      try {
+        const res = await fetch('/api/review/import-exceptions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ action: 'resolve', id: target.id, itemNumber }),
+        });
+        const body = (await res.json().catch(() => ({}))) as {
+          success?: boolean;
+          error?: string;
+          orderId?: number | null;
+        };
+        if (!res.ok || !body.success) throw new Error(body.error || 'Import failed');
+        toast.success(
+          body.orderId
+            ? `Imported order ${body.orderId} with item ${itemNumber}.`
+            : `Imported item ${itemNumber} — order details filled from the sheet.`,
+        );
+        invalidateExceptions();
+        selectException(null);
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Could not import that item number.');
+      } finally {
+        setPasting(false);
+      }
+    },
+    [exceptionRows, invalidateExceptions, selectException, selectedException],
+  );
+
+  const importActions = useMemo<readonly DataTableToolbarAction[]>(
+    () => [
+      {
+        id: 'paste-item',
+        label: 'Paste item #',
+        variant: 'primary',
+        disabled: exceptionRows.length === 0,
+        busy: pasting,
+        testId: 'import-exception-paste-item',
+        paste: {
+          placeholder: 'Item number or listing URL…',
+          onCommit: (value) => void commitImportPaste(value),
+        },
+      },
+    ],
+    [commitImportPaste, exceptionRows.length, pasting],
+  );
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col bg-surface-card">
@@ -288,6 +348,7 @@ export function ReviewCatalogLinkTable(_props: Record<string, unknown>) {
               }
               columns={importExceptionColumns}
               fields={importExceptionFields}
+              actions={importActions}
               orderGroupsByDate={exceptionGroups}
               rows={exceptionRows}
               getRowId={(r) => String(r.id)}

@@ -15,8 +15,10 @@ test('ComposerModeRow clusters Unbox | Ticket leftmost; only the SELECTED glyph 
   assert.doesNotMatch(html, /shadow-elev/);
   assert.match(html, /data-testid="composer-mode-unbox"/);
   assert.match(html, /data-testid="composer-mode-ticket"/);
+  assert.match(html, /data-testid="composer-mode-ask"/);
   assert.match(html, /Unbox/);
   assert.match(html, /Ticket/);
+  assert.match(html, /Ask/);
   // Colour marks the SELECTION, not the mode (ruling 2026-08-31): on Unbox the
   // blue glyph is lit and the Ticket glyph is dimmed, so the row has one loud
   // thing on it instead of two.
@@ -54,7 +56,7 @@ test('procedure ring and Unbox glyph share one toolbar item box', () => {
   assert.doesNotMatch(ring, /h-5 w-5/);
 });
 
-test('showModeFaces=false keeps bottom-right context ring only', () => {
+test('showModeFaces=false keeps Ask plus the bottom-right context ring', () => {
   const html = renderToStaticMarkup(
     <ComposerModeRow
       mode="unbox"
@@ -71,9 +73,10 @@ test('showModeFaces=false keeps bottom-right context ring only', () => {
   assert.doesNotMatch(html, /data-testid="composer-mode-ticket"/);
   assert.doesNotMatch(html, />Unbox</);
   assert.doesNotMatch(html, />Ticket</);
+  assert.match(html, /data-testid="composer-mode-ask"/);
+  assert.match(html, />Ask</);
   assert.match(html, /data-testid="composer-procedure-ring"/);
   assert.match(html, /aria-pressed="true"/);
-  // Ring trails a flex spacer so it sits bottom-right of the row plate.
   const beforeRing = html.slice(0, html.indexOf('data-testid="composer-procedure-ring"'));
   assert.match(beforeRing, /min-w-0 flex-1/);
 });

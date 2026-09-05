@@ -102,18 +102,27 @@ export interface AnchoredLayerProps {
 const VIEWPORT_GUTTER_PX = 8;
 
 /**
- * Where a vertical-edge (top-/bottom-) panel's LEFT wants to sit, in viewport
- * coordinates, before any clamp — mirrors {@link computeStyle}'s horizontal
- * alignment. Returns null for placements the clamp does not own (stretch and
- * the left-/right-edge placements, which anchor against a viewport edge already).
+ * Where a panel's LEFT wants to sit, in viewport coordinates, before any clamp
+ * — mirrors {@link computeStyle}'s horizontal placement. Returns null only for
+ * `-stretch`, which takes the trigger's own width and cannot overflow it.
+ *
+ * The left-/right-edge placements were excluded here on the theory that they
+ * "anchor against a viewport edge already". They do not: `left-*` anchors
+ * against the TRIGGER's left edge via `right`, so a panel wider than the space
+ * to the left of its trigger renders past x=0 and off-screen — a row-anchored
+ * `left-start` menu beside a table that starts 144px in is simply not there.
+ * They are measured like every other placement now; the clamp still only
+ * engages when the panel actually overflows.
  */
 function intendedPanelLeft(
   rect: DOMRect,
   placement: AnchoredPlacement,
   panelWidth: number,
+  gap: number,
 ): number | null {
-  if (!(placement.startsWith('top-') || placement.startsWith('bottom-'))) return null;
   if (placement.endsWith('-stretch')) return null;
+  if (placement.startsWith('left-')) return rect.left - gap - panelWidth;
+  if (placement.startsWith('right-')) return rect.right + gap;
   if (placement.endsWith('-center')) return rect.left + rect.width / 2 - panelWidth / 2;
   if (placement.endsWith('-end')) return rect.right - panelWidth;
   return rect.left; // -start
@@ -247,7 +256,7 @@ export function AnchoredLayer({
       return;
     }
     const width = panel.getBoundingClientRect().width;
-    const intended = intendedPanelLeft(rect, placement, width);
+    const intended = intendedPanelLeft(rect, placement, width, gap);
     if (!avoidCollisions || intended == null) {
       setClampLeft(null);
       return;

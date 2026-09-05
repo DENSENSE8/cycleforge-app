@@ -10,6 +10,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
+  COMPOSER_ASK_EVENT,
   STATION_COMPOSER_MODE_DEFAULT,
   STATION_COMPOSER_MODE_PARAM,
   cycleStationComposerMode,
@@ -56,6 +57,16 @@ export function useStationComposerMode(): {
     },
     [pathname, router, searchParams],
   );
+
+  useEffect(() => {
+    const onAsk = (event: Event) => {
+      const next = (event as CustomEvent<{ mode?: StationComposerMode }>).detail?.mode;
+      if (!next) return;
+      setMode(next);
+    };
+    window.addEventListener(COMPOSER_ASK_EVENT, onAsk);
+    return () => window.removeEventListener(COMPOSER_ASK_EVENT, onAsk);
+  }, [setMode]);
 
   const cycleMode = useCallback(() => {
     setMode(cycleStationComposerMode(mode));

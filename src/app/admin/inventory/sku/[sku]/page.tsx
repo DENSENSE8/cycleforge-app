@@ -268,7 +268,7 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
     return (
       <div className="min-h-screen bg-surface-canvas p-8">
         <div className="mx-auto max-w-3xl space-y-2">
-          <Link href="/admin/inventory" className="text-sm text-blue-600 hover:underline">
+          <Link href="/inventory" className="text-sm text-blue-600 hover:underline">
             ← back
           </Link>
           <h1 className="text-2xl font-semibold text-text-default">SKU required</h1>
@@ -533,8 +533,8 @@ export default async function SkuDetailPage({ params }: { params: Promise<{ sku:
     <div className="min-h-screen bg-surface-canvas p-8">
       <div className="space-y-8">
         <header className="space-y-2">
-          <Link href="/admin/inventory" className="text-sm text-blue-600 hover:underline">
-            ← back to dashboard
+          <Link href="/inventory" className="text-sm text-blue-600 hover:underline">
+            ← back to Inventory
           </Link>
           <div className="flex items-baseline gap-4">
             <h1 className="font-mono text-2xl font-semibold text-text-default">{cleaned}</h1>

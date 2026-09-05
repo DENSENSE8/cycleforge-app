@@ -9,6 +9,7 @@ import { normalizeItemNumber } from '@/lib/automations/listing-match';
 import { AUTOMATION_TRIGGER_KEYS } from '@/lib/schemas/automations';
 import { upsertOrderAssignment } from '@/lib/work-assignments/upsert-order-assignment';
 import { applyListingAssignment } from '@/lib/automations/apply-listing-assignment';
+import type { ListingStaffRuleRow } from '@/lib/automations/listing-staff-rule-row';
 
 export type ListingAssignMode = 'save_and_assign' | 'apply_existing';
 
@@ -169,6 +170,87 @@ export async function previewListingAssign(
       orderIds: ids,
     })),
   };
+}
+
+function positiveStaffId(value: unknown): number | null {
+  const n = Number(value);
+  return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+function staffFromThen(thenJson: unknown): { techStaffId: number | null; packerStaffId: number | null } {
+  const out = { techStaffId: null as number | null, packerStaffId: null as number | null };
+  if (!Array.isArray(thenJson)) return out;
+  for (const action of thenJson) {
+    if (!action || typeof action !== 'object') continue;
+    const row = action as { type?: unknown; work_type?: unknown; staff_id?: unknown };
+    if (row.type !== 'assign_work') continue;
+    const id = positiveStaffId(row.staff_id);
+    if (row.work_type === 'TEST') out.techStaffId = id;
+    if (row.work_type === 'PACK') out.packerStaffId = id;
+  }
+  return out;
+}
+
+export type { ListingStaffRuleRow } from '@/lib/automations/listing-staff-rule-row';
+
+/** Floor-facing list of item-number → picker/packer rules. */
+export async function listListingStaffRules(
+  organizationId: OrgId,
+): Promise<ListingStaffRuleRow[]> {
+  const rules = await tenantQuery<{
+    id: number;
+    when_json: Record<string, unknown> | null;
+    then_json: unknown;
+  }>(
+    organizationId,
+    `SELECT id, when_json, then_json
+       FROM automation_rules
+      WHERE organization_id = $1
+        AND deleted_at IS NULL
+        AND enabled = true
+        AND NULLIF(trim(COALESCE(when_json->>'item_number', '')), '') IS NOT NULL
+      ORDER BY priority ASC, id ASC
+      LIMIT 500`,
+    [organizationId],
+  );
+
+  const parsed = rules.rows
+    .map((row) => {
+      const itemNumber = normalizeItemNumber(String(row.when_json?.item_number ?? ''));
+      if (!itemNumber) return null;
+      const staff = staffFromThen(row.then_json);
+      return {
+        id: Number(row.id),
+        itemNumber,
+        techStaffId: staff.techStaffId,
+        packerStaffId: staff.packerStaffId,
+      };
+    })
+    .filter((row): row is NonNullable<typeof row> => row != null);
+
+  const staffIds = [
+    ...new Set(
+      parsed.flatMap((row) => [row.techStaffId, row.packerStaffId]).filter((id): id is number => id != null),
+    ),
+  ];
+  const names = new Map<number, string>();
+  if (staffIds.length > 0) {
+    const staff = await tenantQuery<{ id: number; name: string }>(
+      organizationId,
+      `SELECT id, name FROM staff WHERE organization_id = $1 AND id = ANY($2::int[])`,
+      [organizationId, staffIds],
+    );
+    for (const member of staff.rows) {
+      const label = String(member.name ?? '').trim();
+      if (label) names.set(Number(member.id), label);
+    }
+  }
+
+  return parsed.map((row) => ({
+    ...row,
+    techName: row.techStaffId != null ? names.get(row.techStaffId) ?? null : null,
+    packerName: row.packerStaffId != null ? names.get(row.packerStaffId) ?? null : null,
+  }));
 }
 
 export async function listingAssignFromOrders(

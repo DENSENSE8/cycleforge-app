@@ -10,12 +10,14 @@ import {
   resolveDashboardSelectedOrderCandidate,
   normalizeDashboardDetailsContext,
   parseDashboardOpenOrderId,
+  type DashboardAssignmentUpdateDetail,
   type DashboardSelectionSnapshot,
 } from '@/utils/dashboard-search-state';
 import {
   dispatchCloseShippedDetails,
   dispatchOpenShippedDetails,
   getOpenShippedDetailsPayload,
+  shouldApplyOpenShippedDetails,
   type ShippedDetailsContext,
 } from '@/utils/events';
 import { readDetailsOpenBehaviorPreference } from '@/utils/dashboard-preferences';
@@ -132,20 +134,23 @@ export function useDashboardSelectedOrder(detailsEnabled: boolean) {
     // react to panel events at all — `openOrderId` belongs to Dashboard Search
     // (`useDashboardSearchOrder`) there.
     if (!detailsEnabled) return;
-    const handleOpen = (e: CustomEvent<ShippedOrder>) => {
-      const payload = getOpenShippedDetailsPayload(e.detail);
+    const handleOpen = (e: Event) => {
+      const payload = getOpenShippedDetailsPayload((e as CustomEvent).detail);
       if (!payload?.order) return;
       const behavior = readDetailsOpenBehaviorPreference();
       // In side-panel mode, suppress automatic queue-click expansion.
-      if (behavior === 'side_panel' && payload.context === 'queue') return;
+      // Gutter "More information" sets `force` so the stage overlay still opens.
+      if (!shouldApplyOpenShippedDetails(behavior, payload)) return;
       applySelectedOrder(payload.order, payload.context);
     };
     // Sync URL so openOrderId does not immediately re-resolve and re-open the panel
     // (e.g. hamburger in DashboardSidebar only dispatches close-shipped-details).
     const handleClose = () => clearSelectedOrder(true);
-    const handleAssignmentUpdate = (e: any) => {
-      const detail = e?.detail || {};
-      const hasMatchingIds = Array.isArray(detail.orderIds) && detail.orderIds.some((id: any) => Number.isFinite(Number(id)));
+    const handleAssignmentUpdate = (e: Event) => {
+      const detail = ((e as CustomEvent).detail || {}) as DashboardAssignmentUpdateDetail;
+      const hasMatchingIds =
+        Array.isArray(detail.orderIds) &&
+        detail.orderIds.some((id) => Number.isFinite(Number(id)));
       if (!hasMatchingIds) return;
 
       setSelectedShipped((current) => {
@@ -156,14 +161,14 @@ export function useDashboardSelectedOrder(detailsEnabled: boolean) {
       });
     };
 
-    window.addEventListener('open-shipped-details' as any, handleOpen as any);
-    window.addEventListener('close-shipped-details' as any, handleClose as any);
-    window.addEventListener('order-assignment-updated' as any, handleAssignmentUpdate as any);
+    window.addEventListener('open-shipped-details', handleOpen);
+    window.addEventListener('close-shipped-details', handleClose);
+    window.addEventListener('order-assignment-updated', handleAssignmentUpdate);
 
     return () => {
-      window.removeEventListener('open-shipped-details' as any, handleOpen as any);
-      window.removeEventListener('close-shipped-details' as any, handleClose as any);
-      window.removeEventListener('order-assignment-updated' as any, handleAssignmentUpdate as any);
+      window.removeEventListener('open-shipped-details', handleOpen);
+      window.removeEventListener('close-shipped-details', handleClose);
+      window.removeEventListener('order-assignment-updated', handleAssignmentUpdate);
     };
   }, [detailsEnabled, applySelectedOrder, clearSelectedOrder, selectedContext]);
 

@@ -4,6 +4,8 @@
  *
  *   node --import tsx tools/eval-ledger/route.mjs --json "sort the image column"
  *   node --import tsx tools/eval-ledger/route.mjs --dirty-paths '["src/design-system/primitives/KeyboardKey.tsx"]'
+ *   node --import tsx tools/eval-ledger/route.mjs --surface-route /shipping/scan-out
+ *   node --import tsx tools/eval-ledger/route.mjs --surface-path src/components/packer/PackOrderWorkspace.tsx
  *   printf '%s' '["src/..."]' | node --import tsx tools/eval-ledger/route.mjs --dirty-paths
  */
 import { readFileSync, writeFileSync } from 'node:fs'
@@ -15,10 +17,11 @@ import {
   serializeRefuse,
   serializeRoute,
 } from '../../src/lib/eval/prompt-router.ts'
+import { surfaceForPath, surfaceForRoute, surfaceIndex } from '../../src/lib/eval/surface-index.ts'
 
 function usage(code = 1) {
   console.error(
-    'usage: node --import tsx tools/eval-ledger/route.mjs --json <text> | --dirty-paths [json-array] | --emit-json [out]',
+    'usage: node --import tsx tools/eval-ledger/route.mjs --json <text> | --dirty-paths [json-array] | --emit-json [out] | --surface-route <route> | --surface-path <file> | --surfaces',
   )
   process.exit(code)
 }
@@ -50,6 +53,30 @@ if (argv[0] === '--emit-json') {
   const out = argv[1] && !argv[1].startsWith('-') ? argv[1] : join(process.cwd(), 'tools/design-mcp/router.json')
   writeFileSync(out, text)
   console.log(out)
+  process.exit(0)
+}
+
+if (argv[0] === '--surfaces') {
+  console.log(JSON.stringify(surfaceIndex(), null, 2))
+  process.exit(0)
+}
+
+if (argv[0] === '--surface-route') {
+  const route = argv.slice(1).join(' ').trim()
+  if (!route) usage()
+  const hit = surfaceForRoute(route)
+  if (!hit) {
+    console.error(`no surface for route ${route}`)
+    process.exit(2)
+  }
+  console.log(JSON.stringify(hit, null, 2))
+  process.exit(0)
+}
+
+if (argv[0] === '--surface-path') {
+  const file = argv.slice(1).join(' ').trim()
+  if (!file) usage()
+  console.log(JSON.stringify(surfaceForPath(file), null, 2))
   process.exit(0)
 }
 

@@ -80,8 +80,11 @@ export const LABEL_DEFAULTS: Record<LabelKind, Record<string, LabelPresentation>
   },
   outbound: {
     PACKED_STAGED: { label: 'In Staging', description: 'Packed and waiting at the dock — not scanned out yet.', tone: 'amber' },
-    SCANNED_OUT: { label: 'Scanned Out', description: 'Scanned out at the dock — left the building; carrier hasn’t confirmed custody.', tone: 'blue' },
-    IN_CUSTODY: { label: 'In Custody', description: 'Carrier has it — accepted, in transit, or out for delivery.', tone: 'indigo' },
+    // Parcel network faces (EasyPost / AfterShip): Pre-Transit = handed off,
+    // no first scan; In Transit = carrier custody. Dock columns still say
+    // Scanned out — this is the STATUS pill, not the station stamp.
+    SCANNED_OUT: { label: 'Pre-Transit', description: 'Handed to the carrier — waiting for the first network scan.', tone: 'blue' },
+    IN_CUSTODY: { label: 'In Transit', description: 'Carrier has it — picked up, in transit, or out for delivery.', tone: 'indigo' },
     DELIVERED: { label: 'Delivered', description: 'Carrier confirmed delivery (terminal).', tone: 'emerald' },
     EXCEPTION: { label: 'Exception', description: 'Carrier exception or stalled — no movement.', tone: 'rose' },
     PROCESS_GAP: { label: 'Process Gap', description: 'Scanned out but no pack record — needs backfill / coaching.', tone: 'orange' },

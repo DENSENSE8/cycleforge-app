@@ -14,7 +14,6 @@ import {
 } from '@/components/tables/compound/compound-row-model';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { listingLinksForReceivingRow } from './listing-links';
-import { formatCurrency } from '@/utils/_number';
 
 /**
  * Workflow status → the three-tone vocabulary.
@@ -77,29 +76,6 @@ export interface ReceivingCompoundParts {
  * computes them for the flat layout), so this adapter never re-derives display
  * logic that has a SoT elsewhere — it only decides SHAPE.
  */
-/**
- * The line's money — `unit_price` (a read-only mirror of the Zoho PO line rate,
- * `numeric` so it arrives as a string) times the quantity.
- *
- * Parsed defensively: a `numeric` column reaches the client as a string, and a
- * PO line that has never synced has no rate at all. `null` renders an empty
- * money cell, which is the honest answer for a line nobody has priced — a
- * `$0.00` there would be a number no buyer entered.
- */
-function lineMoney(row: ReceivingLineRow): Pick<CompoundRowView, 'amount' | 'amountNote'> {
-  const unit = Number(row.unit_price);
-  if (!Number.isFinite(unit)) return { amount: null };
-  // RECEIVED, not expected: the money a line is worth is the money for what
-  // actually turned up. An expected count would price a box that may be short.
-  const qty = Number(row.quantity_received);
-  const count = Number.isFinite(qty) && qty > 0 ? Math.trunc(qty) : 1;
-  return {
-    amount: formatCurrency(unit * count),
-    // The working, shown only when it is not a restatement of the total.
-    amountNote: count > 1 ? `×${count} @ ${formatCurrency(unit)}` : null,
-  };
-}
-
 export function receivingCompoundView(
   row: ReceivingLineRow,
   parts: ReceivingCompoundParts,
@@ -125,6 +101,8 @@ export function receivingCompoundView(
     delay:
       parts.delayDays == null ? null : { days: parts.delayDays, overdue: parts.delayDays > 0 },
     delayTip: parts.delayTip,
-    ...lineMoney(row),
+    // `amountFieldId` is null on RECEIVING_PRODUCT_LAYOUT: line money is a
+    // subtitle under the title (`receiving.price`), not a bound amount track.
+    amount: null,
   };
 }

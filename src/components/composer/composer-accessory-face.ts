@@ -1,1 +1,1 @@
-export type ComposerAccessoryFace = 'claim' | 'link' | 'seller';
+export type ComposerAccessoryFace = 'claim' | 'link' | 'seller' | 'draft';

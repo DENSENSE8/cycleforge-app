@@ -30,5 +30,8 @@ export {
 export type { WeldedFeedbackCta } from './WeldedFeedbackPanel';
 export { StationComposerHost } from './StationComposerHost';
 export type { StationComposerHostProps } from './StationComposerHost';
+export { DeskComposerAskLane } from './DeskComposerAskLane';
+export { ComposerAskStage } from './ComposerAskStage';
+export { StationAskPane } from './StationAskPane';
 export { StationTicketPane } from './StationTicketPane';
 export { useStationComposerMode } from './useStationComposerMode';

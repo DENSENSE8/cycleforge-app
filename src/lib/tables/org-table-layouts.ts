@@ -28,6 +28,34 @@ import {
 } from '@/lib/tables/field-catalog/catalog-link';
 import { BINS_FIELD_CATALOG, BINS_TABLE_LAYOUT_ID } from '@/lib/tables/field-catalog/bins';
 import {
+  INVENTORY_EVENTS_FIELD_CATALOG,
+  INVENTORY_EVENTS_TABLE_LAYOUT_ID,
+} from '@/lib/tables/field-catalog/inventory-events';
+import {
+  AUDIT_LOG_FIELD_CATALOG,
+  AUDIT_LOG_TABLE_LAYOUT_ID,
+} from '@/lib/tables/field-catalog/audit-log';
+import {
+  AUTHSESSIONS_FIELD_CATALOG,
+  AUTHSESSIONS_TABLE_LAYOUT_ID,
+} from '@/lib/tables/field-catalog/auth-sessions';
+import {
+  KIOSKDEVICES_FIELD_CATALOG,
+  KIOSKDEVICES_TABLE_LAYOUT_ID,
+} from '@/lib/tables/field-catalog/kiosk-devices';
+import {
+  STAFFDIRECTORY_FIELD_CATALOG,
+  STAFFDIRECTORY_TABLE_LAYOUT_ID,
+} from '@/lib/tables/field-catalog/staff-directory';
+import {
+  AIUSAGE_FIELD_CATALOG,
+  AIUSAGE_TABLE_LAYOUT_ID,
+} from '@/lib/tables/field-catalog/ai-usage';
+import {
+  COMPATIBILITY_FIELD_CATALOG,
+  COMPATIBILITY_TABLE_LAYOUT_ID,
+} from '@/lib/tables/field-catalog/compatibility';
+import {
   CATALOG_FIELD_CATALOG,
   CATALOG_TABLE_LAYOUT_ID,
 } from '@/lib/tables/field-catalog/catalog';
@@ -41,6 +69,14 @@ import {
   SESSIONS_FIELD_CATALOG,
   SESSIONS_TABLE_LAYOUT_ID,
 } from '@/lib/tables/field-catalog/sessions';
+import {
+  SKU_VELOCITY_FIELD_CATALOG,
+  SKU_VELOCITY_TABLE_LAYOUT_ID,
+} from '@/lib/tables/field-catalog/sku-velocity';
+import {
+  DEAD_STOCK_FIELD_CATALOG,
+  DEAD_STOCK_TABLE_LAYOUT_ID,
+} from '@/lib/tables/field-catalog/dead-stock';
 import {
   TECH_ALL_FIELD_CATALOG,
   TECH_ALL_TABLE_LAYOUT_ID,
@@ -109,6 +145,8 @@ export const SLOT_LAYOUT_TABLES: Readonly<
   // the org's shift checklist with a roster, the other a staffer's own list.
   [TASKS_TABLE_LAYOUT_ID]: { catalog: TASKS_FIELD_CATALOG, morphs: ['compound'] },
   [SESSIONS_TABLE_LAYOUT_ID]: { catalog: SESSIONS_FIELD_CATALOG, morphs: ['compound'] },
+  [SKU_VELOCITY_TABLE_LAYOUT_ID]: { catalog: SKU_VELOCITY_FIELD_CATALOG, morphs: ['compound'] },
+  [DEAD_STOCK_TABLE_LAYOUT_ID]: { catalog: DEAD_STOCK_FIELD_CATALOG, morphs: ['compound'] },
   // Review · Listing match — matching chores are facts; the strip is slots.
   [CATALOG_LINK_TABLE_LAYOUT_ID]: {
     catalog: CATALOG_LINK_FIELD_CATALOG,
@@ -124,6 +162,34 @@ export const SLOT_LAYOUT_TABLES: Readonly<
   // never another units-only header.
   [UNITS_TABLE_LAYOUT_ID]: { catalog: UNITS_FIELD_CATALOG, morphs: ['sheet'] },
   [BINS_TABLE_LAYOUT_ID]: { catalog: BINS_FIELD_CATALOG, morphs: ['sheet'] },
+  [INVENTORY_EVENTS_TABLE_LAYOUT_ID]: {
+    catalog: INVENTORY_EVENTS_FIELD_CATALOG,
+    morphs: ['compound'],
+  },
+  [AUDIT_LOG_TABLE_LAYOUT_ID]: {
+    catalog: AUDIT_LOG_FIELD_CATALOG,
+    morphs: ['compound'],
+  },
+  [AUTHSESSIONS_TABLE_LAYOUT_ID]: {
+    catalog: AUTHSESSIONS_FIELD_CATALOG,
+    morphs: ['compound'],
+  },
+  [KIOSKDEVICES_TABLE_LAYOUT_ID]: {
+    catalog: KIOSKDEVICES_FIELD_CATALOG,
+    morphs: ['compound'],
+  },
+  [STAFFDIRECTORY_TABLE_LAYOUT_ID]: {
+    catalog: STAFFDIRECTORY_FIELD_CATALOG,
+    morphs: ['compound'],
+  },
+  [AIUSAGE_TABLE_LAYOUT_ID]: {
+    catalog: AIUSAGE_FIELD_CATALOG,
+    morphs: ['compound'],
+  },
+  [COMPATIBILITY_TABLE_LAYOUT_ID]: {
+    catalog: COMPATIBILITY_FIELD_CATALOG,
+    morphs: ['compound'],
+  },
   [WARRANTY_TABLE_LAYOUT_ID]: { catalog: WARRANTY_FIELD_CATALOG, morphs: ['sheet'] },
   [CATALOG_TABLE_LAYOUT_ID]: { catalog: CATALOG_FIELD_CATALOG, morphs: ['sheet'] },
   [TECH_ALL_TABLE_LAYOUT_ID]: { catalog: TECH_ALL_FIELD_CATALOG, morphs: ['sheet'] },

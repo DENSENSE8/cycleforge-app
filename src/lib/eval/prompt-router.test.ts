@@ -8,7 +8,11 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { SHORTCUT_DISPLAY_ENGINE } from '@/lib/keyboard/shortcut-display-cohort';
-import { overlayCohortWorkspacePaths, SCAN_STATION_OVERLAY_COHORT } from '@/lib/station/scan-station-overlay-cohort';
+import {
+  overlayCohortWorkspacePaths,
+  OVERLAY_SHELL_GRAPH_SYMBOLS,
+  SCAN_STATION_OVERLAY_COHORT,
+} from '@/lib/station/scan-station-overlay-cohort';
 import { SLOT_TABLE_ENGINE } from '@/lib/tables/slot-table-cohort';
 import {
   allRouteRules,
@@ -25,10 +29,30 @@ const COHORT_SYMBOLS = new Set<string>([
   ...SHORTCUT_DISPLAY_ENGINE.graphSymbols,
   'StationComposerHost',
   'ComposerModeRow',
+  'UnshippedTable',
+  'useOrdersSpreadsheet',
+  'OrdersQueueTableRow',
+  'DataTable',
   ...SCAN_STATION_OVERLAY_COHORT.flatMap((m) => [m.exportName, ...m.graphSymbolsExtra]),
+  ...OVERLAY_SHELL_GRAPH_SYMBOLS,
+  'ItemRecordQtyBadge',
 ]);
 
 describe('prompt router (D7 item 4)', () => {
+  it('sync google sheet / triage board → slot-table, UnshippedTable, no GridRow fork', () => {
+    for (const text of ['sync google sheet', 'google sheets triage board', 'sheet import staging grid']) {
+      const r = routePrompt(text);
+      assert.equal(r.unrouted, false, text);
+      assert.equal(r.routes[0]?.cohort, 'slot-table', text);
+      for (const sym of ['UnshippedTable', 'useOrdersSpreadsheet', 'OrdersQueueTableRow']) {
+        assert.ok(r.routes[0]?.graphSymbols.includes(sym), `${text} missing ${sym}`);
+      }
+      assert.ok(r.refusals.some((x) => x.id === 'slot-table.new-grid-row'), text);
+      assert.ok(r.refusals.some((x) => x.id === 'slot-table.new-grid-columns-array'), text);
+      assert.ok(r.refusals.some((x) => x.id === 'slot-table.new-sheet-columns'), text);
+    }
+  });
+
   it('sort the image column → slot-table engine, sortable-false refuse', () => {
     const r = routePrompt('sort the image column');
     assert.equal(r.unrouted, false);
@@ -45,6 +69,19 @@ describe('prompt router (D7 item 4)', () => {
     assert.equal(r.routes[0]?.mounts.length, 0);
     assert.ok(r.routes[0]?.refuse.some((x) => x.id === 'slot-table.sortable-false-on-fact'));
     assert.ok(r.routes[0]?.refuse.some((x) => x.id === 'slot-table.new-grid-columns-array'));
+    assert.ok(r.routes[0]?.refuse.some((x) => x.id === 'slot-table.orders-row-dots-menu'));
+  });
+
+  it('three dots / row menu on orders → ordersCompoundColumnsFor, no copy-menu refuse', () => {
+    for (const text of ['three dots on the orders table', 'row ellipsis menu on to-ship']) {
+      const r = routePrompt(text);
+      assert.equal(r.unrouted, false, text);
+      assert.equal(r.routes[0]?.cohort, 'slot-table', text);
+      assert.ok(r.routes[0]?.graphSymbols.includes('ordersCompoundColumnsFor'), text);
+      assert.ok(r.routes[0]?.graphSymbols.includes('COMPOUND_COLUMN_KEYS'), text);
+      assert.ok(r.routes[0]?.graphSymbols.includes('OrdersQueueTableRow'), text);
+      assert.ok(r.refusals.some((x) => x.id === 'slot-table.orders-row-dots-menu'), text);
+    }
   });
 
   it('date in the cell / ship by → compact DateRangePickerField mount', () => {

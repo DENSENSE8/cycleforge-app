@@ -3,9 +3,10 @@
 /**
  * To-ship / shipped-archive order record plane — Center Lock L2 on the desk stage.
  *
- * Selected row opens {@link DeskStageOverlay} over the queue (table stays mounted).
- * Walk chrome (k of n, prev/next) reads the published record cursor; body topics
- * stay in {@link ShippedDetailsPanel} / {@link UnshippedDetailsPanel}.
+ * Selected row / gutter "More information" opens {@link DeskStageOverlay}
+ * `fill="stage"` over the queue (table stays mounted). Walk chrome (k of n,
+ * prev/next) reads the published record cursor; body topics stay in
+ * {@link ShippedDetailsPanel} / {@link UnshippedDetailsPanel}.
  */
 
 import dynamic from 'next/dynamic';
@@ -60,7 +61,8 @@ export function DashboardOrderDetails({
       onNext={cursor.onNext ?? undefined}
       prevDisabled={cursor.prevDisabled}
       nextDisabled={cursor.nextDisabled}
-      cardClassName="max-w-4xl"
+      fill="stage"
+      closeOnScrim={false}
       testId="desk-order-stage-overlay"
     >
       {selectedShipped ? (

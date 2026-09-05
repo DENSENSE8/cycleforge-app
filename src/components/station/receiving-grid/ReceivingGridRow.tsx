@@ -47,6 +47,8 @@ import {
 import { receivingActivityDateCell } from './receiving-grid-date';
 
 interface ReceivingGridRowProps {
+  /** Fold parent is speaking the PO/order — dash it here. */
+  quietIdentity?: boolean;
   row: ReceivingLineRow;
   index: number;
   isMobile: boolean;
@@ -101,6 +103,7 @@ interface ReceivingGridRowProps {
   rowFillHex?: string | null;
   selectGutterChrome?: GridSelectGutterChrome;
   customFieldDefs?: readonly CustomFieldDef[];
+  subtitleFieldIds?: readonly string[];
   /** Inline note edit. Absent ⇒ the note line is read-only on this surface. */
 }
 
@@ -128,10 +131,12 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
   columns = RECEIVING_COMPOUND_COLUMNS,
   clickSelect = false,
   onOpenWorkspace,
-  historyTriageMenu = false,
+  historyTriageMenu: _historyTriageMenu = false,
   rowFillHex = null,
+  quietIdentity = false,
   selectGutterChrome = 'always',
   customFieldDefs,
+  subtitleFieldIds,
 }: ReceivingGridRowProps) {
   useTimeFormat();
   const resolvePlatformMeta = usePlatformMeta();
@@ -196,6 +201,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
     stageTip: stageStamp ? receivingStageTooltip(row, stageStamp, activityAxis) : '',
     dateCell: receivingActivityDateCell(stageStamp?.instant),
     poValue,
+    quietIdentity,
     platformLabel,
     platformMeta,
     isPickup: isLocalPickupFulfillment(row),
@@ -217,6 +223,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
     selectGutterChrome,
     clickSelect,
     customFieldDefs,
+    subtitleFieldIds,
   };
 
   const selected = isOpen || isChecked;

@@ -1,0 +1,25 @@
+▶ selection status-bar hotkeys
+  ✔ fires a lettered verb when nothing suppresses it (18.707396ms)
+  ✔ does NOT fire on a chord — ⌘C must stay native copy (1.735738ms)
+  ✔ goes INERT while a scanner is armed (1.372498ms)
+  ✔ comes back the moment the scan bar unmounts (1.118281ms)
+  ✔ drops every character of a wedge payload, not just the bound ones (2.136596ms)
+✔ selection status-bar hotkeys (26.065514ms)
+▶ shortcut-display cohort (SoT = KeyboardKey inside-right overlays)
+  ✔ engine files exist (0.895636ms)
+  ✔ KeyboardKey is gray face + black letter SoT (0.325757ms)
+  ✔ status bar reveals KeyboardKey inside-right overlay after `?` (0.2998ms)
+  ✔ column action row reveals KeyboardKey inside-right overlay after `?` (0.208583ms)
+  ✔ hook owns bind + reveal; ignores key-repeat; cheat sheet yields + KeyboardKey (43.590847ms)
+  ✔ paint law documents inside-right overlay + refuse layout moves (0.171106ms)
+  ✔ shortcutEngineContractSource greps the same files the tripwire already reads (0.160155ms)
+  ✔ discover KEEP paths exist; known-debt ratchet holds (174.139394ms)
+✔ shortcut-display cohort (SoT = KeyboardKey inside-right overlays) (221.021295ms)
+ℹ tests 13
+ℹ suites 2
+ℹ pass 13
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1164.538477

@@ -33,6 +33,27 @@ export interface TableImportClassification<TField extends string> {
 }
 
 /**
+ * WHERE a staging draft's records came from.
+ *
+ * `file` is an operator-chosen CSV/TSV: it exists only in this session, so the
+ * batch commit IS the write. `google_sheets` is a human-maintained sheet the
+ * sync job already read, so every row is a TRIAGE DECISION (approve / reject)
+ * rather than a parse the operator is about to accept wholesale. The origin is
+ * what tells the shared host which of those two boards it is drawing.
+ */
+export type TableImportOrigin = 'file' | 'google_sheets';
+
+/**
+ * A per-row operator decision on a human-authored source.
+ *
+ * Deliberately NOT a third triage status: `classify` still owns Ready vs
+ * Action-required (what the DATA says), while this owns what the OPERATOR
+ * said about the row. `undefined` — absent from the map — is undecided, which
+ * is what makes unapprove a real state rather than a silent re-reject.
+ */
+export type TableImportRowDecision = 'approved' | 'rejected';
+
+/**
  * Everything the shared staging mechanism needs to serve one `entityFamily`.
  *
  * `TRowView` is the family's grid row shape — the staging table definition's

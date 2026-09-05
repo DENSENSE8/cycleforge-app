@@ -160,28 +160,6 @@ export function isPinned(href: string): boolean {
   return getSettings().pinned.some((p) => p.href === href);
 }
 
-/** Path only — pins may keep a query; the leaf is the page. */
-export function hrefPathname(href: string): string {
-  try {
-    return new URL(href, 'http://local').pathname;
-  } catch {
-    const q = href.indexOf('?');
-    return q >= 0 ? href.slice(0, q) : href;
-  }
-}
-
-/**
- * True when Pinned already paints this page. Catalog drill parents
- * (Scan Stations / Desks) must stay idle then — one current-page fill.
- */
-export function pinsCoverHref(
-  href: string,
-  pins: readonly { href: string }[],
-): boolean {
-  const path = hrefPathname(href);
-  return pins.some((p) => hrefPathname(p.href) === path);
-}
-
 export function findPinByHref(href: string): PinnedPage | null {
   return getSettings().pinned.find((p) => p.href === href) ?? null;
 }

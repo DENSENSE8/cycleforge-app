@@ -151,6 +151,10 @@ const ORDER_SERIALS_CTE = `
       stn.is_delivered,
       stn.carrier,
       to_char(o.created_at, 'YYYY-MM-DD HH24:MI:SS') AS created_at,
+      -- The channel purchase instant; created_at is when we imported it. Both
+      -- readers select this (see /api/orders) so the DATES cell reads the same
+      -- on every lane. Grouped by o.id, so no GROUP BY entry is needed.
+      to_char(o.order_date, 'YYYY-MM-DD HH24:MI:SS') AS order_date,
       'order'::text AS row_source,
       NULL::text AS exception_reason,
       NULL::text AS exception_status,

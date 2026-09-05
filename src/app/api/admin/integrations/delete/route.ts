@@ -12,8 +12,9 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { deleteIntegrationCredentials, type IntegrationProvider } from '@/lib/integrations/credentials';
 
 const PROVIDERS = [
-  'ebay', 'zoho', 'ecwid', 'square', 'ups', 'fedex', 'usps', 'zendesk',
+  'ebay', 'zoho', 'ecwid', 'square', 'shopify', 'ups', 'fedex', 'usps', 'zendesk',
   'google_sheets', 'google_drive', 'ably', 'ollama', 'stripe',
+  'nextiva', 'shipstation', 'gmail', 'ai_gateway', 'openai', 'anthropic', 'grok',
 ] as const;
 
 const Body = z.object({

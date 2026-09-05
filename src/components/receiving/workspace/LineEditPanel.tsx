@@ -119,9 +119,11 @@ import {
   useLineCollapse,
 } from '@/components/station/collapse';
 import {
+  StationAskPane,
   StationTicketPane,
   useStationComposerMode,
 } from '@/components/composer';
+import { resetStationAskThread } from '@/components/assistant/useAssistantChat';
 
 export function LineEditPanel({
   row,
@@ -166,6 +168,7 @@ export function LineEditPanel({
   const lineCollapse = useLineCollapse(row.id ?? null);
   const { mode: composerMode, setMode: setComposerMode } = useStationComposerMode();
   const ticketMode = composerMode === 'ticket';
+  const askMode = composerMode === 'ask';
   const [ticketClaimMode, setTicketClaimMode] = useState<'create' | 'link'>('link');
 
   /*
@@ -188,6 +191,7 @@ export function LineEditPanel({
   // New line → sticker hidden again (the Label row starts shut).
   useEffect(() => {
     bands.close('label');
+    resetStationAskThread();
     // eslint-disable-next-line react-hooks/exhaustive-deps -- close is stable enough; only the line flips
   }, [row.id]);
 
@@ -532,6 +536,12 @@ export function LineEditPanel({
     prevCockpitCartonRef.current = cartonKey;
 
     if (cockpitClosedForCartonRef.current === cartonKey) return;
+    // Ask owns the frame while the composer is in Ask. The AI open already
+    // yielded Displays (yieldUnboxStationPushesOnAssistantOpen); re-opening
+    // the rail here dispatches dock-close and throws the operator — or the
+    // phone typing into the companion composer — out of Ask mid-sentence.
+    // Displays resume on their own when Ask ends (mode is a dep).
+    if (composerMode === 'ask') return;
     if (!railLeaf) return; // reference-less step — its reference is the work plane
     if (shouldCockpitYieldToDisplaysIndex(requestedSideTab, cartonChanged)) return;
 
@@ -578,6 +588,7 @@ export function LineEditPanel({
     hasTicketId,
     requestedSideTab,
     setComposerMode,
+    composerMode,
   ]);
 
   const onLinkageActionChange = useCallback(
@@ -1054,7 +1065,7 @@ export function LineEditPanel({
                 reserveIdentityClearance={false}
                 // Flat data floor — no vertical air between centre surfaces.
                 bodyGap="none"
-                bodyFill={ticketMode}
+                bodyFill={ticketMode || askMode}
                 // `tabs` is deliberately EMPTY: the strip moved to the
                 // right-edge Displays column, so the carton owns the centre.
                 feedback={
@@ -1223,7 +1234,9 @@ export function LineEditPanel({
                   editors for one message. The rail's Ticket leaf still carries
                   the full claim form for the floor — see CLAIM_RENDERS_IN_BOTH.
                 */}
-                {hasTicketId ? (
+                {askMode ? (
+                  <StationAskPane />
+                ) : hasTicketId ? (
                   <StationTicketPane
                     row={row}
                     ticketId={c.providerTicketId}

@@ -51,10 +51,6 @@ function amountValue(record: QueueRowRecord): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-function imageUrl(record: QueueRowRecord): string {
-  return String(record.catalog_image_url ?? '').trim();
-}
-
 function scannedOutMs(record: QueueRowRecord): number | null {
   const t = Date.parse(String(record.ship_confirmed_at ?? ''));
   return Number.isFinite(t) ? t : null;
@@ -103,6 +99,28 @@ function daysLateValue(record: ShippedOrder, dir: QueueDisplaySortDir): number {
 }
 
 /**
+ * URGENT rides above every other order (operator 2026-09-04: "make urgent rows
+ * sort to the top").
+ *
+ * `orders.is_urgent` is the operator's expedite toggle, and it is a claim about
+ * WHEN this row must be worked — which is the same question every sort on this
+ * desk answers, only louder. So it is not one more sort key competing with the
+ * others: it is a RANK applied before them, exactly like the carrier / channel
+ * pin below, and for the same stated reason — flipping the direction must never
+ * bury the rows an operator marked as the ones that cannot wait.
+ *
+ * The industry pattern this follows is priority ALLOCATION rather than a
+ * decoration: a rush order is ranked ahead in picking and packing, not merely
+ * tinted (Sellercloud rush services, Zentail / ecomdash warehouse priority).
+ *
+ * Ties inside the urgent set fall through to the normal comparison, so an
+ * urgent block is itself ordered by whatever the operator sorted on.
+ */
+export function queueUrgentRank(record: QueueRowRecord): number {
+  return record.is_urgent ? 0 : 1;
+}
+
+/**
  * Compare two queue rows for a column sort. Returns negative if `a` should
  * sort before `b` under the given direction (ASC: smaller first).
  */
@@ -116,6 +134,15 @@ export function compareQueueColumnRows(
   const sign = dir === 'asc' ? 1 : -1;
   const ra = a as QueueRowRecord;
   const rb = b as QueueRowRecord;
+
+  // Before the column, and never signed by `dir` — see `queueUrgentRank`.
+  // Working queues only: on the Shipped lane the work is done, and pinning
+  // there would reorder a history for no one.
+  if (queueMode === 'fulfillment') {
+    const urgent = queueUrgentRank(ra) - queueUrgentRank(rb);
+    if (urgent !== 0) return urgent;
+  }
+
   let primary = 0;
 
   switch (column) {
@@ -178,14 +205,6 @@ export function compareQueueColumnRows(
       const blank = compareBlankLast(na == null, nb == null);
       if (blank !== null) return blank;
       primary = (na as number) - (nb as number);
-      break;
-    }
-    case 'image': {
-      const ua = imageUrl(ra);
-      const ub = imageUrl(rb);
-      const blank = compareBlankLast(!ua, !ub);
-      if (blank !== null) return blank;
-      primary = ua.localeCompare(ub, undefined, { sensitivity: 'base' });
       break;
     }
     case 'scanned_out': {

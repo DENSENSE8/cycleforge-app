@@ -10,6 +10,7 @@ import { TOKENS } from './DesignSystem';
 import { ReceivingPhoneBridgeMount } from '@/components/mobile/receiving/ReceivingPhoneBridgeMount';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { Button } from '@/design-system/primitives';
+import { cn } from '@/utils/_cn';
 
 /**
  * Phone fallback when a page subtree throws. Without this, a render crash bubbles
@@ -70,10 +71,26 @@ const OWN_TOP_BAR_PREFIXES = [
 const ownsItsOwnTopBar = (pathname: string): boolean =>
   OWN_TOP_BAR_PREFIXES.some((p) => pathname === p || pathname.startsWith(p));
 
+/**
+ * Routes whose header FLOATS over the page instead of stacking above it.
+ *
+ * An ALLOWLIST, unlike the header denylist above, and for the opposite reason:
+ * failing open here would slide every mobile screen's first row under the bar
+ * at once. A route belongs on this list when its content is bottom-anchored —
+ * a station tape grows upward off the capture sheet, so its top edge is exactly
+ * where a translucent bar wants something to read through it, and there is no
+ * first row to hide when the list is short.
+ */
+const OVERLAY_HEADER_PREFIXES = ['/m/scan-out'];
+
+const wantsOverlayHeader = (pathname: string): boolean =>
+  OVERLAY_HEADER_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+
 export const RedesignedMobileShell = ({ children }: { children: React.ReactNode }) => {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const showHeader = !!pathname && !ownsItsOwnTopBar(pathname);
+  const overlayHeader = !!pathname && wantsOverlayHeader(pathname);
   // True only while the document's first page is mounting (SSR + hydration).
   // Read during render, flipped after — every later `key={pathname}` mount is a
   // client navigation and gets the crossfade.
@@ -87,9 +104,17 @@ export const RedesignedMobileShell = ({ children }: { children: React.ReactNode 
     // CTA lives in the header, the surface it re-arms is in `children`.
     <MobileScanProvider>
       <div
-        className={`flex h-full min-h-0 flex-col overflow-hidden font-sans antialiased safe-area-padding ${TOKENS.colors.background}`}
+        className={cn(
+          'flex h-full min-h-0 flex-col overflow-hidden font-sans antialiased safe-area-padding',
+          TOKENS.colors.background,
+          // The overlay header is positioned against THIS box, so it needs a
+          // containing block. Harmless when no route wants one.
+          'relative',
+        )}
       >
-        {showHeader && <MobileTopBar onMenu={() => setSidebarOpen(true)} />}
+        {showHeader && (
+          <MobileTopBar onMenu={() => setSidebarOpen(true)} overlay={overlayHeader} />
+        )}
 
         <main className="relative min-h-0 flex-1 touch-pan-y overflow-x-hidden overflow-y-auto overscroll-x-none overscroll-contain">
           <AnimatePresence mode="wait">

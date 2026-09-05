@@ -52,14 +52,16 @@ describe('orders catalog', () => {
     }
   });
 
-  it('product default parses against the catalog (picked in status:1, qty · condition · item # · notes binding)', () => {
+  it('product default parses against the catalog (picked in status:1, qty · amount · condition · item # · notes binding)', () => {
     const parsed = parseSlotLayout(ORDERS_PRODUCT_LAYOUT, ORDERS_FIELD_CATALOG);
     assert.equal(parsed.morph, 'compound');
     assert.deepEqual(parsed.statusBindings, [{ fieldId: 'orders.picked' }]);
-    // Operator lock 2026-08-30, extended 2026-08-31 with the item number:
-    // the default under-title line, IN THIS ORDER.
+    // Operator lock 2026-08-30, extended 2026-08-31 with the item number and
+    // 2026-09-04 with the amount (which gave up its column for this seat, and
+    // sits with the qty as the line-item pair): the line, IN THIS ORDER.
     assert.deepEqual(parsed.subtitleBindings, [
       { fieldId: 'orders.qty' },
+      { fieldId: 'orders.amount' },
       { fieldId: 'orders.condition' },
       { fieldId: 'orders.item_number' },
       { fieldId: 'orders.notes' },
@@ -227,6 +229,11 @@ describe('resolveOrdersSlotValue — value fields', () => {
       kind: 'value',
       text: null,
     });
+    // Absent is not zero: `$0.00` on an unpriced row is a figure nobody charged.
+    assert.deepEqual(resolveOrdersSlotValue(row({ sale_amount: null }), 'orders.amount'), {
+      kind: 'value',
+      text: null,
+    });
   });
 
   it('unknown field id resolves null, never throws', () => {
@@ -337,6 +344,191 @@ describe('ordersSubtitleParts', () => {
       text: '--',
       toneClass: 'text-text-faint',
       key: 'orders.condition',
+      // The placeholder keeps the painted face's reservation — an empty
+      // condition that shrank to two characters would slide every fact after
+      // it left on exactly the rows that have least to say.
+      widthCh: 5,
     });
   });
+
+  it('paints the AMOUNT slot even when the row has no price and nothing can edit it', () => {
+    const parts = ordersSubtitleParts(row({ sale_amount: null }), ['orders.amount']);
+    // The currency mark stays: `$-` is an empty PRICE, `--` is an empty
+    // anything (operator 2026-09-04).
+    assert.deepEqual(parts, [
+      { text: '$-', toneClass: 'font-semibold text-text-success', key: 'orders.amount', widthCh: 8 },
+    ]);
+  });
+
+  it('paints a present amount as formatted money in its reserved box', () => {
+    const parts = ordersSubtitleParts(row({ sale_amount: '49.99' }), ['orders.amount']);
+    assert.equal(parts[0].text, '$49.99');
+    assert.equal(parts[0].widthCh, 8);
+    // Same weight as the qty it pairs with — not a footnote to it — and the
+    // one hue this line spends on money.
+    assert.equal(parts[0].toneClass, 'font-semibold text-text-success');
+  });
 });
+
+describe('wave 6 — the seller facts', () => {
+  const ids = ORDERS_FIELD_CATALOG.map((f) => f.id);
+
+  it('names the facts the feed returns on BOTH readers', () => {
+    for (const id of [
+      'orders.sku',
+      'orders.tracking',
+      'orders.carrier',
+      'orders.delivery_status',
+      'orders.delivery_event',
+      'orders.exception',
+      'orders.platform',
+      'orders.flag',
+      'orders.note_count',
+      'orders.urgent',
+      'orders.stock',
+      'orders.serial',
+      'orders.age',
+    ]) {
+      assert.ok(ids.includes(id), `${id} is missing from the catalog`);
+    }
+  });
+
+  it('REFUSES the one-reader facts — they would be lane-dependent, silently', () => {
+    // `orders-queries.ts` never joins `sku_catalog` and carries no pack
+    // location, tech-scan or customer handle, so binding any of these would
+    // paint on the Pending queue and go blank on every shipped lane with no
+    // error anywhere. The catalog docblock names the fix for each.
+    for (const refused of [
+      'orders.catalog_image_url',
+      'orders.image',
+      'orders.catalog_category',
+      'orders.pack_location',
+      'orders.tech_scan',
+      'orders.customer',
+      'orders.buyer',
+      'orders.label_printed',
+    ]) {
+      assert.equal(ids.includes(refused), false, `${refused} must stay refused`);
+    }
+  });
+
+  it('refuses a CURRENCY track — it is how Amount prints, not a column', () => {
+    assert.equal(ids.includes('orders.currency'), false);
+  });
+
+  it('refuses a clock-derived lateness fact — the surface owns nowMs', () => {
+    for (const id of ['orders.late', 'orders.lateness', 'orders.days_late', 'orders.age_days']) {
+      assert.equal(ids.includes(id), false);
+    }
+  });
+
+  it('invents NO display type — every field uses geometry that already exists', () => {
+    const known = new Set([
+      'id', 'text', 'number', 'tag', 'date', 'person', 'stage_event', 'money', 'note', 'tracking',
+    ]);
+    for (const field of ORDERS_FIELD_CATALOG) {
+      assert.ok(known.has(field.displayType), `${field.id}: ${field.displayType}`);
+    }
+  });
+
+  it('gives every new fact a real slot, never an empty slotKinds', () => {
+    for (const field of ORDERS_FIELD_CATALOG) {
+      assert.ok(field.slotKinds.length > 0, field.id);
+    }
+  });
+
+  it('keeps ids unique', () => {
+    assert.equal(new Set(ids).size, ids.length);
+  });
+});
+
+describe('wave 6 — the resolvers behind those facts', () => {
+  const ROW = {
+    order_id: '09-69683',
+    sku: 'BOSE-WAVE-IV',
+    tracking_number: '1Z999AA10123456784',
+    carrier: 'UPS',
+    latest_status_label: 'Out for delivery',
+    latest_status_code: 'OFD',
+    account_source: 'ebay_main',
+    row_flag: { flag: 'damaged', by: 'Tuan', at: '2026-09-01' },
+    note_count: 3,
+    is_urgent: true,
+    is_out_of_stock: false,
+    serial_number: '9M52B2C4',
+  } as unknown as Parameters<typeof resolveOrdersSlotValue>[0];
+
+  const text = (fieldId: string, row = ROW) => {
+    const value = resolveOrdersSlotValue(row, fieldId);
+    return value?.kind === 'value' ? value.text : null;
+  };
+
+  it('reads the plain facts', () => {
+    assert.equal(text('orders.sku'), 'BOSE-WAVE-IV');
+    assert.equal(text('orders.carrier'), 'UPS');
+    assert.equal(text('orders.platform'), 'ebay_main');
+    assert.equal(text('orders.serial'), '9M52B2C4');
+    assert.equal(text('orders.tracking'), '1Z999AA10123456784');
+  });
+
+  it('takes the carrier’s WORDS, falling back to its code', () => {
+    assert.equal(text('orders.delivery_status'), 'Out for delivery');
+    const noLabel = { ...ROW, latest_status_label: null } as typeof ROW;
+    assert.equal(text('orders.delivery_status', noLabel), 'OFD');
+  });
+
+  it('pulls the flag out of the row_flag OBJECT, not the object itself', () => {
+    assert.equal(text('orders.flag'), 'damaged');
+  });
+
+  it('prints a note count only when there is one — zero is absence, not a value', () => {
+    assert.equal(text('orders.note_count'), '3');
+    assert.equal(text('orders.note_count', { ...ROW, note_count: 0 } as typeof ROW), null);
+  });
+
+  it('paints Urgent one-sidedly — a column of "No" is a column of noise', () => {
+    assert.equal(text('orders.urgent'), 'Urgent');
+    assert.equal(text('orders.urgent', { ...ROW, is_urgent: false } as typeof ROW), null);
+  });
+
+  it('answers stock BOTH ways, because "In stock" is the thing being asked', () => {
+    assert.equal(text('orders.stock'), 'In stock');
+    assert.equal(text('orders.stock', { ...ROW, is_out_of_stock: true } as typeof ROW), 'Out');
+  });
+
+  it('reads an ABSENT boolean as a dash, never as a confident No', () => {
+    // The row not carrying the flag and the flag being false are different
+    // answers, and only one of them is ours to give.
+    assert.equal(text('orders.stock', { ...ROW, is_out_of_stock: null } as typeof ROW), null);
+    assert.equal(text('orders.exception', ROW), null);
+    assert.equal(
+      text('orders.exception', { ...ROW, has_exception: true } as typeof ROW),
+      'Exception',
+    );
+  });
+
+  it('resolves EVERY catalog field rather than falling through to null', () => {
+    // The law this file exists for: a new bindable fact needs a resolver case,
+    // never a new column file. A field with no case paints an empty track.
+    const missing = ORDERS_FIELD_CATALOG.filter(
+      (f) => resolveOrdersSlotValue(ROW, f.id) === null && !UNRESOLVED_ON_THIS_ROW.has(f.id),
+    ).map((f) => f.id);
+    assert.deepEqual(missing, [], 'these fields have no resolver arm');
+  });
+});
+
+/** Fields whose fixture value is legitimately absent above (blank ⇒ null). */
+const UNRESOLVED_ON_THIS_ROW = new Set([
+  'orders.picked',
+  'orders.packed',
+  'orders.scanned_out',
+  'orders.item_number',
+  'orders.qty',
+  'orders.condition',
+  'orders.notes',
+  'orders.coverage',
+  'orders.amount',
+  'orders.delivery_event',
+  'orders.exception',
+  'orders.age',
+]);

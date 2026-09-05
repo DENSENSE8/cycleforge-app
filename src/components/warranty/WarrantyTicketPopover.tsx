@@ -1,14 +1,15 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ExternalLink, Link2, Loader2, MessageSquare, Search, Send, Unlink, X } from '@/components/Icons';
+import { ExternalLink, Link2, Loader2, MessageSquare, Send, Unlink, X } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { TicketPickRow } from '@/components/ui/TicketPickRow';
+import { TicketComposer } from '@/components/composer/TicketComposer';
 import { cn } from '@/utils/_cn';
 import { toast } from '@/lib/toast';
-import { Panel, Button, IconButton } from '@/design-system/primitives';
-import { AnchoredLayer } from '@/design-system/primitives/AnchoredLayer';
+import { Button, IconButton, Popover, SearchField } from '@/design-system/primitives';
 import { requestConfirm } from '@/design-system/components/confirm';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { useWarrantyClaim } from '@/hooks/useWarrantyClaims';
 import { useWarrantyMutations } from '@/hooks/useWarrantyMutations';
 import {
@@ -25,15 +26,38 @@ import {
 } from '@/lib/warranty/zendesk-format';
 import { formatDateTimePST } from '@/utils/date';
 import { renderInlineMarkdown } from '@/lib/support/markdown';
-import { focusRing } from '@/design-system/tokens/focus-ring';
-
 
 /**
- * Single icon-button entry point for a claim's support thread. Click → anchored
- * popover with the merged history (internal claim events + Zendesk comments,
- * chronological), a reply composer, create-ticket when none is linked yet, and
- * a resolve action. Comments are fetched live from Zendesk when the popover
- * opens (read-time sync; Zendesk owns the conversation).
+ * Layers TicketComposer opens from inside this popover — the `+` drill menu
+ * (a sibling Popover), the media-library picker (a modal RightPaneOverlay),
+ * the confirm AlertDialog behind Unlink, Radix poppers. They portal to <body>,
+ * so AnchoredLayer's outside-click test would read a click inside them as
+ * "outside" and close the thread mid-action — unmounting the composer and the
+ * picker it opened. Our own panel is excluded by `contains()` before this
+ * selector is consulted. `aria-modal="true"` keeps the non-modal desk rail this
+ * button sits in (RightRailHost stamps it only when modal) out of the match.
+ */
+const THREAD_POPOVER_IGNORE_CLICK_SELECTOR = [
+  '[data-testid="composer-drill-menu"]',
+  '[role="dialog"][aria-modal="true"]',
+  '[role="alertdialog"]',
+  '[data-radix-popper-content-wrapper]',
+].join(', ');
+
+/**
+ * Single icon-button entry point for a claim's support thread. Click → house
+ * Popover with the merged history (internal claim events + Zendesk comments,
+ * chronological), TicketComposer for the reply, create / link-existing when no
+ * ticket is linked yet, and a resolve action. Comments are fetched live from
+ * Zendesk when the popover opens (read-time sync; Zendesk owns the thread).
+ *
+ * Until 2026-09-04 this file carried its own reply mouth — a raw textarea with
+ * a ⌘Enter send and a "Customer-visible" checkbox — inside a hand-assembled
+ * Panel with a dialog role on AnchoredLayer. TicketComposer is the ONE helpdesk
+ * mouth (Internal|Public on the action bar, Cc on Public, `+` photo attach, a
+ * labelled commit). Its send goes through the helpdesk chokepoint, which echoes
+ * the reply onto the claim timeline (`ZENDESK_REPLY`) exactly as the
+ * claim-scoped route did, so nothing the claim recorded before is lost.
  */
 export function WarrantyTicketButton({
   claimId,
@@ -63,7 +87,8 @@ export function WarrantyTicketButton({
           }}
           icon={<MessageSquare className="h-4 w-4" />}
           className={cn(
-            'rounded-md p-1.5 transition',
+            'p-1.5 transition',
+            cornerClass('row'),
             linked
               ? 'text-text-accent hover:bg-surface-accent'
               : 'text-text-faint hover:bg-surface-sunken hover:text-text-soft',
@@ -71,16 +96,20 @@ export function WarrantyTicketButton({
           )}
         />
       </HoverTooltip>
-      <AnchoredLayer
+      <Popover
         open={open}
         onClose={() => setOpen(false)}
         anchorRef={buttonRef}
         placement="bottom-end"
         level="panelPopover"
         gap={6}
+        ignoreClickSelector={THREAD_POPOVER_IGNORE_CLICK_SELECTOR}
+        role="dialog"
+        aria-label="Support ticket thread"
+        className="flex max-h-[480px] w-[380px] max-w-[calc(100vw-24px)] flex-col"
       >
         <WarrantyTicketPanel claimId={claimId} />
-      </AnchoredLayer>
+      </Popover>
     </>
   );
 }
@@ -89,7 +118,7 @@ function TimelineRow({ entry }: { entry: WarrantyTimelineEntry }) {
   if (entry.kind === 'event') {
     return (
       <li className="flex items-start gap-2 px-1 text-role-caption text-text-faint">
-        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-surface-strong" />
+        <span className={cn('mt-1.5 h-1.5 w-1.5 shrink-0 bg-surface-strong', cornerClass('pill'))} />
         <span>
           <span className="font-medium text-text-soft">{warrantyEventLabel(entry.event)}</span>
           <span className="ml-2">{formatDateTimePST(entry.createdAt)}</span>
@@ -101,8 +130,11 @@ function TimelineRow({ entry }: { entry: WarrantyTimelineEntry }) {
   return (
     <li
       className={cn(
-        'rounded-lg border px-3 py-2',
-        comment.public ? 'border-border-accent bg-surface-accent/60' : 'border-border-warning bg-surface-warning/60',
+        'border px-3 py-2',
+        cornerClass('control'),
+        comment.public
+          ? 'border-border-accent bg-surface-accent/60'
+          : 'border-border-warning bg-surface-warning/60',
       )}
     >
       <div className="mb-1 flex items-center justify-between gap-2 text-role-micro uppercase tracking-wide">
@@ -120,29 +152,23 @@ function TimelineRow({ entry }: { entry: WarrantyTimelineEntry }) {
 
 function WarrantyTicketPanel({ claimId }: { claimId: number }) {
   const { data: claim, isLoading: claimLoading } = useWarrantyClaim(claimId);
-  const linked = claim?.zendeskTicketId != null;
+  const ticketId = claim?.zendeskTicketId ?? null;
+  const linked = ticketId != null;
 
   const ticketQuery = useWarrantyTicket(claimId, linked);
   const commentsQuery = useWarrantyTicketComments(claimId, linked);
-  const { createTicket, reply, linkExisting, unlink } = useWarrantyZendeskMutations(claimId);
+  const { createTicket, linkExisting, unlink, invalidate } = useWarrantyZendeskMutations(claimId);
   const { lifecycle } = useWarrantyMutations();
-
-  const [draft, setDraft] = useState('');
-  const [isPublic, setIsPublic] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Link-an-existing-ticket picker (only relevant while unlinked). `linkQuery`
-  // doubles as the search box and the manual "#1234" id entry — the server
-  // resolves a bare id to a direct lookup, so typing one behaves exactly like
-  // picking it from the recent list. Debounced so each keystroke isn't a fetch.
+  // Link-an-existing-ticket picker (only relevant while unlinked). The one
+  // search box doubles as the manual ticket-number entry — the server resolves
+  // a bare id to a direct lookup, so typing one behaves exactly like picking it
+  // from the recent list. SearchField owns the debounce, so `linkQuery` is
+  // already the settled query.
   const [linkOpen, setLinkOpen] = useState(false);
   const [linkQuery, setLinkQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
-  useEffect(() => {
-    const t = setTimeout(() => setDebouncedQuery(linkQuery), 250);
-    return () => clearTimeout(t);
-  }, [linkQuery]);
-  const candidatesQuery = useWarrantyTicketCandidates(claimId, debouncedQuery, linkOpen && !linked);
+  const candidatesQuery = useWarrantyTicketCandidates(claimId, linkQuery, linkOpen && !linked);
 
   const timeline = useMemo(
     () => mergeWarrantyTimeline(claim?.events ?? [], commentsQuery.data ?? []),
@@ -161,39 +187,41 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
   const createDraft =
     createTicket.error instanceof WarrantyZendeskDraftError ? createTicket.error : null;
 
-  const sendReply = () => {
-    const body = draft.trim();
-    if (!body || reply.isPending) return;
-    reply.mutate({ body, isPublic }, { onSuccess: () => setDraft('') });
-  };
-
   return (
-    <Panel radius="xl" padding="none" elevation="md" className="flex max-h-[480px] w-[380px] max-w-[calc(100vw-24px)] flex-col overflow-hidden" role="dialog"
-      aria-label="Support ticket thread">
+    <>
       <header className="flex items-center justify-between gap-2 border-b border-border-hairline px-3 py-2">
         <div className="flex min-w-0 items-center gap-2">
           <MessageSquare className="h-4 w-4 shrink-0 text-text-accent" />
           <div className="min-w-0">
             <div className="truncate text-role-data font-semibold text-text-default">
-              {linked ? `Ticket #${claim?.zendeskTicketId}` : 'Support thread'}
+              {linked ? `Ticket #${ticketId}` : 'Support thread'}
             </div>
             <div className="truncate font-mono text-role-micro text-text-faint">{claim?.claimNumber}</div>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
           {ticketQuery.data?.ticket && (
-            <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-medium uppercase tracking-wide text-text-soft">
+            <span
+              className={cn(
+                'bg-surface-sunken px-2 py-0.5 text-role-micro font-medium uppercase tracking-wide text-text-soft',
+                cornerClass('pill'),
+              )}
+            >
               {ticketQuery.data.ticket.status}
             </span>
           )}
           {ticketQuery.data?.ticketUrl && (
             <HoverTooltip label="Open in helpdesk" asChild>
+              {/* ds-raw-anchor — a link to the helpdesk record (middle-click / copy link), not a button. */}
               <a
                 href={ticketQuery.data.ticketUrl}
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Open in helpdesk"
-                className="rounded-md p-1 text-text-faint transition hover:bg-surface-sunken hover:text-text-muted"
+                className={cn(
+                  'ds-raw-anchor p-1 text-text-faint transition hover:bg-surface-sunken hover:text-text-muted',
+                  cornerClass('row'),
+                )}
               >
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
@@ -201,44 +229,45 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
           )}
           {linked && (
             <HoverTooltip label="Unlink ticket (it stays in the helpdesk)" asChild>
-            <IconButton
-              type="button"
-              disabled={unlink.isPending}
-              ariaLabel="Unlink ticket"
-              onClick={async () => {
-                const ticketId = claim?.zendeskTicketId;
-                if (ticketId == null) return;
-                const ok = await requestConfirm({
-                  description: `Unlink ticket #${ticketId} from this claim? The ticket stays in the helpdesk — only the claim link is removed.`,
-                  tone: 'danger',
-                  confirmLabel: 'Unlink',
-                });
-                if (!ok) return;
-                unlink.mutate(ticketId, {
-                  onSuccess: () => toast.success(`Unlinked ticket #${ticketId}`),
-                  onError: (e) =>
-                    toast.error(e instanceof Error ? e.message : 'Unlink failed'),
-                });
-              }}
-              icon={
-                unlink.isPending ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Unlink className="h-3.5 w-3.5" />
-                )
-              }
-              className="rounded-md p-1 text-text-faint transition hover:bg-surface-danger hover:text-text-danger disabled:opacity-50"
-            />
+              <IconButton
+                type="button"
+                disabled={unlink.isPending}
+                ariaLabel="Unlink ticket"
+                onClick={async () => {
+                  if (ticketId == null) return;
+                  const ok = await requestConfirm({
+                    description: `Unlink ticket #${ticketId} from this claim? The ticket stays in the helpdesk — only the claim link is removed.`,
+                    tone: 'danger',
+                    confirmLabel: 'Unlink',
+                  });
+                  if (!ok) return;
+                  unlink.mutate(ticketId, {
+                    onSuccess: () => toast.success(`Unlinked ticket #${ticketId}`),
+                    onError: (e) =>
+                      toast.error(e instanceof Error ? e.message : 'Unlink failed'),
+                  });
+                }}
+                icon={
+                  unlink.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Unlink className="h-3.5 w-3.5" />
+                  )
+                }
+                className={cn(
+                  'p-1 text-text-faint transition hover:bg-surface-danger hover:text-text-danger disabled:opacity-50',
+                  cornerClass('row'),
+                )}
+              />
             </HoverTooltip>
           )}
           {canResolve && (
             <Button
               type="button"
-              variant="primary"
+              variant="success"
               size="sm"
               disabled={lifecycle.isPending}
               onClick={() => lifecycle.mutate({ id: claimId, action: 'close' })}
-              className="h-auto rounded-md bg-fill-success px-2 py-1 text-role-caption font-medium text-white hover:bg-fill-success/90"
             >
               {lifecycle.isPending ? 'Resolving…' : 'Resolve'}
             </Button>
@@ -269,7 +298,7 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
               </ul>
             )}
             {commentsQuery.isError && (
-              <p className="rounded-md bg-surface-danger px-2 py-1.5 text-role-caption text-text-danger">
+              <p className={cn('bg-surface-danger px-2 py-1.5 text-role-caption text-text-danger', cornerClass('row'))}>
                 Ticket history unavailable:{' '}
                 {commentsQuery.error instanceof Error ? commentsQuery.error.message : 'request failed'}
               </p>
@@ -277,13 +306,13 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
           </div>
 
           <footer className="border-t border-border-hairline bg-surface-canvas/60 px-3 py-2.5">
-            {!linked ? (
+            {ticketId == null ? (
               <div className="space-y-2">
                 <p className="text-role-caption text-text-soft">
                   No support ticket yet — create one from this claim to start the support thread.
                 </p>
                 {createDraft && (
-                  <div className="rounded-md border border-border-warning bg-surface-warning p-2">
+                  <div className={cn('border border-border-warning bg-surface-warning p-2', cornerClass('row'))}>
                     <p className="mb-1 text-role-caption font-medium text-text-warning">
                       {createDraft.message} — copy the draft and file it manually:
                     </p>
@@ -311,8 +340,8 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
                 </Button>
 
                 {/* Link an EXISTING ticket — for claims whose ticket was filed
-                    by email (the common case). Search, or type a ticket # by
-                    hand; the manual id resolves identically to a list pick. */}
+                    by email (the common case). Search, or type a ticket number
+                    by hand; the manual id resolves identically to a list pick. */}
                 {!linkOpen ? (
                   <Button
                     type="button"
@@ -320,12 +349,15 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
                     size="sm"
                     onClick={() => setLinkOpen(true)}
                     icon={<Link2 className="h-3.5 w-3.5" />}
-                    className="h-auto w-full justify-center gap-1.5 rounded-lg border border-border-soft px-3 py-1.5 text-role-caption font-medium text-text-muted hover:bg-surface-hover"
+                    className={cn(
+                      'h-auto w-full justify-center gap-1.5 border border-border-soft px-3 py-1.5 text-role-caption font-medium text-text-muted hover:bg-surface-hover',
+                      cornerClass('control'),
+                    )}
                   >
                     Link an existing ticket
                   </Button>
                 ) : (
-                  <div className="space-y-2 rounded-lg border border-border-soft p-2">
+                  <div className={cn('space-y-2 border border-border-soft p-2', cornerClass('control'))}>
                     <div className="flex items-center justify-between">
                       <span className="text-role-caption font-semibold text-text-muted">Link existing ticket</span>
                       <IconButton
@@ -336,19 +368,21 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
                         }}
                         ariaLabel="Cancel linking"
                         icon={<X className="h-3.5 w-3.5" />}
-                        className="rounded p-0.5 text-text-faint transition hover:bg-surface-sunken hover:text-text-muted"
+                        className={cn(
+                          'p-0.5 text-text-faint transition hover:bg-surface-sunken hover:text-text-muted',
+                          cornerClass('chip'),
+                        )}
                       />
                     </div>
-                    <div className="relative">
-                      <Search className="pointer-events-none absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-text-faint" />
-                      <input
-                        value={linkQuery}
-                        onChange={(e) => setLinkQuery(e.target.value)}
-                        placeholder="Search subject or type ticket # (e.g. 12345)"
-                        autoFocus
-                        className={cn("w-full rounded-md border border-border-soft py-1.5 pl-7 pr-2 text-role-caption", focusRing('field', 'accent'))}
-                      />
-                    </div>
+                    <SearchField
+                      value={linkQuery}
+                      onChange={setLinkQuery}
+                      placeholder="Search subject or type a ticket number"
+                      autoFocus
+                      tone="neutral"
+                      debounceMs={250}
+                      isSearching={candidatesQuery.isFetching}
+                    />
                     {linkExisting.isError && (
                       <p className="text-role-caption text-text-danger">
                         {linkExisting.error instanceof Error ? linkExisting.error.message : 'Link failed.'}
@@ -365,7 +399,7 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
                         </p>
                       ) : (candidatesQuery.data?.tickets.length ?? 0) === 0 ? (
                         <p className="px-1 py-2 text-center text-role-caption text-text-faint">
-                          {debouncedQuery.trim() ? 'No matching tickets.' : 'No recent tickets.'}
+                          {linkQuery.trim() ? 'No matching tickets.' : 'No recent tickets.'}
                         </p>
                       ) : (
                         candidatesQuery.data!.tickets.map((t) => (
@@ -384,7 +418,10 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
                                 },
                               })
                             }
-                            className="h-auto w-full justify-start rounded-md border border-border-hairline px-2 py-1.5 text-left hover:border-border-accent hover:bg-surface-accent/40"
+                            className={cn(
+                              'h-auto w-full justify-start border border-border-hairline px-2 py-1.5 text-left hover:border-border-accent hover:bg-surface-accent/40',
+                              cornerClass('row'),
+                            )}
                           >
                             <TicketPickRow
                               ticketId={t.id}
@@ -411,54 +448,15 @@ function WarrantyTicketPanel({ claimId }: { claimId: number }) {
                 )}
               </div>
             ) : (
-              <div className="space-y-2">
-                {reply.isError && (
-                  <p className="text-role-caption text-text-danger">
-                    {reply.error instanceof Error ? reply.error.message : 'Reply failed.'}
-                  </p>
-                )}
-                <textarea
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                      e.preventDefault();
-                      sendReply();
-                    }
-                  }}
-                  placeholder={isPublic ? 'Reply to the customer…' : 'Add an internal note…'}
-                  rows={2}
-                  autoFocus
-                  className={cn("w-full resize-none rounded-md border border-border-soft px-2 py-1.5 text-sm", focusRing('field', 'accent'))}
-                />
-                <div className="flex items-center justify-between gap-2">
-                  <label className="flex cursor-pointer items-center gap-1.5 text-role-caption text-text-soft">
-                    <input
-                      type="checkbox"
-                      checked={isPublic}
-                      onChange={(e) => setIsPublic(e.target.checked)}
-                      className="h-3.5 w-3.5 rounded border-border-default"
-                    />
-                    Customer-visible reply
-                  </label>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="sm"
-                    disabled={reply.isPending || draft.trim().length === 0}
-                    loading={reply.isPending}
-                    onClick={sendReply}
-                    icon={<Send className="h-3.5 w-3.5" />}
-                    className="text-role-caption font-medium"
-                  >
-                    Send
-                  </Button>
-                </div>
-              </div>
+              // The ONE helpdesk mouth. No reply presets — those are the
+              // receiving QC chips, not warranty grammar. `onSent` refetches
+              // the claim-scoped merged thread; the composer already refreshes
+              // the ticket's own keys.
+              <TicketComposer ticketId={ticketId} showReplyPresets={false} onSent={invalidate} />
             )}
           </footer>
         </>
       )}
-    </Panel>
+    </>
   );
 }

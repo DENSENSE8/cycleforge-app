@@ -124,13 +124,30 @@ test.describe('To Ship · Pending Sheets-like grid', () => {
 
   test('select gutter paints real checkboxes', async ({ page }) => {
     const { row, headerRow } = await openGrid(page);
-    // Full-bleed checkmark gutter (`'flush'`), not the flat grid's inset square.
+    // Two positions, two jobs, and they are DELIBERATELY different faces.
+    //
+    // The header is a single command — select all / clear all — so it paints
+    // the family's declared chrome: the bordered square, legible as a box in
+    // all three states. It used to flip to `'flush'` because a `thumb` track
+    // was mounted, which is why this desk and /shipping/exceptions (the same
+    // compound model with `thumb` filtered out) disagreed about one control.
+    // Operator 2026-09-04: port the exceptions checkmark onto To-ship.
     await expect(
-      headerRow.locator('[role="checkbox"][data-select-chrome="flush"]'),
+      headerRow.locator('[role="checkbox"][data-select-chrome="always"]'),
     ).toBeVisible();
-    await expect(
-      row.locator('[data-select-gutter] [role="checkbox"][data-select-chrome="flush"]'),
-    ).toBeVisible();
+    // The BODY gutter paints the SAME square, revealed by row hover
+    // (2026-09-04 — "not a full width or full height display"), and NOTHING at
+    // rest ("remove the faded checkmark throughout the entire slot data table").
+    const bodyBox = row.locator('[data-select-gutter] [role="checkbox"][data-select-chrome="hover"]');
+    await expect(bodyBox).toBeVisible();
+    await expect(bodyBox.locator('[data-select-square-face="off"]')).toHaveCount(1);
+    await expect(bodyBox.locator('svg')).toHaveCount(0);
+    // …and the click point is still the whole cell, not the 16px box.
+    const cell = row.locator('[data-select-gutter]');
+    const cellBox = await cell.boundingBox();
+    const hitBox = await bodyBox.boundingBox();
+    expect(hitBox!.width).toBeGreaterThanOrEqual(cellBox!.width - 1);
+    expect(hitBox!.height).toBeGreaterThanOrEqual(cellBox!.height - 1);
   });
 
   /** The named tracks — gutters (`select`, `thumb`, `actions`) and `_fill` are chrome. */

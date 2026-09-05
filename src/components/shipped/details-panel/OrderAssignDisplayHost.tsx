@@ -10,14 +10,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Loader2 } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
+import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import { StaffButtonGrid } from '@/components/shipping/StaffButtonGrid';
+import { dateKeyToLocalDate, localDateToDateKey } from '@/utils/date';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack/layout';
 import { buildAssignmentRow } from '@/components/shipped/details-panel/shipped-details-logic';
 import { useWorkOrderAssignment } from '@/hooks/useWorkOrderAssignment';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { cn } from '@/utils/_cn';
 import { toast } from '@/lib/toast';
-import { focusRing } from '@/design-system/tokens/focus-ring';
 
 
 export function OrderAssignDisplayHost({
@@ -118,16 +119,17 @@ export function OrderAssignDisplayHost({
       />
       <div className="flex items-center justify-between gap-3 border-t border-border-hairline pt-3">
         <span className="text-role-eyebrow uppercase tracking-widest text-text-soft">Deadline</span>
-        <input
-          type="date"
-          value={deadline}
+        {/* Live desk record, one civil day → DateRangePickerField compact. */}
+        <DateRangePickerField
+          variant="compact"
+          value={dateKeyToLocalDate(deadline)}
           disabled={saving}
-          onChange={(e) => {
-            const next = e.target.value;
+          onChange={(day) => {
+            const next = localDateToDateKey(day) ?? '';
             setDeadline(next);
             void persist(techId, packerId, next);
           }}
-          className={cn("rounded-none border border-border-soft bg-surface-card px-2 py-1 text-role-micro text-text-default tabular-nums", focusRing('field', 'neutral'))}
+          className="w-auto min-w-[7.5rem]"
         />
       </div>
       {(techId || packerId) && (

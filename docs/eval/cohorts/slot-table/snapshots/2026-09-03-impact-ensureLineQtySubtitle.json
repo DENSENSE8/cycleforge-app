@@ -1,0 +1,40 @@
+{
+  "project": "cycleforge-app",
+  "target": "function:src/lib/tables/slot-table-line-qty.ts:ensureLineQtySubtitle",
+  "files_affected": 4,
+  "total_symbols": 4,
+  "files": [
+    {
+      "file": "src/lib/tables/resolve-effective-layout.ts",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "resolveEffectiveLayout"
+      ]
+    },
+    {
+      "file": "src/lib/tables/slot-table-line-qty.test.ts",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "slot-table-line-qty.test.ts"
+      ]
+    },
+    {
+      "file": "src/components/tables/useSlotTableLayout.ts",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "useSlotTableLayout"
+      ]
+    },
+    {
+      "file": "src/lib/tables/resolve-effective-layout.test.ts",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "resolve-effective-layout.test.ts"
+      ]
+    }
+  ]
+}

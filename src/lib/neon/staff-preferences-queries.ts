@@ -67,7 +67,7 @@ export interface StaffPreferences {
   stationSkin?: string | null;
   /**
    * Scan-station depth from the station-depth registry (flat | mill | deep).
-   * Absent = flat. Drives `data-station-depth` on <html>.
+   * Absent = mill. Drives `data-station-depth` on <html>.
    */
   stationDepth?: string | null;
   /**

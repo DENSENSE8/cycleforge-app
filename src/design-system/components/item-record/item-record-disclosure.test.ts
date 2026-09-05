@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -131,5 +132,33 @@ describe('ItemRecordRow disclosure', () => {
     const html = render({ disclosure: { expanded: false, onToggle: () => {} } });
     assert.match(html, /ThinkPad X1 Carbon Gen 9/);
     assert.match(html, /LEN-X1C-G9|X1C-G9/, 'the SKU ledger cell still paints');
+  });
+
+  it('desk meta tracks are qty | price | condition | sku | serial | location', () => {
+    const html = render();
+    const cols = ['qty', 'price', 'condition', 'sku', 'serial', 'location'] as const;
+    const at = cols.map((col) => html.indexOf(`data-col="${col}"`));
+    for (let i = 0; i < cols.length; i++) {
+      assert.ok(at[i] >= 0, `${cols[i]} track paints`);
+      if (i > 0) {
+        assert.ok(
+          at[i] > at[i - 1],
+          `${cols[i]} follows ${cols[i - 1]} (PLAN §2 track order)`,
+        );
+      }
+    }
+  });
+
+  it('ItemRecordMetaGrid source paints tracks in PLAN §2 order', () => {
+    const src = readFileSync(
+      new URL('./ItemRecordMetaGrid.tsx', import.meta.url),
+      'utf8',
+    );
+    const cols = [...src.matchAll(/data-col="(\w+)"/g)].map((m) => m[1]);
+    assert.deepEqual(cols, ['qty', 'price', 'condition', 'sku', 'serial', 'location']);
+    assert.match(
+      src,
+      /grid-cols-\[auto_auto_auto_auto_minmax\(2\.5rem,1fr\)_minmax\(5rem,auto\)\]/,
+    );
   });
 });

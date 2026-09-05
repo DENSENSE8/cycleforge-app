@@ -18,12 +18,13 @@ describe('Incoming compound column model', () => {
   it('uses the canonical shared tracks in order', () => {
     assert.deepEqual(
       INCOMING_COMPOUND_COLUMNS.map((column) => column.key),
-      ['select', 'thumb', 'fulfillment', 'item', 'state', 'amount', 'actions', '_fill'],
+      ['select', 'fulfillment', 'thumb', 'item', 'dates', 'state', '_fill'],
     );
   });
 
   it('freezes only the shared identity gutters', () => {
     assert.equal(isIncomingGridFrozen('select'), true);
+    assert.equal(isIncomingGridFrozen('fulfillment'), true);
     assert.equal(isIncomingGridFrozen('thumb'), true);
     assert.equal(isIncomingGridFrozen('item'), false);
     assert.equal(isIncomingGridFrozen('_fill'), false);
@@ -40,7 +41,7 @@ describe('Incoming compound column model', () => {
   it('sorts only data tracks and preserves the durable comparator', () => {
     assert.ok(INCOMING_GRID_SORTABLE_KEYS.includes('item'));
     assert.ok(INCOMING_GRID_SORTABLE_KEYS.includes('state'));
-    assert.ok(INCOMING_GRID_SORTABLE_KEYS.includes('thumb'));
+    assert.equal(INCOMING_GRID_SORTABLE_KEYS.includes('thumb'), false);
     assert.equal(isIncomingGridSortable('select'), false);
     assert.equal(isIncomingGridSortable('_fill'), false);
     assert.equal(defaultDirForIncomingGridSort('age'), 'desc');

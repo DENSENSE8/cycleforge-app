@@ -85,3 +85,16 @@ test('Index tone chips keep semantic amber/emerald (not retokened away)', () => 
   assert.match(src, /bg-amber-50/);
   assert.match(src, /bg-emerald-50/);
 });
+
+test('Listings leaf Buttons pass radius flush, not desk surface', () => {
+  const src = read('src/components/receiving/workspace/line-edit/ListingLinksTab.tsx');
+  const tags = [...src.matchAll(/<Button\b[\s\S]*?>/g)].map((m) => m[0]);
+  assert.ok(tags.length >= 4, `expected ≥4 Buttons in ListingLinksTab, got ${tags.length}`);
+  for (const tag of tags) {
+    assert.match(
+      tag,
+      /radius=\{LISTING_STATION_BUTTON_RADIUS\}|radius="flush"/,
+      `Listings Button missing flush radius (Button defaults to desk surface):\n${tag}`,
+    );
+  }
+});

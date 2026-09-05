@@ -9,12 +9,10 @@
 import type { LabelFaceModel } from '@/lib/print/labelFace';
 import {
   asListedPayloadToFace,
-  printAsListedLabel,
   type AsListedLabelPayload,
 } from '@/lib/print/printAsListedLabel';
 import {
   ticketPayloadToFace,
-  printTicketLabel,
   type TicketLabelPayload,
 } from '@/lib/print/printTicketLabel';
 import {
@@ -24,10 +22,10 @@ import {
 import {
   buildUnitPayload,
   unitLabelToFace,
-  printProductLabel,
   type PrintProductLabelInput,
 } from '@/lib/print/printProductLabel';
-import { printHandlingUnitLabel, type HandlingUnitLabelPayload } from '@/lib/print/printHandlingUnitLabel';
+import type { HandlingUnitLabelPayload } from '@/lib/print/printHandlingUnitLabel';
+import { printStationLabel } from '@/lib/print/station-label-print';
 
 export type WorkspaceLabelKind =
   | 'carton'
@@ -97,7 +95,7 @@ const KIND_META: Record<
   as_listed: { name: 'As Listed', editor: 'as_listed', grain: 'item' },
   // The claim/ticket is filed against the carton, not an individual unit.
   ticket_minimal: { name: 'Ticket label', editor: null, grain: 'carton' },
-  handling_unit: { name: 'Box / LPN', editor: null, grain: 'container' },
+  handling_unit: { name: 'Tote', editor: null, grain: 'container' },
 };
 
 /** Returns / trade-ins (and any line with a disclosure note) get As Listed. */
@@ -228,25 +226,23 @@ export function printWorkspaceLabel(
   switch (kind) {
     case 'carton':
       if (!ctx.cartonPayload) return false;
-      // Caller must use receiving-label-helpers.printReceivingLabel for WebUSB;
-      // this registry entry is for face/availability only when helpers aren't
-      // threaded. Prefer the helper from the controller.
-      return false;
+      void printStationLabel({ kind: 'carton', payload: ctx.cartonPayload });
+      return true;
     case 'unit':
       if (!ctx.unitInput?.sku?.trim()) return false;
-      printProductLabel(ctx.unitInput);
+      void printStationLabel({ kind: 'unit', input: ctx.unitInput });
       return true;
     case 'as_listed':
       if (!ctx.asListedPayload) return false;
-      printAsListedLabel(ctx.asListedPayload);
+      void printStationLabel({ kind: 'as_listed', payload: ctx.asListedPayload });
       return true;
     case 'ticket_minimal':
       if (!ctx.ticketPayload) return false;
-      printTicketLabel(ctx.ticketPayload);
+      void printStationLabel({ kind: 'ticket_minimal', payload: ctx.ticketPayload });
       return true;
     case 'handling_unit':
       if (!ctx.handlingUnitPayload) return false;
-      printHandlingUnitLabel(ctx.handlingUnitPayload);
+      void printStationLabel({ kind: 'handling_unit', payload: ctx.handlingUnitPayload });
       return true;
     default:
       return false;

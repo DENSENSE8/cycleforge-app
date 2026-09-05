@@ -68,7 +68,8 @@ test('a FILED ticket shows in every mode; an unlinked one still has no pane', ()
   // Operator ruling 2026-08-31: mode picks what the COMPOSER writes to, it does
   // not decide whether the record is visible. Unlinked is unchanged — the
   // composer IS the claim there, and a pane above it is a second editor.
-  assert.match(src(UNBOX), /\{hasTicketId \? \(\s*\n\s*<StationTicketPane/);
+  assert.match(src(UNBOX), /askMode \? \(\s*\n\s*<StationAskPane/);
+  assert.match(src(UNBOX), /hasTicketId \? \(\s*\n\s*<StationTicketPane/);
   assert.doesNotMatch(src(UNBOX), /ticketMode && hasTicketId \? \(\s*\n\s*<StationTicketPane/);
   // Testing station is deliberately NOT swept with it — the ruling was made
   // against Unbox and that panel has its own layout. Change it when asked.

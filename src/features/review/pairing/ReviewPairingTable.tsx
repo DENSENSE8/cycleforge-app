@@ -66,7 +66,6 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
             searchResultLabel="orders"
             clearSearchLabel="Clear search"
             queueMode="staged"
-            sort="newest"
             selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
             data-testid="review-pairing-grid-body"
             onOpenRecord={onOpenOrder}

@@ -26,7 +26,9 @@ function requiredEnvAny(primaryName: string, aliases: string[] = []): string {
  *
  * Fetches all enabled products from Ecwid and upserts them as
  * sku_platform_ids entries (sku_catalog_id = NULL, platform = 'ecwid').
- * Stores Ecwid product name in display_name and thumbnail in image_url.
+ * Stores Ecwid product name in display_name, thumbnail in image_url, and the
+ * canonical storefront product URL in listing_url — the deep link the product
+ * page opens instead of bouncing the reader through storefront search.
  * Does NOT auto-pair to Zoho — all pairing is manual via SKU Pairing tab.
  *
  * Reconcile-missing (reversibility 5.4): after upserting, ecwid rows whose
@@ -91,10 +93,17 @@ export const POST = withAuth(async (_req: NextRequest, ctx) => {
       const insertResult = await tenantQuery(
         ctx.organizationId,
         `INSERT INTO sku_platform_ids
-           (sku_catalog_id, platform, platform_sku, platform_item_id, display_name, image_url, is_active, organization_id)
-         VALUES (NULL, 'ecwid', $1, $2, $3, $4, true, $5)
+           (sku_catalog_id, platform, platform_sku, platform_item_id, display_name, image_url, listing_url, is_active, organization_id)
+         VALUES (NULL, 'ecwid', $1, $2, $3, $4, $5, true, $6)
          ON CONFLICT DO NOTHING`,
-        [product.sku, product.ecwidProductId, product.name, product.thumbnailUrl, ctx.organizationId],
+        [
+          product.sku,
+          product.ecwidProductId,
+          product.name,
+          product.thumbnailUrl,
+          product.listingUrl,
+          ctx.organizationId,
+        ],
       );
 
       if (insertResult.rowCount && insertResult.rowCount > 0) {
@@ -106,11 +115,23 @@ export const POST = withAuth(async (_req: NextRequest, ctx) => {
         const updateResult = await tenantQuery(
           ctx.organizationId,
           `UPDATE sku_platform_ids
-           SET display_name = $1, image_url = COALESCE($2::text, image_url), is_active = true
-           WHERE platform = 'ecwid' AND platform_item_id = $3
-             AND organization_id = $4
-             AND (display_name IS DISTINCT FROM $1 OR image_url IS NULL OR is_active = false)`,
-          [product.name, product.thumbnailUrl, product.ecwidProductId, ctx.organizationId],
+           SET display_name = $1,
+               image_url = COALESCE($2::text, image_url),
+               listing_url = COALESCE($3::text, listing_url),
+               is_active = true
+           WHERE platform = 'ecwid' AND platform_item_id = $4
+             AND organization_id = $5
+             AND (display_name IS DISTINCT FROM $1
+                  OR image_url IS NULL
+                  OR is_active = false
+                  OR ($3::text IS NOT NULL AND listing_url IS DISTINCT FROM $3::text))`,
+          [
+            product.name,
+            product.thumbnailUrl,
+            product.listingUrl,
+            product.ecwidProductId,
+            ctx.organizationId,
+          ],
         );
         if (updateResult.rowCount && updateResult.rowCount > 0) updated++;
       }

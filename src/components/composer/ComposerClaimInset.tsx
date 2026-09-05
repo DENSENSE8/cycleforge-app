@@ -1,10 +1,12 @@
 'use client';
 
 /**
- * Claim accessory faces — claim type, link picker, seller paste.
+ * Claim accessory faces — claim type, link existing, AI draft status, seller.
  *
- * Mounted in {@link ComposerAccessoryStage}, not inside the ticket textarea
- * inset. The primary message stays the dock body.
+ * Link opens from the top-right Link icon (ClaimTicketPicker). Hermes AI draft
+ * CTA lives in the dock foot left of Location; Sparkles opens this review
+ * plate. Claim-type SearchableSelect opens upward under the welded hinge.
+ * Never a toast on carton entry for degraded drafts.
  */
 
 import { useMemo } from 'react';
@@ -13,7 +15,6 @@ import { SearchableSelectField } from '@/design-system/components';
 import { Button } from '@/design-system/primitives';
 import { CLAIM_TYPE_OPTIONS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
 import { CLAIM_TYPE_LABEL, type ClaimType } from '@/lib/receiving-claim-type';
-import type { ClaimModalMode } from '@/components/receiving/workspace/claim/claim-types';
 import { ClaimTicketPicker } from '@/components/receiving/workspace/claim/components/ClaimTicketPicker';
 import {
   DenseComposeBodyBand,
@@ -22,17 +23,22 @@ import {
 import type { ComposerTicketClaim } from '@/components/receiving/workspace/line-edit/hooks/useComposerTicketClaim';
 import type { ComposerAccessoryFace } from './composer-accessory-face';
 
-const MODE_OPTIONS = [
-  { value: 'create', label: 'Create', meta: 'File a new ticket', group: 'Claim' },
-  { value: 'link', label: 'Link', meta: 'Attach an existing ticket', group: 'Claim' },
-] as const;
-
 export function composerAccessoryCaption(
   face: ComposerAccessoryFace,
   claim: ComposerTicketClaim,
 ): string {
   const item = claim.contextLine;
   const type = CLAIM_TYPE_LABEL[claim.claimType];
+  if (face === 'draft') {
+    if (claim.draftDegraded) {
+      return 'AI draft kept the factual template — review before filing';
+    }
+    if (claim.loading) return 'Drafting claim from carton facts…';
+    if (claim.draftModel) {
+      return item ? `AI draft · ${claim.draftModel} · ${item}` : `AI draft · ${claim.draftModel}`;
+    }
+    return item ? `AI draft · ${item}` : 'AI draft from carton facts';
+  }
   if (face === 'seller') {
     return item ? `Refining seller paste · ${item}` : 'Refining seller paste — not the ticket body';
   }
@@ -112,6 +118,22 @@ export function ComposerClaimInset({
     );
   }
 
+  if (face === 'draft') {
+    return (
+      <div className="flex min-w-0 flex-col gap-0.5 p-1.5" data-testid="composer-draft-tool">
+        <p className="px-1.5 text-role-micro text-text-default">
+          {claim.draftDegraded
+            ? 'Hermes kept the factual template. Edit the body below, or use AI draft left of Location.'
+            : claim.loading
+              ? 'Drafting from claim facts…'
+              : claim.draftModel
+                ? `Drafted · ${claim.draftModel}`
+                : 'Hermes rewrites the factual template. Use AI draft left of Location to redraft.'}
+        </p>
+      </div>
+    );
+  }
+
   if (face === 'link') {
     return (
       <div className="flex min-w-0 flex-col gap-0.5 p-1.5" data-testid="composer-claim-link">
@@ -121,65 +143,26 @@ export function ComposerClaimInset({
   }
 
   return (
-    <div className="flex min-w-0 flex-col gap-0.5 p-1.5" data-testid="composer-claim-inset">
-      <div className="grid min-w-0 grid-cols-2 gap-0">
-        <SearchableSelectField
-          appearance="flush"
-          value={claim.mode}
-          onChange={(id) => {
-            if (id == null) return;
-            claim.setMode(id as ClaimModalMode);
-          }}
-          options={[...MODE_OPTIONS]}
-          placeholder="Create or Link…"
-          searchPlaceholder="Type to filter…"
-          emptyMessage="No modes match"
-          ariaLabel="Claim mode"
-        />
-        <SearchableSelectField
-          appearance="flush"
-          value={claim.claimType}
-          onChange={(id) => {
-            if (id == null) return;
-            claim.setClaimType(id as ClaimType);
-          }}
-          options={typeOptions}
-          placeholder="Claim type…"
-          searchPlaceholder="Type to filter…"
-          emptyMessage="No claim types match"
-          ariaLabel="Claim type"
-        />
-      </div>
+    <div className="flex min-w-0 flex-col gap-1 p-1.5" data-testid="composer-claim-inset">
+      <SearchableSelectField
+        appearance="flush"
+        placement="top-stretch"
+        value={claim.claimType}
+        onChange={(id) => {
+          if (id == null) return;
+          claim.setClaimType(id as ClaimType);
+        }}
+        options={typeOptions}
+        placeholder="Claim type…"
+        searchPlaceholder="Type to filter…"
+        emptyMessage="No claim types match"
+        ariaLabel="Claim type"
+      />
       {claim.reason ? (
-        <p className="px-1.5 text-role-micro text-text-muted" data-testid="composer-claim-reason">
+        <p className="px-1.5 text-role-micro text-text-default" data-testid="composer-claim-reason">
           Issue · {claim.reason}
         </p>
       ) : null}
-      <div className="flex items-center justify-between gap-2 px-1.5 py-0.5">
-        <p className="min-w-0 truncate text-role-micro text-text-faint">
-          {claim.loading
-            ? 'Drafting from claim facts…'
-            : claim.draftModel
-              ? `Drafted · ${claim.draftModel}${claim.draftDegraded ? ' · facts kept' : ''}`
-              : 'AI draft from carton facts'}
-        </p>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => claim.redraft()}
-          disabled={claim.loading || claim.filing}
-          icon={
-            claim.loading ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : (
-              <Sparkles className="h-3 w-3" />
-            )
-          }
-        >
-          {claim.loading ? 'Drafting…' : 'Draft'}
-        </Button>
-      </div>
     </div>
   );
 }

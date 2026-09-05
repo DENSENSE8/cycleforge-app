@@ -8,6 +8,7 @@ import {
   aiRequestHeaders,
   EMBEDDING_DIMS,
   isAiConfigured,
+  isSelfHostedAiRuntime,
   resolveAiConfig,
   resolveCloudflareAccessHeaders,
   type ProviderEnv,
@@ -155,4 +156,33 @@ test('aiRequestHeaders: per-call extras win over the defaults', () => {
   );
   assert.equal(h['X-Both'], 'call');
   assert.equal(h['X-Hermes-Session-Id'], 's1');
+});
+
+
+test('isSelfHostedAiRuntime: the managed endpoints are not self-hosted', () => {
+  for (const baseURL of [
+    'https://ai-gateway.vercel.sh/v1',
+    'https://api.openai.com/v1',
+    'https://api.anthropic.com/v1',
+    'https://cli-chat-proxy.grok.com/v1',
+    'https://api.x.ai/v1',
+  ]) {
+    assert.equal(isSelfHostedAiRuntime({ baseURL }), false, baseURL);
+  }
+});
+
+test('isSelfHostedAiRuntime: local, tailnet, and tunnelled boxes are', () => {
+  for (const baseURL of [
+    'http://127.0.0.1:8642/v1',
+    'http://prometheus:8081/v1',
+    'https://hermes.example.com/v1',
+  ]) {
+    assert.equal(isSelfHostedAiRuntime({ baseURL }), true, baseURL);
+  }
+});
+
+test('isSelfHostedAiRuntime: an unparseable base URL answers false', () => {
+  // Conservative half — a managed endpoint is the one that 400s on the extra
+  // body param a `true` would let through.
+  assert.equal(isSelfHostedAiRuntime({ baseURL: 'not a url' }), false);
 });

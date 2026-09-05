@@ -1,0 +1,29 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "component:src/design-system/primitives/KeyboardKey.tsx:KeyboardKey",
+      "kind": "component",
+      "name": "KeyboardKey",
+      "location": "src/design-system/primitives/KeyboardKey.tsx:44",
+      "exported": true,
+      "signature": "function KeyboardKey({ children, size = 'md', className, ...rest }: KeyboardKeyProps)"
+    },
+    {
+      "node_key": "file:src/design-system/primitives/KeyboardKey.tsx",
+      "kind": "file",
+      "name": "KeyboardKey.tsx",
+      "location": "src/design-system/primitives/KeyboardKey.tsx:1",
+      "exported": false,
+      "signature": null
+    },
+    {
+      "node_key": "type:src/design-system/primitives/KeyboardKey.tsx:KeyboardKeySize",
+      "kind": "type",
+      "name": "KeyboardKeySize",
+      "location": "src/design-system/primitives/KeyboardKey.tsx:16",
+      "exported": true,
+      "signature": "type KeyboardKeySize = 'sm' | 'md';"
+    }
+  ]
+}

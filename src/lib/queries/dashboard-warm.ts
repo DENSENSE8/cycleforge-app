@@ -36,6 +36,7 @@ const UNSHIPPED_WARM_LIMIT = 200;
 export function warmActiveView(
   queryClient: QueryClient,
   searchParamsString: string,
+  options: { blockedOnly?: boolean } = {},
 ): Promise<unknown> {
   const sp = new URLSearchParams(searchParamsString);
   const view = getDashboardOrderViewFromSearch(sp);
@@ -46,7 +47,9 @@ export function warmActiveView(
   const staffId = Number.isFinite(staffRaw) && staffRaw > 0 ? staffRaw : undefined;
 
   if (view === 'unshipped' || view === 'tested') {
-    return queryClient.prefetchQuery(unshippedOrdersQuery(unshippedWarmArgs(searchQuery, staffId)));
+    return queryClient.prefetchQuery(
+      unshippedOrdersQuery(unshippedWarmArgs(searchQuery, staffId, options.blockedOnly)),
+    );
   }
   // Packed uses the first-class stagedOnly orders path (not week packerlogs).
   if (view === 'packed') {
@@ -62,7 +65,9 @@ export function warmActiveView(
     );
   }
   // Default + legacy `?pending` → the merged To Ship backlog.
-  return queryClient.prefetchQuery(unshippedOrdersQuery(unshippedWarmArgs(searchQuery, staffId)));
+  return queryClient.prefetchQuery(
+    unshippedOrdersQuery(unshippedWarmArgs(searchQuery, staffId, options.blockedOnly)),
+  );
 }
 
 /**
@@ -72,11 +77,16 @@ export function warmActiveView(
  * (`limit: deferredSearchQuery ? undefined : rowLimit`) because the results are
  * already the matches.
  */
-function unshippedWarmArgs(searchQuery: string, staffId: number | undefined) {
+function unshippedWarmArgs(
+  searchQuery: string,
+  staffId: number | undefined,
+  blockedOnly?: boolean,
+) {
   return {
     searchQuery,
     staffId,
     strictSearchScope: true,
     limit: searchQuery ? undefined : UNSHIPPED_WARM_LIMIT,
+    blockedOnly: Boolean(blockedOnly),
   };
 }

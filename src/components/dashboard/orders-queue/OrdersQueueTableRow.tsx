@@ -4,18 +4,23 @@ import { gridDataCellClass } from '@/design-system/components/grid';
 import { isCompoundColumnModel } from '@/components/tables/compound/compound-columns';
 import { renderCompoundGridCell } from '@/components/tables/compound/CompoundGridCell';
 import { ignoreRowSelectFromSubtitle } from '@/components/tables/compound/useSubtitlePointerReorder';
-import type { CompoundRowAction } from '@/components/tables/compound/compound-row-model';
-import { copyToClipboard } from '@/utils/_dom';
-import {
-  rowActionsContextMenu,
-  rowActionsKeyDown,
-} from '@/components/tables/compound/compound-row-actions';
 import { ordersCompoundView } from '@/lib/orders/orders-compound-view';
+import { useOrderStatusTrail } from '@/components/orders/OrderStatusTrailOverlay';
 import {
   ordersSlotValues,
   ordersSubtitleParts,
 } from '@/lib/tables/field-catalog/orders-resolve';
-import { Fragment, memo, useCallback, useMemo, type ComponentProps, type ReactNode } from 'react';
+import {
+  Fragment,
+  memo,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+  type Ref,
+} from 'react';
 import { motion } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
@@ -30,10 +35,14 @@ import {
 } from '@/components/ui/RowMetaColumns';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import {
-  GridRowCheckbox,
   isEmptyGutterChrome,
   type GridSelectGutterChrome,
 } from '@/components/ui/GridRowCheckbox';
+import {
+  MorphingRowActionMenu,
+  MorphingSelectGutter,
+} from '@/components/outbound/orders/to-ship/MorphingRowActionMenu';
+import { applyMorphingGutterClick } from '@/lib/outbound/morphing-row-action';
 import type { GridSurfaceCapabilities } from '@/design-system/components/grid';
 import { isFbaOrder, marketplaceOrderUrl } from '@/utils/order-platform';
 import { useOrderChannelLabel } from '@/hooks/useCatalog';
@@ -85,6 +94,11 @@ export interface OrdersQueueTableRowProps {
   /** Multi-select on — lead checkbox toggles; click selects instead of opening. */
   selectMode: boolean;
   isChecked: boolean;
+  /**
+   * Multi-line order parent already painted the ids. Leaf fulfillment stays
+   * quiet so the same order # is not reprinted per SKU.
+   */
+  quietIdentity?: boolean;
   isMobile: boolean;
   useAlternateStripe: boolean;
   testerDisplay: string;
@@ -201,10 +215,16 @@ export interface OrdersQueueTableRowProps {
     value: string | null,
   ) => void;
   /**
-   * Present ⇒ the STATUS delay line edits ship-by in place (civil `YYYY-MM-DD`,
-   * `null` = clear). Same assign waist as condition / qty.
+   * Present ⇒ the DATES cell's deadline line edits ship-by in place (civil
+   * `YYYY-MM-DD`, `null` = clear). Same assign waist as condition / qty.
    */
   onCommitShipBy?: (record: ShippedOrder, dateKey: string | null) => void;
+  /**
+   * Present ⇒ the DATES cell's ORDER-DATE line is editable, for the row whose
+   * imported date is wrong (operator 2026-09-04). Same waist again — it writes
+   * `orders.order_date` through `/api/orders/assign`, never a second endpoint.
+   */
+  onCommitOrderedAt?: (record: ShippedOrder, dateKey: string | null) => void;
   /**
    * Present ⇒ pending Pick / Packed stage marks open a searchable staff
    * combobox (full roster, one lane per column). Done stages stay read-only.
@@ -325,7 +345,7 @@ interface OrdersQueueRowShellProps {
   onClick: React.MouseEventHandler<HTMLDivElement>;
   onDoubleClick: React.MouseEventHandler<HTMLDivElement>;
   onMouseDown: React.MouseEventHandler<HTMLDivElement>;
-  onContextMenu: React.MouseEventHandler<HTMLDivElement>;
+  onContextMenu?: React.MouseEventHandler<HTMLDivElement>;
   onKeyDown: React.KeyboardEventHandler<HTMLDivElement>;
   children: ReactNode;
 }
@@ -355,6 +375,8 @@ function AnimatedOrdersQueueRowShell({
   animateLayout: boolean;
   /** Board / list rows nudge on hover; the grid skin never does. */
   hoverLift: boolean;
+  /** The row element — the CYC-82 assign menu anchors to its gutter cell. */
+  ref?: Ref<HTMLDivElement>;
 }) {
   const rowPresence = useMotionPresence(framerPresence.tableRow);
   const mountTransition = useMotionTransition(framerTransition.tableRowMount);
@@ -595,14 +617,12 @@ function OrdersQueueMobileStack({
     >
       {gridSkin || selectMode || clickSelect ? (
         onToggleSelect ? (
-          <GridRowCheckbox
-            checked={isChecked}
-            // Shift-click extends from the anchor. This was `{ shiftKey: false }`
-            // — the range walk existed in `useTableSelectMode` the whole time
-            // and no caller could ever reach it.
-            onToggle={(event) => onToggleSelect(record, event)}
-            label={isChecked ? 'Deselect row' : 'Select row'}
+          <MorphingSelectGutter
+            record={record}
+            isChecked={isChecked}
             chrome={selectGutterChrome}
+            onToggleSelect={onToggleSelect}
+            enabled
           />
         ) : (
           <span
@@ -683,6 +703,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   isSelected,
   selectMode,
   isChecked,
+  quietIdentity = false,
   useAlternateStripe,
   testerDisplay,
   packerDisplay,
@@ -713,9 +734,11 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   onCommitCondition,
   onCommitSubtitleField,
   onCommitShipBy,
+  onCommitOrderedAt,
   onCommitStageAssign,
   onSetStaffLaneRole,
 }: OrdersQueueTableRowProps) {
+  const statusTrail = useOrderStatusTrail();
   /**
    * WHICH COLUMN MODEL is mounted — this row's one layout discriminant.
    *
@@ -725,6 +748,27 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const compoundLayout = !isMobile && isCompoundColumnModel(columns);
 
   const isStagedRow = queueMode === 'staged' || queueMode === 'shipped';
+
+  // CYC-82 — the row action manifold that opens off the leading checkbox.
+  // Every outbound compound lane that paints a select gutter (To-ship,
+  // Shipped, staged, labels, exceptions) uses this manifold. Gating it on
+  // `queueMode === 'fulfillment'` was a fork: Shipped still had the checkbox
+  // but no left actions. The panel mounts BESIDE the cells rather than inside
+  // the gutter cell because the desktop gutter is painted by the shared
+  // compound engine, which takes data and not JSX; the row anchors the panel
+  // to itself so the panel lands outside the table's left edge.
+  const rowRef = useRef<HTMLDivElement>(null);
+  const morphingAnchorRef = useRef<HTMLElement | null>(null);
+  const [morphingOpen, setMorphingOpen] = useState(false);
+  const morphingEnabled = compoundLayout && Boolean(onToggleSelect);
+  const closeMorphingMenu = useCallback(() => setMorphingOpen(false), []);
+  const openMorphingMenu = useCallback(() => {
+    // Anchor the ROW, not the gutter cell: the manifold opens `left-start`, so
+    // anchoring the row parks it in the page margin OUTSIDE the table rather
+    // than on top of the columns the operator is reading.
+    morphingAnchorRef.current = rowRef.current;
+    setMorphingOpen(true);
+  }, []);
 
   // Zebra is OFF under the airtable skin. That skin already draws a full cell
   // rule grid (right + bottom on every cell) inside a raised card frame, so a
@@ -783,7 +827,12 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
               // highlights its grade as current — the deleted flat editor's rule.
               current: resolveConditionGrade(record.condition) === opt.value,
             })),
-            clearLabel: 'Clear condition',
+            // NO clear row (operator 2026-09-04: "it must always be a
+            // condition in the row"). Every line has a grade — an unknown one
+            // is `--` until somebody picks, not a state an operator sets on
+            // purpose — so offering "Clear" offered a way to make a fact worse.
+            // The seven grades are the whole vocabulary; picking a different
+            // one is the edit.
             onCommit: (value) => onCommitCondition(record, value),
           },
         ]
@@ -820,6 +869,28 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                 value: itemNumberValue,
                 onCommit: (value: string | null) =>
                   onCommitSubtitleField(record, 'orders.item_number', value),
+              }]
+            : []),
+          ...(subtitleFieldIds?.includes('orders.amount')
+            ? [{
+                partKey: 'orders.amount',
+                label: 'Amount',
+                // The RAW figure, not the formatted face: an operator edits
+                // `49.99`, not `$49.99`, and the cell re-formats on commit.
+                value: record.sale_amount == null ? '' : String(record.sale_amount),
+                kind: 'numeric' as const,
+                // Figma width-field: drag X by $1 (Shift $10, Control $0.01 damped).
+                // Control-up grace before dollars — the pointer is still displaced.
+                scrub: {
+                  step: 1,
+                  coarseStep: 10,
+                  fineStep: 0.01,
+                  min: 0,
+                  decimals: 2,
+                  money: true,
+                },
+                onCommit: (value: string | null) =>
+                  onCommitSubtitleField(record, 'orders.amount', value),
               }]
             : []),
           ...(subtitleFieldIds?.includes('orders.notes')
@@ -879,6 +950,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
               dotClass: rowFlag.dotClass,
             }
           : null,
+        quietIdentity,
       })
     : null;
 
@@ -889,6 +961,14 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       ? {
           value: compoundView.delay?.dateKey ?? '',
           onCommit: (dateKey: string | null) => onCommitShipBy(record, dateKey),
+        }
+      : undefined;
+
+  const orderedAtEdit =
+    compoundView && onCommitOrderedAt
+      ? {
+          value: compoundView.orderedAt?.dateKey ?? '',
+          onCommit: (dateKey: string | null) => onCommitOrderedAt(record, dateKey),
         }
       : undefined;
 
@@ -913,54 +993,6 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       },
     };
   }, [compoundView, onCommitStageAssign, onSetStaffLaneRole, testerId, packerId, record]);
-
-  const staffRoster = useMemo(() => {
-    if (!compoundView || !onSetStaffLaneRole) return undefined;
-    return {
-      onSetLaneRole: onSetStaffLaneRole,
-    };
-  }, [compoundView, onSetStaffLaneRole]);
-
-  /*
-   * The row's ⋮ verbs.
-   *
-   * The menu used to hold "Open" alone — a duplicate of clicking the row, in a
-   * permanent 2.5rem track. Now that the row opens the menu from the keyboard
-   * and from a right-click, the track had to be worth reaching: these are the
-   * two identifiers an operator retypes into a marketplace or a carrier site,
-   * and until now they were only obtainable by hovering the exact chip that
-   * carries them. Reads, not writes — a row menu is not where a queue should
-   * offer to mutate an order it is not showing the consequences of.
-   */
-  const orderNumber = String(record.order_id || '').trim();
-  const trackingNumber = String(
-    record.shipping_tracking_number || record.tracking_number || '',
-  ).trim();
-  const rowMenuActions = useMemo(() => {
-    const items: CompoundRowAction[] = [];
-    if (orderNumber) {
-      items.push({
-        key: 'copy-order',
-        label: 'Copy order number',
-        onSelect: () => {
-          void copyToClipboard(orderNumber, { historyKind: 'order', historyDisplay: orderNumber });
-        },
-      });
-    }
-    if (trackingNumber) {
-      items.push({
-        key: 'copy-tracking',
-        label: 'Copy tracking number',
-        onSelect: () => {
-          void copyToClipboard(trackingNumber, {
-            historyKind: 'tracking',
-            historyDisplay: trackingNumber,
-          });
-        },
-      });
-    }
-    return items;
-  }, [orderNumber, trackingNumber]);
 
   // ── The cells — one shell, two column models ─────────────────────────────
   // Fragments (no DOM) keep every cell a DIRECT grid child — the airtable
@@ -1009,17 +1041,45 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
             subtitleNoteKey: 'orders.notes',
             noteText: record.notes ?? null,
             shipByEdit,
+            orderedAtEdit,
             stageAssigns,
-            staffRoster,
             onOpenLabels: onOpenLabels ? () => onOpenLabels(record) : undefined,
-            onOpen: onRowOpen ? () => onRowOpen(record) : undefined,
-            actions: rowMenuActions,
+            onStateOpen: statusTrail
+              ? () =>
+                  statusTrail.open({
+                    orderPk: record.id,
+                    orderId: record.order_id || '',
+                    tracking: compoundView.tracking,
+                    stateLabel: rowStatus?.label ?? compoundView.stateLabel ?? 'Status',
+                  })
+              : undefined,
             select: {
               checked: isChecked,
+              // CYC-82 — the checkbox ALWAYS toggles (including unselect).
+              // Opening the assign menu is a side-effect of becoming selected,
+              // never a substitute for the toggle. Shift stays the range walk.
               onToggle: onToggleSelect
-                ? (event: { shiftKey: boolean }) => onToggleSelect(record, event)
+                ? (event: { shiftKey: boolean }) => {
+                    if (!morphingEnabled) {
+                      onToggleSelect(record, event);
+                      return;
+                    }
+                    applyMorphingGutterClick({
+                      isChecked,
+                      shiftKey: event.shiftKey,
+                      onToggle: (next) => onToggleSelect(record, next),
+                      onOpenMenu: openMorphingMenu,
+                      onCloseMenu: closeMorphingMenu,
+                    });
+                  }
                 : undefined,
-              label: isChecked ? 'Deselect row' : 'Select row',
+              label: morphingEnabled
+                ? isChecked
+                  ? 'Deselect row'
+                  : 'Select row and assign'
+                : isChecked
+                  ? 'Deselect row'
+                  : 'Select row',
             },
           })
         : null;
@@ -1047,14 +1107,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     onMouseDown: (event) => {
       if ((selectMode || clickSelect) && event.shiftKey) event.preventDefault();
     },
-    onContextMenu: (event) => {
-      rowActionsContextMenu(event);
-    },
     onKeyDown: (event) => {
-      // Shift+F10 / Menu key → the row's ⋮ verbs. Checked before the grid's own
-      // chords so the platform gesture is never shadowed; a row whose family
-      // passes no verbs falls straight through to them.
-      if (rowActionsKeyDown(event)) return;
       if (clickSelect) {
         if (event.key === ' ') {
           event.preventDefault();
@@ -1141,7 +1194,19 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
               : { backgroundColor: rowFillHex }),
           }
         : undefined,
-    children: cells,
+    children: (
+      <>
+        {cells}
+        {morphingEnabled ? (
+          <MorphingRowActionMenu
+            record={record}
+            open={morphingOpen}
+            onClose={closeMorphingMenu}
+            anchorRef={morphingAnchorRef}
+          />
+        ) : null}
+      </>
+    ),
   };
 
   // A row that animates NOTHING is a plain box: no motion component, no
@@ -1149,10 +1214,11 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // moment any of the three is live, the shell above is handed to the motion
   // host unchanged.
   if (!animatePresence && !animateLayout && !hoverLift) {
-    return <div {...shell} />;
+    return <div ref={rowRef} {...shell} />;
   }
   return (
     <AnimatedOrdersQueueRowShell
+      ref={rowRef}
       animatePresence={animatePresence}
       animateLayout={animateLayout}
       hoverLift={hoverLift}
@@ -1165,6 +1231,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.isSelected !== next.isSelected) return false;
   if (prev.selectMode !== next.selectMode) return false;
   if (prev.isChecked !== next.isChecked) return false;
+  if (prev.quietIdentity !== next.quietIdentity) return false;
   if (prev.useAlternateStripe !== next.useAlternateStripe) return false;
   if (prev.opaqueStripe !== next.opaqueStripe) return false;
   if (prev.gridSkin !== next.gridSkin) return false;

@@ -167,10 +167,10 @@ export const UNBOX_ROUTE_PARAMS = defineRouteParams({
     [RECEIVING_HISTORY_URL_PARAMS.field]: historySearchFieldParam(),
     [RECEIVING_HISTORY_URL_PARAMS.scope]: historySearchScopeParam(),
     /**
-     * Station composer destination — `label` (default, omitted) · `ticket`.
+     * Station composer destination — `unbox` (default, omitted) · `ticket` · `ask`.
      * Shared with Testing (`SHARED_OWNED_KEYS.composerMode`).
      */
-    composerMode: paramEnum(['unbox', 'ticket', 'label'] as const),
+    composerMode: paramEnum(['unbox', 'ticket', 'ask', 'label'] as const),
   },
   carries: SCAN_SURFACE_CARRIES,
 });
@@ -187,7 +187,7 @@ export const TRIAGE_ROUTE_PARAMS = defineRouteParams({
     uf_q: paramText,
     uf_kind: paramText,
     /** Station composer destination — Arrival mounts the same notes dock. */
-    composerMode: paramEnum(['unbox', 'ticket', 'label'] as const),
+    composerMode: paramEnum(['unbox', 'ticket', 'ask', 'label'] as const),
   },
   carries: SCAN_SURFACE_CARRIES,
 });

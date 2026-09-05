@@ -1,0 +1,164 @@
+{
+  "project": "cycleforge-app",
+  "target": "component:src/design-system/components/DateRangePickerField.tsx:DateRangePickerField",
+  "files_affected": 19,
+  "total_symbols": 23,
+  "files": [
+    {
+      "file": "src/components/tables/DataTable.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 2,
+      "symbols": [
+        "DataTable",
+        "DataTableDateMenuControl"
+      ]
+    },
+    {
+      "file": "src/components/audit-log/AuditLogFilterStrip.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 2,
+      "symbols": [
+        "AuditLogFilterDropdown",
+        "AuditLogFilterStrip"
+      ]
+    },
+    {
+      "file": "src/components/board/SwimlaneBoard.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 2,
+      "symbols": [
+        "SwimlaneBoard",
+        "SwimlaneBubble"
+      ]
+    },
+    {
+      "file": "src/components/tables/compound/CompoundCells.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 2,
+      "symbols": [
+        "CompoundDateField",
+        "CompoundDates"
+      ]
+    },
+    {
+      "file": "src/components/fba/FbaCreateShipmentForm.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "FbaCreateShipmentForm"
+      ]
+    },
+    {
+      "file": "src/components/shipped/details-panel/OrderAssignDisplayHost.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "OrderAssignDisplayHost"
+      ]
+    },
+    {
+      "file": "src/components/admin/DateRangeFormFields.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "DateRangeFormFields"
+      ]
+    },
+    {
+      "file": "src/components/shipping/shipped-filter/ShippedFilterDropdown.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "ShippedFilterDropdown"
+      ]
+    },
+    {
+      "file": "src/components/shipping/shipped-filter/ShippedCarrierFilters.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "ShippedCarrierFilters"
+      ]
+    },
+    {
+      "file": "src/design-system/components/WorkOrderAssignmentCard.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "WorkOrderAssignmentCard"
+      ]
+    },
+    {
+      "file": "src/components/dashboard/BulkShipByDialog.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "BulkShipByDialog"
+      ]
+    },
+    {
+      "file": "src/components/admin/staff-management/AvailabilityRulesSection.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "AvailabilityRulesSection"
+      ]
+    },
+    {
+      "file": "src/hooks/useDashboardBulkSelection.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "useDashboardBulkSelection"
+      ]
+    },
+    {
+      "file": "src/components/admin/StaffScheduleTab.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "StaffScheduleTab"
+      ]
+    },
+    {
+      "file": "src/components/fba/FbaCreatePlanModal.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "FbaCreatePlanModal"
+      ]
+    },
+    {
+      "file": "src/components/shipped/details-panel/OrderUpdateDock.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "OrderUpdateDock"
+      ]
+    },
+    {
+      "file": "src/components/shipping/ShippedFilterToolbar.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "ShippedFilterToolbar"
+      ]
+    },
+    {
+      "file": "src/components/sidebar/AuditLogSidebarPanel.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "AuditLogSidebarPanel"
+      ]
+    },
+    {
+      "file": "src/app/admin/inventory/events/page.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "EventsExplorerPage"
+      ]
+    }
+  ]
+}

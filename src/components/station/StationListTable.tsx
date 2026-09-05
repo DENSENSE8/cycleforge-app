@@ -152,13 +152,13 @@ export function StationListTable<TRecord>({
   searchResultLabel = 'records',
   clearSearchLabel = 'Show all',
   footer,
-  capabilities,
-  selectMode = false,
-  showStationColumnHeader = false,
-  columnHeaderStageLabel = 'Stage',
-  columnHeaderIncludeSerial = true,
+  capabilities: _capabilities,
+  selectMode: _selectMode = false,
+  showStationColumnHeader: _showStationColumnHeader = false,
+  columnHeaderStageLabel: _columnHeaderStageLabel = 'Stage',
+  columnHeaderIncludeSerial: _columnHeaderIncludeSerial = true,
 }: StationListTableProps<TRecord>) {
-  const { isMobile } = useUIModeOptional();
+  const { isMobile: _isMobile } = useUIModeOptional();
   const scrollRef = useRef<HTMLDivElement>(null);
   const allowHorizontalScroll = !noHorizontalScroll;
 

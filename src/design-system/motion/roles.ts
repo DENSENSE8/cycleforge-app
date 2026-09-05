@@ -112,6 +112,35 @@ export const motionRole = {
   },
 
   /**
+   * The DESK pointer-cursor layer — a fixed dot that chases the pointer and
+   * takes the geometry of whatever it is over.
+   *
+   * Transition-only, like {@link feedback.pulse}: a cursor has no
+   * initial/animate/exit shape, it has a position and a size that are always
+   * springing toward a target. The host owns the targets; this owns the physics.
+   *
+   * NOT a station role, and that omission is the contract. A floor station is a
+   * mounted touchscreen driven by a gloved hand and a scan gun — there is no
+   * pointer to follow, so the layer is gated on `(pointer: fine)` and never
+   * mounts there. Adding 'station' to these regions would put a decoration in
+   * the throughput path.
+   *
+   * `follow` is duration-0 (glued to the pointer). `morph` is the travelling-
+   * marker spring so size/shape still read as one object changing. A spring on
+   * x/y is lag — never put `springSnappy` on follow.
+   */
+  cursor: {
+    follow: {
+      transition: framerTransition.cursorFollow,
+      regions: ['workbench', 'monitor', 'canvas'] as const satisfies readonly MotionRegion[],
+    },
+    morph: {
+      transition: framerTransition.cursorMorph,
+      regions: ['workbench', 'monitor', 'canvas'] as const satisfies readonly MotionRegion[],
+    },
+  },
+
+  /**
    * Transient acknowledgement flash on an element that is already mounted —
    * copy-confirmed, value-committed, a live cell update.
    *

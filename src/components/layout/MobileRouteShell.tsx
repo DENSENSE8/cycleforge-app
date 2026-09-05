@@ -30,6 +30,7 @@ import type { ReactNode } from 'react';
 import { GlobalWedgeScannerMount, PhoneScanBridgeMount } from '@/components/layout/scan-mounts';
 import { ReceivingPhoneBridgeMount } from '@/components/mobile/receiving/ReceivingPhoneBridgeMount';
 import { RightRailHost } from '@/components/right-rail/RightRailHost';
+import { DeskComposerAskLane } from '@/components/composer/DeskComposerAskLane';
 
 export function MobileRouteShell({ children }: { children: ReactNode }) {
   return (
@@ -45,6 +46,7 @@ export function MobileRouteShell({ children }: { children: ReactNode }) {
 
       <main className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         {children}
+        <DeskComposerAskLane />
       </main>
 
       {/* Mobile is explicitly overlay-only: it has no horizontal content row.

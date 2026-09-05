@@ -55,7 +55,8 @@ describe('gridHeaderShowsLabel — flex-track label rule', () => {
     assert.equal(gridHeaderShowsLabel(fixedWide), true);
   });
 
-  it('an image gutter keeps the word Image, even in a 3rem square', () => {
+  it('an image gutter degrades to a glyph in a 3rem square (never clip)', () => {
+    // "Image" needs 4.1rem. headerForceLabel used to skip this and paint "Im…".
     const thumb = {
       key: 'thumb',
       width: 'minmax(3rem, 3rem)',
@@ -63,6 +64,29 @@ describe('gridHeaderShowsLabel — flex-track label rule', () => {
       labelFitRem: 2,
       headerForceLabel: true,
     };
-    assert.equal(gridHeaderShowsLabel(thumb), true);
+    assert.equal(gridHeaderShowsLabel(thumb), false);
+  });
+
+  it('the photo gutter is always the Image glyph, even when the word would fit', () => {
+    const wide = {
+      key: 'thumb',
+      width: 'minmax(5rem, 5rem)',
+      gridLabel: 'Image',
+      type: 'image',
+      labelFitRem: 8,
+      headerForceLabel: true,
+    };
+    assert.equal(gridHeaderShowsLabel(wide), false);
+  });
+
+  it('headerForceLabel still prefers the word when the letters fit', () => {
+    const wide = {
+      key: 'stage',
+      width: 'minmax(8rem, 8rem)',
+      gridLabel: 'Unboxed',
+      labelFitRem: 8,
+      headerForceLabel: true,
+    };
+    assert.equal(gridHeaderShowsLabel(wide), true);
   });
 });

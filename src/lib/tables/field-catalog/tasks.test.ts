@@ -86,7 +86,7 @@ describe('tasksCompoundColumnsFor — the compound materialization', () => {
     });
     assert.deepEqual(
       columns.map((c) => c.key),
-      ['select', 'fulfillment', 'thumb', 'item', 'dates', 'state', 'status:1', 'status:2', 'amount', '_fill'],
+      ['select', 'fulfillment', 'thumb', 'item', 'dates', 'state', 'status:1', 'status:2', '_fill'],
     );
     assert.equal(columns.find((c) => c.key === 'status:2')?.slotDisplayType, 'date');
   });

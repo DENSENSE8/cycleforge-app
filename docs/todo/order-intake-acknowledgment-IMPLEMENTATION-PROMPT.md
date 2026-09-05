@@ -34,7 +34,8 @@ Write production TypeScript/React: typed, small diffs, no drive-by refactors, no
 - Tests pin **behavior** (pure functions, mounted DOM, Playwright). Never `readFileSync` a `.tsx` and regex the source.
 - `data-testid`s in the VERIFY file are **locked names**. Do not rename.
 - Interaction budget: see missing gates ≤2 from form open; Release ≤3 from form open once data is present (open Add, jump Review, Release). Scrolling is free.
-- No `height` / `width` / `top` / `left` / margin / padding / framer `layout` tweens. Show it or do not. Opacity/color OK.
+- No `height` / `width` / `top` / `left` / margin / padding / framer `layout` tweens **on chrome** (header, KPI, dialog frame). Show it or do not. Opacity/color OK.
+- **Out of this prompt:** Google Sheets sync → inline triage board is a **separate scoped plan** — [`docs/todo/sheets-sync-inline-triage-PLAN.md`](./sheets-sync-inline-triage-PLAN.md). Do not implement that ship inside this acknowledgment run.
 
 ## Mission (done when every line is true)
 

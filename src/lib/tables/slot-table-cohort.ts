@@ -42,6 +42,7 @@ export const SLOT_TABLE_ENGINE = {
   headerSortLaw: 'src/lib/tables/slot-table-header-sort.ts',
   ledgerGridColumnHeader: 'src/design-system/components/grid/LedgerGridColumnHeader.tsx',
   lineQty: 'src/lib/tables/slot-table-line-qty.ts',
+  lineMoney: 'src/lib/tables/slot-table-line-money.ts',
   ordersLayout: 'src/lib/dashboard-order-row-layout.ts',
   ordersQueueRow: 'src/components/dashboard/orders-queue/OrdersQueueTableRow.tsx',
   compoundColumns: 'src/components/tables/compound/compound-columns.ts',
@@ -60,6 +61,8 @@ export const SLOT_TABLE_ENGINE = {
     'AssigneeCombobox',
     'ensureLineQtySubtitle',
     'pinLineQtyFirst',
+    'ensureLineMoneySubtitle',
+    'pinLineMoneyAfterQty',
     'ordersCompoundColumnsFor',
     'COMPOUND_COLUMN_KEYS',
   ] as const,
@@ -105,6 +108,12 @@ export const SLOT_TABLE_ENGINE_LAYOUT_HOOKS: readonly {
     tableId: 'inventory-events',
     path: 'src/components/inventory/events-grid/useInventoryEventsTableLayout.ts',
   },
+  { tableId: 'audit-log', path: 'src/components/settings/audit/useAuditLogTableLayout.ts' },
+  { tableId: 'auth-sessions', path: 'src/components/settings/sessions/useAuthSessionsTableLayout.ts' },
+  { tableId: 'kiosk-devices', path: 'src/components/settings/kiosk-devices/useKioskDevicesTableLayout.ts' },
+  { tableId: 'staff-directory', path: 'src/components/settings/staff-table/useStaffDirectoryTableLayout.ts' },
+  { tableId: 'ai-usage', path: 'src/components/settings/ai-usage/useAiUsageTableLayout.ts' },
+  { tableId: 'compatibility', path: 'src/components/admin/sourcing/compatibility/useCompatibilityTableLayout.ts' },
   { tableId: 'repair', path: 'src/components/repair/repair-grid/useRepairTableLayout.ts' },
   { tableId: 'warranty', path: 'src/components/warranty/grid/useWarrantyTableLayout.ts' },
   { tableId: 'tech-all', path: 'src/components/tech/all/useTechAllTableLayout.ts' },
@@ -191,9 +200,10 @@ export const SLOT_TABLE_ENGINE_CONTRACT = {
   stageAssignRosterSwitch: /data-testid="stage-staff-lane-switch"/,
   lineQtyPin: /pinLineQtyFirst/,
   lineQtyEnsure: /ensureLineQtySubtitle/,
-  ordersDropActionsTrack: /c\.key !== 'amount'/,
+  lineMoneyPin: /pinLineMoneyAfterQty/,
+  lineMoneyEnsure: /ensureLineMoneySubtitle/,
   compoundSkeletonNoActions: /A ⋮ `actions` track is/,
-  compoundKeysAmountThenFill: /'amount',\n  '_fill',/,
+  compoundSkeletonNoAmount: /A money `amount`/,
 } as const;
 
 export type SlotTableEngineContractName = keyof typeof SLOT_TABLE_ENGINE_CONTRACT;
@@ -223,10 +233,11 @@ export function slotTableEngineContractSource(name: SlotTableEngineContractName)
       return SLOT_TABLE_ENGINE.productTitleLink;
     case 'lineQtyEnsure':
       return SLOT_TABLE_ENGINE.lineQty;
-    case 'ordersDropActionsTrack':
-      return SLOT_TABLE_ENGINE.ordersLayout;
+    case 'lineMoneyEnsure':
+    case 'lineMoneyPin':
+      return SLOT_TABLE_ENGINE.lineMoney;
     case 'compoundSkeletonNoActions':
-    case 'compoundKeysAmountThenFill':
+    case 'compoundSkeletonNoAmount':
       return SLOT_TABLE_ENGINE.compoundColumns;
     default:
       return SLOT_TABLE_ENGINE.compoundCells;
@@ -254,6 +265,8 @@ export const SLOT_TABLE_GRAPH_SYMBOL_FILES = {
   AssigneeCombobox: SLOT_TABLE_ENGINE.assigneeCombobox,
   ensureLineQtySubtitle: SLOT_TABLE_ENGINE.lineQty,
   pinLineQtyFirst: SLOT_TABLE_ENGINE.lineQty,
+  ensureLineMoneySubtitle: SLOT_TABLE_ENGINE.lineMoney,
+  pinLineMoneyAfterQty: SLOT_TABLE_ENGINE.lineMoney,
   ordersCompoundColumnsFor: SLOT_TABLE_ENGINE.ordersLayout,
   COMPOUND_COLUMN_KEYS: SLOT_TABLE_ENGINE.compoundColumns,
 } as const satisfies Record<SlotTableGraphSymbol, string>;
@@ -290,6 +303,8 @@ export function slotTableEvalManifest(): SlotTableEvalManifest {
     graphExpectedFiles: slotTableGraphExpectedFiles(),
     tripwires: [
       SLOT_TABLE_COHORT_TRIPWIRE,
+      'src/lib/tables/slot-table-line-qty.test.ts',
+      'src/lib/tables/slot-table-line-money.test.ts',
       'src/lib/tables/slot-table-discover.test.ts',
       // The engine law around the grid — who may declare a verb, and whether
       // the descriptor has grown a behaviour hook. Same cohort because it is
@@ -311,12 +326,14 @@ export const SLOT_TABLE_PAINT_LAW = {
   filter:
     'Toolbar funnel: DataTableFilterMenu always mounts beside SearchField (DATA_TABLE_FILTER_IDLE when a family has no facets). Job verbs (`actions`) paint immediately after the funnel — search · filter · actions · sort · views · date. Never FilterRefinementBar, never a hunt-tile strip, never a funnel inside SearchField. Unbox Queue/Viewed/History share ?ukpi= with KPI tiles via useReceivingTableChrome.',
   headerSort:
-    'Every painted DATA column header is click-to-sort (family isSortable + comparator + URL fact map). The toolbar sort menu lists those same facts (`queueColumnSortOptions`) plus View composites / pins — a header-click sort (Pick, Status) must be a selectable row, not trigger-only. Chrome only: select, actions/action, _fill, thumb (Image photo gutter). Header is the Image type glyph on every PRODUCT_TABLES peer and every tab mount; tabs fork row data only — never drop the thumb track. Dead headers (click does nothing) are a fail — map the track, do not mark Status/Amount/Item/Order unsortable. Outbound `OrdersGridHost` lanes share `?sort=` via useQueueDisplaySort — do not pass a frozen `sort=` (that was the Shipped / Review / Staged dead-header fork). Operator 2026-09-04: Image/thumb is chrome.',
+    'Every painted DATA column header is click-to-sort (family isSortable + comparator + URL fact map). The toolbar sort menu lists those same facts (`queueColumnSortOptions`) plus View composites / pins — a header-click sort (Pick, Status) must be a selectable row, not trigger-only. Chrome only: select, actions/action, _fill, thumb (Image photo gutter). Header is the Image type glyph on every PRODUCT_TABLES peer and every tab mount; tabs fork row data only — never drop the thumb track. Dead headers (click does nothing) are a fail — map the track, do not mark Status/Item/Order unsortable. There is no Amount column: line money is CompoundItem subtitle identity. Outbound `OrdersGridHost` lanes share `?sort=` via useQueueDisplaySort — do not pass a frozen `sort=` (that was the Shipped / Review / Staged dead-header fork). Operator 2026-09-04: Image/thumb is chrome.',
   stageAssign:
     'Pending stage_event cells (empty dashed mark or assigned-unstamped) open AssigneeCombobox via StageStaffAssignPopover. Assign mode lists this lane only (name-click assigns). All staff (CommandInput trailing) is roster mode: Pick shows Picker, Packed shows Packer, far-right All staff shows both. Stamped steps stay read-only. Hosts arm CompoundStageAssign by catalog field id; CompoundRow forwards stageAssigns so every PRODUCT_TABLES peer that binds a stage track gets the same combo. Bulk assign stays the column-foot person icon. Operator 2026-09-01.',
   lineQty:
-    'Line qty is CompoundItem subtitle identity. Catalog `{family}.qty` (number, subtitle) is pinned first under the title on compound (first subtitle track on sheet) via ensureLineQtySubtitle — every PRODUCT_TABLES peer, including a table added later. Not a Qty header between Status and Amount. bins.total_qty is occupancy, not line qty. Face: bare number, widthCh 2, 1 quiet / 2+ warning (lineQtySubtitlePart). Org cannot unbind it. Operator 2026-09-02.',
+    'Line qty is CompoundItem subtitle identity. Catalog `{family}.qty` (number, subtitle) is pinned first under the title on compound (first subtitle track on sheet) via ensureLineQtySubtitle — every PRODUCT_TABLES peer, including a table added later. Not a Qty header between Status and a money column. bins.total_qty is occupancy, not line qty. Face: bare number, widthCh 2, 1 quiet / 2+ warning (lineQtySubtitlePart). Org cannot unbind it. Operator 2026-09-02.',
+  lineMoney:
+    'Line price/amount is CompoundItem subtitle identity after qty. Catalog `{family}.amount` or `{family}.price` (money, subtitle) is pinned via ensureLineMoneySubtitle — every PRODUCT_TABLES peer, including a table added later. COMPOUND_COLUMN_KEYS has no amount track. Occupancy (sku-velocity.stock, dead-stock.stock) is not line money. catalog.cost is not a line price. Face: COMPOUND_MONEY_TONE_CLASS, widthCh 8, empty `$-` (lineMoneySubtitlePart). Org cannot unbind it. A green Amount column while Unbox still has one is a cohort fail — the 2026-09-04 Orders-only drop was the hole. Operator 2026-09-05.',
   ordersActions:
-    'No standing ⋮ on the compound skeleton (`COMPOUND_COLUMN_KEYS` has no actions). `ordersCompoundColumnsFor` drops amount only. Copy order / copy tracking live on CompoundFulfillment chips (click); other row verbs ride the title hover and the checkbox Morphing menu. Selecting a row ALWAYS opens that left manifold on every outbound OrdersGridHost lane (To-ship AND Shipped — `queueMode` must not disable Morphing). Do not remount the actions column, a Copy order number row menu, or rowMenuActions on OrdersQueueTableRow. Exceptions: no DataTable `actions=` — Resolve is DeskHeaderAction; Paste item # morphs the checkbox menu (`commitExceptionsItemPaste`). Operator 2026-09-04.',
+    'No standing ⋮ on the compound skeleton (`COMPOUND_COLUMN_KEYS` has no actions; `ordersCompoundColumnsFor` never remounts that track). No Amount track on the shared skeleton (`COMPOUND_COLUMN_KEYS` has no amount). Copy order / copy tracking live on CompoundFulfillment chips (click); other row verbs ride the title hover and the checkbox Morphing menu. Selecting a row ALWAYS opens that left manifold on every outbound OrdersGridHost lane (To-ship AND Shipped — `queueMode` must not disable Morphing). Do not remount the actions column, a Copy order number row menu, or rowMenuActions on OrdersQueueTableRow. Exceptions: no DataTable `actions=` — Resolve is DeskHeaderAction; Paste item # morphs the checkbox menu (`commitExceptionsItemPaste`). Operator 2026-09-04.',
   scope: 'Engine paint for every PRODUCT_TABLES peer — not To-ship alone.',
 } as const;

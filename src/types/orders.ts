@@ -85,6 +85,13 @@ export interface ShippedOrder {
   /** Operator blocked the line — `orders.is_out_of_stock`. */
   is_out_of_stock?: boolean;
   /**
+   * Operator expedite toggle (`orders.is_urgent`). Declared on the leaf row
+   * type because the QUEUE ORDER reads it — urgent rows lead the fulfillment
+   * board (`useOrdersQueueRows` / `queueUrgentRank`) — and an ordering fact
+   * that only exists behind a cast is one refactor away from being dropped.
+   */
+  is_urgent?: boolean;
+  /**
    * Backorder coverage facts (PO / inbound tracking / ETA). Painted only via
    * {@link formatShortageCoverage} — never concatenate in a cell.
    */
@@ -107,6 +114,14 @@ export interface ShippedOrder {
   exception_at?: string | null;
   is_terminal?: boolean | null;
   created_at: string | null;
+  /**
+   * When the CUSTOMER placed the order, from the channel (`orders.order_date`,
+   * written by the eBay / Amazon syncs). Null on anything that never carried
+   * one — a manual row, a CSV import, a backfill — where `created_at` (the
+   * import stamp) is the only date there is. The compound DATES cell falls back
+   * to it and says so in the tooltip; the two are never conflated.
+   */
+  order_date?: string | null;
   tested_by_name?: string | null;
   packed_by_name?: string | null;
   tester_name?: string | null;

@@ -50,30 +50,24 @@ async function openSpine(page: Page) {
 }
 
 /**
- * The Triage Desk drill — the widest section, so the cascade is measurable.
+ * Desks list inline under a standing group label — no list-replace drill.
  *
- * `/dashboard` is a Desk station and the spine **auto-drills on cross-section
- * navigation**, so arriving here already puts us inside the drill; there is no
- * "Open Triage Desk" button to click. Assert the drill chrome (Back + filter)
- * rather than assuming the root map.
+ * `/dashboard` is a desk surface; Shipping is already on the root map.
  */
-async function openDeskDrill(page: Page) {
+async function openDeskGroup(page: Page) {
   const spine = await openSpine(page);
-  await expect(spine.getByRole('button', { name: 'Back to pages' })).toBeVisible();
-  await expect(spine.getByPlaceholder('Filter pages…')).toBeVisible();
+  await expect(spine.getByRole('group', { name: 'Desks' })).toBeVisible();
   return spine;
 }
 
 /**
- * The active row on `/dashboard`. Dashboard owns 4 modes, so `renderPageHeader`
- * labels it "Dashboard — 4 modes", not "Go to Dashboard" — the count suffix is
- * the aria contract for a multi-mode page.
+ * The active row on `/dashboard` (Shipping / to-ship).
  */
-const ACTIVE_ROW = /^Dashboard — \d+ modes$/;
+const ACTIVE_ROW = /^Go to Shipping$/;
 
 test.describe('MasterNav spine row grain', () => {
   test('the active destination is a fill PLUS a real inset hairline', async ({ page }) => {
-    const spine = await openDeskDrill(page);
+    const spine = await openDeskGroup(page);
 
     // /dashboard is a Desk station, so its row is the active one in this drill.
     const active = spine.getByRole('button', { name: ACTIVE_ROW });
@@ -92,51 +86,16 @@ test.describe('MasterNav spine row grain', () => {
     expect(paint.bg).not.toBe('rgba(0, 0, 0, 0)');
   });
 
-  test('filtering updates rows in place — the cascade never replays mid-type', async ({
-    page,
-  }) => {
-    const spine = await openDeskDrill(page);
-    const filter = spine.getByPlaceholder('Filter pages…');
-
-    // Let the section's own cascade finish before touching the filter.
-    await page.waitForTimeout(400);
-
-    await filter.fill('inv');
-    const survivor = spine.getByRole('listitem').first();
-    await expect(survivor).toBeVisible();
-
-    // Sample opacity across a window LONGER than one 120ms row mount. A replayed
-    // cascade is a fade from 0; an in-place update never leaves full opacity.
-    const samples: number[] = [];
-    for (let i = 0; i < 8; i += 1) {
-      samples.push(
-        await survivor.evaluate((el) => Number(getComputedStyle(el).opacity)),
-      );
-      await page.waitForTimeout(25);
-    }
-    expect(Math.min(...samples), `opacity samples: ${samples.join(', ')}`).toBe(1);
-
-    // CLEARING is still filtering. Every row the operator just narrowed away
-    // comes back at once — gating the cascade on "a filter is active" rather
-    // than "the filter was touched" re-faded the entire list on backspace.
-    await filter.fill('');
-    const cleared: number[] = [];
-    for (let i = 0; i < 8; i += 1) {
-      cleared.push(
-        await spine
-          .getByRole('listitem')
-          .last()
-          .evaluate((el) => Number(getComputedStyle(el).opacity)),
-      );
-      await page.waitForTimeout(25);
-    }
-    expect(Math.min(...cleared), `opacity after clear: ${cleared.join(', ')}`).toBe(1);
+  test('desks drill lists pointer desks without auto-opening', async ({ page }) => {
+    const spine = await openDeskGroup(page);
+    await expect(spine.getByRole('button', { name: ACTIVE_ROW })).toBeVisible();
+    await expect(spine.getByRole('button', { name: /^Go to Incoming$/ })).toBeVisible();
   });
 
   test('hover travels the glyph only — the row box does not move or scale', async ({
     page,
   }) => {
-    const spine = await openDeskDrill(page);
+    const spine = await openDeskGroup(page);
     const row = spine.getByRole('button', { name: /^Go to Incoming$/ });
     await expect(row).toBeVisible();
 
@@ -166,7 +125,7 @@ test.describe('MasterNav spine row grain', () => {
       reducedMotion: 'reduce',
     });
     const page = await context.newPage();
-    const spine = await openDeskDrill(page);
+    const spine = await openDeskGroup(page);
 
     const row = spine.getByRole('button', { name: /^Go to Incoming$/ });
     const glyphBefore = await row.locator('svg').first().boundingBox();

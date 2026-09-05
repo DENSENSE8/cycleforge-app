@@ -52,8 +52,16 @@
  * | Any sub-write fails           | the signed agreement survives (ON DELETE SET NULL) |
  */
 
-import { confirmOrderNumberForPhone } from '@/lib/ecwid/client';
+import {
+  confirmOrderNumberForPhone,
+  getEcwidOrder,
+  type ChannelOrder,
+} from '@/lib/ecwid/client';
 import { createRepairCustomer } from '@/lib/neon/customer-queries';
+import {
+  upsertCustomerFromChannelOrder,
+  type UpsertCustomerFromChannelOrderResult,
+} from '@/lib/neon/upsert-from-channel-order';
 import {
   missingRepairIntakeFields,
   RepairIntakeValidationError,
@@ -182,6 +190,29 @@ export interface SubmitCounterTransactionDeps {
     orderNumber: string;
     phone: string;
   }): Promise<string | null>;
+
+  /**
+   * The full channel order, fetched ONLY after `confirmPriorOrder` agreed.
+   *
+   * The ordering is the security property (plan X4): this call takes one key
+   * and returns the buyer's name, email, phone and address, which is exactly
+   * the fishing surface the two-key check exists to prevent. It is never
+   * reached from an unmatched order number.
+   */
+  getChannelOrder(orgId: OrgId, orderRef: string): Promise<ChannelOrder>;
+
+  /**
+   * Find-or-create the online buyer: phone → email → create, and record
+   * `channel_refs`. Composed, not re-inlined — the phone rule here is the same
+   * one `findCustomerByPhoneDigits` above uses, so an online buyer and a
+   * returning walk-in land on ONE customer row rather than two.
+   */
+  hydrateCustomerFromChannelOrder(args: {
+    orgId: OrgId;
+    order: ChannelOrder;
+    identityPhone: string;
+    typedName?: string | null;
+  }): Promise<UpsertCustomerFromChannelOrderResult>;
 
   enqueueTicket: typeof enqueueTicketWork;
 }
@@ -418,6 +449,10 @@ const defaultDeps: SubmitCounterTransactionDeps = {
 
   confirmPriorOrder: (args) => confirmOrderNumberForPhone(args),
 
+  getChannelOrder: (orgId, orderRef) => getEcwidOrder(orgId, orderRef),
+
+  hydrateCustomerFromChannelOrder: (args) => upsertCustomerFromChannelOrder(args),
+
   enqueueTicket: enqueueTicketWork,
 };
 
@@ -524,22 +559,15 @@ export async function submitCounterTransaction(
     };
   }
 
-  // ── Identity (deterministic only) ─────────────────────────────────────────
-  const displayName = String(input.customer?.name ?? '').trim();
-  const email = String(input.customer?.email ?? '').trim() || undefined;
-  let customer = await deps.findCustomerByPhoneDigits(orgId, phoneDigits);
-  if (!customer) {
-    if (!displayName) {
-      throw new CounterTransactionValidationError(['Name (no customer matched that phone)']);
-    }
-    customer = await deps.createCustomer(orgId, { name: displayName, phone, email });
-  }
-  // A typed name wins (the customer is standing there correcting it); otherwise
-  // fall back to the name already on file.
-  const effectiveName = displayName || customer.storedName;
-
   // ── Prior order: two keys or nothing ─────────────────────────────────────
+  //
+  // Runs BEFORE identity, unlike every earlier version of this function. The
+  // channel order is the richest identity signal the counter can get — it
+  // carries the buyer's name and email, which a walk-in types badly or not at
+  // all — so resolving the customer first would mean matching on the weaker
+  // key and then discovering the stronger one too late to use it.
   let priorOrderRef: string | null = null;
+  let channelOrder: ChannelOrder | null = null;
   if (input.priorOrder?.orderNumber) {
     // The phone must be the IDENTITY phone, not a second free-typed value —
     // otherwise "order # + phone" degrades to "order # + any phone you like".
@@ -550,8 +578,73 @@ export async function submitCounterTransaction(
     });
     if (!priorOrderRef) {
       warnings.push('That order number and phone did not match an order — not attached.');
+    } else {
+      // ONLY reachable behind a successful two-key match — see
+      // SubmitCounterTransactionDeps.getChannelOrder for why that ordering is
+      // the security property rather than a convenience.
+      try {
+        channelOrder = await deps.getChannelOrder(orgId, priorOrderRef);
+      } catch (err) {
+        // The order MATCHED; we just could not read it. The visit proceeds on
+        // the phone alone — a vendor outage must never fail a customer
+        // standing at the counter, the same rule confirmPriorOrder itself
+        // follows by swallowing its own failures.
+        warnings.push(
+          'The online order was matched but its details could not be loaded — ' +
+            'customer details were not filled in from it.',
+        );
+        console.error('[counter] channel order fetch failed after a confirmed match', err);
+      }
     }
   }
+
+  // ── Identity (deterministic only) ─────────────────────────────────────────
+  const displayName = String(input.customer?.name ?? '').trim();
+  const typedEmail = String(input.customer?.email ?? '').trim();
+  let customer: ResolvedCustomer | null = null;
+  /** The email off the channel order, when the counter did not type one. */
+  let channelEmail = '';
+
+  if (channelOrder) {
+    try {
+      const hydrated = await deps.hydrateCustomerFromChannelOrder({
+        orgId,
+        order: channelOrder,
+        // The phone the two-key check already agreed with — never the order's
+        // own, which would let a visit hydrate one person and bill another.
+        identityPhone: phone,
+        typedName: displayName,
+      });
+      customer = {
+        id: hydrated.customer.id,
+        storedPhone: hydrated.customer.storedPhone,
+        storedName: hydrated.customer.storedName,
+      };
+      channelEmail = hydrated.customer.storedEmail;
+      warnings.push(...hydrated.warnings);
+    } catch (err) {
+      // Falls through to the phone-only path below rather than failing: the
+      // customer is still owed their visit.
+      warnings.push('The online buyer could not be linked — matched on phone instead.');
+      console.error('[counter] channel customer hydration failed', err);
+    }
+  }
+
+  const email = typedEmail || channelEmail || undefined;
+
+  if (!customer) {
+    customer = await deps.findCustomerByPhoneDigits(orgId, phoneDigits);
+  }
+  if (!customer) {
+    if (!displayName) {
+      throw new CounterTransactionValidationError(['Name (no customer matched that phone)']);
+    }
+    customer = await deps.createCustomer(orgId, { name: displayName, phone, email });
+  }
+  // A typed name wins (the customer is standing there correcting it); otherwise
+  // fall back to the name already on file — which, for an online buyer, is now
+  // the name the channel order carried.
+  const effectiveName = displayName || customer.storedName;
 
   const { subtotalCents, totalCents } = computeCounterTotals({ retailLines, services });
 

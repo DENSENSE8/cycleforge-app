@@ -1,12 +1,18 @@
 #!/usr/bin/env node
 /**
- * verify — the local mirror of CI (.github/workflows/ci.yml → `ci` job).
+ * verify — THE gate. There is no remote CI behind it.
  *
- * Runs the SAME gates CI runs, in the same order, and reports EVERY failure
- * (never fail-fast) so a single run surfaces all problems at once — no more
+ * `.github/workflows/` was deleted in 2f6dcd784; this script, run from the
+ * pre-push hook, is the whole of CI until the self-hosted runner in
+ * docs/todo/self-hosted-ci-and-fork-teardown-PLAN.md §3 lands. (The header
+ * used to call this "the local mirror of CI" — a mirror of something that no
+ * longer exists is the kind of prose this repo keeps getting bitten by.)
+ *
+ * Runs every gate, in a fixed order, and reports EVERY failure (never
+ * fail-fast) so a single run surfaces all problems at once — no more
  * push → red on lint → fix → push → red on typecheck → … loop.
  *
- *   "Green here ⇒ green in CI."  (full profile only)
+ *   "Green here ⇒ landable."  (full profile only)
  *
  * Wired into the pre-push hook (.githooks/pre-push) and named in the agent
  * rules so Cursor/Codex/etc.
@@ -170,6 +176,7 @@ const passLine = {
   dogfood:
     'verify PASSED (dogfood) — tenant click-through slice; full verify still required before done / main.',
   full: 'verify PASSED — matches CI; safe to push.',
+  deep: 'verify PASSED (deep) — full + advisory design review; nightly profile.',
 };
 process.stdout.write('\n' + c('32', passLine[PROFILE]) + '\n');
 
@@ -178,7 +185,7 @@ process.stdout.write('\n' + c('32', passLine[PROFILE]) + '\n');
 // what the baselines are still forgiving is what keeps PASS from reading as
 // clean. Best-effort: a broken ledger must never fail a verify that passed.
 // Fast/dogfood skip it — those profiles are not the ratchet conversation.
-if (PROFILE === 'full') {
+if (PROFILE === 'full' || PROFILE === 'deep') {
   try {
     spawnSync('node', ['scripts/debt-ledger.mjs', '--summary'], { stdio: 'inherit' });
   } catch {

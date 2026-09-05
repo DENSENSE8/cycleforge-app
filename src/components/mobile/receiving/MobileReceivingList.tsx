@@ -27,7 +27,12 @@ import {
 import { MobileArrivalDetailsSheet } from '@/components/mobile/receiving/MobileArrivalDetailsSheet';
 import { MobileCartonSheet } from '@/components/mobile/receiving/MobileCartonSheet';
 import { MobileReceivingFeedGallery } from '@/components/mobile/receiving/MobileReceivingFeedGallery';
-import { CaptureStack, useCaptureStackWindow, useCaptureStackQuery } from '@/design-system/components/capture-stack';
+import {
+  CaptureStack,
+  CaptureStackSkeleton,
+  useCaptureStackWindow,
+  useCaptureStackQuery,
+} from '@/design-system/components/capture-stack';
 import { receivingLinePhotoHrefs } from '@/lib/photos/mobile-gallery-url';
 import { mobileArrivalPhotosThenClassifyHref } from '@/lib/receiving/arrival-mobile-flow';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -41,10 +46,13 @@ interface ApiResponse {
   receiving_lines: ReceivingLineRow[];
 }
 
-// The feed's query key and list params are shared with the SERVER SEED that
-// paints this list into the first HTML (`mobile-feed-seed.server.ts`) — they
-// live in `@/lib/receiving/mobile-feed-query-key` because a seed only works
-// while both sides agree on the key to the character.
+// The feed's query key and list params live in
+// `@/lib/receiving/mobile-feed-query-key`. They were factored out for the SERVER
+// SEED that used to paint this list into the first HTML; that seed was removed
+// 2026-09-02 (see `/m/home` for the measurement — 101-field rows at ~12KB of
+// document each pushed FCP from 471ms to 2522ms on the mobile profile). The
+// shared module stays: a key that agrees to the character is what makes any
+// future (projected, not 101-field) seed possible.
 
 /**
  * Mobile receiving surface — single scrollable list of receiving lines, newest
@@ -70,7 +78,7 @@ export function MobileReceivingList({
   // renders only on the `/m/*` tree now — and the gate had become the feed's
   // slowest link: `isMobile` resolves in a client effect, so the request could
   // not be issued until after hydration, on top of the bundle it already waits
-  // for. The server seed below paints the first screen; this fetch reconciles.
+  // for. `CaptureStackSkeleton` now paints the first screen; this fetch fills it.
   const orgId = user?.organizationId;
   const staffId = user?.staffId ?? 0;
   const stationBridgeChannel = safeChannelName(() => getStaffStationBridgeChannelName(orgId!, staffId));
@@ -197,6 +205,10 @@ export function MobileReceivingList({
         isLoading={isLoading}
         scrollRef={scrollRef}
         getId={(entry) => entry.key}
+        // Geometry-true stand-in, not the default "Loading…" label: the first
+        // paint has to CONTAIN the largest element or LCP waits for the fetch.
+        // See CaptureStackSkeleton for the measurement.
+        loading={<CaptureStackSkeleton />}
         empty={
           <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface-card px-6 text-center">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-text-muted">{INCOMING_EMPTY_TITLE}</p>

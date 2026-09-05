@@ -6,34 +6,20 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { Button } from '@/design-system/primitives';
-import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
+import { DataTable } from '@/components/tables/DataTable';
+import { useAuthSessionsSpreadsheet } from '@/components/settings/sessions/useAuthSessionsSpreadsheet';
+import type { CompoundRowAction } from '@/components/tables/compound/compound-row-model';
+import type { AuthSessionRow } from '@/lib/auth/auth-session-row';
 
-interface SessionRow {
-  sid: string;
-  staff_id: number;
-  staff_name: string;
-  device_kind: string;
-  device_label: string | null;
-  ip: string | null;
-  created_at: string;
-  last_seen_at: string;
-  expires_at: string;
-}
-
-function fmtRelative(when: string): string {
-  const ms = Date.now() - new Date(when).getTime();
-  const s = Math.floor(ms / 1000);
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
+/*
+  The local `SessionRow` interface and its hand-written `fmtRelative` helper are
+  gone. The shape is `AuthSessionRow` (the family's, shared with the catalog and
+  the resolver), and "16m ago" is the engine's `date` face — one implementation
+  for every table instead of one per section.
+*/
 
 export function SessionsSection() {
-  const [rows, setRows] = useState<SessionRow[]>([]);
+  const [rows, setRows] = useState<AuthSessionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
 
@@ -46,7 +32,7 @@ export function SessionsSection() {
         setErr(r.status === 401 || r.status === 403 ? "You don't have access to this." : 'Could not load sessions.');
         return;
       }
-      const data = await r.json() as { sessions: SessionRow[] };
+      const data = await r.json() as { sessions: AuthSessionRow[] };
       setRows(data.sessions || []);
     } finally {
       setLoading(false);
@@ -63,53 +49,27 @@ export function SessionsSection() {
     await refresh();
   }, [refresh]);
 
-  const columns: AdminTableColumn<SessionRow>[] = [
-    {
-      key: 'staff',
-      header: 'Staff',
-      type: 'text',
-      cell: (row) => <span className="font-medium text-text-default">{row.staff_name}</span>,
-    },
-    {
-      key: 'device',
-      header: 'Device',
-      type: 'tag',
-      cell: (row) => (
-        <span className="text-xs">
-          <span className="mr-2 rounded-full bg-surface-sunken px-2 py-0.5">{row.device_kind}</span>
-          {row.device_label && <span className="text-text-soft">{row.device_label}</span>}
-        </span>
-      ),
-    },
-    {
-      key: 'ip',
-      header: 'IP',
-      type: 'text',
-      cell: (row) => <span className="text-xs text-text-soft">{row.ip || '—'}</span>,
-    },
-    {
-      key: 'last_activity',
-      header: 'Last activity',
-      type: 'date',
-      cell: (row) => <span className="text-xs text-text-soft">{fmtRelative(row.last_seen_at)}</span>,
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      align: 'right',
-      cell: (row) => (
-        <Button
-          variant="ghost"
-          size="sm"
-          type="button"
-          onClick={() => void revoke(row.sid)}
-          className="border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-        >
-          Revoke
-        </Button>
-      ),
-    },
-  ];
+  /*
+    The one VERB, resolved per row.
+
+    It used to be a trailing ACTIONS column of buttons — a per-family cell, and
+    the reason this section could not mount the shared row. Law §4: a verb is
+    declared once by the family and reaches every surface that shows it; the row
+    menu is that catalog at n=1.
+  */
+  const rowActions = useCallback(
+    (row: AuthSessionRow): readonly CompoundRowAction[] => [
+      {
+        key: 'revoke',
+        label: 'Revoke session',
+        tone: 'danger',
+        onSelect: () => void revoke(row.sid),
+      },
+    ],
+    [revoke],
+  );
+
+  const sheet = useAuthSessionsSpreadsheet({ rows, loading, rowActions });
 
   return (
     <section className="space-y-4">
@@ -120,13 +80,7 @@ export function SessionsSection() {
 
       {err && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
 
-      <AdminTable
-        columns={columns}
-        rows={rows}
-        rowKey={(row) => row.sid}
-        loading={loading}
-        emptyMessage="No active sessions."
-      />
+      <DataTable {...sheet} totalCount={rows.length} />
     </section>
   );
 }

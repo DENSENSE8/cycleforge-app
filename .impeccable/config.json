@@ -1,0 +1,14 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "instrument sans",
+        "createdAt": "2026-09-03T05:25:01.907Z",
+        "reason": "User picked the Graphite direction from three options; the option they selected named 'Instrument Sans + Geist Mono' in its description, so the pairing is the confirmed choice. Face is chosen for arm's-length legibility, tall x-height and tabular figures on a dense warehouse floor UI, where distinctiveness is subordinate to legibility. R0 approval artifact for docs/warehouse-os/RESKIN.md."
+      }
+    ]
+  }
+}

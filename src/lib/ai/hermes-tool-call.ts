@@ -15,6 +15,7 @@
  */
 
 import { postToAiProvider } from '@/lib/ai/failover';
+import { isSelfHostedAiRuntime } from '@/lib/ai/provider';
 import type { IntegrationProvider } from '@/lib/integrations/credentials';
 import type { OrgId } from '@/lib/tenancy/constants';
 
@@ -71,6 +72,8 @@ interface OpenAiChatResponse {
     message?: {
       role?: string;
       content?: string | null;
+      /** Reasoning models split the think phase out of `content` — never tool args. */
+      reasoning_content?: string | null;
       tool_calls?: Array<{
         id?: string;
         type?: string;
@@ -86,6 +89,65 @@ interface OpenAiChatResponse {
     total_tokens?: number;
   };
   error?: { message?: string } | string;
+}
+
+/**
+ * Recover a tool call the RUNTIME failed to parse out of the model's text.
+ *
+ * Local runtimes parse the model's tool-call syntax with a per-template regex.
+ * When that misses, the arguments are still right there in `content` — as a
+ * Qwen-style `<tool_call>{…}</tool_call>` block or a bare JSON object — and
+ * throwing "did not return a tool call" over a parser gap wastes an answer we
+ * already paid for. Returns the raw argument JSON string, or null.
+ *
+ * Deliberately not a general JSON scraper: it takes the LAST balanced object,
+ * because a model that narrates before complying leaves example objects earlier
+ * in the text and the real call last.
+ *
+ * Exported for `hermes-tool-call.test.ts` — the brace scanner is the kind of
+ * thing that looks right and mis-handles one escaped quote.
+ */
+export function recoverToolArgsFromContent(content: string): string | null {
+  const tagged = [...content.matchAll(/<tool_call>([\s\S]*?)<\/tool_call>/g)].at(-1);
+  const candidates: string[] = [];
+  if (tagged?.[1]) candidates.push(tagged[1].trim());
+
+  // Balanced-brace scan; string-aware so a `{` inside a value cannot open a
+  // frame and a `"` inside an escaped sequence cannot close one.
+  let depth = 0;
+  let start = -1;
+  let inString = false;
+  let escaped = false;
+  for (let i = 0; i < content.length; i += 1) {
+    const ch = content[i]!;
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === '{') {
+      if (depth === 0) start = i;
+      depth += 1;
+    } else if (ch === '}') {
+      depth -= 1;
+      if (depth === 0 && start >= 0) candidates.push(content.slice(start, i + 1));
+      if (depth < 0) depth = 0;
+    }
+  }
+
+  for (const candidate of candidates.reverse()) {
+    try {
+      const parsed: unknown = JSON.parse(candidate);
+      // Tool arguments are always an object. A bare array or scalar in the
+      // prose is narration, not a call.
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return candidate;
+    } catch {
+      /* not this one */
+    }
+  }
+  return null;
 }
 
 export async function hermesToolCall<T = unknown>(
@@ -112,12 +174,18 @@ export async function hermesToolCall<T = unknown>(
         },
       },
     ],
-    // Force a tool call — without this, small models occasionally answer with
+    // Ask for a tool call — without this, small models occasionally answer with
     // prose ("Sure! Here's what I found:") instead of calling the tool. We send
-    // exactly one tool, so `"required"` forces *that* tool. We use the string
-    // form (not `{type:'function',function:{name}}`) because it's portable:
-    // LM Studio only accepts none|auto|required, while OpenAI-compatible
-    // gateways accept "required" too.
+    // exactly one tool, so `"required"` names *that* tool. The string form is
+    // the portable one: LM Studio accepts only none|auto|required, while
+    // OpenAI-compatible gateways accept "required" too.
+    //
+    // On a self-hosted runtime this is a HINT, not a constraint (measured
+    // 2026-09-02 against mlx-dspark: `"required"`, `"auto"`, and the named
+    // `{type:'function',function:{name}}` form all returned byte-identical
+    // completions). Nothing server-side forces compliance, which is why the two
+    // mitigations below — thinking off, and `recoverToolArgsFromContent` — carry
+    // this path rather than decorate it.
     tool_choice: 'required',
   };
 
@@ -125,7 +193,24 @@ export async function hermesToolCall<T = unknown>(
     path: '/chat/completions',
     body: requestBody,
     headers: { 'content-type': 'application/json' },
-    buildBody: (config) => ({ ...requestBody, model: config.model || DEFAULT_AI_MODEL }),
+    buildBody: (config) => ({
+      ...requestBody,
+      model: config.model || DEFAULT_AI_MODEL,
+      // Turn the think phase OFF on self-hosted runtimes.
+      //
+      // A reasoning model (Qwen3.x, DeepSeek-R1, …) charges its think phase
+      // against `max_tokens`. Inside a forced single tool call that is fatal
+      // rather than merely slow: the model reasons its way through the whole
+      // budget and the response comes back `finish_reason: "length"` with no
+      // tool call, which every caller here reads as "the model refused". On the
+      // real claim-draft payload the think phase burned 1206 tokens and emitted
+      // nothing; with thinking off the same call answers in 172 and preserves
+      // the facts. Managed endpoints 400 on unknown body params, so this rides
+      // only where it is understood (`isSelfHostedAiRuntime`).
+      ...(isSelfHostedAiRuntime(config)
+        ? { chat_template_kwargs: { enable_thinking: false } }
+        : {}),
+    }),
   });
   const model = served.model || DEFAULT_AI_MODEL;
   if (!res.ok) {
@@ -134,13 +219,26 @@ export async function hermesToolCall<T = unknown>(
   }
   const data = (await res.json()) as OpenAiChatResponse;
 
-  const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-  if (!toolCall?.function?.arguments) {
-    throw new Error(`Model "${model}" did not return a ${input.tool.name} tool call`);
+  const choice = data.choices?.[0];
+  const rawArgs =
+    choice?.message?.tool_calls?.[0]?.function?.arguments ??
+    recoverToolArgsFromContent(choice?.message?.content ?? '');
+  if (!rawArgs) {
+    // Name the finish_reason. `length` means the budget ran out BEFORE the call
+    // — a `maxTokens` problem, not a model that refused — and the two used to be
+    // indistinguishable from the error text.
+    const finish = choice?.finish_reason ?? 'unknown';
+    const hint =
+      finish === 'length'
+        ? ` (finish_reason: length — the ${input.maxTokens ?? 1024}-token budget ran out before the call)`
+        : ` (finish_reason: ${finish})`;
+    throw new Error(
+      `Model "${model}" did not return a ${input.tool.name} tool call${hint}`,
+    );
   }
   let parsed: unknown;
   try {
-    parsed = JSON.parse(toolCall.function.arguments);
+    parsed = JSON.parse(rawArgs);
   } catch (err) {
     throw new Error(
       `Model "${model}" returned invalid JSON in tool args: ${

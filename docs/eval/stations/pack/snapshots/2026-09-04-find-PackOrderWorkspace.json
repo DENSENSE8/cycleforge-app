@@ -1,0 +1,29 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "component:src/components/packer/PackOrderWorkspace.tsx:PackOrderWorkspace",
+      "kind": "component",
+      "name": "PackOrderWorkspace",
+      "location": "src/components/packer/PackOrderWorkspace.tsx:47",
+      "exported": true,
+      "signature": "function PackOrderWorkspace({ packerId, activeOrder, activeFba = null, onCloseActiveOrder, }: PackOrderWorkspaceProps)"
+    },
+    {
+      "node_key": "file:src/components/packer/PackOrderWorkspace.tsx",
+      "kind": "file",
+      "name": "PackOrderWorkspace.tsx",
+      "location": "src/components/packer/PackOrderWorkspace.tsx:1",
+      "exported": false,
+      "signature": null
+    },
+    {
+      "node_key": "interface:src/components/packer/PackOrderWorkspace.tsx:PackOrderWorkspaceProps",
+      "kind": "interface",
+      "name": "PackOrderWorkspaceProps",
+      "location": "src/components/packer/PackOrderWorkspace.tsx:35",
+      "exported": false,
+      "signature": "interface PackOrderWorkspaceProps"
+    }
+  ]
+}

@@ -31,6 +31,7 @@ import {
   SEARCH_ENTITY_TYPE_LABELS,
   SEARCH_SORT_PARAM,
   SEARCH_ETYPE_PARAM,
+  SEARCH_LEGACY_ETYPE_PARAM,
   SEARCH_HSTAT_PARAM,
   SEARCH_CHAN_PARAM,
   applySearchDisplaySort,
@@ -68,7 +69,9 @@ export function SearchRefineControls({
   const searchParams = useSearchParams();
   const [open, setOpen] = useState(false);
 
-  const etype = parseSearchEtype(searchParams.get(SEARCH_ETYPE_PARAM));
+  const etype = parseSearchEtype(
+    searchParams.get(SEARCH_ETYPE_PARAM) ?? searchParams.get(SEARCH_LEGACY_ETYPE_PARAM),
+  );
   const hstat = parseSearchHstat(searchParams.get(SEARCH_HSTAT_PARAM));
   const chan = parseSearchChan(searchParams.get(SEARCH_CHAN_PARAM));
   const sort = parseSearchDisplaySort(searchParams.get(SEARCH_SORT_PARAM));

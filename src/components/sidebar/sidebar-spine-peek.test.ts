@@ -26,9 +26,12 @@ describe('SIDEBAR_SPINE_PEEK_INSET_PX', () => {
     assert.ok(zIndex.navPeek > zIndex.panelOverlay);
     assert.ok(zIndex.navPeek > zIndex.detailStack);
     assert.ok(zIndex.navPeek < zIndex.modalBackdrop);
-    assert.match(
-      readFileSync(new URL('./SidebarNavColumn.tsx', import.meta.url), 'utf8'),
-      /zIndex\.navPeek/,
+    const host = readFileSync(new URL('./SidebarNavColumn.tsx', import.meta.url), 'utf8');
+    assert.match(host, /zIndex\.navPeek/);
+    assert.doesNotMatch(
+      host,
+      /pathname|usePathname|\/unbox/,
+      'peek stacking is one host token — not a per-route special case',
     );
   });
 });

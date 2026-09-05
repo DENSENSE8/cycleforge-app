@@ -400,7 +400,7 @@ interface PaneHeaderActionBarProps {
 const PANE_HEADER_ACTION_BTN_CLASS =
   'inline-flex h-7 items-center gap-1 rounded-md px-1.5 text-role-micro uppercase tracking-widest text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40';
 
-const PANE_HEADER_ACTION_NAV_CLASS =
+const _PANE_HEADER_ACTION_NAV_CLASS =
   'inline-flex h-7 w-7 items-center justify-center rounded-md text-text-soft transition-colors hover:bg-surface-hover hover:text-text-default disabled:cursor-not-allowed disabled:opacity-40';
 
 export function PaneHeaderActionBar({
@@ -412,7 +412,7 @@ export function PaneHeaderActionBar({
   iconOnly = false,
   leftSlot,
   rightSlot,
-  navClassName,
+  navClassName: _navClassName,
   className,
 }: PaneHeaderActionBarProps) {
   // Trailing padding is dropped when this bar OWNS the close (2026-08-19): the

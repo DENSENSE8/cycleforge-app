@@ -1,7 +1,9 @@
 import { sectionLabel, tableHeader, dataValue } from '@/design-system/tokens/typography/presets';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
+import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import { getStaffColorHex } from '@/utils/staff-colors';
+import { dateKeyToLocalDate, localDateToDateKey } from '@/utils/date';
 import { getStaffWeekdayLabel } from '@/lib/staff-schedule';
 import type { StaffDayOfWeek } from '@/lib/staff-schedule';
 import { DEFAULT_AVAILABILITY_DRAFT, type WeekdayRuleBucket } from '@/hooks/admin/useStaffScheduleData';
@@ -76,24 +78,33 @@ export function AvailabilityRulesSection({
                 <option value="blocked">Blocked</option>
               </select>
             </label>
-            <label className="space-y-1">
-              <span className={`block ${sectionLabel}`}>Start Date</span>
-              <input
-                type="date"
-                value={availabilityDraft.effectiveStartDate}
-                onChange={(e) => setAvailabilityDraft((prev) => ({ ...prev, effectiveStartDate: e.target.value }))}
-                className={cn("h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-semibold text-text-default", focusRing('field', 'warning'))}
+            {/* From-to period → DateRangePickerField range (never a native date input).
+                A <div>, not a <label>: a label would re-dispatch the click onto the
+                popover trigger and toggle it twice. Open-ended = `to` left unset. */}
+            <div className="space-y-1 md:col-span-2">
+              <span className={`block ${sectionLabel}`}>Effective Dates</span>
+              <DateRangePickerField
+                variant="range"
+                presets={[]}
+                placeholder="Open-ended"
+                value={
+                  availabilityDraft.effectiveStartDate || availabilityDraft.effectiveEndDate
+                    ? {
+                        from: dateKeyToLocalDate(availabilityDraft.effectiveStartDate),
+                        to: dateKeyToLocalDate(availabilityDraft.effectiveEndDate),
+                      }
+                    : undefined
+                }
+                onChange={(next) =>
+                  setAvailabilityDraft((prev) => ({
+                    ...prev,
+                    effectiveStartDate: localDateToDateKey(next?.from) ?? '',
+                    effectiveEndDate: localDateToDateKey(next?.to) ?? '',
+                  }))
+                }
+                className="h-9 border-amber-200"
               />
-            </label>
-            <label className="space-y-1">
-              <span className={`block ${sectionLabel}`}>End Date</span>
-              <input
-                type="date"
-                value={availabilityDraft.effectiveEndDate}
-                onChange={(e) => setAvailabilityDraft((prev) => ({ ...prev, effectiveEndDate: e.target.value }))}
-                className={cn("h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-semibold text-text-default", focusRing('field', 'warning'))}
-              />
-            </label>
+            </div>
             <label className="space-y-1 md:col-span-1">
               <span className={`block ${sectionLabel}`}>Reason</span>
               <input

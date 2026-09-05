@@ -6,9 +6,8 @@ import { Loader2, ExternalLink } from '@/components/Icons';
 import type { ProductDetailPayload } from './types';
 import { InventoryMasterChip } from '@/components/products/InventoryMasterChip';
 import { ProductGtinField } from '@/components/products/ProductGtinField';
-import { PlatformMark } from '@/components/ui/PlatformMark';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { sourcePlatformMeta } from '@/lib/source-platform';
+import { ProductPlatformRow } from './ProductPlatformRow';
+import { gradeChipClass, gradeChipLabel } from './product-detail-faces';
 
 interface ProductDetailProps {
     sku: string;
@@ -160,6 +159,23 @@ export function ProductDetail({ sku }: ProductDetailProps) {
                     }
                 >
                     <DetailRow label="Warehouse qty" value={String(stock.warehouse_qty)} />
+                    {stock.units_by_grade.length > 0 ? (
+                        <div className="border-t border-border-hairline pt-2">
+                            <div className="mb-1 text-role-micro font-medium uppercase tracking-wide text-text-soft">
+                                On hand by condition
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                                {stock.units_by_grade.map((g) => (
+                                    <span
+                                        key={g.grade}
+                                        className={`rounded px-1.5 py-0.5 text-role-caption font-medium ${gradeChipClass(g.grade)}`}
+                                    >
+                                        {gradeChipLabel(g.grade)}: {g.count}
+                                    </span>
+                                ))}
+                            </div>
+                        </div>
+                    ) : null}
                     {stock.units_by_status.length > 0 ? (
                         <div className="border-t border-border-hairline pt-2">
                             <div className="mb-1 text-role-micro font-medium uppercase tracking-wide text-text-soft">
@@ -190,35 +206,7 @@ export function ProductDetail({ sku }: ProductDetailProps) {
                     ) : (
                         <ul className="divide-y divide-border-hairline">
                             {platforms.map((p) => (
-                                <li
-                                    key={p.id}
-                                    className="flex flex-wrap items-baseline justify-between gap-2 py-2"
-                                >
-                                    <div className="flex flex-wrap items-baseline gap-2">
-                                        {(() => {
-                                            const meta = sourcePlatformMeta(p.platform);
-                                            return (
-                                                <HoverTooltip label={meta.label || p.platform} asChild focusable={false}>
-                                                    <span className="inline-flex shrink-0" aria-label={meta.label || p.platform}>
-                                                        <PlatformMark
-                                                            platformValue={meta.value || p.platform}
-                                                            meta={meta.value ? meta : undefined}
-                                                        />
-                                                    </span>
-                                                </HoverTooltip>
-                                            );
-                                        })()}
-                                        {p.account_name ? (
-                                            <span className="text-xs text-text-soft">{p.account_name}</span>
-                                        ) : null}
-                                        <span className="font-mono text-xs text-text-muted">
-                                            {p.platform_sku || p.platform_item_id || '—'}
-                                        </span>
-                                    </div>
-                                    {p.display_name ? (
-                                        <span className="text-xs text-text-soft">{p.display_name}</span>
-                                    ) : null}
-                                </li>
+                                <ProductPlatformRow key={p.id} platform={p} />
                             ))}
                         </ul>
                     )}

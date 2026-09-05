@@ -36,6 +36,11 @@ export {
   useAnimationControls,
   useMotionValue,
   useTransform,
+  // Cursor layer: instant follow (useMotionValue) + morph size spring
+  // (useSpring) + frameloop read batcher for morph box measure.
+  useSpring,
+  useVelocity,
+  frame,
 } from 'motion/react';
 
 export type {

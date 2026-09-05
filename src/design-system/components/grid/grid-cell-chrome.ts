@@ -96,6 +96,21 @@ export function ledgerGridCell(
  */
 export const LEDGER_GRID_ROW_WIDTH_CLASS = 'cf-grid-row-w';
 
+/**
+ * Tailwind group NAME for a grid row, so a cell can react to hover on the whole
+ * row rather than on itself.
+ *
+ * Declared HERE, on the shared shell, because the alternative is every family
+ * remembering: `OrdersQueueTableRow` and `ReceivingGridRow` each hand-typed
+ * `group/row` while `LedgerGridLeafRow` (the one CompoundRow mounts) did not, so
+ * a `group-hover/row:` rule would have worked on two surfaces and silently done
+ * nothing on the third. A row-scoped hover is engine behaviour; it belongs on
+ * the engine's row.
+ *
+ * Read by `GridSelectSquareFace` — the select gutter's box appears on row hover.
+ */
+export const LEDGER_GRID_ROW_GROUP = 'group/row';
+
 export function ledgerGridRowShellClass(
   isMobile: boolean,
   opts?: { scrollMinContent?: boolean },
@@ -103,6 +118,7 @@ export function ledgerGridRowShellClass(
   return isMobile
     ? 'flex flex-col gap-1.5'
     : [
+        LEDGER_GRID_ROW_GROUP,
         'grid items-stretch',
         LEDGER_GRID_ROW_CONTAIN,
         opts?.scrollMinContent ? LEDGER_GRID_ROW_WIDTH_CLASS : 'w-full min-w-0',

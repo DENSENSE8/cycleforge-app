@@ -36,7 +36,7 @@ export function WalkInFeedPane({
   isLoading,
   isError,
   refetch,
-  label,
+  label: _label,
   emptyMessage,
 }: WalkInFeedPaneProps) {
 

@@ -4,7 +4,8 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { History, Loader2, MapPin, Package } from '@/components/Icons';
 import { getLast8, SerialChip, SkuScanRefChip } from '@/components/ui/CopyChip';
-import { EventRow } from './EventRow';
+import { DataTable } from '@/components/tables/DataTable';
+import { useInventoryEventsSpreadsheet } from './events-grid/useInventoryEventsSpreadsheet';
 import { unitStatusBadgeClass } from '@/lib/unit-status';
 import type { PulseEventRow, PulseEventsResponse } from './types';
 import { cn } from '@/utils/_cn';
@@ -45,6 +46,16 @@ export function PulseWorkspace({ unitId }: PulseWorkspaceProps) {
     const sku = latest?.sku ?? null;
     const productTitle = events.find((e) => e.product_title)?.product_title ?? null;
     const heroTitle = productTitle || serial || `Unit #${unitId}`;
+
+    // Above the early returns: the ledger's feed is a hook, and a hook may not
+    // sit behind a conditional. It costs nothing on the empty/loading branches
+    // — `events` is already resolved at this point.
+    const sheet = useInventoryEventsSpreadsheet({
+        events,
+        loading: isLoading,
+        emptyMessage: 'No recorded events for this unit yet.',
+        searchPlaceholder: "Filter this unit's events…",
+    });
 
     if (!unitId) {
         return (
@@ -132,17 +143,16 @@ export function PulseWorkspace({ unitId }: PulseWorkspaceProps) {
                     <span className="font-semibold text-text-faint">· {events.length} events</span>
                 </h2>
 
-                {events.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-border-soft bg-surface-canvas px-4 py-12 text-center text-sm text-text-faint">
-                        No recorded events for this unit yet.
-                    </div>
-                ) : (
-                    <ul role="list" className="overflow-hidden rounded-2xl border border-border-hairline">
-                        {events.map((event) => (
-                            <EventRow key={event.id} event={event} />
-                        ))}
-                    </ul>
-                )}
+                {/*
+                    The SAME table as the Ledger, pointed at one unit's feed.
+                    This was a second `<ul>` of the same `EventRow` card, which
+                    is how the two surfaces drifted apart about what an event
+                    row shows. The rows here are already newest-first; a header
+                    click re-orders them like any other sheet.
+                */}
+                <div className="flex min-h-0 flex-1 flex-col">
+                    <DataTable {...sheet} />
+                </div>
             </div>
         </div>
     );

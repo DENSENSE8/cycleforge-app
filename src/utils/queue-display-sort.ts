@@ -2,7 +2,7 @@
  * Shared display-sort vocabulary for Pending (To Ship) + Testing queue headers.
  * Quiet trailing dropdown — View composites (Newest | Deadline), every
  * DATA-column fact (same vocabulary as header click), plus platform /
- * carrier pins. A header-click sort (Pick, Status, Image, …) must appear
+ * carrier pins. A header-click sort (Pick, Status, …) must appear
  * as a selectable row in this menu — the trigger naming the column is not enough.
  * URL: `?sort=` (omit when `deadline`, the default); `?dir=asc|desc` only for
  * column sorts (omit when the column’s default direction). Legacy `priority`
@@ -30,8 +30,6 @@ export type QueueDisplaySortColumn =
   | 'status'
   /** Sale amount. */
   | 'amount'
-  /** Catalog photo URL — blanks last. */
-  | 'image'
   /** Scan-out stamp (`ship_confirmed_at`), blanks last. */
   | 'scanned_out'
   /** Shortage coverage face (`formatShortageCoverage`). */
@@ -45,7 +43,7 @@ export type QueueDisplaySortColumn =
 
 export type QueueDisplaySort = QueueDisplaySortComposite | QueueDisplaySortColumn;
 
-/** Group heading for header-click DATA facts — Image, Order, Pick, … */
+/** Group heading for header-click DATA facts — Order, Pick, … */
 export const QUEUE_COLUMN_SORT_GROUP = 'Columns';
 
 /** Group heading for Order-column marketplace dots — Amazon, eBay, … */
@@ -66,7 +64,6 @@ const QUEUE_COLUMN_SORTS = [
   'packed',
   'status',
   'amount',
-  'image',
   'scanned_out',
   'coverage',
   'carrier',
@@ -151,16 +148,15 @@ export function isQueueColumnSort(sort: string): sort is QueueDisplaySortColumn 
  * product title (`title`). Mapping them re-connects existing comparators —
  * `queue-row-compare.ts` needs no new case.
  *
- * `select` / `actions` / `_fill` stay unmapped — they are chrome, not facts.
- * Every painted data track (`thumb`, `state`, `amount`, and bound `status:N`
- * fields) maps onto a comparator in `queue-row-compare.ts`.
+ * `select` / `actions` / `_fill` / `thumb` stay unmapped — they are chrome, not facts.
+ * Every painted DATA track (`state`, `amount`, and bound `status:N`
+ * fields) maps onto a comparator in `queue-row-compare.ts`. `thumb` is chrome.
  */
 export const COMPOUND_TRACK_SORT_KEYS: Readonly<Record<string, QueueDisplaySortColumn>> = {
   fulfillment: 'order',
   item: 'title',
+  dates: 'age',
   state: 'status',
-  amount: 'amount',
-  thumb: 'image',
 };
 
 /**
@@ -202,12 +198,12 @@ function isQueueCompositeSort(sort: string): sort is QueueDisplaySortComposite {
  * Default direction when first activating a column sort.
  *
  * `age` defaults to DESC: larger days-late first (most overdue on top).
- * Money, photos (has-image first under desc), and scan-out stamps open newest /
- * highest first. Other fact columns stay ASC.
+ * Money and scan-out stamps open newest / highest first. Other fact columns
+ * stay ASC. Image/`thumb` is chrome — it does not sort.
  */
 export function defaultDirForQueueSort(sort: QueueDisplaySort): QueueDisplaySortDir | null {
   if (!isQueueColumnSort(sort)) return null;
-  if (sort === 'age' || sort === 'amount' || sort === 'image' || sort === 'scanned_out') {
+  if (sort === 'age' || sort === 'amount' || sort === 'scanned_out') {
     return 'desc';
   }
   return 'asc';
@@ -225,7 +221,6 @@ export const QUEUE_DISPLAY_SORT_OPTIONS: readonly {
 ] as const;
 
 const QUEUE_COLUMN_SORT_MENU_ORDER: readonly (typeof QUEUE_COLUMN_SORTS)[number][] = [
-  'image',
   'order',
   'title',
   'status',
@@ -267,7 +262,6 @@ const QUEUE_COLUMN_SORT_FACES: Readonly<
     | 'packed'
     | 'status'
     | 'amount'
-    | 'image'
     | 'scanned_out'
     | 'coverage'
     | 'carrier',
@@ -283,7 +277,6 @@ const QUEUE_COLUMN_SORT_FACES: Readonly<
   packed: { label: 'Packer', shortLabel: 'Packer' },
   status: { label: 'Status', shortLabel: 'Status' },
   amount: { label: 'Amount', shortLabel: 'Amount' },
-  image: { label: 'Image', shortLabel: 'Image' },
   scanned_out: { label: 'Scanned out', shortLabel: 'Scanned out' },
   coverage: { label: 'Coverage', shortLabel: 'Coverage' },
   carrier: { label: 'Carrier', shortLabel: 'Carrier' },
@@ -384,6 +377,7 @@ export function parseQueueDisplaySort(raw: string | null | undefined): QueueDisp
   if (raw === 'carrier:Amazon') return 'channel:Amazon';
   // Retired synonym of ship-by — same job, dropped from the menu.
   if (raw === 'priority') return 'deadline';
+  if (raw === 'image') return 'deadline';
   if (raw && isQueueCompositeSort(raw)) return raw;
   if (raw && isQueueColumnSort(raw)) return raw;
   if (raw && RETIRED_COLUMN_SORT_ALIASES[raw]) return RETIRED_COLUMN_SORT_ALIASES[raw];

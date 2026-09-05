@@ -1,4 +1,4 @@
-import { IBM_Plex_Mono, IBM_Plex_Sans_Condensed, Inter, Overpass } from 'next/font/google';
+import { IBM_Plex_Mono, IBM_Plex_Sans_Condensed, Inter } from 'next/font/google';
 
 /**
  * Kinetic Ledger type — **Inter** for the sans cut, IBM Plex for the two
@@ -97,20 +97,17 @@ export const ibmPlexMono = IBM_Plex_Mono({
 });
 
 /**
- * Master-nav spine only (`font-spine` on `MasterNavView`). Highway-gothic
- * cousin — not the app condensed cut (eyebrows / micro stay Plex unless
- * they sit inside the spine).
+ * ## The spine has no cut of its own (2026-09-05)
+ *
+ * It used to load **Overpass** — a highway-gothic face — for the master nav
+ * alone, which put three sans faces in one column: Overpass for the rows, Plex
+ * Condensed for the micro chrome inside them, Inter for everything the column
+ * sat next to. A navigator that does not share the app's letterforms reads as a
+ * different application bolted to the side of this one, and at 13px the
+ * signage face's wider, flatter shapes were the least legible of the three.
+ *
+ * `font-spine` still exists as a Tailwind family so the spine keeps ONE place
+ * to bind type — it now resolves to the app sans, and the `.font-spine`
+ * overrides pull eyebrow / micro inside the nav onto that same face instead of
+ * the condensed cut. This also drops a preloaded font file from every document.
  */
-export const overpass = Overpass({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
-  variable: '--font-spine',
-  display: 'swap',
-  // PRELOADED, deliberately. `preload: false` was tried here on the theory that
-  // one component renders this cut and it never owns a first-paint element —
-  // and it cost the desk workbenches 13 Lighthouse points (`/unbox` 92 → 79,
-  // LCP 1.0s → 2.4s, measured desktop, 3 runs). The spine is chrome that paints
-  // in the first frame on every desk route, so dropping its preload only moved
-  // the request later and made the swap land inside the LCP window. Do not
-  // re-try this without re-measuring the desk routes.
-});

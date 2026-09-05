@@ -1,0 +1,184 @@
+{
+  "project": "cycleforge-app",
+  "target": "component:src/design-system/primitives/KeyboardKey.tsx:KeyboardKey",
+  "files_affected": 21,
+  "total_symbols": 29,
+  "files": [
+    {
+      "file": "src/components/tables/DataTableColumnActionRow.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 4,
+      "symbols": [
+        "ColumnActionIcon",
+        "CopyActionDropdown",
+        "DataTableColumnActionRow",
+        "HotkeyGlyph"
+      ]
+    },
+    {
+      "file": "src/lib/keyboard/nav-keys/KeyboardShortcutsCheatSheet.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 2,
+      "symbols": [
+        "KeyboardShortcutsCheatSheet",
+        "ShortcutList"
+      ]
+    },
+    {
+      "file": "src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 2,
+      "symbols": [
+        "HotkeyGlyph",
+        "MenuRow"
+      ]
+    },
+    {
+      "file": "src/components/photos/MediaLibraryShortcutsModal.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 2,
+      "symbols": [
+        "MediaLibraryShortcutsModal",
+        "ShortcutList"
+      ]
+    },
+    {
+      "file": "src/components/settings/sections/KeyboardSection.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 2,
+      "symbols": [
+        "Kbd",
+        "KeyboardSection"
+      ]
+    },
+    {
+      "file": "src/components/tables/TableStatusBar.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 2,
+      "symbols": [
+        "HotkeyGlyph",
+        "StatusActionButton"
+      ]
+    },
+    {
+      "file": "src/components/layout/goal-chip/ThrowTaskRow.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "ThrowTaskRow"
+      ]
+    },
+    {
+      "file": "src/design-system/components/StickyActionBar.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "StickyActionBar"
+      ]
+    },
+    {
+      "file": "src/components/sidebar/master-nav/StaffAccountFooter.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "StaffAccountFooter"
+      ]
+    },
+    {
+      "file": "src/components/tables/ColumnStaffAssignControl.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "ColumnStaffAssignControl"
+      ]
+    },
+    {
+      "file": "src/design-system/components/SelectionActionBar.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "SelectionActionBar"
+      ]
+    },
+    {
+      "file": "src/components/fba/sidebar/paired-review/PairedReviewWorkspace.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "PairedReviewWorkspace"
+      ]
+    },
+    {
+      "file": "src/components/sidebar/master-nav/SidebarNavList.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "SidebarNavList"
+      ]
+    },
+    {
+      "file": "src/components/layout/goal-chip/GoalPopover.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "GoalPopover"
+      ]
+    },
+    {
+      "file": "src/components/layout/HeaderGoalChip.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "HeaderGoalChip"
+      ]
+    },
+    {
+      "file": "src/components/barcode/multi-sku/MultiSkuBarcodeWorkspace.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "MultiSkuBarcodeWorkspace"
+      ]
+    },
+    {
+      "file": "src/components/barcode/BinLabelPrinter.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "BinLabelPrinter"
+      ]
+    },
+    {
+      "file": "src/components/barcode/RackLabelPrinter.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "RackLabelPrinter"
+      ]
+    },
+    {
+      "file": "src/components/mobile/redesign/MobileSidebarDrawer.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "MobileSidebarDrawer"
+      ]
+    },
+    {
+      "file": "src/components/outbound/orders/paperwork/PaperworkEditor.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "PaperworkEditor"
+      ]
+    },
+    {
+      "file": "src/components/warehouse/room-detail/RoomEditForm.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "RoomEditForm"
+      ]
+    }
+  ]
+}

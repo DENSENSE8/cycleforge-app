@@ -1,0 +1,776 @@
+<!doctype html>
+<html lang="en" data-scheme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Graphite — R0 skin reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Geist+Mono:wght@400;500;600&display=swap">
+<style>
+/* ============================================================================
+   GRAPHITE — the R0 reference skin for Cycle Forge Warehouse OS.
+
+   Picked by the operator 2026-09-02 (RESKIN.md §2, Direction 2).
+
+   This file is BOTH the approval artifact and the R1 transcription source.
+   Every custom property below is named for the semantic key it becomes in
+   src/design-system/themes/registry.ts (THEME_VAR_KEYS), so R1 is a copy, not
+   an interpretation:  --ds-color-<key>  ←→  --<key> here.
+
+   Dark is the design's home. The LIGHT TWIN is a first-class theme and the
+   STATION DEFAULT — it ships in R1 with the dark, never after it.
+
+   What this file specifies that the QA Design Lab CANNOT prove (RESKIN-LAB.md):
+   the radius ladder, the type pairing and scale, and the elevation model.
+   Those are build-time (Tailwind classes), so they land as R1 commits via the
+   :3051 worktree lane. Everything under "colour" the lab can toggle live.
+   ========================================================================== */
+
+/* ---------------------------------------------------------------- DARK ---- */
+:root,
+html[data-scheme="dark"] {
+  color-scheme: dark;
+
+  /* Neutral chrome */
+  --text-primary:   #e8eaec;
+  --text-secondary: #b9c0c7;
+  --text-soft:      #8d959d;
+  --text-faint:     #6a727a;
+  --background-canvas:  #101317;
+  --background-surface: #1d2126;
+  --surface-sunken: #16191d;
+  --surface-hover:  #23282e;
+  --surface-strong: #2b3137;
+
+  /* Scan-station bench — the mouth is a physical surface, so it stays warm
+     even in a cool shell. Graphite keeps the bench family; it re-tints it. */
+  --surface-bench:  #2a2723;
+  --surface-trough: #1c1a17;
+  --surface-plate:  #33302b;
+  --surface-slot:   #453f36;
+
+  /* Inverted chrome — on a dark shell "inverse" is light. */
+  --surface-inverse:        #e8eaec;
+  --surface-inverse-hover:  #d4d8dc;
+  --surface-inverse-raised: #c0c6cc;
+  --surface-inverse-soft:   #a8b0b7;
+  --text-inverse:      #14171a;
+  --text-inverse-soft: #3d444b;
+
+  /* Rules */
+  --border-subtle:   #262c32;
+  --border-default:  #343b42;
+  --border-hairline: #1e2328;
+  --border-emphasis: #55606a;
+  --border-stain:    #0d0c0a;
+  --border-ply:      #4a453d;
+  --border-strong:   #e8eaec;
+  --border-inverse:  #c0c6cc;
+
+  /* Functional tones */
+  --text-success: #52d39b;
+  --text-warning: #e6b35a;
+  --text-danger:  #f2857a;
+  --text-accent:  #4fd6c9;
+  --surface-success: #14312a;
+  --surface-warning: #342910;
+  --surface-danger:  #3a1d1b;
+  --surface-accent:  #12332f;
+  --border-success: #1f4a3d;
+  --border-warning: #55401a;
+  --border-danger:  #5b2c28;
+  --border-accent:  #1d5a53;
+
+  /* Extended tone text */
+  --text-info:        #8fb8e8;
+  --text-fulfillment: #c39ae8;
+
+  /* Solid fills */
+  --fill-info:        #4a90e2;
+  --fill-success:     #3cc98a;
+  --fill-warning:     #e0a03c;
+  --fill-danger:      #e8695c;
+  --fill-fulfillment: #a97ce0;
+
+  /* Accent (teal) — the ONE signal colour. Never used for success. */
+  --accent-bg:     #19b3a6;
+  --accent-hover:  #2ecfc1;
+  --accent-light:  rgba(25, 179, 166, 0.16);
+  --accent-border: rgba(25, 179, 166, 0.42);
+  --accent-text:   #4fd6c9;
+  --accent-shadow: rgba(25, 179, 166, 0.08);
+  --on-accent:     #0d1512;
+
+  /* Page */
+  --background: #101317;
+  --foreground: #e8eaec;
+
+  /* Elevation — ONE raised step, built from lightness + a 1px inner highlight.
+     Shadow is reserved for surfaces that genuinely float over content. */
+  --elev-flat:    none;
+  --elev-raised:  inset 0 1px 0 rgba(255,255,255,0.045);
+  --elev-overlay: 0 12px 28px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.05);
+}
+
+/* ---------------------------------------------------- LIGHT TWIN (station default) -- */
+html[data-scheme="light"] {
+  color-scheme: light;
+
+  --text-primary:   #171a1e;
+  --text-secondary: #454d56;
+  --text-soft:      #6a737d;
+  --text-faint:     #949ca4;
+  --background-canvas:  #eef0f2;
+  --background-surface: #ffffff;
+  --surface-sunken: #f4f6f7;
+  --surface-hover:  #f8fafb;
+  --surface-strong: #e2e6e9;
+
+  --surface-bench:  #efe7da;
+  --surface-trough: #d9cdb9;
+  --surface-plate:  #f6f0e6;
+  --surface-slot:   #b39a7c;
+
+  --surface-inverse:        #171a1e;
+  --surface-inverse-hover:  #262b31;
+  --surface-inverse-raised: #363d44;
+  --surface-inverse-soft:   #4c545c;
+  --text-inverse:      #f7f8f9;
+  --text-inverse-soft: #c8cdd2;
+
+  --border-subtle:   #e4e7ea;
+  --border-default:  #cbd1d6;
+  --border-hairline: #f0f2f4;
+  --border-emphasis: #949ca4;
+  --border-stain:    #6b533a;
+  --border-ply:      #e6dcc9;
+  --border-strong:   #171a1e;
+  --border-inverse:  #3a4148;
+
+  --text-success: #1a7f52;
+  --text-warning: #97600f;
+  --text-danger:  #b3271b;
+  --text-accent:  #0c7d73;
+  --surface-success: #e4f5ec;
+  --surface-warning: #fbf0dc;
+  --surface-danger:  #fce9e6;
+  --surface-accent:  #dff2ef;
+  --border-success: #a9dcc2;
+  --border-warning: #ecd3a0;
+  --border-danger:  #f3c2ba;
+  --border-accent:  #9dd5cd;
+
+  --text-info:        #2b5d94;
+  --text-fulfillment: #6f42a8;
+
+  --fill-info:        #2f7fd4;
+  --fill-success:     #1f9c63;
+  --fill-warning:     #d08a1c;
+  --fill-danger:      #d0453a;
+  --fill-fulfillment: #8355c4;
+
+  --accent-bg:     #0f9c90;
+  --accent-hover:  #0b877d;
+  --accent-light:  rgba(15, 156, 144, 0.12);
+  --accent-border: rgba(15, 156, 144, 0.38);
+  --accent-text:   #0c7d73;
+  --accent-shadow: rgba(15, 156, 144, 0.10);
+  --on-accent:     #ffffff;
+
+  --background: #ffffff;
+  --foreground: #171a1e;
+
+  --elev-flat:    none;
+  --elev-raised:  0 1px 0 rgba(23,26,30,0.04);
+  --elev-overlay: 0 12px 28px rgba(23,26,30,0.14);
+}
+
+/* ------------------------------------------------------------- BUILD-TIME -- */
+/* These are Tailwind classes in the app. The QA lab's data-reskin attribute
+   CANNOT move them — they land as R1 primitive commits. Values are law here. */
+:root {
+  /* Radius ladder — four rungs, and that is the whole set. */
+  --r-mark:    2px;   /* checkbox, status dot, swatch, rail glyph */
+  --r-chip:    4px;   /* chip, badge, keycap, status pill          */
+  --r-control: 6px;   /* button, input, segmented face, menu item  */
+  --r-panel:   8px;   /* panel, card, popover, dialog, tile        */
+  /* Viewport-flush chrome (beam, rails, well ground) stays 0. A radius jammed
+     against the display edge paints a corner of desktop wallpaper. */
+  --r-flush:   0px;
+
+  /* Type — Instrument Sans for UI, Geist Mono for every identifier and number.
+     Mono never ligates: `fi` / `fl` fusing in a serial makes an operator
+     transcribe a string that is not the one stored. */
+  --font-ui:   "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  --type-display: 600 22px/1.15 var(--font-ui);
+  --type-title:   600 17px/1.25 var(--font-ui);
+  --type-body:    400 14px/1.45 var(--font-ui);
+  --type-data:    500 13px/1.35 var(--font-mono);
+  --type-nav:     500 13px/1.3  var(--font-ui);
+  --type-caption: 400 12px/1.35 var(--font-ui);
+  --type-eyebrow: 600 10.5px/1.2 var(--font-ui);
+  --type-micro:   500 10px/1.2  var(--font-mono);
+
+  /* Rows — density moves height and padding ONLY. Never type, never targets. */
+  --row-compact: 28px;
+  --row-default: 32px;
+  --row-roomy:   38px;
+  --row-station: 40px;
+
+  /* Focus — outline, so it never reflows a pixel (law M3). */
+  --focus-ring: 2px;
+
+  --t-tint: 80ms; /* the one duration; colour and opacity only (M1/M2) */
+}
+
+/* ================================================================== PAGE == */
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--background-canvas);
+  color: var(--text-primary);
+  font: var(--type-body);
+  -webkit-font-smoothing: antialiased;
+}
+.mono, code { font-family: var(--font-mono); font-variant-ligatures: none; }
+.tnum { font-variant-numeric: tabular-nums; }
+
+.page { max-width: 1160px; margin: 0 auto; padding: 28px 20px 72px; }
+
+.doc-head {
+  border-top: 3px solid var(--text-primary);
+  padding-top: 14px;
+  display: grid; grid-template-columns: 1fr auto; gap: 18px; align-items: end;
+}
+.eyebrow { font: var(--type-eyebrow); letter-spacing: .10em; text-transform: uppercase; color: var(--text-soft); }
+h1 { margin: 6px 0 0; font: var(--type-display); font-size: clamp(26px, 4vw, 36px); letter-spacing: -.01em; }
+.doc-head .meta { font: var(--type-micro); color: var(--text-secondary); text-align: right; line-height: 1.8; }
+.lede { margin: 20px 0 0; max-width: 68ch; color: var(--text-secondary); }
+.lede b { color: var(--text-primary); font-weight: 600; }
+
+.schemebar {
+  position: sticky; top: 0; z-index: 50;
+  margin: 22px 0 0; padding: 10px 0;
+  background: var(--background-canvas);
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.switch { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--border-default); border-radius: var(--r-control); background: var(--surface-sunken); }
+.switch button {
+  font: var(--type-nav); padding: 5px 14px; border: 0; cursor: pointer;
+  border-radius: calc(var(--r-control) - 2px);
+  background: transparent; color: var(--text-secondary);
+  transition: background var(--t-tint) linear, color var(--t-tint) linear;
+}
+.switch button[aria-pressed="true"] { background: var(--surface-inverse); color: var(--text-inverse); font-weight: 600; }
+.switch button:focus-visible { outline: var(--focus-ring) solid var(--accent-bg); outline-offset: 1px; }
+.schemebar .note { font: var(--type-caption); color: var(--text-soft); }
+.schemebar .note b { color: var(--text-accent); font-weight: 600; }
+
+section { margin-top: 40px; }
+h2 { font: var(--type-title); margin: 0 0 4px; display: flex; align-items: baseline; gap: 12px; }
+h2 .n { font: var(--type-micro); color: var(--text-faint); letter-spacing: .08em; }
+.rule { height: 1px; background: var(--border-emphasis); margin: 0 0 16px; }
+h3 { font: var(--type-nav); font-weight: 600; margin: 22px 0 8px; color: var(--text-primary); }
+p { margin: 0 0 12px; max-width: 72ch; color: var(--text-secondary); }
+p b { color: var(--text-primary); }
+
+/* ============================================== REFERENCE COMPOSITION ==== */
+.screen {
+  border: 1px solid var(--border-default);
+  border-radius: var(--r-panel);
+  overflow: hidden;
+  background: var(--background-canvas);
+  box-shadow: var(--elev-overlay);
+}
+.beam {
+  height: 40px; display: grid; grid-template-columns: auto 1fr auto auto;
+  align-items: center; gap: 14px; padding: 0 12px;
+  background: var(--background-surface);
+  border-bottom: 1px solid var(--border-default);
+  border-radius: var(--r-flush);
+}
+.cluster { display: flex; align-items: center; gap: 8px; }
+.livedot { width: 9px; height: 9px; border-radius: 50%; background: var(--fill-success); box-shadow: 0 0 0 3px var(--surface-success); }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px;
+  border: 1px solid var(--border-default); border-radius: var(--r-chip);
+  background: var(--surface-sunken); font: var(--type-micro); color: var(--text-primary); white-space: nowrap;
+}
+.chip .mark { width: 8px; height: 8px; border-radius: var(--r-mark); background: var(--accent-bg); }
+.beam .ctx { font: var(--type-caption); color: var(--text-secondary); }
+.beam .state { font: var(--type-eyebrow); letter-spacing: .08em; text-transform: uppercase; color: var(--text-accent); }
+
+.frame { display: grid; grid-template-columns: 44px 1fr; }
+.rail {
+  background: var(--surface-sunken); border-right: 1px solid var(--border-subtle);
+  padding: 10px 0; display: flex; flex-direction: column; align-items: center; gap: 9px;
+}
+.rail i { width: 20px; height: 20px; display: block; border: 1.5px solid var(--text-faint); border-radius: var(--r-mark); }
+.rail i.on { border-color: var(--accent-bg); background: var(--accent-light); }
+.work { padding: 14px; display: grid; gap: 14px; min-width: 0; }
+
+/* station mouth */
+.station {
+  border: 1px solid var(--border-default); border-radius: var(--r-panel);
+  background: var(--background-surface); box-shadow: var(--elev-raised); overflow: hidden;
+}
+.station .cap { display: flex; align-items: center; justify-content: space-between; padding: 9px 10px 0; }
+.seg { display: inline-flex; padding: 2px; gap: 2px; border: 1px solid var(--border-default); border-radius: var(--r-control); background: var(--surface-sunken); }
+.seg span { font: var(--type-nav); padding: 4px 13px; border-radius: calc(var(--r-control) - 2px); color: var(--text-secondary); }
+.seg span.on { background: var(--surface-inverse); color: var(--text-inverse); font-weight: 600; }
+.station .cap .who { font: var(--type-micro); color: var(--text-faint); letter-spacing: .06em; text-transform: uppercase; }
+.dock {
+  margin: 9px 10px 10px; padding: 9px 10px;
+  display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center;
+  border: 1px solid var(--border-default); border-radius: var(--r-control);
+  background: var(--surface-bench);
+  outline: var(--focus-ring) solid var(--accent-bg); outline-offset: 1px;
+}
+.dock .prompt { font-size: 14px; color: var(--text-soft); }
+.dock .prompt b { color: var(--text-primary); font-weight: 500; }
+.ring {
+  width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--accent-bg);
+  display: grid; place-items: center; font: var(--type-micro); color: var(--text-accent);
+}
+.hinge {
+  border-top: 1px solid var(--border-subtle); background: var(--surface-sunken);
+  padding: 9px 12px; display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center;
+}
+.hinge .txt { font-size: 13px; color: var(--text-primary); }
+.hinge .txt b { font-family: var(--font-mono); font-weight: 500; }
+.hinge .grade { font: var(--type-micro); color: var(--text-secondary); }
+
+/* slot table */
+.table { border: 1px solid var(--border-default); border-radius: var(--r-panel); background: var(--background-surface); box-shadow: var(--elev-raised); overflow: hidden; }
+.tbar { display: flex; align-items: center; justify-content: space-between; padding: 8px 10px; border-bottom: 1px solid var(--border-subtle); }
+.tbar .name { font: var(--type-nav); font-weight: 600; }
+.tbar .name em { font-style: normal; color: var(--text-soft); font-weight: 400; }
+.tbar .tools { display: flex; gap: 6px; }
+.tool { height: 26px; padding: 0 9px; display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid var(--border-default); border-radius: var(--r-control);
+  background: var(--surface-sunken); font: var(--type-caption); color: var(--text-secondary); }
+.grid { display: grid; grid-template-columns: 44px 1.7fr 1fr .9fr 1.1fr; }
+.grid > div { height: var(--row-default); display: flex; align-items: center; padding: 0 10px;
+  border-bottom: 1px solid var(--border-hairline); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.grid .h { height: 28px; background: var(--surface-sunken); font: var(--type-eyebrow);
+  letter-spacing: .07em; text-transform: uppercase; color: var(--text-soft); border-bottom: 1px solid var(--border-subtle); cursor: pointer; }
+.grid .h::after { content: "↕"; margin-left: 6px; color: var(--text-faint); font-size: 10px; }
+.grid .h.sorted { color: var(--text-primary); }
+.grid .h.sorted::after { content: "↑"; color: var(--accent-text); }
+.grid .h.chrome { cursor: default; }
+.grid .h.chrome::after { content: none; }
+.grid .sel { background: var(--accent-light); }
+.grid .pick { justify-content: center; }
+.box { width: 14px; height: 14px; border: 1.5px solid var(--text-faint); border-radius: var(--r-mark); display: block; }
+.box.on { background: var(--accent-bg); border-color: var(--accent-bg); }
+.st { display: inline-flex; align-items: center; gap: 6px; height: 20px; padding: 0 7px;
+  border-radius: var(--r-chip); font: var(--type-micro); border: 1px solid transparent; }
+.st::before { content: ""; width: 6px; height: 6px; border-radius: var(--r-mark); background: currentColor; }
+.st.ok   { color: var(--text-success); background: var(--surface-success); border-color: var(--border-success); }
+.st.warn { color: var(--text-warning); background: var(--surface-warning); border-color: var(--border-warning); }
+.st.bad  { color: var(--text-danger);  background: var(--surface-danger);  border-color: var(--border-danger); }
+.st.info { color: var(--text-info);    background: var(--surface-accent);  border-color: var(--border-accent); }
+.due { color: var(--text-warning); }
+
+/* controls */
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.card { border: 1px solid var(--border-default); border-radius: var(--r-panel); background: var(--background-surface); box-shadow: var(--elev-raised); padding: 12px; display: grid; gap: 10px; }
+.btnrow { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { height: 30px; padding: 0 12px; display: inline-flex; align-items: center; gap: 6px;
+  border: 1px solid transparent; border-radius: var(--r-control); font: var(--type-nav); font-weight: 600; cursor: pointer; }
+.btn.primary   { background: var(--accent-bg); color: var(--on-accent); }
+.btn.secondary { background: var(--surface-sunken); color: var(--text-primary); border-color: var(--border-default); }
+.btn.ghost     { background: transparent; color: var(--text-secondary); }
+.btn.danger    { background: var(--surface-danger); color: var(--text-danger); border-color: var(--border-danger); }
+.btn:focus-visible { outline: var(--focus-ring) solid var(--accent-bg); outline-offset: 1px; }
+.field { height: 32px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 0 10px; border: 1px solid var(--border-default); border-radius: var(--r-control);
+  background: var(--surface-sunken); font-size: 13px; color: var(--text-soft); }
+.field.focused { outline: var(--focus-ring) solid var(--accent-bg); outline-offset: 1px; border-color: var(--accent-border); }
+kbd { font: var(--type-micro); padding: 2px 5px; border: 1px solid var(--border-default);
+  border-radius: var(--r-chip); background: var(--surface-strong); color: var(--text-secondary); }
+.menu { border: 1px solid var(--border-default); border-radius: var(--r-control); background: var(--background-surface); box-shadow: var(--elev-overlay); padding: 4px; }
+.menu div { padding: 6px 8px; border-radius: calc(var(--r-control) - 2px); font-size: 13px; display: flex; justify-content: space-between; gap: 16px; color: var(--text-primary); }
+.menu div.on { background: var(--surface-hover); }
+.menu div span { font: var(--type-micro); color: var(--text-faint); }
+
+/* spec tables */
+.tablewrap { overflow-x: auto; border: 1px solid var(--border-subtle); border-radius: var(--r-panel); background: var(--background-surface); }
+table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 13px; }
+th { text-align: left; font: var(--type-eyebrow); letter-spacing: .07em; text-transform: uppercase;
+  color: var(--text-soft); padding: 8px 12px; background: var(--surface-sunken); border-bottom: 1px solid var(--border-default); white-space: nowrap; }
+td { padding: 7px 12px; border-bottom: 1px solid var(--border-hairline); vertical-align: middle; }
+tr:last-child td { border-bottom: 0; }
+td.k { font-family: var(--font-mono); font-size: 12px; color: var(--text-primary); white-space: nowrap; }
+td.v { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
+.sw { display: inline-block; width: 16px; height: 16px; border-radius: var(--r-mark); border: 1px solid var(--border-default); vertical-align: -3px; margin-right: 7px; }
+td.note { color: var(--text-soft); font-size: 12.5px; }
+
+.ladder { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+.ladder figure { margin: 0; text-align: center; }
+.ladder .b { width: 62px; height: 42px; border: 1.5px solid var(--border-emphasis); background: var(--surface-sunken); }
+.ladder figcaption { font: var(--type-micro); color: var(--text-soft); margin-top: 5px; }
+
+.typerow { display: grid; grid-template-columns: 110px 1fr; gap: 10px 16px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--border-hairline); }
+.typerow:last-child { border-bottom: 0; }
+.typerow .k { font: var(--type-micro); color: var(--text-soft); letter-spacing: .06em; text-transform: uppercase; }
+
+.callout { border: 1px solid var(--border-accent); border-radius: var(--r-panel);
+  background: var(--surface-accent); padding: 12px 14px; }
+.callout b { color: var(--text-accent); }
+.callout p { color: var(--text-secondary); margin: 0; }
+.callout p + p { margin-top: 8px; }
+
+footer { margin-top: 44px; padding-top: 12px; border-top: 1px solid var(--border-subtle);
+  font: var(--type-micro); color: var(--text-faint); line-height: 1.8; }
+
+@media (max-width: 780px) {
+  .cols { grid-template-columns: 1fr; }
+  .frame { grid-template-columns: 1fr; }
+  .rail { display: none; }
+  .doc-head { grid-template-columns: 1fr; }
+  .doc-head .meta { text-align: left; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header class="doc-head">
+    <div>
+      <div class="eyebrow">Cycle Forge · Warehouse OS · reskin R0</div>
+      <h1>Graphite — skin reference</h1>
+    </div>
+    <div class="meta">
+      <div>Picked 2026-09-02 · RESKIN.md §2</div>
+      <div>Dark is home · light twin is the station default</div>
+      <div>This file is the R1 transcription source</div>
+    </div>
+  </header>
+
+  <p class="lede">The composition below is one screen, not a component gallery: beam, rail, station mouth with its feedback hinge, a slot table with click-sort headers, and the controls everything else inherits. <b>Flip the scheme</b> and nothing moves — only materials change. Every custom property is named for the semantic key it becomes in the theme registry, so R1 copies rather than interprets.</p>
+
+  <div class="schemebar">
+    <div class="switch" role="group" aria-label="Colour scheme">
+      <button type="button" data-set="dark" aria-pressed="true">Dark</button>
+      <button type="button" data-set="light" aria-pressed="false">Light twin</button>
+    </div>
+    <span class="note">The light twin is the <b>station default</b> and ships in R1 with the dark, not after it.</span>
+  </div>
+
+  <!-- ============================================================ -->
+  <section>
+    <h2><span class="n">01</span> Reference composition</h2>
+    <div class="rule"></div>
+
+    <div class="screen">
+      <div class="beam">
+        <div class="cluster">
+          <span class="livedot" aria-hidden="true"></span>
+          <span class="chip"><span class="mark" aria-hidden="true"></span>CARTON 0419</span>
+        </div>
+        <div class="ctx">Unbox · Receiving PO 7731 · 12 of 40 landed</div>
+        <div class="state">Scan ready</div>
+        <span class="chip">SESSION · UNBOX 08:14</span>
+      </div>
+
+      <div class="frame">
+        <nav class="rail" aria-label="Pages">
+          <i class="on"></i><i></i><i></i><i></i><i></i>
+        </nav>
+
+        <div class="work">
+          <div class="station">
+            <div class="cap">
+              <div class="seg"><span class="on">Unbox</span><span>Ticket</span></div>
+              <span class="who">Station mouth</span>
+            </div>
+            <div class="dock">
+              <div class="prompt">Scan serial or type to search <b>PO 7731</b></div>
+              <div class="ring tnum">12</div>
+            </div>
+            <div class="hinge">
+              <span class="st ok">Landed</span>
+              <div class="txt"><b>8Q2K-77A1</b> · MacBook Air M2 13" · bin R2-04</div>
+              <span class="grade tnum">Grade B · 00:00:41</span>
+            </div>
+          </div>
+
+          <div class="table">
+            <div class="tbar">
+              <span class="name">To ship <em>· 48</em></span>
+              <div class="tools"><span class="tool">Filter</span><span class="tool">Sort</span><span class="tool">Columns</span></div>
+            </div>
+            <div class="grid">
+              <div class="h chrome pick"></div>
+              <div class="h sorted">Item</div>
+              <div class="h">Status</div>
+              <div class="h">Ship by</div>
+              <div class="h">Order</div>
+
+              <div class="pick"><span class="box on"></span></div>
+              <div>Dell Latitude 5440 · 16GB</div>
+              <div><span class="st ok">Packed</span></div>
+              <div class="mono tnum">Sep 03</div>
+              <div class="mono">…4F91D2A7</div>
+
+              <div class="pick sel"><span class="box on"></span></div>
+              <div class="sel">iPad Air 5 · 256GB</div>
+              <div class="sel"><span class="st info">Picking</span></div>
+              <div class="sel mono tnum due">Sep 02</div>
+              <div class="sel mono">…88C0E1B3</div>
+
+              <div class="pick"><span class="box"></span></div>
+              <div>Logitech MX Keys · lot of 6</div>
+              <div><span class="st bad">Exception</span></div>
+              <div class="mono tnum">Sep 04</div>
+              <div class="mono">…1A2B3C4D</div>
+
+              <div class="pick"><span class="box"></span></div>
+              <div>ThinkPad T14 Gen 3 · no charger</div>
+              <div><span class="st warn">Ready</span></div>
+              <div class="mono tnum">Sep 05</div>
+              <div class="mono">…7E6F5A90</div>
+            </div>
+          </div>
+
+          <div class="cols">
+            <div class="card">
+              <div class="btnrow">
+                <button class="btn primary">Commit carton</button>
+                <button class="btn secondary">Print label</button>
+                <button class="btn ghost">Park</button>
+                <button class="btn danger">Reject</button>
+              </div>
+              <div class="field focused"><span>Search orders, serials, SKUs</span><kbd>⌘K</kbd></div>
+              <div class="field"><span>Grade note</span><kbd>Tab</kbd></div>
+            </div>
+            <div class="card">
+              <div class="menu">
+                <div class="on">Open in new tile <span>⌘⌥\</span></div>
+                <div>Copy serial <span>⌘C</span></div>
+                <div>Mark exception <span>⌘⇧E</span></div>
+                <div>Move to bin <span>⌘B</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:14px">
+      <p><b>Contracts held in this composition.</b> One mouth and one persistent scan field (I1, I8). The context ring stays bottom-right on a dumb station. The feedback hinge sits under the mouth, never beside it. Every painted DATA header click-sorts; <code>pick</code> is chrome and does not (SLOT_TABLE_PAINT_LAW.headerSort). State is drawn with <code>outline</code>, so the focus ring is 2px and reflows nothing (M3). Nothing here animates geometry (M1, M2).</p>
+    </div>
+  </section>
+
+  <!-- ============================================================ -->
+  <section>
+    <h2><span class="n">02</span> Colour — what the QA lab can prove</h2>
+    <div class="rule"></div>
+    <p>These are runtime CSS variables, so the Design Lab's <code>data-reskin</code> toggle moves them live on real routes. R1 transcribes each row into <code>src/design-system/themes/</code> as <code>--ds-color-&lt;key&gt;</code>. Both schemes are complete on their own; nothing is inherited across the light/dark line.</p>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Semantic key</th><th>Dark</th><th>Light twin</th><th>Role</th></tr></thead>
+        <tbody id="tokrows"></tbody>
+      </table>
+    </div>
+
+    <h3>Accent, page and the one rule about teal</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Key</th><th>Dark</th><th>Light twin</th><th>Role</th></tr></thead>
+        <tbody id="accentrows"></tbody>
+      </table>
+    </div>
+    <p style="margin-top:12px"><b>Teal is the accent and never means success.</b> Success stays green and keeps its own hue distance, because on a status-heavy grid an accent that doubles as a state blurs the two at a glance. That is the failure mode the Studio direction was rejected for.</p>
+  </section>
+
+  <!-- ============================================================ -->
+  <section>
+    <h2><span class="n">03</span> Radius, type, elevation — what the lab cannot prove</h2>
+    <div class="rule"></div>
+    <p>These are Tailwind classes resolved at build time. No runtime attribute moves them, so they land as R1 primitive commits through the <code>:3051</code> worktree lane. Do not wire <code>radius.ts</code> into the Tailwind config to make the lab prettier: that remaps every <code>rounded-*</code> call site in the app at once.</p>
+
+    <h3>Radius ladder — four rungs, and that is the whole set</h3>
+    <div class="ladder">
+      <figure><div class="b" style="border-radius:var(--r-flush)"></div><figcaption>flush · 0<br>beam, rails, well</figcaption></figure>
+      <figure><div class="b" style="border-radius:var(--r-mark)"></div><figcaption>mark · 2<br>box, dot, swatch</figcaption></figure>
+      <figure><div class="b" style="border-radius:var(--r-chip)"></div><figcaption>chip · 4<br>chip, badge, keycap</figcaption></figure>
+      <figure><div class="b" style="border-radius:var(--r-control)"></div><figcaption>control · 6<br>button, input, face</figcaption></figure>
+      <figure><div class="b" style="border-radius:var(--r-panel)"></div><figcaption>panel · 8<br>panel, popover, tile</figcaption></figure>
+    </div>
+    <p style="margin-top:14px">Nesting is concentric by subtraction, not by a second ladder: an inner face inside a <code>control</code> with 2px padding takes <code>calc(var(--r-control) - 2px)</code>. The seven-rung F9 ladder and every named corner exemption in <code>radius.ts</code> collapse into these five. Viewport-flush chrome stays square because a radius jammed against the display edge paints a corner of desktop wallpaper.</p>
+
+    <h3>Type — Instrument Sans and Geist Mono</h3>
+    <div style="border:1px solid var(--border-subtle);border-radius:var(--r-panel);background:var(--background-surface);padding:12px 14px">
+      <div class="typerow"><span class="k">display · 22/600</span><span style="font:var(--type-display)">Receiving · PO 7731</span></div>
+      <div class="typerow"><span class="k">title · 17/600</span><span style="font:var(--type-title)">Unbox station</span></div>
+      <div class="typerow"><span class="k">body · 14/400</span><span style="font:var(--type-body)">Forty cartons, twelve landed, one exception.</span></div>
+      <div class="typerow"><span class="k">data · 13/500 mono</span><span style="font:var(--type-data)" class="tnum">8Q2K-77A1 · 1,189 rows · 00:00:41</span></div>
+      <div class="typerow"><span class="k">nav · 13/500</span><span style="font:var(--type-nav)">To ship</span></div>
+      <div class="typerow"><span class="k">caption · 12/400</span><span style="font:var(--type-caption)">Scanned 41 seconds ago by Dana</span></div>
+      <div class="typerow"><span class="k">eyebrow · 10.5/600</span><span style="font:var(--type-eyebrow);letter-spacing:.08em;text-transform:uppercase">Station mouth</span></div>
+      <div class="typerow"><span class="k">micro · 10/500 mono</span><span style="font:var(--type-micro)">R2-04</span></div>
+    </div>
+    <p style="margin-top:12px">Every identifier and every number is mono with <b>tabular figures</b> and <b>ligatures off</b>. Plex Mono ligates <code>fi</code> and <code>fl</code>, which in a serial or FNSKU makes an operator transcribe a string that is not the one stored. Geist Mono is set the same way, deliberately.</p>
+
+    <h3>Elevation — one raised step</h3>
+    <div class="cols">
+      <div class="card" style="box-shadow:var(--elev-flat)"><b style="color:var(--text-primary)">flat</b><p style="margin:0">Ground plane. Borders carry the structure. Tables, rails, well grounds.</p></div>
+      <div class="card"><b style="color:var(--text-primary)">raised</b><p style="margin:0">Lightness step plus a 1px inner highlight. Panels, station cards, tiles. No drop shadow.</p></div>
+    </div>
+    <div class="card" style="box-shadow:var(--elev-overlay);margin-top:14px"><b style="color:var(--text-primary)">overlay</b><p style="margin:0">The only shadow in the system, and only for surfaces that genuinely float over content: popover, menu, dialog, the morph cursor layer.</p></div>
+    <p style="margin-top:12px">This replaces F3's "no drop shadows, anywhere". F3 was already ignored by 346 shadow utilities, so the honest law is one shadow with a named job rather than a ban nobody kept. Density on a dark shell comes from lightness steps, not from ink.</p>
+
+    <h3>Density — height and padding only</h3>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Mode</th><th>Row height</th><th>Where</th></tr></thead>
+        <tbody>
+          <tr><td class="k">compact</td><td class="v">28px</td><td class="note">Desk queues on a 1440 laptop</td></tr>
+          <tr><td class="k">default</td><td class="v">32px</td><td class="note">Desk queues, the shipped default</td></tr>
+          <tr><td class="k">roomy</td><td class="v">38px</td><td class="note">Comfort setting; gloved desk use</td></tr>
+          <tr><td class="k">station</td><td class="v">40px</td><td class="note">Floor benches, read at arm's length</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:12px"><b>Type size and target size never change with density.</b> Handheld floors keep a 12pt type floor and 48dp targets, 10mm for a gloved hand. A density mode that shrinks the type is a legibility regression wearing a preference's name.</p>
+  </section>
+
+  <!-- ============================================================ -->
+  <section>
+    <h2><span class="n">04</span> What this replaces, by law number</h2>
+    <div class="rule"></div>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Old law</th><th>Was</th><th>Graphite</th></tr></thead>
+        <tbody>
+          <tr><td class="k">F3</td><td class="note">No drop shadows, anywhere</td><td class="note">One <code>overlay</code> shadow, for surfaces that float. Raised is lightness plus an inner highlight.</td></tr>
+          <tr><td class="k">F5</td><td class="note">Segmented strips replace pills; a pill is a radius in disguise</td><td class="note">Segmented strips stay, at <code>control</code> radius with an inverted active face. Status chips are chips.</td></tr>
+          <tr><td class="k">F9 / F10</td><td class="note">Seven-rung concentric ladder, planes square</td><td class="note">Five rungs: flush, mark, chip, control, panel. Planes still square. Nesting subtracts padding.</td></tr>
+          <tr><td class="k">U3</td><td class="note">Comfort radius is the F9 ladder</td><td class="note">Radius is not a comfort knob at all. Density is the only comfort axis that moves geometry.</td></tr>
+          <tr><td class="k">B20</td><td class="note">Session chip has no radius</td><td class="note">Session chip takes <code>chip</code> radius, same as every chip. Its position in the beam's right corner is unchanged.</td></tr>
+          <tr><td class="k">prototype</td><td class="note"><code>--r-hud: 4px</code>, two tokens total</td><td class="note">Superseded by the five-rung ladder above.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:12px">Each row is struck in <code>LAWS.md</code> per X3 when its replacement lands, and the replacement takes the next free F-numbers per X4. Nothing is silently edited away.</p>
+  </section>
+
+  <footer>
+    Contracts unchanged by this skin: I1 · I8 one mouth · I2 · I3 wedge ahead of keybinds · T20 · T21 chords · S1 · S2 one armed session · Q5 Center Lock · SLOT_TABLE_PAINT_LAW.headerSort · M1 · M2 · M3 · M5 motion · B8 readouts on the surface.<br>
+    Colour signs off in the QA Design Lab (RESKIN-LAB.md). Radius, type, elevation and primitives sign off in the :3051 worktree lane and land as R1 commits.
+  </footer>
+</div>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var buttons = Array.prototype.slice.call(document.querySelectorAll('.switch button'));
+  buttons.forEach(function (b) {
+    b.addEventListener('click', function () {
+      root.setAttribute('data-scheme', b.dataset.set);
+      buttons.forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+    });
+  });
+
+  /* The token tables are generated from the stylesheet itself, so the spec can
+     never drift from what this page actually paints. */
+  var KEYS = [
+    ['text-primary', 'Body and value ink'],
+    ['text-secondary', 'Supporting prose, hinge detail'],
+    ['text-soft', 'Labels, column heads, captions'],
+    ['text-faint', 'Placeholder, disabled, keycap ink'],
+    ['background-canvas', 'The ground every plane sits on'],
+    ['background-surface', 'Card / panel / beam plane'],
+    ['surface-sunken', 'Recessed: rails, table head, field'],
+    ['surface-hover', 'Row and item interaction wash'],
+    ['surface-strong', 'Tracks, skeletons, keycaps'],
+    ['surface-bench', 'Station bench header strip'],
+    ['surface-trough', 'Routed scan well'],
+    ['surface-plate', 'Working row on a bench'],
+    ['surface-slot', 'Felt-lined serial pocket'],
+    ['surface-inverse', 'Inverted chrome fill'],
+    ['surface-inverse-hover', 'Hover on inverted chrome'],
+    ['surface-inverse-raised', 'Chip resting on an inverse bar'],
+    ['surface-inverse-soft', 'Muted standalone inverse fill'],
+    ['text-inverse', 'Ink on inverted chrome'],
+    ['text-inverse-soft', 'Secondary ink on inverted chrome'],
+    ['border-subtle', 'Section and card edges'],
+    ['border-default', 'The working rule'],
+    ['border-hairline', 'Row separators inside a grid'],
+    ['border-emphasis', 'Drop zones, dotted underlines'],
+    ['border-stain', 'Trough shadow lip'],
+    ['border-ply', 'Raw-ply highlight lip'],
+    ['border-strong', 'Max-emphasis selection outline'],
+    ['border-inverse', 'Hairline on inverted chrome'],
+    ['text-success', 'Success ink'],
+    ['text-warning', 'Warning ink'],
+    ['text-danger', 'Danger ink'],
+    ['text-accent', 'Accent ink (teal)'],
+    ['surface-success', 'Success tint'],
+    ['surface-warning', 'Warning tint'],
+    ['surface-danger', 'Danger tint'],
+    ['surface-accent', 'Accent tint'],
+    ['border-success', 'Success chip edge'],
+    ['border-warning', 'Warning chip edge'],
+    ['border-danger', 'Danger chip edge'],
+    ['border-accent', 'Accent chip edge'],
+    ['text-info', 'Informational ink'],
+    ['text-fulfillment', 'Fulfillment category ink'],
+    ['fill-info', 'Solid info fill'],
+    ['fill-success', 'Solid success fill'],
+    ['fill-warning', 'Solid warning fill'],
+    ['fill-danger', 'Solid danger fill'],
+    ['fill-fulfillment', 'Solid fulfillment fill']
+  ];
+  var ACCENT = [
+    ['accent-bg', 'Primary button, armed ring, checked box'],
+    ['accent-hover', 'Hover on accent fill'],
+    ['accent-light', 'Selected row wash'],
+    ['accent-border', 'Accent edge on a field'],
+    ['accent-text', 'Accent ink on a neutral ground'],
+    ['accent-shadow', 'Accent glow, overlays only'],
+    ['background', 'Page background'],
+    ['foreground', 'Page foreground']
+  ];
+
+  /* Read each key under both schemes without disturbing the visible one. */
+  function readAll(keys) {
+    var was = root.getAttribute('data-scheme');
+    var out = {};
+    ['dark', 'light'].forEach(function (scheme) {
+      root.setAttribute('data-scheme', scheme);
+      var cs = getComputedStyle(root);
+      out[scheme] = keys.map(function (row) { return cs.getPropertyValue('--' + row[0]).trim(); });
+    });
+    root.setAttribute('data-scheme', was);
+    return out;
+  }
+
+  function paint(tbodyId, keys) {
+    var vals = readAll(keys);
+    var html = keys.map(function (row, i) {
+      var d = vals.dark[i], l = vals.light[i];
+      return '<tr>' +
+        '<td class="k">' + row[0] + '</td>' +
+        '<td class="v"><span class="sw" style="background:' + d + '"></span>' + d + '</td>' +
+        '<td class="v"><span class="sw" style="background:' + l + '"></span>' + l + '</td>' +
+        '<td class="note">' + row[1] + '</td>' +
+        '</tr>';
+    }).join('');
+    document.getElementById(tbodyId).innerHTML = html;
+  }
+
+  paint('tokrows', KEYS);
+  paint('accentrows', ACCENT);
+})();
+</script>
+</body>
+</html>

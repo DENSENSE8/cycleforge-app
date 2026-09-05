@@ -28,6 +28,13 @@ function str(value: string | null | undefined): string | null {
   return s || null;
 }
 
+/** Positive unit cost only — a zero or missing rate is an absent price, not $0.00. */
+function unitPriceText(raw: string | number | null | undefined): string | null {
+  if (raw == null || raw === '') return null;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? `$${n.toFixed(2)}` : null;
+}
+
 /**
  * Resolve one bound field for one row. Unknown field id → null (the cell
  * dashes); the layout resolver has already dropped stale bindings.
@@ -52,6 +59,8 @@ export function resolveIncomingSlotValue(
       const qty = row.quantity_expected;
       return { kind: 'value', text: qty == null ? null : String(qty) };
     }
+    case 'incoming.price':
+      return { kind: 'value', text: unitPriceText(row.unit_price) };
     case 'incoming.status':
       return { kind: 'value', text: incomingStateFace(row).label };
     case 'incoming.platform': {

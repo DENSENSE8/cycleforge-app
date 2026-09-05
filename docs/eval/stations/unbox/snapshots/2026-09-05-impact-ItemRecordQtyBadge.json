@@ -1,0 +1,147 @@
+{
+  "project": "cycleforge-app",
+  "target": "component:src/design-system/components/item-record/ItemRecordQtyBadge.tsx:ItemRecordQtyBadge",
+  "files_affected": 17,
+  "total_symbols": 20,
+  "files": [
+    {
+      "file": "src/components/mobile/redesign/MobileToShipRow.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 2,
+      "symbols": [
+        "ToShipQtyFace",
+        "ToShipSlotSubtitle"
+      ]
+    },
+    {
+      "file": "src/components/receiving/workspace/UnitsExplosionDisplay.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 2,
+      "symbols": [
+        "SiblingLineSummary",
+        "UnitsExplosionDisplay"
+      ]
+    },
+    {
+      "file": "src/components/station/receiving/PoLinesSection.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 2,
+      "symbols": [
+        "PoLineRow",
+        "PoLinesSection"
+      ]
+    },
+    {
+      "file": "src/design-system/components/item-record/ItemRecordRow.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "ItemRecordRow"
+      ]
+    },
+    {
+      "file": "src/components/receiving/workspace/PoLineBadges.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "ProgressBadge"
+      ]
+    },
+    {
+      "file": "src/components/station/ReceivingLineOrderRow.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "ReceivingLineOrderRow"
+      ]
+    },
+    {
+      "file": "src/components/tech/testing/TestingScanPickPanel.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "TestingScanPickPanel"
+      ]
+    },
+    {
+      "file": "src/components/station/receiving-grid/ReceivingGridRow.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "ReceivingGridRow"
+      ]
+    },
+    {
+      "file": "src/design-system/components/item-record/ItemRecordCard.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "ItemRecordCard"
+      ]
+    },
+    {
+      "file": "src/components/station/ReceivingLinesTable.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "renderReceivingRow"
+      ]
+    },
+    {
+      "file": "src/components/receiving/inspector/inspection/CartonInspectionPage.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "ContentsList"
+      ]
+    },
+    {
+      "file": "src/components/tech/shipping/ShippingSkuSerialRows.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "SkuSerialGroupBlock"
+      ]
+    },
+    {
+      "file": "src/components/tech/TestingHistoryList.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "TestingHistoryList"
+      ]
+    },
+    {
+      "file": "src/components/tech/TestingLineWorkspace.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "TestingLineWorkspace"
+      ]
+    },
+    {
+      "file": "src/components/packing/PackChecklistLineRow.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "PackChecklistLineRow"
+      ]
+    },
+    {
+      "file": "src/components/receiving/workspace/PoLineRow.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "PoLineRow"
+      ]
+    },
+    {
+      "file": "src/components/station/incoming-grid/IncomingGridRow.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "IncomingGridRow"
+      ]
+    }
+  ]
+}

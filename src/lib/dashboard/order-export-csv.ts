@@ -10,6 +10,7 @@
  */
 
 import { conditionLabel } from '@/lib/conditions';
+import { csvCell as houseCsvCell } from '@/lib/tables/export/serialize';
 import { formatDateTimePST, getCurrentPSTDateKey, parseDateKey } from '@/utils/date';
 import { resolveOrderLifecycleStage } from '@/lib/order-lifecycle';
 import { getOrderPlatformLabel } from '@/utils/order-platform';
@@ -112,11 +113,14 @@ export interface PackedExportWindow {
   dateTo?: string | null;
 }
 
-/** RFC-4180 quoting — a comma, quote, or newline in a product title is normal. */
-function csvCell(value: unknown): string {
-  const s = value == null ? '' : String(value);
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
+/**
+ * RFC-4180 quoting — a comma, quote, or newline in a product title is normal.
+ *
+ * Re-exported from the house serializer rather than re-implemented: this was
+ * one of three byte-identical copies, and identical copies are how the next
+ * quoting fix reaches two of them.
+ */
+const csvCell = houseCsvCell;
 
 function flag(value: boolean | null | undefined): string {
   return value ? 'true' : 'false';

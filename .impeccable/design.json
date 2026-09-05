@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-04T20:40:00.000Z",
+  "title": "Design System: Cycle Forge",
+  "extensions": {
+    "colorMeta": {
+      "slate-ink": {
+        "role": "neutral",
+        "displayName": "Slate Ink",
+        "canonical": "#0f172a",
+        "tonalRamp": ["#020617", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#e2e8f0"]
+      },
+      "slate-secondary": {
+        "role": "neutral",
+        "displayName": "Slate Secondary",
+        "canonical": "#475569",
+        "tonalRamp": ["#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f1f5f9"]
+      },
+      "slate-soft": {
+        "role": "neutral",
+        "displayName": "Slate Soft",
+        "canonical": "#64748b",
+        "tonalRamp": ["#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f1f5f9", "#f8fafc"]
+      },
+      "slate-faint": {
+        "role": "neutral",
+        "displayName": "Slate Faint",
+        "canonical": "#94a3b8",
+        "tonalRamp": ["#475569", "#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#f1f5f9", "#f8fafc", "#ffffff"]
+      },
+      "canvas": {
+        "role": "neutral",
+        "displayName": "Cool Canvas",
+        "canonical": "#eef2f7",
+        "tonalRamp": ["#94a3b8", "#cbd5e1", "#e2e8f0", "#eef2f7", "#f1f5f9", "#f8fafc", "#fafbfc", "#ffffff"]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "Card White",
+        "canonical": "#ffffff",
+        "tonalRamp": ["#cbd5e1", "#e2e8f0", "#eef2f7", "#f1f5f9", "#f8fafc", "#fafbfc", "#fdfefe", "#ffffff"]
+      },
+      "sunken": {
+        "role": "neutral",
+        "displayName": "Sunken",
+        "canonical": "#f1f5f9",
+        "tonalRamp": ["#94a3b8", "#cbd5e1", "#e2e8f0", "#eef2f7", "#f1f5f9", "#f8fafc", "#fafbfc", "#ffffff"]
+      },
+      "hover-wash": {
+        "role": "neutral",
+        "displayName": "Hover Wash",
+        "canonical": "#f8fafc",
+        "tonalRamp": ["#cbd5e1", "#e2e8f0", "#eef2f7", "#f1f5f9", "#f8fafc", "#fafbfc", "#fdfefe", "#ffffff"]
+      },
+      "strong": {
+        "role": "neutral",
+        "displayName": "Strong",
+        "canonical": "#e2e8f0",
+        "tonalRamp": ["#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#eef2f7", "#f1f5f9", "#f8fafc", "#ffffff"]
+      },
+      "hairline": {
+        "role": "neutral",
+        "displayName": "Hairline",
+        "canonical": "#f1f5f9",
+        "tonalRamp": ["#94a3b8", "#cbd5e1", "#e2e8f0", "#eef2f7", "#f1f5f9", "#f8fafc", "#fafbfc", "#ffffff"]
+      },
+      "border-soft": {
+        "role": "neutral",
+        "displayName": "Soft Border",
+        "canonical": "#cbd5e1",
+        "tonalRamp": ["#64748b", "#94a3b8", "#cbd5e1", "#e2e8f0", "#eef2f7", "#f1f5f9", "#f8fafc", "#ffffff"]
+      },
+      "scan-blue": {
+        "role": "primary",
+        "displayName": "Scan Blue",
+        "canonical": "#2563eb",
+        "tonalRamp": ["#1e3a8a", "#1d4ed8", "#2563eb", "#3b82f6", "#60a5fa", "#93c5fd", "#dbeafe", "#eff6ff"]
+      },
+      "navy-accent": {
+        "role": "secondary",
+        "displayName": "Navy Accent",
+        "canonical": "#1a3a6b",
+        "tonalRamp": ["#0f1f3a", "#1a3a6b", "#1e4a8a", "#2a4d9a", "#3b6bb0", "#7aa0d4", "#c5d4eb", "#f0f4fb"]
+      },
+      "success": {
+        "role": "primary",
+        "displayName": "Success",
+        "canonical": "#16a34a",
+        "tonalRamp": ["#14532d", "#166534", "#16a34a", "#22c55e", "#4ade80", "#86efac", "#bbf7d0", "#f0fdf4"]
+      },
+      "warning": {
+        "role": "primary",
+        "displayName": "Warning",
+        "canonical": "#ea580c",
+        "tonalRamp": ["#7c2d12", "#c2410c", "#ea580c", "#f97316", "#fb923c", "#fdba74", "#fed7aa", "#fff7ed"]
+      },
+      "danger": {
+        "role": "primary",
+        "displayName": "Danger",
+        "canonical": "#dc2626",
+        "tonalRamp": ["#7f1d1d", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5", "#fecaca", "#fef2f2"]
+      },
+      "inverse": {
+        "role": "neutral",
+        "displayName": "Inverse Ink",
+        "canonical": "#f8fafc",
+        "tonalRamp": ["#0f172a", "#1e293b", "#334155", "#475569", "#94a3b8", "#e2e8f0", "#f1f5f9", "#f8fafc"]
+      }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Display", "purpose": "Rare page-scale type. Not a table face." },
+      "headline": { "displayName": "Headline", "purpose": "Desk page title (18px Inter semibold)." },
+      "title": { "displayName": "Caption / cell", "purpose": "Ledger cell and compound title — the table’s reading size." },
+      "body": { "displayName": "Body", "purpose": "Surrounding desk copy, not grid facts." },
+      "label": { "displayName": "Micro header", "purpose": "Sentence-case column headers in Plex Condensed." },
+      "mono": { "displayName": "Mono ID", "purpose": "SKUs, serials, qty, money — strings an operator retypes." }
+    },
+    "shadows": [
+      {
+        "name": "flat",
+        "value": "none",
+        "purpose": "Slot grid. Borders carry hierarchy."
+      },
+      {
+        "name": "raised",
+        "value": "0 0 3px rgba(2, 6, 23, 0.05), 0 2px 4px -1px rgba(2, 6, 23, 0.07), 0 12px 24px -10px rgba(2, 6, 23, 0.13)",
+        "purpose": "In-flow cards on canvas. Ambient layer keeps tall sheets readable at the top edge."
+      },
+      {
+        "name": "overlay",
+        "value": "0 0 4px rgba(2, 6, 23, 0.06), 0 4px 10px -2px rgba(2, 6, 23, 0.1), 0 24px 48px -16px rgba(2, 6, 23, 0.24)",
+        "purpose": "Menus, popovers, filter panel."
+      }
+    ],
+    "motion": [
+      {
+        "name": "color-only",
+        "value": "150ms",
+        "purpose": "Chrome hover is color, never layout. Nothing that moves a neighbour."
+      }
+    ],
+    "breakpoints": [
+      { "name": "desk-stage", "value": "1152px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Desk card",
+      "kind": "card",
+      "refersTo": "desk-card",
+      "description": "Pointer-desk sheet shell — square top, 12px floor, grid bleeds to the edges.",
+      "html": "<div class=\"ds-desk-card\"><div class=\"ds-desk-toolbar\">Search</div><div class=\"ds-desk-grid\">Order · Status · Amount</div></div>",
+      "css": ".ds-desk-card { background: var(--ds-color-background-surface, #ffffff); border-radius: 0 0 12px 12px; overflow: hidden; font-family: Inter, system-ui, sans-serif; } .ds-desk-toolbar { height: 28px; display: flex; align-items: center; padding: 0 8px; border-bottom: 1px solid var(--ds-color-border-default, #cbd5e1); font-size: 12px; color: var(--ds-color-text-secondary, #475569); } .ds-desk-grid { padding: 8px; font-size: 12px; color: var(--ds-color-text-primary, #0f172a); border-bottom: 1px solid var(--ds-color-border-subtle, #e2e8f0); }"
+    },
+    {
+      "name": "Column header",
+      "kind": "custom",
+      "refersTo": "table-header",
+      "description": "Sentence-case black micro label — click-to-sort, never grey, never uppercase.",
+      "html": "<button class=\"ds-table-header\" type=\"button\">Status</button>",
+      "css": ".ds-table-header { appearance: none; background: var(--ds-color-background-surface, #ffffff); border: 0; border-bottom: 1px solid var(--ds-color-border-subtle, #e2e8f0); height: 28px; padding: 0 8px; font-family: 'IBM Plex Sans Condensed', Inter, sans-serif; font-size: 10px; font-weight: 400; letter-spacing: 0.04em; line-height: 1.2; color: var(--ds-color-text-primary, #0f172a); text-align: left; cursor: pointer; } .ds-table-header:hover { background: var(--ds-color-surface-hover, #f8fafc); } .ds-table-header:focus-visible { outline: 2px solid var(--ds-color-fill-info, #2563eb); outline-offset: 2px; }"
+    },
+    {
+      "name": "Compound title",
+      "kind": "custom",
+      "refersTo": "compound-title",
+      "description": "Ledger cell title — slate idle, scan-blue underline on hover.",
+      "html": "<a class=\"ds-compound-title\" href=\"#\">USAV-10482</a>",
+      "css": ".ds-compound-title { font-family: Inter, system-ui, sans-serif; font-size: 12px; font-weight: 500; line-height: 1.35; letter-spacing: 0.01em; color: var(--ds-color-text-primary, #0f172a); text-decoration: none; } .ds-compound-title:hover, .ds-compound-title:focus-visible { color: var(--ds-color-text-info, #2563eb); text-decoration: underline; text-underline-offset: 2px; }"
+    },
+    {
+      "name": "Toolbar search",
+      "kind": "input",
+      "refersTo": "toolbar-search",
+      "description": "28px search in the table toolbar — 8px corners, no underline.",
+      "html": "<input class=\"ds-toolbar-search\" type=\"search\" placeholder=\"Search\" />",
+      "css": ".ds-toolbar-search { height: 28px; width: 100%; max-width: 22rem; border: 0; border-radius: 8px; padding: 0 12px; font-family: Inter, system-ui, sans-serif; font-size: 12px; color: var(--ds-color-text-primary, #0f172a); background: var(--ds-color-background-surface, #ffffff); } .ds-toolbar-search::placeholder { color: var(--ds-color-text-faint, #94a3b8); } .ds-toolbar-search:hover { background: var(--ds-color-surface-hover, #f8fafc); } .ds-toolbar-search:focus-visible { outline: 2px solid var(--ds-color-fill-info, #2563eb); outline-offset: 2px; }"
+    },
+    {
+      "name": "Chrome button",
+      "kind": "button",
+      "refersTo": "chrome-button",
+      "description": "Quiet toolbar control — part of the bar, not a CTA.",
+      "html": "<button class=\"ds-chrome-button\" type=\"button\">Sort</button>",
+      "css": ".ds-chrome-button { appearance: none; height: 28px; padding: 0 12px; border: 0; border-radius: 0; background: transparent; font-family: Inter, system-ui, sans-serif; font-size: 12px; color: var(--ds-color-text-secondary, #475569); cursor: pointer; } .ds-chrome-button:hover { background: var(--ds-color-surface-hover, #f8fafc); color: var(--ds-color-text-primary, #0f172a); } .ds-chrome-button:focus-visible { outline: 2px solid var(--ds-color-fill-info, #2563eb); outline-offset: 2px; }"
+    },
+    {
+      "name": "ID chip",
+      "kind": "chip",
+      "refersTo": "mono",
+      "description": "Dense mono identifier — tabular, no tracking tighten.",
+      "html": "<span class=\"ds-id-chip\">SKU-4401</span>",
+      "css": ".ds-id-chip { display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border-radius: 4px; font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 12px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; color: var(--ds-color-text-info, #2563eb); background: transparent; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Kinetic Ledger",
+    "overview": "Cycle Forge desks are a workbench spreadsheet sitting on cool slate canvas — not a document, not a scan bench. The slot data table (To-ship / Orders and every PRODUCT_TABLES peer) is the identity lock: one white card, caption-dense rows, hairline bottom rules, black sentence-case headers that sort on click. Chrome is quiet; facts carry the story.\n\nPersonality is ops density with Linear chrome discipline. Hierarchy comes from ink contrast and tracking, never from weight 700 or a second display face. The table is coplanar with its toolbar and status bar; depth is the card on the canvas, not nested islands inside the grid.\n\nConfirmed visual rejections: document whitespace as the product shape; a second rounded table shell inside the desk card; grey headers that read as disabled; CSS-uppercase column labels; standing keycaps on buttons; a filter strip of hunt tiles.",
+    "keyCharacteristics": [
+      "One white sheet inside a desk card; the grid bleeds to the card edges.",
+      "Bottom hairlines only — no vertical column cage.",
+      "Caption-dense cells (12px) with condensed 10px headers in black ink.",
+      "Interactive facts turn scan-blue and underline; idle facts stay slate ink.",
+      "Toolbar splits “what am I looking at” (left) from “how is it drawn” (right)."
+    ],
+    "rules": [
+      { "name": "The One-Voice Rule", "body": "Scan Blue is for live facts and interactive ink. It is not a fill for the sheet, the header band, or idle chrome.", "section": "colors" },
+      { "name": "The Header-Ink Rule", "body": "A painted DATA header uses Slate Ink, same as the values under it. Grey headers read as disabled.", "section": "colors" },
+      { "name": "The Sentence-Case Header Rule", "body": "Column labels render in the case the catalog authored. Eyebrows, field labels, and section labels may uppercase; DATA headers may not.", "section": "typography" },
+      { "name": "The Weight-Cap Rule", "body": "700+ is not loaded. Hierarchy is ink + tracking, not extra bold.", "section": "typography" },
+      { "name": "The One-Plane Rule", "body": "Toolbar, frozen header, body, and status bar share Card White. Hierarchy is hairline rules, not a sunken header fill.", "section": "elevation" },
+      { "name": "The Flat-Grid Rule", "body": "Do not raise individual rows or cells. Lift the card, or lift a popover — never the sheet.", "section": "elevation" },
+      { "name": "The No-Box-in-Box Rule", "body": "Only the desk card carries radius on a pointer desk. The table inside stays edge-to-edge.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep every labeled DATA header click-to-sort, and list those same facts in the toolbar sort menu.",
+      "Do mount the filter control beside Search even when a family has no facets.",
+      "Do paint column headers in sentence case with Slate Ink at 10px condensed.",
+      "Do use caption (12px) for grid facts and Plex Mono for identifiers.",
+      "Do let the grid bleed to the desk card; put radius only on that card’s floor."
+    ],
+    "donts": [
+      "Don't wrap DataTable in a second rounded / bordered / shadowed shell.",
+      "Don't grey out DATA headers, CSS-uppercase them, or set sortable: false on a labeled fact.",
+      "Don't draw a vertical column cage or a sunken frozen-header fill.",
+      "Don't put FilterRefinementBar, hunt tiles, or a funnel inside SearchField.",
+      "Don't use native date inputs or the range-filter picker inside a cell.",
+      "Don't invent a second display face, load weight 700, or leave keycaps standing on buttons."
+    ]
+  }
+}

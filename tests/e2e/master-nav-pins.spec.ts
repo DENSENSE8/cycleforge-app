@@ -2,7 +2,12 @@ import { test, expect, type Page } from '@playwright/test';
 
 /**
  * MasterNav Pinned cluster — pin this page, unpin, hold-drag a catalog leaf
- * onto the drop well. Home and Media Library are structural and cannot be pinned.
+ * onto the drop well.
+ *
+ * Home is the ONLY structural row. Media Library was structural too until
+ * 2026-09-05, on the grounds that it already sat above Pinned — which is what a
+ * pin is for, so it spent spine real estate no operator could reclaim. Its
+ * pin/unpin round trip lives in `master-nav-pin-drag.spec.ts`.
  */
 
 const PAGES_MENU = '[role="menu"][aria-label="Pages"]';
@@ -47,20 +52,21 @@ async function holdDrag(page: Page, source: ReturnType<Page['locator']>, dest: R
 test.describe('MasterNav pins', () => {
   test.use({ viewport: { width: 1440, height: 900 } });
 
-  test('Home and Media Library cannot be pinned', async ({ page }) => {
+  test('Home cannot be pinned — the spine root is not a shortcut', async ({ page }) => {
     await openSpine(page, '/');
     await unpinAll(page);
+    // On Home itself, there is nothing to pin.
     await expect(page.getByRole('button', { name: 'Pin this page' })).toHaveCount(0);
 
-    const media = page.getByRole('button', { name: 'Go to Media Library' });
+    const home = page.getByRole('button', { name: 'Go to Home' });
     const cluster = page.getByRole('group', { name: 'Pinned' });
-    await holdDrag(page, media, cluster);
-    await expect(page.getByRole('button', { name: 'Unpin Media Library' })).toHaveCount(0);
+    await holdDrag(page, home, cluster);
+    await expect(page.getByRole('button', { name: 'Unpin Home' })).toHaveCount(0);
   });
 
   test('Pin this page and hold-drag a station leaf into Pinned', async ({ page }) => {
     await openSpine(page, '/unbox');
-    await expect(page.getByRole('group', { name: 'Home and Media Library' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Top pages' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Add to spine' })).toHaveCount(0);
 
     await unpinAll(page);

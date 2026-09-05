@@ -28,7 +28,7 @@
 import { useCallback } from 'react';
 import { Button } from '@/design-system/primitives/Button';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
-import { cornerClass } from '@/design-system/tokens/radius';
+import { cornerClass, MOBILE_SCAN_CARD_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import {
   arrivalCardModel,
@@ -160,9 +160,10 @@ export function ArrivalCard({
   return (
     <section
       aria-label={title}
+      data-testid="arrival-card"
       className={cn(
         'flex w-full flex-col gap-3 border border-border-soft bg-surface-card p-3',
-        cornerClass('card'),
+        MOBILE_SCAN_CARD_CORNER,
       )}
     >
       {/* Header — the armed session's own title, not a second spelling of it. */}

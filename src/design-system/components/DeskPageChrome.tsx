@@ -19,8 +19,7 @@
  *      ┌ stage measure ─────────────────────────────────────────────┐
  *      │ Shipping                         [ Export ] [ Add order ]  │  ← page header
  *      │ To ship   Amazon Prep                                      │  ← fixed-width tab row
- *      │ ───────                                                    │     underline = active
- *      │                     ↕ detachment gap                       │
+ *      │         ───                                                │     active underline only
  *      │ ┌────────────────────────────────────────────────────────┐ │
  *      │ │ ⌕ find …                         [filter] [fields]  ⤢ │ │  ← table's own row
  *      │ │ ─────────────────── the grid ───────────────────────── │ │
@@ -29,10 +28,11 @@
  *       ↑ gutter                                            gutter ↑
  * ```
  *
- * Four jobs, and only these four: a **page header** (title left, primary CTA
- * right), a **tab row** for the desk's modes (the pages that used to hang off
- * the spine as nav children), a **detachment gap**, and a **card** capped at
- * {@link DESK_STAGE_MAX_PX}.
+ * Four jobs: a **page header** (title left, primary CTA right), a **tab row**
+ * for the desk's modes (the pages that used to hang off the spine as nav
+ * children), a **card** capped at {@link DESK_STAGE_MAX_PX}, and a **floor**
+ * under that card. The card welds to the tab row — no gap and no full-width
+ * hairline between tabs and the table toolbar.
  *
  * The tab row is the only optional one. A single-surface page passes `tabs={[]}`
  * and wears the other three — which is what lets a page with no modes still be
@@ -88,15 +88,16 @@
  * - **Full-canvas surfaces** (`/studio`'s pan/zoom graph). A canvas that is the
  *   whole point of the page has nothing to gain from a card on a stage.
  *
- * ## The detachment is the point
+ * ## The card sits on the page
  *
- * The header and the tabs sit on the page's GROUND; the table is a card on top
- * of it. Before this split, the tabs, the CTA, the table toolbar and the column
- * header were four chrome rows in one continuous slab, and an operator scanning
- * down could not tell where the page furniture stopped and the data started.
- * Every row above the card shares the card's measure. The title and card share
- * their edge; tab labels are centered inside fixed-width trigger faces.
- * Hold-drag those same faces to reorder — the tab row is the editor.
+ * The header and the tabs sit on the page's GROUND; the table is a card under
+ * the tab row (operator 2026-09-04: no gap and no full-width hairline between
+ * tabs and the toolbar).
+ * Radius and the floor still make the grid an object on the page rather than
+ * a slab welded to the viewport. Every row above the card shares the card's
+ * measure. The title and card share their edge; tab labels are centered inside
+ * fixed-width trigger faces. Hold-drag those same faces to reorder — the tab
+ * row is the editor.
  *
  * ## Fullscreen swaps the frame — it does not widen it
  *
@@ -131,10 +132,13 @@
 
 import { useEffect, type ReactNode } from 'react';
 import { DeskStageProvider } from './DeskStageContext';
+import { useDeskLeadPane } from './DeskLeadPaneContext';
 import { DeskTabList } from './DeskTabList';
 import type { DeskPageTab } from './DeskTab';
 import {
   DESK_CHROME_STAGE_BODY_CLASS,
+  DESK_LEAD_PANE_BODY_CLASS,
+  DESK_LEAD_PANE_WIDTH_CLASS,
   DESK_PAGE_HEADER_ROW_CLASS,
   DESK_STAGE_DETACH_CLASS,
   DESK_STAGE_FIXED_CLASS,
@@ -231,6 +235,25 @@ export interface DeskPageChromeProps {
   onToggleFullscreen: () => void;
   /** The desk body — a grid, a board, a form host. Mounted inside the card. */
   children: ReactNode;
+  /**
+   * Optional left page-column (the Ask pane) — the composer body only.
+   *
+   * It is a COLUMN of this chrome's own rows, not a second stack beside them:
+   * the header row, the tab band and the card each span both columns, so every
+   * horizontal rule on the page lines up across the pane and the desk. Mounted
+   * inside the ONE card, left of {@link children}, at
+   * {@link DESK_LEAD_PANE_WIDTH_CLASS}. Design-system file: a node, never an
+   * import of the app composer.
+   *
+   * **Omit it.** The shell publishes the pane through
+   * {@link DeskLeadPaneProvider} and every desk takes it from there, so the
+   * mouth cannot be present on the desks whose author remembered and missing on
+   * the ones who did not. Pass `null` to opt a surface OUT deliberately; a
+   * value here overrides the ambient pane.
+   */
+  leadPane?: ReactNode | null;
+  /** The lead column's title, on the shared header row beside {@link title}. */
+  leadPaneTitle?: ReactNode;
   className?: string;
 }
 
@@ -248,9 +271,23 @@ export function DeskPageChrome({
   fullscreen,
   onToggleFullscreen,
   children,
+  leadPane,
+  leadPaneTitle,
   className,
 }: DeskPageChromeProps) {
   const measure = fullscreen ? DESK_STAGE_FULLSCREEN_CLASS : DESK_STAGE_FIXED_CLASS;
+
+  // An explicit prop wins — including `null`, which is how a surface opts out.
+  // Everything else takes the shell's pane, which is what makes the composer a
+  // property of the FRAME rather than of each desk that remembered to pass it.
+  const ambient = useDeskLeadPane();
+  const pane =
+    leadPane === undefined
+      ? ambient
+      : leadPane === null
+        ? null
+        : { node: leadPane, title: leadPaneTitle };
+  const showLeadPane = !!pane?.node && !fullscreen;
 
   // Escape is the keyboard half of the one-click-out budget. Bubble phase and a
   // `defaultPrevented` check so a dialog or menu that owns Escape closes itself
@@ -279,89 +316,102 @@ export function DeskPageChrome({
         )}
       >
         {/*
-          Page header and tab row are page FURNITURE: they do not exist in
-          fullscreen. Not hidden — unrendered, so the card's flex-basis is the
-          whole canvas rather than the canvas minus two invisible rows.
+          ONE stack of rows, whether or not there is a lead pane. When there is,
+          each row splits into [lead column | desk column] at the SAME width
+          token, so the title baseline, the tab hairline and the card's edges
+          are single lines drawn across both — never two stacks of chrome that
+          can drift apart. Without a lead pane the desk is the single measured
+          column (max-w-6xl).
         */}
-        {fullscreen ? null : (
-          <>
-            {/* ── Page header — title left, CTA right ────────────────────── */}
-            <div
-              data-testid="desk-page-header"
-              className={cn(
-                'flex min-w-0 shrink-0 items-center justify-between gap-3',
-                measure,
-                DESK_PAGE_HEADER_ROW_CLASS,
-              )}
-            >
-              <div className="min-w-0 flex-1">
-                {titleSlot ?? (
-                  <h1 className="truncate text-role-title text-text-default">{title}</h1>
-                )}
-                {subtitle ? (
-                  <p className="truncate text-role-caption text-text-soft">{subtitle}</p>
-                ) : null}
-              </div>
-              {/*
-                Overall actions (Export) then the primary CTA. It sat in the
-                28px tab band only because that band could not hold a real
-                button; at page-header altitude that constraint is gone and a
-                page-level action gets a page-level control.
-              */}
-              {addSlot}
-            </div>
-
-            {/* ── Tab row — tabs (+ same-axis overflow), underline selection ── */}
-            {tabs.length === 0 && !tabsLead && !tabsTrail ? null : (
-            <div
-              data-testid="desk-page-chrome-band"
-              className={cn(
-                'flex min-w-0 shrink-0 items-stretch',
-                measure,
-                DESK_TAB_ROW_CLASS,
-              )}
-            >
-              {/*
-                Same-axis overflow, abutting the tablist with no gap — it reads
-                as the head of the tab vocabulary rather than a control beside
-                it. The tablist owns the remaining width while each trigger keeps
-                its fixed width and centers its label with or without a lead.
-              */}
-              {tabsLead}
-              <DeskTabList
-                tabs={tabs}
-                activeTab={activeTab}
-                onTabChange={onTabChange}
-                onTabsReorder={onTabsReorder}
-              />
-              {tabsTrail ? (
-                <div
-                  data-testid="desk-page-tabs-trail"
-                  className="flex shrink-0 items-center pl-1"
-                >
-                  {tabsTrail}
-                </div>
-              ) : null}
-            </div>
-            )}
-          </>
-        )}
-
-        {/* ── The card ────────────────────────────────────────────────────── */}
         <div
-          data-testid="desk-page-stage"
-          data-fullscreen={fullscreen ? '' : undefined}
           className={cn(
             'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
-            measure,
-            fullscreen
-              ? // Flush + square: a rounded card floating on a canvas it
-                // completely fills is a corner radius with nothing behind it.
-                'bg-surface-card'
-              : cn(DESK_CHROME_STAGE_BODY_CLASS, DESK_STAGE_DETACH_CLASS),
+            !showLeadPane && !fullscreen ? measure : null,
           )}
         >
-          {children}
+          {fullscreen ? null : (
+            <>
+              <div
+                data-testid="desk-page-header"
+                className={cn(
+                  'flex min-w-0 shrink-0 items-center gap-3',
+                  DESK_PAGE_HEADER_ROW_CLASS,
+                )}
+              >
+                {showLeadPane ? (
+                  <div
+                    data-testid="desk-page-lead-title"
+                    className={cn('min-w-0', DESK_LEAD_PANE_WIDTH_CLASS)}
+                  >
+                    <h2 className="truncate text-role-title text-text-default">
+                      {pane?.title}
+                    </h2>
+                  </div>
+                ) : null}
+                <div className="min-w-0 flex-1">
+                  {titleSlot ?? (
+                    <h1 className="truncate text-role-title text-text-default">{title}</h1>
+                  )}
+                  {subtitle ? (
+                    <p className="truncate text-role-caption text-text-soft">{subtitle}</p>
+                  ) : null}
+                </div>
+                {addSlot}
+              </div>
+
+              {tabs.length === 0 && !tabsLead && !tabsTrail ? null : (
+              <div
+                data-testid="desk-page-chrome-band"
+                className={cn(
+                  'flex min-w-0 shrink-0 items-stretch',
+                  DESK_TAB_ROW_CLASS,
+                )}
+              >
+                {showLeadPane ? (
+                  <div className={DESK_LEAD_PANE_WIDTH_CLASS} aria-hidden />
+                ) : null}
+                {tabsLead}
+                <DeskTabList
+                  tabs={tabs}
+                  activeTab={activeTab}
+                  onTabChange={onTabChange}
+                  onTabsReorder={onTabsReorder}
+                />
+                {tabsTrail ? (
+                  <div
+                    data-testid="desk-page-tabs-trail"
+                    className="flex shrink-0 items-center pl-1"
+                  >
+                    {tabsTrail}
+                  </div>
+                ) : null}
+              </div>
+              )}
+            </>
+          )}
+
+          <div
+            data-testid="desk-page-stage"
+            data-fullscreen={fullscreen ? '' : undefined}
+            className={cn(
+              'flex min-h-0 min-w-0 flex-1 overflow-hidden',
+              fullscreen
+                ? 'bg-surface-card'
+                : cn(DESK_CHROME_STAGE_BODY_CLASS, DESK_STAGE_DETACH_CLASS),
+            )}
+          >
+            {showLeadPane ? (
+              <div
+                data-testid="desk-page-lead-pane"
+                className={cn(DESK_LEAD_PANE_WIDTH_CLASS, DESK_LEAD_PANE_BODY_CLASS)}
+              >
+                {pane?.node}
+              </div>
+            ) : null}
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+              {children}
+            </div>
+          </div>
         </div>
       </div>
     </DeskStageProvider>

@@ -23,12 +23,13 @@
  * mounts a page-bottom capsule.
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/design-system/primitives';
 import { requestConfirm } from '@/design-system/components/confirm';
-import { FileText, Loader2, Upload, X } from '@/components/Icons';
+import { CheckSquare, Database, FileText, Loader2, Upload, X } from '@/components/Icons';
 import { DataTable } from '@/components/tables/DataTable';
-
+import { LayoutGroup } from '@/design-system/motion';
+import { StaggerRevealRow } from '@/design-system/primitives/StaggerReveal';
 
 import { useUrlColumnSort } from '@/hooks/useUrlColumnSort';
 import {
@@ -50,12 +51,18 @@ import {
   setTableImportFilter,
   setTableImportFocusRow,
   setTableImportQuery,
+  setTableImportRowDecision,
   setTableImportSelected,
   tableImportConfirmTargets,
+  tableImportDecisionTargets,
   toggleTableImportSelected,
   useTableImportDraft,
   type TableImportFilter,
 } from '@/lib/tables/import/staging-store';
+import {
+  SHEET_TRIAGE_ORIGIN,
+  nextSheetTriageDecision,
+} from '@/lib/orders-sync/sheets-inline-triage';
 import { CsvImportStagingRail } from '@/components/outbound/orders/CsvImportStagingRail';
 import { CSV_IMPORT_STAGING_TABLE_BINDING } from '@/components/outbound/orders/import-staging/csv-import-staging-table-definition';
 import { useOrdersImportTableLayout } from '@/components/outbound/orders/import-staging/useOrdersImportTableLayout';
@@ -85,6 +92,9 @@ const CSV_IMPORT_STAGING_SELECTION_SCOPE = 'csv-import-staging';
 
 /** One family, one store key — the descriptor is the seam's entry point. */
 const SURFACE = ORDER_IMPORT_DESCRIPTOR.surfaceId;
+
+/** Stable empty identity list — keeps the row-key memo off a fresh array. */
+const EMPTY_ROW_IDS: readonly string[] = [];
 
 const STATUS_FILTERS: { id: TableImportFilter; label: string }[] = [
   { id: 'all', label: 'All rows' },
@@ -125,7 +135,6 @@ export function CsvImportStagingHost() {
   const { setActive: setStagingActive } = useTableImportParam(ORDER_IMPORT_DESCRIPTOR);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [filterOpen, setFilterOpen] = useState(false);
 
   // The COLUMNS are the effective slot layout's materialization (staff ?? org
   // ?? product — wave 1.4 hand-model kill). Staging keeps its OWN tableId on
@@ -163,16 +172,65 @@ export function CsvImportStagingHost() {
     return [...list].sort((a, b) => compareStagingRows(a, b, sortFact, sortDir));
   }, [draft, columnSort, sortFactByKey, sortDir]);
 
+  /**
+   * A `google_sheets` draft is a DECISION board: the rows are already in the
+   * intake record (the sync job wrote them, `autoCageNewOrders` held the
+   * unpaired ones out of the live queue), and what is missing is a human
+   * saying whether the sheet was right. A `file` draft is the opposite — a
+   * parse nobody has written yet — so it keeps bulk Confirm and paints no
+   * per-row verbs.
+   */
+  const isDecisionBoard = draft?.origin === SHEET_TRIAGE_ORIGIN;
+  const rowIds = draft?.rowIds ?? EMPTY_ROW_IDS;
+
+  /**
+   * Which row ids have never been painted. Rows arriving from a sync rise in;
+   * rows already on screen only carry `layout`, so a batch splicing into the
+   * middle springs them apart instead of re-revealing the whole board.
+   */
+  const paintedRowIds = useRef<ReadonlySet<string>>(new Set());
+  const enteringRowIds = useMemo(() => {
+    const entering = new Set<string>();
+    for (const id of rowIds) {
+      if (!paintedRowIds.current.has(id)) entering.add(id);
+    }
+    return entering;
+  }, [rowIds]);
+  useEffect(() => {
+    paintedRowIds.current = new Set(rowIds);
+  }, [rowIds]);
+
   const orderGroupsByDate = useMemo<[string, RowGroup<OrderImportRowView>[]][]>(
-    () => [['', views.map((row) => ({ key: csvImportStagingRowKey(row), rows: [row] }))]],
-    [views],
+    () => [
+      [
+        '',
+        views.map((row) => ({ key: csvImportStagingRowKey(row, rowIds), rows: [row] })),
+      ],
+    ],
+    [views, rowIds],
   );
 
   const confirmTargets = useMemo(
     () => (draft ? tableImportConfirmTargets(ORDER_IMPORT_DESCRIPTOR, draft) : null),
     [draft],
   );
-  const confirmCount = confirmTargets?.indexes.length ?? 0;
+  const decisionTargets = useMemo(
+    () => (draft ? tableImportDecisionTargets(ORDER_IMPORT_DESCRIPTOR, draft) : null),
+    [draft],
+  );
+  // One CTA, two scopes: a decision board writes what was APPROVED and ready,
+  // a file draft writes what is ready (narrowed by selection). The label is
+  // built from the same number it acts on, so it cannot disagree.
+  const commitTargets = isDecisionBoard ? decisionTargets : confirmTargets;
+  const confirmCount = commitTargets?.indexes.length ?? 0;
+
+  const handleDecide = useCallback(
+    (index: number, action: 'approve' | 'reject') => {
+      const current = getTableImportDraft(SURFACE)?.decisions.get(index);
+      setTableImportRowDecision(SURFACE, index, nextSheetTriageDecision(current, action));
+    },
+    [],
+  );
 
   const selectedIndexes = draft?.selectedIndexes;
   const visibleIndexes = useMemo(() => views.map((v) => v.index), [views]);
@@ -201,17 +259,31 @@ export function CsvImportStagingHost() {
   );
 
   const handleConfirm = useCallback(async () => {
-    if (!draft || !confirmTargets || confirmTargets.indexes.length === 0) return;
-    const { indexes, scoped, skipped } = confirmTargets;
+    if (!draft || !commitTargets || commitTargets.indexes.length === 0) return;
+    const { indexes } = commitTargets;
     const noun = `${indexes.length} ready order${indexes.length === 1 ? '' : 's'}`;
+    const blocked = isDecisionBoard
+      ? (decisionTargets?.blocked ?? 0)
+      : (confirmTargets?.skipped ?? 0);
     const ok = await requestConfirm({
-      title: 'Import ready orders into To-Ship?',
-      description: skipped > 0
-        ? `Import ${noun}. ${skipped} action-required row${skipped === 1 ? '' : 's'} in the selection will be skipped.`
-        : scoped
-          ? `Import the ${noun} you selected into the live To-Ship queue.`
-          : `Import ${noun} into the live To-Ship queue.`,
-      confirmLabel: `Import ${indexes.length}`,
+      title: isDecisionBoard
+        ? 'Accept the approved sheet rows?'
+        : 'Import ready orders into To-Ship?',
+      description: isDecisionBoard
+        ? // Approve is NOT release: G1–G3 still decide when a caged order joins
+          // the live queue, and the copy has to say so or an operator will read
+          // this button as "ship it".
+          `Accept ${noun} from ${draft.fileName} into the intake record.${
+            blocked > 0
+              ? ` ${blocked} approved row${blocked === 1 ? '' : 's'} still needs a fix and will be left on the board.`
+              : ''
+          } Release gates are unchanged.`
+        : blocked > 0
+          ? `Import ${noun}. ${blocked} action-required row${blocked === 1 ? '' : 's'} in the selection will be skipped.`
+          : confirmTargets?.scoped
+            ? `Import the ${noun} you selected into the live To-Ship queue.`
+            : `Import ${noun} into the live To-Ship queue.`,
+      confirmLabel: isDecisionBoard ? `Accept ${indexes.length}` : `Import ${indexes.length}`,
       tone: 'primary',
     });
     if (!ok) return;
@@ -227,7 +299,7 @@ export function CsvImportStagingHost() {
     }
     refreshDomain('orders.outbound');
     exitStaging();
-  }, [confirmTargets, draft, exitStaging]);
+  }, [commitTargets, confirmTargets, decisionTargets, draft, exitStaging, isDecisionBoard]);
 
   // Arming lives on the rail's flush Delete; the last row leaving takes the
   // (now empty) draft with it rather than stranding an empty sheet.
@@ -240,19 +312,21 @@ export function CsvImportStagingHost() {
 
   const handleCancelDraft = useCallback(async () => {
     const ok = await requestConfirm({
-      title: 'Leave CSV staging?',
-      description: 'This clears the import draft. Nothing has been written to To-Ship yet.',
-      confirmLabel: 'Leave staging',
+      title: isDecisionBoard ? 'Leave the sheet triage board?' : 'Leave CSV staging?',
+      description: isDecisionBoard
+        ? 'This clears the triage board. The synced rows stay where the sync put them — caged rows are still out of the live To-Ship queue.'
+        : 'This clears the import draft. Nothing has been written to To-Ship yet.',
+      confirmLabel: isDecisionBoard ? 'Leave board' : 'Leave staging',
       tone: 'danger',
     });
     if (!ok) return;
     exitStaging();
-  }, [exitStaging]);
+  }, [exitStaging, isDecisionBoard]);
 
   if (!draft) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 bg-surface-canvas p-8">
-        <p className="text-role-caption text-text-soft">No CSV draft loaded.</p>
+        <p className="text-role-caption text-text-soft">No import draft loaded.</p>
         <Button variant="secondary" size="sm" onClick={exitStaging}>
           Back to To-Ship
         </Button>
@@ -261,20 +335,33 @@ export function CsvImportStagingHost() {
   }
 
   const filter = draft.filter;
-  const activeFilterLabel =
-    STATUS_FILTERS.find((f) => f.id === filter)?.label ?? 'All rows';
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col bg-surface-card">
       <div className="flex min-w-0 shrink-0 items-center justify-between gap-2 border-b border-border-soft bg-surface-card px-3 py-1">
         <div className="flex min-w-0 items-center gap-2" data-testid="csv-import-staging-identity">
-          <FileText className="h-4 w-4 shrink-0 text-text-soft" />
+          {isDecisionBoard ? (
+            <Database className="h-4 w-4 shrink-0 text-text-soft" />
+          ) : (
+            <FileText className="h-4 w-4 shrink-0 text-text-soft" />
+          )}
           <span className="truncate text-role-caption font-semibold text-text-default">
             {draft.fileName}
           </span>
           <span className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
             {draft.rows.length} rows
           </span>
+          {/* The board's own tally. An operator triaging 40 sheet rows needs to
+              know how many are still undecided without counting squares. */}
+          {isDecisionBoard && decisionTargets ? (
+            <span
+              className="shrink-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft"
+              data-testid="sheet-triage-tally"
+            >
+              {decisionTargets.approved} approved · {decisionTargets.rejected} rejected ·{' '}
+              {decisionTargets.undecided} to review
+            </span>
+          ) : null}
         </div>
         {/* The two verbs that COMMIT the draft. Not a toolbar — the staging
             host is a decision, and these are the decision. */}
@@ -295,6 +382,8 @@ export function CsvImportStagingHost() {
             icon={
               submitting ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : isDecisionBoard ? (
+                <CheckSquare className="h-3.5 w-3.5" />
               ) : (
                 <Upload className="h-3.5 w-3.5" />
               )
@@ -303,7 +392,13 @@ export function CsvImportStagingHost() {
             className={cn(cornerClass('flush'), 'font-semibold uppercase tracking-widest')}
             data-testid="csv-import-staging-confirm"
           >
-            {submitting ? 'Importing…' : `Confirm ${confirmCount} ready`}
+            {submitting
+              ? isDecisionBoard
+                ? 'Accepting…'
+                : 'Importing…'
+              : isDecisionBoard
+                ? `Accept ${confirmCount} approved`
+                : `Confirm ${confirmCount} ready`}
           </Button>
         </div>
       </div>
@@ -315,6 +410,17 @@ export function CsvImportStagingHost() {
         ) : null}
       </div>
 
+      {/*
+        `LayoutGroup` so every row's `layout` animation resolves in ONE batch.
+        Rows are windowed (`VirtualGroupedSections` absolutely positions each
+        from its own measured `top`), so a batch splicing into the middle moves
+        every row below the seam — without a shared group those displacements
+        would each spring on their own clock and the body would shear.
+
+        The motion is on ROWS only. Nothing here tweens the header band, the
+        CTA or the grid frame.
+      */}
+      <LayoutGroup>
       <div className="min-h-0 flex-1 overflow-hidden" data-testid="intake-bulk-grid">
         <DataTable<
           OrderImportRowView,
@@ -326,12 +432,16 @@ export function CsvImportStagingHost() {
           fields={stagingFields}
           orderGroupsByDate={orderGroupsByDate}
           rows={views}
-          getRowId={csvImportStagingRowKey}
+          getRowId={(row) => csvImportStagingRowKey(row, rowIds)}
           sort={columnSort}
           dir={sortDir}
           onSortChange={setSort}
           loading={false}
-          emptyMessage="This file has no rows left to import."
+          emptyMessage={
+            isDecisionBoard
+              ? 'No synced sheet rows left to triage.'
+              : 'This file has no rows left to import.'
+          }
           searchEmptyMessage="No rows match this filter."
           selectionScope={CSV_IMPORT_STAGING_SELECTION_SCOPE}
           search={{
@@ -351,16 +461,35 @@ export function CsvImportStagingHost() {
           }}
           renderGroup={(group, _stripe, { columns: visible }) => (
             <>
-              {group.rows.map((row) => (
-                <StagingLeaf key={csvImportStagingRowKey(row)} row={row} columns={visible} />
-              ))}
+              {group.rows.map((row) => {
+                const key = csvImportStagingRowKey(row, rowIds);
+                return (
+                  <StaggerRevealRow key={key} entering={enteringRowIds.has(key)}>
+                    <StagingLeaf
+                      row={row}
+                      columns={visible}
+                      onDecide={isDecisionBoard ? handleDecide : undefined}
+                    />
+                  </StaggerRevealRow>
+                );
+              })}
             </>
           )}
-          renderRow={(row, _stripe, { columns: visible }) => (
-            <StagingLeaf row={row} columns={visible} />
-          )}
+          renderRow={(row, _stripe, { columns: visible }) => {
+            const key = csvImportStagingRowKey(row, rowIds);
+            return (
+              <StaggerRevealRow entering={enteringRowIds.has(key)}>
+                <StagingLeaf
+                  row={row}
+                  columns={visible}
+                  onDecide={isDecisionBoard ? handleDecide : undefined}
+                />
+              </StaggerRevealRow>
+            );
+          }}
         />
       </div>
+      </LayoutGroup>
 
       {/* The rail reads the draft store directly now — it no longer needs the
           visible index list handed to it. */}
@@ -373,9 +502,12 @@ export function CsvImportStagingHost() {
 function StagingLeaf({
   row,
   columns,
+  onDecide,
 }: {
   row: OrderImportRowView;
   columns: readonly CsvImportStagingGridColumn[];
+  /** Absent on a file draft — that is what leaves the decision gutter empty. */
+  onDecide?: (index: number, action: 'approve' | 'reject') => void;
 }) {
   const draft = useTableImportDraft(SURFACE);
   return (
@@ -386,6 +518,8 @@ function StagingLeaf({
       onToggle={(index: number) => toggleTableImportSelected(SURFACE, index)}
       onOpen={(index: number) => setTableImportFocusRow(SURFACE, index)}
       columns={columns}
+      decision={draft?.decisions.get(row.index)}
+      onDecide={onDecide}
     />
   );
 }

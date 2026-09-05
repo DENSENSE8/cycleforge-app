@@ -4,6 +4,7 @@ import {
   resolveSettingsSectionFromPath,
 } from '@/components/settings/settings-sections';
 import {
+  isSidebarNavActive,
   masterNavItemForHref,
   masterNavItemForPath,
   masterNavLabelForPath,
@@ -90,4 +91,61 @@ export function displayQuickAccessLabel(href: string, storedLabel: string): stri
 
 export function masterNavFaceForPinHref(href: string): SidebarNavItem | undefined {
   return masterNavItemForHref(href);
+}
+
+/**
+ * Same MasterNav L1 — Unbox with `?unboxview=` / table query, or a legacy
+ * `/receiving` pin, is still Unbox. Not an exact href match.
+ */
+export function pinMatchesLocation(
+  pinHref: string,
+  pathname: string | null,
+  searchParams?: Pick<URLSearchParams, 'get'> | null,
+): boolean {
+  const here = masterNavItemForPath(pathname, searchParams ?? null);
+  const pinItem = masterNavItemForHref(pinHref);
+  if (here && pinItem) return here.id === pinItem.id;
+  return isSidebarNavActive(pathname, pinHref);
+}
+
+export function pinsCoverPageId(
+  pageId: string,
+  pins: readonly { href: string }[],
+): boolean {
+  return pins.some((p) => masterNavItemForHref(p.href)?.id === pageId);
+}
+
+/** One current pin: exact href, else the query-less same-page pin, else first match. */
+export function resolveActivePinHref(
+  pins: readonly { href: string }[],
+  currentHref: string,
+  pathname: string | null,
+  searchParams?: Pick<URLSearchParams, 'get'> | null,
+): string | null {
+  if (pins.some((p) => p.href === currentHref)) return currentHref;
+  const matches = pins.filter((p) =>
+    pinMatchesLocation(p.href, pathname, searchParams),
+  );
+  if (matches.length === 0) return null;
+  const canonical = matches.find((p) => {
+    try {
+      return new URL(p.href, 'http://local').search === '';
+    } catch {
+      return !p.href.includes('?');
+    }
+  });
+  return (canonical ?? matches[0]!).href;
+}
+
+/**
+ * Drop pages the Pinned cluster already lists. Industry standard: a pinned
+ * row is *moved* to the top cluster, not copied — one destination, one row,
+ * so the section below never repeats what Pinned already shows.
+ */
+export function pagesNotPinned<T extends { id: string }>(
+  pages: readonly T[],
+  pins: readonly { href: string }[],
+): T[] {
+  if (pins.length === 0) return [...pages];
+  return pages.filter((page) => !pinsCoverPageId(page.id, pins));
 }

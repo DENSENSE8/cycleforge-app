@@ -2,12 +2,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 
+/**
+ * Serial-unit statuses that mean the unit is no longer ours to sell.
+ *
+ * The grade breakdown answers "what is on the floor right now", so counting a
+ * SHIPPED unit would quote a customer something that left the building. Kept
+ * as a named list rather than inlined in SQL because it is a business rule
+ * someone will want to argue with, not a query detail. RETURNED is deliberately
+ * absent — a returned unit is back in the building and sellable again.
+ */
+const UNITS_GONE_STATUSES = ['SHIPPED', 'SCRAPPED', 'RMA'] as const;
+
 // GET /api/products/[sku]
 // Single product detail for the /products/[sku] page.
 //
-// Returns the catalog row plus the platform_ids list. Live stock summary
-// (WAREHOUSE qty, BOXED qty, serial-units by status) is folded in so the
-// detail page can render the cross-link card without a second roundtrip.
+// Returns the catalog row plus the platform_ids list (including each channel's
+// listing_url, so the page can open the real listing instead of bouncing the
+// reader through storefront search). Live stock summary (WAREHOUSE qty,
+// serial-units by status AND by condition grade) is folded in so the detail
+// page can render the cross-link card without a second roundtrip.
+//
+// Condition grade is the answer to "what can I actually sell you" on a refurb
+// floor: one catalog SKU is many physical units at different grades, and a
+// single storefront price cannot express that spread.
 export async function GET(
     req: NextRequest,
     { params }: { params: Promise<{ sku: string }> },
@@ -68,6 +85,7 @@ export async function GET(
                      sp.account_name,
                      sp.display_name,
                      sp.image_url,
+                     sp.listing_url,
                      sp.is_active
                  FROM sku_platform_ids sp
                  WHERE (sp.sku_catalog_id = $1 OR sp.platform_sku = $2)
@@ -86,21 +104,42 @@ export async function GET(
             ),
         ]);
 
-        // Serial-units status counts. Pulled separately so a missing
-        // serial_units row doesn't fail the rest of the payload.
+        // Serial-unit counts. Pulled separately so a missing serial_units row
+        // doesn't fail the rest of the payload.
+        //
+        // The status column is `current_status` (serial_status_enum) — an
+        // earlier version of this route grouped by a bare `status`, which does
+        // not exist on the table, so every request threw into the catch below
+        // and the page reported "No serial units tracked" for every product.
         let unitsByStatus: Array<{ status: string; count: number }> = [];
+        let unitsByGrade: Array<{ grade: string; count: number }> = [];
         try {
-            const unitsResult = await tenantQuery(
-                orgId,
-                `SELECT status, COUNT(*)::int AS count
-                 FROM serial_units
-                 WHERE sku = $1
-                   AND organization_id = $2
-                 GROUP BY status
-                 ORDER BY status ASC`,
-                [product.sku, orgId],
-            );
-            unitsByStatus = unitsResult.rows as Array<{ status: string; count: number }>;
+            const [statusResult, gradeResult] = await Promise.all([
+                tenantQuery(
+                    orgId,
+                    `SELECT current_status::text AS status, COUNT(*)::int AS count
+                     FROM serial_units
+                     WHERE sku = $1
+                       AND organization_id = $2
+                     GROUP BY current_status
+                     ORDER BY current_status ASC`,
+                    [product.sku, orgId],
+                ),
+                tenantQuery(
+                    orgId,
+                    `SELECT COALESCE(condition_grade::text, 'UNGRADED') AS grade,
+                            COUNT(*)::int AS count
+                     FROM serial_units
+                     WHERE sku = $1
+                       AND organization_id = $2
+                       AND current_status <> ALL($3::text[]::serial_status_enum[])
+                     GROUP BY 1
+                     ORDER BY 2 DESC`,
+                    [product.sku, orgId, UNITS_GONE_STATUSES],
+                ),
+            ]);
+            unitsByStatus = statusResult.rows as Array<{ status: string; count: number }>;
+            unitsByGrade = gradeResult.rows as Array<{ grade: string; count: number }>;
         } catch (err) {
             console.warn('[api/products/[sku]] serial_units count failed:', err);
         }
@@ -112,6 +151,7 @@ export async function GET(
             stock: {
                 warehouse_qty: stock.rows[0]?.warehouse_qty ?? 0,
                 units_by_status: unitsByStatus,
+                units_by_grade: unitsByGrade,
             },
         });
     } catch (error: unknown) {

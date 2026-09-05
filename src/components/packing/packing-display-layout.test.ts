@@ -28,6 +28,11 @@ describe('packing station display layout', () => {
     assert.match(PACK_ROW, /data-item-record|<ItemRecordRow\b/);
     assert.doesNotMatch(
       PACK_ROW,
+      /ItemRecordMetaGrid|PoLineMetaGrid/,
+      'pack inherits desk six-track order from ItemRecordRow — no second meta grid',
+    );
+    assert.doesNotMatch(
+      PACK_ROW,
       /aria-label=\{expanded \? ['"]Collapse details['"] : ['"]Expand details['"]\}/,
       'the packing adapter must not own a second expand/collapse button',
     );

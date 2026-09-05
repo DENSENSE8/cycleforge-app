@@ -34,6 +34,7 @@ test('a unit maps to exactly one item record', () => {
   const rows = serialUnitToItemRecords(unit());
   assert.equal(rows.length, 1, 'a serial unit is one physical thing');
   assert.equal(rows[0].id, 2451);
+  assert.equal(rows[0].receiveState, undefined, 'serial-unit 1/1 is not PO receive');
 });
 
 test('the product title leads, and carries the sku + grade code', () => {
@@ -67,6 +68,7 @@ test('a unit with no identity at all still renders a title, never an empty row',
 test('a unit is one item and it is here — 1 of 1', () => {
   const [row] = serialUnitToItemRecords(unit());
   assert.deepEqual(row.quantity, { counted: 1, expected: 1 });
+  assert.equal(row.quantity?.receive, undefined, 'one physical unit, not PO receive');
 });
 
 // ── serials ─────────────────────────────────────────────────────────────────
@@ -109,4 +111,13 @@ test('the surface can pass the leading photo through', () => {
 
 test('a blank image url is null, not an empty src', () => {
   assert.equal(serialUnitToItemRecords(unit(), { imageUrl: '   ' })[0].imageUrl, null);
+});
+
+test('serial-unit mapper does not fork a second meta grid', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(
+    new URL('./serial-unit-item-record.ts', import.meta.url),
+    'utf8',
+  );
+  assert.doesNotMatch(src, /ItemRecordMetaGrid|PoLineMetaGrid|data-col=/);
 });

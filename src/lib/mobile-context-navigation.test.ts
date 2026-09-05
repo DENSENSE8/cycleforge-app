@@ -28,6 +28,9 @@ test('getMobileAppTitle resolves mobile home and assigned-orders routes', () => 
   assert.equal(getMobileAppTitle('/m/pick'), 'Picks');
   assert.equal(getMobileAppTitle('/m/pack'), 'Packing');
   assert.equal(getMobileAppTitle('/m/scan'), 'Scan');
+  // Regression: `/m/scan-out` matches neither the exact `/m/scan` nor the
+  // `/m/scan/` prefix, so it silently fell through to the product name.
+  assert.equal(getMobileAppTitle('/m/scan-out'), 'Scan out');
   assert.equal(getMobileAppTitle('/m/checklist'), 'Checklists');
   assert.equal(getMobileAppTitle('/m/triage'), 'Arrival');
   assert.equal(getMobileAppTitle('/m/unbox'), 'Unbox');

@@ -11,10 +11,10 @@ import type { KioskCartLine } from './cart-line';
  * The kiosk cart on the shared row.
  *
  * `counter_session_lines` is the first compound family with MONEY and the one
- * that made the shared model grow an `amount` track and a `⋮ actions` track.
- * These pin what a cart line must read as — including the two cases the
- * hand-rolled `<li>` it replaced could not express at all: bulk selection, and
- * more than one verb per line.
+ * that made the shared model grow an `amount` track. These pin what a cart
+ * line must read as — including the two cases the hand-rolled `<li>` it
+ * replaced could not express at all: bulk selection, and more than one verb
+ * per line (those verbs ride the title hover, not a standing ⋮ column).
  *
  * Rendered through `CompoundRow` rather than asserted on the view object, so it
  * measures what a cashier would actually see.
@@ -71,9 +71,9 @@ describe('kiosk cart line → the shared compound row', () => {
   it('totals the line and shows the working only when it adds something', () => {
     const html = paint(RETAIL);
     assert.match(html, /\$149\.97/, '3 × $49.99');
-    assert.match(html, /×3 @ \$49\.99/, 'the arithmetic behind the total');
+    assert.match(html, />3</, 'qty under the title');
 
-    // A single-unit line must NOT restate its own total underneath itself.
+    // A single-unit line must NOT restate unit arithmetic under the total.
     assert.doesNotMatch(paint(REPAIR), /×1 @/);
   });
 
@@ -111,18 +111,19 @@ describe('kiosk cart line → the shared compound row', () => {
     const html = paint(RETAIL);
     assert.match(html, /data-col="select"/);
     assert.match(html, /role="checkbox"/);
-    assert.match(html, /data-select-chrome="flush"/);
+    assert.match(html, /data-select-chrome="hover"/);
   });
 
-  it('carries a ⋮ menu — the hand-rolled row had exactly one verb, a bare ✕', () => {
+  it('puts row verbs on the title hover — not a standing ⋮ track', () => {
     const html = paint(RETAIL);
-    assert.match(html, /data-col="actions"/);
-    assert.match(html, /data-row-actions/);
+    assert.doesNotMatch(html, /data-col="actions"/);
+    assert.doesNotMatch(html, /data-row-actions/);
+    assert.match(html, /iPhone 12 128GB/);
   });
 
   it('mounts the identical tracks every other table mounts', () => {
     const html = paint(RETAIL);
-    for (const key of ['select', 'thumb', 'fulfillment', 'item', 'state', 'amount', 'actions']) {
+    for (const key of ['select', 'fulfillment', 'thumb', 'item', 'dates', 'state']) {
       assert.match(html, new RegExp(`data-col="${key}"`), `${key} track`);
     }
   });

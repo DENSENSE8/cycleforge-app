@@ -18,6 +18,7 @@ import { incomingSlotValuesFor, resolveIncomingSlotValue } from './incoming-reso
 import { RECEIVING_FIELD_CATALOG } from './receiving';
 import { resolveReceivingSlotValue } from './receiving-resolve';
 import { parseSlotLayout } from '../slot-layout';
+import { resolveEffectiveLayout } from '../resolve-effective-layout';
 
 function row(overrides: Partial<ReceivingLineRow> = {}): ReceivingLineRow {
   return {
@@ -50,9 +51,10 @@ function row(overrides: Partial<ReceivingLineRow> = {}): ReceivingLineRow {
     po_date: '2026-09-04',
     source_platform: 'EBAY',
     delivery_state: 'IN_TRANSIT',
+    unit_price: '12.00',
     serials: [],
     ...overrides,
-  } as unknown as ReceivingLineRow;
+  } as ReceivingLineRow;
 }
 
 describe('incoming catalog', () => {
@@ -104,7 +106,7 @@ describe('incomingCompoundColumnsFor — the compound materialization', () => {
     });
     assert.deepEqual(
       columns.map((c) => c.key),
-      ['select', 'thumb', 'fulfillment', 'item', 'state', 'status:1', 'amount', 'actions', '_fill'],
+      ['select', 'fulfillment', 'thumb', 'item', 'dates', 'state', 'status:1', '_fill'],
     );
     assert.equal(columns.find((c) => c.key === 'status:1')?.slotDisplayType, 'date');
   });
@@ -119,6 +121,7 @@ describe('resolveIncomingSlotValue', () => {
     });
     // The EXPECTED count is the question on this lane — nothing has arrived.
     assert.deepEqual(resolveIncomingSlotValue(r, 'incoming.qty'), { kind: 'value', text: '4' });
+    assert.deepEqual(resolveIncomingSlotValue(r, 'incoming.price'), { kind: 'value', text: '$12.00' });
     assert.deepEqual(resolveIncomingSlotValue(r, 'incoming.tracking'), {
       kind: 'value',
       text: '1Z999AA10123456784',
@@ -146,18 +149,32 @@ describe('resolveIncomingSlotValue', () => {
     });
   });
 
-  it('honest absence: a missing expected date, quantity or channel is null', () => {
+  it('honest absence: a missing expected date, quantity, price or channel is null', () => {
     const empty = row({
       po_date: null,
       quantity_expected: null,
       source_platform: null,
       inbound_source_type: null,
       condition_grade: '',
+      unit_price: '0',
     } as Partial<ReceivingLineRow>);
     assert.deepEqual(resolveIncomingSlotValue(empty, 'incoming.expected'), { kind: 'value', text: null });
     assert.deepEqual(resolveIncomingSlotValue(empty, 'incoming.qty'), { kind: 'value', text: null });
+    assert.deepEqual(resolveIncomingSlotValue(empty, 'incoming.price'), { kind: 'value', text: null });
     assert.deepEqual(resolveIncomingSlotValue(empty, 'incoming.platform'), { kind: 'value', text: null });
     assert.deepEqual(resolveIncomingSlotValue(empty, 'incoming.condition'), { kind: 'value', text: null });
+  });
+
+  it('engine pins qty then price under the title — not an Amount column', () => {
+    const resolved = resolveEffectiveLayout({
+      productDefault: INCOMING_PRODUCT_LAYOUT,
+      catalog: INCOMING_FIELD_CATALOG,
+    });
+    assert.deepEqual(
+      resolved.subtitleBindings.map((b) => b.fieldId),
+      ['incoming.qty', 'incoming.price'],
+    );
+    assert.equal(resolved.amountFieldId, null);
   });
 
   it('a receiving field id resolves to nothing here — bindings never cross families', () => {

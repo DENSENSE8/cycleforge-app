@@ -3,6 +3,7 @@ import { WorkspaceCard } from '@/design-system/components';
 import { Button, IconButton } from '@/design-system/primitives';
 import { LABEL_BUILDER } from '../label-builder-layout';
 import { STEPS } from './rack-printer-config';
+import { RoomPicker } from './RoomPicker';
 import { StepPills } from './StepPills';
 import { NumericStep } from '@/components/barcode/bin-label-printer/NumericStep';
 import { ConfigSheet } from './ConfigSheet';
@@ -50,14 +51,21 @@ export function RackBuilderDesktop({ c }: { c: RackLabelPrinterController }) {
 
       {c.missingLetter && <MissingLetterBanner />}
 
+      {/*
+        The zone step holds the ROOM PICKER — the same one the narrow builder
+        uses. It used to point at a rooms list in the left rail; that rail was
+        removed with the Inventory sidebar on 2026-09-04, and a step that tells
+        the operator to look at a column that is not there is worse than no step.
+      */}
       {c.activeStep === 'zone' ? (
         <WorkspaceCard label="Zone">
-          <div className="flex flex-col items-start gap-1 py-4">
-            <p className="text-sm font-semibold text-text-default">Pick a room in the sidebar</p>
-            <p className="max-w-[40ch] text-role-caption text-text-soft">
-              Choose any zone on the left. Aisle, bay, and level unlock here next.
-            </p>
-          </div>
+          <RoomPicker
+            rooms={c.allRoomNames}
+            zoneMap={c.zoneMap}
+            loading={c.loading}
+            selectedRoom={c.selectedRoom}
+            onSelect={c.pickRoom}
+          />
         </WorkspaceCard>
       ) : (
         <WorkspaceCard label={STEPS.find((s) => s.id === c.activeStep)?.label} tone="blue">

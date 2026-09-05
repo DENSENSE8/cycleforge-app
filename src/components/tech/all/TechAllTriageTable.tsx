@@ -90,8 +90,8 @@ async function fetchNeedsTestLines(): Promise<ReceivingLineRow[]> {
   });
   const res = await fetch(`${TESTING_RECEIVING_LINES_API}?${params.toString()}`);
   if (!res.ok) throw new Error('testing lines fetch failed');
-  const data = (await res.json()) as { receiving_lines?: ReceivingLineRow[] };
-  return Array.isArray(data.receiving_lines) ? data.receiving_lines : [];
+  const data = (await res.json().catch(() => null)) as { receiving_lines?: ReceivingLineRow[] } | null;
+  return Array.isArray(data?.receiving_lines) ? data.receiving_lines : [];
 }
 
 async function fetchUnboxQueueLines(): Promise<ReceivingLineRow[]> {
@@ -104,22 +104,22 @@ async function fetchUnboxQueueLines(): Promise<ReceivingLineRow[]> {
   });
   const res = await fetch(`/api/receiving-lines?${params.toString()}`);
   if (!res.ok) throw new Error('unbox queue fetch failed');
-  const data = (await res.json()) as { receiving_lines?: ReceivingLineRow[] };
-  return Array.isArray(data.receiving_lines) ? data.receiving_lines : [];
+  const data = (await res.json().catch(() => null)) as { receiving_lines?: ReceivingLineRow[] } | null;
+  return Array.isArray(data?.receiving_lines) ? data.receiving_lines : [];
 }
 
 async function fetchActiveRepairs(): Promise<RSRecord[]> {
   const res = await fetch('/api/repair-service?tab=active&limit=200');
   if (!res.ok) throw new Error('repair fetch failed');
-  const data = (await res.json()) as { rows?: RSRecord[] };
-  return Array.isArray(data.rows) ? data.rows : [];
+  const data = (await res.json().catch(() => null)) as { rows?: RSRecord[] } | null;
+  return Array.isArray(data?.rows) ? data.rows : [];
 }
 
 async function fetchPickupLines(): Promise<PickupLine[]> {
   const res = await fetch('/api/local-pickup-orders/lines?limit=500', { cache: 'no-store' });
   if (!res.ok) throw new Error('pickup fetch failed');
-  const data = (await res.json()) as { lines?: PickupLine[] };
-  const lines = Array.isArray(data.lines) ? data.lines : [];
+  const data = (await res.json().catch(() => null)) as { lines?: PickupLine[] } | null;
+  const lines = Array.isArray(data?.lines) ? data.lines : [];
   return lines.filter((l) => pickupLineNeedsProcess(l) || l.order_status !== 'COMPLETED');
 }
 

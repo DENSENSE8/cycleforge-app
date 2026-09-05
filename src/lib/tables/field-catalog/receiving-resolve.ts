@@ -67,6 +67,13 @@ export function resolveReceivingSlotValue(
       return { kind: 'value', text: str(row.tracking_number) };
     case 'receiving.serial':
       return { kind: 'value', text: str(resolveReceivingLineSerialsCsv(row)) };
+    case 'receiving.assigned_tech': {
+      const id = Number(row.assigned_tech_id);
+      return {
+        kind: 'value',
+        text: Number.isFinite(id) && id > 0 ? `#${id}` : null,
+      };
+    }
     default:
       return null;
   }

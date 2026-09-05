@@ -16,6 +16,7 @@ import { ChevronRight } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { DROPDOWN_ITEM_CORNER, DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
+import { MENU_ITEM_TONE_CLASS, type MenuItemTone } from '@/design-system/tokens/menu-tone';
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
@@ -46,7 +47,7 @@ const DropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
     inset?: boolean;
-    tone?: 'default' | 'danger';
+    tone?: MenuItemTone;
   }
 >(({ className, inset, tone = 'default', ...props }, ref) => (
   <DropdownMenuPrimitive.Item
@@ -54,9 +55,9 @@ const DropdownMenuItem = React.forwardRef<
     className={cn(
       'relative flex cursor-default select-none items-center gap-2 px-2 py-1.5 text-sm outline-none transition-colors',
       DROPDOWN_ITEM_CORNER,
-      'focus:bg-surface-canvas data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       '[&>svg]:size-4 [&>svg]:shrink-0',
-      tone === 'danger' && 'text-rose-600 focus:bg-rose-50 focus:text-rose-700',
+      MENU_ITEM_TONE_CLASS[tone],
       inset && 'pl-8',
       className,
     )}
@@ -106,7 +107,8 @@ const DropdownMenuSubTrigger = React.forwardRef<
     className={cn(
       'flex cursor-default select-none items-center gap-2 px-2 py-1.5 text-sm outline-none',
       DROPDOWN_ITEM_CORNER,
-      'focus:bg-surface-canvas data-[state=open]:bg-surface-canvas',
+      MENU_ITEM_TONE_CLASS.default,
+      'data-[state=open]:bg-surface-accent',
       '[&>svg]:size-4 [&>svg]:shrink-0',
       inset && 'pl-8',
       className,

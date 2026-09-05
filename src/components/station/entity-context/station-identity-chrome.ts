@@ -86,9 +86,18 @@ export const STATION_CHROME_ROW_FACE = 'h-7 max-h-7 min-h-0 shrink-0';
  * **not** eat the `h-7` / `h-6` box (border-box `border-b` would shrink the
  * fill) and does **not** notch a parent `border-l` (Displays seam). Same token
  * as Displays top band · identity row 1 · leaf eyebrows.
+ *
+ * The fill is `border-soft`, which IS `var(--ds-color-border-subtle)` in
+ * `tailwind.config.mjs`. It read `bg-border-subtle` until 2026-09-03, and
+ * there is no `border-subtle` KEY in that config — only the value, bound to
+ * `border-soft` — so the utility emitted no CSS and this seam drew nothing on
+ * every station that composes it. The guard test pinned the class string, not
+ * a rendered pixel, so nothing caught it. Value and intent are unchanged
+ * (subtle, deliberately not the near-invisible `border-hairline`); only the
+ * key is now one Tailwind actually defines.
  */
 export const STATION_CHROME_SEAM_HAIRLINE =
-  'relative after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-border-subtle';
+  'relative after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-border-soft';
 
 /**
  * Square hit cell on the Displays top band — same 28px as

@@ -11,6 +11,7 @@ import { ChevronRight } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { DROPDOWN_ITEM_CORNER, DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
+import { MENU_ITEM_TONE_CLASS, type MenuItemTone } from '@/design-system/tokens/menu-tone';
 
 const ContextMenu = ContextMenuPrimitive.Root;
 const ContextMenuTrigger = ContextMenuPrimitive.Trigger;
@@ -40,7 +41,7 @@ const ContextMenuItem = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Item> & {
     inset?: boolean;
-    tone?: 'default' | 'danger';
+    tone?: MenuItemTone;
   }
 >(({ className, inset, tone = 'default', ...props }, ref) => (
   <ContextMenuPrimitive.Item
@@ -48,8 +49,8 @@ const ContextMenuItem = React.forwardRef<
     className={cn(
       'relative flex cursor-default select-none items-center px-2 py-1.5 text-sm outline-none',
       DROPDOWN_ITEM_CORNER,
-      'focus:bg-surface-canvas data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
-      tone === 'danger' && 'text-rose-600 focus:bg-rose-50 focus:text-rose-700',
+      'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      MENU_ITEM_TONE_CLASS[tone],
       inset && 'pl-8',
       className,
     )}
@@ -67,7 +68,8 @@ const ContextMenuRadioItem = React.forwardRef<
     className={cn(
       'relative flex cursor-default select-none items-center py-1.5 pl-8 pr-2 text-sm outline-none',
       DROPDOWN_ITEM_CORNER,
-      'focus:bg-surface-canvas data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      MENU_ITEM_TONE_CLASS.default,
       className,
     )}
     {...props}
@@ -105,7 +107,8 @@ const ContextMenuSubTrigger = React.forwardRef<
     className={cn(
       'flex cursor-default select-none items-center px-2 py-1.5 text-sm outline-none',
       DROPDOWN_ITEM_CORNER,
-      'focus:bg-surface-canvas data-[state=open]:bg-surface-canvas',
+      MENU_ITEM_TONE_CLASS.default,
+      'data-[state=open]:bg-surface-accent',
       inset && 'pl-8',
       className,
     )}

@@ -169,6 +169,22 @@ const CHIP_FACE_ATTR = { 'data-chip-face': '' } as const;
 // --- Base CopyChip ---
 
 export interface CopyChipProps {
+  /**
+   * Render the face as a plain `<span>` — no button, no focus stop, no handlers.
+   *
+   * NOT the same as {@link CopyChipProps.disableCopy}, which was mistaken for
+   * this and is not it: `disableCopy` suppresses the copy ACTION while keeping
+   * an enabled `<button>` (`useCopyChip`'s `isDisabled = !canCopy &&
+   * !disableCopy` is deliberately false in that case, so the face keeps full
+   * opacity instead of the no-value fade).
+   *
+   * A running list on a phone mounts identity chips inside a row that is itself
+   * the tap target. There the chip must not be interactive at all: a focusable
+   * descendant inside a `<button>` is invalid HTML, it adds two dead tab stops
+   * per row, and each one animates `active:scale-95` when the ROW is tapped —
+   * two elements visibly reacting to a press that does nothing to them.
+   */
+  nonInteractive?: boolean;
   value: string;
   display: string;
   /** Pulls icon/icon color from {@link CHIP_TONES}; individual props below override. */
@@ -246,6 +262,7 @@ export function CopyChip({
   iconStyle,
   width = 'w-fit max-w-full',
   disableCopy = false,
+  nonInteractive = false,
   truncateDisplay = true,
   fitDisplayWidth = false,
   displayWidth = 'content',
@@ -347,6 +364,41 @@ export function CopyChip({
     : isPriceFace
       ? 'w-[6ch] shrink-0 tabular-nums'
       : '';
+  /**
+   * The face's classes and content, lifted out of the element so the
+   * interactive and non-interactive renders cannot drift apart. `active:scale-95`
+   * and `disabled:opacity-30` are inert on a <span>, which is the intent.
+   */
+  const faceClassName = fitDisplayWidth
+    ? 'inline-flex w-auto max-w-full items-center justify-start gap-0.5 py-0 bg-transparent text-left text-black transition-all active:scale-95 disabled:opacity-30'
+    : 'inline-flex w-full max-w-full items-center justify-start gap-0.5 py-0 bg-transparent text-left text-black transition-all active:scale-95 disabled:opacity-30';
+
+  const faceContent = (
+    <>
+      {resolvedIcon ? (
+        <span
+          className={`inline-flex shrink-0 items-center justify-center ${
+            dense
+              ? 'h-3.5 w-3.5 [&_svg]:h-3.5 [&_svg]:w-3.5'
+              : 'h-4 w-4 [&_svg]:h-4 [&_svg]:w-4'
+          } ${resolvedIconClass ?? ''}`}
+          style={resolvedIconStyle}
+        >
+          {resolvedIcon}
+        </span>
+      ) : null}
+      <span
+        className={`${dense ? chipText : `${monoValue} tracking-tight leading-none`} ${displayWidthClass} text-left ${displayOverflowClass} ${
+          isLastEight || isPriceFace ? '' : fitDisplayWidth ? 'min-w-0 shrink-0' : 'min-w-0 flex-1'
+        } ${
+          isEmptyChipDisplay(faceDisplay) ? 'text-text-faint' : dense ? 'text-text-default' : ''
+        }${editing ? ' text-text-muted' : ''}`}
+      >
+        {normalizedDisplay || QUIET_CHIP_EMPTY}
+      </span>
+    </>
+  );
+
   const outerPx = outerPad === 'flush' ? 'px-0' : 'px-1.5';
   const hoverTooltipEnabled = !disableTooltip && !editing && tooltipTrigger === 'hover';
 
@@ -358,72 +410,61 @@ export function CopyChip({
       onMouseEnter={hoverTooltipEnabled ? openTooltip : undefined}
       onMouseLeave={hoverTooltipEnabled ? closeTooltip : undefined}
     >
-      {/* ds-raw-button: quiet mono chip face — tone via icon; click / ⌘C / right-click copies */}
-      <button
-        type="button"
-        onClick={(e) => {
-          if (!onActivate) {
-            handleCopy(e);
-            return;
-          }
-          e.stopPropagation();
-          if (!activationDisabled) {
-            if (tooltipTrigger === 'click') showTooltipPreview();
-            onActivate();
-          }
-        }}
-        onKeyDown={handleKeyDown}
-        onContextMenu={onActivate ? undefined : handleContextMenu}
-        onFocus={!disableTooltip && tooltipTrigger !== 'click' ? openTooltip : undefined}
-        onBlur={!disableTooltip && tooltipTrigger !== 'click' ? closeTooltipImmediate : undefined}
-        disabled={onActivate ? activationDisabled : isDisabled}
-        aria-label={
-          editing
-            ? 'Editing — open field below'
-            : onActivate
-              ? activationLabel
-              : undefined
-        }
-        aria-busy={editing || undefined}
-        title={
-          editing
-            ? undefined
-            : !disableTooltip && hasTooltipProvider && canCopy
-              ? undefined
-              : onActivate
-                ? activationTitle
-                : !disableTooltip && canCopy
-                  ? tooltipLabel
-                  : undefined
-        }
-        className={
-          fitDisplayWidth
-            ? 'inline-flex w-auto max-w-full items-center justify-start gap-0.5 py-0 bg-transparent text-left text-black transition-all active:scale-95 disabled:opacity-30'
-            : 'inline-flex w-full max-w-full items-center justify-start gap-0.5 py-0 bg-transparent text-left text-black transition-all active:scale-95 disabled:opacity-30'
-        }
-      >
-        {resolvedIcon ? (
-          <span
-            className={`inline-flex shrink-0 items-center justify-center ${
-              dense
-                ? 'h-3.5 w-3.5 [&_svg]:h-3.5 [&_svg]:w-3.5'
-                : 'h-4 w-4 [&_svg]:h-4 [&_svg]:w-4'
-            } ${resolvedIconClass ?? ''}`}
-            style={resolvedIconStyle}
-          >
-            {resolvedIcon}
-          </span>
-        ) : null}
-        <span
-          className={`${dense ? chipText : `${monoValue} tracking-tight leading-none`} ${displayWidthClass} text-left ${displayOverflowClass} ${
-            isLastEight || isPriceFace ? '' : fitDisplayWidth ? 'min-w-0 shrink-0' : 'min-w-0 flex-1'
-          } ${
-            isEmptyChipDisplay(faceDisplay) ? 'text-text-faint' : dense ? 'text-text-default' : ''
-          }${editing ? ' text-text-muted' : ''}`}
-        >
-          {normalizedDisplay || QUIET_CHIP_EMPTY}
+      {/*
+        The chip face.
+
+        `ds-raw-button`: quiet mono face — tone via icon; click / ⌘C /
+        right-click copies. When `nonInteractive` is set the SAME face renders as
+        a <span>: no button, no focus stop, no handlers, no press animation, for
+        lists where the row itself owns the tap.
+      */}
+      {nonInteractive ? (
+        <span className={faceClassName} aria-hidden={undefined}>
+          {faceContent}
         </span>
-      </button>
+      ) : (
+        <button
+          type="button"
+          onClick={(e) => {
+            if (!onActivate) {
+              handleCopy(e);
+              return;
+            }
+            e.stopPropagation();
+            if (!activationDisabled) {
+              if (tooltipTrigger === 'click') showTooltipPreview();
+              onActivate();
+            }
+          }}
+          onKeyDown={handleKeyDown}
+          onContextMenu={onActivate ? undefined : handleContextMenu}
+          onFocus={!disableTooltip && tooltipTrigger !== 'click' ? openTooltip : undefined}
+          onBlur={!disableTooltip && tooltipTrigger !== 'click' ? closeTooltipImmediate : undefined}
+          disabled={onActivate ? activationDisabled : isDisabled}
+          aria-label={
+            editing
+              ? 'Editing — open field below'
+              : onActivate
+                ? activationLabel
+                : undefined
+          }
+          aria-busy={editing || undefined}
+          title={
+            editing
+              ? undefined
+              : !disableTooltip && hasTooltipProvider && canCopy
+                ? undefined
+                : onActivate
+                  ? activationTitle
+                  : !disableTooltip && canCopy
+                    ? tooltipLabel
+                    : undefined
+          }
+          className={faceClassName}
+        >
+          {faceContent}
+        </button>
+      )}
     </div>
   );
 }
@@ -447,10 +488,29 @@ export const OrderIdChip = ({
   displayWidth = 'content',
   truncateDisplay = true,
   fitDisplayWidth = false,
+  disableCopy,
+  disableTooltip,
+  outerPad,
+  nonInteractive,
 }: {
   value: string;
   display: string;
   dense?: boolean;
+  /**
+   * Inert face — glyph, tint and digits, no copy button.
+   *
+   * Same prop {@link TrackingChip} already carried. A running list on a phone
+   * mounts identity chips inside a row that is itself the tap target: a live
+   * ~16px copy button there is a mis-hit waiting to happen, and a focusable
+   * descendant inside a button is invalid markup besides.
+   */
+  disableCopy?: boolean;
+  /** Skip the hover copy bubble. Pairs with {@link disableCopy}. */
+  disableTooltip?: boolean;
+  /** `flush` drops the chip's own `px-1.5` so the glyph shares the text rail beside it. */
+  outerPad?: 'chip' | 'flush';
+  /** Render as a span — no button, no focus stop. See {@link CopyChipProps}. */
+  nonInteractive?: boolean;
   /** Omit the leading hash icon — used by the quiet queue-grid identity cells. */
   plain?: boolean;
   /** Catalog-resolved platform name for the full-value hover label. */
@@ -476,9 +536,13 @@ export const OrderIdChip = ({
     displayWidth={displayWidth}
     truncateDisplay={truncateDisplay}
     fitDisplayWidth={fitDisplayWidth}
+    disableTooltip={disableTooltip}
+    outerPad={outerPad}
+    nonInteractive={nonInteractive}
     // Empty → quiet em dash (resolveChipDisplay / 2B); disable copy so the button
-    // stays full-opacity instead of the no-value disabled fade.
-    disableCopy={isEmptyDisplayValue(value)}
+    // stays full-opacity instead of the no-value disabled fade. An explicit
+    // `disableCopy` from the caller is the other reason to go inert.
+    disableCopy={disableCopy || isEmptyDisplayValue(value)}
   />
 );
 
@@ -595,6 +659,7 @@ export const TrackingChip = ({
    * (e.g. a milestone timestamp) so the last-8 shares that text's left edge.
    */
   outerPad,
+  nonInteractive,
 }: {
   value: string;
   /** @deprecated Tracking labels are always derived from `value` as last eight. */
@@ -612,6 +677,8 @@ export const TrackingChip = ({
   /** Skip the site hover copy bubble — click still copies. */
   disableTooltip?: boolean;
   outerPad?: 'chip' | 'flush';
+  /** Render as a span — no button, no focus stop. See {@link CopyChipProps}. */
+  nonInteractive?: boolean;
 }) => {
   return (
     <CopyChip
@@ -630,6 +697,7 @@ export const TrackingChip = ({
       truncateDisplay={truncateDisplay}
       dense={dense}
       carrierHint={carrierHint}
+      nonInteractive={nonInteractive}
     />
   );
 };

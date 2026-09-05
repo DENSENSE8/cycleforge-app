@@ -251,10 +251,7 @@ export function OrderShippingPanel({
             Add a parcel weight — carriers cannot rate a 0 oz parcel.
           </p>
         ) : (
-          <div
-            className="border border-border-hairline p-3"
-            data-testid={`${testIdPrefix}-label-buy`}
-          >
+          <div className="p-3" data-testid={`${testIdPrefix}-label-buy`}>
             <BuyLabelSection
               orderId={orderId}
               orderRef={orderRef}
@@ -269,7 +266,7 @@ export function OrderShippingPanel({
         )}
 
         {/* ── Upload / attach tray (browser→NAS PUT + attach-by-URL) ─────── */}
-        <div className="border border-border-hairline">
+        <div>
           <OrderDocumentsSection
             orderId={orderId}
             orderRef={orderRef}

@@ -15,12 +15,10 @@ import { Printer } from '@/components/Icons';
 import { WorkspaceCard, StickyActionBar } from '@/design-system/components';
 import { rackCode } from '@/lib/barcode-routing';
 import { LABEL_BUILDER } from './label-builder-layout';
-import { LabelRoomSidebar } from './LabelRoomSidebar';
 import { useRackLabelPrinter } from './rack-printer/useRackLabelPrinter';
 import { RackBuilderMobile } from './rack-printer/RackBuilderMobile';
 import { RackBuilderDesktop } from './rack-printer/RackBuilderDesktop';
 import { LivePreviewBody } from './rack-printer/LivePreviewBody';
-import { ConfigSheet } from './rack-printer/ConfigSheet';
 import { RackPrintLabel } from './rack-printer/RackPrintLabel';
 import type { RackPrinterVariant } from './rack-printer/rack-printer-types';
 
@@ -33,23 +31,9 @@ interface RackLabelPrinterProps {
 export function RackLabelPrinter({ variant = 'main' }: RackLabelPrinterProps) {
   const c = useRackLabelPrinter();
 
-  // ── Sidebar variant — rooms list only ──────────────────────────────────
-  if (variant === 'sidebar') {
-    return (
-      <>
-        <LabelRoomSidebar
-          rooms={c.allRoomNames}
-          zoneMap={c.zoneMap}
-          loading={c.loading}
-          selectedRoom={c.selectedRoom}
-          zoneLetter={c.zoneLetter}
-          onSelect={c.pickRoom}
-          emptySubtitle="Then drill into aisle, bay, and level on the right."
-        />
-        <ConfigSheet open={c.configOpen} onClose={() => c.setConfigOpen(false)} config={c.config} onSave={c.handleConfigSave} />
-      </>
-    );
-  }
+  // The `sidebar` variant was the rooms list in the warehouse rail. That rail
+  // went with the Inventory sidebar (2026-09-04) and the room picker moved
+  // into the builder's own zone step, so there is one picker at both widths.
 
   // ── Main-pane variant ───────────────────────────────────────────────────
   return (

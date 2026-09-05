@@ -92,7 +92,7 @@ export type StaffStationSkin = StationSkinName;
 export const DEFAULT_STATION_SKIN_PREF: StaffStationSkin = DEFAULT_STATION_SKIN;
 
 /**
- * Scan-station depth — derived from the station-depth registry. Flat is the
+ * Scan-station depth — derived from the station-depth registry. Mill is the
  * default (absence of `data-station-depth`). Independent of Color (`stationSkin`).
  */
 export const STAFF_STATION_DEPTHS = STATION_DEPTH_NAMES;

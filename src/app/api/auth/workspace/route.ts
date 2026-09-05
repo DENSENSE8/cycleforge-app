@@ -4,7 +4,7 @@
  * Resolves the tenant for the current host and returns ONLY its display name +
  * slug — never staff, never any sensitive column. Also advertises which login
  * buttons /signin should render:
- *   - `platformProviders`: configured social logins (google / microsoft)
+ *   - `platformProviders`: configured social logins (google / apple / microsoft)
  *   - `sso`: the tenant's enterprise SSO button (only when a workspace is
  *            resolved, it has an active provider, AND the `sso` entitlement)
  *

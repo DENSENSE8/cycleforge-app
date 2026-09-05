@@ -16,6 +16,7 @@ import {
 } from '@/components/sidebar/sidebar-spine';
 import { AnchoredLayer } from '@/design-system';
 import { IconButton } from '@/design-system/primitives';
+import { KeyboardKey } from '@/design-system/primitives/KeyboardKey';
 import {
   Popover,
   PopoverAnchor,
@@ -202,9 +203,7 @@ export function StaffAccountFooter({ className }: { className?: string }) {
               <span className={cn(SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS, 'min-w-0 flex-1 truncate')}>
                 Clipboard history
               </span>
-              <kbd className="shrink-0 rounded border border-border-soft bg-surface-canvas px-1 py-0.5 font-mono text-role-micro font-semibold text-text-soft">
-                {CLIPBOARD_HISTORY_HOTKEY_LABEL}
-              </kbd>
+              <KeyboardKey size="md">{CLIPBOARD_HISTORY_HOTKEY_LABEL}</KeyboardKey>
             </button>
             <button
               type="button"

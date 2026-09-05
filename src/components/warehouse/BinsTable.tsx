@@ -44,6 +44,8 @@ interface Props {
   onRowClick: (row: BinsOverviewRow) => void;
   /** The find field, as data — the workspace above owns the URL it writes. */
   search: DataTableSearch;
+  /** Override the empty copy (Reports utilization vs Locations browse). */
+  emptyMessage?: string;
 }
 
 /**
@@ -96,6 +98,7 @@ export function BinsTable({
   onSelectChange,
   onRowClick,
   search,
+  emptyMessage = 'No bins match the current filters.',
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -200,7 +203,7 @@ export function BinsTable({
         dir={sortDir}
         onSortChange={setSort}
         loading={loading}
-        emptyMessage="No bins match the current filters."
+        emptyMessage={emptyMessage}
         scrollRef={scrollRef}
         search={search}
         selectionScope={BINS_SELECTION_SCOPE}

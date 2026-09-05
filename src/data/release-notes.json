@@ -1,7 +1,27 @@
 {
-  "generatedAt": "2026-09-02T01:19:14.390Z",
+  "generatedAt": "2026-09-02T19:10:10.445Z",
   "count": 197,
   "commits": [
+    {
+      "sha": "2fd9f256993ca948109ab1a8aa5c5defe61ce53c",
+      "shortSha": "2fd9f2569",
+      "date": "2026-09-02T10:11:54-07:00",
+      "author": "DENSENSE8",
+      "subject": "checkpoint before checking out main",
+      "body": "",
+      "type": "other",
+      "title": "checkpoint before checking out main"
+    },
+    {
+      "sha": "68a06fc48a530c7ee396944b0c65444159e3d933",
+      "shortSha": "68a06fc48",
+      "date": "2026-09-01T19:01:57-07:00",
+      "author": "DENSENSE8",
+      "subject": "Add the Fable 5.1 autonomy gap report and link it from the eval README.",
+      "body": "Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>",
+      "type": "other",
+      "title": "Add the Fable 5.1 autonomy gap report and link it from the eval README."
+    },
     {
       "sha": "e578c64adf7b6f11a70befe63c2af8ab7fe704fd",
       "shortSha": "e578c64ad",
@@ -1951,26 +1971,6 @@
       "body": "Land the GlobalHeader pin/goal placement (toggle·Pins·Recents·page; search·\nring·inbox·AI, panel opens bottom-end), finish more *GridView→host burns\n(Orders/Receiving/Units), and stage custom-field defs/values plus station\nscan-sink and inventory/unbox chrome WIP for dogfood on :3050.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
       "type": "chore",
       "title": "checkpoint main — header zones, table hosts, custom fields"
-    },
-    {
-      "sha": "68fd8244987dffe698647f07b6248b929791647b",
-      "shortSha": "68fd82449",
-      "date": "2026-08-08T16:04:53-07:00",
-      "author": "DENSENSE8",
-      "subject": "feat(tasks): land throwable tasks on main for dogfood check",
-      "body": "Bring WS-TASKS onto :3050 — ⌘⇧U throw panel, FOLLOW_UP assignments, inbox\ndelivery, and pace-and-next header — so the handoff flow can be clicked on the\nrunning main site without a separate lane server.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "feature",
-      "title": "land throwable tasks on main for dogfood check"
-    },
-    {
-      "sha": "b30d5369174a17dc390eb4996b53ad581d664ac8",
-      "shortSha": "b30d53691",
-      "date": "2026-08-08T15:39:26-07:00",
-      "author": "DENSENSE8",
-      "subject": "chore: checkpoint main WIP across stations, tables SoT, and displays",
-      "body": "Park the large dogfood-lane working tree so topic/tables forest-burn commits can merge cleanly against a known tip.\n\nCo-authored-by: Cursor <cursoragent@cursor.com>",
-      "type": "chore",
-      "title": "checkpoint main WIP across stations, tables SoT, and displays"
     }
   ]
 }

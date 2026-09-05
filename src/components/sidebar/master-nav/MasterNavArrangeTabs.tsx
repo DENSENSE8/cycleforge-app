@@ -21,8 +21,7 @@ import { NAV_ICON_CATALOG, NAV_ICON_KEYS } from '@/lib/nav/nav-icon-catalog';
 import { navChildDragId, type NavChildDragData } from '@/lib/nav/nav-child-drag';
 import { spineAccentFor } from '@/lib/nav/spine-section-accent';
 import {
-  SPINE_LABEL_CLASS,
-  SPINE_ROW_FACE_CLASS,
+  SPINE_ROW_DENSITY,
   SPINE_ROW_ICON_CLASS,
   SPINE_ROW_SHELL_CLASS,
 } from '@/components/sidebar/sidebar-spine';
@@ -59,7 +58,7 @@ function ArrangeChildRow({
       <div
         className={cn(
           SPINE_ROW_SHELL_CLASS,
-          SPINE_ROW_FACE_CLASS,
+          SPINE_ROW_DENSITY.pointer.face,
           accent.idlePage,
           isDragging && 'ring-1 ring-inset ring-border-soft',
         )}
@@ -72,7 +71,7 @@ function ArrangeChildRow({
         >
           <GripVertical className={cn(SPINE_ROW_ICON_CLASS)} aria-hidden />
         </span>
-        <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)} title={child.label}>
+        <span className={cn('min-w-0 flex-1 truncate', SPINE_ROW_DENSITY.pointer.label)} title={child.label}>
           {child.label}
         </span>
         <Popover>

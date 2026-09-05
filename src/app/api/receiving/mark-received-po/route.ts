@@ -58,6 +58,10 @@ import { conditionLabel } from '@/lib/conditions';
 import { mergeSerialNoteIntoLineDescription } from '@/lib/zoho';
 import { recordOpsEvent } from '@/lib/ops-events';
 import { resolveSurfaceWorkflowNodeId } from '@/lib/stations/surface-workflow-node';
+import {
+  cartonGrIncompleteBlockers,
+  cartonLinesReadyForGr,
+} from '@/lib/receiving/carton-readiness';
 
 function normalizeSkuKey(s: string | null | undefined): string {
   return String(s ?? '').trim().toLowerCase();
@@ -365,6 +369,43 @@ export const POST = withAuth(async (request, ctx) => {
     );
 
     const openForReceive = candidates.rows;
+
+    // Line leftover OS&D (SHORT / OVER / DAMAGED / WRONG_ITEM) completes a line
+    // without remaining = 0. Carton Print · Receive stays blocked until every
+    // line is complete. scan_only / unreceive are local state flips, not GR.
+    // Empty carton stays receivable. On a block, RELEASE the claim (same as
+    // PHOTO_POLICY) so the operator can retry after coding leftovers.
+    if (!skipZohoReceive && !isUnreceive) {
+      const cartonLines = await tenantQuery<{
+        sku: string | null;
+        item_name: string | null;
+        quantity_expected: number | null;
+        quantity_received: number | null;
+        exception_code: string | null;
+      }>(
+        ctx.organizationId,
+        `SELECT rl.sku, rl.item_name, rl.quantity_expected, rl.quantity_received, rl.exception_code
+           FROM receiving_line rl
+          WHERE rl.receiving_id = $1
+            AND rl.organization_id = $2
+          ORDER BY rl.id ASC`,
+        [receivingId, ctx.organizationId],
+      );
+      if (!cartonLinesReadyForGr(cartonLines.rows)) {
+        if (ownedClaim) {
+          await releaseIdempotencyClaim(pool, ownedClaim).catch(() => {});
+          ownedClaim = null;
+        }
+        return NextResponse.json(
+          {
+            success: false,
+            error: 'LINES_INCOMPLETE',
+            blockers: cartonGrIncompleteBlockers(cartonLines.rows),
+          },
+          { status: 409 },
+        );
+      }
+    }
 
     // Snapshot before-state per line for audit_logs before/after diffs.
     const beforeByLineId = new Map<

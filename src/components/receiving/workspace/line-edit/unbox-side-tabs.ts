@@ -95,7 +95,7 @@ export const UNBOX_PHOTO_ACTION_ORDER = [
  */
 export type UnboxLinkageAction = 'actions' | 'link' | 'return' | 'note';
 
-const UNBOX_LINKAGE_ACTION_ORDER = [
+const _UNBOX_LINKAGE_ACTION_ORDER = [
   'actions',
   'link',
   'return',
@@ -107,7 +107,7 @@ const UNBOX_LINKAGE_ACTION_ORDER = [
  */
 export type UnboxTicketAction = 'chat' | 'claim';
 
-const UNBOX_TICKET_ACTION_ORDER = ['chat', 'claim'] as const satisfies readonly UnboxTicketAction[];
+const _UNBOX_TICKET_ACTION_ORDER = ['chat', 'claim'] as const satisfies readonly UnboxTicketAction[];
 
 /** All display body ids — includes Displays-leaf `checklist`. */
 export const UNBOX_SIDE_TAB_ORDER: readonly UnboxSideTab[] = [

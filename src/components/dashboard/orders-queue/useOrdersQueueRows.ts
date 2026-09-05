@@ -28,6 +28,22 @@ import { compareQueueColumnRows } from './queue-row-compare';
  */
 export const ADDED_TODAY_BAND = '__added_today__';
 
+/**
+ * The URGENT section — above everything, including today's intake.
+ *
+ * Operator 2026-09-04: "make urgent rows sort to the top". A band rather than a
+ * per-band pin, because inside the day-banded view a pin can only lift a row to
+ * the top of ITS day — and an order marked as unable to wait is not asking to
+ * be first among next Tuesday's. This is the same device `ADDED_TODAY_BAND`
+ * already uses for "the section at the top of the queue", and on this desk a
+ * band is pure ORDER: the outbound spreadsheet paints no band keys
+ * (`showDayHeaders={false}`), so no header appears — the rows simply lead.
+ */
+export const URGENT_BAND = '__urgent__';
+
+/** Section caption for {@link URGENT_BAND} — used by any surface that DOES paint band keys. */
+export const URGENT_LABEL = 'Urgent';
+
 /** Section caption for {@link ADDED_TODAY_BAND}. Sentence case (operator, 2026-08-31). */
 export const ADDED_TODAY_LABEL = 'Added today';
 
@@ -126,14 +142,27 @@ export function useOrdersQueueRows({
       return !record.deadline_at && !record.ship_by_date;
     };
 
+    // Urgent is claimed FIRST, so an urgent row that also arrived today leads
+    // the queue rather than sitting in the intake section — the expedite flag
+    // is the stronger claim, and a row can only be in one band.
+    const urgentRecords =
+      queueMode === 'fulfillment'
+        ? visibleRecords.filter((record) => Boolean(record.is_urgent))
+        : [];
+    const urgentIds = new Set(urgentRecords.map((record) => Number(record.id)));
+    const afterUrgent =
+      urgentRecords.length > 0
+        ? visibleRecords.filter((record) => !urgentIds.has(Number(record.id)))
+        : visibleRecords;
+
     const addedToday =
       queueMode === 'fulfillment'
-        ? visibleRecords.filter(isAddedToday).sort((a, b) => Number(b.id) - Number(a.id))
+        ? afterUrgent.filter(isAddedToday).sort((a, b) => Number(b.id) - Number(a.id))
         : [];
     const bandRecords =
       addedToday.length > 0
-        ? visibleRecords.filter((record) => !addedToday.some((row) => Number(row.id) === Number(record.id)))
-        : visibleRecords;
+        ? afterUrgent.filter((record) => !addedToday.some((row) => Number(row.id) === Number(record.id)))
+        : afterUrgent;
 
     // Column sorts: one flat global order (single synthetic band — LedgerGrid
     // hides day headers). Include rows even when ship-by/created is missing.
@@ -197,6 +226,16 @@ export function useOrdersQueueRows({
     // single-line case stays a plain row. groupRowsBy preserves the per-day sort
     // order.
     const orderGroupsByDate: [string, RowGroup<ShippedOrder>[]][] = [
+      // Urgent leads. Ordered by the same soonest-ship-by rule as every other
+      // band, so the block itself is a queue and not an arbitrary pile.
+      ...(urgentRecords.length > 0
+        ? ([
+            [
+              URGENT_BAND,
+              groupRowsBy(sortDayRecords(urgentRecords), (r) => String(r.order_id || '').trim() || `id:${r.id}`),
+            ],
+          ] as [string, RowGroup<ShippedOrder>[]][])
+        : []),
       ...(addedToday.length > 0
         ? ([
             [
@@ -217,6 +256,7 @@ export function useOrdersQueueRows({
     const displayedRecords = flattenRenderOrder(orderGroupsByDate);
 
     const totalCount =
+      urgentRecords.length +
       addedToday.length +
       Object.values(groupedRecords).reduce((sum, dayRecords) => sum + dayRecords.length, 0);
 

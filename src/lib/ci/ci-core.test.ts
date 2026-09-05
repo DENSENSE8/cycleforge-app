@@ -123,6 +123,18 @@ describe('ci-core — the gate list declares its inputs', () => {
     assert.ok(full.includes('Cohort: slot-table'));
     assert.ok(full.includes('Cohort: shortcuts'));
     assert.ok(!fast.includes('Cohort: slot-table'), 'cohorts are full-tier');
+    assert.ok(full.includes('Design critique'));
+    assert.ok(full.includes('Visual peers'));
+    assert.ok(!full.includes('Design review'), 'impeccable reviewer is deep-tier');
+  });
+
+  it('the deep profile is a superset of full and carries the advisory reviewer', () => {
+    const full = gatesForProfile('full').map((g) => g.name);
+    const deep = gatesForProfile('deep').map((g) => g.name);
+    for (const name of full) assert.ok(deep.includes(name), `${name} in deep`);
+    assert.ok(deep.includes('Design review'));
+    const review = ALL_GATES.find((g) => g.name === 'Design review');
+    assert.equal(review.advisory, true);
   });
 });
 

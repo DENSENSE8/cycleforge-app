@@ -1,5 +1,9 @@
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { resolveOrderLifecycleStage } from '@/lib/order-lifecycle';
+import {
+  overlayShippedStatusPresentation,
+  resolveOrderLifecycleStage,
+  resolveOutboundStage,
+} from '@/lib/order-lifecycle';
 import { UNSHIPPED_STATE_META } from '@/lib/unshipped-state';
 import { OUTBOUND_STATE_META } from '@/lib/outbound-state';
 import {
@@ -190,12 +194,25 @@ export function resolveRowStatus(
     return { dot: meta.dot, label: meta.label, description: meta.description, pill: meta.pill };
   }
   if (queueMode === 'shipped') {
-    const outbound = String(record.outboundState || '').trim().toUpperCase();
-    const meta =
-      outbound && outbound in OUTBOUND_STATE_META
-        ? OUTBOUND_STATE_META[outbound as keyof typeof OUTBOUND_STATE_META]
-        : OUTBOUND_STATE_META.SCANNED_OUT;
-    return { dot: meta.dot, label: meta.label, description: meta.description, pill: meta.pill };
+    const tagged = String(record.outboundState || '').trim().toUpperCase();
+    const outbound =
+      tagged && tagged in OUTBOUND_STATE_META
+        ? tagged
+        : resolveOutboundStage({
+            packedAt:
+              nonSentinelTimestamp(record.packed_at) ??
+              nonSentinelTimestamp(record.pack_activity_at),
+            shipConfirmedAt: nonSentinelTimestamp(record.ship_confirmed_at),
+            latestStatusCategory: record.latest_status_category ?? null,
+            isTerminal: record.is_terminal ?? null,
+            hasException: record.has_exception ?? null,
+          });
+    const meta = OUTBOUND_STATE_META[outbound as keyof typeof OUTBOUND_STATE_META];
+    return overlayShippedStatusPresentation(
+      { dot: meta.dot, label: meta.label, description: meta.description, pill: meta.pill },
+      outbound,
+      record.latest_status_category,
+    );
   }
   // To-ship in-warehouse list: full pre-dock stage (incl. PACKED_STAGED), not
   // the three-lane fulfillment bucket that hid packed rows as "Tested".

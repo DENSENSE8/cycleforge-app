@@ -18,6 +18,7 @@ export type SessionsGridColumnKey =
   | 'thumb'
   | 'item'
   | 'fulfillment'
+  | 'dates'
   | 'state'
   | 'amount'
   | 'actions'
@@ -45,7 +46,7 @@ export function sessionsCompoundColumnsFor(layout: SlotLayout): readonly Session
   return materializeTracks<SessionsGridColumn>({
     layout,
     catalog: SESSIONS_FIELD_CATALOG,
-    base: compoundColumnsFor<SessionsGridColumn>(),
+    base: compoundColumnsFor(),
   });
 }
 
@@ -54,29 +55,33 @@ export const SESSIONS_COMPOUND_COLUMNS: readonly SessionsGridColumn[] =
 
 export type SessionsSortFact =
   | 'staff'
+  | 'dates'
   | 'status'
   | 'station'
   | 'duration'
   | 'blocks'
-  | 'image'
   | 'order'
   | 'amount';
 
 const SESSIONS_SORT_FACTS: readonly SessionsSortFact[] = [
   'staff',
+  'dates',
   'status',
   'station',
   'duration',
   'blocks',
-  'image',
   'order',
   'amount',
 ];
 
 const SESSIONS_TRACK_SORT_FACTS: Readonly<Record<string, SessionsSortFact>> = {
+  // The compound DATES track. This family paints no dates in it (no deadline,
+  // no start stamp), and an empty track still click-sorts — the same rule
+  // `fulfillment` / `amount` already answer to here. The word is its
+  // own so a bookmark keeps meaning what it said.
+  dates: 'dates',
   item: 'staff',
   state: 'status',
-  thumb: 'image',
   fulfillment: 'order',
   amount: 'amount',
 };
@@ -120,17 +125,17 @@ export function sessionsColumnKeyForSort(
 
 export const SESSIONS_SORT_FACT_TYPES: Readonly<Record<SessionsSortFact, ColumnType>> = {
   staff: 'text',
+  dates: 'date',
   status: 'tag',
   station: 'text',
   duration: 'text',
   blocks: 'number',
-  image: 'text',
   order: 'text',
   amount: 'price',
 };
 
 export function defaultDirForSessionsGridSort(fact: SessionsSortFact): GridSortDir {
-  return fact === 'duration' || fact === 'blocks' || fact === 'amount' || fact === 'image'
+  return fact === 'duration' || fact === 'blocks' || fact === 'amount'
     ? 'desc'
     : 'asc';
 }

@@ -43,6 +43,7 @@ interface HeaderLike extends TrackLike {
   labelFitRem?: number;
   headerGlyphOnly?: boolean;
   headerForceLabel?: boolean;
+  type?: string;
 }
 interface FrozenTrackLike extends TrackLike {
   key: string;
@@ -91,9 +92,13 @@ export function gridColumnTrackRem(column: TrackLike): number {
  *
  * FOUR gates, in order:
  *  - the column must not have DECLARED itself glyph-only (`headerGlyphOnly`),
- *  - the column may DECLARE the word always (`headerForceLabel` — photo gutter),
- *  - the track must clear the column's declared `labelFitRem` floor, and
- *  - the RESOLVED label must actually fit that track.
+ *  - `thumb` / `type: 'image'` is always the Image glyph (never the word,
+ *    never a missing column on a tab mount),
+ *  - a flex (`1fr`) track always shows its word (the floor is not its width),
+ *  - the track must clear the column's declared `labelFitRem` floor unless
+ *    `headerForceLabel` asks to skip that floor, and
+ *  - the RESOLVED label must actually fit that track. `headerForceLabel` does
+ *    not skip this gate — forcing a long word into a narrow track clips.
  *
  * The first gate is a statement of intent, not a measurement: `qty`'s header is
  * `#` because a quantity needs no word, at every track width. Expressing that
@@ -102,13 +107,14 @@ export function gridColumnTrackRem(column: TrackLike): number {
  * expressing it as `gridLabel: '#'` renders the glyph AND the label, which for
  * a `number` column is two hashes (shipped 2026-08-02, caught at the bench).
  *
- * The second gate is the one the per-surface copies lacked. A width threshold
+ * Character fit is the gate the per-surface copies lacked. A width threshold
  * only holds while the rendered label is the one the column SoT declares —
  * Unbox injects its stage label at runtime (`Unboxed` / `Scanned` / `Tested`)
  * over a track sized for the placeholder `Stage`, so `4.5 >= 4.5` passed and
  * the header clipped to `UNBO…`. A clipped header is worse than a glyph: the
  * glyph is a complete symbol an operator learns, while a truncated word has to
- * be decoded and can be misread.
+ * be decoded and can be misread. `headerForceLabel` used to skip this gate
+ * for the photo gutter and painted `Im…` in 3rem.
  *
  * Pass `label` when the caller overrides it at runtime; otherwise the column's
  * own `gridLabel ?? label ?? key` is used.
@@ -124,11 +130,17 @@ export function gridColumnTrackRem(column: TrackLike): number {
  */
 export function gridHeaderShowsLabel(column: HeaderLike, label?: string): boolean {
   if (column.headerGlyphOnly) return false;
-  if (column.headerForceLabel) return true;
+  // Photo gutter: the header IS the Image type glyph on every PRODUCT_TABLES
+  // peer and every tab mount. A 3rem square cannot hold the word (it clipped
+  // to "Im…" under headerForceLabel). Tabs fork row data, never this track.
+  if (column.key === 'thumb' || column.type === 'image') return false;
   if (isFlexTrack(column)) return true;
   const trackRem = gridColumnTrackRem(column);
-  if (trackRem < (column.labelFitRem ?? 4.5)) return false;
-  return gridHeaderLabelFits(trackRem, label ?? column.gridLabel ?? column.label ?? column.key);
+  const resolved = label ?? column.gridLabel ?? column.label ?? column.key;
+  // Force skips the declared floor so a photo gutter can still *ask* for the
+  // word. It does not skip character fit — never clip.
+  if (!column.headerForceLabel && trackRem < (column.labelFitRem ?? 4.5)) return false;
+  return gridHeaderLabelFits(trackRem, resolved);
 }
 
 /** Sum of the visible tracks' rem floors — the surface's h-scroll activation width. */

@@ -1,0 +1,64 @@
+{
+  "project": "cycleforge-app",
+  "target": "function:src/hooks/useSelectionStatusBarHotkeys.ts:useSelectionStatusBarHotkeys",
+  "files_affected": 7,
+  "total_symbols": 7,
+  "files": [
+    {
+      "file": "src/components/tables/TableStatusBar.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "TableStatusBar"
+      ]
+    },
+    {
+      "file": "src/hooks/useSelectionStatusBarHotkeys.test.ts",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "Harness"
+      ]
+    },
+    {
+      "file": "src/hooks/useSelectionStatusBarHotkeys.ts",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "useSelectionActionHotkeys"
+      ]
+    },
+    {
+      "file": "src/components/tables/DataTableColumnActionRow.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "DataTableColumnActionRow"
+      ]
+    },
+    {
+      "file": "src/components/tables/DataTable.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "DataTable"
+      ]
+    },
+    {
+      "file": "src/components/photos/PhotoLibraryPage.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "PhotoLibraryPage"
+      ]
+    },
+    {
+      "file": "src/components/labels/LabelsProductsWorkspace.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "LabelsProductsWorkspace"
+      ]
+    }
+  ]
+}

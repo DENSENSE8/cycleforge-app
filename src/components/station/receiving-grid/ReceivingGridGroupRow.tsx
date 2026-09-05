@@ -8,6 +8,9 @@ import type { ReceivingGridColumn } from '@/lib/receiving/receiving-grid-layout'
 import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
 import type { CustomFieldDef } from '@/lib/custom-fields/types';
 import { ReceivingGridRow } from './ReceivingGridRow';
+import { SlotTableGroupParentRow } from '@/components/tables/compound/SlotTableGroupParentRow';
+import { orderCarrierBoxes } from '@/lib/orders/order-group-identity';
+import { receivingGroupIdentity } from '@/lib/receiving/receiving-group-identity';
 
 interface ReceivingGridGroupRowProps {
   group: RowGroup<ReceivingLineRow>;
@@ -44,15 +47,30 @@ interface ReceivingGridGroupRowProps {
   onCrosshairHover?: (receivingId: number | null) => void;
   /** Live custom_field_defs for `custom:*` columns. */
   customFieldDefs?: readonly CustomFieldDef[];
+  subtitleFieldIds?: readonly string[];
 }
 
 /**
  * One PO group inside the Unbox / History LedgerGrid.
  *
- * Always a flat list of leaf lines — no collapsible PO title summary. Grouping
- * still drives day-band ordering upstream; each line is its own selectable
- * record (Sheets click-select golden). A summary row duplicated Order / PO
- * already on every leaf and sheared sticky columns under h-scroll.
+ * Leaves stay always-expanded and individually selectable (Sheets click-select
+ * golden). When the fold holds MORE THAN ONE line it now carries the shared
+ * {@link SlotTableGroupParentRow} band — the identical row To-ship paints, so
+ * the floor reads one grammar instead of a per-desk dialect.
+ *
+ * ## This reverses the 2026-08 "no PO summary" ruling, on purpose
+ *
+ * That ruling had two reasons and both are answered rather than ignored:
+ *
+ *  1. *"duplicated Order / PO already on every leaf"* — leaves in a multi-line
+ *     fold now receive `quietIdentity`, so the PO is spoken ONCE, by the band.
+ *     A singleton fold still renders a bare leaf with its own identity intact.
+ *  2. *"sheared sticky columns under h-scroll"* — the old summary rolled its own
+ *     geometry. The shared band derives every frozen offset from the same
+ *     `gridFrozenLeft` call the leaves use, so parent and children are one rigid
+ *     grid under horizontal scroll.
+ *
+ * Operator 2026-09-05: Unbox and Inbound must display exactly like To-ship.
  */
 export function ReceivingGridGroupRow({
   group,
@@ -76,7 +94,16 @@ export function ReceivingGridGroupRow({
   linkedReceivingId = null,
   onCrosshairHover,
   customFieldDefs,
+  subtitleFieldIds,
 }: ReceivingGridGroupRowProps) {
+  // A fold of one is just a line — no band, no quieting.
+  const multi = group.rows.length > 1;
+  const identity = multi ? receivingGroupIdentity(group.rows) : null;
+  const { carriers, boxCount, trackings } = orderCarrierBoxes(group.rows);
+  const ids = group.rows.map((r) => Number(r.id)).filter((n) => Number.isFinite(n));
+  const checkedCount = ids.filter((id) => selectedIds.has(id)).length;
+  const checked = checkedCount === 0 ? false : checkedCount === ids.length ? true : 'mixed';
+
   const renderLeaf = (row: ReceivingLineRow, stripeIndex: number): ReactNode => {
     const isOpen = handleToggleRow
       ? selectedId === row.id
@@ -116,13 +143,34 @@ export function ReceivingGridGroupRow({
         selectGutterChrome={selectGutterChrome}
         clickSelect={clickSelect}
         rowFillHex={rowFillsById?.[String(row.id)] ?? null}
+        quietIdentity={multi}
         customFieldDefs={customFieldDefs}
+        subtitleFieldIds={subtitleFieldIds}
       />
     );
   };
 
   return (
     <>
+      {multi && columns ? (
+        <SlotTableGroupParentRow
+          identity={identity}
+          carriers={carriers}
+          boxCount={boxCount}
+          trackings={trackings}
+          columns={columns}
+          identityColumnKey="fulfillment"
+          checked={checked}
+          onToggle={() => {
+            if (!handleToggleRow) return;
+            const turnOn = checked !== true;
+            for (const row of group.rows) {
+              if (selectedIds.has(row.id) !== turnOn) handleToggleRow(row);
+            }
+          }}
+          selectCount={group.rows.length}
+        />
+      ) : null}
       {group.rows.map((row, i) => renderLeaf(row, baseStripeIndex + i))}
     </>
   );

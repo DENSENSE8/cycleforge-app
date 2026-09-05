@@ -9,7 +9,7 @@
  * read-modify-write law.
  *
  * Resolves the effective layout through the locked cascade
- * (`staff ?? org ?? product` — saved-view layouts are a later ship) and hands
+ * (`savedView ?? staff ?? org ?? product`) and hands
  * back both halves the mount needs: the layout (→ the family's
  * `materializeTracks` wrapper) and the Fields-picker DATA (`DataTable`'s
  * `fields` prop — options, toggle, reorder, org capture). All rules live in
@@ -27,7 +27,7 @@
  *   product default) shows on the next paint.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
@@ -42,6 +42,11 @@ import {
   type SlotFieldOption,
 } from '@/lib/tables/layout-edit';
 import { resolveEffectiveLayout } from '@/lib/tables/resolve-effective-layout';
+import {
+  getSavedViewLayout,
+  getServerSavedViewLayout,
+  subscribeSavedViewLayout,
+} from '@/lib/tables/saved-view-layout-store';
 import { readStoredSlotLayout, type SlotLayout } from '@/lib/tables/slot-layout-core';
 import { toast } from '@/lib/toast';
 
@@ -142,15 +147,30 @@ export function useSlotTableLayout(config: SlotTableLayoutConfig): SlotTableLayo
     [staffLayoutsRaw, tableId],
   );
 
+  /**
+   * The applied saved view's columns, if any — the head of the cascade.
+   *
+   * This term has existed in `resolveEffectiveLayout` since it was written and
+   * was **passed by no caller**, so columns were the one part of a view that
+   * did not survive it. The store is the channel; see
+   * `saved-view-layout-store.ts` for why it is a store and not a prop.
+   */
+  const savedViewLayout = useSyncExternalStore(
+    subscribeSavedViewLayout,
+    useCallback(() => getSavedViewLayout(tableId), [tableId]),
+    getServerSavedViewLayout,
+  );
+
   const effectiveLayout = useMemo(() => {
     const resolved = resolveEffectiveLayout({
       productDefault: productLayout,
       orgLayout,
       staffLayout,
+      savedViewLayout,
       catalog,
     });
     return resolved.morph === paintMorph ? resolved : { ...resolved, morph: paintMorph };
-  }, [orgLayout, staffLayout, productLayout, catalog, paintMorph]);
+  }, [orgLayout, staffLayout, savedViewLayout, productLayout, catalog, paintMorph]);
 
   /**
    * Write the whole personal map (shallow JSONB merge law): carry every
@@ -289,7 +309,7 @@ export function useSlotTableLayout(config: SlotTableLayoutConfig): SlotTableLayo
     [catalog, effectiveLayout, writeOrgLayout],
   );
 
-  const onSaveAsOrgDefault = useCallback(() => {
+  const _onSaveAsOrgDefault = useCallback(() => {
     const layout = effectiveLayout;
     void (async () => {
       try {

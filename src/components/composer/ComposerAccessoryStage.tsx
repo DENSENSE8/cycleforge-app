@@ -6,7 +6,11 @@
  */
 
 import type { ReactNode } from 'react';
-import { WeldedFeedbackPanel } from '@/components/composer/WeldedFeedbackPanel';
+import {
+  WeldedFeedbackPanel,
+  type WeldedFeedbackCta,
+} from '@/components/composer/WeldedFeedbackPanel';
+import type { InlineActionFeedbackTone } from './inline-action-feedback-tone';
 
 export function ComposerAccessoryStage({
   caption,
@@ -14,19 +18,26 @@ export function ComposerAccessoryStage({
   cycling = false,
   leading,
   onDismiss,
+  tone = 'context',
+  cta,
 }: {
   caption: string;
   children: ReactNode;
   cycling?: boolean;
   leading?: ReactNode;
   onDismiss?: () => void;
+  /** Degraded AI draft uses `warning`; claim/seller stay `context`. */
+  tone?: InlineActionFeedbackTone;
+  /** Top-right verb on the hinge — Create ticket for claim. */
+  cta?: WeldedFeedbackCta;
 }) {
   return (
     <WeldedFeedbackPanel
-      tone="context"
+      tone={tone}
       steps={[caption]}
       cycling={cycling}
       leading={leading}
+      cta={cta}
       disclose="always"
       onDismiss={onDismiss}
     >

@@ -108,3 +108,60 @@ test('no onSortColumn means no header sorts, whatever isSortable says', () => {
   });
   assert.deepEqual(sorted, []);
 });
+
+/**
+ * The select-all face is the FAMILY's declared chrome — never probed from the
+ * column array.
+ *
+ * The header used to flip to `'flush'` whenever a `thumb` track was mounted, so
+ * /shipping (To-ship) painted a faded checkmark in the top-left while
+ * /shipping/exceptions — the SAME compound model with `thumb` filtered out —
+ * painted the bordered square. One engine, one control, two faces, decided by
+ * whether a photo column happened to be present. Operator 2026-09-04: port the
+ * exceptions checkmark onto To-ship.
+ *
+ * Mounted, not grepped: the point is which chrome reaches `GridRowCheckbox`
+ * after the header has resolved it, and reading the source for a ternary that
+ * no longer exists cannot answer that.
+ */
+const COMPOUND_COLUMNS = COLUMNS;
+const EXCEPTIONS_COLUMNS = COLUMNS.filter((c) => c.key !== 'thumb');
+
+const paintSelectAll = (
+  columns: readonly { key: string; label: string; width: string }[],
+  chrome?: 'always' | 'selected-only' | 'sheets' | 'flush',
+) => {
+  act(() => {
+    root.render(
+      h(LedgerGridColumnHeader, {
+        columns: columns as unknown as Array<{ key: string; label: string }>,
+        layout: { isSortable: () => true },
+        activeSort: null,
+        sortDir: null,
+        selectMode: true,
+        selectionScope: 'header-chrome-test',
+        ...(chrome ? { selectGutterChrome: chrome } : null),
+      }),
+    );
+  });
+  return container
+    .querySelector('[role="columnheader"] [role="checkbox"]')
+    ?.getAttribute('data-select-chrome');
+};
+
+test('select-all reveals on the header row hover, with or without thumb', () => {
+  // Operator 2026-09-04: the top-left select-all is a hover-revealed control
+  // like the row boxes below it, so an `'always'` family resolves to `'hover'`.
+  // With the photo track (To-ship) …
+  assert.equal(paintSelectAll(COMPOUND_COLUMNS), 'hover');
+  // … and without it (Exceptions). Same engine, same control, same face — the
+  // probe on `thumb` that once forked these two is still gone.
+  assert.equal(paintSelectAll(EXCEPTIONS_COLUMNS), 'hover');
+});
+
+test('a family that declares its own face still gets it', () => {
+  // Only `'always'` is amended into the hover reveal — a family that asked for
+  // something else asked a different question, and unifying the compound desks
+  // must not flatten every surface onto one face.
+  assert.equal(paintSelectAll(COMPOUND_COLUMNS, 'selected-only'), 'selected-only');
+});

@@ -11,6 +11,7 @@ import {
 } from '@/lib/print/unitLabelCore';
 import {
   packMonochromeBitmap,
+  wrapTsplBitmapJob,
 } from '@/lib/print/labelCommands';
 
 const DPI = 203;
@@ -44,21 +45,6 @@ function wrap(text: string, maxChars: number, maxLines: number): string[] {
   }
   if (cur && lines.length < maxLines) lines.push(cur);
   return lines.slice(0, maxLines);
-}
-
-function asciiBytes(value: string): Uint8Array {
-  return new TextEncoder().encode(value);
-}
-
-function joinBytes(parts: Uint8Array[]): Uint8Array {
-  const length = parts.reduce((total, part) => total + part.length, 0);
-  const result = new Uint8Array(length);
-  let offset = 0;
-  for (const part of parts) {
-    result.set(part, offset);
-    offset += part.length;
-  }
-  return result;
 }
 
 function drawFittedText(
@@ -297,16 +283,5 @@ export function buildProductLabelBitmapCommands(
 
   const image = rotatedContext.getImageData(0, 0, width, height);
   const bitmap = packMonochromeBitmap(image.data, width, height);
-  const bytesPerRow = Math.ceil(width / 8);
-  const header = [
-    `SIZE ${inchesToMillimeters(size.widthIn)} mm,${inchesToMillimeters(heightIn)} mm`,
-    'GAP 3.0 mm,0 mm',
-    'DIRECTION 1,0',
-    'REFERENCE 0,0',
-    'DENSITY 10',
-    'CLS',
-    `BITMAP 0,0,${bytesPerRow},${height},1,`,
-  ].join('\r\n');
-  const footer = `\r\nPRINT ${Math.max(1, copies)},1\r\n`;
-  return joinBytes([asciiBytes(header), bitmap, asciiBytes(footer)]);
+  return wrapTsplBitmapJob(bitmap, width, height, size, copies);
 }

@@ -77,6 +77,30 @@ PW_QA_OWNER_EMAIL=qa-admin@cycleforge.test
 PW_QA_OWNER_PASSWORD=CycleForge-QA-local!
 ```
 
+## Design loop — select, then voice/text (Unbox)
+
+The mapping is already in the tree. Iterate on it in **this** tenant, not USAV.
+
+| Piece | Path |
+|---|---|
+| Wait for a click/scan | `AssistantPageContext.selection` — Unbox registers the open carton (`UnboxLineWorkspace`) |
+| Voice | Right Ctrl dictation into the station composer (same field as text) |
+| Text | Composer Ask lane |
+| Move photos | `resolve_receiving_line_for_order` + `list_receiving_line_photos` + `propose_mutation` `receiving_photo.reassign` |
+| Tool-push UI (no AI) | Photo pill → Ticket / Move photos / Claim (`tests/e2e/unbox-tool-push.spec.ts`) |
+
+**Walk (QA Admin, `:3050`):**
+
+1. Sign out if you are on USAV (`org …0001`). Sign in at `/signin` as `qa-admin@cycleforge.test` / `CycleForge-QA-local!`.
+2. Open `/unbox`. Scan or search tracking `QA-MOCK-TRK-PO` (or land `?openReceivingId=` on that carton).
+3. **Interact first** — click the carton / photo. Selection is now `receiving <id>`.
+4. Focus the composer. Type or dictate: `move these photos to order QA-TEST-UNSHIP-PENDING` or `create a claim`.
+5. Hover the photo pill for the non-AI path: Ticket / Move photos / Claim as the right-edge tool push.
+
+Without a selection, the assistant must ask you to click a carton — it must not guess.
+
+Refresh fixtures if the carton or photos are missing: `pnpm provision:qa-org -- --fixtures-only`.
+
 ## E2E
 
 Playwright has two auth states:

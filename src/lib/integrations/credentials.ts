@@ -58,7 +58,10 @@ export type IntegrationProvider =
   // 'ollama' above doubles as the self-hosted/custom OpenAI-compatible slot.
   | 'ai_gateway'
   | 'openai'
-  | 'anthropic';
+  | 'anthropic'
+  // SuperGrok / X Premium+ subscription OAuth (auth.x.ai). Chat only —
+  // billed on the connected Grok plan via cli-chat-proxy, not api.x.ai credits.
+  | 'grok';
 
 /**
  * Shared / BYO eBay **app** credentials (Client ID / Cert / RuName). Stored at
@@ -232,6 +235,26 @@ export interface OllamaCredentials {
 export interface AiGatewayCredentials { apiKey: string; chatModel?: string; embedModel?: string }
 export interface OpenAiCredentials { apiKey: string; chatModel?: string; embedModel?: string }
 export interface AnthropicCredentials { apiKey: string; chatModel?: string }
+
+/**
+ * SuperGrok / X Premium+ subscription OAuth. Tokens come from auth.x.ai
+ * (device-code, or a one-shot import of this machine's `grok login` session).
+ * Ask hits `cli-chat-proxy.grok.com` with the session bearer — that is the
+ * subscription path. Never send these tokens to `api.x.ai` (metered keys).
+ */
+export interface GrokCredentials {
+  accessToken: string;
+  refreshToken: string;
+  /** Access-token expiry, epoch ms. */
+  expiresAt: number;
+  accountEmail?: string;
+  accountName?: string;
+  oidcIssuer: string;
+  oidcClientId: string;
+  chatModel?: string;
+  /** How the vault row was first filled. Display only. */
+  connectedVia?: 'oauth' | 'host';
+}
 export interface StripeCredentials { secretKey: string; publishableKey: string; webhookSecret: string }
 
 /**
@@ -441,6 +464,15 @@ function envFallback(provider: IntegrationProvider): unknown | null {
     case 'google_drive':
       // OAuth-only, connected per-tenant via Sign in with Google. No env bridge —
       // there is no single-tenant Drive backup to mirror from env.
+      return null;
+    case 'ai_gateway':
+    case 'openai':
+    case 'anthropic':
+      // BYOK vault only — never leak a platform key across tenants.
+      return null;
+    case 'grok':
+      // SuperGrok OAuth is per-tenant. The host `~/.grok/auth.json` is imported
+      // explicitly via the connect route, never auto-read as an env bridge.
       return null;
     case 'gmail':
       // OAuth-only (PO mailbox). Legacy tokens live in google_oauth_tokens and

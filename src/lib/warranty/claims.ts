@@ -169,6 +169,29 @@ export async function getClaimTicketRef(
   };
 }
 
+/**
+ * Reverse lookup for the helpdesk reply chokepoint: which live claim owns this
+ * ticket? A reply posted from ANY composer (the claim popover now sends through
+ * TicketComposer; the support console always did) echoes onto that claim's
+ * timeline the way the claim-scoped comments route records it.
+ */
+export async function getClaimIdByTicketId(
+  ticketId: number,
+  orgId: OrgId,
+): Promise<number | null> {
+  const { rows } = await tenantQuery<{ id: number }>(
+    orgId,
+    `SELECT id
+       FROM warranty_claims
+      WHERE zendesk_ticket_id = $1
+        AND deleted_at IS NULL
+        AND organization_id = $2
+      LIMIT 1`,
+    [ticketId, orgId],
+  );
+  return rows[0] ? Number(rows[0].id) : null;
+}
+
 type RawDetailRow = RawListRow & {
   purchase_proof_url: string | null;
   purchased_at: string | null;

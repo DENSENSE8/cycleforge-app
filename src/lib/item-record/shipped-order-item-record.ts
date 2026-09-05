@@ -23,6 +23,13 @@ export function splitOrderSerials(serialNumber: string | null | undefined): stri
     .filter(Boolean);
 }
 
+/** `orders.sale_amount` is this line's realized price — empty is absent, not zero. */
+function lineUnitPrice(order: ShippedOrder): string | null {
+  if (order.sale_amount == null || String(order.sale_amount).trim() === '') return null;
+  const amount = Number(order.sale_amount);
+  return Number.isFinite(amount) ? String(order.sale_amount) : null;
+}
+
 export function shippedOrderToItemRecords(order: ShippedOrder): ItemRecord[] {
   const sku = String(order.sku || '').trim();
   const title = String(order.product_title || '').trim() || sku || `Order ${order.order_id}`;
@@ -41,11 +48,10 @@ export function shippedOrderToItemRecords(order: ShippedOrder): ItemRecord[] {
       },
       conditionGrade: String(order.condition || '').trim() || null,
       serials: splitOrderSerials(order.serial_number),
-      // No price. `sale_amount` is the ORDER total, not a per-unit figure, and
-      // the money facts have one seat already — the `status` Display leaf's
-      // commercial block. Painting the total in a unit-price track would be a
-      // wrong number, not a missing one.
-      unitPrice: null,
+      // One order row is one sold line (`orders.sale_amount`). The operator
+      // corrects that figure on the queue; the item record paints the same
+      // number on the line (UnitPriceChip), not a second money fact.
+      unitPrice: lineUnitPrice(order),
       imageUrl: null,
     },
   ];

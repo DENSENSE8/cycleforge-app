@@ -49,6 +49,7 @@ test('maps a sales order onto a single item record', () => {
   assert.equal(item.conditionGrade, 'USED_GOOD');
   assert.deepEqual(item.serials, ['SN-1', 'SN-2']);
   assert.deepEqual(item.quantity, { expected: 2 });
+  assert.equal(item.receiveState, undefined);
 });
 
 test('quantity is expected-only — an order counts nothing on the floor', () => {
@@ -64,9 +65,15 @@ test('unparseable or absent quantity yields a null expected, never NaN', () => {
   }
 });
 
-test('never claims a unit price — sale_amount is an order total', () => {
+test('maps sale_amount onto the line item unit price', () => {
   const [item] = shippedOrderToItemRecords(order({ quantity: '1', sale_amount: '499.00' }));
-  assert.equal(item.unitPrice, null);
+  assert.equal(item.unitPrice, '499.00');
+});
+
+test('absent or unparseable sale_amount leaves the line price empty', () => {
+  assert.equal(shippedOrderToItemRecords(order({ sale_amount: null }))[0].unitPrice, null);
+  assert.equal(shippedOrderToItemRecords(order({ sale_amount: '' }))[0].unitPrice, null);
+  assert.equal(shippedOrderToItemRecords(order({ sale_amount: 'n/a' }))[0].unitPrice, null);
 });
 
 test('title falls back to sku, then to the order id', () => {
@@ -81,4 +88,13 @@ test('blank sku and condition become null rather than empty strings', () => {
   const [item] = shippedOrderToItemRecords(order({ sku: '  ', condition: '' }));
   assert.equal(item.sku, null);
   assert.equal(item.conditionGrade, null);
+});
+
+test('shipped-order mapper does not fork a second meta grid', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(
+    new URL('./shipped-order-item-record.ts', import.meta.url),
+    'utf8',
+  );
+  assert.doesNotMatch(src, /ItemRecordMetaGrid|PoLineMetaGrid|data-col=/);
 });

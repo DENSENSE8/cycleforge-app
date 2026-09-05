@@ -24,6 +24,7 @@ import { BinsBulkActionBar } from './BinsBulkActionBar';
 import { BinDetailFlyout } from './BinDetailFlyout';
 import { RoomDetailForm } from './RoomDetailForm';
 import { LabelPrintWorkspace } from './LabelPrintWorkspace';
+import { LocationsNewToteLabelAction } from './LocationsNewToteLabelAction';
 import { RackLabelWorkspace } from './RackLabelWorkspace';
 import { RackDetailView } from './RackDetailView';
 import { WarehouseMap, type MapViewMode } from './WarehouseMap';
@@ -52,6 +53,7 @@ export function LocationsWorkspace() {
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
+      <LocationsNewToteLabelAction />
       <DashboardScrollShell className="h-full bg-transparent">
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           {tab === 'rooms' ? <RoomDetailForm /> : null}

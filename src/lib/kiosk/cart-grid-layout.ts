@@ -5,12 +5,8 @@
  * from `COMPOUND_TRACKS` rather than copied. This file only narrows the key
  * type; there is no cart-flavoured geometry anywhere in it, which is the point.
  *
- * The cart is the family that made the shared model grow: it is the first with
- * MONEY, and the first that needed more per-row verbs than a chevron could
- * carry. Both landed as tracks every table now has — `amount` and `actions` —
- * because a cart-only array would have been the exact fork this layout exists
- * to prevent, and because Receiving and Orders both had money they were not
- * showing.
+ * The cart mounts the shared compound skeleton. Line money is under the
+ * title, not a private Amount column.
  */
 
 import {
@@ -40,7 +36,7 @@ export interface CartGridColumn extends LedgerGridColumnModel {
 }
 
 export const CART_COMPOUND_COLUMNS: readonly CartGridColumn[] =
-  compoundColumnsFor<CartGridColumn>();
+  compoundColumnsFor();
 
 /** Canonical grid descriptor for the transient kiosk cart surface. */
 export const makeKioskCartGridDescriptor = (visible: readonly CartGridColumn[]) =>

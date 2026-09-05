@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { resolveStationDetailsPanelContext } from '@/components/station/station-details-context';
 import { techRecordToDetail } from '@/components/station/tech-record-mappers';
-import { getOpenShippedDetailsPayload } from '@/utils/events';
+import { getOpenShippedDetailsPayload, shouldApplyOpenShippedDetails } from '@/utils/events';
 
 test('resolveStationDetailsPanelContext: queue payload → queue panel', () => {
   assert.equal(resolveStationDetailsPanelContext('queue', 'history', 'tech'), 'queue');
@@ -22,6 +22,18 @@ test('getOpenShippedDetailsPayload unwraps wrapped queue events', () => {
   assert.equal(payload?.order.id, 42);
   assert.equal(payload?.context, 'queue');
   assert.equal(payload?.order.test_activity_at, '2026-07-01 10:00:00');
+  assert.equal(payload?.force, false);
+});
+
+test('getOpenShippedDetailsPayload keeps force for explicit More information', () => {
+  const order = { id: 7, order_id: 'ORD-7' };
+  const payload = getOpenShippedDetailsPayload({ order, context: 'queue', force: true });
+  assert.equal(payload?.force, true);
+  assert.equal(shouldApplyOpenShippedDetails('side_panel', payload!), true);
+  assert.equal(
+    shouldApplyOpenShippedDetails('side_panel', { context: 'queue', force: false }),
+    false,
+  );
 });
 
 test('techRecordToDetail maps test_activity_at from created_at', () => {

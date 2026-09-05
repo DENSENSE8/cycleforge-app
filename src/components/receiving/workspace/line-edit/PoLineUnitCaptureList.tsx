@@ -21,6 +21,7 @@ import {
   markAllReceivingUnitsCondition,
   markReceivingUnitsConditionSplit,
 } from '../receiving-label-helpers';
+import { applyLineGot, markLineShortRemaining } from '../line-receive-actions';
 import type { SavedSerial } from '../SerialScanField';
 import type { UnitLike, UnitSlotView } from '../UnitSlotList';
 import { PoLineCaptureRow } from './PoLineCaptureRow';
@@ -105,22 +106,26 @@ export function PoLineUnitCaptureList({
 
   const applyBulk = useCallback(
     (input: {
-      primaryGrade: string;
+      primaryGrade: string | null;
       primaryCount: number;
       secondaryGrade: string | null;
     }) => {
-      onConditionChange(input.primaryGrade);
-      if (input.secondaryGrade && input.primaryCount < quantityExpected) {
-        markReceivingUnitsConditionSplit(
-          lineId,
-          input.primaryGrade,
-          input.primaryCount,
-          input.secondaryGrade,
-          units,
-        );
-        return;
+      if (input.primaryGrade) {
+        onConditionChange(input.primaryGrade);
+        if (input.secondaryGrade && input.primaryCount < quantityExpected) {
+          markReceivingUnitsConditionSplit(
+            lineId,
+            input.primaryGrade,
+            input.primaryCount,
+            input.secondaryGrade,
+            units,
+          );
+        } else {
+          markAllReceivingUnitsCondition(lineId, input.primaryGrade, units);
+        }
       }
-      markAllReceivingUnitsCondition(lineId, input.primaryGrade, units);
+      const got = input.secondaryGrade ? quantityExpected : input.primaryCount;
+      void applyLineGot(lineId, got);
     },
     [lineId, onConditionChange, quantityExpected, units],
   );
@@ -173,6 +178,12 @@ export function PoLineUnitCaptureList({
           progressive
           onApply={applyBulk}
           onTrackEachUnit={() => setForceUnitMode(true)}
+          onShortRemaining={(_remaining, got) => {
+            void markLineShortRemaining(
+              { id: lineId, quantity_expected: quantityExpected },
+              got,
+            );
+          }}
         />
       </div>
     );

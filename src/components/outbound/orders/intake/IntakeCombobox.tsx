@@ -34,6 +34,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ItemRecordThumb } from '@/design-system/components/item-record';
 import { triagePanelControl } from '@/design-system/tokens/triage-panel';
 import { TRIAGE_PANEL_INNER_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
@@ -46,6 +47,13 @@ export interface IntakeComboboxOption {
   meta?: string;
   /** Render the label in the mono face (identifiers: SKUs, item numbers). */
   mono?: boolean;
+  /**
+   * When set (including `null`), paint {@link ItemRecordThumb} — catalog pairing
+   * needs the Zoho photo beside the SKU. Omit entirely for identifier-only rows.
+   */
+  imageUrl?: string | null;
+  /** Inspect without pairing. Clicks must not select the option. */
+  trailing?: React.ReactNode;
 }
 
 export function IntakeCombobox({
@@ -159,31 +167,46 @@ export function IntakeCombobox({
             )}
             {groups.map(({ heading, items }) => (
               <CommandGroup key={heading || '__ungrouped'} heading={heading || undefined}>
-                {items.map((opt) => (
-                  <CommandItem
-                    key={opt.value}
-                    value={async ? opt.value : `${opt.label} ${opt.value}`}
-                    data-testid={optionTestId?.(opt)}
-                    onSelect={() => {
-                      onChange(opt.value);
-                      setOpen(false);
-                    }}
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className={cn('block truncate', opt.mono && 'font-mono')}>
-                        {opt.label}
-                      </span>
-                      {opt.meta ? (
-                        <span className="block truncate text-role-micro text-text-soft">
-                          {opt.meta}
+                {items.map((opt) => {
+                  const showThumb = 'imageUrl' in opt;
+                  const rich = showThumb || opt.trailing != null;
+                  return (
+                    <CommandItem
+                      key={opt.value}
+                      value={async ? opt.value : `${opt.label} ${opt.value}`}
+                      data-testid={optionTestId?.(opt)}
+                      className={rich ? 'items-stretch gap-0 px-0 py-0' : undefined}
+                      onSelect={() => {
+                        onChange(opt.value);
+                        setOpen(false);
+                      }}
+                    >
+                      {showThumb ? <ItemRecordThumb imageUrl={opt.imageUrl} /> : null}
+                      <span className={cn('min-w-0 flex-1', rich && 'px-2.5 py-2')}>
+                        <span className={cn('block truncate', opt.mono && 'font-mono')}>
+                          {opt.label}
                         </span>
+                        {opt.meta ? (
+                          <span className="block truncate text-role-micro text-text-soft">
+                            {opt.meta}
+                          </span>
+                        ) : null}
+                      </span>
+                      {opt.trailing != null ? (
+                        <span
+                          className="flex shrink-0 items-center py-1.5 pr-2"
+                          onPointerDown={(event) => event.stopPropagation()}
+                          onMouseDown={(event) => event.stopPropagation()}
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          {opt.trailing}
+                        </span>
+                      ) : opt.value === value ? (
+                        <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
                       ) : null}
-                    </span>
-                    {opt.value === value ? (
-                      <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                    ) : null}
-                  </CommandItem>
-                ))}
+                    </CommandItem>
+                  );
+                })}
               </CommandGroup>
             ))}
           </CommandList>

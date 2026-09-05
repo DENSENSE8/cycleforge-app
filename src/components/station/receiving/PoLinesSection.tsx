@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Package } from '@/components/Icons';
+import { Package } from '@/components/Icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatReturnSerialProductTitle } from '@/components/station/receiving-line-serials';
 import {
@@ -17,6 +17,8 @@ import {
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Panel, Button } from '@/design-system/primitives';
+import { ItemRecordQtyBadge } from '@/design-system/components/item-record';
+import { receivingQty } from '@/lib/item-record/receiving-qty';
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
 interface ReceivingLine {
@@ -51,10 +53,6 @@ interface PoLinesSectionProps {
  * its single-row chip grid truncates badly inside this card.
  */
 function PoLineRow({ line }: { line: ReceivingLine }) {
-  const qtyOk =
-    (line.quantity_expected ?? 0) > 0
-      ? line.quantity_received >= (line.quantity_expected ?? 0)
-      : false;
   const badgeCls = WORKFLOW_BADGE[line.workflow_status] ?? 'bg-surface-sunken text-text-soft';
   const conditionLabel = conditionGradeTableLabel(line.condition_grade);
   const condGrade = (line.condition_grade || '').toUpperCase();
@@ -95,16 +93,7 @@ function PoLineRow({ line }: { line: ReceivingLine }) {
             RIGHT → SKU + serial copy chips */}
       <div className="mt-1.5 flex items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <span
-            className={`flex shrink-0 items-center gap-0.5 text-role-caption font-semibold tabular-nums ${
-              qtyOk ? 'text-emerald-600' : 'text-text-muted'
-            }`}
-          >
-            {line.quantity_received}
-            <span className="text-text-faint">/</span>
-            <span className="text-text-faint">{line.quantity_expected ?? '?'}</span>
-            {qtyOk ? <Check className="h-3 w-3 text-emerald-500" aria-hidden /> : null}
-          </span>
+          <ItemRecordQtyBadge quantity={receivingQty(line)} />
           <span
             className={`rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ${badgeCls}`}
           >

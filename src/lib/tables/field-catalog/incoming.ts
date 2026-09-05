@@ -63,6 +63,14 @@ export const INCOMING_FIELD_CATALOG: FieldCatalog = [
     paths: { expected: 'quantity_expected', received: 'quantity_received' },
   },
   {
+    id: 'incoming.price',
+    family: 'incoming',
+    label: 'Price',
+    displayType: 'money',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'unit_price' },
+  },
+  {
     id: 'incoming.status',
     family: 'incoming',
     label: 'Status',
@@ -100,10 +108,9 @@ export const INCOMING_FIELD_CATALOG: FieldCatalog = [
 
 /**
  * The PRODUCT default Incoming layout — the COMPOUND morph with **no bound
- * fact tracks**, which is byte-for-byte what the Incoming rails paint today.
- * Same parity argument as Receiving: reproduce, then improve. Every fact above
- * becomes bindable the same day without a deploy.
- * Guard: `incoming.test.ts` parses this against the catalog.
+ * fact tracks** in this constant. Qty and price pin under the title at resolve
+ * time (`ensureLineQtySubtitle` / `ensureLineMoneySubtitle`), the same engine
+ * pins To-ship and Unbox History use. Guard: `incoming.test.ts`.
  */
 export const INCOMING_PRODUCT_LAYOUT: SlotLayout = {
   morph: 'compound',

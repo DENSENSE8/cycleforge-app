@@ -1,0 +1,29 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "function:src/hooks/useSelectionStatusBarHotkeys.ts:useSelectionStatusBarHotkeys",
+      "kind": "function",
+      "name": "useSelectionStatusBarHotkeys",
+      "location": "src/hooks/useSelectionStatusBarHotkeys.ts:162",
+      "exported": true,
+      "signature": "function useSelectionStatusBarHotkeys( actions: readonly SelectionStatusHotkeyAction[], enabled = true, ): { showHotkeys: boolean; toggleHotkeys: () => void; }"
+    },
+    {
+      "node_key": "file:src/hooks/useSelectionStatusBarHotkeys.ts",
+      "kind": "file",
+      "name": "useSelectionStatusBarHotkeys.ts",
+      "location": "src/hooks/useSelectionStatusBarHotkeys.ts:1",
+      "exported": false,
+      "signature": null
+    },
+    {
+      "node_key": "file:src/hooks/useSelectionStatusBarHotkeys.test.ts",
+      "kind": "file",
+      "name": "useSelectionStatusBarHotkeys.test.ts",
+      "location": "src/hooks/useSelectionStatusBarHotkeys.test.ts:1",
+      "exported": false,
+      "signature": null
+    }
+  ]
+}

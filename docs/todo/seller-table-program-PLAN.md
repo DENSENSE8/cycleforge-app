@@ -242,19 +242,45 @@ the reason the cluster stops at four:
 
 ---
 
-## 06 · Phase 4 — Configurable export  `START HERE`
+## 06 · Phase 4 — Configurable export  `LANDED 2026-09-02`
 
 > "The export should not just be a blind download. It should be a configurable
 > download that will be inline — download default, download what's shown,
 > configure more."
 
-**The TRIGGER landed with Phase 3** (header button on a desk, glyph elsewhere,
-disabled at zero rows). **The panel did not.** `DataTableExportButton` still
-writes every column of every rendered row on click — one tier, no scope choice,
-no field choice. It cannot answer *"just the SKUs and quantities for these forty
-rows"*, which is exactly what a seller does before a reprice or a restock order.
+**Landed.** The panel is a `Popover` on the same grammar as Sort and Filter —
+*inline* is the operator's word and it rules out a Dialog: a modal for a
+download stops the desk to ask a question the operator answered by clicking.
 
-Everything below is open.
+* **Tier 1 never got slower.** The panel opens with *Download this view*
+  focused, so the one-click case is click-then-Enter at worst.
+* **Tier 2 is absent, not disabled,** without a selection — an always-present
+  control that is usually dead teaches people to stop reading the panel.
+* **Scope is the CURRENT narrowing**, after search, filter and date range.
+* **Format is a radio over one serializer.** `serializeRows(header, rows,
+  format)` — CSV quotes per RFC 4180, TSV flattens tabs and newlines because a
+  spreadsheet does not read quoted TSV off the clipboard.
+* **Five hand-written `csvCell` copies became one** (`DataTable`, warranty,
+  order-export, receiving history, serial journey — the plan counted four).
+  `serial-journey` keeps its own newline flattening, which is a local decision,
+  and delegates the quoting, which is not.
+* **The field choice persists org-wide** in the settings bag beside
+  `tableLayouts` and `importMappingProfiles` — no migration.
+* **Order comes from the registry, never the stored array.** A stored order
+  would freeze a layout against a registry that gains fields, so a new fact
+  would always land last however the family declared it.
+
+**Still open, and named honestly:**
+
+* **`ORDER_EXPORT_COLUMNS` is not yet a projection of the catalog.** Every desk
+  reaches the panel through `exportSpecFromColumns`, a bridge that synthesizes
+  `col:N` ids from the legacy positional shape. It works everywhere today; it
+  keys the stored choice by POSITION, so a surface that wants export-only facts
+  (record ids, raw stamps, fee breakdowns) graduates to a real registry —
+  `exportFieldsFromCatalog` is written and tested, with nothing mounted on it.
+* **`e` to open.** Binding it today means a 54th window keydown listener or a
+  standing keycap the shortcut cohort refuses. It belongs to the keyboard
+  registry. Enter and Escape already work inside the panel.
 
 ```mermaid
 flowchart TD
@@ -399,10 +425,35 @@ twice.
 
 ---
 
-## 08 · Phase 6 — Seller field catalog  `open`
+## 08 · Phase 6 — Seller field catalog  `LANDED 2026-09-02`
 
-The catalog has nine fields. The feed returns far more. Every fact a marketplace
-gives us that an operator triages on should be bindable, not hardcoded in a cell.
+The catalog had ten fields; it has **23**. Every one was MEASURED against both
+live order readers before it was named — the method below, followed rather than
+summarised.
+
+**The constraint the plan set was itself stale.** It says three independent
+order readers. `getActiveOrders` no longer exists anywhere in `src`; there are
+two. That mattered: the count is what each new fact gets checked against, and
+checking against a reader that is gone would have let a one-sided fact through.
+The comment in `/api/orders/route.ts` is corrected.
+
+**Added** (all present in BOTH readers): `sku` · `tracking` · `carrier` ·
+`delivery_status` · `delivery_event` · `exception` · `platform` · `flag` ·
+`note_count` · `urgent` · `stock` · `serial` · `age`.
+
+**Refused in writing, with the fix named** — every one reaches a single reader,
+so binding it would paint on the Pending queue and go blank on every shipped
+lane with no error: `catalog_image_url` (the photo the compound thumbnail has
+been faking — `orders-queries.ts` never joins `sku_catalog`; the fix is that
+join plus its GROUP BY entry, which is a hot-query change and not binding work),
+`catalog_category`, `pack_location_name`, `has_tech_scan`, `customer_id`,
+`label_printed_at`, `tracking_added_at`. Also refused: `currency` (it is how
+Amount PRINTS, not a column), lateness (clock-derived — the surface owns
+`nowMs`), and fees/cost/margin/service level (absent from the schema; open
+question 1).
+
+No display type was invented. The product layout is unchanged, so nothing moved
+on screen — 13 more facts simply became bindable without a deploy.
 
 ### Method — do this, do not guess
 
@@ -841,10 +892,10 @@ Do not guess these. Ask, then record the answer in the repo prompt.
 
 | # | Open work | Where |
 |---|---|---|
-| 1 | Configurable export — three tiers, one field registry, one serializer (four exist) | §06 |
-| 2 | Named import mapping profiles, org-wide | §07 |
-| 3 | Seller field catalog — 9 fields today, the feed returns far more | §08 |
-| 4 | Saved views: capture the effective LAYOUT and thread it in | §09 |
+| ~~1~~ | ~~Configurable export — three tiers, one field registry, one serializer~~ **landed 2026-09-02** | §06 |
+| ~~2~~ | ~~Named import mapping profiles, org-wide~~ **landed 2026-09-01** | §07 |
+| ~~3~~ | ~~Seller field catalog~~ **landed 2026-09-02** — 10 → 23 fields, measured | §08 |
+| ~~4~~ | ~~Saved views: capture the effective LAYOUT and thread it in~~ **landed 2026-09-01** (To-ship opted in; other desks are one `layout:` line) | §09 |
 | 5 | Price write path — no route accepts `saleAmount` on edit | §09 |
 | 6 | Header Import control | §05 |
 | 7 | Row right-edge next action; the inline record form | §04 |
@@ -863,6 +914,11 @@ Everything else in this document has landed. The rows below are the record.
 | 1.3 (reopened) | **2026-08-31** | **Audit of the tree, not the ledger, found wave 1.3 half-landed.** All six compound families had their MOUNT on the materialization and their CANONICAL model (`binding.columns` / `definition.columns`) still on the flat hand array — and each derived its `?colsort=` vocabulary from that array, so `useUrlColumnSort` rejected every mounted track key and **clicking a column header did nothing on six desks**. The same bug `queue-display-sort` documents for To-Ship one wave earlier. Fixed: definitions repointed; `TestingHistoryList` passes the flat model EXPLICITLY (a declared second mount, not a silent fallback); a track→fact map per family on the `COMPOUND_TRACK_SORT_KEYS` shape, with four refusals written down; sortability moved onto the bound fact and wired into the daily/tasks descriptors so a header stops offering a sort it cannot perform; `catalog-link` / `import-exception`'s half-patch completed (dead `item` header, `undefined` comparator type); seven prefs buckets emptied — including `receiving`, whose justification cited `useIsColumnHidden`, **which does not exist**. Detail: [kill-list 07 § Wave 3f](../kill-list/07-slot-table-hand-models.md). |
 | 1.5 (staging) | **open** | The three guard files exist on disk and pass, but are **untracked** — a git-based audit reads them as missing. This tree is shared by concurrent sessions; nothing has staged them. |
 | 2 · gestures/keys | **2026-09-01** | **The gesture half.** `selection-anchor.ts` (the range walk, lifted out of `useTableSelectMode` so the keyboard can reach it — 20 tests) · `row-gestures.ts`, the gesture table as DATA with its keyboard column, guarded by the pointer/keyboard parity law · `table-key-layer.ts`, the §11 suppressor, plus `hasScanTarget()` — the scanner predicate that did not exist · `useRowGestures`, bound to the table REGION and not to `window`, so it is not listener 54 and WCAG 2.1.4 holds by construction · roving tabindex (one tab stop, not 900). **Shift-click now works**: `GridRowCheckbox.onToggle` was `() => void`, swallowing the event, so every caller hard-coded `{ shiftKey: false }` against a range walk that had unit coverage and no reachable caller. A source guard fails on that literal. 52 new tests; `npm run verify` green (7,587 pass). |
+| 2 · scanner guard | **2026-09-01** | The selection status-bar hotkeys fired single letters (`a c l r b p s f d`) from a **window capture listener** with no scanner check, so a wedge scan of `SKU-1129` on a station with rows checked ran Ship-by, Product labels and Shipping labels. Its four hand-copied guards are now one `suppressTableKey` call, which adds the scanner term; `?` takes the scanner check alone, because that handler deliberately allows single-line inputs. 5 regression tests, including the whole wedge payload. |
+| 7 · saved-view layout | **2026-09-01** | `savedViewLayout` — declared, typed and **passed by no caller** since `resolveEffectiveLayout` was written — finally has one. A view stores the effective layout beside its query (`filters.layout`, read through the same strict `readStoredSlotLayout` the org and staff layers use); `saved-view-layout-store` carries it back to `useSlotTableLayout`, because the page calls the layout hook and passes the result DOWN into the table that mounts the views menu. One frame on apply, which is a deliberate act. 7 store tests. |
+| 5 · mapping profiles | **2026-09-01** | Named column mappings, org-wide, **no migration** — they live in the `organizations.settings` passthrough bag beside `tableLayouts`. Matching is by HEADER SET, not filename: an exact signature (order-independent) or the best coverage above 0.6, ties broken by most-recently-used. A hit is OFFERED, never auto-applied — a silently-applied profile is indistinguishable from a good auto-map until something lands wrong in To-Ship. Bindings whose column is absent from this file are DROPPED rather than kept, so the field returns to the unmapped count instead of resolving blank on every row. Write gate is `orders.import`, not `admin.manage_features`: the person who learns a supplier's file is the person importing it. 26 unit tests. |
+| 4 · export | **2026-09-02** | Inline three-tier panel (`DataTableExportMenu`) on the Sort/Filter popover grammar; the blind `DataTableExportButton` deleted. ONE serializer with format as a parameter — five hand-written `csvCell` copies collapsed to one owner of quoting. Field registry + org-wide persistence (`organizations.settings.exportFields`, no migration), reached from every existing desk through a positional bridge so the panel works everywhere without twenty per-desk migrations. 43 unit tests; `eval:cohort slot-table` and `eval:cohort shortcuts` both `ok: true`; verify green. |
+| 6 · seller catalog | **2026-09-02** | 10 → 23 orders fields, each measured across both live readers first. 13 accepted, 11 refused in writing with the fix named for each. Found the plan's own "three readers" constraint stale — `getActiveOrders` is gone — and corrected the projection comment that carries it. Resolver arm per field, plus a test asserting EVERY catalog field resolves rather than falling through to a blank track. 15 new tests (40 in the file); verify green; `eval:cohort slot-table` ok. |
 
 ---
 

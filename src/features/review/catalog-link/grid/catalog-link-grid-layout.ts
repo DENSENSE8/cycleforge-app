@@ -14,6 +14,7 @@ import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materializ
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import type { ColumnType } from '@/lib/tables/table-columns';
+import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
 
 export type CatalogLinkGridColumnKey =
   | 'select'
@@ -26,6 +27,7 @@ export type CatalogLinkGridColumnKey =
   /** Compound (two-row) presentation tracks — see {@link CATALOG_LINK_COMPOUND_COLUMNS}. */
   | 'thumb'
   | 'fulfillment'
+  | 'dates'
   | 'state'
   | 'amount'
   | 'actions'
@@ -65,7 +67,7 @@ export function catalogLinkCompoundColumnsFor(
   return materializeTracks<CatalogLinkGridColumn>({
     layout,
     catalog: CATALOG_LINK_FIELD_CATALOG,
-    base: compoundColumnsFor<CatalogLinkGridColumn>(),
+    base: compoundColumnsFor(),
   });
 }
 
@@ -94,6 +96,7 @@ export const CATALOG_LINK_COMPOUND_COLUMNS: readonly CatalogLinkGridColumn[] =
  * documents for To-Ship; it is fixed by naming the track here.
  */
 const CATALOG_LINK_GRID_SORTABLE_KEYS: readonly CatalogLinkGridColumnKey[] = [
+  'dates',
   'source',
   'sku',
   'orders',
@@ -103,10 +106,10 @@ const CATALOG_LINK_GRID_SORTABLE_KEYS: readonly CatalogLinkGridColumnKey[] = [
   'fulfillment',
   'state',
   'amount',
-  'thumb',
 ];
 
 export function isCatalogLinkGridSortable(key: string): key is CatalogLinkGridColumnKey {
+  if (isSlotTableChromeTrack(key)) return false;
   return (CATALOG_LINK_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
 }
 
@@ -120,6 +123,7 @@ export function isCatalogLinkGridSortable(key: string): key is CatalogLinkGridCo
  * still names its own shape.
  */
 export const CATALOG_LINK_SORT_TYPES: Readonly<Record<string, ColumnType>> = {
+  dates: 'date',
   item: 'text',
   fulfillment: 'id',
   source: 'external',
@@ -129,7 +133,6 @@ export const CATALOG_LINK_SORT_TYPES: Readonly<Record<string, ColumnType>> = {
   first: 'date',
   last: 'date',
   state: 'date',
-  thumb: 'text',
 };
 
 export function defaultDirForCatalogLinkGridSort(key: CatalogLinkGridColumnKey): GridSortDir {

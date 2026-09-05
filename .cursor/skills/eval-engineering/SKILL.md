@@ -47,10 +47,14 @@ pnpm run eval:cohort slot-table
    paint lives on CompoundItem. STATUS ship-by is `DateRangePickerField
    variant="compact"` (no X, no year, click commits) via `useOptimisticMutation`.
    Filter icon is `DataTableFilterMenu` beside search (always mounted;
-   `DATA_TABLE_FILTER_IDLE` when a family has no facets). Never FilterRefinementBar, never a hunt-tile strip. Every painted DATA column header is click-to-sort (`SLOT_TABLE_PAINT_LAW.headerSort`); chrome only: select / actions / `_fill`. Ledger:
+   `DATA_TABLE_FILTER_IDLE` when a family has no facets). Never FilterRefinementBar, never a hunt-tile strip. Every painted DATA column header is click-to-sort (`SLOT_TABLE_PAINT_LAW.headerSort`); chrome only: select / actions / `_fill` / `thumb` (Image photo gutter). Outbound `OrdersGridHost` reads `?sort=` — never pass a frozen `sort=`. Ledger:
    `docs/eval/cohorts/slot-table/LEDGER.md` (paint law + KEEP
    `engine:DateRangePickerField` / `engine:DataTableFilterMenu` /
-   `engine:slot-table-header-sort` / `engine:queueSortForColumnKey`).
+   `engine:slot-table-header-sort` / `engine:queueSortForColumnKey` /
+   `engine:ordersCompoundColumnsFor`). Orders / To-ship: never remount the ⋮;
+   copy lives on identity chips. Selecting a row always opens the left Morphing
+   menu on To-ship **and** Shipped (`OrdersGridHost`). Gating Morphing on
+   `queueMode === 'fulfillment'` is a cohort fail.
 
    **Discover (hand-model leftovers):** before deleting a `*_GRID_COLUMNS` array
    or emptying `TABLE_COLUMNS`, run:
@@ -103,8 +107,9 @@ pnpm run eval:cohort shortcuts
 
 - Overlay shell change on Scan-out → `eval:station scan-out` (peers must stay green)
 - CompoundItem listing face / slot layout / table filter funnel → `eval:cohort slot-table`
+- Select-gutter Morphing missing on Shipped (or gated on To-ship `queueMode`) → `eval:cohort slot-table`. Paint law `SLOT_TABLE_PAINT_LAW.ordersActions`. Impact `OrdersQueueTableRow` / `MorphingRowActionMenu`.
 - Compact ship-by in STATUS → `eval:cohort slot-table`. Paint law `SLOT_TABLE_PAINT_LAW.shipBy`. KEEP `engine:DateRangePickerField`. Never a range filter or `type=date`.
-- Dead / missing column-header sort on a DataTable → `eval:cohort slot-table`. Paint law `SLOT_TABLE_PAINT_LAW.headerSort`. KEEP `engine:slot-table-header-sort`. Map the track; do not set `sortable:false` on a labeled fact.
+- Dead / missing column-header sort on a DataTable → `eval:cohort slot-table`. Paint law `SLOT_TABLE_PAINT_LAW.headerSort`. KEEP `engine:slot-table-header-sort`. Map the track; do not set `sortable:false` on a labeled fact. Image/`thumb` is chrome. Outbound: never pass `sort=` into `OrdersGridHost` (delete the freeze; do not add a Shipped sort path).
 - "Show the shortcut on the button" (standing) → **refuse**; teach via `?` inline; `eval:cohort shortcuts`
 - Cheat sheet from the table-foot `?` → **refuse**; `eval:cohort shortcuts`
 - Hand GRID leftover / dual SoT → `eval:discover` then one DELETE id

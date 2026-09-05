@@ -3,16 +3,24 @@
  *
  * Serial↔order and pack-queue membership must not be inferred solely from
  * `shipment_id` — sibling orders that share a carton would smear / vanish.
+ * Multi-line orders (2026-09-04) hit the same failure from the other side:
+ * two lines of one marketplace order that share a tracking also share
+ * `shipment_id`, so `SQL_SHIPMENT_IS_SOLE_ORDER` is false and the fallback
+ * is skipped. That is correct — membership must stay on `order_id` /
+ * `metadata.order_row_id`, not smear across every line in the carton.
  *
  * These fragments expect the outer query alias `o` = `orders`.
  * Prefer `tech_serial_numbers.order_id` and SAL `metadata.order_row_id`;
  * fall back to shipment-grain ONLY when the shipment has a single order
- * (legacy dual-read — sunset once TSN.order_id is backfilled).
+ * *row* (legacy dual-read — sunset once TSN.order_id is backfilled).
  */
 
 import { PACK_ACTIVITY_TYPES, TECH_TEST_ACTIVITY_TYPES, sqlInList } from '@/lib/station-activity';
+import type { ToShipDeskStage } from '@/lib/order-lifecycle';
 
-/** True when this shipment has no sibling orders (safe for legacy fallback). */
+/** True when this shipment has no sibling order *rows* (safe for legacy
+ *  fallback). Sibling lines of one marketplace order that share a tracking
+ *  trip this guard the same way sibling orders sharing a carton do. */
 export const SQL_SHIPMENT_IS_SOLE_ORDER = `(
   o.shipment_id IS NOT NULL
   AND NOT EXISTS (
@@ -108,6 +116,22 @@ export function sqlOrderHasPackScan(alias = 'o'): string {
   return `(
     ${sqlOrderHasStationActivity(a, PACK_ACTIVITY_TYPES)}
   )`;
+}
+
+/**
+ * To-ship `?stage=` facet — same mapping as {@link toShipDeskStage}.
+ *
+ * Pending is PENDING + BLOCKED (out of stock), including a tested line that
+ * was just held. Tested is only unblocked tech-scanned work. Packed is a pack
+ * scan (stock is moot once staged).
+ */
+export function sqlToShipDeskStage(alias: string, stage: ToShipDeskStage): string {
+  const tech = sqlOrderHasTechScan(alias);
+  const pack = sqlOrderHasPackScan(alias);
+  const blocked = `${alias}.is_out_of_stock IS TRUE`;
+  if (stage === 'packed') return pack;
+  if (stage === 'tested') return `${tech} AND NOT ${pack} AND NOT (${blocked})`;
+  return `NOT ${pack} AND (NOT ${tech} OR ${blocked})`;
 }
 
 /**

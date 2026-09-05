@@ -9,6 +9,44 @@
  * `dashboard-order-row-layout.ts` imports it at module scope; neither may drag
  * in the resolver's formatting chain).
  *
+ * ## What is refused, and why  `wave 6 · 2026-09-02`
+ *
+ * The method was to MEASURE: count each candidate column in both live order
+ * readers before naming it. The plan's own constraint is that *"a fact added to
+ * one does not reach the others"* — a one-reader fact is present on one lane
+ * and blank on another, silently.
+ *
+ * **The comment naming THREE readers is stale.** `getActiveOrders` no longer
+ * exists anywhere in `src`; there are two (`/api/orders/route.ts` and
+ * `lib/neon/orders-queries.ts`). Same class of error as the `useIsColumnHidden`
+ * justification wave 1.3 found.
+ *
+ * Refused because they reach ONE reader only. Each is a query change, not
+ * binding work — the fix is named so the next porter does not re-derive it:
+ *
+ * - **`catalog_image_url`** — the photo the compound thumbnail track has been
+ *   faking. `orders-queries.ts` never joins `sku_catalog`, so it is absent on
+ *   every shipped lane. Fix: add the join (and its GROUP BY entry) to that
+ *   reader's aggregate, then bind. Deliberately NOT smuggled into a binding
+ *   wave — it changes a hot query.
+ * - **`catalog_category`**, **`pack_location_name`**, **`has_tech_scan`**,
+ *   **`customer_id`**, **`label_printed_at`**, **`tracking_added_at`** — same
+ *   shape, same reason.
+ *
+ * Refused for reasons other than coverage:
+ *
+ * - **`currency`** — it is not a column, it is part of how `orders.amount`
+ *   PRINTS. A currency track beside a money track is two halves of one fact in
+ *   two places.
+ * - **Lateness / age-in-days** — clock-derived. The surface owns `nowMs` and
+ *   computes it once for every row; a field would recompute per cell and
+ *   disagree with the header. Same refusal `tasks` and `incoming` carry.
+ * - **Fees · cost · margin · service level** — absent from the schema, not from
+ *   the catalog. An ingestion project (open question 1), and the nearest cost
+ *   fact lives on `sku_catalog` and is never selected.
+ * - **Buyer identity / destination** — open question 2, and the only handle
+ *   either reader carries (`customer_id`) is one-sided anyway.
+ *
  * `orders.scanned_out` is a Shipped-lane fact. The shared Orders grid mounts
  * the same catalog on To-ship, Packed, Labels, and Shipped; {@link
  * omitShippedOnlyBindings} strips this field off every lane except Shipped so
@@ -118,12 +156,152 @@ export const ORDERS_FIELD_CATALOG: FieldCatalog = [
     paths: { value: 'shortage_coverage' },
   },
   {
+    // Also a SUBTITLE fact since 2026-09-04: the desk prints the money under
+    // the title, between condition and the note, rather than in a track of its
+    // own. Line money is engine identity (`ensureLineMoneySubtitle`) — every
+    // family that catalogs `.amount` / `.price` inherits the same place.
     id: 'orders.amount',
     family: 'orders',
     label: 'Amount',
     displayType: 'money',
-    slotKinds: ['amount'],
+    slotKinds: ['subtitle'],
     paths: { value: 'sale_amount' },
+  },
+  // ── Wave 6 · the seller facts the feed already returns ───────────────────
+  //
+  // Every entry below was MEASURED, not guessed: each column was counted in
+  // BOTH live order readers (`/api/orders/route.ts` and
+  // `lib/neon/orders-queries.ts`) before it was named here. A fact that reaches
+  // only one reader is present on one lane and blank on another, with no error
+  // — see the refusals in this file's docblock.
+  {
+    // The stock handle, distinct from `item_number` (the LISTING handle). An
+    // operator reprices by SKU and answers a buyer by item number; the two are
+    // different questions and the flat model only ever offered one.
+    id: 'orders.sku',
+    family: 'orders',
+    label: 'SKU',
+    displayType: 'id',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'sku' },
+  },
+  {
+    id: 'orders.tracking',
+    family: 'orders',
+    label: 'Tracking',
+    displayType: 'tracking',
+    slotKinds: ['status', 'subtitle'],
+    // Tracking rides the IDENTITY field's paths too, where it is the second
+    // line of the order cell. This binding is for an org that wants it as its
+    // own track — same fact, a different place to read it.
+    paths: { value: 'tracking_number|shipping_tracking_number' },
+  },
+  {
+    id: 'orders.carrier',
+    family: 'orders',
+    label: 'Carrier',
+    displayType: 'tag',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'carrier' },
+  },
+  {
+    // The carrier's own answer, not ours. `latest_status_label` is the human
+    // string the carrier returned; the code and category ride along for tone.
+    id: 'orders.delivery_status',
+    family: 'orders',
+    label: 'Delivery',
+    displayType: 'tag',
+    slotKinds: ['status', 'subtitle'],
+    paths: {
+      value: 'latest_status_label',
+      code: 'latest_status_code',
+      category: 'latest_status_category',
+    },
+  },
+  {
+    id: 'orders.delivery_event',
+    family: 'orders',
+    label: 'Last scan',
+    displayType: 'date',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'latest_event_at' },
+  },
+  {
+    // A boolean the operator triages on — an exception is the row that needs a
+    // human. Kept separate from `delivery_status` because a delivered parcel
+    // can still carry an exception in its history, and folding them would let
+    // the good news hide the bad.
+    id: 'orders.exception',
+    family: 'orders',
+    label: 'Exception',
+    displayType: 'tag',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'has_exception', at: 'exception_at' },
+  },
+  {
+    id: 'orders.platform',
+    family: 'orders',
+    label: 'Platform',
+    displayType: 'tag',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'account_source' },
+  },
+  {
+    id: 'orders.flag',
+    family: 'orders',
+    label: 'Flag',
+    displayType: 'tag',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'row_flag' },
+  },
+  {
+    // HOW MANY ops notes, which is a different question from what the latest
+    // one says (`orders.notes`). A packer scanning a queue wants to know a row
+    // has been discussed without reading the discussion.
+    id: 'orders.note_count',
+    family: 'orders',
+    label: 'Notes #',
+    displayType: 'number',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'note_count' },
+  },
+  {
+    id: 'orders.urgent',
+    family: 'orders',
+    label: 'Urgent',
+    displayType: 'tag',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'is_urgent' },
+  },
+  {
+    // The binary. `orders.coverage` is the richer shortage answer and stays the
+    // one to bind when an org wants detail; this is for a lane that only needs
+    // "can I pick it".
+    id: 'orders.stock',
+    family: 'orders',
+    label: 'Stock',
+    displayType: 'tag',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'is_out_of_stock' },
+  },
+  {
+    id: 'orders.serial',
+    family: 'orders',
+    label: 'Serial',
+    displayType: 'id',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'serial_number' },
+  },
+  {
+    // WHEN the order arrived. Lateness against a ship-by is computed by the
+    // surface from its shared `nowMs` and is deliberately NOT a field — the
+    // same refusal `tasks` and `incoming` already carry.
+    id: 'orders.age',
+    family: 'orders',
+    label: 'Received',
+    displayType: 'date',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'created_at' },
   },
 ];
 
@@ -133,10 +311,11 @@ export const ORDERS_FIELD_CATALOG: FieldCatalog = [
  * that order) — an org with no override sees the secondary line without
  * binding anything. Packed stays in the catalog for an org to bind. Scanned
  * out is catalog-bindable but {@link omitShippedOnlyBindings} keeps it off
- * working-queue paints. `amountFieldId` DOCUMENTS the money fact in slot
- * terms; this ship the compound chrome's amount track still paints
- * `sale_amount` directly through the adapter (`ordersCompoundView`), so the
- * binding is declarative until the amount cell resolves through the catalog.
+ * working-queue paints. The money is a SUBTITLE binding (operator 2026-09-04),
+ * not `amountFieldId`: the Amount column was dropped from the Orders mount and
+ * the figure moved under the title between the condition and the note, so the
+ * amount SLOT is empty here and binding it in both places would be a duplicate
+ * `parseSlotLayout` refuses.
  * Guard: `orders.test.ts` parses this against the catalog.
  */
 export const ORDERS_PRODUCT_LAYOUT: SlotLayout = {
@@ -148,12 +327,24 @@ export const ORDERS_PRODUCT_LAYOUT: SlotLayout = {
   // number joined on that ruling — it is the number a packer reads off the shelf
   // label, and it was a catalog field no default ever bound.
   subtitleBindings: [
+    // QTY then PRICE, adjacent — the line-item pair every receipt, cart and
+    // order admin prints together (`1 × $49.99`). They are one commercial
+    // fact read in one movement: how many, for how much. The grade is a
+    // PRODUCT attribute and follows them; the note is last because it is the
+    // only variable-length part. (Operator 2026-09-04, moving the price left
+    // of the condition after it first landed to the right of it.)
     { fieldId: 'orders.qty' },
+    { fieldId: 'orders.amount' },
     { fieldId: 'orders.condition' },
     { fieldId: 'orders.item_number' },
     { fieldId: 'orders.notes' },
   ],
-  amountFieldId: 'orders.amount',
+  // NULL since 2026-09-04: `orders.amount` is bound as a SUBTITLE above, and a
+  // field may not be bound twice (`parseSlotLayout` refuses duplicates — as it
+  // should: two slots resolving the same fact is how a grid ends up printing it
+  // twice). The Orders mount has no amount TRACK to fill either; the money
+  // lives under the title now.
+  amountFieldId: null,
 };
 
 /**

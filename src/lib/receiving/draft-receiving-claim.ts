@@ -19,6 +19,14 @@ export type DraftReceivingClaimResult = {
   model: string;
   /** True when Hermes failed or dropped facts — template text is returned. */
   degraded: boolean;
+  /**
+   * WHY it degraded, or null when it did not. The two causes need different
+   * operator responses — a dropped fact means the draft was wrong, an
+   * unreachable gateway means there was no draft — and this used to swallow
+   * both into one silent `degraded: true`, so a cold AI box and a hallucinating
+   * model looked identical at the composer.
+   */
+  degradedReason: string | null;
   template: ClaimTemplateResult;
 };
 
@@ -40,19 +48,26 @@ export async function draftReceivingClaimWithLlm(
     .filter(Boolean)
     .join(' — ');
 
+  const po = template.poNumber?.trim();
+  const tracking = template.tracking?.trim();
+
   try {
-    const draft = await draftWithLlm(orgId, { context, template });
-    const po = template.poNumber?.trim();
-    const tracking = template.tracking?.trim();
+    // The guard below rejects a draft that loses either, so the model is told
+    // which strings they are rather than left to infer it from "keep the facts".
+    const draft = await draftWithLlm(orgId, { context, template, mustKeep: [po, tracking] });
     const keptPo = !po || draft.subject.includes(po) || draft.description.includes(po);
     const keptTrk =
       !tracking || draft.subject.includes(tracking) || draft.description.includes(tracking);
     if (!keptPo || !keptTrk) {
+      const dropped = [!keptPo ? `PO ${po}` : null, !keptTrk ? `tracking ${tracking}` : null]
+        .filter(Boolean)
+        .join(' and ');
       return {
         subject: template.subject,
         description: template.description,
         model: draft.model,
         degraded: true,
+        degradedReason: `The model dropped ${dropped} from the draft`,
         template,
       };
     }
@@ -61,14 +76,16 @@ export async function draftReceivingClaimWithLlm(
       description: draft.description,
       model: draft.model,
       degraded: false,
+      degradedReason: null,
       template,
     };
-  } catch {
+  } catch (err) {
     return {
       subject: template.subject,
       description: template.description,
       model: '',
       degraded: true,
+      degradedReason: err instanceof Error ? err.message : 'AI draft failed',
       template,
     };
   }

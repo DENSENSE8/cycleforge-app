@@ -1,23 +1,14 @@
 'use client';
 
 /**
- * AssistantDockBody — the assistant sidebar's CONTENT (plan §-2.1). Leads with
- * a collapsible context strip, then chat, then the AI-edits tray when mutations
- * exist, with suggestions + composer pinned at the bottom. Opened from the
- * Sparkles entry in the header search field or ⌘J (toggle; focuses composer on open).
- *
- * This is a geometry-free body: the right-edge slot (full-height dock on desktop)
- * and the crossfade are owned by `RightRailHost`, which renders this body as its
- * `assistant` occupant.
- *
- * House rules: named z tokens (z-panel), Button primitive, typography tokens,
- * semantic colors, HoverTooltip (no title=), linear scaffold.
+ * AssistantDockBody — Ask stack: context plate, thread, edits tray,
+ * {@link StationComposerHost} at the foot. Geometry is {@link AssistantFabHost}.
  */
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { ChevronDown, ChevronUp, Loader2, Send, Sparkles, X } from '@/components/Icons';
+import { StationComposerHost } from '@/components/composer/StationComposerHost';
 import { Button } from '@/design-system/primitives';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useActiveAssistantContext } from '@/hooks/useAssistantContext';
 import {
   getComposerFocusSeq,
@@ -34,7 +25,6 @@ import { AssistantEditsTray } from './AssistantEditsTray';
 import { StudioNodeDetail } from './StudioNodeDetail';
 import { PageContextSection } from './PageContextSection';
 import { RecentDetailStacksSection } from './RecentDetailStacksSection';
-import { focusRing } from '@/design-system/tokens/focus-ring';
 
 
 const SUGGESTIONS = [
@@ -108,13 +98,6 @@ export function AssistantDockBody({ onClose }: { onClose: () => void }) {
   useEffect(() => {
     if (chat.messages.length > 0) setContextOpen(false);
   }, [chat.messages.length]);
-
-  const submit = () => {
-    if (chat.status === 'streaming' || !draft.trim()) return;
-    const text = draft;
-    setDraft('');
-    void chat.send(text, context);
-  };
 
   const isEmpty = chat.messages.length === 0;
 
@@ -207,59 +190,58 @@ export function AssistantDockBody({ onClose }: { onClose: () => void }) {
         </div>
       ) : null}
 
-      <form
-        className="shrink-0 border-t border-border-hairline px-4 py-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}
-      >
-        <div className="relative">
-          <textarea
-            ref={composerRef}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                submit();
-              }
-              if (e.key === 'Escape') {
-                e.preventDefault();
-                onClose();
-              }
-            }}
-            rows={1}
-            placeholder="Ask about your operation…"
-            aria-keyshortcuts="Meta+J"
-            className={cn("block max-h-32 min-h-[40px] w-full resize-none rounded-lg border border-border-soft bg-surface-card py-2.5 pl-3 pr-11 text-role-caption leading-5 text-text-default placeholder:text-text-faint", focusRing('field', 'accent'))}
-          />
-          <div className="absolute bottom-1.5 right-1.5">
-            <HoverTooltip label="Send (Enter)" focusable={false}>
-              <Button
-                variant="primary"
-                size="sm"
-                type="submit"
-                ariaLabel="Send message"
-                disabled={chat.status === 'streaming' || !draft.trim()}
-                className="h-7 w-7 p-0"
-              >
-                {chat.status === 'streaming' ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Send className="h-3.5 w-3.5" />
-                )}
-              </Button>
-            </HoverTooltip>
-          </div>
-        </div>
-        <p className="mt-1.5 text-role-micro text-text-faint">
-          <span className="rounded bg-surface-canvas px-1 py-px text-role-micro font-semibold ring-1 ring-inset ring-border-hairline">
-            ⌘J
-          </span>{' '}
-          ⌘J toggle · Enter send · Esc close
-        </p>
-      </form>
+      <div className="shrink-0 px-2 pb-2 pt-1">
+        <StationComposerHost
+          presenceKind="desk"
+          textareaRef={composerRef}
+          labelValue={draft}
+          onLabelChange={setDraft}
+          onLabelCommit={(live) => {
+            const text = (live ?? draft).trim();
+            if (!text || chat.status === 'streaming') return;
+            setDraft('');
+            void chat.send(text, context);
+          }}
+          onTextareaKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              e.preventDefault();
+              onClose();
+              return true;
+            }
+            return false;
+          }}
+          labelCommitDisabled={chat.status === 'streaming'}
+          labelCommitAriaLabel="Send message"
+          labelCommitTooltip="Send (Enter)"
+          labelPlaceholder="Ask about your operation…"
+          showModeFaces={false}
+          forceMode="unbox"
+          chrome="raised"
+          animateMount={false}
+          trailingAction={
+            <Button
+              type="button"
+              variant="primary"
+              size="sm"
+              radius="composer"
+              ariaLabel="Send message"
+              disabled={chat.status === 'streaming' || !draft.trim()}
+              onClick={() => {
+                const text = draft.trim();
+                if (!text || chat.status === 'streaming') return;
+                setDraft('');
+                void chat.send(text, context);
+              }}
+            >
+              {chat.status === 'streaming' ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Send className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          }
+        />
+      </div>
     </div>
   );
 }

@@ -146,7 +146,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       try {
         // 1. Shared pre-loop: local_ops short-circuit OR live DB enrichment
         send('step', { label: 'Checking local ops data' });
-        const prepared = await enrichAssistantTurn(organizationId, trimmedMessage);
+        const prepared = await enrichAssistantTurn(
+          organizationId,
+          trimmedMessage,
+          undefined,
+          null,
+          ctx.staffId,
+        );
 
         if (prepared.kind === 'local_ops') {
           const localResolution = prepared.resolution;

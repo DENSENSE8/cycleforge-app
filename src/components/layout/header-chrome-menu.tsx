@@ -9,6 +9,7 @@
 
 import {
   forwardRef,
+  useEffect,
   useLayoutEffect,
   useState,
   type ButtonHTMLAttributes,
@@ -18,6 +19,7 @@ import {
   type RefObject,
 } from 'react';
 import { Check } from '@/components/Icons';
+import { useHoverSurface } from '@/hooks/useHoverSurface';
 import { SIDEBAR_SPINE_PEEK_INSET_PX } from '@/components/sidebar/sidebar-spine';
 import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
@@ -92,9 +94,33 @@ export function HeaderChromeMenuLayer({
   const { className: surfaceClassName, style: surfaceStyle, onMouseEnter, onMouseLeave } =
     surfaceProps ?? {};
 
+  // One chrome surface at a time. `useHoverSurface`'s registry already owns
+  // that answer for the collapsed-spine peek, so a header menu claims the same
+  // slot while it is open: opening evicts the peek, and peeking the spine
+  // closes this menu instead of painting a second stack over it.
+  const chromeSlot = useHoverSurface({ id: 'header-chrome-menu' });
+  const {
+    open: claimSlot,
+    close: releaseSlot,
+    isOpen: holdsSlot,
+    isActive: stillHoldsSlot,
+  } = chromeSlot;
+
   useLayoutEffect(() => {
     if (open) setLayerOpen(true);
   }, [open]);
+
+  useEffect(() => {
+    if (open) claimSlot();
+    else releaseSlot();
+  }, [open, claimSlot, releaseSlot]);
+
+  // `holdsSlot` is React state and lags the registry by a commit, so ask the
+  // registry itself — otherwise the claim above reads as an eviction and the
+  // menu closes on the frame it opened.
+  useEffect(() => {
+    if (open && !holdsSlot && !stillHoldsSlot()) onClose();
+  }, [open, holdsSlot, stillHoldsSlot, onClose]);
 
   if (!layerOpen) return null;
 

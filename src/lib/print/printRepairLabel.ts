@@ -75,6 +75,17 @@ export function printRepairLabel(payload: RepairLabelPayload): void {
       infoHtml,
       infoCss: REPAIR_INFO_CSS,
       dataMatrix: { value: qrValue, symbology: 'datamatrix', scale: 4 },
+      hri: qrValue,
+      face: {
+        kind: 'receiving',
+        topLeft: (payload.firstName || 'Repair').trim(),
+        topRight: payload.date,
+        center: '',
+        bottomLeft: payload.dueDate,
+        bottomRight: repairLabelCornerDisplay(payload),
+        matrix: { value: qrValue, symbology: 'datamatrix', scale: 4 },
+        hri: qrValue,
+      },
       legacyPopup,
     });
   });

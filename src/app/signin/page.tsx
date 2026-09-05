@@ -85,6 +85,8 @@ import { armBootSplash } from '@/lib/boot-flag';
 import { Button } from '@/design-system/primitives/Button';
 import { Checkbox } from '@/design-system/primitives/Checkbox';
 import { Panel } from '@/design-system/primitives/Panel';
+import { QrCode } from '@/components/Icons';
+import { RadiantLines } from '@/components/ui/radiant-lines';
 import {
   Dialog,
   DialogContent,
@@ -569,7 +571,6 @@ export default function SignInPage() {
     const opts: { key: string; label: string; method?: SigninMethod; onSelect: () => void }[] = [
       { key: 'magic-link', label: 'Email me a sign-in link', method: 'magic-link', onSelect: () => void submitMagicLink() },
       { key: 'passkey', label: 'Sign in with a passkey', method: 'passkey', onSelect: () => void submitAccountPasskey() },
-      { key: 'phone', label: 'Use your phone to sign in', onSelect: () => setShowPhoneQr(true) },
     ];
     // Shared-station PIN entry — hidden when the org forces email-first login.
     if (!workspace?.emailFirstSignin) {
@@ -750,11 +751,9 @@ export default function SignInPage() {
   return (
     <Shell>
       <AuthCard>
-        <SignInTitle workspaceName={workspaceName} />
-
-        {/* Tier 1 — one tap, no typing. Above the form because it's faster. */}
+        {/* Tier 1 — the first interactive section: identity providers before email. */}
         {authStep === 'email' && hasFederated && (
-          <div key="federated" className="space-y-2">
+          <div key="federated" className="order-first space-y-2" aria-label="Identity provider sign-in">
             {providers.map((p) => (
               <ProviderSignInButton
                 key={p}
@@ -779,6 +778,8 @@ export default function SignInPage() {
             <Divider>or</Divider>
           </div>
         )}
+
+        <SignInTitle workspaceName={workspaceName} />
 
         {/* Tier 2 — the default path. */}
         <form
@@ -856,6 +857,22 @@ export default function SignInPage() {
         <p className="text-role-caption text-text-soft">
           New here? <a href="/signup" className="font-semibold text-blue-600 hover:text-blue-700">Create a workspace</a>
         </p>
+
+        <div className="border-t border-border-hairline pt-4">
+          <Button
+            variant="secondary"
+            size="lg"
+            className="w-full"
+            icon={<QrCode aria-hidden />}
+            disabled={busy}
+            onClick={() => setShowPhoneQr(true)}
+          >
+            Sign in with QR code
+          </Button>
+          <p className="mt-2 text-center text-role-micro text-text-soft">
+            Scan with your phone to continue with Google or another identity provider.
+          </p>
+        </div>
       </AuthCard>
       <PhoneSigninQrDialog open={showPhoneQr} onClose={() => setShowPhoneQr(false)} />
     </Shell>
@@ -1085,6 +1102,12 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-modal overflow-y-auto overscroll-none bg-surface-canvas text-text-default antialiased">
       <div className="pointer-events-none fixed inset-0 z-base bg-surface-canvas" aria-hidden />
+      <RadiantLines
+        className="bg-transparent opacity-30"
+        colors={["#60A5FA", "#2DD4BF", "#FBBF24", "#94A3B8"]}
+        starCount={180}
+        displacement={0.35}
+      />
       <div className="relative z-sticky flex min-h-full flex-col items-center justify-center px-6 py-12">
         {/*
           NO mount entrance here. The card is the LCP element of the one public

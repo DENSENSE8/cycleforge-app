@@ -446,6 +446,20 @@ test('regression: orders.view gates the To-ship order-sources menu', () => {
   assert.deepEqual(r.methods, ['GET']);
 });
 
+test('regression: orders.view gates the per-day import record', () => {
+  // The To-ship "Past imports" view reads `orders.created_at` /
+  // `account_source` — it is order VISIBILITY, not an import capability, so it
+  // must not invent a permission of its own.
+  const r = routeByPath('/api/orders/imports/route.ts');
+  assert.ok(r);
+  assert.equal(r.permission, 'orders.view');
+  assert.deepEqual(r.methods, ['GET']);
+  assert.ok(
+    routesGatedBy('orders.view').some((row) => row.path === r.path),
+    'orders.view should include /api/orders/imports',
+  );
+});
+
 test('regression: integrations.amazon gates the Amazon connection routes', () => {
   // Amazon SP-API order import (docs/amazon-sp-api-order-import-plan.md). The
   // OAuth callback is intentionally ungated (state-validated public redirect,
@@ -465,6 +479,22 @@ test('regression: handling_unit.manage gates the assign/unassign mutations', () 
   assert.ok(
     paths.includes('/api/handling-units/[id]/unassign/route.ts'),
     'handling_unit.manage should gate unit removal',
+  );
+});
+
+test('regression: admin.manage_features gates the Grok SuperGrok OAuth routes', () => {
+  const paths = routesGatedBy('admin.manage_features').map((r) => r.path);
+  assert.ok(
+    paths.includes('/api/integrations/grok/connect/route.ts'),
+    'admin.manage_features should gate the Grok connect route',
+  );
+  assert.ok(
+    paths.includes('/api/integrations/grok/health/route.ts'),
+    'admin.manage_features should gate the Grok health route',
+  );
+  assert.ok(
+    paths.includes('/api/integrations/grok/device/poll/route.ts'),
+    'admin.manage_features should gate the Grok device-code poll route',
   );
 });
 
@@ -521,6 +551,8 @@ test('regression: the ShipStation webhook is a signature-verified public route',
 test('assistant chat route is gated by assistant.chat', () => {
   const paths = routesGatedBy('assistant.chat').map((r) => r.path);
   assert.ok(paths.includes('/api/assistant/chat/route.ts'));
+  // Companion composer voice input rides the same assistant permission.
+  assert.ok(paths.includes('/api/ai/transcribe/route.ts'));
   assert.ok(paths.includes('/api/assistant/mutations/route.ts'));
   assert.ok(paths.includes('/api/mcp/route.ts'));
 });

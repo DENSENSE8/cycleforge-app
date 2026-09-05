@@ -64,13 +64,13 @@ export function ProductsCatalogWorkspace() {
   const refine = useMemo(() => parseCatalogRefine(searchParams), [searchParams]);
   const refineHot = catalogRefineIsHot(refine);
 
-  const [filterOpen, setFilterOpen] = useState(false);
+  const [_filterOpen, setFilterOpen] = useState(false);
   const [items, setItems] = useState<CatalogListRow[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [provider, setProvider] = useState<InventoryProviderMeta | null>(null);
-  const [syncing, setSyncing] = useState(false);
+  const [_syncing, setSyncing] = useState(false);
 
   // Column sort is DURABLE: `?colsort=`/`?coldir=` (workbench URL-as-state law),
   // so a reload or a shared catalog link reproduces the same ordering. NOT
@@ -154,7 +154,7 @@ export function ProductsCatalogWorkspace() {
     (r) => r.id,
   );
 
-  const refreshInventory = useCallback(async () => {
+  const _refreshInventory = useCallback(async () => {
     setSyncing(true);
     try {
       const res = await fetch('/api/zoho/items/sync', {
@@ -176,7 +176,7 @@ export function ProductsCatalogWorkspace() {
     }
   }, [load]);
 
-  const toggleRefineFlag = useCallback(
+  const _toggleRefineFlag = useCallback(
     (key: Exclude<keyof CatalogRefineFilters, 'linkFilter'>) => {
       updateParams({}, { [key]: !refine[key] });
     },

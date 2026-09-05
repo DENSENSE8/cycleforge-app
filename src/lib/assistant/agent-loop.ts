@@ -25,14 +25,16 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
 import { listAssistantTools, runAssistantTool } from '@/lib/assistant/tools';
-import type { AssistantToolCtx, AssistantToolDef, AssistantToolRunResult } from '@/lib/assistant/tools/types';
+import type { AssistantToolCtx, AssistantToolDef, AssistantToolDeps } from '@/lib/assistant/tools/types';
+import { buildWriteToolMap, dispatchToolCall } from '@/lib/assistant/tools/dispatch';
 import type { AssistantPageContext } from './context-store';
 import { resolveOrgAnthropicBrain } from '@/lib/ai/org-provider';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 /** Fallback model when the connected provider does not name one. */
 const ASSISTANT_MODEL = 'claude-opus-4-8';
-const MAX_TURNS = 8;
+/** Shared with grok-agent-loop.ts — one cap, whichever brain is speaking. */
+export const MAX_TURNS = 8;
 const MAX_TOKENS = 16000;
 
 // ─── UI tools (client-executed) ──────────────────────────────────────────────
@@ -150,6 +152,18 @@ export interface RunAssistantTurnArgs {
    * dispatched in-process (not via the read registry).
    */
   writeTools?: ReadonlyArray<AssistantToolDef<z.ZodTypeAny, unknown>>;
+  /**
+   * Voice overlay chosen by enrichment (carton brief / workspace facts). It
+   * rides AFTER the cached core because it varies per turn, and it is passed as
+   * text rather than an enum so this module stays free of domain imports. Both
+   * loops apply it the same way — the Grok mouth and the Anthropic mouth should
+   * not sound like two different assistants on the same page.
+   */
+  voiceOverlay?: string | null;
+  /** Registry deps — the per-round tenant session in production (§22 H1). */
+  toolDeps?: AssistantToolDeps;
+  /** Wraps each round's tool execution so one round shares one connection. */
+  runToolBatch?: <T>(fn: () => Promise<T>) => Promise<T>;
   /** Sink for streaming events to the client (SSE writer). */
   emit: (event: AssistantEmit) => void;
 }
@@ -159,6 +173,8 @@ export interface RunAssistantTurnResult {
   /** Final assistant text (what gets persisted + rendered). */
   text: string;
   turns: number;
+  /** Names of the tools actually executed — the [ask-timing] line reports it. */
+  toolsUsed: string[];
   error?: string;
 }
 
@@ -235,41 +251,20 @@ export async function runAssistantTurn(
   });
 
   const serverTools = listAssistantTools(args.ctx).map(toSchema);
-  // Write tools filtered by permission; dispatched in-process by name.
-  const writeDefs = (args.writeTools ?? []).filter((t) => args.ctx.permissions.has(t.permission));
-  const writeMap = new Map(writeDefs.map((t) => [t.name, t]));
-  const writeTools = writeDefs.map(toSchema);
+  // Write tools filtered by permission; dispatched in-process by name through
+  // the shared chokepoint (tools/dispatch.ts) both loops use.
+  const writeMap = buildWriteToolMap(args.ctx, args.writeTools);
+  const writeTools = [...writeMap.values()].map(toSchema);
   const tools = [...serverTools, ...writeTools, ...UI_TOOLS];
 
-  async function runWriteTool(name: string, rawInput: unknown): Promise<AssistantToolRunResult> {
-    const tool = writeMap.get(name);
-    if (!tool) return { ok: false, code: 'unknown_tool', error: `Unknown write tool "${name}"` };
-    if (!args.ctx.permissions.has(tool.permission)) {
-      return { ok: false, code: 'forbidden', error: `Missing permission ${tool.permission}` };
-    }
-    const parsed = tool.inputSchema.safeParse(rawInput ?? {});
-    if (!parsed.success) return { ok: false, code: 'invalid_input', error: parsed.error.message };
-    try {
-      const data = await tool.run(parsed.data, args.ctx, {} as never);
-      // A write tool that resolves with { ok: false, error } is a domain
-      // failure (validation / 404 / 409), not a thrown error — surface it as
-      // is_error so the model and any tool_end consumer see it as failed,
-      // matching how read-tool failures are reported.
-      if (data && typeof data === 'object' && (data as { ok?: unknown }).ok === false) {
-        return { ok: false, code: 'tool_error', error: String((data as { error?: unknown }).error ?? 'write failed') };
-      }
-      return { ok: true, data };
-    } catch (err) {
-      return { ok: false, code: 'tool_error', error: err instanceof Error ? err.message : String(err) };
-    }
-  }
-
+  const overlay = (args.voiceOverlay ?? '').trim();
   const system: Anthropic.Messages.TextBlockParam[] = [
     {
       type: 'text',
       text: buildSystemCore(tools.map((t) => t.name)),
       cache_control: { type: 'ephemeral' },
     },
+    ...(overlay ? [{ type: 'text' as const, text: overlay }] : []),
     { type: 'text', text: buildContextFragment(args.context) },
   ];
 
@@ -283,7 +278,13 @@ export async function runAssistantTurn(
     { role: 'user' as const, content: args.userMessage },
   ];
 
+  const runBatch = args.runToolBatch ?? (<T,>(fn: () => Promise<T>) => fn());
+  const runTool: typeof runAssistantTool = args.toolDeps
+    ? (name, input, ctx, toolDeps) => d.runTool(name, input, ctx, toolDeps ?? args.toolDeps)
+    : d.runTool;
+
   const turnTexts: string[] = [];
+  const toolsUsed: string[] = [];
   let turns = 0;
 
   try {
@@ -313,31 +314,34 @@ export async function runAssistantTurn(
 
       messages.push({ role: 'assistant', content: message.content });
 
-      // Execute ALL tool calls, return ALL results in ONE user message.
-      const results: Anthropic.ToolResultBlockParam[] = [];
-      for (const call of toolUses) {
-        if (UI_TOOL_NAMES.has(call.name)) {
-          // Client tool: forward to the browser, acknowledge to the model.
-          args.emit({ type: 'ui_tool', name: call.name, input: call.input });
-          results.push({
+      // Execute ALL tool calls, return ALL results in ONE user message — on
+      // one tenant connection for the whole round (§22 H1).
+      const results = await runBatch(async () => {
+        const out: Anthropic.ToolResultBlockParam[] = [];
+        for (const call of toolUses) {
+          if (UI_TOOL_NAMES.has(call.name)) {
+            // Client tool: forward to the browser, acknowledge to the model.
+            args.emit({ type: 'ui_tool', name: call.name, input: call.input });
+            out.push({
+              type: 'tool_result',
+              tool_use_id: call.id,
+              content: 'Dispatched to the user\'s browser.',
+            });
+            continue;
+          }
+          args.emit({ type: 'tool_start', name: call.name, input: call.input });
+          const result = await dispatchToolCall(call.name, call.input, args.ctx, writeMap, runTool);
+          args.emit({ type: 'tool_end', name: call.name, ok: result.ok });
+          toolsUsed.push(call.name);
+          out.push({
             type: 'tool_result',
             tool_use_id: call.id,
-            content: 'Dispatched to the user\'s browser.',
+            content: result.ok ? JSON.stringify(result.data) : result.error,
+            is_error: !result.ok || undefined,
           });
-          continue;
         }
-        args.emit({ type: 'tool_start', name: call.name, input: call.input });
-        const result = writeMap.has(call.name)
-          ? await runWriteTool(call.name, call.input)
-          : await d.runTool(call.name, call.input, args.ctx);
-        args.emit({ type: 'tool_end', name: call.name, ok: result.ok });
-        results.push({
-          type: 'tool_result',
-          tool_use_id: call.id,
-          content: result.ok ? JSON.stringify(result.data) : result.error,
-          is_error: !result.ok || undefined,
-        });
-      }
+        return out;
+      });
       messages.push({ role: 'user', content: results });
     }
 
@@ -345,10 +349,10 @@ export async function runAssistantTurn(
     if (turns >= MAX_TURNS && !finalText) {
       finalText = 'I ran out of steps while researching that — try a narrower question.';
     }
-    return { ok: true, text: finalText, turns };
+    return { ok: true, text: finalText, turns, toolsUsed };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'assistant error';
     args.emit({ type: 'error', message });
-    return { ok: false, text: turnTexts.join('\n\n'), turns, error: message };
+    return { ok: false, text: turnTexts.join('\n\n'), turns, toolsUsed, error: message };
   }
 }

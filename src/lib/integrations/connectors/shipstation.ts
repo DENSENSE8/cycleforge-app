@@ -10,7 +10,7 @@
  * Reuses:
  *   - getShipStationV1 (vault creds → bound v1 client)
  *   - the orders upsert shape from src/lib/integrations/connectors/square.ts
- *     (idx_orders_unique_account_order)
+ *     (idx_orders_unique_org_account_order_line)
  *   - getSyncCursor / updateSyncCursor for the incremental modifyDate watermark
  *
  * Ship-to is NOT written to `customers` here; the rate/label endpoints fetch the
@@ -25,7 +25,7 @@ import type { CanonicalOrderLine } from '@/lib/orders/canonical-order';
 import { ingestConnectorOrders } from './ingest-connector-orders';
 import { getSyncCursor, updateSyncCursor } from '@/lib/sync-cursors';
 import { getShipStationV1 } from '@/lib/shipping/shipstation/config';
-import type { ShipStationV1Order } from '@/lib/shipping/shipstation/orders-v1';
+import type { ShipStationV1Item, ShipStationV1Order } from '@/lib/shipping/shipstation/orders-v1';
 import type { SyncOutcome } from './types';
 
 const ACCOUNT_SOURCE = 'shipstation';
@@ -33,56 +33,69 @@ const FIRST_RUN_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000;
 const PAGE_SIZE = 100;
 const MAX_PAGES = 25; // safety bound: 25 * 100 = 2.5k orders / run
 
-/** One representative line for the orders row (v1 orders are multi-line). */
-function summarizeItems(order: ShipStationV1Order): { title: string; quantity: number } {
-  const items = order.items ?? [];
-  const quantity = items.reduce((s, it) => s + (it.quantity || 0), 0) || 1;
-  const first = items.find((it) => (it.name ?? '').trim())?.name?.trim();
-  const title = !first
-    ? `ShipStation order ${order.orderNumber}`
-    : items.length > 1
-      ? `${first} +${items.length - 1} more`
-      : first;
-  return { title, quantity };
-}
-
 /** ShipStation status → our orders.status. awaiting_shipment lands in the
  *  outbound "needs a label" queue (unassigned); shipped is terminal. */
 function mapStatus(orderStatus: string | null): string {
   return (orderStatus ?? '').toLowerCase() === 'shipped' ? 'shipped' : 'unassigned';
 }
 
+function shipstationLineId(item: ShipStationV1Item): string {
+  if (item.orderItemId != null) return String(item.orderItemId);
+  return (item.lineItemKey ?? '').trim();
+}
+
+function shipstationLineAmount(item: ShipStationV1Item): string | null {
+  if (item.unitPrice == null || !Number.isFinite(item.unitPrice)) return null;
+  return String(item.unitPrice * (item.quantity || 1));
+}
+
 /**
- * Map a ShipStation order to a canonical line.
+ * One canonical line per ShipStation item. Empty `items` still emits one
+ * order-level stub so the order itself lands.
  *
- * ShipStation always produces a non-empty title (it falls back to
+ * ShipStation always produces a non-empty title on a stub (it falls back to
  * `ShipStation order <n>`), which is why its upsert refreshed the title on
  * every sync — reproduced here by the connector's `authoritative.productTitle`.
  */
-function toCanonicalLine(order: ShipStationV1Order): CanonicalOrderLine {
-  const { title, quantity } = summarizeItems(order);
-  return {
-    externalOrderId: String(order.orderNumber ?? ''),
+export function mapShipStationOrderToCanonicalLines(order: ShipStationV1Order): CanonicalOrderLine[] {
+  const externalOrderId = String(order.orderNumber ?? '');
+  const orderDate = order.orderDate ? new Date(order.orderDate) : null;
+  const status = mapStatus(order.orderStatus);
+  const items = order.items ?? [];
+
+  const base = {
+    externalOrderId,
     itemNumber: '',
-    sku: order.items.find((it) => (it.sku ?? '').trim())?.sku?.trim() || '',
-    productTitle: title,
     condition: '',
-    quantity: String(quantity),
     notes: '',
-    // No buyer name on this adapter's payload yet; when it is wired, match on
-    // ShipStation's customer id/email rather than routing a name through
-    // `customerName` (name-only matching is the weakest identity signal).
     customerName: '',
     accountSource: ACCOUNT_SOURCE,
-    trackings: [],
-    shipByDate: null,
-    orderDate: order.orderDate ? new Date(order.orderDate) : null,
-    saleAmount: order.orderTotal != null ? String(order.orderTotal) : null,
+    trackings: [] as string[],
+    shipByDate: null as Date | null,
+    orderDate,
     currency: 'USD',
-    // awaiting_shipment lands in the outbound "needs a label" queue
-    // (unassigned); shipped is terminal.
-    status: mapStatus(order.orderStatus),
+    status,
   };
+
+  if (items.length === 0) {
+    return [{
+      ...base,
+      externalLineId: '',
+      sku: '',
+      productTitle: `ShipStation order ${order.orderNumber}`,
+      quantity: '1',
+      saleAmount: order.orderTotal != null ? String(order.orderTotal) : null,
+    }];
+  }
+
+  return items.map((it) => ({
+    ...base,
+    externalLineId: shipstationLineId(it),
+    sku: (it.sku ?? '').trim(),
+    productTitle: (it.name ?? '').trim() || `ShipStation order ${order.orderNumber}`,
+    quantity: String(it.quantity || 1),
+    saleAmount: shipstationLineAmount(it),
+  }));
 }
 
 export async function shipstationSync(orgId: OrgId): Promise<SyncOutcome> {
@@ -113,7 +126,7 @@ export async function shipstationSync(orgId: OrgId): Promise<SyncOutcome> {
       for (const order of res.orders) {
         // Skip cancelled orders — they must never land in the labels queue.
         if ((order.orderStatus ?? '').toLowerCase() === 'cancelled') continue;
-        lines.push(toCanonicalLine(order));
+        lines.push(...mapShipStationOrderToCanonicalLines(order));
         const ts = order.modifyDate ? Date.parse(order.modifyDate) : NaN;
         if (Number.isFinite(ts) && ts > maxModified) maxModified = ts;
       }

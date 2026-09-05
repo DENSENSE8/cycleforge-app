@@ -98,18 +98,18 @@ export type SidebarIconComponent = (props: { className?: string }) => JSX.Elemen
  *
  * **`floor` is the only station group.** Pointer desks are not stations: they
  * live behind the sibling {@link DESK_GROUPS} parent (`Desks`) and stay named
- * by {@link DOMAIN_GROUPS} inside that drill. Scan Stations is the
+ * by {@link DOMAIN_GROUPS} inside that drill. Stations is the
  * scanner-driven INPUT MODEL; a bench must never be reachable only by way of
  * the domain whose records it happens to touch.
  */
 export type StationGroupId = 'floor';
 
 /**
- * Scan Stations registry. Spine list imports this — never hard-code the label
+ * Stations registry. Spine list imports this — never hard-code the label
  * in the render path. Render order on the spine is {@link SPINE_SECTIONS}.
  */
 export const STATION_GROUPS = [
-  { id: 'floor', label: 'Scan Stations', icon: ScanBarcode },
+  { id: 'floor', label: 'Stations', icon: ScanBarcode },
 ] as const satisfies ReadonlyArray<{
   id: StationGroupId;
   label: string;
@@ -308,6 +308,15 @@ type SidebarNavItemFields = {
    */
   sandboxOnly?: boolean;
   /**
+   * Extra terms that should find this page in ⌘K, beyond its label and href.
+   *
+   * For the words staff actually use that the LABEL does not contain — the
+   * Media Library is "photos" to everyone who works in it, and searching the
+   * label alone would never surface it. Not a synonym dump: every entry here
+   * is a word someone would really type.
+   */
+  keywords?: string[];
+  /**
    * `kind: 'top'` only. When `false`, the pin stays in the registry (⌘K,
    * dest search, deep links) but is not painted as a spine map row.
    * Omit / `true` = paint Home / Media Library at the top of the map.
@@ -403,7 +412,9 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // {@link isSidebarTopPinActive} if the glyph returns.
   { id: 'home',              label: 'Home',           href: '/',                   icon: Home,            kind: 'top' },
   { id: 'search',            label: 'Search',         href: '/search',             icon: Search,          kind: 'top', spineBand: false },
-  { id: 'ops-photos',        label: 'Media Library',  href: '/ops/photos',         icon: Images,          kind: 'top', requires: 'photos.view' },
+  // "Photos" is what staff call this; the label says Media Library, so without
+  // the keywords a ⌘K for "photo" would miss the page it is named after.
+  { id: 'ops-photos',        label: 'Media Library',  href: '/ops/photos',         icon: Images,          kind: 'top', requires: 'photos.view', keywords: ['photos', 'photo library', 'images', 'assets', 'gallery'] },
   // Plans — live master-plan console (Home forge). Same landing as `/forge`.
   { id: 'plans-live',        label: 'Plans',          href: '/?mode=forge&view=live', icon: Zap,           kind: 'top', spineBand: false, requires: 'operations.plans.view' },
   // Chat — streaming assistant workspace; `/ai` shares it.
@@ -653,10 +664,22 @@ const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
   'settings',
   'audit-log',
   'fba',
-  'inventory',
+  // `inventory` DROPPED 2026-09-04 — Pattern E, the same mechanism as `home`,
+  // `search` and `ops-photos` above. The Inventory rail was six panels deep
+  // (ledger recents, graph search, triage queue, pulse picker, replenish
+  // filters, the warehouse finder) and every one of them was a way to find or
+  // narrow rows that the desk itself now does better: DataTable's own search,
+  // `DataTableFilterMenu`, and the desk tabs. The Locations rail had stopped
+  // even pretending — its whole body read "Filter, sort, and select bins in the
+  // table to the right", which is 360px spent telling the operator to use the
+  // table. Removing the KEY collapses the column outright; leaving it would
+  // reserve the width and paint nothing.
+  //
+  // `warehouse` DROPPED with it, and was already dead config: `/warehouse`
+  // resolves to the `inventory` key (see getSidebarRouteKey), so no route could
+  // ever match this entry.
   'sourcing',
   'products',
-  'warehouse',
   // `walk-in` dropped — `/walk-in` is a redirect shell; sales context rides
   // the dashboard panel (`WalkInHistorySidebar` when domain === sales).
   // (`manuals-library` dropped — `/manuals/library` was a bookmark-only second
@@ -1448,7 +1471,12 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     railless: true,
     children: [
       { id: 'orders',   label: 'To ship',   icon: LayoutDashboard,              requires: 'orders.view', to: () => ({ pathname: SHIPPING_ORDERS_PATH, params: {} }) },
-      { id: 'shortage', label: 'Shortage',  icon: AlertCircle,                  requires: 'orders.view', to: () => ({ pathname: SHIPPING_SHORTAGE_PATH, params: {} }) },
+      // Label only (operator 2026-09-04): the id stays `shortage`, so the
+      // route, every saved tab order, the permission map and the sidebar child
+      // resolver are untouched — a rename that moved the id would silently
+      // reset every staffer's tab arrangement. It reads Pending because that is
+      // what the queue IS to an operator: orders held until stock arrives.
+      { id: 'shortage', label: 'Pending',   icon: AlertCircle,                  requires: 'orders.view', to: () => ({ pathname: SHIPPING_SHORTAGE_PATH, params: {} }) },
       { id: 'fba',      label: 'Amazon Prep', icon: SHIPPING_NAV_ICONS.fba,      to: () => ({ pathname: OUTBOUND_MODE_PATHS.fba }) },
       // `packing.view` because the archive IS the packer log: `/api/packerlogs`
       // already enforces it, and a tab that 403s is worse than an absent one.

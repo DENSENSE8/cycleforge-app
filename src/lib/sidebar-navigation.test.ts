@@ -597,6 +597,11 @@ test('resolver matches existing panel derivations for known deep-links', () => {
     getSidebarPageNav('outbound')?.children?.map((c) => c.id),
     ['orders', 'shortage', 'fba', 'shipped', 'exceptions'],
   );
+  assert.equal(
+    getSidebarPageNav('outbound')?.children?.find((c) => c.id === 'shortage')?.label,
+    'Pending',
+    'Shortage route keeps id shortage; the tab the operator reads is Pending',
+  );
   assert.ok(
     getSidebarPageNav('operations')?.children?.some((c) => c.id === 'packing-review'),
   );

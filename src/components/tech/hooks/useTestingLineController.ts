@@ -14,9 +14,9 @@ import { type UnitSlotSerial } from '@/components/tech/TestingUnitSlots';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { takeSerialEditHandoff } from '@/components/receiving/workspace/serialEditHandoff';
+import { useStationLabelPrint } from '@/hooks/useStationLabelPrint';
 import {
   buildUnitPayload,
-  printProductLabel,
   resolveTestingLineTitle,
 } from '@/lib/print/printProductLabel';
 import { normalizeSku } from '@/utils/sku';
@@ -105,6 +105,7 @@ export function useTestingLineController(
     conditionCode: row.condition_grade || 'USED_A',
     notes: (row.label_note || '').trim(),
   });
+  const { print: printStationLabel } = useStationLabelPrint();
 
   const [serialSubmitting, setSerialSubmitting] = useState(false);
   const serialSubmittingRef = useRef(false);
@@ -688,16 +689,23 @@ export function useTestingLineController(
       } catch (err) {
         console.warn('post-multi-sn failed (label still prints):', err);
       }
-      printProductLabel({
-        sku: allocation.unitId,
-        title,
-        serialNumber: activeSerial.serial_number,
-        gtin: allocation.gtin ?? undefined,
-        orgSlug,
-        qrPayload: allocation.qrUrl ?? undefined,
-        condition,
-        color,
+      const via = await printStationLabel({
+        kind: 'unit',
+        input: {
+          sku: allocation.unitId,
+          title,
+          serialNumber: activeSerial.serial_number,
+          gtin: allocation.gtin ?? undefined,
+          orgSlug,
+          qrPayload: allocation.qrUrl ?? undefined,
+          condition,
+          color,
+        },
       });
+      if (via === 'skipped') {
+        toast.error('Could not print label');
+        return false;
+      }
       setPreviewBySerialUnit((m) => {
         const next = { ...m };
         delete next[activeSerial.id];
@@ -705,7 +713,7 @@ export function useTestingLineController(
       });
       return true;
     },
-    [row.sku, row.condition_grade, lineTitle, activeSerial, previewBySerialUnit, allocateUnitId, notes, labelColor, orgSlug],
+    [row.sku, row.condition_grade, lineTitle, activeSerial, previewBySerialUnit, allocateUnitId, notes, labelColor, orgSlug, printStationLabel],
   );
 
   const findNextOpenSibling = useCallback(

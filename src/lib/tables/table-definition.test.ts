@@ -79,7 +79,7 @@ describe('table definition schema', () => {
     assert.equal(parsed.columns.length, 3);
   });
 
-  it('keeps headerForceLabel so a photo gutter can still say Image', () => {
+  it('keeps headerForceLabel as an authored opt-out of the fit gate', () => {
     const thumb: TableDefinitionColumn = {
       key: 'thumb',
       width: 'minmax(3rem, 3rem)',

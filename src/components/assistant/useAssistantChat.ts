@@ -10,7 +10,7 @@
  * inert until Phase 3 wires the Studio URL state.
  */
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef, useState, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { useStudioWorkspace } from '@/components/studio/StudioWorkspaceContext';
@@ -53,16 +53,67 @@ function parseSseChunk(buffer: string): { events: Array<{ event: string; data: s
   return { events, rest };
 }
 
-export function useAssistantChat(): AssistantChatState {
+type AskThreadSnap = {
+  sessionId: string;
+  messages: AssistantMessage[];
+  status: 'idle' | 'streaming';
+  activeTool: string | null;
+};
+
+function emptyThread(): AskThreadSnap {
+  return { sessionId: `asst-${safeRandomUUID()}`, messages: [], status: 'idle', activeTool: null };
+}
+
+let stationSnap: AskThreadSnap = emptyThread();
+const stationListeners = new Set<() => void>();
+
+function subscribeStationAsk(listener: () => void): () => void {
+  stationListeners.add(listener);
+  return () => stationListeners.delete(listener);
+}
+
+function getStationAskSnap(): AskThreadSnap {
+  return stationSnap;
+}
+
+function setStationAskSnap(next: AskThreadSnap): void {
+  stationSnap = next;
+  for (const listener of stationListeners) listener();
+}
+
+/** Drop the Unbox Ask thread when the open carton changes. */
+export function resetStationAskThread(): void {
+  setStationAskSnap(emptyThread());
+}
+
+export function useAssistantChat(opts?: { shared?: 'station' }): AssistantChatState {
+  const shared = opts?.shared === 'station';
   const router = useRouter();
   // The dock is inside StudioWorkspaceProvider, so it can drive the Studio's
   // URL view state directly (canvas-control tools). setParams hard-routes to
   // /studio, so it doubles as navigate-into-Studio from any page.
   const studio = useStudioWorkspace();
-  const [sessionId, setSessionId] = useState(() => `asst-${safeRandomUUID()}`);
-  const [messages, setMessages] = useState<AssistantMessage[]>([]);
-  const [status, setStatus] = useState<'idle' | 'streaming'>('idle');
-  const [activeTool, setActiveTool] = useState<string | null>(null);
+  const [local, setLocal] = useState<AskThreadSnap>(emptyThread);
+  const station = useSyncExternalStore(subscribeStationAsk, getStationAskSnap, getStationAskSnap);
+  const thread = shared ? station : local;
+  const localRef = useRef(local);
+  localRef.current = local;
+  const setThread = useCallback(
+    (next: AskThreadSnap) => {
+      if (shared) {
+        setStationAskSnap(next);
+        return;
+      }
+      localRef.current = next;
+      setLocal(next);
+    },
+    [shared],
+  );
+  const getLive = useCallback(
+    () => (shared ? getStationAskSnap() : localRef.current),
+    [shared],
+  );
+  const { sessionId, messages, status, activeTool } = thread;
   const abortRef = useRef<AbortController | null>(null);
 
   const runUiTool = useCallback(
@@ -103,17 +154,23 @@ export function useAssistantChat(): AssistantChatState {
       if (!trimmed || status === 'streaming') return;
 
       const assistantId = `m-${safeRandomUUID()}`;
-      setMessages((prev) => [
-        ...prev,
-        { id: `m-${safeRandomUUID()}`, role: 'user', content: trimmed },
-        { id: assistantId, role: 'assistant', content: '', streaming: true },
-      ]);
-      setStatus('streaming');
+      setThread({
+        ...thread,
+        messages: [
+          ...thread.messages,
+          { id: `m-${safeRandomUUID()}`, role: 'user', content: trimmed },
+          { id: assistantId, role: 'assistant', content: '', streaming: true },
+        ],
+        status: 'streaming',
+      });
       const controller = new AbortController();
       abortRef.current = controller;
 
       const patchAssistant = (patch: (m: AssistantMessage) => AssistantMessage) =>
-        setMessages((prev) => prev.map((m) => (m.id === assistantId ? patch(m) : m)));
+        setThread({
+          ...getLive(),
+          messages: getLive().messages.map((m) => (m.id === assistantId ? patch(m) : m)),
+        });
 
       try {
         const res = await fetch('/api/assistant/chat', {
@@ -153,7 +210,10 @@ export function useAssistantChat(): AssistantChatState {
             if (event === 'delta' && typeof payload.text === 'string') {
               patchAssistant((m) => ({ ...m, content: m.content + payload.text }));
             } else if (event === 'tool') {
-              setActiveTool(payload.status === 'start' ? String(payload.name) : null);
+              setThread({
+                ...getLive(),
+                activeTool: payload.status === 'start' ? String(payload.name) : null,
+              });
             } else if (event === 'ui_tool') {
               runUiTool(String(payload.name), (payload.input ?? {}) as Record<string, unknown>);
             } else if (event === 'error') {
@@ -170,21 +230,17 @@ export function useAssistantChat(): AssistantChatState {
         const message = err instanceof Error ? err.message : 'The assistant is unavailable.';
         patchAssistant((m) => ({ ...m, streaming: false, error: true, content: m.content || message }));
       } finally {
-        setActiveTool(null);
-        setStatus('idle');
+        setThread({ ...getLive(), activeTool: null, status: 'idle' });
         abortRef.current = null;
       }
     },
-    [router, runUiTool, sessionId, status],
+    [router, runUiTool, sessionId, status, shared, thread, setThread, getLive],
   );
 
   const reset = useCallback(() => {
     abortRef.current?.abort();
-    setMessages([]);
-    setSessionId(`asst-${safeRandomUUID()}`);
-    setStatus('idle');
-    setActiveTool(null);
-  }, []);
+    setThread(emptyThread());
+  }, [setThread]);
 
   return { sessionId, messages, status, activeTool, send, reset };
 }

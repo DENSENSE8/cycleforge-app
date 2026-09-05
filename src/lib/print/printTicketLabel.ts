@@ -56,20 +56,24 @@ export function ticketPayloadToFace(payload: TicketLabelPayload): LabelFaceModel
   };
 }
 
-export function printTicketLabel(payload: TicketLabelPayload): void {
-  if (typeof window === 'undefined') return;
+export async function printTicketLabelJob(
+  payload: TicketLabelPayload,
+): Promise<'usb' | 'iframe' | 'skipped'> {
+  if (typeof window === 'undefined') return 'skipped';
   const face = ticketPayloadToFace(payload);
-  if (!face.matrix.value) return;
-
+  if (!face.matrix.value) return 'skipped';
   const legacyPopup = reserveLegacyPrintPopup();
-  // Lazy: printLabel drags the bwip-js barcode engine; load on the actual print.
-  void import('@/lib/print/printLabel').then(({ printLabel }) => {
-    printLabel({
-      name: 'Ticket',
-      ...buildFaceInfoHtml(face),
-      dataMatrix: face.matrix,
-      hri: face.hri,
-      legacyPopup,
-    });
+  const { printLabelJob } = await import('@/lib/print/printLabel');
+  return printLabelJob({
+    name: 'Ticket',
+    ...buildFaceInfoHtml(face),
+    dataMatrix: face.matrix,
+    hri: face.hri,
+    face,
+    legacyPopup,
   });
+}
+
+export function printTicketLabel(payload: TicketLabelPayload): void {
+  void printTicketLabelJob(payload);
 }

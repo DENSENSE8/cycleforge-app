@@ -22,6 +22,7 @@ import { getConnector } from '@/lib/integrations/connectors/registry';
 import { integrationLimitStatus } from '@/lib/integrations/connectors/connections';
 import { IntegrationCard } from './IntegrationCard';
 import { ResultBanner } from './ResultBanner';
+import { GrokDeviceConnect } from './GrokDeviceConnect';
 import { CsvOrderImport } from '@/components/orders/CsvOrderImport';
 import {
   PROVIDER_CATALOG,
@@ -74,6 +75,9 @@ export default async function IntegrationsPage({
   const error = typeof sp.error === 'string' ? sp.error : undefined;
   const ebayOauthError =
     typeof sp.ebay_oauth_error === 'string' ? sp.ebay_oauth_error : undefined;
+  const grokDevice = sp.grok_device === '1';
+  const grokUserCode = typeof sp.user_code === 'string' ? sp.user_code : '';
+  const grokVerificationUri = typeof sp.verification_uri === 'string' ? sp.verification_uri : '';
   const nangoReady = isNangoConfigured();
 
   const [orgRowsR, amazonR, ebayR] = await Promise.all([
@@ -194,6 +198,10 @@ export default async function IntegrationsPage({
 
         {(success || error) && (
           <ResultBanner success={success} error={error} ebayOauthError={ebayOauthError} />
+        )}
+
+        {grokDevice && grokUserCode && grokVerificationUri && (
+          <GrokDeviceConnect userCode={grokUserCode} verificationUri={grokVerificationUri} />
         )}
 
         {INTEGRATION_CATEGORIES.map((category) => {

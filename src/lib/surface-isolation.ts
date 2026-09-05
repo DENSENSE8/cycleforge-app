@@ -32,9 +32,9 @@ const TESTING_SURFACE_ROUTE = '/test';
 const TESTING_SURFACE_LEGACY_ROUTE = '/tech';
 
 /** API `view=` values that belong on `/api/testing/receiving-lines` only. */
-const TESTING_API_VIEWS = ['testing', 'needs-test', 'testing_opened'] as const;
+const _TESTING_API_VIEWS = ['testing', 'needs-test', 'testing_opened'] as const;
 
-type TestingApiView = (typeof TESTING_API_VIEWS)[number];
+type TestingApiView = (typeof _TESTING_API_VIEWS)[number];
 
 export function isTestingApiView(view: string | null | undefined): view is TestingApiView {
   const v = String(view ?? '').trim().toLowerCase();

@@ -18,8 +18,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { SPINE_ACCENT, spineRailLineClass } from '@/lib/nav/spine-section-accent';
 import {
   SIDEBAR_SPINE_WIDTH,
-  SPINE_LABEL_CLASS,
-  SPINE_ROW_FACE_CLASS,
+  SPINE_ROW_DENSITY,
   SPINE_ROW_ICON_CLASS,
   SPINE_ROW_SHELL_CLASS,
 } from '@/components/sidebar/sidebar-spine';
@@ -38,7 +37,7 @@ import { cn } from '@/utils/_cn';
  *
  * ## It renders the DESKTOP spine row, not a phone-shaped approximation
  *
- * Rows compose `SPINE_ROW_SHELL_CLASS` + `SPINE_ROW_FACE_CLASS` +
+ * Rows compose `SPINE_ROW_SHELL_CLASS` + `SPINE_ROW_DENSITY.touch` +
  * `SPINE_ACCENT` — the same three tokens `SidebarNavList` paints with, at the
  * same 40px height, the same 16px glyph, the same `role-body` label. Until
  * 2026-08-21 this drawer hand-rolled `rounded-2xl` rows with a `bg-blue-50` /
@@ -113,7 +112,11 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { kind: 'leaf', id: 'packing', label: 'Packing', href: '/m/pack' },
+  // Dock SHIP_CONFIRM on a phone — the second, separate scan from pack-out.
+  { kind: 'leaf', id: 'scan-out', label: 'Scan out', href: '/m/scan-out' },
   { kind: 'leaf', id: 'checklist', label: 'Checklists', href: '/m/checklist' },
+  // Phone as mic + keyboard for the desk composer (PLAN-companion-composer).
+  { kind: 'leaf', id: 'companion', label: 'Companion', href: '/m/companion' },
 ];
 
 const isLeafActive = (pathname: string | null, href: string) => {
@@ -271,7 +274,7 @@ export const MobileSidebarDrawer = ({
                           aria-current={active ? 'page' : undefined}
                           className={cn(
                             SPINE_ROW_SHELL_CLASS,
-                            SPINE_ROW_FACE_CLASS,
+                            SPINE_ROW_DENSITY.touch.face,
                             active ? SPINE_ACCENT.activePage : SPINE_ACCENT.idlePage,
                           )}
                         >
@@ -285,7 +288,7 @@ export const MobileSidebarDrawer = ({
                               )}
                             />
                           ) : null}
-                          <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)}>
+                          <span className={cn('min-w-0 flex-1 truncate', SPINE_ROW_DENSITY.touch.label)}>
                             {item.label}
                           </span>
                         </button>
@@ -304,14 +307,14 @@ export const MobileSidebarDrawer = ({
                         aria-expanded={isOpen}
                         className={cn(
                           SPINE_ROW_SHELL_CLASS,
-                          SPINE_ROW_FACE_CLASS,
+                          SPINE_ROW_DENSITY.touch.face,
                           // A parent that OWNS the current child gets the quieter
                           // wash, never `aria-current` — two strengths, one
                           // location, exactly as the spine resolves it.
                           groupActive ? SPINE_ACCENT.ownsActive : SPINE_ACCENT.idlePage,
                         )}
                       >
-                        <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)}>
+                        <span className={cn('min-w-0 flex-1 truncate', SPINE_ROW_DENSITY.touch.label)}>
                           {item.label}
                         </span>
                         <motion.span animate={{ rotate: isOpen ? 180 : 0 }} transition={{ duration: 0.2 }}>
@@ -344,7 +347,7 @@ export const MobileSidebarDrawer = ({
                                       aria-current={childActive ? 'page' : undefined}
                                       className={cn(
                                         SPINE_ROW_SHELL_CLASS,
-                                        SPINE_ROW_FACE_CLASS,
+                                        SPINE_ROW_DENSITY.touch.face,
                                         childActive ? SPINE_ACCENT.childActive : SPINE_ACCENT.childIdle,
                                       )}
                                     >
@@ -358,7 +361,7 @@ export const MobileSidebarDrawer = ({
                                           )}
                                         />
                                       ) : null}
-                                      <span className={cn('min-w-0 flex-1 truncate', SPINE_LABEL_CLASS)}>
+                                      <span className={cn('min-w-0 flex-1 truncate', SPINE_ROW_DENSITY.touch.label)}>
                                         {child.label}
                                       </span>
                                     </button>

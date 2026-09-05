@@ -4,18 +4,39 @@
  * One-order paperwork face — manuals (SKU grain) + shipping (order grain).
  *
  * Composes {@link OrderShippingPanel} and {@link SkuManualsPanel}. Pairing
- * does not live here (R-FLOW-7). Escape / header ◁ exit through `onExit`.
+ * does not live here (R-FLOW-7).
+ *
+ * ## Everything the operator drives lives at the foot
+ *
+ * One floating {@link StickyActionBar}: walk position as the caption, Back as
+ * the secondary, Finish / Skip · Next as the stretched CTA. No top button row
+ * — `TriageScrollLayout`'s contract and the Order intake stage form
+ * (`OrderIntakeForm`) both refuse one, and a band above the identity ring was
+ * spending a full-width row to repaint the host's own walk arrows.
+ *
+ * ## Two sections do not earn a jump rail
+ *
+ * `knobs` is off. {@link TriageScrollLayout} passes it only for a fixed-width
+ * pane worked repeatedly, where the rail doubles as a position readout;
+ * Manuals + Shipping label is a scroll that ends in one flick, and the rail
+ * was reserving a right-hand column the form could not then use — which is
+ * what read as dead padding beside the cards. Grouping is the scan.
+ *
+ * Exit is the desk's: the Labels toggle is this walk's on/off and Esc is wired
+ * by the host, so the identity ring takes no `onExitToList` here.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ChevronRight } from '@/components/Icons';
+import { Check, ChevronLeft, ChevronRight } from '@/components/Icons';
+import { StationContextBar } from '@/components/station/entity-context';
 import { ShippingEntityContextHeader } from '@/components/tech/shipping/ShippingEntityContextHeader';
 import { OrderShippingPanel } from '@/components/outbound/labels/OrderShippingPanel';
 import { SkuManualsPanel } from './SkuManualsPanel';
 import type { ActiveStationOrder } from '@/hooks/station/types';
+import { StickyActionBar } from '@/design-system/components/StickyActionBar';
 import { TriageScrollLayout } from '@/design-system/components/TriageScrollLayout';
-import { Button, Checkbox } from '@/design-system/primitives';
+import { Checkbox } from '@/design-system/primitives';
 import { orderReleaseGatesQuery } from '@/lib/queries/caged-orders-queries';
 import { toast } from '@/lib/toast';
 import type { ShippedOrder } from '@/types/orders';
@@ -25,14 +46,16 @@ export function PaperworkEditor({
   index,
   total,
   onAdvance,
-  onExit,
+  onPrev,
+  prevDisabled,
   onFactsChanged,
 }: {
   row: ShippedOrder;
   index: number;
   total: number;
   onAdvance: () => void;
-  onExit: () => void;
+  onPrev: () => void;
+  prevDisabled: boolean;
   onFactsChanged: () => void;
 }) {
   const gatesQuery = useQuery(orderReleaseGatesQuery(row.id));
@@ -61,20 +84,6 @@ export function PaperworkEditor({
     }),
     [row],
   );
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || e.defaultPrevented) return;
-      const el = document.activeElement as HTMLElement | null;
-      if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) {
-        el.blur();
-        return;
-      }
-      onExit();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [onExit]);
 
   const last = index >= total;
   const handleFactsChanged = useCallback(() => {
@@ -107,36 +116,44 @@ export function PaperworkEditor({
   return (
     <TriageScrollLayout
       data-testid="paperwork-editor"
-      knobs
+      // Mounted through StationContextBar `placement="flow"` — the same
+      // recipe as Unbox (`LineEditPanel`) and Scan-out (`ScanOutActivePanel`,
+      // which wraps this very adapter). That is what supplies
+      // `stationIdentityPanelClass` (`rounded-none border-0`), so the band is
+      // coplanar and square instead of inheriting the host's corner radius,
+      // and the bar's own `STATION_CHROME_SEAM_HAIRLINE` is the bottom seam —
+      // never a wrapper `border-b`, which lands 1px off it.
       header={
-        <div>
-          <div className="flex flex-wrap items-center gap-2 border-b border-border-hairline bg-surface-card px-4 py-1.5">
-            <p className="min-w-0 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-              Labels · {index} of {total} ·{' '}
-              <span className="font-mono normal-case tracking-normal text-text-default">
-                {row.order_id}
-              </span>
-            </p>
-            <span className="ml-auto inline-flex shrink-0 items-center gap-1.5">
-              <Button
-                type="button"
-                variant="secondary"
-                size="sm"
-                iconRight={<ChevronRight className="h-3.5 w-3.5" aria-hidden />}
-                onClick={onAdvance}
-                data-testid="paperwork-next"
-              >
-                {last ? 'Finish' : 'Skip / Next'}
-              </Button>
+        <StationContextBar
+          placement="flow"
+          identity={<ShippingEntityContextHeader activeOrder={activeOrder} />}
+        />
+      }
+      footer={
+        <StickyActionBar
+          floating
+          leading={
+            <span className="tabular-nums" data-testid="paperwork-position">
+              {index} of {total}
             </span>
-          </div>
-          <div className="border-b border-border-hairline">
-            <ShippingEntityContextHeader
-              activeOrder={activeOrder}
-              onExitToList={onExit}
-            />
-          </div>
-        </div>
+          }
+          secondary={{
+            label: 'Back',
+            onClick: onPrev,
+            disabled: prevDisabled,
+            icon: <ChevronLeft className="h-4 w-4" aria-hidden />,
+          }}
+          primary={{
+            label: last ? 'Finish' : 'Skip / Next',
+            onClick: onAdvance,
+            icon: last ? (
+              <Check className="h-4 w-4" aria-hidden />
+            ) : (
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            ),
+            testId: 'paperwork-next',
+          }}
+        />
       }
       sections={[
         {

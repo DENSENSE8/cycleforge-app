@@ -1,5 +1,5 @@
 import type { Transition, Variants } from '../motion/framer';
-import { fadeInstant, springArmedTrack, springSnappy } from '../motion/tokens';
+import { cursorFollowSnap, fadeInstant, springArmedTrack, springSnappy } from '../motion/tokens';
 
 /**
  * Cubic-bezier tuples for Framer Motion `ease`.
@@ -633,6 +633,24 @@ export const framerTransition = {
     opacity: fadeInstant,
     y: springSnappy,
   } satisfies Transition,
+
+  /**
+   * Desk pointer-cursor FOLLOW — glued to the pointer. Duration 0
+   * (`cursorFollowSnap`). A spring here trails the hand and reads as drag.
+   * Size/shape morph stays on {@link cursorMorph}.
+   */
+  cursorFollow: cursorFollowSnap,
+
+  /**
+   * Desk pointer-cursor MORPH — dot to a target's outline, and the segmented
+   * selection pill traveling face to face.
+   *
+   * `springArmedTrack` already IS the house travelling-marker physics (the
+   * armed-list underline gliding row to row). A cursor taking a target's
+   * geometry and a pill sliding between segments are the same job, so they take
+   * the same spring rather than a third one invented here.
+   */
+  cursorMorph: springArmedTrack,
 } as const;
 
 /**

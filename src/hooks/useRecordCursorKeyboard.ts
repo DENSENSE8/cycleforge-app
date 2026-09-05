@@ -30,7 +30,12 @@
  *     the only correct ambient keyboard owner in the codebase and the guard is
  *     why (`src/lib/overlay-stack/store.ts`; `source-of-truth.md` → Escape
  *     ownership).
- *  2. **Enter is not stolen from a focused row.** Rows are `tabIndex={0}` and
+ *  2. **A live table selection is not stolen either** (2026-09-05). Same bail,
+ *     one layer in: `hasLiveTableSelection()`. The precedence is overlay →
+ *     selection → record cursor, and each yielding layer must return without
+ *     `preventDefault` or the one beneath it never runs. See
+ *     `src/lib/selection/selection-liveness.ts`.
+ *  3. **Enter is not stolen from a focused row.** Rows are `tabIndex={0}` and
  *     handle Enter/Space for the record they belong to; this branch only knows
  *     how to open the FIRST record, so capturing here opened the wrong order
  *     whenever the operator had tabbed down.
@@ -49,6 +54,7 @@
 import { useEffect } from 'react';
 import { focusWithinListKeyOwner, isListKeyRegionOpen } from '@/lib/keyboard/list-key-scope';
 import { hasOpenOverlay } from '@/lib/overlay-stack/store';
+import { hasLiveTableSelection } from '@/lib/selection/selection-liveness';
 import { getRecordCursorTop } from '@/lib/record-cursor/store';
 import type { CursorScope, CursorStep } from '@/lib/record-cursor/cursor-model';
 import type { RecordCursorPublication } from '@/lib/record-cursor/store';
@@ -133,6 +139,25 @@ export function useRecordCursorKeyboard({
       // Phase 1). With no publisher at all the dispatch is a no-op, so the key
       // is left un-swallowed rather than consumed by a listener that did nothing.
       if (code === 'Escape') {
+        // ## A live selection unwinds BEFORE the plane behind it
+        //
+        // Returning without `preventDefault`/`stopPropagation` is the whole
+        // point: this is a capture-phase listener, so swallowing here is what
+        // stopped `useTableSelectMode`'s Escape-clears-selection binding from
+        // ever running. On a desk with rows checked and no panel open, this
+        // branch called `close()` on nothing and consumed the key — Escape
+        // visibly did nothing while a selection sat on screen.
+        //
+        // Same shape as the `hasOpenOverlay()` bail above and for the same
+        // reason (`selection-liveness.ts` documents the full order): an overlay
+        // owns the keyboard, then a selection, then the record cursor. A second
+        // Escape — with the selection now cleared — reaches this branch and
+        // closes the record, so nothing is unreachable, it is just one press
+        // further down the stack.
+        //
+        // Operator 2026-09-05: clear the selection first.
+        if (hasLiveTableSelection()) return;
+
         if (top?.close) {
           e.preventDefault();
           e.stopPropagation();

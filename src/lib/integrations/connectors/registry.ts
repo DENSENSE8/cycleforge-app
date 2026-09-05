@@ -119,6 +119,16 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
   ai_gateway: { provider: 'ai_gateway', authKind: 'vault', capabilities: ['ai'] },
   openai: { provider: 'openai', authKind: 'vault', capabilities: ['ai'] },
   anthropic: { provider: 'anthropic', authKind: 'vault', capabilities: ['ai'] },
+  // SuperGrok / X Premium+ — subscription OAuth, not a metered api.x.ai key.
+  grok: {
+    provider: 'grok',
+    authKind: 'oauth',
+    capabilities: ['ai'],
+    authorizeStartPath: '/api/integrations/grok/connect',
+    healthPath: '/api/integrations/grok/health',
+    validate: (orgId) => import('./grok').then((m) => m.grokValidate(orgId)),
+    refresh: (orgId) => import('./grok').then((m) => m.grokRefresh(orgId)),
+  },
   // Email inbox — the PO mailbox (Gmail). The OAuth island under
   // /api/admin/po-gmail/* remains the live flow; tokens are being migrated
   // from google_oauth_tokens into the vault (dual-read in src/lib/po-gmail/

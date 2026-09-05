@@ -14,7 +14,7 @@ import type { ZIndexToken } from '../tokens/z-index';
 //
 // The canonical anchored, *styled* popover panel. <AnchoredLayer> owns the hard
 // part (portal, rect-tracking, dismissal) but no visual chrome; <Popover> adds
-// DROPDOWN_SHELL_CORNER, a hairline border, soft elevation, and the shared
+// DROPDOWN_SHELL_CORNER, a hairline border, overlay elevation, and the shared
 // dropdown enter/exit motion — so callers stop re-rolling floating-card
 // boilerplate.
 //
@@ -60,6 +60,13 @@ export interface PopoverProps
    */
   closeOnEscape?: boolean;
   /**
+   * Clicks inside a matching element do not dismiss — for layers this popover
+   * opens that portal outside its own panel (a nested Popover, an AlertDialog,
+   * a Radix popper). Forwarded to {@link AnchoredLayer}; the panel itself is
+   * always excluded first.
+   */
+  ignoreClickSelector?: string;
+  /**
    * Inner padding. Default false — list rows / menu items bleed to the edges
    * (Kinetic Ledger flush). Pass true only when the panel hosts free-form content.
    */
@@ -78,6 +85,7 @@ export function Popover({
   level = 'dropdown',
   matchWidth = false,
   closeOnEscape = true,
+  ignoreClickSelector,
   padded = false,
   className,
   children,
@@ -106,6 +114,7 @@ export function Popover({
       level={level}
       matchWidth={matchWidth}
       closeOnEscape={closeOnEscape}
+      ignoreClickSelector={ignoreClickSelector}
     >
       <AnimatePresence
         onExitComplete={() => {
@@ -120,9 +129,9 @@ export function Popover({
             exit={presence.exit}
             transition={transition}
             className={cn(
-              'min-w-[10rem] overflow-hidden border border-border-default bg-surface-card text-text-default',
+              'min-w-[10rem] overflow-hidden border border-border-soft bg-surface-card text-text-default',
               DROPDOWN_SHELL_CORNER,
-              elevationClass('raised', 'soft'),
+              elevationClass('overlay'),
               padded && 'p-2',
               className,
             )}

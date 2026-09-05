@@ -37,6 +37,7 @@ import {
   ORDERS_GRID_CAPABILITIES,
   makeOrdersGridDescriptor,
 } from './orders-queue-descriptor';
+import { OrdersRowPlane } from '@/components/outbound/orders/to-ship/MorphingRowActionMenu';
 
 const ORDERS_TABLE_DEFINITION = parseTableDefinition({
   id: 'fulfillment.default',
@@ -59,4 +60,17 @@ export const ORDERS_DEFAULT_TABLE_BINDING: TableSurfaceBinding<ShippedOrder, Ord
   makeDescriptor: makeOrdersGridDescriptor,
   // Center Lock L2 — multi-field record form on the desk stage (law Q5).
   recordPlane: { kind: 'stage-overlay', reason: 'To-ship queue walk — table stays mounted under overlay' },
+  /**
+   * CYC-82 — picking a row in the gutter opens the assign manifold beside it.
+   *
+   * Declared on the ENTITY, so it reaches every outbound lane that mounts this
+   * binding (To-ship, Packed, Labels, Staged, Review, Shipped, exceptions) from
+   * one line. It used to be mounted by hand inside `OrdersQueueTableRow`, which
+   * is why gating it on `queueMode === 'fulfillment'` was once possible at all:
+   * Shipped had the checkbox and no plane. A registration cannot drift that way.
+   */
+  rowPlane: {
+    reason: 'CYC-82 assign manifold — staff pick a row and assign without leaving the queue',
+    Component: OrdersRowPlane,
+  },
 };

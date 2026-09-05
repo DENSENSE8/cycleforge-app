@@ -80,6 +80,8 @@ Pin: \`CompoundItem\` + \`DateRangePickerField\` in \`src/design-system/pinned.j
 - ${SLOT_TABLE_PAINT_LAW.filter}
 - ${SLOT_TABLE_PAINT_LAW.headerSort}
 - ${SLOT_TABLE_PAINT_LAW.stageAssign}
+- ${SLOT_TABLE_PAINT_LAW.lineQty}
+- ${SLOT_TABLE_PAINT_LAW.ordersActions}
 - ${SLOT_TABLE_PAINT_LAW.scope}
 <!-- /eval-ledger:auto:paint-law -->
 
@@ -300,6 +302,8 @@ async function runSlotTable(skipVerify) {
     `- ${SLOT_TABLE_PAINT_LAW.filter}`,
     `- ${SLOT_TABLE_PAINT_LAW.headerSort}`,
     `- ${SLOT_TABLE_PAINT_LAW.stageAssign}`,
+    `- ${SLOT_TABLE_PAINT_LAW.lineQty}`,
+    `- ${SLOT_TABLE_PAINT_LAW.ordersActions}`,
     `- ${SLOT_TABLE_PAINT_LAW.scope}`,
   ].join('\n')
 

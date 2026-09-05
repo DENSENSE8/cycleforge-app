@@ -30,6 +30,7 @@
  * chevron on this grip.
  */
 
+import { cursorGrabTarget, cursorResizeTarget } from '@/design-system/motion/cursor-scrub';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import type {
   HorizontalEdge,
@@ -105,7 +106,7 @@ function elevatedHairlineClass(edge: HorizontalEdge): string {
 const HIT_TARGET_BASE =
   // z-sticky — above body `z-raised` (← → eyebrow · armed rows · hairlines);
   // below chrome `z-header` (`→|` / fullscreen).
-  'group absolute top-0 z-sticky flex h-full w-3 cursor-col-resize touch-none items-stretch';
+  'group absolute top-0 z-sticky flex h-full w-3 touch-none items-stretch';
 
 function hitTargetClass(edge: HorizontalEdge, placement: HorizontalEdgeResizePlacement): string {
   if (placement === 'outset') {
@@ -139,6 +140,7 @@ export function HorizontalEdgeResizeHandle({
         <div
           {...edgeHandleProps}
           {...(armed ? { 'data-arm': 'close' } : null)}
+          {...(isDragging ? cursorGrabTarget(true) : cursorResizeTarget('x'))}
           // `peer` lets the elevated overlay below react to hover on the hit.
           className={cn(hitTargetClass(edge, placement), elevatedHairline && 'peer', className)}
         >

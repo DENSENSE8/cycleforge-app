@@ -23,8 +23,8 @@ import { test, expect, type Page } from '@playwright/test';
 /** The row box every compound table must paint — `COMPOUND_ROW_PX`. */
 const COMPOUND_ROW_PX = 48;
 
-/** Canonical track order. The photo is leftmost by hard rule. */
-const EXPECTED_TRACKS = ['thumb', 'fulfillment', 'item', 'state', 'amount', 'actions'];
+/** Canonical track order. Identity pane (ids) precedes the photo. No Amount — line money lives under the title. */
+const EXPECTED_TRACKS = ['fulfillment', 'thumb', 'item', 'state'];
 
 interface Surface {
   name: string;
@@ -143,7 +143,11 @@ test.describe('every compound table paints the same row', () => {
             .map((el) => (el as HTMLElement).dataset.col ?? '')
             .filter((k) => k !== '_fill' && k !== 'select'),
         );
-      expect(tracks, `${surface.name} track order`).toEqual(EXPECTED_TRACKS);
+      expect(tracks, `${surface.name} has no Amount track`).not.toContain('amount');
+      expect(tracks, `${surface.name} has no ⋮ track`).not.toContain('actions');
+      expect(tracks.filter((k) => EXPECTED_TRACKS.includes(k)), `${surface.name} track order`).toEqual(
+        EXPECTED_TRACKS,
+      );
 
       // ── BOTH tracks render, and neither is clipped ─────────────────────────
       // Measured on the TRACKS, not on the line content. An empty note is a

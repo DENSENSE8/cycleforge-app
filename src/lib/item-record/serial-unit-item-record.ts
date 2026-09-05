@@ -31,7 +31,7 @@ export interface SerialUnitItemRecordOptions {
   /**
    * Thumbnail for the item face. The unit's photos live beside the row in the
    * payload, so the surface resolves which one leads and passes it here.
-   * Absent renders the shared package placeholder, same as any other item.
+   * Absent renders the shared package placeholder, like every other item.
    */
   imageUrl?: string | null;
 }
@@ -52,10 +52,9 @@ export function serialUnitToItemRecords(
       id: unit.id,
       title,
       sku: sku || null,
-      // A unit is one item and it is physically accounted for — that is what a
-      // serial unit row MEANS. `1/1` is the honest reading, and it is the same
-      // counted/expected face a carton line paints, so the two never disagree
-      // about what a full item looks like.
+      // A unit is one physical thing. `1/1` means that, not PO receive. Do not
+      // set `receive`: that face adds got/listed remaining and would recast
+      // this row as a carton line.
       quantity: { counted: 1, expected: 1 },
       // Grade CODE, not a label — the chip resolves hue and copy from the
       // shared condition registry.

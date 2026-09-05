@@ -18,7 +18,13 @@ export type EntitlementFeature = keyof Entitlements['features'];
 
 export type SettingScope = 'org' | 'staff';
 
-export type SettingControl = 'toggle' | 'segmented' | 'select' | 'number' | 'text';
+/**
+ * `slider` vs `number`: a slider is for a bounded range you TUNE by feel — you
+ * are hunting for "a bit faster", not typing a known figure. It needs min, max
+ * and step, and it wants enough stops to be worth dragging (a 1-5 range is a
+ * number field, not a track). `number` stays right for exact entry.
+ */
+export type SettingControl = 'toggle' | 'segmented' | 'select' | 'number' | 'slider' | 'text';
 
 /** Pages a setting can attach to. Extend as the registry grows to new surfaces. */
 export type SettingPage = 'receiving';

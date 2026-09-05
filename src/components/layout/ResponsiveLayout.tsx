@@ -13,6 +13,12 @@ import { Button, IconButton } from '@/design-system/primitives';
 import { isMobileAllowedPath } from '@/lib/sidebar-navigation';
 import { SIDEBAR_SPINE_WIDTH } from '@/components/sidebar/sidebar-spine';
 import { ContextPanelLayout } from '@/components/sidebar/ContextPanelLayout';
+import {
+  DESK_ASK_PANE_TITLE,
+  DeskComposerAskLane,
+} from '@/components/composer/DeskComposerAskLane';
+import { DeskLeadPaneProvider } from '@/design-system/components/DeskLeadPaneContext';
+import { useDeskField } from '@/components/composer/useDeskField';
 import { RightRailHost } from '@/components/right-rail/RightRailHost';
 import { GlobalWedgeScannerMount, PhoneScanBridgeMount } from '@/components/layout/scan-mounts';
 import { setRightRailFrameWidth } from '@/lib/right-rail/frame';
@@ -149,9 +155,23 @@ const drawerTransition = {
  * Mobile:  sidebar hidden by default, accessible as a slide-out drawer
  *          from the left. Hamburger button exposed via `useSidebarDrawer`.
  */
+/**
+ * Stable element — the ambient lead pane travels by context, and a fresh
+ * element identity per render would re-render every `DeskPageChrome` on the
+ * page for nothing. The lane takes no per-route props: it reads its own
+ * placement.
+ */
+const DESK_LEAD_PANE_NODE = <DeskComposerAskLane variant="page-column" />;
+
 export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayoutProps) {
   const { isMobile } = useUIMode();
   const pathname = usePathname();
+  // Whether this screen HAS a desk field at all — a station's own mouth wins,
+  // the phone and the public resolvers are not desks, and an operator without
+  // the assistant has nothing to type at. Asked here so the column is never
+  // RESERVED for a mouth that then renders nothing: an empty 360px column under
+  // an "Ask" title is worse than no column.
+  const deskField = useDeskField();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -399,10 +419,25 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
             {chromeless ? (
               children
             ) : (
-              <div ref={contentRowRef} className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
-                <ContextPanelLayout>{children}</ContextPanelLayout>
-                <RightRailHost />
-              </div>
+              /*
+                The desk mouth is published ONCE, here, for every route in the
+                shell — above `ContextPanelLayout` because that component
+                returns early for rail-less surfaces (the whole Shipping desk),
+                and the composer belongs to the desk frame, not to the rail.
+                Any `DeskPageChrome` underneath takes it as its lead column, so
+                the mouth is on the left of every desk without a desk having to
+                ask for it. Chromeless routes (auth / enroll / offline) are the
+                other branch and get none.
+              */
+              <DeskLeadPaneProvider
+                title={DESK_ASK_PANE_TITLE}
+                node={deskField.mount ? DESK_LEAD_PANE_NODE : null}
+              >
+                <div ref={contentRowRef} className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+                  <ContextPanelLayout>{children}</ContextPanelLayout>
+                  <RightRailHost />
+                </div>
+              </DeskLeadPaneProvider>
             )}
           </main>
           {/* Chromeless (auth / enroll / offline): no content row exists to

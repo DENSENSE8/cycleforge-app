@@ -24,6 +24,9 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { SearchResultRow } from '@/components/search/SearchResultRow';
+import { useAuth } from '@/contexts/AuthContext';
+import { useOrgNavItems } from '@/hooks/useOrgNavItems';
+import { searchNavPages } from '@/lib/search/nav-page-search';
 import { groupHitsForPreview } from '@/components/search/search-tabs';
 import {
   COMMAND_BAR_OPEN_CHANGE_EVENT,
@@ -501,6 +504,30 @@ export function CommandBar() {
         : headerFindEmptyMessage(trimmedQuery, findMode ? 'order' : undefined);
 
   const showRecents = open && !trimmedQuery && recents.length > 0;
+
+  /*
+   * Pages — "take me there", the half of a command palette this one never had.
+   *
+   * Permission-filtered at the SOURCE (`useOrgNavItems` applies the same
+   * `requires` gate the sidebar does), so the palette can never advertise a
+   * page the operator cannot open. Ranked ahead of record hits because a
+   * navigation query ("media", "products") is answered instantly and locally,
+   * while records are a round trip — putting pages second would mean watching a
+   * spinner to reach a page you already know the name of.
+   */
+  const { user } = useAuth();
+  const permissions = useMemo(
+    () => (user?.permissions ? new Set(user.permissions) : undefined),
+    [user?.permissions],
+  );
+  const navItems = useOrgNavItems({
+    permissions,
+    organizationEnvironment: user?.organizationEnvironment ?? null,
+  });
+  const pageHits = useMemo(
+    () => (open ? searchNavPages(navItems, trimmedQuery) : []),
+    [open, navItems, trimmedQuery],
+  );
   const showIdentifierMiss =
     findMode && trimmedQuery && !searching && previewHits.length === 0;
 
@@ -634,6 +661,27 @@ export function CommandBar() {
 
         <CommandList className="max-h-[min(60vh,24rem)]">
           <CommandEmpty>{emptyCopy}</CommandEmpty>
+          {pageHits.length > 0 ? (
+            <CommandGroup heading="Pages">
+              {pageHits.map((hit) => {
+                const PageIcon = hit.icon;
+                return (
+                  <CommandItem
+                    key={`page:${hit.id}`}
+                    // `shouldFilter={false}` on the Command root — cmdk does not
+                    // re-filter this, so the value is only an identity.
+                    value={`page ${hit.id} ${hit.label}`}
+                    onSelect={() =>
+                      navigate({ id: `page:${hit.id}`, label: hit.label, href: hit.href })
+                    }
+                  >
+                    <PageIcon className="size-4 text-text-faint" />
+                    <span className="min-w-0 flex-1 truncate">{hit.label}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          ) : null}
           {showRecents ? (
             <CommandGroup heading="Recent">
               {recents.map((r) => {

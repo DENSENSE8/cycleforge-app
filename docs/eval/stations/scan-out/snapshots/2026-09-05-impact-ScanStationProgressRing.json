@@ -1,0 +1,17 @@
+{
+  "project": "cycleforge-app",
+  "target": "component:src/components/station/ScanStationProgressRing.tsx:ScanStationProgressRing",
+  "files_affected": 1,
+  "total_symbols": 2,
+  "files": [
+    {
+      "file": "src/components/composer/ComposerModeRow.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 2,
+      "symbols": [
+        "ComposerModeRow",
+        "ComposerProcedureRingButton"
+      ]
+    }
+  ]
+}

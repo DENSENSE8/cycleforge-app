@@ -57,7 +57,7 @@ export const TrackingExceptionsGridRow = memo(function TrackingExceptionsGridRow
   onRefresh: (row: TrackingExceptionRow) => void;
   columns: readonly TrackingExceptionsGridColumn[];
 }) {
-  const staff = trackingExceptionStaffLabel(row);
+  const _staff = trackingExceptionStaffLabel(row);
   const carrier = trackingExceptionCarrier(row);
 
   /** The body of one materialized slot track, chosen by the BOUND FIELD. */

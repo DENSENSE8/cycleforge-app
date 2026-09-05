@@ -22,7 +22,6 @@ const SettingsSidebar = dynamic(() => import('@/components/sidebar/SettingsSideb
 const AuditLogSidebarPanel = dynamic(() => import('@/components/sidebar/AuditLogSidebarPanel').then((m) => m.AuditLogSidebarPanel));
 const ReceivingSidebarPanel = dynamic(() => import('@/components/sidebar/ReceivingSidebarPanel').then((m) => m.ReceivingSidebarPanel));
 const FbaSidebarPanel = dynamic(() => import('@/components/fba/sidebar').then((m) => m.FbaSidebarPanel));
-const InventorySidebarPanel = dynamic(() => import('@/components/sidebar/InventorySidebarPanel').then((m) => m.InventorySidebarPanel));
 const SourcingSidebarPanel = dynamic(() => import('@/components/sidebar/SourcingSidebarPanel').then((m) => m.SourcingSidebarPanel));
 const ProductsSidebarPanel = dynamic(() => import('@/components/sidebar/ProductsSidebarPanel').then((m) => m.ProductsSidebarPanel));
 const WalkInSidebarPanel = dynamic(() => import('@/components/sidebar/WalkInSidebarPanel').then((m) => m.WalkInSidebarPanel));
@@ -55,13 +54,14 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
   if (routeKey === 'audit-log') return <AuditLogSidebarPanel />;
   if (routeKey === 'receiving') return <ReceivingSidebarPanel />;
   if (routeKey === 'fba') return <FbaSidebarPanel />;
-  // /inventory's main shell owns its own header search + filter chips; the
-  // panel here carries the section toggle (Inventory ↔ Replenish) plus the
-  // tabbed inventory / replenish sidebars.
-  if (routeKey === 'inventory') return <InventorySidebarPanel />;
+  // `inventory` has NO branch and no rail — the Inventory desk is RAIL-LESS
+  // (Pattern E, 2026-09-04), and `/warehouse` + `/inventory/locations` resolve
+  // to the same key, so they lose theirs with it. The desk's own DataTable
+  // search + DataTableFilterMenu + tabs are the finder now;
+  // `CONTEXT_PANEL_ROUTE_KEYS` drops the key so the column collapses rather
+  // than reserving 360px of empty chrome.
   if (routeKey === 'sourcing') return <SourcingSidebarPanel />;
   if (routeKey === 'products') return <ProductsSidebarPanel />;
-  // Locations desk folded under inventory — WarehouseSidebarPanel mounts via InventorySidebarPanel.
   if (routeKey === 'walk-in') return <WalkInSidebarPanel embedded hideSectionHeader />;
   // (No `repair` branch: `/repair` is a Receiving MODE and resolves to the
   // `receiving` key — see getSidebarRouteKey. The branch that used to sit here

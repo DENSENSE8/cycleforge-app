@@ -195,6 +195,19 @@ describe('one table engine — the descriptor carries data, not behavior', () =>
     );
   });
 
+  it('no mount filters amount off the skeleton — COMPOUND_TRACKS has none', () => {
+    // The 2026-09-04 Orders-only `c.key !== 'amount'` drop is the hole that
+    // left Unbox with a green Amount column. Settings/admin copies of that
+    // filter are the same fork. Line money is a subtitle; do not pretend the
+    // chrome still carries an amount track.
+    const offenders = SOURCES.filter((file) => /c\.key !== ['"]amount['"]/.test(code(file))).sort();
+    assert.deepEqual(
+      offenders,
+      [],
+      `these still drop an Amount track the engine no longer has:\n${offenders.join('\n')}`,
+    );
+  });
+
   it('the compound view model stays strings and enums — no JSX crosses the seam', () => {
     // The adapter boundary is where polymorphism is resolved. A ReactNode on
     // the view model lets a family smuggle bespoke markup into the shared row,

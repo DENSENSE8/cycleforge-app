@@ -24,8 +24,8 @@ import {
  * independently, and both hand-copied the same wrapper. With the rest of the
  * rails migrating onto it, a third copy would be the fork the rules ban. (Both
  * went rail-less — Media Library 2026-08-09, Incoming 2026-08-10 — so their
- * rows here are history; the live consumers are `VoicemailQueue` and
- * `CallLogSidebar`.)
+ * rows here are history; the live consumer is `VoicemailQueue`. Calls
+ * direction lives on CallLogView's second-level TableTabs.)
  *
  * **`density="ops"` is baked in on purpose.** The list's default `comfortable`
  * register is the Settings navigator shape (`py-3`, `text-sm`, a hairline under

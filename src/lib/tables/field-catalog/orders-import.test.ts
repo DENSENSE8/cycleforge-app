@@ -92,17 +92,23 @@ describe('csvImportStagingSheetColumnsFor — the sheet materialization', () => 
         ['status:3', 'orders-import.customer'],
         ['status:4', 'orders-import.tracking'],
         ['status:5', 'orders-import.platform'],
+        // The slack track, then the decision gutter (approve / reject squares).
+        // Both are chrome; the operator requirement puts the two squares at the
+        // row's far right, which a fixed track in FRONT of the sole `1fr`
+        // cannot reach. See `csv-import-staging-grid-layout`.
         ['_fill', null],
+        ['actions', null],
       ],
     );
   });
 
-  it('the trailing _fill owns the sole flex track and never sorts', () => {
+  it('the sole flex track is _fill, and neither chrome gutter sorts', () => {
     const flex = CSV_IMPORT_STAGING_SHEET_COLUMNS.filter((c) => String(c.width).includes('1fr'));
     assert.deepEqual(flex.map((c) => c.key), ['_fill']);
-    const fill = CSV_IMPORT_STAGING_SHEET_COLUMNS.at(-1);
-    assert.equal(fill?.key, '_fill');
+    const fill = CSV_IMPORT_STAGING_SHEET_COLUMNS.find((c) => c.key === '_fill');
     assert.equal(csvImportStagingSortFactFor(fill!), null);
+    const actions = CSV_IMPORT_STAGING_SHEET_COLUMNS.find((c) => c.key === 'actions');
+    assert.equal(csvImportStagingSortFactFor(actions!), null);
   });
 
   it('the structural fact tracks keep their own sort words', () => {
@@ -115,13 +121,13 @@ describe('csvImportStagingSheetColumnsFor — the sheet materialization', () => 
     assert.equal(byKey.get('status:2'), 'orders-import.qty');
   });
 
-  it('the _fill track stays last however many facts are bound', () => {
+  it('the chrome tail stays put however many facts are bound', () => {
     const columns = csvImportStagingSheetColumnsFor({
       ...ORDERS_IMPORT_PRODUCT_LAYOUT,
       subtitleBindings: [{ fieldId: 'orders-import.customer' }],
       statusBindings: [{ fieldId: 'orders-import.sku' }],
     });
-    assert.equal(columns.at(-1)?.key, '_fill');
+    assert.deepEqual(columns.slice(-2).map((c) => c.key), ['_fill', 'actions']);
   });
 });
 

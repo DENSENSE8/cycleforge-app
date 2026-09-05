@@ -11,6 +11,7 @@ import {
   sqlOrderHasPackScan,
   sqlOrderHasShipConfirm,
   sqlOrderHasTechScan,
+  sqlToShipDeskStage,
 } from '@/lib/orders/order-grain-sql';
 import { liveWorkingSetSql } from '@/lib/orders/exception-membership';
 import { withAuth } from '@/lib/auth/withAuth';
@@ -111,6 +112,20 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
      * Labels (awaitingOnly) and Scan-out history stay on their own routes.
      */
     const inWarehouse        = searchParams.get('inWarehouse') === 'true';
+    /**
+     * blockedOnly=true → out-of-stock work still in the building (Pending desk,
+     * ex-Shortage).
+     *
+     * Deliberately NOT `inWarehouse` plus a flag. That scope requires a
+     * shipment AND a tracking number, and an order is usually flagged out of
+     * stock BEFORE anyone buys a label — so the desk whose entire job is the
+     * blocked queue was asking for a set that structurally excludes most of it,
+     * and painted whatever unrelated labeled row happened to remain (operator
+     * 2026-09-04: "ensure that the out of stock will properly sort and display
+     * under the pending tab"). Live working set, not yet scanned out, blocked:
+     * that is the whole predicate, and the label question does not enter it.
+     */
+    const blockedOnly        = searchParams.get('blockedOnly') === 'true';
     /** stagedOnly=true → packed (PACK event) but not yet dock scan-out (no SHIP_CONFIRM) */
     const stagedOnly         = searchParams.get('stagedOnly') === 'true';
     /** exceptionsOnly=true → only orders whose shipment has an exception or has been stalled (no carrier scan in >stallHours, default 72h) */
@@ -185,6 +200,9 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       pageLimit:          pageLimit ?? '',
       cursor:             cursorRaw || '',
       inWarehouse,
+      // Part of the cache identity, or the Pending desk and To-ship would share
+      // one entry and serve each other's rows.
+      blockedOnly,
       membershipVersion:  'pairing_exception_v1',
       shipmentStatusRuleVersion: 'latest_status_relaxed_v2',
     });
@@ -451,11 +469,18 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         o.status,
         o.notes,
         /*
-         * Row flag + ops-note count. THIRD copy of this projection, because the
-         * outbound queue has three independent order readers (this route,
-         * ORDER_SERIALS_CTE, and getActiveOrders) and a fact added to one does
-         * not reach the others -- this is the live path the Pending grid
-         * actually fetches. Scalar subqueries on o.id add nothing to GROUP BY.
+         * Row flag + ops-note count. SECOND copy of this projection, because the
+         * outbound queue has two independent order readers (this route and
+         * lib/neon/orders-queries.ts ORDER_SERIALS_CTE) and a fact added to
+         * one does not reach the others -- this is the live path the Pending
+         * grid actually fetches. Scalar subqueries on o.id add nothing to
+         * GROUP BY.
+         *
+         * It said THREE, naming getActiveOrders, which no longer exists
+         * anywhere in src (measured 2026-09-02 while building the seller
+         * field catalog). A stale count here is not cosmetic: it is the
+         * constraint every new bindable fact is checked against, and checking
+         * against a reader that is gone would let a one-sided fact through.
          */
         (
           SELECT jsonb_build_object(
@@ -486,6 +511,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         stn.is_terminal,
         ${shippedByCarrierOrLatestStatusSql} AS is_shipped,
         to_char(timezone('America/Los_Angeles', o.created_at), 'YYYY-MM-DD HH24:MI:SS') AS created_at,
+        -- The CHANNEL's purchase instant. Distinct from created_at, which is
+        -- when the row landed HERE: a backfilled or CSV-imported order has an
+        -- import stamp and no order date at all, and the compound DATES cell
+        -- says which of the two it is showing rather than passing one off as
+        -- the other. Selected on BOTH order readers (see orders-queries.ts) --
+        -- a fact on one reader is blank on the other lane with no error.
+        to_char(timezone('America/Los_Angeles', o.order_date), 'YYYY-MM-DD HH24:MI:SS') AS order_date,
         o.tracking_added_at::text AS tracking_added_at,
         o.label_printed_at::text  AS label_printed_at,
         wa_t.assigned_tech_id   AS tester_id,
@@ -680,6 +712,19 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       sql += ` AND NOT ${sqlOrderHasShipConfirm('o')}`;
     }
 
+    if (blockedOnly) {
+      sql += ` AND o.is_out_of_stock IS TRUE`;
+      // Same live-work membership the To-ship scope uses — an unpaired / caged
+      // order is not floor work, blocked or not.
+      sql += ` AND ${liveWorkingSetSql('o')}`;
+      sql += ` AND NOT ${sqlOrderHasShipConfirm('o')}`;
+      sql += ` AND NOT ${shippedByCarrierOrLatestStatusSql}`;
+      // Packed OOS is Scan-out's problem. Without this, a 200-row page could
+      // be mostly packed rows the client then dropped, so the Pending tab
+      // under-filled and "Load more" used the wrong remaining set.
+      sql += ` AND NOT ${sqlOrderHasPackScan('o')}`;
+    }
+
     if (stagedOnly) {
       sql += ` AND EXISTS (
         SELECT 1 FROM station_activity_logs sal_pack
@@ -714,15 +759,10 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
 
     // CF-04 / CF-03: stage facet is order-grain (not any SAL on the shared carton).
+    // Pending = PENDING + BLOCKED (out of stock), matching the tab count.
     // `packed` is only meaningful under inWarehouse (packed-staged still here).
-    if (stageFilter === 'tested') {
-      sql += ` AND ${sqlOrderHasTechScan('o')}`;
-      sql += ` AND NOT ${sqlOrderHasPackScan('o')}`;
-    } else if (stageFilter === 'pending') {
-      sql += ` AND NOT ${sqlOrderHasTechScan('o')}`;
-      sql += ` AND NOT ${sqlOrderHasPackScan('o')}`;
-    } else if (stageFilter === 'packed') {
-      sql += ` AND ${sqlOrderHasPackScan('o')}`;
+    if (stageFilter === 'tested' || stageFilter === 'pending' || stageFilter === 'packed') {
+      sql += ` AND ${sqlToShipDeskStage('o', stageFilter)}`;
     }
 
     if (exceptionsOnly) {

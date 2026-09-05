@@ -4,7 +4,9 @@ import { AnimatePresence, motion } from '@/design-system/motion';
 import { ChevronLeft, ChevronRight } from '@/components/Icons';
 import { WorkOrderInfoChips } from '@/components/work-orders/WorkOrderInfoStrip';
 import { AssignmentOverlayCard } from './AssignmentOverlayCard';
+import { DateRangePickerField } from './DateRangePickerField';
 import { StaffButtonGrid } from '@/components/shipping/StaffButtonGrid';
+import { dateKeyToLocalDate, localDateToDateKey } from '@/utils/date';
 import { assignmentHeaderContextText, type WorkOrderAssignmentCardProps } from './work-order-assignment/work-order-assignment-shared';
 import { useWorkOrderAssignmentCard } from './work-order-assignment/useWorkOrderAssignmentCard';
 
@@ -159,15 +161,16 @@ export function WorkOrderAssignmentCard(props: WorkOrderAssignmentCardProps) {
             <span className="text-role-eyebrow uppercase tracking-[0.22em] text-text-soft">
               Deadline
             </span>
-            <input
-              type="date"
-              value={deadline}
-              onChange={(e) => {
-                const next = e.target.value;
+            {/* One civil day → DateRangePickerField compact (never a native date input). */}
+            <DateRangePickerField
+              variant="compact"
+              value={dateKeyToLocalDate(deadline)}
+              onChange={(day) => {
+                const next = localDateToDateKey(day) ?? '';
                 setDeadline(next);
                 updateCurrentDraft({ deadline: next });
               }}
-              className="rounded-md border border-border-soft bg-surface-card px-2 py-1 text-role-micro text-text-default outline-none transition-colors focus:border-border-emphasis tabular-nums"
+              className="w-auto min-w-[7.5rem]"
             />
           </div>
 

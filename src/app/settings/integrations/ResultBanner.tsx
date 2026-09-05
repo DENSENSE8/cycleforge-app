@@ -33,6 +33,9 @@ const SUCCESS: Record<string, SuccessSpec> = {
   google_drive_connected: {
     message: 'Google Drive connected — photo backups will start automatically.',
   },
+  grok_connected: {
+    message: 'Grok connected — Ask will use your SuperGrok subscription.',
+  },
 };
 
 const ERRORS: Record<string, string> = {
@@ -70,6 +73,8 @@ const ERRORS: Record<string, string> = {
   google_drive_no_refresh_token: 'Google did not return offline access — remove this app at myaccount.google.com/permissions, then reconnect.',
   google_drive_callback_failed: 'Google Drive connection failed — please retry.',
   google_drive_access_denied: 'Google sign-in was cancelled.',
+  grok_device_start_failed: 'Could not start SuperGrok sign-in — retry Connect, or run `grok login` on this machine first.',
+  grok_login_required: 'No SuperGrok session on this machine. Run `grok login`, then Connect again.',
 };
 
 function resolveEbayTokenExchangeMessage(ebayOauthError?: string): string {

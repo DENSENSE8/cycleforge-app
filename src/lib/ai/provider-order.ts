@@ -37,10 +37,10 @@ const DEFAULT_AI_PROVIDER_ORDER: AiProviderOrder = 'local-first';
  * The vault providers that can serve a capability, in each order.
  *
  * `ollama` is the self-hosted/custom OpenAI-compatible slot — the only local
- * one. The cloud three keep their existing relative sequence in both orders, so
- * flipping the preference moves exactly one entry and nothing else.
+ * one. The cloud block keeps its relative sequence in both orders, so flipping
+ * the preference moves exactly one entry (`ollama`) and nothing else.
  */
-const CLOUD_SEQUENCE: readonly IntegrationProvider[] = ['ai_gateway', 'openai', 'anthropic'];
+const CLOUD_SEQUENCE: readonly IntegrationProvider[] = ['grok', 'ai_gateway', 'openai', 'anthropic'];
 const LOCAL_SEQUENCE: readonly IntegrationProvider[] = ['ollama'];
 
 /** Coerce a raw string (UI value or env var) to an order, or null when it is not one. */
@@ -71,13 +71,16 @@ export function resolveAiProviderOrder(input: {
 /**
  * The provider sequence to try, most-preferred first.
  *
- * `anthropic` is dropped for `embed` because it has no embeddings API — the
- * chain must not spend a hop on a provider that cannot serve the capability.
+ * `anthropic` and `grok` are dropped for `embed` — neither subscription/BYOK
+ * chat provider has an embeddings API, so the chain must not spend a hop on
+ * them for embed.
  */
 export function aiProviderSequence(
   order: AiProviderOrder,
   capability: 'chat' | 'embed',
 ): IntegrationProvider[] {
-  const cloud = CLOUD_SEQUENCE.filter((p) => capability === 'chat' || p !== 'anthropic');
+  const cloud = CLOUD_SEQUENCE.filter(
+    (p) => capability === 'chat' || (p !== 'anthropic' && p !== 'grok'),
+  );
   return order === 'local-first' ? [...LOCAL_SEQUENCE, ...cloud] : [...cloud, ...LOCAL_SEQUENCE];
 }

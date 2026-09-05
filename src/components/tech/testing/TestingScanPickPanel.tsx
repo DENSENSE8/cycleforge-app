@@ -17,6 +17,8 @@
  */
 
 import { Button } from '@/design-system/primitives';
+import { ItemRecordQtyBadge } from '@/design-system/components/item-record';
+import { receivingQty } from '@/lib/item-record/receiving-qty';
 import { cornerClass } from '@/design-system/tokens';
 import {
   SerialPreviewStrip,
@@ -72,12 +74,14 @@ export function TestingScanPickPanel({ pick, onPick, onCancel }: Props) {
                 <span className="block truncate text-role-body font-semibold text-text-default">
                   {row.item_name || row.sku || `Line #${row.id}`}
                 </span>
-                <span className="block text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
-                  {row.quantity_received}/{row.quantity_expected ?? '?'} ·{' '}
-                  {row.workflow_status || 'EXPECTED'}
-                  {row.tracking_number
-                    ? ` · TRK …${serialLast8(String(row.tracking_number))}`
-                    : ''}
+                <span className="mt-1 flex items-center gap-2 text-role-eyebrow font-semibold uppercase tracking-widest text-text-soft">
+                  <ItemRecordQtyBadge quantity={receivingQty(row)} />
+                  <span>
+                    {row.workflow_status || 'EXPECTED'}
+                    {row.tracking_number
+                      ? ` · TRK …${serialLast8(String(row.tracking_number))}`
+                      : ''}
+                  </span>
                 </span>
                 {row.serials && row.serials.length > 0 ? (
                   <span className="mt-1.5 flex flex-wrap items-center gap-1">

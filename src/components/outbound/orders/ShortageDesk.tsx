@@ -69,6 +69,17 @@ function ShortageDeskContent({
             selectMode={selectMode}
             railSelection={selectionEnabled}
             onPrimaryPainted={onPrimaryPainted}
+            // The desk IS the out-of-stock queue. It said so in prose and did
+            // not do it: with no lane and no filter this mount painted every
+            // unshipped order, so a packed row could sit on the shortage tab
+            // (operator 2026-09-04). `pending` drops TESTED and anything
+            // already packed; the locked state narrows that to BLOCKED, which
+            // is `orders.is_out_of_stock` through `deriveFulfillmentState`.
+            searchResultLabel="pending orders"
+            clearSearchLabel="Show All Pending Orders"
+            searchEmptyTitle="No pending orders"
+            fulfillmentLane="pending"
+            lockedFulfillmentState="BLOCKED"
           />
         )}
         {showCsvStaging ? null : selectionOverlays}
@@ -84,7 +95,8 @@ export function ShortageDesk({
   onPrimaryPainted?: () => void;
 } = {}) {
   const prefetch = useCallback(
-    (queryClient: QueryClient) => warmActiveView(queryClient, window.location.search),
+    (queryClient: QueryClient) =>
+      warmActiveView(queryClient, window.location.search, { blockedOnly: true }),
     [],
   );
   return (

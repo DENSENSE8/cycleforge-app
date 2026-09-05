@@ -9,6 +9,8 @@
  *
  * Assign: name-click. Roster: All staff trailing on CommandInput; each row
  * carries eligibility switches the host named (Picker, Packer, …).
+ * Numbered assign (left-gutter picker/packer): heading + 1…n badges; empty
+ * search + digit commits. Search auto-focuses.
  */
 
 import { useId, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
@@ -59,6 +61,13 @@ export type AssigneeComboboxPanelProps = {
   listId?: string;
   className?: string;
   onEscape?: () => void;
+  /** Painted above search — e.g. Assign picker. Never a standing keycap. */
+  heading?: string;
+  /**
+   * Trailing 1…n badges on assign rows. Empty search + digit commits that
+   * index (visible order). Search stays auto-focused.
+   */
+  numbered?: boolean;
 };
 
 export function AssigneeComboboxPanel({
@@ -76,6 +85,8 @@ export function AssigneeComboboxPanel({
   listId,
   className,
   onEscape,
+  heading,
+  numbered = false,
 }: AssigneeComboboxPanelProps) {
   const generatedId = useId();
   const commandId = listId ?? generatedId;
@@ -85,16 +96,32 @@ export function AssigneeComboboxPanel({
       event.preventDefault();
       event.stopPropagation();
       onEscape();
+      return;
     }
+    if (!numbered || roster || disabled) return;
+    if (event.metaKey || event.ctrlKey || event.altKey) return;
+    if (query.trim()) return;
+    const idx = Number(event.key) - 1;
+    if (idx < 0 || idx >= rows.length) return;
+    const row = rows[idx];
+    if (!row || row.assignable === false) return;
+    event.preventDefault();
+    event.stopPropagation();
+    onSelect(row);
   };
 
   return (
     <Command
       shouldFilter={false}
-      className={cn('rounded-none bg-surface-card', className)}
+      className={cn('overflow-hidden rounded-none bg-surface-card', className)}
       onKeyDown={onListKeyDown}
       id={commandId}
     >
+      {heading ? (
+        <p className="px-2.5 pt-1.5 pb-0.5 text-role-micro font-semibold text-text-muted">
+          {heading}
+        </p>
+      ) : null}
       <CommandInput
         autoFocus
         value={query}
@@ -135,8 +162,9 @@ export function AssigneeComboboxPanel({
           </CommandEmpty>
         ) : null}
 
-        {rows.map((row) => {
+        {rows.map((row, index) => {
           const canAssignHere = !roster && row.assignable !== false;
+          const hotkey = numbered && !roster ? String(index + 1) : null;
           return (
             <CommandItem
               key={row.id}
@@ -146,10 +174,10 @@ export function AssigneeComboboxPanel({
                 if (canAssignHere) onSelect(row);
               }}
               className={cn(
-                'flex w-full items-center gap-2 px-2.5 py-1.5 text-left',
+                'flex w-full min-w-0 items-center gap-2 px-2.5 py-1.5 text-left',
                 DROPDOWN_ITEM_CORNER,
                 canAssignHere ? 'cursor-pointer' : 'cursor-default',
-                row.selected && !roster ? 'bg-blue-50 text-blue-700' : 'text-text-default',
+                row.selected && !roster ? 'bg-surface-sunken text-text-default' : 'text-text-default',
               )}
             >
               {row.leading}
@@ -177,6 +205,13 @@ export function AssigneeComboboxPanel({
                       />
                     </label>
                   ))}
+                </span>
+              ) : hotkey ? (
+                <span
+                  className="min-w-5 shrink-0 rounded-md bg-surface-sunken px-1.5 text-center text-role-micro font-semibold tabular-nums text-text-muted"
+                  aria-hidden
+                >
+                  {hotkey}
                 </span>
               ) : (
                 <Check

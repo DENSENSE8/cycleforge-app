@@ -13,6 +13,18 @@ export type OrderAssignPayload = {
   testerName?: string | null;
   packerName?: string | null;
   shipByDate?: string | null;
+  /**
+   * Operator-corrected purchase date (`orders.order_date`), committed from the
+   * compound DATES cell. Distinct from `shipByDate` (a deadline, stored as a
+   * work-assignment) — this is what the channel said, and it is a plain column.
+   */
+  orderDate?: string | null;
+  /**
+   * Operator-corrected sale amount (`orders.sale_amount`), committed from the
+   * item cell's under-title line. A typed face (`49.99`, `$1,299`) — the route
+   * normalizes it to the numeric column.
+   */
+  saleAmount?: string | number | null;
   outOfStock?: string | null;
   isOutOfStock?: boolean;
   /** Operator urgent / expedited toggle (orders.is_urgent). */
@@ -62,6 +74,16 @@ function applyOptimisticUpdate(current: unknown, payload: OrderAssignPayload): u
           next.packed_by_name = next.packed_by_name || payload.packerName;
         }
       }
+    }
+    if (payload.orderDate !== undefined) {
+      // Both spellings, like every other field here: the wire row is snake_case
+      // and some cached shapes carry the camel alias.
+      next.order_date = payload.orderDate;
+      next.orderDate = payload.orderDate;
+    }
+    if (payload.saleAmount !== undefined) {
+      next.sale_amount = payload.saleAmount;
+      next.saleAmount = payload.saleAmount;
     }
     if (payload.shipByDate !== undefined) {
       next.ship_by_date = payload.shipByDate;
@@ -170,6 +192,7 @@ export function useOrderAssignment() {
             packerName: payload.packerName,
             orderNumber: payload.orderNumber,
             shipByDate: payload.shipByDate,
+            orderDate: payload.orderDate,
             outOfStock: payload.outOfStock,
             isOutOfStock: payload.isOutOfStock,
             isUrgent: payload.isUrgent,

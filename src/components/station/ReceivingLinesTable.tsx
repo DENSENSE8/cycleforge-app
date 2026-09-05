@@ -68,12 +68,6 @@ import {
   buildReceivingHistoryExportCsv,
   receivingHistoryExportFilename,
 } from '@/lib/receiving/history-export-csv';
-import { IncomingAddWalkHost } from '@/components/receiving/incoming/IncomingAddWalkHost';
-import {
-  parseIncomingIntake,
-  writeIncomingIntake,
-  type IncomingIntakeKind,
-} from '@/lib/inbound/incoming-intake';
 import { DataTable } from '@/components/tables/DataTable';
 
 
@@ -197,17 +191,6 @@ export default function ReceivingLinesTable({
   // Unbox embed still portals into the inspector View cluster.
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const intakeKind = parseIncomingIntake(searchParams.get('intake'));
-  const patchIntake = useCallback(
-    (kind: IncomingIntakeKind | null) => {
-      const params = new URLSearchParams(searchParams.toString());
-      writeIncomingIntake(params, kind);
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname || '/', { scroll: false });
-    },
-    [pathname, router, searchParams],
-  );
-
   const {
     mode,
     isIncomingMode,
@@ -313,9 +296,13 @@ export default function ReceivingLinesTable({
   // Incoming Pipeline: click toggles bulk; double-click / Enter opens the
   // inspector (not carton).
   const incomingClickSelect = isIncomingMode;
-  // Sheets click-select face — Incoming only (History uses split planes).
-  const selectGutterChrome =
-    incomingClickSelect ? ('sheets' as const) : ('always' as const);
+  // One face for every family since 2026-09-04. Incoming used to declare
+  // `'sheets'` — a full-cell wash with a faded check at rest — and the operator
+  // retired both halves of that face in the same pass, leaving the variant with
+  // nothing of its own to paint. The bordered square is the header select-all
+  // everywhere; the ROW gutter's hover-reveal is the compound cell's business
+  // (`CompoundSelect`), not a mount's.
+  const selectGutterChrome = 'always' as const;
 
   /**
    * History's record plane: the durable carton READ page. `receiving_id` is the
@@ -646,7 +633,7 @@ export default function ReceivingLinesTable({
    * makes exactly this call for its own lanes.
    */
   const queryClient = useQueryClient();
-  const handleIncomingCommitNote = useCallback(
+  const _handleIncomingCommitNote = useCallback(
     (row: ReceivingLineRow, next: string) => {
       if (row.id <= 0) return;
       void commitReceivingLineNote({
@@ -742,8 +729,11 @@ export default function ReceivingLinesTable({
   // The effective slot layout (staff ?? org ?? product) materialized into the
   // compound tracks — one document for every receiving rail, because Unbox,
   // History and Testing are the same table read at different moments.
-  const { effectiveLayout: receivingLayout, fields: receivingFields } =
-    useReceivingTableLayout();
+  const {
+    effectiveLayout: receivingLayout,
+    fields: receivingFields,
+    subtitleFieldIds: receivingSubtitleFieldIds,
+  } = useReceivingTableLayout();
   const receivingColumns = useMemo(
     () => receivingCompoundColumnsFor(receivingLayout),
     [receivingLayout],
@@ -751,8 +741,11 @@ export default function ReceivingLinesTable({
 
   // Incoming keeps its OWN document — same compound cells, different question
   // (what the carrier has done, not what the warehouse has done).
-  const { effectiveLayout: incomingLayout, fields: incomingFields } =
-    useIncomingTableLayout();
+  const {
+    effectiveLayout: incomingLayout,
+    fields: incomingFields,
+    subtitleFieldIds: incomingSubtitleFieldIds,
+  } = useIncomingTableLayout();
   const incomingColumns = useMemo(
     () => incomingCompoundColumnsFor(incomingLayout),
     [incomingLayout],
@@ -782,6 +775,7 @@ export default function ReceivingLinesTable({
         filter={isUnboxWorkbench ? receivingChrome.filter : undefined}
         columns={receivingColumns}
         fields={receivingFields}
+        subtitleFieldIds={receivingSubtitleFieldIds}
         filteredGroupedRecords={filteredGroupedRecords}
         serverSorted={mode.serverSorted}
         loading={isLoading && localRows.length === 0}
@@ -841,17 +835,8 @@ export default function ReceivingLinesTable({
   // Check/Import/Add CTA cluster on this tab (Unbox owns Band 1).
   if (embedded) {
     if (isIncomingMode) {
-      if (intakeKind) {
-        return (
-          <IncomingAddWalkHost
-            kind={intakeKind}
-            onKind={(next) => patchIntake(next)}
-            onExit={() => patchIntake(null)}
-          />
-        );
-      }
       return (
-        <>
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           {incomingDegraded ? (
             <div className="p-3">
               <GridDegradedBox onRetry={refetch} />
@@ -890,6 +875,7 @@ export default function ReceivingLinesTable({
                   clickSelect={incomingClickSelect}
                   selectGutterChrome={selectGutterChrome}
                   columns={visible}
+                  subtitleFieldIds={incomingSubtitleFieldIds}
                 />
               )}
               renderRow={(row, stripeIndex, { columns: visible }) => (
@@ -905,11 +891,12 @@ export default function ReceivingLinesTable({
                   clickSelect={incomingClickSelect}
                   selectGutterChrome={selectGutterChrome}
                   columns={visible}
+                  subtitleFieldIds={incomingSubtitleFieldIds}
                 />
               )}
             />
           )}
-        </>
+        </div>
       );
     }
     const portaledToolbar =
@@ -936,18 +923,13 @@ export default function ReceivingLinesTable({
         {
             showReturnsImportStaging ? (
               <IncomingReturnsImportStagingHost />
-            ) : isIncomingMode && intakeKind ? (
-              <IncomingAddWalkHost
-                kind={intakeKind}
-                onKind={(next) => patchIntake(next)}
-                onExit={() => patchIntake(null)}
-              />
             ) : isIncomingMode ? (
-              incomingDegraded ? (
-                <div className="p-3">
-                  <GridDegradedBox onRetry={refetch} />
-                </div>
-              ) : (
+              <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+                {incomingDegraded ? (
+                  <div className="p-3">
+                    <GridDegradedBox onRetry={refetch} />
+                  </div>
+                ) : (
                     <DataTable<ReceivingLineRow, IncomingGridColumnKey, IncomingGridColumn>
                   binding={INCOMING_TABLE_BINDING}
                   search={receivingSearch}
@@ -977,6 +959,7 @@ export default function ReceivingLinesTable({
                       clickSelect={incomingClickSelect}
                       selectGutterChrome={selectGutterChrome}
                       columns={visible}
+                      subtitleFieldIds={incomingSubtitleFieldIds}
                     />
                   )}
                   renderRow={(row, stripeIndex, { columns: visible }) => (
@@ -992,10 +975,12 @@ export default function ReceivingLinesTable({
                       clickSelect={incomingClickSelect}
                       selectGutterChrome={selectGutterChrome}
                       columns={visible}
+                      subtitleFieldIds={incomingSubtitleFieldIds}
                     />
                   )}
                 />
-                  )
+                )}
+              </div>
             ) : (
               receivingGrid()
             )

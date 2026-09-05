@@ -19,6 +19,7 @@ import { GridCellDash, GridPlatformMarkValue } from '@/components/ui/grid-cells'
 import { TableImportTriageStatusCell } from '@/components/tables/import/TableImportTriageStatusCell';
 import { sourcePlatformMeta } from '@/lib/source-platform';
 import { GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
+import type { TableImportRowDecision } from '@/lib/tables/import/types';
 import {
   LedgerGridLeafRow,
   gridCellAlignClass,
@@ -29,6 +30,7 @@ import {
 } from '@/lib/orders/order-import-descriptor';
 import { cn } from '@/utils/_cn';
 import { CSV_IMPORT_STAGING_GRID_CAPABILITIES } from './csv-import-staging-grid-descriptor';
+import { ImportDecisionSquare } from './ImportDecisionSquare';
 import {
   CSV_IMPORT_STAGING_GRID_FROZEN_CELL,
   csvImportStagingGridCell,
@@ -37,9 +39,19 @@ import {
   type CsvImportStagingGridColumn,
 } from './csv-import-staging-grid-layout';
 
-/** Stable row key — the draft index is the row's identity in a session draft. */
-export function csvImportStagingRowKey(row: OrderImportRowView): string {
-  return `staging:${row.index}`;
+/**
+ * Stable row key — the draft's minted id, never the row index.
+ *
+ * A sheet sync splices rows into the MIDDLE of an open board, which renumbers
+ * every row below the seam. Keying on `row.index` remounted all of them, so
+ * the rows that were supposed to visibly make room instead vanished and
+ * re-entered. `TableImportDraft.rowIds` survives the splice.
+ */
+export function csvImportStagingRowKey(
+  row: OrderImportRowView,
+  rowIds: readonly string[],
+): string {
+  return rowIds[row.index] ?? `staging:${row.index}`;
 }
 
 const FIELD_LABEL = new Map(
@@ -55,6 +67,7 @@ function csvImportStagingMissingLabel(row: OrderImportRowView): string | null {
 /** Rose wash for the one cell whose value is why the row cannot be imported. */
 const MISSING_CELL_CLASS = 'bg-rose-50 text-rose-700 ring-1 ring-inset ring-rose-200';
 
+
 interface CsvImportStagingGridRowProps {
   row: OrderImportRowView;
   /** Bulk membership — what Confirm acts on. */
@@ -64,6 +77,18 @@ interface CsvImportStagingGridRowProps {
   onToggle: (index: number) => void;
   onOpen: (index: number) => void;
   columns: readonly CsvImportStagingGridColumn[];
+  /**
+   * This row's operator verdict on a DECISION board. Undefined means undecided;
+   * the whole prop is absent on a file draft, which is what leaves the
+   * `actions` gutter an empty chrome cell there.
+   */
+  decision?: TableImportRowDecision;
+  /**
+   * Present only on a decision board (a `google_sheets`-origin draft). Its
+   * absence is what decides whether the squares paint at all — no second
+   * "isSheetBoard" flag to fall out of sync with the handler.
+   */
+  onDecide?: (index: number, action: 'approve' | 'reject') => void;
 }
 
 export const CsvImportStagingGridRow = memo(function CsvImportStagingGridRow({
@@ -73,27 +98,10 @@ export const CsvImportStagingGridRow = memo(function CsvImportStagingGridRow({
   onToggle,
   onOpen,
   columns,
+  decision,
+  onDecide,
 }: CsvImportStagingGridRowProps) {
   const missingLabel = csvImportStagingMissingLabel(row);
-  const cellValue = (key: string): string => {
-    switch (key) {
-      case 'orders-import.order':
-        return row.orderNumber;
-      case 'orders-import.sku':
-        return row.sku;
-      case 'orders-import.qty':
-        return row.quantity;
-      case 'orders-import.customer':
-        return row.customerName;
-      case 'orders-import.tracking':
-        return row.trackingNumber;
-      case 'orders-import.platform':
-        return row.platform;
-      default:
-        return '';
-    }
-  };
-
   const renderValue = (key: string) => {
     switch (key) {
       case 'orders-import.order':
@@ -171,6 +179,42 @@ export const CsvImportStagingGridRow = memo(function CsvImportStagingGridRow({
                 onToggle={() => onToggle(row.index)}
                 label={`Select staging row ${row.index + 1}`}
               />
+            </div>
+          );
+        }
+
+        if (col.key === 'actions') {
+          return (
+            <div
+              className={cn(
+                csvImportStagingGridCell({ inset: 'none', rule: false }),
+                'justify-end',
+              )}
+            >
+              {onDecide ? (
+                <>
+                  <ImportDecisionSquare
+                    tone="approve"
+                    active={decision === 'approved'}
+                    label={
+                      decision === 'approved'
+                        ? `Unapprove order ${row.orderNumber || row.index + 1}`
+                        : `Approve order ${row.orderNumber || row.index + 1}`
+                    }
+                    onPress={() => onDecide(row.index, 'approve')}
+                  />
+                  <ImportDecisionSquare
+                    tone="reject"
+                    active={decision === 'rejected'}
+                    label={
+                      decision === 'rejected'
+                        ? `Un-reject order ${row.orderNumber || row.index + 1}`
+                        : `Reject order ${row.orderNumber || row.index + 1}`
+                    }
+                    onPress={() => onDecide(row.index, 'reject')}
+                  />
+                </>
+              ) : null}
             </div>
           );
         }

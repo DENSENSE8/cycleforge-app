@@ -8,9 +8,10 @@
  *   124 timeout (Cursor stop fail-opens; Hermes records unmeasured)
  *   75  infra missing (Cursor fail-open; Hermes fail)
  *
- * Always runs cursor-eval --fast. Scoped slot-table / eval:station when dirty
- * paths match (same rules as the former stop-eval-gate body). Hermes sets
- * LOOP_RUN_ID so a clean worktree still runs verify:fast (no chat dirty-skip).
+ * Always runs cursor-eval --fast. Scoped cohort / station evals when dirty
+ * paths match the prompt router. `--skip-verify` skips tsc/lint only —
+ * tripwires still run. Hermes sets LOOP_RUN_ID so a clean worktree still
+ * runs verify:fast (no chat dirty-skip).
  *
  *   node tools/eval-ledger/machine-gate.mjs
  *   node tools/eval-ledger/machine-gate.mjs --dry-fail
@@ -53,6 +54,7 @@ export const CYCLEFORGE_REPAIR_LAW = [
   "Do not invent Operator verdict.",
   "Allowed: fix SLOT_TABLE_ENGINE_CONTRACT / DataTableFilterMenu always-mounted / KEEP rows.",
   "Forbidden: FilterRefinementBar, hunt tiles, screenshot baselines as a resume reason.",
+  "Forbidden: a new *GridRow / *_GRID_COLUMNS / *_SHEET_COLUMNS. To-ship sheet sync mounts UnshippedTable.",
   PERF_REPAIR_LAW,
 ].join(" ");
 

@@ -174,12 +174,17 @@ describe('scan-station depth tokens', () => {
     assert.doesNotMatch(src, /DETAIL_STACK_PUSH_COLUMN_CLASS/);
   });
 
-  it('identity chrome seam is border-subtle, not hairline', () => {
+  it('identity chrome seam is the subtle value, not hairline', () => {
     const src = readFileSync(
       'src/components/station/entity-context/station-identity-chrome.ts',
       'utf8',
     );
-    assert.match(src, /after:bg-border-subtle/);
+    // `border-soft` IS `var(--ds-color-border-subtle)` in tailwind.config.mjs.
+    // The previous assertion pinned `after:bg-border-subtle`, a key that does
+    // not exist in the theme, so the seam compiled to no CSS and this test
+    // still passed. Pin the class that renders; the intent (subtle, not the
+    // near-invisible hairline) is unchanged.
+    assert.match(src, /after:bg-border-soft/);
     assert.doesNotMatch(src, /after:bg-border-hairline/);
   });
 });

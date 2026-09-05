@@ -11,9 +11,15 @@ import {
   extendTo,
   selectAll,
   selectOnlyAt,
+  setMany,
   toggleAt,
   type SelectionAnchorState,
 } from '@/lib/selection/selection-anchor';
+import { suppressTableKey } from '@/lib/keyboard/table-key-layer';
+import {
+  releaseLiveSelection,
+  setLiveSelectionCount,
+} from '@/lib/selection/selection-liveness';
 
 /**
  * Table-side wiring for always-on multi-select (left-gutter checkboxes → act),
@@ -66,6 +72,8 @@ export function useTableSelectMode<T>({
   selectEvery: () => void;
   /** Drop every checked row (the rail's close / the header's Clear). */
   clear: () => void;
+  /** Check or uncheck a named set (order-parent checkbox) without replacing the rest. */
+  setMany: (ids: readonly number[], checked: boolean) => void;
   isSelected: (id: number) => boolean;
 } {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
@@ -138,6 +146,13 @@ export function useTableSelectMode<T>({
     applyAnchor((state) => clearSelection(state));
   }, [applyAnchor]);
 
+  const setManyIds = useCallback(
+    (ids: readonly number[], checked: boolean) => {
+      applyAnchor((state) => setMany(state, ids, checked));
+    },
+    [applyAnchor],
+  );
+
   const isSelected = useCallback((id: number) => selectedIds.has(id), [selectedIds]);
 
   // Broadcast the resolved selected rows whenever the checked set changes.
@@ -172,11 +187,82 @@ export function useTableSelectMode<T>({
     });
   }, [scope]);
 
+  /**
+   * ⌘A / Ctrl+A → select every visible row. Escape → clear.
+   *
+   * ## Why here and not on a page
+   *
+   * `selectEvery` shipped with "⌘A" written in its docblock and **zero
+   * callers** — the capability existed, the gesture did not, on every selectable
+   * table in the product. `clear` was the same: reachable from the header's
+   * Clear and the rail's close, never from the key an operator's hands already
+   * know. Binding them on the shared hook is the only way the two gestures mean
+   * the same thing on Orders, Repair, Receiving and everything that opts in
+   * later; a per-page binding is how they would drift.
+   *
+   * ## The guards are the house suppressor, not hand-rolled
+   *
+   * `suppressTableKey` drops the binding when the operator is typing, when an
+   * overlay is open (an overlay owns Escape — that is the whole reason `layer`
+   * exists), when a wedge scanner is armed, and when the layer does not own
+   * focus. Hand-copying those four checks is what the module was extracted to
+   * stop.
+   *
+   * `ownsFocus: true` is the same deliberate claim the selection status bar
+   * makes: this layer scopes itself by a SELECTION existing rather than by
+   * focus. Neither key is a bare printable character, so neither is reachable
+   * by a scanner.
+   *
+   * Escape does nothing when nothing is checked, so it still reaches whatever
+   * else wanted it. ⌘A calls `preventDefault` — otherwise the browser also
+   * selects the page's text under the rows, which is the exact gesture the
+   * operator was trying not to make.
+   */
+  useEffect(() => {
+    if (!selectMode) return;
+
+    const onKey = (e: KeyboardEvent) => {
+      const isSelectAll = (e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === 'a';
+      const isClear = e.key === 'Escape' && !e.metaKey && !e.ctrlKey && !e.altKey;
+      if (!isSelectAll && !isClear) return;
+      if (suppressTableKey(e, { layer: 'table', ownsFocus: true })) return;
+
+      if (isSelectAll) {
+        if (rowsRef.current.length === 0) return;
+        e.preventDefault();
+        selectEvery();
+        return;
+      }
+      // Nothing checked → this Escape is not ours. Let it through.
+      if (selectedIds.size === 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      clear();
+    };
+
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [selectMode, selectEvery, clear, selectedIds.size]);
+
+  /**
+   * Publish "this scope has rows checked" for Escape precedence.
+   *
+   * Not the rows and not for rendering — one boolean's worth, read by
+   * `useRecordCursorKeyboard` so the record plane yields Escape to a live
+   * selection instead of consuming it. See `selection-liveness.ts`.
+   */
+  useEffect(() => {
+    setLiveSelectionCount(scope, selectMode ? selectedIds.size : 0);
+  }, [scope, selectMode, selectedIds]);
+
+  // A table that unmounts must not leave a phantom selection holding Escape.
+  useEffect(() => () => releaseLiveSelection(scope), [scope]);
+
   // Publish the selectable total so the action bar's select-all ring can fill.
   // Zero outside select mode so a stale "all selected" never lingers.
   useEffect(() => {
     emitSelectionTotal(scope, selectMode ? rows.length : 0);
   }, [scope, selectMode, rows.length]);
 
-  return { selectedIds, toggle, selectOnly, selectEvery, clear, isSelected };
+  return { selectedIds, toggle, selectOnly, selectEvery, clear, setMany: setManyIds, isSelected };
 }

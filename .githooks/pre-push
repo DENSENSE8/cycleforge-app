@@ -5,9 +5,11 @@
 #   push to `main`  → `npm run verify`         (full CI mirror)
 #   any other ref   → `npm run verify:dogfood` (tenant click-through slice)
 #
-# CI on GitHub still runs the full gate on every PR / push to main. Dogfood
-# is the laptop tax for iterating on a branch; it is not a substitute for
-# "done" (agents still run full verify before finishing).
+# There is NO CI on GitHub — the workflows were removed in 2f6dcd784, so this
+# hook IS the gate for main until the self-hosted runner lands
+# (docs/todo/self-hosted-ci-and-fork-teardown-PLAN.md §3). Dogfood is the
+# laptop tax for iterating on a branch; it is not a substitute for "done"
+# (agents still run full verify before finishing).
 #
 # Wired up automatically by `npm install` (package.json "prepare" sets
 # core.hooksPath to .githooks). To wire it up by hand:

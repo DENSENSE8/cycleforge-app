@@ -11,12 +11,13 @@
  * with Page + Pins).
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { AnchoredLayer, IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { History } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
+import { useHoverSurface } from '@/hooks/useHoverSurface';
 import { useOrgNavItems } from '@/hooks/useOrgNavItems';
 import { prefetchNavData } from '@/lib/nav/nav-data-prefetch';
 import {
@@ -64,7 +65,13 @@ export function HeaderRecentsSwitcher() {
   const { session: _silentSession, recent: _silentRecent, loadRecent } =
     useSilentScanSession();
   const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
+  // One nav overlay at a time: this popover claims the same single-flight slot
+  // as the collapsed-spine hover peek (`master-nav-spine-peek`), so opening
+  // Recents evicts the peek and peeking evicts Recents. Click-driven, so only
+  // open/close are used — no hover triggerProps.
+  const { isOpen: open, open: openRecents, close: closeRecents } = useHoverSurface({
+    id: 'header-recents-switcher',
+  });
   const wrapRef = useRef<HTMLDivElement>(null);
 
   // Header is always-visible chrome — keep MRU fresh even when the spine is
@@ -128,10 +135,10 @@ export function HeaderRecentsSwitcher() {
 
   const select = useCallback(
     (entry: (typeof entries)[number]) => {
-      setOpen(false);
+      closeRecents();
       navigate(entry.pageId, entry.childId ?? undefined);
     },
-    [navigate],
+    [closeRecents, navigate],
   );
 
   return (
@@ -142,7 +149,7 @@ export function HeaderRecentsSwitcher() {
           ariaLabel="More recent"
           aria-expanded={open}
           aria-haspopup="menu"
-          onClick={() => setOpen((o) => !o)}
+          onClick={() => (open ? closeRecents() : openRecents())}
           className={cn(HEADER_ICON_BTN_CLASS, open && HEADER_ICON_BTN_OPEN_CLASS)}
           icon={<History className={TOP_CHROME_ICON_FACE} />}
         />
@@ -150,7 +157,7 @@ export function HeaderRecentsSwitcher() {
 
       <AnchoredLayer
         open={open}
-        onClose={() => setOpen(false)}
+        onClose={closeRecents}
         anchorRef={wrapRef}
         placement="bottom-start"
         gap={0}

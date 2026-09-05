@@ -106,6 +106,20 @@ const TABLE_ENTITY_FAMILIES = [
   'tracking-exceptions',
   'unfound',
   'bins',
+  /**
+   * Inventory › Ledger activity feed. Its own family, never `inventory-units`:
+   * a unit is a THING and an event is something that HAPPENED to one, so the
+   * two share neither a row shape nor a prefs bucket.
+   */
+  'inventory-events',
+  /** Audit log entries — `/settings/audit`, off `AdminTable` 2026-09-05. */
+  'audit-log',
+  /** Settings / admin surfaces off `AdminTable` 2026-09-05. */
+  'auth-sessions',
+  'kiosk-devices',
+  'staff-directory',
+  'ai-usage',
+  'compatibility',
   'my-day',
   'tech-all',
   // Home → Daily shift checklist.
@@ -115,6 +129,10 @@ const TABLE_ENTITY_FAMILIES = [
   'tasks',
   /** Reports › Sessions: org-wide staff × warehouse-day, not Daily. */
   'sessions',
+  /** Reports › SKU velocity (30d movement ranking). */
+  'sku-velocity',
+  /** Reports › Dead stock (90d+ dormancy ranking). */
+  'dead-stock',
   'catalog-link',
   /**
    * Review → Missing item number. Sibling of `catalog-link`, never a merge:
@@ -163,12 +181,13 @@ export const tableDefinitionColumnSchema = z.strictObject({
    *
    * The compound chrome tracks `select` and `_fill` declare `gridLabel: ''` on
    * purpose: they are a 48px checkmark square and a slack track, and
-   * `COMPOUND_TRACKS` documents each one. `thumb` is the exception — it keeps
-   * the word `Image` via `headerForceLabel`. So `''` means *print nothing
-   * here*, which is a different instruction from `undefined` (*not specified —
-   * fall back to `label`*). A `.min(1)` here rejected the empty string and
-   * took the whole Orders desk down with a Zod throw at module load, because
-   * select (the first column of every compound table) still carries it.
+   * `COMPOUND_TRACKS` documents each one. `thumb` keeps `gridLabel: 'Image'`
+   * for AT / hover; the painted header is the Image type glyph (never the
+   * word, never a missing column on a tab). So `''` means *print nothing here*, which is a
+   * different instruction from `undefined` (*not specified — fall back to
+   * `label`*). A `.min(1)` here rejected the empty string and took the whole
+   * Orders desk down with a Zod throw at module load, because select (the
+   * first column of every compound table) still carries it.
    *
    * If blank-label authoring ever needs policing, the rule is "`label` must not
    * be blank" — which the line above already enforces — not this one.
@@ -176,12 +195,12 @@ export const tableDefinitionColumnSchema = z.strictObject({
   gridLabel: z.string().optional(),
   labelFitRem: z.number().positive().optional(),
   headerGlyphOnly: z.boolean().optional(),
-  /** Always paint the header word, even in a track narrower than the fit floor. */
+  /** Prefer the header word (skip the labelFitRem floor). Never clip: if the letters do not fit, degrade to the type glyph. */
   headerForceLabel: z.boolean().optional(),
   type: z.enum(COLUMN_TYPE_VALUES).optional(),
   dateFace: z.enum(DATE_COLUMN_FACE_VALUES).optional(),
   minTrackRem: z.number().positive().optional(),
-  align: z.enum(['start', 'end']).optional(),
+  align: z.enum(['start', 'end', 'center']).optional(),
   resizable: z.boolean().optional(),
   omitCellIcon: z.boolean().optional(),
   frozen: z.boolean().optional(),

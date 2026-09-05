@@ -153,7 +153,17 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
               },
               retailLines,
               services,
-              priorOrder: null,
+              // The order the Exchange pane got the SERVER to confirm against
+              // this same phone — never the number typed into the field, which
+              // proves nothing on its own. Null for every other visit, which is
+              // what this used to be unconditionally: the tablet had an order
+              // field whose value was dropped at submit.
+              priorOrder: session.exchangeConfirmedRef
+                ? {
+                    orderNumber: session.exchangeConfirmedRef,
+                    phone: session.customerPhone,
+                  }
+                : null,
               ticketWork: services.length > 0 ? { mode: 'create' } : { mode: 'none' },
             },
             opts,

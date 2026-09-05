@@ -8,6 +8,11 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
  * Warranty ↔ Zendesk data layer for the ticket popover. Comments and ticket
  * status are fetched live from Zendesk on open (read-time sync — Zendesk is
  * the conversation's source of truth, we only persist the id mapping).
+ *
+ * Replies are NOT posted from here. The popover mounts `TicketComposer`, whose
+ * send goes through the one helpdesk chokepoint (`/api/zendesk/photo-ticket`);
+ * that route echoes the reply onto the linked claim's timeline. The claim-scoped
+ * `POST …/zendesk/comments` route stays for API callers.
  */
 
 export interface WarrantyTicketInfo {
@@ -136,21 +141,6 @@ export function useWarrantyZendeskMutations(claimId: number) {
     onSuccess: invalidate,
   });
 
-  /** Post a reply (public) or internal note to the linked ticket. */
-  const reply = useMutation({
-    mutationFn: async ({ body, isPublic }: { body: string; isPublic: boolean }) => {
-      const res = await fetch(`/api/warranty/claims/${claimId}/zendesk/comments`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body, public: isPublic, idempotencyKey: safeRandomUUID() }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok || !json?.ok) throw new Error(json?.error || `request failed (${res.status})`);
-      return json as { ticketId: number; ticketStatus: string };
-    },
-    onSuccess: invalidate,
-  });
-
   /** Link an EXISTING Zendesk ticket to this claim (recent-list pick OR typed #id). */
   const linkExisting = useMutation({
     mutationFn: async (ticketId: number): Promise<{ ticketId: number; ticketUrl: string | null }> => {
@@ -180,5 +170,6 @@ export function useWarrantyZendeskMutations(claimId: number) {
     onSuccess: invalidate,
   });
 
-  return { createTicket, reply, linkExisting, unlink };
+  /** `invalidate` is the composer's `onSent` — refetch the merged thread after a reply. */
+  return { createTicket, linkExisting, unlink, invalidate };
 }

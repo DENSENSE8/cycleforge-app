@@ -12,7 +12,9 @@ import {
   User,
   Tag,
   Pencil,
+  Sparkles,
 } from '@/components/Icons';
+import { Button } from '@/design-system/primitives';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
 import {
@@ -247,7 +249,7 @@ export function LineNotesCard({
   onProgressClick?: () => void;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [savedFlash, setSavedFlash] = useState(false);
+  const [_savedFlash, setSavedFlash] = useState(false);
   const [statusOpen, setStatusOpen] = useState(false);
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { user, has, isLoaded } = useAuth();
@@ -709,6 +711,9 @@ export function LineNotesCard({
         ticketDraft={claim.isClaim ? claim.body : ticketDraft}
         onTicketDraftChange={claim.isClaim ? claim.setBody : setTicketDraft}
         onTicketCommit={claim.isClaim ? claim.file : handleTicketCommit}
+        ticketCommitLabel={
+          claim.isClaim && claim.mode === 'link' ? 'Link ticket' : undefined
+        }
         ticketCommitDisabled={
           claim.isClaim
             ? !canPostTicket || !claim.canFile
@@ -719,36 +724,50 @@ export function LineNotesCard({
               ticketDraft.trim().length === 0
         }
         ticketDrillNodes={ticketDrillNodes}
-        ticketHeaderEnd={
-          claim.isClaim || showSellerAccessory ? (
-            <ComposerAccessoryCluster
-              face={claimAccessory}
-              onFaceChange={(next) => {
-                if (next === 'link') claim.setMode('link');
-                setClaimAccessory(next);
-              }}
-              showClaim={claim.isClaim}
-              showLink={claim.isClaim}
-              showSeller={showSellerAccessory}
-            />
-          ) : undefined
-        }
         ticketAccessory={
           claimAccessory && (claim.isClaim || showSellerAccessory) ? (
             <ComposerAccessoryStage
               caption={composerAccessoryCaption(claimAccessory, claim)}
               cycling={claim.loading || claim.sellerLoading}
-              onDismiss={() => setClaimAccessory(null)}
+              tone={
+                claimAccessory === 'draft' && claim.draftDegraded ? 'warning' : 'context'
+              }
+              onDismiss={() => {
+                setClaimAccessory(null);
+                if (claim.mode === 'link') claim.setMode('create');
+              }}
             >
               <ComposerClaimInset claim={claim} face={claimAccessory} />
             </ComposerAccessoryStage>
           ) : null
         }
+        // Tools ride the bottom action bar beside Internal|Public — never a
+        // float in the field's top-right. Absolutely positioned there the
+        // cluster overhung its own `pr-10` reserve, so body text ran under the
+        // trailing glyph and the block read as chrome sitting ON the composer.
         ticketFooterStart={
-          <ComposerTicketChannelToggle
-            isPublic={ticketPublic}
-            onIsPublicChange={setTicketPublic}
-          />
+          <>
+            <ComposerTicketChannelToggle
+              isPublic={ticketPublic}
+              onIsPublicChange={setTicketPublic}
+            />
+            {claim.isClaim || showSellerAccessory ? (
+              <ComposerAccessoryCluster
+                face={claimAccessory}
+                onFaceChange={(next) => {
+                  if (next === 'link') claim.setMode('link');
+                  else if (next === 'claim' || next === 'draft' || next == null)
+                    claim.setMode('create');
+                  setClaimAccessory(next);
+                }}
+                showClaim={claim.isClaim}
+                showLink={claim.isClaim}
+                showDraft={claim.isClaim}
+                draftDegraded={claim.draftDegraded}
+                showSeller={showSellerAccessory}
+              />
+            ) : null}
+          </>
         }
         ticketInsetTop={
           <ComposerTicketInsetChrome
@@ -770,14 +789,32 @@ export function LineNotesCard({
             />
         }
         locationAction={
-          <UnboxNotesLocationControl
-            lineId={lineId}
-            currentLocationId={statusStamps?.staged_location_id}
-            currentLocationName={statusStamps?.staged_location_name}
-            currentLocationBarcode={statusStamps?.staged_location_barcode}
-            currentLocationRoom={statusStamps?.staged_location_room}
-            onOpenLocations={onOpenLocations}
-          />
+          <div className="flex items-center gap-1">
+            {claim.isClaim ? (
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                radius="composer"
+                onClick={() => claim.redraft()}
+                disabled={claim.loading || claim.filing}
+                loading={claim.loading}
+                icon={<Sparkles className="h-3.5 w-3.5" />}
+                data-testid="composer-ai-draft-cta"
+                ariaLabel="AI draft ticket body with Hermes"
+              >
+                {claim.loading ? 'Drafting…' : 'AI draft'}
+              </Button>
+            ) : null}
+            <UnboxNotesLocationControl
+              lineId={lineId}
+              currentLocationId={statusStamps?.staged_location_id}
+              currentLocationName={statusStamps?.staged_location_name}
+              currentLocationBarcode={statusStamps?.staged_location_barcode}
+              currentLocationRoom={statusStamps?.staged_location_room}
+              onOpenLocations={onOpenLocations}
+            />
+          </div>
         }
         trailingAction={trailingAction}
         chrome={chrome}

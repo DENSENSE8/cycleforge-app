@@ -12,8 +12,10 @@ import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   AnimatePresence,
+  idleBrowseLayerProps,
   motion,
   motionRole,
+  overlayPaneStyle,
   useMotionRole,
   useOverlaySwapHardCut,
 } from '@/design-system/motion';
@@ -23,7 +25,6 @@ import { ScanOutComposerDock } from '@/components/outbound/scan-out/ScanOutCompo
 import { useScanOutActivePane } from '@/components/outbound/scan-out/useScanOutStation';
 import { dispatchScanOutActive } from '@/components/outbound/scan-out/scan-out-active';
 import { bustScanOutCaches } from '@/lib/outbound/outbound-cache-keys';
-import { zIndex } from '@/design-system/tokens/z-index';
 import { appWorkCanvasClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
@@ -69,13 +70,10 @@ export function ScanOutWorkspace() {
       <div className="relative flex h-full min-w-0 flex-1 flex-col overflow-hidden bg-surface-card">
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface-card">
           <div
-            className={cn(
+            {...idleBrowseLayerProps(
+              showFocused,
               'flex h-full min-h-0 w-full flex-col bg-surface-card',
-              showFocused ? 'pointer-events-none' : '',
             )}
-            aria-hidden={showFocused ? true : undefined}
-            inert={showFocused ? true : undefined}
-            style={{ visibility: showFocused ? 'hidden' : 'visible' }}
           >
             <ScanOutIdleAwait listenDisplays={!showFocused} />
           </div>
@@ -88,7 +86,7 @@ export function ScanOutWorkspace() {
                 animate={panePresence.animate}
                 exit={panePresence.exit}
                 transition={paneTransition}
-                style={{ zIndex: zIndex.panel + (entitySwapHardCut ? 1 : 0) }}
+                style={overlayPaneStyle(entitySwapHardCut)}
                 className="absolute inset-0 flex min-h-0 flex-col bg-surface-card"
               >
                 <ScanOutActivePanel

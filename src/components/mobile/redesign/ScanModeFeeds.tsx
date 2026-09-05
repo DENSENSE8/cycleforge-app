@@ -31,67 +31,17 @@ import { receivingRailQueryKey } from '@/lib/receiving/rail/rail-query-key';
  */
 
 // ── shared mappers ──────────────────────────────────────────────────────────
-
-function receivingStatusLabel(row: ReceivingLineRow): string {
-  const ws = String(row.workflow_status ?? '').toUpperCase();
-  if (ws === 'ARRIVED') return 'Scanned';
-  if (ws === 'RECEIVED') return 'Received';
-  if (ws === 'EXPECTED') return 'Expected';
-  if (!ws) return 'Scanned';
-  return ws.charAt(0) + ws.slice(1).toLowerCase();
-}
-
-function receivingState(row: ReceivingLineRow): ScanFeedItem['state'] {
-  if (row.receiving_source === 'unmatched') return 'warn';
-  const full =
-    row.quantity_expected != null &&
-    row.quantity_expected > 0 &&
-    row.quantity_received >= row.quantity_expected;
-  return full ? 'ok' : 'warn';
-}
-
-function testingStatusLabel(row: ReceivingLineRow): string {
-  const ws = String(row.workflow_status ?? '').toUpperCase();
-  if (ws.startsWith('PASS') || ws === 'DONE') return 'Pass';
-  if (ws.startsWith('FAIL') || ws.startsWith('SCRAP') || ws.startsWith('RTV')) return 'Failed';
-  if (ws.startsWith('TEST')) return 'Testing';
-  return ws ? ws.charAt(0) + ws.slice(1).toLowerCase() : 'Tested';
-}
-
-function testingState(row: ReceivingLineRow): ScanFeedItem['state'] {
-  const ws = String(row.workflow_status ?? '').toUpperCase();
-  if (ws.startsWith('FAIL') || ws.startsWith('SCRAP') || ws.startsWith('RTV')) return 'error';
-  if (ws.startsWith('TEST')) return 'warn';
-  return 'ok';
-}
-
-/** Line-level verdict from workflow_status — fallback for per-serial badges when
- *  the serial's own status doesn't carry a verdict. */
-function lineVerdict(row: ReceivingLineRow): TestingVerdict | null {
-  const v = String(row.workflow_status || '').trim().toUpperCase();
-  if (v.startsWith('PASS') || v === 'DONE') return 'PASS';
-  if (v.startsWith('FAIL') || v.startsWith('SCRAP') || v.startsWith('RTV') || v.startsWith('HOLD')) return 'TESTING_FAILED';
-  if (v.startsWith('TEST') || v === 'IN_TEST') return 'TEST_AGAIN';
-  return null;
-}
-
-function lineToScanItem(
-  row: ReceivingLineRow,
-  opts: { statusLabel: string; state: ScanFeedItem['state']; meta?: string | null },
-): ScanFeedItem {
-  const whenIso = row.last_activity_at ?? row.created_at ?? null;
-  return {
-    id: `line-${row.id}`,
-    primary: row.sku ?? row.tracking_number ?? String(row.id),
-    title: row.item_name ?? row.sku ?? 'Item',
-    subtitle: row.sku ?? null,
-    at: whenIso ? new Date(whenIso) : new Date(),
-    state: opts.state,
-    statusLabel: opts.statusLabel,
-    meta: opts.meta ?? null,
-    href: row.receiving_id ? `/m/r/${row.receiving_id}` : null,
-  };
-}
+// Moved to `scan-feed-items.ts` (pure module) so the /m/scan paint seed
+// (`seedMobileScanPrioritize`) maps rows through the SAME pipeline as the
+// queryFns below — one implementation, no drift.
+import {
+  SCAN_PRIORITIZE_QUERY_KEY,
+  lineToScanItem,
+  lineVerdict,
+  mapPrioritizeRows,
+  testingState,
+  testingStatusLabel,
+} from '@/components/mobile/redesign/scan-feed-items';
 
 // ── shared list shell ───────────────────────────────────────────────────────
 
@@ -105,9 +55,24 @@ function FeedList({
   empty: string;
 }) {
   if (isLoading && items.length === 0) {
+    // No spinner (operator ruling 2026-08-27): static skeleton rows that hold
+    // roughly the feed row's geometry, pulsing only inside a Band 2 region.
+    //
+    // Enough rows to FILL a phone screen, not three (2026-09-02). Three bars
+    // paint instantly but are smaller than the feed that replaces them, so the
+    // largest contentful element still waited on hydrate + fetch and Lantern
+    // charged LCP the whole chain — /m/scan measured 7572ms simulated, Perf 64,
+    // against /m/unbox's 2169ms. A stand-in only helps if it is the thing LCP
+    // resolves against.
     return (
-      <div className="flex items-center justify-center py-12 text-text-faint">
-        <Loader2 className="h-6 w-6 animate-spin" />
+      <div aria-busy="true" role="status" aria-label="Loading feed">
+        {Array.from({ length: 10 }, (_, i) => (
+          <div key={i} className="flex items-center gap-3 border-b border-border-hairline px-3 py-3" aria-hidden>
+            <div className="cf-skeleton-block h-2.5 w-1/4 rounded-none bg-surface-strong" />
+            <div className="cf-skeleton-block h-2.5 w-2/5 rounded-none bg-surface-strong" />
+            <div className="cf-skeleton-block ml-auto h-2.5 w-12 rounded-none bg-surface-strong" />
+          </div>
+        ))}
       </div>
     );
   }
@@ -151,7 +116,7 @@ export function ReceivingTriagePanel() {
   // Prioritize — door-scanned cartons awaiting unbox, priority-sorted. Same
   // endpoint + key as the desktop ReceivingScannedRail.
   const prioritize = useQuery<ScanFeedItem[]>({
-    queryKey: ['receiving-lines-table', 'rail', 'scanned', 'triage', 'priority', ''],
+    queryKey: [...SCAN_PRIORITIZE_QUERY_KEY],
     queryFn: async () => {
       // No `include=serials`. Nothing this panel renders reads a serial —
       // `lineToScanItem` uses sku / item_name / tracking / quantities, and the
@@ -164,15 +129,7 @@ export function ReceivingTriagePanel() {
       );
       if (!res.ok) throw new Error('fetch failed');
       const data = (await res.json()) as { receiving_lines?: ReceivingLineRow[] };
-      return (data.receiving_lines ?? [])
-        .filter((r) => r.receiving_source !== 'unmatched')
-        .map((r) =>
-          lineToScanItem(r, {
-            statusLabel: receivingStatusLabel(r),
-            state: receivingState(r),
-            meta: `${r.quantity_received}/${r.quantity_expected ?? '?'}`,
-          }),
-        );
+      return mapPrioritizeRows(data.receiving_lines ?? []);
     },
     staleTime: 15_000,
     enabled: view === 'found',

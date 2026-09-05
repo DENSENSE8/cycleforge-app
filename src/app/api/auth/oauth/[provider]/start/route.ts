@@ -1,5 +1,5 @@
 /**
- * GET /api/auth/oauth/[provider]/start  (PUBLIC)  — provider ∈ google | microsoft
+ * GET /api/auth/oauth/[provider]/start  (PUBLIC)  — provider ∈ google | apple | microsoft
  *
  * Begins platform social login. Sets a short-lived httpOnly state cookie
  * (PKCE verifier + CSRF state + nonce + workspace slug + the "Keep me signed
@@ -39,7 +39,7 @@ function fail(req: NextRequest, code: string): NextResponse {
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
   const { provider } = await params;
-  if (provider !== 'google' && provider !== 'microsoft') return fail(req, 'oauth_unknown_provider');
+  if (provider !== 'google' && provider !== 'apple' && provider !== 'microsoft') return fail(req, 'oauth_unknown_provider');
 
   const rl = await checkRateLimitAsync({
     headers: req.headers,
@@ -68,6 +68,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   authUrl.searchParams.set('code_challenge', challenge);
   authUrl.searchParams.set('code_challenge_method', 'S256');
   authUrl.searchParams.set('prompt', 'select_account');
+  if (provider === 'apple') authUrl.searchParams.set('response_mode', 'query');
 
   const res = NextResponse.redirect(authUrl.toString());
   res.cookies.set(OAUTH_STATE_COOKIE, encodeOAuthState(payload), {

@@ -17,10 +17,12 @@ import {
   type CompoundRowView,
   type CompoundStateTone,
 } from '@/components/tables/compound/compound-row-model';
+import { ordersNextStep } from '@/lib/orders/orders-next-step';
 import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
 import type { ShippedOrder } from '@/types/orders';
 import { formatCurrency } from '@/utils/_number';
 import {
+  formatDateKeyMedium,
   formatDateKeyShort,
   formatMonthDayTimePST,
   getCurrentPSTDateKey,
@@ -46,7 +48,16 @@ export function ordersStateTone(stateLabel: string | null | undefined): Compound
   if (s.includes('BLOCK') || s.includes('OUT OF STOCK') || s.includes('EXCEPTION') || s.includes('HOLD')) {
     return 'alert';
   }
-  if (s.includes('TESTED') || s.includes('PACKED') || s.includes('SHIPPED') || s.includes('SCANNED') || s.includes('READY')) {
+  if (
+    s.includes('TESTED') ||
+    s.includes('PACKED') ||
+    s.includes('SHIPPED') ||
+    s.includes('SCANNED') ||
+    s.includes('READY') ||
+    s.includes('TRANSIT') ||
+    s.includes('DELIVER') ||
+    s.includes('PICKED UP')
+  ) {
     return 'done';
   }
   return 'neutral';
@@ -84,6 +95,11 @@ export interface OrdersCompoundParts {
    * identity filler.
    */
   subtitleParts?: CompoundRowView['subtitleParts'];
+  /**
+   * True when a multi-line order parent already owns the ids — the leaf
+   * fulfillment cell stays quiet so the same order # is not reprinted per SKU.
+   */
+  quietIdentity?: boolean;
   /**
    * Warehouse civil today (`YYYY-MM-DD`). Due-today ink vs future faint.
    * Omitted ⇒ `getCurrentPSTDateKey()` (tests pass it so the face is stable).
@@ -159,13 +175,120 @@ export function ordersShipByDelay(
   const raw = ordersShipByRaw(record);
   const parsed = raw ? toPSTDateKey(raw) : '';
   const dateKey = parsed && parsed !== 'Unknown' ? parsed : null;
+  const days = delayDays ?? 0;
   return {
-    days: delayDays ?? 0,
-    overdue: (delayDays ?? 0) > 0,
+    days,
+    overdue: days > 0,
     dateLabel: dateKey ? formatDateKeyShort(dateKey) : null,
     dateKey,
     dueToday: Boolean(dateKey && dateKey === todayKey),
+    // Only meaningful while the deadline is still ahead: `delayDays` clamps at
+    // zero, so without this the age face cannot tell "due in three weeks" from
+    // "due tomorrow" — both arrive as 0.
+    daysUntil: days > 0 ? null : civilDaysBetween(todayKey, dateKey),
   };
+}
+
+/**
+ * Whole days from `fromKey` to `toKey`, both civil `YYYY-MM-DD`. Null when
+ * either is missing or the target is in the past.
+ *
+ * Civil-day arithmetic on purpose (the same shape `getDaysLateNullable` uses):
+ * a deadline is a DAY, and counting instants would make a row due tomorrow read
+ * as "in 0d" all afternoon.
+ */
+function civilDaysBetween(fromKey: string, toKey: string | null): number | null {
+  if (!toKey || !fromKey) return null;
+  const [fy, fm, fd] = fromKey.split('-').map(Number);
+  const [ty, tm, td] = toKey.split('-').map(Number);
+  if (![fy, fm, fd, ty, tm, td].every(Number.isFinite)) return null;
+  const from = Math.floor(Date.UTC(fy, fm - 1, fd) / 86400000);
+  const to = Math.floor(Date.UTC(ty, tm - 1, td) / 86400000);
+  return to > from ? to - from : null;
+}
+
+/**
+ * DATES column, top — WHEN THE ORDER WAS PLACED, with the import stamp as the
+ * honest fallback.
+ *
+ * Two different facts, in preference order:
+ *
+ * 1. `order_date` — the channel's purchase instant (eBay / Amazon sync). This
+ *    is the date an operator means by "order date", and the one a buyer quotes.
+ * 2. `created_at` — when the row landed in this system. Every row has one,
+ *    because it is the insert stamp.
+ *
+ * A manual row, a CSV import or a backfill carries no `order_date` at all, and
+ * the cell must still say something — a blank top line on half the queue reads
+ * as a broken column. So it falls back, and **the tooltip names which fact is
+ * on screen** (`Ordered ·` vs `Imported ·`, and why). Staff can therefore tell
+ * a real purchase date from the day we happened to import it, which is the one
+ * thing a silent fallback would take away: the same failure this file's
+ * `ordersShipByRaw` already refuses, where painting `created_at` as the ship-by
+ * made a missing deadline look like a real one.
+ *
+ * Never the reverse preference, and never a fused "earliest of the two": the
+ * import stamp is always later than the purchase, so mixing them would make the
+ * column's own ordering meaningless.
+ */
+export function ordersOrderedAt(
+  record: Pick<ShippedOrder, 'created_at' | 'order_date'>,
+): NonNullable<CompoundRowView['orderedAt']> | null {
+  const placedRaw = nonSentinelTimestamp(record.order_date);
+  const placedKey = placedRaw ? toPSTDateKey(placedRaw) : '';
+  if (placedKey && placedKey !== 'Unknown') {
+    return {
+      label: formatDateKeyShort(placedKey),
+      tip: `Ordered · ${formatDateKeyMedium(placedKey, { weekday: 'short', withYear: true })}`,
+      dateKey: placedKey,
+    };
+  }
+
+  const importedRaw = nonSentinelTimestamp(record.created_at);
+  const importedKey = importedRaw ? toPSTDateKey(importedRaw) : '';
+  if (!importedKey || importedKey === 'Unknown') return null;
+  return {
+    label: formatDateKeyShort(importedKey),
+    tip:
+      `Imported · ${formatDateKeyMedium(importedKey, { weekday: 'short', withYear: true })}` +
+      ' · no order date came from the channel',
+    // The IMPORT day seeds the calendar so a correction starts near the truth —
+    // but an edit commits `order_date`, which is why the fallback is still
+    // named as an import in the tooltip.
+    dateKey: importedKey,
+  };
+}
+
+/**
+ * The row's LEADING EDGE RAIL — urgent first, then blocked.
+ *
+ * ## Why these two, in this order
+ *
+ * URGENT has no other carrier. It is the operator's expedite claim, it now
+ * decides the QUEUE ORDER (`queueUrgentRank`), and until this rail the only way
+ * to see it was to bind the `orders.urgent` column or filter the board — so a
+ * row that jumped the queue arrived at the top with nothing on it saying why.
+ * A rank the eye cannot verify reads as a broken sort.
+ *
+ * BLOCKED is second because it already has a carrier: the state pill says
+ * BLOCKED in the alert tone, and it has a desk of its own. The rail repeats it
+ * only when the row is NOT urgent, so the leftmost mark is never spent on the
+ * weaker of two signals.
+ *
+ * Everything below that — the five org row flags — stays on the row WASH and
+ * the mark beside the title. One rail, two meanings, is already the ceiling: a
+ * rail that can mean seven things is a colour key nobody memorises.
+ *
+ * The tones are the flag vocabulary's own (`order-row-flags`): rose for the
+ * exception class, violet for pull-this-forward. No blue — blue is selection on
+ * this surface.
+ */
+export function ordersEdgeMark(
+  record: Pick<ShippedOrder, 'is_urgent' | 'is_out_of_stock'>,
+): CompoundRowView['edgeMark'] {
+  if (record.is_urgent) return { label: 'Urgent', barClass: 'bg-violet-500' };
+  if (record.is_out_of_stock) return { label: 'Out of stock', barClass: 'bg-rose-500' };
+  return null;
 }
 
 export function ordersCompoundView(
@@ -188,7 +311,22 @@ export function ordersCompoundView(
   const stateTipParts = [parts.delayTip, opNote && identity ? identity : null].filter(Boolean);
   const todayKey = parts.todayKey ?? getCurrentPSTDateKey();
   const delay = ordersShipByDelay(record, parts.delayDays, todayKey);
-  const shipByTooltip = formatQueueRowDateCell(ordersShipByRaw(record))?.tooltip;
+  // The deadline line paints its AGE (`2d late`), so the civil day now exists
+  // ONLY here. The tooltip therefore states both — the date and the lateness in
+  // words — rather than the bare `Ship by · …` it carried when the cell itself
+  // printed the day.
+  const shipByTooltip = (() => {
+    const base = formatQueueRowDateCell(ordersShipByRaw(record))?.tooltip;
+    if (!base) return undefined;
+    if (delay.overdue && delay.days > 0) {
+      return `${base} · ${delay.days} day${delay.days === 1 ? '' : 's'} late`;
+    }
+    if (delay.dueToday) return `${base} · due today`;
+    if (delay.daysUntil != null) {
+      return `${base} · in ${delay.daysUntil} day${delay.daysUntil === 1 ? '' : 's'}`;
+    }
+    return base;
+  })();
 
   return {
     id: String(record.id),
@@ -199,8 +337,17 @@ export function ordersCompoundView(
     titleHref: getExternalUrlByItemNumber(record.item_number) ?? null,
     note: secondary,
     flagMark: parts.flagMark ?? null,
+    edgeMark: ordersEdgeMark(record),
     orderId: String(record.order_id || '').trim() || null,
     tracking: tracking || null,
+    trackings: (() => {
+      const listed = Array.isArray(row.tracking_numbers)
+        ? row.tracking_numbers.map((v: unknown) => String(v || '').trim()).filter(Boolean)
+        : [];
+      if (listed.length > 0) return listed;
+      return tracking ? [tracking] : [];
+    })(),
+    quietIdentity: parts.quietIdentity === true,
     // Marketplace/channel the order came from — the platform SoT resolves the mark.
     platformValue: row.account_source || null,
     carrier: row.carrier || null,
@@ -212,12 +359,21 @@ export function ordersCompoundView(
     stateLabel: parts.stateLabel ?? '',
     stateTone: ordersStateTone(parts.stateLabel),
     stateTip: stateTipParts.length > 0 ? stateTipParts.join(' · ') : undefined,
+    orderedAt: ordersOrderedAt(record),
     delay,
     delayTip: shipByTooltip,
+    // Where it goes next, derived from the canonical lifecycle projection —
+    // the same signals `resolveRowStatus` reads for the pill above it, so the
+    // two lines of the status cell can never disagree about the stage.
+    nextStep: ordersNextStep(record as Parameters<typeof ordersNextStep>[0]),
     // What the order sold for. `sale_amount` arrives as a string or a number
     // depending on the query path, and an order with no recorded sale renders an
     // empty cell rather than a `$0.00` nobody charged.
     amount: (() => {
+      // Absent is not zero — the same rule the subtitle money slot follows
+      // (`moneyText`). `Number(null)` is 0, and a `$0.00` nobody charged is
+      // worse than an empty track.
+      if (record.sale_amount == null || String(record.sale_amount).trim() === '') return null;
       const sale = Number(record.sale_amount);
       return Number.isFinite(sale) ? formatCurrency(sale) : null;
     })(),

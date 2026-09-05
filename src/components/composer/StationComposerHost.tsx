@@ -7,10 +7,12 @@
  *   │  textarea… (auto-grows)                     │
  *   │ [+]              [Location] [↵] [Print?]    │  ← bottom action bar
  *   └─────────────────────────────────────────────┘
- *   [ Unbox ] [ Ticket ]                    ( ◠ )   ← BELOW outline
+ *   [ Unbox ] [ Ticket ] [ Ask ]            ( ◠ )   ← BELOW outline
  *
- * Shell is flex-col (field above tools). Modes are Unbox | Ticket only —
+ * Shell is flex-col (field above tools). Modes are Unbox | Ticket | Ask —
  * leftmost cluster under the outline (icons left of labels; Unbox blue,
+ * Ticket orange, Ask purple). Station Ask is the Unbox display pane
+ * ({@link StationAskPane}); the desk mouth still welds a slim thread above.
  * Location pill sits in the bottom action bar left of Print and remains
  * mounted when the composer switches to Ticket.
  * Plus is circular. Enter is a bare gray icon. Unbox keeps Print·Receive;
@@ -23,22 +25,17 @@
  * caption band, toast, or popover.
  */
 
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type ReactNode,
-  type Ref,
-} from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent, type ReactNode, type Ref } from 'react';
 import {
   OmnichannelComposerDock,
   type OmnichannelComposerDockHandle,
 } from '@/design-system/primitives';
 import { COMPOSER_SHELL_CORNER } from '@/design-system/tokens/radius';
-import { CornerDownLeft, Link2 } from '@/components/Icons';
+import { CornerDownLeft, Ticket } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
+import { useAssistantChat } from '@/components/assistant/useAssistantChat';
+import { useActiveAssistantContext } from '@/hooks/useAssistantContext';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   classifyStationComposerModeKey,
   stationComposerModeAriaLabel,
@@ -47,14 +44,24 @@ import {
   stationComposerTicketCommitLabel,
   type StationComposerMode,
 } from '@/lib/composer/station-composer-mode';
+import {
+  registerStationComposerPresence,
+  type StationComposerPresenceKind,
+} from '@/lib/composer/station-composer-presence';
+import { ComposerAskStage } from './ComposerAskStage';
 import { ComposerModeRow } from './ComposerModeRow';
-import { ComposerDrillMenu, type ComposerDrillNode } from './ComposerDrillMenu';
-import { useStationComposerMode } from './useStationComposerMode';
-import { useStationComposerFocusRequests } from './station-composer-focus';
 import {
   NoteComposerInsertRail,
   type NoteComposerInsertAction,
 } from '@/components/receiving/workspace/NoteComposerInsertRail';
+import { ComposerDrillMenu, type ComposerDrillNode } from './ComposerDrillMenu';
+import { useStationComposerMode } from './useStationComposerMode';
+import { useStationComposerFocusRequests } from './station-composer-focus';
+import {
+  getComposerSeedSeq,
+  getLatestComposerSeed,
+  subscribeComposerSeed,
+} from '@/lib/assistant/composer-seed-store';
 
 export type StationComposerHostProps = {
   labelValue: string;
@@ -91,6 +98,8 @@ export type StationComposerHostProps = {
   onTicketDraftChange?: (next: string) => void;
   onTicketCommit?: () => void;
   ticketCommitDisabled?: boolean;
+  /** Override dock commit label (e.g. Link ticket while linking an existing ticket). */
+  ticketCommitLabel?: string;
   /**
    * Ticket `+` tree — “Add to message”. Replaced the free-form `ticketPlusMenu`
    * node on 2026-08-30: the old prop let a host put ANYTHING in there, and what
@@ -128,20 +137,23 @@ export type StationComposerHostProps = {
   onModeChange?: (mode: StationComposerMode) => void;
   modeRowLeading?: ReactNode;
   /**
-   * When false, omit the below-outline row entirely.
-   * Default true (Unbox / Testing / scan-out).
+   * Always on. Pass `true` (or omit). Hide Unbox | Ticket with
+   * {@link showModeFaces} so the context ring stays. `false` is not on the type.
    */
-  showModeRow?: boolean;
+  showModeRow?: true;
   /**
-   * When false (with {@link showModeRow}), hide Unbox | Ticket and keep only
-   * the bottom-right context / procedure ring — dumb scan mouths.
+   * When false (with the mode row still mounted), hide Unbox | Ticket and keep
+   * only the bottom-right context / procedure ring — dumb scan mouths.
    */
   showModeFaces?: boolean;
   /**
-   * Pin Unbox vs Ticket regardless of `?composerMode=` / session.
-   * Incoming add extract is a dumb paste mouth — never Ticket.
+   * Pin Unbox vs Ticket vs Ask regardless of `?composerMode=` / session.
    */
   forceMode?: StationComposerMode;
+  /**
+   * `station` (default) hides the site-wide desk Ask lane. `desk` is that lane.
+   */
+  presenceKind?: StationComposerPresenceKind;
   progressPercent?: number;
   progressTone?: 'idle' | 'selected';
   onProgressClick?: () => void;
@@ -176,6 +188,7 @@ export function StationComposerHost({
   onTicketDraftChange,
   onTicketCommit,
   ticketCommitDisabled,
+  ticketCommitLabel,
   ticketDrillNodes,
   ticketInsetTop,
   ticketHeaderEnd,
@@ -184,9 +197,9 @@ export function StationComposerHost({
   ticketFooterStart,
   onModeChange,
   modeRowLeading,
-  showModeRow = true,
   showModeFaces = true,
   forceMode,
+  presenceKind = 'station',
   progressPercent = 0,
   progressTone = 'idle',
   onProgressClick,
@@ -194,6 +207,11 @@ export function StationComposerHost({
 }: StationComposerHostProps) {
   const { mode: sessionMode, setMode, cycleMode } = useStationComposerMode();
   const mode = forceMode ?? sessionMode;
+  const { has } = useAuth();
+  const canAsk = has('assistant.chat');
+  const askChat = useAssistantChat({ shared: presenceKind === 'desk' ? undefined : 'station' });
+  const askContext = useActiveAssistantContext();
+  const [askDraft, setAskDraft] = useState('');
   const [internalTicketDraft, setInternalTicketDraft] = useState('');
   const [plusOpen, setPlusOpen] = useState(false);
   const ticketDraft = ticketDraftProp ?? internalTicketDraft;
@@ -221,21 +239,58 @@ export function StationComposerHost({
     onModeChange?.(mode);
   }, [mode, onModeChange]);
 
-  const isTicket = mode === 'ticket';
-  const value = isTicket ? ticketDraft : labelValue;
-  const onChange = isTicket ? setTicketDraft : onLabelChange;
-  const onCommit = isTicket
-    ? (_live?: string) => {
-        onTicketCommit?.();
+  useEffect(() => registerStationComposerPresence(presenceKind), [presenceKind]);
+
+  const seedSeq = useSyncExternalStore(subscribeComposerSeed, getComposerSeedSeq, () => 0);
+  const prevSeedSeqRef = useRef(0);
+  const askChatRef = useRef(askChat);
+  const askContextRef = useRef(askContext);
+  askChatRef.current = askChat;
+  askContextRef.current = askContext;
+
+  useEffect(() => {
+    if (seedSeq === prevSeedSeqRef.current) return;
+    prevSeedSeqRef.current = seedSeq;
+    const seed = getLatestComposerSeed();
+    if (!seed?.text) return;
+    if (mode !== 'ask') setMode('ask');
+    if (seed.autoSend) {
+      if (askChatRef.current.status === 'streaming') {
+        setAskDraft(seed.text);
+        return;
       }
-    : onLabelCommit;
-  const onBlur = isTicket ? undefined : onLabelBlur;
+      setAskDraft('');
+      void askChatRef.current.send(seed.text, askContextRef.current);
+      return;
+    }
+    setAskDraft(seed.text);
+  }, [seedSeq, mode, setMode]);
+
+  const isTicket = mode === 'ticket';
+  const isAsk = mode === 'ask';
+  const value = isAsk ? askDraft : isTicket ? ticketDraft : labelValue;
+  const onChange = isAsk ? setAskDraft : isTicket ? setTicketDraft : onLabelChange;
+  const onCommit = isAsk
+    ? (live?: string) => {
+        const text = (live ?? askDraft).trim();
+        if (!text || !canAsk || askChat.status === 'streaming') return;
+        setAskDraft('');
+        void askChat.send(text, askContext);
+      }
+    : isTicket
+      ? (_live?: string) => {
+          onTicketCommit?.();
+        }
+      : onLabelCommit;
+  const onBlur = isTicket || isAsk ? undefined : onLabelBlur;
 
   const keepTrailing = stationComposerModeKeepsTrailingAction(mode);
   const printTrailing = keepTrailing ? trailingAction : undefined;
   const locationFooter = locationAction;
 
-  const placeholder = isTicket
+  const placeholder = isAsk
+    ? stationComposerModePlaceholder('ask')
+    : isTicket
     ? stationComposerModePlaceholder(mode, { ticketLabel, hasTicket })
     : labelPlaceholder === ''
       ? ''
@@ -256,7 +311,6 @@ export function StationComposerHost({
   // mode from the CURRENT one rather than toggling, so both compute the same
   // target and the second call is a no-op write.
   useEffect(() => {
-    if (!showModeRow || !showModeFaces) return;
     const onKeyDown = (e: globalThis.KeyboardEvent) => {
       if (!classifyStationComposerModeKey(e)) return;
       e.preventDefault();
@@ -264,7 +318,7 @@ export function StationComposerHost({
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [cycleMode, showModeRow, showModeFaces]);
+  }, [cycleMode]);
 
   // The textarea still delegates to the host's ghost-autocomplete handler; the
   // mode chords are no longer handled here — the document listener above owns
@@ -280,7 +334,9 @@ export function StationComposerHost({
   // Ticket `+` drills; Unbox `+` keeps its flat coloured insert rail. Leaving
   // Unbox on the rail is deliberate — its rows are one tap each and stacking
   // them behind a submenu would cost the operator an interaction per insert.
-  const leadingPlus = isTicket ? (
+  const leadingPlus = isAsk ? (
+    <NoteComposerInsertRail actions={[]} placement="inline" trigger="composer" />
+  ) : isTicket ? (
     <ComposerDrillMenu
       nodes={ticketDrillNodes ?? []}
       open={plusOpen}
@@ -295,13 +351,18 @@ export function StationComposerHost({
     />
   );
 
-  const commitDisabledResolved = isTicket
-    ? ticketCommitDisabled === true || ticketDraft.trim().length === 0
-    : labelCommitDisabled;
+  const commitDisabledResolved = isAsk
+    ? !canAsk || askChat.status === 'streaming' || askDraft.trim().length === 0
+    : isTicket
+      ? ticketCommitDisabled === true || ticketDraft.trim().length === 0
+      : labelCommitDisabled;
 
-  const reactionNode = (isTicket ? ticketAccessory : undefined) ?? reaction ?? null;
+  const reactionNode = isAsk
+    ? null
+    : (isTicket ? ticketAccessory : undefined) ?? reaction ?? null;
   const reactionOpen = reactionNode != null;
-  const dockWeldTop = weldTop || reactionOpen;
+  const weldAskStage = isAsk && presenceKind === 'desk';
+  const dockWeldTop = weldTop || reactionOpen || weldAskStage;
 
   return (
     <div
@@ -318,6 +379,7 @@ export function StationComposerHost({
       data-composer-mode={mode}
     >
       <div className="flex min-w-0 flex-col gap-0">
+        {weldAskStage ? <ComposerAskStage chat={askChat} /> : null}
         {reactionOpen ? reactionNode : null}
       <OmnichannelComposerDock
         ref={dockRef}
@@ -331,27 +393,32 @@ export function StationComposerHost({
         // Ticket mode gets the LABELLED CTA; the note keeps the quiet return
         // arrow. Saving a sticker note and filing a helpdesk ticket are not the
         // same act and must not wear the same control.
-        commitGlyph={isTicket ? 'action' : 'enter'}
-        commitLabel={isTicket ? stationComposerTicketCommitLabel(hasTicket) : undefined}
+        commitGlyph={isTicket || isAsk ? 'action' : 'enter'}
+        commitLabel={
+          isAsk
+            ? 'Ask'
+            : isTicket
+              ? (ticketCommitLabel ?? stationComposerTicketCommitLabel(hasTicket))
+              : undefined
+        }
         commitIcon={
           isTicket ? (
             hasTicket ? (
               <CornerDownLeft className="h-3.5 w-3.5" />
             ) : (
-              <Link2 className="h-3.5 w-3.5" />
+              <Ticket className="h-3.5 w-3.5" />
             )
           ) : undefined
         }
-        // Filing a NEW ticket is the terminal, outward-facing act — same
-        // crimson the claim panel's own File ticket button carries. An update
-        // on an existing thread is ordinary primary work.
-        commitVariant={isTicket && !hasTicket ? 'danger' : 'primary'}
+        // Create ticket is the only unlinked act — primary, not a Link/create
+        // combobox face. An update on an existing thread stays primary too.
+        commitVariant="primary"
         showCommitWithTrailing={false}
         hideCommitButton={Boolean(printTrailing)}
         leadingStart={leadingPlus}
-        insetTop={isTicket ? ticketInsetTop : undefined}
-        headerEnd={isTicket ? ticketHeaderEnd : undefined}
-        footerStart={isTicket ? ticketFooterStart : undefined}
+        insetTop={isTicket && !isAsk ? ticketInsetTop : undefined}
+        headerEnd={isTicket && !isAsk ? ticketHeaderEnd : undefined}
+        footerStart={isTicket && !isAsk ? ticketFooterStart : undefined}
         commitDisabled={
           commitDisabledResolved === true
             ? true
@@ -362,39 +429,45 @@ export function StationComposerHost({
         placeholder={placeholder}
         ariaLabel={stationComposerModeAriaLabel(mode, { ticketLabel, hasTicket })}
         commitAriaLabel={
-          isTicket ? stationComposerTicketCommitLabel(hasTicket) : labelCommitAriaLabel
+          isAsk
+            ? 'Send Ask'
+            : isTicket
+              ? (ticketCommitLabel ?? stationComposerTicketCommitLabel(hasTicket))
+              : labelCommitAriaLabel
         }
         commitTooltip={
-          isTicket
-            ? hasTicket
-              ? 'Update ticket (Enter) · Shift+Enter for newline'
-              : 'File ticket (Enter)'
+          isAsk
+            ? 'Ask (Enter) · Shift+Enter for newline'
+            : isTicket
+            ? ticketCommitLabel
+              ? `${ticketCommitLabel} (Enter)`
+              : hasTicket
+                ? 'Update ticket (Enter) · Shift+Enter for newline'
+                : 'Create ticket (Enter)'
             : labelCommitTooltip
         }
+        ghostSuffix={isTicket || isAsk ? undefined : ghostSuffix}
+        matchedPhrase={isTicket || isAsk ? null : matchedPhrase}
+        onAcceptGhost={isTicket || isAsk ? undefined : onAcceptGhost}
+        onDismissGhost={isTicket || isAsk ? undefined : onDismissGhost}
         footerEnd={locationFooter}
         trailingAction={printTrailing}
         chrome={chrome}
         weldTop={dockWeldTop}
         animateMount={animateMount}
         textareaRef={textareaRef}
-        ghostSuffix={isTicket ? undefined : ghostSuffix}
-        matchedPhrase={isTicket ? null : matchedPhrase}
-        onAcceptGhost={isTicket ? undefined : onAcceptGhost}
-        onDismissGhost={isTicket ? undefined : onDismissGhost}
         onTextareaKeyDown={handleModeKey}
       />
       </div>
-      {showModeRow ? (
-        <ComposerModeRow
-          mode={mode}
-          onModeChange={setMode}
-          showModeFaces={showModeFaces}
-          progressPercent={progressPercent}
-          progressTone={progressTone}
-          onProgressClick={onProgressClick}
-          leading={modeRowLeading}
-        />
-      ) : null}
+      <ComposerModeRow
+        mode={mode}
+        onModeChange={setMode}
+        showModeFaces={showModeFaces}
+        progressPercent={progressPercent}
+        progressTone={progressTone}
+        onProgressClick={onProgressClick}
+        leading={modeRowLeading}
+      />
     </div>
   );
 }

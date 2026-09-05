@@ -30,6 +30,7 @@ import { AiProviderOrderCard } from '@/components/settings/sections/AiProviderOr
 export const dynamic = 'force-dynamic';
 
 const SOURCE_LABELS: Record<string, string> = {
+  grok: 'Grok (SuperGrok subscription)',
   ai_gateway: 'Vercel AI Gateway (your key)',
   openai: 'OpenAI (your key)',
   anthropic: 'Anthropic (your key)',

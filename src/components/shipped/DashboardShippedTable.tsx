@@ -91,7 +91,7 @@ export function DashboardShippedTable({
   searchEmptyTitle = 'No shipped orders found',
   searchResultLabel = 'shipped orders',
   clearSearchLabel = 'Show All Shipped Orders',
-  toolbarPortalTarget,
+  toolbarPortalTarget: _toolbarPortalTarget,
   lockedOutboundStatus = null,
 }: DashboardShippedTableProps = {}) {
   const filters = useShippedTableFilters({ packedBy, testedBy, lockedOutboundStatus });
@@ -106,8 +106,8 @@ export function DashboardShippedTable({
 
   const refine = useShippedFilterActions();
   const period = useShippedPeriodControls(filters);
-  const periodRange = period.activeRange ?? filters.weekRange;
-  const { weekOffset, setPeriodWeek } = filters;
+  const _periodRange = period.activeRange ?? filters.weekRange;
+  const { weekOffset: _weekOffset, setPeriodWeek: _setPeriodWeek } = filters;
 
   const byId = useMemo(() => {
     const map = new Map<number, DerivedPackerRecord>();
@@ -274,7 +274,6 @@ export function DashboardShippedTable({
           clearSearchLabel={clearSearchLabel}
           totalCount={totalCount}
           queueMode="shipped"
-          sort="newest"
           selectMode={selectMode}
           selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
           railSelection={railSelection}

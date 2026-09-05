@@ -14,9 +14,18 @@ DELETE, refuse list): [`FABLE-5.1-SYSTEM.md`](FABLE-5.1-SYSTEM.md).
 queue): [`FABLE-5-RESEARCH-PROMPT.md`](FABLE-5-RESEARCH-PROMPT.md). Copy the
 block under “PASTE THIS INTO FABLE 5” into a new session.
 
+**Fable 5.1 Ask / NL2SQL research prompt** (web search + live Ask/tools/mutations,
+additive plan §§16+): [`FABLE-5.1-ASK-AI-RESEARCH-PROMPT.md`](FABLE-5.1-ASK-AI-RESEARCH-PROMPT.md).
+Plan SoT: [`docs/todo/ask-org-scoped-chat-PLAN.md`](../todo/ask-org-scoped-chat-PLAN.md).
+
 **2026 UI/UX contracts** (Manus / Lovable / Cursor / Stripe / Kiro as *quality*,
 not chrome to copy; heavy no-fork mounts for hover, `motionRole`, one icon
 button): [`UI-UX-2026-CONTRACTS.md`](UI-UX-2026-CONTRACTS.md).
+
+**Interaction pentest (IDEA)** — Shannon method for clicks / gaze / altitude;
+not Impeccable; not a display cohort yet. Plan lives in the main worktree:
+[`docs/todo/interaction-pentest-PLAN.md`](../todo/interaction-pentest-PLAN.md).
+Run: `/interaction-pentest`.
 
 Two **sibling** cohorts under one CLI (`pnpm run eval:cohort <name>`).
 **Display SoT is slot-table only.** Overlay is not a display cohort.
@@ -118,6 +127,12 @@ Every painted DATA column header is click-to-sort
 plus View / Platform / Carriers — Pick is a Columns row, not trigger-only.
 Graph KEEP: `engine:slot-table-header-sort`,
 `engine:queueSortForColumnKey`, `engine:LedgerGridColumnHeader`.
+Outbound `OrdersGridHost` uses `useQueueDisplaySort` (`?sort=`) on every lane —
+a parent `sort=` freeze is a dead-header fork (Shipped / Review / Staged).
+
+Selecting a row always opens the left Morphing action menu (`MorphingRowActionMenu`
+beside the checkbox) on every outbound `OrdersGridHost` lane — To-ship **and**
+Shipped. `queueMode` must not disable it (`SLOT_TABLE_PAINT_LAW.ordersActions`).
 
 **Hard gate:** `eval:cohort slot-table` `ok` is false if the tripwire fails, any
 `SLOT_TABLE_ENGINE_CONTRACT` grep fails, or any `graphSymbols` `find` returns no

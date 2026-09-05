@@ -28,11 +28,12 @@
  * built by the other is never equal, so the reveal silently no-ops and the record
  * opens behind a still-closed fold.
  *
- * **2. Fold polarity is EXPLICIT ({@link FoldState}).** `QueueGroupRow` is
- * default-COLLAPSED; `useSidebarRail` tracks `collapsedGroups`, i.e.
- * default-EXPANDED. A bare `expandedKeys?: ReadonlySet<string>` has no polarity,
- * so the rail passing its freshly-initialized `new Set()` would read as "every
- * group collapsed" and its scroll/focus targets would silently vanish.
+ * **2. Fold polarity is EXPLICIT ({@link FoldState}).** Orders `QueueGroupRow`
+ * is always-expanded (parent chrome when the fold has more than one line; no
+ * chevron). `useSidebarRail` tracks `collapsedGroups`, i.e. default-EXPANDED.
+ * A bare `expandedKeys?: ReadonlySet<string>` has no polarity, so the rail
+ * passing its freshly-initialized `new Set()` would read as "every group
+ * collapsed" and its scroll/focus targets would silently vanish.
  *
  * **3. The two flattens are NAME-DISTINCT.** {@link flattenRenderOrder} is
  * fold-BLIND — it is the navigation domain (reveal-never-skip means every record

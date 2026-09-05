@@ -289,3 +289,109 @@ export function requiresSignature(input: { services?: CounterServiceLine[] }): b
   // session path gates per line instead — see submitBlocker in session-store.ts.
   return (input.services?.length ?? 0) > 0;
 }
+
+// ── Channel return (in-store channel exchange) ──────────────────────────────
+
+/**
+ * How far a channel return has actually got.
+ *
+ * `'manual_required'` exists so the product never has to lie. Whether a
+ * channel PUT returns money to the original tender depends on the store's
+ * payment module (see the Slice 0 note on `getEcwidOrder`); when the write
+ * only moves an admin status, the honest answer on the customer's receipt is
+ * "the return is recorded, the card refund may be manual" — not "refunded".
+ *
+ * `'none'` is the shape a `'{}'` column reads back as: this visit has no
+ * channel return at all.
+ */
+export const CHANNEL_RETURN_STATUSES = [
+  'none',
+  'pending',
+  'refunded',
+  'failed',
+  'manual_required',
+] as const;
+
+export type ChannelReturnStatus = (typeof CHANNEL_RETURN_STATUSES)[number];
+
+/**
+ * The `counter_transactions.channel_return` / `counter_sessions.channel_return`
+ * document (migration 2026-09-04_counter_channel_return.sql).
+ *
+ * `provider` is a discriminator, not decoration: a later Shopify adapter maps
+ * INTO this record rather than adding a parallel column, and the receipt reads
+ * this shape without importing a vendor type. Customer-facing copy never
+ * renders `provider` — it says "online order" (plan X10).
+ */
+export interface ChannelReturnRecord {
+  provider: 'ecwid';
+  /** The channel's internal order id — kept so the desk never depends on ingest lag (plan X7). */
+  ecwidOrderId: string;
+  /** What the customer reads off their emailed receipt. */
+  publicOrderNumber: string;
+  /** The returned line ids, as the channel names them. */
+  itemIds: string[];
+  amountCents: number;
+  reason: string;
+  status: ChannelReturnStatus;
+  /** Processor / channel refund ids, when the write reported any. */
+  refundIds?: string[];
+  error?: string;
+  /** ISO timestamp. */
+  updatedAt: string;
+}
+
+export function isChannelReturnStatus(value: string): value is ChannelReturnStatus {
+  return (CHANNEL_RETURN_STATUSES as readonly string[]).includes(value);
+}
+
+/**
+ * Read a `channel_return` jsonb bag back into a record, or `null` for "this
+ * visit has no channel return".
+ *
+ * Validating in TS rather than in a dozen columns is the deliberate trade in
+ * plan §6 — which means this function is the ONLY gate. It is strict about the
+ * two facts a return is useless without (an order to cite and a status the UI
+ * can branch on) and forgiving about the rest, because a half-written bag from
+ * an older writer must degrade to a readable return rather than crash a
+ * receipt a customer is standing there waiting for.
+ */
+export function parseChannelReturn(raw: unknown): ChannelReturnRecord | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+  const bag = raw as Record<string, unknown>;
+  // `'{}'` — the column default — is "no channel return", not a malformed one.
+  if (Object.keys(bag).length === 0) return null;
+
+  const status = String(bag.status ?? '');
+  if (!isChannelReturnStatus(status) || status === 'none') return null;
+
+  const publicOrderNumber = String(bag.publicOrderNumber ?? '').trim();
+  const ecwidOrderId = String(bag.ecwidOrderId ?? '').trim();
+  // A return that cites no order cannot be printed or reconciled — there is
+  // nothing to tell the customer or the operator to look at.
+  if (!publicOrderNumber && !ecwidOrderId) return null;
+
+  const amountCents = Number(bag.amountCents);
+  const itemIds = Array.isArray(bag.itemIds)
+    ? bag.itemIds.map((id) => String(id ?? '').trim()).filter(Boolean)
+    : [];
+  const refundIds = Array.isArray(bag.refundIds)
+    ? bag.refundIds.map((id) => String(id ?? '').trim()).filter(Boolean)
+    : undefined;
+
+  return {
+    provider: 'ecwid',
+    ecwidOrderId,
+    publicOrderNumber,
+    itemIds,
+    // A malformed amount contributes 0 rather than NaN — the same rule
+    // `serviceLineCents` follows, and for the same reason: never "$NaN" on a
+    // customer-facing screen.
+    amountCents: Number.isFinite(amountCents) ? Math.trunc(amountCents) : 0,
+    reason: String(bag.reason ?? '').trim(),
+    status,
+    ...(refundIds && refundIds.length > 0 ? { refundIds } : {}),
+    ...(bag.error ? { error: String(bag.error) } : {}),
+    updatedAt: String(bag.updatedAt ?? ''),
+  };
+}

@@ -18,6 +18,11 @@ import {
 } from '@/lib/zendesk-attachments';
 import { zendeskTicketUrl } from '@/lib/zendesk-ticket-url';
 import { recordStaffForPostedComment } from '@/lib/integrations/helpdesk/comment-staff';
+import pool from '@/lib/db';
+import { recordAudit } from '@/lib/audit-logs';
+import { getClaimIdByTicketId } from '@/lib/warranty/claims';
+import { warrantyFlagEnabled } from '@/lib/warranty/route-helpers';
+import { recordClaimZendeskEvent } from '@/lib/warranty/zendesk-link';
 
 export const dynamic = 'force-dynamic';
 
@@ -205,6 +210,40 @@ export const POST = withAuth(
         });
       } catch (err) {
         console.warn('[photo-ticket] comment staff stamp failed', err);
+      }
+
+      // Warranty echo — a reply to a ticket linked to a claim lands on that
+      // claim's timeline (ZENDESK_REPLY) and audit, exactly as the claim-scoped
+      // comments route records it. Transport-independent on purpose: the claim
+      // popover sends through TicketComposer (this route) and console replies
+      // to a linked ticket echo too. Best-effort — the reply already landed.
+      if (warrantyFlagEnabled()) {
+        try {
+          const claimId = await getClaimIdByTicketId(meta.ticketId, ctx.organizationId);
+          if (claimId != null) {
+            const isPublic = meta.isPublic ?? false;
+            await recordClaimZendeskEvent({
+              claimId,
+              eventType: 'ZENDESK_REPLY',
+              payload: {
+                zendeskTicketId: meta.ticketId,
+                public: isPublic,
+                // Code-point slice so a multi-byte char never splits at the boundary.
+                preview: Array.from(meta.comment).slice(0, 140).join(''),
+              },
+              actorStaffId: ctx.staffId ?? null,
+            });
+            await recordAudit(pool, ctx, req, {
+              source: 'warranty-logger',
+              action: 'warranty.zendesk_reply',
+              entityType: 'warranty_claim',
+              entityId: claimId,
+              after: { zendeskTicketId: meta.ticketId, public: isPublic },
+            });
+          }
+        } catch (err) {
+          console.warn('[photo-ticket] warranty claim echo failed', err);
+        }
       }
 
       // Don't clobber an existing ticket_links mapping on update; just associate

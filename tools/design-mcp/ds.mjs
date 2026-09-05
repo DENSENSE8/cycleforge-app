@@ -25,7 +25,7 @@ const LAUNCHER = path.join(HERE, 'run-mcp.sh')
 
 function usage(code = 1) {
   console.error(`usage:
-  node tools/design-mcp/ds.mjs contract <intent> [--limit N]
+  node tools/design-mcp/ds.mjs contract <intent> [--limit N] [--full]
   node tools/design-mcp/ds.mjs tokens <axis> [--filter substring]
   node tools/design-mcp/ds.mjs critique <repo-relative-file>
   node tools/design-mcp/ds.mjs stamp`)
@@ -141,10 +141,11 @@ if (cmd === 'stamp') {
 if (cmd === 'contract') {
   const intent = argv[1]
   if (!intent) usage()
-  let limit = 8
+  let limit = 2
   const li = argv.indexOf('--limit')
-  if (li >= 0) limit = Number(argv[li + 1]) || 8
-  const res = await rpcCall('ds_contract', { intent, limit })
+  if (li >= 0) limit = Number(argv[li + 1]) || 2
+  const full = argv.includes('--full')
+  const res = await rpcCall('ds_contract', { intent, limit, full })
   const text = extractText(res)
   writeStamp({
     source: 'cli',

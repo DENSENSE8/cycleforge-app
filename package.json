@@ -19,10 +19,12 @@
     "debt": "node scripts/debt-ledger.mjs",
     "debt:surfaces": "node scripts/dead-surface-probe.mjs",
     "verify:fast": "node scripts/verify.mjs --fast",
+    "verify:deep": "node scripts/verify.mjs --deep",
     "eval:station": "node --import tsx tools/eval-ledger/run-station-eval.mjs",
     "eval:cohort": "node --import tsx tools/eval-ledger/run-cohort-eval.mjs",
     "eval:discover": "node --import tsx tools/eval-ledger/run-slot-table-discover.mjs",
     "eval:machine-gate": "node tools/eval-ledger/machine-gate.mjs",
+    "eval:visual": "CI_VISUAL=1 node scripts/visual-peers-gate.mjs",
     "eval:perf-gate": "node tools/eval-ledger/perf-gate.mjs",
     "eval:perf-target": "node tools/eval-ledger/perf-target.mjs",
     "eval:perf-overnight": "node tools/eval-ledger/perf-overnight.mjs",
@@ -87,7 +89,7 @@
     "test:shipping-usps": "tsx --test src/lib/shipping/providers/usps-subscription.test.ts",
     "test:shipping-status": "tsx --test src/lib/shipping/normalize.test.ts src/lib/receiving/delivered-unscanned.test.ts",
     "test:zoho-fulfillment": "tsx --test src/lib/zoho/fulfillment-sync.test.ts",
-    "test:zoho-url": "tsx --test src/lib/zoho/url.test.ts",
+    "test:zoho-url": "tsx --test src/lib/zoho/url.test.ts src/lib/zoho/inventory-app-url.test.ts",
     "test:zoho-webhook": "tsx --test src/lib/zoho/webhooks/verify.test.ts",
     "test:credential-scope": "tsx --test src/lib/integrations/credential-allowlist.test.ts",
     "test:refresh-sweep": "tsx --test src/lib/integrations/connectors/refresh-sweep.test.ts",
@@ -151,7 +153,7 @@
     "pipeline:test": "node scripts/e2e-pipeline.mjs",
     "pipeline:test:api": "node scripts/e2e-pipeline.mjs --with-api",
     "dead-code:report": "node scripts/generate-dead-code-report.mjs",
-    "test:assistant": "tsx --test src/lib/assistant/*.test.ts src/lib/assistant/tools/*.test.ts src/lib/assistant/mutations/*.test.ts src/lib/surfaces/feed-writes.test.ts src/lib/workflow/draft-graph-writes.test.ts",
+    "test:assistant": "node --import tsx --import ./scripts/register-server-only-shim.cjs --test src/lib/assistant/*.test.ts src/lib/assistant/tools/*.test.ts src/lib/assistant/mutations/*.test.ts src/lib/surfaces/feed-writes.test.ts src/lib/workflow/draft-graph-writes.test.ts",
     "test:universal-feed": "tsx --test src/lib/receiving/rail-exclusions.test.ts src/lib/receiving/rail/exclusion-feed-key.test.ts src/lib/receiving/feed-membership-projection.test.ts src/lib/orders/feed-membership-projection.test.ts src/lib/timeline/entity-signals.test.ts src/lib/studio/template-catalog.test.ts src/lib/mcp/tool-server.test.ts",
     "lighthouse:audit": "node scripts/lighthouse-audit.mjs",
     "lighthouse:check": "node scripts/lighthouse-audit.mjs --tier 1 --check",
@@ -164,7 +166,9 @@
     "perf:seeds:update": "node scripts/seed-observer.mjs --update",
     "e2e:install": "playwright install chromium webkit",
     "test:station-workbench": "tsx --test src/lib/station-terminal/station-terminal.test.ts",
-    "test:perf": "tsx --test src/lib/perf/*.test.ts src/lib/keyboard/wedge-scan-machine.test.ts src/lib/keyboard/wedge-scan-listener.test.ts src/lib/orders-sync/parse-ndjson.test.ts src/lib/orders-sync/client.test.ts src/hooks/useWedgeScanner.sot.test.ts src/design-system/components/grid/grid-paint.test.ts"
+    "test:perf": "tsx --test src/lib/perf/*.test.ts src/lib/keyboard/wedge-scan-machine.test.ts src/lib/keyboard/wedge-scan-listener.test.ts src/lib/orders-sync/parse-ndjson.test.ts src/lib/orders-sync/client.test.ts src/hooks/useWedgeScanner.sot.test.ts src/design-system/components/grid/grid-paint.test.ts",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^3.0.7",
@@ -216,6 +220,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk": "^1.1.1",
+    "cn": "^0.2.4",
     "cytoscape": "^3.34.0",
     "cytoscape-dagre": "^4.0.0",
     "date-fns": "^4.1.0",
@@ -237,6 +242,7 @@
     "pg": "^8.16.3",
     "postgres": "^3.4.7",
     "qrcode": "^1.5.4",
+    "radix-ui": "^1.6.7",
     "react": "^19.2.1",
     "react-day-picker": "^10.0.1",
     "react-dom": "^19.2.1",
@@ -258,9 +264,14 @@
     "sharp": "0.34.5"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@next/bundle-analyzer": "^16.2.10",
     "@next/eslint-plugin-next": "^16.2.12",
     "@playwright/test": "^1.58.2",
+    "@storybook/addon-a11y": "10.6.0",
+    "@storybook/addon-docs": "10.6.0",
+    "@storybook/addon-mcp": "10.6.0",
+    "@storybook/nextjs-vite": "10.6.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/canvas-confetti": "^1.9.0",
     "@types/cytoscape": "^3.21.9",
@@ -292,9 +303,11 @@
     "knip": "^5.88.0",
     "lighthouse": "^13.4.0",
     "postcss": "^8",
+    "storybook": "10.6.0",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vercel": "^59.11.0"
+    "vercel": "^59.11.0",
+    "vite": "^7.1.0"
   }
 }

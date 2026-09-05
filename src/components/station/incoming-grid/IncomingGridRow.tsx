@@ -51,6 +51,7 @@ interface IncomingGridRowProps {
   clickSelect?: boolean;
   selectGutterChrome?: GridSelectGutterChrome;
   columns?: readonly IncomingGridColumn[];
+  subtitleFieldIds?: readonly string[];
   /** Present ⇒ the compound note line edits in place. Absent ⇒ read-only. */
 }
 
@@ -71,6 +72,7 @@ export const IncomingGridRow = memo(function IncomingGridRow({
   clickSelect = false,
   selectGutterChrome = 'always',
   columns = INCOMING_COMPOUND_COLUMNS,
+  subtitleFieldIds,
 }: IncomingGridRowProps) {
   const resolvePlatformMeta = usePlatformMeta();
   /** A gutter handler IS the signal that this surface split the two planes. */
@@ -168,6 +170,7 @@ export const IncomingGridRow = memo(function IncomingGridRow({
     selectGutterChrome,
     clickSelect,
     linePhase: 'expected',
+    subtitleFieldIds,
     daysLate,
     laneAgeLabel: showLaneAge ? laneAgeLabelRaw : null,
     laneAgeHours,

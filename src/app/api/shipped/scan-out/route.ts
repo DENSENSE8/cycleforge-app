@@ -12,6 +12,43 @@ import { applyOrderTrackingOps } from '@/lib/neon/orders-tracking-queries';
 import { mirrorLegacyPackToAllocations } from '@/lib/inventory/sync-legacy-pack';
 import type { OrgId } from '@/lib/tenancy/constants';
 
+/**
+ * How far back a queued scan may claim to have happened, and how much clock
+ * skew a phone is forgiven. A shift plus a margin; a dead zone longer than that
+ * is an outage someone reconciles by hand.
+ */
+const MAX_BACKDATE_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Order states that must never leave the building.
+ *
+ * `canceled` is the spelling `orders.status` actually carries (`mapAmazonStatus`
+ * maps Amazon's `Canceled` and `Unfulfillable` onto it) — a set, so adding a
+ * hold state later is one entry rather than a new branch.
+ */
+const BLOCKED_ORDER_STATUSES = new Set(['canceled', 'cancelled']);
+const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
+
+/**
+ * The unit's photo, Zoho first.
+ *
+ * Zoho Inventory is the SoT for what a unit looks like (operator 2026-09-05).
+ * `items` is the local mirror keyed by SKU; when it carries an
+ * `image_document_id` the bytes are already cached in `zoho_item_images` and
+ * `/api/zoho/items/[id]/image` serves them tenant-scoped. `sku_catalog` stays
+ * as the fallback for SKUs Zoho has never seen — it is a catalog stock photo,
+ * not the unit.
+ */
+function scanOutImageUrl(row: Record<string, unknown> | null | undefined): string | null {
+  const zohoItemId = String(row?.zoho_item_id ?? '').trim();
+  const documentId = String(row?.zoho_image_document_id ?? '').trim();
+  if (zohoItemId && documentId) {
+    return `/api/zoho/items/${encodeURIComponent(zohoItemId)}/image`;
+  }
+  const catalog = String(row?.catalog_image_url ?? '').trim();
+  return catalog || null;
+}
+
 interface TrackingRow {
   id: number;
   shipment_id: number | null;
@@ -151,6 +188,10 @@ export const POST = withAuth(
                 o.condition             AS condition,
                 o.quantity              AS quantity,
                 o.account_source        AS account_source,
+                o.status                AS order_status,
+                sc.image_url            AS catalog_image_url,
+                zi.zoho_item_id         AS zoho_item_id,
+                zi.image_document_id    AS zoho_image_document_id,
                 (SELECT r.id
                    FROM receiving_carton r
                   WHERE r.shipment_id = stn.id
@@ -159,6 +200,16 @@ export const POST = withAuth(
                   LIMIT 1)              AS receiving_id
          FROM shipping_tracking_numbers stn
          LEFT JOIN orders o ON o.shipment_id = stn.id
+         -- Same catalog join /api/orders uses for catalog_image_url: the photo
+         -- lives on sku_catalog, never on orders.
+         LEFT JOIN sku_catalog sc ON sc.id = o.sku_catalog_id
+         -- Zoho is the SoT for a unit's photo (operator 2026-09-05). The items
+         -- table is the local Zoho mirror, keyed by SKU; the bytes are cached in
+         -- zoho_item_images and served by /api/zoho/items/[id]/image.
+         -- NB: no backticks in SQL comments — this is a JS template literal.
+         LEFT JOIN items zi
+                ON zi.sku = o.sku
+               AND zi.organization_id = o.organization_id
          WHERE stn.id = $1
          ORDER BY o.id DESC
          LIMIT 1`,
@@ -179,7 +230,33 @@ export const POST = withAuth(
       condition: (ctxRow?.condition as string | null) ?? null,
       quantity: ctxRow?.quantity != null ? Number(ctxRow.quantity) : null,
       accountSource: (ctxRow?.account_source as string | null) ?? null,
+      imageUrl: scanOutImageUrl(ctxRow),
+      orderStatus: (ctxRow?.order_status as string | null) ?? null,
     };
+
+    /**
+     * Precondition: the order must still be one we are allowed to ship.
+     *
+     * Nothing checked this. Any label that RESOLVED committed a departure —
+     * including a cancelled order whose box was still sitting on the dock,
+     * which is the single most expensive mistake this station can make, because
+     * the package leaves and the money has already gone back to the customer.
+     *
+     * `canceled` is the local vocabulary (see `mapAmazonStatus`), not a guess.
+     * The block is a refusal, not a warning: the operator is holding the box
+     * and needs to be told to put it down.
+     */
+    const orderStatus = String(ctxRow?.order_status ?? '').trim().toLowerCase();
+    if (BLOCKED_ORDER_STATUSES.has(orderStatus)) {
+      return NextResponse.json({
+        ok: true,
+        matched: true,
+        blocked: true,
+        blockReason: orderStatus,
+        ...cartonPayload,
+        message: 'Order is cancelled — do not ship. Pull this package.',
+      });
+    }
 
     // Exception: the carrier already reports this package DELIVERED. Scanning it
     // out at the dock is anomalous (wrong/returned package, or a data conflict),
@@ -219,7 +296,28 @@ export const POST = withAuth(
       });
     }
 
-    const createdAt = body?.createdAt ? normalizePSTTimestamp(body.createdAt as string) : null;
+    /**
+     * Backdating, bounded.
+     *
+     * The offline outbox legitimately needs it: a package that left at 08:12
+     * during a wifi dropout must be recorded at 08:12, not whenever the radio
+     * came back. But an unbounded client-supplied timestamp on an AUDITED event
+     * lets any caller write a departure into last month.
+     *
+     * So: never in the future, and no further back than the outbox could
+     * plausibly have held it. Anything outside that is dropped and the server
+     * clock is used, rather than the request being refused — the confirm itself
+     * is the important part.
+     */
+    const createdAt = (() => {
+      const raw = body?.createdAt;
+      if (!raw) return null;
+      const ms = new Date(String(raw)).getTime();
+      if (!Number.isFinite(ms)) return null;
+      const age = Date.now() - ms;
+      if (age < -MAX_CLOCK_SKEW_MS || age > MAX_BACKDATE_MS) return null;
+      return normalizePSTTimestamp(raw as string);
+    })();
     const activityId = await createStationActivityLog(pool, {
       organizationId: ctx.organizationId,
       station: 'OUTBOUND',
@@ -281,6 +379,128 @@ export const POST = withAuth(
  * after a scan. Safe: audit_logs.station_activity_log_id is ON DELETE SET NULL,
  * so the audit trail of the scan survives with a nulled reference.
  */
+/**
+ * GET /api/shipped/scan-out — what this operator already sent out.
+ *
+ * The phone station keeps a session tape in memory, which is the right shape
+ * while scanning and the wrong one the moment the operator reloads, hands the
+ * phone over, or comes back after a break: the shift's work is simply gone.
+ * This is the durable half — SHIP_CONFIRM events, newest first, joined to the
+ * same carton context a live scan returns so a history row and a fresh row are
+ * the same shape and can share one component.
+ *
+ * Scoped to the CALLING STAFF by default (`?scope=mine`), because "what have I
+ * scanned out" is the question the station asks. `scope=all` is the dock view.
+ */
+export const GET = withAuth(
+  async (req: NextRequest, ctx) => {
+    const url = new URL(req.url);
+    const scopeAll = url.searchParams.get('scope') === 'all';
+    const limit = Math.min(Math.max(Number(url.searchParams.get('limit') ?? 25), 1), 100);
+
+    const rows = await tenantQuery(
+      ctx.organizationId,
+      `SELECT sal.id,
+              -- UTC with a literal Z, never the OF pattern. Postgres renders OF
+              -- as -07 (hours only), which JS Date cannot parse: the stamp came
+              -- back Invalid Date and every history row rendered with a blank
+              -- time while live rows showed one.
+              -- NB: no backticks in this comment. It lives inside a JS template
+              -- literal, so one would terminate the string.
+              to_char(sal.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS confirmed_at,
+              sal.shipment_id,
+              sal.staff_id,
+              st.name                 AS staff_name,
+              stn.tracking_number_raw AS tracking,
+              o.order_id              AS order_id,
+              o.product_title         AS product_title,
+              o.sku                   AS sku,
+              o.condition             AS condition,
+              o.quantity              AS quantity,
+              sc.image_url            AS catalog_image_url,
+              zi.zoho_item_id         AS zoho_item_id,
+              zi.image_document_id    AS zoho_image_document_id
+         FROM station_activity_logs sal
+         LEFT JOIN shipping_tracking_numbers stn ON stn.id = sal.shipment_id
+         LEFT JOIN orders o ON o.shipment_id = sal.shipment_id
+         LEFT JOIN sku_catalog sc ON sc.id = o.sku_catalog_id
+         LEFT JOIN items zi
+                ON zi.sku = o.sku
+               AND zi.organization_id = o.organization_id
+         LEFT JOIN staff st ON st.id = sal.staff_id
+        WHERE sal.activity_type = 'SHIP_CONFIRM'
+          AND sal.organization_id = $1
+          AND ($2::int IS NULL OR sal.staff_id = $2)
+        ORDER BY sal.created_at DESC
+        LIMIT $3`,
+      [ctx.organizationId, scopeAll ? null : ctx.staffId, limit],
+    )
+      .then((r) => ({ rows: r.rows, failed: false }))
+      // An empty shift and a failed query are NOT the same answer. Returning
+      // `entries: []` for both told the operator they had scanned nothing all
+      // day whenever the database hiccuped.
+      .catch(() => ({ rows: [] as Record<string, unknown>[], failed: true }))
+      .then((r) => (r.failed ? null : r.rows));
+
+    if (rows === null) {
+      return NextResponse.json(
+        { ok: false, error: 'history unavailable' },
+        { status: 503 },
+      );
+    }
+
+    return NextResponse.json({
+      ok: true,
+      scope: scopeAll ? 'all' : 'mine',
+      entries: rows.map((row) => ({
+        id: Number(row.id),
+        shipmentId: row.shipment_id != null ? Number(row.shipment_id) : null,
+        confirmedAt: (row.confirmed_at as string | null) ?? null,
+        // Recorded since day one and never surfaced. "Who scanned this out"
+        // is the question a dock asks when a package cannot be found.
+        staffId: row.staff_id != null ? Number(row.staff_id) : null,
+        staffName: (row.staff_name as string | null) ?? null,
+        tracking: (row.tracking as string | null) ?? null,
+        orderId: (row.order_id as string | null) ?? null,
+        productTitle: (row.product_title as string | null) ?? null,
+        sku: (row.sku as string | null) ?? null,
+        condition: (row.condition as string | null) ?? null,
+        quantity: row.quantity != null ? Number(row.quantity) : null,
+        imageUrl: scanOutImageUrl(row),
+      })),
+    });
+  },
+  { permission: 'shipping.mark_shipped' },
+);
+
+/**
+ * How far back a scan-out can be taken back from the floor.
+ *
+ * An undo is a CORRECTION — "that was the wrong box, seconds ago" — not a
+ * general-purpose history editor. Unbounded, it let a phone delete a departure
+ * recorded on a previous shift by someone else, which is the opposite of what a
+ * dock's records are for. Anything older is a supervisor's job on the desk,
+ * where there is a record and a reason.
+ */
+const UNDO_WINDOW_MINUTES = 120;
+
+/**
+ * DELETE /api/shipped/scan-out — take back a scan-out this operator just made.
+ *
+ * Three things this deliberately does NOT do, each of which it used to:
+ *
+ *  1. **Delete other people's work.** Scoped to the calling staff. A dock runs
+ *     several phones; one operator undoing another's confirm — silently, with
+ *     no trace — is a lost package nobody can explain.
+ *  2. **Reach back indefinitely.** Bounded by {@link UNDO_WINDOW_MINUTES}.
+ *  3. **Go unaudited.** The commit path writes an audit row; the reversal wrote
+ *     nothing at all, and deleting the activity log nulled the original row's
+ *     `station_activity_log_id` — so an undo erased its own evidence. It is now
+ *     audited BEFORE the delete, carrying what was removed.
+ *
+ * Returns `undone: 0` with a reason when nothing matched, so the client can say
+ * why rather than silently doing nothing.
+ */
 export const DELETE = withAuth(
   async (req: NextRequest, ctx) => {
     const orgId = ctx.organizationId;
@@ -290,11 +510,68 @@ export const DELETE = withAuth(
       return NextResponse.json({ ok: false, error: 'shipmentId required' }, { status: 400 });
     }
 
+    // Find the candidate FIRST, so the audit row can describe what was removed
+    // and the refusal can say which rule stopped it.
+    const candidate = await tenantQuery<{
+      id: number;
+      staff_id: number | null;
+      created_at: string;
+      age_minutes: number;
+    }>(
+      orgId,
+      `SELECT id, staff_id,
+              to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at,
+              EXTRACT(EPOCH FROM (now() - created_at)) / 60 AS age_minutes
+         FROM station_activity_logs
+        WHERE activity_type = 'SHIP_CONFIRM'
+          AND shipment_id = $1
+          AND organization_id = $2
+        ORDER BY created_at DESC
+        LIMIT 1`,
+      [shipmentId, orgId],
+    )
+      .then((r) => r.rows[0] ?? null)
+      .catch(() => null);
+
+    if (!candidate) {
+      return NextResponse.json({ ok: true, undone: 0, reason: 'not_found', shipmentId });
+    }
+    if (candidate.staff_id != null && Number(candidate.staff_id) !== Number(ctx.staffId)) {
+      return NextResponse.json(
+        { ok: false, undone: 0, reason: 'not_yours', shipmentId },
+        { status: 403 },
+      );
+    }
+    if (Number(candidate.age_minutes) > UNDO_WINDOW_MINUTES) {
+      return NextResponse.json(
+        { ok: false, undone: 0, reason: 'too_old', shipmentId },
+        { status: 409 },
+      );
+    }
+
+    // Audited before the row is gone: deleting the activity log nulls the FK on
+    // the commit's own audit row, so this is the only durable record that the
+    // departure was taken back, by whom, and when.
+    await recordAudit(pool, ctx, req, {
+      source: 'api.shipped.scan-out',
+      action: AUDIT_ACTION.SHIP_CONFIRM_UNDO,
+      entityType: AUDIT_ENTITY.SHIPMENT,
+      entityId: String(shipmentId),
+      extra: {
+        undone_activity_id: candidate.id,
+        undone_confirmed_at: candidate.created_at,
+        undone_staff_id: candidate.staff_id,
+      },
+    }).catch(() => null);
+
     const deleted = await tenantQuery(
       orgId,
       `DELETE FROM station_activity_logs
-       WHERE activity_type = 'SHIP_CONFIRM' AND shipment_id = $1`,
-      [shipmentId],
+        WHERE activity_type = 'SHIP_CONFIRM'
+          AND shipment_id = $1
+          AND organization_id = $2
+          AND id = $3`,
+      [shipmentId, orgId, candidate.id],
     );
 
     await invalidateCacheTags(['packing-logs', 'shipped']).catch(() => {});

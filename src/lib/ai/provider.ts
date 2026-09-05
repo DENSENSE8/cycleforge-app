@@ -186,6 +186,45 @@ export function aiRequestHeaders(
 }
 
 /**
+ * Hosts of the MANAGED OpenAI-wire endpoints this app resolves. Anything else
+ * a chain can produce is a self-hosted runtime (LM Studio, mlx-dspark, Ollama,
+ * llama.cpp, vLLM) reached directly or through a tunnel.
+ */
+const MANAGED_AI_HOSTS = new Set([
+  'ai-gateway.vercel.sh',
+  'api.openai.com',
+  'api.anthropic.com',
+  'cli-chat-proxy.grok.com',
+  'api.x.ai',
+]);
+
+/**
+ * Whether a resolved endpoint is a SELF-HOSTED OpenAI-compatible runtime.
+ *
+ * The distinction is about what the endpoint tolerates in the request BODY,
+ * which is why it cannot be read off `source`: the platform env set
+ * (`AI_CHAT_BASE_URL`) is Vercel AI Gateway in prod and a local box in dev, and
+ * both report `source: 'platform'`.
+ *
+ * Managed endpoints reject unknown body params with a 400. Local runtimes take
+ * runtime-specific ones — `chat_template_kwargs` above all, which is the only
+ * way to turn OFF a reasoning model's think phase. A reasoning model that
+ * thinks inside a forced-tool call spends the whole `max_tokens` budget on the
+ * think phase and returns `finish_reason: "length"` with no tool call at all,
+ * so this is not a nicety (see `hermes-tool-call.ts`).
+ *
+ * Unparseable URLs answer `false` — the conservative half, since a managed
+ * endpoint is the one that errors on an extra field.
+ */
+export function isSelfHostedAiRuntime(config: Pick<AiProviderConfig, 'baseURL'>): boolean {
+  try {
+    return !MANAGED_AI_HOSTS.has(new URL(config.baseURL).hostname);
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Cheap configured-check so hot paths (keystroke search, outbox worker) can
  * skip the semantic arm gracefully instead of catching the loud error above.
  */

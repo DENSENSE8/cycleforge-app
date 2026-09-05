@@ -40,16 +40,19 @@ test('accepts the short spellings a UI or env is likely to carry', () => {
 test('local-first puts the self-hosted slot ahead of every cloud provider', () => {
   assert.deepEqual(aiProviderSequence('local-first', 'chat'), [
     'ollama',
+    'grok',
     'ai_gateway',
     'openai',
     'anthropic',
   ]);
 });
 
-test('cloud-first is the OLD hardcoded chain, exactly — one entry moves', () => {
+test('cloud-first is the OLD hardcoded chain plus grok at the front of cloud', () => {
   // Pins that flipping the preference relocates `ollama` and reorders nothing
-  // else, so a tenant opting out of the inversion gets the previous behaviour.
+  // else in the cloud block, so a tenant opting out of the inversion gets the
+  // previous relative order with SuperGrok still beating metered keys.
   assert.deepEqual(aiProviderSequence('cloud-first', 'chat'), [
+    'grok',
     'ai_gateway',
     'openai',
     'anthropic',
@@ -57,7 +60,7 @@ test('cloud-first is the OLD hardcoded chain, exactly — one entry moves', () =
   ]);
 });
 
-test('embed drops anthropic in BOTH orders (it has no embeddings API)', () => {
+test('embed drops grok and anthropic in BOTH orders (no embeddings API)', () => {
   assert.deepEqual(aiProviderSequence('local-first', 'embed'), ['ollama', 'ai_gateway', 'openai']);
   assert.deepEqual(aiProviderSequence('cloud-first', 'embed'), ['ai_gateway', 'openai', 'ollama']);
 });

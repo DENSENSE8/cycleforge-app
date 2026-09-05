@@ -217,7 +217,7 @@ test('default-omit mode wires survive hygiene (review/pack/locations/sourcing/ho
   }
 });
 
-test('closed outbound vocabularies survive hygiene (fbaMode / rtab / etype)', () => {
+test('closed outbound vocabularies survive hygiene (fbaMode / rtab / scope)', () => {
   const fba = routeParamsFor('/shipping/fba');
   assert.ok(fba);
   for (const mode of ['ready', 'plan', 'combine', 'shipped']) {
@@ -248,12 +248,17 @@ test('closed outbound vocabularies survive hygiene (fbaMode / rtab / etype)', ()
   const search = routeParamsFor('/search');
   assert.ok(search);
   assert.equal(
-    parseRouteParams(search!, new URLSearchParams('etype=order')).get('etype'),
-    'order',
+    parseRouteParams(search!, new URLSearchParams('scope=orders')).get('scope'),
+    'orders',
   );
   assert.equal(
-    parseRouteParams(search!, new URLSearchParams('etype=nonsense')).get('etype'),
+    parseRouteParams(search!, new URLSearchParams('scope=nonsense')).get('scope'),
     null,
+  );
+  assert.equal(
+    parseRouteParams(search!, new URLSearchParams('etype=order')).get('etype'),
+    'order',
+    'legacy etype bookmarks remain readable during migration',
   );
 });
 

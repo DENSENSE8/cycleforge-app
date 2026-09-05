@@ -62,6 +62,17 @@ export interface DeskStageOverlayProps {
    * `stage` — full width + height of the desk stage card (inline L2).
    */
   fill?: DeskStageOverlayFill;
+  /**
+   * Paint the title / walk / ✕ band. Default true.
+   *
+   * Pass `false` ONLY where the desk header already owns entry and exit for
+   * this surface — a pressed `DeskActionSlot` toggle is the same control as a
+   * ✕, and Esc is wired here regardless. A second exit is not a second
+   * affordance, it is chrome. `title` stays required either way: with no
+   * header it is the region's accessible name, which is the one thing a
+   * screen reader cannot recover from the desk button.
+   */
+  showHeader?: boolean;
 }
 
 export function DeskStageOverlay({
@@ -81,6 +92,7 @@ export function DeskStageOverlay({
   cardClassName,
   closeOnScrim = true,
   fill = 'inset',
+  showHeader = true,
 }: DeskStageOverlayProps) {
   useRegisterOverlay(open);
   useEscapeClose(open, onClose);
@@ -104,18 +116,20 @@ export function DeskStageOverlay({
       role="region"
       aria-label={typeof title === 'string' ? title : 'Record editor'}
     >
-      {/* Scrim — opacity only (M2); table remains mounted underneath (Q5). */}
-      <button
-        type="button"
-        className={cn(
-          'absolute inset-0',
-          stageFill ? 'bg-surface-card' : 'bg-scrim/40',
-        )}
-        aria-label={closeOnScrim && !stageFill ? 'Close record editor' : undefined}
-        aria-hidden={stageFill || !closeOnScrim}
-        onClick={closeOnScrim && !stageFill ? onClose : undefined}
-        tabIndex={-1}
-      />
+      {/* Scrim — opacity only (M2); table remains mounted underneath (Q5).
+          Not painted on stage fill: there the panel is opaque and covers the
+          host edge to edge, so the scrim was an inert, aria-hidden, unclickable
+          full-size element drawing the same fill directly beneath it. */}
+      {stageFill ? null : (
+        <button
+          type="button"
+          className="absolute inset-0 bg-scrim/40"
+          aria-label={closeOnScrim ? 'Close record editor' : undefined}
+          aria-hidden={!closeOnScrim}
+          onClick={closeOnScrim ? onClose : undefined}
+          tabIndex={-1}
+        />
+      )}
 
       <div
         className={cn(
@@ -131,6 +145,7 @@ export function DeskStageOverlay({
           cardClassName,
         )}
       >
+        {showHeader ? (
         <header className="flex shrink-0 items-start gap-2 border-b border-border-hairline px-4 py-3">
           <div className="min-w-0 flex-1">
             <h2 className="truncate text-role-title text-text-default">{title}</h2>
@@ -181,6 +196,7 @@ export function DeskStageOverlay({
             <X className="size-4" />
           </Button>
         </header>
+        ) : null}
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
 

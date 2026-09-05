@@ -149,7 +149,9 @@ export function TestingHistoryList({
       });
       const res = await fetch(`${TESTING_RECEIVING_LINES_API}?${params.toString()}`);
       if (!res.ok) throw new Error('fetch failed');
-      return res.json();
+      const data = (await res.json().catch(() => null)) as ApiResponse | null;
+      if (!data) throw new Error('empty testing feed');
+      return data;
     },
     staleTime: 20_000,
     refetchOnWindowFocus: true,
@@ -254,7 +256,7 @@ export function TestingHistoryList({
   const daySections = useMemo(() => toDaySections(rows), [rows, toDaySections]);
   const boardEnabled = mode === 'history' && STATION_PIPELINE_BOARDS;
   const layout = boardEnabled ? parseLayout(searchParams.get(LAYOUT_PARAM)) : 'all';
-  const setLayout = useCallback(
+  const _setLayout = useCallback(
     (next: 'board' | 'all') => {
       const params = new URLSearchParams(searchParams.toString());
       if (next === 'all') params.delete(LAYOUT_PARAM);

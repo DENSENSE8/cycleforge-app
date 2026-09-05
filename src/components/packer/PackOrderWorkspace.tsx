@@ -14,15 +14,16 @@
 
 import {
   AnimatePresence,
+  idleBrowseLayerProps,
   motion,
   motionRole,
+  overlayPaneStyle,
   useMotionRole,
   useOverlaySwapHardCut,
 } from '@/design-system/motion';
 import { PackWorkspaceView } from '@/components/packer/PackWorkspaceView';
 import { PackOrderPanel } from '@/components/packer/PackOrderPanel';
 import { PackFbaScanCard } from '@/components/packer/PackFbaScanCard';
-import { zIndex } from '@/design-system/tokens/z-index';
 import { appWorkCanvasClass } from '@/design-system/tokens/app-surface';
 import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
 import { cn } from '@/utils/_cn';
@@ -66,12 +67,7 @@ export function PackOrderWorkspace({
 
   return (
     <div className={cn(appWorkCanvasClass, 'relative h-full')}>
-      <div
-        className={`flex h-full min-h-0 w-full flex-col ${showOverlay ? 'pointer-events-none' : ''}`}
-        aria-hidden={showOverlay ? true : undefined}
-        inert={showOverlay ? true : undefined}
-        style={{ visibility: showOverlay ? 'hidden' : 'visible' }}
-      >
+      <div {...idleBrowseLayerProps(showOverlay, 'flex h-full min-h-0 w-full flex-col')}>
         <PackWorkspaceView packerId={packerId} />
       </div>
 
@@ -86,7 +82,7 @@ export function PackOrderWorkspace({
             animate={panePresence.animate}
             exit={panePresence.exit}
             transition={paneTransition}
-            style={{ zIndex: zIndex.panel + (entitySwapHardCut ? 1 : 0) }}
+            style={overlayPaneStyle(entitySwapHardCut)}
             className="absolute inset-0 flex min-h-0 flex-col overflow-y-auto bg-surface-canvas"
           >
             <PackFbaScanCard scan={activeFba} />
@@ -98,7 +94,7 @@ export function PackOrderWorkspace({
             animate={panePresence.animate}
             exit={panePresence.exit}
             transition={paneTransition}
-            style={{ zIndex: zIndex.panel + (entitySwapHardCut ? 1 : 0) }}
+            style={overlayPaneStyle(entitySwapHardCut)}
             className={cn('absolute inset-0 flex min-h-0 flex-col', appSurfaceFillClass('canvas'))}
           >
             <PackOrderPanel activeOrder={activeOrder} onClose={onCloseActiveOrder} />

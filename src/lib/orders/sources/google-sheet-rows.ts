@@ -146,6 +146,10 @@ export function mapSheetRowsToCanonicalLines(
     const tracking = cell(row, colIndices.tracking);
     return {
       externalOrderId: cell(row, colIndices.orderNumber),
+      // Sheet rows have no marketplace line id; `resolveExternalLineId` falls
+      // through itemNumber → sku → title so distinct products on one order
+      // number survive the fold.
+      externalLineId: '',
       itemNumber: cell(row, colIndices.itemNumber),
       productTitle: cell(row, colIndices.itemTitle),
       sku: cell(row, colIndices.usavSku),

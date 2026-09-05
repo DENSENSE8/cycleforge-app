@@ -215,6 +215,63 @@ export const DATA_TABLE_TOOLBAR_CORNER = 'rounded-lg';
 export const TRIAGE_PANEL_INNER_CORNER = 'rounded-lg';
 
 /**
+ * ─── Mobile scan surface ────────────────────────────────────────────────────
+ *
+ * The handheld scan screens (`/m/scan-out` first; the floor stations that clone
+ * it next). These are the ONE place the house departs from flush-square, and it
+ * is a deliberate operator call (2026-09-04), not a drift.
+ *
+ * ## Why a phone is not a desk
+ *
+ * Flush-square is the desk's grammar because a desk surface is a plane inside a
+ * plane: a table butts against its toolbar, a cell against its column, and a
+ * radius there would draw a box around something that is not a box. A phone has
+ * no planes to butt against — every surface floats on the canvas, held in one
+ * hand, and a hard corner on a floating card reads as an unstyled div rather
+ * than as industrial intent. The device's own screen is radiused; chrome that
+ * ignores that reads as a web page pasted onto a phone.
+ *
+ * These constants are therefore scoped BY SURFACE, not by preference. They do
+ * not license rounding anywhere else: a desk table, a scan-station well, a
+ * DataTable cell and a workbench plate all stay {@link cornerClass}(`'flush'`).
+ *
+ * ## The ladder
+ *
+ * Three rungs, one step apart, so nesting stays concentric without arithmetic:
+ * window 24 → card 16 → row 12.
+ *
+ * There was a fourth, `MOBILE_SCAN_RETICLE_CORNER`, for the camera's aim
+ * brackets. It was deleted with the reticle itself (the capture window draws
+ * nothing on the feed now); a corner token with no surface to describe is a
+ * token the next station will reach for and misuse.
+ */
+
+/**
+ * The scan window's lip — the camera surface anchored to the bottom of a
+ * handheld scan screen.
+ *
+ * TOP corners only. The bottom edge meets the device bezel, which supplies its
+ * own radius; rounding it again leaves a sliver of canvas under the window and
+ * reads as a floating sheet rather than the mouth of the screen. Pair with
+ * `overflow-hidden` so the video is clipped to the lip.
+ */
+export const MOBILE_SCAN_WINDOW_CORNER = 'rounded-t-3xl';
+
+/**
+ * A card floating on the mobile scan canvas — the focus card carrying the scan
+ * that just settled. One rung under {@link MOBILE_SCAN_WINDOW_CORNER}, so a
+ * card sitting on the window's lip does not out-round the window.
+ */
+export const MOBILE_SCAN_CARD_CORNER = 'rounded-2xl';
+
+/**
+ * A history row on the mobile scan tape. One rung under
+ * {@link MOBILE_SCAN_CARD_CORNER}: history is quieter than the live scan, and
+ * the corner says so before the ink does.
+ */
+export const MOBILE_SCAN_ROW_CORNER = 'rounded-xl';
+
+/**
  * Concentric inner corner: **inner = outer − padding**.
  *
  * A box nested inside a rounded container looks wrong unless its radius is the

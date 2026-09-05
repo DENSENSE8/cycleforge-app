@@ -27,7 +27,9 @@ staff member.
 | [`HANDOFF-ux-fighting.md`](HANDOFF-ux-fighting.md) | **The UX/UI expert brief.** Paste into a fresh session — what the interface is, how the operator wants to be argued with, six worked fights, and the measurement snippets |
 | [`prototype/warehouse-os.html`](prototype/warehouse-os.html) | The clickable shell. Where rulings get discovered before they get written down |
 | [`HANDOFF-motion-sweep.md`](HANDOFF-motion-sweep.md) | **Executable.** Paste into a fast-model session — the mechanical half of law M1 in `src/` |
-| [`PLAN-packed-by-packer.md`](PLAN-packed-by-packer.md) | **Daily boxes packed by packer.** Operations L2 mode `packed` (header button + table). Build only when the operator says to |
+| [`PLAN-floating-assistant-composer.md`](PLAN-floating-assistant-composer.md) | **Floating Ask circle** (2026-09-02). Same corner closed (Sparkles) and open (X + stack). Not RightRailHost. |
+| [`PLAN-morph-cursor-reliability.md`](PLAN-morph-cursor-reliability.md) | **Desk morph cursor reliability** (2026-09-02). One layer, OS hide sheet, opt-in morph; R1 hit-test / R2 rail gold. |
+| [`RESKIN.md`](RESKIN.md) | **Full reskin — decision locked** (2026-09-02). Visual language replaced end to end; interaction contracts kept unless ruled broken. Three directions, R0–R4 phases, wave order, refuse list, measurement. Overrides the visual rulings in HANDOFF-ux-ui and the F-section of LAWS |
 
 ## The five pillars
 

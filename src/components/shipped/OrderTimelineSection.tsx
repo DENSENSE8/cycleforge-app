@@ -56,7 +56,7 @@ const ORDER_TIMELINE_TOGGLE_OPTIONS: ReadonlyArray<{ value: TimelineGroupMode; l
  * The tag lives here, at merge time, rather than on the shared `TimelineItem`:
  * it is this surface's grouping of spines, not a property of an event.
  */
-type OrderTimelineLens = 'all' | 'carrier' | 'ops' | 'notes' | 'system';
+export type OrderTimelineLens = 'all' | 'carrier' | 'ops' | 'notes' | 'system';
 
 const LENS_OPTIONS: ReadonlyArray<{ value: OrderTimelineLens; label: string }> = [
   { value: 'all', label: 'All' },
@@ -82,12 +82,15 @@ export function OrderTimelineSection({
    * edge under centre tabs (Labels Print · Documents · Timeline).
    */
   flush = false,
+  /** STATUS peek opens on the carrier spine; record Timeline stays All. */
+  initialLens = 'all',
 }: {
   orderId: number;
   flush?: boolean;
+  initialLens?: OrderTimelineLens;
 }) {
   const [groupMode, setGroupMode] = useState<TimelineGroupMode>('time');
-  const [lens, setLens] = useState<OrderTimelineLens>('all');
+  const [lens, setLens] = useState<OrderTimelineLens>(initialLens);
   const [showPhotos, setShowPhotos] = useState(false);
 
   const { data, isLoading } = useQuery(orderTimelineQuery(orderId));

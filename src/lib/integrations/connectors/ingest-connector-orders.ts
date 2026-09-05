@@ -3,7 +3,7 @@
  * Square, …).
  *
  * Each connector used to carry its own copy-pasted `INSERT INTO orders … ON
- * CONFLICT ON CONSTRAINT idx_orders_unique_account_order DO UPDATE …`. They had
+ * CONFLICT (organization_id, order_id, account_source, external_line_id) DO UPDATE …`. They had
  * already drifted (different placeholder titles, ShipStation alone writing a
  * sku), and every new provider added a fourth copy. This routes them all
  * through `ingestCanonicalOrders` with the settings that reproduce that SQL:

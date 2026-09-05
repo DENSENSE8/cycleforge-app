@@ -49,7 +49,7 @@ export function RepairTable({ filter }: RepairTableProps) {
   const searchParams = useSearchParams();
   const { searchQuery: search, setSearch } = useWorkbenchSearchParam();
   const [selectedRepair, setSelectedRepair] = useState<RSRecord | null>(null);
-  const [repairControlsEl, setRepairControlsEl] = useState<HTMLDivElement | null>(null);
+  const [_repairControlsEl, _setRepairControlsEl] = useState<HTMLDivElement | null>(null);
 
   // URL-backed display sort — `newest` (default) keeps the server `created_at
   // DESC`; a column sort re-orders via the house comparator.

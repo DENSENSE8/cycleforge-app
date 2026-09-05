@@ -1,0 +1,23 @@
+# Nightly deep profile — advisory impeccable reviewer over visual diffs (plan §7.4 step 6).
+#
+# Does NOT drain the commit queue. Runs HEAD of main under --profile deep so the
+# reviewer never sits on the landing path.
+
+[Unit]
+Description=CycleForge self-hosted CI (nightly deep / design review)
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/michaelgarisek/Projects/cycleforge-app
+Environment=PATH=/home/michaelgarisek/.local/share/mise/shims:/home/michaelgarisek/.local/bin:/usr/local/bin:/usr/bin:/bin
+Environment=GARISEK_OS_ROOT=/home/michaelgarisek/Projects/Garisek-OS
+Environment=NEXT_TELEMETRY_DISABLED=1
+Environment=CI_PROFILE=deep
+Environment=TEST_CONCURRENCY=4
+ExecStart=/home/michaelgarisek/.local/share/mise/shims/node scripts/ci-runner.mjs --sha HEAD --profile deep --branch main
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=4h
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cycleforge-ci-deep

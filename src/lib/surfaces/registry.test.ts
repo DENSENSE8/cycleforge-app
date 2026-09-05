@@ -116,7 +116,15 @@ test('trust model (plan §-2, locked): auto = view-layer OR reversible evidence 
   //      tightly than the hands-on path it mirrors.
   // Anything that DELETES evidence, or that cannot state its own inverse, does
   // NOT qualify and stays `review`.
+  // WIDENED 2026-09-04 (automation_rule.upsert_item_staff / .delete): the
+  // listing rule — "always this staff for this product" — on the same three
+  // properties: the writer states its inverse (delete what it created, or
+  // restore the staff pair it overwrote), delete is soft (deleted_at), and the
+  // To-ship bulk overlay already writes the identical document under
+  // work_orders.claim.
   assert.deepEqual(autoKinds, [
+    'automation_rule.delete',
+    'automation_rule.upsert_item_staff',
     'entity_signal.insert',
     'feed_membership.set_state',
     'node_surface.set_config',

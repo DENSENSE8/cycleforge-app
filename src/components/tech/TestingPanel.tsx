@@ -31,6 +31,7 @@ import {
   useLineCollapse,
 } from '@/components/station/collapse';
 import {
+  StationAskPane,
   StationTicketPane,
   useStationComposerMode,
 } from '@/components/composer';
@@ -112,6 +113,7 @@ export function TestingPanel({
   const lineCollapse = useLineCollapse(row?.id ?? null);
   const { mode: composerMode, setMode: setComposerMode } = useStationComposerMode();
   const ticketMode = composerMode === 'ticket';
+  const askMode = composerMode === 'ask';
 
   /*
    * The composer no longer collapses the context blocks — operator ruling,
@@ -472,7 +474,7 @@ export function TestingPanel({
                 reserveScrollClearance="pager"
                 reserveIdentityClearance={false}
                 bodyGap="none"
-                bodyFill={ticketMode}
+                bodyFill={ticketMode || askMode}
                 entityContext={
                   scanSessionForThisLine ? (
                     <TestingScanSessionFeedback session={scanSession} />
@@ -519,8 +521,9 @@ export function TestingPanel({
                     lineCollapse.collapseAll();
                   }}
                 />
-                {/* Linked thread only — the composer's Ticket tab is the claim. */}
-                {ticketMode && claimTicketId != null ? (
+                {askMode ? (
+                  <StationAskPane />
+                ) : ticketMode && claimTicketId != null ? (
                   <StationTicketPane
                     row={row}
                     ticketId={claimTicketId}

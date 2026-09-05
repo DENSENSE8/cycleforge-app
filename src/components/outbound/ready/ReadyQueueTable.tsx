@@ -106,7 +106,7 @@ export function ReadyQueueTable({
   isError,
   isFetching,
   onRetry,
-  isFiltered = false,
+  isFiltered: _isFiltered = false,
   search,
   filter,
 }: ReadyQueueTableProps) {

@@ -10,10 +10,9 @@
 
 import { startTransition, useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
-import { AnimatePresence, motion } from '@/design-system/motion';
+import { AnimatePresence, idleBrowseLayerProps, motion, overlayPaneStyle } from '@/design-system/motion';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
-import { zIndex } from '@/design-system/tokens/z-index';
 import { Button } from '@/design-system/primitives';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import { ClipboardList, Loader2 } from '@/components/Icons';
@@ -169,12 +168,7 @@ export function ReviewWorkspace() {
         onTabChange={setMode}
         className="h-full"
       >
-        <div
-          className={`flex h-full min-h-0 w-full flex-col ${overlayOpen ? 'pointer-events-none' : ''}`}
-          aria-hidden={overlayOpen ? true : undefined}
-          inert={overlayOpen ? true : undefined}
-          style={{ visibility: overlayOpen ? 'hidden' : 'visible' }}
-        >
+        <div {...idleBrowseLayerProps(overlayOpen, 'flex h-full min-h-0 w-full flex-col')}>
           {mode === 'pairing' ? (
             <ReviewPairingTable onOpenOrder={openPairingOrder} onCloseOrder={clearSelection} />
           ) : mode === 'catalog-link' ? (
@@ -190,7 +184,7 @@ export function ReviewWorkspace() {
           <motion.div
             key={`review-packing-${packerLogId ?? orderId}`}
             {...paneMotionProps}
-            style={{ zIndex: zIndex.panel }}
+            style={overlayPaneStyle()}
             className="absolute inset-0 flex min-h-0 flex-col bg-surface-card"
           >
             <PackingDetailOverlay
@@ -204,7 +198,7 @@ export function ReviewWorkspace() {
           <motion.div
             key={`review-pairing-${orderId}`}
             {...paneMotionProps}
-            style={{ zIndex: zIndex.panel }}
+            style={overlayPaneStyle()}
             className="absolute inset-0 flex min-h-0 flex-col bg-surface-card"
           >
             <PairingDetailOverlay orderId={orderId!} onClose={clearSelection} />

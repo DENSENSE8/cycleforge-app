@@ -5,6 +5,7 @@ import {
   sqlOrderHasShipConfirm,
   sqlOrderHasTechScan,
   sqlOrderSerialsAgg,
+  sqlToShipDeskStage,
   sqlTsnMatchesOrder,
 } from './order-grain-sql';
 
@@ -44,4 +45,12 @@ test('sqlTsnMatchesOrder prefers order_id with sole-shipment dual-read', () => {
   assert.match(sql, /tsn\.order_id = o\.id/);
   assert.match(sql, /tsn\.order_id IS NULL/);
   assert.match(sql, /o2\.id <> o\.id/);
+});
+
+test('sqlToShipDeskStage pending includes out-of-stock even after a tech scan', () => {
+  const pending = sqlToShipDeskStage('o', 'pending');
+  assert.match(pending, /is_out_of_stock IS TRUE/);
+  assert.match(pending, /NOT /);
+  const tested = sqlToShipDeskStage('o', 'tested');
+  assert.match(tested, /NOT \(o\.is_out_of_stock IS TRUE\)/);
 });

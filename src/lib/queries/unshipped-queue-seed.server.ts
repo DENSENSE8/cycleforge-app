@@ -3,7 +3,8 @@
  * desk's `useQuery(unshippedOrdersQuery(…))` paints from cache on first HTML.
  *
  * Key + limit must match {@link UnshippedTable}'s default mount
- * (`strictSearchScope: true`, `limit: 200`, empty search, no stage).
+ * (`strictSearchScope: true`, `limit: 200`, empty search, no stage,
+ * `blockedOnly` matching the desk).
  */
 import 'server-only';
 import { dehydrate, QueryClient, type DehydratedState } from '@tanstack/react-query';
@@ -14,6 +15,7 @@ import {
   normalizeQueueCountsPayload,
   type UnshippedQueueCounts,
 } from '@/lib/orders/queue-counts-normalize';
+import { unshippedOrdersQueryKey } from '@/lib/queries/unshipped-orders-query-key';
 
 /** Default page size — keep in lockstep with `UnshippedTable` `rowLimit` initial. */
 const UNSHIPPED_SEED_LIMIT = 200;
@@ -23,36 +25,29 @@ interface UnshippedQueueSeed {
   rows: ShippedOrder[];
 }
 
-function unshippedListKey() {
-  return [
-    'dashboard-table',
-    'unshipped',
-    {
-      searchQuery: '',
-      packedBy: undefined,
-      testedBy: undefined,
-      staffId: undefined,
-      strictSearchScope: true,
-      stage: null,
-      limit: UNSHIPPED_SEED_LIMIT,
-    },
-  ] as const;
+function unshippedListKey(blockedOnly = false) {
+  return unshippedOrdersQueryKey({
+    searchQuery: '',
+    staffId: undefined,
+    strictSearchScope: true,
+    limit: UNSHIPPED_SEED_LIMIT,
+    blockedOnly,
+  });
 }
 
 function unshippedCountsKey() {
   return ['dashboard-table', 'unshipped-counts', { staffId: null }] as const;
 }
 
-async function fetchUnshippedRows(): Promise<ShippedOrder[]> {
-  // Must match `fetchUnshippedOrdersData` (inWarehouse), not fulfillmentScope.
-  // fulfillmentScope ignores dock SHIP_CONFIRM, so a seed of never-packed rows
-  // painted hundreds of already-scanned-out orders against a queue-counts
-  // denominator of the unlabeled leftovers ("171 of 2").
+async function fetchUnshippedRows(blockedOnly = false): Promise<ShippedOrder[]> {
+  // Must match `fetchUnshippedOrdersData`. To-ship is `inWarehouse`; the Pending
+  // desk is `blockedOnly` — that scope does not require a label, because most
+  // out-of-stock rows are flagged before anyone buys one.
   const params = new URLSearchParams({
-    inWarehouse: 'true',
     listShape: 'queue',
     limit: String(UNSHIPPED_SEED_LIMIT),
   });
+  params.set(blockedOnly ? 'blockedOnly' : 'inWarehouse', 'true');
   const res = await serverSelfFetch(`/api/orders?${params.toString()}`);
   if (!res.ok) {
     throw new Error(`unshipped seed failed: ${res.status}`);
@@ -92,18 +87,21 @@ async function fetchUnshippedCounts(): Promise<UnshippedQueueCounts | null> {
  * the desk an emptier seed than the one it actually paid for. Each result is
  * still consumed under its own branch, so one failing seeds the other.
  */
-export async function seedUnshippedQueue(): Promise<UnshippedQueueSeed> {
+export async function seedUnshippedQueue(
+  options: { blockedOnly?: boolean } = {},
+): Promise<UnshippedQueueSeed> {
+  const blockedOnly = options.blockedOnly === true;
   const queryClient = new QueryClient();
   let rows: ShippedOrder[] = [];
 
   const [listResult, countsResult] = await Promise.allSettled([
-    fetchUnshippedRows(),
+    fetchUnshippedRows(blockedOnly),
     fetchUnshippedCounts(),
   ]);
 
   if (listResult.status === 'fulfilled') {
     rows = listResult.value;
-    queryClient.setQueryData(unshippedListKey(), rows);
+    queryClient.setQueryData(unshippedListKey(blockedOnly), rows);
   } else {
     console.error('seedUnshippedQueue list failed; client will fetch', listResult.reason);
   }

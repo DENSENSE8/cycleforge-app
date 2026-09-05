@@ -81,6 +81,7 @@ import { InstallPrompt } from '@/components/station/InstallPrompt';
  * (the barrel re-exports seven engine-carrying primitives).
  */
 import { ReducedMotionProvider } from '@/components/providers/ReducedMotionProvider';
+import { MorphCursorLayer } from '@/design-system/motion';
 import { AppearanceApplier } from '@/components/settings/AppearanceApplier';
 import { ReceivingZohoSyncToaster } from '@/components/receiving/ReceivingZohoSyncToaster';
 import { UserIssueResolvedToaster } from '@/components/providers/UserIssueResolvedToaster';
@@ -149,6 +150,12 @@ export function WarehouseShell({
       </div>
       <InstallPrompt />
       <AppearanceApplier />
+      {/* Desk pointer cursor. Mounted ONCE here and nowhere else — a second
+          instance is two cursors, not a fallback. Self-gating: `(pointer: fine)`
+          plus reduced motion, so a floor station renders nothing and attaches no
+          `pointermove` listener. Outside `#app-root` because it is fixed at
+          `z-tooltip` and must not inherit an overflow clip. */}
+      <MorphCursorLayer />
     </ReducedMotionProvider>
   );
 }

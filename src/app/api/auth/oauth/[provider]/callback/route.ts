@@ -1,5 +1,5 @@
 /**
- * GET /api/auth/oauth/[provider]/callback  (PUBLIC)  — provider ∈ google | microsoft
+ * GET /api/auth/oauth/[provider]/callback  (PUBLIC)  — provider ∈ google | apple | microsoft
  *
  * Completes platform social login: verifies the CSRF state + nonce, exchanges
  * the code for tokens, resolves (or provisions) the account by federated
@@ -56,7 +56,7 @@ function fail(req: NextRequest, code: string): NextResponse {
 
 export async function GET(req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
   const { provider } = await params;
-  if (provider !== 'google' && provider !== 'microsoft') return fail(req, 'oauth_unknown_provider');
+  if (provider !== 'google' && provider !== 'apple' && provider !== 'microsoft') return fail(req, 'oauth_unknown_provider');
 
   const rl = await checkRateLimitAsync({
     headers: req.headers,
@@ -107,7 +107,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
       name = claims.name;
     }
     // Fallback to userinfo when the id_token lacks the claims.
-    if ((!sub || !email) && token.access_token) {
+    if ((!sub || !email) && token.access_token && cfg.userinfoUrl) {
       const info = await fetchUserInfo({ endpoint: cfg.userinfoUrl, accessToken: token.access_token });
       sub = sub || info.sub;
       email = email || info.email;

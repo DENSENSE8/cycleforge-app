@@ -5,6 +5,7 @@ import {
   COUNTER_TRANSACTION_STATUSES,
   computeCounterTotals,
   isCounterTransactionStatus,
+  parseChannelReturn,
   requiresSignature,
   serviceLineCents,
   type CounterRetailLine,
@@ -112,4 +113,78 @@ test('the status union matches the DB CHECK vocabulary', () => {
   ]);
   assert.equal(isCounterTransactionStatus('partially_paid'), true);
   assert.equal(isCounterTransactionStatus('refunded'), false);
+});
+
+// ── Channel return (in-store channel exchange) ──────────────────────────────
+//
+// parseChannelReturn is the ONLY gate on this jsonb bag — plan §6 trades a
+// dozen columns for TS validation, which makes this function the schema.
+
+test('parseChannelReturn reads an empty bag as no channel return', () => {
+  // `'{}'` is the column default and means a retail-only or repair visit.
+  assert.equal(parseChannelReturn({}), null);
+  assert.equal(parseChannelReturn(null), null);
+  assert.equal(parseChannelReturn(undefined), null);
+  assert.equal(parseChannelReturn([]), null);
+});
+
+test('parseChannelReturn reads status none as no channel return', () => {
+  assert.equal(
+    parseChannelReturn({ status: 'none', publicOrderNumber: '4787', ecwidOrderId: 'A1' }),
+    null,
+  );
+});
+
+test('parseChannelReturn rejects a return that cites no order', () => {
+  // Nothing to print for the customer and nothing to reconcile for the desk.
+  assert.equal(parseChannelReturn({ status: 'pending', amountCents: 4999 }), null);
+});
+
+test('parseChannelReturn rejects an unknown status rather than passing it through', () => {
+  assert.equal(
+    parseChannelReturn({ status: 'refunded_maybe', publicOrderNumber: '4787' }),
+    null,
+  );
+});
+
+test('parseChannelReturn reads a full record', () => {
+  const record = parseChannelReturn({
+    provider: 'ecwid',
+    ecwidOrderId: 'A1B2C3',
+    publicOrderNumber: '4787',
+    itemIds: ['9001', '9002'],
+    amountCents: 9998,
+    reason: 'wrong size',
+    status: 'refunded',
+    refundIds: ['r-1'],
+    updatedAt: '2026-09-04T18:00:00.000Z',
+  });
+
+  assert.ok(record);
+  assert.equal(record.provider, 'ecwid');
+  assert.equal(record.publicOrderNumber, '4787');
+  assert.deepEqual(record.itemIds, ['9001', '9002']);
+  assert.equal(record.amountCents, 9998);
+  assert.equal(record.status, 'refunded');
+  assert.deepEqual(record.refundIds, ['r-1']);
+});
+
+test('parseChannelReturn degrades a malformed amount to 0, never NaN', () => {
+  // Same rule serviceLineCents follows: never "$NaN" on a customer-facing
+  // receipt someone is standing there waiting for.
+  const record = parseChannelReturn({
+    status: 'manual_required',
+    publicOrderNumber: '4787',
+    amountCents: 'lots',
+  });
+  assert.ok(record);
+  assert.equal(record.amountCents, 0);
+});
+
+test('parseChannelReturn survives a half-written bag from an older writer', () => {
+  const record = parseChannelReturn({ status: 'pending', publicOrderNumber: '4787' });
+  assert.ok(record);
+  assert.deepEqual(record.itemIds, []);
+  assert.equal(record.reason, '');
+  assert.equal(record.refundIds, undefined);
 });

@@ -88,6 +88,19 @@ export function parseListingUrl(raw: string | null | undefined): ListingUrlParse
 }
 
 /**
+ * Turn a toolbar paste into the item number we write.
+ *
+ * A listing URL yields the id inside it (never the href). Bare text is trimmed
+ * as-is — operators also paste ASINs and eBay item ids straight from a sheet.
+ */
+export function itemNumberFromPaste(raw: string | null | undefined): string {
+  const trimmed = String(raw ?? '').trim();
+  if (!trimmed) return '';
+  const parsed = parseListingUrl(trimmed);
+  return parsed.ok ? parsed.candidate.itemNumber : trimmed;
+}
+
+/**
  * The href to open when CHECKING an item number before approving it.
  *
  * Precedence is deliberate (plan §6): a URL the operator actually pasted is the

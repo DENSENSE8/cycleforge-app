@@ -65,6 +65,13 @@ export type ReceivingGridCellCtx = {
   stageTip: string;
   dateCell: ReceivingActivityDateCell;
   poValue: string;
+  /**
+   * Dash this leaf's PO / order identity because the fold's PARENT band is
+   * speaking it. Set only when the group holds more than one line — the exact
+   * duplication ("Order / PO already on every leaf") that got Unbox's first
+   * summary row deleted. Operator 2026-09-05.
+   */
+  quietIdentity?: boolean;
   /** Catalog-resolved source-platform label for the order-id hover value. */
   platformLabel: string;
   /**
@@ -98,7 +105,7 @@ export type ReceivingGridCellCtx = {
   selectGutterChrome?: GridSelectGutterChrome;
   /**
    * Unbox History click-select: body click toggles bulk; gutter paints
-   * decorative GridClickSelectFace when selected (select-all in header).
+   * decorative GridSelectSquareFace when selected (select-all in header).
    */
   clickSelect?: boolean;
   /** Live defs for `custom:*` columns — type lookup for {@link CustomFieldCell}. */
@@ -108,6 +115,8 @@ export type ReceivingGridCellCtx = {
    * History / Unbox / Testing omit or pass `'landed'` (workflow_status).
    */
   linePhase?: 'expected' | 'landed';
+  /** Effective subtitle field ids from the slot layout (qty first). */
+  subtitleFieldIds?: readonly string[];
   daysLate?: number | null;
   laneAgeLabel?: string | null;
   laneAgeHours?: number | null;

@@ -10,7 +10,11 @@ import { useRouter } from 'next/navigation';
 import { useQuickAccess } from '@/lib/quick-access/use-quick-access';
 import { pinSlotFromKeyboardEvent } from '@/lib/quick-access/pin-hotkeys';
 
-export function PinHotkeysListener() {
+export function PinHotkeysListener({
+  onPinNavigate,
+}: {
+  onPinNavigate?: () => void;
+}) {
   const router = useRouter();
   const { settings } = useQuickAccess();
 
@@ -21,11 +25,12 @@ export function PinHotkeysListener() {
       const target = settings.pinned[slot - 1];
       if (!target) return;
       e.preventDefault();
+      onPinNavigate?.();
       router.push(target.href);
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [router, settings.pinned]);
+  }, [router, settings.pinned, onPinNavigate]);
 
   return null;
 }

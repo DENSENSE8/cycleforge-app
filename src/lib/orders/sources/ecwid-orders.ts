@@ -87,6 +87,7 @@ export function mapEcwidOrdersToCanonicalLines(ecwidOrders: unknown[]): Canonica
 
       lines.push({
         externalOrderId,
+        externalLineId: cleanText(item.id),
         // Ecwid exposes one identifier per item; the writer probes both keys.
         itemNumber: sku,
         sku,

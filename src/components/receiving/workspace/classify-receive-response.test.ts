@@ -29,6 +29,24 @@ test('classifyReceiveResponse: networkError stays rose', () => {
   assert.equal(c.tone, 'rose');
 });
 
+test('classifyReceiveResponse: LINES_INCOMPLETE is amber remaining, not a network failure', () => {
+  const c = classifyReceiveResponse({
+    at: Date.now(),
+    durationMs: 40,
+    httpStatus: 409,
+    ok: false,
+    body: {
+      success: false,
+      error: 'LINES_INCOMPLETE',
+      blockers: ['SKU-1: 2 remaining'],
+    },
+  });
+  assert.equal(c.verdict, 'lines_incomplete');
+  assert.equal(c.tone, 'amber');
+  assert.match(c.headline, /Finish line remaining/i);
+  assert.match(c.detail, /SKU-1: 2 remaining/);
+});
+
 test('classifyReceiveResponse: undecryptable Zoho vault is receive-in-inventory, not reconnect', () => {
   const c = classifyReceiveResponse({
     at: Date.now(),

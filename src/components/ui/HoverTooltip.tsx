@@ -18,6 +18,7 @@ import {
   readTrustedTriggerRect,
   type PortalTooltipPlacement,
 } from '@/lib/ui/portal-anchor';
+import { useCursorLabel } from '@/design-system/motion/use-cursor-label';
 import { cornerClass } from '@/design-system/tokens/radius';
 import {
   useDeferredHoverEngine,
@@ -55,6 +56,15 @@ import { cn } from '@/utils/_cn';
  * bubble's behavior are unchanged. The tooltip is never in the DOM before it
  * opens — it was not before this split either — so no accessible name or
  * description moves.
+ *
+ * ## On the desk the label rides the cursor
+ *
+ * When `MorphCursorLayer` is live (fine pointer, motion on) and the label is a
+ * short plain string, a MOUSE hover hands the text to the cursor layer via
+ * {@link useCursorLabel} and mounts nothing here — one chip under the pointer
+ * instead of a portal per trigger. The bubble is the fallback, not a fork:
+ * focus (keyboard / scan gun), touch, reduced motion, and long or rich labels
+ * still open the anchored `role="tooltip"` bubble exactly as before.
  */
 export function HoverTooltip({
   label,
@@ -102,16 +112,24 @@ export function HoverTooltip({
     HTMLElement,
     HoverTooltipHandle
   >();
+  const cursor = useCursorLabel({ disabled });
 
   const onEnter = () => {
     if (disabled) return;
+    // Desk: the cursor carries it. Anywhere else: the anchored bubble.
+    if (cursor.enter(label, openDelayMs)) return;
     activate('hover', (h) => h.scheduleShow());
   };
   const onFocusTrigger = () => {
     if (disabled) return;
+    // Click-focus while the cursor already carries the label: one copy only.
+    if (cursor.riding()) return;
     activate('focus', (h) => h.show());
   };
-  const dismiss = () => release((h) => h.hide());
+  const dismiss = () => {
+    cursor.leave();
+    release((h) => h.hide());
+  };
 
   const bubble = mounted ? (
     <HoverTooltipBubble

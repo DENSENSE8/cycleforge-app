@@ -32,24 +32,26 @@ type ExceptionTrackingEntry = {
 /** First page size for a newly connected seller that has no exception work-list. */
 const RECENT_SELLER_INGEST_LIMIT = 20;
 
-function fulfillmentFields(ebayOrder: any) {
-  const lineItems = Array.isArray(ebayOrder?.lineItems) ? ebayOrder.lineItems : [];
-  const firstItem = lineItems[0] || {};
-  const productTitle = String(firstItem?.title || '').trim() || 'No title';
-  const condition = String(firstItem?.condition || firstItem?.conditionId || '').trim();
-  const sku = String(firstItem?.sku || '').trim();
-  const quantity = firstItem?.quantity ? String(firstItem.quantity).trim() : '1';
+function fulfillmentLineFields(ebayOrder: any, lineItem: any) {
+  const productTitle = String(lineItem?.title || '').trim() || 'No title';
+  const condition = String(lineItem?.condition || lineItem?.conditionId || '').trim();
+  const sku = String(lineItem?.sku || '').trim();
+  const quantity = lineItem?.quantity ? String(lineItem.quantity).trim() : '1';
   const orderDateRaw = ebayOrder?.creationDate ? new Date(ebayOrder.creationDate) : null;
   const orderDate = orderDateRaw && !Number.isNaN(orderDateRaw.getTime()) ? orderDateRaw : null;
-  const rawAmount = ebayOrder?.pricingSummary?.total?.value;
+  const rawAmount = lineItem?.lineItemCost?.value ?? ebayOrder?.pricingSummary?.total?.value;
   const parsedAmount = rawAmount != null ? Number(rawAmount) : null;
   const saleAmount = parsedAmount != null && !Number.isNaN(parsedAmount) ? parsedAmount : null;
-  const currency = String(ebayOrder?.pricingSummary?.total?.currency || '').trim() || 'USD';
+  const currency =
+    String(lineItem?.lineItemCost?.currency || ebayOrder?.pricingSummary?.total?.currency || '').trim() ||
+    'USD';
   const buyerNote = String(ebayOrder?.buyerCheckoutNotes || '').trim() || null;
   const orderId = String(ebayOrder?.orderId || '').trim() || null;
-  const itemNumber = String(firstItem?.legacyItemId || firstItem?.lineItemId || '').trim() || null;
+  const itemNumber = String(lineItem?.legacyItemId || lineItem?.lineItemId || '').trim() || null;
+  const externalLineId = String(lineItem?.lineItemId || lineItem?.legacyItemId || '').trim();
   return {
     orderId,
+    externalLineId,
     productTitle,
     condition,
     sku,
@@ -63,23 +65,52 @@ function fulfillmentFields(ebayOrder: any) {
 }
 
 /**
- * Upsert a Fulfillment order into `orders` by (org, account_source, order_id).
- * Tracking is optional — a newly connected seller has no exception work-list,
- * so Sync now / first ingest must still persist live API rows.
+ * Upsert each Fulfillment line into `orders` by (org, account_source, order_id,
+ * external_line_id). Tracking is optional — a newly connected seller has no
+ * exception work-list, so Sync now / first ingest must still persist live API rows.
  */
 async function upsertOrderFromEbayFulfillment(params: {
   accountName: string;
   ebayOrder: any;
   organizationId: string;
 }): Promise<'created' | 'updated' | 'skipped'> {
-  const f = fulfillmentFields(params.ebayOrder);
+  const lineItems = Array.isArray(params.ebayOrder?.lineItems) ? params.ebayOrder.lineItems : [];
+  const items = lineItems.length > 0 ? lineItems : [{}];
+  let created = false;
+  let wrote = false;
+
+  for (const lineItem of items) {
+    const result = await upsertOneEbayFulfillmentLine({
+      accountName: params.accountName,
+      ebayOrder: params.ebayOrder,
+      lineItem,
+      organizationId: params.organizationId,
+    });
+    if (result === 'skipped') continue;
+    wrote = true;
+    if (result === 'created') created = true;
+  }
+
+  if (!wrote) return 'skipped';
+  return created ? 'created' : 'updated';
+}
+
+async function upsertOneEbayFulfillmentLine(params: {
+  accountName: string;
+  ebayOrder: any;
+  lineItem: any;
+  organizationId: string;
+}): Promise<'created' | 'updated' | 'skipped'> {
+  const f = fulfillmentLineFields(params.ebayOrder, params.lineItem);
   if (!f.orderId) return 'skipped';
 
   const existing = await pool.query(
     `SELECT id FROM orders
       WHERE account_source = $1 AND order_id = $2 AND organization_id = $3
+        AND (external_line_id = $4 OR ($4 <> '' AND external_line_id = ''))
+      ORDER BY (external_line_id = $4) DESC, id ASC
       LIMIT 1`,
-    [params.accountName, f.orderId, params.organizationId],
+    [params.accountName, f.orderId, params.organizationId, f.externalLineId],
   );
   const existingId: number | null = existing.rows[0]?.id ?? null;
 
@@ -102,7 +133,11 @@ async function upsertOrderFromEbayFulfillment(params: {
            sku_catalog_id = COALESCE(sku_catalog_id, $6),
            sale_amount = COALESCE(sale_amount, $7),
            currency = COALESCE(NULLIF(currency, ''), $8),
-           buyer_note = COALESCE(buyer_note, $9)
+           buyer_note = COALESCE(buyer_note, $9),
+           external_line_id = CASE
+             WHEN external_line_id = '' AND $12::text <> '' THEN $12
+             ELSE external_line_id
+           END
        WHERE id = $10 AND organization_id = $11`,
       [
         f.productTitle,
@@ -116,6 +151,7 @@ async function upsertOrderFromEbayFulfillment(params: {
         f.buyerNote,
         existingId,
         params.organizationId,
+        f.externalLineId,
       ],
     );
     return 'updated';
@@ -125,11 +161,11 @@ async function upsertOrderFromEbayFulfillment(params: {
     `INSERT INTO orders (
       organization_id, order_id, product_title, condition, sku, status,
       status_history, notes, quantity, account_source, order_date,
-      sku_catalog_id, sale_amount, currency, buyer_note
+      sku_catalog_id, sale_amount, currency, buyer_note, external_line_id
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15
+      $1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15, $16
     )
-    ON CONFLICT ON CONSTRAINT idx_orders_unique_account_order DO UPDATE
+    ON CONFLICT (organization_id, order_id, account_source, external_line_id) DO UPDATE
       SET product_title = COALESCE(NULLIF(EXCLUDED.product_title, 'No title'), orders.product_title),
           condition = COALESCE(NULLIF(orders.condition, ''), EXCLUDED.condition),
           sku = COALESCE(NULLIF(orders.sku, ''), EXCLUDED.sku),
@@ -155,6 +191,7 @@ async function upsertOrderFromEbayFulfillment(params: {
       f.saleAmount,
       f.currency,
       f.buyerNote,
+      f.externalLineId,
     ],
   );
   return 'created';
@@ -326,7 +363,7 @@ async function createOrUpdateOrderFromEbayTracking(params: {
     [trackingKey18, params.organizationId]
   );
 
-  // Also check by (account_source, order_id) to avoid idx_orders_unique_account_order violations
+  // Also check by (account_source, order_id) to avoid idx_orders_unique_org_account_order_line violations
   let existingId: number | null = existingByTracking.rows[0]?.id ?? null;
   if (!existingId && orderId && params.accountName) {
     const existingByOrderId = await pool.query(
@@ -397,11 +434,12 @@ async function createOrUpdateOrderFromEbayTracking(params: {
       sku_catalog_id,
       sale_amount,
       currency,
-      buyer_note
+      buyer_note,
+      external_line_id
     ) VALUES (
-      $1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15
+      $1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15, $16
     )
-    ON CONFLICT ON CONSTRAINT idx_orders_unique_account_order DO UPDATE
+    ON CONFLICT (organization_id, order_id, account_source, external_line_id) DO UPDATE
       SET product_title = COALESCE(NULLIF(EXCLUDED.product_title, 'No title'), orders.product_title),
           condition = COALESCE(NULLIF(orders.condition, ''), EXCLUDED.condition),
           sku = COALESCE(NULLIF(orders.sku, ''), EXCLUDED.sku),
@@ -429,6 +467,7 @@ async function createOrUpdateOrderFromEbayTracking(params: {
       saleAmount,
       currency,
       buyerNote,
+      '',
     ]
   );
 

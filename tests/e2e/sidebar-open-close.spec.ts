@@ -218,7 +218,7 @@ test.describe('sidebar spine — open and close', () => {
     ).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Home' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Media Library' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Open Scan Stations' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Stations' })).toBeVisible();
   });
 
   /**

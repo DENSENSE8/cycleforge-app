@@ -8,13 +8,12 @@
  * Absent / null / [] → full catalog in registry order (not an empty slate).
  * Saved order wins; any new catalog ids the staffer can see append at the end.
  *
- * Scan Stations (`floor`) and Desks (`desks`) are one slot each — benches and
- * pointer desks are not reorderable on the root map; they live behind the
- * list-replace drills. Home · Media Library stay structural above both drills.
+ * Stations (`floor`) and Desks (`desks`) are one slot each — benches and
+ * pointer desks are not reorderable as individual L1 rows; they list under
+ * standing group labels. Home · Media Library stay structural above both.
  */
 
 import {
-  isDeskSpineSection,
   isSpineDeskItem,
   isSpineMapTopRow,
   type SidebarNavItem,
@@ -24,10 +23,10 @@ import {
 /** Cap matches the Zod max on `staff_preferences.spineSlots`. */
 export const SPINE_SLOTS_MAX = 40;
 
-/** Synthetic spine slot for the Scan Stations enter row / drill. */
+/** Synthetic spine slot for the Stations group. */
 export const SPINE_STATIONS_SLOT_ID = 'floor';
 
-/** Synthetic spine slot for the Desks enter row / drill. */
+/** Synthetic spine slot for the Desks group. */
 export const SPINE_DESKS_SLOT_ID = 'desks';
 
 /** True when this catalog row participates in staff reorder as its own L1. */
@@ -54,14 +53,13 @@ function deskIdSet(allowed: readonly SidebarNavItem[]): Set<string> {
   );
 }
 
-export function spineParentDrillId(section: SpineSectionId | null): string | null {
-  if (section === 'floor') return SPINE_STATIONS_SLOT_ID;
-  if (isDeskSpineSection(section)) return SPINE_DESKS_SLOT_ID;
+/** Groups render inline — no list-replace parent remains. */
+export function spineParentDrillId(_section: SpineSectionId | null): string | null {
   return null;
 }
 
 /**
- * Default order: Scan Stations, then Desks, then remaining L1 (Studio · Admin).
+ * Default order: Stations, then Desks, then remaining L1 (Studio · Admin).
  */
 export function defaultSpineOrder(allowed: readonly SidebarNavItem[]): string[] {
   const out: string[] = [];

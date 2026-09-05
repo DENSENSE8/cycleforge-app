@@ -21,13 +21,16 @@ Before marking a coding task complete:
    engine edits, run `pnpm run eval:cohort slot-table`. SoT is engine + every
    product table peer — not To-ship alone. **Hard law:** every painted DATA
    column header is click-to-sort (`SLOT_TABLE_PAINT_LAW.headerSort` /
-   `isSlotTableChromeTrack`). Chrome only: select / actions / `_fill`. Image is
-   DATA. Never `sortable: false` on a labeled fact — map the track. Toolbar sort
-   menu lists the same facts (`queueColumnSortOptions`); Pick/Status/Image are
+   `isSlotTableChromeTrack`). Chrome only: select / actions / `_fill` / `thumb`
+   (Image photo gutter). Never `sortable: false` on a labeled fact — map the track. Toolbar sort
+   menu lists the same facts (`queueColumnSortOptions`); Pick/Status are
    rows, not trigger-only. Cohort `ok`
    fails on tripwire, engine-contract grep, or graph `find` no-match (rebuild
    the cycleforge-app index). Hand-model leftovers:
    `pnpm run eval:discover` — delete only listed DELETE ids; never KEEP rows.
+   Orders / To-ship: never remount the shared actions ⋮ (`ordersCompoundColumnsFor` drops `actions`; copy lives on identity chips). KEEP `engine:ordersCompoundColumnsFor`.
+   Selecting a row always opens the left Morphing menu on To-ship **and** Shipped (`OrdersGridHost`); gating Morphing on `queueMode === 'fulfillment'` is a cohort fail.
+   Header click-to-sort is `?sort=` on every outbound lane — do not pass `sort=` into `OrdersGridHost` (that freeze is a dead-header fork).
 6. **Shortcut-display cohort:** after `?` / shortcut / TableStatusBar hotkey
    edits, run `pnpm run eval:cohort shortcuts`. Staff `?` reveals letters
    inline on the buttons. Standing keycaps: refuse. Cheat sheet from the

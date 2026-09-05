@@ -16,6 +16,7 @@ import {
   type CSSProperties,
   type HTMLAttributes,
   type ReactNode,
+  type Ref,
 } from 'react';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import type {
@@ -34,6 +35,22 @@ export interface LedgerGridLeafCellMeta {
 
 export interface LedgerGridLeafRowProps<C extends LedgerGridColumnModel>
   extends Omit<HTMLAttributes<HTMLDivElement>, 'children'> {
+  /**
+   * Rendered AFTER the cells, inside the row element.
+   *
+   * The row-anchored action plane and nothing else: a panel that must position
+   * against the row (not against a cell, which would park it on top of the
+   * columns the operator is reading) has to be a descendant of it. It is not a
+   * track and it takes no grid space — it is absolutely positioned by whatever
+   * mounts it.
+   *
+   * This is deliberately narrow. It is NOT a slot for family markup: the cells
+   * are still the only thing that paints row content, and the engine is the
+   * only caller (`CompoundPlaneRow`), which takes the plane from the BINDING.
+   */
+  children?: ReactNode;
+  /** The row element — what a plane anchors to. */
+  ref?: Ref<HTMLDivElement>;
   columns: readonly C[];
   /** CSS `grid-template-columns` from the surface's `*GridTemplate(columns)`. */
   template: string;
@@ -60,6 +77,8 @@ export function LedgerGridLeafRow<C extends LedgerGridColumnModel>({
   scrollMinContent = true,
   isMobile = false,
   renderCell,
+  children,
+  ref,
   className,
   style,
   ...rest
@@ -81,6 +100,7 @@ export function LedgerGridLeafRow<C extends LedgerGridColumnModel>({
       // happen. Every row this shell renders now says "I am a grid row" in a
       // word that belongs to no family.
       data-grid-row=""
+      ref={ref}
       {...rest}
       className={cn(
         ledgerGridRowShellClass(isMobile, { scrollMinContent }),
@@ -95,6 +115,7 @@ export function LedgerGridLeafRow<C extends LedgerGridColumnModel>({
           <Fragment key={col.key}>{renderCell(col, { last, rule: !last })}</Fragment>
         );
       })}
+      {children}
     </div>
   );
 }

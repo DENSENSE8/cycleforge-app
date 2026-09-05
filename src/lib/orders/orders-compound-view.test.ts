@@ -7,6 +7,9 @@ import { describe, it } from 'node:test';
 import {
   ordersCompoundView,
   ordersIdentityLine,
+  ordersEdgeMark,
+  ordersOrderedAt,
+  ordersShipByDelay,
   ordersStateTone,
 } from '@/lib/orders/orders-compound-view';
 import { formatCompoundStageStepLine } from '@/components/tables/compound/compound-row-model';
@@ -30,9 +33,11 @@ describe('ordersStateTone', () => {
     assert.equal(ordersStateTone('Out of stock'), 'alert');
     assert.equal(ordersStateTone('Hold'), 'alert');
   });
-  it('marks tested / packed / ready as done', () => {
+  it('marks tested / packed / carrier-in-network as done', () => {
     assert.equal(ordersStateTone('Tested'), 'done');
     assert.equal(ordersStateTone('Packed'), 'done');
+    assert.equal(ordersStateTone('In Transit'), 'done');
+    assert.equal(ordersStateTone('Pre-Transit'), 'done');
   });
   it('keeps ordinary queue states neutral', () => {
     assert.equal(ordersStateTone('Awaiting test'), 'neutral');
@@ -237,5 +242,109 @@ describe('ordersCompoundView', () => {
     assert.equal(view.delay?.dateLabel, null);
     assert.equal(view.delay?.dateKey, null);
     assert.equal(view.delayTip, undefined);
+  });
+});
+
+describe('ordersOrderedAt — the DATES top line', () => {
+  it('prefers the channel order date and names it in the tooltip', () => {
+    const face = ordersOrderedAt(
+      baseOrder({ order_date: '2026-08-20T18:00:00.000Z', created_at: '2026-08-25T09:00:00.000Z' }),
+    );
+    assert.ok(face);
+    assert.match(face!.tip, /^Ordered · /);
+    // The PURCHASE day, not the import day.
+    assert.match(face!.tip, /Aug 20/);
+  });
+
+  it('falls back to the import stamp when the channel sent no order date', () => {
+    const face = ordersOrderedAt(baseOrder({ order_date: null, created_at: '2026-08-25T09:00:00.000Z' }));
+    assert.ok(face);
+    assert.match(face!.label, /Aug 25/);
+    // Staff must be able to tell a purchase date from an import date.
+    assert.match(face!.tip, /^Imported · /);
+    assert.match(face!.tip, /no order date came from the channel/);
+  });
+
+  it('treats the legacy sentinel as absent, not as a date', () => {
+    const face = ordersOrderedAt(baseOrder({ order_date: '1', created_at: '2026-08-25T09:00:00.000Z' }));
+    assert.ok(face);
+    assert.match(face!.tip, /^Imported · /);
+  });
+
+  it('is null only when there is no date at all', () => {
+    assert.equal(ordersOrderedAt(baseOrder({ order_date: null, created_at: null })), null);
+  });
+});
+
+describe('ordersShipByDelay — the facts the age face reads', () => {
+  it('counts the days remaining on a future deadline (lateness clamps at 0)', () => {
+    const delay = ordersShipByDelay(
+      { deadline_at: '2026-09-20T00:00:00-07:00', ship_by_date: null },
+      0,
+      '2026-09-04',
+    );
+    assert.equal(delay.days, 0);
+    assert.equal(delay.overdue, false);
+    assert.equal(delay.daysUntil, 16);
+  });
+
+  it('has no countdown once the deadline has passed', () => {
+    const delay = ordersShipByDelay(
+      { deadline_at: '2026-09-02T00:00:00-07:00', ship_by_date: null },
+      2,
+      '2026-09-04',
+    );
+    assert.equal(delay.overdue, true);
+    assert.equal(delay.daysUntil, null);
+  });
+
+  it('marks due-today without a countdown', () => {
+    const delay = ordersShipByDelay(
+      { deadline_at: '2026-09-04T00:00:00-07:00', ship_by_date: null },
+      0,
+      '2026-09-04',
+    );
+    assert.equal(delay.dueToday, true);
+    assert.equal(delay.daysUntil, null);
+  });
+});
+
+describe('ordersOrderedAt — the key the in-cell calendar commits against', () => {
+  it('carries the purchase day as the picker seed', () => {
+    const face = ordersOrderedAt(baseOrder({ order_date: '2026-08-20T18:00:00.000Z' }));
+    assert.equal(face?.dateKey, '2026-08-20');
+  });
+
+  it('seeds from the import stamp when that is all there is', () => {
+    const face = ordersOrderedAt(baseOrder({ order_date: null, created_at: '2026-08-25T09:00:00.000Z' }));
+    assert.equal(face?.dateKey, '2026-08-25');
+  });
+});
+
+describe('ordersEdgeMark — the leading rail', () => {
+  it('paints nothing on an ordinary row', () => {
+    assert.equal(ordersEdgeMark(baseOrder()), null);
+  });
+
+  it('urgent claims the rail — it has no other carrier and it moved the queue', () => {
+    assert.deepEqual(ordersEdgeMark(baseOrder({ is_urgent: true })), {
+      label: 'Urgent',
+      barClass: 'bg-violet-500',
+    });
+  });
+
+  it('blocked claims it only when the row is not urgent', () => {
+    assert.equal(ordersEdgeMark(baseOrder({ is_out_of_stock: true }))?.label, 'Out of stock');
+    // Urgent wins: the leftmost mark is never spent on the weaker signal, and
+    // BLOCKED already has the state pill.
+    assert.equal(
+      ordersEdgeMark(baseOrder({ is_out_of_stock: true, is_urgent: true }))?.label,
+      'Urgent',
+    );
+  });
+
+  it('carries a WORD, not just a hue — colour never holds the meaning alone', () => {
+    const mark = ordersEdgeMark(baseOrder({ is_urgent: true }));
+    assert.ok(mark?.label);
   });
 });

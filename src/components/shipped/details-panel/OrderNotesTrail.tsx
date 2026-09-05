@@ -38,6 +38,7 @@ export function OrderNotesTrail({
   orderId,
   legacyNote,
   className,
+  autoFocus = false,
 }: {
   orderId: number;
   /**
@@ -48,6 +49,8 @@ export function OrderNotesTrail({
    */
   legacyNote?: string | null;
   className?: string;
+  /** Focus the composer when this trail is the thing that just opened. */
+  autoFocus?: boolean;
 }) {
   const [draft, setDraft] = useState('');
 
@@ -78,6 +81,7 @@ export function OrderNotesTrail({
       <div className="space-y-1.5">
         <textarea
           value={draft}
+          autoFocus={autoFocus}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => {
             // Enter commits, Shift+Enter breaks the line — a note is usually

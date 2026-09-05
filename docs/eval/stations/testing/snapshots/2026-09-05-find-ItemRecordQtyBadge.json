@@ -1,0 +1,29 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "component:src/design-system/components/item-record/ItemRecordQtyBadge.tsx:ItemRecordQtyBadge",
+      "kind": "component",
+      "name": "ItemRecordQtyBadge",
+      "location": "src/design-system/components/item-record/ItemRecordQtyBadge.tsx:31",
+      "exported": true,
+      "signature": "function ItemRecordQtyBadge({ quantity, className, }: { quantity?: ItemRecordQuantity | null; /** Override size/tone tokens — e.g. `text-role-micro` on a dense eyebrow. */ className?: string; })"
+    },
+    {
+      "node_key": "file:src/design-system/components/item-record/ItemRecordQtyBadge.tsx",
+      "kind": "file",
+      "name": "ItemRecordQtyBadge.tsx",
+      "location": "src/design-system/components/item-record/ItemRecordQtyBadge.tsx:1",
+      "exported": false,
+      "signature": null
+    },
+    {
+      "node_key": "file:src/design-system/components/item-record/ItemRecordQtyBadge.test.ts",
+      "kind": "file",
+      "name": "ItemRecordQtyBadge.test.ts",
+      "location": "src/design-system/components/item-record/ItemRecordQtyBadge.test.ts:1",
+      "exported": false,
+      "signature": null
+    }
+  ]
+}

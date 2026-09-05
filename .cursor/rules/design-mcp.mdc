@@ -28,8 +28,11 @@ Scan-station materials: `ds_tokens({ axis: "station-skin" })` (catalog =
 Do not hex-fill a well or fork a packing-bench class on one station.
 
 DataTable / slot headers: every painted DATA track is click-to-sort
-(`SLOT_TABLE_PAINT_LAW.headerSort`). Chrome only: select / actions / `_fill`.
-Do not leave Image/Status/Amount headers dead; freeze is not unsortable.
+(`SLOT_TABLE_PAINT_LAW.headerSort`). Chrome only: select / actions / `_fill` /
+`thumb` (Image photo gutter). Do not leave Status/Amount headers dead; freeze is not unsortable.
+Do not pass `sort=` into `OrdersGridHost` — that disabled `?sort=` and made Shipped headers inert.
+Orders / To-ship: no shared actions ⋮ (`ordersCompoundColumnsFor`). Copy is on the identity chips.
+Selecting a row always opens the left Morphing menu on To-ship and Shipped; do not gate it on `queueMode === 'fulfillment'`.
 
 Center Lock (Q5): desk record forms → `DeskStageOverlay` on the table stage
 (`ds_contract "edit a row on the desk table"`). Forbidden on desks: `RightRailHost

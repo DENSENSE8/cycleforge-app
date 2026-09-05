@@ -25,14 +25,19 @@ interface Props {
    * Displays / non-progressive keep compact pill abbreviations.
    */
   progressive?: boolean;
-  /** Apply grades to materialised units (primary count + optional secondary remainder). */
+  /**
+   * Apply grades to materialised units (primary count + optional secondary remainder).
+   * `primaryCount` is got (0…listed). Split remainder is still received — another grade.
+   */
   onApply: (input: {
-    primaryGrade: string;
+    primaryGrade: string | null;
     primaryCount: number;
     secondaryGrade: string | null;
   }) => void;
   /** Escape hatch into capped per-unit / serial mode. */
   onTrackEachUnit: () => void;
+  /** Write leftover remaining as SHORT (`listed − got`). */
+  onShortRemaining?: (remaining: number, got: number) => void;
 }
 
 /**
@@ -53,6 +58,7 @@ export function BulkQuantityPanel({
   progressive = false,
   onApply,
   onTrackEachUnit,
+  onShortRemaining,
 }: Props) {
   const expected = Math.max(1, Math.floor(quantityExpected) || 1);
   const [primaryGrade, setPrimaryGrade] = useState<string | null>(
@@ -77,10 +83,10 @@ export function BulkQuantityPanel({
       secondaryGrade !== effectivePrimary);
 
   const canApply =
-    !!effectivePrimary &&
-    primaryCount > 0 &&
+    primaryCount >= 0 &&
     primaryCount <= expected &&
-    splitValid;
+    splitValid &&
+    (hideCondition || !!effectivePrimary);
 
   const secondaryLabel = secondaryGrade
     ? conditionLabel(secondaryGrade, progressive ? 'full' : 'pill')
@@ -89,7 +95,7 @@ export function BulkQuantityPanel({
   const applyLabel =
     splitOpen && remainder > 0 && secondaryLabel
       ? `Apply ${primaryCount} + ${remainder} ${secondaryLabel}`
-      : `Apply to ${primaryCount}`;
+      : 'Apply got';
 
   return (
     <div
@@ -163,14 +169,14 @@ export function BulkQuantityPanel({
           <input
             type="number"
             inputMode="numeric"
-            min={1}
+            min={0}
             max={expected}
             value={primaryCount}
             disabled={disabled}
             onChange={(e) => {
               const n = Math.floor(Number(e.target.value));
               if (!Number.isFinite(n)) return;
-              setPrimaryCount(Math.max(1, Math.min(expected, n)));
+              setPrimaryCount(Math.max(0, Math.min(expected, n)));
             }}
             className={cn(
               progressive
@@ -247,6 +253,19 @@ export function BulkQuantityPanel({
             Track each unit
           </Button>
 
+          {onShortRemaining && remainder > 0 && !splitOpen ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="danger"
+              className={progressive ? 'h-full rounded-none px-3' : undefined}
+              disabled={disabled}
+              onClick={() => onShortRemaining(remainder, primaryCount)}
+            >
+              Short remaining
+            </Button>
+          ) : null}
+
           <Button
             type="button"
             variant="primary"
@@ -257,7 +276,6 @@ export function BulkQuantityPanel({
             )}
             disabled={disabled || !canApply}
             onClick={() => {
-              if (!effectivePrimary) return;
               onApply({
                 primaryGrade: effectivePrimary,
                 primaryCount,

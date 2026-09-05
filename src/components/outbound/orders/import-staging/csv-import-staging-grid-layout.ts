@@ -23,6 +23,7 @@ import {
   ORDERS_IMPORT_PRODUCT_LAYOUT,
 } from '@/lib/tables/field-catalog/orders-import';
 import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
+import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
@@ -32,6 +33,13 @@ export type CsvImportStagingGridColumnKey =
   | 'order'
   /** Ready / Action-required — structural; the whole point of this surface. */
   | 'status'
+  /**
+   * Approve / reject squares — chrome, never sortable
+   * (`SLOT_TABLE_CHROME_TRACK_KEYS`). Painted only on a decision board (a
+   * `google_sheets`-origin draft); a file draft's rows are committed in bulk,
+   * so the track sits empty rather than offering a verb that means nothing.
+   */
+  | 'actions'
   /** Trailing slack owner — the house law's sole `1fr`. */
   | '_fill'
   /** Materialized slot tracks — keys are slot indices, never field ids. */
@@ -60,6 +68,21 @@ export interface CsvImportStagingGridColumn extends SlotTrackFields {
 }
 
 /**
+ * The square the checkmark column and each decision square occupy, in rem.
+ *
+ * ONE constant, three tracks' worth of geometry: the left `select` gutter is
+ * this wide, the right `actions` gutter is exactly two of them, and the row
+ * renderer sizes each button off the same number. The operator requirement is
+ * that the approve check, the reject X and the left checkmark are the same box
+ * — so they are equal BY CONSTRUCTION, not by three literals that agree today.
+ * Height comes from the row: every one of the three fills its cell.
+ */
+export const CSV_IMPORT_STAGING_GUTTER_REM = 2;
+
+/** `w-8` — the button face width for each decision square. Mirrors the track. */
+export const CSV_IMPORT_STAGING_GUTTER_CLASS = 'w-8';
+
+/**
  * The structural sheet skeleton — what staging paints with ZERO bindings.
  *
  * `select · order` is the frozen identity pane; `status` is the triage state,
@@ -75,7 +98,12 @@ export interface CsvImportStagingGridColumn extends SlotTrackFields {
  * hideKey, never in Fields.
  */
 const CSV_IMPORT_STAGING_SHEET_BASE: readonly CsvImportStagingGridColumn[] = [
-  { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
+  {
+    key: 'select',
+    width: `minmax(${CSV_IMPORT_STAGING_GUTTER_REM}rem, ${CSV_IMPORT_STAGING_GUTTER_REM}rem)`,
+    sortable: false,
+    frozen: true,
+  },
   {
     key: 'order',
     frozen: true,
@@ -93,7 +121,30 @@ const CSV_IMPORT_STAGING_SHEET_BASE: readonly CsvImportStagingGridColumn[] = [
     type: 'tag',
     labelFitRem: 4.5,
   },
+  // The slack, THEN the decision gutter. `_fill` is the sole `1fr`
+  // (`GRID_FILL_COLUMN`) and every other family spreads it as the last entry —
+  // but the operator requirement here is that the approve check and the reject
+  // X sit at the FAR RIGHT of the row, squared against the left checkmark. A
+  // fixed 4rem track in front of a `1fr` ends wherever the facts end, which on
+  // a wide desk is hundreds of pixels shy of the row's right edge, and sticky
+  // cannot fix that (sticky clamps an element inside the scrollport, it never
+  // pushes one past its static position).
+  //
+  // Putting the fixed gutter BEHIND the slack keeps everything the fill law is
+  // actually for: exactly one flex track, every fact content-hard, the slack
+  // absorbed rather than stretched into a column. Only the phrase "last entry"
+  // changes, and it changes for the two chrome tracks that carry no facts.
   { ...GRID_FILL_COLUMN, key: '_fill' as const },
+  {
+    key: 'actions',
+    // Two squares, one track: exactly twice the checkmark gutter, so the three
+    // boxes are equal by construction rather than by three literals agreeing.
+    width: `minmax(${CSV_IMPORT_STAGING_GUTTER_REM * 2}rem, ${CSV_IMPORT_STAGING_GUTTER_REM * 2}rem)`,
+    label: 'Decision',
+    gridLabel: '',
+    align: 'end',
+    sortable: false,
+  },
 ];
 
 /**
@@ -120,11 +171,17 @@ export function csvImportStagingSheetColumnsFor(
 export const CSV_IMPORT_STAGING_SHEET_COLUMNS: readonly CsvImportStagingGridColumn[] =
   csvImportStagingSheetColumnsFor(ORDERS_IMPORT_PRODUCT_LAYOUT);
 
-/** The FACT a column sorts by, or null when it offers no sort. */
+/**
+ * The FACT a column sorts by, or null when it offers no sort.
+ *
+ * Chrome comes from the engine (`isSlotTableChromeTrack`), not a hand-listed
+ * pair of keys — that list was `select` + `_fill` and would have silently made
+ * the new `actions` gutter a click-to-sort header.
+ */
 export function csvImportStagingSortFactFor(
   col: CsvImportStagingGridColumn,
 ): string | null {
-  if (col.sortable === false || col.key === 'select' || col.key === '_fill') return null;
+  if (col.sortable === false || isSlotTableChromeTrack(col.key)) return null;
   if (col.key === 'order') return 'orders-import.order';
   if (col.key === 'status') return 'status';
   return col.fieldId ?? null;

@@ -61,7 +61,13 @@ export const DEVICE_ACK_EVENTS = [
 const SEND_TO_DEVICE_TIMEOUT_MS = 6_000;
 
 /** Which desk action is being acknowledged. Extend this, not the event list. */
-export type DeviceAckKind = 'receiving_photo' | 'receiving_share' | 'pack_scan' | 'unit_photo';
+export type DeviceAckKind =
+  | 'receiving_photo'
+  | 'receiving_share'
+  | 'pack_scan'
+  | 'unit_photo'
+  /** Companion composer: the desk pushed its context to the phone (PLAN-companion-composer). */
+  | 'composer_handoff';
 
 /**
  * `idle → request_sent → peer_active | timed_out`.

@@ -34,7 +34,7 @@ import {
   InspectorActionFloor,
 } from '@/components/right-rail/InspectorActionFloor';
 import { InspectorFlushDelete } from '@/components/right-rail/InspectorFlushDelete';
-import { Button } from '@/design-system/primitives';
+import { Button, TextField } from '@/design-system/primitives';
 import { ClipboardList, ColumnsThree, Pencil, X } from '@/components/Icons';
 import { setDetailInspectorCollapsed } from '@/design-system/shells/detail-stack';
 import { OrderIntakeForm } from '@/components/outbound/orders/intake/OrderIntakeForm';
@@ -59,6 +59,8 @@ import {
 } from '@/lib/tables/import/staging-store';
 
 const SURFACE = ORDER_IMPORT_DESCRIPTOR.surfaceId;
+import { useImportMappingProfiles } from '@/hooks/useImportMappingProfiles';
+import { applyProfile } from '@/lib/tables/import/mapping-profiles';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
@@ -270,6 +272,96 @@ function MappingSuggestions({ draft }: { draft: TableImportDraft }) {
   );
 }
 
+/**
+ * Named mapping profiles — the "remember this supplier" band.
+ *
+ * A hit is OFFERED, never auto-applied. An exact header match is safe, but the
+ * operator is one click from a mapping that rewrites every field, and a
+ * silently-applied profile is indistinguishable from a good auto-map until
+ * something lands wrong in To-Ship. One click, and it says which profile and
+ * how well it fits.
+ */
+function MappingProfileBand({ draft }: { draft: TableImportDraft }) {
+  const { loading, match, save, remove } = useImportMappingProfiles(SURFACE);
+  const [naming, setNaming] = useState(false);
+  const [draftName, setDraftName] = useState('');
+
+  const hit = useMemo(
+    () => (loading ? null : match(draft.headers)),
+    [loading, match, draft.headers],
+  );
+
+  const mappedCount = Object.keys(draft.mapping).length;
+
+  const commit = useCallback(() => {
+    const name = draftName.trim();
+    if (!name) return;
+    void save(name, draft.headers, draft.mapping);
+    setDraftName('');
+    setNaming(false);
+  }, [draftName, save, draft.headers, draft.mapping]);
+
+  return (
+    <div className="space-y-2 px-4 pb-3">
+      {hit ? (
+        <div className="flex items-center gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => setTableImportMapping(SURFACE, applyProfile(hit.profile, draft.headers))}
+          >
+            Use “{hit.profile.name}”
+          </Button>
+          <span className="min-w-0 flex-1 truncate text-role-micro text-text-soft">
+            {hit.kind === 'exact'
+              ? 'Same columns as last time'
+              : `${Math.round(hit.coverage * 100)}% of its columns are in this file`}
+          </span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="shrink-0"
+            onClick={() => void remove(hit.profile.name)}
+          >
+            Forget
+          </Button>
+        </div>
+      ) : null}
+
+      {naming ? (
+        <div className="flex items-center gap-2">
+          <TextField
+            autoFocus
+            label="Name this mapping"
+            value={draftName}
+            onChange={setDraftName}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') commit();
+              if (e.key === 'Escape') setNaming(false);
+            }}
+            className="min-w-0 flex-1"
+          />
+          <Button type="button" variant="primary" size="sm" onClick={commit}>
+            Save
+          </Button>
+        </div>
+      ) : (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={mappedCount === 0}
+          onClick={() => setNaming(true)}
+        >
+          Remember this mapping…
+        </Button>
+      )}
+    </div>
+  );
+}
+
 function StagingMapLeaf({ draft }: { draft: TableImportDraft }) {
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
@@ -277,6 +369,7 @@ function StagingMapLeaf({ draft }: { draft: TableImportDraft }) {
         Rows whose required columns are unmapped stay Action required — nothing is
         written to To-Ship until you confirm.
       </p>
+      <MappingProfileBand draft={draft} />
       <MappingSuggestions draft={draft} />
       <div className="divide-y divide-border-hairline border-y border-border-hairline">
         {CSV_ORDER_CANONICAL_FIELDS.map((field) => {

@@ -191,6 +191,10 @@ export async function getIntegrationSummary(
       const existing = configuredFields.find((f) => f.key === 'accountEmail');
       if (!existing) configuredFields.push({ key: 'accountEmail', configured: true, value: vaultPayload.accountEmail });
     }
+    if (provider === 'grok' && typeof vaultPayload.accountEmail === 'string') {
+      const existing = configuredFields.find((f) => f.key === 'accountEmail');
+      if (!existing) configuredFields.push({ key: 'accountEmail', configured: true, value: vaultPayload.accountEmail });
+    }
   }
 
   const connected = def.connect === 'amazon' || def.connect === 'ebay'

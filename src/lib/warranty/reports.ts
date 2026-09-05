@@ -9,6 +9,7 @@
  */
 
 import pool from '@/lib/db';
+import { serializeRecords } from '@/lib/tables/export/serialize';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
@@ -62,17 +63,17 @@ export const WARRANTY_REPORT_COLUMNS: Array<{ key: keyof WarrantyReportRow; labe
   { key: 'repairTicket', label: 'Repair ticket' },
 ];
 
-function csvCell(value: unknown): string {
-  if (value == null) return '';
-  const s = String(value);
-  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
-
-/** Serialize rows to CSV using the given column spec. Pure. */
+/**
+ * Serialize rows to CSV using the given column spec. Pure.
+ *
+ * The quoting used to live here as a private `csvCell`, one of THREE identical
+ * copies in the repo. Three copies that agree today are still three places the
+ * next quoting fix has to land. It delegates to the house serializer now; the
+ * signature is unchanged, so the report routes and `packing-report` are
+ * untouched.
+ */
 export function toCsv<T>(rows: T[], columns: Array<{ key: keyof T; label: string }>): string {
-  const header = columns.map((c) => csvCell(c.label)).join(',');
-  const body = rows.map((row) => columns.map((c) => csvCell(row[c.key])).join(','));
-  return [header, ...body].join('\r\n');
+  return serializeRecords(rows, columns, 'csv');
 }
 
 export async function buildWarrantyReportRows(

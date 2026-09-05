@@ -1,6 +1,7 @@
 'use client';
 
 import { forwardRef, type ButtonHTMLAttributes, type MouseEvent, type ReactNode } from 'react';
+import { cursorClickTarget } from '@/design-system/motion/cursor-scrub';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '../tokens/focus-ring';
 import { cornerClass } from '../tokens/radius';
@@ -71,14 +72,16 @@ export interface IconButtonProps
   size?: IconButtonSize;
   /**
    * Corner. Default `flush` — the zero-radius ops law.
+   * `chip` is `cornerClass('chip')` for a glyph inside a field (keyed capture confirm).
    * `surface` is `cornerClass('surface')` for mobile chrome beside inset-grouped cards.
    * `pill` is `cornerClass('pill')`.
    */
-  radius?: 'flush' | 'surface' | 'pill';
+  radius?: 'flush' | 'chip' | 'surface' | 'pill';
 }
 
 const ICON_BUTTON_RADIUS: Record<NonNullable<IconButtonProps['radius']>, string> = {
   flush: cornerClass('flush'),
+  chip: cornerClass('chip'),
   surface: cornerClass('surface'),
   pill: cornerClass('pill'),
 };
@@ -123,6 +126,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
         ICON_BUTTON_RADIUS[radius],
         className,
       )}
+      {...(!disabled ? cursorClickTarget(ariaLabel) : null)}
       {...rest}
     >
       {icon}

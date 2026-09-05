@@ -30,21 +30,13 @@ import {
 import { fetchStagedOrdersData } from '@/lib/outbound/outbound-table-data';
 import { fetchWarrantyClaims, fetchWarrantyCoverage, type FetchWarrantyClaimsParams } from '@/lib/warranty/client';
 import { isPastWeekStart } from '@/lib/dashboard-week-range';
+import {
+  unshippedOrdersQueryKey,
+  type UnshippedOrdersQueryArgs,
+} from '@/lib/queries/unshipped-orders-query-key';
 
-export interface OrderQueryParams {
-  searchQuery?: string;
-  packedBy?: number;
-  testedBy?: number;
-  /** Universal staff filter (P1-WORK-02): one staff's assigned work, or all. */
-  staffId?: number;
-  strictSearchScope?: boolean;
-  /** Coarse stage facet (?stage), filtered SERVER-side; absent = all
-   *  in-warehouse stages. Fulfillment STATE / lane (?ustatus) stays a client filter. */
-  stage?: 'pending' | 'tested' | 'packed';
-  /** Row ceiling for the fulfillment page (Phase 2). Grows on "Load more"; the
-   *  server truncates + the counts endpoint's total drives whether more exist. */
-  limit?: number;
-}
+/** Same args as {@link unshippedOrdersQueryKey} — one identity for table, seed, warm. */
+export type OrderQueryParams = UnshippedOrdersQueryArgs;
 
 /**
  * Per-week (and all-time) fetch ceiling. The week query returns at most this
@@ -101,10 +93,20 @@ export function unshippedOrdersQuery({
   strictSearchScope = false,
   stage,
   limit,
+  blockedOnly = false,
 }: OrderQueryParams = {}) {
   return queryOptions({
-    queryKey: ['dashboard-table', 'unshipped', { searchQuery, packedBy, testedBy, staffId, strictSearchScope, stage: stage ?? null, limit: limit ?? null }],
-    queryFn: () => fetchUnshippedOrdersData({ searchQuery, packedBy, testedBy, staffId, strictSearchScope, stage, limit }),
+    queryKey: unshippedOrdersQueryKey({
+      searchQuery,
+      packedBy,
+      testedBy,
+      staffId,
+      strictSearchScope,
+      stage,
+      limit,
+      blockedOnly,
+    }),
+    queryFn: () => fetchUnshippedOrdersData({ searchQuery, packedBy, testedBy, staffId, strictSearchScope, stage, limit, blockedOnly }),
     staleTime: 60_000,
     gcTime: 15 * 60 * 1000,
   });

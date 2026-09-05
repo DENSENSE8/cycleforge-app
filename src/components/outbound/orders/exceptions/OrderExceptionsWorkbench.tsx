@@ -32,15 +32,12 @@
  * `src/design-system/pinned.json` so `ds_contract` says it before the next
  * agent writes a line.
  *
- * ## Without a photo
+ * ## Same table, different rows
  *
- * The `thumb` track is dropped from the mounted column list. An exception is a
- * held ORDER, not a received unit — there is no image to match against a box in
- * an operator's hands, and the alternative is a 48px `Package` placeholder
- * repeated down every row, which is chrome saying "no photo" 200 times. The
- * geometry survives it: `item` is still present, so `isCompoundColumnModel` and
- * the 48px `compoundRowEstimateFor` both still resolve, and the frozen pane is
- * still a contiguous leading prefix (now `select` alone).
+ * This lane mounts the same compound tracks as To-ship, including the photo
+ * gutter and its Image header glyph. A held order with no catalog photo still
+ * paints the shared empty cell every outbound lane already paints. Tabs
+ * fork the row set, never the column model.
  *
  * ## The record is a PAGE, beside a persistent queue rail
  *
@@ -57,12 +54,10 @@
  * questions, so they are not shown at once.
  *
  * That split is also what makes the small state fit. The stage caps at
- * `DESK_STAGE_MAX_PX` (1152px) and the mounted compound tracks minus `thumb`
- * come to 55rem / 880px; a 22rem rail beside them leaves 800px and the table
- * scrolls horizontally out of the box, worse with every status binding a
- * manager adds — those tracks are fixed `minmax` widths and do not shrink under
- * pressure. Table alone gets the full 1152px. (Measured with cycleforge-app-c4,
- * 2026-08-31.)
+ * `DESK_STAGE_MAX_PX` (1152px). The compound tracks are fixed `minmax` widths
+ * and do not shrink under pressure, so a 22rem rail beside the table leaves the
+ * sheet scrolling horizontally. Table alone gets the full 1152px. (Measured
+ * with cycleforge-app-c4, 2026-08-31.)
  *
  * The rail is a preset over `SidebarRecentRailBase` — the same shell as the
  * unbox and testing rails, with their row anatomy (status dot, title, quantity
@@ -94,10 +89,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { DataTable } from '@/components/tables/DataTable';
 import { ExceptionsRecentRail } from './ExceptionsRecentRail';
-import { Button } from '@/components/ui/button';
-import { Maximize2 } from '@/components/Icons';
+import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 import { useDeskStageOptional } from '@/design-system/components/DeskStageContext';
-import { triagePanelControl } from '@/design-system/tokens/triage-panel';
 import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
 import { exceptionRowToQueueRow } from '@/lib/queries/caged-orders-queries';
 import { SHIPPING_EXCEPTIONS_PATH } from '@/lib/shipping/orders-desk';
@@ -220,35 +213,42 @@ export function OrderExceptionsWorkbench() {
     tableId: 'orders',
   });
 
-  // See the docblock — an exception has no photo, so the track is not mounted.
-  const columns = useMemo(
-    () => sheet.columns?.filter((c) => c.key !== 'thumb'),
-    [sheet.columns],
-  );
-
   /**
-   * The CTA the operator asked for: one control that takes them from the small
-   * table into the full-screen FORM — fullscreen stage plus an open record, so
-   * the rail and the editor arrive together.
+   * One page CTA: **Resolve** in the desk header. **Paste item #** is a row
+   * verb — it morphs the checkbox menu into the paste field and commits
+   * against that order (`commitExceptionsItemPaste`).
    *
-   * It opens the row they have picked, or the first in the queue when they have
-   * picked none, because "open the form" with nothing selected has to mean
-   * something and the top of a worklist is the only non-arbitrary answer.
-   *
-   * `useDeskStageOptional` is optional for a reason: this surface only gained a
-   * stage when the route moved inside the `(desk)` group. Outside it the hook
-   * returns null and the CTA still opens the record — it just cannot expand,
-   * which is the honest degradation rather than a dead button.
+   * Resolve opens the row they have picked, or the first in the queue when
+   * they have picked none, because the verb with nothing selected has to
+   * mean something and the top of a worklist is the only non-arbitrary
+   * answer.
    */
-  const openFullScreenForm = useCallback(() => {
+  const openResolveForm = useCallback(() => {
     const target = selectedId ?? exceptions[0]?.id ?? null;
     if (!target) return;
     if (stage && !stage.fullscreen) stage.toggleFullscreen();
     patchParams({ order: String(target) });
   }, [exceptions, patchParams, selectedId, stage]);
 
+  const resolveControl = useMemo(
+    () => (
+      <DeskHeaderAction
+        type="button"
+        variant="primary"
+        size="sm"
+        disabled={exceptions.length === 0}
+        onClick={openResolveForm}
+        data-testid="exceptions-open-form"
+      >
+        Resolve
+      </DeskHeaderAction>
+    ),
+    [exceptions.length, openResolveForm],
+  );
+
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-surface-canvas">
+      <DeskActionSlotRegistrar role="primary">{resolveControl}</DeskActionSlotRegistrar>
       {query.isError ? (
         <div
           className="border-b border-border-danger bg-surface-danger px-6 py-2 text-role-caption font-semibold text-text-danger"
@@ -283,31 +283,9 @@ export function OrderExceptionsWorkbench() {
           />
         </DeskRecordWalkHost>
       ) : (
-        // The TABLE display, small by default now that the route has a stage.
         <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="exceptions-queue">
-          {/*
-            One control, right-aligned, no band: not a title, not a count, not a
-            second row of chrome saying what the table already says. The find
-            row, filter, fields picker and the stage's own fullscreen toggle all
-            live inside DataTable — this is the only thing that surface does not
-            already offer.
-          */}
-          <div className="flex shrink-0 justify-end px-4 pt-3">
-            <Button
-              variant="outline"
-              size="md"
-              onClick={openFullScreenForm}
-              disabled={exceptions.length === 0}
-              className={triagePanelControl()}
-              data-testid="exceptions-open-form"
-            >
-              <Maximize2 className="h-3.5 w-3.5" aria-hidden />
-              Open full-screen form
-            </Button>
-          </div>
           <DataTable
             {...sheet}
-            columns={columns}
             search={{
               value: search,
               onChange: setSearch,

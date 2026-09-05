@@ -109,10 +109,64 @@ Most deterministic extraction/drafting calls use `src/lib/ai/hermes-tool-call.ts
 single OpenAI-style request with **forced tool call** (`tool_choice: 'required'`,
 `temperature: 0`); returns the parsed tool arguments (caller validates).
 
-The live `hermes-agent` runtime on this workstation currently answers strict JSON
-prompts reliably but does not always emit OpenAI `tool_calls`. New features that need to
-work through the paired ChatGPT/Hermes agent can use strict JSON chat via
-`src/lib/ai/hermes-client.ts`, as `POST /api/sourcing/research` does.
+**`tool_choice` is a hint here, not a constraint** (measured 2026-09-02 against the
+mlx-dspark box). `"required"`, `"auto"`, and the named
+`{type:'function',function:{name}}` form all produced byte-identical completions, so
+nothing server-side forces the call — the model complies or it does not. Two mitigations
+live in `hermes-tool-call.ts`, and both are load-bearing rather than defensive:
+
+- **Thinking is turned off** for self-hosted runtimes via
+  `chat_template_kwargs: { enable_thinking: false }` (gated on
+  `isSelfHostedAiRuntime()` — managed endpoints 400 on unknown body params). A
+  reasoning model charges its think phase against `max_tokens`, and inside a forced
+  tool call that is fatal, not slow: on the real claim-draft payload the think phase
+  burned all 1206 tokens and returned `finish_reason: "length"` with **no tool call**,
+  which the caller read as "the model refused". Thinking off, the same call answers in
+  172 tokens with the facts intact.
+- **A tool call is recovered from `content`** when the runtime's own parser misses one
+  (Qwen-style `<tool_call>` block or a bare JSON object).
+
+Callers whose fact guard rejects a draft for losing an identifier must pass those
+identifiers as `mustKeep` (`zendesk-ticket-draft.ts`). "Keep every identifier" in a
+system prompt is a rule about a category; `mustKeep` is the list. Without it the guard
+checks an invariant the model was never told — which is how a clean draft got discarded
+for dropping a tracking number that only ever appeared in the subject line.
+
+### Testing the local brain end to end
+
+`ASSISTANT_HERMES_FALLBACK=1` forces `POST /api/assistant/chat` (composer **Ask** mode)
+onto the OpenAI-wire chain instead of the Anthropic agent loop. Until 2026-09-02 the
+flag widened config resolution but `useHermes` still required *no* Anthropic brain, so
+on any box with `ANTHROPIC_API_KEY` set — every dev box — it resolved the local config
+and then ignored it, and routing Ask at the local gateway could not be tested at all.
+
+Run a throwaway server beside the main `:3050` one (own `distDir`, so `.next` is not
+clobbered):
+
+```bash
+NEXT_DIST_DIR=.next-hermes-test ASSISTANT_HERMES_FALLBACK=1 AUTH_PINLESS_SIGNIN=true \
+  npx next dev --turbopack -p 3077
+```
+
+Mint a cookie and drive both AI surfaces of the station mouth:
+
+```bash
+SID=$(LH_BASE_URL=http://127.0.0.1:3077 node scripts/lighthouse-mint-session.mjs)
+
+# Ask mode — expect `provider":"hermes"` in the meta event, then delta text.
+curl -sN http://127.0.0.1:3077/api/assistant/chat -H 'content-type: application/json' \
+  -H "Cookie: $SID" -H 'x-tenant-slug: usav' \
+  -d '{"sessionId":"probe-001","message":"Say OK.","context":{"page":"receiving","mode":"ask"}}'
+
+# Ticket mode AI draft — expect `"degraded": false` and a real model name.
+curl -s http://127.0.0.1:3077/api/receiving/zendesk-claim/draft -H 'content-type: application/json' \
+  -H "Cookie: $SID" -H 'x-tenant-slug: usav' \
+  -d '{"receivingId":52155,"claimType":"damage","reason":"Cracked cabinet"}'
+```
+
+`degraded: true` now carries a `degradedReason` and a `console.warn` — a dead gateway
+and a model that dropped a fact are different operator problems and used to be one
+silent boolean.
 
 Consumers:
 

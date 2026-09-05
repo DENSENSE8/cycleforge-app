@@ -15,9 +15,11 @@ import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
+  IDLE_OVERLAY_HELPER,
   SCAN_STATION_OVERLAY_COHORT,
   SCAN_STATION_OVERLAY_CONTRACT,
   overlayCohortWorkspacePaths,
+  stationEvalManifest,
 } from './scan-station-overlay-cohort';
 
 const ROOT = join(process.cwd());
@@ -38,6 +40,15 @@ describe('scan-station overlay cohort (SoT = all stations)', () => {
     assert.equal(new Set(ids).size, ids.length, 'cohort ids must be unique');
     const paths = SCAN_STATION_OVERLAY_COHORT.map((m) => m.workspace);
     assert.equal(new Set(paths).size, paths.length, 'cohort workspaces must be unique');
+  });
+
+  it('idle-overlay helper owns visibility / inert / pointer-events / zIndex.panel', () => {
+    const src = readWorkspace(IDLE_OVERLAY_HELPER);
+    assert.match(src, /visibility/);
+    assert.match(src, /'hidden'/);
+    assert.match(src, /\binert\b/);
+    assert.match(src, /pointerEvents/);
+    assert.match(src, /zIndex\.panel/);
   });
 
   it('design-mcp router.json overlayWorkspaces stays in sync with the cohort SoT', () => {
@@ -62,6 +73,22 @@ describe('scan-station overlay cohort (SoT = all stations)', () => {
       }
     });
   }
+
+  it('qty face is cohort-wide. Every station eval impacts ItemRecordQtyBadge', () => {
+    const qtyFile = 'src/design-system/components/item-record/ItemRecordQtyBadge.tsx';
+    for (const member of SCAN_STATION_OVERLAY_COHORT) {
+      const manifest = stationEvalManifest(member);
+      assert.ok(
+        manifest.graphSymbols.includes('ItemRecordQtyBadge'),
+        `${member.id}: station eval must attack the shared qty face, not a local n/m span`,
+      );
+      assert.equal(
+        manifest.graphExpectedFiles.ItemRecordQtyBadge,
+        qtyFile,
+        `${member.id} must location-judge the shared qty face, not a station twin`,
+      );
+    }
+  });
 
   it('no cohort member is privileged — every member is checked with the same predicates', () => {
     const predicateCount = Object.keys(SCAN_STATION_OVERLAY_CONTRACT).length;

@@ -1,0 +1,31 @@
+[cursor-eval] pnpm --config.verify-deps-before-run=false run verify:fast (cwd=/home/michaelgarisek/Projects/cycleforge-app)
+$ node scripts/verify.mjs --fast
+▶ verify profile: fast · 2 gates, 4 at a time
+
+▶ Lint
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/sidebar/master-nav/SidebarNavList.tsx
+  116:46  warning  'transform' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+
+✖ 1 problem (0 errors, 1 warning)
+
+
+▶ Typecheck
+
+────────────────────────────────────────────────────
+  verify — inner loop (lint + typecheck)
+────────────────────────────────────────────────────
+  ✓ Lint
+  ✓ Typecheck
+────────────────────────────────────────────────────
+
+verify PASSED (fast) — inner loop only; not CI.
+
+{
+  "ok": true,
+  "command": "pnpm --config.verify-deps-before-run=false run verify:fast",
+  "exitCode": 0,
+  "durationMs": 26032,
+  "stamp": "/home/michaelgarisek/Projects/cycleforge-app/.garisek/eval-session.json",
+  "cursorMirror": "/home/michaelgarisek/Projects/cycleforge-app/.cursor/eval-session.json"
+}

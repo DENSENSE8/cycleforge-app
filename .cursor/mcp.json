@@ -28,6 +28,30 @@
         "DESIGN_MCP_PROJECT": "cycleforge-app",
         "DESIGN_MCP_REPO": "/home/michaelgarisek/Projects/cycleforge-app"
       }
+    },
+    "playwright": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--headless"
+      ]
+    },
+    "shadcn": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "shadcn@latest",
+        "mcp",
+        "-c",
+        "/home/michaelgarisek/Projects/cycleforge-app"
+      ]
+    },
+    "storybook": {
+      "type": "http",
+      "url": "http://127.0.0.1:6006/mcp"
     }
   }
 }

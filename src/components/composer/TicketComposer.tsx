@@ -67,6 +67,7 @@ export function TicketComposer({
   onBridgeChange,
   trailingAction,
   showReplyPresets = true,
+  onSent,
   className,
 }: {
   ticketId: number;
@@ -80,9 +81,15 @@ export function TicketComposer({
   trailingAction?: ReactNode;
   /** All-good / QC chip row. Unbox Ticket Displays passes `false`. */
   showReplyPresets?: boolean;
+  /**
+   * Fires after a comment lands. Hosts whose thread reads through a scope of
+   * their own (the warranty claim popover merges claim events + comments) use
+   * it to refetch that scope — the hook already invalidates the ticket's keys.
+   */
+  onSent?: () => void;
   className?: string;
 }) {
-  const c = useTicketComposer({ ticketId, receivingId, staging, insertIcons: INSERT_ICONS });
+  const c = useTicketComposer({ ticketId, receivingId, staging, insertIcons: INSERT_ICONS, onSent });
   const [plusOpen, setPlusOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const { user } = useAuth();

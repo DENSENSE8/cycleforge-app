@@ -16,7 +16,10 @@ Before non-trivial edits to shared components, hooks, or table infrastructure:
 5. **Slot-table engine:** blast radius is cohort-wide (`slot-table-cohort.ts` —
    engine + PRODUCT_TABLES). Impact `CompoundItem` / `useSlotTableLayout` /
    `queueSortForColumnKey` / `LedgerGridColumnHeader` / `isSlotTableChromeTrack`
-   (header click-to-sort law), not a single desk row, or run
+   (header click-to-sort law) / `ordersCompoundColumnsFor` (Orders drops ⋮) /
+   `OrdersQueueTableRow` Morphing (select-gutter actions on To-ship **and**
+   Shipped),
+   not a single desk row, or run
    `pnpm run eval:cohort slot-table`. Stale index (`find` empty) is a cohort
    fail — rebuild `index-cli.mjs --path … --name cycleforge-app`. Before
    deleting a hand `*_GRID_COLUMNS`, `eval:discover` names KEEP vs DELETE.

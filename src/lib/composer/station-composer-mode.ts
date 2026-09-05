@@ -23,9 +23,23 @@
  * a two-mode composer wants one toggle, and forward Tab still traverses.
  */
 
-export const STATION_COMPOSER_MODES = ['unbox', 'ticket'] as const;
+export const STATION_COMPOSER_MODES = ['unbox', 'ticket', 'ask'] as const;
 
 export type StationComposerMode = (typeof STATION_COMPOSER_MODES)[number];
+
+/** Unbox | Ticket — the faces `showModeFaces` can hide. Ask stays. */
+export const STATION_COMPOSER_FACES = ['unbox', 'ticket'] as const;
+export type StationComposerFaceId = (typeof STATION_COMPOSER_FACES)[number];
+
+export const COMPOSER_ASK_EVENT = 'cf:composer-ask-mode';
+
+export function dispatchComposerAskMode(mode: StationComposerMode): void {
+  if (typeof window === 'undefined') return;
+  writeStationComposerModeSession(mode);
+  window.dispatchEvent(
+    new CustomEvent(COMPOSER_ASK_EVENT, { detail: { mode } }),
+  );
+}
 
 export const STATION_COMPOSER_MODE_DEFAULT: StationComposerMode = 'unbox';
 
@@ -63,12 +77,18 @@ export const STATION_COMPOSER_MODE_CATALOG: readonly StationComposerModeCatalogE
       label: 'Ticket',
       destination: 'a Zendesk update on the linked ticket',
     },
+    {
+      id: 'ask',
+      label: 'Ask',
+      destination: 'the operations assistant',
+    },
   ];
 
 /** Legacy URL/session ids → live mode. */
 function canonicalizeStationComposerMode(raw: string): StationComposerMode | null {
   if (raw === 'unbox' || raw === 'label' || raw === 'notes') return 'unbox';
   if (raw === 'ticket') return 'ticket';
+  if (raw === 'ask') return 'ask';
   // Dropped modes (location) — treat as unset so default Unbox wins.
   return null;
 }
@@ -105,13 +125,14 @@ export function cycleStationComposerMode(
 export function stationComposerModeKeepsTrailingAction(
   mode: StationComposerMode,
 ): boolean {
-  return mode === 'unbox';
+  return mode === 'unbox' || mode === 'ask';
 }
 
 export function stationComposerModePlaceholder(
   mode: StationComposerMode,
   opts: { ticketLabel?: string | null; hasTicket?: boolean } = {},
 ): string {
+  if (mode === 'ask') return 'Ask about your operation…';
   if (mode === 'ticket') {
     if (opts.hasTicket) {
       const face = (opts.ticketLabel || '').trim() || 'ticket';
@@ -143,6 +164,7 @@ export function stationComposerModeAriaLabel(
   mode: StationComposerMode,
   opts: { ticketLabel?: string | null; hasTicket?: boolean } = {},
 ): string {
+  if (mode === 'ask') return 'Ask the operations assistant';
   if (mode === 'ticket') {
     if (opts.hasTicket) {
       const face = (opts.ticketLabel || '').trim() || 'ticket';
@@ -221,6 +243,10 @@ export function writeStationComposerModeSession(mode: StationComposerMode): void
   } catch {
     // Private mode / quota — mode still works in-memory via the host.
   }
+}
+
+export function isComposerAskLatched(raw: string | null | undefined): boolean {
+  return parseStationComposerMode(raw) === 'ask';
 }
 
 /**

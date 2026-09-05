@@ -1,11 +1,12 @@
 /**
  * Slot DataTable header-sort law — one chrome vocabulary, every PRODUCT_TABLES peer.
  *
- * A painted DATA track is click-to-sort. The only headers that stay inert are
- * structural chrome (`select`, overflow `actions`/`action`, trailing `_fill`).
- * Image/`thumb` is DATA (a photo fact), not chrome — freeze ≠ unsortable.
- * The toolbar sort dropdown must list those same facts (`queueColumnSortOptions`)
- * so Pick / Status / Image are selectable rows, not only a trigger label.
+ * A painted DATA track is click-to-sort. Headers that stay inert are
+ * structural chrome (`select`, overflow `actions`/`action`, trailing `_fill`,
+ * and `thumb` — the Image photo gutter). Freeze ≠ unsortable for facts.
+ * The Image column still paints (glyph header on every PRODUCT_TABLES peer);
+ * it does not offer click-to-sort. The toolbar sort dropdown lists DATA facts
+ * (`queueColumnSortOptions`) so Pick / Status are selectable rows.
  *
  * Eval: `SLOT_TABLE_PAINT_LAW.headerSort` + tripwire in `slot-table-cohort.test.ts`.
  * Graph KEEP: `engine:slot-table-header-sort` + `engine:queueSortForColumnKey`.
@@ -16,6 +17,8 @@ export const SLOT_TABLE_CHROME_TRACK_KEYS = [
   'actions',
   'action',
   '_fill',
+  // Photo gutter — a picture, not an ops fact to order by. Operator 2026-09-04.
+  'thumb',
 ] as const;
 
 export type SlotTableChromeTrackKey = (typeof SLOT_TABLE_CHROME_TRACK_KEYS)[number];

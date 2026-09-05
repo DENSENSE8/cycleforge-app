@@ -4,18 +4,12 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
-import { useRouter } from 'next/navigation';
-import { RailStackBands } from '@/components/sidebar/RailStackBands';
-import { stackModel, type StackModelInput } from '@/lib/nav/stack-model';
-import { COMMAND_BAR_OPEN_EVENT } from '@/lib/app-events';
-import { getMasterNavItem } from '@/lib/sidebar-navigation';
 import { appCanvasClass } from '@/design-system/tokens/app-surface';
 import { SIDEBAR_SPINE_PEEK_INSET_PX, SIDEBAR_SPINE_RESIZE } from '@/components/sidebar/sidebar-spine';
 import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
@@ -310,71 +304,6 @@ export function SidebarNavColumn({
 
   const peekLayout = peekFace && !open;
 
-  /**
-   * ## The Stack (`RailStackBands` over `stackModel`)
-   *
-   * The four bands — Now · Earlier today · Queues · Find — ride at the TOP of
-   * the column, above `{children}` (the spine's page map, whose own Pinned well
-   * sits at the bottom of `SidebarNavList`). The Stack is what the operator aims
-   * at when they come back to the desk; the map is what they aim at when they
-   * are going somewhere else, so the standing shape reads shift-first.
-   *
-   * **The shift feed is not wired yet.** `work_sessions` is server-side
-   * (`@/lib/sessions/work-sessions`), `GET /api/sessions/recent` has no client
-   * caller, and nothing this column or its providers already read carries a
-   * block. So the input is an empty shift — which the model is explicitly built
-   * for: "an empty shift still paints the column ... emptiness is `block: null` /
-   * `blocks: []`, never a missing band". {@link stackInput} is the single seam a
-   * real feed lands on; nothing else in this file has to move when it does.
-   */
-  const router = useRouter();
-
-  /**
-   * The Stack's clock, read ONCE at mount rather than per render — the model
-   * measures open intervals against it, and a `now` that moved every render
-   * would make two bands of the same fold disagree. Nothing reads it while the
-   * shift is empty; it is here so the seam is complete.
-   */
-  const [stackNow] = useState(() => new Date().toISOString());
-  const stackInput = useMemo<StackModelInput>(
-    () => ({ armed: null, earlier: [], queues: [], now: stackNow }),
-    [stackNow],
-  );
-  const stack = useMemo(() => stackModel(stackInput), [stackInput]);
-
-  /** Find — the same launcher event `GlobalHeaderSearch` fires (⌘K). */
-  const openLauncher = useCallback(() => {
-    window.dispatchEvent(new Event(COMMAND_BAR_OPEN_EVENT));
-  }, []);
-
-  /**
-   * Resume and Open queue, through the ONE navigation helper this column has.
-   *
-   * A queue is opened by its table id, and the nav catalog already owns the
-   * route of the surface that paints that sheet (`incoming`, `pickup`,
-   * `repair`, …) — so resolve through {@link getMasterNavItem} rather than
-   * minting a `/tables/<id>` URL this app has no route for.
-   *
-   * Resume takes the same door on purpose: there is no client-side session
-   * writer to re-arm a block with (`POST /api/sessions/sync` has no caller in
-   * the app) and no `/sessions/<id>` route to send the operator to, so the
-   * honest move is the block's own surface. `resumeBlock` (`@/lib/nav/stack-model`)
-   * already states the arm/park intent for the writer that lands later; nothing
-   * here guesses it. Either way an unresolvable id opens the launcher instead of
-   * pushing a URL that 404s — a Stack row is never a dead click.
-   */
-  const openStackTarget = useCallback(
-    (id: string) => {
-      const href = getMasterNavItem(id)?.href;
-      if (href) {
-        router.push(href);
-        return;
-      }
-      openLauncher();
-    },
-    [router, openLauncher],
-  );
-
   useEffect(() => {
     if (!peekOverlay || !onPeekDismiss) return undefined;
     const onKey = (e: KeyboardEvent) => {
@@ -428,7 +357,11 @@ export function SidebarNavColumn({
                   '[&_[data-spine-account-footer]]:hidden',
                   '[&_[data-staff-account-footer]]:hidden',
                   '[&_[role=menu]]:h-auto [&_[role=menu]]:min-h-0',
-                  '[&_[data-spine-scrollport]]:h-auto [&_[data-spine-scrollport]]:flex-none [&_[data-spine-scrollport]]:overflow-y-auto',
+                  // The card hugs short lists (`h-auto` shell) but is capped by
+                  // maxHeight below — so the scrollport must be able to SHRINK,
+                  // or a full destination list is clipped by the shell's
+                  // `overflow-hidden` instead of scrolling.
+                  '[&_[data-spine-scrollport]]:min-h-0 [&_[data-spine-scrollport]]:flex-1 [&_[data-spine-scrollport]]:overflow-y-auto [&_[data-spine-scrollport]]:overscroll-contain',
                   '[&_[data-spine-drill-pad]]:pb-0',
                 )
               : cn('absolute inset-y-0 left-0 border-r border-border-soft', appCanvasClass),
@@ -447,33 +380,7 @@ export function SidebarNavColumn({
               : { width: open ? width : 0, transformOrigin: '0 0' }
           }
         >
-          {/*
-            The Stack — see the block above. Off the hover-peek card for the
-            same reason the account footer is: the peek hugs the destination
-            LIST, and a shift band group on a 240px thumbnail is a second shape
-            to read on a surface that exists to be glanced at.
-          */}
-          {peekLayout ? null : (
-            <div
-              data-testid="rail-stack-bands"
-              className="shrink-0 border-b border-border-soft py-1"
-            >
-              <RailStackBands
-                model={stack}
-                onResume={openStackTarget}
-                onOpenQueue={openStackTarget}
-                onFind={openLauncher}
-              />
-            </div>
-          )}
-          {/*
-            The page map takes what the Stack leaves. `min-h-0 flex-1` (not the
-            bare child it used to be) because the spine's own root is `h-full`:
-            with a second flex child above it, 100% of the aside plus the bands
-            overflows, and `overflow-hidden` would eat the account footer off
-            the bottom rather than reflow.
-          */}
-          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+          {children}
         </motion.aside>
       )}
       {open ? (

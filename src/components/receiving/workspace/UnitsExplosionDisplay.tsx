@@ -31,6 +31,8 @@ import { patchReceivingLineCondition } from '@/components/receiving/workspace/pa
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { receivingSiblingsQueryKey } from '@/lib/queries/receiving-queries';
 import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
+import { ItemRecordQtyBadge } from '@/design-system/components/item-record';
+import { receivingQty } from '@/lib/item-record/receiving-qty';
 import type { ActiveRowSerial } from '@/components/receiving/workspace/PoLinesAccordion';
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
 
@@ -312,9 +314,7 @@ function SiblingLineSummary({
         <span className="min-w-0 truncate text-role-caption font-semibold text-text-muted">
           {receivingWorkspaceLineTitle(line)}
         </span>
-        <span className="shrink-0 font-mono text-role-micro tabular-nums text-text-soft">
-          {line.quantity_received ?? serials.length}/{line.quantity_expected ?? '?'}
-        </span>
+        <ItemRecordQtyBadge quantity={receivingQty(line)} />
       </button>
       {serials.length > 0 ? (
         <span className="mt-1.5 flex flex-wrap items-center gap-1">

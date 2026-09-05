@@ -159,7 +159,10 @@ export const ROUTES = [
   { path: '/m/home', tier: 1, auth: true, formFactor: 'mobile' },
   // `/shipping` 308s to the labels desk (`resolveShippingSurfaceRedirect`);
   // name the surface, not the alias.
-  { path: '/shipping/labels', tier: 2, auth: true, formFactor: 'desktop' },
+  // `/shipping/labels` was deleted in the 2026-08-30 warehouse-OS landing
+  // (desk group is now orders/fba/shipped/exceptions); the old entry measured
+  // a 404 page and reported all-zeros. FBA is the labels flow's successor.
+  { path: '/shipping/fba', tier: 2, auth: true, formFactor: 'desktop' },
   { path: '/support', tier: 2, auth: true, formFactor: 'desktop' },
   { path: '/inventory', tier: 2, auth: true, formFactor: 'desktop' },
   { path: '/settings', tier: 2, auth: true, formFactor: 'desktop' },

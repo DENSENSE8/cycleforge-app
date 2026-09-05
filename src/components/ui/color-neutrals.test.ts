@@ -44,7 +44,7 @@ const SRC_ROOT = join(process.cwd(), 'src');
 // border-gray-200, ring-gray-200, bg-gray-100, bg-white), then 41 → 43 after
 // carrying over the in-flight capability-relabel WIP snapshot from the same
 // upstream repo. Shrink-only from here — tokenize these back toward zero.
-const RAW_NEUTRAL_BASELINE = 0;
+const _RAW_NEUTRAL_BASELINE = 0;
 
 const ESCAPE_MARKER = 'ds-allow-raw-neutral';
 const RAW_NEUTRAL_RE =

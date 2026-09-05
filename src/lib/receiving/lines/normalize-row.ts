@@ -84,6 +84,7 @@ export function normalizeRow(row: Record<string, unknown>) {
     sku:                      (row.sku as string | null) ?? null,
     quantity_received:        Number(row.quantity_received ?? 0),
     quantity_expected:        row.quantity_expected != null ? Number(row.quantity_expected) : null,
+    exception_code:           (row.exception_code as string | null) ?? null,
     qa_status:                (row.qa_status as string) ?? 'PENDING',
     workflow_status:          (row.workflow_status as string | null) ?? null,
     disposition_code:         (row.disposition_code as string) ?? 'HOLD',

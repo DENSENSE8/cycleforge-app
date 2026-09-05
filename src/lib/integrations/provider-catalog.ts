@@ -177,6 +177,17 @@ export const PROVIDER_CATALOG: ProviderDef[] = [
 
   // ── AI ──
   { key: 'ollama', label: 'Self-hosted AI (Ollama / custom)', description: 'Any OpenAI-compatible endpoint you run (Ollama, LM Studio, vLLM) for AI search and Ask AI.', category: 'AI', connect: 'vault', badge: 'bg-surface-strong text-text-muted' },
+  {
+    key: 'grok',
+    label: 'Grok (SuperGrok)',
+    description: 'Sign in with SuperGrok / X Premium+ — Ask runs on your subscription, not a metered API key.',
+    category: 'AI',
+    connect: 'oauth',
+    oauthStartPath: '/api/integrations/grok/connect',
+    healthPath: '/api/integrations/grok/health',
+    docsUrl: 'https://docs.x.ai',
+    badge: 'bg-surface-inverse text-white',
+  },
   { key: 'ai_gateway', label: 'Vercel AI Gateway', description: 'One key, every model — powers AI search + Ask AI.', category: 'AI', connect: 'vault', badge: 'bg-surface-inverse text-white' },
   { key: 'openai', label: 'OpenAI', description: 'Direct key for AI-search embeddings + Ask AI.', category: 'AI', connect: 'vault', badge: 'bg-emerald-100 text-emerald-700' },
   { key: 'anthropic', label: 'Anthropic', description: 'Claude for Ask AI (chat only — embeddings need another provider).', category: 'AI', connect: 'vault', badge: 'bg-amber-100 text-amber-700' },

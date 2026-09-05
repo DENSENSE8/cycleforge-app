@@ -37,8 +37,18 @@ function productTitle(row: ReceivingLineRow): string {
   ).trim();
 }
 
+/**
+ * The count this desk PAINTS, so the header sorts the number under the title.
+ *
+ * Unbox / History / Testing answer the warehouse's question — what actually
+ * landed — so `receiving.qty` resolves `quantity_received` and this extractor
+ * must read the same column. Sorting `quantity_expected` here would order a
+ * short-received line by the count the buyer ordered while the subtitle shows
+ * the count that turned up, which is the one mismatch a click-to-sort header
+ * cannot survive. Incoming keeps its own expected-first extractor.
+ */
 function qtyValue(row: ReceivingLineRow): number {
-  return Number(row.quantity_expected ?? row.quantity_received ?? 0) || 0;
+  return Number(row.quantity_received) || 0;
 }
 
 function priceValue(row: ReceivingLineRow): number {

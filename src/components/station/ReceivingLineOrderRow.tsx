@@ -32,6 +32,8 @@ import {
 import { IconWithTooltip } from '@/components/ui/IconWithTooltip';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
 import { EMPTY_META_DASH, EMPTY_META_DASH_ALIGN_CLASS } from '@/lib/conditions';
+import { ItemRecordQtyBadge } from '@/design-system/components/item-record';
+import { receivingQty } from '@/lib/item-record/receiving-qty';
 import { cn } from '@/utils/_cn';
 import {
   dashboardOrderRowChipsClass,
@@ -139,8 +141,6 @@ export function ReceivingLineOrderRow({
   // (buildUnmatchedEmptyReceivingLine / UNMATCHED_EMPTY_LINE_LABEL).
   const productTitle = receivingProductTitle(row);
   const productTitleHref = listingLinksForReceivingRow(row)[0]?.href ?? null;
-  const quantityText = `${row.quantity_received}/${row.quantity_expected ?? '?'}`;
-  const qtyExpected = row.quantity_expected ?? 0;
   const workflowLabel = workflowStatusTableLabel(row.workflow_status || 'EXPECTED');
   const coarseDot =
     statusVocabulary === 'coarse' ? getReceivingStatusDot(row) : null;
@@ -243,11 +243,7 @@ export function ReceivingLineOrderRow({
           // Receiving grades include NEW / L-NEW / PARTS — wider than orders'
           // single-letter A/B so the rest cluster (stage clock) stays column-aligned.
           condCol={META_COL.poCondCol}
-          qty={
-            <span className={qtyExpected > 1 ? 'text-text-warning' : row.quantity_expected && row.quantity_received >= row.quantity_expected ? 'text-emerald-600' : 'text-text-muted'}>
-              {quantityText}
-            </span>
-          }
+          qty={<ItemRecordQtyBadge quantity={receivingQty(row)} />}
           condition={
             <span
               className={cn(

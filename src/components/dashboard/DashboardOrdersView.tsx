@@ -24,8 +24,12 @@ import { OrdersViewControlsRail } from '@/components/outbound/orders/OrdersViewC
 import { useOrdersViewChrome } from '@/components/outbound/orders/orders-view-chrome-context';
 import { useRailActionSnapshot } from '@/components/dashboard/rail/OrderRailActions';
 import { CsvImportStagingHost } from '@/components/outbound/orders/CsvImportStagingHost';
+import { OrderImportRecordsHost } from '@/components/outbound/orders/OrderImportRecordsHost';
+import { SheetTriageGutterOverlay } from '@/components/outbound/orders/SheetTriageGutterOverlay';
+import { ListingStaffRulesHost } from '@/components/dashboard/ListingStaffRulesOverlay';
 import { type DashboardOrderView } from '@/utils/dashboard-search-state';
 import { ORDER_IMPORT_DESCRIPTOR } from '@/lib/orders/order-import-descriptor';
+import { SHEET_TRIAGE_ORIGIN } from '@/lib/orders-sync/sheets-inline-triage';
 import {
   clearTableImportDraft,
   useTableImportDraft,
@@ -54,10 +58,16 @@ export function DashboardOrdersView({
   onPrimaryPainted,
 }: DashboardOrdersViewProps) {
   const searchParams = useSearchParams();
+  const deskBodyRef = useRef<HTMLDivElement>(null);
   const csvDraft = useTableImportDraft(ORDER_IMPORT_DESCRIPTOR.surfaceId);
   const { active: importCsvActive, setActive: setImportCsvActive } =
     useTableImportParam(ORDER_IMPORT_DESCRIPTOR);
-  const showCsvStaging = importCsvActive && Boolean(csvDraft);
+  // File CSV still takes over the body (rows are not orders yet). A Google
+  // Sheet sync writes caged orders — those stay on UnshippedTable. Painting
+  // CsvImportStagingHost for that origin is a second table (hand-rolled
+  // `CsvImportStagingGridRow` + `orders-import` columns) and is refused.
+  const showCsvStaging =
+    importCsvActive && csvDraft !== null && csvDraft.origin !== SHEET_TRIAGE_ORIGIN;
   const { setViewShellOpen } = useOrdersViewChrome();
   const { rows } = useRailActionSnapshot();
 
@@ -87,8 +97,24 @@ export function DashboardOrdersView({
     }
   }, [searchParams, rows.length, setViewShellOpen]);
 
+  // `?imports` is the records view (what arrived, per day). It reads the same
+  // grid the queue does, so it belongs in the same body swap CSV staging uses
+  // rather than on a route of its own.
+  const showImportRecords = !showCsvStaging && searchParams.get('imports') === 'true';
+
+  // The CAGED facet is the sheet-sync landing (`openCagedToShipTable`). It is
+  // the live UnshippedTable on a different data source, so the verdict squares
+  // ride the desk's stage gutter beside the card rather than a column inside
+  // it — see SheetTriageGutterOverlay.
+  const cagedTriage =
+    !showCsvStaging &&
+    !showImportRecords &&
+    (searchParams.get('cage') === '1' || searchParams.get('cage') === 'true');
+
   const body = showCsvStaging ? (
     <CsvImportStagingHost />
+  ) : showImportRecords ? (
+    <OrderImportRecordsHost />
   ) : (
     <UnshippedTable
       strictSearchScope
@@ -98,7 +124,10 @@ export function DashboardOrdersView({
     />
   );
 
-  const overlays = showCsvStaging ? null : selectionEnabled ? (
+  // Both takeovers own the desk body outright: the compare pane and the view
+  // controls rail act on the live queue, and neither has anything to say about
+  // a session draft or a past day.
+  const overlays = showCsvStaging || showImportRecords ? null : selectionEnabled ? (
     <>
       <OrderRailCompare />
       <OrdersViewControlsRail />
@@ -109,7 +138,7 @@ export function DashboardOrdersView({
   );
 
   return (
-    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+    <div ref={deskBodyRef} className="relative flex min-h-0 min-w-0 flex-1 flex-col">
       {/*
         No status strip above the queue (operator ruling 2026-08-31). Open /
         Must ship / Shipped today rode here as a band between the desk chrome
@@ -120,6 +149,8 @@ export function DashboardOrdersView({
       */}
       {body}
       {overlays}
+      <ListingStaffRulesHost />
+      {cagedTriage ? <SheetTriageGutterOverlay containerRef={deskBodyRef} /> : null}
       {stageOverlay}
     </div>
   );

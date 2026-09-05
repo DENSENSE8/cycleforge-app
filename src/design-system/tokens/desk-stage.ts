@@ -57,13 +57,13 @@ export const DESK_STAGE_GUTTER_CLASS = 'px-4';
  *
  * The stage used to end at the viewport, so the card's bottom edge was the
  * screen's bottom edge: the table did not look like an object on a page, it
- * looked welded to the chrome. A card detached at the top and flush at the
- * bottom is only half-detached, and the missing half is the one an operator
- * stares at while scrolling a queue.
+ * looked welded to the chrome. A card flush at the bottom is the half an
+ * operator stares at while scrolling a queue.
  *
- * 20px, matching {@link DESK_STAGE_DETACH_CLASS} — the gap above the card and
- * the gap below it are the same measurement, or the card reads as sliding off
- * the screen rather than sitting on it.
+ * 16px (`pb-4`). The card welds to the tab row above
+ * ({@link DESK_STAGE_DETACH_CLASS} is empty); this floor is the remaining
+ * breathing room so the card still sits on the page rather than welding to
+ * the viewport.
  *
  * Not painted in fullscreen: flush is the entire point of that mode.
  */
@@ -114,18 +114,12 @@ export const DESK_PAGE_HEADER_ROW_CLASS = 'py-3';
 /**
  * The **tab row**, on its own line under the header.
  *
- * The full-width hairline is load-bearing: it is what makes the active tab's
- * underline read as *the selected segment of a rule* rather than a dash
- * floating under a word.
- *
- * That only holds if the selection occupies THIS border's pixel. Each tab in
- * `DeskPageChrome` carries its own `border-b` pulled down by `-mb-px` to land
- * exactly here — so do not add an `overflow-*` to the tab row or its tablist,
- * do not pull the tablist with a negative margin (that hangs the selection
- * past this rule), and do not give the row bottom padding: any of those puts
- * the tabs' borders off this hairline.
+ * No full-width hairline (operator 2026-09-04). Selection is the active tab's
+ * own underline on {@link DeskTab}, not a dash sitting on a page-wide rule.
+ * Do not restore `border-b` here — that was the seam the operator asked to
+ * kill. Do not add an `overflow-*` to the row or its tablist.
  */
-export const DESK_TAB_ROW_CLASS = 'h-9 border-b border-border-soft';
+export const DESK_TAB_ROW_CLASS = 'h-9';
 
 /**
  * Shared tab-list geometry for every desk page. The list remains a normal
@@ -139,34 +133,30 @@ export const DESK_TAB_TRIGGER_CLASS =
   'ds-raw-button inline-flex shrink-0 items-center justify-center gap-1 px-3 text-center text-role-caption';
 
 /**
- * The **detachment gap** between the tab row and the table card — the single
- * measurement this layout exists for.
+ * Space between the tab row and the table card.
  *
- * 20px (`mt-5`), not 8. At 8 the column header still reads as a fourth chrome
- * row in one continuous slab and an operator scanning down cannot tell where
- * the page furniture stops and the data starts. The gap is what turns the
- * table into an object sitting on the page rather than the bottom of its
- * header.
- *
- * It carries more weight since the ground went white (2026-08-31): with no
- * fill contrast left, this gap is the whole of the detachment. Do not shrink
- * it to buy a row back.
+ * Empty (operator 2026-09-04): the card welds to the tab row so the filter
+ * field sits under the tabs. Do not restore `mt-5` / `mt-4` here — that gap
+ * is the padding the operator asked to kill. Detachment is the floor
+ * ({@link DESK_STAGE_FLOOR_CLASS}) plus the card's radius, not a band of
+ * empty page between tabs and data.
  */
-export const DESK_STAGE_DETACH_CLASS = 'mt-5';
+export const DESK_STAGE_DETACH_CLASS = '';
 
 /**
- * The desk **card shell** — rounded container detached from the chrome above.
+ * The desk **card shell** — rounded container under the tab row.
  *
  * Only THIS shell carries corner radius on a pointer desk. The tab band sits
- * on the page ground above the detach gap; `overflow-hidden` + `rounded-xl`
- * clips the toolbar and grid to the card's shoulders — the DataTable itself
- * stays edge-to-edge inside (see {@link DESK_TABLE_SURFACE_CLASS}).
+ * on the page ground; the card welds to the tab row. `overflow-hidden` +
+ * `rounded-b-xl` clips the grid to the card's floor shoulders — the DataTable
+ * itself stays edge-to-edge inside (see {@link DESK_TABLE_SURFACE_CLASS}).
+ * Top corners are square so the toolbar welds to the tab row.
  *
- * NO outer border or hairline (operator ruling 2026-08-31). Detachment is
- * gap + soft geometry, not a ring around the grid.
+ * NO outer border or hairline (operator ruling 2026-08-31). Soft geometry, not
+ * a ring around the grid.
  */
 export const DESK_CHROME_STAGE_BODY_CLASS =
-  'overflow-hidden rounded-xl bg-surface-card';
+  'overflow-hidden rounded-b-xl bg-surface-card';
 
 /**
  * DataTable mount inside {@link DESK_CHROME_STAGE_BODY_CLASS} — flush, no inner
@@ -179,6 +169,38 @@ export const DESK_TABLE_SURFACE_CLASS =
   'flex min-h-0 min-w-0 flex-1 flex-col rounded-none';
 
 /**
+ * The **lead column** — the Ask pane's share of every desk row.
+ *
+ * ONE width token, used in all three rows ({@link DeskPageChrome} header,
+ * tab band, card) so the pane and the desk column cannot drift out of
+ * alignment: every horizontal rule on the page — the title baseline, the tab
+ * hairline, the card's top and bottom edges — is drawn by a row that spans
+ * BOTH columns, not by a second stack of chrome beside the first.
+ *
+ * That is why the pane is not its own card. Two cards meant two headers, two
+ * reserved tab rows and two detach gaps, and the pane's card sat 9px higher
+ * than the table's because the desk header carries a CTA and the pane's did
+ * not (operator 2026-09-04).
+ */
+export const DESK_LEAD_PANE_WIDTH_CLASS = 'w-[360px] shrink-0';
+
+/**
+ * The lead column INSIDE the shared card: divider against the grid, and an
+ * inset because a composer sits IN the card while a DataTable bleeds to its
+ * edges ({@link DESK_TABLE_SURFACE_CLASS}). The inset is also what keeps the
+ * mouth's raised shadow and focus ring clear of the card's clipping edge.
+ *
+ * **No bottom inset** — that is the alignment, not an oversight. The mouth is
+ * bottom-anchored and its mode row (`ComposerModeRow`: Ask + the context ring)
+ * carries the composer's own 4px floor, so a flush column bottom lands that row
+ * on the same centre line as the table's status bar — the desk's row count sits
+ * across the card from the mode and the ring, on one band, instead of 20px
+ * above it (operator 2026-09-04).
+ */
+export const DESK_LEAD_PANE_BODY_CLASS =
+  'flex min-h-0 flex-col px-4 pt-4 border-r border-border-hairline';
+
+/**
  * The page **ground** the card sits on — WHITE (operator ruling 2026-08-31).
  *
  * This was `bg-surface-canvas`, a grey wash, on the argument that a card the
@@ -186,9 +208,9 @@ export const DESK_TABLE_SURFACE_CLASS =
  * is that a warehouse desk is not a dashboard of widgets: the grey read as a
  * gutter around a boxed-in table, and the page should read as one white sheet
  * with the data sitting on it. Detachment now comes from the card's own EDGE —
- * {@link DESK_CHROME_STAGE_BODY_CLASS} keeps its hairline and radius, and
- * {@link DESK_STAGE_DETACH_CLASS} keeps the gap — which is the same separation
- * carried by line rather than by fill.
+ * {@link DESK_CHROME_STAGE_BODY_CLASS} keeps its radius, and
+ * {@link DESK_STAGE_FLOOR_CLASS} keeps the floor — separation by edge, not by
+ * a gap above the card.
  *
  * Not painted in fullscreen: there is no ground left to see.
  */

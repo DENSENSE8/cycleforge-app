@@ -1,9 +1,9 @@
 {
   "version": 1,
   "generatedAt": "2026-08-21T01:05:42Z",
-  "totalRoutes": 978,
+  "totalRoutes": 983,
   "summary": {
-    "permissionGated": 832,
+    "permissionGated": 818,
     "authenticatedNoPermission": 53,
     "anonymousIntentional": 87,
     "serviceToService": 2,
@@ -604,6 +604,15 @@
       ],
       "gate": "withAuth",
       "permission": "dashboard.view",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/ai/transcribe/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "assistant.chat",
       "exemptReason": null
     },
     {
@@ -2747,6 +2756,33 @@
       "exemptReason": null
     },
     {
+      "path": "/api/integrations/grok/connect/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "admin.manage_features",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/integrations/grok/device/poll/route.ts",
+      "methods": [
+        "POST"
+      ],
+      "gate": "withAuth",
+      "permission": "admin.manage_features",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/integrations/grok/health/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "admin.manage_features",
+      "exemptReason": null
+    },
+    {
       "path": "/api/integrations/nango/connected/route.ts",
       "methods": [
         "POST"
@@ -4102,6 +4138,15 @@
       ],
       "gate": "withAuth",
       "permission": "orders.import",
+      "exemptReason": null
+    },
+    {
+      "path": "/api/orders/imports/route.ts",
+      "methods": [
+        "GET"
+      ],
+      "gate": "withAuth",
+      "permission": "orders.view",
       "exemptReason": null
     },
     {

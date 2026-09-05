@@ -50,3 +50,13 @@ export const fadeInstant = {
   ease: 'easeOut' as const,
   duration: 0.15,
 } as const satisfies Transition;
+
+/**
+ * Pointer FOLLOW — duration 0. A spring on cursor x/y is lag; the hand
+ * has already moved. Morph size still uses {@link springArmedTrack}.
+ */
+export const cursorFollowSnap = {
+  type: 'tween' as const,
+  duration: 0,
+  ease: 'linear' as const,
+} as const satisfies Transition;

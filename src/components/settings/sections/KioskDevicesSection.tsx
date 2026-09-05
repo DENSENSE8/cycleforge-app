@@ -11,7 +11,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/design-system/primitives';
-import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
+import { DataTable } from '@/components/tables/DataTable';
+import { useKioskDevicesSpreadsheet } from '@/components/settings/kiosk-devices/useKioskDevicesSpreadsheet';
+import type { CompoundRowAction } from '@/components/tables/compound/compound-row-model';
+import type { KioskDeviceTableRow } from '@/lib/kiosk/kiosk-device-row';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveKioskDogfoodUrl } from '@/lib/tenancy/kiosk-host';
@@ -155,67 +158,38 @@ export function KioskDevicesSection() {
     [refresh],
   );
 
-  const deviceColumns: AdminTableColumn<KioskDeviceRow>[] = [
-    {
-      key: 'tablet',
-      header: 'Tablet',
-      type: 'text',
-      cell: (row) => <span className="font-medium text-text-default">{row.label}</span>,
+  /*
+    The two VERBS, resolved per row.
+
+    Both were cells before — a card-reader BUTTON inside the terminal column and
+    a Revoke button in a trailing actions column. A control living in a data cell
+    is why this section owned its own table: the shared row paints facts, and
+    verbs come off the row menu (law §4, the catalog at n=1).
+
+    Direction comes from row STATE, not from the route: a revoked tablet offers
+    neither verb, which is the same rule that stops a per-lane key list.
+  */
+  const rowActions = useCallback(
+    (row: KioskDeviceTableRow): readonly CompoundRowAction[] => {
+      if (row.status === 'revoked') return [];
+      return [
+        {
+          key: 'pair-terminal',
+          label: row.squareTerminalDeviceId ? 'Change card reader' : 'Pair a card reader',
+          onSelect: () => void pairTerminal(row.id, row.squareTerminalDeviceId),
+        },
+        {
+          key: 'revoke',
+          label: 'Revoke device',
+          tone: 'danger',
+          onSelect: () => void revoke(row.id),
+        },
+      ];
     },
-    {
-      key: 'status',
-      header: 'Status',
-      type: 'tag',
-      cell: (row) => (
-        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-widest ring-1 ring-inset ${STATUS_TONE[row.status]}`}>
-          {STATUS_LABEL[row.status]}
-        </span>
-      ),
-    },
-    {
-      key: 'terminal',
-      header: 'Card reader',
-      type: 'text',
-      cell: (row) =>
-        row.status === 'revoked' ? null : (
-          <button
-            type="button"
-            onClick={() => void pairTerminal(row.id, row.squareTerminalDeviceId)}
-            className="ds-raw-button text-xs text-text-soft underline-offset-2 hover:text-text-default hover:underline"
-          >
-            {row.squareTerminalDeviceId ? (
-              <span className="font-mono">{row.squareTerminalDeviceId}</span>
-            ) : (
-              // Honest absence: this lane takes cash or a payment link.
-              'No reader'
-            )}
-          </button>
-        ),
-    },
-    {
-      key: 'last_seen',
-      header: 'Last seen',
-      type: 'date',
-      cell: (row) => <span className="text-xs text-text-soft">{fmtRelative(row.lastSeenAt)}</span>,
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      align: 'right',
-      cell: (row) =>
-        row.status !== 'revoked' ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            type="button"
-            onClick={() => void revoke(row.id)}
-            className="border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-          >
-            Revoke
-          </Button>
-        ) : null,
-    },
-  ];
+    [pairTerminal, revoke],
+  );
+
+  const sheet = useKioskDevicesSpreadsheet({ rows, loading, rowActions });
 
   return (
     <section className="space-y-5">
@@ -272,13 +246,7 @@ export function KioskDevicesSection() {
       </div>
 
       {/* List */}
-      <AdminTable
-        columns={deviceColumns}
-        rows={rows}
-        rowKey={(row) => row.id}
-        loading={loading}
-        emptyMessage="No kiosk tablets enrolled yet."
-      />
+      <DataTable {...sheet} totalCount={rows.length} />
     </section>
   );
 }

@@ -17,9 +17,12 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Search, User, X } from '@/components/Icons';
 import { AnchoredLayer } from '@/design-system';
 import { Button, IconButton } from '@/design-system/primitives';
+import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import {
+  dateKeyToLocalDate,
+  localDateToDateKey,
   getCurrentPSTDateKey,
   getRollingDaysStartKey,
   getYesterdayPSTDateKey,
@@ -129,15 +132,23 @@ export function useAuditLogFilterRefinements() {
       setStaffId(null);
     },
     state: { preset, staffId, searchParams },
-    actions: { applyPreset, setStaffId, setCustomStart: (day: string) => {
-        if (!day) { replaceParams((p) => p.delete('start')); return; }
-        const { start } = dayBounds(day);
-        replaceParams((p) => { p.delete('day'); p.set('start', start); });
-      }, setCustomEnd: (day: string) => {
-        if (!day) { replaceParams((p) => p.delete('end')); return; }
-        const { end } = dayBounds(day);
-        replaceParams((p) => { p.delete('day'); p.set('end', end); });
-      }
+    actions: {
+      applyPreset,
+      setStaffId,
+      /**
+       * Both bounds in ONE URL replace. Two separate setters used to each
+       * rebuild from the same stale `searchParams` snapshot, so a second call
+       * in the same tick overwrote the first.
+       */
+      setCustomRange: (startDay: string, endDay: string) => {
+        replaceParams((p) => {
+          p.delete('day');
+          if (startDay) p.set('start', dayBounds(startDay).start);
+          else p.delete('start');
+          if (endDay) p.set('end', dayBounds(endDay).end);
+          else p.delete('end');
+        });
+      },
     }
   };
 }
@@ -190,20 +201,24 @@ export function AuditLogFilterDropdown({ onClose }: { onClose: () => void }) {
       </div>
 
       {state.preset === 'custom' && (
-        <div className="grid grid-cols-2 gap-2">
-          <input
-            type="date"
-            value={customStart}
-            onChange={(e) => actions.setCustomStart(e.target.value)}
-            className={cn("h-10 rounded-xl border border-border-hairline bg-surface-canvas/50 px-3 text-role-caption font-semibold text-text-default", focusRing("field", "accent"))}
-          />
-          <input
-            type="date"
-            value={customEnd}
-            onChange={(e) => actions.setCustomEnd(e.target.value)}
-            className={cn("h-10 rounded-xl border border-border-hairline bg-surface-canvas/50 px-3 text-role-caption font-semibold text-text-default", focusRing("field", "accent"))}
-          />
-        </div>
+        // Filter range → DateRangePickerField range (presets already ride the
+        // segmented toggle above, so none here). Never a native date input.
+        <DateRangePickerField
+          variant="range"
+          presets={[]}
+          value={
+            customStart || customEnd
+              ? { from: dateKeyToLocalDate(customStart), to: dateKeyToLocalDate(customEnd) }
+              : undefined
+          }
+          onChange={(next) =>
+            actions.setCustomRange(
+              localDateToDateKey(next?.from) ?? '',
+              localDateToDateKey(next?.to ?? next?.from) ?? '',
+            )
+          }
+          className="h-10"
+        />
       )}
 
       <div>
@@ -272,27 +287,14 @@ export function AuditLogFilterStrip() {
     });
   };
 
-  const setCustomStart = (day: string) => {
-    if (!day) {
-      replaceParams((p) => p.delete('start'));
-      return;
-    }
-    const { start } = dayBounds(day);
+  // Both bounds in one URL replace — see `useAuditLogFilterRefinements`.
+  const setCustomRange = (startDay: string, endDay: string) => {
     replaceParams((p) => {
       p.delete('day');
-      p.set('start', start);
-    });
-  };
-
-  const setCustomEnd = (day: string) => {
-    if (!day) {
-      replaceParams((p) => p.delete('end'));
-      return;
-    }
-    const { end } = dayBounds(day);
-    replaceParams((p) => {
-      p.delete('day');
-      p.set('end', end);
+      if (startDay) p.set('start', dayBounds(startDay).start);
+      else p.delete('start');
+      if (endDay) p.set('end', dayBounds(endDay).end);
+      else p.delete('end');
     });
   };
 
@@ -350,20 +352,24 @@ export function AuditLogFilterStrip() {
         ))}
       </div>
 
-      {/* Custom date inputs */}
+      {/* Custom range → DateRangePickerField range; never a native date input. */}
       {preset === 'custom' && (
-        <div className="mt-2 grid grid-cols-2 gap-1.5">
-          <input
-            type="date"
-            value={customStart}
-            onChange={(e) => setCustomStart(e.target.value)}
-            className={cn("h-8 rounded-md border border-border-soft bg-surface-card px-2 text-role-caption text-text-default", focusRing("field", "success"))}
-          />
-          <input
-            type="date"
-            value={customEnd}
-            onChange={(e) => setCustomEnd(e.target.value)}
-            className={cn("h-8 rounded-md border border-border-soft bg-surface-card px-2 text-role-caption text-text-default", focusRing("field", "success"))}
+        <div className="mt-2">
+          <DateRangePickerField
+            variant="range"
+            presets={[]}
+            value={
+              customStart || customEnd
+                ? { from: dateKeyToLocalDate(customStart), to: dateKeyToLocalDate(customEnd) }
+                : undefined
+            }
+            onChange={(next) =>
+              setCustomRange(
+                localDateToDateKey(next?.from) ?? '',
+                localDateToDateKey(next?.to ?? next?.from) ?? '',
+              )
+            }
+            className="h-8"
           />
         </div>
       )}

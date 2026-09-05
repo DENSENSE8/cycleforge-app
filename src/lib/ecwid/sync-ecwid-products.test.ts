@@ -16,10 +16,22 @@ import {
 
 test('parseEcwidProductItems maps well-formed items', () => {
   const out = parseEcwidProductItems([
-    { id: 123, sku: ' AB-1 ', name: ' Widget ', thumbnailUrl: 'https://x/y.jpg' },
+    {
+      id: 123,
+      sku: ' AB-1 ',
+      name: ' Widget ',
+      thumbnailUrl: 'https://x/y.jpg',
+      url: 'https://usavshop.com/products/Widget-p123',
+    },
   ]);
   assert.deepEqual(out, [
-    { ecwidProductId: '123', sku: 'AB-1', name: 'Widget', thumbnailUrl: 'https://x/y.jpg' },
+    {
+      ecwidProductId: '123',
+      sku: 'AB-1',
+      name: 'Widget',
+      thumbnailUrl: 'https://x/y.jpg',
+      listingUrl: 'https://usavshop.com/products/Widget-p123',
+    },
   ]);
 });
 
@@ -39,6 +51,29 @@ test('parseEcwidProductItems normalizes blank sku and non-string thumbnail to nu
   const out = parseEcwidProductItems([{ id: 9, sku: '  ', name: 'x', thumbnailUrl: 42 }]);
   assert.equal(out[0].sku, null);
   assert.equal(out[0].thumbnailUrl, null);
+});
+
+// ── listingUrl (the storefront deep link) ───────────────────────────────────
+
+test('parseEcwidProductItems keeps the canonical storefront product URL', () => {
+  const out = parseEcwidProductItems([
+    { id: 1, name: 'x', url: 'https://usavshop.com/products/Thing-p491992696' },
+  ]);
+  assert.equal(out[0].listingUrl, 'https://usavshop.com/products/Thing-p491992696');
+});
+
+test('parseEcwidProductItems drops a listing URL that is not http(s)', () => {
+  // A dead or hostile href would paint an openable control that goes nowhere,
+  // so anything unparseable falls back to null (caller keeps keyword search).
+  for (const url of ['javascript:alert(1)', '/products/relative', 'not a url', '', '   ', 42, null]) {
+    const out = parseEcwidProductItems([{ id: 1, name: 'x', url }]);
+    assert.equal(out[0].listingUrl, null, `expected null for ${JSON.stringify(url)}`);
+  }
+});
+
+test('parseEcwidProductItems leaves listingUrl null when the payload omits url', () => {
+  const out = parseEcwidProductItems([{ id: 1, name: 'x' }]);
+  assert.equal(out[0].listingUrl, null);
 });
 
 test('parseEcwidProductItems returns [] for a non-array payload', () => {

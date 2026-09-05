@@ -46,6 +46,7 @@ import {
 } from '@/lib/right-rail/frame';
 import { useLocalStorage } from '@/hooks';
 import { isStationSurfaceRoute } from '@/lib/sidebar-navigation';
+import { DeskComposerAskLane } from '@/components/composer/DeskComposerAskLane';
 import { cn } from '@/utils/_cn';
 
 // Kept lazy, exactly as they were when this mounted from the app shell: the
@@ -243,6 +244,9 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
   // Park/restore snaps — same as Station Displays (no `motionRole.push.rail`
   // width tween). Live sash drag paints every frame from local `width`.
 
+  // Railless desks (Shipping, Incoming) skip this rail so the table reclaims
+  // the column. Their mouth mounts INSIDE DeskPageChrome's card — not here —
+  // so the pane shares the stage's rounded clip and sits under the page header.
   if (!hasPanel) return <>{children}</>;
 
   const panelBody = (
@@ -323,7 +327,15 @@ export function ContextPanelLayout({ children }: { children: ReactNode }) {
         >
           {panelBody}
         </div>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">{children}</div>
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {children}
+          {/*
+            The foot dock is the desk field for a surface with no desk chrome to
+            hang a lead column on. It stands itself down whenever a column is
+            mounted — one screen, one mouth.
+          */}
+          <DeskComposerAskLane />
+        </div>
       </div>
     </ContextPanelCollapseProvider>
   );

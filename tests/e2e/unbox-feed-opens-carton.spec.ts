@@ -22,8 +22,8 @@ import { test, expect } from '@playwright/test';
  * take a chrome value from its mount.
  */
 const GUTTER_TABS = [
-  { name: 'Recent', url: '/unbox?unboxview=viewed', selectChrome: 'flush' as const },
-  { name: 'Queue', url: '/unbox?unboxview=queue', selectChrome: 'flush' as const },
+  { name: 'Recent', url: '/unbox?unboxview=viewed', selectChrome: 'hover' as const },
+  { name: 'Queue', url: '/unbox?unboxview=queue', selectChrome: 'hover' as const },
 ] as const;
 
 test.describe('Unbox feed — click opens, gutter selects, neither stamps Recent', () => {
@@ -197,11 +197,15 @@ test.describe('Unbox feed — click opens, gutter selects, neither stamps Recent
     await expect(row).toHaveCSS('background-color', 'rgb(255, 241, 242)');
   });
 
-  test('Recent / Queue paint a FADED check at rest — never a blank gutter', async ({ page }) => {
-    // The operator's ask: the leftmost column must read as a checkmark column
-    // even when nothing is selected, so staff can see at a glance what is and
-    // is not ticked. Asserted on the face MARKER rather than a class, because
-    // the paint is a token choice and the invariant is "a mark is present".
+  test('Recent / Queue paint NOTHING at rest — the box arrives on row hover', async ({ page }) => {
+    // Reverses the 2026-08-21 "never a blank gutter" ruling, on the operator's
+    // instruction (2026-09-04): "remove the faded checkmark throughout the
+    // entire slot data table". The affordance moved to row hover, which answers
+    // "is this column selectable?" at the moment the question is asked instead
+    // of forty times permanently over the data.
+    //
+    // Asserted on the face MARKER plus the absence of a glyph, because the
+    // paint is a token choice and the invariant is "no mark at rest".
     for (const tab of GUTTER_TABS) {
       await page.goto(tab.url);
       const rows = page.locator('[data-line-row-id]');
@@ -216,9 +220,14 @@ test.describe('Unbox feed — click opens, gutter selects, neither stamps Recent
       const box = rows.first().getByRole('checkbox').first();
       await expect(box).toHaveAttribute('data-select-chrome', tab.selectChrome);
       await expect(box).toHaveAttribute('aria-checked', 'false');
-      // The mark is there, and it is the OFF face.
-      await expect(box.locator('[data-click-select-face="off"]')).toBeVisible();
-      await expect(box.locator('svg')).toBeVisible();
+      // The face is the OFF square, and it carries NO glyph.
+      await expect(box.locator('[data-select-square-face="off"]')).toHaveCount(1);
+      await expect(box.locator('svg')).toHaveCount(0);
+      // The hit plane is still the whole cell — the box shrank, the click did not.
+      const cellBox = await rows.first().locator('[data-col="select"]').boundingBox();
+      const hit = await box.boundingBox();
+      expect(hit!.width).toBeGreaterThanOrEqual(cellBox!.width - 1);
+      expect(hit!.height).toBeGreaterThanOrEqual(cellBox!.height - 1);
       // Edge to edge: the gutter cell carries no padding at all.
       const cell = rows.first().locator('[data-col="select"]');
       const pad = await cell.evaluate((el) => {

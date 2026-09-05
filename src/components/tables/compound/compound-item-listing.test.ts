@@ -93,6 +93,71 @@ describe('compound item listing join', () => {
     assert.match(html, /justify-start/);
   });
 
+  it('paints a Figma-style scrub host on an editable price', () => {
+    const html = paintItem(
+      {
+        ...VIEW,
+        subtitleParts: [
+          { text: '$49.99', key: 'orders.amount', toneClass: 'font-semibold text-text-success', widthCh: 8 },
+        ],
+      },
+      {
+        subtitleEdits: [{
+          partKey: 'orders.amount',
+          label: 'Amount',
+          value: '49.99',
+          kind: 'numeric',
+          scrub: { step: 1, coarseStep: 10, fineStep: 0.01, min: 0, decimals: 2, money: true },
+          onCommit: () => undefined,
+        }],
+      },
+    );
+    assert.match(html, /data-subtitle-scrub=""/);
+    assert.match(html, /data-cursor="resize-x"/);
+    assert.match(html, /data-slot="input-group"/);
+    assert.match(html, /data-money-prefix=""/);
+    assert.match(html, /role="spinbutton"/);
+    assert.match(html, />\$</);
+    assert.match(html, /49\.99/);
+    assert.doesNotMatch(html, /border-border-success/);
+  });
+
+  it('paints the price in the house money tone', () => {
+    const html = paintItem({
+      ...VIEW,
+      subtitleParts: [
+        { text: '$49.99', key: 'orders.amount', toneClass: 'font-semibold text-text-success', widthCh: 8 },
+      ],
+    });
+    assert.match(html, /text-text-success/);
+    assert.match(html, /\$49\.99/);
+  });
+
+  it('paints qty left-most even when subtitleParts arrive reversed', () => {
+    const html = paintItem({
+      ...VIEW,
+      subtitleParts: [
+        { text: 'Used', key: 'orders.condition' },
+        { text: '4', key: 'orders.qty', widthCh: 2 },
+      ],
+    });
+    const qtyAt = html.indexOf('>4<');
+    const condAt = html.indexOf('Used');
+    assert.ok(qtyAt >= 0 && condAt >= 0 && qtyAt < condAt);
+  });
+
+  it('keeps the row note when the only bound part is qty', () => {
+    const html = paintItem(
+      {
+        ...VIEW,
+        note: 'leave at dock',
+        subtitleParts: [{ text: '1', key: 'orders.qty', widthCh: 2 }],
+      },
+    );
+    assert.match(html, />1</);
+    assert.match(html, /leave at dock/);
+  });
+
   it('does not invent middle-dot separators between under-title facts', () => {
     const html = paintItem(VIEW);
     assert.doesNotMatch(html, />·</);

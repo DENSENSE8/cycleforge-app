@@ -58,7 +58,7 @@ export async function replaceOrgTables(
   // One multi-row INSERT: a loop would be N round trips for a set that is
   // always tens of rows, and each would be its own transaction.
   const values: unknown[] = [orgId, staffId];
-  const tuples = rows.map((row, i) => {
+  const tuples = rows.map((row) => {
     const base = values.length;
     values.push(row.tableId, row.enabled, row.sortOrder);
     return `($1, $${base + 1}, $${base + 2}, $${base + 3}, $2, NOW())`;

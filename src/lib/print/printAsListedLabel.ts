@@ -66,20 +66,24 @@ export function asListedPayloadToFace(payload: AsListedLabelPayload): LabelFaceM
   };
 }
 
-export function printAsListedLabel(payload: AsListedLabelPayload): void {
-  if (typeof window === 'undefined') return;
+export async function printAsListedLabelJob(
+  payload: AsListedLabelPayload,
+): Promise<'usb' | 'iframe' | 'skipped'> {
+  if (typeof window === 'undefined') return 'skipped';
   const face = asListedPayloadToFace(payload);
-  if (!face.matrix.value && !face.center) return;
-
+  if (!face.matrix.value && !face.center) return 'skipped';
   const legacyPopup = reserveLegacyPrintPopup();
-  // Lazy: printLabel drags the bwip-js barcode engine; load on the actual print.
-  void import('@/lib/print/printLabel').then(({ printLabel }) => {
-    printLabel({
-      name: 'As Listed',
-      ...buildFaceInfoHtml(face),
-      dataMatrix: face.matrix,
-      hri: face.hri,
-      legacyPopup,
-    });
+  const { printLabelJob } = await import('@/lib/print/printLabel');
+  return printLabelJob({
+    name: 'As Listed',
+    ...buildFaceInfoHtml(face),
+    dataMatrix: face.matrix,
+    hri: face.hri,
+    face,
+    legacyPopup,
   });
+}
+
+export function printAsListedLabel(payload: AsListedLabelPayload): void {
+  void printAsListedLabelJob(payload);
 }

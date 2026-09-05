@@ -39,6 +39,7 @@ export type OrdersQueueColumnKey =
   | 'thumb'
   | 'item'
   | 'fulfillment'
+  | 'dates'
   | 'state'
   /**
    * Materialized SLOT tracks (`status:1…10`; sheet morph adds `subtitle:1…5`).
@@ -48,7 +49,6 @@ export type OrdersQueueColumnKey =
    */
   | `status:${number}`
   | `subtitle:${number}`
-  | 'amount'
   | 'actions'
   // ── Legacy fact keys (URL/sort compatibility only) ─────────
   | 'title'
@@ -56,6 +56,7 @@ export type OrdersQueueColumnKey =
   | 'age'
   | 'condition'
   | 'qty'
+  | 'amount'
   | 'tester'
   | 'testedAt'
   | 'packer'
@@ -110,18 +111,7 @@ export function ordersCompoundColumnsFor(
   resolved = options?.shortageDesk
     ? ensureShortageCoverageBinding(resolved)
     : omitShortageCoverageBindings(resolved);
-  /*
-   * No `actions` track on Orders (operator ruling 2026-08-31 — "remove the
-   * three dots on the most right side").
-   *
-   * The ⋮ is the rightmost track and it is literally three dots. On this desk
-   * it never earned its 2.5rem: the row already opens on click, and the two
-   * verbs it grew (copy order / copy tracking) are the same copies the identity
-   * chips beside them already offer on one click. Other compound families keep
-   * the shared track — this drops it for the Orders mount only, which is why it
-   * is filtered here rather than removed from `COMPOUND_TRACKS`.
-   */
-  const base = compoundColumnsFor<OrdersQueueColumn>().filter((c) => c.key !== 'actions');
+  const base = compoundColumnsFor<OrdersQueueColumn>();
   return materializeTracks<OrdersQueueColumn>({
     layout: resolved,
     catalog: ORDERS_FIELD_CATALOG,

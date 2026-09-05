@@ -56,7 +56,7 @@ export function StationDisplayLeafHeader({
   onBack,
   onForward,
   backLabel = 'Back to Displays',
-  forwardLabel = 'Forward',
+  forwardLabel: _forwardLabel = 'Forward',
   canGoBack = true,
   canGoForward = false,
   trailing = null,

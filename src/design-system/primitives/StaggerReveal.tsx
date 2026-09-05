@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { motion, type Variants } from '@/design-system/motion';
+import { motion, useReducedMotion, type Variants } from '@/design-system/motion';
 import { motionBezier } from '../foundations/motion-framer';
 import { springSnappy } from '../motion/tokens';
 
@@ -186,5 +186,58 @@ export function StaggerRevealItem({
     <Tag variants={variants} className={className} data-testid={testId}>
       {children}
     </Tag>
+  );
+}
+
+export interface StaggerRevealRowProps {
+  children: ReactNode;
+  className?: string;
+  /**
+   * False on rows that were already on screen — they must not re-rise every
+   * time the list re-renders. They still carry `layout`, which is what makes
+   * them SPRING APART when a batch lands between them.
+   */
+  entering?: boolean;
+  /** Defaults to the vertical rise — the desk-table language. */
+  variants?: Variants;
+  'data-testid'?: string;
+}
+
+/**
+ * One reveal row with **no cascade container** — the VIRTUALIZED twin of
+ * {@link StaggerRevealItem}.
+ *
+ * A windowed grid (`VirtualGroupedSections`) absolutely positions every row
+ * from its own measured `top`, so there is no shared parent element that could
+ * own a `staggerChildren` timeline or a `<ul>` the rows are `<li>`s of. This
+ * row therefore drives `hidden → show` itself, and carries `layout` so that
+ * when the window's math moves it — a batch splicing in above it — the
+ * displacement is a spring instead of a jump. Wrap the list in `LayoutGroup`
+ * so every row's layout animation resolves in one batch.
+ *
+ * Reduced motion: final position and full opacity on the first frame, with the
+ * layout channel off. No travel, no fade.
+ */
+export function StaggerRevealRow({
+  children,
+  className,
+  entering = true,
+  variants = staggerRevealRiseItem,
+  'data-testid': testId,
+}: StaggerRevealRowProps) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      layout={reduce ? false : 'position'}
+      layoutDependency={entering}
+      transition={springSnappy}
+      variants={variants}
+      initial={reduce || !entering ? false : 'hidden'}
+      animate="show"
+      className={className}
+      data-testid={testId}
+    >
+      {children}
+    </motion.div>
   );
 }

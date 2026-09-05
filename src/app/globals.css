@@ -53,7 +53,7 @@ pre {
 }
 
 /* `--background` / `--foreground` are OWNED by the theme registry
-   (src/design-system/themes/registry.ts → `<style id="app-theme-palettes">`),
+   (src/design-system/themes/registry.ts → `\3c style id="app-theme-palettes">`),
    which emits them in its `:root` light default AND in every
    `html[data-theme='<name>']` block. A static pair here was permanently
    shadowed by that injected block (see the head-order note in
@@ -165,6 +165,10 @@ body {
     overflow: hidden;
   }
 }
+
+/* Desk MorphCursorLayer injects `data-cf-morph-cursor` styles at runtime
+ * (Motion+ Cursor's hide sheet) — do not duplicate a static cursor:none rule
+ * here; a class on <html> loses to child cursor-pointer / text / grab. */
 
 /* Station-specific iOS touch optimizations */
 .touch-manipulation {
@@ -383,6 +387,67 @@ body {
   }
 }
 
+/* ── Station title sweep ───────────────────────────────────────────────────
+   The armed indicator on a mobile scan station's title (`/m/scan-out`, and the
+   floor stations that clone its shell). A highlight travels left→right across
+   the letters the way a loading label does, because that is exactly what the
+   station is doing: listening, with nothing decoded yet.
+
+   Animates `background-position` on a text-clipped gradient. Be honest about
+   the cost: `background-position` is NOT on the compositor fast path (only
+   transform, opacity and filter are), so every frame re-rasterizes the gradient
+   and re-applies the text clip on the main thread — the same thread as the
+   camera decode loop. It is affordable here only because the paint area is one
+   short word; do not scale this class up to a headline, and do not mount more
+   than one of them on a station.
+
+   Colours come from two custom properties so the same class works on the light
+   page canvas (the default below) and on a dark overlay — a consumer sets
+   `--cf-sweep-base` / `--cf-sweep-peak` and nothing else. Defaults are the
+   house text tokens, so an unstyled consumer inherits the theme rather than a
+   hardcoded ink.
+
+   Duration is a literal, not `--cf-motion-status`, for the same reason the boot
+   splash's loops are: that var resolves to 0s outside a `data-motion="2"`
+   region, and these screens have none — taking it would silently freeze the one
+   signal that says the station is live. */
+@keyframes cf-scan-title-sweep {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+.cf-scan-title-sweep {
+  --cf-sweep-base: var(--ds-color-text-soft);
+  --cf-sweep-peak: var(--ds-color-text-primary);
+  background-image: linear-gradient(
+    100deg,
+    var(--cf-sweep-base) 0%,
+    var(--cf-sweep-base) 38%,
+    var(--cf-sweep-peak) 50%,
+    var(--cf-sweep-base) 62%,
+    var(--cf-sweep-base) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: cf-scan-title-sweep 2.2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* Hold the gradient still rather than dropping it: the letters keep their
+     fill, they just stop travelling. */
+  .cf-scan-title-sweep {
+    animation: none;
+    background-position: 50% 0;
+  }
+}
+/* Browsers throttle rather than stop animations in a hidden tab, and this one
+   is a main-thread repaint sharing a thread with a camera decode loop. The
+   station sets `data-station-hidden` from the Page Visibility API; stopping it
+   outright costs nothing, because nobody is looking at it. */
+[data-station-hidden='true'] .cf-scan-title-sweep {
+  animation-play-state: paused;
+}
+
 /* ── Live-change row wash ───────────────────────────────────────────────────
    Pairs with the status-chip attention pulse (`useLiveValueChange` /
    `motionRole.feedback.liveChange`). The chip flash says WHAT changed; this
@@ -508,4 +573,28 @@ body {
    added later — not a per-page patch. */
 [data-workbench-kpi-band]:has([data-workbench-kpi-body]:empty) {
   display: none;
+}
+
+/* shadcn sidebar tokens — house colour, not upstream HSL. Theme registry
+   already swaps these `--ds-color-*` values; do not add a `.dark` twin. */
+:root {
+  --sidebar: var(--ds-color-background-surface);
+  --sidebar-foreground: var(--ds-color-text-primary);
+  --sidebar-primary: var(--ds-color-text-primary);
+  --sidebar-primary-foreground: var(--ds-color-background-surface);
+  --sidebar-accent: var(--ds-color-surface-hover);
+  --sidebar-accent-foreground: var(--ds-color-text-primary);
+  --sidebar-border: var(--ds-color-border-subtle);
+  --sidebar-ring: var(--ds-color-accent-border);
+}
+
+@theme inline {
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
 }

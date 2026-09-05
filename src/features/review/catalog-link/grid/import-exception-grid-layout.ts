@@ -13,6 +13,7 @@ import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materializ
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import type { ColumnType } from '@/lib/tables/table-columns';
+import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
 
 export type ImportExceptionGridColumnKey =
   | 'select'
@@ -27,6 +28,7 @@ export type ImportExceptionGridColumnKey =
   | 'thumb'
   | 'item'
   | 'fulfillment'
+  | 'dates'
   | 'state'
   | 'amount'
   | 'actions'
@@ -59,7 +61,7 @@ export function importExceptionCompoundColumnsFor(
   return materializeTracks<ImportExceptionGridColumn>({
     layout,
     catalog: IMPORT_EXCEPTION_FIELD_CATALOG,
-    base: compoundColumnsFor<ImportExceptionGridColumn>(),
+    base: compoundColumnsFor(),
   });
 }
 
@@ -73,6 +75,7 @@ export const IMPORT_EXCEPTION_COMPOUND_COLUMNS: readonly ImportExceptionGridColu
   importExceptionCompoundColumnsFor(IMPORT_EXCEPTION_PRODUCT_LAYOUT);
 
 const IMPORT_EXCEPTION_GRID_SORTABLE_KEYS: readonly ImportExceptionGridColumnKey[] = [
+  'dates',
   'order',
   'source',
   'tracking',
@@ -84,10 +87,10 @@ const IMPORT_EXCEPTION_GRID_SORTABLE_KEYS: readonly ImportExceptionGridColumnKey
   'fulfillment',
   'state',
   'amount',
-  'thumb',
 ];
 
 export function isImportExceptionGridSortable(key: string): key is ImportExceptionGridColumnKey {
+  if (isSlotTableChromeTrack(key)) return false;
   return (IMPORT_EXCEPTION_GRID_SORTABLE_KEYS as readonly string[]).includes(key);
 }
 
@@ -102,6 +105,7 @@ export function isImportExceptionGridSortable(key: string): key is ImportExcepti
  * bookmarks carry, the track keys are what the mounted header emits.
  */
 export const IMPORT_EXCEPTION_SORT_TYPES: Readonly<Record<string, ColumnType>> = {
+  dates: 'date',
   item: 'text',
   order: 'id',
   fulfillment: 'id',
@@ -113,7 +117,6 @@ export const IMPORT_EXCEPTION_SORT_TYPES: Readonly<Record<string, ColumnType>> =
   first: 'date',
   last: 'date',
   state: 'date',
-  thumb: 'text',
 };
 
 export function defaultDirForImportExceptionGridSort(

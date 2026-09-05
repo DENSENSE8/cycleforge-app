@@ -74,66 +74,63 @@ export function resolveTestingLineTitle(
  * TSPL/ZPL to the paired thermal printer when silent mode is on, then
  * hidden-iframe dialog fallback.
  */
-export function printProductLabel(input: PrintProductLabelInput): void {
-  if (typeof window === 'undefined') return;
+export async function printProductLabelJob(
+  input: PrintProductLabelInput,
+): Promise<'usb' | 'iframe' | 'skipped'> {
+  if (typeof window === 'undefined') return 'skipped';
 
   const built = productLabelFace(input);
-  if (!built) return;
+  if (!built) return 'skipped';
 
   const { sku, matrix } = built;
   const silent = isSilentPrintEnabled();
-  // Reserve while the station button still owns the gesture on old WebKit.
   const legacyPopup = reserveLegacyPrintPopup();
 
-  void (async () => {
-    // Lazy: the print shell + raw-command builders carry the bwip-js barcode
-    // engine (~250 KB gz); this module's light helpers (deriveColorFromTitle,
-    // resolveTestingLineTitle, unitLabelCore re-exports) ride in station
-    // bundles, so only the actual print action loads the heavy modules.
-    const [{ printLabel, buildLabelHtml }, { buildProductLabelBitmapCommands, buildProductLabelCommands }] =
-      await Promise.all([
-        import('@/lib/print/printLabel'),
-        import('@/lib/print/productLabelCommands'),
-      ]);
+  const [{ printLabelJob, buildLabelHtml }, { buildProductLabelBitmapCommands, buildProductLabelCommands }] =
+    await Promise.all([
+      import('@/lib/print/printLabel'),
+      import('@/lib/print/productLabelCommands'),
+    ]);
 
-    if (silent) {
-      const labelProfile = getProfileForRole('label');
-      if (labelProfile && labelProfile.kind !== 'os') {
-        const commands =
-          labelProfile.language === 'tspl'
-            ? buildProductLabelBitmapCommands(input, PRODUCT_LABEL_SIZE, labelProfile.copies)
-            : buildProductLabelCommands(
-                input,
-                labelProfile.language,
-                PRODUCT_LABEL_SIZE,
-                labelProfile.copies,
-              );
-        const res = await printRawToProfile(commands, labelProfile);
-        if (res.success) {
-          legacyPopup?.close();
-          return;
-        }
-        console.warn('printProductLabel: browser raw print failed, falling back:', res.reason);
+  if (silent) {
+    const labelProfile = getProfileForRole('label');
+    if (labelProfile && labelProfile.kind !== 'os') {
+      const commands =
+        labelProfile.language === 'tspl'
+          ? buildProductLabelBitmapCommands(input, PRODUCT_LABEL_SIZE, labelProfile.copies)
+          : buildProductLabelCommands(
+              input,
+              labelProfile.language,
+              PRODUCT_LABEL_SIZE,
+              labelProfile.copies,
+            );
+      const res = await printRawToProfile(commands, labelProfile);
+      if (res.success) {
+        legacyPopup?.close();
+        return 'usb';
       }
+      console.warn('printProductLabel: browser raw print failed, falling back:', res.reason);
     }
-
-    if (silent) {
-      printLabel({
-        name: `Label ${sku}`,
-        ...built,
-        dataMatrix: matrix,
-        legacyPopup,
-      });
-      return;
-    }
-
-    const html = buildLabelHtml({
+    return printLabelJob({
       name: `Label ${sku}`,
       ...built,
       dataMatrix: matrix,
+      face: built.face,
+      legacyPopup,
     });
-    printHtmlInIframe(html, { name: `Label ${sku}`, legacyPopup });
-  })();
+  }
+
+  const html = buildLabelHtml({
+    name: `Label ${sku}`,
+    ...built,
+    dataMatrix: matrix,
+  });
+  printHtmlInIframe(html, { name: `Label ${sku}`, legacyPopup });
+  return 'iframe';
+}
+
+export function printProductLabel(input: PrintProductLabelInput): void {
+  void printProductLabelJob(input);
 }
 
 export type PrintProductLabelsInput = {

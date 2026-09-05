@@ -45,7 +45,7 @@ test.describe('Receiving History · grid columns come from the binding', () => {
       present is what catches a re-introduced visibility filter — the failure
       mode is a silently narrower grid, which looks like a working page.
     */
-    for (const key of ['thumb', 'fulfillment', 'item', 'state', 'amount', 'actions']) {
+    for (const key of ['fulfillment', 'thumb', 'item', 'state', 'amount']) {
       await expect(track(page, key).first()).toBeVisible();
     }
   });

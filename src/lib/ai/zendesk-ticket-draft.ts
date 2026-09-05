@@ -38,6 +38,16 @@ export interface TicketDraftInput {
   context: string;
   /** Deterministic template — authoritative facts the model must preserve. */
   template: { subject: string; description: string };
+  /**
+   * Identifiers the caller's fact guard will REJECT the draft for losing.
+   *
+   * "Keep every identifier" in the system prompt is a rule about a category;
+   * this is the list. Without it the caller checks an invariant the model was
+   * never told, which is how a draft that reads perfectly gets thrown away for
+   * dropping a tracking number that only ever appeared in the subject line.
+   * Blank/duplicate entries are dropped.
+   */
+  mustKeep?: readonly (string | null | undefined)[];
 }
 
 export interface TicketDraftResult {
@@ -62,6 +72,10 @@ export async function draftTicketWithLlm(
   input: TicketDraftInput,
 ): Promise<TicketDraftResult> {
 
+  const mustKeep = [
+    ...new Set((input.mustKeep ?? []).map((v) => (v ?? '').trim()).filter(Boolean)),
+  ];
+
   const userText = [
     `Context: ${input.context}`,
     '',
@@ -70,6 +84,15 @@ export async function draftTicketWithLlm(
     '',
     '--- TEMPLATE BODY (rewrite the prose, keep the reference lines) ---',
     input.template.description,
+    ...(mustKeep.length
+      ? [
+          '',
+          '--- MUST APPEAR VERBATIM (in the subject or the body) ---',
+          ...mustKeep.map((v) => `- ${v}`),
+          '',
+          'A draft missing any of the strings above is rejected and discarded.',
+        ]
+      : []),
   ].join('\n');
 
   const { args, model, usage } = await hermesToolCall<DraftToolArgs>({

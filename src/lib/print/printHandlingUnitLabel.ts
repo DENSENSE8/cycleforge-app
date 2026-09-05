@@ -1,65 +1,68 @@
 import { handlingUnitHandle } from '@/lib/barcode-routing';
-import { escapeLabelHtml } from '@/lib/print/labelHtml';
+import { buildFaceInfoHtml, type LabelFaceModel } from '@/lib/print/labelFace';
 import { reserveLegacyPrintPopup } from '@/lib/print/iframePrint';
 
 /**
- * 2×1" license-plate (LPN) label for a handling unit (box/tray). The big face
- * is the human-readable `H-{id}` code; the DataMatrix carries the same bare
- * `H-{id}` handle, which `routeScan()` parses → `/m/h/{id}` (and the testing
- * resolver fans out to every unit in the box). Visually distinct from the
- * receiving carton label (which leads with platform/PO) — this one is all about
- * the box identity.
+ * 2×1" tote / tray license-plate. Same {@link LabelFaceModel} grid as special
+ * bins and station commands — info column left, DataMatrix right, HRI under
+ * the matrix. Do not fork a second type scale (the retired BOX / LPN face).
+ *
+ * Center is the human `H-{id}` code; the matrix encodes the same handle.
  */
-const HANDLING_UNIT_INFO_CSS = `
-  .hu-code{font-size:30px;font-weight:900;letter-spacing:0.5px;line-height:1;color:#111;font-variant-numeric:tabular-nums}
-  .hu-meta{display:flex;justify-content:space-between;align-items:baseline;gap:6px;line-height:1}
-  .hu-count{font-size:13px;font-weight:800;color:#111;white-space:nowrap}
-  .hu-loc{font-size:11px;font-weight:700;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .hu-date{font-size:11px;font-weight:700;color:#4b5563;white-space:nowrap;font-variant-numeric:tabular-nums}
-  .hu-kicker{font-size:10px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#6b7280}`;
-
 export interface HandlingUnitLabelPayload {
   /** Numeric handling_units.id — used to build the H- handle + DataMatrix. */
   handlingUnitId: number;
-  /** Stored code; defaults to `H-{id}` when omitted. Shown on the big face. */
+  /** Stored code; defaults to `H-{id}` when omitted. Shown on the face center. */
   code?: string | null;
-  /** Member count, e.g. 4 → "4 units". */
+  /** Member count. Zero and empty stay off the sticker. */
   unitCount?: number | null;
-  /** Optional bin/zone name where the box lives. */
+  /** Optional bin/zone name where the tote lives. */
   locationName?: string | null;
-  /** Display date string (already formatted by the caller). */
+  /** Ignored — a durable tote code does not carry the print day. */
   date?: string | null;
 }
 
-export function printHandlingUnitLabel(payload: HandlingUnitLabelPayload): void {
-  if (typeof window === 'undefined') return;
+export function handlingUnitPayloadToFace(
+  payload: HandlingUnitLabelPayload,
+): LabelFaceModel {
   const handle = handlingUnitHandle(payload.handlingUnitId);
   const code = (payload.code && payload.code.trim()) || handle;
-  const count = payload.unitCount != null && Number.isFinite(payload.unitCount)
-    ? `${Math.max(0, Math.floor(payload.unitCount))} units`
-    : '';
+  const n = payload.unitCount;
+  const count =
+    n != null && Number.isFinite(n) && n > 0
+      ? `${Math.floor(n)} ${Math.floor(n) === 1 ? 'unit' : 'units'}`
+      : '';
   const loc = (payload.locationName || '').trim();
-  const date = (payload.date || '').trim();
+  return {
+    kind: 'receiving',
+    topLeft: 'Tote',
+    topRight: '',
+    center: code,
+    bottomLeft: loc,
+    bottomRight: count,
+    matrix: { value: handle, symbology: 'datamatrix', scale: 4 },
+    hri: handle,
+  };
+}
 
-  const infoHtml = `
-    <div class="hu-kicker">Box / LPN</div>
-    <div class="hu-code">${escapeLabelHtml(code)}</div>
-    <div class="hu-meta">
-      <span class="hu-count">${escapeLabelHtml(count)}</span>
-      <span class="hu-date">${escapeLabelHtml(date)}</span>
-    </div>
-    <div class="hu-loc">${escapeLabelHtml(loc)}</div>`;
-
+export async function printHandlingUnitLabelJob(
+  payload: HandlingUnitLabelPayload,
+): Promise<'usb' | 'iframe' | 'skipped'> {
+  if (typeof window === 'undefined') return 'skipped';
+  const face = handlingUnitPayloadToFace(payload);
+  if (!face.matrix.value) return 'skipped';
   const legacyPopup = reserveLegacyPrintPopup();
-  // Lazy: printLabel drags the bwip-js barcode engine; load on the actual print.
-  void import('@/lib/print/printLabel').then(({ printLabel }) => {
-    printLabel({
-      name: 'Box Label',
-      infoHtml,
-      infoCss: HANDLING_UNIT_INFO_CSS,
-      // Plain DataMatrix carrying the `H-{id}` handle — no URL on the wire.
-      dataMatrix: { value: handle, symbology: 'datamatrix', scale: 4 },
-      legacyPopup,
-    });
+  const { printLabelJob } = await import('@/lib/print/printLabel');
+  return printLabelJob({
+    name: 'Tote',
+    ...buildFaceInfoHtml(face),
+    dataMatrix: face.matrix,
+    hri: face.hri,
+    face,
+    legacyPopup,
   });
+}
+
+export function printHandlingUnitLabel(payload: HandlingUnitLabelPayload): void {
+  void printHandlingUnitLabelJob(payload);
 }

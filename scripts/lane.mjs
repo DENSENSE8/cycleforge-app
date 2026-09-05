@@ -38,13 +38,13 @@
  *   pnpm lane new <name> --dry-run # print every step, change nothing
  *   pnpm lane up <name>            # start this lane's dev server + tunnel
  *   pnpm lane down <name>          # stop them
- *   pnpm lane land <name>          # verify, fast-forward main, push
+ *   pnpm lane land <name>          # test main+lane in a worktree, fast-forward main, push
  *   pnpm lane rm <name>            # tear the lane down and delete it
  *   pnpm lane doctor               # (re)install the systemd unit templates
  */
 
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
 import { homedir } from 'node:os';
 import path from 'node:path';
@@ -399,6 +399,59 @@ function cmdDown(name) {
   log(`  ${C.dim}lane ${name} stopped${C.reset}`);
 }
 
+const MERGE_ROOT = '/var/tmp/cycleforge-ci';
+const MERGE_LOCK = path.join(MERGE_ROOT, 'merge.lock');
+
+function acquireMergeLock() {
+  mkdirSync(MERGE_ROOT, { recursive: true });
+  try {
+    writeFileSync(MERGE_LOCK, String(process.pid), { flag: 'wx' });
+  } catch {
+    die('merge lock held — another land is in progress (plan §4.4). Wait, then retry.');
+  }
+  return () => {
+    try {
+      rmSync(MERGE_LOCK);
+    } catch {
+      /* ignore */
+    }
+  };
+}
+
+/**
+ * Test the MERGE RESULT (`main` + lane tip) in a throwaway worktree.
+ * Plan §4.4 — what lands is what was tested. Serialized by {@link acquireMergeLock}.
+ */
+function testMergeResult(laneHead) {
+  const sha = laneHead.slice(0, 12);
+  const wt = path.join(MERGE_ROOT, `merge-${sha}`);
+  rmSync(wt, { recursive: true, force: true });
+  log(`  ${C.cyan}·${C.reset} worktree ${wt} (main + ${sha})`);
+  if (!run('git', ['-C', MAIN, 'worktree', 'add', '--detach', wt, 'main'])) {
+    die('could not create merge worktree');
+  }
+  try {
+    if (!run('git', ['-C', wt, 'merge', '--no-edit', laneHead])) {
+      die('merge result does not apply cleanly — rebase the lane onto main, re-test, land again');
+    }
+    const nm = path.join(MAIN, 'node_modules');
+    const dest = path.join(wt, 'node_modules');
+    if (existsSync(nm) && !existsSync(dest)) {
+      symlinkSync(nm, dest);
+    }
+    log(`  ${C.cyan}·${C.reset} pnpm run verify:fast (merge result)`);
+    if (
+      !run('pnpm', ['--config.verify-deps-before-run=false', 'run', 'verify:fast'], {
+        cwd: wt,
+      })
+    ) {
+      die('fast profile failed on main+lane — not landing');
+    }
+  } finally {
+    run('git', ['-C', MAIN, 'worktree', 'remove', '--force', wt]);
+  }
+}
+
 /* -------------------------------------------------------------------- land */
 
 function cmdLand(name, { verify = true } = {}) {
@@ -422,21 +475,23 @@ function cmdLand(name, { verify = true } = {}) {
         `    git -C ${dir} fetch origin && git -C ${dir} rebase main`);
   }
 
-  if (verify) {
-    log(`  ${C.cyan}·${C.reset} npm run verify (in the lane)`);
-    if (!run('npm', ['run', 'verify'], { cwd: dir })) die('verify failed in the lane — not landing');
-  }
+  const unlock = acquireMergeLock();
+  try {
+    if (verify) testMergeResult(laneHead);
 
-  const mainDirty = shQuiet('git', ['-C', MAIN, 'status', '--porcelain']);
-  if (mainDirty) {
-    die(`the MAIN checkout has uncommitted changes (${mainDirty.split('\n').length} paths).\n` +
-        `    Another session is mid-edit — land once that tree is clean.`);
-  }
+    const mainDirty = shQuiet('git', ['-C', MAIN, 'status', '--porcelain']);
+    if (mainDirty) {
+      die(`the MAIN checkout has uncommitted changes (${mainDirty.split('\n').length} paths).\n` +
+          `    Another session is mid-edit — land once that tree is clean.`);
+    }
 
-  log(`  ${C.cyan}·${C.reset} git merge --ff-only ${laneHead.slice(0, 9)}`);
-  if (!run('git', ['-C', MAIN, 'merge', '--ff-only', laneHead])) die('fast-forward failed');
-  log(`  ${C.cyan}·${C.reset} git push origin main`);
-  if (!run('git', ['-C', MAIN, 'push', 'origin', 'main'])) die('push failed (the pre-push hook runs the full gate)');
+    log(`  ${C.cyan}·${C.reset} git merge --ff-only ${laneHead.slice(0, 9)}`);
+    if (!run('git', ['-C', MAIN, 'merge', '--ff-only', laneHead])) die('fast-forward failed');
+    log(`  ${C.cyan}·${C.reset} git push origin main`);
+    if (!run('git', ['-C', MAIN, 'push', 'origin', 'main'])) die('push failed (the pre-push hook runs the full gate)');
+  } finally {
+    unlock();
+  }
 
   log('');
   log(`${C.green}✓ landed ${name} on main${C.reset}  ${C.dim}${laneHead.slice(0, 9)}${C.reset}`);

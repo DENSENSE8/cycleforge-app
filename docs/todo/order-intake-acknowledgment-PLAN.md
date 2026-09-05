@@ -29,6 +29,8 @@ Replace today’s **type-into-empty-boxes** triage with an **Order Intake & Ackn
 
 This is WMS fulfillment intake (eBay / Amazon / Ecwid / Walmart / Shopify / ShipStation / handwritten), **not** a storefront checkout and **not** a second create-order product beside `POST /api/orders/add`.
 
+**Sibling ship (do not implement here):** Google Sheets sync → inline triage board is scoped in [`sheets-sync-inline-triage-PLAN.md`](./sheets-sync-inline-triage-PLAN.md). That plan owns Motion+ row enter, approve/unapprove, and the post-sync grid. This plan still owns the acknowledgment form and CSV bulk density.
+
 **Must work when done:**
 
 1. Typing or pasting an Amazon `3-7-7` or eBay `2-5-5` order number **identifies the platform** (mark + label) without a separate pick.

@@ -15,8 +15,10 @@
 import dynamic from 'next/dynamic';
 import {
   AnimatePresence,
+  idleBrowseLayerProps,
   motion,
   motionRole,
+  overlayPaneStyle,
   useMotionRole,
   useOverlaySwapHardCut,
 } from '@/design-system/motion';
@@ -38,7 +40,6 @@ const ReceivingLineWorkspace = dynamic(
   { ssr: false, loading: () => <TriageWorkspaceSkeleton /> },
 );
 import { TriageWorkspaceView } from '@/components/receiving/triage/TriageWorkspaceView';
-import { zIndex } from '@/design-system/tokens/z-index';
 import { appWorkCanvasLayoutClass } from '@/design-system/tokens/app-surface';
 import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
 import { cn } from '@/utils/_cn';
@@ -81,12 +82,7 @@ export function TriageLineWorkspace({
 
   return (
     <div className={cn(appWorkCanvasLayoutClass, 'h-full')}>
-      <div
-        className={`flex h-full min-h-0 w-full flex-col ${showOverlay ? 'pointer-events-none' : ''}`}
-        aria-hidden={showOverlay ? true : undefined}
-        inert={showOverlay ? true : undefined}
-        style={{ visibility: showOverlay ? 'hidden' : 'visible' }}
-      >
+      <div {...idleBrowseLayerProps(showOverlay, 'flex h-full min-h-0 w-full flex-col')}>
         {showScanLoader ? (
           <TriageWorkspaceSkeleton />
         ) : (
@@ -105,7 +101,7 @@ export function TriageLineWorkspace({
             animate={panePresence.animate}
             exit={panePresence.exit}
             transition={paneTransition}
-            style={{ zIndex: zIndex.panel + (cartonSwapHardCut ? 1 : 0) }}
+            style={overlayPaneStyle(cartonSwapHardCut)}
             className={cn(
               'absolute inset-0 flex min-h-0 flex-col',
               appSurfaceFillClass('chrome'),

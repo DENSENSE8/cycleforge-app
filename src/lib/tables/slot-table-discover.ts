@@ -497,6 +497,26 @@ function keepInventory(root: string): SlotTableKeepItem[] {
       why: 'STATUS column. Editable delay mounts DateRangePickerField variant=compact.',
     },
     {
+      id: 'engine:slot-table-line-qty',
+      path: SLOT_TABLE_ENGINE.lineQty,
+      why: 'Blanket `{family}.qty` subtitle identity. New tables inherit the place; do not fork a Qty column.',
+    },
+    {
+      id: 'engine:slot-table-line-money',
+      path: SLOT_TABLE_ENGINE.lineMoney,
+      why: 'Blanket `{family}.amount` / `{family}.price` subtitle identity. New tables inherit the place; do not fork an Amount column.',
+    },
+    {
+      id: 'engine:COMPOUND_COLUMN_KEYS',
+      path: SLOT_TABLE_ENGINE.compoundColumns,
+      why: 'Shared compound geometry. No ⋮ actions track. No Amount track — line money is under the title. Do not put actions or amount back on COMPOUND_COLUMN_KEYS.',
+    },
+    {
+      id: 'engine:ordersCompoundColumnsFor',
+      path: SLOT_TABLE_ENGINE.ordersLayout,
+      why: 'Orders / To-ship family mount of the same COMPOUND_TRACKS every inbound desk uses. No standing ⋮; copy lives on CompoundFulfillment chips. Do not remount rowMenuActions on OrdersQueueTableRow. Do not drop amount here — the skeleton already has none.',
+    },
+    {
       id: 'engine:CART_COMPOUND_COLUMNS',
       path: 'src/lib/kiosk/cart-grid-layout.ts',
       why: 'Kiosk cart is a transient DataTable binding. Its compound columns come from compoundColumnsFor, so the surface shares the canonical grid skeleton without pretending session rows are a staff PRODUCT_TABLES desk.',

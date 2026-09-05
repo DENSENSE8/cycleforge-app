@@ -12,8 +12,7 @@ import { Printer } from '@/components/Icons';
 import { WorkspaceCard, StickyActionBar } from '@/design-system/components';
 import { locationCode } from '@/lib/barcode-routing';
 import { LABEL_BUILDER } from './label-builder-layout';
-import { LabelRoomSidebar } from './LabelRoomSidebar';
-import { ConfigSheet, PrintLabel, type LabelPrinterVariant } from './bin-label-printer';
+import { PrintLabel, type LabelPrinterVariant } from './bin-label-printer';
 import { useBinLabelPrinter } from './bin-label-printer/useBinLabelPrinter';
 import { BinBuilderMobile } from './bin-label-printer/BinBuilderMobile';
 import { BinBuilderDesktop } from './bin-label-printer/BinBuilderDesktop';
@@ -28,23 +27,9 @@ interface BinLabelPrinterProps {
 export function BinLabelPrinter({ variant = 'main' }: BinLabelPrinterProps) {
   const c = useBinLabelPrinter();
 
-  // ── Sidebar variant — rooms list only ──────────────────────────────────
-  if (variant === 'sidebar') {
-    return (
-      <>
-        <LabelRoomSidebar
-          rooms={c.allRoomNames}
-          zoneMap={c.zoneMap}
-          loading={c.loading}
-          selectedRoom={c.selectedRoom}
-          zoneLetter={c.zoneLetter}
-          onSelect={c.pickRoom}
-          emptySubtitle="Then build the bin code on the right."
-        />
-        <ConfigSheet open={c.configOpen} onClose={() => c.setConfigOpen(false)} config={c.config} onSave={c.handleConfigSave} />
-      </>
-    );
-  }
+  // The `sidebar` variant was the rooms list in the warehouse rail. That rail
+  // went with the Inventory sidebar (2026-09-04) and the room picker moved
+  // into the builder's own zone step, so there is one picker at both widths.
 
   // ── Main-pane variant ───────────────────────────────────────────────────
   return (

@@ -6,7 +6,7 @@
  * list).
  *
  * Controlled: the host owns the query (URL state); the surface owns retrieval
- * + result rendering. Client refine (`etype`/`hstat`) + display sort over the
+ * + result rendering. Client refine (`scope`/`hstat`) + display sort over the
  * top-50. When `onSelectHit` is provided, hosts should `preventDefault` to keep
  * selection in-page (`?sel=`).
  *
@@ -47,7 +47,7 @@ export interface SearchResultsSurfaceProps {
   query: string;
   /** Kept for call-site compatibility; only `global` is used. */
   scope?: 'global';
-  /** Client entity-type refine (`?etype=`). */
+  /** Client entity-type refine (`?scope=`). */
   etype?: SearchHitEntityType | null;
   /** Client channel refine (`?chan=`) — stored `source_platform` value. */
   chan?: string | null;

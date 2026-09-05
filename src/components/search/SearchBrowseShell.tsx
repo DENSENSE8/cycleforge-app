@@ -23,7 +23,7 @@
  * whose identity is the operator's query should not print the constant word
  * "Search" over that query (`titleSlot`).
  *
- * Entity types are the tab row: `?etype=` was a refine dropdown among Status and
+ * Entity types are the tab row: `?scope=` is the collection selector; Status and
  * Sort, and it is not the same kind of question — it says WHICH COLLECTION you
  * are looking at, which is what a tab is. Status / Sort stay refinements on the
  * card's own row. While an identifier resolves or retrieve runs it
@@ -41,7 +41,12 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { SearchRefineControls } from '@/components/search/SearchRefineControls';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
+import {
+  DeskActionSlotRegistrar,
+  DeskHeaderAction,
+} from '@/design-system/components/DeskActionSlot';
 import { SearchField } from '@/design-system/primitives';
+import { Image } from '@/components/Icons';
 import {
   SEARCH_ENTITY_TYPES,
   SEARCH_ENTITY_TYPE_LABELS,
@@ -56,6 +61,7 @@ import {
 } from '@/lib/search/search-order-resolve-query';
 import {
   SEARCH_ETYPE_PARAM,
+  SEARCH_LEGACY_ETYPE_PARAM,
   SEARCH_CHAN_PARAM,
   SEARCH_HSTAT_PARAM,
   SEARCH_SORT_PARAM,
@@ -90,7 +96,9 @@ export function SearchBrowseShell({
   const queryClient = useQueryClient();
   const q = (searchParams.get('q') ?? '').trim();
   const etype = useMemo(
-    () => parseSearchEtype(searchParams.get(SEARCH_ETYPE_PARAM)),
+    () => parseSearchEtype(
+      searchParams.get(SEARCH_ETYPE_PARAM) ?? searchParams.get(SEARCH_LEGACY_ETYPE_PARAM),
+    ),
     [searchParams],
   );
   const hstat = useMemo(
@@ -108,6 +116,7 @@ export function SearchBrowseShell({
 
   const [statusOptions, setStatusOptions] = useState<string[]>([]);
   const [channelOptions, setChannelOptions] = useState<string[]>([]);
+  const [resultHits, setResultHits] = useState<AiSearchHit[]>([]);
   const [needRetrieve, setNeedRetrieve] = useState(false);
   const [retrieveLoading, setRetrieveLoading] = useState(false);
   const [retrieveSettled, setRetrieveSettled] = useState(false);
@@ -230,6 +239,7 @@ export function SearchBrowseShell({
 
   const handleResults = useCallback(
     (hits: AiSearchHit[]) => {
+      setResultHits(hits);
       if (!q) return;
       if (hits.length === 0) {
         // Absolute miss — header dropdown owns red feedback.
@@ -290,7 +300,7 @@ export function SearchBrowseShell({
   }, []);
 
   /**
-   * ONE writer of `?q=` and `?etype=` — the same router write the header field
+   * ONE writer of `?q=` and `?scope=` — the same router write the header field
    * and the refine menu already use. A second writer of either is the bug this
    * surface's old "find lives only in the header" law existed to prevent; the
    * law is kept by construction rather than by withholding the field.
@@ -315,14 +325,17 @@ export function SearchBrowseShell({
     [patchParams],
   );
 
-  // Absence is the unfiltered list — there is no `All` tab, the same rule every
-  // other strip in the product follows. Re-clicking the lit type clears it.
+  // Overview is the broad-search landing state. Entity tabs narrow the same
+  // result set; re-clicking the lit entity tab returns to Overview.
   const etypeTabs = useMemo(
     () =>
-      SEARCH_ENTITY_TYPES.map((id) => ({
-        id,
-        label: SEARCH_ENTITY_TYPE_LABELS[id],
-      })),
+      [
+        { id: 'overview', label: 'Overview' },
+        ...SEARCH_ENTITY_TYPES.map((id) => ({
+          id,
+          label: SEARCH_ENTITY_TYPE_LABELS[id],
+        })),
+      ],
     [],
   );
 
@@ -331,10 +344,20 @@ export function SearchBrowseShell({
       patchParams((params) =>
         applySearchEtype(
           params,
-          id === etype ? null : (id as SearchHitEntityType),
+          id === 'overview' || id === etype ? null : (id as SearchHitEntityType),
         ),
       ),
     [patchParams, etype],
+  );
+
+  const resultCounts = useMemo(
+    () =>
+      SEARCH_ENTITY_TYPES.map((id) => ({
+        id,
+        label: SEARCH_ENTITY_TYPE_LABELS[id],
+        count: resultHits.filter((hit) => hit.entityType === id).length,
+      })).filter((item) => item.count > 0),
+    [resultHits],
   );
 
   return (
@@ -352,12 +375,41 @@ export function SearchBrowseShell({
         />
       }
       tabs={etypeTabs}
-      activeTab={etype ?? ''}
+      activeTab={etype ?? 'overview'}
       onTabChange={onEtypeChange}
     >
+      <DeskActionSlotRegistrar role="overall">
+        <DeskHeaderAction
+          variant="secondary"
+          size="md"
+          icon={<Image aria-hidden />}
+          onClick={() => router.push('/ops/photos?sourceScope=outbound')}
+        >
+          Packer photos
+        </DeskHeaderAction>
+      </DeskActionSlotRegistrar>
     <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
       {mountRetrieve ? (
         <div className="relative flex min-h-0 w-full flex-1 flex-col overflow-hidden">
+          {!etype && resultCounts.length > 0 ? (
+            <div className="grid shrink-0 grid-cols-2 gap-px border-b border-border-hairline bg-border-hairline md:grid-cols-3 lg:grid-cols-6">
+              {resultCounts.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="bg-surface-card px-3 py-2 text-left transition-colors hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+                  onClick={() => onEtypeChange(item.id)}
+                >
+                  <span className="block text-role-micro uppercase tracking-wide text-text-muted">
+                    {item.label}
+                  </span>
+                  <span className="mt-0.5 block text-lg font-semibold tabular-nums text-text-default">
+                    {item.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          ) : null}
           {showRefineChrome ? (
             <div className="flex shrink-0 items-center justify-end gap-2 border-b border-border-hairline bg-surface-card px-3 py-1.5">
               <SearchRefineControls

@@ -107,6 +107,21 @@ export function resolveFulfillmentLane(signals: OrderLifecycleSignals): Fulfillm
   return 'PENDING';
 }
 
+/**
+ * Which To-ship **stage filter** (`?stage=pending|tested|packed`) a row belongs
+ * on. Pending is the hold home: BLOCKED (out of stock) sits with unlabeled /
+ * untested work, never on Tested — even when a tech scan already exists.
+ * Packed wins outright (stock is moot once it is physically staged).
+ */
+export type ToShipDeskStage = 'pending' | 'tested' | 'packed';
+
+export function toShipDeskStage(signals: OrderLifecycleSignals): ToShipDeskStage {
+  const stage = resolveOrderLifecycleStage(signals);
+  if (stage === 'PACKED_STAGED') return 'packed';
+  if (stage === 'TESTED') return 'tested';
+  return 'pending';
+}
+
 // ─── Board descriptor (lane order + icon binding, as data — no React) ───────────
 interface FulfillmentLaneDescriptor {
   id: FulfillmentLane;
@@ -178,6 +193,85 @@ export const SHIPMENT_STATUS_CATEGORIES = [
   'RETURNED',
   'UNKNOWN',
 ] as const;
+
+export type ShipmentStatusCategory = (typeof SHIPMENT_STATUS_CATEGORIES)[number];
+
+/**
+ * Parcel-carrier faces for the shipped STATUS pill (EasyPost / AfterShip /
+ * UPS / FedEx / USPS). Warehouse verbs stay on the dock columns (Scanned out);
+ * this column names where the package is in the carrier network.
+ */
+export const SHIPMENT_STATUS_CATEGORY_FACE: Record<
+  ShipmentStatusCategory,
+  { label: string; description: string }
+> = {
+  LABEL_CREATED: {
+    label: 'Pre-Transit',
+    description: 'Handed to the carrier — waiting for the first network scan.',
+  },
+  ACCEPTED: {
+    label: 'Picked Up',
+    description: 'Carrier accepted the package (first custody scan).',
+  },
+  IN_TRANSIT: {
+    label: 'In Transit',
+    description: 'Moving through the carrier network.',
+  },
+  OUT_FOR_DELIVERY: {
+    label: 'Out for Delivery',
+    description: 'On a vehicle for delivery today.',
+  },
+  DELIVERED: {
+    label: 'Delivered',
+    description: 'Carrier confirmed delivery (terminal).',
+  },
+  EXCEPTION: {
+    label: 'Exception',
+    description: 'Carrier exception or stalled — no movement.',
+  },
+  RETURNED: {
+    label: 'Returned',
+    description: 'In return to sender.',
+  },
+  UNKNOWN: {
+    label: 'Unknown',
+    description: 'No usable carrier status yet.',
+  },
+};
+
+const SHIPMENT_STATUS_CATEGORY_SET: ReadonlySet<string> = new Set(SHIPMENT_STATUS_CATEGORIES);
+
+/** Normalized carrier face, or null when the feed has nothing to paint. */
+export function shipmentStatusCategoryFace(
+  latestStatusCategory: string | null | undefined,
+): { label: string; description: string } | null {
+  const cat = String(latestStatusCategory ?? '').trim().toUpperCase();
+  if (!SHIPMENT_STATUS_CATEGORY_SET.has(cat) || cat === 'UNKNOWN') return null;
+  return SHIPMENT_STATUS_CATEGORY_FACE[cat as ShipmentStatusCategory];
+}
+
+/** Warehouse-audit stages — do not replace with a carrier umbrella. */
+const KEEP_OUTBOUND_FACE: ReadonlySet<string> = new Set([
+  'PROCESS_GAP',
+  'ORPHAN',
+  'PACKED_STAGED',
+]);
+
+/**
+ * Shipped-desk STATUS pill: keep outbound tones, paint the carrier category
+ * when we have one. Dock scan with no first carrier scan stays the outbound
+ * Pre-Transit face (SCANNED_OUT).
+ */
+export function overlayShippedStatusPresentation<T extends { label: string; description: string }>(
+  meta: T,
+  outboundState: string,
+  latestStatusCategory?: string | null,
+): T {
+  if (KEEP_OUTBOUND_FACE.has(outboundState)) return meta;
+  const face = shipmentStatusCategoryFace(latestStatusCategory);
+  if (!face) return meta;
+  return { ...meta, label: face.label, description: face.description };
+}
 
 /**
  * Carrier status categories that mean the carrier physically has the package.

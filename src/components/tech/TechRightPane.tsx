@@ -17,8 +17,10 @@
 import React from 'react';
 import {
   AnimatePresence,
+  idleBrowseLayerProps,
   motion,
   motionRole,
+  overlayPaneStyle,
   useMotionRole,
   useOverlaySwapHardCut,
 } from '@/design-system/motion';
@@ -27,7 +29,6 @@ import { ReceivingInboundFeed } from '@/components/station/ReceivingInboundFeed'
 import { ActiveOrderWorkspace } from '@/components/tech/ActiveOrderWorkspace';
 import { TestingLineWorkspace } from '@/components/tech/TestingLineWorkspace';
 import { previewOrderToActiveShape } from '@/components/tech/tech-dashboard-helpers';
-import { zIndex } from '@/design-system/tokens/z-index';
 import { appWorkCanvasClass } from '@/design-system/tokens/app-surface';
 import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
 import { cn } from '@/utils/_cn';
@@ -122,12 +123,7 @@ function ShippingOrderWorkspace({
 
   return (
     <div className={cn(appWorkCanvasClass, 'relative h-full')}>
-      <div
-        className={`flex h-full min-h-0 w-full flex-col ${showOverlay ? 'pointer-events-none' : ''}`}
-        aria-hidden={showOverlay ? true : undefined}
-        inert={showOverlay ? true : undefined}
-        style={{ visibility: showOverlay ? 'hidden' : 'visible' }}
-      >
+      <div {...idleBrowseLayerProps(showOverlay, 'flex h-full min-h-0 w-full flex-col')}>
         <ShippingWorkspaceView techId={techId} />
       </div>
 
@@ -142,7 +138,7 @@ function ShippingOrderWorkspace({
             animate={panePresence.animate}
             exit={panePresence.exit}
             transition={paneTransition}
-            style={{ zIndex: zIndex.panel + (entitySwapHardCut ? 1 : 0) }}
+            style={overlayPaneStyle(entitySwapHardCut)}
             className={cn('absolute inset-0 flex min-h-0 flex-col', appSurfaceFillClass('canvas'))}
           >
             <ActiveOrderWorkspace
@@ -164,7 +160,7 @@ function ShippingOrderWorkspace({
             animate={panePresence.animate}
             exit={panePresence.exit}
             transition={paneTransition}
-            style={{ zIndex: zIndex.panel + (entitySwapHardCut ? 1 : 0) }}
+            style={overlayPaneStyle(entitySwapHardCut)}
             className={cn('absolute inset-0 flex min-h-0 flex-col', appSurfaceFillClass('canvas'))}
           >
             <ActiveOrderWorkspace

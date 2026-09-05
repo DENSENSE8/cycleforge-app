@@ -54,6 +54,7 @@ export function printStationCommandLabel(payload: StationCommandLabelPayload): v
       ...buildFaceInfoHtml(face),
       dataMatrix: face.matrix,
       hri: face.hri,
+      face,
       legacyPopup,
     });
   });

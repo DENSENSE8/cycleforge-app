@@ -38,13 +38,6 @@ export type ScanType =
   // APPENDED, never re-ordered or renamed: the eight members above are the
   // installed vocabulary and every consumer above compares against them by
   // string. These three widen the union; they take nothing from the eight.
-  //
-  // What they could have taken and did not: all three are decided AFTER every
-  // existing branch has had its say, so a house handle, a GS1 element string, a
-  // location code and a colon-SKU still answer exactly what they answered
-  // before. The only arm they draw from is rule 7 — the bare `sku` default that
-  // a 10/12/15/18/20/22-digit payload used to fall into, which was never a
-  // matcher, only a shrug.
   /**
    * A CARRIER tracking number (UPS `1Z…`, USPS 20/22-digit, FedEx 12/15/20-digit,
    * DHL 10-digit) — someone else's label on the outside of a box.
@@ -58,20 +51,15 @@ export type ScanType =
   | 'carrier-tracking'
   /**
    * A GS1 SSCC — the licence plate of a logistic unit (AI 00 + 18 digits).
-   * The outside-the-house twin of our own `handling-unit` LPN, and the reason
-   * a pallet from a supplier can enter QC without us having printed anything.
-   * Also carries no `redirect` — there is no local page for a foreign SSCC.
+   * The outside-the-house twin of our own `handling-unit` LPN. Also carries no
+   * `redirect` — there is no local page for a foreign SSCC.
    */
   | 'sscc'
   /**
    * A bin / tote that is PAIRED to a pending order.
    *
    * `routeScan` never returns this — pairing is a fact about the order book,
-   * not about the bytes on the label, and this module does not read the order
-   * book. It comes only out of {@link routeScanPaired}, which takes the lookup
-   * as an injected dep. That split is the whole reason the class is safe to
-   * add: every existing `bin` assertion still holds, because a state-free
-   * decode still answers `bin`.
+   * not about the bytes on the label. It comes only out of {@link routeScanPaired}.
    */
   | 'bin-paired-order';
 

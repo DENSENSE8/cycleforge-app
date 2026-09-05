@@ -18,6 +18,8 @@ import {
 import {
   SCAN_STATION_OVERLAY_COHORT,
   SCAN_STATION_OVERLAY_COHORT_TRIPWIRE,
+  IDLE_OVERLAY_HELPER,
+  OVERLAY_SHELL_GRAPH_SYMBOL_FILES,
   overlayCohortWorkspacePaths,
   stationEvalManifest,
 } from '@/lib/station/scan-station-overlay-cohort';
@@ -28,6 +30,7 @@ import {
   SLOT_TABLE_GRAPH_SYMBOL_FILES,
   SLOT_TABLE_PAINT_LAW,
 } from '@/lib/tables/slot-table-cohort';
+import { surfaceIndex } from './surface-index';
 
 /** Same split `ds_contract` uses (`tools/design-mcp/server.mjs` `terms`). */
 const STOP = new Set([
@@ -67,6 +70,8 @@ export type RouteRule = {
   engineFiles: readonly string[];
   mounts: readonly string[];
   refuse: readonly RefuseRule[];
+  /** Engine files that document refuse tokens — skip write-gate matching. */
+  refuseSkipFiles?: readonly string[];
   tokenAxes?: readonly string[];
   /** Engine file a graphSymbols find must land in (from the cohorts). Unplaced symbols are found, never location-judged. */
   graphExpectedFiles?: Readonly<Record<string, string>>;
@@ -108,6 +113,19 @@ export function slotTableEngineFiles(): string[] {
     SLOT_TABLE_COHORT_TRIPWIRE,
     'src/lib/tables/slot-table-cohort.ts',
     'src/lib/tables/slot-table-discover.ts',
+    'src/lib/eval/prompt-router.ts',
+  ]);
+}
+
+/** Law files name refuse tokens. Dirty-path still evals them; the write gate must not. */
+export function slotTableRefuseSkipFiles(): string[] {
+  return unique([
+    'src/lib/tables/slot-table-cohort.ts',
+    SLOT_TABLE_COHORT_TRIPWIRE,
+    'src/lib/tables/slot-table-discover.ts',
+    'src/lib/tables/slot-table-discover.test.ts',
+    'src/lib/eval/prompt-router.ts',
+    'src/lib/eval/prompt-router.test.ts',
   ]);
 }
 
@@ -123,7 +141,12 @@ export function stationEngineFiles(id: string): string[] {
   const member = SCAN_STATION_OVERLAY_COHORT.find((m) => m.id === id);
   if (!member) return [];
   const manifest = stationEvalManifest(member);
-  return unique([manifest.workspace, ...manifest.critiqueFiles, SCAN_STATION_OVERLAY_COHORT_TRIPWIRE]);
+  return unique([
+    manifest.workspace,
+    ...manifest.critiqueFiles,
+    SCAN_STATION_OVERLAY_COHORT_TRIPWIRE,
+    IDLE_OVERLAY_HELPER,
+  ]);
 }
 
 const SLOT_TABLE_REFUSE: RefuseRule[] = [
@@ -136,6 +159,16 @@ const SLOT_TABLE_REFUSE: RefuseRule[] = [
     id: 'slot-table.new-grid-columns-array',
     why: 'Do not author a second GRID_COLUMNS SoT. Discover names DELETE; KEEP engine materializations.',
     diffPattern: /export const \w+_GRID_COLUMNS/,
+  },
+  {
+    id: 'slot-table.new-grid-row',
+    why: 'A *GridRow.tsx with a switch over column keys is a second table. To-ship sheet sync mounts UnshippedTable → useOrdersSpreadsheet → OrdersQueueTableRow. Adapt the row (cagedRecordToQueueRow). File CSV may keep CsvImportStagingGridRow; do not import it from DashboardOrdersView. New *GridRow files fail the slot-table tripwire allowlist.',
+    diffPattern: /CsvImportStagingGridRow|export (?:function|const) \w+GridRow/,
+  },
+  {
+    id: 'slot-table.new-sheet-columns',
+    why: 'Do not author a parallel *_SHEET_COLUMNS / *_SHEET_BASE column SoT. Bind a catalog field and materializeTracks. To-ship display is ordersCompoundColumnsFor, never a staging sheet model.',
+    diffPattern: /export const \w+_SHEET_(?:COLUMNS|BASE)/,
   },
   {
     id: 'slot-table.native-date-input',
@@ -156,6 +189,16 @@ const SLOT_TABLE_REFUSE: RefuseRule[] = [
     id: 'slot-table.filter-refinement-bar',
     why: SLOT_TABLE_PAINT_LAW.filter,
     diffPattern: /FilterRefinementBar/,
+  },
+  {
+    id: 'slot-table.orders-row-dots-menu',
+    why: SLOT_TABLE_PAINT_LAW.ordersActions,
+    diffPattern: /Copy order number|rowMenuActions/,
+  },
+  {
+    id: 'slot-table.amount-column',
+    why: SLOT_TABLE_PAINT_LAW.lineMoney,
+    diffPattern: /'amount',\s*'_fill'/,
   },
 ];
 
@@ -203,6 +246,10 @@ function slotTableRoute(): InternalRoute {
       'listing',
       'compound',
       'table',
+      'dots',
+      'ellipsis',
+      'amount',
+      'price',
     ],
     evalCommand: 'pnpm run eval:cohort slot-table',
     graphSymbols: [
@@ -213,8 +260,11 @@ function slotTableRoute(): InternalRoute {
       'DateRangePickerField',
       'CompoundState',
       'useOptimisticMutation',
+      'ordersCompoundColumnsFor',
+      'COMPOUND_COLUMN_KEYS',
     ],
     engineFiles: slotTableEngineFiles(),
+    refuseSkipFiles: slotTableRefuseSkipFiles(),
     mounts: [],
     refuse: SLOT_TABLE_REFUSE,
     tokenAxes: ['color', 'radius'],
@@ -265,7 +315,10 @@ function stationRoute(id: string): InternalRoute | null {
     engineFiles: stationEngineFiles(member.id),
     mounts: [],
     refuse: COMPOSER_REFUSE,
-    graphExpectedFiles: { [member.exportName]: member.workspace },
+    graphExpectedFiles: {
+      [member.exportName]: member.workspace,
+      ...OVERLAY_SHELL_GRAPH_SYMBOL_FILES,
+    },
     minScore: 1,
   };
 }
@@ -329,6 +382,50 @@ function isSortImagePrompt(qTerms: readonly string[]): boolean {
   return false;
 }
 
+/** Google Sheet → To-ship triage. Must hit slot-table refuse, not a new grid. */
+function isSheetTriagePrompt(qTerms: readonly string[], lower: string): boolean {
+  if (/google\s*sheet/.test(lower)) return true;
+  if (lower.includes('sync') && lower.includes('sheet')) return true;
+  if (lower.includes('triage board') || lower.includes('staging grid')) return true;
+  const have = new Set(qTerms);
+  return have.has('sheet') && (have.has('sync') || have.has('triage') || have.has('import'));
+}
+
+function withSheetTriageSymbols(route: RouteRule): RouteRule {
+  return {
+    ...route,
+    graphSymbols: unique([
+      'UnshippedTable',
+      'useOrdersSpreadsheet',
+      'OrdersQueueTableRow',
+      'DataTable',
+      ...route.graphSymbols,
+    ]),
+  };
+}
+
+
+/** Orders / To-ship ⋮ — copy lives on identity chips. */
+function isOrdersDotsPrompt(qTerms: readonly string[], lower: string): boolean {
+  const have = new Set(qTerms);
+  if (lower.includes('three dots') || lower.includes('three-dot')) return true;
+  if (have.has('ellipsis') || have.has('kebab')) return true;
+  if (have.has('dots') && (have.has('row') || have.has('menu') || have.has('order') || have.has('ship'))) {
+    return true;
+  }
+  if (have.has('row') && have.has('menu') && (have.has('order') || have.has('ship') || have.has('actions'))) {
+    return true;
+  }
+  return false;
+}
+
+function withOrdersDotsSymbols(route: RouteRule): RouteRule {
+  return {
+    ...route,
+    graphSymbols: unique(['ordersCompoundColumnsFor', 'COMPOUND_COLUMN_KEYS', 'OrdersQueueTableRow', ...route.graphSymbols]),
+  };
+}
+
 function stationHits(lower: string, qTerms: readonly string[]): string[] {
   const hits: string[] = [];
   for (const member of SCAN_STATION_OVERLAY_COHORT) {
@@ -379,11 +476,15 @@ export function routePrompt(text: string): RouteResult {
   if (
     isDateInCellPrompt(qTerms, lower) ||
     isSortImagePrompt(qTerms) ||
+    isSheetTriagePrompt(qTerms, lower) ||
+    isOrdersDotsPrompt(qTerms, lower) ||
     score(qTerms, slot.keywords) >= (slot.minScore ?? 2)
   ) {
     let r: RouteRule = publicRoute(slot);
     if (isDateInCellPrompt(qTerms, lower)) r = withDateMount(r);
     else if (isSortImagePrompt(qTerms)) r = withSortSymbols(r);
+    else if (isSheetTriagePrompt(qTerms, lower)) r = withSheetTriageSymbols(r);
+    else if (isOrdersDotsPrompt(qTerms, lower)) r = withOrdersDotsSymbols(r);
     routes.push(r);
     refusals.push(...r.refuse);
   }
@@ -491,6 +592,7 @@ export const ROUTER_DOCUMENT_VERSION = 'cf-router:v1' as const;
 export type RouterDocument = {
   v: typeof ROUTER_DOCUMENT_VERSION;
   overlayWorkspaces: string[];
+  surfaces: ReturnType<typeof surfaceIndex>;
   routes: ReturnType<typeof serializeRoute>[];
   standingKeycaps: {
     id: string;
@@ -507,6 +609,7 @@ export function emitRouterDocument(): RouterDocument {
   return {
     v: ROUTER_DOCUMENT_VERSION,
     overlayWorkspaces: [...overlayCohortWorkspacePaths()].sort(),
+    surfaces: surfaceIndex(),
     routes: allRouteRules()
       .map(serializeRoute)
       .sort((a, b) => a.cohort.localeCompare(b.cohort)),

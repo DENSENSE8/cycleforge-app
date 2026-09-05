@@ -219,8 +219,8 @@ export const GLOBAL_ADD_GROUPS: readonly GlobalAddGroup[] = [
     items: [
       {
         id: 'location-new',
-        label: 'New location',
-        subtitle: 'Warehouse bin / location',
+        label: 'New tote label',
+        subtitle: 'Mint a tote and print a 2×1 sticker',
         href: inventoryLocationsHref({ tab: 'bins' }),
         intent: { kind: 'locations-new' },
       },

@@ -70,6 +70,7 @@ import {
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { Button } from '@/design-system/primitives/Button';
 
 
 export interface PhotoLibraryScope {
@@ -219,8 +220,12 @@ function PhotoMediaTypePopover({
     >
       <HoverTooltip label="Media types" asChild>
         <Popover.Trigger asChild>
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
+            radius="flush"
+            icon={<Folder className="block h-3.5 w-3.5 shrink-0" aria-hidden />}
             aria-label="Media types"
             aria-expanded={open}
             data-testid="photo-media-types"
@@ -229,9 +234,7 @@ function PhotoMediaTypePopover({
               'h-full aspect-square',
               (open || customActive) && 'bg-surface-sunken text-text-muted',
             )}
-          >
-            <Folder className="block h-3.5 w-3.5 shrink-0" aria-hidden />
-          </button>
+          />
         </Popover.Trigger>
       </HoverTooltip>
       <Popover.Portal>
@@ -302,49 +305,49 @@ function PhotoMediaTypePopover({
                 className="h-7 px-2 text-role-caption"
               />
               <div className="flex items-center gap-1.5">
-                {/* ds-raw-button */}
-                <button
+                <Button
                   type="button"
+                  variant="primary"
+                  size="sm"
+                  radius="flush"
+                  icon={
+                    saving ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Check className="h-3.5 w-3.5" />
+                    )
+                  }
                   onClick={() => void submit()}
                   disabled={!name.trim() || saving}
-                  className={cn(
-                    'flex items-center gap-1 bg-blue-600 px-2 py-1 text-role-micro uppercase tracking-widest text-white disabled:opacity-50',
-                    cornerClass('flush'),
-                  )}
+                  className="px-2 py-1 text-role-micro uppercase tracking-widest"
                 >
-                  {saving ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Check className="h-3.5 w-3.5" />
-                  )}
                   Create
-                </button>
-                {/* ds-raw-button */}
-                <button
+                </Button>
+                <Button
                   type="button"
+                  variant="ghost"
+                  size="sm"
+                  radius="flush"
                   onClick={() => setAdding(false)}
-                  className={cn(
-                    'px-2 py-1 text-role-micro uppercase tracking-widest text-text-faint hover:text-text-muted',
-                    cornerClass('flush'),
-                  )}
+                  className="px-2 py-1 text-role-micro uppercase tracking-widest text-text-faint hover:text-text-muted"
                 >
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           ) : (
-            /* ds-raw-button */
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
+              radius="flush"
+              icon={<Plus className="h-3.5 w-3.5" aria-hidden />}
               onClick={() => setAdding(true)}
               data-testid="photo-media-type-add"
-              className={cn(
-                'mt-1 flex w-full items-center gap-1.5 px-2.5 py-1.5 text-left text-role-caption font-medium text-blue-700 hover:bg-surface-hover',
-                cornerClass('flush'),
-              )}
+              className="mt-1 flex w-full items-center gap-1.5 px-2.5 py-1.5 text-left text-role-caption font-medium text-blue-700 hover:bg-surface-hover"
             >
-              <Plus className="h-3.5 w-3.5" /> Add media type
-            </button>
+              Add media type
+            </Button>
           )}
         </Popover.Content>
       </Popover.Portal>

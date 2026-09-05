@@ -63,6 +63,8 @@ const STATUS_TONE: Record<ScanOutActivePane['status'], string> = {
   pending: 'bg-surface-canvas text-text-muted ring-1 ring-inset ring-border-soft',
   miss: 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200',
   err: 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200',
+  // Cancelled order: the box is in the operator's hands and must not leave.
+  blk: 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200',
 };
 
 function statusLabel(pane: ScanOutActivePane): string {
@@ -75,6 +77,8 @@ function statusLabel(pane: ScanOutActivePane): string {
       return pane.message || 'Delivered already';
     case 'pending':
       return 'Scanning…';
+    case 'blk':
+      return pane.message || 'Do not ship — order cancelled';
     case 'miss':
       return pane.message || 'No shipment found';
     case 'err':

@@ -41,6 +41,16 @@ describe('compareReceivingGridRows', () => {
     assert.equal(compareReceivingGridRows(a, b, 'title', 'asc'), -1);
   });
 
+  // The header must sort the number the row PAINTS. `receiving.qty` resolves
+  // `quantity_received`, so a short-received line orders by what landed, not by
+  // what the PO asked for — otherwise Unbox sorts one count and shows another.
+  it('sorts qty by received, not expected', () => {
+    const short = row({ id: 1, quantity_expected: 10, quantity_received: 2 });
+    const full = row({ id: 2, quantity_expected: 1, quantity_received: 4 });
+    assert.ok(compareReceivingGridRows(short, full, 'qty', 'asc') < 0);
+    assert.ok(compareReceivingGridRows(short, full, 'qty', 'desc') > 0);
+  });
+
   it('sorts price numerically (missing as 0)', () => {
     const a = row({ id: 1, unit_price: '10.00' });
     const b = row({ id: 2, unit_price: '25.50' });

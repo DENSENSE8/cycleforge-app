@@ -1,7 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-system/motion';
+import {
+  AnimatePresence,
+  idleBrowseLayerProps,
+  motion,
+  motionRole,
+  overlayPaneStyle,
+  useMotionRole,
+} from '@/design-system/motion';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import {
@@ -18,7 +25,7 @@ import {
   useTestingScanPick,
 } from '@/lib/testing/testing-scan-session-bridge';
 
-import { zIndex } from '@/design-system/tokens/z-index';
+
 
 /** Persisted last-open line — written on select for future session UX / e2e;
  *  not restored on cold load so Testing mode lands on the history browse. */
@@ -100,10 +107,10 @@ export function TestingLineWorkspace({
   return (
     <div className="relative h-full min-h-0 w-full overflow-hidden bg-surface-canvas">
       <div
-        className={`flex h-full min-h-0 w-full flex-col ${row || showPick ? 'pointer-events-none' : ''}`}
-        aria-hidden={row || showPick ? true : undefined}
-        inert={row || showPick ? true : undefined}
-        style={{ visibility: row || showPick ? 'hidden' : 'visible' }}
+        {...idleBrowseLayerProps(
+          Boolean(row || showPick),
+          'flex h-full min-h-0 w-full flex-col',
+        )}
       >
         <TestingWorkspaceView
           techId={staffId}
@@ -120,7 +127,7 @@ export function TestingLineWorkspace({
             animate={panePresence.animate}
             exit={panePresence.exit}
             transition={paneTransition}
-            style={{ zIndex: zIndex.panel }}
+            style={overlayPaneStyle()}
             className="absolute inset-0 flex min-h-0 flex-col bg-surface-card"
           >
             <TestingScanPickPanel
@@ -140,7 +147,7 @@ export function TestingLineWorkspace({
             animate={panePresence.animate}
             exit={panePresence.exit}
             transition={paneTransition}
-            style={{ zIndex: zIndex.panel }}
+            style={overlayPaneStyle()}
             className="absolute inset-0 flex min-h-0 flex-col bg-surface-card"
           >
             <TestingPanel

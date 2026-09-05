@@ -13,6 +13,8 @@ export interface SkuCatalogItem {
   category: string | null;
   upc: string | null;
   image_url: string | null;
+  /** Zoho `items.zoho_item_id` when `searchField=zoho_catalog`. */
+  zoho_item_id?: string | null;
   is_active: boolean;
 }
 

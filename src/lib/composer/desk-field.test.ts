@@ -133,6 +133,12 @@ test('placeholder: otherwise the desk itself answers', () => {
   );
 });
 
+test('/shipping/shipped mounts the desk field — railless, no station mouth', () => {
+  const placed = deskFieldPlacement(input({ pathname: '/shipping/shipped' }));
+  assert.equal(placed.mount, true);
+  assert.equal(placed.placeholder, 'Scan, type or say — ask about this desk');
+});
+
 test('reason is a non-empty sentence in every case', () => {
   const cases: DeskFieldInput[] = [
     input(),

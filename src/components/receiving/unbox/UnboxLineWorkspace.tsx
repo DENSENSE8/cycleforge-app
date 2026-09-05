@@ -41,8 +41,10 @@ import { useEffect, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import {
   AnimatePresence,
+  idleBrowseLayerProps,
   motion,
   motionRole,
+  overlayPaneStyle,
   useMotionRole,
   useOverlaySwapHardCut,
 } from '@/design-system/motion';
@@ -77,9 +79,10 @@ import {
   resolveWorkspacePaneSlot,
   type WorkspacePaneSlot,
 } from '@/components/receiving/workspace-pane-key';
-import { zIndex } from '@/design-system/tokens/z-index';
 import { appWorkCanvasLayoutClass } from '@/design-system/tokens/app-surface';
 import { AppSurfaceFill, appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
+import { useAssistantContext } from '@/hooks/useAssistantContext';
+import { UNBOX_SKILL } from '@/lib/assistant/page-skills';
 import { cn } from '@/utils/_cn';
 import type {
   NavState,
@@ -126,6 +129,16 @@ export function UnboxLineWorkspace({
     motionRole.swap.scan,
   );
   const row = workspace?.row ?? null;
+  const cartonId = row?.receiving_id ?? null;
+  useAssistantContext({
+    page: 'unbox-station',
+    station: 'UNBOX',
+    skill: UNBOX_SKILL,
+    selection:
+      cartonId != null
+        ? { kind: 'receiving', id: cartonId }
+        : null,
+  });
   const showOverlay = !!workspace;
   // Deep-link load (`?openReceivingId=`): the carton is being fetched but the
   // overlay is not open yet. Show the workspace skeleton in the underlay so a
@@ -179,12 +192,7 @@ export function UnboxLineWorkspace({
     */
     <div className="flex h-full min-h-0 w-full min-w-0 flex-col">
     <div className={cn(appWorkCanvasLayoutClass, 'h-full')}>
-      <div
-        className={`flex h-full min-h-0 w-full flex-col ${showOverlay ? 'pointer-events-none' : ''}`}
-        aria-hidden={showOverlay ? true : undefined}
-        inert={showOverlay ? true : undefined}
-        style={{ visibility: showOverlay ? 'hidden' : 'visible' }}
-      >
+      <div {...idleBrowseLayerProps(showOverlay, 'flex h-full min-h-0 w-full flex-col')}>
         {/* This pane stays mounted but `visibility: hidden` while the carton
             overlay owns the middle — tell any loading field inside it not to
             paint a second, invisible copy of the one on top. */}
@@ -207,7 +215,7 @@ export function UnboxLineWorkspace({
       {showOverlay ? (
         <AppSurfaceFill
           tone="canvas"
-          style={{ zIndex: zIndex.panel }}
+          style={overlayPaneStyle()}
           data-testid="unbox-overlay-plate"
         />
       ) : null}
@@ -224,7 +232,7 @@ export function UnboxLineWorkspace({
             exit={panePresence.exit}
             transition={paneTransition}
             // Entering sibling stacks above the exiting one under sync.
-            style={{ zIndex: zIndex.panel + (cartonSwapHardCut ? 1 : 0) }}
+            style={overlayPaneStyle(cartonSwapHardCut)}
             className={cn('absolute inset-0 flex min-h-0 flex-col', appSurfaceFillClass('canvas'))}
           >
             {workspace.preview ? (

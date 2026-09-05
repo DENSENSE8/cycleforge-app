@@ -98,7 +98,9 @@ async function createTokenRequest(req: NextRequest, ctx: AuthContext) {
     [inboxOwn]: ['subscribe', 'publish'],
     [phoneOwn]: ['subscribe', 'publish'],
     [packerOwn]: ['subscribe', 'publish'],
-    [staffStationOwn]: ['subscribe', 'publish'],
+    // `presence` lets the phone announce itself on the composer bridge so the
+    // desk header can paint "paired" without a round trip (companion composer).
+    [staffStationOwn]: ['subscribe', 'publish', 'presence'],
     [scanLogOwn]: ['subscribe', 'publish'],
   };
 

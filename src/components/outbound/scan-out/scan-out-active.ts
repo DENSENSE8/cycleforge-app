@@ -4,7 +4,20 @@
  * siblings under the shipping layout, not one React provider).
  */
 
-export type ScanOutFocusStatus = 'ok' | 'dup' | 'miss' | 'err' | 'exc' | 'pending';
+/**
+ * `blk` — the order must not ship (cancelled).
+ *
+ * Distinct from `exc` ("already delivered") on purpose: that is a data conflict
+ * to reconcile, this is an instruction to physically pull a box off the dock.
+ */
+export type ScanOutFocusStatus =
+  | 'ok'
+  | 'dup'
+  | 'miss'
+  | 'err'
+  | 'exc'
+  | 'blk'
+  | 'pending';
 
 export interface ScanOutActivePane {
   /** Internal `orders.id` when resolved. */

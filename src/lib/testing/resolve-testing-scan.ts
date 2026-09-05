@@ -152,7 +152,7 @@ async function fetchLinesByReceivingId(receivingId: number) {
     `/api/receiving-lines?receiving_id=${receivingId}&include=serials`,
   );
   if (!res.ok) throw new Error(`receiving-lines fetch failed (${res.status})`);
-  const data = await res.json();
+  const data = await res.json().catch(() => null);
   return (data?.receiving_lines ?? []) as ReceivingLineRow[];
 }
 
@@ -162,7 +162,7 @@ async function fetchReceivingCartonHeader(
   const res = await fetch(`/api/receiving/${receivingId}`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`receiving fetch failed (${res.status})`);
-  const data = await res.json();
+  const data = await res.json().catch(() => null);
   if (!data?.success || !data.receiving) return null;
   return data.receiving as ReceivingCartonHeader;
 }

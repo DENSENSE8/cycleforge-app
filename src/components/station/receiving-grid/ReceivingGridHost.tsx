@@ -90,6 +90,8 @@ interface ReceivingGridHostProps {
    * with no catalog behind it.
    */
   fields?: DataTableFieldsMenuData;
+  /** Effective under-title field ids (qty first). */
+  subtitleFieldIds?: readonly string[];
   /**
    * Staff-prefs identity for per-staff column config. Unbox / History are
    * `receiving`; Testing History passes `testing` so the two keep independent
@@ -119,7 +121,7 @@ interface ReceivingGridHostProps {
   enableColumnMenu?: boolean;
   /**
    * Select-gutter chrome. Unbox History / Incoming click-select paint
-   * {@link GridClickSelectFace} in the cell (not this chrome); default
+   * {@link GridSelectSquareFace} in the cell (not this chrome); default
    * `'always'` keeps Recent / Queue / Docked History.
    * Ignored when {@link clickSelect} is true.
    */
@@ -191,6 +193,7 @@ export function ReceivingGridHost({
   selectionScope = RECEIVING_SELECTION_SCOPE,
   columns,
   fields,
+  subtitleFieldIds,
   tableId,
   showDayHeaders,
   scrollRef,
@@ -200,7 +203,7 @@ export function ReceivingGridHost({
   controlledSortDir,
   onControlledSortChange,
   onControlledSortClear,
-  enableColumnMenu = true,
+  enableColumnMenu: _enableColumnMenu = true,
   selectGutterChrome = 'always',
   clickSelect = false,
   onOpenWorkspace,
@@ -249,7 +252,7 @@ export function ReceivingGridHost({
   const applySort =
     onControlledSortChange
     ?? ((key: ReceivingGridColumnKey, dir?: 'asc' | 'desc') => setSort(key, dir));
-  const applyToggle =
+  const _applyToggle =
     onControlledSortChange
       ? (key: ReceivingGridColumnKey) => {
           const nextDir =
@@ -261,7 +264,7 @@ export function ReceivingGridHost({
           onControlledSortChange(key, nextDir);
         }
       : toggleColumnSort;
-  const applyClear =
+  const _applyClear =
     onControlledSortClear
     ?? clearSort;
 
@@ -318,7 +321,7 @@ export function ReceivingGridHost({
   // Inline NOTE commit — same shape as the custom-field commit above: the cell
   // has already painted, this keeps every other view of the row in step, and a
   // failure both rolls the cache back and says so.
-  const handleCommitNote = useCallback(
+  const _handleCommitNote = useCallback(
     (lineId: number, next: string) => {
       if (lineId <= 0) return;
       const previous = flatRows.find((r) => r.id === lineId)?.notes ?? null;
@@ -372,6 +375,7 @@ export function ReceivingGridHost({
           linkedReceivingId={linkedReceivingId}
           onCrosshairHover={onCrosshairHover}
           customFieldDefs={customDefs}
+          subtitleFieldIds={subtitleFieldIds}
         />
       )}
       renderRow={(row, stripeIndex, { columns: visible }) => (
@@ -397,6 +401,7 @@ export function ReceivingGridHost({
           linkedReceivingId={linkedReceivingId}
           onCrosshairHover={onCrosshairHover}
           customFieldDefs={customDefs}
+          subtitleFieldIds={subtitleFieldIds}
         />
       )}
     />

@@ -4,11 +4,9 @@
  * Record walk chrome — table XOR (rail + form).
  *
  * **Superseded 2026-09-01 by {@link DeskStageOverlay} (Center Lock Q5).** Do not
- * mount on new desk surfaces — legacy exceptions, labels, and incoming-add only.
+ * mount on new desk surfaces — legacy exceptions pairing walk only.
+ * Labels / paperwork and Incoming add-PO use {@link DeskStageOverlay} `fill="stage"`.
  * See docs/warehouse-os/PLAN-center-lock.md.
- *
- * Exceptions and Labels already use this split. Incoming add-PO uses the same
- * host so staff never learn a second layout.
  */
 
 import type { ReactNode } from 'react';

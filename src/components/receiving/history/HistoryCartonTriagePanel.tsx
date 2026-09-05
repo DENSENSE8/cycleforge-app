@@ -467,7 +467,7 @@ export function HistoryCartonTriagePanel({
   // Parked (Band 3 `Hide inspector` / ⌘\) keeps this panel MOUNTED but inert at
   // zero width, so `viewStripOpen` alone cannot tell the cluster whether it is
   // reachable. Read the collapse SoT the toggle writes.
-  const [inspectorParked, setInspectorParked] = useState(() =>
+  const [_inspectorParked, setInspectorParked] = useState(() =>
     getDetailInspectorCollapsed(),
   );
   useEffect(() => {

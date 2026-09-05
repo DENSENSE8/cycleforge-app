@@ -5,7 +5,8 @@
  *
  * L2 modes (Local Pickup · Sales) live on MasterNav (floor benches) /
  * DeskPageChrome — not a GlobalHeader chip. Per-mode **table tabs** live in
- * the page body (`WalkInHistoryHub` → `TableTabs`) — modes ≠ tabs.
+ * the page body (`WalkInHistoryHub` → `TableTabs` second-level) — modes ≠ tabs.
+ * Do not resurrect the legacy Sales header.
  *
  * Below sits the one thing a history Monitor can't do — start work.
  * Sales is observe-only; every action here hands off to the station (Repair

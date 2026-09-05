@@ -105,6 +105,22 @@ const ORDERS_ROUTE_PARAMS = defineRouteParams({
     cage: paramFlag,
     /** CSV import staging surface on the To-Ship desk (session draft in memory). */
     import: paramEnum(['csv'] as const),
+    /**
+     * Past-imports record view on the To-ship desk — "what was imported on
+     * this day". A flag, not a value: the DAY is `importDay` / `importFrom`
+     * + `importTo` so a link can name a specific day without a second mode.
+     *
+     * Declared for the reason `ingest`, `triage` and `paperwork` above are:
+     * `useSurfaceParamHygiene` re-parses this spec on every param change and
+     * drops anything undeclared, so an unregistered param makes the surface
+     * close itself on the operator's next keystroke.
+     */
+    imports: paramFlag,
+    /** Days back from today for the single-day view (0 = today). */
+    importDay: paramPositiveInt,
+    /** Explicit inclusive range from the calendar; wins over `importDay`. */
+    importFrom: paramDateKey,
+    importTo: paramDateKey,
     shippedFilter: paramEnum(['all', 'orders', 'sku', 'fba'] as const),
     shippedSearchField: paramRoundTrip(parseShippedSearchFieldWire),
     shippedWeekOffset: paramPositiveInt,

@@ -29,6 +29,7 @@ export type DailyGridColumnKey =
   | 'thumb'
   | 'item'
   | 'fulfillment'
+  | 'dates'
   | 'state'
   | 'amount'
   | 'actions'
@@ -81,7 +82,7 @@ export function dailyCompoundColumnsFor(layout: SlotLayout): readonly DailyGridC
   return materializeTracks<DailyGridColumn>({
     layout,
     catalog: DAILY_FIELD_CATALOG,
-    base: compoundColumnsFor<DailyGridColumn>(),
+    base: compoundColumnsFor(),
   });
 }
 
@@ -111,20 +112,30 @@ export const DAILY_COMPOUND_COLUMNS: readonly DailyGridColumn[] =
  * `repair-display-sort` rule: a bookmarked `?colsort=marked` must keep meaning
  * `marked` after a rebind moves that fact to a different slot index.
  */
-export type DailySortFact = 'task' | 'status' | 'team' | 'marked' | 'image' | 'order' | 'amount';
+export type DailySortFact =
+  | 'task'
+  | 'status'
+  | 'team'
+  | 'marked'
+  | 'dates'
+  | 'order'
+  | 'amount';
 
 /**
  * Compound track → the fact it carries.
  *
  * A compound track is a CONTAINER for facts the flat model already sorted by:
  * `item` carries the checklist title (`task`), `state` carries the done pill
- * (`status`). Empty identity / money / photo tracks still sort so every painted
- * header is clickable.
+ * (`status`).
  */
 const DAILY_TRACK_SORT_FACTS: Readonly<Record<string, DailySortFact>> = {
+  // The compound DATES track. This family paints no dates in it (no deadline,
+  // no start stamp), and an empty track still click-sorts — the same rule
+  // `fulfillment` / `amount` already answer to here. The word is its
+  // own so a bookmark keeps meaning what it said.
+  dates: 'dates',
   item: 'task',
   state: 'status',
-  thumb: 'image',
   fulfillment: 'order',
   amount: 'amount',
 };
@@ -156,7 +167,7 @@ export function isDailySortFact(raw: string): raw is DailySortFact {
     raw === 'status' ||
     raw === 'team' ||
     raw === 'marked' ||
-    raw === 'image' ||
+    raw === 'dates' ||
     raw === 'order' ||
     raw === 'amount'
   );
@@ -173,10 +184,10 @@ export function isDailySortFact(raw: string): raw is DailySortFact {
  */
 export const DAILY_SORT_FACT_TYPES: Readonly<Record<DailySortFact, ColumnType>> = {
   task: 'text',
+  dates: 'date',
   status: 'tag',
   team: 'number',
   marked: 'date',
-  image: 'text',
   order: 'text',
   amount: 'price',
 };
@@ -216,7 +227,7 @@ export function dailyColumnKeyForSort(
  * index (the wave-1.4 law — see `tech-all`'s urgency rank for the twin case).
  */
 export function defaultDirForDailyGridSort(fact: DailySortFact): GridSortDir {
-  return fact === 'marked' || fact === 'amount' || fact === 'image' ? 'desc' : 'asc';
+  return fact === 'marked' || fact === 'amount' ? 'desc' : 'asc';
 }
 
 /**

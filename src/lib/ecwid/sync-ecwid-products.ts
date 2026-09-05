@@ -13,6 +13,38 @@ export interface EcwidMirrorProduct {
   sku: string | null;
   name: string;
   thumbnailUrl: string | null;
+  /**
+   * Ecwid's canonical storefront product URL (`items[].url`), persisted to
+   * `sku_platform_ids.listing_url`.
+   *
+   * This is the ONLY place a real per-product storefront link enters the app.
+   * Every other listing href for an ecwid SKU is built by
+   * `getExternalUrlByPlatform`, which can only produce
+   * `/products/search?keyword=<sku>` — a link that lands the reader in the
+   * storefront's own search box rather than on the product. Null whenever the
+   * payload has no usable http(s) URL, so callers keep the keyword fallback.
+   */
+  listingUrl: string | null;
+}
+
+/**
+ * An http(s) URL or null — never a bare string.
+ *
+ * `listing_url` is rendered as an openable link, so a malformed value would
+ * paint a dead control on the product page. Anything that is not a parseable
+ * http/https URL is dropped and the caller falls back to keyword search.
+ */
+function httpUrlOrNull(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null;
+  const value = raw.trim();
+  if (!value) return null;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null;
+    return value;
+  } catch {
+    return null;
+  }
 }
 
 /** Parse one Ecwid `items` page into mirror products (drops id-less/name-less rows). */
@@ -31,6 +63,7 @@ export function parseEcwidProductItems(items: unknown): EcwidMirrorProduct[] {
       sku,
       name,
       thumbnailUrl: typeof rec.thumbnailUrl === 'string' ? rec.thumbnailUrl : null,
+      listingUrl: httpUrlOrNull(rec.url),
     });
   }
   return out;

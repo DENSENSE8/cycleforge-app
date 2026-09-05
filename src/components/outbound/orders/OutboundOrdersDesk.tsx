@@ -30,6 +30,7 @@ import {
   OrdersDeskAddAction,
   type OrderIntakeMethod,
 } from '@/components/outbound/orders/OrdersDeskAddAction';
+import { OrdersDeskPastImportsAction } from '@/components/outbound/orders/OrdersDeskPastImportsAction';
 import { OrderPasteIntake } from '@/components/outbound/orders/OrderPasteIntake';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { useTableImportFilePicker } from '@/components/tables/import/TableImportFileButton';
@@ -225,6 +226,9 @@ function OutboundOrdersDeskContent({
             canImport={canImportOrders && csv.live}
             syncing={sync.isTransferring}
           />
+          {/* Collection action (`role="overall"`), left of Sync — reading the
+              record is not an intake verb, so it is not a menu row under one. */}
+          <OrdersDeskPastImportsAction />
           {/* The picker's hidden <input>; `csv.open()` above clicks it. */}
           {csv.input}
           {/* Paste / drop a screenshot or CSV onto the mouth → the same draft

@@ -49,8 +49,13 @@ import type {
   RetailPayload,
 } from '@/lib/kiosk/cart-line';
 
-/** Center work command — not a siloed mode that owns the session. */
-export type KioskCommandId = 'repair' | 'retail' | 'buyback' | 'pickup';
+/**
+ * Center work command — not a siloed mode that owns the session.
+ *
+ * Mirrors `counter_sessions_active_command_chk`. Keep the two in lockstep:
+ * a command the DB rejects strands a tablet mid-visit.
+ */
+export type KioskCommandId = 'repair' | 'retail' | 'buyback' | 'pickup' | 'exchange';
 
 type KioskFace = 'staff' | 'customer';
 
@@ -71,6 +76,20 @@ interface KioskSessionSnapshot {
   customerPhone: string;
   customerName: string;
   customerEmail: string;
+  /**
+   * The online order the customer is returning against, as they typed it.
+   * Draft only — a typed number proves nothing until the two-key check agrees.
+   */
+  exchangeOrderNumber: string;
+  /**
+   * The order number the server CONFIRMED against `customerPhone`, or ''.
+   *
+   * Kept apart from the typed value on purpose: only a confirmed reference may
+   * ride the submit. Sending the typed one would let the tablet assert a match
+   * the server never made, and the counter would attach a stranger's order to
+   * this visit.
+   */
+  exchangeConfirmedRef: string;
   /** Waiting-for-card started-at (ms). Null when not awaiting Terminal. */
   awaitingCardSinceMs: number | null;
   /**
@@ -96,6 +115,8 @@ const INITIAL: KioskSessionSnapshot = {
   customerPhone: '',
   customerName: '',
   customerEmail: '',
+  exchangeOrderNumber: '',
+  exchangeConfirmedRef: '',
   awaitingCardSinceMs: null,
   sharedSessionId: null,
   sharedVersion: 0,
@@ -200,6 +221,22 @@ export const kioskSessionStore = {
   },
   setPickupPrefill(value: string | null): void {
     setSnapshot({ ...snapshot, pickupPrefill: value });
+  },
+  /**
+   * Record the exchange keys. A new typed number always clears the confirmed
+   * one — otherwise editing the field after a match would leave a stale
+   * confirmation attached to a number nobody checked.
+   */
+  setExchangeOrder(fields: { orderNumber?: string; confirmedRef?: string }): void {
+    const orderNumber = fields.orderNumber ?? snapshot.exchangeOrderNumber;
+    const retyped =
+      fields.orderNumber !== undefined && fields.orderNumber !== snapshot.exchangeOrderNumber;
+    setSnapshot({
+      ...snapshot,
+      exchangeOrderNumber: orderNumber,
+      exchangeConfirmedRef:
+        fields.confirmedRef ?? (retyped ? '' : snapshot.exchangeConfirmedRef),
+    });
   },
   setBuybackImeiPrefill(value: string | null): void {
     setSnapshot({ ...snapshot, buybackImeiPrefill: value });
@@ -416,6 +453,11 @@ export function useKioskSessionActions() {
     ),
     setPickupPrefill: useCallback(
       (v: string | null) => kioskSessionStore.setPickupPrefill(v),
+      [],
+    ),
+    setExchangeOrder: useCallback(
+      (fields: { orderNumber?: string; confirmedRef?: string }) =>
+        kioskSessionStore.setExchangeOrder(fields),
       [],
     ),
     setBuybackImeiPrefill: useCallback(

@@ -6,14 +6,16 @@
  * `status: 'live'` flip.
  */
 
+import type { KioskCommandId } from '@/lib/kiosk/kiosk-session-store';
 import {
+  ArrowLeftRight,
   PackageCheck,
   ReceivingModeRepair,
   SalesPrice,
   RefreshCw,
 } from '@/components/Icons';
 
-export type KioskServiceId = 'sales' | 'pickup' | 'repair' | 'buyback';
+export type KioskServiceId = 'sales' | 'pickup' | 'repair' | 'buyback' | 'exchange';
 
 type KioskServiceIcon = (props: { className?: string }) => JSX.Element;
 
@@ -72,6 +74,20 @@ export const KIOSK_SERVICES: ReadonlyArray<KioskServiceTile> = [
     // right utility Cart slot; leave ReceivingModePickup alone for receiving.
     icon: PackageCheck,
   },
+  {
+    id: 'exchange',
+    // Customer-facing copy NEVER names the channel (plan X10). "Return &
+    // replace" is what the customer came in to do; "Ecwid" is our plumbing.
+    label: 'Return & Replace',
+    // Staff grammar on the rail — one word, same as its siblings.
+    commandLabel: 'Exchange',
+    blurb: 'Return an online order and pick a replacement',
+    status: 'live',
+    // On the welcome tiles from the start, unlike buyback: a customer holding
+    // a box they bought online walks up to the tablet, not to a register.
+    welcome: true,
+    icon: ArrowLeftRight,
+  },
 ];
 
 export function liveKioskServices(): KioskServiceTile[] {
@@ -84,16 +100,12 @@ export function welcomeKioskServices(): KioskServiceTile[] {
 }
 
 /** Map service tile id → session command id (`sales` → `retail`). */
-export function serviceIdToCommand(
-  id: KioskServiceId,
-): 'repair' | 'retail' | 'buyback' | 'pickup' {
+export function serviceIdToCommand(id: KioskServiceId): KioskCommandId {
   if (id === 'sales') return 'retail';
   return id;
 }
 
-export function commandToServiceId(
-  command: 'repair' | 'retail' | 'buyback' | 'pickup',
-): KioskServiceId {
+export function commandToServiceId(command: KioskCommandId): KioskServiceId {
   if (command === 'retail') return 'sales';
   return command;
 }

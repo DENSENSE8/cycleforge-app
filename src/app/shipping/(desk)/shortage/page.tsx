@@ -11,7 +11,7 @@ import { seedUnshippedQueue } from '@/lib/queries/unshipped-queue-seed.server';
  * staging (`?import=csv`) attaches coverage onto existing orders only.
  */
 export default async function ShippingShortagePage() {
-  const seed = await seedUnshippedQueue();
+  const seed = await seedUnshippedQueue({ blockedOnly: true });
 
   return (
     <>

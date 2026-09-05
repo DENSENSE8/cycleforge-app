@@ -1,0 +1,25 @@
+[cursor-eval] pnpm --config.verify-deps-before-run=false run verify:fast (cwd=/home/michaelgarisek/Projects/cycleforge-app)
+$ node scripts/verify.mjs --fast
+▶ verify profile: fast · 2 gates, 4 at a time
+
+▶ Lint
+
+▶ Typecheck
+
+────────────────────────────────────────────────────
+  verify — inner loop (lint + typecheck)
+────────────────────────────────────────────────────
+  ✓ Lint
+  ✓ Typecheck
+────────────────────────────────────────────────────
+
+verify PASSED (fast) — inner loop only; not CI.
+
+{
+  "ok": true,
+  "command": "pnpm --config.verify-deps-before-run=false run verify:fast",
+  "exitCode": 0,
+  "durationMs": 11506,
+  "stamp": "/home/michaelgarisek/Projects/cycleforge-app/.garisek/eval-session.json",
+  "cursorMirror": "/home/michaelgarisek/Projects/cycleforge-app/.cursor/eval-session.json"
+}

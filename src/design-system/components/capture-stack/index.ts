@@ -8,6 +8,7 @@
 
 export { CaptureStack } from './CaptureStack';
 export { CaptureStackRow } from './CaptureStackRow';
+export { CaptureStackSkeleton } from './CaptureStackSkeleton';
 export { useCaptureStackWindow, useCaptureStackQuery } from './useCaptureStack';
 
 // The prop/option types stay exported from their own modules (import them from

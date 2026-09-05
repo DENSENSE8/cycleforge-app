@@ -91,12 +91,12 @@ test('statusOptionsFromHits is unique and preserves first-seen order', () => {
   assert.deepEqual(statusOptionsFromHits(hits), ['Shipped', 'Pending']);
 });
 
-test('URL mutators write etype/hstat/colsort correctly', () => {
+test('URL mutators write scope/hstat/colsort correctly', () => {
   const params = new URLSearchParams('q=bose');
   applySearchEtype(params, 'order');
   applySearchHstat(params, 'Shipped');
   applySearchDisplaySort(params, 'date');
-  assert.equal(params.get('etype'), 'order');
+  assert.equal(params.get('scope'), 'orders');
   assert.equal(params.get('hstat'), 'Shipped');
   assert.equal(params.get('colsort'), 'date');
 
@@ -104,7 +104,7 @@ test('URL mutators write etype/hstat/colsort correctly', () => {
   assert.equal(params.get('colsort'), null);
 
   clearSearchRefine(params);
-  assert.equal(params.get('etype'), null);
+  assert.equal(params.get('scope'), null);
   assert.equal(params.get('hstat'), null);
   assert.equal(params.get('q'), 'bose');
 });
@@ -169,10 +169,10 @@ test('applySearchChan sets and clears the key', () => {
 });
 
 test('clearSearchRefine drops the channel too — "Clear filters" must clear all', () => {
-  const p = new URLSearchParams('etype=order&hstat=Shipped&chan=ebay&q=keep');
+  const p = new URLSearchParams('scope=orders&hstat=Shipped&chan=ebay&q=keep');
   clearSearchRefine(p);
   assert.equal(p.get('chan'), null);
-  assert.equal(p.get('etype'), null);
+  assert.equal(p.get('scope'), null);
   assert.equal(p.get('hstat'), null);
   assert.equal(p.get('q'), 'keep', 'the query itself is not a refine');
 });

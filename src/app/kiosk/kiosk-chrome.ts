@@ -20,6 +20,7 @@ export function kioskSpineShortLabel(id: KioskServiceId): string {
   if (id === 'repair') return 'Repair';
   if (id === 'sales') return 'Retail';
   if (id === 'buyback') return 'Buyback';
+  if (id === 'exchange') return 'Exchange';
   return 'Pickup';
 }
 

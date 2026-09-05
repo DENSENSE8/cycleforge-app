@@ -33,11 +33,11 @@
  * `ColumnResizeHandle`, per-staff persistence via `useGridColumnWidths`), so
  * this is a flag, not a feature build.
  *
- * The four CHROME tracks stay fixed: `select` and `thumb` (the two equal
- * gutters — see `COMPOUND_GUTTER_TRACK_REM` for why a drag there would break
- * the equality), `actions` (a 2.5rem ⋮ button) and `_fill` (structural slack).
- * None of their contents has a variable length, so a drag could only add or
- * steal whitespace around a fixed mark.
+ * The three fixed tracks: `select` and `thumb` (the two gutters — control
+ * widths, not content) and `_fill` (structural slack). A ⋮ `actions` track is
+ * not in this skeleton: copy / listing / void already live inline on the
+ * identity chips and the title hover (operator 2026-09-04). A money `amount`
+ * track is not in this skeleton: price lives under the Item title after qty.
  *
  * The widths below are DEFAULTS, not a ceiling. `fulfillment` was 11rem, then
  * 8.5rem, and is 6.5rem now — each step measured against what the cell actually
@@ -47,23 +47,35 @@
 
 import { GRID_FILL_COLUMN } from '@/design-system/components/grid';
 import type { ColumnType } from '@/lib/tables/table-columns';
-import { COMPOUND_GUTTER_TRACK_REM, COMPOUND_ROW_PX } from './compound-row-chrome';
+import {
+  COMPOUND_GUTTER_TRACK_REM,
+  COMPOUND_ROW_PX,
+  COMPOUND_SELECT_TRACK_REM,
+} from './compound-row-chrome';
 
 /**
  * The compound track keys, in canonical order.
  *
- * HARD RULE — image · ids · title · status · money · actions. The photo is leftmost
- * because it is what an operator's eye lands on when scanning a shelf list
- * against a physical box.
+ * HARD RULE — select · ids · image · title · dates · status · slack.
+ * The identity pane is leftmost: check the row, read the order / tracking
+ * handle, then match the photo. Operator 2026-09-04 put ids on the left; the
+ * ⋮ that sat beside them is gone the same day — those verbs already live on
+ * the chips and the title hover. Line money is not a track: it lives under
+ * the Item title after qty (`ensureLineMoneySubtitle`).
+ *
+ * `dates` sits between the title and the status because it answers WHEN, and
+ * WHEN is read against WHAT, not against a lifecycle word (operator
+ * 2026-09-04). It also unfuses the status cell: the deadline used to ride the
+ * status column's second line, which spent the one line under the state pill on
+ * a date and left the row unable to say where it goes NEXT.
  */
 export const COMPOUND_COLUMN_KEYS = [
   'select',
-  'thumb',
   'fulfillment',
+  'thumb',
   'item',
+  'dates',
   'state',
-  'amount',
-  'actions',
   '_fill',
 ] as const;
 
@@ -85,7 +97,7 @@ export interface CompoundTrack {
   type?: ColumnType;
   headerGlyphOnly?: boolean;
   headerForceLabel?: boolean;
-  align?: 'start' | 'end';
+  align?: 'start' | 'end' | 'center';
   frozen?: boolean;
   sortable?: boolean;
   resizable?: boolean;
@@ -102,61 +114,48 @@ export interface CompoundTrack {
  * silently un-pins the pane.
  */
 const GUTTER_TRACK = `minmax(${COMPOUND_GUTTER_TRACK_REM}rem, ${COMPOUND_GUTTER_TRACK_REM}rem)`;
+const SELECT_TRACK = `minmax(${COMPOUND_SELECT_TRACK_REM}rem, ${COMPOUND_SELECT_TRACK_REM}rem)`;
 
 /**
  * The ONE compound geometry declaration.
  *
  * | track         | width  | resize | carries                              |
  * |---------------|--------|--------|--------------------------------------|
- * | `select`      | 3rem   | no     | full-bleed checkmark (frozen)        |
- * | `thumb`       | 3rem   | no     | full-bleed square photo (frozen)     |
+ * | `select`      | 1.5rem | no     | 16px hover-revealed checkbox (frozen)|
  * | `fulfillment` | 6.5rem | yes    | order / PO over carrier tracking     |
+ * | `thumb`       | 3rem   | no     | full-bleed square photo (frozen)     |
  * | `item`        | 18rem  | yes    | title over the operator note         |
- * | `state`       | 10rem  | yes    | state pill over lateness             |
- * | `amount`      | 7rem   | yes    | money (end-aligned) over its working |
- * | `actions`     | 2.5rem | no     | ⋮ row menu (opens the record first)  |
+ * | `dates`       | 7rem   | yes    | ordered-on over the ship-by deadline |
+ * | `state`       | 10rem  | yes    | state pill over the NEXT step        |
  * | `_fill`       | 1fr    | no     | sole slack track                     |
  *
- * The two gutters are EQUAL BY CONSTRUCTION — both read
- * `COMPOUND_GUTTER_TRACK_REM`, which is the row box in rem. They are the only
- * tracks whose contents go edge to edge with no cell inset at all.
+ * Both gutters take ZERO cell inset — they are the only tracks whose contents
+ * go edge to edge. They are no longer the same WIDTH: `thumb` is the row box in
+ * rem (a true square, so a photo fills it uncropped) and `select` is the
+ * narrower `COMPOUND_SELECT_TRACK_REM`. See that constant for why the equality
+ * was retired.
  *
- * The frozen pane is `select · thumb` — a contiguous prefix, because
- * `gridFrozenLeft` sums the widths of preceding frozen tracks and a gap would
- * pin the sticky pane at the wrong origin. Those offsets are a `calc()` over
- * the same `--cf-col-*` vars a drag writes, so the pane would follow a resized
- * track if either gutter were ever unpinned.
+ * The frozen pane is `select · fulfillment · thumb` — a contiguous prefix,
+ * because `gridFrozenLeft` sums the widths of preceding frozen tracks and a
+ * gap would pin the sticky pane at the wrong origin. Those offsets are a
+ * `calc()` over the same `--cf-col-*` vars a drag writes, so the pane follows
+ * a resized Order track. Fulfillment has no `hideKey`: a frozen identity
+ * column is structural and must not leave the pane.
  */
 export const COMPOUND_TRACKS: readonly CompoundTrack[] = [
   {
     key: 'select',
-    // The SAME width as `thumb`, from one constant — the two full-bleed squares
-    // that open every row. Declared equal rather than written equal.
-    width: GUTTER_TRACK,
+    // NARROWER than `thumb` since 2026-09-04, and from its own constant. The
+    // two tracks were declared equal while both were full-bleed squares; the
+    // select gutter now holds a 16px hover-revealed control, so 48px would be
+    // 16px of dead track on either side of it. See `COMPOUND_SELECT_TRACK_REM`.
+    width: SELECT_TRACK,
     label: 'Select',
-    // No header word: the column is a 48px checkmark square and the faded check
-    // in every body cell already says what it is.
+    // No header word: the column is a bare control track, and the select-all
+    // box at the top of it already says what it is.
     gridLabel: '',
     sortable: false,
     frozen: true,
-    resizable: false,
-    labelFitRem: 2,
-  },
-  {
-    key: 'thumb',
-    frozen: true,
-    width: GUTTER_TRACK,
-    label: 'Image',
-    // The word, not a glyph (operator 2026-09-01). The track is a 48px square;
-    // `headerForceLabel` is the declared intent so the fit test cannot degrade
-    // it back to a type mark.
-    gridLabel: 'Image',
-    type: 'image',
-    headerForceLabel: true,
-    align: 'start',
-    // NOT resizable, and that is the point: `isGridColumnResizable` refuses
-    // `select` unconditionally, so a draggable photo track could only ever end
-    // up a different width from the checkmark track beside it.
     resizable: false,
     labelFitRem: 2,
   },
@@ -179,10 +178,33 @@ export const COMPOUND_TRACKS: readonly CompoundTrack[] = [
     gridLabel: 'Order',
     type: 'id',
     align: 'start',
-    hideKey: 'tracking',
+    frozen: true,
     resizable: true,
     minTrackRem: 6,
     labelFitRem: 5,
+  },
+  {
+    key: 'thumb',
+    frozen: true,
+    width: GUTTER_TRACK,
+    label: 'Image',
+    // The word, not a glyph (operator 2026-09-01). The track is a 48px square;
+    // `headerForceLabel` is the declared intent so the fit test cannot degrade
+    // it back to a type mark.
+    gridLabel: 'Image',
+    type: 'image',
+    headerForceLabel: true,
+    // CENTRED over the 48px square (operator 2026-09-04, reversing the far-left
+    // ruling made earlier the same day). The track is a full-bleed photo with
+    // no left edge of its own for a word to sit against, and the label reads as
+    // the caption of the square beneath it rather than as a stray word in the
+    // gutter. It is the one centred header in the grid, and it is centred over
+    // the one full-bleed content track.
+    align: 'center',
+    // NOT resizable: the photo track is chrome, and a drag could only crop the
+    // square or leave dead space around it.
+    resizable: false,
+    labelFitRem: 2,
   },
   {
     key: 'item',
@@ -196,6 +218,22 @@ export const COMPOUND_TRACKS: readonly CompoundTrack[] = [
     labelFitRem: 6,
   },
   {
+    key: 'dates',
+    // 7rem — the `date` display-type default in `trackGeometryFor`, so a chrome
+    // date track and a BOUND one (`orders.age`, `orders.delivery_event`) are
+    // the same width. Both lines are a compact civil face ("Aug 17"), and the
+    // widest thing either can hold is a month word plus two digits.
+    width: 'minmax(7rem, 7rem)',
+    label: 'Dates',
+    gridLabel: 'Dates',
+    type: 'date',
+    align: 'start',
+    hideKey: 'dates',
+    resizable: true,
+    minTrackRem: 5.5,
+    labelFitRem: 4.5,
+  },
+  {
     key: 'state',
     width: 'minmax(10rem, 10rem)',
     label: 'Status',
@@ -207,47 +245,19 @@ export const COMPOUND_TRACKS: readonly CompoundTrack[] = [
     minTrackRem: 7,
     labelFitRem: 5,
   },
-  {
-    key: 'amount',
-    // Right-aligned tabular money. 7rem holds `-$12,345.67` — the widest thing
-    // a line can be worth — without the column ever reflowing as figures grow.
-    width: 'minmax(7rem, 7rem)',
-    label: 'Amount',
-    gridLabel: 'Amount',
-    type: 'price',
-    // END-aligned, and that is the whole point of a money column: figures line
-    // up on their last digit so an operator can scan a column and see which row
-    // is the big one without reading any of them.
-    align: 'end',
-    hideKey: 'price',
-    resizable: true,
-    minTrackRem: 5,
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'actions',
-    width: 'minmax(2.5rem, 2.5rem)',
-    label: 'Actions',
-    gridLabel: '',
-    align: 'end',
-    sortable: false,
-    resizable: false,
-    labelFitRem: 2,
-  },
   { ...GRID_FILL_COLUMN, key: '_fill' as const },
 ] as const;
 
 /**
  * This family's compound column array.
  *
- * `C` is the family's own column interface — the widening cast is what lets
- * `RECEIVING_COMPOUND_COLUMNS` stay `ReceivingGridColumnKey`-narrowed while
- * still being the SAME objects Orders, Incoming and Tasks mount.
+ * `C` is the family's own column interface — the widening assertion is what
+ * lets `RECEIVING_COMPOUND_COLUMNS` stay `ReceivingGridColumnKey`-narrowed
+ * while still being the SAME objects Orders, Incoming and Tasks mount.
  *
- * The cast is unavoidable and deliberate: a family's key union is WIDER than
- * {@link CompoundColumnKey} (it also names its flat spreadsheet's tracks), so
- * `ReceivingGridColumn` is not structurally assignable to a compound-keyed
- * track no matter how the constraint is written. What that cast cannot check —
+ * A family's key union is WIDER than {@link CompoundColumnKey} (it also names
+ * its flat spreadsheet's tracks), so `ReceivingGridColumn` is not structurally
+ * assignable to a compound-keyed track. What that assertion cannot check —
  * that the family's key union actually contains `thumb` / `item` / … — is
  * pinned by {@link COMPOUND_COLUMN_KEYS} assertions in
  * `compound-row-model.test.ts`, which walk every family's exported array. A
@@ -257,7 +267,15 @@ export const COMPOUND_TRACKS: readonly CompoundTrack[] = [
  * caller shares one allocation rather than rebuilding the model per render.
  */
 export function compoundColumnsFor<C extends { key: string }>(): readonly C[] {
-  return COMPOUND_TRACKS as unknown as readonly C[];
+  const tracks = COMPOUND_TRACKS;
+  assertFamilyColumnTracks<C>(tracks);
+  return tracks;
+}
+
+function assertFamilyColumnTracks<C extends { key: string }>(
+  tracks: readonly { key: string }[],
+): asserts tracks is readonly C[] {
+  void tracks;
 }
 
 /**

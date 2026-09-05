@@ -4,7 +4,12 @@ import { useCallback, useMemo, useState } from 'react';
 import { useRealtimeToasts } from '@/hooks/useRealtimeToasts';
 import { MobilePackingRow } from '@/components/mobile/packer/MobilePackingRow';
 import { MobilePackingSheet } from '@/components/mobile/packer/MobilePackingSheet';
-import { CaptureStack, useCaptureStackWindow, useCaptureStackQuery } from '@/design-system/components/capture-stack';
+import {
+  CaptureStack,
+  CaptureStackSkeleton,
+  useCaptureStackWindow,
+  useCaptureStackQuery,
+} from '@/design-system/components/capture-stack';
 import { GridDegradedBox } from '@/design-system/components/grid';
 import type { PackerLogRow } from '@/components/mobile/packer/types';
 
@@ -70,6 +75,10 @@ export function MobilePackingList({ packerId, limit = 8 }: { packerId: string; l
         isLoading={isLoading}
         scrollRef={scrollRef}
         freshIds={freshIds}
+        // Geometry-true stand-in — see CaptureStackSkeleton. Without it this
+        // feed's largest element arrived only after hydrate + fetch (/m/pack:
+        // FCP 485ms, LCP 1148ms observed, 8060ms simulated, Perf 65).
+        loading={<CaptureStackSkeleton />}
         empty={
           <div className="flex h-full flex-col items-center justify-center gap-2 bg-surface-card px-6 text-center">
             <p className="text-sm font-semibold uppercase tracking-[0.18em] text-text-muted">No pack history yet</p>

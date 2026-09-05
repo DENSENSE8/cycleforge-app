@@ -83,18 +83,23 @@ test('routeHistory rises on appear — desk tables never wipe left→right', () 
   assert.equal((animate as { y?: number }).y, 0);
 });
 
-test('there are exactly eight roles', () => {
+test('there are exactly ten roles', () => {
   const leaves = Object.values(motionRole).flatMap((group) => Object.keys(group));
   assert.equal(
     leaves.length,
-    8,
-    `Roles: ${leaves.join(', ')}. A ninth role is a claim that a new JOB exists — ` +
+    10,
+    `Roles: ${leaves.join(', ')}. An eleventh role is a claim that a new JOB exists — ` +
       'wanting a different duration for an existing job is the drift this layer prevents. ' +
       '`feedback.hitMarker` (2026-08-07) is the seventh: middle confirm depth ≠ pulse ack ' +
       '(Displays open must not withhold DOM behind it). `feedback.liveChange` (2026-08-20) ' +
       'is the eighth: a value changed REMOTELY, on an element nobody is looking at — the ' +
       'other two feedback roles both acknowledge something the operator just did under ' +
-      'their own cursor, which is why 100-150ms is enough for them and not for this.',
+      'their own cursor, which is why 100-150ms is enough for them and not for this. ' +
+      '`cursor.follow` / `cursor.morph` (2026-09-02) are the ninth and tenth: the desk ' +
+      'pointer layer, where position chases at utility stiffness so the dot never lags a ' +
+      'fast hand while size rides the travelling-marker spring so a morph reads as ONE ' +
+      'object changing shape. They are the only roles with no station region — a gloved ' +
+      'hand on a mounted screen has no pointer to follow.',
   );
 });
 

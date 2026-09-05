@@ -20,6 +20,7 @@ import { ConditionPills } from "./ConditionPills";
 import { UnitSlotList, type UnitLike, type UnitSlotView } from "./UnitSlotList";
 import { ConditionBadge } from "./ConditionBadge";
 import { BulkQuantityPanel } from "./BulkQuantityPanel";
+import { applyLineGot, markLineShortRemaining } from "./line-receive-actions";
 import { UnitSlotsManageOverlay } from "./UnitSlotsManageOverlay";
 import {
   UNIT_ROW_DISPLAY_CAP,
@@ -198,15 +199,18 @@ export function ReceivingUnitRows({
   const activeGrade = gradeFor(serialAt(selectedIndex), selectedIndex);
   const lastEmittedRef = useRef<string | null | undefined>(undefined);
 
+  const firstEmptyRef = useRef(firstEmpty);
+  firstEmptyRef.current = firstEmpty;
+  const defaultAbsentReasonRef = useRef(defaultAbsentReason);
+  defaultAbsentReasonRef.current = defaultAbsentReason;
+
   useEffect(() => {
-    setSelectedIndex(firstEmpty);
-    setLastAbsentReason(defaultAbsentReason);
+    setSelectedIndex(firstEmptyRef.current);
+    setLastAbsentReason(defaultAbsentReasonRef.current);
     setForceUnitMode(false);
     setManageOpen(false);
     setLineScan("");
     lastEmittedRef.current = undefined;
-    // Only re-seed on line change, not on every serial add.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineId]);
 
   const submitLineScan = () => {
@@ -289,27 +293,31 @@ export function ReceivingUnitRows({
 
   const applyBulk = useCallback(
     (input: {
-      primaryGrade: string;
+      primaryGrade: string | null;
       primaryCount: number;
       secondaryGrade: string | null;
     }) => {
-      onConditionChange?.(input.primaryGrade);
-      if (input.secondaryGrade) {
-        markReceivingUnitsConditionSplit(
-          lineId,
-          input.primaryGrade,
-          input.primaryCount,
-          input.secondaryGrade,
-          units,
-        );
-      } else {
-        markAllReceivingUnitsCondition(lineId, input.primaryGrade, units);
+      if (input.primaryGrade) {
+        onConditionChange?.(input.primaryGrade);
+        if (input.secondaryGrade) {
+          markReceivingUnitsConditionSplit(
+            lineId,
+            input.primaryGrade,
+            input.primaryCount,
+            input.secondaryGrade,
+            units,
+          );
+        } else {
+          markAllReceivingUnitsCondition(lineId, input.primaryGrade, units);
+        }
+        for (const s of saved) {
+          if (s?.id != null && s.id > 0) onSetUnitGrade(s.id, input.primaryGrade);
+        }
       }
-      for (const s of saved) {
-        if (s?.id != null && s.id > 0) onSetUnitGrade(s.id, input.primaryGrade);
-      }
+      const got = input.secondaryGrade ? quantityExpected : input.primaryCount;
+      void applyLineGot(lineId, got);
     },
-    [lineId, units, saved, onConditionChange, onSetUnitGrade],
+    [lineId, units, saved, onConditionChange, onSetUnitGrade, quantityExpected],
   );
 
   const applyGradeToRemainingEmpty = useCallback(() => {
@@ -350,6 +358,12 @@ export function ReceivingUnitRows({
           noSerialControl={noSerialControl}
           onApply={applyBulk}
           onTrackEachUnit={() => setForceUnitMode(true)}
+          onShortRemaining={(_remaining, got) => {
+            void markLineShortRemaining(
+              { id: lineId, quantity_expected: quantityExpected },
+              got,
+            );
+          }}
         />
       </div>
     );

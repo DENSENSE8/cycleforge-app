@@ -8,24 +8,32 @@
  *   1. The org's connected provider from the integrations vault
  *      (organization_integrations, KMS-encrypted, 5-min cached via
  *      getIntegrationCredentials). Priority when several are connected:
- *      ai_gateway → openai → anthropic (chat only) → ollama/self-hosted.
+ *      grok (SuperGrok sub, chat only) → ai_gateway → openai → anthropic
+ *      (chat only) → ollama/self-hosted. Local-first still puts ollama first.
  *   2. The platform-metered default: the AI_CHAT_* / AI_EMBED_* env sets
  *      (Vercel AI Gateway key owned by the platform). Usage is metered per
  *      org either way; margin billing applies only to platform-carried usage.
  *   3. null — capability unavailable; callers degrade (search = keyword-only,
  *      Ask-AI = classic chat deep-link). NEVER an error on the hot path.
  *
- * All four BYOK providers speak the OpenAI wire format (Anthropic via its
- * OpenAI-compat layer, chat only — no embeddings API).
+ * BYOK providers speak the OpenAI wire format (Anthropic via its
+ * OpenAI-compat layer, chat only — no embeddings API). Grok is chat-only
+ * SuperGrok OAuth against the CLI subscription proxy, not api.x.ai.
  */
 
 import type {
   AiGatewayCredentials,
   AnthropicCredentials,
+  GrokCredentials,
   IntegrationProvider,
   OllamaCredentials,
   OpenAiCredentials,
 } from '@/lib/integrations/credentials';
+import {
+  GROK_CLI_PROXY_BASE,
+  GROK_DEFAULT_CHAT_MODEL,
+  grokProxyHeaders,
+} from '@/lib/integrations/grok/oauth';
 import {
   isAiConfigured,
   resolveAiConfig,
@@ -144,6 +152,21 @@ async function candidateFor(
         baseURL: ANTHROPIC_OPENAI_COMPAT_BASE,
         apiKey: c.apiKey,
         model: c.chatModel || DEFAULT_CHAT_MODEL_ANTHROPIC,
+      };
+    }
+    case 'grok': {
+      // Chat only — SuperGrok subscription proxy has no embeddings API.
+      if (capability !== 'chat') return null;
+      const c = await getIntegrationCredentials<GrokCredentials>(orgId, 'grok');
+      if (!c?.accessToken) return null;
+      const model = c.chatModel || GROK_DEFAULT_CHAT_MODEL;
+      return {
+        source: 'grok',
+        baseURL: GROK_CLI_PROXY_BASE,
+        // May be stale; Ask calls ensureGrokChatConfig which refreshes.
+        apiKey: c.accessToken,
+        model,
+        headers: grokProxyHeaders(model),
       };
     }
     case 'ollama': {

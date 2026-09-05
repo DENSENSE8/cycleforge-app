@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   LISTING_URL_PARSE_MESSAGE,
+  itemNumberFromPaste,
   listingCheckHref,
   parseListingUrl,
 } from './listing-candidate';
@@ -83,6 +84,12 @@ test('parseListingUrl refuses a URL with no structural item id', () => {
     assert.equal(parsed.ok, false, `${url} must not yield an item number`);
     if (!parsed.ok) assert.equal(parsed.reason, 'no_item_number');
   }
+});
+
+test('itemNumberFromPaste extracts a listing id and keeps a bare item number', () => {
+  assert.equal(itemNumberFromPaste('https://www.ebay.com/itm/123456789012'), '123456789012');
+  assert.equal(itemNumberFromPaste('  B0ABCDEFGH  '), 'B0ABCDEFGH');
+  assert.equal(itemNumberFromPaste('   '), '');
 });
 
 test('parseListingUrl separates "not a URL" from "URL without an id"', () => {

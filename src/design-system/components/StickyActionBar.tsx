@@ -30,6 +30,9 @@ interface PrimaryAction {
   icon?: ReactNode;
   /** Title attribute for the main CTA (helps explain disabled states). */
   title?: string;
+  /** `data-testid` on the CTA button itself, so a locator resolves to the
+   *  control rather than a wrapper. */
+  testId?: string;
   /** Optional split-button menu — chevron opens an upward menu on click
    *  (Escape / outside click dismiss). */
   menu?: StickyActionMenuItem[];
@@ -77,7 +80,8 @@ interface StickyActionBarProps {
   /** Floating variant — instead of a full-bleed bar, render just the CTA
    *  hovering above the scroll surface with no background/border/backdrop,
    *  aligned to `maxWidth` + gutter and stretched full-width.
-   *  `hints`/`leading`/`primaryFullWidth` are ignored. */
+   *  `primaryFullWidth` is ignored; `leading`/`hints` render as a caption
+   *  line above the CTA. */
   floating?: boolean;
   /** Extra class on the outer wrapper (override bg, padding, etc.). */
   className?: string;
@@ -181,7 +185,10 @@ export function StickyActionBar({
   const stackLeadingLayout = stackLeading && hasLeadingContent;
 
   // Floating mode spans the same max-width as the panel body and stretches the
-  // CTA full-width — just the button, no bar chrome behind it.
+  // CTA full-width — just the button, no bar chrome behind it. `leading` still
+  // paints, as a caption line above: a walk position or a count is the reason
+  // the operator is looking at the foot, and dropping it to keep the variant
+  // 'pure' would send that readout back to a band at the top.
   const stretch = floating || soloWideCta || primaryFullWidth;
   const plainStretch = floating || primaryFullWidth;
 
@@ -278,6 +285,7 @@ export function StickyActionBar({
             onClick={primary.onClick}
             disabled={primary.disabled || primary.isLoading}
             title={primary.title}
+            data-testid={primary.testId}
             className={`inline-flex ${primaryHeight} min-w-0 flex-1 items-center justify-center gap-2 ${primaryRadius.replace('rounded', 'rounded-r')} ${primaryPadding} ${primaryText} bg-transparent text-white outline-none transition-[filter] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70 disabled:cursor-not-allowed disabled:opacity-60`}
           >
             {primary.isLoading ? (
@@ -294,6 +302,7 @@ export function StickyActionBar({
           onClick={primary.onClick}
           disabled={primary.disabled || primary.isLoading}
           title={primary.title}
+          data-testid={primary.testId}
           className={`inline-flex ${primaryHeight} items-center justify-center gap-2.5 ${primaryRadius} ${primaryPadding} ${primaryText} text-white shadow-sm transition-all ${
             plainStretch ? 'w-full min-w-0 flex-1' : `flex-1 ${primaryMinWidth}`
           } ${toneClass}`}
@@ -332,6 +341,25 @@ export function StickyActionBar({
             <div className="flex items-center gap-1.5 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-role-caption font-semibold text-red-700">
               <AlertCircle className="h-3.5 w-3.5" />
               {error}
+            </div>
+          ) : null}
+          {hasLeadingContent ? (
+            <div className="flex min-w-0 flex-wrap items-center gap-3 text-xs text-text-soft">
+              {leading ?? (
+                <>
+                  {hints?.map((h) => (
+                    <span
+                      key={`${h.key}-${h.label}`}
+                      className="inline-flex items-center gap-1.5"
+                    >
+                      <KeyboardKey size="md">{h.key}</KeyboardKey>
+                      <span className="font-semibold uppercase tracking-[0.14em]">
+                        {h.label}
+                      </span>
+                    </span>
+                  ))}
+                </>
+              )}
             </div>
           ) : null}
           {actionCluster}

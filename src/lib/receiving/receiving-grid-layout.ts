@@ -64,6 +64,7 @@ export type ReceivingGridColumnKey =
   | 'thumb'
   | 'item'
   | 'fulfillment'
+  | 'dates'
   | 'state'
   | 'amount'
   | 'actions'
@@ -147,7 +148,7 @@ export function receivingCompoundColumnsFor(
   return materializeTracks<ReceivingGridColumn>({
     layout,
     catalog: RECEIVING_FIELD_CATALOG,
-    base: compoundColumnsFor<ReceivingGridColumn>(),
+    base: compoundColumnsFor(),
     // The default anchor — the status band opens after the `state` pill, the
     // position Orders' bound facts occupy on the same shared skeleton.
   });
@@ -188,7 +189,6 @@ const RECEIVING_GRID_SORTABLE_KEYS: readonly ReceivingGridColumnKey[] = [
   'item',
   'amount',
   'status',
-  'thumb',
 ];
 
 /** Comparator types for durable receiving sort facts, independent of slots. */
@@ -206,7 +206,6 @@ export const RECEIVING_SORT_FACT_TYPES: Readonly<Partial<Record<ReceivingGridCol
   item: 'text',
   amount: 'price',
   status: 'tag',
-  thumb: 'text',
 };
 
 /**
@@ -238,15 +237,16 @@ export const RECEIVING_SORT_FACT_TYPES: Readonly<Partial<Record<ReceivingGridCol
  * A compound track is a CONTAINER for facts the flat model already sorted by,
  * so this re-connects existing comparators rather than inventing orderings:
  * `fulfillment` carries the PO (`order`), `item` the product title, `amount`
- * the Zoho line rate (`price`), `state` the workflow pill (`status`), `thumb`
- * the line photo.
+ * the Zoho line rate (`price`), `state` the workflow pill (`status`).
  */
 const RECEIVING_TRACK_SORT_FACTS: Readonly<Record<string, ReceivingGridColumnKey>> = {
+  // The DATES track's second line is the DEADLINE, so it sorts by the deadline
+  // fact this family already compares by — the start date above it is context.
+  dates: 'date',
   fulfillment: 'order',
   item: 'title',
   amount: 'price',
   state: 'status',
-  thumb: 'thumb',
 };
 
 const RECEIVING_SLOT_SORT_FACTS: Readonly<Record<string, ReceivingGridColumnKey>> = {
@@ -305,7 +305,7 @@ export function isReceivingGridFrozen(key: string): boolean {
 
 /**
  * Sticky-left offset for a frozen cell, bound to THIS surface's pane
- * (`select · order`). Offsets derive from THIS surface's columns, never Orders'.
+ * (`select · fulfillment · thumb`). Offsets derive from THIS surface's columns, never Orders'.
  */
 export function receivingGridFrozenLeft(key: string): string {
   return gridFrozenLeft(RECEIVING_COMPOUND_COLUMNS, key);
@@ -318,7 +318,7 @@ export const RECEIVING_GRID_FROZEN_EDGE_KEY: ReceivingGridColumnKey = 'thumb';
 /** Default direction when first activating a column sort. */
 export function defaultDirForReceivingGridSort(key: ReceivingGridColumnKey): GridSortDir {
   // Date: most recent first (ops scan). Price / qty: highest first.
-  if (key === 'date' || key === 'price' || key === 'qty' || key === 'amount' || key === 'thumb') {
+  if (key === 'date' || key === 'price' || key === 'qty' || key === 'amount') {
     return 'desc';
   }
   return 'asc';
@@ -354,6 +354,7 @@ export type IncomingGridColumnKey =
   | 'thumb'
   | 'item'
   | 'fulfillment'
+  | 'dates'
   | 'state'
   | 'amount'
   | 'actions'
@@ -410,7 +411,7 @@ export function incomingCompoundColumnsFor(
   return materializeTracks<IncomingGridColumn>({
     layout,
     catalog: INCOMING_FIELD_CATALOG,
-    base: compoundColumnsFor<IncomingGridColumn>(),
+    base: compoundColumnsFor(),
     // Default anchor: the status band opens after the `state` pill, the same
     // position Orders' and Receiving's bound facts take on this skeleton.
   });
@@ -452,7 +453,6 @@ export const INCOMING_GRID_SORTABLE_KEYS: readonly IncomingGridColumnKey[] = [
   'fulfillment',
   'item',
   'state',
-  'thumb',
   'amount',
 ];
 
@@ -461,13 +461,15 @@ export const INCOMING_GRID_SORTABLE_KEYS: readonly IncomingGridColumnKey[] = [
  * reason (see {@link receivingSortFactFor}).
  *
  * `state` IS mapped here: `compareIncomingGridRows` carries a real `statusRank`.
- * `thumb` and `amount` (unit price when present) are clickable on the compound row.
+ * `amount` (unit price when present) is clickable on the compound row.
  */
 const INCOMING_TRACK_SORT_FACTS: Readonly<Record<string, IncomingGridColumnKey>> = {
+  // The DATES track's second line is the DEADLINE, so it sorts by the deadline
+  // fact this family already compares by — the start date above it is context.
+  dates: 'date',
   fulfillment: 'order',
   item: 'title',
   state: 'status',
-  thumb: 'thumb',
   amount: 'amount',
 };
 
@@ -543,7 +545,7 @@ export function incomingGridFrozenLeft(key: string): string {
 /** Default direction when first activating a column sort. */
 export function defaultDirForIncomingGridSort(key: IncomingGridColumnKey): GridSortDir {
   // Age: most overdue / oldest first (urgency scan), matching Pending.
-  if (key === 'age' || key === 'amount' || key === 'thumb') return 'desc';
+  if (key === 'age' || key === 'amount') return 'desc';
   return 'asc';
 }
 

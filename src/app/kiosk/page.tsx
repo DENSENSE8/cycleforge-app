@@ -49,6 +49,7 @@ import type {
 } from '@/lib/counter/counter-transaction-types';
 import { buildKioskSalesIntakeBodyFromInput } from '@/lib/counter/kiosk-intake-payload';
 import { welcomeKioskServices, type KioskServiceId } from '@/lib/kiosk/services';
+import { useKioskSession } from '@/lib/kiosk/kiosk-session-store';
 import { pairKioskTablet } from '@/lib/kiosk/pair-tablet';
 
 // Lazy-load the intake form so the welcome screen stays light; it only loads
@@ -70,12 +71,23 @@ const KioskPickupPane = dynamic(
   { ssr: false },
 );
 
+// Return & replace — the two-key half of an in-store channel exchange. The
+// REPLACEMENT is bought through the ordinary counter flow, so this pane is
+// deliberately small: it establishes which online order, nothing else.
+const KioskExchangePane = dynamic(
+  () => import('@/app/kiosk/v2/KioskExchangePane').then((m) => m.KioskExchangePane),
+  { ssr: false },
+);
+
 type Service = KioskServiceId;
 type Mode = 'ready' | 'pair';
 
 const REPAIR_SUBMIT_TIMEOUT_MS = 60_000;
 
 export default function KioskPage() {
+  // Read-only here: the Exchange pane is what WRITES the confirmed reference,
+  // and Sales carries it into the counter draft below.
+  const session = useKioskSession();
   const [mode, setMode] = useState<Mode>('ready');
   const [activeService, setActiveService] = useState<Service | null>(null);
   const [busy, setBusy] = useState(false);
@@ -246,6 +258,17 @@ export default function KioskPage() {
           apiBasePath="/api/kiosk/sales"
           onClose={closeService}
           onSubmit={submitCounter}
+          // Carried over when the customer came through Return & replace, so
+          // the two keys they just confirmed are not retyped. Only the
+          // SERVER-confirmed reference is seeded — never the raw typed number.
+          initialDraft={
+            session.exchangeConfirmedRef
+              ? {
+                  priorOrderNumber: session.exchangeConfirmedRef,
+                  phone: session.customerPhone,
+                }
+              : undefined
+          }
         />
       </div>
     );
@@ -260,6 +283,25 @@ export default function KioskPage() {
           </Button>
         </div>
         <KioskPickupPane onReset={closeService} />
+      </div>
+    );
+  }
+
+  if (activeService === 'exchange') {
+    return (
+      <div className="fixed inset-0 z-panelOverlay overflow-y-auto bg-surface-card p-6 sm:p-8">
+        <div className="mb-4 flex justify-end">
+          <Button variant="ghost" size="sm" onClick={closeService}>
+            Close
+          </Button>
+        </div>
+        <KioskExchangePane
+          onReset={closeService}
+          // Portrait flow: each command is its own full-screen form, so the
+          // replacement is bought in the SIBLING Sales form rather than in a
+          // cart beside this pane.
+          onContinue={() => setActiveService('sales')}
+        />
       </div>
     );
   }

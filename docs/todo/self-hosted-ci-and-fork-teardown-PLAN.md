@@ -1,6 +1,6 @@
 # Self-hosted CI + fork teardown — PLAN
 
-**Date:** 2026-09-04 · **Status:** in progress — law + tripwire landed (§5.1), stale CI comments fixed (§3.3 step 9), visual walk seeded idle-only (§7.4 step 1), **runner + input-hash cache + post-commit queue + `--user` timer + `ci-status` landed 2026-09-04 (§3.3 steps 1–4, 7)**; §3.3 steps 5–6 and 8, §5.2 and §7.4 steps 2–6 are unbuilt · **Validated:** 2026-09-04 against industry CI practice (§4) — four gaps found, build order amended · **Reviewed:** 2026-09-05 (§0 corrections)
+**Date:** 2026-09-04 · **Status:** in progress — §2 payload cap, §3.3 runner/cache/queue/timer/`ci-status`/affected tests/flake quarantine/merge-queue (`lane land` worktree), §5.1–5.2.3 (law, scan-out, media catalog) landed; §5.2.4 Testing bind BLOCKED on receiving assign-panel host; §5.2.5 host sweep deferred (OrdersGridHost is already DataTable glue — NonlinearTableHost collapse is stale vs the slot-table engine); §7.4 fixtures + axe ratchet + sibling pairs + `ds_critique` gate + deep reviewer slot wired; visual baselines still operator-approved and uncommitted · **Validated:** 2026-09-04 against industry CI practice (§4) — four gaps found, build order amended · **Reviewed:** 2026-09-05 (§0 corrections)
 **Related:** [`nonlinear-data-table-engine-PLAN.md`](nonlinear-data-table-engine-PLAN.md) · [`one-table-sot-teardown-HANDOFF.md`](one-table-sot-teardown-HANDOFF.md) · law: `src/lib/tables/table-engine-law.ts` · tripwire: `src/lib/tables/table-engine-law.test.ts`
 
 Three questions, answered in order: is the toolchain eating the agent's context,
@@ -176,8 +176,7 @@ target and reports failures that belong to somebody else.
 7. ✅ `scripts/ci-status.mjs` (2026-09-04) — print the last N receipts (with cache hit ratio
    and quarantine list); wired into AGENTS.md / CLAUDE.md as the thing to READ instead
    of re-running gates. Exit 0 = HEAD green, 1 = HEAD red, 2 = no receipt yet.
-8. **Merge queue** (§4.4) — the push/merge automation tests the MERGE RESULT
-   (`main` + branch, in a worktree) before landing, not the branch tip.
+8. ✅ **Merge queue** (§4.4; 2026-09-05) — `pnpm lane land` acquires `/var/tmp/cycleforge-ci/merge.lock`, tests `main` + lane tip in `merge-<sha>` with `verify:fast`, and fast-forwards only on green. `--no-verify` still serializes on the lock.
 9. ✅ Fix the two stale comments in §1 (done 2026-09-04: `scripts/verify.mjs` header, `.githooks/pre-push`).
 
 ### 3.4 What this buys the agent
@@ -321,8 +320,10 @@ Each step is independently shippable and leaves the tree green.
    mechanical; not done 2026-09-05 — see §5.4.)*
 4. **Testing binds, stops declaring.** Same for `useTechTestingSelection`.
    **BLOCKED on a missing engine capability — see §5.4.**
-5. **Host sweep.** Any remaining `*GridHost` for a registered family collapses
-   onto `NonlinearTableHost` (already planned as `one-table-engine-orders-host-PLAN.md`).
+5. **Host sweep.** Remaining family hosts: `OrdersGridHost` (already DataTable
+   glue — do not collapse onto `NonlinearTableHost`; that plan is stale vs the
+   slot-table engine) and `ReceivingGridHost` (later pass, same as
+   `one-table-engine-orders-host-PLAN.md`). Not a deletion this session.
 6. **Ratchet to zero.** `VERB_DECLARATION_DEBT` empties; the tripwire's allowlist
    is then the catalogs alone.
 
@@ -441,7 +442,7 @@ Use the judge — but as the **reviewer**, not the gate. The gate is determinist
 |---|---|---|---|
 | **Law tripwires** | the rulings already made, as code (`slot-table` paint law, `table-engine-law`, header-sort, shortcut display) | hard | ✓ |
 | **Token drift** | `ds_critique` on changed `.tsx`: arbitrary literals, forked primitives | hard on **new** literals (ratchet), advisory on existing | ✓ by hand → wire |
-| **Visual regression** | screenshot every `PRODUCT_TABLES` peer + every station shell at one viewport, two states (idle · selection), diff against an **operator-approved baseline** | hard on drift > threshold; a change is a diff a human approves, not a score | idle only (§7.4 step 1); selection state + fixtures unbuilt |
+| **Visual regression** | screenshot every `PRODUCT_TABLES` peer + every station shell at one viewport, two states (idle · selection), diff against an **operator-approved baseline** | hard on drift > threshold; a change is a diff a human approves, not a score | idle + fixtures wired; baselines uncommitted; selection state next |
 | **a11y** | axe on the same screens; zero new violations | hard (ratchet) | ✗ — To-ship already lost 10 points once (`aria-required-children`) |
 | **Perf budget** | existing `perf-gate` per surface | hard on regression vs baseline | ✓ |
 | **Design review** | `impeccable` finish-reviewer over the *diff images* + changed files, against the direction contract | **advisory** — posts findings to the receipt, never blocks | plugin exists, unwired |
@@ -552,12 +553,14 @@ this makes the walk a checkpoint instead of a memory.
    - Baselines are UNCOMMITTED under `tests/e2e/visual-peers.spec.ts-snapshots/`.
      Seeding is the one time an agent runs `--update-snapshots`; committing
      them is the operator's approval step.
-2. Add `@axe-core/playwright` to the same walk; snapshot the violation set per
-   screen; ratchet (no new ids).
-3. Wire `ds_critique` as a gate over `git diff --name-only -- 'src/**/*.tsx'`;
-   fail on `arbitrary_literals` increasing for a file.
-4. `impeccable` finish-reviewer as an advisory step on the diff images; findings
-   into the receipt under `review`.
-5. Sibling-diff pairs declared as data: `[['orders','exceptions'], ['pack','unbox']]`.
-6. Tier: visual + axe run **full** (main + on demand); the reviewer runs **deep**
-   (nightly) — model-judged, so it never sits on the commit path.
+2. ✅ `@axe-core/playwright` on the same walk; `tests/e2e/visual-peers.axe.json`
+   ratchets violation ids per viewpoint (missing key = seed, not a fail).
+3. ✅ `scripts/ds-critique-gate.mjs` — `git diff` over `src/**/*.tsx`; fail on
+   `arbitrary_literals` increasing vs `scripts/ci/critique-literals.json`.
+4. ✅ `scripts/impeccable-review-gate.mjs` — advisory; findings on the receipt
+   under `review`. Deep profile + `cycleforge-ci-deep.timer` (03:15).
+5. ✅ Sibling-diff pairs as data: `src/lib/design-lab/visual-sibling-pairs.ts`
+   (`[['desk:orders','desk:exceptions'], ['station:pack','station:unbox']]`).
+6. ✅ Tier: visual + axe on **full** (runner, `CYCLEFORGE_CI=1`); reviewer on
+   **deep**. Laptop verify skips the walk unless `CI_VISUAL=1`. Baselines still
+   operator-approved. Capture still needs `next start` on a built worktree.

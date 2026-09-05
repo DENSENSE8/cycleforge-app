@@ -1,23 +1,23 @@
 {
   "project": "cycleforge-app",
   "target": "component:src/components/tables/DataTable.tsx:DataTableFilterMenu",
-  "files_affected": 24,
-  "total_symbols": 24,
+  "files_affected": 26,
+  "total_symbols": 26,
   "files": [
+    {
+      "file": "src/components/support/zendesk/SupportTicketsBoard.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "SupportTicketsBoard"
+      ]
+    },
     {
       "file": "src/components/tables/DataTable.tsx",
       "nearest_depth": 1,
       "affected_symbols": 1,
       "symbols": [
         "DataTable"
-      ]
-    },
-    {
-      "file": "src/components/dashboard/orders-queue/OrdersGridHost.tsx",
-      "nearest_depth": 2,
-      "affected_symbols": 1,
-      "symbols": [
-        "OrdersGridHost"
       ]
     },
     {
@@ -109,6 +109,14 @@
       ]
     },
     {
+      "file": "src/components/support/zendesk/SupportTicketsWorkspace.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "SupportTicketsWorkspace"
+      ]
+    },
+    {
       "file": "src/components/tech/all/TechAllTriageTable.tsx",
       "nearest_depth": 2,
       "affected_symbols": 1,
@@ -194,6 +202,14 @@
       "affected_symbols": 1,
       "symbols": [
         "TasksWorkbench"
+      ]
+    },
+    {
+      "file": "src/components/dashboard/orders-queue/OrdersGridHost.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "OrdersGridHost"
       ]
     }
   ]

@@ -51,6 +51,8 @@ import {
 import { acknowledgeUnbox } from '@/lib/receiving/acknowledge-unbox';
 import { ensureLineUnitsSafe, fetchLineUnits } from '@/lib/receiving/ensure-line-units';
 import { attachCustomFieldsToRows } from '@/lib/custom-fields/queries';
+import { isLineLeftoverOsdCode, type LineLeftoverOsdCode } from '@/lib/receiving/line-leftover-osd';
+import { recordReceivingException } from '@/lib/receiving/exceptions';
 
 // `receiving_line_unit` materialises LAZILY, on the two BOUNDED `include=serials`
 // reads below — `?id=` (one line) and `?receiving_id=` (one carton), i.e. the
@@ -818,6 +820,20 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
       values.push(Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : null);
     }
 
+    let leftoverOsdCode: LineLeftoverOsdCode | null = null;
+    if (body?.exception_code !== undefined) {
+      const raw = String(body.exception_code || '').trim().toUpperCase();
+      if (!isLineLeftoverOsdCode(raw)) {
+        return NextResponse.json(
+          { success: false, error: 'Invalid exception_code' },
+          { status: 400 },
+        );
+      }
+      leftoverOsdCode = raw;
+      updates.push(`exception_code = $${idx++}`);
+      values.push(raw);
+    }
+
     if (body?.qa_status !== undefined) {
       const qa = String(body.qa_status || '').trim().toUpperCase();
       if (!QA_STATUSES.has(qa)) {
@@ -976,6 +992,19 @@ export const PATCH = withAuth(async (request: NextRequest, ctx) => {
         return NextResponse.json({ success: false, error: 'receiving_line not found' }, { status: 404 });
       }
       updatedRow = txResult;
+    }
+
+    if (leftoverOsdCode) {
+      try {
+        await recordReceivingException(orgId, {
+          receivingLineId: id,
+          receivingId: updatedRow?.receiving_id ?? null,
+          exceptionCode: leftoverOsdCode,
+          createdBy: ctx.staffId ?? null,
+        });
+      } catch (err) {
+        console.warn('[receiving-lines PATCH] receiving_exceptions write failed', err);
+      }
     }
 
     // "For Parts" line → sort every serial already attached to this line into
@@ -1359,8 +1388,11 @@ async function maybePreLimitScannedLineIds(
   if (query.weekStart || query.weekEnd) return null;
   if (query.unboxQueueStage || query.unboxQueueLane) return null;
 
+  // Honor the caller's window (the mobile Prioritize feed asks limit=500) —
+  // clamping candidates BELOW the requested limit would silently truncate a
+  // deep triage queue. 1000 is a runaway bound, not a window.
   const limit =
-    Number.isFinite(query.limit) && query.limit > 0 ? Math.min(query.limit, 200) : 50;
+    Number.isFinite(query.limit) && query.limit > 0 ? Math.min(query.limit, 1000) : 50;
   try {
     const built = buildScannedCandidateSql({
       orgId,

@@ -132,6 +132,14 @@ export interface ReceivingEventDetail {
    * never a second query. History surface only.
    */
   'receiving-export-history': undefined;
+  /**
+   * Line Received / SHORT / OVER / DAMAGED / WRONG_ITEM — mouth reaction on
+   * WeldedFeedbackPanel. Not carton GR. Not a toast.
+   */
+  'receiving-line-osd': {
+    headline: string;
+    tone: 'success' | 'warning';
+  };
 }
 
 /** Payload of `receiving-lookup-scan`. */

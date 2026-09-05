@@ -1,0 +1,24 @@
+{
+  "project": "cycleforge-app",
+  "target": "component:src/components/packer/PackOrderWorkspace.tsx:PackOrderWorkspace",
+  "files_affected": 2,
+  "total_symbols": 2,
+  "files": [
+    {
+      "file": "src/components/packer/PackerRightPane.tsx",
+      "nearest_depth": 1,
+      "affected_symbols": 1,
+      "symbols": [
+        "PackerRightPane"
+      ]
+    },
+    {
+      "file": "src/components/PackerDashboard.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "PackerDashboard"
+      ]
+    }
+  ]
+}

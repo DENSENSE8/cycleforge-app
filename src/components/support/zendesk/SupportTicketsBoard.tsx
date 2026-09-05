@@ -3,15 +3,14 @@
 /**
  * Support · Tickets primary surface — Orders/Unbox workbench recipe.
  *
- * Chrome: ONE toolbar — status facets, find, sort, refresh — above the queue.
+ * Chrome: ONE toolbar — find, status funnel, sort, refresh — above the queue.
  * Body:   full ticket queue (SupportTicketRow) + pagination
  *
- * The status strip used to sit at the FOOT of the page as a second band, and
- * the New ticket CTA sat inside the find row. Both moved on 2026-08-31: filters
- * belong with the search that narrows the same list (the To-ship desk's
- * grammar), and a page-level primary action belongs in the desk chrome's
- * top-right slot with every other page's — published through
- * {@link DeskActionSlotRegistrar}, so this page stops drawing its own.
+ * Status that narrows this same list is a filter, not a second page header and
+ * not TableTabs. DataTableFilterMenu sits beside SearchField (To-ship grammar).
+ * `all` is the absence of a status facet — never an option. Default landing is
+ * still Open (`?tstatus` omitted). New ticket is desk chrome via
+ * {@link DeskActionSlotRegistrar}.
  *
  * URL: `/support` (+ `tstatus` / `tq`). Row open writes `?ticket=` for Station focus.
  * Sidebar owns the recently-selected dock only — not this list.
@@ -49,7 +48,10 @@ import { useSupportTicketClaimHost } from '@/components/support/service-workspac
 import { cn } from '@/utils/_cn';
 import { ZendeskSelect } from './ZendeskSelect';
 import { SupportTicketRow } from './queue/SupportTicketRow';
-import { TableTabs } from '@/components/tables/TableStatusBar';
+import {
+  DataTableFilterMenu,
+  type DataTableFilterChrome,
+} from '@/components/tables/DataTable';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { DeskActionSlotRegistrar, DeskHeaderAction } from '@/design-system/components/DeskActionSlot';
 
@@ -68,14 +70,6 @@ const SORT_OPTIONS = (Object.keys(SORTS) as SortKey[]).map((k) => ({
   value: k,
   label: SORTS[k].label,
 }));
-
-const TAB_COLOR: Record<TicketStatusFilter, 'blue' | 'orange' | 'purple' | 'emerald' | 'gray'> = {
-  open: 'blue',
-  pending: 'orange',
-  hold: 'purple',
-  solved: 'emerald',
-  all: 'gray',
-};
 
 function useSupportTicketsUrl() {
   const router = useRouter();
@@ -204,17 +198,20 @@ export function SupportTicketsBoard() {
   const { data, isLoading, isFetching, error } = useZendeskTickets(params);
   const tickets = data?.tickets ?? [];
 
-  // EVERY status is a face now, the default included. As a foot strip the
-  // default had no face at all — you could see you were on Pending but not that
-  // Open was where you started, and clicking the lit tab was the only way back.
-  const tabs = useMemo(
-    () =>
-      TICKET_STATUS_ITEMS.map((item) => ({
+  // Exclusive status facets in the one funnel. `all` is clearing the filter,
+  // never a row. Open is the default landing, so the trigger names itself.
+  const statusFilter = useMemo<DataTableFilterChrome>(
+    () => ({
+      options: TICKET_STATUS_ITEMS.filter((item) => item.id !== 'all').map((item) => ({
         id: item.id,
         label: item.label,
         count: item.id === status && data?.count != null ? data.count : undefined,
+        active: status === item.id,
       })),
-    [status, data?.count],
+      onToggle: (id) => setStatus(parseTicketStatus(status === id ? 'all' : id)),
+      onClearAll: () => setStatus('all'),
+    }),
+    [status, data?.count, setStatus],
   );
 
   const select = (t: {
@@ -236,14 +233,8 @@ export function SupportTicketsBoard() {
         `flex-col`, and left the queue unable to fill any other host.
       */}
       <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col">
-      {/* ONE toolbar: what narrows the list sits with the list it narrows. */}
+      {/* ONE toolbar: search · filter · sort · refresh — same order as DataTable. */}
       <div className="flex min-w-0 shrink-0 flex-wrap items-center gap-2 border-b border-border-soft bg-surface-card px-2 py-1">
-        <TableTabs
-          tabs={tabs}
-          activeTab={status}
-          onTabChange={(id) => setStatus(parseTicketStatus(id))}
-          className="shrink-0 border-0 bg-transparent"
-        />
         <SearchField
           value={searchQuery}
           onChange={setSearch}
@@ -252,6 +243,7 @@ export function SupportTicketsBoard() {
           tone="neutral"
           hideUnderline
         />
+        <DataTableFilterMenu {...statusFilter} />
         <ZendeskSelect
           value={sort}
           options={SORT_OPTIONS}

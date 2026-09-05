@@ -52,6 +52,17 @@ export function printManifestLabel(payload: ManifestLabelPayload): void {
       infoCss: MANIFEST_INFO_CSS,
       // Plain DataMatrix carrying the manifest uid — no URL on the wire.
       dataMatrix: { value: uid, symbology: 'datamatrix', scale: 4 },
+      hri: uid,
+      face: {
+        kind: 'product',
+        topLeft: uid,
+        topRight: '',
+        center: '',
+        bottomLeft: count,
+        bottomRight: sku,
+        matrix: { value: uid, symbology: 'datamatrix', scale: 4 },
+        hri: uid,
+      },
       legacyPopup,
     });
   });

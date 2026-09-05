@@ -23,8 +23,12 @@ export function ShippingEntityContextHeader({
   onExitToList,
 }: {
   activeOrder: ActiveStationOrder;
-  /** Identity ◁ — host must clear the scan-controller order, not overlay-only. */
-  onExitToList: () => void;
+  /**
+   * Identity ◁ — host must clear the scan-controller order, not overlay-only.
+   * Omit on a host that already owns a single exit (DeskStageOverlay ✕ / Esc):
+   * three ways out of one record is chrome, not affordance.
+   */
+  onExitToList?: () => void;
 }) {
   const tracking = String(activeOrder.tracking || '').trim();
   const orderId = String(activeOrder.orderId || '').trim();

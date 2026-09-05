@@ -21,6 +21,7 @@ import {
 import { RECEIVING_FIELD_CATALOG, RECEIVING_PRODUCT_LAYOUT } from './receiving';
 import { receivingSlotValuesFor, resolveReceivingSlotValue } from './receiving-resolve';
 import { parseSlotLayout } from '../slot-layout';
+import { resolveEffectiveLayout } from '../resolve-effective-layout';
 
 function row(overrides: Partial<ReceivingLineRow> = {}): ReceivingLineRow {
   return {
@@ -54,7 +55,7 @@ function row(overrides: Partial<ReceivingLineRow> = {}): ReceivingLineRow {
     staging_location_label: 'BIN A-12',
     serials: [],
     ...overrides,
-  } as unknown as ReceivingLineRow;
+  } as ReceivingLineRow;
 }
 
 describe('receiving catalog', () => {
@@ -93,14 +94,14 @@ describe('receivingCompoundColumnsFor — the compound materialization', () => {
     assert.ok(RECEIVING_COMPOUND_COLUMNS.every((c) => c.fieldId === undefined));
   });
 
-  it('a bound fact opens a status track after the state pill, ahead of amount', () => {
+  it('a bound fact opens a status track after the state pill', () => {
     const columns = receivingCompoundColumnsFor({
       ...RECEIVING_PRODUCT_LAYOUT,
       statusBindings: [{ fieldId: 'receiving.location' }, { fieldId: 'receiving.tracking' }],
     });
     assert.deepEqual(
       columns.map((c) => c.key),
-      ['select', 'thumb', 'fulfillment', 'item', 'state', 'status:1', 'status:2', 'amount', 'actions', '_fill'],
+      ['select', 'fulfillment', 'thumb', 'item', 'dates', 'state', 'status:1', 'status:2', '_fill'],
     );
     assert.equal(columns.find((c) => c.key === 'status:1')?.fieldId, 'receiving.location');
   });
@@ -136,6 +137,14 @@ describe('resolveReceivingSlotValue', () => {
     });
     assert.equal(resolveReceivingSlotValue(r, 'receiving.status')?.kind, 'value');
     assert.equal(resolveReceivingSlotValue(r, 'receiving.condition')?.kind, 'value');
+    assert.deepEqual(resolveReceivingSlotValue(r, 'receiving.assigned_tech'), {
+      kind: 'value',
+      text: null,
+    });
+    assert.deepEqual(
+      resolveReceivingSlotValue(row({ assigned_tech_id: 41 }), 'receiving.assigned_tech'),
+      { kind: 'value', text: '#41' },
+    );
   });
 
   it('honest absence: no price is null, never $0.00', () => {
@@ -180,5 +189,19 @@ describe('receivingSlotValuesFor', () => {
 
   it('the product default resolves no slots at all', () => {
     assert.equal(receivingSlotValuesFor(row(), RECEIVING_COMPOUND_COLUMNS), undefined);
+  });
+});
+
+describe('receiving line money', () => {
+  it('engine pins qty then price under the title — not an Amount column', () => {
+    const resolved = resolveEffectiveLayout({
+      productDefault: RECEIVING_PRODUCT_LAYOUT,
+      catalog: RECEIVING_FIELD_CATALOG,
+    });
+    assert.deepEqual(
+      resolved.subtitleBindings.map((b) => b.fieldId),
+      ['receiving.qty', 'receiving.price'],
+    );
+    assert.equal(resolved.amountFieldId, null);
   });
 });

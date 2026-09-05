@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Federated identity buttons — Google and Microsoft.
+ * Federated identity buttons — Google, Apple, and Microsoft.
  *
  * These are the ONE place in the app where foreign brand colors are correct.
  * Both providers require their own mark and chrome as a condition of using their
@@ -71,13 +71,24 @@ function MicrosoftMark() {
   );
 }
 
+/** Apple's monochrome mark, kept black/white on its required brand chrome. */
+function AppleMark() {
+  return (
+    <svg className="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24" aria-hidden focusable="false">
+      <path fill="currentColor" d="M17.05 12.54c-.02-2.03 1.66-3.01 1.74-3.06a3.74 3.74 0 0 0-2.95-1.6c-1.24-.13-2.44.74-3.07.74-.64 0-1.62-.72-2.66-.7a3.93 3.93 0 0 0-3.3 2.01c-1.42 2.46-.36 6.08 1 8.07.67.97 1.46 2.05 2.5 2.01 1.01-.04 1.39-.65 2.61-.65 1.22 0 1.56.65 2.62.63 1.09-.02 1.77-.98 2.43-1.95a8 8 0 0 0 1.11-2.26 3.5 3.5 0 0 1-2.03-3.24Zm-2.02-5.98a3.56 3.56 0 0 0 .81-2.55 3.62 3.62 0 0 0-2.34 1.21 3.4 3.4 0 0 0-.83 2.46 2.99 2.99 0 0 0 2.36-1.12Z" />
+    </svg>
+  );
+}
+
 const PROVIDER_LABEL: Record<PlatformProvider, string> = {
   google: 'Continue with Google',
+  apple: 'Continue with Apple',
   microsoft: 'Sign in with Microsoft',
 };
 
 const PROVIDER_MARK: Record<PlatformProvider, () => React.JSX.Element> = {
   google: GoogleMark,
+  apple: AppleMark,
   microsoft: MicrosoftMark,
 };
 
@@ -91,6 +102,8 @@ const PROVIDER_MARK: Record<PlatformProvider, () => React.JSX.Element> = {
 const PROVIDER_CHROME: Record<PlatformProvider, string> = {
   // ds-allow-hex: Google brand spec — light theme fill/stroke/text.
   google: 'bg-[#FFFFFF] border-[#747775] text-[#1F1F1F] hover:bg-[#F8F9FA]',
+  // ds-allow-hex: Apple brand spec — monochrome black mark and text.
+  apple: 'bg-[#000000] border-[#000000] text-[#FFFFFF] hover:bg-[#1D1D1F]',
   // ds-allow-hex: Microsoft brand spec — light theme fill/border/text.
   microsoft: 'bg-[#FFFFFF] border-[#8C8C8C] text-[#5E5E5E] hover:bg-[#F8F8F8]',
 };

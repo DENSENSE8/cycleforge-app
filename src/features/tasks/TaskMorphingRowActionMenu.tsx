@@ -7,12 +7,13 @@
  * shares the `cyc-82-morphing-action-menu` event so only one panel is open.
  */
 
-import { useEffect, useId, useMemo, useState, type ReactNode, type RefObject } from 'react';
+import { useEffect, useId, useMemo, useState, type RefObject } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
-import { Button } from '@/design-system/primitives/Button';
-import { KeyboardKey } from '@/design-system/primitives/KeyboardKey';
 import { Popover } from '@/design-system/primitives/Popover';
-import { DROPDOWN_ITEM_CORNER } from '@/design-system/tokens/radius';
+import {
+  MorphingMenuRow,
+  MorphingMenuSeparator,
+} from '@/design-system/primitives/MorphingMenuRow';
 import { StaffAvatar } from '@/components/identity/StaffAvatar';
 import { AssigneeComboboxPanel } from '@/design-system/components/AssigneeCombobox';
 import { getActiveStaff, type StaffMember } from '@/lib/staffCache';
@@ -33,14 +34,6 @@ async function readJson<T>(res: Response): Promise<T> {
     throw new Error(body.error || `HTTP ${res.status}`);
   }
   return res.json() as Promise<T>;
-}
-
-function HotkeyGlyph({ letter }: { letter: string }) {
-  return (
-    <KeyboardKey aria-hidden size="sm" className="pointer-events-none ml-auto">
-      {letter}
-    </KeyboardKey>
-  );
 }
 
 export function TaskMorphingRowActionMenu({
@@ -296,32 +289,41 @@ export function TaskMorphingRowActionMenu({
           {view === 'actions' ? (
             <motion.div key="actions-view" layout className="flex flex-col gap-0.5">
               {task.status !== 'done' ? (
-                <MenuRow label="Done" testId="task-morphing-done" hotkey="D" onClick={markDone} />
+                <MorphingMenuRow
+                  label="Done"
+                  testId="task-morphing-done"
+                  hotkey="D"
+                  tone="success"
+                  onClick={markDone}
+                />
               ) : null}
               {!closed && task.status !== 'in_progress' ? (
-                <MenuRow
+                <MorphingMenuRow
                   label="In progress"
                   testId="task-morphing-in-progress"
                   hotkey="I"
+                  tone="warning"
                   onClick={markInProgress}
                 />
               ) : null}
               {task.status === 'in_progress' ? (
-                <MenuRow
+                <MorphingMenuRow
                   label="Open"
                   testId="task-morphing-open"
                   hotkey="O"
                   onClick={markOpen}
                 />
               ) : null}
-              <MenuRow
+              <MorphingMenuSeparator />
+              <MorphingMenuRow
                 label="Assign"
                 testId="task-morphing-assign"
                 hint={task.assigneeName}
                 hotkey="A"
+                tone="accent"
                 onClick={() => setView('assign')}
               />
-              <MenuRow
+              <MorphingMenuRow
                 label="People"
                 testId="task-morphing-people"
                 hint={
@@ -332,23 +334,28 @@ export function TaskMorphingRowActionMenu({
                     : undefined
                 }
                 hotkey="M"
+                tone="accent"
                 onClick={() => setView('people')}
               />
-              <MenuRow
+              <MorphingMenuRow
                 label="Ping"
                 testId="task-morphing-ping"
                 hint={task.assigneeName ? undefined : 'Assign first'}
                 hotkey="P"
+                tone="accent"
                 onClick={pingAssignee}
               />
               {!closed ? (
-                <MenuRow
-                  label={cancelArmed ? 'Cancel — press again' : 'Cancel'}
-                  testId="task-morphing-cancel"
-                  hotkey="X"
-                  danger
-                  onClick={() => void markCanceled()}
-                />
+                <>
+                  <MorphingMenuSeparator />
+                  <MorphingMenuRow
+                    label={cancelArmed ? 'Cancel — press again' : 'Cancel'}
+                    testId="task-morphing-cancel"
+                    hotkey="X"
+                    tone="danger"
+                    onClick={() => void markCanceled()}
+                  />
+                </>
               ) : null}
             </motion.div>
           ) : view === 'people' ? (
@@ -395,58 +402,5 @@ export function TaskMorphingRowActionMenu({
         </AnimatePresence>
       </motion.div>
     </Popover>
-  );
-}
-
-function MenuRow({
-  label,
-  hint,
-  hotkey,
-  onClick,
-  lead,
-  danger = false,
-  testId,
-}: {
-  label: string;
-  hint?: string | null;
-  hotkey?: string;
-  onClick: () => void;
-  lead?: ReactNode;
-  danger?: boolean;
-  testId?: string;
-}) {
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="sm"
-      radius="flush"
-      data-testid={testId}
-      ariaLabel={
-        hotkey
-          ? `${label}${hint ? ` — ${hint}` : ''} (press ${hotkey})`
-          : hint
-            ? `${label} — ${hint}`
-            : label
-      }
-      onClick={onClick}
-      className={cn(
-        'w-full justify-start',
-        lead ? 'h-auto py-1' : undefined,
-        danger ? 'text-text-danger' : undefined,
-        DROPDOWN_ITEM_CORNER,
-      )}
-    >
-      <span className="flex w-full min-w-0 items-center gap-2">
-        {lead}
-        <span className="min-w-0 flex-1 truncate text-left">
-          {label}
-          {hint ? (
-            <span className="ml-1.5 font-normal text-text-muted">{hint}</span>
-          ) : null}
-        </span>
-        {hotkey ? <HotkeyGlyph letter={hotkey} /> : null}
-      </span>
-    </Button>
   );
 }

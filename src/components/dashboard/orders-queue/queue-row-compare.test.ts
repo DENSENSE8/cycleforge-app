@@ -191,13 +191,38 @@ describe('compareQueueColumnRows', () => {
     assert.ok(compareQueueColumnRows(scanned, nobody, 'scanned_out', 'desc') < 0);
   });
 
-  it('sorts amount and image with blanks last', () => {
+  it('sorts amount with blanks last', () => {
     const cheap = row({ id: 1, sale_amount: 10 });
     const dear = row({ id: 2, sale_amount: 90 });
     assert.ok(compareQueueColumnRows(cheap, dear, 'amount', 'asc') < 0);
-    const photo = row({ id: 3, catalog_image_url: 'https://cdn.example/a.jpg' });
-    const blank = row({ id: 4, catalog_image_url: '' });
-    assert.ok(compareQueueColumnRows(photo, blank, 'image', 'asc') < 0);
-    assert.ok(compareQueueColumnRows(photo, blank, 'image', 'desc') < 0);
+  });
+});
+
+describe('urgent leads every column sort', () => {
+  it('an urgent row sorts above a non-urgent one whatever the column says', () => {
+    // Alphabetically Zebra loses to Alpha; the expedite flag overrules it.
+    const urgent = row({ id: 1, product_title: 'Zebra Lens', is_urgent: true });
+    const ordinary = row({ id: 2, product_title: 'Alpha Camera' });
+    assert.ok(compareQueueColumnRows(urgent, ordinary, 'title', 'asc') < 0);
+  });
+
+  it('never follows the direction — flipping must not bury the rush work', () => {
+    const urgent = row({ id: 1, product_title: 'Alpha Camera', is_urgent: true });
+    const ordinary = row({ id: 2, product_title: 'Zebra Lens' });
+    assert.ok(compareQueueColumnRows(urgent, ordinary, 'title', 'asc') < 0);
+    assert.ok(compareQueueColumnRows(urgent, ordinary, 'title', 'desc') < 0);
+  });
+
+  it('inside the urgent set the column still decides', () => {
+    const a = row({ id: 1, product_title: 'Alpha Camera', is_urgent: true });
+    const z = row({ id: 2, product_title: 'Zebra Lens', is_urgent: true });
+    assert.ok(compareQueueColumnRows(a, z, 'title', 'asc') < 0);
+    assert.ok(compareQueueColumnRows(a, z, 'title', 'desc') > 0);
+  });
+
+  it('leaves the Shipped lane alone — that work is done', () => {
+    const urgent = row({ id: 1, product_title: 'Zebra Lens', is_urgent: true });
+    const ordinary = row({ id: 2, product_title: 'Alpha Camera' });
+    assert.ok(compareQueueColumnRows(urgent, ordinary, 'title', 'asc', 'shipped') > 0);
   });
 });

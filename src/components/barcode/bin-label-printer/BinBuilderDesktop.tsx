@@ -3,11 +3,20 @@ import { WorkspaceCard } from '@/design-system/components';
 import { Button, IconButton } from '@/design-system/primitives';
 import { LABEL_BUILDER } from '../label-builder-layout';
 import { STEPS, NumericStep, ConfigSheet, GiantPreviewPanel } from './index';
+import { RoomPicker } from './RoomPicker';
 import { StepPills } from './StepPills';
 import { MissingLetterBanner } from './BinBuilderMobile';
 import type { BinLabelPrinterController } from './useBinLabelPrinter';
 
-/** Wide main-pane builder (`hidden lg:block`): rooms picked in the sidebar. */
+/**
+ * Wide main-pane builder (`hidden lg:block`).
+ *
+ * The zone step holds the ROOM PICKER — the same {@link RoomPicker} the narrow
+ * builder has always used. It used to hold a caption pointing at a rooms list
+ * in the left rail; the Inventory rail was removed on 2026-09-04 and a step
+ * that tells the operator to look at a column that is not there is worse than
+ * no step. One picker, both widths.
+ */
 export function BinBuilderDesktop({ c }: { c: BinLabelPrinterController }) {
   return (
     <div className={`flex flex-col ${LABEL_BUILDER.stackGap} ${LABEL_BUILDER.contentShell}`}>
@@ -50,12 +59,13 @@ export function BinBuilderDesktop({ c }: { c: BinLabelPrinterController }) {
 
       {c.activeStep === 'zone' ? (
         <WorkspaceCard label="Zone">
-          <div className="flex flex-col items-start gap-1 py-4">
-            <p className="text-sm font-semibold text-text-default">Pick a room in the sidebar</p>
-            <p className="max-w-[40ch] text-role-caption text-text-soft">
-              Choose any zone on the left. Aisle, bay, level, and position unlock here next.
-            </p>
-          </div>
+          <RoomPicker
+            rooms={c.allRoomNames}
+            zoneMap={c.zoneMap}
+            loading={c.loading}
+            selectedRoom={c.selectedRoom}
+            onSelect={c.pickRoom}
+          />
         </WorkspaceCard>
       ) : (
         <WorkspaceCard label={STEPS.find((s) => s.id === c.activeStep)?.label} tone="blue">

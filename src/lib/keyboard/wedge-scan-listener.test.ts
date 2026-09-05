@@ -46,7 +46,7 @@ describe('createWedgeKeyListener — INP contract', () => {
       onScan: (value) => scanned.push(value),
       yieldToInput: () => gate,
       isEditable: () => false,
-      scheduleIdle: (fn, _ms) => {
+      scheduleIdle: (_fn, _ms) => {
         idleIds.push(1);
         return 1;
       },

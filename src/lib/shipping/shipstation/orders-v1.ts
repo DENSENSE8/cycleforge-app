@@ -34,6 +34,8 @@ export class ShipStationV1Error extends Error {
 
 /** One line item on a v1 order. */
 export interface ShipStationV1Item {
+  orderItemId: number | null;
+  lineItemKey: string | null;
   sku: string | null;
   name: string | null;
   quantity: number;
@@ -95,6 +97,8 @@ const V1AddressSchema = z
   .nullish();
 
 const V1ItemSchema = z.object({
+  orderItemId: z.number().nullish(),
+  lineItemKey: z.string().nullish(),
   sku: z.string().nullish(),
   name: z.string().nullish(),
   quantity: z.number().nullish(),
@@ -140,6 +144,8 @@ function toShipAddress(raw: z.infer<typeof V1AddressSchema>): ShipAddress | null
 
 function mapOrder(raw: z.infer<typeof V1OrderSchema>): ShipStationV1Order {
   const items: ShipStationV1Item[] = (raw.items ?? []).map((it) => ({
+    orderItemId: typeof it.orderItemId === 'number' ? it.orderItemId : null,
+    lineItemKey: it.lineItemKey ?? null,
     sku: it.sku ?? null,
     name: it.name ?? null,
     quantity: typeof it.quantity === 'number' ? it.quantity : 1,

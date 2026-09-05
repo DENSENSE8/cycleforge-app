@@ -38,6 +38,11 @@ export function getMobileAppTitle(
   if (pathname === '/m/pick' || pathname.startsWith('/m/pick/')) return 'Picks';
   if (pathname === '/m/pack' || pathname.startsWith('/m/pack/')) return 'Packing';
   if (pathname === '/m/checklist' || pathname.startsWith('/m/checklist/')) return 'Checklists';
+  // Before the `/m/scan` case: `/m/scan-out` is a different station, and it
+  // matches neither `=== '/m/scan'` nor `startsWith('/m/scan/')`, so without its
+  // own line it falls all the way through to PRODUCT_NAME and the top bar reads
+  // "Cycle Forge" — brand copy in the most valuable strip on a warehouse phone.
+  if (pathname === '/m/scan-out' || pathname.startsWith('/m/scan-out/')) return 'Scan out';
   if (pathname === '/m/scan' || pathname.startsWith('/m/scan/')) return 'Scan';
   if (pathname === '/m/identify' || pathname.startsWith('/m/identify/')) return 'Identify';
   if (pathname === '/m/triage' || pathname.startsWith('/m/triage/')) return 'Arrival';

@@ -6,6 +6,9 @@ import "./globals.css";
  * to `/signin` even though the public branch rendered. See `AppShellSwitch`.
  */
 import { AppShellSwitch } from "@/components/layout/AppShellSwitch";
+import { ReskinHud } from '@/components/design-lab/ReskinHud';
+import { StationStateTester } from '@/components/qa/StationStateTester';
+import { PaintTimingHud } from "@/components/dev/PaintTimingHud";
 import { THEME_BOOT_SCRIPT } from "@/lib/theme/theme";
 import { STATION_SKIN_BOOT_SCRIPT } from "@/lib/theme/station-skin";
 import { STATION_DEPTH_BOOT_SCRIPT } from "@/lib/theme/station-depth";
@@ -14,6 +17,9 @@ import { designTokenStyleText } from '@/styles/tokens';
 import { themePaletteStyleText } from '@/design-system/themes/registry';
 import { stationSkinStyleText } from '@/design-system/themes/station-skins';
 import { stationDepthStyleText } from '@/design-system/themes/station-depths';
+import { reskinStyleText } from '@/design-system/themes/reskin';
+import { RESKIN_BOOT_SCRIPT } from '@/lib/theme/reskin';
+import { isDesignLabOrg, resolveDesignLabAccess } from '@/lib/design-lab/access';
 // NOTE: `ReducedMotionProvider` is deliberately NOT imported here. It renders
 // `MotionConfig`, so a static import in this file shipped the framer runtime
 // (~104KB gz) to every route, public chrome included. It now lives inside
@@ -28,10 +34,9 @@ import {
   isActivationBlocked,
 } from "@/lib/onboarding/activation-gate";
 import { DeferredWebTelemetry } from "@/components/analytics/DeferredWebTelemetry";
-import { PaintTimingHud } from "@/components/dev/PaintTimingHud";
 import { maybeSeedShell } from "@/lib/queries/unbox-shell-seed.server";
 import { PRODUCT_NAME } from "@/lib/branding/constants";
-import { cfSans, cfSansItalic, ibmPlexMono, ibmPlexSansCondensed, overpass } from "@/lib/fonts";
+import { cfSans, cfSansItalic, ibmPlexMono, ibmPlexSansCondensed } from "@/lib/fonts";
 import { appChromeClass } from "@/design-system/tokens/app-surface";
 
 export default async function RootLayout({
@@ -72,6 +77,11 @@ export default async function RootLayout({
     // other route.
     const shellSeed = await shellSeedPromise;
 
+    // QA Design Lab entitlement. Short-circuits on the org id, so every other
+    // tenant pays one string compare and ships NONE of the reskin bytes — no
+    // override stylesheet, no boot script, no HUD. See lib/design-lab/access.ts.
+    const designLab = await resolveDesignLabAccess(initialUser?.organizationId);
+
     // Activation gate — covers desks that skip `requirePermission` (e.g. `/`,
     // `/incoming`). Exempt paths + fail-open live in activation-gate.ts.
     if (initialUser && !kioskHost) {
@@ -87,7 +97,7 @@ export default async function RootLayout({
     return (
         <html
             lang="en"
-            className={`${cfSans.variable} ${cfSansItalic.variable} ${ibmPlexSansCondensed.variable} ${ibmPlexMono.variable} ${overpass.variable} h-full overflow-hidden`}
+            className={`${cfSans.variable} ${cfSansItalic.variable} ${ibmPlexSansCondensed.variable} ${ibmPlexMono.variable} h-full overflow-hidden`}
             suppressHydrationWarning
         >
             <head>
@@ -118,10 +128,17 @@ export default async function RootLayout({
                 <style id="app-theme-palettes">{themePaletteStyleText}</style>
                 <style id="app-station-skins">{stationSkinStyleText}</style>
                 <style id="app-station-depths">{stationDepthStyleText}</style>
+                {/* Design Lab reskin override layer. MUST come after
+                    app-theme-palettes: `html[data-reskin]` ties
+                    `html[data-theme]` on specificity and wins on source order. */}
+                {designLab && <style id="app-reskin">{reskinStyleText}</style>}
                 {/* Applies the cached theme before paint (no light→dark flash). */}
                 <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
                 <script dangerouslySetInnerHTML={{ __html: STATION_SKIN_BOOT_SCRIPT }} />
                 <script dangerouslySetInnerHTML={{ __html: STATION_DEPTH_BOOT_SCRIPT }} />
+                {designLab && (
+                  <script dangerouslySetInnerHTML={{ __html: RESKIN_BOOT_SCRIPT }} />
+                )}
                 {/* Evict leftover Warehouse-OS Workbox CacheFirst on this
                     origin (usav-dev / localhost:3050) so Home CSS can paint. */}
                 <script
@@ -154,6 +171,8 @@ export default async function RootLayout({
                 </AppShellSwitch>
                 <DeferredWebTelemetry />
                 <PaintTimingHud />
+                {designLab && <ReskinHud />}
+                {isDesignLabOrg(initialUser?.organizationId) && <StationStateTester />}
             </body>
         </html>
     );

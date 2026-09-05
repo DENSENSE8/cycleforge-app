@@ -5,9 +5,11 @@
  * (display-toggled) so its cache + scroll survive tab flips; over it the focused
  * line workspace soft-swaps in. Unbox, Triage, and Local Pickup share the
  * browse+overlay crossfade SoT (`UnboxLineWorkspace` / `TriageLineWorkspace`);
- * pickup reuses Unbox's shell (no parallel Pickup* UI). Repair mounts
- * `RepairTable` with `RepairWorkspaceHeader` (Active/Done · search · Add) —
- * LedgerGrid day-banded queue, not ReceivingLines.
+ * pickup reuses Unbox's shell (no parallel Pickup* UI). Repair / Pickup
+ * benches stay edge-to-edge (no DeskPageLayout — floor stations never wear
+ * desk chrome). Incoming / Active / Done on Repair is a second-level
+ * TableTabs strip, not a page-tab row. Sales-hub browse of the same
+ * spreadsheets wears desk measure via `/dashboard`'s DeskPageLayout.
  *
  * Bulk selection no longer mounts a bottom capsule — History / Incoming open
  * `ReceivingLineRailShell` on `RightRailHost` instead.
@@ -15,8 +17,8 @@
 
 import { useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
 import ReceivingLinesTable from '@/components/station/ReceivingLinesTable';
+import { TableTabs } from '@/components/tables/TableStatusBar';
 import { RightPaneOverlayHost } from '@/components/ui/RightPaneOverlay';
 import { UnboxLineWorkspace } from '@/components/receiving/unbox/UnboxLineWorkspace';
 import { TriageLineWorkspace } from '@/components/receiving/triage/TriageLineWorkspace';
@@ -240,14 +242,17 @@ export function ReceivingRightPane({
   if (mode === 'repair') {
     return (
       <RightPaneOverlayHost className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-        <DeskPageLayout
-          className="h-full"
-          tabs={REPAIR_BROWSE_TABS}
-          activeTab={repairTab}
-          onTabChange={setRepairTab}
-        >
+        <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+          <div className="shrink-0 border-b border-border-soft bg-surface-card">
+            <TableTabs
+              tabs={[...REPAIR_BROWSE_TABS]}
+              activeTab={repairTab}
+              onTabChange={setRepairTab}
+              className="border-0 bg-transparent"
+            />
+          </div>
           <RepairTable filter={repairTab} />
-        </DeskPageLayout>
+        </div>
       </RightPaneOverlayHost>
     );
   }
@@ -255,9 +260,7 @@ export function ReceivingRightPane({
   if (mode === 'pickup') {
     return (
       <RightPaneOverlayHost className="flex min-w-0 flex-1 flex-col overflow-hidden">
-        <DeskPageLayout className="h-full" tabs={[]}>
-          <PickupWorkspace selectedOrderId={Number(searchParams.get('lcpu')) || null} />
-        </DeskPageLayout>
+        <PickupWorkspace selectedOrderId={Number(searchParams.get('lcpu')) || null} />
       </RightPaneOverlayHost>
     );
   }

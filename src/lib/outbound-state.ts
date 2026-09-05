@@ -43,7 +43,7 @@ export interface OutboundStateMeta {
   dot: string;
 }
 
-// Dot colors are mutually distinct hues (In Custody indigo vs Orphan pink are
+// Dot colors are mutually distinct hues (In Transit indigo vs Orphan pink are
 // deliberately far apart). Presentation now flows from the one label registry
 // (`src/lib/labels`) — seeded defaults, tenant‑overridable (Phase 2);
 // `labels/resolve.test.ts` pins this map byte‑identical to the former literals.

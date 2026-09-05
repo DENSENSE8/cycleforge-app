@@ -8,7 +8,7 @@
  */
 
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Button, Switch } from '@/design-system/primitives';
+import { Button, ScrubSlider, Switch } from '@/design-system/primitives';
 import { FILTER_DROPDOWN_SELECT_CLASS } from '@/design-system/components/FilterDropdownSelect';
 import type { SettingDef, SettingValue } from '@/lib/settings/types';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -89,6 +89,24 @@ export function SettingControl({ def, value, disabled, lockedOptions = [], onCha
               </option>
             ))}
           </select>
+        </div>
+      );
+
+    case 'slider':
+      // Fixed width because the settings row parks its control in a
+      // `flex-shrink-0` column — a `w-full` track there collapses to nothing.
+      return (
+        <div className="w-56">
+          <ScrubSlider
+            label={def.label}
+            value={Number(value)}
+            min={def.min ?? 0}
+            max={def.max ?? 100}
+            step={def.step ?? 1}
+            format={(n) => (def.unit ? `${n} ${def.unit}` : String(n))}
+            onChange={onChange}
+            data-testid={`setting-slider-${def.key}`}
+          />
         </div>
       );
 

@@ -119,7 +119,7 @@ export function scheduleEnsureOutboundDocsOnPackReady(
     void ensureOutboundDocsForOrder(orgId, orderId, { source })
       .then((result) => {
         if (result.status === 'skipped_complete') return;
-        console.info(
+        console.warn(
           '[ensure-outbound-docs]',
           JSON.stringify({
             orgId,

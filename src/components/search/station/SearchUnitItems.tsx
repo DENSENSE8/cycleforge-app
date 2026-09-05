@@ -4,7 +4,7 @@
  * A serial unit's contents, through the shared item face.
  *
  * The unit sibling of {@link SearchOrderItems}. A unit is one item, so the card
- * paints one row — thumb, title, and the qty · SKU · condition · serials ledger
+ * paints one row — thumb, title, and the qty · price · condition · SKU · serials · location ledger
  * — which is the same face an order line and a carton line already get. Before
  * this, a unit's SKU / product / grade were label/value text rows, so the same
  * facts read as a different kind of thing depending on what you searched.

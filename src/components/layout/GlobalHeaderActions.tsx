@@ -1,6 +1,6 @@
 'use client';
 
-import { GlobalHeaderAssistantButton } from '@/components/layout/GlobalHeaderAssistantButton';
+import { GlobalHeaderPhoneButton } from '@/components/layout/GlobalHeaderPhoneButton';
 import { GlobalHeaderAddMenu } from '@/components/layout/GlobalHeaderAddMenu';
 import { GlobalHeaderSearch } from '@/components/layout/GlobalHeaderSearch';
 import { HeaderGoalChip } from '@/components/layout/HeaderGoalChip';
@@ -18,8 +18,11 @@ const HEADER_RAIL_WIDTH = 'min-w-[420px]';
 /**
  * Persistent **actions** zone of the {@link GlobalHeader} (far-right).
  *
- * Desktop order (left → right): **find · add · goal · inbox · assistant**.
- * Find is {@link GlobalHeaderSearch} / {@link CommandBar} (⌘K).
+ * Desktop order (left → right): **find · add · goal · inbox · phone**.
+ * Find is {@link GlobalHeaderSearch} / {@link CommandBar} (⌘K). Phone is the
+ * companion-composer handoff ({@link GlobalHeaderPhoneButton}) — it replaced
+ * the header Sparkles on 2026-09-03; the assistant door is the floating circle
+ * and ⌘J (PLAN-companion-composer).
  *
  * Clipboard history stays in the spine account overflow
  * ({@link StaffAccountFooter} ⋯) — earned by frequency, not existence. Phone
@@ -40,7 +43,7 @@ export function GlobalHeaderActions() {
 
   if (!user) return null;
 
-  // Order: add · pace-and-next (goal ring) · inbox · assistant (far-right).
+  // Order: add · pace-and-next (goal ring) · inbox · phone (far-right).
   // Stretch the row to the header beam so icon washes lock flush.
   return (
     <div
@@ -55,12 +58,12 @@ export function GlobalHeaderActions() {
         data-header-zone="actions"
         data-global-add="mounted"
       >
-        {/* Find · add · pace-and-next · inbox · assistant (far-right). */}
+        {/* Find · add · pace-and-next · inbox · phone (far-right). */}
         <GlobalHeaderSearch />
         <GlobalHeaderAddMenu />
         <HeaderGoalChip />
         <ActivityInboxButton />
-        <GlobalHeaderAssistantButton />
+        <GlobalHeaderPhoneButton />
       </div>
     </div>
   );

@@ -46,8 +46,11 @@ export function ProductTitleLink({
     <span className={cn('min-w-0 truncate text-text-default', className)}>{trimmedTitle}</span>
   );
 
+  // Truncation hover is the rest of the title. The listing URL is the
+  // anchor's job (`href`); putting it in the tooltip made a clipped name
+  // look like a link destination.
   return (
-    <HoverTooltip label={tooltipLabel ?? href?.trim() ?? trimmedTitle} asChild>
+    <HoverTooltip label={tooltipLabel ?? trimmedTitle} asChild>
       <CompoundLine>{titleFace}</CompoundLine>
     </HoverTooltip>
   );

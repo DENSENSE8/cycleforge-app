@@ -11,6 +11,7 @@
  */
 
 import { getCurrentPSTDateKey } from '@/utils/date';
+import { csvCell as houseCsvCell } from '@/lib/tables/export/serialize';
 
 /**
  * The fields the export reads. Every one is optional — a column absent from a
@@ -53,11 +54,11 @@ export const RECEIVING_HISTORY_EXPORT_COLUMNS = [
   'record_id',
 ] as const;
 
-/** RFC-4180 quoting — a comma, quote, or newline in a product title is normal. */
-function csvCell(value: unknown): string {
-  const s = value == null ? '' : String(value);
-  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
-}
+/**
+ * RFC-4180 quoting — a comma, quote, or newline in a product title is normal.
+ * The rule itself lives in the house serializer; this was a byte-identical copy.
+ */
+const csvCell = houseCsvCell;
 
 /** Title precedence matches the grid / inspector: Zoho item → catalog → line name. */
 function productTitle(row: ExportableReceivingRow): string {

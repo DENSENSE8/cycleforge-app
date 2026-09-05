@@ -1,0 +1,161 @@
+[cursor-eval] pnpm --config.verify-deps-before-run=false run verify:fast (cwd=/home/michaelgarisek/Projects/cycleforge-app)
+$ node scripts/verify.mjs --fast
+▶ verify profile: fast · 2 gates, 4 at a time
+
+▶ Lint
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/fba/FbaBoardDetailPanel.tsx
+  40:3  warning  'onNavigate' is defined but never used. Allowed unused args must match /^_/u                unused-imports/no-unused-vars
+  42:3  warning  'disableMoveUp' is assigned a value but never used. Allowed unused args must match /^_/u    unused-imports/no-unused-vars
+  43:3  warning  'disableMoveDown' is assigned a value but never used. Allowed unused args must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/outbound/ready/ReadyQueueTable.tsx
+  109:3  warning  'isFiltered' is assigned a value but never used. Allowed unused args must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/po-triage/types.ts
+  1:7  warning  'TRIAGE_PILES' is assigned a value but only used as a type. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/products/catalog/ProductsCatalogWorkspace.tsx
+   67:10  warning  'filterOpen' is assigned a value but never used. Allowed unused vars must match /^_/u        unused-imports/no-unused-vars
+   73:10  warning  'syncing' is assigned a value but never used. Allowed unused vars must match /^_/u           unused-imports/no-unused-vars
+  157:9   warning  'refreshInventory' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+  179:9   warning  'toggleRefineFlag' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/receiving/history/HistoryCartonTriagePanel.tsx
+  470:10  warning  'inspectorParked' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/receiving/pickup/PickupWorkspace.tsx
+  210:9  warning  'openCreate' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/receiving/workspace/line-edit/InlinePillPicker.tsx
+  174:3  warning  'collapsedClass' is defined but never used. Allowed unused args must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/receiving/workspace/line-edit/LineNotesCard.tsx
+  252:10  warning  'savedFlash' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/receiving/workspace/line-edit/unbox-side-tabs.ts
+   98:7  warning  'UNBOX_LINKAGE_ACTION_ORDER' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+  110:7  warning  'UNBOX_TICKET_ACTION_ORDER' is assigned a value but never used. Allowed unused vars must match /^_/u   unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/repair/RepairDetailsPanel.tsx
+  71:3  warning  'onMoveUp' is assigned a value but never used. Allowed unused args must match /^_/u         unused-imports/no-unused-vars
+  72:3  warning  'onMoveDown' is assigned a value but never used. Allowed unused args must match /^_/u       unused-imports/no-unused-vars
+  73:3  warning  'disableMoveUp' is assigned a value but never used. Allowed unused args must match /^_/u    unused-imports/no-unused-vars
+  74:3  warning  'disableMoveDown' is assigned a value but never used. Allowed unused args must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/repair/RepairTable.tsx
+  52:10  warning  'repairControlsEl' is assigned a value but never used. Allowed unused vars must match /^_/u     unused-imports/no-unused-vars
+  52:28  warning  'setRepairControlsEl' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/shipped/DashboardShippedTable.tsx
+   94:3   warning  'toolbarPortalTarget' is assigned a value but never used. Allowed unused args must match /^_/u  unused-imports/no-unused-vars
+  109:9   warning  'periodRange' is assigned a value but never used. Allowed unused vars must match /^_/u          unused-imports/no-unused-vars
+  110:11  warning  'weekOffset' is assigned a value but never used. Allowed unused vars must match /^_/u           unused-imports/no-unused-vars
+  110:23  warning  'setPeriodWeek' is assigned a value but never used. Allowed unused vars must match /^_/u        unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/station/ReceivingLinesTable.tsx
+  632:9  warning  'handleIncomingCommitNote' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/station/StationHistoryTable.tsx
+  103:3  warning  'tableId' is defined but never used. Allowed unused args must match /^_/u               unused-imports/no-unused-vars
+  104:3  warning  'savedViewsStorageKey' is defined but never used. Allowed unused args must match /^_/u  unused-imports/no-unused-vars
+  105:3  warning  'savedViewsParamKeys' is defined but never used. Allowed unused args must match /^_/u   unused-imports/no-unused-vars
+  215:9  warning  'setLayout' is assigned a value but never used. Allowed unused vars must match /^_/u    unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/station/StationListTable.tsx
+  155:3   warning  'capabilities' is defined but never used. Allowed unused args must match /^_/u                        unused-imports/no-unused-vars
+  156:3   warning  'selectMode' is assigned a value but never used. Allowed unused args must match /^_/u                 unused-imports/no-unused-vars
+  157:3   warning  'showStationColumnHeader' is assigned a value but never used. Allowed unused args must match /^_/u    unused-imports/no-unused-vars
+  158:3   warning  'columnHeaderStageLabel' is assigned a value but never used. Allowed unused args must match /^_/u     unused-imports/no-unused-vars
+  159:3   warning  'columnHeaderIncludeSerial' is assigned a value but never used. Allowed unused args must match /^_/u  unused-imports/no-unused-vars
+  161:11  warning  'isMobile' is assigned a value but never used. Allowed unused vars must match /^_/u                   unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/station/displays/StationDisplayLeafHeader.tsx
+  59:3  warning  'forwardLabel' is assigned a value but never used. Allowed unused args must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/station/receiving-grid/ReceivingGridHost.tsx
+  206:3  warning  'enableColumnMenu' is assigned a value but never used. Allowed unused args must match /^_/u  unused-imports/no-unused-vars
+  255:9  warning  'applyToggle' is assigned a value but never used. Allowed unused vars must match /^_/u       unused-imports/no-unused-vars
+  267:9  warning  'applyClear' is assigned a value but never used. Allowed unused vars must match /^_/u        unused-imports/no-unused-vars
+  324:9  warning  'handleCommitNote' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/station/receiving-grid/ReceivingGridRow.tsx
+  132:3  warning  'historyTriageMenu' is assigned a value but never used. Allowed unused args must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/tables/DataTable.tsx
+  1348:9  warning  'getExportShape' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/tables/useSlotTableLayout.ts
+  312:9  warning  'onSaveAsOrgDefault' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/tech/TestingHistoryList.tsx
+  259:9  warning  'setLayout' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/tracking-exceptions/grid/TrackingExceptionsGridRow.tsx
+  60:9  warning  'staff' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/ui/color-neutrals.test.ts
+  47:7  warning  'RAW_NEUTRAL_BASELINE' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/ui/pane-header/blocks.tsx
+  403:7  warning  'PANE_HEADER_ACTION_NAV_CLASS' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+  415:3  warning  'navClassName' is defined but never used. Allowed unused args must match /^_/u                           unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/unshipped/UnshippedTable.tsx
+  903:3  warning  'onLoadMore' is defined but never used. Allowed unused args must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/components/walk-in/WalkInFeedPane.tsx
+  39:3  warning  'label' is defined but never used. Allowed unused args must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/features/home/HomeDailyMode.tsx
+  153:5  warning  'toggleColumnSort' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+  195:9  warning  'dayTotals' is assigned a value but never used. Allowed unused vars must match /^_/u         unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/features/my-day/MyDayWorkspace.tsx
+  125:5  warning  'openWatch' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/features/review/catalog-link/ReviewCatalogLinkTable.tsx
+  252:9  warning  'choreTotals' is assigned a value but never used. Allowed unused vars must match /^_/u      unused-imports/no-unused-vars
+  256:9  warning  'exceptionTotals' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/features/tasks/TasksWorkbench.tsx
+  152:5  warning  'toggleColumnSort' is assigned a value but never used. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+  203:9  warning  'totals' is assigned a value but never used. Allowed unused vars must match /^_/u            unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/lib/documents/ensure-outbound-docs.ts
+  122:9  warning  Unexpected console statement. Only these console methods are allowed: warn, error  no-console
+
+/home/michaelgarisek/Projects/cycleforge-app/src/lib/keyboard/wedge-scan-listener.test.ts
+  49:22  warning  'fn' is defined but never used. Allowed unused args must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/lib/orders/ingest-canonical-orders.ts
+  1076:9  warning  Unexpected console statement. Only these console methods are allowed: warn, error  no-console
+
+/home/michaelgarisek/Projects/cycleforge-app/src/lib/surface-isolation.ts
+  35:7  warning  'TESTING_API_VIEWS' is assigned a value but only used as a type. Allowed unused vars must match /^_/u  unused-imports/no-unused-vars
+
+/home/michaelgarisek/Projects/cycleforge-app/src/lib/tables/org-tables-queries.ts
+  61:33  warning  'i' is defined but never used. Allowed unused args must match /^_/u  unused-imports/no-unused-vars
+
+✖ 63 problems (0 errors, 63 warnings)
+
+
+▶ Typecheck
+
+────────────────────────────────────────────────────
+  verify — inner loop (lint + typecheck)
+────────────────────────────────────────────────────
+  ✓ Lint
+  ✓ Typecheck
+────────────────────────────────────────────────────
+
+verify PASSED (fast) — inner loop only; not CI.
+
+{
+  "ok": true,
+  "command": "pnpm --config.verify-deps-before-run=false run verify:fast",
+  "exitCode": 0,
+  "durationMs": 9706,
+  "stamp": "/home/michaelgarisek/Projects/cycleforge-app/.garisek/eval-session.json",
+  "cursorMirror": "/home/michaelgarisek/Projects/cycleforge-app/.cursor/eval-session.json"
+}

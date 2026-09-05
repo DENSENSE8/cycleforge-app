@@ -7,6 +7,7 @@ import {
   isQueueSortableColumnKey,
   queueSortForColumnKey,
 } from './queue-display-sort';
+import { isSlotTableChromeTrack } from '@/lib/tables/slot-table-header-sort';
 import { ORDERS_COMPOUND_COLUMNS } from '@/lib/dashboard-order-row-layout';
 
 /**
@@ -24,20 +25,19 @@ test('the compound tracks that carry a sortable fact resolve to it', () => {
 
 test('a flat sort value still resolves to itself', () => {
   // `?sort=` values in live bookmarks are facts, and must keep working.
-  for (const fact of ['title', 'age', 'qty', 'order', 'tracking', 'picked', 'packed', 'status', 'amount', 'image', 'scanned_out', 'carrier'] as const) {
+  for (const fact of ['title', 'age', 'qty', 'order', 'tracking', 'picked', 'packed', 'status', 'amount', 'scanned_out', 'carrier'] as const) {
     assert.ok(isQueueColumnSort(fact));
     assert.equal(queueSortForColumnKey(fact), fact);
   }
 });
 
 test('chrome tracks stay unsortable; every data track sorts', () => {
-  for (const key of ['select', 'actions', '_fill']) {
+  for (const key of ['select', 'actions', '_fill', 'thumb']) {
     assert.equal(queueSortForColumnKey(key), null, `${key} must not sort`);
     assert.equal(isQueueSortableColumnKey(key), false);
   }
   assert.equal(queueSortForColumnKey('state'), 'status');
   assert.equal(queueSortForColumnKey('amount'), 'amount');
-  assert.equal(queueSortForColumnKey('thumb'), 'image');
 });
 
 test('every mapped track is a real column of the mounted model', () => {
@@ -72,10 +72,9 @@ test('the product-default Pick track is sortable through its bound field', () =>
 });
 
 test('every painted data track on the product model sorts', () => {
-  const chrome = new Set(['select', 'actions', '_fill']);
   for (const c of ORDERS_COMPOUND_COLUMNS) {
     const sortable = isQueueSortableColumnKey(c.key, c.fieldId);
-    if (chrome.has(c.key)) {
+    if (isSlotTableChromeTrack(c.key)) {
       assert.equal(sortable, false, `${c.key} is chrome`);
     } else {
       assert.equal(sortable, true, `${c.key} must sort`);

@@ -9,6 +9,8 @@
 import { type Dispatch, type SetStateAction, useEffect, useMemo, useRef } from 'react';
 import { Loader2, Package, Plus, Trash2 } from '@/components/Icons';
 import { Button, DeferredQtyInput, IconButton, TextField } from '@/design-system/primitives';
+import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
+import { dateKeyToLocalDate, localDateToDateKey } from '@/utils/date';
 import { buildFbaPlanRefFromIsoDate } from '@/lib/fba/plan-ref';
 import type { StationTheme } from '@/utils/staff-colors';
 import { fbaSidebarThemeChrome } from '@/utils/staff-colors';
@@ -166,11 +168,12 @@ export function FbaCreateShipmentForm({
       />
 
       <FormField label="Due date">
-        <input
-          type="date"
-          value={form.due_date}
-          onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
-          className={chrome.input}
+        <DateRangePickerField
+          variant="compact"
+          value={dateKeyToLocalDate(form.due_date)}
+          onChange={(day) =>
+            setForm((f) => ({ ...f, due_date: localDateToDateKey(day) ?? '' }))
+          }
         />
       </FormField>
 

@@ -153,10 +153,6 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
   if (isMobile) return null;
 
   const hasSelect = columns.some((c) => c.key === 'select');
-  // The compound row's gutters are flush and its select-all shares the body's
-  // face. Probed from the MOUNTED model — never a prop, so a header cannot
-  // disagree with the cells beneath it.
-  const compoundModel = columns.some((c) => isGridColumnFlushTrack(c) && c.key === 'thumb');
   const template = gridTemplate(columns);
   const dataColumns = columns.filter((c) => c.key !== 'select');
   // The frozen edge IS the last frozen track, so derive it from the MOUNTED
@@ -207,11 +203,43 @@ export function LedgerGridColumnHeader<C extends LedgerGridColumnModel>({
               checked={allSelected ? true : someSelected ? 'mixed' : false}
               onToggle={onToggleAll}
               label={allSelected ? 'Deselect all' : 'Select all'}
-              // Under a compound model the select-all must be the SAME face the
-              // body rows below it paint, or the top-left control is a 16px
-              // square sitting over a column of 48px flush checkmarks. The
-              // model decides; a mount cannot pass a face that disagrees.
-              chrome={compoundModel ? 'flush' : selectGutterChrome}
+              // ## The select-all face is the FAMILY's chrome. Always.
+              //
+              // This used to override to `'flush'` whenever the mounted model
+              // carried a `thumb` track ("a compound row's select-all must
+              // share the body's face"). The probe was the fork: /shipping
+              // exceptions drops `thumb` from the very same compound columns
+              // (`sheet.columns.filter(c => c.key !== 'thumb')`), so one desk
+              // painted a real bordered checkbox in the top-left and its
+              // sibling desk — same engine, same rows — painted a faded
+              // checkmark. Two faces for one control, decided by whether a
+              // photo column happened to be mounted.
+              //
+              // The two positions are not the same control and were never
+              // meant to match. A BODY cell answers "is this row in?" forty
+              // times down a column, so it is a full-bleed checkmark that
+              // reads as a column at a glance (`CompoundSelect`, hardcoded
+              // `'flush'`). The HEADER cell is a single command — select all,
+              // clear all — and a command needs a box you can see is a box,
+              // including in its mixed state. Operator 2026-09-04: port the
+              // exceptions checkmark onto To-ship.
+              //
+              // So the header takes the chrome the family declared and nothing
+              // probes the column array. Click-select surfaces (Incoming,
+              // Unbox History) still pass `'sheets'` and are unchanged.
+              //
+              // AMENDED 2026-09-04 (same operator, later the same day): "the
+              // selection top left select all must be on hover as well". A
+              // family that declares `'always'` now paints the HOVER face here
+              // — the identical square, revealed by the header row's own hover
+              // (`group/hrow`) and pinned whenever the box is checked or mixed,
+              // so a live selection is never hidden. That is the row body's
+              // rule applied to the command, and it answers the same argument:
+              // a permanently-painted control over the top-left of the grid
+              // states its availability at a moment nobody is asking. Families
+              // that declare `'selected-only'` keep it — that is a different
+              // instruction, not a louder version of this one.
+              chrome={selectGutterChrome === 'always' ? 'hover' : selectGutterChrome}
             />
           ) : (
             // Inert on a surface with no select-all (Tasks declares

@@ -150,7 +150,7 @@ export function HomeDailyMode() {
     sort: columnSort,
     dir: sortDir,
     setSort,
-    toggleColumnSort,
+    toggleColumnSort: _toggleColumnSort,
   } = useUrlColumnSort<DailySortFact>({
     isColumn: isDailySortFact,
     defaultDir: defaultDirForDailyGridSort,
@@ -192,7 +192,7 @@ export function HomeDailyMode() {
    * The day's rollup, from the engine rather than counted in the view — the
    * same `rowGroupTotals` a pick list uses for "12 lines · 340 units · 3 short".
    */
-  const dayTotals = useMemo(
+  const _dayTotals = useMemo(
     () => rowGroupTotals({ key: dateKey, rows: taskRows }, { done: (r) => (r.done ? 1 : 0) }),
     [dateKey, taskRows],
   );

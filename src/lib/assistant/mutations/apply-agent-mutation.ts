@@ -25,6 +25,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { recordOpsEvent } from '@/lib/ops-events';
 import { publishAssistantMutation } from '@/lib/realtime/publish';
+import { deleteItemStaffRule, upsertItemStaffRule } from '@/lib/automations/item-staff-rule';
 
 /** recordAudit's first param type (the local Queryable is unexported). */
 type AuditDb = Parameters<typeof recordAudit>[0];
@@ -98,15 +99,53 @@ export interface ApplyAgentMutationDeps {
   sideEffects: (e: AgentMutationSideEffects) => Promise<void>;
 }
 
-/** One guarded write per mutation kind → { ok, inverse, targetRef } or an error. */
+/**
+ * One guarded write per mutation kind → { ok, inverse, targetRef } or an error.
+ *
+ * `afterCommit` is the post-commit tail a kind may hand back (cache bust +
+ * realtime for order-visible writes); the chokepoint runs it once the tenant
+ * transaction has committed, never inside it.
+ */
 async function dispatchApply(
   client: Client,
   orgId: OrgId,
   kind: MutationKind,
   payload: Payload,
-): Promise<{ ok: true; inverse: Inverse; targetRef: string | null } | { ok: false; status: 400 | 404 | 409; error: string }> {
+  actorStaffId: number | null = null,
+): Promise<
+  | { ok: true; inverse: Inverse; targetRef: string | null; afterCommit?: () => Promise<void> }
+  | { ok: false; status: 400 | 404 | 409; error: string }
+> {
   const p = payload;
   switch (kind) {
+    case 'automation_rule.upsert_item_staff': {
+      const r = await upsertItemStaffRule(client, orgId, p as never, actorStaffId);
+      if (!r.ok) return { ok: false, status: r.status, error: r.error };
+      const orderIds = r.assignedOrderIds;
+      return {
+        ok: true,
+        inverse: r.inverse as Inverse,
+        targetRef: String(r.ruleId),
+        // Lazy: the invalidation module reaches the realtime publisher and the
+        // cache client, which the DB-free unit suites must not load.
+        afterCommit:
+          orderIds.length > 0
+            ? async () => {
+                const { invalidateOrderViews } = await import('@/lib/orders/invalidation');
+                await invalidateOrderViews({
+                  organizationId: orgId,
+                  orderIds,
+                  source: 'assistant.automation_rule.upsert_item_staff',
+                });
+              }
+            : undefined,
+      };
+    }
+    case 'automation_rule.delete': {
+      const r = await deleteItemStaffRule(client, orgId, p as never);
+      if (!r.ok) return { ok: false, status: r.status, error: r.error };
+      return { ok: true, inverse: r.inverse as Inverse, targetRef: String(r.ruleId) };
+    }
     case 'staff_rail_exclusion.insert': {
       const r = await insertStaffRailExclusion(client, orgId, p as never);
       return r.ok
@@ -328,9 +367,9 @@ export async function applyAgentMutation(
   // ── auto / draft_scoped: apply in one tx ───────────────────────────────────
   type ApplyOutcome =
     | { failed: ApplyAgentMutationResult & { ok: false } }
-    | { failed: null; mutationId: number; targetRef: string | null };
+    | { failed: null; mutationId: number; targetRef: string | null; afterCommit?: () => Promise<void> };
   const outcome: ApplyOutcome = await deps.runTransaction(input.organizationId, async (client): Promise<ApplyOutcome> => {
-    const applied = await dispatchApply(client, input.organizationId, kind, payload);
+    const applied = await dispatchApply(client, input.organizationId, kind, payload, actorStaffId);
     if (!applied.ok) return { failed: { ok: false, status: applied.status, error: applied.error } };
 
     const row = await client.query(
@@ -350,10 +389,20 @@ export async function applyAgentMutation(
     );
     const mutationId = Number(row.rows[0].id);
     await insertAffects(client, input.organizationId, mutationId, kind, MUTATION_KINDS[kind].targetKind, applied.targetRef);
-    return { failed: null, mutationId, targetRef: applied.targetRef };
+    return { failed: null, mutationId, targetRef: applied.targetRef, afterCommit: applied.afterCommit };
   });
 
   if (outcome.failed) return outcome.failed;
+
+  // Post-commit tail for order-visible writes (cache bust + realtime). Best
+  // effort like the side-effects below: the write is durable either way.
+  if (outcome.afterCommit) {
+    try {
+      await outcome.afterCommit();
+    } catch {
+      /* non-fatal */
+    }
+  }
 
   await deps.sideEffects({
     organizationId: input.organizationId,
@@ -414,7 +463,7 @@ export async function revertAgentMutation(
     if (!isMutationKind(inverse.kind) && !inverse.kind.startsWith('workflow_draft.')) {
       return { status: 400 as const, error: `unknown inverse kind "${inverse.kind}"` };
     }
-    const applied = await dispatchApply(client, orgId, inverse.kind as MutationKind, inverse.payload);
+    const applied = await dispatchApply(client, orgId, inverse.kind as MutationKind, inverse.payload, actorStaffId ?? null);
     if (!applied.ok) return { status: applied.status, error: applied.error };
 
     await client.query(

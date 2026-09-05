@@ -1,0 +1,41 @@
+▶ find freshness location gate
+  ✔ rebuilds when find is empty (1.715608ms)
+  ✔ passes when expectedFile is empty (0.219295ms)
+  ✔ fails when every hit is outside the engine file (0.216092ms)
+  ✔ passes when the engine file is not matches[0] (0.194098ms)
+✔ find freshness location gate (3.457506ms)
+▶ slot-table cohort (SoT = engine + PRODUCT_TABLES)
+  ✔ peers are exactly PRODUCT_TABLES ids (no hand list) (2.145579ms)
+  ✔ every engine layout hook file exists and imports useSlotTableLayout (1.22944ms)
+  ✔ engine peers are a subset of PRODUCT_TABLES (opt-in map) (0.378867ms)
+  ✔ CompoundItem title hover actions satisfy paint contract (1.324464ms)
+  ✔ no new *GridRow.tsx — To-ship sheet sync must not add a second table (71.614061ms)
+  ✔ To-ship Google Sheet sync paints UnshippedTable, not CsvImportStagingGridRow (0.348259ms)
+  ✔ engine seam files export the shared hooks (imported, not grepped) (27.202989ms)
+  ✔ compact DateRangePickerField is the ship-by surface (0.389563ms)
+  ✔ ship-by writes through useOptimisticMutation (0.246663ms)
+  ✔ paint law constants document cohort scope (not To-ship alone) (0.327111ms)
+  ✔ graph + critique surfaces include compact ship-by (0.198597ms)
+  ✔ DataTable always mounts the filter funnel (0.323205ms)
+  ✔ every graphSymbol maps to an existing KEEP engine file (0.802644ms)
+  ✔ header click-to-sort is engine law (chrome only; every data track sorts) (2.103836ms)
+✔ slot-table cohort (SoT = engine + PRODUCT_TABLES) (110.586877ms)
+▶ slot-table header-sort law on compound PRODUCT_TABLES peers
+  ✔ orders / receiving / incoming / tasks / daily / review / sessions / reports ranking default mounts (0.772395ms)
+✔ slot-table header-sort law on compound PRODUCT_TABLES peers (0.862355ms)
+▶ slot-table discover (delete vs keep)
+  ✔ KEEP engine paths exist on disk (1.232911ms)
+  ✔ KEEP includes a materialization for every PRODUCT_TABLES peer on the engine (0.224771ms)
+  ✔ does not list KEEP symbols as DELETE (0.197301ms)
+  ✔ known-debt ratchet: no new drifts, no stale ids (0.855297ms)
+  ✔ has no unblocked hand-model deletes after the compound port (0.259561ms)
+  ✔ keeps only documented non-product table judgment items (0.192452ms)
+✔ slot-table discover (delete vs keep) (4.433801ms)
+ℹ tests 25
+ℹ suites 4
+ℹ pass 25
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1246.80338

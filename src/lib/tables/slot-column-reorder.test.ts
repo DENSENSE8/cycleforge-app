@@ -11,7 +11,7 @@ describe('dropSlotColumns', () => {
     { key: 'item' },
     { key: 'status:1', fieldId: 'orders.picked' },
     { key: 'status:2', fieldId: 'orders.packed' },
-    { key: 'amount' },
+    { key: '_fill' },
   ];
 
   it('maps two slot-track keys onto their bound field ids', () => {
@@ -24,6 +24,6 @@ describe('dropSlotColumns', () => {
   it('ignores chrome tracks and same-key drops', () => {
     assert.equal(dropSlotColumns('item', 'status:1', columns), null);
     assert.equal(dropSlotColumns('status:1', 'status:1', columns), null);
-    assert.equal(dropSlotColumns('status:1', 'amount', columns), null);
+    assert.equal(dropSlotColumns('status:1', '_fill', columns), null);
   });
 });

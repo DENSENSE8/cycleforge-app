@@ -31,12 +31,24 @@ const SIDEBAR_ROUTES = [
   '/dashboard',
   '/products',
   '/operations',
-  '/inventory',
   '/ops/photos',
 ] as const;
 
-/** Routes with no sidebar of their own — must never reserve a column. */
-const PANEL_LESS_ROUTES = ['/reports', '/release-notes'] as const;
+/**
+ * Routes with no sidebar of their own — must never reserve a column.
+ *
+ * `/inventory` joined them on 2026-09-04: the Inventory rail (ledger recents,
+ * graph search, triage queue, pulse picker, replenish filters, the warehouse
+ * finder) was six ways to find or narrow rows that the desk's own DataTable
+ * search, filter menu and tabs already do. `/warehouse` resolves to the same
+ * route key, so it is rail-less by the same drop.
+ */
+const PANEL_LESS_ROUTES = [
+  '/reports',
+  '/release-notes',
+  '/inventory',
+  '/warehouse',
+] as const;
 
 const PAGES_MENU = '[role="menu"][aria-label="Pages"]';
 /** The push column's host. Present from first paint; `data-open` is the state. */
@@ -237,13 +249,19 @@ test.describe('sidebar spine — one grammar, a push column, no empty columns', 
     await expect(page.locator(NAV_COLUMN)).toHaveAttribute('data-open', 'true');
   });
 
-  test('/unbox: Scan Stations drills; Pinned cluster is on the root map', async ({ page }) => {
+  test('/unbox: Stations, Desks, and Operations Studio list under group labels', async ({ page }) => {
     await gotoSurface(page, '/unbox');
     await toggleSpine(page);
     await expect(page.locator(PAGES_MENU)).toBeVisible();
 
-    // Floor benches list-replace the map (parent row is not painted during the drill).
-    await expect(page.getByRole('button', { name: 'Back to pages' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Back to pages' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Open Scan Stations' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Open Desks' })).toHaveCount(0);
+    await expect(page.getByRole('group', { name: 'Pinned' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Stations' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Desks' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Operations Studio' })).toBeVisible();
+
     await expect(page.getByRole('button', { name: 'Go to Unbox' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Arrival' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Quality Control' })).toBeVisible();
@@ -253,36 +271,28 @@ test.describe('sidebar spine — one grammar, a push column, no empty columns', 
     await expect(page.getByRole('button', { name: 'Go to Repair Service' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Packing' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Packing Review' })).toHaveCount(0);
-    await expect(page.getByRole('group', { name: 'Pinned' })).toBeVisible();
-
-    await page.getByRole('button', { name: 'Back to pages' }).click();
-    await expect(page.getByRole('button', { name: 'Open Scan Stations' })).toBeVisible();
-    await expect(page.getByRole('group', { name: 'Pinned' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Open Desks' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Go to Unbox' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Add to spine' })).toHaveCount(0);
   });
 
-  test('/products: opening Scan Stations list-replaces instead of navigating', async ({ page }) => {
+  test('/products: Stations group is visible without navigating', async ({ page }) => {
     await gotoSurface(page, '/products');
     await toggleSpine(page);
     await expect(page.locator(PAGES_MENU)).toBeVisible();
-    await page.getByRole('button', { name: 'Back to pages' }).click();
     const before = page.url();
 
-    await page.getByRole('button', { name: 'Open Scan Stations' }).click();
-
-    expect(page.url(), 'Open Scan Stations must not navigate').toBe(before);
+    await expect(page.getByRole('group', { name: 'Stations' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Unbox' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Packing' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Packing Review' })).toHaveCount(0);
+    expect(page.url(), 'listing Stations must not navigate').toBe(before);
   });
 
-  test('/products: Desks drill lists pointer desks', async ({ page }) => {
+  test('/products: Desks group lists pointer desks', async ({ page }) => {
     await gotoSurface(page, '/products');
     await toggleSpine(page);
     await expect(page.locator(PAGES_MENU)).toBeVisible();
 
+    await expect(page.getByRole('group', { name: 'Desks' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Products' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Shipping' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Operations' })).toBeVisible();
@@ -295,7 +305,6 @@ test.describe('sidebar spine — one grammar, a push column, no empty columns', 
     await gotoSurface(page, '/products');
     await toggleSpine(page);
     await expect(page.locator(PAGES_MENU)).toBeVisible();
-
     const row = page.getByRole('button', { name: 'Go to Shipping' });
     await expect(row, 'exactly one control per page row').toHaveCount(1);
     const rowBox = (await row.boundingBox())!;

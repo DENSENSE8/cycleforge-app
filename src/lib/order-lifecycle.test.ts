@@ -6,6 +6,9 @@ import {
   resolveOutboundStage,
   carrierHasCustody,
   hasLeftWarehouse,
+  toShipDeskStage,
+  overlayShippedStatusPresentation,
+  shipmentStatusCategoryFace,
   FULFILLMENT_BOARD_LANES,
   UNSHIPPED_LIFECYCLE_RULES,
   SHIPMENT_STATUS_CATEGORIES,
@@ -69,6 +72,30 @@ test('the bug fixture: a labeled, tech-scanned order resolves to TESTED', () => 
 test('a labeled order with no tech scan sits in PENDING', () => {
   const pending: OrderLifecycleSignals = { shipmentId: 12247, hasTechScan: false, packedAt: null, outOfStock: null };
   assert.equal(resolveFulfillmentLane(pending), 'PENDING');
+});
+
+test('toShipDeskStage: out of stock lands on pending, even after a tech scan', () => {
+  assert.equal(
+    toShipDeskStage({ shipmentId: 1, hasTechScan: true, packedAt: null, isOutOfStock: true }),
+    'pending',
+  );
+  assert.equal(
+    toShipDeskStage({ shipmentId: 1, hasTechScan: true, packedAt: null, isOutOfStock: false }),
+    'tested',
+  );
+  assert.equal(
+    toShipDeskStage({ shipmentId: 1, hasTechScan: false, packedAt: null, isOutOfStock: true }),
+    'pending',
+  );
+  assert.equal(
+    toShipDeskStage({
+      shipmentId: 1,
+      hasTechScan: true,
+      packedAt: '2026-09-04T10:00:00Z',
+      isOutOfStock: true,
+    }),
+    'packed',
+  );
 });
 
 test('rule set is ordered, first-match-wins, and covers exactly the non-default stages', () => {
@@ -155,4 +182,29 @@ test('sqlInList generated fragments are byte-identical to the replaced SQL liter
   );
   // dashboard/operations tested-today  →  activity_type IN (<this>)
   assert.equal(sqlInList(TECH_TEST_ACTIVITY_TYPES), `'TRACKING_SCANNED', 'FNSKU_SCANNED'`);
+});
+
+test('shipmentStatusCategoryFace is the EasyPost / AfterShip parcel vocabulary', () => {
+  assert.equal(shipmentStatusCategoryFace('IN_TRANSIT')?.label, 'In Transit');
+  assert.equal(shipmentStatusCategoryFace('OUT_FOR_DELIVERY')?.label, 'Out for Delivery');
+  assert.equal(shipmentStatusCategoryFace('LABEL_CREATED')?.label, 'Pre-Transit');
+  assert.equal(shipmentStatusCategoryFace('ACCEPTED')?.label, 'Picked Up');
+  assert.equal(shipmentStatusCategoryFace('UNKNOWN'), null);
+  assert.equal(shipmentStatusCategoryFace(null), null);
+});
+
+test('overlayShippedStatusPresentation keeps warehouse-audit pills', () => {
+  const gap = { label: 'Process Gap', description: 'gap' };
+  assert.equal(
+    overlayShippedStatusPresentation(gap, 'PROCESS_GAP', 'IN_TRANSIT').label,
+    'Process Gap',
+  );
+});
+
+test('overlayShippedStatusPresentation paints Out for Delivery over In Transit umbrella', () => {
+  const meta = { label: 'In Transit', description: 'umbrella' };
+  assert.equal(
+    overlayShippedStatusPresentation(meta, 'IN_CUSTODY', 'OUT_FOR_DELIVERY').label,
+    'Out for Delivery',
+  );
 });

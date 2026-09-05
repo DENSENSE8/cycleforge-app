@@ -1,8 +1,8 @@
 /**
  * /m/receive — deprecated Arrival alias. Prefer `/m/triage`.
  *
- * Server component: the arrival feed is seeded into the first HTML (see
- * `/m/home` for why).
+ * Server component: the arrival feed is seeded into the first HTML, projected
+ * to the fields the first screen paints (see `/m/home`).
  */
 
 import MobileArrivalStation from '@/components/mobile/receiving/MobileArrivalStation';

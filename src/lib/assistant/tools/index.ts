@@ -44,6 +44,7 @@ import {
   listReceivingLinePhotosTool,
   resolveReceivingLineForOrderTool,
 } from './receiving-photo-tools';
+import { listStaffTool, resolveItemNumberTool } from './item-rule-tools';
 import { TOOL_FORGE_GATEWAY_TOOLS } from '@/lib/tool-forge/gateway-tools';
 
 const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
@@ -78,6 +79,11 @@ const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
   // itself stays behind propose_mutation.
   resolveReceivingLineForOrderTool,
   listReceivingLinePhotosTool,
+  // "Create a rule for this product": pasted handle → item number, and a
+  // spoken name → staff id. The write is propose_mutation
+  // automation_rule.upsert_item_staff.
+  resolveItemNumberTool,
+  listStaffTool,
 ];
 
 /**

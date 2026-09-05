@@ -31,8 +31,31 @@ test('Hermes rewrite is the draft when facts survive', async () => {
     },
   );
   assert.equal(result.degraded, false);
+  assert.equal(result.degradedReason, null);
   assert.match(result.description, /Bose QC/);
   assert.equal(result.template.poNumber, '01-1');
+});
+
+test('the guarded identifiers are handed to the model as mustKeep', async () => {
+  let seen: readonly (string | null | undefined)[] | undefined;
+  await draftReceivingClaimWithLlm(
+    'org_test' as never,
+    { receivingId: 1, claimType: 'damage' },
+    {
+      buildTemplate: async () => TEMPLATE,
+      draftWithLlm: async (_orgId, input) => {
+        seen = input.mustKeep;
+        return {
+          subject: 'Damage on PO 01-1 — TRK#1Z999',
+          description: 'Bose QC damaged.',
+          model: 'hermes',
+          usage: { input_tokens: 1, output_tokens: 1, cache_read_input_tokens: 0 },
+        };
+      },
+    },
+  );
+  // The guard rejects a draft that loses either, so both must be stated.
+  assert.deepEqual(seen, ['01-1', '1Z999']);
 });
 
 test('dropped PO or tracking falls back to the factual template', async () => {
@@ -52,6 +75,8 @@ test('dropped PO or tracking falls back to the factual template', async () => {
   assert.equal(result.degraded, true);
   assert.equal(result.subject, TEMPLATE.subject);
   assert.equal(result.description, TEMPLATE.description);
+  // A dropped fact and a dead gateway are different operator problems.
+  assert.match(String(result.degradedReason), /PO 01-1 and tracking 1Z999/);
 });
 
 test('Hermes throw still returns the factual template so filing is not blocked', async () => {
@@ -67,4 +92,5 @@ test('Hermes throw still returns the factual template so filing is not blocked',
   );
   assert.equal(result.degraded, true);
   assert.equal(result.description, TEMPLATE.description);
+  assert.equal(result.degradedReason, 'gateway down');
 });

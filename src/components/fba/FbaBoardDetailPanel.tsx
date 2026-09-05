@@ -37,10 +37,10 @@ import { FbaDeleteControl } from './board-detail/FbaDeleteControl';
 export function FbaBoardDetailPanel({
   item,
   onClose,
-  onNavigate,
+  onNavigate: _onNavigate,
   onSaved,
-  disableMoveUp = false,
-  disableMoveDown = false,
+  disableMoveUp: _disableMoveUp = false,
+  disableMoveDown: _disableMoveDown = false,
 }: FbaBoardDetailPanelProps) {
   const {
     entries, scanLogs, loading,

@@ -61,7 +61,6 @@
  */
 
 import type { ReactNode } from 'react';
-import { Copy } from '@/components/Icons';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { Button, type ButtonVariant } from '@/design-system/primitives/Button';
 import { KeyboardKey } from '@/design-system/primitives/KeyboardKey';
@@ -146,20 +145,12 @@ export interface TableStatusBarProps {
   /** Rows the operator has picked. Zero prints nothing — see below. */
   selected?: number;
   /**
-   * Legacy Copy affordance when the surface does not pass {@link selectionActions}.
-   * Prefer putting Copy in `selectionActions` so every verb shares one left cluster.
-   */
-  onCopySelection?: () => void;
-  /**
-   * Live selection CTAs (Assign, Copy, Listing → staff, …). Painted flush
-   * left when a selection exists. Prefer this over {@link selectionActionCount}.
+   * Live selection CTAs (Assign, Copy, Listing → staff, …). Painted flush left
+   * when a selection exists — the ONLY way a verb reaches this strip. There is
+   * no legacy Copy fallback and no bare "N more actions" count: a foot that
+   * synthesizes its own button is a second place to run a verb the row owns.
    */
   selectionActions?: readonly TableStatusSelectionAction[];
-  /**
-   * @deprecated Prefer {@link selectionActions}. Kept so older mounts that only
-   * advertise a count still compile; ignored when `selectionActions` is set.
-   */
-  selectionActionCount?: number;
   /**
    * The next page, as part of the count sentence rather than a band under it.
    *
@@ -209,7 +200,7 @@ export function TableTabs({
               focusRing('control'),
               active
                 ? 'font-semibold text-text-default'
-                : 'text-text-muted hover:text-text-default',
+                : 'text-text-soft hover:text-text-default',
             )}
           >
             <span className="truncate">{tab.label}</span>
@@ -304,27 +295,20 @@ export function TableStatusBar({
   shown,
   total,
   selected = 0,
-  onCopySelection,
   selectionActions,
-  selectionActionCount = 0,
   onLoadMore,
 }: TableStatusBarProps) {
   const hasSelection = selected > 0;
 
-  // Prefer explicit verbs. Fall back to legacy Copy-only + "N more" count.
-  const leftActions: TableStatusSelectionAction[] = [];
-  if (hasSelection && selectionActions && selectionActions.length > 0) {
-    leftActions.push(...selectionActions);
-  } else if (hasSelection && onCopySelection) {
-    leftActions.push({
-      key: 'copy',
-      label: 'Copy',
-      icon: <Copy className="h-4 w-4 shrink-0" />,
-      variant: 'primary',
-      hotkey: 'c',
-      onClick: onCopySelection,
-    });
-  }
+  // Verbs come from the caller or not at all.
+  //
+  // There used to be a fallback here that HAND-ROLLED a Copy pill out of
+  // `onCopySelection` whenever a surface passed no verbs — a button this strip
+  // invented for itself, sitting under a table whose row already owns its
+  // actions. It went with the bottom action strip; a foot that builds its own
+  // CTA is how a second place to run a verb comes back.
+  const leftActions: TableStatusSelectionAction[] =
+    hasSelection && selectionActions ? [...selectionActions] : [];
 
   const hasCtas = leftActions.length > 0;
   // Keyboard `?` only — no foot question-mark control (operator 2026-09-01).
@@ -333,10 +317,6 @@ export function TableStatusBar({
     hasCtas,
   );
 
-  const moreActions =
-    hasSelection && !(selectionActions && selectionActions.length > 0)
-      ? Math.max(0, selectionActionCount - (onCopySelection ? 1 : 0))
-      : 0;
 
   const tabList = tabs ?? [];
   const showTabs = tabList.length > 0;
@@ -349,7 +329,7 @@ export function TableStatusBar({
       data-testid="data-table-status"
       className={cn(
         'sticky bottom-0 z-raised flex min-w-0 items-stretch justify-between gap-0',
-        'border-t border-border-soft bg-surface-card',
+        'bg-surface-card',
         PRIMARY_CHROME_ROW_FACE,
         showLeftCluster ? 'min-h-11' : undefined,
       )}
@@ -402,11 +382,6 @@ export function TableStatusBar({
             data-testid="data-table-selected-count"
           >
             {selected.toLocaleString()} selected
-          </span>
-        ) : null}
-        {moreActions > 0 ? (
-          <span data-testid="data-table-selection-more" className="tabular-nums">
-            {moreActions} more {moreActions === 1 ? 'action' : 'actions'}
           </span>
         ) : null}
         {typeof shown === 'number' ? (

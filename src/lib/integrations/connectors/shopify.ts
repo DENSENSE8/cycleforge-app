@@ -20,7 +20,7 @@
  * Reuses:
  *   - nangoProxy / getIntegrationCredentials (token + shop resolution)
  *   - the orders upsert shape from src/lib/integrations/connectors/square.ts
- *     (idx_orders_unique_account_order)
+ *     (idx_orders_unique_org_account_order_line)
  *   - getSyncCursor / updateSyncCursor for the incremental updated_at watermark
  *
  * Lazily imported by the registry so the connection reader never pulls in this
@@ -50,7 +50,14 @@ function msg(e: unknown): string {
 }
 
 interface ShopMoney { amount?: string; currencyCode?: string }
-interface ShopifyLineItemNode { title?: string; quantity?: number }
+interface ShopifyLineItemNode {
+  id?: string;
+  sku?: string;
+  title?: string;
+  quantity?: number;
+  discountedTotalSet?: { shopMoney?: ShopMoney };
+  originalTotalSet?: { shopMoney?: ShopMoney };
+}
 interface ShopifyOrderNode {
   legacyResourceId?: string;
   name?: string;
@@ -131,50 +138,67 @@ async function shopifyGraphql<T>(
   return body.data;
 }
 
-/** One representative line for the orders row (Shopify orders are multi-line). */
-function summarizeLines(node: ShopifyOrderNode): { title: string; quantity: number } {
-  const lines = (node.lineItems?.edges ?? []).map((e) => e.node).filter(Boolean) as ShopifyLineItemNode[];
-  const quantity = lines.reduce((s, li) => s + (Number(li.quantity) || 0), 0) || 1;
-  const first = lines.find((li) => (li.title ?? '').trim())?.title?.trim();
-  const title = !first
-    ? SHOPIFY_TITLE_FALLBACK
-    : lines.length > 1
-      ? `${first} +${lines.length - 1} more`
-      : first;
-  return { title, quantity };
+/** Numeric id from a Shopify GID (`gid://shopify/LineItem/123` → `123`). */
+export function shopifyNumericId(gid: string | undefined | null): string {
+  const raw = String(gid || '').trim();
+  if (!raw) return '';
+  const m = raw.match(/(\d+)\s*$/);
+  return m ? m[1] : raw;
 }
 
-/** Map a Shopify order node to a canonical line. Title '' means "unknown" —
- *  the writer seeds the placeholder only on a brand-new row. */
-function toCanonicalLine(node: ShopifyOrderNode): CanonicalOrderLine {
-  const { title, quantity } = summarizeLines(node);
-  // GraphQL money is a decimal string (e.g. "42.00") — already in major units,
-  // unlike Square's integer cents. Do NOT divide.
-  const rawAmount = node.currentTotalPriceSet?.shopMoney?.amount;
-  return {
-    // legacyResourceId is the stable numeric id; fall back to the order name.
-    externalOrderId: String(node.legacyResourceId || node.name || ''),
+function shopifyMoney(set?: { shopMoney?: ShopMoney }): { amount: string | null; currency: string | null } {
+  const raw = set?.shopMoney?.amount;
+  const amount =
+    raw != null && raw !== '' && Number.isFinite(Number(raw)) ? String(Number(raw)) : null;
+  return { amount, currency: set?.shopMoney?.currencyCode || null };
+}
+
+/** One canonical line per Shopify line item. Empty lineItems still emit one
+ *  order-level stub so the order itself lands. */
+export function mapShopifyOrderToCanonicalLines(node: ShopifyOrderNode): CanonicalOrderLine[] {
+  const externalOrderId = String(node.legacyResourceId || node.name || '');
+  const orderDate = node.createdAt ? new Date(node.createdAt) : null;
+  const status = node.displayFulfillmentStatus === 'FULFILLED' ? 'shipped' : 'unassigned';
+  const items = (node.lineItems?.edges ?? []).map((e) => e.node).filter(Boolean) as ShopifyLineItemNode[];
+  const orderMoney = shopifyMoney(node.currentTotalPriceSet);
+
+  const base = {
+    externalOrderId,
     itemNumber: '',
-    sku: '',
-    productTitle: title === SHOPIFY_TITLE_FALLBACK ? '' : title,
     condition: '',
-    quantity: String(quantity),
     notes: '',
-    // See shipstation.ts — prefer Shopify's customer id/email over a name.
     customerName: '',
     accountSource: ACCOUNT_SOURCE,
-    trackings: [],
-    shipByDate: null,
-    orderDate: node.createdAt ? new Date(node.createdAt) : null,
-    saleAmount:
-      rawAmount != null && rawAmount !== '' && Number.isFinite(Number(rawAmount))
-        ? String(Number(rawAmount))
-        : null,
-    currency: node.currentTotalPriceSet?.shopMoney?.currencyCode || 'USD',
-    // A fully fulfilled Shopify order is realized — mark shipped so it lands in
-    // the tracker as completed (mirrors Square/Amazon read-only ingestion).
-    status: node.displayFulfillmentStatus === 'FULFILLED' ? 'shipped' : 'unassigned',
+    trackings: [] as string[],
+    shipByDate: null as Date | null,
+    orderDate,
+    status,
   };
+
+  if (items.length === 0) {
+    return [{
+      ...base,
+      externalLineId: '',
+      sku: '',
+      productTitle: '',
+      quantity: '1',
+      saleAmount: orderMoney.amount,
+      currency: orderMoney.currency || 'USD',
+    }];
+  }
+
+  return items.map((li) => {
+    const money = shopifyMoney(li.discountedTotalSet ?? li.originalTotalSet);
+    return {
+      ...base,
+      externalLineId: shopifyNumericId(li.id),
+      sku: (li.sku ?? '').trim(),
+      productTitle: (li.title ?? '').trim(),
+      quantity: String(li.quantity || 1),
+      saleAmount: money.amount,
+      currency: money.currency || orderMoney.currency || 'USD',
+    };
+  });
 }
 
 const SHOP_QUERY = `query { shop { name } }`;
@@ -190,7 +214,18 @@ const ORDERS_QUERY = `query($cursor: String, $q: String) {
         updatedAt
         displayFulfillmentStatus
         currentTotalPriceSet { shopMoney { amount currencyCode } }
-        lineItems(first: 10) { edges { node { title quantity } } }
+        lineItems(first: 100) {
+          edges {
+            node {
+              id
+              sku
+              title
+              quantity
+              discountedTotalSet { shopMoney { amount currencyCode } }
+              originalTotalSet { shopMoney { amount currencyCode } }
+            }
+          }
+        }
       }
     }
   }
@@ -226,7 +261,7 @@ export async function shopifySync(orgId: OrgId): Promise<SyncOutcome> {
       for (const edge of edges) {
         const node = edge.node;
         if (!node || (!node.legacyResourceId && !node.name)) continue;
-        lines.push(toCanonicalLine(node));
+        lines.push(...mapShopifyOrderToCanonicalLines(node));
         const ts = node.updatedAt ? Date.parse(node.updatedAt) : NaN;
         if (Number.isFinite(ts) && ts > maxUpdatedAt) maxUpdatedAt = ts;
       }

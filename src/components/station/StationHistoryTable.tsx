@@ -7,8 +7,8 @@ import { StationListTable } from '@/components/station/StationListTable';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { StationQueueRow } from '@/components/station/StationQueueRow';
 import { STATION_HISTORY_GRID_CAPABILITIES } from '@/components/station/station-history-capabilities';
-import { Copy, X } from '@/components/Icons';
-import { emitToggleAll } from '@/lib/selection/table-selection';
+import { Copy } from '@/components/Icons';
+import { TableStatusBar, type TableStatusSelectionAction } from '@/components/tables/TableStatusBar';
 import { useTableSelectMode } from '@/hooks/useTableSelectMode';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { ORDERS_COMPOUND_COLUMNS } from '@/lib/dashboard-order-row-layout';
@@ -100,9 +100,9 @@ export function StationHistoryTable<T>({
   onResetWeek,
   daySections,
   getRowKey,
-  tableId,
-  savedViewsStorageKey,
-  savedViewsParamKeys,
+  tableId: _tableId,
+  savedViewsStorageKey: _savedViewsStorageKey,
+  savedViewsParamKeys: _savedViewsParamKeys,
   emptyMessage,
   firstRunEmpty,
   toolbarPortalTarget = null,
@@ -212,7 +212,7 @@ export function StationHistoryTable<T>({
   const boardEnabled = Boolean(pipeline) && STATION_PIPELINE_BOARDS;
   const layout: StationLayout = boardEnabled ? parseLayout(searchParams.get(LAYOUT_PARAM)) : 'all';
 
-  const setLayout = useCallback(
+  const _setLayout = useCallback(
     (next: StationLayout) => {
       const params = new URLSearchParams(searchParams.toString());
       if (next === 'all') params.delete(LAYOUT_PARAM);
@@ -242,33 +242,30 @@ export function StationHistoryTable<T>({
       )
     : null;
 
-  // Bulk-action bar — pinned to the bottom of the table's relative region when
-  // rows are selected. Copy-TSV + clear (Phase 7 §5.4).
-  const bulkBar =
-    selectedCount > 0 ? (
-      <div className="absolute inset-x-0 bottom-3 z-toast flex justify-center">
-        <div className="flex items-center gap-2 rounded-full border border-border-soft bg-surface-card px-3 py-1.5 shadow-lg ring-1 ring-black/5">
-          <span className="text-role-caption font-semibold text-text-muted">{selectedCount} selected</span>
-          {/* ds-raw-button: compact bulk-action capsule button */}
-          <button
-            type="button"
-            onClick={() => void copySelected()}
-            className="inline-flex items-center gap-1 rounded-full bg-blue-600 px-2.5 py-1 text-role-caption font-semibold text-white transition-colors hover:bg-blue-700"
-          >
-            <Copy className="h-3.5 w-3.5" /> Copy
-          </button>
-          {/* ds-raw-button: clear-selection capsule button */}
-          <button
-            type="button"
-            aria-label="Clear selection"
-            onClick={() => emitToggleAll(selection.scope, 'none')}
-            className="inline-flex items-center rounded-full p-1 text-text-faint transition-colors hover:text-text-default"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </div>
-    ) : null;
+  // Selection verbs ride the house foot strip (TableStatusBar), the same one
+  // every desk table foots with: Copy-TSV appears flush left while rows are
+  // selected, `?` reveals its hotkey. There used to be a floating capsule here
+  // with its own bg-blue-600 Copy pill — the verb TableStatusBar itself stopped
+  // hand-rolling — and this was the last surface still painting it.
+  const selectionActions = useMemo<TableStatusSelectionAction[]>(
+    () => [
+      {
+        key: 'copy',
+        label: 'Copy',
+        icon: <Copy className="h-3.5 w-3.5" />,
+        onClick: () => void copySelected(),
+        hotkey: 'C',
+      },
+    ],
+    [copySelected],
+  );
+  const footer = (
+    <TableStatusBar
+      shown={orderedRecords.length}
+      selected={selectedCount}
+      selectionActions={selectionActions}
+    />
+  );
 
   return (
     <>
@@ -322,8 +319,8 @@ export function StationHistoryTable<T>({
               emptyMessage={emptyMessage}
               firstRunEmpty={firstRunEmpty}
               capabilities={STATION_HISTORY_GRID_CAPABILITIES}
+              footer={footer}
             />
-            {bulkBar}
           </div>
         )}
     </>

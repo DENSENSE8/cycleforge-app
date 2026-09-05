@@ -103,6 +103,17 @@ export const RECEIVING_FIELD_CATALOG: FieldCatalog = [
     slotKinds: ['status', 'subtitle'],
     paths: { units: 'serials', fallbackTitle: 'item_name' },
   },
+  // Bindable, not painted on the product default — Assign to… / Assign to me
+  // write this fact from the receiving verb catalog. Unbox / History / Testing
+  // paint stays the empty band until an org binds the track.
+  {
+    id: 'receiving.assigned_tech',
+    family: 'receiving',
+    label: 'Tech',
+    displayType: 'person',
+    slotKinds: ['status', 'subtitle'],
+    paths: { id: 'assigned_tech_id' },
+  },
 ];
 
 /**
@@ -117,8 +128,8 @@ export const RECEIVING_FIELD_CATALOG: FieldCatalog = [
  * Location or Tracking as its own track binds it; before this port that took a
  * new React column.
  *
- * `amountFieldId` is null: the compound `amount` track is chrome resolved by
- * the family adapter (`lineMoney`), not a bound slot.
+ * `amountFieldId` is null: line money is a subtitle under the title
+ * (`ensureLineMoneySubtitle` pins `receiving.price`), not a bound amount track.
  * Guard: `receiving.test.ts` parses this against the catalog.
  */
 export const RECEIVING_PRODUCT_LAYOUT: SlotLayout = {

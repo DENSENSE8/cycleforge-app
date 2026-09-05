@@ -15,7 +15,8 @@ export type { TriageSectionSpec, TriageMeasureAlign };
 
 /**
  * Scroll host for a dense warehouse triage form. Distinct operational blocks
- * are grouped as {@link TriageSections} cards (`cornerClass('surface')`).
+ * are grouped as {@link TriageSections} — a heading and its content, separated
+ * by space. Not cards: see that file for why the box went.
  *
  * ## The jump rail is opt-in
  *

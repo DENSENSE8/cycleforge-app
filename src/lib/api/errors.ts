@@ -58,7 +58,11 @@ export function errorResponse(err: unknown, context?: string): NextResponse {
   }
 
   const message = err instanceof Error ? err.message : 'Unknown error';
-  if (context) console.error(`[${context}]`, message);
+  if (context) {
+    // Empty-object throws (`throw {}` / undici oddities) used to log as `{}`
+    // and hide the route context. Always print a string message.
+    console.error(`[${context}]`, message, err);
+  }
   return NextResponse.json(
     { error: 'Internal server error', details: message },
     { status: 500 },

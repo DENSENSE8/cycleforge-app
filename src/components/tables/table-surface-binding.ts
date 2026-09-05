@@ -25,6 +25,7 @@
  * family binding.
  */
 
+import type { ComponentType, RefObject } from 'react';
 import type {
   GridSurfaceDescriptor,
   LedgerGridColumnModel,
@@ -115,4 +116,50 @@ export interface TableSurfaceBinding<Row, C extends LedgerGridColumnModel> {
    * binding declares one. New desks use `stage-overlay`; `inspector` is legacy debt.
    */
   readonly recordPlane: TableRecordPlane;
+  /**
+   * The ROW-ANCHORED action plane — what opens beside a row when it is picked
+   * in the select gutter (To-ship's CYC-82 assign manifold).
+   *
+   * ## Why it is declared HERE
+   *
+   * The plane is the last thing that forced a family to own a row component.
+   * The shared {@link CompoundRow} paints every cell, but it had nowhere to put
+   * a panel that is anchored to the row and painted beside it — so To-ship
+   * mapped the columns itself and mounted the panel by hand, which is
+   * `OrdersQueueTableRow`, 1300 lines of shell the engine already had.
+   *
+   * Declaring it on the BINDING keeps invariant 2 (`REGISTER_ENTITY_NOT_PAGE`):
+   * one entity, one plane, every mount. It is not a mount parameter, not a page
+   * prop, and not per-row JSX — a page cannot introduce a plane, and two lanes
+   * of the same entity cannot disagree about what picking a row opens.
+   *
+   * A component reference is admissible on the binding for the same reason
+   * {@link makeDescriptor} is: the binding is the family's registration, not the
+   * Zod-validated pure-data {@link definition}. What invariant 3 forbids is
+   * behaviour in the DESCRIPTOR that varies per mount — this varies per ENTITY,
+   * exactly once.
+   *
+   * Omit it and the row simply has no plane; nothing else changes.
+   */
+  readonly rowPlane?: TableRowPlane<Row>;
+}
+
+/** Props the engine hands a registered {@link TableRowPlane}. */
+export interface TableRowPlaneProps<Row> {
+  row: Row;
+  open: boolean;
+  onClose: () => void;
+  /**
+   * The ROW element. Anchor to this, never to the gutter cell: anchoring to the
+   * cell parks the panel on top of the columns the operator is reading, while
+   * the row anchor puts it in the page margin beside the row it acts on.
+   */
+  anchorRef: RefObject<HTMLElement | null>;
+}
+
+export interface TableRowPlane<Row> {
+  /** Why this entity opens a plane off the gutter (audit trail, like recordPlane). */
+  readonly reason: string;
+  /** Mounted by the engine as the row's last child. */
+  readonly Component: ComponentType<TableRowPlaneProps<Row>>;
 }

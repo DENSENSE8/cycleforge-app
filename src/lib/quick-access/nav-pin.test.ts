@@ -21,10 +21,18 @@ test('isPinDropOverId: only the cluster well and pin rows', () => {
   assert.equal(isPinDropOverId('child:outbound:labels'), false);
 });
 
-test('isStructuralSpinePinHref: Home and Media Library only', () => {
+test('isStructuralSpinePinHref: Home only', () => {
   assert.equal(isStructuralSpinePinHref('/'), true);
+  // Query-carrying Home hrefs normalize back to the same registry row — a pin
+  // on `/?mode=today` would still be a shortcut to the spine's own root.
   assert.equal(isStructuralSpinePinHref('/?mode=today'), true);
-  assert.equal(isStructuralSpinePinHref('/ops/photos'), true);
   assert.equal(isStructuralSpinePinHref('/unbox'), false);
   assert.equal(isStructuralSpinePinHref('/products'), false);
+});
+
+test('Media Library is pinnable — it is a tool, not the spine root', () => {
+  // Was structural until 2026-09-05 purely because it rendered above Pinned.
+  // Sitting above Pinned is what a PIN is for; hard-coding one tool there spent
+  // spine real estate no operator could reclaim.
+  assert.equal(isStructuralSpinePinHref('/ops/photos'), false);
 });

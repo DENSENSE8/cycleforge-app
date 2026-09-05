@@ -33,7 +33,6 @@ import {
   isFbaOrder,
   fulfillmentChannelOf,
   mapAmazonStatus,
-  representativeItem,
   mapShippingAddress,
   WATERMARK_OVERLAP_MS,
   FIRST_RUN_LOOKBACK_MS,
@@ -170,40 +169,11 @@ async function processOrder(
   if (!orderId) return;
 
   const items = await getOrderItems(account, creds, orderId);
-  const item = representativeItem(items);
-  const sku = String(item?.SellerSKU || '').trim();
-  const asin = String(item?.ASIN || '').trim() || null;
-
-  // Item-scope filter: tracked SKUs only, unless importAll.
-  let skuCatalogId: number | null;
-  if (opts.importAll) {
-    skuCatalogId = await resolveOrCreateSkuCatalogId({
-      sku: sku || null, itemNumber: asin, productTitle: item?.Title || null,
-      accountSource: account.accountName, orderId,
-    }, account.organizationId);
-  } else {
-    skuCatalogId = await resolveSkuCatalogId(sku || null, asin);
-    if (skuCatalogId == null) {
-      // Additive (§6 / Step D): an untracked or unmapped Amazon SKU (incl. the
-      // literal 'No data' channel junk) is a "create in Zoho" to-do. Queue it
-      // best-effort, then keep the existing skip behavior exactly — the order is
-      // still NOT imported when not importing all.
-      if (sku) {
-        try {
-          await queuePendingSku({ rawSku: sku, source: 'orders', suggestedTitle: item?.Title || null });
-        } catch (err) {
-          console.warn('amazon order-sync: queuePendingSku failed (non-fatal)', err);
-        }
-      }
-      result.skippedUntracked++;
-      return;
-    }
-  }
-
   const fba = isFbaOrder(order);
   if (fba) result.fbaReadOnly++;
   const status = mapAmazonStatus(order.OrderStatus, fba);
   const channel = fulfillmentChannelOf(order);
+  const orderDate = order.PurchaseDate ? new Date(order.PurchaseDate) : null;
 
   // MFN shipping PII (best-effort; needs the Direct-to-Consumer Delivery role).
   let customer: MappedCustomer | null = null;
@@ -218,25 +188,97 @@ async function processOrder(
     }
   }
 
-  const productTitle = String(item?.Title || '').trim() || 'No title';
-  const quantity = item?.QuantityOrdered != null ? String(item.QuantityOrdered) : '1';
-  const orderDate = order.PurchaseDate ? new Date(order.PurchaseDate) : null;
-
-  // Realized sale amount from the item's ItemPrice (SP-API getOrderItems).
-  const rawAmount = item?.ItemPrice?.Amount != null ? Number(item.ItemPrice.Amount) : null;
-  const saleAmount = rawAmount != null && !Number.isNaN(rawAmount) ? rawAmount : null;
-  const currency = item?.ItemPrice?.CurrencyCode ?? 'USD';
-
-  const outcome = await upsertAmazonOrder({
-    orgId: account.organizationId,
-    accountSource: account.accountName,
-    sellerId: account.sellerId,
-    orderId, productTitle, sku, quantity, status, channel, orderDate, skuCatalogId, customer,
-    saleAmount, currency,
-    itemNumber: asin,
+  let customerId: number | null = await withTenantConnection(account.organizationId, async (client) => {
+    const existing = await client.query<{ customer_id: number | null }>(
+      `SELECT customer_id FROM orders
+        WHERE account_source = $1 AND order_id = $2 AND organization_id = $3
+          AND customer_id IS NOT NULL
+        LIMIT 1`,
+      [account.accountName, orderId, account.organizationId],
+    );
+    return existing.rows[0]?.customer_id ?? null;
   });
-  if (outcome === 'created') result.imported++;
-  else result.updated++;
+  if (customer && (customer.customerName || customer.shippingAddress1)) {
+    customerId = await withTenantConnection(account.organizationId, (client) =>
+      upsertCustomer(
+        client,
+        {
+          orgId: account.organizationId,
+          accountSource: account.accountName,
+          sellerId: account.sellerId,
+          orderId,
+          customer,
+        },
+        customerId,
+      ),
+    );
+  }
+
+  const workItems = items.length > 0 ? items : [null];
+  let importedAny = false;
+  let skippedAllUntracked = true;
+
+  for (const item of workItems) {
+    const sku = String(item?.SellerSKU || '').trim();
+    const asin = String(item?.ASIN || '').trim() || null;
+    const externalLineId = String(item?.OrderItemId || '').trim();
+
+    let skuCatalogId: number | null;
+    if (opts.importAll) {
+      skuCatalogId = await resolveOrCreateSkuCatalogId({
+        sku: sku || null, itemNumber: asin, productTitle: item?.Title || null,
+        accountSource: account.accountName, orderId,
+      }, account.organizationId);
+    } else {
+      skuCatalogId = await resolveSkuCatalogId(sku || null, asin);
+      if (skuCatalogId == null) {
+        if (sku) {
+          try {
+            await queuePendingSku({ rawSku: sku, source: 'orders', suggestedTitle: item?.Title || null });
+          } catch (err) {
+            console.warn('amazon order-sync: queuePendingSku failed (non-fatal)', err);
+          }
+        }
+        continue;
+      }
+    }
+    skippedAllUntracked = false;
+
+    const productTitle = String(item?.Title || '').trim() || 'No title';
+    const quantity = item?.QuantityOrdered != null ? String(item.QuantityOrdered) : '1';
+    const rawAmount = item?.ItemPrice?.Amount != null ? Number(item.ItemPrice.Amount) : null;
+    const saleAmount = rawAmount != null && !Number.isNaN(rawAmount) ? rawAmount : null;
+    const currency = item?.ItemPrice?.CurrencyCode ?? 'USD';
+
+    const outcome = await upsertAmazonOrder({
+      orgId: account.organizationId,
+      accountSource: account.accountName,
+      sellerId: account.sellerId,
+      orderId,
+      externalLineId,
+      productTitle,
+      sku,
+      quantity,
+      status,
+      channel,
+      orderDate,
+      skuCatalogId,
+      customerId,
+      saleAmount,
+      currency,
+      itemNumber: asin,
+    });
+    if (outcome === 'created') {
+      result.imported++;
+      importedAny = true;
+    } else {
+      result.updated++;
+    }
+  }
+
+  if (!importedAny && skippedAllUntracked && !opts.importAll) {
+    result.skippedUntracked++;
+  }
 }
 
 interface UpsertOrderInput {
@@ -244,6 +286,8 @@ interface UpsertOrderInput {
   accountSource: string;
   sellerId: string | null;
   orderId: string;
+  /** Amazon OrderItemId — empty string when the payload has none. */
+  externalLineId: string;
   productTitle: string;
   sku: string;
   quantity: string;
@@ -251,27 +295,33 @@ interface UpsertOrderInput {
   channel: 'AFN' | 'MFN';
   orderDate: Date | null;
   skuCatalogId: number | null;
-  customer: MappedCustomer | null;
+  customerId: number | null;
   saleAmount: number | null;
   currency: string;
   /** Amazon ASIN — stamped onto orders.item_number when still empty. */
   itemNumber: string | null;
 }
 
+interface UpsertCustomerInput {
+  orgId: string;
+  accountSource: string;
+  sellerId: string | null;
+  orderId: string;
+  customer: MappedCustomer;
+}
+
 async function upsertAmazonOrder(p: UpsertOrderInput): Promise<'created' | 'updated'> {
   return withTenantConnection(p.orgId, async (client) => {
-    const existing = await client.query(
+    const existing = await client.query<{ id: number; customer_id: number | null }>(
       `SELECT id, customer_id FROM orders
         WHERE account_source = $1 AND order_id = $2 AND organization_id = $3
+          AND (external_line_id = $4 OR ($4 <> '' AND external_line_id = ''))
+        ORDER BY (external_line_id = $4) DESC, id ASC
         LIMIT 1`,
-      [p.accountSource, p.orderId, p.orgId],
+      [p.accountSource, p.orderId, p.orgId, p.externalLineId],
     );
     const existingId: number | null = existing.rows[0]?.id ?? null;
-    let customerId: number | null = existing.rows[0]?.customer_id ?? null;
-
-    if (p.customer && (p.customer.customerName || p.customer.shippingAddress1)) {
-      customerId = await upsertCustomer(client, p, customerId);
-    }
+    const customerId = p.customerId ?? existing.rows[0]?.customer_id ?? null;
 
     if (existingId) {
       await client.query(
@@ -288,11 +338,15 @@ async function upsertAmazonOrder(p: UpsertOrderInput): Promise<'created' | 'upda
              WHEN (item_number IS NULL OR TRIM(item_number) = '') AND $11::text IS NOT NULL AND TRIM($11) <> ''
                THEN UPPER(TRIM($11))
              ELSE item_number
+           END,
+           external_line_id = CASE
+             WHEN external_line_id = '' AND $12::text <> '' THEN $12
+             ELSE external_line_id
            END
          WHERE id = $1 AND organization_id = $10`,
         [
           existingId, p.productTitle, p.sku, p.quantity, p.orderDate, p.skuCatalogId, p.channel,
-          customerId, p.status, p.orgId, p.itemNumber,
+          customerId, p.status, p.orgId, p.itemNumber, p.externalLineId,
         ],
       );
       return 'updated';
@@ -302,9 +356,9 @@ async function upsertAmazonOrder(p: UpsertOrderInput): Promise<'created' | 'upda
       `INSERT INTO orders (
          organization_id, order_id, product_title, condition, sku, status, status_history,
          notes, quantity, account_source, order_date, sku_catalog_id,
-         fulfillment_channel, customer_id, sale_amount, currency, item_number
-       ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-       ON CONFLICT ON CONSTRAINT idx_orders_unique_account_order DO UPDATE
+         fulfillment_channel, customer_id, sale_amount, currency, item_number, external_line_id
+       ) VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+       ON CONFLICT (organization_id, order_id, account_source, external_line_id) DO UPDATE
          SET product_title  = COALESCE(NULLIF(EXCLUDED.product_title, 'No title'), orders.product_title),
              sku            = COALESCE(NULLIF(orders.sku, ''), EXCLUDED.sku),
              quantity       = COALESCE(NULLIF(orders.quantity, ''), EXCLUDED.quantity),
@@ -320,16 +374,16 @@ async function upsertAmazonOrder(p: UpsertOrderInput): Promise<'created' | 'upda
         p.orgId, p.orderId, p.productTitle, '', p.sku, p.status, JSON.stringify([]),
         '', p.quantity, p.accountSource, p.orderDate, p.skuCatalogId, p.channel, customerId,
         p.saleAmount, p.currency, p.itemNumber ? p.itemNumber.toUpperCase() : null,
+        p.externalLineId,
       ],
     );
-    // xmax = 0 → a true INSERT; otherwise the ON CONFLICT update path fired (race).
     return ins.rows[0]?.inserted ? 'created' : 'updated';
   });
 }
 
 async function upsertCustomer(
   client: PoolClient,
-  p: UpsertOrderInput,
+  p: UpsertCustomerInput,
   existingCustomerId: number | null,
 ): Promise<number> {
   const c = p.customer!;

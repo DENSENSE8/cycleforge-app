@@ -74,6 +74,12 @@ const LISTING_TRAIL_SQUARE = cn(
   'h-full w-full [&>svg]:h-3.5 [&>svg]:w-3.5',
 );
 /**
+ * Open · Open all · Save · Cancel. Button defaults to desk `surface`
+ * (`rounded-xl`); this leaf is scan-station bleed, so the radius prop is
+ * flush — never a rounded-* override.
+ */
+const LISTING_STATION_BUTTON_RADIUS = 'flush' as const;
+/**
  * Destructive trailing cell — the same face the serial rail's Remove serial
  * uses (`UnitSlotList`): muted until hover, then rose. One destructive idiom
  * for "remove this row of a list the operator is building", so a delete looks
@@ -204,6 +210,7 @@ function ListingLinkEditor({
         <Button
           type="button"
           size="sm"
+          radius={LISTING_STATION_BUTTON_RADIUS}
           variant="primarySoft"
           onClick={onSave}
           disabled={saveDisabled}
@@ -211,7 +218,13 @@ function ListingLinkEditor({
         >
           Save link
         </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onCancel}>
+        <Button
+          type="button"
+          size="sm"
+          radius={LISTING_STATION_BUTTON_RADIUS}
+          variant="ghost"
+          onClick={onCancel}
+        >
           Cancel
         </Button>
       </div>
@@ -369,6 +382,7 @@ export function ListingLinksTab({
               <Button
                 type="button"
                 size="sm"
+                radius={LISTING_STATION_BUTTON_RADIUS}
                 variant="primarySoft"
                 icon={<ExternalLink className="h-3.5 w-3.5" />}
                 onClick={() => {
@@ -385,6 +399,7 @@ export function ListingLinksTab({
               <Button
                 type="button"
                 size="sm"
+                radius={LISTING_STATION_BUTTON_RADIUS}
                 variant="secondary"
                 icon={<ExternalLink className="h-3.5 w-3.5" />}
                 onClick={openAll}

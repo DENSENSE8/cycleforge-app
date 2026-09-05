@@ -66,14 +66,17 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     });
   }
 
+  // Fact guard: the rewrite must keep the source Reference id — so the model
+  // is told that string, not left to infer it from "keep the facts".
+  const ref = row.source_id?.trim();
+
   try {
     const draft = await draftTicketWithLlm(ctx.organizationId, {
       context: `Unfound item — ${unfoundKindLabel(kind)}`,
       template,
+      mustKeep: [ref],
     });
 
-    // Fact guard: the rewrite must keep the source Reference id.
-    const ref = row.source_id?.trim();
     const keptRef = !ref || draft.description.includes(ref);
     if (!keptRef) {
       return NextResponse.json({

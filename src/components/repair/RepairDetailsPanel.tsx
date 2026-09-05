@@ -54,7 +54,7 @@ import {
 import { useRepairDetailsPanel } from './details-panel/useRepairDetailsPanel';
 import { RepairLinkageSection } from './details-panel/RepairLinkageSection';
 import { RepairOverviewTab } from './details-panel/RepairOverviewTab';
-import { ShippedNotesComposer } from '@/components/shipped/details-panel/ShippedNotesComposer';
+import { RepairNotesRegion } from './details-panel/RepairNotesRegion';
 
 function getRepairStatusTone(status: string | null | undefined) {
   if (!status) return 'neutral' as const;
@@ -68,10 +68,10 @@ export function RepairDetailsPanel({
   repair,
   onClose,
   onUpdate,
-  onMoveUp = () => {},
-  onMoveDown = () => {},
-  disableMoveUp = false,
-  disableMoveDown = false,
+  onMoveUp: _onMoveUp = () => {},
+  onMoveDown: _onMoveDown = () => {},
+  disableMoveUp: _disableMoveUp = false,
+  disableMoveDown: _disableMoveDown = false,
 }: RepairDetailsPanelProps) {
   const c = useRepairDetailsPanel({ repair, onUpdate });
   const hasSavedNotes = String(repair.notes || '').trim().length > 0;
@@ -275,24 +275,18 @@ export function RepairDetailsPanel({
         <InspectorActionFloor
           above={
             c.isEditingNotes || hasSavedNotes ? (
-              c.isEditingNotes ? (
-                <ShippedNotesComposer
-                  value={c.notes}
-                  onChange={c.setNotes}
-                  onCancel={() => {
-                    c.setNotes(repair.notes || '');
-                    c.setIsEditingNotes(false);
-                  }}
-                  onSubmit={c.handleSaveNotes}
-                  isSaving={c.isSaving}
-                />
-              ) : (
-                <ShippedNotesComposer
-                  value={String(repair.notes || '')}
-                  readOnly
-                  onClick={() => c.setIsEditingNotes(true)}
-                />
-              )
+              <RepairNotesRegion
+                value={c.isEditingNotes ? c.notes : String(repair.notes || '')}
+                editing={c.isEditingNotes}
+                isSaving={c.isSaving}
+                onChange={c.setNotes}
+                onStartEdit={() => c.setIsEditingNotes(true)}
+                onCancel={() => {
+                  c.setNotes(repair.notes || '');
+                  c.setIsEditingNotes(false);
+                }}
+                onSubmit={c.handleSaveNotes}
+              />
             ) : undefined
           }
         >

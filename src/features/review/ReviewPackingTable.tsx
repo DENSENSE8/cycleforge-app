@@ -173,7 +173,6 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
             searchResultLabel={`${tab} orders`}
             clearSearchLabel="Clear search"
             queueMode={tab === 'packed' ? 'staged' : 'fulfillment'}
-            sort="newest"
             selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
             data-testid="review-packing-grid-body"
             onOpenRecord={(record) => onOpenRow(record as ReviewTableOrder)}

@@ -1115,7 +1115,21 @@ export const orders = pgTable('orders', {
    * that reaches account → platform → integration.
    */
   typeId: bigint('type_id', { mode: 'number' }),
-});
+  /**
+   * Marketplace line identity (Amazon OrderItemId, eBay lineItemId, Shopify
+   * line_item.id). Empty string when the source supplies none — never NULL, so
+   * the unique index keeps deduplicating. Migration
+   * 2026-09-04_orders_multi_line_identity.sql.
+   */
+  externalLineId: text('external_line_id').notNull().default(''),
+}, (table) => ({
+  orgAccountOrderLineUx: uniqueIndex('idx_orders_unique_org_account_order_line').on(
+    table.organizationId,
+    table.orderId,
+    table.accountSource,
+    table.externalLineId,
+  ),
+}));
 
 // order_shipment_links — DROPPED 2026-06-28. Subsumed by shipment_links
 // (owner_type='ORDER', OUTBOUND). orders.shipment_id stays as the primary cache.
@@ -5574,6 +5588,20 @@ export const counterTransactions = pgTable('counter_transactions', {
   status: text('status').notNull().default('staged'),
   /** Idempotency anchor for the WHOLE transaction, not just the ticket call. */
   clientEventId: uuid('client_event_id'),
+  /** The in-store channel exchange half of the visit — a return against the
+   *  order the customer placed on the online store. Migration:
+   *  2026-09-04_counter_channel_return.sql.
+   *
+   *  Shape + validation: ChannelReturnRecord in
+   *  src/lib/counter/counter-transaction-types.ts. `{}` means NO channel
+   *  return (a retail-only or repair visit) — that is why it is NOT NULL
+   *  DEFAULT '{}' rather than nullable: "no return" is one readable state, not
+   *  three ways to spell it.
+   *
+   *  Visit METADATA, never a cart line (plan X3): a channel-return line type
+   *  would become a Square line, i.e. a card charge for the item we are
+   *  giving back. */
+  channelReturn: jsonb('channel_return').notNull().default({}),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
@@ -5585,6 +5613,12 @@ export const counterTransactions = pgTable('counter_transactions', {
   stagedOrderUnique: uniqueIndex('ux_counter_transactions_staged_order')
     .on(table.organizationId, table.stagedSquareOrderId)
     .where(sql`staged_square_order_id IS NOT NULL`),
+  /** "Which visits have an unfinished channel return?" — the question a
+   *  manual_required refund makes someone ask. Partial, so it indexes only the
+   *  visits that HAVE one rather than every retail sale. */
+  channelReturnStatusIdx: index('idx_counter_transactions_channel_return_status')
+    .on(table.organizationId, sql`(channel_return ->> 'status')`)
+    .where(sql`channel_return <> '{}'::jsonb`),
 }));
 
 export type CounterTransaction = typeof counterTransactions.$inferSelect;
@@ -5619,7 +5653,12 @@ export const counterSessions = pgTable('counter_sessions', {
    *  version + 1 (plan D3); a mismatch refetches the snapshot. */
   version: integer('version').notNull().default(0),
   /** CHECK counter_sessions_active_command_chk: retail | repair | buyback |
-   *  pickup — the KioskCommandId vocabulary (which pane is on screen). */
+   *  pickup | exchange — the KioskCommandId vocabulary (which pane is on
+   *  screen). Mirrored by KioskCommandId in
+   *  src/lib/kiosk/kiosk-session-store.ts and KIOSK_SERVICES in
+   *  src/lib/kiosk/services.ts; migration 2026-09-04b widened it for the
+   *  in-store channel exchange. Keep all four in lockstep — a command the UI
+   *  can select but the CHECK rejects strands a tablet mid-visit. */
   activeCommand: text('active_command').notNull().default('retail'),
   /** CHECK counter_sessions_face_chk: staff | customer. */
   face: text('face').notNull().default('staff'),
@@ -5628,6 +5667,11 @@ export const counterSessions = pgTable('counter_sessions', {
   customerPhone: text('customer_phone'),
   customerName: text('customer_name'),
   customerEmail: text('customer_email'),
+  /** The DRAFT channel return the desk and the tablet share, mirrored onto
+   *  counterTransactions.channelReturn at submit. A column, exactly like the
+   *  customer fields above — plan §6 offers a versioned session event as the
+   *  alternative and says pick ONE. */
+  channelReturn: jsonb('channel_return').notNull().default({}),
   /** Minted when the session opens so it outlives the tab — a resumed park and
    *  a retried submit carry the same id, so a replay is a no-op, not a charge. */
   clientEventId: uuid('client_event_id').notNull(),

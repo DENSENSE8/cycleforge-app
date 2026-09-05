@@ -1,6 +1,8 @@
 import { renderDataMatrixSvg } from '@/lib/barcode/dataMatrixSvg';
 import { printHtmlInIframe } from '@/lib/print/iframePrint';
+import type { LabelFaceModel } from '@/lib/print/labelFace';
 import { escapeLabelHtml } from '@/lib/print/labelHtml';
+import { isSilentPrintEnabled } from '@/lib/print/printMode';
 
 /**
  * Shared 2×1" DataMatrix label shell. Receiving, repair, and product/testing
@@ -58,6 +60,12 @@ export interface PrintLabelOptions {
   preview?: boolean;
   /** Popup reserved synchronously for older browsers. */
   legacyPopup?: Window | null;
+  /**
+   * Structured face for the WebUSB/Web Serial raster. When omitted, the job
+   * still prints USB using name + matrix + HRI so a Print button never skips
+   * the paired thermal printer.
+   */
+  face?: LabelFaceModel;
 }
 
 /**
@@ -113,14 +121,47 @@ ${printScript}
 }
 
 /**
- * Render and print a 2×1" DataMatrix label via a hidden iframe + the page's
- * own `window.print()`. Silent under Chromium `--kiosk-printing` (default
- * printer); otherwise the normal print dialog. Callers that can pair a thermal
- * printer via WebUSB/Web Serial should prefer `printRawToProfile` first and
- * only fall through here.
+ * Print a 2×1" DataMatrix label. When silent printing is on and a USB/serial
+ * label profile is paired, this sends a real raw job over WebUSB / Web Serial.
+ * Otherwise it falls through to a hidden iframe + `window.print()`.
  */
 export function printLabel(opts: PrintLabelOptions): void {
   if (typeof window === 'undefined') return;
+  void printLabelJob(opts);
+}
+
+/** Awaitable SoT for tests and callers that need the USB result. */
+export async function printLabelJob(
+  opts: PrintLabelOptions,
+): Promise<'usb' | 'iframe'> {
   const html = buildLabelHtml(opts);
+  if (opts.preview === true) {
+    return 'iframe';
+  }
+  if (isSilentPrintEnabled()) {
+    const { getProfileForRole, printRawToProfile, resolvePaperSize } = await import(
+      '@/lib/print/browserPrint'
+    );
+    const labelProfile = getProfileForRole('label');
+    if (labelProfile && labelProfile.kind !== 'os' && labelProfile.language !== 'none') {
+      try {
+        const { buildPrintLabelRawCommands } = await import('@/lib/print/labelFaceBitmap');
+        const paper = resolvePaperSize(labelProfile.paperSizeId);
+        const commands = buildPrintLabelRawCommands(opts, labelProfile, paper);
+        const res = await printRawToProfile(commands, labelProfile);
+        if (res.success) {
+          opts.legacyPopup?.close();
+          return 'usb';
+        }
+        console.warn('printLabel: browser raw print failed, falling back:', res.reason);
+      } catch (err) {
+        console.warn(
+          'printLabel: browser raw print failed, falling back:',
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
+  }
   printHtmlInIframe(html, { name: opts.name ?? 'printLabel', legacyPopup: opts.legacyPopup });
+  return 'iframe';
 }

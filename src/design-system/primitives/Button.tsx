@@ -6,6 +6,7 @@ import { cn } from '@/utils/_cn';
 import { focusRing } from '../tokens/focus-ring';
 import { COMPOSER_SHELL_CORNER, cornerClass } from '../tokens/radius';
 import { useUIModeOptional } from '../providers/UIModeProvider';
+import { cursorClickTarget } from '@/design-system/motion/cursor-scrub';
 import { BUTTON_VARIANTS, type ButtonVariant } from './button-variants';
 
 export type { ButtonVariant } from './button-variants';
@@ -183,6 +184,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         BUTTON_RADIUS[radius],
         className,
       )}
+      {...(!isDisabled ? cursorClickTarget() : null)}
       {...rest}
     >
       {loading ? (

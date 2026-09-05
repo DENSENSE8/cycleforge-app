@@ -141,6 +141,29 @@ export function selectAll(state: SelectionAnchorState): SelectionAnchorResult {
   return { selected: new Set(ids), anchorId, changed: true };
 }
 
+/** Check or uncheck a named set of rows without replacing the rest of the set. */
+export function setMany(
+  state: SelectionAnchorState,
+  ids: readonly number[],
+  checked: boolean,
+): SelectionAnchorResult {
+  if (ids.length === 0) return unchanged(state, state.anchorId);
+  const next = new Set(state.selected);
+  let changed = false;
+  for (const id of ids) {
+    if (checked) {
+      if (!next.has(id)) {
+        next.add(id);
+        changed = true;
+      }
+    } else if (next.delete(id)) {
+      changed = true;
+    }
+  }
+  if (!changed) return unchanged(state, state.anchorId);
+  return { selected: next, anchorId: ids[ids.length - 1]!, changed: true };
+}
+
 /** Drop every checked row — Esc with the form closed, or the bar's Clear. */
 export function clearSelection(state: SelectionAnchorState): SelectionAnchorResult {
   if (state.selected.size === 0) return unchanged(state, null);

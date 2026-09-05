@@ -38,7 +38,7 @@
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { LedgerGridColumnModel } from './grid-surface-descriptor';
 
-export type GridColumnAlign = 'start' | 'end';
+export type GridColumnAlign = 'start' | 'end' | 'center';
 
 
 /**
@@ -72,9 +72,20 @@ export type GridColumnAlign = 'start' | 'end';
  * operator re-adjudicated dates alone. 2026-08-04 split `tracking` off
  * `location` for header glyph only — MapPin vs folded map — same align.)
  *
- * Deliberately NOT a `center` case. Centering breaks the vertical alignment
- * axis every other column establishes, and the house one-row anatomy has no
- * centered content.
+ * **`center` is declarable and NOTHING declares it.** The 48px photo gutter was
+ * the single holder until 2026-09-04, on the argument that a square track
+ * centres its thumbnail so the word should centre over it. Removed by the
+ * operator: the photo is full-bleed in its track, so it has no left edge to sit
+ * off, and a centred "Image" broke the one line the header row exists to
+ * draw — every other label starting at its track's left edge. `image` now takes
+ * the type default like any other label.
+ *
+ * The branch survives because a column that genuinely needs to disagree with
+ * its type declares `align` on its MODEL, and that is the mechanism, not a
+ * per-surface override. But `center` is not a style choice available to a
+ * header: it stays off every text and magnitude column, where centering breaks
+ * the vertical alignment axis (that ruling stands — a label or a number never
+ * centers), and the one track that had it lost it.
  *
  * A column whose *type* disagrees with its *content* sets `align` on the model —
  * once, where the column is declared. Historical note: `order` used to be the
@@ -117,7 +128,9 @@ export function resolveGridColumnAlign(
  * zig-zag the Law of Strict Alignment forbids.
  */
 function alignClass(align: GridColumnAlign): string {
-  return align === 'end' ? 'justify-end text-right' : 'justify-start text-left';
+  if (align === 'end') return 'justify-end text-right';
+  if (align === 'center') return 'justify-center text-center';
+  return 'justify-start text-left';
 }
 
 /** Header justification — pass `resolveGridColumnAlign(column)`, never a literal. */

@@ -207,7 +207,7 @@ export function PickupWorkspace({
     [allRows, statusTab, setParam],
   );
 
-  const openCreate = useCallback(() => {
+  const _openCreate = useCallback(() => {
     setCustomerName('');
     setCreateError(null);
     setCreateOpen(true);

@@ -70,7 +70,7 @@ export interface LedgerGridColumnModel {
    * disagrees with its type's default, and set it HERE so the exception is
    * declared once rather than re-typed per surface.
    */
-  align?: 'start' | 'end';
+  align?: 'start' | 'end' | 'center';
   /**
    * Drag-resize OVERRIDE. Leave unset — `isGridColumnResizable` already decides
    * from `type`: variable-content tracks get a grip, the fixed-format

@@ -1,106 +1,265 @@
 'use client';
 
 /**
- * The desk Field — one mouth, docked at the bottom of a desk route.
+ * Desk Field — the one mouth on a desk that has no floor-station host.
  *
- * `deskFieldPlacement` (`@/lib/composer/desk-field`) already answers the two
- * questions this component exists to act on: *does a field mount on this
- * screen?* and *where does the next input go?* Everything here is the mount —
- * the decision stays pure and testable without a screen.
+ * Placement is {@link useDeskField} (over `deskFieldPlacement`): station mouths
+ * win, phone and public resolvers stand it down, every other desk mounts it.
+ * The mode never decides whether the field exists — only what the next input
+ * writes to.
  *
- * Three things the lane deliberately does NOT do:
+ * `variant="page-column"` is the BODY of `DeskPageChrome`'s lead column: the
+ * chrome owns the title, the tab band and the one shared card, so this file
+ * paints the mouth and nothing else. `variant="foot"` docks under a workspace
+ * that already has a left rail.
  *
- * **It does not gate on the composer mode.** The lane used to render only while
- * the composer sat in `ask`, which meant a desk route could be standing there
- * with no field at all — the operator had to find the mode before they could
- * find the mouth. The desk mouth is present on every desk route; the mode
- * decides what the field writes to, never whether it exists.
- *
- * **It does not fork a mouth.** The field IS `StationComposerHost`, with the
- * Unbox | Ticket faces off (`showModeFaces={false}`) and the context ring kept,
- * exactly as a dumb gun station mounts it — never hide the mode row.
- *
- * **It does not decide against a station.** A floor station carries its own
- * `StationComposerHost`, and one screen gets one mouth — the station-mouth count
- * stands this lane down through {@link DeskComposerAskLaneProps.stationMouths}.
+ * Home → Tasks adds Staff as `modeRowLeading` (not a new STATION_COMPOSER_MODES
+ * id) and accepts dropped compound rows as Ask working-set context.
  */
 
-import { useCallback, useState } from 'react';
-import { usePathname } from 'next/navigation';
-import { deskFieldPlacement } from '@/lib/composer/desk-field';
-import { StationComposerHost } from './StationComposerHost';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { StationComposerHost } from '@/components/composer/StationComposerHost';
+import { useDeskField } from '@/components/composer/useDeskField';
+import { isOrdersDeskPath } from '@/lib/composer/desk-field';
+import {
+  registerDeskLeadPaneMouth,
+  useStationComposerDeskCount,
+} from '@/lib/composer/station-composer-presence';
+import {
+  dispatchComposerAskMode,
+  isComposerAskLatched,
+  readStationComposerModeSession,
+  stationComposerArrivalMode,
+} from '@/lib/composer/station-composer-mode';
+import { cn } from '@/utils/_cn';
+import { parseHomeMode } from '@/lib/home/home-modes';
+import { User, X } from '@/components/Icons';
+import { IconButton } from '@/design-system/primitives/IconButton';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cursorClickTarget } from '@/design-system/motion/cursor-scrub';
+import { registerAssistantContext } from '@/lib/assistant/context-store';
+import { getActiveStaff } from '@/lib/staffCache';
+import { mentionTokens, resolveMentions } from '@/lib/ops-plans/mentions';
+import {
+  PROJECT_TASK_MIME,
+  addWorkingTaskRef,
+  getSelectedWorkingTask,
+  getWorkingTaskRefs,
+  parseWorkingTaskRef,
+  removeWorkingTaskRef,
+  subscribeWorkingTaskRefs,
+} from '@/lib/ops-plans/working-set';
+import { pingStaffAboutTask } from '@/features/tasks/ping-task-staff';
+import { toast } from '@/lib/toast';
+
+export const DESK_ASK_PANE_TITLE = 'Ask';
 
 export type DeskComposerAskLaneProps = {
-  /**
-   * Station mouths already mounted on this screen. One is enough to stand the
-   * desk field down.
-   *
-   * A prop rather than a `useStationComposerStationCount()` read: the presence
-   * store that counts mounted mouths is not in this tree yet, and inventing a
-   * second source of truth for it here is how two counts end up disagreeing.
-   * The shell passes what it knows — the same contract `deskFieldPlacement`
-   * itself is written to.
-   */
-  stationMouths?: number;
-  /** True while the paste-orders import draft is open. */
-  importDraftOpen?: boolean;
-  /** Title of the armed work session, or `null` when nothing is armed. */
-  armedSessionTitle?: string | null;
-  /** What a committed line does. The lane owns the draft, not the destination. */
-  onAsk?: (text: string) => void;
+  variant?: 'foot' | 'page-column';
   className?: string;
 };
 
+function useWorkingSet() {
+  const dropped = useSyncExternalStore(
+    subscribeWorkingTaskRefs,
+    getWorkingTaskRefs,
+    getWorkingTaskRefs,
+  );
+  const selected = useSyncExternalStore(
+    subscribeWorkingTaskRefs,
+    getSelectedWorkingTask,
+    getSelectedWorkingTask,
+  );
+  return { dropped, selected };
+}
+
 export function DeskComposerAskLane({
-  stationMouths = 0,
-  importDraftOpen = false,
-  armedSessionTitle = null,
-  onAsk,
+  variant = 'foot',
   className,
 }: DeskComposerAskLaneProps) {
   const pathname = usePathname();
-  const [draft, setDraft] = useState('');
+  const searchParams = useSearchParams();
+  const placement = useDeskField();
+  const isColumn = variant === 'page-column';
+  const leadPaneMouths = useStationComposerDeskCount();
+  const [note, setNote] = useState('');
+  const [staffTalk, setStaffTalk] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const { dropped, selected } = useWorkingSet();
+  const isHomeTasks =
+    (pathname === '/' || pathname === '') && parseHomeMode(searchParams.get('mode')) === 'tasks';
 
-  // Hooks run before the placement can stand the lane down: a route change is
-  // what flips `mount`, and bailing out above a hook would reorder them.
-  const commit = useCallback(
-    (liveValue?: string) => {
-      const text = (liveValue ?? draft).trim();
-      if (!text) return;
-      onAsk?.(text);
-      setDraft('');
-    },
-    [draft, onAsk],
-  );
+  const onNote = useCallback((next: string) => setNote(next), []);
 
-  const placement = deskFieldPlacement({
-    pathname: pathname ?? '/',
-    stationMouths,
-    importDraftOpen,
-    armedSessionTitle,
-  });
+  const onCommit = useCallback(() => {}, []);
+
+  const onStaffCommit = useCallback(async () => {
+    const text = note.trim();
+    if (!text) return;
+    const tokens = mentionTokens(text);
+    if (tokens.length === 0) {
+      toast.error('Name someone with @Name');
+      return;
+    }
+    const staff = await getActiveStaff();
+    const hits = resolveMentions(tokens, staff);
+    if (hits.length === 0) {
+      toast.error('No staff matched that @mention');
+      return;
+    }
+    const target = selected ?? dropped[dropped.length - 1] ?? null;
+    try {
+      for (const hit of hits) {
+        await pingStaffAboutTask({
+          recipientId: hit.id,
+          body: text,
+          planId: target?.planId,
+          taskId: target?.id,
+        });
+      }
+      if (target && hits[0]) {
+        await fetch(`/api/ops-plans/tasks/${target.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ assigneeStaffId: hits[0].id }),
+        });
+      }
+      toast.success(hits.length === 1 ? `Pinged ${hits[0]!.name}` : `Pinged ${hits.length} people`);
+      setNote('');
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Could not ping');
+    }
+  }, [dropped, note, selected]);
+
+  useEffect(() => {
+    if (!isHomeTasks) setStaffTalk(false);
+  }, [isHomeTasks]);
+
+  useEffect(() => {
+    if (!isColumn) return undefined;
+    return registerDeskLeadPaneMouth();
+  }, [isColumn]);
+
+  useEffect(() => {
+    if (!isOrdersDeskPath(pathname ?? '/')) return;
+    if (!isComposerAskLatched(readStationComposerModeSession())) return;
+    dispatchComposerAskMode(stationComposerArrivalMode());
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!isHomeTasks) return undefined;
+    const working = dropped.map((row) => `• ${row.title} (${row.planTitle})`).join('\n');
+    const picked = selected ? `${selected.title} (${selected.planTitle})` : 'none';
+    return registerAssistantContext({
+      page: 'home',
+      mode: 'tasks',
+      selection: selected ? { kind: 'ops-plan-task', id: selected.id } : null,
+      skill: [
+        'The operator is on Home → Tasks, the org project-task desk (ops_plan_tasks), not personal staff_todos.',
+        `Selected task: ${picked}.`,
+        working
+          ? `Working set (dropped onto Ask):\n${working}`
+          : 'Working set is empty. Drag a table row onto this composer to attach it.',
+        'When they say "this" or "these", prefer the working set, then the selected row.',
+      ].join('\n'),
+    });
+  }, [dropped, isHomeTasks, selected]);
 
   if (!placement.mount) return null;
+  if (!isColumn && leadPaneMouths > 0) return null;
+
+  const staffFace = isHomeTasks ? (
+    <button
+      type="button"
+      aria-label="Composer mode · Staff"
+      aria-pressed={staffTalk}
+      data-testid="composer-mode-staff"
+      {...cursorClickTarget('Staff')}
+      onClick={() => setStaffTalk((on) => !on)}
+      className={cn(
+        'ds-raw-button flex h-5 items-center gap-0.5 rounded-sm pr-1.5 text-role-micro font-semibold leading-none',
+        staffTalk ? 'text-text-default' : 'text-text-faint',
+        focusRing('control', 'accent'),
+      )}
+    >
+      <span className="flex h-5 w-3.5 shrink-0 items-center justify-center" aria-hidden>
+        <User className={cn('block h-3.5 w-3.5 shrink-0', staffTalk ? 'text-blue-600' : 'text-text-faint')} />
+      </span>
+      <span className="tracking-wide">Staff</span>
+    </button>
+  ) : undefined;
 
   return (
     <div
-      // `presenceKind` is not a prop `StationComposerHost` carries in this tree,
-      // and this goal does not touch that file. The kind rides the lane's own
-      // wrapper so the presence store has something to read when it lands.
-      data-presence-kind="desk"
+      className={cn(
+        !isColumn && 'shrink-0 border-t border-border-hairline bg-surface-card',
+        isColumn && 'mt-auto',
+        dragOver && 'bg-surface-hover',
+        className,
+      )}
       data-testid="desk-composer-ask-lane"
-      className={className}
+      onDragOver={
+        isHomeTasks
+          ? (event) => {
+              if (![PROJECT_TASK_MIME, 'text/plain'].some((type) => event.dataTransfer.types.includes(type))) {
+                return;
+              }
+              event.preventDefault();
+              setDragOver(true);
+            }
+          : undefined
+      }
+      onDragLeave={isHomeTasks ? () => setDragOver(false) : undefined}
+      onDrop={
+        isHomeTasks
+          ? (event) => {
+              event.preventDefault();
+              setDragOver(false);
+              const raw =
+                event.dataTransfer.getData(PROJECT_TASK_MIME) || event.dataTransfer.getData('text/plain');
+              const ref = parseWorkingTaskRef(raw);
+              if (ref) addWorkingTaskRef(ref);
+            }
+          : undefined
+      }
     >
+      {isHomeTasks && dropped.length > 0 ? (
+        <div className="flex flex-wrap gap-1 px-2 pt-2" data-testid="desk-ask-working-set">
+          {dropped.map((row) => (
+            <span
+              key={row.id}
+              className="inline-flex max-w-full items-center gap-1 rounded-md bg-surface-sunken px-1.5 py-0.5 text-role-micro text-text-muted"
+            >
+              <span className="truncate">{row.title}</span>
+              <IconButton
+                type="button"
+                size="xs"
+                tone="neutral"
+                icon={<X className="h-3 w-3" />}
+                ariaLabel={`Remove ${row.title} from Ask`}
+                onClick={() => removeWorkingTaskRef(row.id)}
+              />
+            </span>
+          ))}
+        </div>
+      ) : null}
       <StationComposerHost
-        labelValue={draft}
-        onLabelChange={setDraft}
-        onLabelCommit={commit}
-        labelPlaceholder={placement.placeholder}
-        labelCommitAriaLabel="Send to this desk"
-        labelCommitTooltip="Send (Enter)"
-        showModeFaces={false}
+        presenceKind="desk"
+        labelValue={note}
+        onLabelChange={onNote}
+        onLabelCommit={staffTalk ? () => void onStaffCommit() : onCommit}
+        labelPlaceholder={
+          staffTalk
+            ? 'Ping @Name about this task…'
+            : isHomeTasks
+              ? 'Ask about the selected or dropped tasks…'
+              : placement.placeholder
+        }
         chrome="raised"
         animateMount={false}
+        showModeFaces={false}
+        modeRowLeading={staffFace}
       />
     </div>
   );

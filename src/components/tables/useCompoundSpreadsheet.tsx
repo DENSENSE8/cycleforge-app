@@ -1,0 +1,297 @@
+'use client';
+
+/**
+ * **The generic compound spreadsheet feed** — the engine half of a compound
+ * {@link DataTable} mount, for any family.
+ *
+ * ## Why this exists (Phase 0 of the fork-port)
+ *
+ * `useOrdersSpreadsheet` was the only compound feed, and it is orders-shaped:
+ * `ShippedOrder` rows, `OrdersQueueTableRow`, order assignment, a tracking
+ * popover. So a family that wanted To-ship's two-line WMS row could not mount
+ * it — the last port copied the ~150 lines around `DataTable` instead
+ * (`DeadStockTable`, `SkuVelocityTable`, `SessionsReportTable`,
+ * `InventoryEventsTable` are four copies of one file), and one of them wrote a
+ * per-family cell map to get its faces back. Invariant 1 of
+ * `table-engine-law.ts` forbids the cell map; this hook removes the reason
+ * anybody wrote one.
+ *
+ * What a family supplies is exactly the five artifacts the acceptance test
+ * allows — a row source, a field catalog, a resolver, a `row → CompoundRowView`
+ * adapter, and its registry lines. Everything this hook does with them is an
+ * {@link ENGINE_OWNED_SEAMS} concern: search over the MOUNTED facts, sort by
+ * the sorted FACT, banding, row painting through the one {@link CompoundRow}.
+ *
+ * ## What it deliberately does NOT take
+ *
+ * No `renderRow`, no cell map, no comparator override, no per-family face hook.
+ * Sorting compares the RESOLVED TEXT of the sorted fact, typed by the column's
+ * own `slotDisplayType`; a family that needs a different order needs the fact
+ * resolved differently, which is a resolver change every consumer of that fact
+ * benefits from. That is invariant 3 in one sentence: if a mount needs
+ * behaviour the engine lacks, the engine gains it for everyone or the mount
+ * does without.
+ *
+ * ## Sort durability
+ *
+ * `sort` / `dir` / `onSortChange` are REQUIRED and owned by the caller, because
+ * durability belongs in the URL (`?sort=`) and only the page knows the route it
+ * writes to. Passing a frozen `sort` is the dead-header fork that made Shipped's
+ * headers inert — pass a state setter, not a constant.
+ */
+
+import { useCallback, useMemo, useRef, type ReactNode } from 'react';
+import { CompoundPlaneRow } from '@/components/tables/compound/CompoundPlaneRow';
+import type { DataTableProps } from '@/components/tables/DataTable';
+import type { TableSurfaceBinding } from '@/components/tables/table-surface-binding';
+import type { SlotTableFieldsMenu } from '@/components/tables/useSlotTableLayout';
+import type {
+  CompoundRowAction,
+  CompoundRowAdapter,
+  CompoundRowView,
+  CompoundSlotValue,
+} from '@/components/tables/compound/compound-row-model';
+import type { GridSurfaceCapabilities } from '@/design-system/components/grid';
+import { compareGridValues } from '@/design-system/components/grid';
+import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
+import { singleBand, type RowGroup } from '@/lib/group-rows';
+import type { SlotTrackFields } from '@/lib/tables/materialize-tracks';
+
+/**
+ * Structural shape of a mounted compound column. Every family's column
+ * interface already satisfies it — typing against a concrete family model is
+ * what this hook exists to avoid.
+ */
+export interface CompoundSpreadsheetColumn extends SlotTrackFields {
+  key: string;
+  width: string;
+  label?: string;
+  frozen?: boolean;
+  hideKey?: string;
+  sortable?: boolean;
+}
+
+export interface UseCompoundSpreadsheetOptions<
+  Row,
+  K extends string,
+  C extends CompoundSpreadsheetColumn,
+> {
+  /** Definition + descriptor factory — the family's registry line, by reference. */
+  binding: TableSurfaceBinding<Row, C>;
+  /** The MOUNTED model, materialized from the effective slot layout. */
+  columns: readonly C[];
+  /** Fields-picker data from `useSlotTableLayout`. */
+  fields?: SlotTableFieldsMenu;
+  rows: readonly Row[];
+  getRowId: (row: Row) => string;
+  /** The family's pure `row → CompoundRowView` adapter. */
+  adapter: CompoundRowAdapter<Row>;
+  /**
+   * `(row, fieldId) → resolved fact`. The family's pure resolver, and the ONE
+   * source for both the search index and the sort comparator — a search that
+   * read different text than the sort would order a list by facts the operator
+   * cannot see.
+   */
+  resolve: (row: Row, fieldId: string) => CompoundSlotValue | null;
+  /**
+   * The FACT a column sorts by, or `null` where it offers none (a transition is
+   * two values and sorting it compares whichever end came first). The rule
+   * lives on the fact, so a rebind carries it.
+   */
+  sortFactFor: (col: C) => string | null;
+  capabilities: GridSurfaceCapabilities;
+  /** Caller-owned, URL-durable. See the docblock — never pass a constant. */
+  sort: K | null;
+  dir: GridSortDir | null;
+  onSortChange: (key: K, dir: 'asc' | 'desc') => void;
+  search: { value: string; onChange: (next: string) => void; placeholder?: string };
+  loading: boolean;
+  emptyMessage: string;
+  ariaLabel?: string;
+  className?: string;
+  /** Present ⇒ the title hover carries "Open" and the row reports the click. */
+  onOpenRow?: (row: Row) => void;
+  /**
+   * The family's row VERBS, resolved per row.
+   *
+   * This is how a family stops needing an `actions` COLUMN. Every table that
+   * arrived from `AdminTable` had one — a trailing cell of bespoke buttons
+   * ("Revoke", "Unpair") — which is a per-family cell by another name, and the
+   * reason those tables could never mount the shared row.
+   *
+   * Law §4 (`VERBS_BIND_TO_FIELDS`): a verb is declared once by the family and
+   * its DIRECTION comes from row STATE, never from the route — which is exactly
+   * what a per-row resolver expresses. Entries are label + callback, never JSX
+   * (`CompoundRowAction`), so a bespoke control cannot reappear inside the
+   * shared row wearing an action's name. Bulk is a cardinality, not a mode: this
+   * is the same catalog at n=1.
+   */
+  rowActions?: (row: Row) => readonly CompoundRowAction[];
+  selectionScope?: string;
+}
+
+/**
+ * The feed bag for {@link DataTable}. The chrome half (tabs, filter facets,
+ * totals, copy) stays with the page, which is the only place that knows the URL
+ * those controls write to — the same split `useOrdersSpreadsheet` returns.
+ */
+export type CompoundSpreadsheetFeed<Row, K extends string, C extends CompoundSpreadsheetColumn> =
+  Omit<
+    DataTableProps<Row, K, C>,
+    'filter' | 'tabs' | 'activeTab' | 'onTabChange' | 'totalCount' | 'copyExport'
+  >;
+
+/** Resolved display text for one fact, or `''` when the row has nothing to say. */
+function factText<Row>(
+  resolve: (row: Row, fieldId: string) => CompoundSlotValue | null,
+  row: Row,
+  fieldId: string,
+): string {
+  const value = resolve(row, fieldId);
+  if (!value) return '';
+  if (value.kind === 'value') return value.text ?? '';
+  // A stage step's searchable text is who did it and where — the parts the
+  // operator can actually read off the cell.
+  return [value.who, value.at, value.station].filter(Boolean).join(' ');
+}
+
+export function useCompoundSpreadsheet<
+  Row,
+  K extends string,
+  C extends CompoundSpreadsheetColumn,
+>({
+  binding,
+  columns,
+  fields,
+  rows,
+  getRowId,
+  adapter,
+  resolve,
+  sortFactFor,
+  capabilities,
+  sort,
+  dir,
+  onSortChange,
+  search,
+  loading,
+  emptyMessage,
+  ariaLabel,
+  className,
+  onOpenRow,
+  rowActions,
+  selectionScope,
+}: UseCompoundSpreadsheetOptions<Row, K, C>): CompoundSpreadsheetFeed<Row, K, C> {
+  const shellRef = useRef<HTMLDivElement>(null);
+
+  /** Every fact the MOUNTED layout resolves — the search and sort vocabulary. */
+  const boundFactIds = useMemo(
+    () => columns.map((c) => c.fieldId).filter((id): id is string => Boolean(id)),
+    [columns],
+  );
+
+  const sortFactByKey = useMemo(
+    () => new Map<string, string | null>(columns.map((c) => [c.key, sortFactFor(c)])),
+    [columns, sortFactFor],
+  );
+
+  /**
+   * The one search box, over the MOUNTED tracks: a row matches when any bound
+   * fact's resolved text contains the query. Keyed to the bindings rather than
+   * a hardcoded field list, so an org that binds notes can search notes and one
+   * that unbinds a fact stops matching on it — the search always covers exactly
+   * what the operator can see.
+   */
+  const filtered = useMemo(() => {
+    const q = search.value.trim().toLowerCase();
+    if (!q) return [...rows];
+    return rows.filter((row) =>
+      boundFactIds.some((fact) => factText(resolve, row, fact).toLowerCase().includes(q)),
+    );
+  }, [rows, search.value, boundFactIds, resolve]);
+
+  /**
+   * Order by the SORTED FACT, never by the column key: track keys are slot
+   * indices, so a comparator keyed to `status:3` would break the moment an org
+   * rebinds it. Typing comes from the column's own `slotDisplayType`, so a date
+   * fact orders as an instant and a number as a number, through the same
+   * `compareGridValues` every other grid uses.
+   */
+  const sorted = useMemo(() => {
+    const fact = sort ? (sortFactByKey.get(sort) ?? null) : null;
+    if (!fact || !dir) return filtered;
+    const type = columns.find((c) => c.key === sort)?.slotDisplayType;
+    return [...filtered].sort((a, b) =>
+      compareGridValues(factText(resolve, a, fact), factText(resolve, b, fact), {
+        type,
+        dir,
+      }),
+    );
+  }, [filtered, sort, dir, sortFactByKey, columns, resolve]);
+
+  const groups = useMemo(
+    () => singleBand(sorted) as [string, RowGroup<Row>[]][],
+    [sorted],
+  );
+
+  /**
+   * One row, on the shared {@link CompoundRow}. There is no family row
+   * component and no `renderRow` option: the adapter's view IS the family's
+   * contribution, and everything else about the row is the same on every table.
+   */
+  const paintRow = useCallback(
+    (row: Row, visible: readonly C[]): ReactNode => {
+      const view: CompoundRowView = {
+        ...adapter(row),
+        slots: Object.fromEntries(
+          visible
+            .filter((c) => Boolean(c.fieldId))
+            .map((c) => [c.key, resolve(row, c.fieldId as string) ?? { kind: 'value', text: null }]),
+        ),
+      };
+      return (
+        <CompoundPlaneRow<Row, C>
+          key={getRowId(row)}
+          row={row}
+          // The ENTITY's plane, straight off its registration. A page cannot
+          // introduce one and two lanes of the same entity cannot disagree
+          // about what picking a row opens.
+          rowPlane={binding.rowPlane}
+          columns={visible}
+          capabilities={capabilities}
+          selected={false}
+          view={view}
+          onOpen={onOpenRow ? () => onOpenRow(row) : undefined}
+          actions={rowActions?.(row)}
+        />
+      );
+    },
+    [adapter, resolve, getRowId, capabilities, onOpenRow, rowActions, binding.rowPlane],
+  );
+
+  return {
+    binding,
+    columns,
+    fields,
+    rows: sorted,
+    getRowId,
+    orderGroupsByDate: groups,
+    loading,
+    emptyMessage,
+    search,
+    sort,
+    dir,
+    onSortChange,
+    // Law (`SLOT_TABLE_PAINT_LAW.headerSort`): every painted DATA header
+    // click-sorts. A track with no sortable fact is exactly the transition case
+    // the family's `sortFactFor` refuses, and chrome tracks carry no fieldId.
+    isSortable: (key: string) => (sortFactByKey.get(key) ?? null) !== null,
+    ariaLabel,
+    className,
+    shellRef,
+    selectionScope,
+    renderGroup: (group, _stripe, { columns: visible }) => (
+      <>{group.rows.map((row) => paintRow(row, visible))}</>
+    ),
+    renderRow: (row, _stripe, { columns: visible }) => paintRow(row, visible),
+  };
+}

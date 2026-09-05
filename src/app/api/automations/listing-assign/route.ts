@@ -10,6 +10,7 @@ import {
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import {
   listingAssignFromOrders,
+  listListingStaffRules,
   previewListingAssign,
 } from '@/lib/automations/listing-assign-from-orders';
 import pool from '@/lib/db';
@@ -19,9 +20,15 @@ const ROUTE_LISTING_ASSIGN_POST = 'automations.listing-assign.post';
 /**
  * GET /api/automations/listing-assign?orderIds=1,2,3
  * Preview distinct item numbers covered by the selection.
+ * GET /api/automations/listing-assign?view=rules
+ * Floor list of repeating item-number → picker/packer rules.
  */
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
+    if (req.nextUrl.searchParams.get('view') === 'rules') {
+      const items = await listListingStaffRules(ctx.organizationId);
+      return NextResponse.json({ success: true, items, total: items.length });
+    }
     const raw = req.nextUrl.searchParams.get('orderIds') || '';
     const orderIds = raw
       .split(',')

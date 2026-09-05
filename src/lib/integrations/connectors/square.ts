@@ -11,7 +11,7 @@
  *
  * Reuses:
  *   - resolveSquareConfig / squareFetchForOrg (Nango token, env fallback)
- *   - the orders upsert shape from src/lib/ebay/sync.ts (idx_orders_unique_account_order)
+ *   - the orders upsert shape from src/lib/ebay/sync.ts (idx_orders_unique_org_account_order_line)
  *   - getSyncCursor / updateSyncCursor for the incremental updated_at watermark
  *
  * Lazily imported by the registry so the connection reader never pulls in the
@@ -33,7 +33,13 @@ const PAGE_LIMIT = 200;
 const MAX_PAGES = 25; // safety bound: 25 * 200 = 5k orders / run
 
 interface SquareMoney { amount?: number; currency?: string }
-interface SquareLineItem { name?: string; quantity?: string }
+interface SquareLineItem {
+  uid?: string;
+  name?: string;
+  quantity?: string;
+  catalog_object_id?: string;
+  total_money?: SquareMoney;
+}
 interface SquareOrder {
   id?: string;
   state?: string;
@@ -58,45 +64,54 @@ async function resolveLocationIds(orgId: OrgId): Promise<string[]> {
     .slice(0, 10); // Square caps location_ids at 10 per search
 }
 
-/** One representative line for the orders row (Square orders are multi-line). */
-function summarizeLines(order: SquareOrder): { title: string; quantity: number } {
-  const lines = order.line_items ?? [];
-  const quantity = lines.reduce((s, li) => s + (Number(li.quantity) || 0), 0) || 1;
-  const first = lines.find((li) => (li.name ?? '').trim())?.name?.trim();
-  const title = !first
-    ? SQUARE_TITLE_FALLBACK
-    : lines.length > 1
-      ? `${first} +${lines.length - 1} more`
-      : first;
-  return { title, quantity };
-}
+/** One canonical line per Square line item. Empty line_items still emit one
+ *  order-level stub so the register sale itself lands. */
+export function mapSquareOrderToCanonicalLines(order: SquareOrder): CanonicalOrderLine[] {
+  const externalOrderId = String(order.id ?? '');
+  const orderDate = order.created_at ? new Date(order.created_at) : null;
+  const status = order.state === 'COMPLETED' ? 'shipped' : 'unassigned';
+  const items = order.line_items ?? [];
+  const orderAmount =
+    typeof order.total_money?.amount === 'number' ? String(order.total_money.amount / 100) : null;
+  const orderCurrency = order.total_money?.currency || 'USD';
 
-/** Map a Square order to a canonical line. Title '' means "unknown" — the
- *  writer seeds the 'Square order' placeholder only on a brand-new row. */
-function toCanonicalLine(order: SquareOrder): CanonicalOrderLine {
-  const { title, quantity } = summarizeLines(order);
-  return {
-    externalOrderId: String(order.id ?? ''),
+  const base = {
+    externalOrderId,
     itemNumber: '',
     sku: '',
-    productTitle: title === SQUARE_TITLE_FALLBACK ? '' : title,
     condition: '',
-    quantity: String(quantity),
     notes: '',
-    // See shipstation.ts — prefer Square's customer id over a name.
     customerName: '',
     accountSource: ACCOUNT_SOURCE,
-    trackings: [],
-    shipByDate: null,
-    orderDate: order.created_at ? new Date(order.created_at) : null,
-    // Square money is integer cents — unlike Shopify's decimal string.
-    saleAmount:
-      typeof order.total_money?.amount === 'number' ? String(order.total_money.amount / 100) : null,
-    currency: order.total_money?.currency || 'USD',
-    // In-store Square sales are realized at the register; mark shipped so they
-    // land in the tracker as completed (mirrors Amazon FBA read-only ingest).
-    status: order.state === 'COMPLETED' ? 'shipped' : 'unassigned',
+    trackings: [] as string[],
+    shipByDate: null as Date | null,
+    orderDate,
+    status,
   };
+
+  if (items.length === 0) {
+    return [{
+      ...base,
+      externalLineId: '',
+      productTitle: '',
+      quantity: '1',
+      saleAmount: orderAmount,
+      currency: orderCurrency,
+    }];
+  }
+
+  return items.map((li) => {
+    const lineAmount =
+      typeof li.total_money?.amount === 'number' ? String(li.total_money.amount / 100) : null;
+    return {
+      ...base,
+      externalLineId: String(li.uid ?? '').trim(),
+      productTitle: (li.name ?? '').trim(),
+      quantity: String(li.quantity || 1),
+      saleAmount: lineAmount,
+      currency: li.total_money?.currency || orderCurrency,
+    };
+  });
 }
 
 export async function squareSync(orgId: OrgId): Promise<SyncOutcome> {
@@ -146,7 +161,7 @@ export async function squareSync(orgId: OrgId): Promise<SyncOutcome> {
       const orders = res.data.orders ?? [];
       for (const order of orders) {
         if (!order.id) continue;
-        lines.push(toCanonicalLine(order));
+        lines.push(...mapSquareOrderToCanonicalLines(order));
         const ts = order.updated_at ? Date.parse(order.updated_at) : NaN;
         if (Number.isFinite(ts) && ts > maxUpdatedAt) maxUpdatedAt = ts;
       }

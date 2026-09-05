@@ -35,6 +35,17 @@ import { toPSTDateKey, warehouseDayUtcBounds } from '@/utils/date';
 export interface CanonicalOrderLine {
   /** The platform's order identifier → `orders.order_id`. Required. */
   externalOrderId: string;
+  /**
+   * Marketplace line identity → `orders.external_line_id`.
+   *
+   * Amazon `OrderItemId`, eBay `lineItemId` / `transactionId`, Shopify
+   * `line_item.id`, Square `uid`, ShipStation `orderItemId`, Ecwid `item.id`.
+   * `''` when the source has none — {@link resolveExternalLineId} then falls
+   * back through itemNumber → sku → productTitle so a sheet of five different
+   * products still yields five rows, and sources that truly have no line grain
+   * keep today's one-row-per-order behaviour.
+   */
+  externalLineId: string;
   /** Platform listing / item id → `orders.item_number`. */
   itemNumber: string;
   /** Snapshot title at time of sale → `orders.product_title`. */
@@ -97,14 +108,12 @@ export interface CanonicalOrderLine {
 }
 
 /**
- * One order after its lines are folded together — the unit the writer upserts.
+ * One LINE after same-identity source rows are folded — the unit the writer
+ * upserts. `orders` is a line table: one marketplace order number (`order_id`)
+ * is a band over N rows distinguished by `external_line_id`.
  *
- * `orders` is still one row per line item today (there is no `order_line_items`
- * table yet), so the writer keeps the historical behavior of collapsing a
- * multi-line source order onto its LAST line while unioning every tracking
- * number across the lines. `lineCount` records how many lines were folded so a
- * future `order_line_items` migration can tell a genuine single-line order from
- * a collapsed multi-line one without re-reading the source.
+ * `lineCount` is how many source rows collapsed onto THIS line identity (a
+ * re-sync of the same SKU), not how many products are on the order.
  */
 interface CanonicalOrder extends CanonicalOrderLine {
   lineCount: number;
@@ -140,41 +149,83 @@ export function parseSaleAmount(value: unknown): string | null {
 }
 
 /**
- * Fold `CanonicalOrderLine[]` into one `CanonicalOrder` per `externalOrderId`.
+ * Stable line identity written to `orders.external_line_id`.
  *
- * Preserves the pre-refactor pipeline semantics exactly:
+ * Marketplace adapters pass the source's own id. Spreadsheet / CSV rows pass
+ * `''` and fall through the listing facts the sheet already carries, so five
+ * different products on one order number stay five rows. Two rows of the SAME
+ * listing still fold (the duplicate-row contract).
+ */
+export function resolveExternalLineId(line: {
+  externalLineId?: string;
+  itemNumber: string;
+  sku: string;
+  productTitle: string;
+}): string {
+  return (
+    cleanText(line.externalLineId) ||
+    cleanText(line.itemNumber) ||
+    cleanText(line.sku) ||
+    cleanText(line.productTitle)
+  );
+}
+
+/**
+ * Fold `CanonicalOrderLine[]` into one `CanonicalOrder` per
+ * `(externalOrderId, resolved line id)`.
+ *
  *   • lines with a blank `externalOrderId` are dropped (unjoinable);
- *   • the LAST line for an id wins its scalar fields;
- *   • trackings union across every line of that order, de-duplicated, in first-
- *     seen order (the writer treats `trackings[0]` as the primary shipment).
+ *   • the LAST source row for a line identity wins its scalar fields;
+ *   • trackings union only within that same line (a re-sync of one product),
+ *     never across siblings — an untracked sibling stays untracked so the
+ *     desk can paint it as unshipped;
+ *   • customer name is an ORDER fact: the first non-empty name on the band
+ *     fills siblings that didn't carry one.
  *
  * Insertion order of first appearance is preserved so a caller's progress
  * reporting and detail rows stay in source order.
  */
 export function groupCanonicalOrderLines(lines: CanonicalOrderLine[]): CanonicalOrder[] {
-  const byOrderId = new Map<string, CanonicalOrder>();
+  const byLine = new Map<string, CanonicalOrder>();
 
   for (const line of lines) {
     const orderId = cleanText(line.externalOrderId);
     if (!orderId) continue;
+    const lineId = resolveExternalLineId(line);
+    const key = `${orderId}\0${lineId}`;
 
-    const existing = byOrderId.get(orderId);
+    const existing = byLine.get(key);
     const trackings = existing ? [...existing.trackings] : [];
     for (const tracking of line.trackings) {
       const clean = cleanText(tracking);
       if (clean && !trackings.includes(clean)) trackings.push(clean);
     }
 
-    // Last line wins the scalars; trackings accumulate across all of them.
-    byOrderId.set(orderId, {
+    byLine.set(key, {
       ...line,
       externalOrderId: orderId,
+      externalLineId: lineId,
       trackings,
       lineCount: (existing?.lineCount ?? 0) + 1,
     });
   }
 
-  return Array.from(byOrderId.values());
+  const folded = Array.from(byLine.values());
+
+  const customerByOrder = new Map<string, string>();
+  for (const line of folded) {
+    const name = cleanText(line.customerName);
+    if (name && !customerByOrder.has(line.externalOrderId)) {
+      customerByOrder.set(line.externalOrderId, name);
+    }
+  }
+  for (const line of folded) {
+    if (cleanText(line.customerName)) continue;
+    const inherited = customerByOrder.get(line.externalOrderId);
+    if (inherited) line.customerName = inherited;
+  }
+
+  return folded;
 }
 
 /**

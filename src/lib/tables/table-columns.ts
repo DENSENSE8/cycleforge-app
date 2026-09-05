@@ -92,6 +92,14 @@ export type TableId =
   | 'ready'
   /** Warehouse › Bins overview spreadsheet (`BINS_GRID_COLUMNS`). */
   | 'bins'
+  /** Inventory › Ledger activity feed (slot-materialized). */
+  | 'inventory-events'
+  | 'audit-log'
+  | 'auth-sessions'
+  | 'kiosk-devices'
+  | 'staff-directory'
+  | 'ai-usage'
+  | 'compatibility'
   /** Admin › PO Mailbox / Unfound triage (`UNFOUND_GRID_COLUMNS`). */
   | 'unfound'
   /** Home › Today task spreadsheet (`MY_DAY_GRID_COLUMNS`). */
@@ -142,6 +150,16 @@ export type TableId =
    * never Daily's: different store (`work_sessions`) and a different question.
    */
   | 'sessions'
+  /**
+   * Reports › SKU velocity (30d). Movement facts, not the products catalog
+   * sheet — a catalog hide must not densify this ranking.
+   */
+  | 'sku-velocity'
+  /**
+   * Reports › Dead stock (90d+). Sibling of `sku-velocity`, never a merge:
+   * dormancy vs 30-day in/out are different questions over different rows.
+   */
+  | 'dead-stock'
   /**
    * Amazon Prep › shipment board. The KEY stays because `TableId`'s runtime
    * vocabulary derives from this record — the display is being rebuilt.
@@ -289,6 +307,20 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
    */
   bins: [],
   /**
+   * Inventory ledger activity — **deliberately empty**, slot-born. The Ledger
+   * feed never had a hide-key registry to inherit: it was a hand-rolled card
+   * list until the slot port, so hiding an event fact is unbinding it from a
+   * slot and always was. The KEY stays because `TableId`'s runtime vocabulary
+   * derives from this record's keys.
+   */
+  'inventory-events': [],
+  'audit-log': [],
+  'auth-sessions': [],
+  'kiosk-devices': [],
+  'staff-directory': [],
+  'ai-usage': [],
+  'compatibility': [],
+  /**
    * Inventory units — **deliberately empty** since the wave 1.4 slot port.
    * Hiding a unit fact is now unbinding it from a slot, not a per-staff
    * `hideKey` in this third registry. The KEY stays because `TableId`'s runtime
@@ -317,6 +349,16 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
    * unbinding. The KEY stays for the `TableId` union.
    */
   sessions: [],
+  /**
+   * Reports › SKU velocity — **deliberately empty**. Tier / out / in / stock
+   * are catalog facts; hiding them is unbinding. The KEY stays for the union.
+   */
+  'sku-velocity': [],
+  /**
+   * Reports › Dead stock — **deliberately empty**. Days dormant / stock are
+   * catalog facts. Own key so a velocity hide cannot densify this ranking.
+   */
+  'dead-stock': [],
   /**
    * Order import staging — **deliberately empty** since the wave 1.4 slot port.
    * The separate bucket was always the point (hiding a staging column must not

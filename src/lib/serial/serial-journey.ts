@@ -14,6 +14,7 @@
  */
 
 import { format, parseISO } from 'date-fns';
+import { csvCell as houseCsvCell } from '@/lib/tables/export/serialize';
 import type { TimelineItem } from '@/lib/timeline/types';
 // Type-only import: the URL-state module is `'use client'`, but a type import is
 // erased at build time, so this stays a server-safe pure module.
@@ -95,10 +96,15 @@ const CSV_HEADERS = [
   'Reference',
 ] as const;
 
-/** RFC-4180 cell: quote when it contains a comma/quote/newline; double inner quotes. */
+/**
+ * A journey cell: FLATTEN first, then quote through the house serializer.
+ *
+ * The flattening is this file's own decision — a journey line is a log entry
+ * and a wrapped note reads as a broken row — so it stays local. The QUOTING is
+ * not local, and used to be a fifth hand-written copy of the same regex.
+ */
 function csvCell(value: string | null | undefined): string {
-  const s = (value ?? '').replace(/\r?\n/g, ' ').trim();
-  return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  return houseCsvCell((value ?? '').replace(/\r?\n/g, ' ').trim());
 }
 
 function localTime(at: string | null): string {

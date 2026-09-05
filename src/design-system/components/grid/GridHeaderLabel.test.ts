@@ -13,9 +13,9 @@ const SOURCE = readFileSync(
 describe('GridHeaderLabel — title, then arrow, black ink', () => {
   it('puts the sort arrow AFTER the title, never before', () => {
     const title = SOURCE.indexOf(
-      '<span className="min-w-0 truncate font-semibold text-text-default">{visibleLabel}</span>',
+      'min-w-0 truncate font-semibold text-text-default underline-offset-2 group-hover/hcell:text-text-info',
     );
-    assert.ok(title > 0, 'title span uses text-text-default');
+    assert.ok(title > 0, 'title span uses text-text-default idle, info+underline on cell hover');
     const afterTitle = SOURCE.slice(title);
     const sortAfter = afterTitle.indexOf('{sortMark}');
     assert.ok(sortAfter > 0 && sortAfter < 120, 'sort mark renders immediately after the title');
@@ -28,7 +28,7 @@ describe('GridHeaderLabel — title, then arrow, black ink', () => {
   });
 
   it('keeps header titles on text-text-default, not muted chrome gray', () => {
-    assert.match(SOURCE, /span className="min-w-0 truncate font-semibold text-text-default"/);
+    assert.match(SOURCE, /span className="min-w-0 truncate font-semibold text-text-default underline-offset-2 group-hover\/hcell:text-text-info/);
     assert.doesNotMatch(SOURCE, /ColumnTypeGlyph[^;]*text-text-soft/);
     assert.doesNotMatch(SOURCE, /ColumnTypeGlyph[^;]*text-text-faint/);
   });

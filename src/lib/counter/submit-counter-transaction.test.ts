@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import type { ChannelOrder } from '@/lib/ecwid/client';
+import type { UpsertCustomerFromChannelOrderResult } from '@/lib/neon/upsert-from-channel-order';
 import { RepairIntakeValidationError } from '@/lib/repair/submit-repair-intake';
 import {
   buildStageOrderBody,
@@ -53,6 +55,42 @@ interface FakeOpts {
   stageThrows?: Error;
   priorOrderConfirms?: string | null;
   enqueueQueued?: boolean;
+  /** The full channel order the desk fetches after a confirmed two-key match. */
+  channelOrder?: ChannelOrder;
+  channelOrderThrows?: Error;
+  hydrateReturns?: UpsertCustomerFromChannelOrderResult;
+  hydrateThrows?: Error;
+}
+
+/** A redacted channel order — the CX1 hydration source. */
+function channelOrder(overrides: Partial<ChannelOrder> = {}): ChannelOrder {
+  return {
+    provider: 'ecwid',
+    id: 'A1B2C3',
+    publicOrderNumber: 'ORD-9',
+    createdAt: null,
+    paymentStatus: 'PAID',
+    fulfillmentStatus: 'SHIPPED',
+    currency: 'USD',
+    totalCents: 14998,
+    refundedCents: 0,
+    refunds: [],
+    email: 'buyer@example.test',
+    phone: '(555) 010-4477',
+    billing: {
+      name: 'Jane Buyer',
+      email: 'buyer@example.test',
+      phone: '(555) 010-4477',
+      street: null,
+      city: null,
+      stateOrProvince: null,
+      postalCode: null,
+      countryCode: null,
+    },
+    shipping: null,
+    items: [],
+    ...overrides,
+  };
 }
 
 function fakes(opts: FakeOpts = {}) {
@@ -65,6 +103,8 @@ function fakes(opts: FakeOpts = {}) {
     repairLinks: [] as Array<{ repairId: number; headerId: number }>,
     staged: [] as Array<{ count: number; idempotencyKey: string; lines: CounterRetailLine[] }>,
     priorOrderChecks: [] as Array<{ orderNumber: string; phone: string }>,
+    channelOrderFetches: [] as string[],
+    hydrations: [] as Array<{ orderId: string; identityPhone: string; typedName?: string | null }>,
     enqueued: [] as Array<Record<string, unknown>>,
   };
 
@@ -143,6 +183,31 @@ function fakes(opts: FakeOpts = {}) {
     async confirmPriorOrder(args) {
       calls.priorOrderChecks.push({ orderNumber: args.orderNumber, phone: args.phone });
       return opts.priorOrderConfirms ?? null;
+    },
+    async getChannelOrder(_orgId, orderRef) {
+      calls.channelOrderFetches.push(orderRef);
+      if (opts.channelOrderThrows) throw opts.channelOrderThrows;
+      return opts.channelOrder ?? channelOrder();
+    },
+    async hydrateCustomerFromChannelOrder(args) {
+      calls.hydrations.push({
+        orderId: args.order.id,
+        identityPhone: args.identityPhone,
+        typedName: args.typedName,
+      });
+      if (opts.hydrateThrows) throw opts.hydrateThrows;
+      return (
+        opts.hydrateReturns ?? {
+          customer: {
+            id: 811,
+            storedPhone: '(555) 010-4477',
+            storedName: 'Jane Buyer',
+            storedEmail: 'buyer@example.test',
+          },
+          matchedBy: 'email' as const,
+          warnings: [],
+        }
+      );
     },
     async enqueueTicket(args) {
       calls.enqueued.push(args as unknown as Record<string, unknown>);
@@ -784,4 +849,180 @@ test('interpretStageOrderResponse reads the provider order id and total on succe
     data: { order: { id: 'sq-order-9', total_money: { amount: 13500 } } },
   });
   assert.deepEqual(outcome, { staged: true, providerOrderId: 'sq-order-9', totalCents: 13500 });
+});
+
+// ── Channel exchange: identity hydration (CX1) ──────────────────────────────
+//
+// docs/todo/counter-channel-exchange-PLAN.md. The invariant under test is an
+// ORDERING one: the full channel order — which carries the buyer's name, email
+// and address — is fetched only AFTER the two-key check agreed, and never
+// from an order number alone.
+
+test('the full channel order is never fetched when the two-key check fails', async () => {
+  const { deps, calls } = fakes({ priorOrderConfirms: null });
+
+  const res = await submitCounterTransaction(
+    input({ retailLines: [line()], priorOrder: { orderNumber: 'ORD-9', phone: '5550104477' } }),
+    ORG,
+    deps,
+  );
+
+  assert.equal(res.priorOrderRef, null);
+  // The whole security property: one key never reveals a buyer.
+  assert.deepEqual(calls.channelOrderFetches, []);
+  assert.deepEqual(calls.hydrations, []);
+  assert.ok(res.warnings.some((w) => /did not match an order/i.test(w)));
+});
+
+test('a confirmed match hydrates the buyer from the channel order', async () => {
+  const { deps, calls } = fakes({ priorOrderConfirms: 'ORD-9' });
+
+  const res = await submitCounterTransaction(
+    input({ retailLines: [line()], priorOrder: { orderNumber: 'ORD-9', phone: '5550104477' } }),
+    ORG,
+    deps,
+  );
+
+  assert.equal(res.priorOrderRef, 'ORD-9');
+  // Fetched by the RESOLVED public number the check handed back, not the raw
+  // string the customer typed.
+  assert.deepEqual(calls.channelOrderFetches, ['ORD-9']);
+  assert.equal(calls.hydrations.length, 1);
+  assert.equal(calls.hydrations[0].orderId, 'A1B2C3');
+  // The IDENTITY phone, never the order's own — otherwise a visit could
+  // hydrate one person and bill another.
+  assert.equal(calls.hydrations[0].identityPhone, '(555) 123-4567');
+  assert.equal(res.customerId, 811);
+  // The phone-only fallback must not also run: hydration already resolved one.
+  assert.deepEqual(calls.phoneLookups, []);
+});
+
+test('the hydrated buyer name and email reach the repair record and the ticket', async () => {
+  const { deps, calls } = fakes({ priorOrderConfirms: 'ORD-9' });
+
+  await submitCounterTransaction(
+    input({
+      // No name and no email typed at the counter — the whole point of CX1 is
+      // that the channel order supplies both.
+      customer: { phone: '5551234567' },
+      services: [service()],
+      priorOrder: { orderNumber: 'ORD-9', phone: '5550104477' },
+      ticketWork: { mode: 'create' },
+    }),
+    ORG,
+    deps,
+  );
+
+  const repairInput = calls.repairInputs[0] as { customer: { name: string; email: string | null } };
+  assert.equal(repairInput.customer.name, 'Jane Buyer');
+  assert.equal(repairInput.customer.email, 'buyer@example.test');
+  const ticket = calls.enqueued[0] as { payload: { requesterEmail: string | null } };
+  assert.equal(ticket.payload.requesterEmail, 'buyer@example.test');
+});
+
+test('a name typed at the counter still wins over the channel order', async () => {
+  const { deps, calls } = fakes({ priorOrderConfirms: 'ORD-9' });
+
+  await submitCounterTransaction(
+    input({
+      customer: { phone: '5551234567', name: 'Jane Q. Buyer' },
+      services: [service()],
+      priorOrder: { orderNumber: 'ORD-9', phone: '5550104477' },
+    }),
+    ORG,
+    deps,
+  );
+
+  // Threaded INTO the hydration (so the created row gets it) and used for the
+  // repair record — the customer is standing there correcting it.
+  assert.equal(calls.hydrations[0].typedName, 'Jane Q. Buyer');
+  const repairInput = calls.repairInputs[0] as { customer: { name: string } };
+  assert.equal(repairInput.customer.name, 'Jane Q. Buyer');
+});
+
+test('a typed email is not overwritten by the channel order', async () => {
+  const { deps, calls } = fakes({ priorOrderConfirms: 'ORD-9' });
+
+  await submitCounterTransaction(
+    input({
+      customer: { phone: '5551234567', name: 'Jane', email: 'typed@example.test' },
+      services: [service()],
+      priorOrder: { orderNumber: 'ORD-9', phone: '5550104477' },
+    }),
+    ORG,
+    deps,
+  );
+
+  const repairInput = calls.repairInputs[0] as { customer: { email: string | null } };
+  assert.equal(repairInput.customer.email, 'typed@example.test');
+});
+
+test('a channel outage after a confirmed match warns but still completes the visit', async () => {
+  const { deps, calls } = fakes({
+    priorOrderConfirms: 'ORD-9',
+    channelOrderThrows: new Error('ecwid 503'),
+    existingCustomer: { id: 42, storedPhone: '5551234567', storedName: 'On File' },
+  });
+
+  const res = await submitCounterTransaction(
+    input({ retailLines: [line()], priorOrder: { orderNumber: 'ORD-9', phone: '5550104477' } }),
+    ORG,
+    deps,
+  );
+
+  // The MATCH survives — it was already made — and the visit falls back to the
+  // phone-only identity path rather than failing a customer at the counter.
+  assert.equal(res.priorOrderRef, 'ORD-9');
+  assert.equal(res.customerId, 42);
+  assert.deepEqual(calls.phoneLookups, ['5551234567']);
+  assert.ok(res.warnings.some((w) => /could not be loaded/i.test(w)));
+});
+
+test('a failed hydration falls back to the phone match rather than failing', async () => {
+  const { deps, calls } = fakes({
+    priorOrderConfirms: 'ORD-9',
+    hydrateThrows: new Error('customers table locked'),
+    existingCustomer: { id: 42, storedPhone: '5551234567', storedName: 'On File' },
+  });
+
+  const res = await submitCounterTransaction(
+    input({ retailLines: [line()], priorOrder: { orderNumber: 'ORD-9', phone: '5550104477' } }),
+    ORG,
+    deps,
+  );
+
+  assert.equal(res.customerId, 42);
+  assert.deepEqual(calls.phoneLookups, ['5551234567']);
+  assert.ok(res.warnings.some((w) => /matched on phone instead/i.test(w)));
+});
+
+test('hydration warnings are surfaced on the visit, not swallowed', async () => {
+  const { deps } = fakes({
+    priorOrderConfirms: 'ORD-9',
+    hydrateReturns: {
+      customer: { id: 811, storedPhone: '5551234567', storedName: 'Jane', storedEmail: '' },
+      matchedBy: 'phone',
+      warnings: ['The online-store reference could not be linked to this customer.'],
+    },
+  });
+
+  const res = await submitCounterTransaction(
+    input({ retailLines: [line()], priorOrder: { orderNumber: 'ORD-9', phone: '5550104477' } }),
+    ORG,
+    deps,
+  );
+
+  assert.ok(res.warnings.some((w) => /could not be linked/i.test(w)));
+});
+
+test('a visit with no prior order never touches the channel at all', async () => {
+  const { deps, calls } = fakes({
+    existingCustomer: { id: 42, storedPhone: '5551234567', storedName: 'On File' },
+  });
+
+  await submitCounterTransaction(input({ retailLines: [line()] }), ORG, deps);
+
+  assert.deepEqual(calls.priorOrderChecks, []);
+  assert.deepEqual(calls.channelOrderFetches, []);
+  assert.deepEqual(calls.hydrations, []);
 });

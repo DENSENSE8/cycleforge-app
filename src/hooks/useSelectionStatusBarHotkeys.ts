@@ -20,8 +20,8 @@
 
 import { useEffect, useRef, useSyncExternalStore } from 'react';
 import type { ButtonVariant } from '@/design-system/primitives/Button';
-import { isEditableKeyTarget } from '@/lib/keyboard/is-editable-key-target';
-import { hasOpenOverlay } from '@/lib/overlay-stack/store';
+import { suppressTableKey } from '@/lib/keyboard/table-key-layer';
+import { hasScanTarget } from '@/lib/scan-hotkey/store';
 import { closeShortcutOverview } from '@/lib/keyboard/shortcut-overview';
 
 export type SelectionStatusHotkeyAction = {
@@ -191,6 +191,13 @@ export function useSelectionStatusBarHotkeys(
       if (e.repeat) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (shouldSuppressSelectionQuestionMark(e.target)) return;
+      // A scan must reach the bar intact. This handler calls preventDefault +
+      // stopPropagation, so swallowing a `?` out of a wedge payload would
+      // corrupt the scanned value — quieter than a fired verb, and just as
+      // wrong. Only the scanner check is applied here: the full suppressor
+      // would also block single-line inputs, and letting an operator press `?`
+      // with "Filter orders…" focused is this handler's deliberate design.
+      if (hasScanTarget()) return;
 
       e.preventDefault();
       e.stopPropagation();
@@ -214,10 +221,26 @@ export function useSelectionStatusBarHotkeys(
     if (byLetter.size === 0) return;
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.defaultPrevented) return;
+      // A chord is never one of these letters — and swallowing ⌘C here would
+      // break native copy. Checked BEFORE the shared suppressor, which lets
+      // chords through on purpose (a wedge scanner cannot type ⌘).
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (isEditableKeyTarget(e.target)) return;
-      if (hasOpenOverlay()) return;
+
+      // The house suppressor: already-handled → typing target → overlay →
+      // SCANNER. The first three replace the hand-copied guards that used to
+      // live here; the fourth is the one they were missing.
+      //
+      // Without it, a wedge scan of `SKU-1129` on a station with rows checked
+      // is Ship-by, then Product labels, then Shipping labels — verbs fired by
+      // a gesture the operator did not think of as typing. That is the exact
+      // failure `table-key-layer`'s docblock describes.
+      //
+      // `ownsFocus: true` is a deliberate claim, not an oversight: this strip
+      // scopes itself by a SELECTION existing rather than by focus, so it is
+      // global while live. That is a weaker guarantee than WCAG 2.1.4's
+      // focus-only option — if these letters ever need to be conformant on
+      // their own, that is the line to revisit, not the scanner check.
+      if (suppressTableKey(e, { layer: 'table', ownsFocus: true })) return;
 
       const letter = e.key.length === 1 ? e.key.toLowerCase() : '';
       if (!letter || letter === '?') return;

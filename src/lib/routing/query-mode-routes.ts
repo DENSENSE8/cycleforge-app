@@ -36,7 +36,10 @@ import {
   parseReceivingHistorySearchScopeWire,
 } from '@/lib/receiving-history-search';
 import { isRepairColumnSort } from '@/lib/repair/repair-display-sort';
-import { parseSearchEtypeWire } from '@/lib/search/search-refine';
+import {
+  parseSearchEtypeWire,
+  parseSearchScopeWire,
+} from '@/lib/search/search-refine';
 import {
   parsePickupTab,
   parseRepairTab,
@@ -393,10 +396,10 @@ export const TEST_ROUTE_PARAMS = defineRouteParams({
     /** Any packing-station placement filter. */
     packPlaced: paramFlag,
     /**
-     * Station composer destination — `label` (default, omitted) · `ticket`.
+     * Station composer destination — `unbox` (default, omitted) · `ticket` · `ask`.
      * Shared with Unbox / Arrival (`SHARED_OWNED_KEYS.composerMode`).
      */
-    composerMode: paramEnum(['unbox', 'ticket', 'label'] as const),
+    composerMode: paramEnum(['unbox', 'ticket', 'ask', 'label'] as const),
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -611,7 +614,7 @@ export const WAREHOUSE_ROUTE_PARAMS = defineRouteParams({
  * rework evicted out of `?mode=search`.
  *
  * `?q=` is the query; Phase 2 adds client refine over the top-50 via
- * `?etype=` / `?hstat=` (namespaced away from `/support`'s `type`/`status`)
+ * `?scope=` / `?hstat=` (namespaced away from `/support`'s `type`/`status`)
  * and display sort via carried ambient `?colsort=` (`relevance` default |
  * `date`). Declaring them here means a collision is a build failure rather
  * than a filter that quietly does nothing.
@@ -632,6 +635,8 @@ const SEARCH_ROUTE_PARAMS = defineRouteParams({
      * UI vocabulary (order | unit | receiving | sku | repair | fba).
      * Deliberately NOT `type` — `/support` already owns that key.
      */
+    scope: paramRoundTrip(parseSearchScopeWire),
+    // Legacy alias: preserve old bookmarks until the next Search tab write.
     etype: paramRoundTrip(parseSearchEtypeWire),
     /**
      * Client status refine against `facets.status`.
@@ -643,7 +648,7 @@ const SEARCH_ROUTE_PARAMS = defineRouteParams({
      * STORED value (`ebay` / `amazon` / `ecwid`) rather than a display label so
      * a deep link survives a catalog rename. Deliberately NOT `platform` —
      * short key, and it keeps the search surface's params in one short family
-     * (etype · hstat · chan).
+     * (scope · hstat · chan).
      */
     chan: paramText,
   },

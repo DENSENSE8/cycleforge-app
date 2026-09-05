@@ -18,7 +18,8 @@ import { requirePermission } from '@/lib/auth/page-guard';
 import pool from '@/lib/db';
 import { PageHeader } from '@/components/ui/pane-header';
 import { Button } from '@/design-system/primitives';
-import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
+import { AuditLogTable } from '@/components/settings/audit/AuditLogTable';
+import type { AuditLogRow as AuditLogTableRow } from '@/lib/audit-log/audit-log-row';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 
@@ -42,64 +43,13 @@ interface AuditRow {
 
 const PAGE_SIZE = 50;
 
-function fmtTs(d: Date): string {
-  return new Date(d).toLocaleString(undefined, {
-    year: 'numeric', month: 'short', day: 'numeric',
-    hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true,
-  });
-}
-
-const AUDIT_COLUMNS: AdminTableColumn<AuditRow>[] = [
-  {
-    key: 'when',
-    header: 'When',
-    type: 'date',
-    cell: (row) => (
-      <span className="font-mono text-role-caption text-text-muted">{fmtTs(row.created_at)}</span>
-    ),
-  },
-  {
-    key: 'actor',
-    header: 'Actor',
-    type: 'text',
-    cell: (row) => (
-      <>
-        <div className="font-medium">{row.actor_name ?? `#${row.actor_staff_id ?? '—'}`}</div>
-        {row.actor_role && <div className="text-role-micro text-text-soft">{row.actor_role}</div>}
-      </>
-    ),
-  },
-  {
-    key: 'source_action',
-    header: 'Source · Action',
-    type: 'text',
-    cell: (row) => (
-      <>
-        <div className="font-medium">{row.action}</div>
-        <div className="text-role-micro text-text-soft">{row.source}</div>
-      </>
-    ),
-  },
-  {
-    key: 'entity',
-    header: 'Entity',
-    type: 'text',
-    cell: (row) => (
-      <>
-        <div className="font-medium">{row.entity_type}</div>
-        <div className="font-mono text-role-caption text-text-soft">{row.entity_id}</div>
-      </>
-    ),
-  },
-  {
-    key: 'ip',
-    header: 'IP',
-    type: 'text',
-    cell: (row) => (
-      <span className="font-mono text-role-caption text-text-soft">{row.ip_address ?? '—'}</span>
-    ),
-  },
-];
+/**
+ * The five hand-written `AdminTableColumn` objects that used to live here are
+ * gone (2026-09-05). Columns are DATA now: `field-catalog/audit-log.ts` names
+ * the facts, `audit-log-resolve.ts` reads them, and the shared engine paints
+ * them — so this page gained header sort, search and a Fields picker that the
+ * second table engine was never going to grow for one surface.
+ */
 
 interface PageProps {
   searchParams: Promise<{ source?: string; action?: string; cursor?: string }>;
@@ -139,6 +89,28 @@ export default async function AuditPage({ searchParams }: PageProps) {
   const nextCursor = hasMore ? rows[rows.length - 1]?.id : null;
   const isSearching = Boolean(source || action);
 
+  /*
+    Narrow to the client ROW SHAPE at the boundary.
+
+    `before_data` / `after_data` are JSON blobs no column paints; shipping them
+    to the client for every row would be this page's largest payload by an order
+    of magnitude. `created_at` becomes an ISO string for the same reason the row
+    type says so — a `Date` across the RSC boundary is one more thing that can
+    arrive as something else.
+  */
+  const tableRows: AuditLogTableRow[] = rows.map((row) => ({
+    id: row.id,
+    created_at: new Date(row.created_at).toISOString(),
+    actor_staff_id: row.actor_staff_id,
+    actor_name: row.actor_name,
+    actor_role: row.actor_role,
+    source: row.source,
+    action: row.action,
+    entity_type: row.entity_type,
+    entity_id: row.entity_id == null ? null : String(row.entity_id),
+    ip_address: row.ip_address,
+  }));
+
   return (
     <div className="min-h-screen bg-surface-canvas antialiased">
       <PageHeader title="Audit log" maxWidth="5xl" />
@@ -172,14 +144,7 @@ export default async function AuditPage({ searchParams }: PageProps) {
           )}
         </form>
 
-        <AdminTable
-          columns={AUDIT_COLUMNS}
-          rows={rows}
-          rowKey={(row) => row.id}
-          emptyMessage="No audit entries yet."
-          searchEmptyMessage="No audit entries match."
-          isSearching={isSearching}
-        />
+        <AuditLogTable rows={tableRows} isSearching={isSearching} />
 
         {nextCursor && (
           <div className="text-right">

@@ -33,6 +33,10 @@ export const QA_FEATURE_FLAGS: ReadonlyArray<string> = [
   'buyer_note_signals',
   // Thrown tasks land here as durable `reason:'assigned'` rows (WS-TASKS Part A).
   'home_inbox',
+  // QA Design Lab — the Before | After reskin compare surface. QA-only by
+  // construction (src/lib/design-lab/access.ts checks this org AND this flag),
+  // so it can never reach dogfood even if the row were copied.
+  'design_lab',
 ];
 
 /** Fixture SKUs — QA-BOSE overlaps a common USAV catalog string for isolation tests. */
@@ -332,6 +336,8 @@ export const QA_FIXTURE_TRACKING_PENDING = '9400100000000000000199';
 export const QA_FIXTURE_TRACKING_PENDING_SECOND = '9400100000000000000205';
 export const QA_FIXTURE_TRACKING_PENDING_THIRD = '9400100000000000000229';
 export const QA_FIXTURE_TRACKING_PACKED = '9400100000000000000212';
+/** USPS-shaped tracking that is never assigned to a QA order — the unmatched scan. */
+export const QA_FIXTURE_TRACKING_UNMATCHED = '9400100000000000000999';
 
 export interface QaStationStaffSeed {
   name: string;

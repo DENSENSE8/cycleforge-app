@@ -95,7 +95,7 @@ describe('importExceptionCompoundColumnsFor — the compound materialization', (
     });
     assert.deepEqual(
       columns.map((c) => c.key),
-      ['select', 'thumb', 'fulfillment', 'item', 'state', 'status:1', 'status:2', 'amount', 'actions', '_fill'],
+      ['select', 'fulfillment', 'thumb', 'item', 'dates', 'state', 'status:1', 'status:2', '_fill'],
     );
   });
 });

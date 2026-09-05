@@ -61,7 +61,7 @@ interface UnboxStationSeed {
  * The client rail query fetches it after paint, exactly as it already does when
  * a seed misses.
  */
-async function rankUnboxMruReceivingIds(
+export async function rankUnboxMruReceivingIds(
   orgId: OrgId,
   limit: number,
 ): Promise<number[]> {
@@ -143,7 +143,7 @@ async function seedUnboxRecentRail(
  * optional — on the dogfood org the most-recently-unboxed carton is usually a
  * LINELESS unfound placeholder, which the main list query cannot return.
  */
-async function readUnboxOpenedRows(
+export async function readUnboxOpenedRows(
   orgId: OrgId,
   receivingIds: readonly number[],
 ): Promise<ReceivingLineRow[]> {

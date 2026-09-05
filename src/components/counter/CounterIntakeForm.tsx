@@ -85,16 +85,34 @@ interface CounterIntakeFormProps {
   ) => Promise<CounterTransactionResult>;
   /** Route prefix for the catalog pair. Sales kiosk passes `/api/kiosk/sales`. */
   apiBasePath?: string;
+  /**
+   * Seed for the draft — applied ONCE at mount, never as a controlled value.
+   *
+   * The in-store exchange hands off here with the online order already
+   * confirmed against the phone, so the customer does not retype two keys they
+   * just entered on the previous pane. Anything the operator changes afterwards
+   * wins; this is a starting point, not a lock.
+   */
+  initialDraft?: Partial<CounterDraft>;
 }
 
 function formatCents(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-export function CounterIntakeForm({ onClose, onSubmit, apiBasePath }: CounterIntakeFormProps) {
+export function CounterIntakeForm({
+  onClose,
+  onSubmit,
+  apiBasePath,
+  initialDraft,
+}: CounterIntakeFormProps) {
   const [step, setStep] = useState<CounterStep>('identity');
   const [direction, setDirection] = useState(1);
-  const [draft, setDraft] = useState<CounterDraft>(emptyCounterDraft);
+  // Lazy initializer, so a re-render never resets what the operator has typed.
+  const [draft, setDraft] = useState<CounterDraft>(() => ({
+    ...emptyCounterDraft(),
+    ...initialDraft,
+  }));
   const [showOrderLookup, setShowOrderLookup] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<ProductSelection | null>(null);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);

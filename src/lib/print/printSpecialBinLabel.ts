@@ -139,6 +139,7 @@ function printFlatLocationTag(payload: SpecialBinLabelPayload): void {
       ...buildFaceInfoHtml(face),
       dataMatrix: face.matrix,
       hri: face.hri,
+      face,
       legacyPopup,
     });
   });

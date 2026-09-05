@@ -43,6 +43,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       packerId,
       orderNumber,
       shipByDate,
+      orderDate,
+      saleAmount,
       outOfStock,
       isOutOfStock,
       isUrgent,
@@ -243,6 +245,26 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         updates.push(`sku = $${paramCount++}`);
         values.push(sku || null);
       }
+      // Operator-corrected purchase date (compound DATES cell, top line). A
+      // civil `YYYY-MM-DD` from the compact picker; anything blank is written
+      // as NULL, which is exactly "the channel never sent one" and puts the
+      // cell back on the import stamp. Not the ship-by — that is a deadline and
+      // lives on the work assignment (see `upsertOrderDeadline` above).
+      if (orderDate !== undefined) {
+        updates.push(`order_date = $${paramCount++}`);
+        values.push(String(orderDate || '').trim() || null);
+      }
+      // Operator-corrected sale amount (compound item cell, under the title).
+      // `orders.sale_amount` is numeric(12,2), so the typed face is normalized
+      // here rather than handed to Postgres: an operator types `$1,299` and
+      // means 1299.00. Anything that is not a number — including a cleared
+      // cell — is written as NULL, which is the honest "we do not know what
+      // this sold for" and paints the same `--` an unpriced row always had.
+      if (saleAmount !== undefined) {
+        const parsed = Number(String(saleAmount ?? '').replace(/[^0-9.-]/g, ''));
+        updates.push(`sale_amount = $${paramCount++}`);
+        values.push(Number.isFinite(parsed) && String(saleAmount ?? '').trim() ? parsed : null);
+      }
       // Canonical SKU linkage (orders.sku_catalog_id → sku_catalog.id), resolved
       // via /api/get-title-by-sku in the add-tracking popover. Never string-joined.
       if (skuCatalogId !== undefined) {
@@ -264,6 +286,8 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       if (packerId !== undefined) changedFields.packerId = packerId;
       if (orderNumber !== undefined) changedFields.orderNumber = orderNumber;
       if (shipByDate !== undefined) changedFields.shipByDate = shipByDate;
+      if (orderDate !== undefined) changedFields.orderDate = orderDate;
+      if (saleAmount !== undefined) changedFields.saleAmount = saleAmount;
       if (outOfStock !== undefined || isOutOfStock !== undefined) changedFields.isOutOfStock = outOfStockValueBoolean;
       if (isUrgent !== undefined) changedFields.isUrgent = Boolean(isUrgent);
       if (shippingTrackingNumber !== undefined) changedFields.shippingTrackingNumber = shippingTrackingNumber;

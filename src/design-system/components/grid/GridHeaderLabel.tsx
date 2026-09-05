@@ -19,12 +19,15 @@ const SORT_MARK_CLASS = 'h-3 w-3 shrink-0';
  *
  * **Text-first (2026-08-04):** when the word fits, headers are **text only**
  * — no decorative type glyph beside every title. Type glyphs remain only for
- * **glyph-only / narrow tracks** (`!showLabel`).
+ * **glyph-only / narrow tracks** (`!showLabel`). The photo gutter (`thumb`)
+ * is always that glyph — Image icon, every PRODUCT_TABLES peer, every tab.
  *
  * **Sort mark (2026-09-01):** the chevron sits to the right of the title and
  * appears only while THIS column is sorted (`ChevronUp` / `ChevronDown`).
  * Idle sortable headers are the title alone. The title itself is
- * `text-text-default` so it cannot inherit muted chrome gray.
+ * `text-text-default` so it cannot inherit muted chrome gray. Hover / focus
+ * on the cell (`group/hcell`) turns Scan Blue + underline — same live-fact
+ * cue as CompoundItem titles (accepted header variant, 28px compact).
  */
 export function GridHeaderLabel({
   column,
@@ -82,7 +85,9 @@ export function GridHeaderLabel({
 
   return (
     <>
-      <span className="min-w-0 truncate font-semibold text-text-default">{visibleLabel}</span>
+      <span className="min-w-0 truncate font-semibold text-text-default underline-offset-2 group-hover/hcell:text-text-info group-hover/hcell:underline group-focus-visible/hcell:text-text-info group-focus-visible/hcell:underline">
+        {visibleLabel}
+      </span>
       {sortMark}
     </>
   );

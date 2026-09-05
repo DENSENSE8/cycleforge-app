@@ -428,6 +428,132 @@ async function fetchReceivingContext(orgId: OrgId): Promise<string> {
   ].join('\n');
 }
 
+/**
+ * The open Unbox carton — product briefing for Ask, not warehouse-wide queues
+ * and not internal receiving ids.
+ */
+export async function fetchReceivingCartonContext(orgId: OrgId, receivingId: number): Promise<string> {
+  const { formatReceivingCartonBrief } = await import('@/lib/assistant/carton-ask-brief');
+  const [carton, lines] = await Promise.all([
+    tenantQuery(
+      orgId,
+      `
+        SELECT
+          r.carrier,
+          r.intake_type,
+          r.is_return,
+          r.source_platform,
+          r.zoho_purchaseorder_number,
+          rt.pairing_state,
+          stn.tracking_number_raw AS tracking
+        FROM receiving_carton r
+        LEFT JOIN receiving_triage rt
+          ON rt.receiving_id = r.id
+         AND rt.organization_id = r.organization_id
+        LEFT JOIN shipping_tracking_numbers stn
+          ON stn.id = r.shipment_id
+        WHERE r.organization_id = $1
+          AND r.id = $2
+        LIMIT 1
+      `,
+      [orgId, receivingId],
+    ),
+    tenantQuery(
+      orgId,
+      `
+        SELECT
+          rl.sku,
+          rl.item_name,
+          rl.quantity_expected,
+          rl.quantity_received,
+          rl.workflow_status,
+          rl.source_order_id,
+          sc.product_title AS catalog_title,
+          sc.category,
+          sc.notes AS catalog_notes,
+          zi.name AS item_title,
+          zi.description AS item_description,
+          rlt.condition_grade,
+          rlt.needs_test
+        FROM receiving_line rl
+        LEFT JOIN sku_catalog sc
+          ON sc.id = rl.sku_catalog_id
+         AND sc.organization_id = rl.organization_id
+        LEFT JOIN receiving_line_zoho rz
+          ON rz.receiving_line_id = rl.id
+         AND rz.organization_id = rl.organization_id
+        LEFT JOIN items zi
+          ON zi.zoho_item_id = rz.zoho_item_id
+         AND zi.organization_id = rl.organization_id
+        LEFT JOIN receiving_line_testing rlt
+          ON rlt.receiving_line_id = rl.id
+         AND rlt.organization_id = rl.organization_id
+        WHERE rl.organization_id = $1
+          AND rl.receiving_id = $2
+        ORDER BY rl.id
+        LIMIT 20
+      `,
+      [orgId, receivingId],
+    ),
+  ]);
+  const photos = await tenantQuery(
+    orgId,
+    `
+      SELECT COUNT(*)::int AS n
+        FROM photo_entity_links l
+       WHERE l.organization_id = $1
+         AND (
+           (l.entity_type = 'RECEIVING' AND l.entity_id = $2)
+           OR (l.entity_type = 'RECEIVING_LINE' AND l.entity_id IN (
+             SELECT id FROM receiving_line
+              WHERE organization_id = $1 AND receiving_id = $2
+           ))
+         )
+    `,
+    [orgId, receivingId],
+  ).catch(() => ({ rows: [{ n: 0 }] }));
+  const row = carton.rows[0] as QueryRow | undefined;
+  if (!row) {
+    return formatReceivingCartonBrief({ products: [] });
+  }
+  const lineRows = lines.rows as QueryRow[];
+  const products = lineRows.map((l) => {
+    const title =
+      String(l.catalog_title || '').trim() ||
+      String(l.item_title || '').trim() ||
+      String(l.item_name || '').trim() ||
+      String(l.sku || '').trim();
+    const notes = [l.catalog_notes, l.item_description]
+      .map((v) => String(v || '').trim())
+      .filter(Boolean)
+      .join(' ');
+    return {
+      title,
+      sku: String(l.sku || '').trim() || null,
+      qtyExpected: l.quantity_expected != null ? Number(l.quantity_expected) : null,
+      qtyReceived: l.quantity_received != null ? Number(l.quantity_received) : null,
+      condition: String(l.condition_grade || '').trim() || null,
+      needsTest: typeof l.needs_test === 'boolean' ? l.needs_test : null,
+      workflow: String(l.workflow_status || '').trim() || null,
+      marketplaceOrder: String(l.source_order_id || '').trim() || null,
+      category: String(l.category || '').trim() || null,
+      notes: notes || null,
+    };
+  });
+  const photoCount = Number((photos.rows[0] as QueryRow | undefined)?.n ?? 0);
+  return formatReceivingCartonBrief({
+    tracking: String(row.tracking || '').trim() || null,
+    carrier: String(row.carrier || '').trim() || null,
+    pairing: String(row.pairing_state || '').trim() || null,
+    intake: String(row.intake_type || '').trim() || null,
+    isReturn: Boolean(row.is_return),
+    platform: String(row.source_platform || '').trim() || null,
+    poNumber: String(row.zoho_purchaseorder_number || '').trim() || null,
+    photoCount: Number.isFinite(photoCount) ? photoCount : null,
+    products,
+  });
+}
+
 async function fetchFbaContext(params: IntentParams, orgId: OrgId): Promise<string> {
   const values: string[] = [];
   let whereClause = `WHERE COALESCE(fs.status, 'PLANNED') != 'SHIPPED'`;

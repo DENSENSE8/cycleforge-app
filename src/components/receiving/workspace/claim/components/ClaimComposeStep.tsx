@@ -7,8 +7,8 @@ import { ClaimRecipientsField } from './ClaimRecipientsField';
  * Displays / modal claim compose — recipients only.
  *
  * Subject + body are an AI draft in the Omni Composer Ticket tab (template
- * facts go to Hermes, not into a second textarea). Claim type, Create|Link,
- * and the ticket picker live in that same inset.
+ * facts go to Hermes, not into a second textarea). Claim type and Create
+ * live in that same inset — Link is not a station mouth mode.
  */
 export function ClaimComposeStep({ c }: { c: ReceivingClaimController }) {
   return (
@@ -25,8 +25,8 @@ export function ClaimComposeStep({ c }: { c: ReceivingClaimController }) {
         className="border-b border-border-hairline px-3 py-3 text-role-caption text-text-muted"
         data-testid="claim-compose-composer-cue"
       >
-        Draft and file from the Ticket composer. Claim type, Create or Link, and
-        the AI draft live there — this column keeps recipients in view.
+        Draft and create from the Ticket composer. Claim type and the Hermes AI
+        draft live there — this column keeps recipients in view.
       </p>
       <ClaimRecipientsField
         notePublic={c.notePublic}

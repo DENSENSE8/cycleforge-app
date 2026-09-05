@@ -33,6 +33,8 @@ import {
   type SlotBinding,
   type SlotLayout,
 } from '@/lib/tables/slot-layout-core';
+import { ensureLineMoneySubtitle } from '@/lib/tables/slot-table-line-money';
+import { ensureLineQtySubtitle } from '@/lib/tables/slot-table-line-qty';
 
 export interface ResolveEffectiveLayoutArgs {
   /** Code-owned default for this tableId. Must be catalog-valid. */
@@ -114,17 +116,23 @@ export function resolveEffectiveLayout({
     warn(`slot layout: dropped stale amount binding '${picked.amountFieldId}'`);
   }
 
-  return {
-    morph: picked.morph,
-    identityFieldId: identityValid ? picked.identityFieldId : productDefault.identityFieldId,
-    statusBindings: keepBindings(picked.statusBindings, 'status', byId, MAX_STATUS_SLOTS, warn),
-    subtitleBindings: keepBindings(
-      picked.subtitleBindings,
-      'subtitle',
-      byId,
-      MAX_SUBTITLE_SLOTS,
-      warn,
+  return ensureLineMoneySubtitle(
+    ensureLineQtySubtitle(
+      {
+        morph: picked.morph,
+        identityFieldId: identityValid ? picked.identityFieldId : productDefault.identityFieldId,
+        statusBindings: keepBindings(picked.statusBindings, 'status', byId, MAX_STATUS_SLOTS, warn),
+        subtitleBindings: keepBindings(
+          picked.subtitleBindings,
+          'subtitle',
+          byId,
+          MAX_SUBTITLE_SLOTS,
+          warn,
+        ),
+        amountFieldId: amountValid ? picked.amountFieldId : null,
+      },
+      catalog,
     ),
-    amountFieldId: amountValid ? picked.amountFieldId : null,
-  };
+    catalog,
+  );
 }

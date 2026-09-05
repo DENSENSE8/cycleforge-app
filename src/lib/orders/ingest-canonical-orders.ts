@@ -59,6 +59,7 @@ const TRACKING_RESOLVE_BATCH = 10;
 type OrderProjection = {
   id: number;
   orderId: string | null;
+  externalLineId: string;
   itemNumber: string | null;
   productTitle: string | null;
   quantity: string | null;
@@ -351,16 +352,17 @@ interface IngestCanonicalOrdersOptions {
   source: string;
   progress?: SyncProgress;
   /**
-   * Which existing order an incoming one is considered to BE.
+   * Which existing LINE an incoming one is considered to BE.
    *
-   *  • `'orderId'` (default) — match on `order_id` alone, and collapse every
-   *    duplicate found onto the richest row. This is the spreadsheet contract:
-   *    one sheet describes one channel's orders, and the same id appearing
-   *    twice is a duplicate row to clean up.
-   *  • `'accountSourceAndOrderId'` — match within the channel, mirroring the
-   *    `idx_orders_unique_account_order` constraint the API connectors upsert
-   *    against. REQUIRED for connectors: order numbers are only unique per
-   *    marketplace, so Shopify "1001" and ShipStation "1001" are different
+   *  • `'orderId'` (default) — match on `order_id` + line identity, and collapse
+   *    duplicate rows of that SAME line onto the richest. This is the
+   *    spreadsheet contract: one sheet describes one channel's orders, and the
+   *    same listing appearing twice is a duplicate row to clean up. Sibling
+   *    products on one order number are different lines and are never deleted.
+   *  • `'accountSourceAndOrderId'` — match within the channel + line, mirroring
+   *    the `idx_orders_unique_org_account_order_line` index the API connectors
+   *    upsert against. REQUIRED for connectors: order numbers are only unique
+   *    per marketplace, so Shopify "1001" and ShipStation "1001" are different
    *    orders and matching on the id alone would delete one of them.
    */
   matchOn?: 'orderId' | 'accountSourceAndOrderId';
@@ -392,9 +394,10 @@ interface IngestCanonicalOrdersOptions {
    */
   manageDeadlines?: boolean;
   /**
-   * Fold every row matching `matchOn` onto the richest one and DELETE the
-   * losers. Default true — the spreadsheet contract, where the same id twice is
-   * a duplicate row to clean up.
+   * Fold every row matching `matchOn` + line identity onto the richest one and
+   * DELETE the losers. Default true — the spreadsheet contract, where the same
+   * listing twice is a duplicate row to clean up. Sibling lines of one order
+   * are not duplicates and are never deleted.
    *
    * A **user-uploaded** file passes false. `POST /api/orders/import-csv` used to
    * express that by pre-filtering every already-existing order out of the batch
@@ -423,8 +426,9 @@ const noopProgress: SyncProgress = () => {};
 /**
  * Upsert canonical orders into `orders` and everything that hangs off them.
  *
- * Accepts LINES and folds them itself, so a source may emit one line per item
- * without knowing that `orders` is currently one row per line.
+ * Accepts LINES and folds them itself, so a source may emit one line per item.
+ * Distinct products on one marketplace order number survive as sibling `orders`
+ * rows; `collapseDuplicates` only deletes true duplicates of the SAME line.
  */
 export async function ingestCanonicalOrders(
   lines: CanonicalOrderLine[],
@@ -446,10 +450,12 @@ export async function ingestCanonicalOrders(
   // NUL as the joiner: `accountSource` is a free-text channel label that may
   // contain spaces, so a printable separator would let ("a b","c") and
   // ("a","b c") collide onto one key — merging two unrelated orders.
-  const matchKey = (accountSource: string | null, orderId: string) =>
+  const orderBandKey = (accountSource: string | null, orderId: string) =>
     matchOn === 'accountSourceAndOrderId'
       ? `${String(accountSource ?? '').trim()}\u0000${orderId}`
       : orderId;
+  const matchKey = (accountSource: string | null, orderId: string, lineId: string) =>
+    `${orderBandKey(accountSource, orderId)}\u0000${lineId}`;
 
   const sourceOrderIds = Array.from(new Set(canonicalOrders.map((o) => o.externalOrderId)));
   const sourceTrackings = Array.from(new Set(canonicalOrders.flatMap((o) => o.trackings)));
@@ -530,6 +536,7 @@ export async function ingestCanonicalOrders(
   const orderProjectionCols = {
     orderId: ordersTable.orderId,
     id: ordersTable.id,
+    externalLineId: ordersTable.externalLineId,
     itemNumber: ordersTable.itemNumber,
     productTitle: ordersTable.productTitle,
     quantity: ordersTable.quantity,
@@ -582,6 +589,7 @@ export async function ingestCanonicalOrders(
   const toProjection = (order: (typeof existingOrders)[number]): OrderProjection => ({
     id: Number(order.id),
     orderId: order.orderId,
+    externalLineId: String(order.externalLineId || ''),
     itemNumber: order.itemNumber,
     productTitle: order.productTitle,
     quantity: order.quantity,
@@ -595,18 +603,25 @@ export async function ingestCanonicalOrders(
     createdAt: order.createdAt ?? null,
   });
 
-  // Rows arrive newest-first, so the first sighting of an order id is latest.
+  // Rows arrive newest-first, so the first sighting of a line key is latest.
   const latestOrderByKey = new Map<string, OrderProjection>();
   const allOrdersByKey = new Map<string, OrderProjection[]>();
+  const legacyBlankLineByBand = new Map<string, OrderProjection[]>();
   existingOrders.forEach((order) => {
     const orderId = String(order.orderId || '').trim();
     if (!orderId || Number.isNaN(Number(order.id))) return;
-    const key = matchKey(order.accountSource, orderId);
     const projection = toProjection(order);
+    const key = matchKey(order.accountSource, orderId, projection.externalLineId);
     if (!latestOrderByKey.has(key)) latestOrderByKey.set(key, projection);
     const rows = allOrdersByKey.get(key) ?? [];
     rows.push(projection);
     allOrdersByKey.set(key, rows);
+    if (projection.externalLineId === '') {
+      const band = orderBandKey(order.accountSource, orderId);
+      const legacy = legacyBlankLineByBand.get(band) ?? [];
+      legacy.push(projection);
+      legacyBlankLineByBand.set(band, legacy);
+    }
   });
 
   const latestCustomerByOrderId = pickLatestByKey(sourceCustomers, (customer) =>
@@ -622,12 +637,17 @@ export async function ingestCanonicalOrders(
   // Batched on purpose: a CSV import is up to 10k rows, and a per-row
   // find-or-create would be 10k round trips against the same handful of names.
   const customerIdByName = await resolveCustomersByName(
-    canonicalOrders
-      .filter((order) => !latestCustomerByOrderId.get(String(order.externalOrderId || '').trim()))
-      .map((order) => ({
-        name: order.customerName,
-        sourceOrderId: String(order.externalOrderId || '').trim(),
-      })),
+    (() => {
+      const seen = new Set<string>();
+      const names: Array<{ name: string; sourceOrderId: string }> = [];
+      for (const order of canonicalOrders) {
+        const id = String(order.externalOrderId || '').trim();
+        if (!id || latestCustomerByOrderId.get(id) || seen.has(id)) continue;
+        seen.add(id);
+        names.push({ name: order.customerName, sourceOrderId: id });
+      }
+      return names;
+    })(),
     effectiveOrgId,
     orgId,
   );
@@ -795,6 +815,7 @@ export async function ingestCanonicalOrders(
     shipByDate: Date | null;
     shipmentIds: number[];
     detail: TransferOrderDetail;
+    claimDeadline: boolean;
   }> = [];
   const ordersToBackfill: Array<{ id: number; values: Record<string, unknown>; detail: TransferOrderDetail }> = [];
   const ordersToDelete: Array<{ id: number; detail: TransferOrderDetail }> = [];
@@ -804,14 +825,23 @@ export async function ingestCanonicalOrders(
   const detailsUnknownTitle: TransferOrderDetail[] = [];
   const detailsUnresolvedTracking: TransferOrderDetail[] = [];
   const detailsUnmatchedCatalog: TransferOrderDetail[] = [];
+  const deadlineClaimed = new Set<string>();
+  const countedCustomerOrders = new Set<string>();
   let updatedOrdersTracking = 0;
   let matchedCustomers = 0;
   let unmatchedCustomers = 0;
 
   for (const order of canonicalOrders) {
     const orderId = order.externalOrderId;
+    const lineId = order.externalLineId;
     const catalogLink = resolveCatalogLink(order.productTitle, order.sku, order.itemNumber);
-    const existingOrder = latestOrderByKey.get(matchKey(order.accountSource, orderId));
+    const exactKey = matchKey(order.accountSource, orderId, lineId);
+    let existingOrder = latestOrderByKey.get(exactKey) ?? null;
+    if (!existingOrder && lineId !== '') {
+      const band = orderBandKey(order.accountSource, orderId);
+      const adopted = legacyBlankLineByBand.get(band)?.shift() ?? null;
+      if (adopted) existingOrder = adopted;
+    }
 
     const detailRow: TransferOrderDetail = {
       orderId,
@@ -856,8 +886,11 @@ export async function ingestCanonicalOrders(
       (Number.isFinite(matchedCustomerId) ? matchedCustomerId : null) ??
       customerIdByName.get(customerNameKey(order.customerName || '')) ??
       null;
-    if (customerId) matchedCustomers++;
-    else unmatchedCustomers++;
+    if (!countedCustomerOrders.has(orderId)) {
+      countedCustomerOrders.add(orderId);
+      if (customerId) matchedCustomers++;
+      else unmatchedCustomers++;
+    }
 
     const shipmentIds = new Set<number>();
     const unresolvedTrackings: string[] = [];
@@ -879,10 +912,16 @@ export async function ingestCanonicalOrders(
       progress({ type: 'detail', kind: 'unresolvedTracking', row: unresolvedDetail });
     }
 
+    const band = orderBandKey(order.accountSource, orderId);
+    const claimDeadline = manageDeadlines && !deadlineClaimed.has(band);
+    if (claimDeadline) deadlineClaimed.add(band);
+
     if (existingOrder) {
-      // Collapse duplicates: keep the row carrying the most populated fields,
-      // inherit the losers' shipment ids, delete the rest.
-      const candidateList = allOrdersByKey.get(matchKey(order.accountSource, orderId)) ?? [existingOrder];
+      // Collapse duplicates of THIS line identity only — siblings of the same
+      // marketplace order are different lines and must not be deleted.
+      const candidateList =
+        allOrdersByKey.get(matchKey(order.accountSource, orderId, existingOrder.externalLineId)) ??
+        [existingOrder];
       const score = (o: OrderProjection) =>
         [o.productTitle, o.condition, o.itemNumber, o.sku, o.quantity, o.notes].filter((v) => !isBlank(v)).length;
       let orderToKeep: OrderProjection;
@@ -905,6 +944,7 @@ export async function ingestCanonicalOrders(
       // Backfill is additive only — a populated field is never clobbered.
       const updateValues: Record<string, unknown> = {};
       if (isBlank(orderToKeep.orderId) && orderId) updateValues.orderId = orderId;
+      if (isBlank(orderToKeep.externalLineId) && lineId) updateValues.externalLineId = lineId;
       if (isBlank(orderToKeep.itemNumber) && catalogLink.itemNumber) updateValues.itemNumber = catalogLink.itemNumber;
       // Additive by default; an authoritative source refreshes the title.
       if (authoritative.productTitle
@@ -950,18 +990,20 @@ export async function ingestCanonicalOrders(
       if (shipmentIdList.length > 0) {
         shipmentLinksToUpsert.set(orderToKeep.id, { primaryShipmentId, shipmentIds: shipmentIdList });
       }
-      if (manageDeadlines) orderDeadlinesToUpsert.push({ id: orderToKeep.id, shipByDate: order.shipByDate });
+      if (claimDeadline) orderDeadlinesToUpsert.push({ id: orderToKeep.id, shipByDate: order.shipByDate });
     } else {
       const shipmentIdList = Array.from(shipmentIds.values());
       ordersToInsert.push({
         shipByDate: order.shipByDate,
         shipmentIds: shipmentIdList,
         detail: detailRow,
+        claimDeadline,
         values: {
           // Explicit stamp: Drizzle's neon-http client can't carry the GUC, so
           // orders.organization_id (NOT NULL) must be set here.
           organizationId: effectiveOrgId,
           orderId,
+          externalLineId: lineId,
           itemNumber: catalogLink.itemNumber || '',
           productTitle: catalogLink.productTitle || fallbackProductTitle || '',
           quantity: order.quantity || '1',
@@ -1038,7 +1080,7 @@ export async function ingestCanonicalOrders(
     insertedOrderIds = insertedOrders.map((o) => o.id);
     insertedOrders.forEach((inserted, index) => {
       const planned = ordersToInsert[index];
-      if (manageDeadlines && planned?.shipByDate) {
+      if (manageDeadlines && planned?.claimDeadline && planned.shipByDate) {
         orderDeadlinesToUpsert.push({ id: inserted.id, shipByDate: planned.shipByDate });
       }
       if ((planned?.shipmentIds.length ?? 0) > 0) {
@@ -1073,7 +1115,7 @@ export async function ingestCanonicalOrders(
       const { autoCageNewOrders } = await import('./auto-cage');
       const caged = await autoCageNewOrders(effectiveOrgId, insertedOrderIds);
       if (caged.length > 0) {
-        console.info(`[ingestCanonicalOrders] auto-caged ${caged.length}/${insertedOrderIds.length} new orders for triage`);
+        console.warn(`[ingestCanonicalOrders] auto-caged ${caged.length}/${insertedOrderIds.length} new orders for triage`);
       }
     } catch (err) {
       console.error('[ingestCanonicalOrders] auto-cage failed — new orders landed UNCAGED:', err);

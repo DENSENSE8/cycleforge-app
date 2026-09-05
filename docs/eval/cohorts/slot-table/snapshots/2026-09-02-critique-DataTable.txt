@@ -1,10 +1,10 @@
 {
   "file": "src/components/tables/DataTable.tsx",
-  "summary": "1 problem, worst first: 1701 lines — past the point reviewers read",
+  "summary": "1 problem, worst first: 1704 lines — past the point reviewers read",
   "problems": [
     {
       "severity": "size",
-      "what": "1701 lines — past the point reviewers read",
+      "what": "1704 lines — past the point reviewers read",
       "fix": "Split the leaf presentational parts out."
     }
   ],
@@ -19,14 +19,16 @@
     "grid-cells",
     "DataTable",
     "DataTableColumnActionRow",
+    "DataTableExportMenu",
     "DataTableFullscreenToggle",
     "DataTableZoomToggle",
     "NonlinearTableHost",
     "SlotLayoutReorderContext",
-    "TableStatusBar"
+    "TableStatusBar",
+    "slot-layout"
   ],
   "metrics": {
-    "lines": 1701,
+    "lines": 1704,
     "arbitrary_literals": 0
   },
   "notes": [

@@ -12,14 +12,14 @@ describe('Receiving compound column model', () => {
   it('uses the canonical shared tracks in order', () => {
     assert.deepEqual(
       RECEIVING_COMPOUND_COLUMNS.map((column) => column.key),
-      ['select', 'thumb', 'fulfillment', 'item', 'state', 'amount', 'actions', '_fill'],
+      ['select', 'fulfillment', 'thumb', 'item', 'dates', 'state', '_fill'],
     );
   });
 
   it('freezes the shared identity gutters and shadows at thumb', () => {
     assert.equal(isReceivingGridFrozen('select'), true);
+    assert.equal(isReceivingGridFrozen('fulfillment'), true);
     assert.equal(isReceivingGridFrozen('thumb'), true);
-    assert.equal(isReceivingGridFrozen('fulfillment'), false);
     assert.equal(RECEIVING_GRID_FROZEN_EDGE_KEY, 'thumb');
   });
 
@@ -35,7 +35,7 @@ describe('Receiving compound column model', () => {
     assert.equal(isReceivingGridSortable('item'), true);
     assert.equal(isReceivingGridSortable('fulfillment'), true);
     assert.equal(isReceivingGridSortable('state'), true);
-    assert.equal(isReceivingGridSortable('thumb'), true);
+    assert.equal(isReceivingGridSortable('thumb'), false);
     assert.equal(isReceivingGridSortable('select'), false);
     assert.equal(isReceivingGridSortable('_fill'), false);
     assert.equal(isReceivingGridSortable('custom:rack_slot'), true);

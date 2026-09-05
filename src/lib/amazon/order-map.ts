@@ -43,7 +43,8 @@ export function mapAmazonStatus(amazonStatus: string | undefined, fba: boolean):
   }
 }
 
-/** First line item (the representative row for the legacy one-row-per-order model). */
+/** First line item (the representative row for paths that still stamp one
+ *  order — Amazon item-refresh). Order ingest loops every OrderItem. */
 export function representativeItem(items: AmazonOrderItem[]): AmazonOrderItem | null {
   return items.find((i) => (i.SellerSKU || i.Title)) || items[0] || null;
 }

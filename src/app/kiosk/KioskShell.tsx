@@ -38,6 +38,7 @@ import {
 import { KioskModeSpine } from './KioskModeSpine';
 import { KioskRepairPane } from './v2/KioskRepairPane';
 import { KioskPickupPane } from './v2/KioskPickupPane';
+import { KioskExchangePane } from './v2/KioskExchangePane';
 import { KioskBuybackPane } from './v2/KioskBuybackPane';
 import { KioskCartLedger, type KioskCartFocus } from './v2/KioskCartLedger';
 import { KioskPaperworkPanel } from './v2/KioskPaperworkPanel';
@@ -348,6 +349,13 @@ export function KioskShell() {
         ) : session.activeCommand === 'buyback' ? (
           <div className="flex min-h-0 flex-1 flex-col bg-surface-card">
             <KioskBuybackPane />
+          </div>
+        ) : session.activeCommand === 'exchange' ? (
+          // Explicit branch, not a fall-through: the trailing `else` below is
+          // Pickup, so a new command silently rendering the wrong pane is the
+          // failure mode this arm exists to prevent.
+          <div className="flex min-h-0 flex-1 flex-col bg-surface-card">
+            <KioskExchangePane onReset={resetBrowseState} />
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col bg-surface-card">

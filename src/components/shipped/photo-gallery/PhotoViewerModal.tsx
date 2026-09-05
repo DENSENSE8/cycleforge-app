@@ -6,7 +6,7 @@ import { useFocusTrap } from '@/design-system/hooks';
 import {
   X, Download, ZoomIn, ZoomOut, ChevronLeft, ChevronRight,
   AlertCircle, Trash2, Info, RotateCcw, RefreshCw, ExternalLink, ArrowLeftRight, MoreVertical,
-  Upload, Loader2,
+  Upload, Loader2, Ticket,
 } from '../../Icons';
 import { PhotoContextPanel } from './PhotoContextPanel';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -14,39 +14,22 @@ import { IconButton, Layer } from '@/design-system/primitives';
 import { usePhotoDropzone } from '@/hooks/usePhotoDropzone';
 import { photoHeroLayoutId } from './photo-gallery-utils';
 import type { PhotoGalleryController } from './usePhotoGallery';
+import { cn } from '@/utils/_cn';
 
 const TOOLBAR_ICON_BTN =
   'rounded-full border border-glass/20 bg-glass/10 p-3 text-white backdrop-blur-md transition-all hover:scale-110 hover:border-glass/30 hover:bg-glass/20 disabled:opacity-50 disabled:hover:scale-100';
 
-// #region agent log
-/** Debug ingest — same-origin API (browser cannot reliably reach 127.0.0.1:7336). */
-function dbg251(location: string, message: string, data: Record<string, unknown>, hypothesisId: string) {
-  const payload = {
-    sessionId: '251bbb',
-    runId: 'pre-fix',
-    hypothesisId,
-    location,
-    message,
-    data,
-    timestamp: Date.now(),
-  };
-  try {
-    const w = window as unknown as { __dbg251?: unknown[] };
-    w.__dbg251 = w.__dbg251 ?? [];
-    w.__dbg251.push(payload);
-  } catch { /* ignore */ }
-  const body = JSON.stringify(payload);
-  try {
-    navigator.sendBeacon?.('/api/agent-debug-log', new Blob([body], { type: 'text/plain' }));
-  } catch { /* ignore */ }
-  fetch('/api/agent-debug-log', {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain' },
-    body,
-    keepalive: true,
-  }).catch(() => {});
-}
-// #endregion
+const MENU_ITEM_CLASS =
+  'flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-semibold text-white transition-colors hover:bg-glass/15 disabled:opacity-50';
+
+/**
+ * Overflow panel under a toolbar icon. Kept in-tree (not Radix DropdownMenu):
+ * the lightbox focus trap steals focus from body-portaled menus and closes them
+ * immediately. Opacity-only toolbar motion (no `y` transform) is required so
+ * this absolute panel is not clipped to an empty pill.
+ */
+const MENU_PANEL_CLASS =
+  'absolute right-0 top-full z-50 mt-2 min-w-[12rem] overflow-hidden rounded-xl border border-glass/20 bg-scrim/90 py-1 shadow-xl backdrop-blur-xl';
 
 /** Fullscreen lightbox: zoomable image, nav arrows, thumbnail strip, toolbar. */
 export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
@@ -73,10 +56,15 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
   const dz = usePhotoDropzone(g.handleUploadFiles);
 
   const multiPhoto = photoItems.length > 1;
-  const currentPhotoError = photoItems[currentIndex]?.status === 'error';
+  const currentPhoto = photoItems[currentIndex];
+  const currentPhotoError = currentPhoto?.status === 'error';
   const allPhotosError = photoItems.every((p) => p.status === 'error');
   const canDownloadCurrent = !g.downloading && !currentPhotoError;
   const canDownloadAll = !g.downloading && !allPhotosError && photoItems.length > 0;
+  const openInNewTabHref =
+    typeof currentPhoto?.id === 'number' && Number.isFinite(currentPhoto.id)
+      ? `/api/photos/${currentPhoto.id}/content`
+      : currentPhoto?.url ?? null;
 
   // Close overflow menus when the photo changes; keep the viewer open.
   useEffect(() => {
@@ -128,26 +116,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
   // padding falls through; image / thumbs / toolbar / arrows / details re-enable
   // hits and stopPropagation so they never reach here.
   const handleBackdropClick = (e: ReactMouseEvent) => {
-    const willClose = e.target === e.currentTarget;
-    // #region agent log
-    {
-      const t = e.target as HTMLElement | null;
-      const top = typeof document !== 'undefined' ? document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null : null;
-      const cs = top ? getComputedStyle(top) : null;
-      dbg251('PhotoViewerModal.tsx:handleBackdropClick', 'backdrop click', {
-        willClose,
-        targetTag: t?.tagName,
-        targetClass: (t?.className || '').toString().slice(0, 120),
-        topTag: top?.tagName,
-        topClass: (top?.className || '').toString().slice(0, 160),
-        topZ: cs?.zIndex,
-        topPe: cs?.pointerEvents,
-        x: e.clientX,
-        y: e.clientY,
-      }, 'A,C');
-    }
-    // #endregion
-    if (!willClose) return;
+    if (e.target !== e.currentTarget) return;
     e.stopPropagation();
     g.closeViewer();
   };
@@ -155,52 +124,6 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
   const stopBubble = (e: SyntheticEvent) => {
     e.stopPropagation();
   };
-
-  // #region agent log
-  useEffect(() => {
-    const onPointerDown = (e: PointerEvent) => {
-      const top = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
-      const cs = top ? getComputedStyle(top) : null;
-      let el: HTMLElement | null = top;
-      let overflowAncestor: string | null = null;
-      for (let i = 0; el && i < 8; i++) {
-        const s = getComputedStyle(el);
-        if (s.overflow !== 'visible' || s.overflowX !== 'visible' || s.overflowY !== 'visible') {
-          overflowAncestor = `${el.tagName}.${(el.className||'').toString().slice(0,80)} overflow=${s.overflow}/${s.overflowX}/${s.overflowY}`;
-          break;
-        }
-        el = el.parentElement;
-      }
-      const inFilm = !!top?.closest('[data-testid="photo-filmstrip"]');
-      const inLightbox = !!top?.closest('[data-testid="photo-lightbox"]');
-      const film = document.querySelector('[data-testid="photo-filmstrip"]') as HTMLElement | null;
-      const filmRect = film?.getBoundingClientRect();
-      const filmCs = film ? getComputedStyle(film) : null;
-      dbg251('PhotoViewerModal.tsx:capturePointerDown', 'hit-test under cursor', {
-        x: e.clientX,
-        y: e.clientY,
-        topTag: top?.tagName,
-        topClass: (top?.className || '').toString().slice(0, 160),
-        topZ: cs?.zIndex,
-        topPe: cs?.pointerEvents,
-        topPos: cs?.position,
-        inFilm,
-        inLightbox,
-        overflowAncestor,
-        filmZ: filmCs?.zIndex,
-        filmPe: filmCs?.pointerEvents,
-        filmRect: filmRect
-          ? { top: filmRect.top, bottom: filmRect.bottom, left: filmRect.left, right: filmRect.right, w: filmRect.width, h: filmRect.height }
-          : null,
-        overFilmRect: filmRect
-          ? e.clientX >= filmRect.left && e.clientX <= filmRect.right && e.clientY >= filmRect.top && e.clientY <= filmRect.bottom
-          : false,
-      }, 'A,B,E');
-    };
-    window.addEventListener('pointerdown', onPointerDown, true);
-    return () => window.removeEventListener('pointerdown', onPointerDown, true);
-  }, []);
-  // #endregion
 
   // Portal lives in PhotoViewerPortal — Layer only applies the modal z-token.
   // `pointer-events-none` on the shell so a fading/exiting scrim cannot leave a
@@ -252,11 +175,13 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
       <div className="pointer-events-none relative flex min-w-0 flex-1 flex-col overflow-hidden">
       {/* Top bar — counter (left) + zoom/rotate pill + action buttons (right).
           Pinned to the image lane, not the full viewport, so controls stay left
-          of the details column when it opens. */}
+          of the details column when it opens.
+          Opacity-only enter (no `y` translate): a Framer transform on this node
+          would create a containing block that clips the ⋮ / download panels. */}
       <motion.div
         transition={toolbarTransition}
-        initial={reduceMotion ? false : { opacity: 0, y: -6 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={reduceMotion ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
         className="pointer-events-none absolute inset-x-0 top-0 z-30 flex items-center justify-between py-6 pl-6 pr-6"
       >
         <div className="pointer-events-auto flex shrink-0 items-center gap-3">
@@ -316,8 +241,8 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
           </div>
 
           {/* More actions (⋮) → Details → Download → Delete → Close (fixed
-              order). Upload and other secondary actions live inside the ⋮ menu
-              so the inline toolbar is an identical, minimal row on every page. */}
+              order). Secondary actions live inside the ⋮ menu so the inline
+              toolbar stays an identical minimal row on every page. */}
           <div ref={moreRef} className="relative">
             <HoverTooltip label="More actions" asChild>
               <IconButton
@@ -328,7 +253,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                 }}
                 aria-haspopup="menu"
                 aria-expanded={moreOpen}
-                className={`${TOOLBAR_ICON_BTN} ${moreOpen ? 'border-glass/40 bg-glass/25' : ''}`}
+                className={cn(TOOLBAR_ICON_BTN, moreOpen && 'border-glass/40 bg-glass/25')}
                 ariaLabel="More photo actions"
                 icon={<MoreVertical className="h-5 w-5 text-white" />}
               />
@@ -343,7 +268,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -4, scale: 0.98 }}
                   transition={{ duration: 0.12 }}
-                  className="absolute right-0 top-full z-50 mt-2 min-w-[12rem] overflow-hidden rounded-xl border border-glass/20 bg-scrim/90 py-1 shadow-xl backdrop-blur-xl"
+                  className={MENU_PANEL_CLASS}
                   onClick={(e) => e.stopPropagation()}
                   onPointerDown={(e) => e.stopPropagation()}
                 >
@@ -357,7 +282,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                         setMoreOpen(false);
                         g.openUploadOverlay();
                       }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-semibold text-white transition-colors hover:bg-glass/15 disabled:opacity-50"
+                      className={MENU_ITEM_CLASS}
                     >
                       {g.uploading ? (
                         <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
@@ -378,7 +303,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                         e.stopPropagation();
                         setMoreOpen(false);
                       }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-semibold text-white transition-colors hover:bg-glass/15"
+                      className={MENU_ITEM_CLASS}
                     >
                       <ExternalLink className="h-4 w-4 shrink-0" />
                       Open in library
@@ -394,11 +319,44 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                         setMoreOpen(false);
                         g.openMovePhotos();
                       }}
-                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-semibold text-white transition-colors hover:bg-glass/15"
+                      className={MENU_ITEM_CLASS}
                     >
                       <ArrowLeftRight className="h-4 w-4 shrink-0" />
                       Move to another PO
                     </button>
+                  ) : null}
+
+                  {g.onSendToTicket ? (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMoreOpen(false);
+                        g.onSendToTicket?.();
+                      }}
+                      className={MENU_ITEM_CLASS}
+                    >
+                      <Ticket className="h-4 w-4 shrink-0" />
+                      Send to ticket
+                    </button>
+                  ) : null}
+
+                  {openInNewTabHref ? (
+                    <a
+                      href={openInNewTabHref}
+                      target="_blank"
+                      rel="noreferrer"
+                      role="menuitem"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMoreOpen(false);
+                      }}
+                      className={MENU_ITEM_CLASS}
+                    >
+                      <ExternalLink className="h-4 w-4 shrink-0" />
+                      Open in new tab
+                    </a>
                   ) : null}
                 </motion.div>
               ) : null}
@@ -414,7 +372,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
             <IconButton
               onClick={(e) => { e.stopPropagation(); g.togglePanel(); }}
               aria-pressed={g.panelOpen}
-              className={`${TOOLBAR_ICON_BTN} ${g.panelOpen ? 'border-glass/40 bg-glass/25' : ''}`}
+              className={cn(TOOLBAR_ICON_BTN, g.panelOpen && 'border-glass/40 bg-glass/25')}
               ariaLabel={g.panelOpen ? 'Hide photo details' : 'Show photo details'}
               icon={<Info className="h-5 w-5 text-white" />}
             />
@@ -445,7 +403,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                 disabled={!canDownloadCurrent && !multiPhoto}
                 aria-haspopup={multiPhoto ? 'menu' : undefined}
                 aria-expanded={multiPhoto ? downloadOpen : undefined}
-                className={`${TOOLBAR_ICON_BTN} ${downloadOpen ? 'border-glass/40 bg-glass/25' : ''}`}
+                className={cn(TOOLBAR_ICON_BTN, downloadOpen && 'border-glass/40 bg-glass/25')}
                 ariaLabel={multiPhoto ? 'Download photos' : `Download photo ${currentIndex + 1}`}
                 icon={<Download className="h-5 w-5 text-white" />}
               />
@@ -460,7 +418,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -4, scale: 0.98 }}
                   transition={{ duration: 0.12 }}
-                  className="absolute right-0 top-full z-50 mt-2 min-w-[12rem] overflow-hidden rounded-xl border border-glass/20 bg-scrim/90 py-1 shadow-xl backdrop-blur-xl"
+                  className={MENU_PANEL_CLASS}
                   onClick={(e) => e.stopPropagation()}
                   onPointerDown={(e) => e.stopPropagation()}
                 >
@@ -473,7 +431,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                       setDownloadOpen(false);
                       void g.handleDownloadCurrent();
                     }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-semibold text-white transition-colors hover:bg-glass/15 disabled:opacity-50"
+                    className={MENU_ITEM_CLASS}
                   >
                     <Download className="h-4 w-4 shrink-0" />
                     Photo {currentIndex + 1}/{photoItems.length}
@@ -487,7 +445,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                       setDownloadOpen(false);
                       void g.handleDownloadAll();
                     }}
-                    className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm font-semibold text-white transition-colors hover:bg-glass/15 disabled:opacity-50"
+                    className={MENU_ITEM_CLASS}
                   >
                     <Download className="h-4 w-4 shrink-0" />
                     All photos ({photoItems.length})
@@ -669,14 +627,7 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
         <div
           data-testid="photo-filmstrip"
           className="pointer-events-auto absolute bottom-8 left-1/2 z-10 w-full max-w-4xl -translate-x-1/2 px-8"
-          onClick={(e) => {
-            // #region agent log
-            dbg251('PhotoViewerModal.tsx:filmstripClick', 'filmstrip root click', {
-              targetTag: (e.target as HTMLElement)?.tagName,
-            }, 'A,C');
-            // #endregion
-            stopBubble(e);
-          }}
+          onClick={stopBubble}
           onPointerDown={stopBubble}
         >
           <div className="no-scrollbar mx-auto w-fit max-w-full overflow-x-auto rounded-2xl border border-glass/20 bg-scrim/50 p-3 backdrop-blur-md">
@@ -687,16 +638,12 @@ export function PhotoViewerModal({ g }: { g: PhotoGalleryController }) {
                   key={index}
                   type="button"
                   onClick={(e) => {
-                    // #region agent log
-                    dbg251('PhotoViewerModal.tsx:thumbClick', 'thumbnail button click', {
-                      index,
-                      currentIndex,
-                    }, 'A,D');
-                    // #endregion
                     e.stopPropagation();
                     g.setCurrentIndex(index);
                     g.resetZoom();
                   }}
+                  aria-label={`Go to photo ${index + 1}`}
+                  aria-current={index === currentIndex ? 'true' : undefined}
                   className={`relative h-20 w-14 flex-shrink-0 overflow-hidden rounded-lg transition-all ${
                     index === currentIndex ? 'scale-105 shadow-xl ring-3 ring-white' : 'opacity-60 hover:scale-105 hover:opacity-100'
                   }`}

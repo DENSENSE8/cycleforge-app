@@ -150,6 +150,9 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
       const result = await ingestCanonicalOrders(
         deduped.map(({ canonical }) => ({
           externalOrderId: canonical.order_number,
+          // CSV rows have no marketplace line id; the fold falls through
+          // itemNumber → sku → title.
+          externalLineId: '',
           // A marketplace item number (ASIN / eBay listing id) when the file
           // has one — it resolves through `sku_platform_ids.platform_item_id`,
           // a path the SKU lookup cannot reach. When the file has only a SKU

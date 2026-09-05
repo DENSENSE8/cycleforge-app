@@ -192,6 +192,29 @@ export function applyToShipTriageFacet(
   return params;
 }
 
+/**
+ * After marking out of stock, land on the Pending stage — BLOCKED belongs
+ * there with unlabeled / untested work, not on Tested. Packed stays packed
+ * (a staged carton is Scan-out's problem). The unfiltered list stays put.
+ *
+ * Also drops a Tested lane refine (`ustatus=TESTED`) so the hold is not
+ * immediately hidden by the filter we just left.
+ */
+export function applyToShipStageAfterOutOfStock(params: URLSearchParams): boolean {
+  const stage = String(params.get('stage') || '').trim().toLowerCase();
+  const ustatus = String(params.get('ustatus') || '').trim().toUpperCase();
+  let changed = false;
+  if (stage === 'tested') {
+    params.set('stage', 'pending');
+    changed = true;
+  }
+  if (ustatus === 'TESTED') {
+    params.delete('ustatus');
+    changed = true;
+  }
+  return changed;
+}
+
 export function normalizeDashboardOrderViewParams(
   params: URLSearchParams,
   preferredView?: DashboardOrderView

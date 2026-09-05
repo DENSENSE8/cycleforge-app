@@ -28,12 +28,15 @@
  * Zoho API. See `ExceptionEditor` for the call.
  */
 
-import { AlertCircle, Check, Loader2 } from '@/components/Icons';
+import { AlertCircle, Check, ExternalLink, Loader2 } from '@/components/Icons';
 import { Alert, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { IntakeCombobox } from '@/components/outbound/orders/intake/IntakeCombobox';
 import { cn } from '@/utils/_cn';
 import type { OrderExceptionRow } from '@/lib/orders/order-exception-types';
+import { productDetailHref } from '@/lib/products/products-view';
+import { zohoInventoryItemAppUrl } from '@/lib/zoho/inventory-app-url';
+import { providerCatalogLabel } from '@/lib/integrations/capability-labels';
 import {
   TRIAGE_PANEL_INNER_CORNER,
   triagePanelControl,
@@ -44,6 +47,8 @@ export interface CatalogHit {
   sku: string;
   product_title?: string | null;
   productTitle?: string | null;
+  image_url?: string | null;
+  zoho_item_id?: string | null;
 }
 
 /**
@@ -122,7 +127,10 @@ export function ExceptionCatalogPairing({
         className={triagePanelControl('w-full min-w-56 flex-1 sm:w-auto')}
         // The open panel takes the trigger's corner; `overflow-hidden` is what
         // makes cmdk's square fill clip to it.
-        contentClassName={cn('overflow-hidden', TRIAGE_PANEL_INNER_CORNER)}
+        contentClassName={cn(
+          'w-[min(36rem,calc(100vw-2rem))] overflow-hidden',
+          TRIAGE_PANEL_INNER_CORNER,
+        )}
         value={null}
         onChange={(value) => onPair(Number(value))}
         options={hits.map((hit) => ({
@@ -130,6 +138,8 @@ export function ExceptionCatalogPairing({
           label: hit.sku,
           mono: true,
           meta: hit.productTitle ?? hit.product_title ?? undefined,
+          imageUrl: hit.image_url ?? null,
+          trailing: <CatalogHitInspect sku={hit.sku} zohoItemId={hit.zoho_item_id} />,
         }))}
         query={query}
         onQueryChange={onQueryChange}
@@ -160,6 +170,50 @@ export function ExceptionCatalogPairing({
           </>
         )}
       </Button>
+    </div>
+  );
+}
+
+function CatalogHitInspect({
+  sku,
+  zohoItemId,
+}: {
+  sku: string;
+  zohoItemId?: string | null;
+}) {
+  const inventoryHref = zohoInventoryItemAppUrl(zohoItemId);
+  const productHref = sku.trim() ? productDetailHref(sku.trim()) : null;
+  const inventoryLabel = providerCatalogLabel('zoho');
+  if (!inventoryHref && !productHref) return null;
+  return (
+    <div className="flex flex-col items-stretch gap-1">
+      {inventoryHref ? (
+        <Button variant="ghost" size="sm" asChild>
+          <a
+            href={inventoryHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`More details — ${inventoryLabel} item`}
+            data-testid="exception-catalog-hit-inventory"
+          >
+            Inventory
+            <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+          </a>
+        </Button>
+      ) : null}
+      {productHref ? (
+        <Button variant="ghost" size="sm" asChild>
+          <a
+            href={productHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="More details — product"
+            data-testid="exception-catalog-hit-product"
+          >
+            Product
+          </a>
+        </Button>
+      ) : null}
     </div>
   );
 }

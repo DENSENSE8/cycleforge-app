@@ -49,22 +49,56 @@ export type ShippedDetailsContext = 'shipped' | 'queue' | 'packed';
 export interface OpenShippedDetailsPayload {
   order: ShippedOrder;
   context?: ShippedDetailsContext;
+  /**
+   * Explicit operator action (gutter "More information"). Always open, even
+   * when queue-body clicks are suppressed (`side_panel` preference).
+   */
+  force?: boolean;
 }
 
-export function dispatchOpenShippedDetails(order: ShippedOrder, context?: ShippedDetailsContext): void {
+export function dispatchOpenShippedDetails(
+  order: ShippedOrder,
+  context?: ShippedDetailsContext,
+  opts?: { force?: boolean },
+): void {
   if (typeof window === 'undefined') return;
-  window.dispatchEvent(new CustomEvent('open-shipped-details', { detail: { order, context } }));
+  window.dispatchEvent(
+    new CustomEvent('open-shipped-details', {
+      detail: { order, context, force: opts?.force === true },
+    }),
+  );
 }
 
 export function getOpenShippedDetailsPayload(detail: unknown): OpenShippedDetailsPayload | null {
   if (!detail || typeof detail !== 'object') return null;
 
-  const payload = detail as { order?: ShippedOrder; context?: ShippedDetailsContext };
+  const payload = detail as {
+    order?: ShippedOrder;
+    context?: ShippedDetailsContext;
+    force?: boolean;
+  };
   if (payload.order && typeof payload.order === 'object') {
-    return { order: payload.order, context: payload.context };
+    return {
+      order: payload.order,
+      context: payload.context,
+      force: payload.force === true,
+    };
   }
 
   return { order: detail as ShippedOrder };
+}
+
+/**
+ * Queue-body clicks stay suppressed in `side_panel` mode. An explicit
+ * operator action (`force`, gutter "More information") always opens.
+ */
+export function shouldApplyOpenShippedDetails(
+  behavior: string,
+  payload: Pick<OpenShippedDetailsPayload, 'context' | 'force'>,
+): boolean {
+  if (payload.force === true) return true;
+  if (behavior === 'side_panel' && payload.context === 'queue') return false;
+  return true;
 }
 
 export type ShippedDetailsNavigationDirection = 'up' | 'down';
@@ -351,4 +385,11 @@ export function dashboardShippedFocusSearchHref(): string {
   p.set('shipped', '');
   p.set(DASHBOARD_SHIPPED_FOCUS_SEARCH_PARAM, '1');
   return `/shipping/orders?${p.toString()}`;
+}
+
+export const OPEN_LISTING_STAFF_RULES_EVENT = 'open-listing-staff-rules';
+
+export function dispatchOpenListingStaffRules(): void {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(OPEN_LISTING_STAFF_RULES_EVENT));
 }

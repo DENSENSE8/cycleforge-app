@@ -17,6 +17,7 @@ import {
   THROW_TASK_HOTKEY_LABEL,
   openThrowTask,
 } from '@/components/quick-access/ThrowTaskHost';
+import { KeyboardKey } from '@/design-system/primitives/KeyboardKey';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 
@@ -38,9 +39,7 @@ export function ThrowTaskRow({ onOpen }: { onOpen?: () => void }) {
         <span className="min-w-0 flex-1 truncate text-role-caption font-semibold text-text-default">
           Throw a task
         </span>
-        <kbd className="shrink-0 rounded-none border border-border-soft bg-surface-canvas px-1 py-0.5 font-mono text-role-micro font-semibold text-text-soft">
-          {THROW_TASK_HOTKEY_LABEL}
-        </kbd>
+        <KeyboardKey size="md">{THROW_TASK_HOTKEY_LABEL}</KeyboardKey>
       </button>
     </div>
   );

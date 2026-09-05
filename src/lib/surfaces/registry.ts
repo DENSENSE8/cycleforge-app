@@ -390,6 +390,31 @@ export const MUTATION_KINDS = {
     permission: 'studio.manage',
   },
 
+  // auto — listing rule (the "always this staff for this product" rule).
+  // Admitted on the same three properties as receiving_photo.reassign:
+  //   1. REVERSIBLE — the writer states its inverse (delete the row it
+  //      created, or restore the previous staff pair it overwrote).
+  //   2. NON-DESTRUCTIVE — one rule row per item number; delete is soft
+  //      (deleted_at), nothing about an order or a unit is erased.
+  //   3. ALREADY OPERATOR-REACHABLE — the To-ship bulk overlay writes the
+  //      identical document under work_orders.claim; review here would gate
+  //      the chat path more tightly than the hands-on path it mirrors.
+  'automation_rule.upsert_item_staff': {
+    label: 'Always assign this staff to this product',
+    trust: 'auto',
+    targetKind: 'automation_rule',
+    description:
+      'Create or update the listing rule for one item number: assign_work TEST (the Pick slot) + assign_work PACK to the named staff on every import and QC pass; optionally stamps pending orders now.',
+    permission: 'work_orders.claim',
+  },
+  'automation_rule.delete': {
+    label: 'Remove listing rule',
+    trust: 'auto',
+    targetKind: 'automation_rule',
+    description: 'Soft-delete one listing rule (deleted_at); the inverse re-creates it with the same staff pair.',
+    permission: 'work_orders.claim',
+  },
+
   // review — masters / live definitions
   'staff.create': {
     label: 'Create staff member',

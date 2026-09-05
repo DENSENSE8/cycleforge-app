@@ -17,5 +17,8 @@
     "lib": "@/utils",
     "hooks": "@/hooks"
   },
-  "iconLibrary": "lucide"
+  "iconLibrary": "lucide",
+  "registries": {
+    "@23rd": "https://23rd.dev/r/{name}.json"
+  }
 }

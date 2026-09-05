@@ -1,0 +1,13 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "function:src/lib/tables/slot-table-header-sort.ts:isSlotTableChromeTrack",
+      "kind": "function",
+      "name": "isSlotTableChromeTrack",
+      "location": "src/lib/tables/slot-table-header-sort.ts:26",
+      "exported": true,
+      "signature": "function isSlotTableChromeTrack(key: string): boolean"
+    }
+  ]
+}

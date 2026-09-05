@@ -58,7 +58,7 @@ export const DeskTab = forwardRef<HTMLButtonElement, DeskTabProps>(function Desk
       data-active={active ? '' : undefined}
       className={cn(
         DESK_TAB_TRIGGER_CLASS,
-        '-mb-px border-b',
+        'border-b',
         'transition-colors duration-100 ease-out',
         cornerClass('flush'),
         focusRing('control'),

@@ -107,6 +107,7 @@ export function packMonochromeBitmap(
   rgba: Uint8ClampedArray,
   width: number,
   height: number,
+  invertRows = true,
 ): Uint8Array {
   const bytesPerRow = Math.ceil(width / 8);
   const bitmap = new Uint8Array(bytesPerRow * height);
@@ -123,11 +124,59 @@ export function packMonochromeBitmap(
     // CX418's TSPL2 raster mode treats cleared bits as heated dots, opposite
     // the conventional packing above. Flip each completed row so white media
     // stays unheated and only the label artwork prints black.
-    for (let byte = 0; byte < bytesPerRow; byte += 1) {
-      bitmap[y * bytesPerRow + byte] ^= 0xff;
+    if (invertRows) {
+      for (let byte = 0; byte < bytesPerRow; byte += 1) {
+        bitmap[y * bytesPerRow + byte] ^= 0xff;
+      }
     }
   }
   return bitmap;
+}
+
+/** TSPL2 BITMAP job wrapper — same framing the CX418 / TSC silent path uses. */
+export function wrapTsplBitmapJob(
+  bitmap: Uint8Array,
+  width: number,
+  height: number,
+  size: PaperSize,
+  copies = 1,
+): Uint8Array {
+  const heightIn = size.heightIn > 0 ? size.heightIn : 1;
+  const bytesPerRow = Math.ceil(width / 8);
+  const header = [
+    `SIZE ${inchesToMillimeters(size.widthIn)} mm,${inchesToMillimeters(heightIn)} mm`,
+    'GAP 3.0 mm,0 mm',
+    'DIRECTION 1,0',
+    'REFERENCE 0,0',
+    'DENSITY 10',
+    'CLS',
+    `BITMAP 0,0,${bytesPerRow},${height},1,`,
+  ].join('\r\n');
+  const footer = `\r\nPRINT ${Math.max(1, copies)},1\r\n`;
+  return joinBytes([asciiBytes(header), bitmap, asciiBytes(footer)]);
+}
+
+/** ZPL graphic from a conventional (non-TSPL-inverted) packed bitmap. */
+export function wrapZplGraphicJob(
+  bitmap: Uint8Array,
+  width: number,
+  height: number,
+  copies = 1,
+): string {
+  const bytesPerRow = Math.ceil(width / 8);
+  const total = bitmap.length;
+  let hex = '';
+  for (let i = 0; i < bitmap.length; i += 1) {
+    hex += bitmap[i]!.toString(16).padStart(2, '0');
+  }
+  return [
+    '^XA',
+    `^PW${width}`,
+    `^LL${height}`,
+    `^FO0,0^GFA,${total},${total},${bytesPerRow},${hex}`,
+    `^PQ${Math.max(1, copies)}`,
+    '^XZ',
+  ].join('\r\n');
 }
 
 function drawFittedText(
@@ -260,18 +309,7 @@ export function buildReceivingLabelBitmapCommands(
 
   const image = rotatedContext.getImageData(0, 0, width, height);
   const bitmap = packMonochromeBitmap(image.data, width, height);
-  const bytesPerRow = Math.ceil(width / 8);
-  const header = [
-    `SIZE ${inchesToMillimeters(size.widthIn)} mm,${inchesToMillimeters(heightIn)} mm`,
-    'GAP 3.0 mm,0 mm',
-    'DIRECTION 1,0',
-    'REFERENCE 0,0',
-    'DENSITY 10',
-    'CLS',
-    `BITMAP 0,0,${bytesPerRow},${height},1,`,
-  ].join('\r\n');
-  const footer = `\r\nPRINT ${Math.max(1, copies)},1\r\n`;
-  return joinBytes([asciiBytes(header), bitmap, asciiBytes(footer)]);
+  return wrapTsplBitmapJob(bitmap, width, height, size, copies);
 }
 
 // ---------------------------------------------------------------------------

@@ -1,0 +1,13 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "variable:src/components/tables/compound/compound-columns.ts:COMPOUND_COLUMN_KEYS",
+      "kind": "variable",
+      "name": "COMPOUND_COLUMN_KEYS",
+      "location": "src/components/tables/compound/compound-columns.ts:70",
+      "exported": true,
+      "signature": "COMPOUND_COLUMN_KEYS = [ 'select', 'fulfillment', 'thumb', 'item', 'dates', 'state', 'amount', '_fill', ] as const"
+    }
+  ]
+}

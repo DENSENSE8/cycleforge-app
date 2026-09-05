@@ -1,5 +1,5 @@
-const TRIAGE_PILES = ['inbox', 'upload', 'ignore', 'done'] as const;
-export type TriagePile = (typeof TRIAGE_PILES)[number];
+const _TRIAGE_PILES = ['inbox', 'upload', 'ignore', 'done'] as const;
+export type TriagePile = (typeof _TRIAGE_PILES)[number];
 
 export interface TriageRow {
   id: string;

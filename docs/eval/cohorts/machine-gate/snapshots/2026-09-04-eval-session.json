@@ -1,0 +1,11 @@
+{
+  "source": "cli",
+  "lastCommand": "pnpm --config.verify-deps-before-run=false run verify:fast",
+  "mode": "fast",
+  "ok": true,
+  "exitCode": 0,
+  "durationMs": 8859,
+  "repo": "/home/michaelgarisek/Projects/cycleforge-app",
+  "updatedAt": "2026-09-05T04:27:28.476Z",
+  "updatedMs": 1788582448476
+}

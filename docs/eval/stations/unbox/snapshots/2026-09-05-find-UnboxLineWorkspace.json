@@ -1,0 +1,29 @@
+{
+  "project": "cycleforge-app",
+  "matches": [
+    {
+      "node_key": "component:src/components/receiving/unbox/UnboxLineWorkspace.tsx:UnboxLineWorkspace",
+      "kind": "component",
+      "name": "UnboxLineWorkspace",
+      "location": "src/components/receiving/unbox/UnboxLineWorkspace.tsx:115",
+      "exported": true,
+      "signature": "function UnboxLineWorkspace({ staffId, workspace, nav, restorePending = false, lookupReceipt = null, onClearLookupReceipt, onCloseWorkspace, recordInspectOpen = false, inspectorOpen = false, }: UnboxLineWorkspaceProps)"
+    },
+    {
+      "node_key": "file:src/components/receiving/unbox/UnboxLineWorkspace.tsx",
+      "kind": "file",
+      "name": "UnboxLineWorkspace.tsx",
+      "location": "src/components/receiving/unbox/UnboxLineWorkspace.tsx:1",
+      "exported": false,
+      "signature": null
+    },
+    {
+      "node_key": "interface:src/components/receiving/unbox/UnboxLineWorkspace.tsx:UnboxLineWorkspaceProps",
+      "kind": "interface",
+      "name": "UnboxLineWorkspaceProps",
+      "location": "src/components/receiving/unbox/UnboxLineWorkspace.tsx:92",
+      "exported": false,
+      "signature": "interface UnboxLineWorkspaceProps"
+    }
+  ]
+}

@@ -18,12 +18,30 @@ export function LoaderFieldStatic({ label = 'Loading…' }: { label?: string }) 
     <div
       role="status"
       aria-busy="true"
-      aria-label={label}
       // ds-allow-raw-neutral: loader field plane is pinned white in every theme (operator 2026-08-21)
-      className="relative h-full min-h-24 w-full flex-1 bg-white"
+      className="relative flex h-full min-h-24 w-full flex-1 items-center justify-center bg-white"
       style={latticeStyle(16)}
     >
-      <span className="sr-only">{label}</span>
+      {/*
+        VISIBLE, not sr-only (2026-09-02). First Contentful Paint counts text,
+        images, canvas and SVG — a CSS background gradient is none of those, so
+        while this label was `sr-only` the loading boundary painted a field with
+        NOTHING contentful in it and FCP could not fire until the app hydrated
+        and revealed the route.
+
+        Measured on the Vercel preview, mobile profile, 4x CPU: `/m/home`
+        first-paint 912ms but first-CONTENTFUL-paint 1412ms — a 500ms gap that
+        is exactly this. Routes whose own SSR chrome carries visible text
+        (`/m/unbox`, `/incoming`) hit FP == FCP == ~560ms and score 89-93.
+
+        This is also why deleting a `loading.tsx` never helped: the boundary
+        just fell through to the root one, which renders this same component.
+        Keep the label rendered. `aria-label` is dropped because the visible
+        text now names the region.
+      */}
+      <span className="text-role-caption font-semibold uppercase tracking-widest text-text-faint">
+        {label}
+      </span>
     </div>
   );
 }

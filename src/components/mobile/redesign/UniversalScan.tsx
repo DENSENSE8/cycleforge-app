@@ -32,7 +32,11 @@ import {
 import { useRegisterNewScan } from '@/components/mobile/redesign/mobile-scan-cta';
 import { NetworkChip } from '@/components/mobile/NetworkChip';
 import { ArrivalCard } from '@/components/mobile/scan/ArrivalCard';
-import { dispatchScan } from '@/lib/scan/dispatch-table';
+import {
+  isCarrierTrackingScan,
+  planDoorScan,
+  trackingSeenFromPreview,
+} from '@/lib/scan/mobile-arrival-door';
 import { routeScan } from '@/lib/barcode-routing';
 import { resolveViaLookupPo, type ScanResolutionMode } from '@/lib/receiving/scan';
 import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
@@ -40,7 +44,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLabelPrintFeed, type LabelPrintFeedItem } from '@/hooks/useLabelPrintFeed';
 
 const MODES: Array<{ id: ScanMode; label: string; icon: (p: { className?: string }) => JSX.Element; placeholder: string }> = [
-  { id: 'receiving', label: 'Arrival', icon: ReceivingModeArrival, placeholder: 'Scan a tracking number' },
+  { id: 'receiving', label: 'Arrival', icon: ReceivingModeArrival, placeholder: 'Arrival' },
   { id: 'testing', label: 'Testing Orders', icon: TechModeTesting, placeholder: 'Scan a PO label (R-####)' },
   { id: 'cms', label: 'Prepacked Products', icon: Box, placeholder: 'Scan a product / unit label' },
 ];
@@ -58,14 +62,15 @@ export default function RedesignedMobileUniversalScan() {
    * looks identical to a scan the gun never read.
    */
   const [verdict, setVerdict] = useState<{ value: MobileScanVerdict; seq: number } | null>(null);
-  /** The raw string of the last scan, so the dispatch table can be asked about it. */
+  /** Last scanned string — dispatch asks this, not the minted carton id. */
   const [lastScan, setLastScan] = useState<string | null>(null);
-  const [resolving, setResolving] = useState(false);
   /**
-   * Photos captured on the Arrival Card. A ref, not state: nothing on this
-   * surface paints them yet (the upload rung is a later goal), and holding them
-   * here is what keeps a shutter press from being thrown away in the meantime.
+   * Whether this tracking already has a carton. Decided from preview-scan
+   * (a read). Never from `verdict.receivingId` — lookup-po mints an unfound
+   * carton for a never-seen number, which is how Arrival became unreachable.
    */
+  const [trackingSeen, setTrackingSeen] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const arrivalPhotos = useRef<File[]>([]);
   const queryClient = useQueryClient();
   const router = useRouter();
@@ -142,7 +147,7 @@ export default function RedesignedMobileUniversalScan() {
   // and left the operator with no idea whether the carton matched, landed in
   // Unfound, or never reached the server at all.
   const runReceiving = useCallback(
-    async (raw: string, callMode: ScanResolutionMode) => {
+    async (raw: string, callMode: ScanResolutionMode): Promise<MobileScanVerdict> => {
       try {
         const resolution = await resolveViaLookupPo(
           {
@@ -168,17 +173,35 @@ export default function RedesignedMobileUniversalScan() {
             },
           },
         );
-        announce(buildScanVerdict(raw, resolution));
+        const next = buildScanVerdict(raw, resolution);
+        announce(next);
+        return next;
       } catch (err) {
         // `resolveViaLookupPo` throws on a hard `!success`; `fetch` throws when
         // the phone drops off the wifi mid-aisle. Both must reach the operator.
-        announce(scanFailureVerdict(raw, err));
+        const next = scanFailureVerdict(raw, err);
+        announce(next);
+        return next;
       } finally {
         refreshReceivingTriage();
       }
     },
     [refreshReceivingTriage, announce, user?.staffId],
   );
+
+  /**
+   * Read-only: does this tracking already have a carton? Creates nothing.
+   * That is the whole difference from lookup-po, which mints Unfound.
+   */
+  const previewTrackingSeen = useCallback(async (raw: string): Promise<boolean> => {
+    const res = await fetch(
+      `/api/receiving/preview-scan?value=${encodeURIComponent(raw)}&mode=tracking`,
+      { credentials: 'include' },
+    );
+    if (!res.ok) return false;
+    const json = (await res.json()) as { matched?: boolean };
+    return trackingSeenFromPreview(json.matched);
+  }, []);
 
   // ── dispatch: detect mode → animate slider → run the mode's handler ────────
   const dispatch = useCallback(
@@ -189,35 +212,49 @@ export default function RedesignedMobileUniversalScan() {
       setLastScan(raw);
 
       const detected = detectScanMode(raw);
-      const target: ScanMode = detected ?? mode;
+      const carrierTracking = isCarrierTrackingScan(raw);
+      // A carrier tracking number is a door scan, even if the operator was
+      // standing on Testing / Prepacked. The bytes decide the Card.
+      const target: ScanMode = carrierTracking ? 'receiving' : (detected ?? mode);
       if (target !== mode) {
-        changeMode(target); // slider animates to the detected mode
+        changeMode(target);
       }
 
       try {
         if (target === 'testing') {
-          // Resolve the scanned PO/serial into the inline testing panel; the
-          // "Recently Tested" rail below is desktop-wired and refetches itself.
           setTestingQuery(raw);
           return;
         }
 
         if (target === 'cms') {
-          // Prepacked: open the detail/verify sheet. The sheet owns resolution
-          // (live unit → product metadata → unknown) so there's no dead-end.
-          // The recent list is the persistent label-print history, not an
-          // in-memory row, so just open the sheet here.
           setPrepackScan(raw);
           return;
         }
 
-        // Receiving: door-scan lookup → verdict banner + triage rails refetch.
-        //
-        // An UNAMBIGUOUS carrier read stays in `tracking` mode. A value the
-        // classifier could not place falls here too, and for that one `auto` is
-        // the honest mode — it deep-scans the value as ticket#, PO#, and
-        // tracking# before minting an unfound carton, which is exactly what an
-        // un-armed universal scanner should do rather than assuming a carrier.
+        if (carrierTracking) {
+          // Paint Arrival immediately (`trackingSeen: false`). Preview runs in
+          // parallel; if it hits, we swap to the known-carton path. lookup-po
+          // is NOT called here — it would mint Unfound and hide the Card.
+          setTrackingSeen(false);
+          setVerdict(null);
+          setResolving(true);
+          try {
+            const seen = await previewTrackingSeen(raw);
+            setTrackingSeen(seen);
+            if (seen) {
+              await runReceiving(raw, 'tracking');
+            }
+          } catch {
+            setTrackingSeen(false);
+          } finally {
+            setResolving(false);
+          }
+          return;
+        }
+
+        // Receiving, but not a carrier tracking shape (PO#, ticket#, unknown):
+        // `auto` deep-scans before minting, which is what an un-armed universal
+        // scanner should do rather than assuming a carrier.
         setResolving(true);
         try {
           await runReceiving(raw, detected === 'receiving' ? 'tracking' : 'auto');
@@ -228,7 +265,7 @@ export default function RedesignedMobileUniversalScan() {
         inFlight.current = false;
       }
     },
-    [mode, runReceiving, changeMode],
+    [mode, runReceiving, changeMode, previewTrackingSeen],
   );
 
   /**
@@ -239,6 +276,7 @@ export default function RedesignedMobileUniversalScan() {
   const startNewScan = useCallback(() => {
     setVerdict(null);
     setLastScan(null);
+    setTrackingSeen(false);
     arrivalPhotos.current = [];
     setTestingQuery('');
     setPrepackScan(null);
@@ -246,22 +284,9 @@ export default function RedesignedMobileUniversalScan() {
   }, [changeMode]);
   useRegisterNewScan(startNewScan);
 
-  /**
-   * What the dispatch table says the last scan opens.
-   *
-   * `trackingSeen` is not guessed: a scan that resolved to a carton HAS been
-   * seen, so the table returns `carton` for it and the Arrival Card stays shut.
-   * Only a never-seen tracking number returns `arrival`.
-   */
   const lastDispatch = useMemo(
-    () =>
-      lastScan
-        ? dispatchScan({
-            scan: lastScan,
-            state: { trackingSeen: verdict?.value.receivingId != null },
-          })
-        : null,
-    [lastScan, verdict],
+    () => (lastScan ? planDoorScan(lastScan, trackingSeen) : null),
+    [lastScan, trackingSeen],
   );
 
   const stageArrivalPhotos = useCallback((files: File[]) => {
@@ -299,38 +324,14 @@ export default function RedesignedMobileUniversalScan() {
           placeholder={active.placeholder}
           autoFocus
           isResolving={resolving}
+          prominentCamera={mode === 'receiving'}
           cameraSuspended={prepackScan != null}
         />
 
-        {/* The answer to the last door scan, directly under the bar the operator
-            is already looking at. Station law: a state-changing scan lands as a
-            card, never a toast that expires while their eyes are on the carton.
-            Keyed by `seq` so a repeat scan of the same label replays. */}
-        {/* A never-seen tracking number gets the Arrival Card instead — it IS
-            the answer to that scan, and it carries the same "open the carton"
-            verb the banner did. Every other scan renders exactly what it
-            rendered before. */}
-        {mode === 'receiving' && verdict && lastScan && lastDispatch?.card === 'arrival' ? (
-          <ArrivalCard
-            key={verdict.seq}
-            tracking={lastScan}
-            carrier={routeScan(lastScan)?.carrier ?? 'Unknown'}
-            // Counts nothing on this surface has yet: zero is the model's own
-            // cautious default ("nothing waiting, rack has room"), not an
-            // invented fact. Wiring them is the receiving-data goal.
-            expectedCartons={0}
-            arrivedCartons={0}
-            pendingOrdersForCarton={0}
-            rackHasSpace
-            onUnboxNow={() => {
-              const receivingId = verdict.value.receivingId;
-              if (receivingId != null) router.push(`/m/r/${receivingId}`);
-              else startNewScan();
-            }}
-            onRack={startNewScan}
-            onPhotos={stageArrivalPhotos}
-          />
-        ) : mode === 'receiving' && verdict ? (
+        {/* Known-carton / error answer stays under the Field. A never-seen
+            tracking number paints the Arrival Card in the body below — one
+            Card, not a banner plus a queue. */}
+        {mode === 'receiving' && !lastDispatch?.openArrival && verdict ? (
           <MobileScanVerdictBanner
             key={verdict.seq}
             verdict={verdict.value}
@@ -366,6 +367,30 @@ export default function RedesignedMobileUniversalScan() {
             <div className="min-h-0 flex-1 overflow-y-auto pt-2">
               <TestingRecentPanel />
               <ScanTestingPanel query={testingQuery} />
+            </div>
+          ) : mode === 'receiving' && lastDispatch?.openArrival && lastScan ? (
+            <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pt-2">
+              <ArrivalCard
+                key={lastScan}
+                tracking={routeScan(lastScan)?.value ?? lastScan}
+                carrier={routeScan(lastScan)?.carrier ?? 'Unknown'}
+                expectedCartons={0}
+                arrivedCartons={0}
+                pendingOrdersForCarton={0}
+                rackHasSpace
+                onUnboxNow={() => {
+                  const scanned = lastScan;
+                  if (!scanned) return;
+                  setResolving(true);
+                  void runReceiving(scanned, 'tracking')
+                    .then((next) => {
+                      if (next.receivingId != null) router.push(`/m/r/${next.receivingId}`);
+                    })
+                    .finally(() => setResolving(false));
+                }}
+                onRack={startNewScan}
+                onPhotos={stageArrivalPhotos}
+              />
             </div>
           ) : mode === 'receiving' ? (
             // Receiving — desktop triage: Unfound / Prioritize dropdown picker

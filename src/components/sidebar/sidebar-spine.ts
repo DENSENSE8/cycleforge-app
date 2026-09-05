@@ -110,46 +110,43 @@ export const SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS =
  * accent module bans outright ("No hue, anywhere in this module... No ring, no
  * shadow, no bevel. Ops chrome is flush-square and flat").
  *
- * Settled at `h-10` / 16px icon. Full reasoning, carried here with the tokens:
+ * Sizing history, kept because it is the argument, not the answer: the row
+ * ran 28px, then briefly `h-14` (56px) with 24px text — BUTTON scale, not
+ * repeated-nav-row scale — then settled at `h-10` on the reasoning that a
+ * short list left a full-height column visibly empty. That held while the
+ * spine listed a handful of destinations. It stopped holding once Pinned,
+ * Stations, Desks and Studio all list at once: at that count the column is
+ * over-full, not empty, and 40px rows are what makes it so. Hence
+ * {@link SPINE_ROW_DENSITY} below — the reference bar the h-14 pass was
+ * measured against (VS Code ~13px/22px, Linear/GitHub 13-14px/28-32px,
+ * Slack/Notion 14-15px/28-32px) is the one the pointer face now sits on.
  *
- * Row height + glyph size for every destination row in this map (2026-08-16)
- * — deliberately its OWN local token, not `PRIMARY_CHROME_ROW_FACE` (28px ops
- * bands) and not `STATION_CHROME_ROW_FACE` (28px carton / Displays top). A
- * short destination list — Scan Stations' 7 benches, a domain section's 2-3
- * pages — used to huddle at 28px rows near the top of a column that runs
- * the full viewport height, leaving most of it visibly empty. Taller rows
- * spend that space instead of wasting it, and the glyph scales with the row
- * so it stays proportionate rather than shrinking inside a box that grew
- * around it. This trades the previous cross-column seam match (spine row 1
- * bottom ↔ the scan bar's) for legibility + fill — a deliberate call, not
- * an oversight; nothing else in the app reads this token, so nothing else
- * moved.
+ * The row now ships in the two densities this app actually has. One token, one
+ * axis — before this the desktop spine rendered the shadcn variant's own
+ * `h-8` / 14px, the drawer rendered `h-10` / 14px from here, and the tokens
+ * that claimed to own the row were live on mobile and dead on desktop.
  *
- * **Settled at `h-10` / 16px icon (2026-08-16, second pass).** A first pass
- * went to `h-14` (56px) paired with `role-display` (24px) text — genuinely
- * too much: 56px rows and 24px labels are BUTTON scale, not repeated
- * nav-list-row scale, and no reference sidebar (VS Code ~13px/22px rows,
- * Linear/GitHub ~14px/32px, Slack/Notion ~14-15px/28-32px) runs anywhere
- * near that for an item that repeats a dozen times down a column. `h-10`
- * (40px) is generous against the 28px it replaced without reading as
- * oversized, and pairs with `role-title` (18px, see below) the way the
- * glyph below pairs with it — back to 16px, proportionate at this text size
- * rather than the 20px the 24px-text pass needed.
- * Destination labels — bumped 2026-08-20 from `role-nav` (13px) to
- * `role-body` (14px), matching the GlobalHeader recents session face so the
- * two navigators keep reading as one size system, not two. Regular weight
- * (not title 18px/600).
+ * `pointer` (28px / 13px) is the Linear · VS Code density for a list that
+ * repeats a dozen-plus times down a full-height column: at that count a taller
+ * row spends the column on chrome, and 13px is where every reference nav sits.
+ *
+ * `touch` (40px / 14px) is NOT the same measurement scaled — a thumb target
+ * has a floor a pointer target does not, so the drawer keeps its height on
+ * purpose. Both faces still take the same {@link SPINE_ROW_SHELL_CLASS},
+ * {@link SPINE_ROW_ICON_CLASS} and `SPINE_ACCENT` state.
  */
-/**
- * End pad inside a spine drill (Scan Stations benches, page children) so the
- * last row can scroll up past the sticky Back label and the account footer.
- */
-export const SPINE_DRILL_SCROLL_END_CLASS = 'pb-32';
+export const SPINE_ROW_DENSITY = {
+  pointer: {
+    face: 'h-7 shrink-0',
+    label: 'text-role-nav font-normal',
+  },
+  touch: {
+    face: 'h-10 shrink-0',
+    label: 'text-role-body font-normal',
+  },
+} as const;
 
-export const SPINE_ROW_FACE_CLASS = 'h-10 shrink-0';
 export const SPINE_ROW_ICON_CLASS = 'h-4 w-4 shrink-0';
-/** Destination labels — `role-body` (14px), regular weight. */
-export const SPINE_LABEL_CLASS = 'text-role-body font-normal';
 
 /**
  * The one row shell every spine destination shares: flush, full-width, dense.

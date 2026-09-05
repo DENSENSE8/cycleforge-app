@@ -9,9 +9,10 @@
  * feeds). Repairs composes the shared {@link RepairTable} workbench as the
  * **history door** — Scan Stations `/repair` remains the intake/task door.
  *
- * Layout for Sales/Pickup is the Sheets flush stack: the mode's status tabs
- * sit above the feed as legal second-level sub-modes. Repairs mounts the same
- * sub-mode strip above `RepairTable`.
+ * Layout for Sales/Pickup is the Sheets flush stack. Per-mode status tabs
+ * (`TableTabs`) are second-level sub-modes of the DeskPageChrome page tab
+ * (Pickup Draft/Completed, Sales Today/All, Repair Incoming/Active/Done).
+ * The legacy Sales header is gone — do not resurrect a second page-chrome band.
  */
 
 import { useCallback, useMemo } from 'react';

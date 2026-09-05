@@ -3,14 +3,10 @@
  *
  * THREE modes as of 2026-08-21: `daily`, `today` and `tasks`.
  *
- * `tasks` is NOT the 2026-08-19 mode of that name coming back. That one was the
- * ops-plan task feed and it was deleted for the reason below. This one is the
- * staffer's OWN `staff_todos` list — the thing the header pace-and-next popover
- * previews — given a real collection surface (`tasks.mine` in the table
- * registry) so it can be triaged, sorted and inspected instead of scrolled in a
- * 290px popover. Same wire token deliberately: a stale `?mode=tasks` deep link
- * lands on a personal task list, which is the closest live thing to what its
- * author was looking for.
+ * `tasks` is the org project-task desk (`ops_plan_tasks` on Home). Personal
+ * `staff_todos` still live on the header pace-and-next chip — they are not this
+ * mode. Same `?mode=tasks` wire token as the 2026-08-21 personal-list surface so
+ * existing bookmarks land on the desk that replaced it.
  *
  * The original note, still the standard a mode is held to: `inbox` (subscription feed),
  * `tasks` (ops-plan tasks) and `forge` (Plans Live) were removed from Home —

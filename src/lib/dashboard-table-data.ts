@@ -124,6 +124,7 @@ export async function fetchUnshippedOrdersData({
   strictSearchScope = false,
   stage,
   limit,
+  blockedOnly = false,
 }: {
   searchQuery?: string;
   packedBy?: number;
@@ -132,6 +133,8 @@ export async function fetchUnshippedOrdersData({
   strictSearchScope?: boolean;
   stage?: 'pending' | 'tested' | 'packed';
   limit?: number;
+  /** Pending desk — blocked work in the building, label or no label. */
+  blockedOnly?: boolean;
 }) {
   const params = new URLSearchParams();
   if (searchQuery.trim()) params.set('q', searchQuery.trim());
@@ -139,7 +142,10 @@ export async function fetchUnshippedOrdersData({
   if (testedBy !== undefined) params.set('testedBy', String(testedBy));
   if (staffId !== undefined) params.set('staff', String(staffId));
   const scoped = !searchQuery.trim() || strictSearchScope;
-  if (scoped) params.set('inWarehouse', 'true');
+  // The two scopes are alternatives, not layers: `inWarehouse` demands a label
+  // and a tracking number, which is exactly what a blocked order has not got
+  // yet. See the route's `blockedOnly` docblock.
+  if (scoped) params.set(blockedOnly ? 'blockedOnly' : 'inWarehouse', 'true');
   // Phase 1: on the scoped, non-search fulfillment load, request the thin queue
   // projection and push the coarse stage facet to SQL. A search stays full-shape
   // (the route ignores listShape when `q` is present) for match highlighting.
@@ -155,7 +161,8 @@ export async function fetchUnshippedOrdersData({
     throw new Error('Failed to fetch unshipped orders');
   }
 
-  const data = await res.json();
+  const data = await res.json().catch(() => null);
+  if (!data) throw new Error('Failed to fetch unshipped orders');
   return normalizeUnshippedOrdersPayload(data.orders || []);
 }
 

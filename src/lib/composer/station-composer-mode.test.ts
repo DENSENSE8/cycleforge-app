@@ -35,7 +35,7 @@ test('parseStationComposerMode accepts live ids, aliases label→unbox, drops lo
   assert.equal(parseStationComposerMode('label'), 'unbox');
   assert.equal(parseStationComposerMode('TICKET'), 'ticket');
   assert.equal(parseStationComposerMode('location'), null);
-  assert.equal(parseStationComposerMode(' ask '), null);
+  assert.equal(parseStationComposerMode(' ask '), 'ask');
   assert.equal(parseStationComposerMode(''), null);
   assert.equal(parseStationComposerMode(null), null);
 });
@@ -48,17 +48,20 @@ test('resolveStationComposerMode: URL wins, then session, then Unbox', () => {
   assert.equal(resolveStationComposerMode('label', null), 'unbox');
 });
 
-test('cycleStationComposerMode is a two-step ring', () => {
+test('cycleStationComposerMode is Unbox → Ticket → Ask', () => {
   assert.equal(cycleStationComposerMode('unbox'), 'ticket');
-  assert.equal(cycleStationComposerMode('ticket'), 'unbox');
+  assert.equal(cycleStationComposerMode('ticket'), 'ask');
+  assert.equal(cycleStationComposerMode('ask'), 'unbox');
 });
 
 test('trailing Print·Receive stays on Unbox only', () => {
   assert.equal(stationComposerModeKeepsTrailingAction('unbox'), true);
   assert.equal(stationComposerModeKeepsTrailingAction('ticket'), false);
+  assert.equal(stationComposerModeKeepsTrailingAction('ask'), true);
 });
 
 test('placeholder names the destination (I4)', () => {
+  assert.match(stationComposerModePlaceholder('ask'), /operation/i);
   assert.match(stationComposerModePlaceholder('unbox'), /sticker/i);
   assert.match(
     stationComposerModePlaceholder('ticket', { hasTicket: true, ticketLabel: '#2231' }),

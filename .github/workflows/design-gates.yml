@@ -1,0 +1,114 @@
+# Design + correctness gates for Cycle Forge.
+#
+# These are the exact checks this repo's agent sessions run by hand before
+# claiming a task is done (AGENTS.md "Eval engineering"). Running them here is
+# the point: a gate that only exists in a session's habits is a gate that stops
+# existing the first time someone is in a hurry.
+#
+# What each one prevents, concretely:
+#
+#   Lint / Typecheck   the inner loop (`node scripts/verify.mjs --fast`).
+#   Unit tests         the pure models — station tape collapse, dedupe keys,
+#                      scan-out outcome mapping, mobile route titles.
+#   Design critique    hard-coded design values creeping back into UI. This is
+#                      the one that matters for "so this never happens again":
+#                      `ds_critique` reads the design system's own token SoT and
+#                      flags a file that renders components while importing none
+#                      of them, plus raw literals where a token exists.
+#   Hardcode scan      a deterministic grep for the specific classes of literal
+#                      that caused real defects in this codebase — see below.
+#
+# `pnpm run <script>` is deliberately NOT used: this repo's `verify-deps`
+# pre-script exits 1 before the script body runs. Call node directly.
+
+name: design-gates
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: design-gates-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: lint · typecheck · unit
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # The full profile: Lint + Typecheck + Unit tests (scripts/verify-profile.mjs).
+      - name: verify (full)
+        run: node scripts/verify.mjs
+
+  design:
+    name: design system
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The hardcode scan diffs against the merge base, so it needs history.
+          fetch-depth: 0
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # Deterministic, no design-mcp server required — this is the gate that
+      # runs on every PR regardless of whether the engine is reachable.
+      # The law files themselves are pinned FIRST. The cheapest way past the
+      # rules below is to edit the law so a violation becomes legal in the same
+      # commit; hashing makes that edit a reviewable line in the diff.
+      - name: Law checksums
+        run: node scripts/ci/check-law-checksums.mjs
+
+      - name: Hardcoded design values
+        run: node scripts/ci/check-hardcoded-design.mjs
+
+      # Backticks in a SQL comment terminate the template literal the query
+      # lives in — a 500 that reads like a broken endpoint, not a typo.
+      - name: SQL template literals
+        run: node scripts/ci/check-sql-template-literals.mjs
+
+      # Apple HIG + WCAG 2.2 control ladder and text floor for every /m surface.
+      - name: Mobile display law
+        run: node scripts/ci/check-mobile-display-law.mjs
+
+      # The cohort tripwire, asserted on EVERY member — a new /m surface must
+      # join MOBILE_DISPLAY_COHORT or this fails.
+      - name: Mobile display cohort tripwire
+        run: node --import tsx --test src/lib/mobile/mobile-display-cohort.test.ts
+
+      # ds_critique over the UI files this PR touched. Advisory until the engine
+      # is reachable from CI (it lives in Garisek-OS); the scan above is the
+      # blocking half.
+      - name: Design critique (changed UI files)
+        continue-on-error: true
+        run: |
+          BASE="${{ github.event.pull_request.base.sha || github.event.before }}"
+          FILES=$(git diff --name-only --diff-filter=ACMR "${BASE:-HEAD~1}" HEAD -- 'src/**/*.tsx' | head -40)
+          if [ -z "$FILES" ]; then echo "no UI files changed"; exit 0; fi
+          for f in $FILES; do
+            echo "── ds_critique $f"
+            node tools/design-mcp/ds.mjs critique "$f" || true
+          done

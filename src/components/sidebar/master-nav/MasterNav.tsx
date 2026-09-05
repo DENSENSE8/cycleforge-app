@@ -1,13 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   APP_SIDEBAR_NAV,
   filterPageChildren,
   getSidebarPageNav,
   isSidebarPageReachable,
-  spineSectionIdForPage,
   type SidebarNavItem,
   type SidebarPageNav,
 } from '@/lib/sidebar-navigation';
@@ -16,7 +15,7 @@ import { applyOrgNavToPage } from '@/lib/nav/org-nav';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
 import { useAuth } from '@/contexts/AuthContext';
 import { prefetchNavData } from '@/lib/nav/nav-data-prefetch';
-import { hydrateSpineSlots, spineParentDrillId } from '@/lib/nav/spine-slots';
+import { hydrateSpineSlots } from '@/lib/nav/spine-slots';
 import { useActiveSidebarChild } from './useActiveSidebarChild';
 import { useSidebarChildNav } from './useSidebarChildNav';
 import { PinHotkeysListener } from '@/components/layout/PinHotkeysListener';
@@ -32,7 +31,8 @@ function toPageNav(item: SidebarNavItem): SidebarPageNav {
  * Router-wired master nav. Org hide/rename via {@link useOrgNavItems}; staff
  * `prefs.spineSlots` hydrates catalog *display* order only — the map is not
  * sortable. Pins drop onto the Pinned cluster (per-staff `quickAccess`).
- * Home · Media Library stay at the top of every drill.
+ * Home · Media Library stay at the top. Stations, Desks, and Operations
+ * Studio list under standing group labels.
  */
 export function MasterNav({
   permissions,
@@ -49,8 +49,6 @@ export function MasterNav({
   const navigate = useSidebarChildNav();
   const { prefs } = useStaffPreferences();
   const definition = useOrgNavDefinition();
-
-  const [drillId, setDrillId] = useState<string | null>(null);
 
   const { user } = useAuth();
   const navItems = useOrgNavItems({
@@ -83,22 +81,6 @@ export function MasterNav({
     return getSidebarPageNav(pageId) ?? pages[0]!;
   }, [pages, pageId]);
 
-  const activeSection = spineSectionIdForPage(activePage);
-
-  // Enter Scan Stations / Desks when navigating onto that family from another
-  // section. Manual Back leaves the root map while the URL can stay on the
-  // surface — do not force-reopen until the next cross-section entry.
-  const prevSectionRef = useRef<typeof activeSection>(null);
-  useEffect(() => {
-    const nextDrill = spineParentDrillId(activeSection);
-    if (nextDrill && activeSection !== prevSectionRef.current) {
-      setDrillId(nextDrill);
-    } else if (!nextDrill) {
-      setDrillId(null);
-    }
-    prevSectionRef.current = activeSection;
-  }, [activeSection]);
-
   const handleNavigate = useCallback(
     (nextPageId: string, nextChildId?: string) => {
       navigate(nextPageId, nextChildId);
@@ -124,8 +106,6 @@ export function MasterNav({
         otherPages={pages}
         onNavigate={handleNavigate}
         onRowHover={handleRowHover}
-        drillId={drillId}
-        onDrillChange={setDrillId}
         spineOrder={spineOrder}
         className={className}
       />

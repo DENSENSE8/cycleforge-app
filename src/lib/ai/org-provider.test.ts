@@ -131,7 +131,7 @@ test('the default order is LOCAL-FIRST — ollama is consulted before any cloud'
 
   await resolveOrgAiConfig(ORG, 'chat', deps);
 
-  assert.deepEqual(asked, ['ollama', 'ai_gateway', 'openai', 'anthropic']);
+  assert.deepEqual(asked, ['ollama', 'grok', 'ai_gateway', 'openai', 'anthropic']);
 });
 
 test('cloud-first is honoured when the org asks for it', async () => {
@@ -144,7 +144,7 @@ test('cloud-first is honoured when the org asks for it', async () => {
   const cfg = await resolveOrgAiConfig(ORG, 'chat', deps);
 
   assert.equal(cfg?.source, 'openai');
-  assert.deepEqual(asked, ['ai_gateway', 'openai', 'anthropic', 'ollama']);
+  assert.deepEqual(asked, ['grok', 'ai_gateway', 'openai', 'anthropic', 'ollama']);
 });
 
 test('the chain returns EVERY usable provider, preferred first', async () => {
@@ -207,6 +207,40 @@ test('embed skips anthropic (no embeddings API) and can resolve ollama', async (
 
   assert.equal(cfg?.model, 'nomic-embed-text');
   assert.ok(!asked.includes('anthropic'));
+  assert.ok(!asked.includes('grok'));
+});
+
+test('grok SuperGrok session is an OpenAI-wire chat candidate on the subscription proxy', async () => {
+  const { deps } = fakes({
+    grok: {
+      accessToken: 'sess',
+      refreshToken: 'rt',
+      expiresAt: Date.now() + 60_000,
+      chatModel: 'grok-4.6',
+    },
+  });
+
+  const cfg = await resolveOrgAiConfig(ORG, 'chat', deps);
+
+  assert.equal(cfg?.source, 'grok');
+  assert.equal(cfg?.baseURL, 'https://cli-chat-proxy.grok.com/v1');
+  assert.equal(cfg?.apiKey, 'sess');
+  assert.equal(cfg?.headers?.['X-XAI-Token-Auth'], 'xai-grok-cli');
+  assert.equal(cfg?.headers?.['x-grok-model-override'], 'grok-4.6');
+  assert.ok(cfg?.headers?.['x-grok-client-version']);
+  assert.notEqual(cfg?.headers?.['x-grok-client-version'], 'none');
+});
+
+test('grok is skipped for embed even when connected', async () => {
+  const { deps, asked } = fakes({
+    grok: { accessToken: 'sess', refreshToken: 'rt', expiresAt: Date.now() + 60_000 },
+    openai: { apiKey: 'sk', embedModel: 'text-embedding-3-small' },
+  });
+
+  const cfg = await resolveOrgAiConfig(ORG, 'embed', deps);
+
+  assert.equal(cfg?.source, 'openai');
+  assert.ok(!asked.includes('grok'));
 });
 
 test('nothing connected and no platform default resolves to null, never a throw', async () => {

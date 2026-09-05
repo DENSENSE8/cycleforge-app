@@ -6,6 +6,7 @@ import {
   extendTo,
   selectAll,
   selectOnlyAt,
+  setMany,
   stepCursor,
   toggleAt,
   type SelectionAnchorState,
@@ -144,6 +145,35 @@ describe('selectAll / clearSelection', () => {
 
   it('clear is a no-op on an empty selection', () => {
     assert.equal(clearSelection(state()).changed, false);
+  });
+});
+
+describe('setMany', () => {
+  it('checks a named set without replacing the rest of the selection', () => {
+    const out = setMany(state([10]), [30, 40], true);
+    assert.deepEqual(sorted(out), [10, 30, 40]);
+    assert.equal(out.anchorId, 40);
+    assert.equal(out.changed, true);
+  });
+
+  it('unchecks a named set and leaves other rows alone', () => {
+    const out = setMany(state([10, 20, 30]), [20, 30], false);
+    assert.deepEqual(sorted(out), [10]);
+    assert.equal(out.changed, true);
+  });
+
+  it('is a no-op — same set object — when every id is already in that state', () => {
+    const before = state([20, 30]);
+    const out = setMany(before, [20, 30], true);
+    assert.equal(out.changed, false);
+    assert.equal(out.selected, before.selected);
+  });
+
+  it('is a no-op on an empty id list', () => {
+    const before = state([10]);
+    const out = setMany(before, [], true);
+    assert.equal(out.changed, false);
+    assert.equal(out.selected, before.selected);
   });
 });
 

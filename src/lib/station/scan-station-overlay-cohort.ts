@@ -128,6 +128,10 @@ export const SCAN_STATION_OVERLAY_COHORT: readonly ScanStationOverlayMember[] = 
       'src/components/outbound/scan-out/scan-out-commit.test.ts',
       'src/components/composer/composer-mode-row.test.tsx',
       'src/components/receiving/incoming/incoming-add-composer-mouth.test.ts',
+      // The phone station is bound by the mobile display law (Apple 44pt
+      // hit / 11pt text). Running it here means `eval:station scan-out`
+      // cannot pass while /m/scan-out violates the ladder.
+      'src/lib/mobile/mobile-display-cohort.test.ts',
     ],
   },
 ] as const;
@@ -140,15 +144,24 @@ export const SCAN_STATION_OVERLAY_COHORT: readonly ScanStationOverlayMember[] = 
  * Testing pointer open) — both are station swaps; neither Pack nor Unbox
  * owns the role name.
  */
+export const IDLE_OVERLAY_HELPER =
+  'src/design-system/motion/idle-overlay.ts' as const;
+
+export const OVERLAY_SHELL_GRAPH_SYMBOL_FILES = {
+  idleBrowseLayerProps: IDLE_OVERLAY_HELPER,
+  overlayPaneStyle: IDLE_OVERLAY_HELPER,
+  useOverlaySwapHardCut: 'src/design-system/motion/use-overlay-swap-hard-cut.ts',
+} as const;
+
+export const OVERLAY_SHELL_GRAPH_SYMBOLS = Object.keys(
+  OVERLAY_SHELL_GRAPH_SYMBOL_FILES,
+) as Array<keyof typeof OVERLAY_SHELL_GRAPH_SYMBOL_FILES>;
+
 export const SCAN_STATION_OVERLAY_CONTRACT = {
-  /** Idle browse stays mounted; hide with visibility (not unmount). */
-  visibilityHide: /style=\{\{\s*visibility:\s*[^}]*(?:'hidden'|"hidden")/,
-  /** Overlay must not receive pointer events through the idle layer. */
-  pointerEventsNone: /pointer-events-none/,
-  /** a11y: inert idle while overlay is up. */
-  inert: /\binert=\{/,
-  /** Overlay stacks on the panel token — never a raw z-index integer. */
-  zIndexPanel: /zIndex\.panel/,
+  /** Browse hide is the shared helper — never re-typed visibility / inert. */
+  idleBrowseHelper: /idleBrowseLayerProps\s*\(/,
+  /** Overlay stacking is the shared helper — never a raw z-index integer. */
+  overlayPaneHelper: /overlayPaneStyle\s*\(/,
   /** Presence host for the focused entity. */
   animatePresence: /AnimatePresence/,
   /** Station swap role — `.scan` or `.focus`, never a desk settle preset. */
@@ -170,6 +183,8 @@ export type StationEvalManifest = {
   snapshotsDir: string;
   critiqueFiles: string[];
   graphSymbols: string[];
+  /** Find must land here. Qty face is one file for every station. */
+  graphExpectedFiles: Record<string, string>;
   tripwires: string[];
   workspace: string;
   exportName: string;
@@ -184,7 +199,21 @@ export function stationEvalManifest(member: ScanStationOverlayMember): StationEv
     ledger: `docs/eval/stations/${member.id}/LEDGER.md`,
     snapshotsDir: `docs/eval/stations/${member.id}/snapshots`,
     critiqueFiles: [member.workspace, ...member.critiqueExtra],
-    graphSymbols: [member.exportName, ...member.graphSymbolsExtra],
+    // Qty face is cohort-wide. Unbox is not golden. Every station eval
+    // impacts ItemRecordQtyBadge, not a local n/m span.
+    graphSymbols: [
+      member.exportName,
+      'idleBrowseLayerProps',
+      'overlayPaneStyle',
+      'ItemRecordQtyBadge',
+      ...member.graphSymbolsExtra,
+    ],
+    graphExpectedFiles: {
+      [member.exportName]: member.workspace,
+      ...OVERLAY_SHELL_GRAPH_SYMBOL_FILES,
+      ItemRecordQtyBadge:
+        'src/design-system/components/item-record/ItemRecordQtyBadge.tsx',
+    },
     tripwires: [SCAN_STATION_OVERLAY_COHORT_TRIPWIRE, ...member.tripwiresExtra],
     workspace: member.workspace,
     exportName: member.exportName,

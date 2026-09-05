@@ -2,7 +2,6 @@
 
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
-import { cornerClass } from '@/design-system/tokens/radius';
 
 export type TriageSectionSpec = {
   id: string;
@@ -14,10 +13,15 @@ export type TriageSectionSpec = {
 
 export type TriageMeasureAlign = 'center' | 'start';
 
-/** Shared reading measure — section cards and a sticky foot (composer) must share this. */
+/**
+ * Shared reading measure — section cards and a sticky foot (composer) must
+ * share this. The gutter is authored narrow-up: 16px until `sm`, 24px above.
+ * A 24px gutter on each side of a 380px viewport spends an eighth of the
+ * readable width on nothing.
+ */
 export function triageMeasureClass(align: TriageMeasureAlign = 'center'): string {
   return cn(
-    'w-full max-w-4xl px-6',
+    'w-full max-w-4xl px-4 sm:px-6',
     align === 'center' ? 'mx-auto' : 'mr-auto',
   );
 }
@@ -25,7 +29,18 @@ export function triageMeasureClass(align: TriageMeasureAlign = 'center'): string
 /**
  * Right pane of {@link TriageScrollLayout}. Each block is a native
  * `<section id>` so IntersectionObserver + jump anchors share one id.
- * Inner chrome uses `cornerClass('surface')` — never a raw `rounded-*`.
+ * A child that genuinely needs its own surface still takes
+ * `cornerClass('surface')` — never a raw `rounded-*`.
+ *
+ * ## The grouping is space, not a box
+ *
+ * A section is a heading and its content. No border, no fill, no radius: the
+ * card was `bg-surface-card` on a `bg-surface-card` panel, so the fill drew
+ * nothing and the border was the only thing claiming a card existed — a
+ * container asserting itself rather than serving hierarchy. The `space-y-7`
+ * between sections is already larger than any padding inside one, which is
+ * what makes the grouping read. That argument was written in this file before
+ * the border was removed; the border was the part that disagreed with it.
  *
  * ## Breathing room is deliberate, not decoration
  *
@@ -90,14 +105,7 @@ export function TriageSections({
             </h3>
             {section.labelEnd ?? null}
           </div>
-          <div
-            className={cn(
-              'mt-2.5 border border-border-soft bg-surface-card p-5',
-              cornerClass('surface'),
-            )}
-          >
-            {section.children}
-          </div>
+          <div className="mt-2.5">{section.children}</div>
         </section>
       ))}
     </div>

@@ -122,7 +122,7 @@ export function MyDayWorkspace() {
     setTaskId,
     setQuery,
     toggleHorizon,
-    openWatch,
+    openWatch: _openWatch,
     closeWatch,
   } = useMyDayView();
 

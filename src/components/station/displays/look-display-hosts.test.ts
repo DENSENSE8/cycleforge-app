@@ -59,6 +59,11 @@ test('idle Scan-out listens for the composer ring and mounts Displays', () => {
   assert.match(src, /SCAN_OUT_OPEN_DISPLAYS_EVENT/);
   assert.match(src, /StationDisplaysPushStack/);
   assert.match(src, /listenDisplays/);
+  assert.match(src, /StagedQueueTable/);
+  assert.doesNotMatch(
+    src,
+    /from ['"]@\/components\/desk\/DeskPageLayout['"]|from ['"]@\/design-system\/components\/DeskPageChrome['"]/,
+  );
 });
 
 test('Look leaf exposes Color and Depth methods independently', () => {

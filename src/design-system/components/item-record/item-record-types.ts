@@ -3,8 +3,8 @@
  *
  * Ported from the scan-station PO line row (`receiving/workspace/PoLineRow`),
  * which was the only surface in the app that painted a full item identity:
- * thumb, wrapping title, and the five-track meta ledger
- * (qty · SKU · condition · serials · price).
+ * thumb, wrapping title, and the six-track meta ledger
+ * (qty · price · condition · SKU · serials · location).
  *
  * Nothing here names a purchase order, a carton or a receiving line. A caller
  * maps ITS record onto this shape — a PO line, a sales order, an inventory
@@ -20,13 +20,36 @@
 
 export interface ItemRecordQuantity {
   /**
-   * How many are physically accounted for. Omit on surfaces with no count of
-   * their own (a sales order knows what was sold, not what was handled).
+   * How many are physically accounted for. On a receiving line this is got.
+   * Omit on surfaces with no count of their own (a sales order knows what was
+   * sold, not what was handled).
    */
   counted?: number | null;
-  /** How many are expected / ordered. */
+  /**
+   * How many are expected / ordered. On a receiving line this is listed.
+   */
   expected?: number | null;
+  /**
+   * Receiving qty face. Paints got/listed plus remaining. Open (got 0) is
+   * never emerald. Done is not color-only. Omit on sales orders
+   * (expected-only) and on serial units (one physical unit, not PO receive).
+   */
+  receive?: boolean;
 }
+
+/**
+ * Exclusive receiving-line state. Other domains omit this; the face must not
+ * invent receive chrome when the field is absent. Search / pack / shipped
+ * never set it.
+ */
+export type ItemRecordReceiveState =
+  | 'open'
+  | 'partial'
+  | 'received'
+  | 'short'
+  | 'over'
+  | 'wrong_item'
+  | 'damaged';
 
 /**
  * One labelled fact under the row — the reference band that a station row has
@@ -56,6 +79,11 @@ export interface ItemRecord {
   imageUrl?: string | null;
   sku?: string | null;
   quantity?: ItemRecordQuantity | null;
+  /**
+   * Receiving-line state for L0 marks (Received / SHORT / OVER / …).
+   * Omit on search, pack, and shipped — those inherit qty face only.
+   */
+  receiveState?: ItemRecordReceiveState | null;
   /**
    * Condition grade CODE (not a label) — the chip resolves hue and copy from
    * the shared condition registry.

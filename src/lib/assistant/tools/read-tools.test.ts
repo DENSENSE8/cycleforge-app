@@ -114,8 +114,8 @@ function fakes(rowsFor?: (text: string) => Array<Record<string, unknown>>) {
   return { deps, cap };
 }
 
-test('registry: 32 tools (28 read + 4 gateway), unique names, model-grade descriptions, valid permissions', () => {
-  assert.equal(ASSISTANT_TOOLS.size, 32);
+test('registry: 34 tools (30 read + 4 gateway), unique names, model-grade descriptions, valid permissions', () => {
+  assert.equal(ASSISTANT_TOOLS.size, 34);
   const expected = [
     'get_signals_by_node', 'get_top_reasons', 'get_unit_journey', 'get_feed_state',
     'get_graph', 'get_node_detail', 'get_benchmarks', 'get_kpis',
@@ -127,6 +127,8 @@ test('registry: 32 tools (28 read + 4 gateway), unique names, model-grade descri
     'search_photos', 'get_receiving_by_tracking', 'get_ticket_entities',
     'get_packing_kpi',
     'resolve_receiving_line_for_order', 'list_receiving_line_photos',
+    // "Create a rule for this product" on the To-ship desk.
+    'resolve_item_number', 'list_staff',
     // The tool-forge gateway — exactly four, per the pipeline spec.
     'search_tool_registry', 'submit_approval_decision',
     'execute_build_sandbox', 'commit_to_git',
@@ -147,6 +149,8 @@ test('every SQL tool threads ctx.organizationId as $1 into every query (never mo
     get_node_detail: { nodeId: 'n-abc' },
     search_notes: { query: 'no audio' },
     get_feed_state: { feedKey: 'receiving_triage' },
+    resolve_item_number: { reference: 'Bose Wave Music System III' },
+    list_staff: { nameLike: 'Tu' },
   };
   for (const name of ASSISTANT_TOOLS.keys()) {
     if (SEARCH_TOOL_NAMES.has(name) || DOMAIN_TOOL_NAMES.has(name) || GATEWAY_TOOL_NAMES.has(name)) continue;
@@ -259,7 +263,10 @@ test('permission gating: studio tools refused without studio.view; search needs 
   assert.ok(!names.includes('get_operations_journey'));
   assert.ok(!names.includes('lookup_warranty_coverage'));
   // dashboard.view core (9) + order/serial/queue domain tools (4)
-  assert.equal(names.length, 13);
+  // + the To-ship item-rule reads (resolve_item_number, list_staff) (2)
+  assert.equal(names.length, 15);
+  assert.ok(names.includes('resolve_item_number'));
+  assert.ok(names.includes('list_staff'));
   assert.ok(names.includes('get_order_lookup'));
   assert.ok(names.includes('lookup_serial'));
   assert.ok(names.includes('get_my_tech_queue'));

@@ -568,7 +568,9 @@ function resolveAuditLogRedirect(url: NextRequest['nextUrl']): NextRequest['next
  *  - USB + Serial allowed same-origin only — browser-native silent label
  *    printing (WebUSB / Web Serial) in Settings → Hardware. Without `usb=(self)`
  *    `navigator.usb.requestDevice()` throws "disallowed by permissions policy".
- *  - Mic / geolocation / payment all disabled by default.
+ *  - Geolocation / payment disabled. Mic is same-origin only: the phone
+ *    companion (`/m/companion`) dictates into the desk composer through
+ *    `getUserMedia` (PLAN-companion-composer) — `microphone=()` blocked it.
  *  - frame-ancestors 'self' (CSP) + X-Frame-Options DENY — defense in depth.
  *  - HSTS with 1y max-age + subdomains. Don't preload yet (irreversible).
  *  - Referrer policy trims cross-origin leak surface.
@@ -576,7 +578,7 @@ function resolveAuditLogRedirect(url: NextRequest['nextUrl']): NextRequest['next
  */
 const PERMISSIONS_POLICY = [
   'camera=(self)',
-  'microphone=()',
+  'microphone=(self)',
   'geolocation=()',
   'payment=()',
   'usb=(self)',

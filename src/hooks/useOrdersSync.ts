@@ -1,7 +1,8 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { dispatchUsavRefreshData, invalidateDashboardOrderQueries } from '@/lib/dashboard-query-invalidation';
 import { streamNdjson } from '@/lib/orders-sync/client';
 import type {
@@ -12,6 +13,10 @@ import type {
   TransferOrderDetails,
   TransferTabState,
 } from '@/lib/orders-sync/types';
+import { landSheetTriageRows } from '@/lib/orders-sync/sheets-inline-triage';
+import { applyToShipTriageFacet } from '@/utils/dashboard-search-state';
+import { SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
+import { TABLE_IMPORT_URL_PARAM } from '@/lib/tables/import/staging-store';
 
 /**
  * The "Import Latest Orders" sync orchestration — Google Sheets + Ecwid Direct
@@ -95,6 +100,18 @@ function coerceTransferDetails(value: unknown): TransferOrderDetails {
 
 export function useOrdersSync() {
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const openCagedToShipTable = useCallback(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    applyToShipTriageFacet(params, 'caged');
+    params.delete(TABLE_IMPORT_URL_PARAM);
+    const qs = params.toString();
+    router.replace(qs ? `${SHIPPING_ORDERS_PATH}?${qs}` : SHIPPING_ORDERS_PATH, {
+      scroll: false,
+    });
+  }, [router, searchParams]);
   const [sheetsTask, setSheetsTask] = useState<TransferTabState>({ status: 'idle' });
   const [ecwidTask, setEcwidTask] = useState<TransferTabState>({ status: 'idle' });
   const [exceptionsTask, setExceptionsTask] = useState<ExceptionsTabState>({ status: 'idle' });
@@ -137,6 +154,10 @@ export function useOrdersSync() {
     let sheetsResultPayload: Record<string, unknown> | null = null;
     let ecwidResultPayload: Record<string, unknown> | null = null;
     let exceptionsResultPayload: Record<string, unknown> | null = null;
+    /** Sheet rows this run put on the triage board, painted once it ends. */
+    let landedSheetRows = 0;
+    /** Connector `imported` count — details can be empty while inserts landed. */
+    let sheetsImported = 0;
 
     // Fires React Query invalidate + global refresh event so the dashboard
     // tables refetch *as soon as* a stream produces real changes.
@@ -162,9 +183,6 @@ export function useOrdersSync() {
 
       let data: Record<string, unknown> = {};
       let lastError: string | undefined;
-      // #region agent log
-      fetch('http://127.0.0.1:7336/ingest/8bd437e7-bc3e-4c78-9dcf-4ca4496a96b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7d3d46'},body:JSON.stringify({sessionId:'7d3d46',runId:'pre-fix',hypothesisId:'C',location:'useOrdersSync.ts:runConnectorSync:start',message:'connector sync request start',data:{provider,body:body??null},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       try {
         const res = await fetch(`/api/integrations/${provider}/sync`, {
           method: 'POST',
@@ -173,17 +191,11 @@ export function useOrdersSync() {
           signal: controller.signal,
         });
         data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
-        // #region agent log
-        fetch('http://127.0.0.1:7336/ingest/8bd437e7-bc3e-4c78-9dcf-4ca4496a96b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7d3d46'},body:JSON.stringify({sessionId:'7d3d46',runId:'pre-fix',hypothesisId:'A,B,C,E',location:'useOrdersSync.ts:runConnectorSync:response',message:'connector sync response',data:{provider,httpStatus:res.status,ok:data.ok,keys:Object.keys(data),imported:data.imported,updated:data.updated,error:data.error,hasDetails:Boolean((data as {details?:unknown}).details)},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
         if (!res.ok || data.ok === false) {
           lastError = String(data.error || `HTTP ${res.status}`);
         }
       } catch (err: any) {
         lastError = err?.name === 'AbortError' ? 'Cancelled' : (err?.message || 'Network error');
-        // #region agent log
-        fetch('http://127.0.0.1:7336/ingest/8bd437e7-bc3e-4c78-9dcf-4ca4496a96b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7d3d46'},body:JSON.stringify({sessionId:'7d3d46',runId:'pre-fix',hypothesisId:'C',location:'useOrdersSync.ts:runConnectorSync:catch',message:'connector sync threw',data:{provider,errorName:err?.name,errorMessage:err?.message||String(err)},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion
       }
 
       const success = !lastError;
@@ -191,9 +203,6 @@ export function useOrdersSync() {
       const upd = Number(data.updated ?? 0);
       if (success && (ins > 0 || upd > 0)) void refreshDashboard();
       const parts = [ins && `${ins} inserted`, upd && `${upd} updated`].filter(Boolean);
-      // #region agent log
-      fetch('http://127.0.0.1:7336/ingest/8bd437e7-bc3e-4c78-9dcf-4ca4496a96b4',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'7d3d46'},body:JSON.stringify({sessionId:'7d3d46',runId:'pre-fix',hypothesisId:'A',location:'useOrdersSync.ts:runConnectorSync:setter',message:'UI tab state will force empty details',data:{provider,success,ins,upd,forcingEmptyDetails:true,detailRowCount:(Array.isArray((data as any).details?.inserted)?(data as any).details.inserted.length:0)},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion
       // Render the connector's real per-row detail. This used to be a hardcoded
       // emptyTransferDetails(), so OrderSyncDialog — whose whole body is the
       // inserted/updated/unmatched-catalog lists — drew nothing no matter what
@@ -214,6 +223,32 @@ export function useOrdersSync() {
       // while the panel header counts every listed skip. Two different numbers
       // under one word ("11 skipped" beside "21 rows skipped") reads as a bug.
       if (skipped > 0) parts.push(`${skipped} need${skipped === 1 ? 's' : ''} a fix`);
+
+      // ── The sheet's rows land on the DESK, not in this dialog ─────────────
+      //
+      // Google Sheets is a human source: the job already wrote the rows and
+      // `autoCageNewOrders` already held the unpaired ones out of the live
+      // queue, but until an operator has looked at them nobody has accepted
+      // anything. The stacked lists in `OrderSyncDialog` are a receipt, so they
+      // stay — they are no longer the only place the rows appear.
+      //
+      // API connectors (Ecwid here, eBay / Zoho elsewhere) are authorities and
+      // deliberately do NOT get a board.
+      if (provider === 'google_sheets' && success) {
+        sheetsImported += ins;
+        const tab = typeof data.tabName === 'string' ? data.tabName.trim() : '';
+        const landing = landSheetTriageRows(
+          detailsFromSync,
+          tab || manualSheetName.trim() || 'Google Sheet',
+        );
+        if (landing.ok) {
+          landedSheetRows += landing.landed;
+        } else if (landing.reason === 'file-draft-open') {
+          // Refusing is the whole point — a background sync must not delete an
+          // operator's half-triaged CSV session. Say so where they are looking.
+          parts.push('triage board busy — CSV staging is open');
+        }
+      }
 
       setter({
         status: success ? 'done' : 'error',
@@ -305,15 +340,29 @@ export function useOrdersSync() {
     };
 
     try {
-      const [sheetsR, ecwidR] = await Promise.all([
-        runConnectorSync(
-          'google_sheets',
-          { manualSheetName: manualSheetName.trim() || undefined },
-          setSheetsTask,
-        ),
-        runConnectorSync('ecwid', undefined, setEcwidTask),
-      ]);
+      // Both connectors start together, but the DESK opens on the SHEET alone.
+      //
+      // Sheet rows are already written when `POST /api/integrations/
+      // google_sheets/sync` returns, so waiting for Ecwid (a different
+      // marketplace) and then the exceptions matcher before painting them held
+      // the operator on a spinner for work that had nothing to do with the rows
+      // they asked for. Ecwid and exceptions continue behind the open table and
+      // land through the query invalidation `runConnectorSync` already fires.
+      const sheetsPromise = runConnectorSync(
+        'google_sheets',
+        { manualSheetName: manualSheetName.trim() || undefined },
+        setSheetsTask,
+      );
+      const ecwidPromise = runConnectorSync('ecwid', undefined, setEcwidTask);
+
+      const sheetsR = await sheetsPromise;
       sheetsResultPayload = sheetsR.payload;
+      if (landedSheetRows > 0 || sheetsImported > 0) {
+        setIsSyncDialogOpen(false);
+        openCagedToShipTable();
+      }
+
+      const ecwidR = await ecwidPromise;
       ecwidResultPayload = ecwidR.payload;
 
       setExceptionsTask({ status: 'running', phase: 'starting' });
@@ -360,6 +409,7 @@ export function useOrdersSync() {
           durationMs: Date.now() - t0,
         },
       });
+
     } catch (_error: any) {
       if (_error?.name === 'AbortError') return;
       setStatus({ type: 'error', message: 'Network error occurred' });

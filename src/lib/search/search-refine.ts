@@ -2,7 +2,7 @@
  * Client refine + display sort for `/search` over the retrieved top-50.
  *
  * Params (owned / carried by SEARCH_ROUTE_PARAMS):
- *   • `?etype=` — UI entity type (order | unit | receiving | sku | repair | fba)
+ *   • `?scope=` — search collection (overview | orders | units | receiving | skus | repairs | fba)
  *   • `?hstat=` — hit `facets.status` (namespaced away from `/support` `status`)
  *   • `?colsort=` — `relevance` (default, omitted) | `date` (happened_at desc)
  *
@@ -12,10 +12,13 @@
 
 import type { AiSearchHit } from '@/lib/search/ai-search-client';
 import type { SearchHitEntityType } from '@/lib/search/search-hit';
-import { isUiEntityType } from '@/lib/search/search-hit';
 import { GRID_COLUMN_SORT_PARAM } from '@/lib/tables/grid-column-sort-params';
 
-export const SEARCH_ETYPE_PARAM = 'etype';
+export const SEARCH_SCOPE_PARAM = 'scope';
+/** Legacy URL key retained so existing bookmarks survive route hygiene. */
+export const SEARCH_LEGACY_ETYPE_PARAM = 'etype';
+/** Internal alias kept for callers that only need the entity filter key. */
+export const SEARCH_ETYPE_PARAM = SEARCH_SCOPE_PARAM;
 export const SEARCH_HSTAT_PARAM = 'hstat';
 /**
  * Client channel refine over the retrieved top-50 — the stored
@@ -44,6 +47,24 @@ export const SEARCH_ENTITY_TYPE_LABELS: Record<SearchHitEntityType, string> = {
   fba: 'FBA',
 };
 
+const SEARCH_SCOPE_TO_ENTITY: Record<string, SearchHitEntityType> = {
+  order: 'order',
+  orders: 'order',
+  unit: 'unit',
+  units: 'unit',
+  receiving: 'receiving',
+  receivings: 'receiving',
+  sku: 'sku',
+  skus: 'sku',
+  repair: 'repair',
+  repairs: 'repair',
+  fba: 'fba',
+};
+
+export function searchScopeForEntityType(entityType: SearchHitEntityType): string {
+  return `${entityType}s` === 'receivings' ? 'receiving' : `${entityType}s`;
+}
+
 export type SearchDisplaySort = 'relevance' | 'date';
 
 export const SEARCH_DISPLAY_SORT_OPTIONS = [
@@ -53,15 +74,20 @@ export const SEARCH_DISPLAY_SORT_OPTIONS = [
 
 export function parseSearchEtype(raw: string | null | undefined): SearchHitEntityType | null {
   const v = String(raw ?? '').trim().toLowerCase();
-  return isUiEntityType(v) ? v : null;
+  return SEARCH_SCOPE_TO_ENTITY[v] ?? null;
 }
 
 /**
- * Wire tokens `?etype=` may carry (route-param hygiene). Round-trip this — not a
+ * Wire tokens `?scope=` may carry (route-param hygiene). Round-trip this — not a
  * hand-copied enum twin of {@link SEARCH_ENTITY_TYPES}.
  */
 export function parseSearchEtypeWire(raw: string): string | null {
   return parseSearchEtype(raw);
+}
+
+export function parseSearchScopeWire(raw: string): string | null {
+  const entityType = parseSearchEtype(raw);
+  return entityType ? searchScopeForEntityType(entityType) : null;
 }
 
 export function parseSearchHstat(raw: string | null | undefined): string | null {
@@ -158,10 +184,11 @@ function happenedAtMs(hit: AiSearchHit): number | null {
   return Number.isFinite(ms) ? ms : null;
 }
 
-/** Apply `?etype=` / `?hstat=` / `?colsort=` mutators onto a URLSearchParams. */
+/** Apply `?scope=` / `?hstat=` / `?colsort=` mutators onto a URLSearchParams. */
 export function applySearchEtype(params: URLSearchParams, next: SearchHitEntityType | null): void {
-  if (next) params.set(SEARCH_ETYPE_PARAM, next);
-  else params.delete(SEARCH_ETYPE_PARAM);
+  params.delete(SEARCH_LEGACY_ETYPE_PARAM);
+  if (next) params.set(SEARCH_SCOPE_PARAM, searchScopeForEntityType(next));
+  else params.delete(SEARCH_SCOPE_PARAM);
 }
 
 export function applySearchHstat(params: URLSearchParams, next: string | null): void {
@@ -183,6 +210,7 @@ export function applySearchDisplaySort(params: URLSearchParams, next: SearchDisp
 
 export function clearSearchRefine(params: URLSearchParams): void {
   params.delete(SEARCH_ETYPE_PARAM);
+  params.delete(SEARCH_LEGACY_ETYPE_PARAM);
   params.delete(SEARCH_HSTAT_PARAM);
   params.delete(SEARCH_CHAN_PARAM);
 }

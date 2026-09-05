@@ -15,6 +15,16 @@ import { emitReceiving } from '@/components/receiving/receiving-events';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { setActiveSinkId } from '@/lib/station-scan-sink';
 import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
+import { receivingQty } from '@/lib/item-record/receiving-qty';
+import { deriveReceiveState, leftoverRemaining } from '@/lib/item-record/receive-state';
+import { isLineLeftoverOsdCode } from '@/lib/receiving/line-leftover-osd';
+import {
+  markLineDamaged,
+  markLineOverage,
+  markLineReceived,
+  markLineShortRemaining,
+  markLineWrongItem,
+} from './line-receive-actions';
 import {
   SCAN_LINE_PULSE_EVENT,
   type ScanLinePulseDetail,
@@ -72,7 +82,7 @@ interface Props {
   onEditSerialInDock?: (line: ReceivingLineRow) => void;
   /**
    * When false (Arrival door flow), omit interactive condition · serial /
-   * Units editors — meta still paints the five-track face with read-only chips
+   * Units editors — meta still paints the six-track face with read-only chips
    * / honest empty serial. Defaults true.
    */
   unitsChrome?: boolean;
@@ -100,7 +110,7 @@ interface Props {
 /**
  * One PO-item row — a thin adapter over the shared item face.
  *
- * The geometry, the five-track ledger and the last-8 identifier rule all live
+ * The geometry, the six-track ledger and the last-8 identifier rule all live
  * in `design-system/components/item-record` now; this file is what makes that
  * face a RECEIVING row. It maps `ReceivingLineRow` onto the neutral
  * {@link ItemRecord} shape and supplies the behaviours the shared row has no
@@ -199,19 +209,16 @@ export function PoLineRow({
   };
 
   /**
-   * A door scan brings the WHOLE carton in, so a read-only (triage) row reads
-   * `1/1` — counted equals expected. That used to be a separate `ScannedBadge`
-   * component; it is the same claim expressed in the neutral shape, so the
-   * shared qty badge renders it without a second component to keep in sync.
+   * Got vs listed from the line itself. Door-scan / triage used to paint
+   * counted = expected so a live Unbox row read as `1/1` before anyone
+   * counted. Receive face plus remaining lives on the shared qty badge.
    */
   const item: ItemRecord = {
     id: line.id,
     title: receivingWorkspaceLineTitle(line),
     imageUrl: line.image_url,
     sku: line.sku,
-    quantity: readOnly
-      ? { counted: line.quantity_expected ?? 1, expected: line.quantity_expected }
-      : { counted: line.quantity_received, expected: line.quantity_expected },
+    quantity: receivingQty(line),
     conditionGrade:
       isActive && activeConditionOverride ? activeConditionOverride : line.condition_grade,
     serials: serialNumbers,
@@ -220,7 +227,58 @@ export function PoLineRow({
     locationLabel,
     locationDetails: locationDetails || null,
     locationPending: line.staged_location_id == null,
+    receiveState: deriveReceiveState({
+      counted: Number(line.quantity_received) || 0,
+      expected: expectedQty > 0 ? expectedQty : null,
+      exceptionCode: line.exception_code,
+    }),
   };
+
+  const leftoverCoded = isLineLeftoverOsdCode(line.exception_code);
+  const remaining = leftoverRemaining(Number(line.quantity_received) || 0, expectedQty || null);
+  const qtyMenuItems =
+    !readOnly && !leftoverCoded
+      ? [
+          ...(remaining > 0
+            ? [
+                {
+                  label: 'Received',
+                  onClick: () => {
+                    void markLineReceived(line);
+                  },
+                },
+                {
+                  label: 'Not received',
+                  tone: 'danger' as const,
+                  onClick: () => {
+                    void markLineShortRemaining(line, Number(line.quantity_received) || 0);
+                  },
+                },
+              ]
+            : Number(line.quantity_received) > expectedQty
+              ? [
+                  {
+                    label: 'Confirm overage',
+                    onClick: () => {
+                      void markLineOverage(line);
+                    },
+                  },
+                ]
+              : []),
+          {
+            label: 'Damaged',
+            onClick: () => {
+              void markLineDamaged(line);
+            },
+          },
+          {
+            label: 'Wrong item',
+            onClick: () => {
+              void markLineWrongItem(line);
+            },
+          },
+        ]
+      : [];
 
   const serialCellHasContent =
     serialNumbers.length > 0 ||
@@ -247,11 +305,12 @@ export function PoLineRow({
       titleActions={
         !readOnly ? <PoLineTitleMenu line={line} serialSplit={serialSplit} /> : null
       }
-      qtyAction={
-        !readOnly && activeRowSlot
-          ? { label: 'Focus serial for this unit', onClick: activateLineForSerial }
+      qtyMenu={
+        qtyMenuItems.length > 0
+          ? { label: 'Line receive — Received or Not received', items: qtyMenuItems }
           : null
       }
+      qtyAction={null}
       conditionAction={
         unitsChrome && onEditConditionInDock && !readOnly
           ? {

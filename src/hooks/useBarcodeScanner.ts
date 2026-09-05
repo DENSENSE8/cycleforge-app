@@ -23,8 +23,22 @@ export interface UseBarcodeScanner {
   resumeScanning: () => void;
   /** Signal that the caller accepted the last scan — cooldown prevents re-fire. */
   acceptScan: () => void;
-  /** Clear lastScannedValue back to null. */
-  resetLastScan: () => void;
+  /**
+   * Clear `lastScannedValue` back to null so the next read — INCLUDING a read
+   * of the same code — lands as a fresh state transition.
+   *
+   * Without this a consumer whose decode effect keys off `lastScannedValue`
+   * silently drops every repeat of the value it last saw: React bails out on an
+   * identical string, the effect never re-runs, and the operator gets no row, no
+   * cue and no way to tell the scan from a dead camera.
+   *
+   * `keepDedup` controls what happens to the dedup guard. The default clears it
+   * (the long-standing behaviour every existing caller relies on). Pass true to
+   * clear ONLY the state value and leave `dedupMs` still armed against the code
+   * just accepted — which is what a station wants when the camera stays live and
+   * pointed at the label it has already committed.
+   */
+  resetLastScan: (options?: { keepDedup?: boolean }) => void;
   /** True while camera is actively scanning (not paused or stopped). */
   isScanning: boolean;
   /** Error message if camera fails to start. */
@@ -64,6 +78,8 @@ export function useBarcodeScanner(options: UseBarcodeOptions = {}): UseBarcodeSc
   const { dedupMs = 2000, acceptCooldownMs = 1500 } = options;
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  /** Resolves when the in-flight `startScanning` settles; null when idle. */
+  const startingRef = useRef<Promise<void> | null>(null);
   const controlsRef = useRef<ScannerControls | null>(null);
   const pausedRef = useRef(false);
 
@@ -87,6 +103,28 @@ export function useBarcodeScanner(options: UseBarcodeOptions = {}): UseBarcodeSc
 
   const startScanning = useCallback(async () => {
     log('startScanning called');
+
+    // Serialize starts rather than dropping them.
+    //
+    // `controlsRef` is not assigned until AFTER a dynamic import plus
+    // `decodeFromConstraints` resolve, so the "stop the previous session" check
+    // below cannot see a start that is still in flight — two taps on a retry
+    // button would acquire two competing getUserMedia streams.
+    //
+    // A boolean no-op guard was tried first and was WORSE than the race: a
+    // start/stop/start cycle (which is exactly what React does in development,
+    // and what a fast collapse-then-expand of the sheet does in production)
+    // had its third call swallowed while the second had already torn the stream
+    // down, leaving the window on "Starting camera" forever. Awaiting the
+    // previous attempt keeps the mutual exclusion and still honours the restart.
+    const previous = startingRef.current;
+    if (previous) await previous.catch(() => {});
+
+    let release: () => void = () => {};
+    startingRef.current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    try {
 
     const isSecureOrigin =
       location.protocol === 'https:' ||
@@ -220,6 +258,10 @@ export function useBarcodeScanner(options: UseBarcodeOptions = {}): UseBarcodeSc
         setError(err?.message || 'Camera unavailable');
       }
     }
+    } finally {
+      release();
+      startingRef.current = null;
+    }
   }, [log, dedupMs]);
 
   // ── Stop scanning ──
@@ -258,9 +300,12 @@ export function useBarcodeScanner(options: UseBarcodeOptions = {}): UseBarcodeSc
     cooldownUntilRef.current = Date.now() + acceptCooldownMs;
   }, [acceptCooldownMs]);
 
-  const resetLastScan = useCallback(() => {
+  const resetLastScan = useCallback((options?: { keepDedup?: boolean }) => {
     setLastScannedValue(null);
-    lastDecodedRef.current = null;
+    // Default clears the dedup guard too — unchanged for every existing caller.
+    // `keepDedup` leaves it armed so a camera still pointed at the accepted
+    // label does not immediately re-decode it the moment the cooldown lapses.
+    if (!options?.keepDedup) lastDecodedRef.current = null;
   }, []);
 
   // ── Torch ──

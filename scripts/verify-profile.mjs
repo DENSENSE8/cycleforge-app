@@ -4,13 +4,14 @@
  *
  *   fast     lint + typecheck                                   (every commit)
  *   dogfood  same as fast (the route-auth / schema gates were removed 2026-08-20)
- *   full     + unit tests + the two display cohorts             (main, on demand)
+ *   full     + unit tests + the two display cohorts + critique ratchet + visual slot
+ *   deep     full + advisory impeccable reviewer (nightly)
  *
  * ONE gate list. The pre-push hook (`verify.mjs`) and the runner read the same
  * array so the two can never drift — that is the whole point of this module
  * (plan §3.3 step 1: "reuse `gatesForProfile()`; do not fork the gate list").
  *
- * @typedef {'fast' | 'dogfood' | 'full'} VerifyProfile
+ * @typedef {'fast' | 'dogfood' | 'full' | 'deep'} VerifyProfile
  * @typedef {{
  *   name: string,
  *   cmd: string,
@@ -18,7 +19,7 @@
  *   keyArgs?: string[],
  *   env?: Record<string, string>,
  *   advisory?: boolean,
- *   profiles: 'always' | 'dogfood' | 'full',
+ *   profiles: 'always' | 'dogfood' | 'full' | 'deep',
  *   inputs: readonly string[],
  * }} VerifyGate
  */
@@ -50,13 +51,16 @@ function localBin(root, name) {
 export function resolveVerifyProfile(argv) {
   const fast = argv.includes('--fast');
   const dogfood = argv.includes('--dogfood');
-  if (fast && dogfood) {
-    const err = new Error('verify: use only one of --fast or --dogfood');
+  const deep = argv.includes('--deep');
+  const n = [fast, dogfood, deep].filter(Boolean).length;
+  if (n > 1) {
+    const err = new Error('verify: use only one of --fast, --dogfood, or --deep');
     err.code = 'VERIFY_PROFILE_CONFLICT';
     throw err;
   }
   if (fast) return 'fast';
   if (dogfood) return 'dogfood';
+  if (deep) return 'deep';
   return 'full';
 }
 
@@ -66,8 +70,10 @@ export function resolveVerifyProfile(argv) {
  */
 export function gateInProfile(gate, profile) {
   if (gate.profiles === 'always') return true;
-  if (gate.profiles === 'dogfood') return profile === 'dogfood' || profile === 'full';
-  return profile === 'full';
+  if (gate.profiles === 'dogfood') return profile === 'dogfood' || profile === 'full' || profile === 'deep';
+  if (gate.profiles === 'full') return profile === 'full' || profile === 'deep';
+  if (gate.profiles === 'deep') return profile === 'deep';
+  return false;
 }
 
 /**
@@ -90,9 +96,10 @@ const COMPILE_INPUTS = Object.freeze([
  * Build the gate list for a checkout root.
  *
  * `profiles`: which verify profiles include this gate.
- *   always  → fast + dogfood + full
- *   dogfood → dogfood + full
- *   full    → full only
+ *   always  → fast + dogfood + full + deep
+ *   dogfood → dogfood + full + deep
+ *   full    → full + deep
+ *   deep    → deep only
  *
  * `inputs`: the tracked paths whose blob ids key the runner's cache for this
  * gate (plus toolchain + the gate's own definition — see `ci-core.mjs`). A
@@ -130,8 +137,14 @@ export function buildGates(root = process.cwd(), options = {}) {
     {
       name: 'Typecheck',
       cmd: localBin(root, 'tsc'),
+      // 4096, not 6144: this gate runs from the pre-push hook too, so several
+      // agent sessions typecheck the shared tree at once — four concurrent runs
+      // were measured on 2026-09-05. The ceiling is what each of those may take,
+      // not what one needs. A full run peaks around 2.5G, so this still leaves
+      // headroom; 4 × 6G was enough overcommit to push the box into zram thrash
+      // and tip the Cursor tsserver into V8's ineffective-mark-compact abort.
       args: ['--noEmit', '-p', 'tsconfig.json'],
-      env: { NODE_OPTIONS: '--max-old-space-size=6144' },
+      env: { NODE_OPTIONS: '--max-old-space-size=4096' },
       profiles: 'always',
       inputs: COMPILE_INPUTS,
     },
@@ -166,6 +179,28 @@ export function buildGates(root = process.cwd(), options = {}) {
       args: ['--import', 'tsx', 'tools/eval-ledger/run-cohort-eval.mjs', 'shortcuts', '--skip-verify'],
       profiles: 'full',
       inputs: [...COMPILE_INPUTS, 'tools/eval-ledger', 'tools/design-mcp'],
+    },
+    {
+      name: 'Design critique',
+      cmd: 'node',
+      args: ['scripts/ds-critique-gate.mjs'],
+      profiles: 'full',
+      inputs: [...COMPILE_INPUTS, 'tools/design-mcp', 'scripts/ds-critique-gate.mjs', 'scripts/ci/critique-literals.json'],
+    },
+    {
+      name: 'Visual peers',
+      cmd: 'node',
+      args: ['scripts/visual-peers-gate.mjs'],
+      profiles: 'full',
+      inputs: [...COMPILE_INPUTS, 'tests/e2e', 'playwright.config.ts', 'scripts/visual-peers-gate.mjs'],
+    },
+    {
+      name: 'Design review',
+      cmd: 'node',
+      args: ['scripts/impeccable-review-gate.mjs'],
+      profiles: 'deep',
+      advisory: true,
+      inputs: [...COMPILE_INPUTS, 'tests/e2e', 'scripts/impeccable-review-gate.mjs', '.impeccable'],
     },
   ];
 }

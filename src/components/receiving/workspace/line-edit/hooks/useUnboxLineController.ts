@@ -1,10 +1,14 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, skipToken } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
-import { receivingPhotosQueryKey } from '@/lib/queries/receiving-queries';
+import {
+  receivingPhotosQueryKey,
+  receivingSiblingsQueryKey,
+  type ReceivingSiblingsCache,
+} from '@/lib/queries/receiving-queries';
 import {
   deriveReceivingPhotoStageCounts,
   evaluateReceivingPhotoPolicy,
@@ -34,6 +38,7 @@ import { useSetting } from '@/hooks/useSettings';
 import type { LabelEditDraft } from '../LabelEditPopover';
 import type { AsListedLabelDraft } from '@/components/labels/AsListedEditPopover';
 import { shouldUseLocalReceiveOnly } from '@/lib/receiving/intake-items-routing';
+import { cartonLinesReadyForGr } from '@/lib/receiving/carton-readiness';
 import { isUnreceiveSerialBlocking } from '@/lib/receiving/unreceive-serial-guard';
 import type { PhotoPolicyOverrideCode } from '@/lib/receiving/exception-codes';
 import {
@@ -181,13 +186,15 @@ export function useUnboxLineController(
   // Serial is per line; seed the label/receive buffer once when the active
   // line changes. Do NOT re-seed on every `row.serials` publish — optimistic
   // confirm used to clear then refill serialInput and bounce the workspace.
+  const rowSerialsRef = useRef(row.serials);
+  rowSerialsRef.current = row.serials;
   useEffect(() => {
-    const localSerials = (row.serials ?? []) as Array<{ serial_number?: string | null }>;
+    const localSerials = (rowSerialsRef.current ?? []) as Array<{ serial_number?: string | null }>;
     const latest = localSerials.length > 0
       ? String(localSerials[localSerials.length - 1]?.serial_number || '').trim()
       : '';
     setSerialInput(latest);
-  }, [row.id]); // eslint-disable-line react-hooks/exhaustive-deps -- intentional: line switch only
+  }, [row.id]);
 
   // Seed the no-serial waiver from the line's DURABLE value on line change AND
   // whenever the persisted fact updates — a fresh open, a reload, another device,
@@ -728,12 +735,28 @@ export function useUnboxLineController(
     });
     return verdict.ok ? null : verdict.blockers[0] ?? null;
   }, [photoStageCounts, photoPolicy, row.id, row.sku, lineItemPhotoCount]);
+
+  const siblingReceivingId = row.receiving_id ?? 0;
+  const { data: siblingCache } = useQuery<ReceivingSiblingsCache<ReceivingLineRow>>({
+    queryKey: receivingSiblingsQueryKey(siblingReceivingId),
+    queryFn: skipToken,
+    enabled: siblingReceivingId > 0,
+  });
+  const siblingLines = siblingCache?.receiving_lines;
+  const linesReadyForGr = cartonLinesReadyForGr(
+    siblingLines && siblingLines.length > 0 ? siblingLines : [row],
+  );
+
   // Once received the primary action is print-only, so the receive-side gates
   // (shipment link, serial confirmation, photo policy) must stop blocking it —
   // otherwise a received line with no serial could never reprint its label.
   const combinedReviewDisabled = isReceived
     ? !canPrintReview
-    : !canReceiveReview || !canPrintReview || !serialConfirmed || photoPolicyDisabledReason != null;
+    : !canReceiveReview ||
+      !canPrintReview ||
+      !serialConfirmed ||
+      photoPolicyDisabledReason != null ||
+      !linesReadyForGr;
   // Bench-visible reason for the disabled Receive bar. A hover `title` is
   // invisible to an operator standing at a station — the bar renders this
   // line above the pill so the blocker names itself.
@@ -747,7 +770,9 @@ export function useUnboxLineController(
           : 'Link this carton to a shipment to receive'
       : !serialConfirmed
         ? 'Scan a serial — or mark “No serial” with a reason — to receive'
-        : photoPolicyDisabledReason;
+        : !linesReadyForGr
+          ? 'Finish remaining qty or mark leftovers SHORT / OVER / DAMAGED / WRONG_ITEM'
+          : photoPolicyDisabledReason;
   // itemTotal is PO-scoped (workspace nav / useReceivingWorkspaceBridge) so
   // "Receive all" never claims lines from a different PO on a mixed carton.
   const isSinglePoItem = itemTotal === 1;

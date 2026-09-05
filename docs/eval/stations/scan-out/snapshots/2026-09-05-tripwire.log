@@ -1,0 +1,43 @@
+✔ ComposerModeRow clusters Unbox | Ticket leftmost; only the SELECTED glyph carries colour (23.388071ms)
+✔ procedure ring and Unbox glyph share one toolbar item box (2.609204ms)
+✔ showModeFaces=false keeps Ask plus the bottom-right context ring (3.09213ms)
+✔ UPS 1Z and long alnum blobs are tracking commits (2.288586ms)
+✔ prose and multi-line are notes, not scans (0.321295ms)
+✔ marketplace order shapes are never treated as carrier tracking (0.817461ms)
+✔ IncomingAddExtractComposer mounts StationComposerHost with faces off, row on (2.756743ms)
+✔ TriageScrollLayout footer does not add extra bottom pad under the mouth (0.387183ms)
+▶ mobile display cohort — law
+  ✔ has a ladder whose paint never exceeds its hit area (0.861554ms)
+  ✔ sets the text floor at Apple’s 11pt (0.224912ms)
+  ✔ lists at least one member — an empty cohort enforces nothing (0.206485ms)
+✔ mobile display cohort — law (2.652628ms)
+▶ mobile display cohort — every member obeys it
+  ▶ scan-out (/m/scan-out)
+    ✔ renders no text below the legibility floor (1.57071ms)
+    ✔ paints no desk-sized controls (0.997679ms)
+    ✔ keeps at most two type roles per file (0.951369ms)
+    ✔ has at most one screen-primary control (1.310679ms)
+    ✔ lists files that actually exist (1.673591ms)
+  ✔ scan-out (/m/scan-out) (7.099363ms)
+✔ mobile display cohort — every member obeys it (7.305734ms)
+▶ scan-station overlay cohort (SoT = all stations)
+  ✔ registers every floor scan station that owns idle↔overlay (non-empty, unique ids) (2.05276ms)
+  ✔ idle-overlay helper owns visibility / inert / pointer-events / zIndex.panel (0.405975ms)
+  ✔ design-mcp router.json overlayWorkspaces stays in sync with the cohort SoT (0.637585ms)
+  ✔ unbox (/unbox) satisfies the cohort overlay contract (0.498444ms)
+  ✔ triage (/triage) satisfies the cohort overlay contract (0.175979ms)
+  ✔ pack (/pack) satisfies the cohort overlay contract (0.171595ms)
+  ✔ testing (/test) satisfies the cohort overlay contract (0.389208ms)
+  ✔ shipping (/shipping) satisfies the cohort overlay contract (0.475006ms)
+  ✔ scan-out (/shipping/scan-out) satisfies the cohort overlay contract (0.323815ms)
+  ✔ qty face is cohort-wide. Every station eval impacts ItemRecordQtyBadge (0.353192ms)
+  ✔ no cohort member is privileged — every member is checked with the same predicates (0.390685ms)
+✔ scan-station overlay cohort (SoT = all stations) (8.045057ms)
+ℹ tests 27
+ℹ suites 4
+ℹ pass 27
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1389.860899

@@ -15,7 +15,7 @@ const CATALOG: FieldCatalog = [
   { id: 'orders.picked', family: 'orders', label: 'Pick', displayType: 'stage_event', slotKinds: ['status'] },
   { id: 'orders.packed', family: 'orders', label: 'Packed', displayType: 'stage_event', slotKinds: ['status'] },
   { id: 'orders.qty', family: 'orders', label: 'Qty', displayType: 'number', slotKinds: ['subtitle'] },
-  { id: 'orders.amount', family: 'orders', label: 'Amount', displayType: 'money', slotKinds: ['amount'] },
+  { id: 'orders.amount', family: 'orders', label: 'Amount', displayType: 'money', slotKinds: ['subtitle'] },
 ];
 
 const PRODUCT: SlotLayout = {
@@ -43,9 +43,15 @@ const STAFF: SlotLayout = {
 };
 
 describe('resolveEffectiveLayout precedence', () => {
-  it('product default when no layer overrides', () => {
+  it('product default when no layer overrides still pins line qty under the title', () => {
     const resolved = resolveEffectiveLayout({ productDefault: PRODUCT, catalog: CATALOG });
-    assert.deepEqual(resolved, PRODUCT);
+    assert.deepEqual(resolved.statusBindings, PRODUCT.statusBindings);
+    assert.deepEqual(resolved.subtitleBindings, [
+      { fieldId: 'orders.qty' },
+      { fieldId: 'orders.amount' },
+    ]);
+    assert.equal(resolved.identityFieldId, PRODUCT.identityFieldId);
+    assert.equal(resolved.amountFieldId, null);
   });
 
   it('org layout wins over product for staff with no personal override', () => {
@@ -56,8 +62,11 @@ describe('resolveEffectiveLayout precedence', () => {
       catalog: CATALOG,
     });
     assert.deepEqual(resolved.statusBindings, ORG.statusBindings);
-    assert.deepEqual(resolved.subtitleBindings, ORG.subtitleBindings);
-    assert.equal(resolved.amountFieldId, 'orders.amount');
+    assert.deepEqual(resolved.subtitleBindings, [
+      { fieldId: 'orders.qty' },
+      { fieldId: 'orders.amount' },
+    ]);
+    assert.equal(resolved.amountFieldId, null);
   });
 
   it('staff layout masks org AS A WHOLE DOCUMENT — no binding merge', () => {
@@ -67,9 +76,13 @@ describe('resolveEffectiveLayout precedence', () => {
       staffLayout: STAFF,
       catalog: CATALOG,
     });
-    // Staff bound only packed; the org's tested + qty must NOT bleed through.
+    // Staff bound only packed; the org's tested must NOT bleed through.
+    // Qty is engine identity, not an org merge — empty staff subtitles still pin it.
     assert.deepEqual(resolved.statusBindings, [{ fieldId: 'orders.packed' }]);
-    assert.deepEqual(resolved.subtitleBindings, []);
+    assert.deepEqual(resolved.subtitleBindings, [
+      { fieldId: 'orders.qty' },
+      { fieldId: 'orders.amount' },
+    ]);
     assert.equal(resolved.amountFieldId, null);
   });
 
@@ -109,6 +122,10 @@ describe('resolveEffectiveLayout soft validation', () => {
       catalog: CATALOG,
     });
     assert.deepEqual(resolved.statusBindings, []);
+    assert.deepEqual(resolved.subtitleBindings, [
+      { fieldId: 'orders.qty' },
+      { fieldId: 'orders.amount' },
+    ]);
   });
 
   it('falls back to the product identity when the winner names a stale one', () => {
