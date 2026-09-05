@@ -5,6 +5,7 @@ import { Suspense } from 'react';
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { usePathname, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import { SpineErrorFallback } from '@/components/sidebar/SpineErrorFallback';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { useUIMode } from '@/design-system/providers/UIModeProvider';
 import { useBodyScrollLock } from '@/design-system/hooks';
@@ -377,7 +378,10 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
             right instead of painting over it. The route's own sidebar rides
             inside `<main>`, so the two never contend for the same edge. */}
         {!chromeless && (
-          <ErrorBoundary label="sidebar-nav-column" fallback={() => null}>
+          <ErrorBoundary
+            label="sidebar-nav-column"
+            fallback={(_error, reset) => <SpineErrorFallback reset={reset} />}
+          >
             <Suspense fallback={null}>
               <SidebarNavColumn
                 open={navOpen}

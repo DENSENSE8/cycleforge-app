@@ -149,6 +149,26 @@ export const SPINE_ROW_DENSITY = {
 export const SPINE_ROW_ICON_CLASS = 'h-4 w-4 shrink-0';
 
 /**
+ * Section labels stick to the top of the scrollport while their own group is in
+ * view, then hand off to the next one. Each `SidebarGroup` is the sticky
+ * container, so a label leaves exactly when its rows do — the operator always
+ * knows which section the row under the pointer belongs to on a column that now
+ * genuinely scrolls.
+ */
+export const SPINE_SECTION_LABEL_STICKY_CLASS = 'sticky top-0 z-10 bg-sidebar';
+
+/**
+ * The scrollport's own scrollbar — the house `.cf-grid-scrollbar` (globals.css),
+ * NOT a spine-local fork.
+ *
+ * That class exists because a grid port that scrolls with nothing drawn reads
+ * as a list that ends at the fold; its docblock argues the bar is not chrome
+ * but the only thing on screen reporting how much is left below. A navigator
+ * that scrolls has exactly that problem, so it takes exactly that answer.
+ */
+export const SPINE_SCROLLPORT_SCROLLBAR_CLASS = 'cf-grid-scrollbar';
+
+/**
  * The one row shell every spine destination shares: flush, full-width, dense.
  * Compose it with a `SPINE_ACCENT` state class; never restate the geometry.
  * Pin rows use this same shell — same padding, same width as the catalog map.

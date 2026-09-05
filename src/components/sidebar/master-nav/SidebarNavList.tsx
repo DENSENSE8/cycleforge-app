@@ -54,6 +54,8 @@ import {
   SPINE_ROW_DENSITY,
   SPINE_ROW_ICON_CLASS,
   SPINE_ROW_SHELL_CLASS,
+  SPINE_SCROLLPORT_SCROLLBAR_CLASS,
+  SPINE_SECTION_LABEL_STICKY_CLASS,
 } from '@/components/sidebar/sidebar-spine';
 import {
   SidebarContent,
@@ -321,7 +323,9 @@ export function SidebarNavList({
     pages: SidebarPageNav[],
   ) => (pages.length === 0 ? null : (
     <SidebarGroup id={id} role="group" aria-label={label}>
-      <SidebarGroupLabel>{label}</SidebarGroupLabel>
+      <SidebarGroupLabel className={SPINE_SECTION_LABEL_STICKY_CLASS}>
+        {label}
+      </SidebarGroupLabel>
       <SidebarGroupContent>
         <SidebarMenu>{pages.map((page) => renderDraggablePage(page))}</SidebarMenu>
       </SidebarGroupContent>
@@ -340,7 +344,10 @@ export function SidebarNavList({
         <SidebarContent
           ref={setPinReturnRef}
           data-spine-scrollport
-          className="min-h-0 flex-1 gap-0 overflow-y-auto overscroll-contain p-0"
+          className={cn(
+            'min-h-0 flex-1 gap-0 overflow-y-auto overscroll-contain p-0',
+            SPINE_SCROLLPORT_SCROLLBAR_CLASS,
+          )}
         >
           {topPages.length > 0 ? (
             <SidebarGroup
@@ -405,7 +412,9 @@ export function SidebarNavList({
                   role="group"
                   aria-label={page.label}
                 >
-                  <SidebarGroupLabel>{page.label}</SidebarGroupLabel>
+                  <SidebarGroupLabel className={SPINE_SECTION_LABEL_STICKY_CLASS}>
+                    {page.label}
+                  </SidebarGroupLabel>
                   <SidebarGroupContent>
                     <SidebarMenu>
                       {page.children?.map((child) => renderChild(page, child))}

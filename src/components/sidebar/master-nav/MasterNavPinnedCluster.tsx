@@ -52,6 +52,7 @@ import {
   SPINE_PINNED_ROW_ACTION_CLASS,
   SPINE_PINNED_TRAIL_GLYPH_CLASS,
   SPINE_ROW_ICON_CLASS,
+  SPINE_SECTION_LABEL_STICKY_CLASS,
 } from '@/components/sidebar/sidebar-spine';
 import {
   SidebarGroup,
@@ -193,7 +194,9 @@ export function MasterNavPinnedCluster({
       aria-label="Pinned"
       className={cn(SPINE_PINNED_CLUSTER_CLASS, isOver && 'bg-surface-hover')}
     >
-      <SidebarGroupLabel>Pinned</SidebarGroupLabel>
+      <SidebarGroupLabel className={SPINE_SECTION_LABEL_STICKY_CLASS}>
+        Pinned
+      </SidebarGroupLabel>
       {canPinCurrent ? (
         <HoverTooltip label="Pin this page" asChild>
           <SidebarGroupAction
@@ -212,13 +215,13 @@ export function MasterNavPinnedCluster({
             strategy={verticalListSortingStrategy}
           >
             {pinned.length === 0 ? (
-              <p
-                className={cn(
-                  'px-2 py-1.5 text-role-micro text-text-faint',
-                  SPINE_PINNED_CLUSTER_HOVER_CLASS,
-                )}
-              >
-                Drag a page here, or pin this page.
+              // NOT hover-gated. An empty state that only appears once you are
+              // already hovering the thing you do not know exists teaches
+              // nobody — it is the one row in this cluster that has to speak
+              // first. (The per-row X and pin-this-page stay on hover: those
+              // are actions on rows you can already see.)
+              <p className="px-2 py-1.5 text-role-caption text-text-soft">
+                Drag any page here to pin it.
               </p>
             ) : (
               pinned.map((p, index) => (
