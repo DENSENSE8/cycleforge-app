@@ -268,8 +268,14 @@ export function formatDuration(ms) {
  * Inputs are already-computed sets so this stays pure: `changed` is the diff,
  * `impacted` is the union of `impact_analysis` over the changed files (the
  * repo already owns the dependency graph big companies build test selection
- * on), and `hasTest` answers whether a source file has a co-located
- * `*.test.ts`.
+ * on), and `hasTest` answers whether a test file EXISTS AT THIS COMMIT.
+ *
+ * That last predicate guards a real trap, found by the runner on its own first
+ * selection (2026-09-05): the code graph is indexed from the WORKING TREE,
+ * untracked files included, while the runner tests a COMMIT. It happily named
+ * eight test files that exist on disk and not at the sha, and `node --test`
+ * died with "Could not find" before running anything. Every candidate — a
+ * changed test, an impacted test, a co-located sibling — is checked.
  *
  * Selection buys COST, not correctness — Meta's own paper is explicit about
  * that — which is why `unit:all` still runs postsubmit on `main`. What this
@@ -286,14 +292,14 @@ export function selectAffectedTests({ changed, impacted, hasTest }) {
   const changedSources = changed.filter((f) => isSource(f) && !isTest(f));
   const selected = new Set();
 
-  // A changed test runs, whatever it covers.
-  for (const file of changed) if (isSource(file) && isTest(file)) selected.add(file);
+  // A changed test runs, whatever it covers — if it still exists here.
+  for (const file of changed) if (isSource(file) && isTest(file) && hasTest(file)) selected.add(file);
 
   // Every source the change reaches contributes its co-located test.
   for (const file of [...changedSources, ...impacted]) {
     if (!isSource(file)) continue;
     if (isTest(file)) {
-      selected.add(file);
+      if (hasTest(file)) selected.add(file);
       continue;
     }
     const test = file.replace(/\.tsx?$/, '.test.ts');
@@ -309,6 +315,12 @@ export function selectAffectedTests({ changed, impacted, hasTest }) {
   // this commit yet. Under-selecting here has no second net on presubmit.
   if (changedSources.length > 0 && impacted.length === 0) {
     return { files: [], reason: 'all (graph stale)', stale: true };
+  }
+
+  // The graph answered, but nothing it named exists at this sha — the index is
+  // describing a different tree. Same verdict: run everything.
+  if (selected.size === 0) {
+    return { files: [], reason: 'all (selection empty at this sha)', stale: true };
   }
 
   return {

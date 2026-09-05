@@ -244,6 +244,32 @@ describe('ci-core — affected-test selection (§4.2)', () => {
     assert.match(reason, /no source files changed/);
   });
 
+  it('never selects a test that does not exist at this commit', () => {
+    // The graph is indexed from the WORKING TREE, untracked files included;
+    // the runner tests a COMMIT. Selecting a file that is only on disk makes
+    // `node --test` die before it runs anything — which is exactly how this
+    // was found.
+    const { files, stale, reason } = selectAffectedTests({
+      changed: ['src/lib/a.ts'],
+      impacted: ['src/lib/a.ts', 'src/lib/ghost.test.ts'],
+      hasTest,
+    });
+    assert.deepEqual(files, ['src/lib/a.test.ts'], 'the ghost test is dropped');
+    assert.equal(stale, false);
+    assert.match(reason, /1 test file/);
+  });
+
+  it('falls back to the FULL run when every selected test is absent at this sha', () => {
+    const { files, stale, reason } = selectAffectedTests({
+      changed: ['src/lib/only-ghosts.ts'],
+      impacted: ['src/lib/ghost.test.ts'],
+      hasTest,
+    });
+    assert.deepEqual(files, []);
+    assert.equal(stale, true);
+    assert.match(reason, /selection empty at this sha/);
+  });
+
   it('falls back to the FULL run when the graph reached nothing from a source change', () => {
     // The dangerous case: an empty impact set and a real source edit are
     // indistinguishable from "nothing depends on this", and presubmit has no
