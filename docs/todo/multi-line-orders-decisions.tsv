@@ -1,0 +1,12 @@
+ts	phase	decision	why	evidence	result
+2026-09-05T04:32:30Z	kickoff	use operator paste as goal SoT because /workspace/cyc-multi-line-orders-goal-loop.md is missing	searched workspace and home, zero hits	glob cyc-multi-line-orders-goal-loop.md	open
+2026-09-05T04:32:30Z	kickoff	sequence PR-0 apply migration, PR-1 seed five-line paint, PR-2 ingest re-key, PR-3a shipment bracket, PR-3b chevron FoldState router	each unit ends in a check, scaffold before ingest before fold chrome	docs/todo/multi-line-orders-PLAN.md	open
+2026-09-05T04:32:30Z	kickoff	name next paste exactly Phase 0 apply migration	operator done predicate, db-migrate dry-run then typed apply	docs/todo/multi-line-orders-PLAN.md Appendix E	open
+2026-09-05T04:32:30Z	kickoff	do not implement layers in this run, commit plan note and decisions only	user hard constraint, no schema ingest UI code this turn	git status scoped to docs/todo/multi-line-orders-*	open
+2026-09-05T04:32:30Z	kickoff	isolate cancelled Layer 2 ingest WIP before Phase 1, do not blanket-revert QueueGroupRow chrome	ingest writers are half-done, parent chrome is what PR-1 must paint	git diff --stat canonical-order.ts ingest-canonical-orders.ts amazon/order-sync.ts ebay/sync.ts QueueGroupRow.tsx	open
+2026-09-05T04:32:30Z	kickoff	no order-header table, Order is band, Line is orders row, Shipment is fold via shipment_links, Box is box_seq	redesign from the line table that already exists	src/lib/migrations/2026-09-04_orders_multi_line_identity.sql, src/lib/orders/order-grain-sql.ts	open
+2026-09-05T04:32:30Z	kickoff	pick autopilot-stack not autopilot-full	work is sequenced and coupled, operator keeps landing authority including the apply word	playbooks/autopilot-stack.md choosing rule	open
+2026-09-05T04:32:30Z	kickoff	write plan at docs/todo/multi-line-orders-PLAN.md not an agent-store docs path	repo convention is docs/todo, agent store docs/ not found in this tree	docs/todo/counter-channel-exchange-PLAN.md	open
+2026-09-05T04:32:30Z	kickoff	Phase 0 is the db-migrate confirmation gate, not a silent migrate	skill never applies without dry-run plus the word apply	.claude/skills/db-migrate/SKILL.md	open
+2026-09-05T04:32:30Z	kickoff	design-mcp only on Layer 3, slot-table eval after display PRs, ingest is not UI	AGENTS.md and eval-engineering.mdc	src/lib/tables/slot-table-cohort.ts	open
+2026-09-05T04:32:30Z	kickoff	check-plan.mjs reports 0 problems on the plan file	encode the skeleton in a script, do not eyeball	check-plan.mjs stdout 5 PR sections, 0 problems	tests green
