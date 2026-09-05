@@ -9,3 +9,4 @@ ts	phase	decision	why	evidence	result
 2026-09-05T04:55:00Z	schema	do not pick staff_todos vs ops_plan_tasks in Phase A	that is a product call the original file would have settled, paste did not	src/lib/migrations/2026-06-09_staff_todos.sql, 2026-07-08c_ops_plans_core.sql	UNKNOWN board row store
 2026-09-05T04:58:00Z	next	next paste is Phase B slot-table bugs, not Phase C	Daily/Tasks/My Day already on the engine, sequence engine bugs before new board verbs	src/lib/tables/slot-table-cohort.ts SLOT_TABLE_ENGINE_LAYOUT_HOOKS tasks/daily/my-day	Phase B
 2026-09-05T05:00:00Z	scope	skip Opening a PR	investigation playbook says no PR, operator said Phase A is a spike not a product ship	playbooks/investigation.md	no PR
+2026-09-05T04:34:04Z	close	committed 3618fecdb three docs files no product UI	Phase A predicate met, next paste is Phase B	git show 3618fecdb340c08b6749c4dd4b487d72cc576b12	predicate met
