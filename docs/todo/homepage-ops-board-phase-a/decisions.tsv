@@ -15,3 +15,8 @@ ts	phase	decision	why	evidence	result
 2026-09-05T04:41:53Z	B	leave FBA catalog and support-tickets TABLE_COLUMNS bucket to a human	agents do not invent a tableId or delete KEEP/JUDGMENT	eval:discover JUDGMENT rows	untouched
 2026-09-05T04:41:53Z	B	do not commit eval LEDGER or 2026-09-05 snapshots	docs/eval LEDGER is not agent-writable	git checkout LEDGER.md	discarded
 2026-09-05T04:41:53Z	B	Discover DELETE 0 and skip-verify ok true on worktree off daeb1c1f2	prove the engine before board verbs	runId 2026-09-05T04-39-22-734Z	predicate met
+2026-09-05T04:52:08Z	C	overlay newer TaskRow so Assign paints Packer on the row	stale list refetch was overwriting the PATCH in React Query	src/features/tasks/useProjectTasks.ts dirty main; Playwright task 8b340740-15c0-49be-8867-05fd570935c2	row text Desk repro project · QA Packer
+2026-09-05T04:52:08Z	C	keep product UI on dirty main, docs-only close on this worktree	spike forbade merging the board into Phase A; operator did not ask to commit product	docs/todo/homepage-ops-board-phase-c.md	uncommitted product
+2026-09-05T04:52:08Z	D	People adds org staff via ops_plan_members not USAV lists	Assign and People must be different writes; roster is getActiveStaff	POST members 201 staffId 71 QA Shipper plan da30e8be-d12d-426c-9b01-7d613c2e7588	members include Shipper
+2026-09-05T04:52:08Z	E	skip Impeccable and Shannon	C/D jobs already work; Impeccable is polish not a click meter; Shannon forbidden	docs/todo/homepage-ops-board-phase-e.md	skipped with reason
+2026-09-05T04:52:08Z	loop	stop /loop; all-phase predicate met	A and B already done; C row paint proven; D People proven; E skipped with reason; no remaining operator job	docs/todo/cyc-homepage-ops-board-goal-loop.md	predicate met

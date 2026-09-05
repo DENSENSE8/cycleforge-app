@@ -34,6 +34,22 @@
 - Discover mechanical DELETE = 0
 - `eval:cohort slot-table -- --skip-verify` `ok: true`
 
+## Phase C done
+
+- Note at `docs/todo/homepage-ops-board-phase-c.md`
+- Live desk at `http://localhost:3050/?mode=tasks` on dirty main
+- Playwright: add task, Assign Packer paints on the row, Morphing on the table
+
+## Phase D done
+
+- Note at `docs/todo/homepage-ops-board-phase-d.md`
+- People POST QA Shipper 201 onto plan `da30e8be-d12d-426c-9b01-7d613c2e7588`
+
+## Phase E skipped
+
+- Note at `docs/todo/homepage-ops-board-phase-e.md`
+- No Impeccable pass; no Shannon; lighthouse floors unchanged
+
 ## Next paste
 
-Phase C. Home Tasks board verbs on the same slot-table waist.
+None. A–E closed. Do not commit dirty main product unless asked.
