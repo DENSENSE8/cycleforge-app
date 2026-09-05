@@ -27,3 +27,4 @@ ts	phase	decision	why	evidence	result
 2026-09-05T04:56:43Z	E	skip Impeccable after a viewport look not only C/D verbs	Attention asked for visual evidence; 11-row Kinetic Ledger no inspector no Zoho board	docs/todo/homepage-ops-board-phase-e.md Playwright 1440x900 networkidle	skip with look
 2026-09-05T04:56:43Z	B	full eval:cohort slot-table on this worktree failed verify only	skip-verify was the B gate; daeb1c1f2 lacks the dirty-main ShipStation typecheck	terminals 285790 runId 2026-09-05T04-40-56-021Z verify false	known not a B fail
 2026-09-05T04:57:00Z	C	verify:fast after overlay prune still ok	follow-up to Attention eval gap after the prune edit	.cursor/eval-session.json after pruneOverlay	ok true
+2026-09-05T16:23:00Z	git	operator asked merge to main; landed product faba71b0b then merged spike docs e2326c6e5	see the work to verify; dirty tree besides the desk stayed uncommitted; did not push	git log faba71b0b e2326c6e5	on local main, not origin
