@@ -1,12 +1,12 @@
 /**
  * Order-inspector contextual SoT — what the right-rail record inspector opens
- * on, which planes it exposes, and which bulk actions its lane supports.
+ * on and which planes it exposes.
  *
- * One resolver so the panel, the bulk bar, and the E2E expectations can never
- * disagree about "what does Pending offer". The lifecycle scoping already lived
- * in `useDashboardBulkSelection` as inline `isPrePack` / `isPostPack`
- * predicates; this module is where that decision now lives, and the hook reads
- * from it.
+ * One resolver so every mount of the shared inspector agrees about "what does
+ * Pending open on". It does NOT decide which verbs a lane offers: that is row
+ * state, read by the family verb catalog (`@/lib/selection/order-verb-state`).
+ * The action list that used to live here was deleted 2026-09-05 — see the note
+ * at the foot of this file.
  *
  * **To-ship row body does not open the inspector** (checkbox + column-foot
  * own the desk). When the rail does open, seed Shipping — not Documents —
@@ -40,24 +40,6 @@ export type OrderInspectorDocumentsMode = 'preview' | 'manage' | 'hidden';
 
 /** Record-plane hand-offs the inspector may offer (deep-links, never mutations). */
 export type OrderInspectorRecordCta = 'assign' | 'open_testing' | 'open_pack' | 'open_labels';
-
-/** Bulk-action keys, matching `SelectionAction.key` in `useDashboardBulkSelection`. */
-export type OrderBulkActionKey =
-  | 'download-photos'
-  | 'copy'
-  | 'assign'
-  | 'assign-pick'
-  | 'assign-pack'
-  | 'condition'
-  | 'qty'
-  | 'notes'
-  | 'listing-rule'
-  | 'ship-by'
-  | 'print'
-  | 'print-shipping'
-  | 'flag'
-  | 'export'
-  | 'delete';
 
 export interface OrderInspectorContext {
   /** Tab the inspector opens on, and re-seeds to on record change. */
@@ -204,36 +186,19 @@ export function resolveOrderInspectorContext({
   return journeyFirst ? { ...base, defaultTab: 'timeline', openOnIndex: false } : base;
 }
 
-/**
- * Bulk-action keys a dashboard lane supports — the SoT the selection bar reads.
+/*
+ * `orderBulkActionKeys` / `PENDING_BULK_ACTION_KEYS` / `OrderBulkActionKey` were
+ * DELETED here on 2026-09-05.
  *
- * Pre-pack lanes prep the unit (assign a tester, set a date, print the SKU
- * label); post-pack lanes reprint the shipping document that now exists.
- * `copy` / `export` / `delete` read the rows themselves, so they hold on every
- * lane. `flag` holds on every lane too: a shipped order can still be Damaged,
- * and a triage tag is an annotation on the record rather than a step in the
- * pipeline.
+ * They were the hardcoded per-lane action list `TABLE_ENGINE_LAW.verbsBindToFields`
+ * forbids: "A hardcoded per-lane key list is a fork of the catalog." The
+ * distinction they encoded was real — pre-pack lanes prep the unit, post-pack
+ * lanes reprint the shipping document — but it is a fact about the ROW's
+ * lifecycle, not about the route, and every row already carries it. It now lives
+ * in `@/lib/selection/order-verb-state` as predicates the verb catalog binds
+ * (`isInBuilding`, `hasShippingPaperwork`), so a new outbound surface inherits
+ * the right verbs with no list to update.
+ *
+ * This module keeps the INSPECTOR context, which is a different question (which
+ * planes a panel opens on). Do not re-add an action list here.
  */
-export function orderBulkActionKeys(orderView: DashboardOrderView): readonly OrderBulkActionKey[] {
-  const isPostPack = orderView === 'packed' || orderView === 'shipped';
-  return isPostPack
-    ? ['download-photos', 'copy', 'notes', 'print-shipping', 'flag', 'export', 'delete']
-    : [
-        'download-photos',
-        'copy',
-        'assign-pick',
-        'assign-pack',
-        'condition',
-        'qty',
-        'notes',
-        'listing-rule',
-        'ship-by',
-        'print',
-        'flag',
-        'export',
-        'delete',
-      ];
-}
-
-/** Pending / To Ship — named so specs assert against the registry, not a literal. */
-export const PENDING_BULK_ACTION_KEYS = orderBulkActionKeys('unshipped');

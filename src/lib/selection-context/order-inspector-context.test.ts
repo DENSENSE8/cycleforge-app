@@ -1,11 +1,7 @@
 import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 
-import {
-  PENDING_BULK_ACTION_KEYS,
-  orderBulkActionKeys,
-  resolveOrderInspectorContext,
-} from './order-inspector-context';
+import { resolveOrderInspectorContext } from './order-inspector-context';
 
 test('Pending / fulfillment opens shipping-first with a read-only documents tray', () => {
   for (const panelContext of ['fulfillment', 'queue'] as const) {
@@ -69,43 +65,11 @@ test('journeyFirst (search deep-link) wins over the context default', () => {
   assert.equal(packedJourney.showDocumentsTab, false);
 });
 
-test('pre-pack lanes prep the unit; post-pack lanes reprint the shipping document', () => {
-  const pending = orderBulkActionKeys('unshipped');
-  assert.deepEqual(
-    [...pending],
-    ['download-photos', 'copy', 'assign-pick', 'assign-pack', 'condition', 'qty', 'notes', 'listing-rule', 'ship-by', 'print', 'flag', 'export', 'delete'],
-  );
-  assert.deepEqual([...PENDING_BULK_ACTION_KEYS], [...pending]);
-
-  const packed = orderBulkActionKeys('packed');
-  assert.ok(packed.includes('print-shipping'));
-  // Assigning a tester to an order that is already packed is not a thing.
-  assert.ok(!packed.includes('assign'));
-  assert.ok(!packed.includes('assign-pick'));
-  assert.ok(!packed.includes('assign-pack'));
-  assert.ok(!packed.includes('listing-rule'));
-  assert.ok(!packed.includes('ship-by'));
-  assert.ok(!packed.includes('print'));
-  assert.ok(!packed.includes('condition'));
-  assert.ok(!packed.includes('qty'));
-  assert.ok(packed.includes('notes'));
-
-  // `flag` annotates the record, so it holds on every lane — a shipped order
-  // can still be Damaged.
-  assert.ok(packed.includes('flag'));
-  assert.deepEqual([...orderBulkActionKeys('shipped')], [...packed]);
-  assert.deepEqual([...orderBulkActionKeys('tested')], [...pending]);
-});
-
-test('export and copy hold on every lane — they only read the selected rows', () => {
-  for (const view of ['unshipped', 'tested', 'packed', 'shipped'] as const) {
-    const keys = orderBulkActionKeys(view);
-    assert.ok(keys.includes('export'), `${view} should offer export`);
-    assert.ok(keys.includes('copy'), `${view} should offer copy`);
-    assert.ok(keys.includes('download-photos'), `${view} should offer photo download`);
-    assert.ok(keys.includes('delete'), `${view} should offer delete`);
-  }
-});
+// The two lane-key tests that lived here were deleted with
+// `orderBulkActionKeys` on 2026-09-05. What a lane offers is no longer a list
+// to assert against: it is the family verb catalog filtered by the facts the
+// rows resolve, proved in `src/lib/selection/order-verb-binding.test.ts`
+// against the catalog + row state rather than against a hardcoded array.
 
 test('dispatch / delete / dock are resolved here, not re-derived in the body', () => {
   // These three used to live in `ShippedDetailsBody` as a prop plus two local

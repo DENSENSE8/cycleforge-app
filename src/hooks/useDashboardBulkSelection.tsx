@@ -26,7 +26,7 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Bookmark, Calendar as CalendarIcon, Copy, Download, FileText, Flag, Hash, Image, Printer, Tag, Trash2, User } from '@/components/Icons';
+import { Bookmark, Calendar as CalendarIcon, Copy, Download, FileText, Flag, Hash, Image, Printer, ShippingModeScanOut, Tag, Trash2, User } from '@/components/Icons';
 import { useTableSelection } from '@/hooks/useTableSelection';
 import { useDeleteOrderRow } from '@/hooks/useDeleteOrderRow';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
@@ -41,7 +41,15 @@ import {
   orderExportFilename,
   type ExportableOrderRow,
 } from '@/lib/dashboard/order-export-csv';
-import { orderBulkActionKeys } from '@/lib/selection-context/order-inspector-context';
+import {
+  canScanOut,
+  hasShippingPaperwork,
+  isInBuilding,
+  scanOutDirection,
+  shipmentIdForScanOut,
+  trackingForScanOut,
+} from '@/lib/selection/order-verb-state';
+import { ORDERS_FIELD_CATALOG } from '@/lib/tables/field-catalog/orders';
 import { BulkConditionDialog } from '@/components/dashboard/BulkConditionDialog';
 import { BulkQtyDialog } from '@/components/dashboard/BulkQtyDialog';
 import { BulkNotesDialog } from '@/components/dashboard/BulkNotesDialog';
@@ -52,7 +60,11 @@ import { openStageAssignPanel } from '@/lib/tables/stage-assign-panel-store';
 import type { OrderRowFlagId } from '@/lib/orders/order-row-flags';
 import type { ConditionGrade } from '@/lib/conditions';
 import type { OutboundDocumentsResponse } from '@/lib/documents/types';
-import type { SelectionAction } from '@/lib/selection/selection-actions';
+import {
+  offeredSelectionActions,
+  type SelectionAction,
+  type VerbDirection,
+} from '@/lib/selection/selection-actions';
 // Lazy: the product-label printer drags the bwip-js barcode engine (~250 KB gz)
 // into whatever bundle imports it statically — this hook rides in the dashboard
 // page graph, and printing only happens on an explicit bulk action.
@@ -75,7 +87,27 @@ type DashSelectableRow = {
   tracking_number?: string | null;
   packer_log_id?: number | null;
   catalog_image_url?: string | null;
+  // Lifecycle facts the verbs read. Both feeds already carry them
+  // (`ShippedOrder` on the working queues, `PackerRecord` on Shipped); they are
+  // declared here because a VERB reads row STATE, never the route.
+  packed_at?: string | null;
+  ship_confirmed_at?: string | null;
+  latest_status_category?: string | null;
+  is_terminal?: boolean | null;
+  shipment_id?: number | string | null;
 };
+
+/**
+ * The facts every orders mount can RESOLVE for its rows — the whole family
+ * catalog, because one resolver (`orders-resolve.ts`) answers all of it off the
+ * row both feeds broadcast. This is the gate {@link offeredSelectionActions}
+ * applies, and it is deliberately NOT the mounted layout's bound fields:
+ * painting a column is a layout decision (To-ship refuses to paint
+ * `Scanned out` — `omitShippedOnlyBindings`), while being able to ACT on a fact
+ * the row carries is not. That is what lets ONE scan-out declaration reach
+ * To-ship and Shipped with no lane list anywhere.
+ */
+const ORDERS_RESOLVABLE_FIELD_IDS = ORDERS_FIELD_CATALOG.map((f) => f.id);
 
 /**
  * Legacy clipboard write for non-secure contexts (plain-HTTP LAN). Deprecated
@@ -123,12 +155,6 @@ export function useDashboardBulkSelection(
   const selectionEnabled = true;
   // Packed reuses the shipped row/delete path (packer records with packed_at).
   const isShippedView = orderView === 'shipped' || orderView === 'packed';
-  /**
-   * Which actions this lane supports, from the contextual SoT — so the bar, the
-   * inspector, and the specs read one list instead of three copies of the same
-   * `isPrePack` / `isPostPack` arithmetic.
-   */
-  const laneActionKeys = useMemo(() => new Set(orderBulkActionKeys(orderView)), [orderView]);
   // Always-on left gutter when the surface supports selection (To Ship / Packed /
   // Shipped). Select-all lives in the table column header, not chrome.
   const selectMode = selectionEnabled;
@@ -561,14 +587,82 @@ export function useDashboardBulkSelection(
     [isShippedView, deleteOrderRow, clearSelection],
   );
 
-  const selectionActions = useMemo<SelectionAction<DashSelectableRow>[]>(
+  /**
+   * The dock scan-out, both directions.
+   *
+   * `direction` was resolved from the ROWS before the operator pressed it
+   * (majority; the remainder was named in the tooltip), so this applies that
+   * one direction and skips the rows it does not cover rather than silently
+   * doing two different things to one selection. POST records the SHIP_CONFIRM,
+   * DELETE removes it — the same pair the dock station uses.
+   */
+  const handleScanOut = useCallback(
+    async (rows: DashSelectableRow[], resolved?: { direction: VerbDirection }) => {
+      const direction: VerbDirection = resolved?.direction ?? 'do';
+      const actionable = rows.filter(
+        (row) => scanOutDirection(row) === direction && canScanOut(row, direction),
+      );
+      if (actionable.length === 0) {
+        toast.error(
+          direction === 'undo'
+            ? 'No scanned-out rows to undo in the selection'
+            : 'No shipping label on the selected row(s)',
+        );
+        return;
+      }
+      const verb = direction === 'undo' ? 'Undo the scan-out' : 'Mark scanned out';
+      if (!(await confirmBulkWrite(actionable.length, verb))) return;
+
+      // Each row settles on its own — one unmatched label must not cost the
+      // operator the rest of the dock run.
+      const results = await Promise.allSettled(
+        actionable.map(async (row) => {
+          const res = await fetch('/api/shipped/scan-out', {
+            method: direction === 'undo' ? 'DELETE' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(
+              direction === 'undo'
+                ? { shipmentId: shipmentIdForScanOut(row) }
+                : { trackingNumber: trackingForScanOut(row) },
+            ),
+          });
+          if (!res.ok) throw new Error(`scan-out ${res.status}`);
+          const body = (await res.json()) as { matched?: boolean };
+          // The POST answers 200 with `matched: false` when no shipment owns
+          // the label. That is a miss, not a success — count it as one.
+          if (body?.matched === false) throw new Error('no shipment for this label');
+          return row;
+        }),
+      );
+      const failed = results.filter((r) => r.status === 'rejected').length;
+      const ok = results.length - failed;
+      if (ok > 0) {
+        toast.success(
+          direction === 'undo'
+            ? ok === 1 ? 'Scan-out undone' : `Scan-out undone on ${ok} orders`
+            : ok === 1 ? 'Scanned out' : `${ok} orders scanned out`,
+        );
+      }
+      if (failed > 0) toast.error(`${failed} of ${results.length} could not be updated`);
+      clearSelection();
+      refreshDomain('orders.outbound');
+    },
+    [clearSelection, confirmBulkWrite],
+  );
+
+  /**
+   * The family verb CATALOG — declared once, here, for every orders surface.
+   * What each verb may do is a predicate over the selected ROWS; where it is
+   * offered is {@link SelectionAction.writesField}. Neither reads the route.
+   */
+  const verbCatalog = useMemo<SelectionAction<DashSelectableRow>[]>(
     () => [
       {
         key: 'download-photos',
         label: 'Download photos',
         icon: <Image className="h-4 w-4" />,
         group: 'Take away',
-        enabled: () => laneActionKeys.has('download-photos'),
+        // Every lane: reads or annotates the rows themselves — no lifecycle gate.
         run: handleDownloadPhotos,
       },
       { key: 'copy', label: 'Copy details', icon: <Copy className="h-4 w-4" />, tone: 'blue', primary: true, group: 'Take away', run: handleCopyDetails },
@@ -577,7 +671,9 @@ export function useDashboardBulkSelection(
         label: 'Assign pick',
         icon: <User className="h-4 w-4" />,
         group: 'Set on these orders',
-        enabled: () => laneActionKeys.has('assign-pick'),
+        writesField: 'orders.picked',
+        enabled: (rows) => rows.some(isInBuilding),
+        disabledReason: 'These orders have already left the floor',
         run: async () => {
           openStageAssignPanel('pick');
         },
@@ -587,7 +683,9 @@ export function useDashboardBulkSelection(
         label: 'Assign pack',
         icon: <User className="h-4 w-4" />,
         group: 'Set on these orders',
-        enabled: () => laneActionKeys.has('assign-pack'),
+        writesField: 'orders.packed',
+        enabled: (rows) => rows.some(isInBuilding),
+        disabledReason: 'These orders have already left the floor',
         run: async () => {
           openStageAssignPanel('pack');
         },
@@ -597,7 +695,9 @@ export function useDashboardBulkSelection(
         label: 'Set condition',
         icon: <Tag className="h-4 w-4" />,
         group: 'Set on these orders',
-        enabled: () => laneActionKeys.has('condition'),
+        writesField: 'orders.condition',
+        enabled: (rows) => rows.some(isInBuilding),
+        disabledReason: 'These orders have already left the floor',
         run: () => setConditionOpen(true),
       },
       {
@@ -605,7 +705,9 @@ export function useDashboardBulkSelection(
         label: 'Set quantity',
         icon: <Hash className="h-4 w-4" />,
         group: 'Set on these orders',
-        enabled: () => laneActionKeys.has('qty'),
+        writesField: 'orders.qty',
+        enabled: (rows) => rows.some(isInBuilding),
+        disabledReason: 'These orders have already left the floor',
         run: () => setQtyOpen(true),
       },
       {
@@ -613,7 +715,8 @@ export function useDashboardBulkSelection(
         label: 'Add note',
         icon: <FileText className="h-4 w-4" />,
         group: 'Set on these orders',
-        enabled: () => laneActionKeys.has('notes'),
+        writesField: 'orders.notes',
+        // Every lane: reads or annotates the rows themselves — no lifecycle gate.
         run: () => setNotesOpen(true),
       },
       {
@@ -621,7 +724,8 @@ export function useDashboardBulkSelection(
         label: 'Listing → staff rule',
         icon: <Bookmark className="h-4 w-4" />,
         group: 'Set on these orders',
-        enabled: () => laneActionKeys.has('listing-rule'),
+        enabled: (rows) => rows.some(isInBuilding),
+        disabledReason: 'These orders have already left the floor',
         run: handleListingRule,
       },
       {
@@ -629,7 +733,8 @@ export function useDashboardBulkSelection(
         label: 'Set ship-by date',
         icon: <CalendarIcon className="h-4 w-4" />,
         group: 'Set on these orders',
-        enabled: () => laneActionKeys.has('ship-by'),
+        enabled: (rows) => rows.some(isInBuilding),
+        disabledReason: 'These orders have already left the floor',
         run: handleSetShipBy,
       },
       {
@@ -640,7 +745,8 @@ export function useDashboardBulkSelection(
         label: 'Print product labels',
         icon: <Printer className="h-4 w-4" />,
         group: 'Take away',
-        enabled: () => laneActionKeys.has('print'),
+        enabled: (rows) => rows.some(isInBuilding),
+        disabledReason: 'These orders have already left the floor',
         run: handlePrintLabels,
       },
       {
@@ -648,8 +754,32 @@ export function useDashboardBulkSelection(
         label: 'Print shipping labels',
         icon: <FileText className="h-4 w-4" />,
         group: 'Take away',
-        enabled: () => laneActionKeys.has('print-shipping'),
+        enabled: (rows) => rows.some(hasShippingPaperwork),
+        disabledReason: 'No shipping document until the order is packed',
         run: handlePrintShippingLabels,
+      },
+      {
+        /*
+         * ONE reversible verb, both directions (TABLE_ENGINE_LAW.verbsBindToFields).
+         *
+         * `writesField` puts it wherever the orders family is mounted — To-ship
+         * AND Shipped — and `direction` decides which way it points FROM THE ROW:
+         * a package still here is scanned out, one already gone has its dock
+         * stamp removed. There is no lane list, no `queueMode` branch and no
+         * second "Undo scan-out" verb on a second page. A mixed selection takes
+         * the majority direction and `resolveSelectionAction` names the rows it
+         * will skip.
+         */
+        key: 'scan-out',
+        label: 'Scan out',
+        icon: <ShippingModeScanOut className="h-4 w-4" />,
+        group: 'Set on these orders',
+        writesField: 'orders.scanned_out',
+        direction: scanOutDirection,
+        directionLabels: { do: 'Mark scanned out', undo: 'Undo scan-out' },
+        enabled: (rows) => rows.some((r) => canScanOut(r, scanOutDirection(r))),
+        disabledReason: 'No label or shipment on the selected row(s)',
+        run: handleScanOut,
       },
       {
         key: 'flag',
@@ -658,7 +788,8 @@ export function useDashboardBulkSelection(
         group: 'Set on these orders',
         // Every lane: a shipped order can still be Damaged. The tag annotates
         // the record, it is not a step in the pipeline.
-        enabled: () => laneActionKeys.has('flag'),
+        writesField: 'orders.flag',
+        // Every lane: reads or annotates the rows themselves — no lifecycle gate.
         run: handleSetFlag,
       },
       {
@@ -667,7 +798,7 @@ export function useDashboardBulkSelection(
         icon: <Download className="h-4 w-4" />,
         group: 'Take away',
         // Reads the selected rows only — meaningful on every lane.
-        enabled: () => laneActionKeys.has('export'),
+        // Every lane: reads or annotates the rows themselves — no lifecycle gate.
         run: handleExportCsv,
       },
       { key: 'delete', label: 'Delete', icon: <Trash2 className="h-4 w-4" />, tone: 'red', run: handleDelete },
@@ -682,8 +813,19 @@ export function useDashboardBulkSelection(
       handlePrintShippingLabels,
       handleExportCsv,
       handleDelete,
-      laneActionKeys,
+      handleScanOut,
     ],
+  );
+
+  /**
+   * What this mount actually offers: every catalog verb whose written fact the
+   * orders rows can resolve. No lane list, no `orderView` branch — a surface
+   * that mounts this family gets the family's verbs, and row state decides
+   * which of them can fire.
+   */
+  const selectionActions = useMemo(
+    () => offeredSelectionActions(verbCatalog, ORDERS_RESOLVABLE_FIELD_IDS),
+    [verbCatalog],
   );
 
   // Overlays the actions open. Rendered by the page beside the selection bar —
