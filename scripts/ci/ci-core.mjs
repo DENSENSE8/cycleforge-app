@@ -259,3 +259,124 @@ export function formatDuration(ms) {
   const m = Math.floor(s / 60);
   return `${m}m${String(s % 60).padStart(2, '0')}s`;
 }
+
+// ─── §4.2 affected-test selection ────────────────────────────────────────────
+
+/**
+ * The test files a change can plausibly break.
+ *
+ * Inputs are already-computed sets so this stays pure: `changed` is the diff,
+ * `impacted` is the union of `impact_analysis` over the changed files (the
+ * repo already owns the dependency graph big companies build test selection
+ * on), and `hasTest` answers whether a source file has a co-located
+ * `*.test.ts`.
+ *
+ * Selection buys COST, not correctness — Meta's own paper is explicit about
+ * that — which is why `unit:all` still runs postsubmit on `main`. What this
+ * must never do is under-select SILENTLY: when the graph knew nothing about
+ * any changed source file it is stale, and the caller falls back to the full
+ * run with `selection: 'all (graph stale)'` on the receipt.
+ *
+ * @param {{ changed: string[], impacted: string[], hasTest: (file: string) => boolean }} arg
+ * @returns {{ files: string[], reason: string, stale: boolean }}
+ */
+export function selectAffectedTests({ changed, impacted, hasTest }) {
+  const isSource = (f) => f.startsWith('src/') && /\.tsx?$/.test(f);
+  const isTest = (f) => /\.test\.tsx?$/.test(f);
+  const changedSources = changed.filter((f) => isSource(f) && !isTest(f));
+  const selected = new Set();
+
+  // A changed test runs, whatever it covers.
+  for (const file of changed) if (isSource(file) && isTest(file)) selected.add(file);
+
+  // Every source the change reaches contributes its co-located test.
+  for (const file of [...changedSources, ...impacted]) {
+    if (!isSource(file)) continue;
+    if (isTest(file)) {
+      selected.add(file);
+      continue;
+    }
+    const test = file.replace(/\.tsx?$/, '.test.ts');
+    if (hasTest(test)) selected.add(test);
+  }
+
+  // Nothing in `src/` changed (docs, scripts, config): nothing to select.
+  if (changedSources.length === 0 && selected.size === 0) {
+    return { files: [], reason: 'no source files changed', stale: false };
+  }
+
+  // The graph reached nothing from a real source change — it has not indexed
+  // this commit yet. Under-selecting here has no second net on presubmit.
+  if (changedSources.length > 0 && impacted.length === 0) {
+    return { files: [], reason: 'all (graph stale)', stale: true };
+  }
+
+  return {
+    files: [...selected].sort(),
+    reason: `${selected.size} test file(s) from ${changedSources.length} changed source(s)`,
+    stale: false,
+  };
+}
+
+// ─── §4.3 flake quarantine ───────────────────────────────────────────────────
+
+/**
+ * A gate that both failed and passed on the SAME input hash is flaky.
+ *
+ * Identical inputs cannot legitimately produce two answers: the input hash
+ * covers the sources, the lockfile, the toolchain and the gate definition, so a
+ * disagreement is noise in the gate itself. Three sources were expected on day
+ * one (plan §4.3): sibling-session edits in the shared tree (the worktree fixes
+ * that), `server-only`-shimmed tests in the plain runner, and torn `.next`
+ * generated files.
+ *
+ * @param {{ inputHash: string, sha: string, status: string, at: string }[]} history
+ * @returns {{ gate: string, inputHash: string, outcomes: string[], seen: string[] }[]}
+ */
+export function detectFlakes(gate, history) {
+  /** @type {Map<string, { statuses: Set<string>, seen: string[] }>} */
+  const byHash = new Map();
+  for (const entry of history) {
+    if (!entry?.inputHash) continue;
+    const bucket = byHash.get(entry.inputHash) ?? { statuses: new Set(), seen: [] };
+    bucket.statuses.add(entry.status);
+    if (entry.sha && !bucket.seen.includes(entry.sha)) bucket.seen.push(entry.sha);
+    byHash.set(entry.inputHash, bucket);
+  }
+  const out = [];
+  for (const [inputHash, { statuses, seen }] of byHash) {
+    if (statuses.has('pass') && (statuses.has('fail') || statuses.has('advisory-fail'))) {
+      out.push({ gate, inputHash, outcomes: [...statuses].sort(), seen });
+    }
+  }
+  return out;
+}
+
+/**
+ * Is this exact (gate, inputHash) quarantined?
+ *
+ * Quarantine is ADVISORY and never silent: the receipt names it and
+ * `ci-status` prints the list. A human clears `.ci/flaky.json`; nothing here
+ * removes an entry, because a gate that stops flaking is a claim only a person
+ * should make.
+ */
+export function isQuarantined(flaky, gate, inputHash) {
+  if (!inputHash) return false;
+  return (flaky ?? []).some((f) => f.gate === gate && f.inputHash === inputHash);
+}
+
+/** Merge newly-detected flakes into the stored set, never dropping one. */
+export function mergeFlakes(stored, found) {
+  const out = [...(stored ?? [])];
+  for (const entry of found) {
+    const existing = out.find((f) => f.gate === entry.gate && f.inputHash === entry.inputHash);
+    if (existing) {
+      existing.outcomes = entry.outcomes;
+      existing.seen = entry.seen;
+    } else {
+      out.push({ ...entry, quarantinedAt: new Date().toISOString() });
+    }
+  }
+  return out;
+}
+

@@ -157,12 +157,22 @@ target and reports failures that belong to somebody else.
    truth `scripts/ci/systemd/`) — drain the queue every 30 s (`OnUnitInactiveSec`,
    so a drain never overlaps itself). `--user` so it dies with the session and
    needs no root. `Nice=10`, `TEST_CONCURRENCY=4`.
-5. **Affected-test selection** (§4.2) — `unit tests` becomes two gates:
-   `unit:affected` (the test files the code graph's `impact_analysis` reaches
-   from the diff, run on every commit) and `unit:all` (postsubmit on `main`).
-6. **Flake quarantine** (§4.3) — a test that fails then passes on the same
-   `inputHash` is recorded in `.ci/flaky.json`, removed from the hard gate,
-   and reported as advisory until a human clears it.
+5. ✅ **Affected-test selection** (§4.2; 2026-09-05) — `unit tests` is two gates:
+   `Unit tests (affected)` (the co-located tests of everything
+   `impact_analysis` reaches from the diff, on every non-`main` commit) and
+   `Unit tests` (all, postsubmit on `main`). The decision lands on the receipt
+   as `selection`; an empty impact set over a real source change is read as a
+   STALE graph and falls back to the full run (`all (graph stale)`), because on
+   presubmit there is no second net. Pure half + tripwire:
+   `selectAffectedTests` in `scripts/ci/ci-core.mjs`.
+6. ✅ **Flake quarantine** (§4.3; 2026-09-05) — a gate that both failed and
+   passed on the SAME `inputHash` is recorded in `.ci/flaky.json`; its next
+   failure on that hash is `advisory-fail`, named in the receipt's
+   `quarantined` and printed by `ci-status`. Entries are only ever added —
+   clearing one is a human decision. **Granularity is (gate, inputHash), not
+   (test, inputHash):** per-test quarantine needs the TAP reporter parsed, which
+   is the next cut. Nothing is quarantined yet — it needs a week of receipts,
+   which is the point of building it now.
 7. ✅ `scripts/ci-status.mjs` (2026-09-04) — print the last N receipts (with cache hit ratio
    and quarantine list); wired into AGENTS.md / CLAUDE.md as the thing to READ instead
    of re-running gates. Exit 0 = HEAD green, 1 = HEAD red, 2 = no receipt yet.

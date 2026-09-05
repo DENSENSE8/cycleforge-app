@@ -56,12 +56,16 @@ import { fileURLToPath } from 'node:url';
 import {
   CI_PATHS,
   buildReceipt,
+  detectFlakes,
   gateInputHash,
   gateSlug,
   isFirstRed,
+  isQuarantined,
+  mergeFlakes,
   parseQueue,
   profileForBranch,
   queueWithout,
+  selectAffectedTests,
   summarizeGates,
   formatDuration,
 } from './ci/ci-core.mjs';
@@ -69,6 +73,7 @@ import { buildGates, gatesForProfile } from './verify-profile.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WORKTREES = process.env.CYCLEFORGE_CI_WORKTREES ?? '/var/tmp/cycleforge-ci';
+const GARISEK_OS = process.env.GARISEK_OS_ROOT ?? '/home/michaelgarisek/Projects/Garisek-OS';
 /** A gate that runs longer than this is a hang, not a slow gate. */
 const GATE_TIMEOUT_MS = 45 * 60 * 1000;
 /** A lock older than this belongs to a runner that died; break it. */
@@ -165,6 +170,49 @@ function previousReceiptOnBranch(branch, excludeSha) {
     .sort((a, b) => Date.parse(b.finishedAt) - Date.parse(a.finishedAt))[0] ?? null;
 }
 
+// ─── flake quarantine (§4.3) ─────────────────────────────────────────────────
+
+function readFlaky() {
+  const file = abs(CI_PATHS.flaky);
+  if (!existsSync(file)) return [];
+  try {
+    const data = JSON.parse(readFileSync(file, 'utf8'));
+    return Array.isArray(data) ? data : (data.entries ?? []);
+  } catch {
+    return [];
+  }
+}
+
+function readHistory(slug) {
+  const file = abs(path.join(CI_PATHS.history, `${slug}.jsonl`));
+  if (!existsSync(file)) return [];
+  return readFileSync(file, 'utf8')
+    .split('\n')
+    .filter(Boolean)
+    .map((line) => {
+      try {
+        return JSON.parse(line);
+      } catch {
+        return null;
+      }
+    })
+    .filter(Boolean);
+}
+
+/**
+ * Fold this gate's history into `.ci/flaky.json`.
+ *
+ * Entries are only ever ADDED here. A gate that has stopped flaking is a claim
+ * a person makes by clearing the file — the runner has no way to know the
+ * difference between "fixed" and "has not flaked yet today".
+ */
+function recordFlakes(gateName, slug) {
+  const found = detectFlakes(gateName, readHistory(slug));
+  if (found.length === 0) return;
+  const merged = mergeFlakes(readFlaky(), found);
+  writeFileSync(abs(CI_PATHS.flaky), `${JSON.stringify(merged, null, 2)}\n`);
+}
+
 function notify(title, body) {
   spawnSync('notify-send', ['-a', 'cycleforge-ci', title, body], { stdio: 'ignore' });
 }
@@ -207,6 +255,101 @@ function untrackedIn(wt) {
     .filter((s) => s && s !== 'node_modules' && s !== '.env');
 }
 
+/**
+ * Files this commit changed, against its first parent. A root commit changes
+ * everything, which correctly forces the full run.
+ */
+function changedFiles(sha, wt) {
+  const parent = spawnSync('git', ['rev-parse', '--verify', `${sha}^`], { cwd: wt, encoding: 'utf8' });
+  if (parent.status !== 0) return null;
+  return git(['diff', '--name-only', `${sha}^`, sha], wt)
+    .split('\n')
+    .map((f) => f.trim())
+    .filter(Boolean);
+}
+
+/**
+ * The union of `impact_analysis` over the changed files — the dependency graph
+ * this repo already owns, used for test selection instead of an ML guess
+ * (§4.2: at this size the graph is exact and cheap).
+ *
+ * A file the graph does not know contributes nothing, and the CALLER treats an
+ * empty union over real source changes as a stale index and falls back to the
+ * full run. Silence and "nothing depends on this" must not look the same.
+ */
+function impactedFiles(changed) {
+  const cg = path.join(GARISEK_OS, 'tools/code-graph/cg.mjs');
+  if (!existsSync(cg)) return { files: [], reachable: false };
+  const out = new Set();
+  let reachable = false;
+  for (const file of changed) {
+    if (!file.startsWith('src/') || !/\.tsx?$/.test(file)) continue;
+    const res = spawnSync(process.execPath, [cg, 'impact', `file:${file}`, '--depth', '3'], {
+      encoding: 'utf8',
+      timeout: 60_000,
+      maxBuffer: 32 * 1024 * 1024,
+    });
+    if (res.status !== 0) continue;
+    try {
+      const data = JSON.parse(res.stdout);
+      if (Array.isArray(data?.files)) {
+        reachable = true;
+        for (const entry of data.files) if (entry?.file) out.add(entry.file);
+      }
+    } catch {
+      /* a non-JSON answer is a missing index, not an impact of zero */
+    }
+  }
+  return { files: [...out], reachable };
+}
+
+/**
+ * Turn the `Unit tests` gate into `unit:affected` for a presubmit run.
+ *
+ * Returns null when the selection cannot be trusted (stale graph) or when the
+ * profile already runs everything — the caller then keeps the full gate. The
+ * decision lands on the receipt as `selection`, so a run that under-tested can
+ * always be told apart from one that had nothing to test.
+ */
+function affectedUnitGate({ gate, sha, wt }) {
+  const changed = changedFiles(sha, wt);
+  if (!changed) return { gate: null, selection: 'all (root commit)' };
+  const { files: impacted, reachable } = impactedFiles(changed);
+  const selection = selectAffectedTests({
+    changed,
+    impacted: reachable ? impacted : [],
+    hasTest: (file) => existsSync(path.join(wt, file)),
+  });
+  if (selection.stale) return { gate: null, selection: 'all (graph stale)' };
+  if (selection.files.length === 0 && !changed.some((f) => f.startsWith('src/'))) {
+    return { gate: 'skip', selection: 'none (no source changed)' };
+  }
+  if (selection.files.length === 0) return { gate: null, selection: 'all (nothing selected)' };
+  return {
+    gate: {
+      ...gate,
+      name: 'Unit tests (affected)',
+      cmd: 'node',
+      args: [
+        '--test',
+        '--test-concurrency=4',
+        '--require',
+        './scripts/register-server-only-shim.cjs',
+        '--import',
+        'tsx',
+        '--test-reporter',
+        'spec',
+        ...selection.files,
+      ],
+      // Dynamic, and deliberately so: the cache key must cover exactly the
+      // tests this run selected, or a later commit with a different selection
+      // would hit a pass that never covered it.
+      inputs: [...selection.files, 'pnpm-lock.yaml', 'package.json'],
+    },
+    selection: selection.reason,
+  };
+}
+
 function runGate({ gate, wt, sha, env }) {
   const slug = gateSlug(gate.name);
   const logDir = abs(path.join(CI_PATHS.logs, sha));
@@ -243,7 +386,9 @@ async function runOne({ sha: rawSha, branch: rawBranch, profile: forcedProfile, 
   const warnings = [];
   let wt = null;
   let untracked = [];
+  let selection = null;
   const gates = [];
+  const quarantined = [];
   const eslintCacheDir = path.join(WORKTREES, '.eslint-cache', sha);
 
   try {
@@ -260,7 +405,28 @@ async function runOne({ sha: rawSha, branch: rawBranch, profile: forcedProfile, 
       NEXT_TELEMETRY_DISABLED: '1',
       CI_SHA: sha,
     };
-    const list = gatesForProfile(profile, buildGates(wt, { eslintCacheDir }));
+    const allGates = buildGates(wt, { eslintCacheDir });
+    const list = [...gatesForProfile(profile, allGates)];
+
+    /*
+     * Presubmit runs the tests the change can REACH; postsubmit on `main` runs
+     * everything (§4.2). Selection buys cost, not correctness — the full run is
+     * what covers the fraction the graph misses — so the decision is recorded
+     * on the receipt either way, and a stale graph falls back rather than
+     * quietly testing less.
+     */
+    if (profile === 'full') {
+      selection = 'all (postsubmit)';
+    } else {
+      const template = allGates.find((g) => g.name === 'Unit tests');
+      const affected = affectedUnitGate({ gate: template, sha, wt });
+      selection = affected.selection;
+      if (affected.gate && affected.gate !== 'skip') list.push(affected.gate);
+      else if (affected.gate === null) list.push(template);
+      log(`  unit selection: ${selection}`);
+    }
+
+    const flaky = readFlaky();
 
     for (const gate of list) {
       const slug = gateSlug(gate.name);
@@ -288,6 +454,14 @@ async function runOne({ sha: rawSha, branch: rawBranch, profile: forcedProfile, 
 
       log(`  ${gate.name}: running…`);
       const result = runGate({ gate, wt, sha, env });
+      // A gate that has already disagreed with itself on THESE inputs is noise,
+      // not signal: it reports, it is named on the receipt, and it does not
+      // block. Advisory until a human clears `.ci/flaky.json`.
+      if (result.status === 'fail' && isQuarantined(flaky, gate.name, inputHash)) {
+        result.status = 'advisory-fail';
+        quarantined.push({ gate: gate.name, inputHash, reason: 'flaky on identical inputs' });
+        log(`  ${gate.name}: FAILED but quarantined (advisory)`);
+      }
       gates.push({ gate: gate.name, slug, inputHash, cached: 'ran', ...result, command });
       log(`  ${gate.name}: ${result.status} in ${formatDuration(result.durationMs)}`);
 
@@ -304,6 +478,9 @@ async function runOne({ sha: rawSha, branch: rawBranch, profile: forcedProfile, 
             `${JSON.stringify({ gate: gate.name, inputHash, status: result.status, durationMs: result.durationMs, logPath: result.logPath, sha, at: new Date().toISOString() }, null, 2)}\n`,
           );
         }
+        // Same inputs, two answers ⇒ flaky. Recorded now so the NEXT run of
+        // this gate is advisory rather than blocking.
+        recordFlakes(gate.name, slug);
       }
     }
   } catch (err) {
@@ -336,6 +513,8 @@ async function runOne({ sha: rawSha, branch: rawBranch, profile: forcedProfile, 
     untracked,
     warnings,
     gates,
+    selection,
+    quarantined,
   });
   mkdirSync(abs(CI_PATHS.receipts), { recursive: true });
   writeFileSync(abs(path.join(CI_PATHS.receipts, `${sha}.json`)), `${JSON.stringify(receipt, null, 2)}\n`);

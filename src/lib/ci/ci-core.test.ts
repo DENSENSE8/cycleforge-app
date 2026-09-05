@@ -20,14 +20,18 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   buildReceipt,
+  detectFlakes,
   gateInputHash,
   gateSlug,
   hitRatio,
   isFirstRed,
+  isQuarantined,
+  mergeFlakes,
   parseQueue,
   profileForBranch,
   queueWithout,
   receiptOk,
+  selectAffectedTests,
 } from '../../../scripts/ci/ci-core.mjs';
 import { ALL_GATES, buildGates, gatesForProfile } from '../../../scripts/verify-profile.mjs';
 
@@ -202,5 +206,94 @@ describe('ci-core — profile, receipt, queue', () => {
     const later = `${text}\nddddddd main 6\n`;
     assert.equal(queueWithout(later, ['aaaaaaa', 'bbbbbbb']), 'ccccccc detached 4\nnot-a-sha main 5\nddddddd main 6\n');
     assert.equal(queueWithout('aaaaaaa main 1\n', ['aaaaaaa']), '');
+  });
+});
+
+describe('ci-core — affected-test selection (§4.2)', () => {
+  const hasTest = (file: string) =>
+    ['src/lib/a.test.ts', 'src/lib/b.test.ts', 'src/lib/c.test.ts'].includes(file);
+
+  it('selects the co-located tests of everything the change reaches', () => {
+    const { files, stale } = selectAffectedTests({
+      changed: ['src/lib/a.ts'],
+      impacted: ['src/lib/a.ts', 'src/lib/b.ts', 'src/lib/nope.ts'],
+      hasTest,
+    });
+    assert.equal(stale, false);
+    assert.deepEqual(files, ['src/lib/a.test.ts', 'src/lib/b.test.ts']);
+  });
+
+  it('always runs a test the change edited, whatever it covers', () => {
+    const { files } = selectAffectedTests({
+      changed: ['src/lib/c.test.ts'],
+      impacted: ['src/lib/c.test.ts'],
+      hasTest,
+    });
+    assert.deepEqual(files, ['src/lib/c.test.ts']);
+  });
+
+  it('selects NOTHING for a docs-only commit', () => {
+    const { files, stale, reason } = selectAffectedTests({
+      changed: ['docs/plan.md', 'README.md'],
+      impacted: [],
+      hasTest,
+    });
+    assert.deepEqual(files, []);
+    assert.equal(stale, false);
+    assert.match(reason, /no source files changed/);
+  });
+
+  it('falls back to the FULL run when the graph reached nothing from a source change', () => {
+    // The dangerous case: an empty impact set and a real source edit are
+    // indistinguishable from "nothing depends on this", and presubmit has no
+    // second net. Under-selecting silently is the one outcome not allowed.
+    const { files, stale, reason } = selectAffectedTests({
+      changed: ['src/lib/brand-new.ts'],
+      impacted: [],
+      hasTest,
+    });
+    assert.deepEqual(files, []);
+    assert.equal(stale, true);
+    assert.match(reason, /graph stale/);
+  });
+});
+
+describe('ci-core — flake quarantine (§4.3)', () => {
+  const history = [
+    { inputHash: 'h1', sha: 'aaa', status: 'fail', at: '2026-09-05T00:00:00Z' },
+    { inputHash: 'h1', sha: 'bbb', status: 'pass', at: '2026-09-05T01:00:00Z' },
+    { inputHash: 'h2', sha: 'ccc', status: 'fail', at: '2026-09-05T02:00:00Z' },
+    { inputHash: 'h3', sha: 'ddd', status: 'pass', at: '2026-09-05T03:00:00Z' },
+  ];
+
+  it('flags a gate that answered twice on identical inputs, and only that one', () => {
+    const found = detectFlakes('Unit tests', history);
+    assert.equal(found.length, 1);
+    assert.equal(found[0].inputHash, 'h1');
+    assert.deepEqual(found[0].outcomes, ['fail', 'pass']);
+    assert.deepEqual(found[0].seen, ['aaa', 'bbb']);
+  });
+
+  it('does not flag a gate that consistently fails — that is a real red', () => {
+    const consistent = history.filter((h) => h.inputHash === 'h2');
+    assert.deepEqual(detectFlakes('Unit tests', consistent), []);
+  });
+
+  it('quarantine is exact: gate AND input hash, never a whole gate forever', () => {
+    const flaky = detectFlakes('Unit tests', history);
+    assert.equal(isQuarantined(flaky, 'Unit tests', 'h1'), true);
+    assert.equal(isQuarantined(flaky, 'Unit tests', 'h2'), false, 'a different input is not quarantined');
+    assert.equal(isQuarantined(flaky, 'Lint', 'h1'), false, 'a different gate is not quarantined');
+    assert.equal(isQuarantined(flaky, 'Unit tests', null), false, 'an unhashable gate cannot be quarantined');
+  });
+
+  it('merging only ever adds — clearing an entry is a human decision', () => {
+    const stored = [{ gate: 'Lint', inputHash: 'old', outcomes: ['fail', 'pass'], seen: ['zzz'] }];
+    const merged = mergeFlakes(stored, detectFlakes('Unit tests', history));
+    assert.equal(merged.length, 2);
+    assert.ok(merged.some((f) => f.gate === 'Lint' && f.inputHash === 'old'));
+    assert.ok(merged.some((f) => f.gate === 'Unit tests' && f.inputHash === 'h1'));
+    // Re-merging the same finding updates it in place rather than duplicating.
+    assert.equal(mergeFlakes(merged, detectFlakes('Unit tests', history)).length, 2);
   });
 });
