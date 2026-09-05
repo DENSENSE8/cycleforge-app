@@ -582,7 +582,12 @@ body {
   --sidebar-foreground: var(--ds-color-text-primary);
   --sidebar-primary: var(--ds-color-text-primary);
   --sidebar-primary-foreground: var(--ds-color-background-surface);
-  --sidebar-accent: var(--ds-color-surface-hover);
+  /* Hover and active must both step against EITHER plane the spine renders on:
+     the docked column (canvas #eef2f7) and the hover-peek card (white). A wash
+     lighter than the ground (the old surface-hover) vanished on the card and
+     out-shouted the current page on the column. Sunken then strong steps down
+     from both. */
+  --sidebar-accent: var(--ds-color-surface-sunken);
   --sidebar-accent-foreground: var(--ds-color-text-primary);
   --sidebar-border: var(--ds-color-border-subtle);
   --sidebar-ring: var(--ds-color-accent-border);

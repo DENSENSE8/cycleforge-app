@@ -8,7 +8,7 @@
  * SidebarGroupLabel; pin-this-page and the per-row X share one trail slot.
  */
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useDroppable } from '@dnd-kit/core';
 import {
@@ -22,6 +22,8 @@ import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import {
   MASTER_NAV_PIN_DROP_ID,
+  MASTER_NAV_PIN_EDGE_BOTTOM,
+  MASTER_NAV_PIN_EDGE_TOP,
   isStructuralSpinePinHref,
   pinRowDragId,
 } from '@/lib/quick-access/nav-pin';
@@ -78,6 +80,30 @@ function resolvePinIcon(pin: PinnedPage): SidebarIconComponent {
   return Pin;
 }
 
+/**
+ * A drop strip at one end of the shelf. Paints an insertion line while the
+ * pointer is over it, so the landing slot is visible before release.
+ */
+function PinEdgeDropStrip({ id, label }: { id: string; label: string }) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return (
+    <li
+      ref={setNodeRef}
+      aria-label={label}
+      data-spine-pin-edge
+      className="relative -my-1 h-2 list-none"
+    >
+      <span
+        aria-hidden
+        className={cn(
+          'pointer-events-none absolute inset-x-2 top-1/2 h-px -translate-y-1/2 transition-colors',
+          isOver ? 'bg-text-default' : 'bg-transparent',
+        )}
+      />
+    </li>
+  );
+}
+
 function SortablePinRow({
   pin,
   slot,
@@ -94,7 +120,6 @@ function SortablePinRow({
   const RowIcon = resolvePinIcon(pin);
   const label = displayQuickAccessLabel(pin.href, pin.label);
   const {
-    attributes,
     listeners,
     setNodeRef,
     transform,
@@ -118,29 +143,38 @@ function SortablePinRow({
       }}
       className={cn('relative', isDragging && 'opacity-40')}
     >
-      <SidebarMenuButton
-        {...attributes}
-        {...listeners}
-        isActive={active}
-        onClick={onNavigate}
-        aria-label={hint ? `Go to ${label} (${hint})` : `Go to ${label}`}
-        aria-current={active ? 'page' : undefined}
-        className="touch-none"
-      >
-        <RowIcon className={navIconStrokeClass(SPINE_ROW_ICON_CLASS)} />
-        <span title={label}>{label}</span>
-      </SidebarMenuButton>
-      <SidebarMenuAction
-        showOnHover
-        aria-label={`Unpin ${label}`}
-        className={SPINE_PINNED_ROW_ACTION_CLASS}
-        onClick={(e) => {
-          e.stopPropagation();
-          onUnpin();
-        }}
-      >
-        <X className={SPINE_PINNED_TRAIL_GLYPH_CLASS} />
-      </SidebarMenuAction>
+      {/* The chord is carried in the tooltip, not painted on the row. The
+          shortcut-display cohort refuses standing keycaps, and the spine has no
+          CTA strip to paint a HotkeyGlyph on — a tooltip is the one channel
+          that law leaves open for teaching ⌘1–9. */}
+      <HoverTooltip label={hint ? `${label} · ${hint}` : label} asChild>
+        <SidebarMenuButton
+          // `listeners` only — see the note in SidebarNavList: dnd-kit's
+          // `attributes` announce a space-bar pickup that no longer exists.
+          {...listeners}
+          isActive={active}
+          onClick={onNavigate}
+          aria-label={hint ? `Go to ${label} (${hint})` : `Go to ${label}`}
+          aria-current={active ? 'page' : undefined}
+          className="touch-none"
+        >
+          <RowIcon className={navIconStrokeClass(SPINE_ROW_ICON_CLASS)} />
+          <span>{label}</span>
+        </SidebarMenuButton>
+      </HoverTooltip>
+      <HoverTooltip label={`Unpin ${label}`} asChild>
+        <SidebarMenuAction
+          showOnHover
+          aria-label={`Unpin ${label}`}
+          className={SPINE_PINNED_ROW_ACTION_CLASS}
+          onClick={(e) => {
+            e.stopPropagation();
+            onUnpin();
+          }}
+        >
+          <X className={SPINE_PINNED_TRAIL_GLYPH_CLASS} />
+        </SidebarMenuAction>
+      </HoverTooltip>
     </SidebarMenuItem>
   );
 }
@@ -155,6 +189,49 @@ export function MasterNavPinnedCluster({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { settings, pinAt, unpin } = useQuickAccess();
+
+  /**
+   * The last unpin, held so it can be taken back.
+   *
+   * Unpinning is one click on a control that only appears on hover, and the
+   * shelf it edits is an arrangement the operator built by hand — the cheapest
+   * misclick in the spine destroys the most deliberate state in it. The row
+   * does not vanish silently: its slot is held open by an undo row until the
+   * operator moves on. Inline, in the slot it came from — not a toast, and not
+   * a second surface to look at.
+   */
+  const [undoable, setUndoable] = useState<{ pin: PinnedPage; index: number } | null>(
+    null,
+  );
+  const undoTimer = useRef<number | null>(null);
+  const forgetUndo = useCallback(() => {
+    if (undoTimer.current !== null) window.clearTimeout(undoTimer.current);
+    undoTimer.current = null;
+    setUndoable(null);
+  }, []);
+  useEffect(() => () => {
+    if (undoTimer.current !== null) window.clearTimeout(undoTimer.current);
+  }, []);
+
+  const handleUnpin = useCallback(
+    (pin: PinnedPage, index: number) => {
+      unpin(pin.id);
+      if (undoTimer.current !== null) window.clearTimeout(undoTimer.current);
+      setUndoable({ pin, index });
+      undoTimer.current = window.setTimeout(() => {
+        undoTimer.current = null;
+        setUndoable(null);
+      }, 12_000);
+    },
+    [unpin],
+  );
+
+  const handleUndo = useCallback(() => {
+    if (!undoable) return;
+    const { pin, index } = undoable;
+    forgetUndo();
+    pinAt({ href: pin.href, label: pin.label, iconKey: pin.iconKey }, index);
+  }, [undoable, forgetUndo, pinAt]);
   const { setNodeRef, isOver } = useDroppable({ id: MASTER_NAV_PIN_DROP_ID });
   const pinned = settings.pinned;
   const currentHref = resolveQuickAccessHref(pathname, searchParams);
@@ -214,13 +291,22 @@ export function MasterNavPinnedCluster({
             items={pinIds.map((id) => pinRowDragId(id))}
             strategy={verticalListSortingStrategy}
           >
+            {pinned.length > 0 ? (
+              <PinEdgeDropStrip
+                id={MASTER_NAV_PIN_EDGE_TOP}
+                label="Move to the top of Pinned"
+              />
+            ) : null}
             {pinned.length === 0 ? (
               // NOT hover-gated. An empty state that only appears once you are
               // already hovering the thing you do not know exists teaches
               // nobody — it is the one row in this cluster that has to speak
               // first. (The per-row X and pin-this-page stay on hover: those
               // are actions on rows you can already see.)
-              <p className="px-2 py-1.5 text-role-caption text-text-soft">
+              <p
+                data-spine-pin-empty
+                className="px-2 py-1.5 text-role-caption text-text-soft"
+              >
                 Drag any page here to pin it.
               </p>
             ) : (
@@ -233,11 +319,33 @@ export function MasterNavPinnedCluster({
                   onNavigate={() => {
                     router.push(p.href);
                   }}
-                  onUnpin={() => unpin(p.id)}
+                  onUnpin={() => handleUnpin(p, index)}
                 />
               ))
             )}
+            {pinned.length > 0 ? (
+              <PinEdgeDropStrip
+                id={MASTER_NAV_PIN_EDGE_BOTTOM}
+                label="Move to the bottom of Pinned"
+              />
+            ) : null}
           </SortableContext>
+          {undoable ? (
+            <SidebarMenuItem data-spine-pin-undo>
+              <div className="flex w-full items-center gap-2 px-2 py-1">
+                <span className="min-w-0 flex-1 truncate text-role-caption text-text-soft">
+                  Unpinned {displayQuickAccessLabel(undoable.pin.href, undoable.pin.label)}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleUndo}
+                  className="ds-raw-button shrink-0 text-role-caption font-medium text-text-default underline-offset-2 hover:underline"
+                >
+                  Undo
+                </button>
+              </div>
+            </SidebarMenuItem>
+          ) : null}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>

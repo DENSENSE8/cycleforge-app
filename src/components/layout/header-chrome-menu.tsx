@@ -243,7 +243,7 @@ export const HeaderChromeMenuItem = forwardRef<HTMLButtonElement, HeaderChromeMe
           // `font-semibold text-text-default`, same weight/ink as
           // RailRowBody's title line, at `role-title` (18px) — matching the
           // spine's own settled size (`SidebarNavList.tsx` —
-          // `SPINE_ROW_FACE_CLASS` docblock has the full sizing history).
+          // `SPINE_ROW_DENSITY` docblock has the full sizing history).
           // These rows are the SAME destinations as the spine, opened from a
           // second door (the header face), so they take the spine row's own
           // size — `role-nav` (13px). They ran at `role-title` (18px) until

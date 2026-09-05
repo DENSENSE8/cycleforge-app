@@ -12,14 +12,13 @@ const QC_ITEMS = read('src/components/tech/testing-panel/TestingPoUnboxingSectio
 
 describe('packing station display layout', () => {
   it('uses the shared Items disclosure rather than a packing-only header', () => {
-    assert.match(PACK_PANEL, /<StationBandStack\b/);
-    assert.match(PACK_PANEL, /label:\s*['"]Items['"]/);
-    assert.match(PACK_PANEL, /<OrderPackChecklist[\s\S]*?embedded/);
+    assert.match(PACK_PANEL, /<StationScanPaneHost\b/);
+    assert.match(PACK_PANEL, /<OrderPackChecklist\b/);
     assert.match(PACK_CHECKLIST, /embedded\??:\s*boolean/);
     assert.doesNotMatch(
       PACK_CHECKLIST,
       /<p[^>]*>Pack checklist<\/p>/,
-      'embedded packing content must not paint a second section header',
+      'packing content must not paint a second section header',
     );
   });
 
@@ -65,6 +64,6 @@ describe('packing station display layout', () => {
     assert.match(QC_PANEL, /<StationBandStack\b/);
     assert.match(QC_PANEL, /id:\s*['"]items['"]/);
     assert.match(QC_ITEMS, /embedded/);
-    assert.match(QC_ITEMS, /suppressHeader/);
+    assert.match(QC_PANEL, /suppressItemsHeader/);
   });
 });

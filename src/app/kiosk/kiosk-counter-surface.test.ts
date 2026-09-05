@@ -38,14 +38,24 @@ const SOFTENED_ROLES: CornerRole[] = ['chip', 'row', 'control', 'field', 'card',
 
 describe('kiosk counter scale — radius', () => {
   it('softens every content role away from the flushed ops ladder', () => {
+    assert.equal(cornerClass('flush'), 'rounded-none', 'ops flush stays scan-station bleed');
     for (const role of SOFTENED_ROLES) {
-      assert.equal(cornerClass(role), 'rounded-none', `ops ${role} must stay flush`);
+      assert.notEqual(
+        cornerClass(role),
+        'rounded-none',
+        `ops ${role} is the desk ladder, not scan-station flush`,
+      );
       assert.notEqual(
         counterCorner(role),
         'rounded-none',
         `counter ${role} must not be flush — that is the whole point of this module`,
       );
     }
+    assert.notEqual(
+      counterCorner('chip'),
+      cornerClass('chip'),
+      'counter chip is a softer sibling of the ops chip, not the same rung',
+    );
   });
 
   it('keeps `flush` flush — column seams are structure, not components', () => {

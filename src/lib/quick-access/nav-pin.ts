@@ -20,6 +20,23 @@ export const MASTER_NAV_PIN_DROP_ID = 'master-nav-pin-drop';
  */
 export const MASTER_NAV_PIN_RETURN_ID = 'master-nav-pin-return';
 
+/**
+ * The two ends of the shelf, as their own drop targets.
+ *
+ * Without them the extremes were unreachable: the cluster container and the pin
+ * rows are both drop targets, so a release in the group's own padding — the
+ * band above the first row, or below the last — resolved to the CONTAINER,
+ * whose only answer is "append". Dropping a pin at the top of the shelf
+ * therefore sent it to the bottom, and the first slot could only be reached by
+ * repeatedly swapping upward one row at a time.
+ *
+ * A thin strip at each end answers precisely, and paints an insertion line
+ * while the pointer is over it, so the operator sees where the row will land
+ * before releasing.
+ */
+export const MASTER_NAV_PIN_EDGE_TOP = 'master-nav-pin-edge-top';
+export const MASTER_NAV_PIN_EDGE_BOTTOM = 'master-nav-pin-edge-bottom';
+
 export type NavPinDragData = {
   type: 'nav';
   href: string;
@@ -58,13 +75,25 @@ export function isStructuralSpinePinHref(href: string): boolean {
 }
 
 export function isPinDropOverId(overId: string): boolean {
-  return overId === MASTER_NAV_PIN_DROP_ID || overId.startsWith('pin:');
+  return (
+    overId === MASTER_NAV_PIN_DROP_ID ||
+    overId === MASTER_NAV_PIN_EDGE_TOP ||
+    overId === MASTER_NAV_PIN_EDGE_BOTTOM ||
+    overId.startsWith('pin:')
+  );
+}
+
+/** An end-of-shelf strip answers with an exact slot; the container only appends. */
+export function isPinEdgeOverId(overId: string): boolean {
+  return overId === MASTER_NAV_PIN_EDGE_TOP || overId === MASTER_NAV_PIN_EDGE_BOTTOM;
 }
 
 export function pinIndexFromOverId(
   overId: string,
   pinIds: readonly string[],
 ): number | null {
+  if (overId === MASTER_NAV_PIN_EDGE_TOP) return 0;
+  if (overId === MASTER_NAV_PIN_EDGE_BOTTOM) return pinIds.length;
   if (overId === MASTER_NAV_PIN_DROP_ID) return pinIds.length;
   if (!overId.startsWith('pin:')) return null;
   const id = overId.slice('pin:'.length);

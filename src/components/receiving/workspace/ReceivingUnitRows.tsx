@@ -198,16 +198,19 @@ export function ReceivingUnitRows({
 
   const activeGrade = gradeFor(serialAt(selectedIndex), selectedIndex);
   const lastEmittedRef = useRef<string | null | undefined>(undefined);
+  const firstEmptyRef = useRef(firstEmpty);
+  firstEmptyRef.current = firstEmpty;
+  const defaultAbsentReasonRef = useRef(defaultAbsentReason);
+  defaultAbsentReasonRef.current = defaultAbsentReason;
 
   useEffect(() => {
-    setSelectedIndex(firstEmpty);
-    setLastAbsentReason(defaultAbsentReason);
+    setSelectedIndex(firstEmptyRef.current);
+    setLastAbsentReason(defaultAbsentReasonRef.current ?? null);
     setForceUnitMode(false);
     setManageOpen(false);
     setLineScan("");
     lastEmittedRef.current = undefined;
     // Only re-seed on line change, not on every serial add.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lineId]);
 
   const submitLineScan = () => {
@@ -290,10 +293,11 @@ export function ReceivingUnitRows({
 
   const applyBulk = useCallback(
     (input: {
-      primaryGrade: string;
+      primaryGrade: string | null;
       primaryCount: number;
       secondaryGrade: string | null;
     }) => {
+      if (!input.primaryGrade) return;
       onConditionChange?.(input.primaryGrade);
       if (input.secondaryGrade) {
         markReceivingUnitsConditionSplit(

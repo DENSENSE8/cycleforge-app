@@ -17,7 +17,6 @@ import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import path from 'node:path';
 import { describe, it } from 'node:test';
 import {
-  ADMIN_TABLE_DEBT,
   HAND_HTML_TABLE_ALLOW,
   HAND_HTML_TABLE_DEBT,
   COMPOUND_SKELETON_FILTER_DEBT,
@@ -262,22 +261,20 @@ describe('one table engine — the descriptor carries data, not behavior', () =>
     );
   });
 
-  it('AdminTable mounts never grow — remaining sites are named debt', () => {
+  it('AdminTable does not return — DataTable is the only engine', () => {
     const mounts = SOURCES.filter((file) =>
       /from ['"]@\/design-system\/components\/AdminTable['"]/.test(read(file)),
     ).sort();
-    const allowed = new Set(ADMIN_TABLE_DEBT.map((d) => d.file));
-    const rogue = mounts.filter((file) => !allowed.has(file));
     assert.deepEqual(
-      rogue,
+      mounts,
       [],
-      `new AdminTable mount — a second table engine. Port it or name it in ADMIN_TABLE_DEBT:\n${rogue.join('\n')}`,
+      `AdminTable is gone. Mount DataTable, do not revive a second engine:\n${mounts.join('\n')}`,
     );
-    for (const { file, why } of ADMIN_TABLE_DEBT) {
-      assert.ok(existsSync(path.join(REPO, file)), `${file} gone — delete it from ADMIN_TABLE_DEBT`);
-      assert.ok(mounts.includes(file), `${file} no longer imports AdminTable — delete the debt row`);
-      assert.ok(why.length > 40, `${file}: name the fork, not just the file`);
-    }
+    assert.equal(
+      existsSync(path.join(REPO, 'src/design-system/components/AdminTable/AdminTable.tsx')),
+      false,
+      'AdminTable.tsx came back — delete it; DataTable is the engine',
+    );
   });
 
   it('raw HTML product tables never grow — remaining sites are named debt', () => {

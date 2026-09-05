@@ -701,7 +701,7 @@ export function StationScanBar({
             PRIMARY_CHROME_ROW_FACE,
             bottomRule,
             // Focus brightens the shell rule (input is border-0).
-            theme ? `focus-within:border-b-${theme}-600` : null,
+            theme ? `focus-within:border-b-${theme}-600` : null, // ds-allow-focus: themed scan-bar underline
           )}
         >
           {fieldRow}

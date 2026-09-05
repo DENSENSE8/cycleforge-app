@@ -1,15 +1,15 @@
 {
   "project": "cycleforge-app",
   "target": "component:src/components/tables/TableStatusBar.tsx:TableStatusBar",
-  "files_affected": 36,
-  "total_symbols": 36,
+  "files_affected": 41,
+  "total_symbols": 41,
   "files": [
     {
-      "file": "src/components/labels/LabelsProductsWorkspace.tsx",
+      "file": "src/components/photos/PhotoLibraryPage.tsx",
       "nearest_depth": 1,
       "affected_symbols": 1,
       "symbols": [
-        "LabelsProductsWorkspace"
+        "PhotoLibraryPage"
       ]
     },
     {
@@ -29,11 +29,27 @@
       ]
     },
     {
-      "file": "src/components/photos/PhotoLibraryPage.tsx",
+      "file": "src/components/labels/LabelsProductsWorkspace.tsx",
       "nearest_depth": 1,
       "affected_symbols": 1,
       "symbols": [
-        "PhotoLibraryPage"
+        "LabelsProductsWorkspace"
+      ]
+    },
+    {
+      "file": "src/components/dashboard/orders-queue/OrdersGridHost.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "OrdersGridHost"
+      ]
+    },
+    {
+      "file": "src/components/inventory/PulseView.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "PulseView"
       ]
     },
     {
@@ -133,11 +149,35 @@
       ]
     },
     {
+      "file": "src/components/settings/ai-usage/AiUsageTable.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "AiUsageTable"
+      ]
+    },
+    {
       "file": "src/components/settings/audit/AuditLogTable.tsx",
       "nearest_depth": 2,
       "affected_symbols": 1,
       "symbols": [
         "AuditLogTable"
+      ]
+    },
+    {
+      "file": "src/components/settings/sections/KioskDevicesSection.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "KioskDevicesSection"
+      ]
+    },
+    {
+      "file": "src/components/settings/sections/SessionsSection.tsx",
+      "nearest_depth": 2,
+      "affected_symbols": 1,
+      "symbols": [
+        "SessionsSection"
       ]
     },
     {
@@ -277,19 +317,19 @@
       ]
     },
     {
-      "file": "src/components/dashboard/orders-queue/OrdersGridHost.tsx",
+      "file": "src/app/settings/staff/StaffTable.tsx",
       "nearest_depth": 2,
       "affected_symbols": 1,
       "symbols": [
-        "OrdersGridHost"
+        "StaffTable"
       ]
     },
     {
-      "file": "src/components/inventory/PulseView.tsx",
+      "file": "src/components/admin/sourcing/CompatibilityManagementTab.tsx",
       "nearest_depth": 2,
       "affected_symbols": 1,
       "symbols": [
-        "PulseView"
+        "CompatibilityManagementTab"
       ]
     }
   ]

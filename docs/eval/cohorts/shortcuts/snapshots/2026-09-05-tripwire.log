@@ -1,20 +1,20 @@
 ▶ selection status-bar hotkeys
-  ✔ fires a lettered verb when nothing suppresses it (27.088202ms)
-  ✔ does NOT fire on a chord — ⌘C must stay native copy (2.451287ms)
-  ✔ goes INERT while a scanner is armed (2.352883ms)
-  ✔ comes back the moment the scan bar unmounts (1.931547ms)
-  ✔ drops every character of a wedge payload, not just the bound ones (3.545993ms)
-✔ selection status-bar hotkeys (38.733416ms)
+  ✔ fires a lettered verb when nothing suppresses it (28.505862ms)
+  ✔ does NOT fire on a chord — ⌘C must stay native copy (2.675415ms)
+  ✔ goes INERT while a scanner is armed (1.916485ms)
+  ✔ comes back the moment the scan bar unmounts (2.839437ms)
+  ✔ drops every character of a wedge payload, not just the bound ones (4.405455ms)
+✔ selection status-bar hotkeys (41.769234ms)
 ▶ shortcut-display cohort (SoT = KeyboardKey inside-right overlays)
-  ✔ engine files exist (1.47762ms)
-  ✔ KeyboardKey is gray face + black letter SoT (0.675739ms)
-  ✔ status bar reveals KeyboardKey inside-right overlay after `?` (0.352793ms)
-  ✔ column action row reveals KeyboardKey inside-right overlay after `?` (0.259134ms)
-  ✔ hook owns bind + reveal; ignores key-repeat; cheat sheet yields + KeyboardKey (115.720037ms)
-  ✔ paint law documents inside-right overlay + refuse layout moves (0.294485ms)
-  ✔ shortcutEngineContractSource greps the same files the tripwire already reads (0.24051ms)
-  ✔ discover KEEP paths exist; known-debt ratchet holds (355.183926ms)
-✔ shortcut-display cohort (SoT = KeyboardKey inside-right overlays) (476.390743ms)
+  ✔ engine files exist (1.092384ms)
+  ✔ KeyboardKey is gray face + black letter SoT (0.515935ms)
+  ✔ status bar reveals KeyboardKey inside-right overlay after `?` (0.404183ms)
+  ✔ column action row reveals KeyboardKey inside-right overlay after `?` (0.276828ms)
+  ✔ hook owns bind + reveal; ignores key-repeat; cheat sheet yields + KeyboardKey (184.041788ms)
+  ✔ paint law documents inside-right overlay + refuse layout moves (0.308205ms)
+  ✔ shortcutEngineContractSource greps the same files the tripwire already reads (0.275206ms)
+  ✔ discover KEEP paths exist; known-debt ratchet holds (378.553523ms)
+✔ shortcut-display cohort (SoT = KeyboardKey inside-right overlays) (567.378215ms)
 ℹ tests 13
 ℹ suites 2
 ℹ pass 13
@@ -22,4 +22,4 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 3063.143828
+ℹ duration_ms 2955.47486

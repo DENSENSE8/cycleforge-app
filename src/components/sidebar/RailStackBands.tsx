@@ -163,7 +163,12 @@ export function RailStackBands({
   onFind: () => void;
 }) {
   return (
-    <div data-rail-stack-bands role="group" aria-label="Stack">
+    <div
+      data-rail-stack-bands
+      data-testid="rail-stack-bands"
+      role="group"
+      aria-label="Stack"
+    >
       {model.bands.map((band) => {
         switch (band.kind) {
           case 'now':

@@ -380,7 +380,11 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
         {!chromeless && (
           <ErrorBoundary
             label="sidebar-nav-column"
-            fallback={(_error, reset) => <SpineErrorFallback reset={reset} />}
+            // A parked spine that throws must stay parked — an operator who
+            // collapsed the navigator did not ask for an error panel in its place.
+            fallback={(_error, reset) =>
+              navOpen ? <SpineErrorFallback reset={reset} /> : null
+            }
           >
             <Suspense fallback={null}>
               <SidebarNavColumn

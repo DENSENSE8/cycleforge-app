@@ -4,7 +4,7 @@
     "src/lib/mobile/mobile-display-cohort.ts": "490d29f1ad2fe2cc",
     "src/lib/tables/slot-table-cohort.ts": "1cb07992a9f5e8ff",
     "src/lib/tables/slot-table-session-laws.ts": "44422802bcc6edfb",
-    "src/lib/tables/table-engine-law.ts": "8408fe2ffad61643",
+    "src/lib/tables/table-engine-law.ts": "2ba5b06f716edd2b",
     "src/lib/tables/slot-table-line-qty.ts": "943caf9fc5be9758",
     "src/lib/tables/slot-table-line-money.ts": "4516f0a1f8a8769a",
     "src/lib/tables/slot-table-header-sort.ts": "f21fe77b2142f51a",

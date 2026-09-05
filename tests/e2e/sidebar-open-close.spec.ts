@@ -72,6 +72,9 @@ async function gotoSurface(page: Page, route: string) {
 
 const toggleSpine = (page: Page) => page.locator(SIDEBAR_TOGGLE).first().click();
 
+/** Collapsed width — the icon rail. Mirrors `SIDEBAR_SPINE_RAIL_WIDTH_PX`. */
+const SPINE_RAIL_WIDTH = 48;
+
 /** Settled width of the push column — it tweens, so poll rather than sample. */
 async function spineWidth(page: Page, expected: number, message: string) {
   await expect
@@ -104,7 +107,11 @@ async function expectSpineOpen(page: Page) {
 
 async function expectSpineClosed(page: Page) {
   await expect(page.locator(NAV_COLUMN)).toHaveAttribute('data-open', 'false');
-  await spineWidth(page, 0, 'the closed column collapses to zero width');
+  // Closed is the 48px ICON RAIL as of 2026-09-05, not zero width. The parked
+  // state was deleted: a navigator that navigates nothing is not a state worth
+  // having, so collapsing narrows the column to its glyphs instead of removing
+  // it. A zero here now means the rail failed to render, which is a regression.
+  await spineWidth(page, SPINE_RAIL_WIDTH, 'the closed column narrows to the icon rail');
 }
 
 test.describe('sidebar spine — open and close', () => {
@@ -125,12 +132,12 @@ test.describe('sidebar spine — open and close', () => {
 
     const toggle = page.locator(SIDEBAR_TOGGLE).first();
     await expect(toggle, 'the sidebar control must be reachable').toBeVisible();
-    await expect(toggle).toHaveAttribute('aria-label', 'Show navigation');
+    await expect(toggle).toHaveAttribute('aria-label', 'Expand navigation');
 
     await toggle.click();
     await expectSpineOpen(page);
     // The control is a state toggle, so it must announce the new state.
-    await expect(toggle).toHaveAttribute('aria-label', 'Hide navigation');
+    await expect(toggle).toHaveAttribute('aria-label', 'Collapse navigation');
     await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   });
 
@@ -142,7 +149,7 @@ test.describe('sidebar spine — open and close', () => {
 
     await toggleSpine(page);
     await expectSpineClosed(page);
-    await expect(page.locator(SIDEBAR_TOGGLE).first()).toHaveAttribute('aria-label', 'Show navigation');
+    await expect(page.locator(SIDEBAR_TOGGLE).first()).toHaveAttribute('aria-label', 'Expand navigation');
   });
 
   test('open → close → open again (the toggle is not one-shot)', async ({ page }) => {
@@ -165,7 +172,7 @@ test.describe('sidebar spine — open and close', () => {
     await expectSpineClosed(page);
 
     const toggle = page.locator(SIDEBAR_TOGGLE).first();
-    await expect(toggle).toHaveAttribute('aria-label', 'Show navigation');
+    await expect(toggle).toHaveAttribute('aria-label', 'Expand navigation');
 
     await toggle.hover();
     // Former peek openDelay was 180ms — wait past it so a regression would flash.

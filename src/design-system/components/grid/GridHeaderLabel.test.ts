@@ -18,7 +18,12 @@ describe('GridHeaderLabel — title, then arrow, black ink', () => {
     assert.ok(title > 0, 'title span uses text-text-default idle, info+underline on cell hover');
     const afterTitle = SOURCE.slice(title);
     const sortAfter = afterTitle.indexOf('{sortMark}');
-    assert.ok(sortAfter > 0 && sortAfter < 120, 'sort mark renders immediately after the title');
+    const titleClose = afterTitle.indexOf('</span>');
+    assert.ok(sortAfter > 0, 'sort mark still renders');
+    assert.ok(
+      titleClose > 0 && sortAfter > titleClose && sortAfter - titleClose < 40,
+      'sort mark renders immediately after the title span',
+    );
     assert.doesNotMatch(SOURCE, /ArrowUpDown/, 'idle sortable headers are title-only — no standing arrow');
     assert.doesNotMatch(
       SOURCE,

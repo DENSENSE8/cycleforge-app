@@ -13,7 +13,6 @@ import { Button } from '@/design-system/primitives';
 import { useScopedReceivingPhotos } from '@/hooks/useScopedReceivingPhotos';
 import { getLast8Serial } from '@/lib/copy-chip-format';
 import { BulkQuantityPanel } from '../BulkQuantityPanel';
-import { markLineShortRemaining } from '../line-receive-actions';
 import {
   UNIT_ROW_DISPLAY_CAP,
   resolveLineReceiveMode,

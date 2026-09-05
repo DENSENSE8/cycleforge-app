@@ -10,14 +10,21 @@
  */
 
 import { Button } from '@/design-system/primitives';
-import { SPINE_ROW_DENSITY } from '@/components/sidebar/sidebar-spine';
+import {
+  SIDEBAR_SPINE_RESIZE,
+  SPINE_ROW_DENSITY,
+} from '@/components/sidebar/sidebar-spine';
 import { cn } from '@/utils/_cn';
 
 export function SpineErrorFallback({ reset }: { reset: () => void }) {
   return (
     <div
       role="alert"
-      className="flex h-full w-full flex-col gap-2 border-r border-border-soft bg-surface-card p-3"
+      // Widths itself from the spine token: the boundary sits OUTSIDE the
+      // column, so on a throw this becomes the flex child directly and would
+      // otherwise take whatever width is going.
+      style={{ width: SIDEBAR_SPINE_RESIZE.defaultWidthPx }}
+      className="flex h-full shrink-0 flex-col gap-2 border-r border-border-soft bg-surface-card p-3"
     >
       <p className={cn(SPINE_ROW_DENSITY.pointer.label, 'text-text-default')}>
         Navigation stopped

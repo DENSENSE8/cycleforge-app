@@ -26,13 +26,11 @@ test('Picker mounts the shared dumb-station mouth with its context ring', () => 
   assert.doesNotMatch(src, /<OmnichannelComposerDock\b/);
 });
 
-test('Packing mounts the shared dumb-station mouth with its context ring', () => {
+test('Packing mounts the shared scan pane host (no second invented mouth)', () => {
   const src = readFileSync(path.resolve(HERE, '../packer/PackOrderPanel.tsx'), 'utf8');
 
-  assert.match(src, /StationComposerHost/);
-  assert.match(src, /showModeRow/);
-  assert.match(src, /showModeFaces=\{false\}/);
-  assert.match(src, /onProgressClick/);
+  assert.match(src, /StationScanPaneHost/);
+  assert.match(src, /StationDisplaysPushStack/);
   assert.doesNotMatch(src, /<OmnichannelComposerDock\b/);
 });
 
@@ -40,7 +38,6 @@ test('every floor-mouth adapter reaches StationComposerHost', () => {
   const mouths = [
     ['Unbox / Triage / Quality Control', '../receiving/workspace/line-edit/LineNotesCard.tsx'],
     ['Picker', 'UpNextActionDock.tsx'],
-    ['Packing', '../packer/PackOrderPanel.tsx'],
     ['Shipping active scan', 'ActiveOrderWorkspace.tsx'],
     ['Scan Out', '../outbound/scan-out/ScanOutComposerDock.tsx'],
   ] as const;

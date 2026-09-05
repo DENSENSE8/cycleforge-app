@@ -1,3 +1,5 @@
+import { cn } from '@/utils/_cn';
+
 /**
  * Sidebar spine geometry — the ONE place the column width lives.
  *
@@ -45,6 +47,11 @@ const SIDEBAR_SPINE_WIDTH_PX = 240;
  * seam to resize, drag past the floor to park, click the strip or the
  * GlobalHeader toggle to restore) instead of being the one nav surface that
  * doesn't.
+ *
+ * **There is no parked state as of 2026-09-05.** Drag-past-min still fires the
+ * collapse, but it lands on {@link SIDEBAR_SPINE_RAIL_WIDTH_PX} — the spine is
+ * either its remembered width or a 48px icon rail, never zero. A navigator that
+ * can navigate nothing is not a state worth having.
  */
 export const SIDEBAR_SPINE_RESIZE = {
   storageKey: 'sidebar-spine-width',
@@ -60,6 +67,42 @@ export const SIDEBAR_SPINE_RESIZE = {
  * footer. Shell corner is `cornerClass('surface')`.
  */
 export const SIDEBAR_SPINE_PEEK_INSET_PX = 8;
+
+/**
+ * Collapsed width — an ICON RAIL, not a zero-width park (2026-09-05).
+ *
+ * Collapsing used to take the column to 0 and leave a 6px invisible grab strip
+ * behind, so a collapsed navigator navigated nothing: the operator's only doors
+ * were the header toggle, ⌘K, and a strip they had to already know about. VS
+ * Code and Linear both keep a rail for exactly this reason — collapsing is a
+ * request for less WIDTH, not for less navigation.
+ *
+ * 48px carries the 16px glyph with the same 8px gutters the open row uses, so
+ * the icons do not move horizontally when the column expands — the labels
+ * simply arrive beside them.
+ */
+export const SIDEBAR_SPINE_RAIL_WIDTH_PX = 48;
+
+/**
+ * The rail is the SAME DOM as the open column, re-dressed — the peek card
+ * already proved that pattern here. Nothing is conditionally rendered, so a
+ * row cannot exist in one state and not the other: labels and section headers
+ * fold away, glyphs centre, and the row keeps its height, its accent and its
+ * drop targets.
+ *
+ * Labels go `sr-only`, never `hidden`: a screen reader still reads the
+ * destination, because a rail is a visual compression, not an information one.
+ */
+export const SPINE_RAIL_SHELL_CLASS = cn(
+  '[&_[data-sidebar=menu-button]]:justify-center [&_[data-sidebar=menu-button]]:px-0',
+  '[&_[data-sidebar=menu-button]>span]:sr-only',
+  '[&_[data-sidebar=group-label]]:sr-only',
+  '[&_[data-sidebar=menu-action]]:hidden',
+  '[&_[data-spine-pin-edge]]:hidden',
+  '[&_[data-spine-pin-undo]]:hidden',
+  '[&_[data-spine-pin-empty]]:hidden',
+  '[&_[data-staff-account-footer]_[data-account-label]]:sr-only',
+);
 
 /**
  * Chrome for MasterNav **identity menus** (org/workspace switch + staff ⋯ menu).
@@ -154,6 +197,14 @@ export const SPINE_ROW_ICON_CLASS = 'h-4 w-4 shrink-0';
  * container, so a label leaves exactly when its rows do — the operator always
  * knows which section the row under the pointer belongs to on a column that now
  * genuinely scrolls.
+ *
+ * `bg-sidebar` is the correct fill because BOTH hosts are the same plane: the
+ * docked aside carries `appCanvasClass`, but `SidebarShell` renders
+ * `appChromeClass` (white) as its only child and covers it, and the hover-peek
+ * card is `bg-surface-card` — also white. A first pass here drove the fill from
+ * a `--spine-plane` var set per host, on the belief that the docked column was
+ * canvas; that painted a grey band across a white column. The var is gone: two
+ * hosts, one ground.
  */
 export const SPINE_SECTION_LABEL_STICKY_CLASS = 'sticky top-0 z-10 bg-sidebar';
 
@@ -190,7 +241,7 @@ export const SPINE_PINNED_CLUSTER_CLASS = 'group/pinned relative';
 export const SPINE_PINNED_TITLE_ROW_CLASS =
   'relative flex w-full items-center px-2 py-1.5';
 
-/** Sentence-case category title — quieter than {@link SPINE_LABEL_CLASS}, never uppercase. */
+/** Sentence-case category title — quieter than a destination row, never uppercase. */
 export const SPINE_PINNED_TITLE_CLASS = 'text-role-micro font-normal text-text-soft';
 
 /**

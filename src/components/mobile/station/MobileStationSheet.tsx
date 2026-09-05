@@ -206,7 +206,7 @@ export function MobileStationSheet({
       >
         <span
           aria-hidden
-          className="h-1 w-10 rounded-full bg-white ring-1 ring-scrim/40"
+          className="h-1 w-10 rounded-full bg-white ring-1 ring-scrim/40" // ds-allow-raw-neutral: sheet grabber on dark phone chrome
         />
       </button>
     </motion.section>

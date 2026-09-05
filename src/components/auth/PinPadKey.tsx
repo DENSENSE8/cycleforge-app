@@ -12,6 +12,8 @@
 import type { ReactNode } from 'react';
 import { numpadTheme } from '@/components/auth/theme-numpad';
 import type { StationTheme } from '@/utils/staff-colors';
+import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cn } from '@/utils/_cn';
 
 export function PinPadKey({
   value,
@@ -36,7 +38,12 @@ export function PinPadKey({
       disabled={disabled}
       onClick={onClick}
       aria-label={ariaLabel || value}
-      className={`group flex h-16 w-20 items-center justify-center rounded-2xl border border-border-soft bg-surface-card text-2xl font-semibold text-text-default shadow-sm shadow-gray-900/[0.04] transition-all duration-100 ${t.passkeyHover} hover:-translate-y-0.5 hover:shadow-md hover:shadow-gray-900/[0.08] active:scale-95 active:shadow-none focus:outline-none focus:ring-4 ${t.ring} disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-sm`}
+      className={cn(
+        'group flex h-16 w-20 items-center justify-center rounded-2xl border border-border-soft bg-surface-card text-2xl font-semibold text-text-default shadow-sm shadow-gray-900/[0.04] transition-all duration-100 hover:-translate-y-0.5 hover:shadow-md hover:shadow-gray-900/[0.08] active:scale-95 active:shadow-none disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-sm',
+        t.passkeyHover,
+        t.ring,
+        focusRing('control', 'accent'),
+      )}
     >
       {icon ? <span className={t.accentText}>{icon}</span> : value}
     </button>

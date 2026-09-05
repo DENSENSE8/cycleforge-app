@@ -19,5 +19,10 @@ test('the row is a button that names Throw and advertises ⌘⇧U', () => {
 });
 
 test('the row is flush-square ops chrome, not a rounded card', () => {
-  assert.doesNotMatch(html, /rounded-(?!none)/);
+  assert.match(html, /ds-raw-button[^"]*rounded-none/);
+  assert.doesNotMatch(
+    html,
+    /<button[^>]*class="[^"]*rounded-(sm|md|lg|xl|2xl|3xl|full)/,
+    'the throw row itself must stay flush; keycaps may round',
+  );
 });

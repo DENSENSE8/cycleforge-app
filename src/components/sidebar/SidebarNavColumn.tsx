@@ -4,12 +4,16 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
+import { useRouter } from 'next/navigation';
+import { RailStackBands } from '@/components/sidebar/RailStackBands';
+import { stackModel } from '@/lib/nav/stack-model';
 import { appCanvasClass } from '@/design-system/tokens/app-surface';
 import { SIDEBAR_SPINE_PEEK_INSET_PX, SIDEBAR_SPINE_RESIZE } from '@/components/sidebar/sidebar-spine';
 import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
@@ -27,6 +31,11 @@ import {
   EDGE_RESIZE_COLLAPSE_SLACK_PX,
   useHorizontalEdgeResize,
 } from '@/design-system/hooks/useHorizontalEdgeResize';
+import { hasOpenOverlay } from '@/lib/overlay-stack/store';
+import {
+  SIDEBAR_SPINE_RAIL_WIDTH_PX,
+  SPINE_RAIL_SHELL_CLASS,
+} from '@/components/sidebar/sidebar-spine';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -195,6 +204,12 @@ export function SidebarNavColumn({
    * finished, empty panel for a third of a second.
    */
   const [everOpened, setEverOpened] = useState(open);
+  const router = useRouter();
+  const [stackNow] = useState(() => new Date().toISOString());
+  const stack = useMemo(
+    () => stackModel({ armed: null, earlier: [], queues: [], now: stackNow }),
+    [stackNow],
+  );
   useEffect(() => {
     if (open || peeking) setEverOpened(true);
   }, [open, peeking]);
@@ -213,9 +228,10 @@ export function SidebarNavColumn({
   }, [everOpened]);
 
   // Same splitter grammar as the context rail — see "Drag to resize /
-  // collapse" above. `onCollapseBeyondMin` fires `onOpenChange(false)`
-  // instead of flooring the live width at `minWidthPx`, so dragging past the
-  // threshold parks the column rather than squeezing it unreadably thin.
+  // collapse" above. `onCollapseBeyondMin` fires `onOpenChange(false)` instead
+  // of flooring at `minWidthPx`, so dragging past the threshold drops the
+  // column to the RAIL rather than squeezing it unreadably thin. The gesture
+  // is unchanged; what it lands on is a 48px navigator instead of nothing.
   const { width, edgeHandleProps, isDragging, collapseArmed } = useHorizontalEdgeResize({
     storageKey: SIDEBAR_SPINE_RESIZE.storageKey,
     defaultWidth: SIDEBAR_SPINE_RESIZE.defaultWidthPx,
@@ -303,11 +319,24 @@ export function SidebarNavColumn({
   }, [open, peekFace, peekOverlay, peekControls]);
 
   const peekLayout = peekFace && !open;
+  /**
+   * Collapsed, but still a navigator. The rail is the closed state now — the
+   * column narrows to its glyphs instead of parking at zero width. The peek
+   * still wins when it is up: it is the same element, dressed as a card.
+   */
+  // Dressing only applies once the subtree is actually mounted; the WIDTH is
+  // reserved from first paint regardless, so the rail cannot pop in and shove
+  // the workspace sideways when the idle mount lands.
+  const railLayout = !open && !peekLayout && everOpened;
 
   useEffect(() => {
     if (!peekOverlay || !onPeekDismiss) return undefined;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onPeekDismiss();
+      if (e.key !== 'Escape') return;
+      // Anything stacked above the peek (a dialog, a route overlay) owns
+      // Escape first — the peek is the bottom of the stack, not a peer.
+      if (hasOpenOverlay()) return;
+      onPeekDismiss();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -329,10 +358,15 @@ export function SidebarNavColumn({
       // below — which must stay visible/hittable at `left-0` even while this
       // box is `width: 0`, or there is nothing to grab to reopen by drag.
       className="relative h-full shrink-0 overflow-visible"
-      style={{ width: open ? width : 0 }}
+      // Collapsed is now the RAIL width, not zero — and it is reserved before
+      // the nav subtree mounts, so the idle mount changes what is in the column,
+      // never how wide it is.
+      style={{ width: open ? width : SIDEBAR_SPINE_RAIL_WIDTH_PX }}
       // The spine stays mounted once opened, so a collapsed column would
       // otherwise leave every nav row in the tab order at zero width.
-      inert={!navVisible && !peekFace}
+      // The rail is visible and clickable, so it must NOT be inert — only a
+      // truly zero-width column is taken out of the tab order.
+      inert={!navVisible && !peekFace && !railLayout}
     >
       {everOpened && (
         <motion.aside
@@ -343,6 +377,7 @@ export function SidebarNavColumn({
           aria-label="Sidebar"
           data-testid={peekLayout ? 'sidebar-spine-peek' : undefined}
           data-spine-peek={peekLayout ? 'true' : undefined}
+          data-spine-rail={railLayout ? 'true' : undefined}
           initial={false}
           animate={peekControls}
           {...(peekLayout ? peekSurfaceProps : undefined)}
@@ -356,7 +391,7 @@ export function SidebarNavColumn({
                   'shadow-elev-overlay-right',
                   '[&_[data-spine-account-footer]]:hidden',
                   '[&_[data-staff-account-footer]]:hidden',
-                  '[&_[role=menu]]:h-auto [&_[role=menu]]:min-h-0',
+                  '[&_[data-spine-nav]]:h-auto [&_[data-spine-nav]]:min-h-0',
                   // The card hugs short lists (`h-auto` shell) but is capped by
                   // maxHeight below — so the scrollport must be able to SHRINK,
                   // or a full destination list is clipped by the shell's
@@ -364,7 +399,11 @@ export function SidebarNavColumn({
                   '[&_[data-spine-scrollport]]:min-h-0 [&_[data-spine-scrollport]]:flex-1 [&_[data-spine-scrollport]]:overflow-y-auto [&_[data-spine-scrollport]]:overscroll-contain',
                   '[&_[data-spine-drill-pad]]:pb-0',
                 )
-              : cn('absolute inset-y-0 left-0 border-r border-border-soft', appCanvasClass),
+              : cn(
+                  'absolute inset-y-0 left-0 border-r border-border-soft',
+                  appCanvasClass,
+                  railLayout && SPINE_RAIL_SHELL_CLASS,
+                ),
           )}
           style={
             peekLayout
@@ -377,9 +416,22 @@ export function SidebarNavColumn({
                   zIndex: zIndex.navPeek,
                   transformOrigin: '0 0',
                 }
-              : { width: open ? width : 0, transformOrigin: '0 0' }
+              : {
+                  width: open ? width : SIDEBAR_SPINE_RAIL_WIDTH_PX,
+                  transformOrigin: '0 0',
+                }
           }
         >
+          <RailStackBands
+            model={stack}
+            onResume={() => {}}
+            onOpenQueue={(tableId) => {
+              router.push(`/?table=${tableId}`);
+            }}
+            onFind={() => {
+              router.push('/');
+            }}
+          />
           {children}
         </motion.aside>
       )}
@@ -397,18 +449,20 @@ export function SidebarNavColumn({
           tooltipLabel="Resize sidebar"
         />
       ) : peekLayout ? null : (
-        // Grab-to-open strip — the closed twin of the resize sash above,
-        // occupying the same edge. Renders even though the outer box is
-        // `width: 0` (see the `overflow-visible` note above). Click opens at
-        // the remembered width; press-and-drag opens and resizes live in one
-        // gesture (`onOpenStripPointerDown`). Hover-peek lives on the header
-        // sidebar button only.
+        // The RAIL's own trailing seam — the same edge, the same gesture.
+        //
+        // This was a 6px invisible strip at `left-0` of a zero-width box: the
+        // only way back from a parked spine, and unfindable unless you already
+        // knew. There is no parked state now (operator ruling 2026-09-05), so
+        // the seam sits on the rail's real right edge where a splitter belongs.
+        // Click opens at the remembered width; press-and-drag opens and resizes
+        // live in one gesture.
         <div
           role="button"
           tabIndex={0}
-          aria-label="Show sidebar"
+          aria-label="Expand sidebar"
           data-testid="sidebar-spine-open-strip"
-          className="absolute inset-y-0 left-0 z-sticky w-1.5 cursor-col-resize touch-none bg-transparent transition-colors duration-150 hover:bg-border-default"
+          className="absolute inset-y-0 right-0 z-sticky w-1.5 cursor-col-resize touch-none bg-transparent transition-colors duration-150 hover:bg-border-default"
           onPointerDown={onOpenStripPointerDown}
           onKeyDown={onOpenStripKeyDown}
         />

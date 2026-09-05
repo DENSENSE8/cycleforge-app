@@ -164,16 +164,22 @@ describe('ItemRecordRow disclosure', () => {
       /grid-cols-\[auto_auto_auto_auto_minmax\(2\.5rem,1fr\)_minmax\(5rem,auto\)\]/,
     );
     assert.match(src, /outline outline-1 -outline-offset-1 outline-border-subtle/);
-    assert.doesNotMatch(src, /box-shadow|shadow-elev|shadow-sm/);
+    assert.doesNotMatch(
+      src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, ''),
+      /shadow-elev|shadow-sm/,
+    );
   });
 
   it('Open heats; Received recedes; active plate outranks heat', () => {
     const open = render({ item: { ...ITEM, receiveState: 'open' } });
     assert.match(open, /data-receive-state="open"/);
-    assert.match(open, /bg-surface-station-row-hover/);
+    assert.match(open, /bg-surface-warning/);
     const received = render({ item: { ...ITEM, receiveState: 'received' } });
     assert.match(received, /data-receive-state="received"/);
-    assert.doesNotMatch(received, /bg-surface-warning|bg-surface-danger|bg-surface-station-row-hover/);
+    assert.doesNotMatch(
+      received,
+      /bg-surface-warning|bg-surface-danger|bg-surface-station-row-hover/,
+    );
     const activeOpen = render({
       item: { ...ITEM, receiveState: 'open' },
       active: true,

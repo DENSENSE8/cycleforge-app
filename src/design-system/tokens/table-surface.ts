@@ -2,9 +2,8 @@
  * Ops table / spreadsheet surface shell — two recipes, one module.
  *
  * **Framed card** ({@link TABLE_SURFACE_CLIP_CLASS}): rounded-xl + raised lift +
- * `overflow-hidden` so cell grid lines clip at the corners. Use for admin
- * `AdminTable`, Orders hand-compose, and any surface that still needs a raised
- * island inside gutters.
+ * `overflow-hidden` so cell grid lines clip at the corners. Use for any
+ * surface that still needs a raised island inside gutters.
  *
  * **Sheets plane** ({@link TABLE_SURFACE_SHEET_CLASS}): hairline perimeter only —
  * no `rounded-xl`, no raised lift. Use when a Workbench spreadsheet abuts a

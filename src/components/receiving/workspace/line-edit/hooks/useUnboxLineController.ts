@@ -41,7 +41,6 @@ import { shouldUseLocalReceiveOnly } from '@/lib/receiving/intake-items-routing'
 import { cartonLinesReadyForGr } from '@/lib/receiving/carton-readiness';
 import { isUnreceiveSerialBlocking } from '@/lib/receiving/unreceive-serial-guard';
 import type { PhotoPolicyOverrideCode } from '@/lib/receiving/exception-codes';
-import { cartonLinesReadyForGr } from '@/lib/receiving/carton-readiness';
 import {
   UNBOX_LABEL_KINDS,
   labelOptionsForSelect,

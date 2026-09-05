@@ -4,7 +4,6 @@ import { useCallback, useMemo, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
-  KeyboardSensor,
   PointerSensor,
   closestCenter,
   pointerWithin,
@@ -16,7 +15,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core';
-import { arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { arrayMove } from '@dnd-kit/sortable';
 import { Pin } from '@/components/Icons';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import {
@@ -36,8 +35,10 @@ import {
 } from '@/lib/sidebar-navigation';
 import {
   MASTER_NAV_PIN_DROP_ID,
+  MASTER_NAV_PIN_EDGE_BOTTOM,
   MASTER_NAV_PIN_RETURN_ID,
   isPinDropOverId,
+  isPinEdgeOverId,
   isStructuralSpinePinHref,
   navPinDragId,
   pinIndexFromOverId,
@@ -79,7 +80,17 @@ import { MasterNavPinnedCluster } from './MasterNavPinnedCluster';
 const pinCollisionDetection: CollisionDetection = (args) => {
   const pointerHits = pointerWithin(args);
   const pinHits = pointerHits.filter((hit) => isPinDropOverId(String(hit.id)));
-  if (pinHits.length > 0) return pinHits;
+  if (pinHits.length > 0) {
+    // Most specific target wins. The cluster CONTAINS its rows and its end
+    // strips, so a pointer over the first row hits the container too — and the
+    // container's only answer is "append". Ranking it last is what makes the
+    // top of the shelf reachable at all.
+    const rank = (id: string) =>
+      isPinEdgeOverId(id) ? 0 : id.startsWith('pin:') ? 1 : 2;
+    return [...pinHits].sort(
+      (a, b) => rank(String(a.id)) - rank(String(b.id)),
+    );
+  }
   if (pointerHits.length > 0) return pointerHits;
   return closestCenter(args);
 };
@@ -115,7 +126,7 @@ function DraggableTitleRow({
   onMouseEnter?: () => void;
   draggable: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, transform: _transform, isDragging } = useDraggable({
+  const { listeners, setNodeRef, isDragging } = useDraggable({
     id: navPinDragId(id),
     data: { type: 'nav', href, label, iconKey: id } satisfies NavPinDragData,
     disabled: !draggable,
@@ -131,16 +142,25 @@ function DraggableTitleRow({
       className={cn('relative', isDragging && 'opacity-40')}
     >
       <SidebarMenuButton
-        {...(draggable ? { ...attributes, ...listeners } : {})}
+        // `listeners` only — NOT dnd-kit's `attributes`. Those carry
+        // aria-roledescription="draggable" plus a describedby pointing at
+        // "to pick up a draggable item, press the space bar", and with the
+        // KeyboardSensor removed that instruction is false on every row. A
+        // screen reader announcing a gesture that does nothing is worse than
+        // announcing no gesture at all; the row is a link and says so.
+        {...(draggable ? listeners : {})}
         isActive={active}
         onClick={onActivate}
         onMouseEnter={onMouseEnter}
         aria-label={ariaLabel}
         aria-current={active ? 'page' : undefined}
+        // On the CONTROL, not the label span: in the icon rail that span is
+        // `sr-only`, and a title on a hidden element names nothing.
+        title={label}
         className={cn(draggable && 'touch-none', isDragging && 'cursor-grabbing')}
       >
         <RowIcon className={navIconStrokeClass(SPINE_ROW_ICON_CLASS)} />
-        <span title={label}>{label}</span>
+        <span>{label}</span>
       </SidebarMenuButton>
     </SidebarMenuItem>
   );
@@ -155,10 +175,10 @@ export function SidebarNavList({
   spineOrder,
   className,
 }: SidebarNavListProps) {
-  // Drop target for a pin dragged OUT of the cluster — see
-  // MASTER_NAV_PIN_RETURN_ID. Scoped to the whole scrollport so the gesture
-  // works dropping above the shelf (into the top rows) or below it (into the
-  // map), which is where the row is about to reappear either way.
+  // The map as an explicit drop surface. It no longer DECIDES the unpin —
+  // anything that is not a pin target does that now — but registering it keeps
+  // dnd-kit reporting a real `over` while the pointer is on the map, so the
+  // drop reads as a landing rather than a release into nothing.
   const { setNodeRef: setPinReturnRef } = useDroppable({ id: MASTER_NAV_PIN_RETURN_ID });
   const { settings, pinAt, reorder, unpin } = useQuickAccess();
   const pinIds = useMemo(() => settings.pinned.map((p) => p.id), [settings.pinned]);
@@ -191,11 +211,64 @@ export function SidebarNavList({
     [spineOrder, otherPages],
   );
 
+  /**
+   * The map, as render blocks in the staff's arranged order.
+   *
+   * Consecutive unlabeled destinations merge into ONE group. Each
+   * `SidebarGroup` carries its own padding, so a group per row surrounded every
+   * lone 28px row with chrome and made a flat list read as a stack of one-row
+   * sections. A run never crosses a labelled section, so merging cannot reorder
+   * anything the operator arranged.
+   */
+  type SpineBlock =
+    | { kind: 'stations' }
+    | { kind: 'desks' }
+    | { kind: 'studio'; page: SidebarPageNav }
+    | { kind: 'loose'; pages: SidebarPageNav[] };
+
+  const spineBlocks = useMemo<SpineBlock[]>(() => {
+    const blocks: SpineBlock[] = [];
+    for (const entry of mapEntries) {
+      if (entry.kind === 'stations' || entry.kind === 'desks') {
+        blocks.push({ kind: entry.kind });
+        continue;
+      }
+      const page = entry.page;
+      if (pinsCoverPageId(page.id, settings.pinned)) continue;
+      if (page.id === 'studio' && (page.children?.length ?? 0) > 0) {
+        blocks.push({ kind: 'studio', page });
+        continue;
+      }
+      const tail = blocks[blocks.length - 1];
+      if (tail?.kind === 'loose') tail.pages.push(page);
+      else blocks.push({ kind: 'loose', pages: [page] });
+    }
+    return blocks;
+  }, [mapEntries, settings.pinned]);
+
+  /**
+   * Pointer only, deliberately.
+   *
+   * dnd-kit's `KeyboardSensor` registers an activator that `preventDefault()`s
+   * Space and Enter on every node these `listeners` are spread onto — which is
+   * every destination row. With it mounted, a keyboard operator could not
+   * activate a single row in the navigator: the key started a drag instead of
+   * following the link, and the suppressed default meant no click ever fired.
+   *
+   * Navigating is what this list is FOR; arranging it is the accessory. So the
+   * keyboard keeps the primary verb, and rearranging pins by keyboard goes
+   * through ⌘1–9 and the row's own controls rather than a drag it hijacks.
+   */
   const sensors = useSensors(
     useSensor(PointerSensor, {
-      activationConstraint: { delay: 180, tolerance: 8 },
+      // DISTANCE, not delay. A `delay` constraint arms a drag on any press held
+      // past the threshold even with the pointer stationary — and dnd-kit then
+      // suppresses the click — so a deliberate, slightly slow click on a row
+      // (a gloved hand, a floor monitor) silently did nothing at all, on this
+      // column's most repeated action. Requiring 6px of travel means a press
+      // that never moves is always a navigation, and a drag is always intended.
+      activationConstraint: { distance: 6 },
     }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
   /**
@@ -236,38 +309,45 @@ export function SidebarNavList({
     (event: DragEndEvent) => {
       setDragFace(null);
       const { active, over } = event;
-      if (!over) return;
-      const overId = String(over.id);
+      const overId = over ? String(over.id) : null;
       const activeId = String(active.id);
       const data = active.data.current as NavPinDragData | { type: 'pin'; id: string } | undefined;
-      const pinning = isPinDropOverId(overId);
 
       if (data?.type === 'pin' || activeId.startsWith('pin:')) {
         const fromId = data?.type === 'pin' ? data.id : activeId.slice('pin:'.length);
         const oldIndex = pinIds.indexOf(fromId);
         if (oldIndex < 0) return;
-        // Dragged clear of the shelf — unpin. The row reappears in whatever
-        // section the registry says is its home; nothing about that home is
-        // stored on the pin, so it cannot be restored to the wrong place.
+        // OUT OF THE SHELF IS OFF THE SHELF (operator ruling 2026-09-05).
         //
-        // Only an explicit drop ONTO the map counts. A release over dead space
-        // (`over` is null, handled above) is treated as a cancelled drag rather
-        // than an unpin — a mis-aimed gesture must not silently delete a shelf
-        // slot the operator arranged.
-        if (!isPinDropOverId(overId)) {
-          if (overId === MASTER_NAV_PIN_RETURN_ID) unpin(fromId);
+        // Anywhere that is not a pin target unpins — the map, the header, dead
+        // space, the workspace. It used to take an explicit drop onto the map,
+        // and a release anywhere else was read as a cancelled drag, on the
+        // reasoning that a mis-aimed gesture must not silently delete a slot
+        // the operator arranged. That reasoning predates the undo: the row's
+        // slot is now held open for 12s with a one-click restore, so a
+        // mis-aim costs a click instead of a rebuild, and the gesture gets to
+        // mean the obvious thing.
+        //
+        // The row reappears in whatever section the registry says is its home;
+        // nothing about that home is stored on the pin, so it cannot come back
+        // in the wrong place.
+        if (!overId || !isPinDropOverId(overId)) {
+          unpin(fromId);
           return;
         }
         const newIndex = pinIndexFromOverId(overId, pinIds);
         if (newIndex == null) return;
-        const target = overId === MASTER_NAV_PIN_DROP_ID ? pinIds.length - 1 : newIndex;
+        const target =
+          overId === MASTER_NAV_PIN_DROP_ID || overId === MASTER_NAV_PIN_EDGE_BOTTOM
+            ? pinIds.length - 1
+            : newIndex;
         if (oldIndex === target) return;
         reorder(arrayMove([...pinIds], oldIndex, Math.min(target, pinIds.length - 1)));
         return;
       }
 
       if (data?.type !== 'nav') return;
-      if (!pinning) return;
+      if (!overId || !isPinDropOverId(overId)) return;
       if (isStructuralSpinePinHref(data.href)) return;
       const at = pinIndexFromOverId(overId, pinIds);
       pinAt(
@@ -333,7 +413,10 @@ export function SidebarNavList({
   ));
 
   return (
-    <div role="menu" aria-label="Pages" className={cn('flex h-full min-h-0 flex-col', className)}>
+    // No `role="menu"`: a menu must contain `menuitem`s, and this contains
+    // groups, lists and links. The navigation landmark already lives on the
+    // hosting <aside>; `data-spine-nav` is the styling hook the peek shell uses.
+    <div data-spine-nav className={cn('flex h-full min-h-0 flex-col', className)}>
       <DndContext
         sensors={sensors}
         collisionDetection={pinCollisionDetection}
@@ -382,8 +465,8 @@ export function SidebarNavList({
             </SidebarGroup>
           ) : null}
           <MasterNavPinnedCluster pinIds={pinIds} />
-          {mapEntries.map((entry) => {
-            if (entry.kind === 'stations') {
+          {spineBlocks.map((block) => {
+            if (block.kind === 'stations') {
               if (!stationsSection) return null;
               return (
                 <div key={SPINE_STATIONS_SLOT_ID}>
@@ -395,16 +478,15 @@ export function SidebarNavList({
                 </div>
               );
             }
-            if (entry.kind === 'desks') {
+            if (block.kind === 'desks') {
               return (
                 <div key={SPINE_DESKS_SLOT_ID}>
                   {renderLabeledGroup('spine-section-desks', desksGroup.label, deskPages)}
                 </div>
               );
             }
-            const page = entry.page;
-            if (pinsCoverPageId(page.id, settings.pinned)) return null;
-            if (page.id === 'studio' && (page.children?.length ?? 0) > 0) {
+            if (block.kind === 'studio') {
+              const page = block.page;
               return (
                 <SidebarGroup
                   key={page.id}
@@ -424,9 +506,16 @@ export function SidebarNavList({
               );
             }
             return (
-              <SidebarGroup key={page.id}>
+              // One group per RUN of unlabeled destinations, not one per
+              // destination: `SidebarGroup` carries `px-2 py-1`, so a group per
+              // row put 8px of chrome around every single 28px row and made a
+              // flat list read as N one-row sections. Runs keep the staff's
+              // arranged order — they never hop a labelled section.
+              <SidebarGroup key={`loose-${block.pages[0]!.id}`}>
                 <SidebarGroupContent>
-                  <SidebarMenu>{renderDraggablePage(page)}</SidebarMenu>
+                  <SidebarMenu>
+                    {block.pages.map((page) => renderDraggablePage(page))}
+                  </SidebarMenu>
                 </SidebarGroupContent>
               </SidebarGroup>
             );
@@ -434,15 +523,16 @@ export function SidebarNavList({
         </SidebarContent>
         <DragOverlay dropAnimation={null}>
           {dragFace ? (
-            // Portalled to the body, so the gesture is not clipped by the
-            // scrollport it started in. Flush ops chrome — a lifted copy of the
-            // row, not a new card: same shell, same density, same glyph.
+            // <DragOverlay> renders `position: fixed`, which escapes the
+            // scrollport's clip — that, not a portal, is what keeps the gesture
+            // visible. Flush ops chrome: a lifted copy of the row, not a new
+            // card — same shell, same density, same glyph.
             <div
               className={cn(
                 SPINE_ROW_SHELL_CLASS,
                 SPINE_ROW_DENSITY.pointer.face,
                 SPINE_ROW_DENSITY.pointer.label,
-                'w-[--sidebar-width] cursor-grabbing border border-border-soft bg-surface-card text-text-default',
+                'w-(--sidebar-width) cursor-grabbing border border-border-soft bg-surface-card text-text-default',
               )}
             >
               <dragFace.icon className={navIconStrokeClass(SPINE_ROW_ICON_CLASS)} />

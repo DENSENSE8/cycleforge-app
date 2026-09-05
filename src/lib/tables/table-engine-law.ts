@@ -119,34 +119,25 @@ export const VERB_CATALOG_MODULES = [
 export const VERB_DECLARATION_DEBT: readonly { file: string; why: string }[] = [];
 
 /**
- * Remaining `AdminTable` mounts — a second table engine with JSX cells.
- *
- * Settings/admin desks already left it (audit, AI usage, staff, kiosk,
- * sessions, compatibility). Inventory's per-SKU ops page is the last consumer.
- * The tripwire's contract: this set may never GROW. An id leaves when the page
- * mounts PRODUCT_TABLES families (bins, units, inventory-events) instead.
+ * `AdminTable` is gone. Settings desks and the admin SKU ops dump left it;
+ * `/admin/inventory/sku/[sku]` redirects to `/inventory?sku=`. The tripwire
+ * greps for the import — there is no allowlist. DataTable is the engine.
  */
-export const ADMIN_TABLE_DEBT: readonly { file: string; why: string }[] = [
-  {
-    file: 'src/app/admin/inventory/sku/[sku]/page.tsx',
-    why: 'Five AdminTable mounts (bins, units, allocations, sku_stock_ledger, events) with JSX cells. Events duplicates inventory-events; bins/units already have families. Port those three first; allocations and stock-ledger need catalogs.',
-  },
-];
 
 /**
- * Raw `<table>` product row lists — the same second-engine class as
- * {@link ADMIN_TABLE_DEBT}, without the AdminTable wrapper.
+ * Raw `<table>` product row lists — the same second-engine class AdminTable
+ * was, without the wrapper.
  *
- * Staff inventory units (`ByUnitView`) reprints allocations the admin SKU page
- * already dumps through AdminTable. Incoming returns staging reprints
- * `CsvImportStagingHost` as a hand HTML grid. The tripwire's contract: this
- * set may never GROW. An id leaves when the surface mounts a PRODUCT_TABLES
- * family (or the orders-import staging host) instead.
+ * Staff inventory units (`ByUnitView`) paints allocations as hand HTML.
+ * Incoming returns staging reprints `CsvImportStagingHost` as a hand HTML
+ * grid. The tripwire's contract: this set may never GROW. An id leaves when
+ * the surface mounts a PRODUCT_TABLES family (or the orders-import staging
+ * host) instead.
  */
 export const HAND_HTML_TABLE_DEBT: readonly { file: string; why: string }[] = [
   {
     file: 'src/components/inventory/ByUnitView.tsx',
-    why: 'Staff unit detail paints allocations and TSN links as hand HTML tables. Same facts as admin SKU AdminTable allocations — needs an allocations family, not a second grid.',
+    why: 'Staff unit detail paints allocations and TSN links as hand HTML tables. Needs an allocations family, not a second grid.',
   },
   {
     file: 'src/components/sidebar/receiving/incoming/IncomingReturnsImportStagingHost.tsx',
@@ -156,11 +147,9 @@ export const HAND_HTML_TABLE_DEBT: readonly { file: string; why: string }[] = [
 
 /**
  * `<table>` that is not a product-family desk: print HTML, markdown, maps,
- * KPI, mail, QA, and the AdminTable primitive itself (mounts stay in
- * {@link ADMIN_TABLE_DEBT}).
+ * KPI, mail, QA.
  */
 export const HAND_HTML_TABLE_ALLOW: readonly string[] = [
-  'src/design-system/components/AdminTable/AdminTable.tsx',
   'src/components/ai/MarkdownRenderer.tsx',
   'src/components/warehouse/WarehouseMap.tsx',
   'src/components/po-gmail/mailbox/ScannedMode.tsx',

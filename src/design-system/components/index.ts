@@ -39,7 +39,6 @@ export * from './FilterRefinementBar';
 export * from './VerticalSplitStack';
 export * from './SearchableSelectField';
 export * from './AssigneeCombobox';
-export * from './AdminTable';
 export * from './monitor';
 export * from './DocumentPreviewFrame';
 export * from './FetchedPdfFrame';

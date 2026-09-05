@@ -22,9 +22,10 @@ test('AssistantFabHost is a Layer circle, not RightRailHost', () => {
   assert.doesNotMatch(src, /OmnichannelComposerDock/);
 });
 
-test('AssistantProvider mounts AssistantFabHost and does not register the rail occupant', () => {
+test('AssistantProvider does not mount AssistantFabHost or register a rail occupant', () => {
   const src = readFileSync(path.join(HERE, 'AssistantProvider.tsx'), 'utf8');
-  assert.match(src, /AssistantFabHost/);
+  assert.doesNotMatch(src, /AssistantFabHost/);
+  assert.match(src, /dispatchComposerAskMode/);
   assert.doesNotMatch(src, /AssistantRailRegistrant/);
   assert.doesNotMatch(src, /id: 'assistant'/);
 });

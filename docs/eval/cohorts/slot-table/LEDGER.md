@@ -447,5 +447,5 @@ _No mechanical deletes. Dual-SoT hand models are gone._
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-05T18:14:13.829Z · cohort `slot-table` · run id `2026-09-05T18-12-40-650Z`_
+_Updated 2026-09-05T19:56:35.563Z · cohort `slot-table` · run id `2026-09-05T19-54-49-677Z`_
 <!-- /eval-ledger:auto:last-run -->
