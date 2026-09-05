@@ -311,6 +311,15 @@ of one tone. These are wired as semantic Tailwind utilities (CSS vars curated in
 > key carries the role, matching the neutral family (`text-text-default`,
 > `bg-surface-canvas`, `border-border-soft`). Prefer these over raw
 > `bg-emerald-50`/`text-rose-600`; they flip with dark mode once T2 lands.
+>
+> **Menu rows** (`MENU_ITEM_TONE_CLASS` in `tokens/menu-tone.ts`, anatomy in
+> `MorphingMenuRow`): status commits (Done / In progress / Cancel) rest as that
+> triad (`success` / `warning` / `cancel`) with a hair of air between pills.
+> Accent verbs rest as ink (`text-text-default`) and wash only on hover / focus /
+> `data-highlighted` (hold-key then mouse). Hints sit **under** the verb
+> (`text-role-caption`, `text-current/70` — never gray-on-fill). Group with
+> `MorphingMenuSeparator`. DropdownMenuItem, ContextMenuItem, and Popover
+> menuitems consume the same map — never a per-desk paint.
 
 ### Rule for new tone registries
 

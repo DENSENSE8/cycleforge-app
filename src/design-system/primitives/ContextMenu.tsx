@@ -3,6 +3,9 @@
 /**
  * Kinetic Ledger ContextMenu — Radix ContextMenu (shadcn-shaped) restyled to
  * house tokens. Prefer this over hand-rolled portal right-click menus.
+ *
+ * Rows consume {@link MENU_ITEM_TONE_CLASS} — the same map as DropdownMenuItem
+ * and Popover menuitems — so status pills vs accent ink cannot drift.
  */
 
 import * as React from 'react';
@@ -10,7 +13,13 @@ import * as ContextMenuPrimitive from '@radix-ui/react-context-menu';
 import { ChevronRight } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { elevationClass } from '@/design-system/tokens/shadows';
-import { DROPDOWN_ITEM_CORNER, DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
+import {
+  MENU_ITEM_ROW_CLASS,
+  MENU_ITEM_TONE_CLASS,
+  MENU_SEPARATOR_CLASS,
+  type MenuItemTone,
+} from '@/design-system/tokens/menu-tone';
 
 const ContextMenu = ContextMenuPrimitive.Root;
 const ContextMenuTrigger = ContextMenuPrimitive.Trigger;
@@ -40,19 +49,12 @@ const ContextMenuItem = React.forwardRef<
   React.ElementRef<typeof ContextMenuPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof ContextMenuPrimitive.Item> & {
     inset?: boolean;
-    tone?: 'default' | 'danger';
+    tone?: MenuItemTone;
   }
 >(({ className, inset, tone = 'default', ...props }, ref) => (
   <ContextMenuPrimitive.Item
     ref={ref}
-    className={cn(
-      'relative flex cursor-default select-none items-center px-2 py-1.5 text-sm outline-none',
-      DROPDOWN_ITEM_CORNER,
-      'focus:bg-surface-canvas data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
-      tone === 'danger' && 'text-rose-600 focus:bg-rose-50 focus:text-rose-700',
-      inset && 'pl-8',
-      className,
-    )}
+    className={cn(MENU_ITEM_ROW_CLASS, MENU_ITEM_TONE_CLASS[tone], inset && 'pl-8', className)}
     {...props}
   />
 ));
@@ -65,9 +67,9 @@ const ContextMenuRadioItem = React.forwardRef<
   <ContextMenuPrimitive.RadioItem
     ref={ref}
     className={cn(
-      'relative flex cursor-default select-none items-center py-1.5 pl-8 pr-2 text-sm outline-none',
-      DROPDOWN_ITEM_CORNER,
-      'focus:bg-surface-canvas data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
+      MENU_ITEM_ROW_CLASS,
+      MENU_ITEM_TONE_CLASS.default,
+      'pl-8 pr-2',
       className,
     )}
     {...props}
@@ -88,7 +90,7 @@ const ContextMenuSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <ContextMenuPrimitive.Separator
     ref={ref}
-    className={cn('-mx-1 my-1 h-px bg-border-soft', className)}
+    className={cn(MENU_SEPARATOR_CLASS, className)}
     {...props}
   />
 ));
@@ -103,9 +105,9 @@ const ContextMenuSubTrigger = React.forwardRef<
   <ContextMenuPrimitive.SubTrigger
     ref={ref}
     className={cn(
-      'flex cursor-default select-none items-center px-2 py-1.5 text-sm outline-none',
-      DROPDOWN_ITEM_CORNER,
-      'focus:bg-surface-canvas data-[state=open]:bg-surface-canvas',
+      MENU_ITEM_ROW_CLASS,
+      MENU_ITEM_TONE_CLASS.default,
+      'data-[state=open]:bg-surface-hover',
       inset && 'pl-8',
       className,
     )}

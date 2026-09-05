@@ -35,8 +35,13 @@ import type { ZIndexToken } from '../tokens/z-index';
 //           onClick={() => setOpen(o => !o)} />
 //   <Popover open={open} onClose={() => setOpen(false)} anchorRef={triggerRef}
 //            role="menu" aria-label="Row actions">
-//     …content…
+//     <button role="menuitem" className={menuItemClass('accent')}>
+//       <MorphingMenuRow hint="Optional caption">Verb</MorphingMenuRow>
+//     </button>
 //   </Popover>
+//
+// Menu rows: MorphingMenuRow + menuItemClass(tone) from menu-tone.ts.
+// Do not paint rose/emerald on a host — MENU_ITEM_TONE_CLASS is the map.
 
 export interface PopoverProps
   extends Omit<
@@ -135,3 +140,7 @@ export function Popover({
     </AnchoredLayer>
   );
 }
+
+/** Popover menuitems use the same tone map as DropdownMenuItem / ContextMenuItem. */
+export { menuItemClass, MENU_ITEM_TONE_CLASS } from '../tokens/menu-tone';
+export type { MenuItemTone } from '../tokens/menu-tone';
