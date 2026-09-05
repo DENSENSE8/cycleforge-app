@@ -46,6 +46,45 @@ git commit ──► .githooks/post-commit ──► one line in .ci/queue (neve
 - **Untracked files in the worktree** (other than the two the runner plants)
   are a receipt-level warning — the run was not hermetic.
 
+## Which tests run
+
+On `main` the receipt runs every unit test (`selection: all (postsubmit)`).
+Anywhere else the runner diffs the commit against its parent, runs
+`impact_analysis` over each changed source file, and runs the co-located tests
+of everything the change reaches. The receipt records the decision:
+
+| `selection` | meaning |
+|---|---|
+| `12 test file(s) from 3 changed source(s)` | the graph answered; those tests ran |
+| `none (no source changed)` | docs/config only — no unit gate |
+| `all (graph stale)` | the graph reached nothing from a real source change, so the FULL suite ran instead |
+
+The last row is the important one. An empty impact set and "nothing depends on
+this" are indistinguishable, and presubmit has no second net — so an unindexed
+commit costs time, never coverage.
+
+## When a gate is red
+
+`ci-status` says whether the commit broke it:
+
+```
+✗ Typecheck (INTRODUCED here — green at 935b1d3) — .ci/logs/…/typecheck.log
+✗ Unit tests (inherited from faba71b — not this commit) — .ci/logs/…/unit-tests.log
+```
+
+That comparison is free: the parent's receipt is already on disk. `unknown`
+means the parent was never measured, or ran a profile that skipped the gate.
+
+## Flaky gates
+
+A gate that both failed and passed on the SAME input hash cannot be reporting a
+property of the code — the hash covers sources, lockfile, toolchain and the
+gate definition. Those pairs land in `.ci/flaky.json`; the next failure on that
+hash is `advisory-fail`, named in the receipt and printed by `ci-status`.
+Entries are only ever added by the runner — **clearing one is a human
+decision**. Granularity today is (gate, input hash); per-test quarantine needs
+the TAP reporter parsed.
+
 ## Files on disk (all gitignored under `.ci/`)
 
 | path | what |
