@@ -56,7 +56,7 @@ import {
   statSync,
 } from 'node:fs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
   CI_PATHS,
   buildReceipt,
@@ -73,7 +73,45 @@ import {
   summarizeGates,
   formatDuration,
 } from './ci/ci-core.mjs';
-import { buildGates, gatesForProfile } from './verify-profile.mjs';
+import {
+  buildGates as buildGatesFallback,
+  gatesForProfile as gatesForProfileFallback,
+} from './verify-profile.mjs';
+
+/**
+ * Load the gate list FROM THE WORKTREE, not from the live tree.
+ *
+ * The gate definition is an input to the result, so it has to come from the
+ * commit under test — otherwise the runner reproduces the very failure the
+ * worktree exists to prevent, one level up. Measured 2026-09-05: a sibling
+ * session added two gates to the live `verify-profile.mjs`, and every
+ * historical commit immediately went red on them because their scripts do not
+ * exist at those shas. The commit had not changed; the ruler had.
+ *
+ * It also makes a receipt reproducible: re-running an old sha replays the
+ * gates that sha actually declared. Falls back to this checkout's copy for a
+ * commit predating the module, so an ancient sha still measures something.
+ */
+async function gateListFor(wt, profile, eslintCacheDir) {
+  const local = path.join(wt, 'scripts/verify-profile.mjs');
+  if (existsSync(local)) {
+    try {
+      const mod = await import(`${pathToFileURL(local).href}?v=${Date.now()}`);
+      return {
+        all: mod.buildGates(wt, { eslintCacheDir }),
+        forProfile: (all) => mod.gatesForProfile(profile, all),
+        source: 'worktree',
+      };
+    } catch (err) {
+      log(`  gate list: worktree copy unusable (${err?.message ?? err}) — using this checkout's`);
+    }
+  }
+  return {
+    all: buildGatesFallback(wt, { eslintCacheDir }),
+    forProfile: (all) => gatesForProfileFallback(profile, all),
+    source: 'fallback',
+  };
+}
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WORKTREES = process.env.CYCLEFORGE_CI_WORKTREES ?? '/var/tmp/cycleforge-ci';
@@ -105,13 +143,13 @@ function parseArgs(argv) {
     else if (a === '--keep-worktree') out.keepWorktree = true;
     else if (a === '--help' || a === '-h') {
       process.stdout.write(
-        'usage: ci-runner.mjs --drain | --sha <sha> [--profile fast|full] [--branch <name>] [--keep-worktree]\n',
+        'usage: ci-runner.mjs --drain | --sha <sha> [--profile fast|full|deep] [--branch <name>] [--keep-worktree]\n',
       );
       process.exit(0);
     } else throw new Error(`unknown argument ${a}`);
   }
   if (!out.drain && !out.sha) throw new Error('need --drain or --sha <sha>');
-  if (out.profile && !['fast', 'full'].includes(out.profile)) throw new Error(`bad --profile ${out.profile}`);
+  if (out.profile && !['fast', 'full', 'deep'].includes(out.profile)) throw new Error(`bad --profile ${out.profile}`);
   return out;
 }
 
@@ -407,10 +445,15 @@ async function runOne({ sha: rawSha, branch: rawBranch, profile: forcedProfile, 
       PATH: `${path.dirname(process.execPath)}${path.delimiter}${process.env.PATH ?? ''}`,
       TEST_CONCURRENCY: process.env.TEST_CONCURRENCY ?? '4',
       NEXT_TELEMETRY_DISABLED: '1',
+      CYCLEFORGE_CI: '1',
       CI_SHA: sha,
     };
-    const allGates = buildGates(wt, { eslintCacheDir });
-    const list = [...gatesForProfile(profile, allGates)];
+    const gateList = await gateListFor(wt, profile, eslintCacheDir);
+    const allGates = gateList.all;
+    const list = [...gateList.forProfile(allGates)];
+    if (gateList.source === 'fallback') {
+      warnings.push('gate list came from this checkout, not the worktree (the sha has no scripts/verify-profile.mjs)');
+    }
 
     /*
      * Presubmit runs the tests the change can REACH; postsubmit on `main` runs
@@ -419,7 +462,7 @@ async function runOne({ sha: rawSha, branch: rawBranch, profile: forcedProfile, 
      * on the receipt either way, and a stale graph falls back rather than
      * quietly testing less.
      */
-    if (profile === 'full') {
+    if (profile === 'full' || profile === 'deep') {
       selection = 'all (postsubmit)';
     } else {
       const template = allGates.find((g) => g.name === 'Unit tests');
@@ -506,6 +549,19 @@ async function runOne({ sha: rawSha, branch: rawBranch, profile: forcedProfile, 
     if (wt && !keepWorktree) removeWorktree(wt);
   }
 
+  let review = null;
+  const reviewGate = gates.find((g) => g.gate === 'Design review');
+  if (reviewGate?.logPath) {
+    try {
+      const logText = readFileSync(abs(reviewGate.logPath), 'utf8');
+      const start = logText.lastIndexOf('\n{');
+      const jsonStart = start >= 0 ? start + 1 : logText.indexOf('{');
+      if (jsonStart >= 0) review = JSON.parse(logText.slice(jsonStart));
+    } catch {
+      /* advisory — a broken review payload is not a red gate */
+    }
+  }
+
   const receipt = buildReceipt({
     sha,
     branch,
@@ -519,6 +575,7 @@ async function runOne({ sha: rawSha, branch: rawBranch, profile: forcedProfile, 
     gates,
     selection,
     quarantined,
+    review,
   });
   mkdirSync(abs(CI_PATHS.receipts), { recursive: true });
   writeFileSync(abs(path.join(CI_PATHS.receipts, `${sha}.json`)), `${JSON.stringify(receipt, null, 2)}\n`);
