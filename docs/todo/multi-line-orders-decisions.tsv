@@ -16,3 +16,4 @@ ts	phase	decision	why	evidence	result
 2026-09-05T16:04:48Z	phase-0	land SQL plus Drizzle column on overnight/multi-line-orders from origin/main	PLAN PR-0 file boundary; isolate Layer 2 ingest	src/lib/migrations/2026-09-04_orders_multi_line_identity.sql src/lib/drizzle/schema.ts	open
 2026-09-05T16:04:48Z	phase-0	defer amazon/ebay ON CONFLICT column-list to Phase 2 ingest owner	PLAN forbids ingest writers in PR-0; connectors still ON CONSTRAINT on origin/main	origin/main amazon/order-sync.ts ebay/sync.ts	deferred
 2026-09-05T16:04:48Z	phase-0	ENV_NAME unset; applied database is local Neon pooler from DATABASE_URL	no ENV_NAME key in .env.local or .env	information_schema.columns external_line_id	open
+2026-09-05T16:06:19Z	phase-0	verify:fast passed on overnight/multi-line-orders after landing SQL and Drizzle	inner loop lint+typecheck only, not CI	.garisek/eval-session.json ok true durationMs 65342	tests green
