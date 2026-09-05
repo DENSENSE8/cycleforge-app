@@ -7,6 +7,10 @@
  * `src/lib/ci/ci-core.test.ts`); this file is the I/O around them.
  *
  *   node scripts/ci-runner.mjs --drain                 # the systemd timer's job
+ *
+ * Exit code: `--drain` returns 0 unless the RUNNER itself failed (a red gate is
+ * a receipt, not a runner error, and a permanently-failed timer unit hides the
+ * next real problem). `--sha` returns 1 on a red receipt so a caller can branch.
  *   node scripts/ci-runner.mjs --sha HEAD              # one commit, profile by branch
  *   node scripts/ci-runner.mjs --sha <sha> --profile full [--branch main] [--keep-worktree]
  *
@@ -544,8 +548,11 @@ async function main() {
       log(`draining ${jobs.length} queued commit(s)`);
       for (const job of jobs) {
         try {
-          const receipt = await runOne({ ...job, profile: null, keepWorktree: false });
-          if (!receipt.ok) exit = 1;
+          // A RED receipt is the drain's product, not its failure. Exiting
+          // non-zero here marks the systemd unit `failed` forever and buries
+          // the next real problem under a permanently-red unit — the receipt
+          // is where a gate result belongs. Only a crash below sets `exit`.
+          await runOne({ ...job, profile: null, keepWorktree: false });
         } catch (err) {
           log(`job ${job.sha} crashed: ${err instanceof Error ? err.message : err}`);
           exit = 1;
