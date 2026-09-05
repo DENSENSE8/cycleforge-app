@@ -1,23 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Package } from '@/components/Icons';
+import { Package } from '@/components/Icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { formatReturnSerialProductTitle } from '@/components/station/receiving-line-serials';
-import {
-  SkuScanRefChip,
-  SerialChip,
-  getLast8,
-} from '@/components/ui/CopyChip';
-import {
-  conditionGradeTableLabel,
-  workflowStatusTableLabel,
-  WORKFLOW_BADGE,
-} from '@/components/station/receiving-constants';
-import { conditionGradeTextClass } from '@/lib/condition-tone';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { Panel, Button } from '@/design-system/primitives';
+import { Button } from '@/design-system/primitives';
 import { UniversalLoader } from '@/design-system/components/UniversalLoader';
+import { ItemRecordRow, type ItemRecord } from '@/design-system/components/item-record';
+import { receivingQty } from '@/lib/item-record/receiving-qty';
+import { deriveReceiveState } from '@/lib/item-record/receive-state';
 
 interface ReceivingLine {
   id: number;
@@ -32,7 +23,7 @@ interface ReceivingLine {
   needs_test: boolean;
   assigned_tech_name: string | null;
   notes: string | null;
-  /** Optional serials when the /api/receiving/match payload includes them. */
+  exception_code?: string | null;
   serials?: Array<{ id?: number; serial_number: string }> | null;
 }
 
@@ -41,104 +32,27 @@ interface PoLinesSectionProps {
   trackingNumber?: string;
 }
 
-/**
- * Per-line row in the PO LINES details card. Two-row stacked layout to fit
- * the narrow side panel:
- *   - Row 1: PO + tracking copy chips (left) and qty pill (right).
- *   - Row 2: full-width item title, then condition + workflow status badges.
- *
- * The shared `ReceivingLineOrderRow` is built for the wider main table and
- * its single-row chip grid truncates badly inside this card.
- */
-function PoLineRow({ line }: { line: ReceivingLine }) {
-  const qtyOk =
-    (line.quantity_expected ?? 0) > 0
-      ? line.quantity_received >= (line.quantity_expected ?? 0)
-      : false;
-  const badgeCls = WORKFLOW_BADGE[line.workflow_status] ?? 'bg-surface-sunken text-text-soft';
-  const conditionLabel = conditionGradeTableLabel(line.condition_grade);
-  const condGrade = (line.condition_grade || '').toUpperCase();
-  const skuValue = (line.sku || '').trim();
-  const serialsCsv = Array.isArray(line.serials)
-    ? line.serials.map((s) => (s.serial_number || '').trim()).filter(Boolean).join(', ')
-    : '';
-
-  // Row 1 — full-width product title. No truncation; wraps as needed.
-  // Return-serial titles paint last-8 from the live unit when present.
-  const primarySerial = serialsCsv
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean)
-    .at(-1) ?? null;
-  const displayTitle = formatReturnSerialProductTitle(
-    line.item_name || line.sku || `Line #${line.id}`,
-    primarySerial,
-  );
-  const titleNode = (
-    <p className="text-role-caption font-semibold text-text-default leading-snug">
-      {displayTitle}
-    </p>
-  );
-
-  return (
-    <div className="border-b border-border-hairline last:border-b-0 px-3 py-2.5">
-      {line.item_name ? (
-        <HoverTooltip label={line.item_name} asChild>
-          {titleNode}
-        </HoverTooltip>
-      ) : (
-        titleNode
-      )}
-
-      {/* Row 2 — bottom strip:
-            LEFT  → qty + workflow / condition / needs-test badges
-            RIGHT → SKU + serial copy chips */}
-      <div className="mt-1.5 flex items-center justify-between gap-3">
-        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <span
-            className={`flex shrink-0 items-center gap-0.5 text-role-caption font-semibold tabular-nums ${
-              qtyOk ? 'text-emerald-600' : 'text-text-muted'
-            }`}
-          >
-            {line.quantity_received}
-            <span className="text-text-faint">/</span>
-            <span className="text-text-faint">{line.quantity_expected ?? '?'}</span>
-            {qtyOk ? <Check className="h-3 w-3 text-emerald-500" aria-hidden /> : null}
-          </span>
-          <span
-            className={`rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ${badgeCls}`}
-          >
-            {workflowStatusTableLabel(line.workflow_status)}
-          </span>
-          {condGrade && condGrade !== 'PENDING' ? (
-            <span
-              className={`rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ring-border-soft ${conditionGradeTextClass(condGrade)}`}
-            >
-              {conditionLabel}
-            </span>
-          ) : null}
-          {line.needs_test ? (
-            <span className="rounded bg-orange-100 px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest text-orange-700">
-              Test
-            </span>
-          ) : null}
-          {line.assigned_tech_name ? (
-            <span className="truncate text-role-eyebrow text-text-faint">
-              → {line.assigned_tech_name}
-            </span>
-          ) : null}
-        </div>
-        <div className="flex shrink-0 items-center gap-1">
-          {skuValue ? (
-            <SkuScanRefChip value={skuValue} display={getLast8(skuValue)} />
-          ) : null}
-          {serialsCsv ? (
-            <SerialChip value={serialsCsv} />
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
+function matchLineToItemRecord(line: ReceivingLine): ItemRecord {
+  const serials = Array.isArray(line.serials)
+    ? line.serials.map((s) => (s.serial_number || '').trim()).filter(Boolean)
+    : [];
+  const primarySerial = serials.at(-1) ?? null;
+  return {
+    id: line.id,
+    title: formatReturnSerialProductTitle(
+      line.item_name || line.sku || `Line #${line.id}`,
+      primarySerial,
+    ),
+    sku: (line.sku || '').trim() || null,
+    quantity: receivingQty(line),
+    receiveState: deriveReceiveState({
+      counted: line.quantity_received,
+      expected: line.quantity_expected,
+      exceptionCode: line.exception_code,
+    }),
+    conditionGrade: String(line.condition_grade ?? '').trim() || null,
+    serials,
+  };
 }
 
 export function PoLinesSection({ receivingId, trackingNumber }: PoLinesSectionProps) {
@@ -189,7 +103,7 @@ export function PoLinesSection({ receivingId, trackingNumber }: PoLinesSectionPr
       ) : null}
 
       {lines.length === 0 ? (
-        <div className="text-center py-4 space-y-2">
+        <div className="space-y-2 py-4 text-center">
           <p className="text-role-micro text-text-faint">No items linked yet.</p>
           <Button
             variant="primary"
@@ -205,11 +119,13 @@ export function PoLinesSection({ receivingId, trackingNumber }: PoLinesSectionPr
           )}
         </div>
       ) : (
-        <Panel radius="xl" padding="none" className="overflow-hidden">
+        <ul className="flex min-w-0 flex-col divide-y divide-border-hairline">
           {lines.map((line) => (
-            <PoLineRow key={line.id} line={line} />
+            <li key={line.id} className="min-w-0 py-1">
+              <ItemRecordRow item={matchLineToItemRecord(line)} />
+            </li>
           ))}
-        </Panel>
+        </ul>
       )}
     </div>
   );
