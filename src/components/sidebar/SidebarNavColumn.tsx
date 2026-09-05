@@ -4,16 +4,12 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
-import { useRouter } from 'next/navigation';
-import { RailStackBands } from '@/components/sidebar/RailStackBands';
-import { stackModel } from '@/lib/nav/stack-model';
 import { appCanvasClass } from '@/design-system/tokens/app-surface';
 import { SIDEBAR_SPINE_PEEK_INSET_PX, SIDEBAR_SPINE_RESIZE } from '@/components/sidebar/sidebar-spine';
 import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
@@ -204,12 +200,6 @@ export function SidebarNavColumn({
    * finished, empty panel for a third of a second.
    */
   const [everOpened, setEverOpened] = useState(open);
-  const router = useRouter();
-  const [stackNow] = useState(() => new Date().toISOString());
-  const stack = useMemo(
-    () => stackModel({ armed: null, earlier: [], queues: [], now: stackNow }),
-    [stackNow],
-  );
   useEffect(() => {
     if (open || peeking) setEverOpened(true);
   }, [open, peeking]);
@@ -422,16 +412,6 @@ export function SidebarNavColumn({
                 }
           }
         >
-          <RailStackBands
-            model={stack}
-            onResume={() => {}}
-            onOpenQueue={(tableId) => {
-              router.push(`/?table=${tableId}`);
-            }}
-            onFind={() => {
-              router.push('/');
-            }}
-          />
           {children}
         </motion.aside>
       )}

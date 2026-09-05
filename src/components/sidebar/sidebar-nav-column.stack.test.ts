@@ -1,6 +1,17 @@
 /**
- * The Stack is MOUNTED on the desk rail — `RailStackBands` inside
- * `SidebarNavColumn`, over `stackModel`.
+ * The Stack is NOT mounted on the desk rail (operator ruling 2026-09-05).
+ *
+ * This file used to assert the opposite: that `RailStackBands` was wired into
+ * `SidebarNavColumn` over `stackModel`, painting Now / Earlier today / Queues /
+ * Find above the page map. The operator removed it from the top of the nav, so
+ * the guard is inverted rather than deleted — a silent re-add would put four
+ * bands back above every destination in the spine, and the column is the only
+ * place that fact is visible (`RailStackBands` and the fold each pass their own
+ * tests while unmounted).
+ *
+ * The component and its model are left in the tree, unmounted, deliberately:
+ * they are a built feature with their own passing tests, and deleting them is a
+ * product call, not a side effect of taking them off this surface.
  *
  *   node --import tsx --test src/components/sidebar/sidebar-nav-column.stack.test.ts
  *
@@ -167,39 +178,25 @@ function mountColumn() {
 
 const bands = () => doc.querySelector('[data-testid="rail-stack-bands"]');
 
-test('the Stack is mounted on the open column', () => {
+test('the Stack is NOT mounted on the open column', () => {
   const m = mountColumn();
-  const el = bands();
-  assert.ok(el, 'RailStackBands is wired into the column, not merely importable');
-  assert.ok(doc.body.contains(el), 'and it is in the document, not a detached tree');
+  assert.equal(
+    bands(),
+    null,
+    'RailStackBands is back above the page map — Now / Earlier today / Queues / ' +
+      'Find were removed from the top of the nav on 2026-09-05',
+  );
   m.unmount();
 });
 
-test('the first band is NOW — the shift reads armed-first', () => {
+test('the page map is the first thing in the column', () => {
   const m = mountColumn();
-  const first = bands()?.querySelector('[data-stack-band]');
-  assert.ok(first, 'the four bands paint even on an empty shift');
-  assert.equal(first?.getAttribute('data-stack-band'), 'now');
-  // The uppercase is CSS's job (`BAND_LABEL_CLASS`), so the DOM text stays
-  // sentence-case for screen readers — fold the case rather than assert paint
-  // from a jsdom that applies no stylesheet.
-  assert.equal((first?.textContent ?? '').trim().toUpperCase(), 'NOW');
-  m.unmount();
-});
-
-test('the Stack sits above the page map, and displaces no nav leaf', () => {
-  const m = mountColumn();
-  const stack = bands();
   const map = doc.querySelector('[data-testid="spine-page-map"]');
-  assert.ok(stack, 'bands mounted');
-  assert.ok(map, 'the spine still renders its own rows under them');
-  const mapFollowsStack =
-    stack && map
-      ? Boolean(
-          stack.compareDocumentPosition(map) &
-            dom.window.Node.DOCUMENT_POSITION_FOLLOWING,
-        )
-      : false;
-  assert.ok(mapFollowsStack, 'bands come before the page map — Stack first, map under it');
+  assert.ok(map, 'the column rendered no page map at all');
+  assert.equal(
+    bands(),
+    null,
+    'nothing stands between the top of the column and its destinations',
+  );
   m.unmount();
 });
