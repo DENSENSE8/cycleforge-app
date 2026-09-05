@@ -20,12 +20,21 @@
 
 export interface ItemRecordQuantity {
   /**
-   * How many are physically accounted for. Omit on surfaces with no count of
-   * their own (a sales order knows what was sold, not what was handled).
+   * How many are physically accounted for. On a receiving line this is got.
+   * Omit on surfaces with no count of their own (a sales order knows what was
+   * sold, not what was handled).
    */
   counted?: number | null;
-  /** How many are expected / ordered. */
+  /**
+   * How many are expected / ordered. On a receiving line this is listed.
+   */
   expected?: number | null;
+  /**
+   * Receiving qty face. Paints got/listed plus remaining. Open (got 0) is
+   * never emerald. Done is not color-only. Omit on sales orders
+   * (expected-only) and on serial units (one physical unit, not PO receive).
+   */
+  receive?: boolean;
 }
 
 /**

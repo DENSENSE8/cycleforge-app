@@ -1,15 +1,10 @@
 import { ItemRecordQtyBadge } from '@/design-system/components/item-record';
+import { receivingQty } from '@/lib/item-record/receiving-qty';
 
 /**
- * Floor counted/expected qty — the receiving name for the shared item qty
- * badge, whose implementation moved to `design-system/components/item-record`
- * (2026-08-22). Copy uses **counted**, never the inventory noun Received
- * (Unboxed ≠ Received).
- *
- * `ScannedBadge` used to live here too. It painted `expected/expected` for
- * read-only triage rows, which is not a different badge — it is the same
- * counted/expected claim with the count satisfied. `PoLineRow` now says that
- * in the record it hands down, so there is no second component to keep in sync.
+ * Floor got/listed qty — the receiving name for the shared item qty badge
+ * (2026-08-22). Copy uses **got** / **listed**, never the inventory noun
+ * Received (that is hop 2). Serial-unit `1/1` does not mount this wrapper.
  */
 export function ProgressBadge({
   received,
@@ -22,6 +17,9 @@ export function ProgressBadge({
   className?: string;
 }) {
   return (
-    <ItemRecordQtyBadge quantity={{ counted: received, expected }} className={className} />
+    <ItemRecordQtyBadge
+      quantity={receivingQty({ quantity_received: received, quantity_expected: expected })}
+      className={className}
+    />
   );
 }

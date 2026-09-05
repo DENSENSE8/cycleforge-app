@@ -15,6 +15,7 @@ import { emitReceiving } from '@/components/receiving/receiving-events';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { setActiveSinkId } from '@/lib/station-scan-sink';
 import { receivingWorkspaceLineTitle } from '@/lib/receiving/po-group-title';
+import { receivingQty } from '@/lib/item-record/receiving-qty';
 import {
   SCAN_LINE_PULSE_EVENT,
   type ScanLinePulseDetail,
@@ -199,19 +200,16 @@ export function PoLineRow({
   };
 
   /**
-   * A door scan brings the WHOLE carton in, so a read-only (triage) row reads
-   * `1/1` — counted equals expected. That used to be a separate `ScannedBadge`
-   * component; it is the same claim expressed in the neutral shape, so the
-   * shared qty badge renders it without a second component to keep in sync.
+   * Live Unbox and triage both use actual got. Door-scan must not paint
+   * listed-as-got (`1/1` emerald Open). ReceivingQty sets receive so remaining
+   * is visible. Serial-unit 1/1 is a different mapper and stays off this flag.
    */
   const item: ItemRecord = {
     id: line.id,
     title: receivingWorkspaceLineTitle(line),
     imageUrl: line.image_url,
     sku: line.sku,
-    quantity: readOnly
-      ? { counted: line.quantity_expected ?? 1, expected: line.quantity_expected }
-      : { counted: line.quantity_received, expected: line.quantity_expected },
+    quantity: receivingQty(line),
     conditionGrade:
       isActive && activeConditionOverride ? activeConditionOverride : line.condition_grade,
     serials: serialNumbers,
