@@ -12,6 +12,7 @@ import {
   SETTINGS_SECTION_OPTIONS,
   resolveSettingsSectionFromPath,
   type SettingsSection,
+  settingsSectionRoute,
 } from '@/components/settings/settings-sections';
 import { AccessSidebarPanel } from '@/components/admin/AccessSidebarPanel';
 import { RolesSidebarPanel } from '@/components/admin/RolesSidebarPanel';
@@ -212,16 +213,11 @@ export function SettingsSidebar() {
 
   const navigateSection = useCallback(
     (section: SettingsSection) => {
-      const def = SETTINGS_SECTION_OPTIONS.find((s) => s.id === section);
-      if (def?.href) {
-        router.replace(def.href);
-        return;
-      }
-      const params = new URLSearchParams(searchParams?.toString());
-      params.set('section', section);
-      router.replace(`/settings?${params.toString()}`);
+      // Routing unification (2026-09-06): every section is a real route —
+      // href when the section lives off-settings, /settings/<id> otherwise.
+      router.replace(settingsSectionRoute(section));
     },
-    [router, searchParams],
+    [router],
   );
 
   const sectionLabel = SETTINGS_SECTION_OPTIONS.find((s) => s.id === active)?.label ?? '';
@@ -273,4 +269,4 @@ export function SettingsSidebarPanel() {
   return <SettingsSidebar />;
 }
 
-export { getActiveSettingsSection, type SettingsSection } from '@/components/settings/settings-sections';
+export { getActiveSettingsSection, settingsSectionRoute, type SettingsSection } from '@/components/settings/settings-sections';

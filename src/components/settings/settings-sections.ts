@@ -75,16 +75,25 @@ export function getActiveSettingsSection(raw: string | null | undefined): Settin
   return SETTINGS_SECTION_OPTIONS.some((s) => s.id === v) ? (v as SettingsSection) : 'hardware';
 }
 
+/** Canonical route for a section: its `href` when it lives off-settings
+ * (/apps, org routes), else `/settings/<id>` (routing unification 2026-09-06). */
+export function settingsSectionRoute(id: SettingsSection): string {
+  const def = SETTINGS_SECTION_OPTIONS.find((s) => s.id === id);
+  return def?.href ?? `/settings/${id}`;
+}
+
 export function resolveSettingsSectionFromPath(pathname: string | null | undefined): SettingsSection | null {
   if (!pathname) return null;
-  if (pathname === '/settings/billing') return 'billing';
-  if (pathname === '/apps') return 'integrations';
-  if (pathname === '/settings/ai') return 'ai';
-  if (pathname === '/settings/team' || pathname === '/settings/staff') return 'team';
-  if (pathname === '/settings/roles') return 'roles';
-  if (pathname === '/apps' || pathname === '/settings/integrations') return 'integrations';
-  if (pathname === '/settings/audit') return 'audit';
-  if (pathname === '/settings/organization') return 'organization';
-  if (pathname === '/settings/qa') return 'qa';
+  // `/settings/<segment>` resolves by section id (hardware, quick-access,
+  // devices, …), then by the alias spellings that predate the unification.
+  const m = pathname.match(/^\/settings\/([a-z-]+)(?:\/|$)/);
+  if (m) {
+    const seg = m[1];
+    if (SETTINGS_SECTION_OPTIONS.some((s) => s.id === seg)) return seg as SettingsSection;
+    if (seg === 'team' || seg === 'staff') return 'team';
+    if (seg === 'integrations') return 'integrations';
+    if (seg === 'qa') return 'qa';
+  }
+  if (pathname === '/apps' || pathname.startsWith('/apps/')) return 'integrations';
   return null;
 }

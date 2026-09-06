@@ -136,7 +136,7 @@ export default async function AiSettingsPage() {
               {providerOrder === 'local-first' ? 'self-hosted first' : 'cloud first'}
             </p>
             <Link
-              href="/settings/integrations"
+              href="/apps"
               className="text-role-caption font-semibold text-text-info hover:underline"
             >
               Connect / manage providers →

@@ -1,83 +1,52 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import type { ComponentType } from 'react';
-import { useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { HardwareSection } from '@/components/settings/sections/HardwareSection';
-import { WorkstationSection } from '@/components/settings/sections/WorkstationSection';
-import { QuickAccessSection } from '@/components/settings/sections/QuickAccessSection';
-import { AppearanceSection } from '@/components/settings/sections/AppearanceSection';
-import { KeyboardSection } from '@/components/settings/sections/KeyboardSection';
-import { AboutSection } from '@/components/settings/sections/AboutSection';
-import { SecuritySection } from '@/components/settings/sections/SecuritySection';
-import { SessionsSection } from '@/components/settings/sections/SessionsSection';
-import { KioskDevicesSection } from '@/components/settings/sections/KioskDevicesSection';
-import { CatalogSection } from '@/components/settings/sections/CatalogSection';
-import { StationsSection } from '@/components/settings/sections/StationsSection';
-import { LegalSection } from '@/components/settings/sections/LegalSection';
-import { SettingsPanel } from '@/components/settings/SettingsPanel';
-import {
-  getActiveSettingsSection,
-  type SettingsSection,
-} from '@/components/settings/settings-sections';
-
-function ReceivingSettingsSection() {
-  return <SettingsPanel page="receiving" />;
-}
-
-const LEGACY_REDIRECTS: Record<string, string> = {
-  staff: '/settings/staff',
-  team: '/settings/staff',
-  billing: '/settings/billing',
-  integrations: '/settings/integrations',
-  audit: '/settings/audit',
+/**
+ * `/settings` — every section is a real route now (settings routing
+ * unification, 2026-09-06): /settings/hardware, /settings/appearance, …
+ * alongside the org routes that were already paths (billing, apps, photos,
+ * team, roles, access, audit, organization, qa, ai).
+ *
+ * This file is the redirect back-compat layer: `?section=<id>` (the old
+ * inline-tab addressing) and the legacy spellings land on their routes.
+ * Bare /settings lands on the first Personal section.
+ */
+const SECTION_ROUTES: Record<string, string> = {
+  hardware: '/settings/hardware',
+  workstation: '/settings/workstation',
+  'quick-access': '/settings/quick-access',
+  appearance: '/settings/appearance',
+  keyboard: '/settings/keyboard',
+  receiving: '/settings/receiving',
+  security: '/settings/security',
+  about: '/settings/about',
+  legal: '/settings/legal',
   organization: '/settings/organization',
+  billing: '/settings/billing',
+  integrations: '/apps',
+  ai: '/settings/ai',
+  catalog: '/settings/catalog',
+  stations: '/settings/stations',
+  photos: '/settings/photos',
+  team: '/settings/staff',
+  staff: '/settings/staff',
   roles: '/settings/roles',
   access: '/settings/access',
+  sessions: '/settings/sessions',
+  devices: '/settings/devices',
+  audit: '/settings/audit',
+  qa: '/settings/qa',
+  // Legacy spellings from the old redirect table.
   'operations-log': '/operations?mode=logs',
 };
 
-const INLINE_SECTIONS: Partial<Record<SettingsSection, ComponentType>> = {
-  hardware: HardwareSection,
-  workstation: WorkstationSection,
-  'quick-access': QuickAccessSection,
-  appearance: AppearanceSection,
-  keyboard: KeyboardSection,
-  receiving: ReceivingSettingsSection,
-  security: SecuritySection,
-  sessions: SessionsSection,
-  devices: KioskDevicesSection,
-  catalog: CatalogSection,
-  stations: StationsSection,
-  about: AboutSection,
-  legal: LegalSection,
-};
-
-export default function SettingsPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const rawSection = searchParams?.get('section');
-  const active = getActiveSettingsSection(rawSection);
-
-  useEffect(() => {
-    if (!rawSection) return;
-    const target = LEGACY_REDIRECTS[rawSection.toLowerCase()];
-    if (target) router.replace(target);
-  }, [rawSection, router]);
-
-  if (rawSection && LEGACY_REDIRECTS[rawSection.toLowerCase()]) {
-    return null;
-  }
-
-  const Section = INLINE_SECTIONS[active] ?? HardwareSection;
-
-  return (
-    <div className="flex h-full min-h-0 w-full flex-col bg-surface-canvas">
-      <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl px-6 py-8 sm:px-10">
-          <Section />
-        </div>
-      </main>
-    </div>
-  );
+export default async function SettingsRedirect({
+  searchParams,
+}: {
+  searchParams: Promise<{ section?: string | string[] }>;
+}) {
+  const raw = await searchParams;
+  const section = String(Array.isArray(raw.section) ? raw.section[0] : raw.section || '')
+    .trim()
+    .toLowerCase();
+  redirect(SECTION_ROUTES[section] ?? '/settings/hardware');
 }
