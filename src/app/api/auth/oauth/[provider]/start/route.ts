@@ -70,7 +70,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   }
 
   const res = NextResponse.redirect(authUrl.toString());
-  const isSecure = origin(req).startsWith('https:') || process.env.NODE_ENV === 'production';
+  const isSecure = oauthOrigin(req).startsWith('https:') || process.env.NODE_ENV === 'production';
   res.cookies.set(OAUTH_STATE_COOKIE, encodeOAuthState(payload), {
     httpOnly: true,
     secure: provider === 'apple' ? true : isSecure,
