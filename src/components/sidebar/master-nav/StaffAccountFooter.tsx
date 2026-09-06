@@ -34,6 +34,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStaffSwitcher } from '@/contexts/StaffSwitcherContext';
 import { cn } from '@/utils/_cn';
 import { useNavArrange } from './nav-arrange-context';
+import { SpineWorkspaceSwitch } from './SpineWorkspaceSwitch';
 
 type OpenMenu = 'none' | 'more' | 'feedback';
 
@@ -174,6 +175,10 @@ export function StaffAccountFooter({ className }: { className?: string }) {
               {user.role.replace(/_/g, ' ')}
             </div>
           </div>
+          {/* Org switching lives at the bottom of the nav itself (2026-09-06):
+              one ⋯ click, one org click — same shared switch contract as
+              Settings → Organization. Renders nothing for single-org accounts. */}
+          <SpineWorkspaceSwitch />
           <div className="space-y-0 p-0">
             <button
               type="button"
