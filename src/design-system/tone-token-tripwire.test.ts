@@ -21,11 +21,14 @@ const TREES = [
   'src/components/admin',
   'src/components/settings',
   'src/app/settings',
+  // The promoted marketplace tree (ex-/settings/integrations, 2026-09-06).
+  'src/app/apps',
 ] as const;
 
 /** Vendor brand identity (monogram badges), not status semantics. */
 const ALLOWED_FILES: Record<string, true> = {
-  'src/app/settings/integrations/registry.ts': true,
+  // Vendor brand monogram badges — brand identity, not status tones.
+  'src/app/apps/registry.ts': true,
 };
 
 const RAW_TONE = /\b(?:bg|text|border|ring|divide)-(?:red|rose|emerald|green|lime|amber|orange|yellow|blue|sky|indigo|cyan)-\d{2,3}(?:\/\d{1,3})?\b/g;

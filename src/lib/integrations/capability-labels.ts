@@ -15,7 +15,7 @@
  *   provider label   → PROVIDER_CATALOG (settings display SoT)
  *   capability words → the maps below (extend here, never inline in a view)
  */
-import { PROVIDER_CATALOG } from '@/app/settings/integrations/registry';
+import { PROVIDER_CATALOG } from '@/app/apps/registry';
 import type { Capability } from '@/lib/integrations/connectors/types';
 
 /** Lowercase noun for mid-sentence interpolation ("Save to {noun}"). */
@@ -70,7 +70,7 @@ export function providerCatalogLabel(provider: string): string {
 /** Deep-link to the Integrations hub — the ONLY connect surface. Optionally
  *  anchored to one provider's card. */
 export function integrationsHubHref(provider?: string): string {
-  return provider ? `/settings/integrations#${provider}` : '/settings/integrations';
+  return provider ? `/apps#${provider}` : '/apps';
 }
 
 export type { Capability };

@@ -108,7 +108,7 @@ export function IntegrationDetailClient({ def, summary, nangoReady }: Integratio
         toast.error(`Couldn't disconnect: ${data.error || res.status}`);
       } else {
         toast.success(`${def.label} disconnected.`);
-        router.push('/settings/integrations');
+        router.push('/apps');
       }
     } finally {
       setBusy(false);
@@ -370,10 +370,10 @@ export function IntegrationDetailClient({ def, summary, nangoReady }: Integratio
             Provider docs <ExternalLink className="h-3 w-3" />
           </a>
         )}
-        <Link href="/settings/integrations/diagnostics" className="font-semibold text-text-muted hover:text-text-default">
+        <Link href="/apps/diagnostics" className="font-semibold text-text-muted hover:text-text-default">
           Connection diagnostics →
         </Link>
-        <Link href="/settings/integrations" className="font-semibold text-text-muted hover:text-text-default">
+        <Link href="/apps" className="font-semibold text-text-muted hover:text-text-default">
           ← All integrations
         </Link>
       </div>

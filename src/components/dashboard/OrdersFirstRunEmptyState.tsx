@@ -30,7 +30,7 @@ export function OrdersFirstRunEmptyState({
           variant="primary"
           size="sm"
           icon={<Link2 className="h-4 w-4" />}
-          onClick={() => router.push('/settings/integrations')}
+          onClick={() => router.push('/apps')}
         >
           Connect a sales channel
         </Button>

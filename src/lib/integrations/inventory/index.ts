@@ -32,7 +32,7 @@ export class InventoryNotConnectedError extends Error {
   constructor(public readonly orgId: OrgId) {
     super(
       `No inventory integration connected for org ${orgId}. ` +
-        'Connect one via Settings → Integrations (/settings/integrations).',
+        'Connect one via Apps (/apps).',
     );
     this.name = 'InventoryNotConnectedError';
   }

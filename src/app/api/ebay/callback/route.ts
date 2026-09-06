@@ -40,7 +40,7 @@ export async function GET(req: NextRequest) {
   const origin = req.nextUrl.origin;
   // Single-use nonce: clear it on every terminal outcome.
   const finish = (query: string) => {
-    const res = NextResponse.redirect(`${origin}/settings/integrations?${query}`);
+    const res = NextResponse.redirect(`${origin}/apps?${query}`);
     res.cookies.delete(EBAY_OAUTH_STATE_COOKIE);
     return res;
   };

@@ -139,7 +139,7 @@ export function AmazonSection({ c }: { c: ConnectionsPanelController }) {
         <p className={dataValue}>Connect with refresh token</p>
         <p className={`mt-0.5 ${fieldLabel} text-text-soft`}>
           Credential connect lives in{' '}
-          <a href="/settings/integrations/amazon" className="font-medium text-blue-600 hover:underline">
+          <a href="/apps/amazon" className="font-medium text-blue-600 hover:underline">
             Settings → Integrations → Amazon
           </a>
           . Use this sidebar for sync tools only.

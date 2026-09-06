@@ -2,7 +2,7 @@
 
 /**
  * Shows the outcome of an OAuth round-trip. The provider callbacks redirect back
- * to /settings/integrations?success=…|error=… ; this fires a toast, renders a
+ * to /apps?success=…|error=… ; this fires a toast, renders a
  * dismissible inline banner, and strips the query params so a refresh is quiet.
  */
 import { useEffect, useState } from 'react';

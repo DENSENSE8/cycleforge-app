@@ -41,7 +41,7 @@
  * them moved, the bytes do not move either. Same reasoning as the marketing
  * sitemap's omitted `lastModified`.
  */
-import { INTEGRATION_CATEGORIES, PROVIDER_CATALOG } from '@/app/settings/integrations/registry';
+import { INTEGRATION_CATEGORIES, PROVIDER_CATALOG } from '@/app/apps/registry';
 import { capabilityTitle } from '@/lib/integrations/capability-labels';
 import { listConnectors } from '@/lib/integrations/connectors/registry';
 import type { Capability } from '@/lib/integrations/connectors/types';

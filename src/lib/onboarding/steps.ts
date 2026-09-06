@@ -95,7 +95,7 @@ export const ONBOARDING_STEPS: readonly OnboardingStep[] = [
     id: 'connect',
     label: 'Connect a sales channel',
     description: 'Orders flow in automatically once a channel is linked.',
-    href: '/settings/integrations',
+    href: '/apps',
     doneWhen: (s) => s.integrationsConnected > 0,
   },
   {

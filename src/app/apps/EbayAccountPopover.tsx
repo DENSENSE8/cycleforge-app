@@ -148,7 +148,7 @@ export function EbayAccountDetailPopover({
         </div>
         <div className="flex flex-wrap gap-2 border-t border-border-hairline pt-2">
           <Link
-            href="/settings/integrations/ebay"
+            href="/apps/ebay"
             className="text-role-caption font-semibold text-text-info hover:underline"
             onClick={onClose}
           >

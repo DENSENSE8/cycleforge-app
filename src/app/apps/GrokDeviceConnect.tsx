@@ -40,7 +40,7 @@ export function GrokDeviceConnect({
           setStatus('connected');
           toast.success('Grok (SuperGrok) connected — Ask will use your subscription.');
           window.setTimeout(() => {
-            window.location.href = '/settings/integrations?success=grok_connected';
+            window.location.href = '/apps?success=grok_connected';
           }, 600);
           return;
         }

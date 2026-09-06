@@ -773,6 +773,9 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   // /manuals now redirects to /products (see src/app/manuals/page.tsx)
   if (pathname === '/manuals' || pathname.startsWith('/manuals/')) return 'products';
   if (pathname === '/developer' || pathname.startsWith('/developer/')) return 'qa-console';
+  // /apps is the promoted integrations surface (2026-09-06) — the Settings
+  // registry row 'Apps & integrations' owns it; parked like Settings.
+  if (pathname === '/apps' || pathname.startsWith('/apps/')) return 'settings';
   if (pathname === '/settings' || pathname.startsWith('/settings/')) return 'settings';
   // `/search` — header find + SearchBrowseShell; `?sel=type:id` opens full-bleed detail.
   if (pathname === '/search' || pathname.startsWith('/search/')) return 'search';

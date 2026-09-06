@@ -62,7 +62,7 @@ export function IntegrationCard({
   const canManage = auth.isLoaded ? auth.has(managePermission(def)) : false;
   const pill = PILL[state.status];
   const connected = state.status !== 'not_connected';
-  const detailHref = `/settings/integrations/${def.key}`;
+  const detailHref = `/apps/${def.key}`;
 
   const runHealth = useCallback(async () => {
     if (!def.healthPath) return;

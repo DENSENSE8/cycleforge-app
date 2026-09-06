@@ -13,7 +13,6 @@ import {
   Settings,
   ShieldCheck,
   Smartphone,
-  Sparkles,
   Tags,
   Type,
   User,
@@ -54,8 +53,7 @@ export const SETTINGS_SECTION_OPTIONS: SettingsSectionOption[] = [
 
   { id: 'organization',  label: 'Organization',  description: 'Timezone, locale, auth policies, warranty',        group: 'Organization', requires: 'admin.view', href: '/settings/organization', icon: Warehouse },
   { id: 'billing',       label: 'Billing',       description: 'Plan, entitlements & Stripe portal',               group: 'Organization', requires: 'admin.view', href: '/settings/billing', icon: Receipt },
-  { id: 'integrations',  label: 'Integrations',  description: 'Connect inventory, sales channels, payments & more', group: 'Organization', requires: 'admin.view', href: '/settings/integrations', icon: Link2 },
-  { id: 'ai',            label: 'AI & Search',   description: 'AI provider, search usage & pricing',              group: 'Organization', requires: 'admin.view', href: '/settings/ai', icon: Sparkles },
+  { id: 'integrations',  label: 'Apps & integrations', description: 'Connect inventory, sales channels, payments & more', group: 'Organization', requires: 'admin.view', href: '/apps', icon: Link2 },
   { id: 'catalog',       label: 'Platforms & Types', description: 'Sales channels & receiving flow types',          group: 'Organization', requires: 'admin.manage_features', icon: Tags },
   // Gate matches the door it uses — the nickname goes through
   // `PATCH /api/locations/[barcode]/properties`, which is `sku_stock.manage`.
@@ -80,11 +78,11 @@ export function getActiveSettingsSection(raw: string | null | undefined): Settin
 export function resolveSettingsSectionFromPath(pathname: string | null | undefined): SettingsSection | null {
   if (!pathname) return null;
   if (pathname === '/settings/billing') return 'billing';
-  if (pathname === '/settings/integrations') return 'integrations';
+  if (pathname === '/apps') return 'integrations';
   if (pathname === '/settings/ai') return 'ai';
   if (pathname === '/settings/team' || pathname === '/settings/staff') return 'team';
   if (pathname === '/settings/roles') return 'roles';
-  if (pathname === '/settings/access') return 'access';
+  if (pathname === '/apps' || pathname === '/settings/integrations') return 'integrations';
   if (pathname === '/settings/audit') return 'audit';
   if (pathname === '/settings/organization') return 'organization';
   if (pathname === '/settings/qa') return 'qa';

@@ -11,7 +11,7 @@ import {
 import { getConnector } from './connectors/registry';
 import { getConnectionStatus } from './connectors/connections';
 import { buildConfiguredFieldHints } from './credential-payload';
-import { PROVIDER_CATALOG } from '@/app/settings/integrations/registry';
+import { PROVIDER_CATALOG } from '@/app/apps/registry';
 import type { Capability } from './connectors/types';
 
 export interface IntegrationAccountSummary {

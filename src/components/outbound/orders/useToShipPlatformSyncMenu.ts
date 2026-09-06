@@ -98,7 +98,7 @@ export function useToShipPlatformSyncMenu(): ToShipPlatformSyncRow[] {
       label: 'Sync more',
       kind: 'more',
       separatorBefore: items.length > 0,
-      onClick: () => router.push('/settings/integrations'),
+      onClick: () => router.push('/apps'),
     });
 
     return items;

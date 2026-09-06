@@ -199,7 +199,7 @@ export function ruleIntegrationDisconnected(input: DiagnosticsInput): Diagnostic
       rule: 'integration-disconnected',
       nodeId: n.id,
       message: `“${labelOf(n)}” needs the “${provider}” integration, but it isn't connected.`,
-      fix: `Connect “${provider}” in Settings → Integrations (/settings/integrations?focus=${provider}).`,
+      fix: `Connect “${provider}” in Settings → Integrations (/apps?focus=${provider}).`,
     });
   }
   return out;

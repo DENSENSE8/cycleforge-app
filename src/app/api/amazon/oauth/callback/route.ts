@@ -22,7 +22,7 @@ const STATE_TTL_MS = 15 * 60 * 1000;
  */
 export async function GET(req: NextRequest) {
   const origin = req.nextUrl.origin;
-  const back = (q: string) => NextResponse.redirect(`${origin}/settings/integrations?${q}`);
+  const back = (q: string) => NextResponse.redirect(`${origin}/apps?${q}`);
 
   try {
     const sp = req.nextUrl.searchParams;

@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { PROVIDER_CATALOG } from '@/app/settings/integrations/registry';
+import { PROVIDER_CATALOG } from '@/app/apps/registry';
 import { VAULT_UPSERT_PROVIDERS } from './credential-schemas';
 import { getConnector, listConnectors } from './connectors/registry';
 import { isNangoBackedProvider } from './nango-providers';

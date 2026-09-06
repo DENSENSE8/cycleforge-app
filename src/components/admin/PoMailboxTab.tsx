@@ -95,7 +95,7 @@ export function PoMailboxTab() {
             Dedicated email inbox scanned for purchase-order emails (a Gmail account). Connect once;
             refresh tokens are stored server-side and rotated automatically. Connections are managed
             from{' '}
-            <Link href="/settings/integrations#gmail" className="font-medium text-text-info hover:underline">
+            <Link href="/apps#gmail" className="font-medium text-text-info hover:underline">
               Settings → Integrations
             </Link>
             .
@@ -133,7 +133,7 @@ export function PoMailboxTab() {
 
               <div className="flex flex-wrap gap-2 pt-2">
                 <Link
-                  href="/settings/integrations/gmail"
+                  href="/apps/gmail"
                   className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-surface-card px-3.5 text-role-data font-medium text-text-default ring-1 ring-border-soft hover:bg-surface-canvas"
                 >
                   <RefreshCw className="h-4 w-4" />
@@ -156,7 +156,7 @@ export function PoMailboxTab() {
               <StatusRow ok={false} label="Not connected" detail="No email inbox has been authorized yet." />
               <div className="flex flex-wrap items-center gap-2">
                 <Link
-                  href="/settings/integrations/gmail"
+                  href="/apps/gmail"
                   className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-fill-info px-3.5 text-role-data font-medium text-white shadow-sm hover:bg-fill-info"
                 >
                   <Mail className="h-4 w-4" />

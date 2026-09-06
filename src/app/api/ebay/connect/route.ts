@@ -78,7 +78,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
           : probe.reason === 'unauthorized_client'
             ? 'ebay_app_credentials_invalid'
             : 'ebay_oauth_authorize_rejected';
-      return NextResponse.redirect(`${req.nextUrl.origin}/settings/integrations?error=${error}`);
+      return NextResponse.redirect(`${req.nextUrl.origin}/apps?error=${error}`);
     }
 
     const nonce = randomBytes(16).toString('hex');
@@ -122,7 +122,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
   } catch (error: any) {
     console.error('[ebay/connect] Failed to initiate connection:', error?.message || error);
     return NextResponse.redirect(
-      `${req.nextUrl.origin}/settings/integrations?error=ebay_server_configuration`,
+      `${req.nextUrl.origin}/apps?error=ebay_server_configuration`,
     );
   }
 }, { permission: 'integrations.ebay' });

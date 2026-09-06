@@ -7,7 +7,7 @@ import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { getIntegrationSummary } from '@/lib/integrations/integration-summary';
 import type { IntegrationProvider } from '@/lib/integrations/credentials';
-import { PROVIDER_CATALOG } from '@/app/settings/integrations/registry';
+import { PROVIDER_CATALOG } from '@/app/apps/registry';
 
 export const GET = withAuth(async (req, ctx) => {
   const segments = req.nextUrl.pathname.split('/').filter(Boolean);

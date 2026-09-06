@@ -16,7 +16,7 @@ import {
 export const dynamic = 'force-dynamic';
 
 function back(origin: string, q: string): NextResponse {
-  return NextResponse.redirect(`${origin}/settings/integrations?${q}`);
+  return NextResponse.redirect(`${origin}/apps?${q}`);
 }
 
 function pendingCookie(maxAgeSec: number) {
