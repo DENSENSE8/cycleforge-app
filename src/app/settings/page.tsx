@@ -1,25 +1,27 @@
 import { redirect } from 'next/navigation';
+import { SettingsLanding } from '@/components/settings/SettingsLanding';
 
 /**
- * `/settings` — every section is a real route now (settings routing
- * unification, 2026-09-06): /settings/hardware, /settings/appearance, …
- * alongside the org routes that were already paths (billing, apps, photos,
- * team, roles, access, audit, organization, qa, ai).
+ * `/settings` — the landing (2026-09-06 rail removal): a grouped card grid in
+ * the /apps visual language. Personal sections collapse into the "Your setup"
+ * card → `/settings/me` (one scroll page with anchor pills); org sections group
+ * into Workspace / Apps / Access & People / Data & catalogs / Devices /
+ * Developer clusters, permission-gated per row.
  *
- * This file is the redirect back-compat layer: `?section=<id>` (the old
- * inline-tab addressing) and the legacy spellings land on their routes.
- * Bare /settings lands on the first Personal section.
+ * `?section=<id>` (the old inline-tab addressing, and last session's interim
+ * route-redirect layer) still resolves — personal sections land on their
+ * `/settings/me#<anchor>`, org sections on their routes.
  */
 const SECTION_ROUTES: Record<string, string> = {
-  hardware: '/settings/hardware',
-  workstation: '/settings/workstation',
-  'quick-access': '/settings/quick-access',
-  appearance: '/settings/appearance',
-  keyboard: '/settings/keyboard',
-  receiving: '/settings/receiving',
-  security: '/settings/security',
-  about: '/settings/about',
-  legal: '/settings/legal',
+  hardware: '/settings/me#hardware',
+  workstation: '/settings/me#workstation',
+  'quick-access': '/settings/me#quick-access',
+  appearance: '/settings/me#appearance',
+  keyboard: '/settings/me#keyboard',
+  receiving: '/settings/me#receiving',
+  security: '/settings/me#security',
+  about: '/settings/me#about',
+  legal: '/settings/me#legal',
   organization: '/settings/organization',
   billing: '/settings/billing',
   integrations: '/apps',
@@ -27,6 +29,7 @@ const SECTION_ROUTES: Record<string, string> = {
   catalog: '/settings/catalog',
   stations: '/settings/stations',
   photos: '/settings/photos',
+  'repair-issues': '/settings/repair-issues',
   team: '/settings/staff',
   staff: '/settings/staff',
   roles: '/settings/roles',
@@ -35,11 +38,10 @@ const SECTION_ROUTES: Record<string, string> = {
   devices: '/settings/devices',
   audit: '/settings/audit',
   qa: '/settings/qa',
-  // Legacy spellings from the old redirect table.
   'operations-log': '/operations?mode=logs',
 };
 
-export default async function SettingsRedirect({
+export default async function SettingsPage({
   searchParams,
 }: {
   searchParams: Promise<{ section?: string | string[] }>;
@@ -48,5 +50,14 @@ export default async function SettingsRedirect({
   const section = String(Array.isArray(raw.section) ? raw.section[0] : raw.section || '')
     .trim()
     .toLowerCase();
-  redirect(SECTION_ROUTES[section] ?? '/settings/hardware');
+  if (section && SECTION_ROUTES[section]) {
+    redirect(SECTION_ROUTES[section]);
+  }
+  return (
+    <div className="flex h-full min-h-0 w-full flex-col bg-surface-canvas">
+      <main className="flex-1 overflow-y-auto">
+        <SettingsLanding />
+      </main>
+    </div>
+  );
 }

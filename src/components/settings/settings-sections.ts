@@ -29,6 +29,43 @@ export type SettingsSection =
 
 export type SettingsGroup = 'Personal' | 'Organization';
 
+/**
+ * Landing categories (2026-09-06 rail removal): the org sections group into
+ * card clusters on `/settings`; the Personal sections collapse into the one
+ * "Your setup" scroll page (`/settings/me`).
+ */
+export type SettingsCategory =
+  | 'workspace' | 'apps' | 'people' | 'data' | 'devices' | 'developer';
+
+export const SETTINGS_CATEGORY_LABELS: Record<SettingsCategory, string> = {
+  workspace: 'Workspace',
+  apps: 'Apps',
+  people: 'Access & People',
+  data: 'Data & catalogs',
+  devices: 'Devices',
+  developer: 'Developer',
+};
+
+/** Org-section → landing category. Personal sections are not listed — they
+ * live on /settings/me. */
+export const SETTINGS_SECTION_CATEGORY: Partial<Record<SettingsSection, SettingsCategory>> = {
+  organization: 'workspace',
+  billing: 'workspace',
+  ai: 'workspace',
+  integrations: 'apps',
+  team: 'people',
+  roles: 'people',
+  access: 'people',
+  sessions: 'people',
+  catalog: 'data',
+  stations: 'data',
+  photos: 'data',
+  'repair-issues': 'data',
+  devices: 'devices',
+  audit: 'developer',
+  qa: 'developer',
+};
+
 export interface SettingsSectionOption {
   id: SettingsSection;
   label: string;
