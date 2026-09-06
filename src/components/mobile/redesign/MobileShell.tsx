@@ -29,7 +29,10 @@ function MobilePageError(error: Error, reset: () => void) {
         <p className="mt-2 break-words text-role-caption font-semibold text-rose-600">
           {error.message || 'Something went wrong rendering this page.'}
         </p>
-        <Button variant="danger" size="lg" onClick={reset} className="mt-4">
+        {/* `row` rung — 36px painted, 44px hit. A recovery affordance on an
+            error card is not the screen's primary action, and `lg` in mobile
+            mode used to paint 56px of it. */}
+        <Button variant="danger" size="sm" onClick={reset} className="mt-4 h-9 min-h-11">
           Try again
         </Button>
       </div>

@@ -139,6 +139,32 @@ export const MOBILE_DISPLAY_COHORT: readonly MobileDisplayMember[] = [
       'src/components/mobile/redesign/MobileScanOut.tsx',
     ],
   },
+  {
+    id: 'arrival',
+    route: '/m/triage',
+    label: 'Arrival (door intake)',
+    files: [
+      // The station files above are shared with scan-out and are already
+      // law-bound there; listed once, scanned once. What arrival adds is its
+      // own body.
+      'src/components/mobile/receiving/MobileArrivalStation.tsx',
+    ],
+  },
+  {
+    // Not a route: the chrome every `/m` route wears. It belongs in the cohort
+    // because it is the single largest fixed cost on a phone screen — a bar
+    // that grows by 20px spends 20px on twenty surfaces — and because nothing
+    // else was checking it. It was 60px tall with an 18px title until
+    // 2026-09-05.
+    id: 'shell-chrome',
+    route: '/m/*',
+    label: 'Mobile host chrome (top bar + shell)',
+    files: [
+      'src/components/mobile/redesign/MobileShell.tsx',
+      'src/components/mobile/redesign/MobileTopBar.tsx',
+      'src/components/mobile/redesign/mobile-scan-cta.tsx',
+    ],
+  },
 ];
 
 /** Every file the law covers, flattened. */

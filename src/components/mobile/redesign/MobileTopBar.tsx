@@ -8,13 +8,29 @@ import { cn } from '@/utils/_cn';
 import { getMobileAppTitle } from '@/lib/mobile-context-navigation';
 import { MobileScanCta } from './mobile-scan-cta';
 
+/**
+ * The 44px hit region a phone control needs, drawn as 32px.
+ *
+ * `MOBILE_CONTROL_LADDER` says paint small, hit big: Apple's 44×44 is the HIT
+ * region and the HIG is explicit that the visible control may be smaller. A
+ * pseudo-element carries the extra 6px on every side (32 + 6 + 6 = 44), so the
+ * bar's HEIGHT is set by the paint while the thumb still gets the full target.
+ * Growing the paint instead is what made this bar 60px tall.
+ */
+const BAR_CONTROL =
+  "relative h-8 w-8 shrink-0 before:absolute before:-inset-1.5 before:content-['']";
+
 function MobilePageTitle() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   return (
     <h1
       data-testid="mobile-page-title"
-      className="min-w-0 truncate text-role-title text-text-default"
+      // `role-data` (13px), not `role-title` (18px). The page name is a WHERE-AM-I
+      // label, not a headline: the operator reads it once on arrival and then
+      // works below it, so 18px of always-on chrome bought nothing and set the
+      // bar's height.
+      className="min-w-0 truncate text-role-data font-semibold text-text-default"
     >
       {getMobileAppTitle(pathname, searchParams)}
     </h1>
@@ -84,7 +100,10 @@ export const MobileTopBar = ({
   return (
     <header
       className={cn(
-        'top-0 z-header flex w-full shrink-0 items-center justify-between gap-2 px-4 py-2.5',
+        // 40px tall: 32px of control with 4px of air. It was `py-2.5` around a
+        // 40px control — 60px of permanent chrome on a 844px screen, for two
+        // buttons and a label.
+        'top-0 z-header flex w-full shrink-0 items-center justify-between gap-1.5 px-3 py-1',
         // The blur is the whole point, so the ground has to be see-through
         // enough for something to show through it. Where the browser cannot do
         // backdrop-filter the fallback is nearly opaque, because an unblurred
@@ -107,8 +126,12 @@ export const MobileTopBar = ({
             onClick={onMenu}
             ariaLabel="Open menu"
             radius="surface"
-            icon={<Menu className="h-5 w-5" />}
-            className="ds-allow-control-size flex h-10 w-10 shrink-0 items-center justify-center border border-border-soft bg-surface-card text-text-muted transition-colors hover:bg-surface-hover"
+            icon={<Menu className="h-4 w-4" />}
+            className={cn(
+              'ds-allow-control-size flex items-center justify-center',
+              BAR_CONTROL,
+              'border border-border-soft bg-surface-card text-text-muted transition-colors hover:bg-surface-hover',
+            )}
           />
         )}
         {onBack && (
@@ -116,20 +139,24 @@ export const MobileTopBar = ({
             onClick={onBack}
             ariaLabel="Back"
             radius="surface"
-            icon={<ChevronLeft className="h-5 w-5" />}
-            className="ds-allow-control-size flex h-10 w-10 shrink-0 items-center justify-center border border-border-soft bg-surface-card text-text-muted transition-colors hover:bg-surface-hover"
+            icon={<ChevronLeft className="h-4 w-4" />}
+            className={cn(
+              'ds-allow-control-size flex items-center justify-center',
+              BAR_CONTROL,
+              'border border-border-soft bg-surface-card text-text-muted transition-colors hover:bg-surface-hover',
+            )}
           />
         )}
         <Suspense
           fallback={
-            <h1 className="min-w-0 truncate text-role-title text-text-default">&nbsp;</h1>
+            <h1 className="min-w-0 truncate text-role-data font-semibold text-text-default">&nbsp;</h1>
           }
         >
           <MobilePageTitle />
         </Suspense>
       </div>
 
-      <div className="flex shrink-0 items-center gap-2">
+      <div className="flex shrink-0 items-center gap-1.5">
         {actions}
         <MobileScanCta />
       </div>
