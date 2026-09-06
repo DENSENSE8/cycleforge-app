@@ -16,7 +16,10 @@ import {
 type AdminSectionIcon = (props: { className?: string }) => JSX.Element;
 
 /**
- * Residue console — what is left of /admin after the dissolution waves.
+ * LEGACY admin section registry — /admin is dissolved (2026-09-06, W0-W3);
+ * `src/app/admin/page.tsx` owns the redirect table. This registry survives
+ * ONLY to label stored deep links (quick-access pins / recents pointing at
+ * /admin?section=*). Do not add sections here.
  *
  * W0+W1 (2026-09-06) moved eight sections to their one true home:
  * goals / quality / staff_schedule / system_sync / logs → Operations desk

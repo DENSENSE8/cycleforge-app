@@ -180,6 +180,12 @@ export default async function IntegrationsPage({
           </p>
           <div className="flex items-center gap-2">
             <Link
+              href="/apps/sync"
+              className="text-role-caption font-semibold text-text-info hover:underline"
+            >
+              Sync tools →
+            </Link>
+            <Link
               href="/apps/diagnostics"
               className="text-role-caption font-semibold text-text-info hover:underline"
             >

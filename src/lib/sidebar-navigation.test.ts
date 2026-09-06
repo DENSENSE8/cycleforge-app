@@ -86,10 +86,9 @@ test('Home is top-pinned; Operations in Monitor; Sourcing under Inventory; Plans
   assert.equal(studio.kind, 'main', 'studio is a map L1, not a footer pin');
   assert.equal(studio.kind === 'main' ? studio.mainGroup : null, 'studio');
 
-  const admin = items.find((item) => item.id === 'admin');
-  assert.ok(admin, 'admin should ship on prod nav');
-  assert.equal(admin.kind, 'main', 'admin is a map L1, not a footer pin');
-  assert.equal(admin.kind === 'main' ? admin.mainGroup : null, 'admin');
+  // Admin is DISSOLVED (2026-09-06): no map row — /admin is a redirect table
+  // and permission is `requires` on rows, not a destination.
+  assert.equal(items.some((item) => item.id === 'admin'), false, 'admin ships no nav row');
 
   // Sourcing is its own spine domain section (not nested under Inventory).
   const sourcing = items.find((item) => item.id === 'sourcing');
@@ -141,7 +140,7 @@ test('Home, Search, Plans, Chat and Settings stay in the registry but stay off t
   assert.equal(studio ? isSpineDeskItem(studio) : true, false);
   assert.equal(isDeskSpineSection('fulfillment'), true);
   assert.equal(isDeskSpineSection('floor'), false);
-  assert.equal(isDeskSpineSection('admin'), false);
+  assert.equal(isDeskSpineSection('monitor'), true);
 
   const search = items.find((item) => item.id === 'search');
   const plans = items.find((item) => item.id === 'plans-live');
@@ -195,7 +194,7 @@ test('prod nav ships every unparked page; only redirect surfaces stay off', () =
   // Studio and Admin are map L1 rows (2026-08-29); Settings is parked in the
   // account ⋯ menu. Studio must still be present on prod nav.
   assert.equal(navIds.has('studio'), true, 'studio ships as a live nav page');
-  assert.equal(navIds.has('admin'), true, 'admin ships as a live nav page');
+  assert.equal(navIds.has('admin'), false, 'admin is dissolved — no nav page');
   assert.equal(navIds.has('qa-console'), false, 'QA Console is sandbox-only');
   // Home is top-pinned; Operations stays an Overview page.
   assert.equal(navIds.has('home'), true, 'home ships as a top-pinned page');
@@ -245,7 +244,7 @@ test('prod nav ships every unparked page; only redirect surfaces stay off', () =
 test('isSidebarRouteMobileRestricted only flags mobile-blocked routes', () => {
   assert.equal(isSidebarRouteMobileRestricted('operations'), true);
   assert.equal(isSidebarRouteMobileRestricted('support'), true);
-  assert.equal(isSidebarRouteMobileRestricted('admin'), true);
+  assert.equal(isSidebarRouteMobileRestricted('settings'), false);
   assert.equal(isSidebarRouteMobileRestricted('dashboard'), false);
   assert.equal(isSidebarRouteMobileRestricted('fba'), false);
   assert.equal(isSidebarRouteMobileRestricted('unknown'), false);
@@ -415,7 +414,7 @@ test('getSidebarHref resolves every sidebar page to its real route', () => {
   }
   // Pages resolve to their canonical href (modeful or modeless).
   assert.equal(getSidebarHref('operations'), '/operations');
-  assert.equal(getSidebarHref('admin'), '/admin');
+  assert.equal(getSidebarHref('admin'), null, 'admin is dissolved — resolves like any unknown id');
   assert.equal(getSidebarHref('settings'), '/settings');
   assert.equal(getSidebarHref('search'), '/search');
   // Unknown ids resolve to null (caller falls back to current path).
@@ -771,11 +770,11 @@ test('Settings and Admin are rail-less — house encyclopedias collapsed (Phase 
   assert.equal(getSidebarRouteKey('/settings'), 'settings');
   assert.equal(getSidebarRouteKey('/settings/roles'), 'settings');
   assert.equal(hasSidebarContextPanel('/settings'), false);
-  assert.equal(hasSidebarContextPanel('/settings/integrations'), false);
-  assert.equal(getSidebarRouteKey('/admin'), 'admin');
-  assert.equal(getSidebarRouteKey('/admin/inventory'), 'admin');
+  assert.equal(hasSidebarContextPanel('/apps'), false);
+  // Admin dissolved (2026-09-06): /admin redirects; its route key falls
+  // through to unknown and paints no context panel.
+  assert.equal(getSidebarRouteKey('/admin'), 'unknown');
   assert.equal(hasSidebarContextPanel('/admin'), false);
-  assert.equal(hasSidebarContextPanel('/admin/inventory'), false);
 });
 
 test('isSidebarNavActive is pathname-only (query strings do not change the match)', () => {

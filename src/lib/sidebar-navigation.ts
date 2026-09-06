@@ -57,9 +57,6 @@ import {
   TECH_NAV_ICONS,
 } from '@/lib/nav/station-nav-icons';
 import { parseProductsView } from '@/components/products/products-view';
-// The admin console's own section registry — the spine derives Admin's child
-// rows from it rather than keeping a second list that can drift.
-import { ADMIN_SECTION_OPTIONS, getAdminSection } from '@/components/admin/admin-sections';
 import { OUTBOUND_MODE_PATHS, outboundModeFromPath } from '@/components/outbound/outbound-sidebar-shared';
 import { SHIPPING_EXCEPTIONS_PATH, SHIPPING_ORDERS_PATH, SHIPPING_SHORTAGE_PATH } from '@/lib/shipping/orders-desk';
 import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
@@ -87,7 +84,6 @@ export type SidebarRouteKey =
   | 'outbound'
   | 'support'
   | 'ai-chat'
-  | 'admin'
   | 'audit-log'
   | 'settings'
   | 'search'
@@ -145,7 +141,7 @@ export const DESK_GROUPS = [
  * identity only. `/studio/catalog` stays an L2 child of `studio` in
  * {@link SIDEBAR_PAGE_NAV} (⌘K, header Mode, URL).
  */
-export type MainGroupId = 'monitor' | 'studio' | 'admin';
+export type MainGroupId = 'monitor' | 'studio';
 
 /**
  * Spine list imports this — never hard-code the label in the render path.
@@ -154,7 +150,6 @@ export type MainGroupId = 'monitor' | 'studio' | 'admin';
 export const MAIN_GROUPS = [
   { id: 'monitor', label: 'Operations', icon: ChartPie },
   { id: 'studio', label: 'Automations', icon: Workflow },
-  { id: 'admin', label: 'Admin', icon: ShieldCheck },
 ] as const satisfies ReadonlyArray<{
   id: MainGroupId;
   label: string;
@@ -267,7 +262,6 @@ export const SPINE_SECTIONS = [
   DOMAIN_GROUPS[5], // Products
   DOMAIN_GROUPS[6], // Inventory
   MAIN_GROUPS[1], // Operations Studio
-  MAIN_GROUPS[2], // Admin
 ] as const;
 
 export type SpineSectionId = (typeof SPINE_SECTIONS)[number]['id'];
@@ -359,7 +353,6 @@ const MOBILE_RESTRICTED_SIDEBAR_IDS = new Set<SidebarRouteKey>([
   'operations',
   'studio',
   'support',
-  'admin',
   'qa-console',
   'audit-log',
   // Review station is desktop-only (packer capture stays on /m/pack). Plan §4d.
@@ -499,10 +492,9 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // child in SIDEBAR_PAGE_NAV (⌘K / header Mode / URL). Desktop-only
   // (pan/zoom canvas); MOBILE_RESTRICTED_SIDEBAR_IDS enforces.
   { id: 'studio',            label: 'Automations',  href: '/studio',         icon: Workflow,        kind: 'main', mainGroup: 'studio', requires: 'studio.view' },
-  // Audit Log is no longer a top-level sidebar row — it lives under Admin › Logs
-  // (AdminLogsTab, with the Audit filter). The /settings/audit and /audit-log/*
-  // routes still resolve directly; only the nav row was removed.
-  { id: 'admin',             label: 'Admin',       href: '/admin',              icon: ShieldCheck,     kind: 'main', mainGroup: 'admin', requires: 'admin.view' },
+  // Admin is DISSOLVED (2026-09-06, W0-W3): every section found its one true
+  // home and /admin is a redirect table. No spine row — permission is
+  // `requires` on rows, not a destination.
   { id: 'qa-console',        label: 'QA Console',  href: '/developer',          icon: Activity,        kind: 'bottom', requires: 'developer.qa_tools.view', sandboxOnly: true },
 ];
 
@@ -676,7 +668,6 @@ const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
   // the key is what reserved 360px for it. Removing the key collapses the
   // column outright rather than painting it empty.
   'dashboard',
-  'admin',
   'operations',
   'studio',
   'ai-chat',
@@ -753,7 +744,6 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   if (pathname === '/inventory' || pathname.startsWith('/inventory/')) return 'inventory';
   if (pathname === '/support' || pathname.startsWith('/support/')) return 'support';
   if (pathname === '/ai-chat' || pathname.startsWith('/ai-chat/')) return 'ai-chat';
-  if (pathname === '/admin' || pathname.startsWith('/admin/')) return 'admin';
   if (pathname === '/audit-log' || pathname.startsWith('/audit-log/')) return 'audit-log';
   if (pathname === '/settings/audit' || pathname.startsWith('/settings/audit/')) return 'audit-log';
   // `/test` is the first-class Testing surface; it reuses the `tech` sidebar
@@ -963,9 +953,9 @@ export function isSpineDeskItem(
   return item.kind === 'main' && item.mainGroup === 'monitor';
 }
 
-/** Section ids that open the Desks drill (not Scan Stations / Studio / Admin). */
+/** Section ids that open the Desks drill (not Scan Stations / Studio). */
 export function isDeskSpineSection(id: SpineSectionId | null): boolean {
-  if (!id || id === 'floor' || id === 'studio' || id === 'admin') return false;
+  if (!id || id === 'floor' || id === 'studio') return false;
   return true;
 }
 
@@ -1190,7 +1180,6 @@ const SUPPORT = '/support';
 // `/packer` still resolves (proxy redirect + shared page).
 const PACK = '/pack';
 const REVIEW = '/review';
-const ADMIN = '/admin';
 
 export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Home ──────────────────────────────────────────────────────────────────
@@ -1796,45 +1785,6 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       pathname === '/studio/catalog' || pathname.startsWith('/studio/catalog/')
         ? 'catalog'
         : 'graph',
-  },
-  // ── Admin (map L1) ────────────────────────────────────────────────────────
-  // Admin's console sections are DECLARED CHILDREN as of 2026-09-05 (operator
-  // ruling: "admin should be a parent level with a collapsible display
-  // method"). Until then this comment read *"Admin is modeless in the spine +
-  // header Mode control — sections live in AdminSidebar / AdminContextPanel
-  // only; do not reintroduce admin modes here"*, and the row navigated to
-  // `/admin` as one hop.
-  //
-  // What changed is the spine, not the console: the sections were always real,
-  // deep-linkable `?section=` URLs owned by `ADMIN_SECTION_OPTIONS`, and the
-  // spine now folds them behind a closed disclosure instead of hiding them one
-  // navigation deeper. The old ban's real target — a MODE ROW twinning the
-  // console's own rail in the header — is still banned: no `deskChrome` here,
-  // so `DeskPageChrome` draws no tab strip and the header face stays an
-  // identity chip.
-  //
-  // Children are DERIVED from `ADMIN_SECTION_OPTIONS`, never re-typed: that
-  // array is what `AdminSidebar` renders, so a section added there appears in
-  // the spine, in ⌘K and in Recents on the same commit, with its own
-  // `requires` gate carried across for `filterPageChildren`.
-  {
-    id: 'admin', label: 'Admin', href: '/admin', icon: ShieldCheck,
-    kind: 'main', mainGroup: 'admin', requires: 'admin.view',
-    children: ADMIN_SECTION_OPTIONS.map((section) => ({
-      id: section.value,
-      label: section.label,
-      icon: section.icon,
-      requires: section.requires,
-      group: section.group,
-      // Overview is the landing (`?section=` absent), mirroring
-      // `getAdminSection`'s own fallback — so the bare href and the resolver
-      // agree about which child owns `/admin`.
-      to: () => ({
-        pathname: ADMIN,
-        params: { section: section.value === 'overview' ? null : section.value },
-      }),
-    })),
-    resolveChild: ({ params }) => getAdminSection(params.get('section')),
   },
 ];
 

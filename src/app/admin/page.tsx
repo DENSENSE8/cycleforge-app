@@ -1,99 +1,78 @@
-import { RepairIssuesManagementTab } from '@/components/admin/RepairIssuesManagementTab';
-import { ConnectionsManagementTab } from '@/components/admin/ConnectionsManagementTab';
-import { AdminOverviewTab } from '@/components/admin/AdminOverviewTab';
-import {
-  ADMIN_SECTION_REDIRECTS,
-  getAdminSection,
-  type AdminSection,
-} from '@/components/admin/admin-sections';
-import { requirePermission } from '@/lib/auth/page-guard';
 import { redirect } from 'next/navigation';
 
-interface AdminPageProps {
+/**
+ * `/admin` — DISSOLVED (2026-09-06, waves W0–W3). Every console section found
+ * its one true home; this route is the permanent redirect table. The spine's
+ * Admin row is gone with it — permission is `requires` on rows, not a
+ * destination.
+ *
+ * Homes: goals/quality/staff/sync/logs → Operations modes; suppliers/models/
+ * compatibility → Sourcing; locations/reason-codes/favorites → Inventory;
+ * fba catalog → Shipping; po_mailbox → Inbound; station_photos → Settings ›
+ * Photos & NAS; repair_issues → Settings › Repair Issues; connections →
+ * /apps/sync (manual triggers) + /apps (connect) + Operations › Sync (cron
+ * health); overview → the monitor desk; integrations/access/roles/staff were
+ * already Settings before the dissolution started.
+ */
+const SECTION_HOMES: Record<string, string> = {
+  overview: '/operations',
+  goals: '/operations?mode=goals',
+  quality: '/operations?mode=quality',
+  staff_schedule: '/operations?mode=staff',
+  staff: '/operations?mode=staff',
+  system_sync: '/operations?mode=sync',
+  logs: '/operations?mode=logs',
+  suppliers: '/sourcing?mode=suppliers',
+  bose_models: '/sourcing?mode=models',
+  compatibility: '/sourcing?mode=compatibility',
+  locations: '/inventory/locations?tab=manage',
+  reason_codes: '/inventory/reason-codes',
+  favorites: '/inventory/favorites',
+  fba: '/shipping/fba?fbaMode=catalog',
+  po_mailbox: '/incoming?view=mailbox',
+  station_photos: '/settings/photos',
+  repair_issues: '/settings/repair-issues',
+  connections: '/apps/sync',
+  integrations: '/apps',
+  access: '/settings/access',
+  roles: '/settings/roles',
+  architecture: '/studio',
+};
+
+export default async function AdminRedirect({
+  searchParams,
+}: {
   searchParams: Promise<{
     section?: string;
     search?: string;
     mode?: string;
     staffId?: string;
     roleId?: string;
+    page?: string;
     po_gmail_connected?: string;
     po_gmail_error?: string;
   }>;
-}
-
-function renderTab(activeTab: AdminSection) {
-  switch (activeTab) {
-    case 'overview':       return <AdminOverviewTab />;
-    case 'connections':    return <ConnectionsManagementTab />;
-    case 'repair_issues':  return <RepairIssuesManagementTab />;
-  }
-}
-
-function buildSettingsRedirect(
-  path: string,
-  params: { staffId?: string; roleId?: string },
-): string {
-  const qs = new URLSearchParams();
-  if (params.staffId) qs.set('staffId', params.staffId);
-  if (params.roleId) qs.set('roleId', params.roleId);
-  const query = qs.toString();
-  return query ? `${path}?${query}` : path;
-}
-
-export default async function AdminPage({ searchParams }: AdminPageProps) {
-  await requirePermission('admin.view', { enforce: true });
-
+}) {
   const params = await searchParams;
-  const rawSection = String(params.section || '').toLowerCase();
+  const raw = String(params.section || '').toLowerCase();
 
-  // The Operations / architecture board now lives only in /studio (Operations
-  // Studio). Redirect the retired admin tab — and its old `reasons` sub-mode
-  // deep link, which belongs to Reason Codes (now /inventory/reason-codes).
-  if (rawSection === 'architecture') {
-    redirect(params.mode === 'reasons' ? '/inventory/reason-codes' : '/studio');
-  }
+  let home = SECTION_HOMES[raw] ?? '/operations';
 
-  // Moved to Settings — preserve query params where applicable.
-  if (rawSection === 'integrations') {
-    redirect('/settings/integrations');
+  // Params worth keeping at their destination.
+  const extra = new URLSearchParams();
+  if (raw === 'logs' && params.search) extra.set('q', params.search);
+  if (raw === 'station_photos' && params.mode) extra.set('mode', params.mode);
+  if (raw === 'connections' && params.page) extra.set('page', params.page);
+  if (raw === 'access' && params.staffId) extra.set('staffId', params.staffId);
+  if (raw === 'roles' && params.roleId) extra.set('roleId', params.roleId);
+  if (raw === 'po_mailbox') {
+    if (params.po_gmail_connected) extra.set('po_gmail_connected', params.po_gmail_connected);
+    if (params.po_gmail_error) extra.set('po_gmail_error', params.po_gmail_error);
   }
-  if (rawSection === 'access') {
-    redirect(buildSettingsRedirect('/settings/access', { staffId: params.staffId }));
-  }
-  if (rawSection === 'roles') {
-    redirect(buildSettingsRedirect('/settings/roles', { roleId: params.roleId }));
-  }
+  // `architecture` had a `reasons` sub-mode that belongs to Reason Codes.
+  if (raw === 'architecture' && params.mode === 'reasons') home = '/inventory/reason-codes';
 
-  // Dissolved sections (W0–W3, 2026-09-06) — one redirect table in
-  // admin-sections.ts is the single list. `logs` keeps its `?search=` filter
-  // (the desk's shared filter band is `q`); `po_mailbox` keeps the Gmail
-  // OAuth flash params so its toast still fires at the new home.
-  const dissolved = ADMIN_SECTION_REDIRECTS[rawSection];
-  if (dissolved) {
-    if (rawSection === 'logs' && params.search) {
-      redirect(`${dissolved}&q=${encodeURIComponent(params.search)}`);
-    }
-    if (rawSection === 'station_photos' && params.mode) {
-      redirect(`${dissolved}&mode=${encodeURIComponent(params.mode)}`);
-    }
-    if (rawSection === 'po_mailbox' && (params.po_gmail_connected || params.po_gmail_error)) {
-      const flash = params.po_gmail_connected
-        ? `po_gmail_connected=${params.po_gmail_connected}`
-        : `po_gmail_error=${encodeURIComponent(String(params.po_gmail_error))}`;
-      redirect(`${dissolved}&${flash}`);
-    }
-    redirect(dissolved);
-  }
-
-  const activeTab = getAdminSection(params.section);
-
-  return (
-    <div className="flex h-full w-full bg-surface-canvas">
-      <div className="flex-1 min-w-0 overflow-hidden">
-        <div className="h-full min-h-0 w-full">
-          {renderTab(activeTab)}
-        </div>
-      </div>
-    </div>
-  );
+  const qs = extra.toString();
+  const joiner = home.includes('?') ? '&' : '?';
+  redirect(qs ? `${home}${joiner}${qs}` : home);
 }

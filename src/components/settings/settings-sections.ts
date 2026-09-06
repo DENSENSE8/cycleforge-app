@@ -25,7 +25,7 @@ export type SettingsSection =
   | 'hardware' | 'workstation' | 'quick-access' | 'appearance' | 'keyboard' | 'about'
   | 'security' | 'organization' | 'billing' | 'integrations' | 'team'
   | 'roles' | 'access' | 'sessions' | 'audit' | 'catalog' | 'legal' | 'receiving'
-  | 'devices' | 'ai' | 'stations' | 'photos' | 'qa';
+  | 'devices' | 'ai' | 'stations' | 'photos' | 'repair-issues' | 'qa';
 
 export type SettingsGroup = 'Personal' | 'Organization';
 
@@ -61,6 +61,9 @@ export const SETTINGS_SECTION_OPTIONS: SettingsSectionOption[] = [
   // Ex-Admin › Receiving Photos (W3, 2026-09-06): NAS endpoint, workflow
   // folders, station picker defaults, photos platform.
   { id: 'photos',        label: 'Photos & NAS',  description: 'NAS endpoint, storage folders & station defaults',  group: 'Organization', requires: 'admin.view', href: '/settings/photos', icon: Camera },
+  // Ex-Admin › Repair Issues (W3c, 2026-09-06): process master data, the
+  // Platforms & Types family — flow vocabulary the repair bench consumes.
+  { id: 'repair-issues',  label: 'Repair Issues', description: 'Global repair issue checklist templates',              group: 'Organization', requires: 'repair.intake', href: '/settings/repair-issues', icon: Wrench },
   { id: 'team',          label: 'Team',          description: 'Invite teammates, roles, deactivate access',       group: 'Organization', requires: 'admin.manage_staff', href: '/settings/staff', icon: User },
   { id: 'roles',         label: 'Roles',         description: 'Define what each role can do',                     group: 'Organization', requires: 'admin.manage_roles', href: '/settings/roles', icon: ShieldCheck },
   { id: 'access',        label: 'Access',        description: 'Per-staff role + page-access matrix',              group: 'Organization', href: '/settings/access', icon: Lock },

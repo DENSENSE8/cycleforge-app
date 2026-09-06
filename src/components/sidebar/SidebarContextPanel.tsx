@@ -13,7 +13,6 @@ import { getSidebarTitle } from '@/lib/sidebar-titles';
 // route's panel is still server-rendered into the first HTML; the client only
 // downloads the one chunk its route needs.
 const DashboardOrdersContextPanel = dynamic(() => import('@/components/sidebar/DashboardOrdersContextPanel').then((m) => m.DashboardOrdersContextPanel));
-const AdminContextPanel = dynamic(() => import('@/components/sidebar/AdminContextPanel').then((m) => m.AdminContextPanel));
 const OperationsSidebarPanel = dynamic(() => import('@/components/sidebar/OperationsSidebarPanel').then((m) => m.OperationsSidebarPanel));
 const StudioSidebarPanel = dynamic(() => import('@/components/sidebar/StudioSidebarPanel').then((m) => m.StudioSidebarPanel));
 const SupportSidebarPanel = dynamic(() => import('@/components/sidebar/SupportSidebarPanel').then((m) => m.SupportSidebarPanel));
@@ -44,7 +43,6 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
   // Band 3 `WorkbenchViewsMenu`; the left column collapsed rather than
   // reserving 360px for a one-section rail. SoT: Incoming / Media Library.
   if (routeKey === 'dashboard') return <DashboardOrdersContextPanel />;
-  if (routeKey === 'admin') return <AdminContextPanel />;
 
   if (routeKey === 'operations') return <OperationsSidebarPanel />;
   if (routeKey === 'studio') return <StudioSidebarPanel />;
