@@ -82,7 +82,7 @@ export default async function BillingPage() {
           <ul className="mt-3 grid grid-cols-2 gap-y-1.5 text-role-caption text-text-muted sm:grid-cols-3">
             {Object.entries(ent.features).map(([key, on]) => (
               <li key={key} className="flex items-center gap-2">
-                <span className={`inline-block h-1.5 w-1.5 rounded-full ${on ? 'bg-emerald-500' : 'bg-surface-strong'}`} />
+                <span className={`inline-block h-1.5 w-1.5 rounded-full ${on ? 'bg-fill-success' : 'bg-surface-strong'}`} />
                 <span className={on ? 'text-text-default' : 'text-text-faint'}>{key}</span>
               </li>
             ))}
@@ -117,7 +117,7 @@ export default async function BillingPage() {
                       // JSON-only /api/billing/checkout route.
                       <UpgradeButton plan={plan} />
                     ) : (
-                      <span className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-role-caption font-medium text-amber-700">Not configured</span>
+                      <span className="inline-flex items-center rounded-full border border-border-warning bg-surface-warning px-3 py-1 text-role-caption font-medium text-text-warning">Not configured</span>
                     )}
                   </div>
                 </div>

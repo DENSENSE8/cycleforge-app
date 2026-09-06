@@ -41,14 +41,14 @@ export function LegalSection() {
       </header>
 
       {/* Draft disclaimer — these are pre-counsel working drafts. */}
-      <div className="rounded-xl border border-dashed border-amber-300 bg-amber-50 px-4 py-3">
-        <p className="text-xs font-semibold uppercase tracking-widest text-amber-700">
+      <div className="rounded-xl border border-dashed border-border-warning bg-surface-warning px-4 py-3">
+        <p className="text-xs font-semibold uppercase tracking-widest text-text-warning">
           Draft — pending legal review
         </p>
-        <p className="mt-1 text-xs leading-5 text-amber-800">
+        <p className="mt-1 text-xs leading-5 text-text-warning">
           These documents reflect CycleForge’s actual architecture and data practices but have not
           yet been reviewed by a licensed attorney and are not legal advice. Bracketed placeholders
-          (e.g. <code className="rounded bg-amber-100 px-1 py-0.5 font-mono">[LEGAL ENTITY NAME]</code>)
+          (e.g. <code className="rounded bg-surface-warning px-1 py-0.5 font-mono">[LEGAL ENTITY NAME]</code>)
           must be completed before publication.
         </p>
       </div>

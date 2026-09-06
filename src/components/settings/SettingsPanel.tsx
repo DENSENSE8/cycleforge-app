@@ -29,7 +29,7 @@ const FEATURE_PLAN: Record<string, string> = {
 function Badge({ tone, children }: { tone: 'amber' | 'gray'; children: React.ReactNode }) {
   const cls =
     tone === 'amber'
-      ? 'bg-amber-50 text-amber-700 ring-amber-200'
+      ? 'bg-surface-warning text-text-warning ring-border-warning'
       : 'bg-surface-sunken text-text-muted ring-border-soft';
   return (
     <span className={`rounded px-1.5 py-0.5 text-role-eyebrow uppercase tracking-widest ring-1 ring-inset ${cls}`}>
@@ -63,10 +63,10 @@ function SettingRow({ def, resolved, value, caption, onChange }: RowProps) {
         </div>
         {def.description && <p className="mt-0.5 text-role-caption text-text-soft">{def.description}</p>}
         {upgradeFor && (
-          <p className="mt-0.5 text-role-caption font-medium text-amber-600">Available on the {upgradeFor} plan.</p>
+          <p className="mt-0.5 text-role-caption font-medium text-text-warning">Available on the {upgradeFor} plan.</p>
         )}
         {lockedOptionPlan && (
-          <p className="mt-0.5 text-role-caption font-medium text-amber-600">Direct mode needs the {lockedOptionPlan} plan.</p>
+          <p className="mt-0.5 text-role-caption font-medium text-text-warning">Direct mode needs the {lockedOptionPlan} plan.</p>
         )}
         {caption && <p className="mt-0.5 text-role-caption font-medium text-text-faint">{caption}</p>}
       </div>
@@ -174,7 +174,7 @@ export function SettingsPanel({ page }: { page: SettingPage }) {
   }
   if (isError) {
     return (
-      <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 px-4 py-6 text-center text-sm text-rose-600">
+      <div className="rounded-xl border border-dashed border-border-danger bg-surface-danger px-4 py-6 text-center text-sm text-text-danger">
         Could not load settings. Refresh to try again.
       </div>
     );

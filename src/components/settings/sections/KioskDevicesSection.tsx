@@ -175,7 +175,7 @@ export function KioskDevicesSection() {
         </p>
       </header>
 
-      {err && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+      {err && <div className="rounded-lg bg-surface-danger px-3 py-2 text-sm text-text-danger">{err}</div>}
 
       {/* Enroll */}
       <div className="rounded-none border border-border-soft bg-surface-card p-4">
@@ -197,17 +197,17 @@ export function KioskDevicesSection() {
         </div>
 
         {freshCode && (
-          <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3">
-            <p className="text-role-caption font-semibold uppercase tracking-widest text-emerald-700">
+          <div className="mt-3 rounded-lg border border-border-success bg-surface-success px-3 py-3">
+            <p className="text-role-caption font-semibold uppercase tracking-widest text-text-success">
               Pairing code — shown once
             </p>
-            <p className="mt-1 select-all font-mono text-xl font-semibold tracking-widest text-emerald-800">
+            <p className="mt-1 select-all font-mono text-xl font-semibold tracking-widest text-text-success">
               {freshCode.code}
             </p>
-            <p className="mt-1 text-xs font-semibold text-emerald-700">
+            <p className="mt-1 text-xs font-semibold text-text-success">
               On the tablet, open{' '}
               {kioskUrl ? (
-                <code className="rounded bg-emerald-100/80 px-1 break-all">{kioskUrl}</code>
+                <code className="rounded bg-surface-success px-1 break-all">{kioskUrl}</code>
               ) : (
                 <>the workspace kiosk URL</>
               )}{' '}

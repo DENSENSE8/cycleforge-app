@@ -95,9 +95,9 @@ export function EbayConnectPopover({
           />
         </label>
         {loopbackWarning && (
-          <p className="text-role-caption font-medium text-amber-800">{loopbackWarning}</p>
+          <p className="text-role-caption font-medium text-text-warning">{loopbackWarning}</p>
         )}
-        {error && <p className="text-role-caption font-medium text-red-600">{error}</p>}
+        {error && <p className="text-role-caption font-medium text-text-danger">{error}</p>}
         <div className="flex items-center justify-end gap-2">
           <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
           <Button variant="primary" size="sm" onClick={connect}>Continue to eBay</Button>
@@ -149,7 +149,7 @@ export function EbayAccountDetailPopover({
         <div className="flex flex-wrap gap-2 border-t border-border-hairline pt-2">
           <Link
             href="/settings/integrations/ebay"
-            className="text-role-caption font-semibold text-blue-600 hover:underline"
+            className="text-role-caption font-semibold text-text-info hover:underline"
             onClick={onClose}
           >
             Manage connection →
@@ -172,7 +172,7 @@ export function EbayAccountDetailPopover({
                 onClick={onDisconnect}
                 disabled={busy}
                 ariaLabel="Disconnect account"
-                className="hover:text-red-600"
+                className="hover:text-text-danger"
               />
             )}
           </div>
@@ -205,7 +205,7 @@ export function EbayAccountNameChip({
         ref={anchorRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="min-w-0 flex-1 truncate text-left text-role-caption font-medium text-text-default underline decoration-dotted decoration-text-faint underline-offset-2 hover:text-blue-600"
+        className="min-w-0 flex-1 truncate text-left text-role-caption font-medium text-text-default underline decoration-dotted decoration-text-faint underline-offset-2 hover:text-text-info"
         aria-expanded={open}
         aria-haspopup="dialog"
       >

@@ -129,7 +129,7 @@ export function AdminLogsTab(_props: AdminLogsTabProps = {}) {
             <span
               className={`inline-flex flex-shrink-0 rounded-full px-2.5 py-1 text-role-micro font-semibold uppercase tracking-wider ${
                 event.kind === 'AUDIT'
-                  ? 'bg-blue-50 text-blue-700'
+                  ? 'bg-surface-info text-text-info'
                   : 'bg-purple-50 text-purple-700'
               }`}
             >
@@ -158,7 +158,7 @@ export function AdminLogsTab(_props: AdminLogsTabProps = {}) {
               {event.detail_route ? (
                 <a
                   href={event.detail_route}
-                  className="mt-2 inline-block text-role-caption font-semibold text-blue-600 hover:underline"
+                  className="mt-2 inline-block text-role-caption font-semibold text-text-info hover:underline"
                 >
                   Open route →
                 </a>

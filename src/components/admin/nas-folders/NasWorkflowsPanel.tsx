@@ -63,7 +63,7 @@ export function NasWorkflowsPanel({ c }: { c: StationNasFoldersController }) {
       </div>
 
       <div className="flex items-center justify-end gap-3">
-        {targetsDirty ? <span className="text-role-micro uppercase tracking-widest text-amber-600">Unsaved changes</span> : null}
+        {targetsDirty ? <span className="text-role-micro uppercase tracking-widest text-text-warning">Unsaved changes</span> : null}
         <Button
           type="button"
           variant="primary"

@@ -88,7 +88,7 @@ function dayKey(value: string) {
 }
 
 const KIND_DOT: Record<string, string> = {
-  AUDIT: 'bg-blue-500',
+  AUDIT: 'bg-fill-info',
   SAL: 'bg-purple-500',
 };
 

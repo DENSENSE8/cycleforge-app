@@ -116,7 +116,7 @@ export function ZohoSyncCard({ embedded = false }: { embedded?: boolean }) {
           <button
             onClick={() => void handleSync()}
             disabled={anyPending}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 rounded-xl transition-all text-role-micro uppercase tracking-widest text-white shadow-sm disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-fill-success hover:bg-fill-success rounded-xl transition-all text-role-micro uppercase tracking-widest text-white shadow-sm disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${zohoSyncMutation.isPending ? 'animate-spin' : ''}`} />
             {zohoSyncMutation.isPending ? 'Syncing...' : 'Sync Expected POs'}
@@ -147,7 +147,7 @@ export function ZohoSyncCard({ embedded = false }: { embedded?: boolean }) {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className={`border-l-2 px-4 py-3 text-role-micro uppercase tracking-widest ${
-            status.type === 'success' ? 'border-l-green-500 bg-green-50/70 text-green-700' : 'border-l-red-500 bg-red-50/70 text-red-700'
+            status.type === 'success' ? 'border-l-green-500 bg-surface-success text-text-success' : 'border-l-red-500 bg-surface-danger text-text-danger'
           }`}
         >
           {status.message}

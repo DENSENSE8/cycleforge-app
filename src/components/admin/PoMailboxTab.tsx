@@ -86,7 +86,7 @@ export function PoMailboxTab() {
     <div className="h-full overflow-auto bg-surface-canvas">
       <div className="mx-auto max-w-3xl space-y-6 p-6">
       <header className="flex items-start gap-3">
-        <div className="rounded-md bg-blue-50 p-2 text-blue-600">
+        <div className="rounded-md bg-surface-info p-2 text-text-info">
           <Mail className="h-5 w-5" />
         </div>
         <div>
@@ -95,7 +95,7 @@ export function PoMailboxTab() {
             Dedicated email inbox scanned for purchase-order emails (a Gmail account). Connect once;
             refresh tokens are stored server-side and rotated automatically. Connections are managed
             from{' '}
-            <Link href="/settings/integrations#gmail" className="font-medium text-blue-600 hover:underline">
+            <Link href="/settings/integrations#gmail" className="font-medium text-text-info hover:underline">
               Settings → Integrations
             </Link>
             .
@@ -122,7 +122,7 @@ export function PoMailboxTab() {
                 </p>
               )}
               {status.needsReconnect && status.needsReconnectReason && (
-                <div className="flex items-start gap-2 rounded-md bg-amber-50 inset-field text-role-caption text-amber-800">
+                <div className="flex items-start gap-2 rounded-md bg-surface-warning inset-field text-role-caption text-text-warning">
                   <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
                   <div>
                     <div className="font-medium">Refresh token rejected</div>
@@ -145,7 +145,7 @@ export function PoMailboxTab() {
                   loading={disconnecting}
                   disabled={disconnecting}
                   onClick={handleDisconnect}
-                  className="border border-red-200 text-red-600 hover:bg-red-50"
+                  className="border border-border-danger text-text-danger hover:bg-surface-danger"
                 >
                   Disconnect
                 </Button>
@@ -157,7 +157,7 @@ export function PoMailboxTab() {
               <div className="flex flex-wrap items-center gap-2">
                 <Link
                   href="/settings/integrations/gmail"
-                  className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-blue-600 px-3.5 text-role-data font-medium text-white shadow-sm hover:bg-blue-500"
+                  className="inline-flex h-9 items-center gap-1.5 rounded-xl bg-fill-info px-3.5 text-role-data font-medium text-white shadow-sm hover:bg-fill-info"
                 >
                   <Mail className="h-4 w-4" />
                   Connect in Settings
@@ -199,7 +199,7 @@ function StatusRow({ ok, label, detail }: { ok: boolean; label: string; detail: 
     <div className="flex items-start gap-2">
       <span
         className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded-full ${
-          ok ? 'bg-emerald-100 text-emerald-700' : 'bg-surface-sunken text-text-soft'
+          ok ? 'bg-surface-success text-text-success' : 'bg-surface-sunken text-text-soft'
         }`}
       >
         {ok ? <Check className="h-3.5 w-3.5" /> : <X className="h-3.5 w-3.5" />}

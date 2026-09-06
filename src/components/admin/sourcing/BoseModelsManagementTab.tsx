@@ -125,7 +125,7 @@ function CreateModelForm() {
       <Field label="Family">
         <input className={inputCls} value={family} onChange={(e) => setFamily(e.target.value)} placeholder="SoundLink, QuietComfort, Wave…" />
       </Field>
-      {create.isError ? <p className="text-role-caption text-red-600">{(create.error as Error).message}</p> : null}
+      {create.isError ? <p className="text-role-caption text-text-danger">{(create.error as Error).message}</p> : null}
       <div className="flex gap-2">
         <Button
           variant="primary"
@@ -218,7 +218,7 @@ function ModelEditCard({ model, onSaved, onDeleted }: { model: BoseModel; onSave
         <Field label="EOL date"><input className={inputCls} value={form.eolDate} onChange={(e) => setForm({ ...form, eolDate: e.target.value })} placeholder="YYYY-MM-DD" /></Field>
         <Field label="Notes"><input className={inputCls} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
       </div>
-      {save.isError ? <p className="mt-2 text-role-caption text-red-600">{(save.error as Error).message}</p> : null}
+      {save.isError ? <p className="mt-2 text-role-caption text-text-danger">{(save.error as Error).message}</p> : null}
       <div className="mt-4 flex items-center justify-between">
         <Button variant="primary" loading={save.isPending} onClick={() => save.mutate()}>Save changes</Button>
         <Button variant="danger" size="sm" loading={remove.isPending} onClick={() => { if (confirm('Deactivate this model? Compatibility edges are preserved.')) remove.mutate(); }}>
@@ -274,7 +274,7 @@ function CompatibilityManager({ modelId, parts, onChanged }: { modelId: number; 
                 size="sm"
                 type="button"
                 onClick={() => remove.mutate(p.compatibility_id)}
-                className="text-rose-600 hover:text-rose-700"
+                className="text-text-danger hover:text-text-danger"
               >
                 Remove
               </Button>
@@ -305,7 +305,7 @@ function CompatibilityManager({ modelId, parts, onChanged }: { modelId: number; 
             Add part
           </Button>
         </div>
-        {add.isError ? <p className="mt-2 text-role-caption text-red-600">{(add.error as Error).message}</p> : null}
+        {add.isError ? <p className="mt-2 text-role-caption text-text-danger">{(add.error as Error).message}</p> : null}
       </div>
     </section>
   );
@@ -351,7 +351,7 @@ function SkuSearchField({ value, onSelect, onClear }: { value: string; onSelect:
               <button
                 type="button"
                 onClick={() => { onSelect(s); setOpen(false); setTerm(''); }}
-                className="block w-full inset-field text-left text-sm hover:bg-blue-50"
+                className="block w-full inset-field text-left text-sm hover:bg-surface-info"
               >
                 <span className="font-semibold text-text-default">{s.product_title}</span>
                 <span className="ml-1 text-role-caption text-text-soft">{s.sku}</span>
@@ -372,7 +372,7 @@ const selectCls = cn('rounded-md border border-border-default px-2 py-1.5 text-r
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-role-caption font-semibold text-text-muted">{label}{required ? <span className="text-red-500"> *</span> : null}</span>
+      <span className="mb-1 block text-role-caption font-semibold text-text-muted">{label}{required ? <span className="text-text-danger"> *</span> : null}</span>
       {children}
     </label>
   );
@@ -383,14 +383,14 @@ function RoleChip({ role }: { role: string }) {
 }
 
 function FitChip({ fit, oem }: { fit: string; oem: boolean }) {
-  const tone = fit === 'exact' ? 'bg-emerald-50 text-emerald-700' : fit === 'equivalent' ? 'bg-blue-50 text-blue-700' : 'bg-amber-50 text-amber-700';
+  const tone = fit === 'exact' ? 'bg-surface-success text-text-success' : fit === 'equivalent' ? 'bg-surface-info text-text-info' : 'bg-surface-warning text-text-warning';
   return <span className={`rounded-full px-2 py-0.5 text-role-micro font-semibold ${tone}`}>{oem ? 'OEM ' : ''}{fit}</span>;
 }
 
 function StockBadge({ onHand, lifecycle, alerts }: { onHand: number; lifecycle: string; alerts: number }) {
   const eol = lifecycle !== 'active';
   const out = onHand <= 0;
-  const tone = out || (eol && onHand < 2) ? 'bg-red-50 text-red-700' : eol ? 'bg-amber-50 text-amber-700' : 'bg-surface-sunken text-text-muted';
+  const tone = out || (eol && onHand < 2) ? 'bg-surface-danger text-text-danger' : eol ? 'bg-surface-warning text-text-warning' : 'bg-surface-sunken text-text-muted';
   const label = out ? '0 in stock' : `${onHand} in stock`;
   const badge = (
     <span className={`rounded-full px-2 py-0.5 text-role-micro font-semibold ${tone}`}>

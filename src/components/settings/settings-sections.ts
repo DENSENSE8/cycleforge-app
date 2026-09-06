@@ -44,7 +44,7 @@ export const SETTINGS_SECTION_OPTIONS: SettingsSectionOption[] = [
   { id: 'hardware',      label: 'Hardware',      description: 'Printer, scanner, scale',                          group: 'Personal', icon: Printer },
   { id: 'workstation',   label: 'Workstation',   description: 'Station, role, this device',                       group: 'Personal', icon: Monitor },
   { id: 'quick-access',  label: 'Quick Access',  description: 'Bottom-right shortcuts & pins',                    group: 'Personal', icon: Zap },
-  { id: 'appearance',    label: 'Appearance',    description: 'Density, text size',                               group: 'Personal', icon: PaintBucket },
+  { id: 'appearance',    label: 'Appearance',    description: 'Density, text size, pointer',                     group: 'Personal', icon: PaintBucket },
   { id: 'keyboard',      label: 'Keyboard',      description: 'Focus-scan hotkey & shortcut policy',              group: 'Personal', icon: Type },
   { id: 'receiving',     label: 'Receiving',     description: 'Unboxing scan, photos & org policy',               group: 'Personal', icon: PackageOpen },
   { id: 'security',      label: 'Security',      description: 'PIN and passkeys',                                 group: 'Personal', icon: Lock },

@@ -56,11 +56,11 @@ function fillLabel(row: BinRow): string {
 }
 
 function statusOf(row: BinRow): { label: string; cls: string } {
-  if (row.is_over_capacity) return { label: 'Over cap', cls: 'text-rose-700' };
-  if (row.has_low_stock) return { label: 'Low', cls: 'text-amber-700' };
+  if (row.is_over_capacity) return { label: 'Over cap', cls: 'text-text-danger' };
+  if (row.has_low_stock) return { label: 'Low', cls: 'text-text-warning' };
   if (row.is_empty) return { label: 'Empty', cls: 'text-text-faint' };
-  if (row.is_stale) return { label: 'Stale', cls: 'text-amber-600' };
-  return { label: 'OK', cls: 'text-emerald-700' };
+  if (row.is_stale) return { label: 'Stale', cls: 'text-text-warning' };
+  return { label: 'OK', cls: 'text-text-success' };
 }
 
 /**
@@ -285,7 +285,7 @@ export function LocationsManagementTab() {
                             ariaLabel={`Remove ${row.name}`}
                             onClick={() => handleDelete(row)}
                             disabled={!row.barcode || deleteMutation.isPending}
-                            className="inline-flex h-8 w-8 items-center justify-center border border-rose-200 text-rose-600 hover:bg-rose-50 disabled:opacity-40"
+                            className="inline-flex h-8 w-8 items-center justify-center border border-border-danger text-text-danger hover:bg-surface-danger disabled:opacity-40"
                           />
                         </HoverTooltip>
                       </div>

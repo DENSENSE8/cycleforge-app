@@ -46,7 +46,7 @@ export function StationFoldersPanel({ c }: { c: StationNasFoldersController }) {
       </div>
 
       <div className="flex items-center justify-end gap-3">
-        {dirty ? <span className="text-role-micro uppercase tracking-widest text-amber-600">Unsaved changes</span> : null}
+        {dirty ? <span className="text-role-micro uppercase tracking-widest text-text-warning">Unsaved changes</span> : null}
         <Button
           variant="primary"
           size="md"

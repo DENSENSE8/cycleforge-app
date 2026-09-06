@@ -44,7 +44,7 @@ export function IntegrationConnectSuccess({
       initial={{ opacity: 0, y: 10, scale: 0.97 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
       transition={transition}
-      className="flex items-start gap-3 overflow-hidden rounded-2xl border border-emerald-200/80 bg-emerald-50/90 px-4 py-3 text-emerald-800 shadow-sm shadow-emerald-900/[0.04]"
+      className="flex items-start gap-3 overflow-hidden rounded-2xl border border-border-success bg-surface-success px-4 py-3 text-text-success shadow-sm shadow-emerald-900/[0.04]"
       role="status"
       aria-live="polite"
     >
@@ -52,17 +52,17 @@ export function IntegrationConnectSuccess({
         initial={{ scale: 0, rotate: -120 }}
         animate={{ scale: 1, rotate: 0 }}
         transition={ICON_SPRING}
-        className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white shadow-sm shadow-emerald-600/30"
+        className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-fill-success text-white shadow-sm shadow-emerald-600/30"
       >
         <Check className="h-4 w-4" />
       </motion.span>
       <div className="min-w-0 flex-1 pt-0.5">
-        <p className="text-role-caption font-semibold uppercase tracking-[0.14em] text-emerald-700">Connected</p>
-        <p className="mt-0.5 text-role-body font-medium text-emerald-900">{message}</p>
+        <p className="text-role-caption font-semibold uppercase tracking-[0.14em] text-text-success">Connected</p>
+        <p className="mt-0.5 text-role-body font-medium text-text-success">{message}</p>
         {href && linkLabel ? (
           <Link
             href={href}
-            className="mt-1.5 inline-block text-role-caption font-semibold text-emerald-800 underline decoration-emerald-600/40 underline-offset-2 hover:text-emerald-950"
+            className="mt-1.5 inline-block text-role-caption font-semibold text-text-success underline decoration-emerald-600/40 underline-offset-2 hover:text-text-success"
           >
             {linkLabel}
           </Link>

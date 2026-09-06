@@ -27,20 +27,20 @@ interface PageAccessSwitchProps {
 
 const SOURCE_PILL: Record<PermissionSource, { className: string; text: string }> = {
   role:          { className: 'bg-surface-sunken text-text-muted ring-border-soft',          text: 'Role' },
-  granted:       { className: 'bg-emerald-100 text-emerald-800 ring-emerald-200', text: 'Granted' },
-  revoked:       { className: 'bg-rose-100 text-rose-800 ring-rose-200',          text: 'Revoked' },
+  granted:       { className: 'bg-surface-success text-text-success ring-border-success', text: 'Granted' },
+  revoked:       { className: 'bg-surface-danger text-text-danger ring-border-danger',          text: 'Revoked' },
   'role-denies': { className: 'bg-surface-sunken text-text-soft ring-border-soft',          text: 'Role denies' },
 };
 
 /** Static Tailwind classes so JIT sees every theme (dynamic `bg-${x}` is purged). */
 const THEME_CHECKED: Record<StationTheme, string> = {
-  green: 'data-[state=checked]:bg-emerald-600',
-  blue: 'data-[state=checked]:bg-blue-600',
+  green: 'data-[state=checked]:bg-fill-success',
+  blue: 'data-[state=checked]:bg-fill-info',
   purple: 'data-[state=checked]:bg-purple-600',
-  yellow: 'data-[state=checked]:bg-amber-500',
+  yellow: 'data-[state=checked]:bg-fill-warning',
   black: 'data-[state=checked]:bg-slate-800', // ds-allow-raw-neutral: identity hue — staff theme switch
-  red: 'data-[state=checked]:bg-red-600',
-  lightblue: 'data-[state=checked]:bg-sky-500',
+  red: 'data-[state=checked]:bg-fill-danger',
+  lightblue: 'data-[state=checked]:bg-fill-info',
   pink: 'data-[state=checked]:bg-pink-600',
 };
 

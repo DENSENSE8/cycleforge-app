@@ -131,7 +131,7 @@ function SupplierForm({ mode, supplier }: { mode: 'create' | 'edit'; supplier?: 
         <Field label="Rating (1–5)"><input className={inputCls} value={form.rating} onChange={(e) => setForm({ ...form, rating: e.target.value })} inputMode="numeric" /></Field>
       </div>
       <Field label="Notes"><input className={inputCls} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></Field>
-      {save.isError ? <p className="text-role-caption text-red-600">{(save.error as Error).message}</p> : null}
+      {save.isError ? <p className="text-role-caption text-text-danger">{(save.error as Error).message}</p> : null}
       <div className="flex items-center justify-between">
         <div className="flex gap-2">
           <Button variant="primary" loading={save.isPending} disabled={!form.name.trim()} onClick={() => save.mutate()}>{mode === 'create' ? 'Create' : 'Save changes'}</Button>
@@ -148,7 +148,7 @@ const inputCls = cn('w-full rounded-md border border-border-default inset-field 
 function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block text-role-caption font-semibold text-text-muted">{label}{required ? <span className="text-red-500"> *</span> : null}</span>
+      <span className="mb-1 block text-role-caption font-semibold text-text-muted">{label}{required ? <span className="text-text-danger"> *</span> : null}</span>
       {children}
     </label>
   );

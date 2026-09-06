@@ -168,10 +168,12 @@ const config = {
                 'surface-warning': 'var(--ds-color-surface-warning)',
                 'surface-danger': 'var(--ds-color-surface-danger)',
                 'surface-accent': 'var(--ds-color-surface-accent)',
+                'surface-info': 'var(--ds-color-surface-info)',
                 'border-success': 'var(--ds-color-border-success)',
                 'border-warning': 'var(--ds-color-border-warning)',
                 'border-danger': 'var(--ds-color-border-danger)',
                 'border-accent': 'var(--ds-color-border-accent)',
+                'border-info': 'var(--ds-color-border-info)',
                 // Extended tone text (dashboard categories / informational accents).
                 'text-info': 'var(--ds-color-text-info)',
                 'text-fulfillment': 'var(--ds-color-text-fulfillment)',

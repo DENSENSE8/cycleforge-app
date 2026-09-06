@@ -347,10 +347,10 @@ export function ReasonCodesManagementTab() {
                       {row.category ?? '—'}
                     </p>
                     <p className={`${tableHeader} text-text-muted`}>{row.direction}</p>
-                    <p className={`${tableHeader} ${row.requires_note ? 'text-emerald-700' : 'text-text-faint'}`}>
+                    <p className={`${tableHeader} ${row.requires_note ? 'text-text-success' : 'text-text-faint'}`}>
                       {row.requires_note ? 'Yes' : '-'}
                     </p>
-                    <p className={`${tableHeader} ${row.requires_photo ? 'text-emerald-700' : 'text-text-faint'}`}>
+                    <p className={`${tableHeader} ${row.requires_photo ? 'text-text-success' : 'text-text-faint'}`}>
                       {row.requires_photo ? 'Yes' : '-'}
                     </p>
                     <p className={`${tableCell} text-text-muted`}>{row.sort_order}</p>
@@ -377,7 +377,7 @@ export function ReasonCodesManagementTab() {
                         <IconButton
                           onClick={() => handleDelete(row)}
                           disabled={deleteMutation.isPending}
-                          className="inline-flex h-8 w-8 items-center justify-center border border-rose-200 text-rose-600 hover:bg-rose-50 hover:text-rose-700"
+                          className="inline-flex h-8 w-8 items-center justify-center border border-border-danger text-text-danger hover:bg-surface-danger hover:text-text-danger"
                           ariaLabel={`Remove ${row.code}`}
                           icon={<Trash2 className="h-3.5 w-3.5" />}
                         />

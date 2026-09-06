@@ -55,23 +55,23 @@ function relTime(d: Date | null): string {
 }
 
 const STATE_DOT: Record<ConnectionStatus['state'], string> = {
-  active: 'bg-emerald-500',
-  error: 'bg-rose-500',
-  revoked: 'bg-amber-500',
-  expired: 'bg-amber-500',
+  active: 'bg-fill-success',
+  error: 'bg-fill-danger',
+  revoked: 'bg-fill-warning',
+  expired: 'bg-fill-warning',
   disconnected: 'bg-surface-inverse-soft',
 };
 
 const OUTCOME_CHIP: Record<string, string> = {
-  allowed: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  denied: 'bg-rose-50 text-rose-700 ring-rose-200',
-  error: 'bg-amber-50 text-amber-700 ring-amber-200',
+  allowed: 'bg-surface-success text-text-success ring-border-success',
+  denied: 'bg-surface-danger text-text-danger ring-border-danger',
+  error: 'bg-surface-warning text-text-warning ring-border-warning',
 };
 
 const RUN_CHIP: Record<CronRunRow['status'], string> = {
-  success: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  failed: 'bg-rose-50 text-rose-700 ring-rose-200',
-  running: 'bg-blue-50 text-blue-700 ring-blue-200',
+  success: 'bg-surface-success text-text-success ring-border-success',
+  failed: 'bg-surface-danger text-text-danger ring-border-danger',
+  running: 'bg-surface-info text-text-info ring-border-info',
 };
 
 /** Jobs on the cron registry that belong to the integrations layer. */
@@ -177,12 +177,12 @@ export default async function IntegrationsDiagnosticsPage() {
             </p>
             <div className="flex items-center gap-2">
               {errored > 0 && (
-                <span className="rounded-full bg-rose-50 px-2.5 py-1 text-role-caption font-semibold text-rose-700 ring-1 ring-inset ring-rose-200">
+                <span className="rounded-full bg-surface-danger px-2.5 py-1 text-role-caption font-semibold text-text-danger ring-1 ring-inset ring-border-danger">
                   {errored} connection{errored === 1 ? '' : 's'} in error
                 </span>
               )}
               {denied24h > 0 && (
-                <span className="rounded-full bg-amber-50 px-2.5 py-1 text-role-caption font-semibold text-amber-700 ring-1 ring-inset ring-amber-200">
+                <span className="rounded-full bg-surface-warning px-2.5 py-1 text-role-caption font-semibold text-text-warning ring-1 ring-inset ring-border-warning">
                   {denied24h} denied credential use{denied24h === 1 ? '' : 's'} · 24h
                 </span>
               )}
@@ -226,7 +226,7 @@ export default async function IntegrationsDiagnosticsPage() {
                           {cap}
                         </Chip>
                       ))}
-                      <Chip tone="bg-blue-50 text-blue-700 ring-blue-200">{authKindLabel(c.authKind)}</Chip>
+                      <Chip tone="bg-surface-info text-text-info ring-border-info">{authKindLabel(c.authKind)}</Chip>
                       <span className="w-20 text-right text-role-micro font-semibold tabular-nums text-text-faint">
                         {relTime(c.lastUsedAt ?? null)}
                       </span>
@@ -288,7 +288,7 @@ export default async function IntegrationsDiagnosticsPage() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-role-caption font-semibold text-text-default">{r.job}</p>
                       {r.error ? (
-                        <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-rose-700">
+                        <p className="truncate text-role-eyebrow font-semibold uppercase tracking-widest text-text-danger">
                           {r.error}
                         </p>
                       ) : null}

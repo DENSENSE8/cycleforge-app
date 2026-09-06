@@ -30,7 +30,7 @@ export function NasPhotosSidebarPanel() {
             leading={
               <span
                 className={`block h-2.5 w-2.5 rounded-full ${
-                  active === item.id ? "bg-blue-600" : "bg-surface-strong"
+                  active === item.id ? "bg-fill-info" : "bg-surface-strong"
                 }`}
                 aria-hidden="true"
               />

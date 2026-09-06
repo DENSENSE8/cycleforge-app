@@ -79,7 +79,7 @@ export function RoleMobileDefaultsCard({ roleLabel, roleColor, mobileDefaults, b
         <div>
           <h2 className="text-sm font-semibold text-text-default">Mobile defaults</h2>
           <p className="mt-0.5 text-role-caption text-text-soft">
-            Every staff with the <b style={{ color: roleColor }}>{roleLabel}</b> role inherits these — unless overridden in <a href="/settings/access" className="text-blue-600 hover:underline">Access</a>.
+            Every staff with the <b style={{ color: roleColor }}>{roleLabel}</b> role inherits these — unless overridden in <a href="/settings/access" className="text-text-info hover:underline">Access</a>.
           </p>
         </div>
         {hasDefaults && (
@@ -131,7 +131,7 @@ export function RoleMobileDefaultsCard({ roleLabel, roleColor, mobileDefaults, b
                   disabled={busy || !draftEnabled}
                   className={`rounded-full px-2.5 py-1 text-role-caption font-semibold ring-1 ring-inset transition ${
                     on
-                      ? 'bg-blue-100 text-blue-800 ring-blue-300'
+                      ? 'bg-surface-info text-text-info ring-border-info'
                       : 'bg-surface-canvas text-text-soft ring-border-soft hover:bg-surface-sunken'
                   } disabled:cursor-not-allowed disabled:opacity-50`}
                 >

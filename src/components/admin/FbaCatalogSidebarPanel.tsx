@@ -122,7 +122,7 @@ export function FbaCatalogSidebarPanel() {
             variant="secondary"
             size="sm"
             onClick={emitOpenAddFba}
-            className="border-dashed border-border-default bg-surface-card text-text-muted hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700"
+            className="border-dashed border-border-default bg-surface-card text-text-muted hover:border-border-info hover:bg-surface-info hover:text-text-info"
             icon={
               <svg
                 viewBox="0 0 24 24"
@@ -143,7 +143,7 @@ export function FbaCatalogSidebarPanel() {
             variant="secondary"
             size="sm"
             onClick={emitOpenUploadFba}
-            className="border-dashed border-border-default bg-surface-card text-text-muted hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700"
+            className="border-dashed border-border-default bg-surface-card text-text-muted hover:border-border-success hover:bg-surface-success hover:text-text-success"
             icon={
               <svg
                 viewBox="0 0 24 24"
@@ -201,11 +201,11 @@ export function FbaCatalogSidebarPanel() {
                   trailing={
                     isStub ? (
                       <HoverTooltip label="Stub row (needs hydration)" asChild focusable={false}>
-                        <span className="h-2 w-2 rounded-full bg-amber-500" />
+                        <span className="h-2 w-2 rounded-full bg-fill-warning" />
                       </HoverTooltip>
                     ) : (
                       <HoverTooltip label="Hydrated" asChild focusable={false}>
-                        <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                        <span className="h-2 w-2 rounded-full bg-fill-success" />
                       </HoverTooltip>
                     )
                   }

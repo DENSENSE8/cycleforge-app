@@ -59,7 +59,7 @@ export function RecentAuditCard() {
                 <span className="font-medium text-text-default">{e.event}</span>
                 {e.staff_name && <span className="text-text-soft"> · {e.staff_name}</span>}
                 {e.result && e.result !== 'ok' && (
-                  <span className="ml-2 rounded bg-rose-50 inset-chip text-xs text-rose-700">{e.result}</span>
+                  <span className="ml-2 rounded bg-surface-danger inset-chip text-xs text-text-danger">{e.result}</span>
                 )}
               </span>
             </li>

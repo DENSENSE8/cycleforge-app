@@ -115,7 +115,7 @@ export function RolesSidebarPanel({ basePath = '/settings/roles' }: { basePath?:
           size="sm"
           onClick={() => setCreateOpen(true)}
           icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>}
-          className="w-full justify-center border border-dashed border-border-default bg-surface-card text-text-muted hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700"
+          className="w-full justify-center border border-dashed border-border-default bg-surface-card text-text-muted hover:border-border-info hover:bg-surface-info hover:text-text-info"
         >
           Create role
         </Button>
@@ -125,7 +125,7 @@ export function RolesSidebarPanel({ basePath = '/settings/roles' }: { basePath?:
         {loading ? (
           <div className="px-2 py-6 text-center text-xs text-text-faint">Loading roles…</div>
         ) : err ? (
-          <div className="rounded-lg bg-red-50 inset-field text-xs text-red-700">{err}</div>
+          <div className="rounded-lg bg-surface-danger inset-field text-xs text-text-danger">{err}</div>
         ) : rows.length === 0 ? (
           <div className="px-2 py-6 text-center text-xs text-text-faint">No roles yet.</div>
         ) : (
@@ -171,7 +171,7 @@ function SortableRoleRow({ role, selected, onPick }: SortableRoleRowProps) {
     <li ref={setNodeRef} style={style}>
       <div className={`group flex w-full items-center gap-2 rounded-xl border px-2.5 py-2 transition-all ${
         selected
-          ? 'border-blue-200 bg-blue-50 ring-1 ring-blue-500/30 shadow-sm shadow-blue-200/40'
+          ? 'border-border-info bg-surface-info ring-1 ring-fill-info/30 shadow-sm shadow-blue-200/40'
           : 'border-border-soft bg-surface-card hover:border-border-default hover:bg-surface-hover'
       }`}>
         {/* Drag handle */}

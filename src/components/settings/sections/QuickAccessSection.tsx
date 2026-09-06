@@ -155,7 +155,7 @@ export function QuickAccessSection() {
 
         {settings.pinned.length === 0 ? (
           <p className="rounded-none border border-dashed border-border-default bg-surface-canvas px-4 py-6 text-center text-xs text-text-soft">
-            No pinned pages. Use the <span className="font-semibold text-blue-600">+</span> pin
+            No pinned pages. Use the <span className="font-semibold text-text-info">+</span> pin
             control in the global header, or add a URL below.
           </p>
         ) : (
@@ -207,7 +207,7 @@ export function QuickAccessSection() {
                         variant="ghost"
                         size="sm"
                         onClick={() => startEdit(p.id, faceLabel)}
-                        className="w-full justify-start text-left text-sm font-semibold text-text-default hover:text-blue-600"
+                        className="w-full justify-start text-left text-sm font-semibold text-text-default hover:text-text-info"
                       >
                         {faceLabel}
                       </Button>
@@ -219,7 +219,7 @@ export function QuickAccessSection() {
                   variant="secondary"
                   size="sm"
                   onClick={() => unpin(p.id)}
-                  className="text-text-muted hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+                  className="text-text-muted hover:border-border-danger hover:bg-surface-danger hover:text-text-danger"
                 >
                   Unpin
                 </Button>
@@ -254,7 +254,7 @@ export function QuickAccessSection() {
               Add
             </Button>
           </div>
-          {addError && <p className="text-role-caption text-red-600">{addError}</p>}
+          {addError && <p className="text-role-caption text-text-danger">{addError}</p>}
         </div>
       </div>
 

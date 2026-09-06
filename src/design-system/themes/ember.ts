@@ -48,10 +48,12 @@ export const emberPalette: ThemePalette = {
     'text-accent': '#e8b380',
     'surface-success': 'rgba(52, 199, 123, 0.15)',
     'surface-warning': 'rgba(255, 146, 43, 0.16)',
+    'surface-info': 'rgba(76, 125, 251, 0.16)',
     'surface-danger': 'rgba(255, 107, 90, 0.16)',
     'surface-accent': 'rgba(232, 179, 128, 0.16)',
     'border-success': 'rgba(90, 212, 139, 0.30)',
     'border-warning': 'rgba(255, 169, 77, 0.30)',
+    'border-info': 'rgba(147, 180, 253, 0.30)',
     'border-danger': 'rgba(255, 138, 122, 0.30)',
     'border-accent': 'rgba(232, 179, 128, 0.30)',
     // Extended tone text

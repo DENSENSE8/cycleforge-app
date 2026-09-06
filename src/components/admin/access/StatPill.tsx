@@ -8,8 +8,8 @@ interface StatPillProps {
 
 const TONE: Record<string, { bg: string; text: string; value: string }> = {
   gray:   { bg: 'bg-surface-sunken',    text: 'text-text-muted',    value: 'text-text-default' },
-  green:  { bg: 'bg-green-100',   text: 'text-green-700',   value: 'text-green-900' },
-  blue:   { bg: 'bg-blue-100',    text: 'text-blue-700',    value: 'text-blue-900' },
+  green:  { bg: 'bg-surface-success',   text: 'text-text-success',   value: 'text-text-success' },
+  blue:   { bg: 'bg-surface-info',    text: 'text-text-info',    value: 'text-text-info' },
   purple: { bg: 'bg-purple-100',  text: 'text-purple-700',  value: 'text-purple-900' },
 };
 

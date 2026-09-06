@@ -63,9 +63,9 @@ function AuditRow({ entry }: { entry: AuditEntry }) {
       >
         <span className="font-mono text-text-muted">{entry.event}</span>
         <span className={`rounded-full inset-chip text-role-eyebrow font-semibold uppercase tracking-wider ring-1 ring-inset ${
-          entry.result === 'ok' ? 'bg-green-100 text-green-800 ring-green-200'
-          : entry.result === 'denied' ? 'bg-amber-100 text-amber-800 ring-amber-200'
-          : 'bg-red-100 text-red-800 ring-red-200'
+          entry.result === 'ok' ? 'bg-surface-success text-text-success ring-border-success'
+          : entry.result === 'denied' ? 'bg-surface-warning text-text-warning ring-border-warning'
+          : 'bg-surface-danger text-text-danger ring-border-danger'
         }`}>{entry.result}</span>
         <HoverTooltip label={absolute} asChild focusable={false}>
           <span className="text-text-soft">{fmtRelative(entry.created_at)}</span>

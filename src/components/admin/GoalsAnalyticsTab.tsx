@@ -28,11 +28,11 @@ function getProgress(actual: number, goal: number) {
 
 function getPerformanceTone(progress: number) {
   if (progress <= 0) return { label: 'Not Started', textClass: 'text-text-faint', barClass: 'bg-surface-strong' };
-  if (progress > 1) return { label: 'Above Goal', textClass: 'text-cyan-700', barClass: 'bg-cyan-600' };
-  if (progress === 1) return { label: 'Hit Goal', textClass: 'text-emerald-700', barClass: 'bg-emerald-600' };
-  if (progress >= 0.75) return { label: 'On the Way', textClass: 'text-blue-700', barClass: 'bg-blue-600' };
-  if (progress >= 0.4) return { label: 'Making Progress', textClass: 'text-sky-700', barClass: 'bg-sky-600' };
-  return { label: 'Getting Started', textClass: 'text-indigo-600', barClass: 'bg-indigo-500' };
+  if (progress > 1) return { label: 'Above Goal', textClass: 'text-text-info', barClass: 'bg-fill-info' };
+  if (progress === 1) return { label: 'Hit Goal', textClass: 'text-text-success', barClass: 'bg-fill-success' };
+  if (progress >= 0.75) return { label: 'On the Way', textClass: 'text-text-info', barClass: 'bg-fill-info' };
+  if (progress >= 0.4) return { label: 'Making Progress', textClass: 'text-text-info', barClass: 'bg-fill-info' };
+  return { label: 'Getting Started', textClass: 'text-text-info', barClass: 'bg-fill-info' };
 }
 
 const RANGE_OPTIONS: { value: RangeFilter; label: string }[] = [
@@ -145,8 +145,8 @@ export function GoalsAnalyticsTab() {
               onClick={() => setRangeFilter(option.value)}
               className={`rounded-md px-2.5 py-1 text-role-micro font-semibold uppercase tracking-wider transition ${
                 rangeFilter === option.value
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+                  ? 'bg-fill-info text-white'
+                  : 'bg-surface-info text-text-info hover:bg-surface-info'
               }`}
             >
               {option.label}

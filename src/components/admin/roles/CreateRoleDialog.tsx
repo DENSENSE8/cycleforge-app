@@ -119,7 +119,7 @@ export function CreateRoleDialog({ open, onClose, onCreated }: CreateRoleDialogP
           </label>
         </div>
 
-        {err && <div className="rounded-lg bg-red-50 inset-field text-xs text-red-700">{err}</div>}
+        {err && <div className="rounded-lg bg-surface-danger inset-field text-xs text-text-danger">{err}</div>}
 
         <DialogFooter>
           <Button variant="secondary" size="sm" onClick={onClose} disabled={busy}>

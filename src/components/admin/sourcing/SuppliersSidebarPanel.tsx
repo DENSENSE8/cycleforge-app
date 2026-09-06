@@ -57,7 +57,7 @@ export function SuppliersSidebarPanel() {
               <path d="M12 5v14" /><path d="M5 12h14" />
             </svg>
           }
-          className="w-full border border-dashed border-border-default bg-surface-card text-text-muted hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700"
+          className="w-full border border-dashed border-border-default bg-surface-card text-text-muted hover:border-border-info hover:bg-surface-info hover:text-text-info"
         >
           Add supplier
         </Button>
@@ -92,7 +92,7 @@ export function SuppliersSidebarPanel() {
                 onPick={() => setParam((p) => p.set('supplier', String(row.id)))}
                 title={row.name}
                 subtitle={row.supplier_type.replace('_', ' ')}
-                trailing={row.ebay_seller_id ? <span className="rounded-full bg-yellow-100 inset-chip text-role-micro font-semibold text-yellow-700">eBay</span> : null}
+                trailing={row.ebay_seller_id ? <span className="rounded-full bg-surface-warning inset-chip text-role-micro font-semibold text-text-warning">eBay</span> : null}
               />
             </li>
           ))}

@@ -56,10 +56,12 @@ export const lightPalette: ThemePalette = {
     'text-accent': '#1a3a6b',
     'surface-success': '#f0fdf4',
     'surface-warning': '#fff7ed',
+    'surface-info': '#eff6ff',
     'surface-danger': '#fef2f2',
     'surface-accent': '#f0f4fb',
     'border-success': '#4ade80',
     'border-warning': '#fb923c',
+    'border-info': '#60a5fa',
     'border-danger': '#f87171',
     'border-accent': '#2a4d9a',
     // Extended tone text

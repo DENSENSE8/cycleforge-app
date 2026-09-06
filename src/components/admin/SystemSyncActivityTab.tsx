@@ -17,10 +17,10 @@ import { Button, IconButton } from '@/design-system/primitives';
  */
 
 const DOT: Record<JobHealth, string> = {
-  ok: 'bg-emerald-500',
-  stale: 'bg-amber-500',
-  failed: 'bg-rose-500',
-  running: 'bg-blue-500 animate-pulse',
+  ok: 'bg-fill-success',
+  stale: 'bg-fill-warning',
+  failed: 'bg-fill-danger',
+  running: 'bg-fill-info animate-pulse',
   never: 'bg-surface-strong',
 };
 
@@ -81,7 +81,7 @@ export function SystemSyncActivityTab() {
           <Loader2 className="h-4 w-4 animate-spin" /> Loading jobs…
         </div>
       ) : summary.isError || !summary.data ? (
-        <div className="p-8 text-role-caption text-rose-600">Failed to load sync status.</div>
+        <div className="p-8 text-role-caption text-text-danger">Failed to load sync status.</div>
       ) : (
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {summary.data.jobs.map((j) => (
@@ -108,7 +108,7 @@ export function SystemSyncActivityTab() {
               variant="ghost"
               size="sm"
               onClick={() => setJobFilter(null)}
-              className="text-blue-600 hover:underline"
+              className="text-text-info hover:underline"
             >
               Clear filter
             </Button>
@@ -149,7 +149,7 @@ function JobCard({
   return (
     <div
       className={`rounded-none bg-surface-card p-3 shadow-sm ring-1 transition ${
-        active ? 'ring-blue-300' : 'ring-border-soft/60 hover:ring-border-default'
+        active ? 'ring-border-info' : 'ring-border-soft/60 hover:ring-border-default'
       }`}
     >
       <div className="flex items-start gap-2">
@@ -173,7 +173,7 @@ function JobCard({
       </div>
       {job.health === 'failed' && last?.error ? (
         // ds-allow-title: truncation-reveal of the full error on a non-interactive line
-        <div className="mt-1.5 truncate text-role-micro text-rose-600" title={last.error}>
+        <div className="mt-1.5 truncate text-role-micro text-text-danger" title={last.error}>
           {last.error}
         </div>
       ) : null}

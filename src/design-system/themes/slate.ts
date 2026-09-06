@@ -50,10 +50,12 @@ export const slatePalette: ThemePalette = {
     'text-accent': '#1e3a5f',
     'surface-success': '#e9f6ee',
     'surface-warning': '#fdf0e4',
+    'surface-info': '#eef4fd',
     'surface-danger': '#fdeaea',
     'surface-accent': '#e8eef6',
     'border-success': '#4ade80',
     'border-warning': '#fb923c',
+    'border-info': '#60a5fa',
     'border-danger': '#f87171',
     'border-accent': '#2c4a70',
     // Extended tone text

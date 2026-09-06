@@ -48,10 +48,12 @@ export const forestPalette: ThemePalette = {
     'text-accent': '#9ecfae',
     'surface-success': 'rgba(95, 214, 143, 0.14)',
     'surface-warning': 'rgba(240, 164, 76, 0.14)',
+    'surface-info': 'rgba(63, 140, 242, 0.14)',
     'surface-danger': 'rgba(242, 125, 108, 0.14)',
     'surface-accent': 'rgba(158, 207, 174, 0.14)',
     'border-success': 'rgba(95, 214, 143, 0.30)',
     'border-warning': 'rgba(240, 164, 76, 0.30)',
+    'border-info': 'rgba(133, 184, 245, 0.30)',
     'border-danger': 'rgba(242, 125, 108, 0.30)',
     'border-accent': 'rgba(158, 207, 174, 0.30)',
     // Extended tone text

@@ -79,7 +79,7 @@ export function FolderPickerModal({
             </div>
           ) : error ? (
             <div className="py-10 text-center">
-              <p className="text-role-caption font-semibold text-rose-600">{error}</p>
+              <p className="text-role-caption font-semibold text-text-danger">{error}</p>
               <Button variant="secondary" size="sm" type="button" onClick={() => void load(dir)} className="mt-3">
                 Retry
               </Button>

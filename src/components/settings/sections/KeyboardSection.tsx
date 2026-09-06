@@ -112,7 +112,7 @@ export function KeyboardSection() {
                   focusRing('control', 'accent'),
                   'inline-flex min-w-[3rem] items-center justify-center border px-2.5 py-1.5 font-mono text-role-caption tabular-nums transition-colors',
                   selected
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    ? 'border-border-info bg-surface-info text-text-info'
                     : 'border-border-soft bg-surface-canvas text-text-soft hover:bg-surface-sunken hover:text-text-default',
                 )}
                 data-testid={`focus-scan-hotkey-${key}`}
@@ -136,7 +136,7 @@ export function KeyboardSection() {
               focusRing('control', 'accent'),
               'inline-flex min-w-[3rem] items-center justify-center border px-2.5 py-1.5 font-mono text-role-caption tabular-nums transition-colors',
               !isPreset || capturingCustom
-                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                ? 'border-border-info bg-surface-info text-text-info'
                 : 'border-border-soft bg-surface-canvas text-text-soft hover:bg-surface-sunken hover:text-text-default',
             )}
             data-testid="focus-scan-hotkey-custom"
@@ -148,7 +148,7 @@ export function KeyboardSection() {
         <p
           className={cn(
             'mt-3 text-role-caption',
-            captureError ? 'font-medium text-rose-600' : 'text-text-faint',
+            captureError ? 'font-medium text-text-danger' : 'text-text-faint',
           )}
         >
           {captureError ?? (
@@ -163,7 +163,7 @@ export function KeyboardSection() {
                       setCapturingCustom(false);
                       setHotkey(DEFAULT_FOCUS_SCAN_HOTKEY);
                     }}
-                    className="ds-raw-button text-blue-600 hover:underline"
+                    className="ds-raw-button text-text-info hover:underline"
                     data-testid="focus-scan-hotkey-reset"
                   >
                     Reset to {DEFAULT_FOCUS_SCAN_HOTKEY}

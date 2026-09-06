@@ -211,7 +211,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
               <div className="flex flex-shrink-0 items-center gap-2">
                 <span
                   className={`inline-flex rounded-full px-2.5 py-1 text-role-micro font-semibold uppercase tracking-wider ${
-                    isStub ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
+                    isStub ? 'bg-surface-warning text-text-warning' : 'bg-surface-success text-text-success'
                   }`}
                 >
                   {isStub ? 'Stub' : 'Hydrated'}
@@ -221,7 +221,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsDeleteOpen(true)}
-                  className="border border-red-200 bg-surface-card text-red-600 hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+                  className="border border-border-danger bg-surface-card text-text-danger hover:border-border-danger hover:bg-surface-danger hover:text-text-danger"
                   icon={
                     <svg
                       viewBox="0 0 24 24"
@@ -321,7 +321,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
             </DialogDescription>
           </DialogHeader>
           {deleteMutation.isError ? (
-            <p className="text-role-caption font-semibold text-red-600">
+            <p className="text-role-caption font-semibold text-text-danger">
               {(deleteMutation.error as Error)?.message || 'Failed to delete.'}
             </p>
           ) : null}
@@ -378,7 +378,7 @@ export function FBAManagementTab(_props: FBAManagementTabProps = {}) {
                 setIsUploadInfoOpen(false);
                 fileInputRef.current?.click();
               }}
-              className="bg-emerald-600 shadow-emerald-600/25 hover:bg-emerald-500 active:bg-emerald-700"
+              className="bg-fill-success shadow-emerald-600/25 hover:bg-fill-success active:bg-fill-success"
             >
               Choose File
             </Button>

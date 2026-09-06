@@ -124,7 +124,7 @@ export function AmazonConnectModal({ onClose }: { onClose: () => void }) {
           />
         </div>
 
-        {error && <div className="rounded-md bg-red-50 px-2 py-1 text-role-caption font-medium text-red-700">{error}</div>}
+        {error && <div className="rounded-md bg-surface-danger px-2 py-1 text-role-caption font-medium text-text-danger">{error}</div>}
 
         <DialogFooter>
           <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>

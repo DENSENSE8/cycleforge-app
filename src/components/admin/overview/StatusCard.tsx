@@ -33,9 +33,9 @@ interface StatusCardProps {
 
 const TONE_CLASS: Record<NonNullable<StatusCardProps['tone']>, string> = {
   default: 'text-text-default',
-  good:    'text-emerald-600',
-  warn:    'text-amber-600',
-  bad:     'text-rose-600',
+  good:    'text-text-success',
+  warn:    'text-text-warning',
+  bad:     'text-text-danger',
 };
 
 export function StatusCard({
@@ -65,7 +65,7 @@ export function StatusCard({
         {href && (
           <Link
             href={href}
-            className="text-xs font-medium text-sky-600 hover:text-sky-700"
+            className="text-xs font-medium text-text-info hover:text-text-info"
           >
             {linkLabel}
           </Link>
@@ -81,7 +81,7 @@ export function StatusCard({
             <SkeletonBase width="10rem" height="0.75rem" className="bg-surface-sunken" />
           </div>
         ) : error ? (
-          <p className="text-sm text-rose-600">{error}</p>
+          <p className="text-sm text-text-danger">{error}</p>
         ) : empty ? (
           <p className="text-sm text-text-soft">{empty}</p>
         ) : (

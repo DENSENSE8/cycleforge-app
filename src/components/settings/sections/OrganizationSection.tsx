@@ -52,13 +52,13 @@ function ActiveWorkspaceCard() {
             {user.organizationPlan ? ` · ${user.organizationPlan} plan` : ''}
           </div>
         </div>
-        <span className="shrink-0 rounded-full bg-emerald-50 px-2 py-0.5 text-role-eyebrow uppercase tracking-wide text-emerald-700">
+        <span className="shrink-0 rounded-full bg-surface-success px-2 py-0.5 text-role-eyebrow uppercase tracking-wide text-text-success">
           Current
         </span>
       </div>
 
       {switchErr && (
-        <div className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{switchErr}</div>
+        <div className="rounded-lg bg-surface-danger px-3 py-2 text-xs text-text-danger">{switchErr}</div>
       )}
 
       {others.length > 0 && (
@@ -279,18 +279,18 @@ function InvitationsSection() {
         </Button>
       </div>
 
-      {err && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+      {err && <div className="rounded-lg bg-surface-danger px-3 py-2 text-sm text-text-danger">{err}</div>}
 
       {lastUrl && (
-        <div className="space-y-1 rounded-lg bg-emerald-50 px-3 py-2">
-          <p className="text-xs font-medium text-emerald-800">Invitation created — share this link:</p>
+        <div className="space-y-1 rounded-lg bg-surface-success px-3 py-2">
+          <p className="text-xs font-medium text-text-success">Invitation created — share this link:</p>
           <div className="flex items-center gap-2">
-            <code className="min-w-0 flex-1 truncate rounded bg-surface-card px-2 py-1 text-xs text-text-muted ring-1 ring-emerald-200">{lastUrl}</code>
+            <code className="min-w-0 flex-1 truncate rounded bg-surface-card px-2 py-1 text-xs text-text-muted ring-1 ring-border-success">{lastUrl}</code>
             <Button
               variant="primary"
               size="sm"
               onClick={() => void copy(lastUrl)}
-              className="shrink-0 bg-emerald-600 text-white shadow-none hover:bg-emerald-700 active:bg-emerald-700"
+              className="shrink-0 bg-fill-success text-white shadow-none hover:bg-fill-success active:bg-fill-success"
             >
               {copied ? 'Copied' : 'Copy'}
             </Button>
@@ -321,7 +321,7 @@ function InvitationsSection() {
                   size="sm"
                   disabled={revoking === inv.id}
                   onClick={() => void revoke(inv.id)}
-                  className="shrink-0 text-rose-600 hover:text-rose-700"
+                  className="shrink-0 text-text-danger hover:text-text-danger"
                 >
                   {revoking === inv.id ? 'Revoking…' : 'Revoke'}
                 </Button>
@@ -386,7 +386,7 @@ export function OrganizationSection() {
   if (loading) return <div className="text-sm text-text-soft">Loading…</div>;
   if (!draft) {
     return err
-      ? <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>
+      ? <div className="rounded-lg bg-surface-danger px-3 py-2 text-sm text-text-danger">{err}</div>
       : null;
   }
 
@@ -399,8 +399,8 @@ export function OrganizationSection() {
         </p>
       </header>
 
-      {err && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
-      {ok && <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">{ok}</div>}
+      {err && <div className="rounded-lg bg-surface-danger px-3 py-2 text-sm text-text-danger">{err}</div>}
+      {ok && <div className="rounded-lg bg-surface-success px-3 py-2 text-sm text-text-success">{ok}</div>}
 
       <ActiveWorkspaceCard />
 

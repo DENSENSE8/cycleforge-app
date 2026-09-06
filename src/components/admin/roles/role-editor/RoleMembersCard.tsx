@@ -38,7 +38,7 @@ export function RoleMembersCard({
               type="button"
               onClick={() => void onRemove(m.id)}
               disabled={busy === `remove:${m.id}`}
-              className="border border-red-200 text-red-700 hover:bg-red-50 hover:text-red-700"
+              className="border border-border-danger text-text-danger hover:bg-surface-danger hover:text-text-danger"
             >
               Remove
             </Button>

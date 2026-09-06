@@ -269,7 +269,7 @@ export function AppearanceSection() {
                 onClick={() => updateDensity(d)}
                 className={`ds-raw-button rounded-none border px-4 py-3 text-left transition ${
                   isActive
-                    ? 'border-blue-500 bg-blue-50 text-text-default ring-2 ring-blue-500/20'
+                    ? 'border-border-info bg-surface-info text-text-default ring-2 ring-fill-info/20'
                     : 'border-border-soft bg-surface-card text-text-muted hover:border-border-default hover:bg-surface-canvas'
                 }`}
                 aria-pressed={isActive}
@@ -294,7 +294,7 @@ export function AppearanceSection() {
                 onClick={() => updateFontScale(scale)}
                 className={`ds-raw-button min-w-16 rounded-none border px-4 py-2 font-medium transition ${
                   isActive
-                    ? 'border-blue-500 bg-blue-50 text-text-default ring-2 ring-blue-500/20'
+                    ? 'border-border-info bg-surface-info text-text-default ring-2 ring-fill-info/20'
                     : 'border-border-soft bg-surface-card text-text-muted hover:border-border-default hover:bg-surface-canvas'
                 }`}
                 style={{ fontSize: `${14 * scale}px` }}
@@ -325,7 +325,7 @@ export function AppearanceSection() {
                 onClick={() => updateTimeFormat(tf)}
                 className={`ds-raw-button rounded-none border px-4 py-3 text-left transition ${
                   isActive
-                    ? 'border-blue-500 bg-blue-50 text-text-default ring-2 ring-blue-500/20'
+                    ? 'border-border-info bg-surface-info text-text-default ring-2 ring-fill-info/20'
                     : 'border-border-soft bg-surface-card text-text-muted hover:border-border-default hover:bg-surface-canvas'
                 }`}
                 aria-pressed={isActive}
@@ -399,7 +399,7 @@ export function AppearanceSection() {
                 onClick={() => updatePageWash(name)}
                 className={`ds-raw-button rounded-none border p-2 text-left transition ${
                   isActive
-                    ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500/20'
+                    ? 'border-border-info bg-surface-info ring-2 ring-fill-info/20'
                     : 'border-border-soft bg-surface-card hover:border-border-default hover:bg-surface-canvas'
                 }`}
                 aria-pressed={isActive}
@@ -408,7 +408,7 @@ export function AppearanceSection() {
                 <span className="mt-2 flex items-center justify-between px-0.5">
                   <span className="text-role-caption font-semibold text-text-default">{preset.label}</span>
                   {isActive ? (
-                    <span className="h-2 w-2 rounded-full bg-blue-500" aria-hidden />
+                    <span className="h-2 w-2 rounded-full bg-fill-info" aria-hidden />
                   ) : null}
                 </span>
                 <span className="mt-0.5 block truncate px-0.5 text-role-micro text-text-soft">
@@ -454,7 +454,7 @@ export function AppearanceSection() {
                         onClick={() => updateStationSkin(name)}
                         className={`ds-raw-button rounded-none border p-2 text-left transition ${
                           isActive
-                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500/20'
+                            ? 'border-border-info bg-surface-info ring-2 ring-fill-info/20'
                             : 'border-border-soft bg-surface-card hover:border-border-default hover:bg-surface-canvas'
                         }`}
                         aria-pressed={isActive}
@@ -463,7 +463,7 @@ export function AppearanceSection() {
                         <span className="mt-2 flex items-center justify-between px-0.5">
                           <span className="text-role-caption font-semibold text-text-default">{skin.label}</span>
                           {isActive ? (
-                            <span className="h-2 w-2 rounded-full bg-blue-500" aria-hidden />
+                            <span className="h-2 w-2 rounded-full bg-fill-info" aria-hidden />
                           ) : null}
                         </span>
                         <span className="mt-0.5 block truncate px-0.5 text-role-micro text-text-soft">
@@ -491,7 +491,7 @@ export function AppearanceSection() {
                 onClick={() => updateStationDepth(name)}
                 className={`ds-raw-button rounded-none border px-4 py-3 text-left transition ${
                   isActive
-                    ? 'border-blue-500 bg-blue-50 text-text-default ring-2 ring-blue-500/20'
+                    ? 'border-border-info bg-surface-info text-text-default ring-2 ring-fill-info/20'
                     : 'border-border-soft bg-surface-card text-text-muted hover:border-border-default hover:bg-surface-canvas'
                 }`}
                 aria-pressed={isActive}
@@ -499,7 +499,7 @@ export function AppearanceSection() {
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm font-semibold">{depth.label}</span>
                   {isActive ? (
-                    <span className="h-2 w-2 rounded-full bg-blue-500" aria-hidden />
+                    <span className="h-2 w-2 rounded-full bg-fill-info" aria-hidden />
                   ) : null}
                 </div>
                 <div className="mt-1 text-role-caption text-text-soft">{depth.hint}</div>
@@ -539,7 +539,7 @@ export function AppearanceSection() {
                         onClick={() => updateTheme(name)}
                         className={`ds-raw-button rounded-none border p-2 text-left transition ${
                           isActive
-                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-500/20'
+                            ? 'border-border-info bg-surface-info ring-2 ring-fill-info/20'
                             : 'border-border-soft bg-surface-card hover:border-border-default hover:bg-surface-canvas'
                         }`}
                         aria-pressed={isActive}
@@ -548,7 +548,7 @@ export function AppearanceSection() {
                         <span className="mt-2 flex items-center justify-between px-0.5">
                           <span className="text-role-caption font-semibold text-text-default">{palette.label}</span>
                           {isActive ? (
-                            <span className="h-2 w-2 rounded-full bg-blue-500" aria-hidden />
+                            <span className="h-2 w-2 rounded-full bg-fill-info" aria-hidden />
                           ) : null}
                         </span>
                         <span className="mt-0.5 block truncate px-0.5 text-role-micro text-text-soft">

@@ -2,7 +2,7 @@ import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import type { SummaryTotals } from './types';
 
 function SummaryCell({ label, value, tone = 'gray' }: { label: string; value: number; tone?: 'gray' | 'emerald' }) {
-  const valueClass = tone === 'emerald' ? 'text-emerald-700' : 'text-text-default';
+  const valueClass = tone === 'emerald' ? 'text-text-success' : 'text-text-default';
   return (
     <div className="border border-border-soft bg-surface-card px-3 py-2.5">
       <p className={sectionLabel}>{label}</p>

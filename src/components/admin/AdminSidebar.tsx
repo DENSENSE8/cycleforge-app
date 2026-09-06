@@ -79,7 +79,7 @@ export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarPro
               className="ds-raw-button group flex w-full items-center gap-3 rounded-md inset-field text-left text-sm font-medium text-text-muted hover:bg-surface-sunken transition-colors"
               aria-label="Back to admin overview"
             >
-              <ShieldCheck className="h-5 w-5 text-blue-600" />
+              <ShieldCheck className="h-5 w-5 text-text-info" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-semibold tracking-tight text-text-default uppercase tracking-wider">
                   Admin{sectionLabel ? ` · ${sectionLabel}` : ''}

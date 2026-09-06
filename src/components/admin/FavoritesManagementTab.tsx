@@ -307,7 +307,7 @@ export function FavoritesManagementTab() {
                     <p className={`${tableCell} truncate text-text-muted`} title={row.productTitle ?? ''}>{row.productTitle || '-'}</p>
                     <p className={`${tableCell} text-text-muted`}>{row.defaultPrice ? `$${row.defaultPrice}` : '-'}</p>
                     <p className={`${tableCell} text-text-muted`}>{row.sortOrder}</p>
-                    <p className={`${tableHeader} ${row.isActive ? 'text-emerald-700' : 'text-text-faint'}`}>
+                    <p className={`${tableHeader} ${row.isActive ? 'text-text-success' : 'text-text-faint'}`}>
                       {row.isActive ? 'Active' : 'Hidden'}
                     </p>
                     <div className="flex items-center justify-end gap-2">
@@ -323,7 +323,7 @@ export function FavoritesManagementTab() {
                         <IconButton
                           onClick={() => handleDelete(row)}
                           disabled={deleteMutation.isPending}
-                          className="inline-flex h-8 w-8 items-center justify-center border border-rose-200 text-rose-600 transition-colors hover:bg-rose-50 disabled:opacity-50"
+                          className="inline-flex h-8 w-8 items-center justify-center border border-border-danger text-text-danger transition-colors hover:bg-surface-danger disabled:opacity-50"
                           ariaLabel={`Remove ${row.label}`}
                           icon={<Trash2 className="h-3.5 w-3.5" />}
                         />

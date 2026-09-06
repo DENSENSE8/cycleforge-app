@@ -78,7 +78,7 @@ export function SessionsSection() {
         <p className="text-sm text-text-soft">Anyone signed in right now. Revoke to kick a device.</p>
       </header>
 
-      {err && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+      {err && <div className="rounded-lg bg-surface-danger px-3 py-2 text-sm text-text-danger">{err}</div>}
 
       <DataTable {...sheet} totalCount={rows.length} />
     </section>

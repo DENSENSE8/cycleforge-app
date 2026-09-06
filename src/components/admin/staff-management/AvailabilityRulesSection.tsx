@@ -49,18 +49,18 @@ export function AvailabilityRulesSection({
       </div>
 
       {availabilityEditor && selectedAvailabilityStaff && (
-        <div className="mb-3 border border-amber-200 bg-amber-50/60 px-4 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-amber-200 pb-3">
+        <div className="mb-3 border border-border-warning bg-surface-warning px-4 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-warning pb-3">
             <div>
-              <p className={`${sectionLabel} text-amber-900`}>Editing Availability</p>
-              <p className={`${dataValue} mt-1 text-amber-950`}>
+              <p className={`${sectionLabel} text-text-warning`}>Editing Availability</p>
+              <p className={`${dataValue} mt-1 text-text-warning`}>
                 {selectedAvailabilityStaff.name} • {getStaffWeekdayLabel(availabilityEditor.dayOfWeek)}
               </p>
             </div>
             <Button
               variant="ghost"
               onClick={() => setAvailabilityEditor(null)}
-              className={`${tableHeader} h-8 rounded-none border border-amber-300 px-3 text-amber-800 hover:bg-amber-100 hover:text-amber-800`}
+              className={`${tableHeader} h-8 rounded-none border border-border-warning px-3 text-text-warning hover:bg-surface-warning hover:text-text-warning`}
             >
               Close
             </Button>
@@ -72,7 +72,7 @@ export function AvailabilityRulesSection({
               <select
                 value={availabilityDraft.isAllowed ? 'allowed' : 'blocked'}
                 onChange={(e) => setAvailabilityDraft((prev) => ({ ...prev, isAllowed: e.target.value === 'allowed' }))}
-                className={cn("h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-semibold text-text-default", focusRing('field', 'warning'))}
+                className={cn("h-9 w-full border border-border-warning bg-surface-card px-3 text-sm font-semibold text-text-default", focusRing('field', 'warning'))}
               >
                 <option value="allowed">Allowed</option>
                 <option value="blocked">Blocked</option>
@@ -102,7 +102,7 @@ export function AvailabilityRulesSection({
                     effectiveEndDate: localDateToDateKey(next?.to) ?? '',
                   }))
                 }
-                className="h-9 border-amber-200"
+                className="h-9 border-border-warning"
               />
             </div>
             <label className="space-y-1 md:col-span-1">
@@ -111,13 +111,13 @@ export function AvailabilityRulesSection({
                 type="text"
                 value={availabilityDraft.reason}
                 onChange={(e) => setAvailabilityDraft((prev) => ({ ...prev, reason: e.target.value }))}
-                className={cn("h-9 w-full border border-amber-200 bg-surface-card px-3 text-sm font-semibold text-text-default", focusRing('field', 'warning'))}
+                className={cn("h-9 w-full border border-border-warning bg-surface-card px-3 text-sm font-semibold text-text-default", focusRing('field', 'warning'))}
                 placeholder="Optional note"
               />
             </label>
           </div>
 
-          <div className={`${tableHeader} mt-3 flex flex-wrap items-center gap-3 text-amber-900`}>
+          <div className={`${tableHeader} mt-3 flex flex-wrap items-center gap-3 text-text-warning`}>
             <span>
               {selectedAvailabilityRule
                 ? 'Editing existing weekday rule'
@@ -133,7 +133,7 @@ export function AvailabilityRulesSection({
               variant="ghost"
               disabled={upsertAvailabilityRuleMutation.isPending}
               onClick={() => saveAvailabilityRule(availabilityEditor.staffId, availabilityEditor.dayOfWeek, availabilityDraft, selectedAvailabilityRule)}
-              className={`${sectionLabel} h-9 rounded-none border border-amber-800 bg-amber-800 px-4 text-white hover:bg-amber-900 hover:text-white`}
+              className={`${sectionLabel} h-9 rounded-none border border-border-warning bg-fill-warning px-4 text-white hover:bg-fill-warning hover:text-white`}
             >
               {selectedAvailabilityRule ? 'Save Rule' : 'Create Rule'}
             </Button>
@@ -142,7 +142,7 @@ export function AvailabilityRulesSection({
                 variant="ghost"
                 disabled={deleteAvailabilityRuleMutation.isPending}
                 onClick={() => deleteAvailabilityRuleMutation.mutate(selectedAvailabilityRule.id)}
-                className={`${sectionLabel} h-9 rounded-none border border-red-300 bg-surface-card px-4 text-red-700 hover:bg-red-50 hover:text-red-700`}
+                className={`${sectionLabel} h-9 rounded-none border border-border-danger bg-surface-card px-4 text-text-danger hover:bg-surface-danger hover:text-text-danger`}
               >
                 Delete Rule
               </Button>
@@ -218,9 +218,9 @@ export function AvailabilityRulesSection({
                         className={[
                           `${tableHeader} h-8 w-full border transition-colors`,
                           bucket.displayedIsAllowed
-                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                            : 'border-red-200 bg-red-50 text-red-700',
-                          isSelected ? 'ring-1 ring-amber-500' : '',
+                            ? 'border-border-success bg-surface-success text-text-success'
+                            : 'border-border-danger bg-surface-danger text-text-danger',
+                          isSelected ? 'ring-1 ring-fill-warning' : '',
                           !member.active ? 'cursor-not-allowed opacity-50' : 'hover:border-border-emphasis',
                         ].join(' ')}
                       >
@@ -236,7 +236,7 @@ export function AvailabilityRulesSection({
                       Edit
                     </Button>
                     {bucket.extraRulesCount > 0 && (
-                      <div className="mt-1 text-role-micro text-amber-700">
+                      <div className="mt-1 text-role-micro text-text-warning">
                         +{bucket.extraRulesCount} window
                       </div>
                     )}

@@ -133,14 +133,14 @@ export function ResultBanner({
           icon={<X className="h-3.5 w-3.5" />}
           ariaLabel="Dismiss"
           onClick={() => setDismissed(true)}
-          className="absolute right-2 top-2 shrink-0 text-emerald-700/60 hover:text-emerald-900"
+          className="absolute right-2 top-2 shrink-0 text-text-success hover:text-text-success"
         />
       </div>
     );
   }
 
   return (
-    <div className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-red-800">
+    <div className="flex items-start gap-2 rounded-xl border border-border-danger bg-surface-danger px-3 py-2 text-text-danger">
       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
       <span className="flex-1 text-role-caption">{errorMsg}</span>
       <IconButton

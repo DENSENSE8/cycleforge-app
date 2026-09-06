@@ -53,10 +53,12 @@ export const monoPalette: ThemePalette = {
     'text-accent': '#27272a',
     'surface-success': '#f4f4f5',
     'surface-warning': '#f4f4f5',
+    'surface-info': '#f4f4f5',
     'surface-danger': '#f4f4f5',
     'surface-accent': '#f4f4f5',
     'border-success': '#d4d4d8',
     'border-warning': '#d4d4d8',
+    'border-info': '#d4d4d8',
     'border-danger': '#d4d4d8',
     'border-accent': '#a1a1aa',
     // Extended tone text — informational tones go gray in mono

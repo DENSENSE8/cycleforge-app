@@ -207,7 +207,7 @@ export function Gs1ComplianceCard() {
   if (loading) return <div className="text-sm text-text-soft">Loading…</div>;
   if (!draft) {
     return err ? (
-      <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>
+      <div className="rounded-lg bg-surface-danger px-3 py-2 text-sm text-text-danger">{err}</div>
     ) : null;
   }
 
@@ -221,8 +221,8 @@ export function Gs1ComplianceCard() {
         </p>
       </div>
 
-      {err && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
-      {ok && <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-800">{ok}</div>}
+      {err && <div className="rounded-lg bg-surface-danger px-3 py-2 text-sm text-text-danger">{err}</div>}
+      {ok && <div className="rounded-lg bg-surface-success px-3 py-2 text-sm text-text-success">{ok}</div>}
 
       <div className="space-y-4">
         <YesNo
@@ -283,7 +283,7 @@ export function Gs1ComplianceCard() {
           )}
 
           {requirement.unmet && (
-            <div className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+            <div className="rounded-lg bg-surface-warning px-3 py-2 text-xs text-text-warning">
               You told us you{' '}
               {requirement.reasons.includes('new-inventory') && 'stock new inventory'}
               {requirement.reasons.length === 2 && ' and '}

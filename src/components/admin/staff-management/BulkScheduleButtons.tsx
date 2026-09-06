@@ -14,7 +14,7 @@ export function BulkScheduleButtons({
         variant="secondary"
         size="sm"
         onClick={() => onApply('technician', true)}
-        className={`${sectionLabel} border border-emerald-300 bg-emerald-50 text-emerald-700`}
+        className={`${sectionLabel} border border-border-success bg-surface-success text-text-success`}
       >
         All Tech Mon-Fri On
       </Button>
@@ -32,7 +32,7 @@ export function BulkScheduleButtons({
         variant="secondary"
         size="sm"
         onClick={() => onApply('packer', true)}
-        className={`${sectionLabel} border border-emerald-300 bg-emerald-50 text-emerald-700`}
+        className={`${sectionLabel} border border-border-success bg-surface-success text-text-success`}
       >
         All Packer Mon-Fri On
       </Button>

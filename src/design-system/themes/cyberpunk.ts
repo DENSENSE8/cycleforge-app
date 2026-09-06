@@ -49,10 +49,12 @@ export const cyberpunkPalette: ThemePalette = {
     'text-accent': '#67e8f9',
     'surface-success': 'rgba(74, 242, 161, 0.13)',
     'surface-warning': 'rgba(255, 177, 77, 0.13)',
+    'surface-info': 'rgba(56, 189, 248, 0.14)',
     'surface-danger': 'rgba(255, 92, 138, 0.14)',
     'surface-accent': 'rgba(103, 232, 249, 0.12)',
     'border-success': 'rgba(74, 242, 161, 0.32)',
     'border-warning': 'rgba(255, 177, 77, 0.32)',
+    'border-info': 'rgba(125, 211, 252, 0.32)',
     'border-danger': 'rgba(255, 92, 138, 0.32)',
     'border-accent': 'rgba(103, 232, 249, 0.32)',
     // Extended tone text

@@ -158,12 +158,12 @@ export function QaConsole() {
   }
 
   if (!data) {
-    return <p className="text-role-data text-red-700">{message ?? 'QA console unavailable.'}</p>;
+    return <p className="text-role-data text-text-danger">{message ?? 'QA console unavailable.'}</p>;
   }
 
   return (
     <div className="space-y-6">
-      <section className="border border-amber-300 bg-amber-50 px-5 py-4 text-amber-950 dark:border-amber-800 dark:bg-amber-950/30 dark:text-amber-100" aria-label="QA sandbox banner">
+      <section className="border border-border-warning bg-surface-warning px-5 py-4 text-text-warning dark:border-border-warning dark:bg-fill-warning/30 dark:text-text-warning" aria-label="QA sandbox banner">
         <div className="flex items-start gap-3">
           <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />
           <div>

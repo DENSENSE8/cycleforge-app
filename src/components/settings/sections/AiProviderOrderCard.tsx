@@ -63,8 +63,8 @@ const OPTIONS: ReadonlyArray<{
 ];
 
 const CHIP_CLASS: Record<string, string> = {
-  'on-prem': 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  cloud: 'bg-amber-50 text-amber-700 ring-amber-200',
+  'on-prem': 'bg-surface-success text-text-success ring-border-success',
+  cloud: 'bg-surface-warning text-text-warning ring-border-warning',
   inherit: 'bg-surface-canvas text-text-muted ring-border-soft',
 };
 
@@ -142,8 +142,8 @@ export function AiProviderOrderCard() {
         </p>
       </div>
 
-      {err && <div className="rounded-none bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
-      {ok && <div className="rounded-none bg-green-50 px-3 py-2 text-sm text-green-800">{ok}</div>}
+      {err && <div className="rounded-none bg-surface-danger px-3 py-2 text-sm text-text-danger">{err}</div>}
+      {ok && <div className="rounded-none bg-surface-success px-3 py-2 text-sm text-text-success">{ok}</div>}
 
       <ul className="space-y-2">
         {OPTIONS.map((opt) => {
@@ -158,7 +158,7 @@ export function AiProviderOrderCard() {
                 className={
                   'flex w-full items-start gap-3 rounded-none border px-3 py-2.5 text-left transition-colors ' +
                   (selected
-                    ? 'border-blue-500 bg-blue-50/60 ring-1 ring-blue-500/20'
+                    ? 'border-border-info bg-surface-info ring-1 ring-fill-info/20'
                     : 'border-border-soft bg-surface-card hover:border-border-default')
                 }
               >

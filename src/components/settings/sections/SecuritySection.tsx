@@ -173,8 +173,8 @@ export function SecuritySection() {
         <p className="text-sm text-text-soft">Manage your password, PIN, and passkeys.</p>
       </header>
 
-      {err && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
-      {ok && <div className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{ok}</div>}
+      {err && <div className="rounded-lg bg-surface-danger px-3 py-2 text-sm text-text-danger">{err}</div>}
+      {ok && <div className="rounded-lg bg-surface-success px-3 py-2 text-sm text-text-success">{ok}</div>}
 
       <div className="rounded-none border border-border-soft bg-surface-card p-5 space-y-4">
         <div>
@@ -274,7 +274,7 @@ export function SecuritySection() {
                   </div>
                 </div>
                 <Button variant="ghost" size="sm" disabled={removingId === p.id} onClick={() => void removeAcctPasskey(p.id)}
-                  className="shrink-0 text-rose-600 hover:text-rose-700">
+                  className="shrink-0 text-text-danger hover:text-text-danger">
                   {removingId === p.id ? 'Removing…' : 'Remove'}
                 </Button>
               </div>

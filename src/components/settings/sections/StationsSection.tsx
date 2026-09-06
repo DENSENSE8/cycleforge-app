@@ -153,7 +153,7 @@ export function StationsSection() {
       </header>
 
       {benchQuery.isError && (
-        <div className="rounded-xl border border-dashed border-rose-200 bg-rose-50 inset-empty text-center text-role-caption text-text-danger">
+        <div className="rounded-xl border border-dashed border-border-danger bg-surface-danger inset-empty text-center text-role-caption text-text-danger">
           Could not load stations.{' '}
           <Button variant="ghost" size="sm" onClick={() => void benchQuery.refetch()}>
             Retry
@@ -173,7 +173,7 @@ export function StationsSection() {
           <Link
             href={inventoryLocationsHref({ tab: 'bins' })}
             className={cn(
-              'mt-2 inline-block text-role-caption font-semibold text-blue-700',
+              'mt-2 inline-block text-role-caption font-semibold text-text-info',
               'underline-offset-2 hover:underline',
               focusRing('control', 'accent'),
             )}

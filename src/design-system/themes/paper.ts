@@ -50,10 +50,12 @@ export const paperPalette: ThemePalette = {
     'text-accent': '#713f12',
     'surface-success': '#eaf2e0',
     'surface-warning': '#f9edd8',
+    'surface-info': '#e8edf9',
     'surface-danger': '#f8e7df',
     'surface-accent': '#f2ead6',
     'border-success': '#7cc389',
     'border-warning': '#dfa356',
+    'border-info': '#7d95d6',
     'border-danger': '#e18a72',
     'border-accent': '#8a6a3a',
     // Extended tone text

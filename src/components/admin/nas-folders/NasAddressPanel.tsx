@@ -28,7 +28,7 @@ export function NasAddressPanel({ c }: { c: StationNasFoldersController }) {
                 type="button"
                 onClick={() => setServers((p) => ({ ...p, active: slot }))}
                 className={`px-3 py-1.5 text-role-micro uppercase tracking-widest transition-colors ${
-                  servers.active === slot ? 'bg-blue-600 text-white' : 'bg-surface-card text-text-soft hover:bg-surface-hover'
+                  servers.active === slot ? 'bg-fill-info text-white' : 'bg-surface-card text-text-soft hover:bg-surface-hover'
                 }`}
               >
                 {slot === 'test' ? 'Testing' : 'Production'}
@@ -42,7 +42,7 @@ export function NasAddressPanel({ c }: { c: StationNasFoldersController }) {
             <div className="w-24 shrink-0">
               <p className="text-role-caption font-semibold text-text-default">{slot === 'prod' ? 'Production' : 'Testing'}</p>
               {servers.active === slot ? (
-                <span className="text-role-micro uppercase tracking-widest text-emerald-600">● Active</span>
+                <span className="text-role-micro uppercase tracking-widest text-text-success">● Active</span>
               ) : null}
             </div>
             <input
@@ -57,7 +57,7 @@ export function NasAddressPanel({ c }: { c: StationNasFoldersController }) {
         ))}
 
         <div className="flex items-center justify-end gap-3">
-          {serversDirty ? <span className="text-role-micro uppercase tracking-widest text-amber-600">Unsaved changes</span> : null}
+          {serversDirty ? <span className="text-role-micro uppercase tracking-widest text-text-warning">Unsaved changes</span> : null}
           <Button
             type="button"
             variant="primary"
@@ -71,7 +71,7 @@ export function NasAddressPanel({ c }: { c: StationNasFoldersController }) {
       </div>
 
       {!nasConfigured() ? (
-        <div className="rounded-none border border-amber-200 bg-amber-50 px-4 py-3 text-role-caption font-semibold text-amber-800">
+        <div className="rounded-none border border-border-warning bg-surface-warning px-4 py-3 text-role-caption font-semibold text-text-warning">
           No active NAS address is set, so phones can’t save photos and Browse is unavailable. Enter
           the {servers.active === 'test' ? 'Testing' : 'Production'} URL above and Save.
         </div>

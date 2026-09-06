@@ -233,7 +233,7 @@ export function VaultConnectSheet({
         )}
 
         {formError && (
-          <div className="rounded-md bg-red-50 px-2 py-1 text-role-caption font-medium text-red-700">{formError}</div>
+          <div className="rounded-md bg-surface-danger px-2 py-1 text-role-caption font-medium text-text-danger">{formError}</div>
         )}
 
         <DialogFooter>

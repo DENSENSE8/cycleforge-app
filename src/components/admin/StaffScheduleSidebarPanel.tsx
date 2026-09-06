@@ -169,7 +169,7 @@ export function StaffScheduleSidebarPanel() {
                 trailing={
                   <HoverTooltip label={row.active ? 'Active' : 'Inactive'} asChild focusable={false}>
                     <span
-                      className={`h-2 w-2 rounded-full ${row.active ? 'bg-emerald-500' : 'bg-border-emphasis'}`}
+                      className={`h-2 w-2 rounded-full ${row.active ? 'bg-fill-success' : 'bg-border-emphasis'}`}
                     />
                   </HoverTooltip>
                 }

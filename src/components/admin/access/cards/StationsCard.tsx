@@ -80,7 +80,7 @@ export function StationsCard({ stations, borderClass, busy, onSave }: StationsCa
                     }}
                     className={
                       isPrimary
-                        ? 'inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-1 text-role-caption font-semibold text-blue-600 ring-1 ring-inset ring-blue-200'
+                        ? 'inline-flex items-center gap-1 rounded-full bg-surface-info px-2.5 py-1 text-role-caption font-semibold text-text-info ring-1 ring-inset ring-border-info'
                         : selected
                           ? 'inline-flex items-center gap-1 rounded-full bg-surface-inverse px-2.5 py-1 text-role-caption font-semibold text-white ring-1 ring-inset ring-surface-inverse transition disabled:opacity-50'
                           : 'inline-flex items-center gap-1 rounded-full bg-surface-card px-2.5 py-1 text-role-caption font-semibold text-text-muted ring-1 ring-inset ring-border-soft transition hover:bg-surface-hover disabled:opacity-50'
@@ -100,7 +100,7 @@ export function StationsCard({ stations, borderClass, busy, onSave }: StationsCa
           ? <>Chip shows <b>{STATION_LABELS[stations.primary]}</b>{stations.secondary.length > 0 ? ` · Switch between ${stations.secondary.length + 1} stations` : ' · no switch (single station)'}</>
           : <>No assignment — chip falls back to the station derived from the employee code.</>}
         {' · '}
-        <span className="text-text-soft">Set the daily target per station in <a href="/operations?mode=goals" className="text-blue-600 hover:underline">Goals</a>.</span>
+        <span className="text-text-soft">Set the daily target per station in <a href="/operations?mode=goals" className="text-text-info hover:underline">Goals</a>.</span>
       </div>
     </section>
   );

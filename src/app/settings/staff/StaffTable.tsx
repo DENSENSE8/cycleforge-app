@@ -285,7 +285,7 @@ function InviteModal({ open, onClose, onInvited }: InviteModalProps) {
 
         {enrollmentUrl ? (
           <div className="space-y-3">
-            <div className="rounded-xl bg-emerald-50 px-3 py-2 text-role-caption text-emerald-700">Invite created.</div>
+            <div className="rounded-xl bg-surface-success px-3 py-2 text-role-caption text-text-success">Invite created.</div>
             <label className="block">
               <span className="mb-1 block text-role-caption font-medium uppercase tracking-[0.08em] text-text-soft">Enrollment link</span>
               <input
@@ -334,7 +334,7 @@ function InviteModal({ open, onClose, onInvited }: InviteModalProps) {
               />
             </label>
             {error && (
-              <div className="rounded-lg bg-red-50 px-2 py-1.5 text-role-caption font-medium text-red-700">{error}</div>
+              <div className="rounded-lg bg-surface-danger px-2 py-1.5 text-role-caption font-medium text-text-danger">{error}</div>
             )}
             <DialogFooter>
               <Button variant="secondary" size="sm" onClick={onClose}>

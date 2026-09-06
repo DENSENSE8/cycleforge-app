@@ -20,9 +20,9 @@ import { IntegrationConnectSuccess } from '../IntegrationConnectSuccess';
 import { parseHealthResult } from '../integration-health';
 
 const STATUS_PILL: Record<string, { dot: string; text: string; bg: string; label: string }> = {
-  active: { dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', label: 'Connected' },
-  error: { dot: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50', label: 'Needs attention' },
-  revoked: { dot: 'bg-amber-500', text: 'text-amber-700', bg: 'bg-amber-50', label: 'Revoked' },
+  active: { dot: 'bg-fill-success', text: 'text-text-success', bg: 'bg-surface-success', label: 'Connected' },
+  error: { dot: 'bg-fill-danger', text: 'text-text-danger', bg: 'bg-surface-danger', label: 'Needs attention' },
+  revoked: { dot: 'bg-fill-warning', text: 'text-text-warning', bg: 'bg-surface-warning', label: 'Revoked' },
   disconnected: { dot: 'bg-surface-strong', text: 'text-text-soft', bg: 'bg-surface-sunken', label: 'Not connected' },
 };
 
@@ -223,7 +223,7 @@ export function IntegrationDetailClient({ def, summary, nangoReady }: Integratio
           {authKindLabel(summary.authKind)}
         </span>
         {summary.capabilities.map((cap) => (
-          <span key={cap} className="rounded-full bg-blue-50 px-2.5 py-1 text-role-caption font-medium text-blue-700 ring-1 ring-inset ring-blue-200">
+          <span key={cap} className="rounded-full bg-surface-info px-2.5 py-1 text-role-caption font-medium text-text-info ring-1 ring-inset ring-border-info">
             {cap}
           </span>
         ))}
@@ -265,7 +265,7 @@ export function IntegrationDetailClient({ def, summary, nangoReady }: Integratio
                   <span className="font-medium text-text-default">{acct.label}</span>
                 )}
                 {acct.role === 'buyer' && (
-                  <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-indigo-700">Purchasing</span>
+                  <span className="rounded bg-surface-info px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-info">Purchasing</span>
                 )}
                 {acct.detail && def.connect !== 'ebay' && <span className="text-text-faint">{acct.detail}</span>}
               </div>
@@ -281,7 +281,7 @@ export function IntegrationDetailClient({ def, summary, nangoReady }: Integratio
       <section className="rounded-none border border-border-soft bg-surface-card p-4 space-y-1">
         <p className="text-role-micro uppercase tracking-widest text-text-faint">Health</p>
         {summary.lastError && (
-          <p className="rounded-md bg-red-50 px-2 py-1 text-role-caption text-red-700">{summary.lastError}</p>
+          <p className="rounded-md bg-surface-danger px-2 py-1 text-role-caption text-text-danger">{summary.lastError}</p>
         )}
         {summary.lastUsedAt && (
           <p className="text-role-caption text-text-soft">
@@ -352,7 +352,7 @@ export function IntegrationDetailClient({ def, summary, nangoReady }: Integratio
             <Button variant="secondary" size="sm" icon={<RefreshCw />} loading={busy} onClick={runSync}>Sync now</Button>
           )}
           {summary.connected && (def.connect === 'vault' || def.connect === 'oauth' || def.connect === 'nango') && (
-            <Button variant="ghost" size="sm" onClick={disconnect} disabled={busy} className="text-text-soft hover:text-red-600">
+            <Button variant="ghost" size="sm" onClick={disconnect} disabled={busy} className="text-text-soft hover:text-text-danger">
               Disconnect
             </Button>
           )}
@@ -366,7 +366,7 @@ export function IntegrationDetailClient({ def, summary, nangoReady }: Integratio
       {/* Footer links */}
       <div className="flex flex-wrap items-center gap-4 border-t border-border-hairline pt-4 text-role-caption">
         {def.docsUrl && (
-          <a href={def.docsUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-blue-600 hover:underline">
+          <a href={def.docsUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-text-info hover:underline">
             Provider docs <ExternalLink className="h-3 w-3" />
           </a>
         )}

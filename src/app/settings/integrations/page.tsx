@@ -181,12 +181,12 @@ export default async function IntegrationsPage({
           <div className="flex items-center gap-2">
             <Link
               href="/settings/integrations/diagnostics"
-              className="text-role-caption font-semibold text-blue-600 hover:underline"
+              className="text-role-caption font-semibold text-text-info hover:underline"
             >
               Connection diagnostics →
             </Link>
             {!limit.unlimited && (
-              <span className={`rounded-full px-2.5 py-1 text-role-caption font-semibold ${limit.atLimit ? 'bg-amber-100 text-amber-700' : 'bg-surface-sunken text-text-muted'}`}>
+              <span className={`rounded-full px-2.5 py-1 text-role-caption font-semibold ${limit.atLimit ? 'bg-surface-warning text-text-warning' : 'bg-surface-sunken text-text-muted'}`}>
                 {limit.used} / {limit.max} integrations{limit.atLimit ? ' · upgrade to add more' : ''}
               </span>
             )}

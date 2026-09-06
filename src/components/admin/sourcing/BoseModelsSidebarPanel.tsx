@@ -60,7 +60,7 @@ export function BoseModelsSidebarPanel() {
               <path d="M5 12h14" />
             </svg>
           }
-          className="w-full border border-dashed border-border-default bg-surface-card text-text-muted hover:border-blue-400 hover:bg-blue-50 hover:text-blue-700"
+          className="w-full border border-dashed border-border-default bg-surface-card text-text-muted hover:border-border-info hover:bg-surface-info hover:text-text-info"
         >
           Add model
         </Button>

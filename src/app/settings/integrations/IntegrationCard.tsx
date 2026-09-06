@@ -24,15 +24,15 @@ import { EbayConnectPopover, EbayAccountNameChip } from './EbayAccountPopover';
 import { IntegrationConnectSuccess } from './IntegrationConnectSuccess';
 
 const PILL: Record<ProviderState['status'], { dot: string; text: string; bg: string; label: string }> = {
-  connected: { dot: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', label: 'Connected' },
-  error: { dot: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50', label: 'Needs attention' },
+  connected: { dot: 'bg-fill-success', text: 'text-text-success', bg: 'bg-surface-success', label: 'Connected' },
+  error: { dot: 'bg-fill-danger', text: 'text-text-danger', bg: 'bg-surface-danger', label: 'Needs attention' },
   not_connected: { dot: 'bg-surface-strong', text: 'text-text-soft', bg: 'bg-surface-sunken', label: 'Not connected' },
 };
 
 const ACCOUNT_DOT: Record<AccountSummary['status'], string> = {
-  active: 'bg-emerald-500',
-  error: 'bg-red-500',
-  expiring: 'bg-amber-500',
+  active: 'bg-fill-success',
+  error: 'bg-fill-danger',
+  expiring: 'bg-fill-warning',
   revoked: 'bg-border-emphasis',
   unknown: 'bg-surface-strong',
 };
@@ -238,7 +238,7 @@ export function IntegrationCard({
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <Link href={detailHref} className="truncate text-role-body font-semibold text-text-default hover:text-blue-600">
+            <Link href={detailHref} className="truncate text-role-body font-semibold text-text-default hover:text-text-info">
               {def.label}
             </Link>
             {def.docsUrl && (
@@ -289,7 +289,7 @@ export function IntegrationCard({
                 <span className="min-w-0 flex-1 truncate text-role-caption font-medium text-text-default">{acct.label}</span>
               )}
               {def.connect === 'ebay' && acct.role === 'buyer' && (
-                <span className="shrink-0 rounded bg-indigo-50 px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-indigo-700 ring-1 ring-inset ring-indigo-200">Purchasing</span>
+                <span className="shrink-0 rounded bg-surface-info px-1.5 py-0.5 text-role-micro uppercase tracking-widest text-text-info ring-1 ring-inset ring-border-info">Purchasing</span>
               )}
               {acct.detail && def.connect !== 'ebay' && <span className="shrink-0 text-role-caption text-text-faint">{acct.detail}</span>}
               {canManage && def.connect === 'amazon' && acct.id != null && (
@@ -299,7 +299,7 @@ export function IntegrationCard({
                     onClick={() => amazonDisconnect(acct.id!, acct.label)}
                     disabled={busy}
                     ariaLabel="Disconnect account"
-                    className="shrink-0 hover:text-red-600"
+                    className="shrink-0 hover:text-text-danger"
                   />
                 </HoverTooltip>
               )}
@@ -312,7 +312,7 @@ export function IntegrationCard({
         <div className="mt-2 text-role-caption text-text-muted">{state.displayLabel}</div>
       )}
       {state.lastError && (
-        <div className="mt-2 rounded-md bg-red-50 px-2 py-1 text-role-caption text-red-700">{state.lastError}</div>
+        <div className="mt-2 rounded-md bg-surface-danger px-2 py-1 text-role-caption text-text-danger">{state.lastError}</div>
       )}
       {state.lastUsedAt && (
         <div className="mt-2 text-role-caption text-text-faint">
@@ -355,7 +355,7 @@ export function IntegrationCard({
             {connected && def.connect !== 'ebay' ? (
               <Link
                 href={detailHref}
-                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-blue-600 px-3 text-role-caption font-medium text-white shadow-sm shadow-blue-600/25 hover:bg-blue-500"
+                className="inline-flex h-8 items-center gap-1.5 rounded-lg bg-fill-info px-3 text-role-caption font-medium text-white shadow-sm shadow-blue-600/25 hover:bg-fill-info"
               >
                 Manage
               </Link>
@@ -391,7 +391,7 @@ export function IntegrationCard({
             <span className="flex-1" />
 
             {connected && (def.connect === 'vault' || def.connect === 'oauth' || def.connect === 'nango') && (
-              <Button variant="ghost" size="sm" onClick={vaultDisconnect} disabled={busy} className="text-text-soft hover:text-red-600">
+              <Button variant="ghost" size="sm" onClick={vaultDisconnect} disabled={busy} className="text-text-soft hover:text-text-danger">
                 Disconnect
               </Button>
             )}

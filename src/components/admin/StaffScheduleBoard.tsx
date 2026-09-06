@@ -147,10 +147,10 @@ export function StaffScheduleBoard({
                 }`}
               >
                 <div>
-                  <p className={`text-role-eyebrow uppercase tracking-widest ${isToday ? 'text-amber-700' : 'text-text-soft'}`}>
+                  <p className={`text-role-eyebrow uppercase tracking-widest ${isToday ? 'text-text-warning' : 'text-text-soft'}`}>
                     {day.label}
                   </p>
-                  <p className={`mt-0.5 text-base font-semibold tracking-tight ${isToday ? 'text-amber-900' : 'text-text-default'}`}>
+                  <p className={`mt-0.5 text-base font-semibold tracking-tight ${isToday ? 'text-text-warning' : 'text-text-default'}`}>
                     {formatDayNumber(day.date)}
                   </p>
                 </div>
@@ -237,7 +237,7 @@ function ShiftAvatarPill({
         </span>
         <span className="truncate text-role-caption font-semibold text-text-default">{shift.staff_name.split(/\s+/)[0]}</span>
         {isCovering && (
-          <span className="rounded-full bg-amber-100 inset-chip text-role-micro uppercase text-amber-800">
+          <span className="rounded-full bg-surface-warning inset-chip text-role-micro uppercase text-text-warning">
             Cover
           </span>
         )}

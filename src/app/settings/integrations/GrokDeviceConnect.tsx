@@ -85,7 +85,7 @@ export function GrokDeviceConnect({
           <p className="text-role-micro text-text-faint">Waiting for approval…</p>
         )}
         {status === 'error' && error && (
-          <p className="text-role-micro text-red-700">{error}</p>
+          <p className="text-role-micro text-text-danger">{error}</p>
         )}
         <div className="flex flex-wrap gap-2">
           <Button

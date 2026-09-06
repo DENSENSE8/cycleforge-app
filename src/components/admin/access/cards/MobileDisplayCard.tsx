@@ -90,7 +90,7 @@ export function MobileDisplayCard({
           <h2 className="text-sm font-semibold text-text-default">Mobile display</h2>
           <p className="mt-0.5 text-role-caption text-text-soft">
             Controls what this staff sees on their phone. Defaults inherit from <b>{primaryRoleLabel}</b>.
-            Edit role defaults in <a href="/settings/roles" className="text-blue-600 hover:underline">Roles</a>.
+            Edit role defaults in <a href="/settings/roles" className="text-text-info hover:underline">Roles</a>.
           </p>
         </div>
         {hasOverride && (
@@ -137,7 +137,7 @@ export function MobileDisplayCard({
                   disabled={busy || !draftEnabled}
                   className={`rounded-full px-2.5 py-1 text-role-caption font-semibold ring-1 ring-inset transition ${
                     on
-                      ? 'bg-blue-100 text-blue-800 ring-blue-300'
+                      ? 'bg-surface-info text-text-info ring-border-info'
                       : 'bg-surface-canvas text-text-soft ring-border-soft hover:bg-surface-sunken'
                   } disabled:cursor-not-allowed disabled:opacity-50`}
                 >

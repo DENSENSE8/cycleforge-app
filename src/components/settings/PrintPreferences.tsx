@@ -80,7 +80,7 @@ function SilentPrintToggle() {
         checked={on}
         onCheckedChange={setSilent}
         aria-label="Toggle silent printing"
-        checkedClassName="data-[state=checked]:bg-emerald-600"
+        checkedClassName="data-[state=checked]:bg-fill-success"
       />
     </div>
   );
@@ -112,9 +112,9 @@ export function PrintPreferences({ onClose }: PrintPreferencesProps) {
       {webAvail ? (
         <BrowserProfiles />
       ) : (
-        <div className="rounded-none border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <div className="rounded-none border border-border-warning bg-surface-warning p-4 text-sm text-text-warning">
           <p className="font-semibold">Silent printing isn&rsquo;t available in this browser.</p>
-          <p className="mt-1 text-amber-800">
+          <p className="mt-1 text-text-warning">
             Use Chrome or Edge to pair wired label printers on Windows or macOS.
           </p>
         </div>
@@ -379,7 +379,7 @@ function ProfileCard({
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border-hairline pt-3">
         <Button type="button" variant="primary" size="sm" onClick={onTest}>Test</Button>
         {isDefaultForRole ? (
-          <span className="rounded-lg bg-green-50 px-2 py-1 text-role-caption font-medium text-green-700">Default for {profile.role}</span>
+          <span className="rounded-lg bg-surface-success px-2 py-1 text-role-caption font-medium text-text-success">Default for {profile.role}</span>
         ) : (
           <Button type="button" variant="secondary" size="sm" onClick={onMakeDefault}>Make default for {profile.role}</Button>
         )}

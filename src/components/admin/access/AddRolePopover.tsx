@@ -97,7 +97,7 @@ export function AddRolePopover({ roles, onAdd, disabled }: AddRolePopoverProps) 
         onClick={() => setOpen((v) => !v)}
         disabled={disabled}
         icon={<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>}
-        className="gap-1 rounded-full border border-dashed border-border-default bg-surface-card px-2 py-0.5 text-role-caption text-text-muted hover:border-blue-400 hover:text-blue-700 disabled:opacity-50"
+        className="gap-1 rounded-full border border-dashed border-border-default bg-surface-card px-2 py-0.5 text-role-caption text-text-muted hover:border-border-info hover:text-text-info disabled:opacity-50"
       >
         Add role
       </Button>

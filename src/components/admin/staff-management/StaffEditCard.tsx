@@ -98,7 +98,7 @@ export function StaffEditCard({
               {member.employee_id ? (
                 <span className="inline-flex items-center rounded-full bg-surface-sunken px-2.5 py-0.5 text-role-micro font-semibold uppercase tracking-[0.14em] text-text-muted">ID {member.employee_id}</span>
               ) : null}
-              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-role-micro font-semibold uppercase tracking-[0.14em] ${member.active ? 'bg-emerald-100 text-emerald-800' : 'bg-surface-strong text-text-muted'}`}>
+              <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-role-micro font-semibold uppercase tracking-[0.14em] ${member.active ? 'bg-surface-success text-text-success' : 'bg-surface-strong text-text-muted'}`}>
                 {member.active ? 'Active' : 'Inactive'}
               </span>
             </div>
@@ -198,7 +198,7 @@ export function StaffEditCard({
             variant="ghost"
             type="button"
             onClick={onDelete}
-            className="ml-auto h-11 border border-rose-200 text-rose-600 hover:bg-rose-50"
+            className="ml-auto h-11 border border-border-danger text-text-danger hover:bg-surface-danger"
           >
             Deactivate
           </Button>

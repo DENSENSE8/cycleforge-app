@@ -53,7 +53,7 @@ export function QualityDashboardTab() {
   }
   if (isError || !data) {
     return (
-      <div className="p-8 text-role-caption text-rose-600">
+      <div className="p-8 text-role-caption text-text-danger">
         {error instanceof Error ? error.message : 'Failed to load quality analytics'}
       </div>
     );
@@ -74,16 +74,16 @@ export function QualityDashboardTab() {
       {/* Risk tiles */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Tile label="Avg score" value={data.risk.avg_score ?? '—'} accent="text-text-default" icon={<ShieldCheck className="h-4 w-4 text-text-faint" />} />
-        <Tile label="Low risk" value={data.risk.low} accent="text-emerald-600" />
-        <Tile label="Medium risk" value={data.risk.medium} accent="text-amber-600" />
-        <Tile label="High risk" value={data.risk.high} accent="text-rose-600" />
+        <Tile label="Low risk" value={data.risk.low} accent="text-text-success" />
+        <Tile label="Medium risk" value={data.risk.medium} accent="text-text-warning" />
+        <Tile label="High risk" value={data.risk.high} accent="text-text-danger" />
       </div>
 
       <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
         {/* Top failures */}
         <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
           <header className="flex items-center gap-2 px-5 py-4">
-            <AlertTriangle className="h-4 w-4 text-rose-500" />
+            <AlertTriangle className="h-4 w-4 text-text-danger" />
             <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">Top open failures</h3>
           </header>
           {data.top_failures.length === 0 ? (
@@ -106,7 +106,7 @@ export function QualityDashboardTab() {
         {/* Repair rollup */}
         <section className="rounded-none bg-surface-card shadow-sm ring-1 ring-border-soft/60">
           <header className="flex items-center gap-2 px-5 py-4">
-            <Wrench className="h-4 w-4 text-blue-500" />
+            <Wrench className="h-4 w-4 text-text-info" />
             <h3 className="text-role-eyebrow uppercase tracking-[0.14em] text-text-soft">Repairs</h3>
           </header>
           <div className="grid grid-cols-3 gap-px border-t border-border-hairline bg-surface-sunken">
@@ -140,7 +140,7 @@ export function QualityDashboardTab() {
           <ul className="border-t border-border-hairline divide-y divide-border-hairline">
             {data.high_risk_units.map((u) => (
               <li key={u.serial_unit_id} className="flex items-center gap-3 px-5 py-2.5">
-                <span className="w-10 text-right text-role-caption font-semibold tabular-nums text-rose-600">{u.quality_score}</span>
+                <span className="w-10 text-right text-role-caption font-semibold tabular-nums text-text-danger">{u.quality_score}</span>
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-role-caption font-semibold text-text-default">
                     {u.unit_uid || u.serial_number}

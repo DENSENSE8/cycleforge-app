@@ -237,7 +237,7 @@ export function RepairIssuesManagementTab() {
                     <p className={`${tableCell} truncate`} title={row.label}>{row.label}</p>
                     <p className={`${tableCell} truncate uppercase tracking-[0.16em] text-text-muted`}>{row.category || '-'}</p>
                     <p className={`${tableCell} text-text-muted`}>{row.sort_order}</p>
-                    <p className={`${tableHeader} ${row.active ? 'text-emerald-700' : 'text-text-faint'}`}>
+                    <p className={`${tableHeader} ${row.active ? 'text-text-success' : 'text-text-faint'}`}>
                       {row.active ? 'Active' : 'Hidden'}
                     </p>
                     <div className="flex items-center justify-end gap-2">
@@ -253,7 +253,7 @@ export function RepairIssuesManagementTab() {
                         <IconButton
                           onClick={() => handleDelete(row)}
                           disabled={deleteMutation.isPending}
-                          className="inline-flex h-8 w-8 items-center justify-center border border-rose-200 text-rose-600 hover:bg-rose-50"
+                          className="inline-flex h-8 w-8 items-center justify-center border border-border-danger text-text-danger hover:bg-surface-danger"
                           ariaLabel={`Delete ${row.label}`}
                           icon={<Trash2 className="h-3.5 w-3.5" />}
                         />

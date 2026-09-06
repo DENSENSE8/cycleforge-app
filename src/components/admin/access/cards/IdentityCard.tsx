@@ -36,7 +36,7 @@ export function IdentityCard({
           {initials(staff.name)}
           {isAdmin && (
             // ds-allow-title (reviewed: absolutely-positioned badge)
-            <span className="absolute -bottom-1 -right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-400 ring-2 ring-white" title="Admin · All Access">
+            <span className="absolute -bottom-1 -right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-fill-warning ring-2 ring-white" title="Admin · All Access">
               <svg className="h-3.5 w-3.5 text-white" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
             </span>
           )}
@@ -53,7 +53,7 @@ export function IdentityCard({
           <div className="mt-1 flex items-center gap-2">
             <span className="text-role-caption text-text-faint">#{staff.id}</span>
             {isAdmin && (
-              <span className="inline-flex items-center rounded-full bg-amber-100 inset-chip text-role-eyebrow uppercase tracking-wider text-amber-900 ring-1 ring-amber-200">
+              <span className="inline-flex items-center rounded-full bg-surface-warning inset-chip text-role-eyebrow uppercase tracking-wider text-text-warning ring-1 ring-border-warning">
                 All Access
               </span>
             )}
@@ -121,7 +121,7 @@ function InlineNameAndCode({ name, code, onSave }: {
       <button type="button" onClick={() => setEditing(true)} className="group flex flex-wrap items-baseline gap-2 text-left">
         <span className="truncate text-2xl font-semibold tracking-tight text-text-default group-hover:underline">{name}</span>
         {code && <span className="rounded-full bg-surface-sunken px-2 py-0.5 text-role-micro font-semibold uppercase tracking-wider text-text-muted">{code}</span>}
-        <span className="text-role-micro text-blue-600 opacity-0 transition group-hover:opacity-100">Edit</span>
+        <span className="text-role-micro text-text-info opacity-0 transition group-hover:opacity-100">Edit</span>
       </button>
     );
   }

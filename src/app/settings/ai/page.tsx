@@ -137,7 +137,7 @@ export default async function AiSettingsPage() {
             </p>
             <Link
               href="/settings/integrations"
-              className="text-role-caption font-semibold text-blue-600 hover:underline"
+              className="text-role-caption font-semibold text-text-info hover:underline"
             >
               Connect / manage providers →
             </Link>

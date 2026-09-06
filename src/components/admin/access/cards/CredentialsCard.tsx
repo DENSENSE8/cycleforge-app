@@ -57,7 +57,7 @@ export function CredentialsCard({
               size="sm"
               onClick={onResetPin}
               disabled={busyResetPin}
-              className="border border-amber-200 bg-amber-50 text-amber-800 ring-0 hover:bg-amber-100"
+              className="border border-border-warning bg-surface-warning text-text-warning ring-0 hover:bg-surface-warning"
             >
               {busyResetPin ? 'Resetting…' : 'Reset PIN'}
             </Button>
@@ -87,7 +87,7 @@ export function CredentialsCard({
                     size="sm"
                     onClick={() => onRevokePasskey(p.id)}
                     disabled={busyRevokePasskey}
-                    className="border border-red-200 text-red-700 ring-0 hover:bg-red-50"
+                    className="border border-border-danger text-text-danger ring-0 hover:bg-surface-danger"
                   >
                     Revoke
                   </Button>
@@ -138,7 +138,7 @@ export function CredentialsCard({
                   size="sm"
                   onClick={onRevokeAll}
                   disabled={busyRevokeAll}
-                  className="border border-red-200 text-red-700 ring-0 hover:bg-red-50"
+                  className="border border-border-danger text-text-danger ring-0 hover:bg-surface-danger"
                 >
                   Revoke all
                 </Button>
@@ -165,7 +165,7 @@ export function CredentialsCard({
                     size="sm"
                     onClick={() => onRevokeSession(s.sid)}
                     disabled={busyRevokeSession}
-                    className="border border-red-200 text-red-700 ring-0 hover:bg-red-50"
+                    className="border border-border-danger text-text-danger ring-0 hover:bg-surface-danger"
                   >
                     Revoke
                   </Button>

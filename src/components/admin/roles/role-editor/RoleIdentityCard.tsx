@@ -40,7 +40,7 @@ export function RoleIdentityCard({
               <span className="rounded-full bg-surface-sunken inset-chip text-role-eyebrow uppercase tracking-wider text-text-soft">System</span>
             )}
             {isAdminRole && (
-              <span className="rounded-full bg-amber-100 inset-chip text-role-eyebrow uppercase tracking-wider text-amber-900 ring-1 ring-amber-200">All Access</span>
+              <span className="rounded-full bg-surface-warning inset-chip text-role-eyebrow uppercase tracking-wider text-text-warning ring-1 ring-border-warning">All Access</span>
             )}
             <span className="text-role-caption text-text-faint">position {role.position}</span>
             <span className="text-role-caption text-text-faint">· {role.member_count} member{role.member_count === 1 ? '' : 's'}</span>
@@ -67,7 +67,7 @@ export function RoleIdentityCard({
               size="sm"
               onClick={onDelete}
               disabled={role.is_system || role.member_count > 0 || busy === 'delete'}
-              className="text-red-700 hover:bg-red-50"
+              className="text-text-danger hover:bg-surface-danger"
             >
               Delete
             </Button>

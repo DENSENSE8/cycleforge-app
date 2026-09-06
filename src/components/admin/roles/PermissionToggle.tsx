@@ -30,7 +30,7 @@ export function PermissionToggle({ label, permission, enabled, color, disabled, 
           <span className="truncate">{label}</span>
           {stepUp && (
             <HoverTooltip label="Requires step-up (fresh PIN) before this action" asChild>
-              <span className="rounded-full bg-amber-100 px-1 py-0 text-role-eyebrow uppercase tracking-wider text-amber-900 ring-1 ring-amber-200">
+              <span className="rounded-full bg-surface-warning px-1 py-0 text-role-eyebrow uppercase tracking-wider text-text-warning ring-1 ring-border-warning">
                 ⚡
               </span>
             </HoverTooltip>

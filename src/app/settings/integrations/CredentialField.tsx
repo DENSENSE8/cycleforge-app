@@ -16,13 +16,13 @@ export function CredentialField({ def, value, error, configuredHint, onChange }:
     ? `Configured (${configuredHint}) — leave blank to keep`
     : def.placeholder;
 
-  const inputCls = `${FIELD_INPUT_CLS}${error ? ' border-red-300 focus:border-red-400 focus:ring-red-200' : ''}`;
+  const inputCls = `${FIELD_INPUT_CLS}${error ? ' border-border-danger focus:border-border-danger focus:ring-border-danger' : ''}`;
 
   return (
     <label className="block">
       <span className="text-role-caption font-semibold text-text-default">
         {def.label}
-        {def.required && !configuredHint ? <span className="text-red-500"> *</span> : null}
+        {def.required && !configuredHint ? <span className="text-text-danger"> *</span> : null}
       </span>
       {def.type === 'textarea' ? (
         <textarea
@@ -54,7 +54,7 @@ export function CredentialField({ def, value, error, configuredHint, onChange }:
         />
       )}
       {def.help && <p className="mt-1 text-role-caption text-text-faint">{def.help}</p>}
-      {error && <p className="mt-1 text-role-caption font-medium text-red-600">{error}</p>}
+      {error && <p className="mt-1 text-role-caption font-medium text-text-danger">{error}</p>}
     </label>
   );
 }

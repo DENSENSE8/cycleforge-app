@@ -116,9 +116,9 @@ export function ConnectionsManagementTab() {
                   <p
                     className={`mt-1 text-role-micro uppercase tracking-widest ${
                       log.status === 'success'
-                        ? 'text-green-700'
+                        ? 'text-text-success'
                         : log.status === 'error'
-                          ? 'text-red-700'
+                          ? 'text-text-danger'
                           : 'text-text-muted'
                     }`}
                   >

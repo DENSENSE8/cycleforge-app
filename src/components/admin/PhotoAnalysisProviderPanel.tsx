@@ -62,9 +62,9 @@ const OPTIONS: Array<{
 ];
 
 const PRIVACY_CHIP: Record<string, string> = {
-  'on-prem': 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  'local-text': 'bg-blue-50 text-blue-700 ring-blue-200',
-  cloud: 'bg-amber-50 text-amber-700 ring-amber-200',
+  'on-prem': 'bg-surface-success text-text-success ring-border-success',
+  'local-text': 'bg-surface-info text-text-info ring-border-info',
+  cloud: 'bg-surface-warning text-text-warning ring-border-warning',
   none: 'bg-surface-canvas text-text-muted ring-border-soft',
 };
 
@@ -123,7 +123,7 @@ export function PhotoAnalysisProviderPanel() {
   if (isLoading) return <p className="text-sm text-text-soft">Loading analysis settings…</p>;
   if (error) {
     return (
-      <p className="text-sm text-rose-600">
+      <p className="text-sm text-text-danger">
         {error instanceof Error ? error.message : 'Could not load analysis settings'}
       </p>
     );
@@ -160,13 +160,13 @@ export function PhotoAnalysisProviderPanel() {
                 onClick={() => setProvider(opt.value)}
                 className={`flex w-full items-start gap-3 rounded-lg border inset-field text-left transition ${
                   selected
-                    ? 'border-blue-400 bg-blue-50 ring-1 ring-inset ring-blue-400'
+                    ? 'border-border-info bg-surface-info ring-1 ring-inset ring-fill-info'
                     : 'border-border-soft bg-surface-card hover:bg-surface-canvas'
                 }`}
               >
                 <span
                   className={`mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 ${
-                    selected ? 'border-blue-500 bg-blue-500' : 'border-border-default'
+                    selected ? 'border-border-info bg-fill-info' : 'border-border-default'
                   }`}
                 />
                 <span className="min-w-0 flex-1">

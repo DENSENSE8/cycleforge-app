@@ -53,7 +53,7 @@ export function SettingControl({ def, value, disabled, lockedOptions = [], onCha
                 aria-pressed={isActive}
                 className={`rounded-xl border px-3 py-1.5 text-xs disabled:opacity-40 ${
                   isActive
-                    ? 'border-blue-500 bg-blue-50 text-blue-700 ring-2 ring-blue-500/20'
+                    ? 'border-border-info bg-surface-info text-text-info ring-2 ring-fill-info/20'
                     : 'border-border-default bg-surface-card text-text-muted hover:bg-surface-hover ring-0'
                 }`}
               >

@@ -86,10 +86,12 @@ export const THEME_VAR_KEYS = [
   'surface-warning',
   'surface-danger',
   'surface-accent',
+  'surface-info',
   'border-success',
   'border-warning',
   'border-danger',
   'border-accent',
+  'border-info',
   // Extended tone text (dashboard categories, informational accents)
   'text-info',
   'text-fulfillment',

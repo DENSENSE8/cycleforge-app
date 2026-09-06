@@ -57,7 +57,7 @@ export function PhotosPlatformPanel() {
   }
   if (error || !data) {
     return (
-      <p className="text-sm text-rose-600">
+      <p className="text-sm text-text-danger">
         {error instanceof Error ? error.message : 'Could not load stats'}
       </p>
     );

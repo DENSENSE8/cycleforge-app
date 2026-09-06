@@ -58,10 +58,12 @@ export const darkPalette: ThemePalette = {
     'text-accent': '#8ca7db',
     'surface-success': 'rgba(34, 197, 94, 0.15)',
     'surface-warning': 'rgba(249, 115, 22, 0.15)',
+    'surface-info': 'rgba(59, 130, 246, 0.15)',
     'surface-danger': 'rgba(239, 68, 68, 0.15)',
     'surface-accent': 'rgba(58, 96, 181, 0.18)',
     'border-success': 'rgba(74, 222, 128, 0.30)',
     'border-warning': 'rgba(251, 146, 60, 0.30)',
+    'border-info': 'rgba(96, 165, 250, 0.30)',
     'border-danger': 'rgba(248, 113, 113, 0.30)',
     'border-accent': 'rgba(140, 167, 219, 0.30)',
     // Extended tone text — -300 shades (same ramp the neutral remap uses)

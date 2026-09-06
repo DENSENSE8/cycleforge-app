@@ -27,7 +27,7 @@ export function RoleEditor({ roleId }: RoleEditorProps) {
   const { detail, loading, err, busy } = c;
 
   if (loading) return <div className="p-8 text-center text-sm text-text-soft">Loading role…</div>;
-  if (err && !detail) return <div className="m-6 rounded-lg bg-red-50 inset-field text-sm text-red-700">{err}</div>;
+  if (err && !detail) return <div className="m-6 rounded-lg bg-surface-danger inset-field text-sm text-text-danger">{err}</div>;
   if (!detail) return null;
 
   const { role, members } = detail;
@@ -36,7 +36,7 @@ export function RoleEditor({ roleId }: RoleEditorProps) {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 px-6 py-6">
-      {err && <div className="rounded-lg bg-red-50 inset-field text-sm text-red-700">{err}</div>}
+      {err && <div className="rounded-lg bg-surface-danger inset-field text-sm text-text-danger">{err}</div>}
 
       <RoleIdentityCard
         role={role}

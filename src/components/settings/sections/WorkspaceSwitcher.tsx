@@ -39,7 +39,7 @@ export function WorkspaceSwitcher() {
       </div>
 
       {switchErr && (
-        <div className="rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-700 ring-1 ring-inset ring-rose-200">
+        <div className="rounded-lg bg-surface-danger px-3 py-2 text-xs text-text-danger ring-1 ring-inset ring-border-danger">
           {switchErr}
         </div>
       )}
