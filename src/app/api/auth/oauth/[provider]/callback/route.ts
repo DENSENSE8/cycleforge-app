@@ -32,13 +32,9 @@ import {
   LEGACY_SESSION_COOKIE_NAME,
 } from '@/lib/auth/session';
 import { audit } from '@/lib/auth/audit';
+import { oauthOrigin } from '@/lib/auth/oauth-origin';
 
 export const runtime = 'nodejs';
-
-function origin(req: NextRequest): string {
-  return process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL ||
-    `${req.nextUrl.protocol}//${req.nextUrl.host}`;
-}
 
 function clearStateCookie(res: NextResponse): void {
   res.cookies.set(OAUTH_STATE_COOKIE, '', {
@@ -60,7 +56,7 @@ function isSameOriginPath(url: string): boolean {
 }
 
 function fail(req: NextRequest, code: string): NextResponse {
-  const url = new URL('/signin', origin(req));
+  const url = new URL('/signin', oauthOrigin(req));
   url.searchParams.set('login_error', code);
   const res = NextResponse.redirect(url);
   clearStateCookie(res);
@@ -147,7 +143,7 @@ async function handleCallback(req: NextRequest, provider: string): Promise<NextR
       clientId: cfg.clientId,
       clientSecret: cfg.clientSecret,
       code,
-      redirectUri: resolveRedirectUri(cfg, origin(req)),
+      redirectUri: resolveRedirectUri(cfg, oauthOrigin(req)),
       codeVerifier: provider === 'apple' ? undefined : payload.verifier,
     });
     const claims = token.id_token ? decodeIdTokenClaimsUnsafe(token.id_token) : null;
@@ -225,7 +221,7 @@ async function handleCallback(req: NextRequest, provider: string): Promise<NextR
   await logAuthEvent({ accountId, orgId: target.organization_id, event: 'login', ip, userAgent: ua });
 
   const dest = payload.next && isSameOriginPath(payload.next) ? payload.next : '/';
-  const res = NextResponse.redirect(new URL(dest, origin(req)));
+  const res = NextResponse.redirect(new URL(dest, oauthOrigin(req)));
   res.cookies.set(SESSION_COOKIE_NAME, session.sid, {
     httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/',
     maxAge: cookieMaxAgeForSession(session),
