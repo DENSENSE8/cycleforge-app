@@ -8,6 +8,9 @@
  * {@link DROPDOWN_ITEM_CORNER} — concentric, so a highlight does not leave a
  * sliver at the panel's corners. A composer-family panel
  * (`COMPOSER_SHELL_CORNER`) overrides the row with `COMPOSER_MENU_ITEM_CORNER`.
+ *
+ * Rows consume {@link MENU_ITEM_TONE_CLASS} (status pills vs accent ink).
+ * Pointer highlight is `data-[highlighted]` so hold-key + mouse still tracks.
  */
 
 import * as React from 'react';
@@ -15,7 +18,13 @@ import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { ChevronRight } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
 import { elevationClass } from '@/design-system/tokens/shadows';
-import { DROPDOWN_ITEM_CORNER, DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
+import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
+import {
+  MENU_ITEM_ROW_CLASS,
+  MENU_ITEM_TONE_CLASS,
+  MENU_SEPARATOR_CLASS,
+  type MenuItemTone,
+} from '@/design-system/tokens/menu-tone';
 
 const DropdownMenu = DropdownMenuPrimitive.Root;
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
@@ -46,20 +55,12 @@ const DropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
     inset?: boolean;
-    tone?: 'default' | 'danger';
+    tone?: MenuItemTone;
   }
 >(({ className, inset, tone = 'default', ...props }, ref) => (
   <DropdownMenuPrimitive.Item
     ref={ref}
-    className={cn(
-      'relative flex cursor-default select-none items-center gap-2 px-2 py-1.5 text-sm outline-none transition-colors',
-      DROPDOWN_ITEM_CORNER,
-      'focus:bg-surface-canvas data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
-      '[&>svg]:size-4 [&>svg]:shrink-0',
-      tone === 'danger' && 'text-rose-600 focus:bg-rose-50 focus:text-rose-700',
-      inset && 'pl-8',
-      className,
-    )}
+    className={cn(MENU_ITEM_ROW_CLASS, MENU_ITEM_TONE_CLASS[tone], inset && 'pl-8', className)}
     {...props}
   />
 ));
@@ -89,7 +90,7 @@ const DropdownMenuSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
-    className={cn('-mx-1 my-1 h-px bg-border-soft', className)}
+    className={cn(MENU_SEPARATOR_CLASS, className)}
     {...props}
   />
 ));
@@ -104,10 +105,9 @@ const DropdownMenuSubTrigger = React.forwardRef<
   <DropdownMenuPrimitive.SubTrigger
     ref={ref}
     className={cn(
-      'flex cursor-default select-none items-center gap-2 px-2 py-1.5 text-sm outline-none',
-      DROPDOWN_ITEM_CORNER,
-      'focus:bg-surface-canvas data-[state=open]:bg-surface-canvas',
-      '[&>svg]:size-4 [&>svg]:shrink-0',
+      MENU_ITEM_ROW_CLASS,
+      MENU_ITEM_TONE_CLASS.default,
+      'data-[state=open]:bg-surface-hover',
       inset && 'pl-8',
       className,
     )}
