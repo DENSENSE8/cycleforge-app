@@ -10,7 +10,7 @@ import { LEGAL_DOCS, LEGAL_INDEX_BLURB, type LegalDoc } from '@/content/legal';
  *
  * Read-only viewer for the CycleForge legal baseline (Terms of Service, Privacy
  * Policy, Data Processing Agreement). The documents are the SAME ones published
- * on the marketing site at cycleforge.com/legal; the markdown source lives in
+ * on the marketing site at cycleforge.ai/legal; the markdown source lives in
  * src/content/legal/*.json. They are working drafts pending counsel review, so
  * we surface a persistent disclaimer banner above the body.
  */
