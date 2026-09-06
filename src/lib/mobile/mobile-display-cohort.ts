@@ -178,6 +178,15 @@ export const MOBILE_DISPLAY_COHORT: readonly MobileDisplayMember[] = [
     ],
   },
   {
+    id: 'pack',
+    route: '/m/pack',
+    label: 'Pack (bench)',
+    files: [
+      'src/components/mobile/packer/MobilePackStation.tsx',
+      'src/components/mobile/packer/pack-station-tape.ts',
+    ],
+  },
+  {
     // Queues: compact chrome + ladder + type cap, but no capture sheet —
     // these surfaces list work, they do not commit scans (v1 item 3).
     id: 'queues',
