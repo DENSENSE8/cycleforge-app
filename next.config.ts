@@ -122,9 +122,17 @@ const nextConfig: NextConfig = {
     images: {
         remotePatterns: [
             { protocol: 'https', hostname: 'nas-photos.michaelgarisek.com' },
-            { protocol: 'https', hostname: '*.public.blob.vercel-storage.com' },
-            { protocol: 'https', hostname: '*.blob.vercel-storage.com' },
-            { protocol: 'https', hostname: 'blob.vercel-storage.com' },
+            // Vercel Blob is multi-tenant: EVERY customer's store lives at
+            // `<storeId>.public.blob.vercel-storage.com`, so a `*.` wildcard
+            // here turns `_next/image` (excluded from the proxy matcher, i.e.
+            // unauthenticated) into an open content relay on our own origin.
+            // Pin the two host forms of OUR store only — the store id is the
+            // public half of BLOB_READ_WRITE_TOKEN. Blob keys have no single
+            // stable prefix (product-manuals/, bin_adjustments/,
+            // repair_signatures/, orgs/<id>/kiosk-attract/), so the host is
+            // the pin; the legacy non-`public` form stays for pre-GA rows.
+            { protocol: 'https', hostname: 'dxo1iaq12ujzkoor.public.blob.vercel-storage.com' },
+            { protocol: 'https', hostname: 'dxo1iaq12ujzkoor.blob.vercel-storage.com' },
             // GCS-backed photos (PHOTOS_GCS_BUCKET: usav-photos-prod / -dev).
             // Without this, next/image throws "hostname not configured" and the
             // mobile photo gallery hits its error boundary.
@@ -157,6 +165,8 @@ const nextConfig: NextConfig = {
         ],
     },
     productionBrowserSourceMaps: false,
+    // Don't advertise the framework. `X-Powered-By: Next.js` is free recon.
+    poweredByHeader: false,
     // On Vercel, keep webpack single-threaded so peak RSS stays under the
     // Enhanced 16 GB ceiling (parent heap is already capped at 8 GB).
     webpack: (config) => {

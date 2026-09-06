@@ -1,6 +1,6 @@
 import { cache } from 'react';
 import { getCurrentUser } from './current-user';
-import { touchSession } from './session';
+import { sessionHandle, touchSession } from './session';
 import { getOrganization } from '@/lib/tenancy/organizations';
 import { loadOrgEnvironment } from '@/lib/qa/environment';
 import { resolveEnvelopeMemberships } from '@/lib/identity/memberships';
@@ -38,7 +38,10 @@ export const getInitialAuthUser = cache(async (): Promise<AuthSessionUser | null
     mobileDisplayConfig: current.mobileDisplayConfig,
     avatarPhotoId: current.avatarPhotoId,
     session: {
-      sid: current.session.sid,
+      // Opaque handle, not the bearer sid — the SSR payload is serialised into
+      // the HTML, so the raw cookie value must never appear here. Key name is
+      // unchanged (AuthSessionUser.session.sid) so no client code moves.
+      sid: sessionHandle(current.session.sid),
       deviceKind: current.session.deviceKind,
       deviceLabel: current.session.deviceLabel,
       expiresAt: current.session.expiresAt.toISOString(),

@@ -11,7 +11,10 @@ node_modules/
 /out/
 
 # production
-/build
+/build/*
+# electron-builder buildResources brand icon (the only committed build/ asset —
+# the dir pattern must stay `/*` so this negation can re-include the file)
+!/build/icon.png
 
 # misc
 .research/
@@ -112,9 +115,15 @@ scripts/.shipped-test-snapshot.json
 # `.next` the :3050 server is using (docs/integrations/realtime-ai.md).
 /.next-*/
 
-# Desktop shell app-manifest deps (installed by `pnpm desktop:deps`)
+# Desktop shell app-manifest deps (installed by `pnpm desktop:deps`).
+# electron/package-lock.json is TRACKED on purpose: `npm ci --prefix electron`
+# needs it, and it is what pins electron-updater (the auto-update signature
+# verifier) instead of floating it on every desktop build.
 electron/node_modules/
-electron/package-lock.json
+
+# npm's lockfile at the root is never a source of truth — pnpm-lock.yaml is
+# (vercel.json and the workflow both run `pnpm install --frozen-lockfile`).
+/package-lock.json
 
 # Generated test output — never track (98k+ lines of TAP per run)
 .cycle_forge_ops/logs/*.tap
@@ -165,3 +174,6 @@ docs/eval/**/latest.json
 
 # accidental nested clone / inner cursor stamp
 cycleforge-app/
+
+# ZCode MCP config can hold a Figma PAT - never commit
+.zcode/

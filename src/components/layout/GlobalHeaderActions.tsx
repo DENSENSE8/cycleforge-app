@@ -1,11 +1,7 @@
 'use client';
 
-import { GlobalHeaderPhoneButton } from '@/components/layout/GlobalHeaderPhoneButton';
-import { GlobalHeaderAddMenu } from '@/components/layout/GlobalHeaderAddMenu';
 import { GlobalHeaderSearch } from '@/components/layout/GlobalHeaderSearch';
-import { HeaderGoalChip } from '@/components/layout/HeaderGoalChip';
 import { useAuth } from '@/contexts/AuthContext';
-import { ActivityInboxButton } from '@/components/quick-access/ActivityInboxButton';
 import { cn } from '@/utils/_cn';
 import { HEADER_ICON_CLUSTER, HEADER_ICON_GAP } from './header-shell';
 
@@ -18,27 +14,24 @@ const HEADER_RAIL_WIDTH = 'min-w-[420px]';
 /**
  * Persistent **actions** zone of the {@link GlobalHeader} (far-right).
  *
- * Desktop order (left → right): **find · add · goal · inbox · phone**.
- * Find is {@link GlobalHeaderSearch} / {@link CommandBar} (⌘K). Phone is the
- * companion-composer handoff ({@link GlobalHeaderPhoneButton}) — it replaced
- * the header Sparkles on 2026-09-03; the assistant door is the floating circle
- * and ⌘J (PLAN-companion-composer).
+ * STRIPPED 2026-09-06 (operator: "starting fresh"): the add menu (+), the
+ * pace-and-next goal chip, the activity inbox, and the phone companion button
+ * are GONE from the header. The session surface is the product; the header
+ * carries Find (⌘K) only. The removed doors return as the pinned home-board
+ * idea matures (docs/todo/design-system-ideas-LOOP.md — home board, per-staff
+ * watchers, EOD rollups): they were standing chrome for data the assistant now
+ * answers on demand. The assistant door remains the floating circle + ⌘J.
  *
- * Clipboard history stays in the spine account overflow
- * ({@link StaffAccountFooter} ⋯) — earned by frequency, not existence. Phone
- * sign-in QR and kiosk preview live on Settings → Workstation. Goal / work-order
- * / throw are session glanceables on desktop only; mobile keeps goal on
- * {@link MobileTopBar} and does not remount them here.
+ * **Find follows the navigator (2026-09-05).** There is exactly ONE header
+ * search icon at any time. With the spine OPEN, Search is the spine's second
+ * row and the icon sits here on the right rail. With the spine CLOSED, the
+ * icon moves to the header's LEFT cluster, beside the toggle, where every
+ * agent desktop app puts it — so `showFind` is false in that state. Both
+ * doors dispatch `COMMAND_BAR_OPEN_EVENT`: one palette, one chord.
  *
- * **Desktop only.** This used to carry a `variant="mobile"` branch — a compact
- * utility cluster (clipboard · phone QR · inbox · account avatar) for the phone
- * top bar, justified by "mobile has no spine, therefore no account overflow".
- * That justification expired on 2026-08-21 when the mobile drawer footer
- * ({@link MobileAccountFooter}) became exactly that overflow, so the branch was
- * DELETED rather than left as a second shape for the same job. Mobile mounts no
- * part of this component.
+ * **Desktop only.** Mobile mounts no part of this component.
  */
-export function GlobalHeaderActions() {
+export function GlobalHeaderActions({ showFind = true }: { showFind?: boolean }) {
   const { user } = useAuth();
 
   if (!user) return null;
@@ -56,14 +49,11 @@ export function GlobalHeaderActions() {
       <div
         className={HEADER_ICON_CLUSTER}
         data-header-zone="actions"
-        data-global-add="mounted"
       >
-        {/* Find · add · pace-and-next · inbox · phone (far-right). */}
-        <GlobalHeaderSearch />
-        <GlobalHeaderAddMenu />
-        <HeaderGoalChip />
-        <ActivityInboxButton />
-        <GlobalHeaderPhoneButton />
+        {/* Find (⌘K), unless the closed spine has taken it to the left
+            cluster. Everything else returns with the home-board idea
+            (docs/todo/design-system-ideas-LOOP.md). Stripped 2026-09-06. */}
+        {showFind ? <GlobalHeaderSearch /> : null}
       </div>
     </div>
   );

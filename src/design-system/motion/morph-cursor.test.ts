@@ -143,15 +143,134 @@ test('Chrome-style cursor kinds stay small — they do not wear the button box',
   assert.match(kinds, /CURSOR_KIND_SELECTOR/);
   const layer = src(LAYER);
   assert.match(layer, /CURSOR_KIND_SELECTOR/);
-  assert.match(layer, /CursorGlyph/);
-  assert.match(layer, /click/);
-  assert.match(layer, /resize-x/);
-  assert.match(layer, /grabbing/);
+  // Glyph shapes live in the chrome skin now; the layer only hit-tests.
+  const skins = src('./cursor-skins.tsx');
+  assert.match(skins, /CursorGlyph/);
+  assert.match(skins, /kind === 'click'/);
+  assert.match(skins, /kind === 'resize-x'/);
+  assert.match(skins, /kind === 'grab' \|\| kind === 'grabbing'/);
   // Box-wear is opt-in morph only, not the default for buttons.
   assert.match(src('../primitives/Button.tsx'), /cursorClickTarget/);
   assert.doesNotMatch(src('../primitives/Button.tsx'), /from '@\/design-system\/motion'/);
   assert.match(src('../primitives/IconButton.tsx'), /cursorClickTarget/);
   assert.match(src('../components/HorizontalEdgeResizeHandle.tsx'), /cursorResizeTarget/);
+});
+
+test('every skin is one component that renders every state — no partial skins', () => {
+  const skins = src('./cursor-skins.tsx');
+  const store = src('./cursor-skin.ts');
+  // The catalog ids and the registry agree; chrome stays the default so the
+  // shipped desk never changes face on update.
+  assert.match(store, /CURSOR_SKIN_IDS = \['chrome', 'orbit', 'comet', 'reticle', 'gem'\]/);
+  assert.match(store, /DEFAULT_CURSOR_SKIN: CursorSkinId = 'chrome'/);
+  for (const id of ['chrome', 'orbit', 'comet', 'reticle', 'gem']) {
+    assert.match(skins, new RegExp(`^  ${id}: \\{`, 'm'), `${id} must be in the registry`);
+    assert.match(skins, new RegExp(`^function ${id.charAt(0).toUpperCase() + id.slice(1)}Cursor`, 'm'), `${id} has its own Cursor`);
+  }
+  // Every skin component takes the full state contract — kind AND pressed AND
+  // the geometry springs. A skin that ignores `pressed` ships half the states.
+  const cursors = skins.match(/function \w+Cursor\(\{ kind, pressed, color, width, height, marginLeft, marginTop \}/g) ?? [];
+  assert.equal(cursors.length, 5, 'all five cores consume the same props');
+  const shells = skins.match(/function \w+Shell\(\{ kind, pressed, color, width, height, marginLeft, marginTop \}/g) ?? [];
+  assert.equal(shells.length, 4, 'the four two-speed skins have shells');
+  assert.match(skins, /Shell: null/, 'chrome is single-speed by design');
+  // Skins are paint, never engines: no listeners, no stores, no measuring.
+  assert.doesNotMatch(skins, /addEventListener/);
+  assert.doesNotMatch(skins, /getBoundingClientRect/);
+  assert.doesNotMatch(skins, /useSyncExternalStore/);
+});
+
+test('two speeds: the hotspot never lags, only the shell may trail', () => {
+  const layer = src(LAYER);
+  // The modern cursor idiom (motion.dev's own Cursor works this way): a
+  // glued core plus a spring-trailing shell. The cursorFollow law survives
+  // intact — the hotspot is still raw motion values set to the snapped
+  // pointer; only the SHELL chases, on the travelling-marker spring (the
+  // morph role), so the mark reads as one liquid object in motion.
+  assert.match(layer, /const shellX = useSpring\(x, motionRole\.cursor\.morph\.transition\)/);
+  assert.match(layer, /const shellY = useSpring\(y, motionRole\.cursor\.morph\.transition\)/);
+  assert.match(layer, /data-testid="morph-cursor-shell"/);
+  // Box-wear and scrub are the statement — the shell gets out of the way.
+  assert.match(layer, /kind !== 'morph' && !scrub/);
+  // The shell wears the same halo as the core (it is half the mark).
+  const shellBlock = layer.slice(layer.indexOf('morph-cursor-shell'), layer.indexOf('morph-cursor"', layer.indexOf('morph-cursor-shell')));
+  assert.match(shellBlock, /filter: CURSOR_HALO/);
+});
+
+test('state accents crossfade — they never pop in and out of the DOM', () => {
+  const skins = src('./cursor-skins.tsx');
+  // A kind arriving should read as the mark blooming, not a new element
+  // stamping in. Accents stay MOUNTED and animate opacity/scale on the
+  // house spring — conditional rendering of state marks is the regression.
+  assert.match(skins, /animate=\{\{ opacity: show \? 1 : 0, scale: show \? 1 : 0\.3 \}\}/);
+  assert.match(skins, /animate=\{\{ opacity: show \? 1 : 0, scale: show \? 1 : 0\.4 \}\}/);
+  assert.doesNotMatch(skins, /\{kind === 'click' \? <AccentDot/, 'accents are not conditionally mounted');
+  // Press is counter-motion per skin, never one uniform shrink: cores grow
+  // or spin while their shells contract.
+  assert.match(skins, /scale: pressed \? 1\.3 : 1/, 'orbit core grows on press');
+  assert.match(skins, /scale: pressed \? 0\.72 : 1/, 'orbit shell squeezes onto it');
+  assert.match(skins, /rotate: pressed \? 135 : 45/, 'gem core spins');
+  assert.match(skins, /rotate: 45 \+ \(pressed \? -20 : 0\)/, 'gem shell cocks the other way');
+});
+test('skins animate through a role, never inline physics', () => {
+  const skins = src('./cursor-skins.tsx');
+  assert.match(skins, /motionRole\.cursor\.morph\.transition/);
+  assert.doesNotMatch(skins, /stiffness:/, 'no inline spring in a skin');
+  assert.doesNotMatch(skins, /damping:/, 'no inline spring in a skin');
+  assert.doesNotMatch(skins, /useVelocity/, 'velocity smear is drag, not follow');
+});
+
+test('the pressed state is the engine\'s, wired once for every skin', () => {
+  const layer = src(LAYER);
+  // Press rides the window so drags that leave their target stay engaged.
+  assert.match(layer, /addEventListener\('pointerdown'/);
+  assert.match(layer, /addEventListener\('pointerup'/);
+  assert.match(layer, /addEventListener\('pointercancel'/);
+  assert.match(layer, /data-cursor-pressed=/);
+  assert.match(layer, /pressed=\{pressed\}/);
+  // Leave clears it — a cursor stuck "engaged" off-window lies.
+  assert.match(layer, /onLeave[\s\S]*setPressed\(false\)/);
+});
+
+test('the mark wears the find-me halo — a white outline, and nothing else', () => {
+  const layer = src(LAYER);
+  // Without a halo a staff-green dot hovering a staff-green control returns
+  // ZERO deviating pixels (measured) — the cursor vanishes exactly where the
+  // operator looks hardest. The fix is the macOS-style white outline:
+  // sub-pixel drop-shadow passes stacked to a crisp rim that follows the
+  // painted silhouette (chevrons, brackets, flare included).
+  assert.match(layer, /drop-shadow\(0 0 0\.66px #fff\)/, 'white rim follows the painted silhouette');
+  // Operator ruling 2026-09-06: outline ONLY. The dark drop shadow under the
+  // mark read as a smudge and is banned — an offset/below-shadow pass here
+  // is a regression of that ruling, not an accessibility win.
+  assert.doesNotMatch(
+    layer,
+    /drop-shadow\([^)]*rgba\(15, 23, 42/,
+    'no dark drop shadow may ride the mark',
+  );
+  // One halo site: it wraps ONLY the skin paint. The tooltip chip and scrub
+  // readout carry their own ground and must stay outside it.
+  assert.match(
+    layer,
+    /data-cursor-halo="" style=\{\{ filter: CURSOR_HALO \}\}>\s*<Cursor[\s\S]*?\{readout/,
+    'halo wraps the skin, not the chips',
+  );
+});
+
+test('the skin is picked on the desk, persisted on the desk', () => {
+  const store = src('./cursor-skin.ts');
+  // Device-local like page wash — never a staff_preferences field.
+  assert.match(store, /cf\.cursor-skin/);
+  assert.match(store, /localStorage\.setItem/);
+  assert.match(store, /readCursorSkinServer[\s\S]*return DEFAULT_CURSOR_SKIN/);
+  const layer = src(LAYER);
+  assert.match(layer, /useSyncExternalStore\(subscribeCursorSkin, readCursorSkin, readCursorSkinServer\)/);
+  assert.match(layer, /data-cursor-skin=\{skinId\}/);
+  const settings = src('../../components/settings/sections/AppearanceSection.tsx');
+  assert.match(settings, /updateCursorSkin/, 'the Pointer card is the write path');
+  assert.match(settings, /CursorSkinPreviewMini/);
+  // The preview paints from the registry itself, so the card cannot drift.
+  assert.match(settings, /CURSOR_SKINS\[id\]/);
 });
 
 test('the cursor rides a named z band, not a magic number', () => {
@@ -160,6 +279,28 @@ test('the cursor rides a named z band, not a magic number', () => {
   assert.doesNotMatch(layer, /z-\[\d+\]/);
   assert.match(layer, /pointer-events-none/);
   assert.match(layer, /aria-hidden/);
+});
+
+test('the layer never carries text at a fractional device-pixel offset', () => {
+  const layer = src(LAYER);
+  // The chip is TEXT inside a `will-change: transform` layer, so the
+  // compositor re-uses one raster at whatever offset the transform names. A
+  // fractional offset resamples the glyphs instead of re-rasterizing them,
+  // which is blur — and at a 1.25 DPR desk even a whole CSS px (14 -> 17.5
+  // device px) is off the grid, so rounding must happen in device space.
+  assert.match(layer, /function snapToDevicePixel/);
+  assert.match(layer, /window\.devicePixelRatio/);
+  // Every position the layer or the chip is painted at goes through the snap.
+  assert.doesNotMatch(layer, /x\.set\(clientX\)/, 'raw pointer x is a fractional offset');
+  assert.doesNotMatch(layer, /y\.set\(clientY\)/, 'raw pointer y is a fractional offset');
+  assert.doesNotMatch(
+    layer,
+    /labelX\.set\(fitsRight/,
+    'the flip offset is measured from getBoundingClientRect and is fractional',
+  );
+  assert.match(layer, /x\.set\(snapToDevicePixel\(clientX\)\)/);
+  assert.match(layer, /labelX\.set\(snapToDevicePixel\(/);
+  assert.match(layer, /labelY\.set\(snapToDevicePixel\(/);
 });
 
 test('the slider is mounted on a real surface, not just exported', () => {

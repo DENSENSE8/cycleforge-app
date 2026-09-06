@@ -61,11 +61,10 @@ export function SidebarCollapseControl({
 
   // Noun = navigation (MasterNav spine) — not the context-rail "sidebar" that
   // owns ⌘B. Never advertise a layout chord here.
-  // Not show/hide: there is no hidden state any more (2026-09-05). The toggle
-  // moves the spine between its remembered width and the 48px icon rail, and
-  // the label has to say which, or it promises a disappearance that no longer
-  // happens.
-  const label = sidebarCollapsed ? 'Expand navigation' : 'Collapse navigation';
+  // Show/hide, not expand/collapse: the spine has two states — its remembered
+  // width or nothing (operator ruling 2026-09-05). The 48px icon rail that
+  // briefly made "collapse" the honest verb is gone.
+  const label = sidebarCollapsed ? 'Show navigation' : 'Hide navigation';
 
   return (
     <div

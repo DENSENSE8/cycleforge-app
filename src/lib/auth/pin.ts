@@ -14,7 +14,7 @@
 import { randomBytes, scrypt as scryptCb, timingSafeEqual } from 'node:crypto';
 import { promisify } from 'node:util';
 import pool from '@/lib/db';
-import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 const scrypt = promisify(scryptCb) as (
@@ -35,8 +35,13 @@ const MAXMEM = 128 * 1024 * 1024;
 const MIN_PIN_LEN = 4;
 const MAX_PIN_LEN = 12;
 
+/** Consecutive wrong PINs tolerated before `pin_locked_until` is armed. */
+const MAX_PIN_ATTEMPTS = 5;
+/** How long a locked PIN stays refused, in minutes. */
+const PIN_LOCKOUT_MINUTES = 15;
+
 export class PinError extends Error {
-  constructor(public readonly code: 'TOO_SHORT' | 'TOO_LONG' | 'NOT_NUMERIC' | 'NO_PIN' | 'WRONG' | 'NOT_FOUND' | 'WEAK_PIN' | 'PIN_ALREADY_SET') {
+  constructor(public readonly code: 'TOO_SHORT' | 'TOO_LONG' | 'NOT_NUMERIC' | 'NO_PIN' | 'WRONG' | 'NOT_FOUND' | 'WEAK_PIN' | 'PIN_ALREADY_SET' | 'LOCKED') {
     super(code);
     this.name = 'PinError';
   }
@@ -135,70 +140,109 @@ interface StaffPinRow {
   default_home_path_mobile: string | null;
 }
 
+/** Lockout state read alongside the staff row so the refusal happens pre-hash. */
+interface StaffPinLookupRow extends StaffPinRow {
+  pin_failed_count: number;
+  pin_locked: boolean;
+}
+
+// `pin_locked` is computed in SQL against NOW() so the decision never depends
+// on the app server's clock.
+const PIN_LOOKUP_COLUMNS = `id, name, role, status, pin_hash,
+            default_home_path, default_home_path_mobile,
+            COALESCE(pin_failed_count, 0)::int AS pin_failed_count,
+            (pin_locked_until IS NOT NULL AND pin_locked_until > NOW()) AS pin_locked`;
+
+// Wrong-PIN penalty: bump the consecutive-failure counter and arm the lock once
+// it reaches MAX_PIN_ATTEMPTS. $2 = threshold, $3 = lockout minutes.
+const PIN_FAILURE_SET = `pin_failed_count = COALESCE(pin_failed_count, 0) + 1,
+           pin_locked_until = CASE
+             WHEN COALESCE(pin_failed_count, 0) + 1 >= $2
+               THEN NOW() + ($3::int * INTERVAL '1 minute')
+             ELSE pin_locked_until
+           END`;
+
+// Success clears the lockout state and bumps last_login_at.
+const PIN_SUCCESS_SET = `last_login_at = NOW(),
+           pin_failed_count = 0,
+           pin_locked_until = NULL`;
+
+async function readPinRow(staffId: number, orgId?: OrgId): Promise<StaffPinLookupRow | undefined> {
+  const sql = `SELECT ${PIN_LOOKUP_COLUMNS}
+       FROM staff
+      WHERE id = $1${orgId ? ' AND organization_id = $2' : ''}
+      LIMIT 1`;
+  const result = orgId
+    ? await tenantQuery(orgId, sql, [staffId, orgId])
+    : await pool.query(sql, [staffId]);
+  return result.rows[0] as StaffPinLookupRow | undefined;
+}
+
+/**
+ * Record a wrong PIN. Runs in its OWN transaction, never inside the caller's —
+ * a PinError thrown by the caller must not roll back the failure counter.
+ */
+async function recordPinFailure(staffId: number, orgId?: OrgId): Promise<void> {
+  const params: unknown[] = [staffId, MAX_PIN_ATTEMPTS, PIN_LOCKOUT_MINUTES];
+  const sql = `UPDATE staff
+         SET ${PIN_FAILURE_SET}
+       WHERE id = $1${orgId ? ' AND organization_id = $4' : ''}`;
+  if (orgId) {
+    await tenantQuery(orgId, sql, [...params, orgId]);
+    return;
+  }
+  await pool.query(sql, params);
+}
+
+/** Clear the lockout counters and bump last_login_at after a correct PIN. */
+async function recordPinSuccess(staffId: number, orgId?: OrgId): Promise<void> {
+  const sql = `UPDATE staff
+         SET ${PIN_SUCCESS_SET}
+       WHERE id = $1${orgId ? ' AND organization_id = $2' : ''}`;
+  if (orgId) {
+    await tenantQuery(orgId, sql, [staffId, orgId]);
+    return;
+  }
+  await pool.query(sql, [staffId]);
+}
+
 /**
  * Look up by ID and verify PIN. Returns the staff row on success.
  * Throws PinError on every failure path; callers map to HTTP codes.
  *
+ * Lockout (WS: handoff item 12): `pin_locked_until` is READ before any hashing
+ * — a locked account throws `LOCKED` without burning scrypt time — and
+ * `pin_failed_count` is incremented on every wrong PIN, arming a
+ * 15-minute lock at 5 consecutive failures. A correct PIN clears both. The
+ * counter write lives outside any caller transaction so the thrown PinError
+ * cannot roll it back.
+ *
  * Tenant scope: when `orgId` is supplied (an admin-context caller verifying a
- * staff member known to be in their own org), the row lookup and the
- * last_login bump are scoped to that org via `withTenantTransaction`, so a
- * cross-org id reads as NOT_FOUND and is never mutated. When omitted — the
- * normal /api/auth/* sign-in, step-up and switch flows that resolve a staff
- * by id without org context — the path is byte-identical to before.
+ * staff member known to be in their own org), the row lookup and every counter
+ * write are scoped to that org via `tenantQuery`, so a cross-org id reads as
+ * NOT_FOUND and is never mutated. When omitted — the normal /api/auth/*
+ * sign-in, step-up and switch flows that resolve a staff by id without org
+ * context — the queries are org-agnostic exactly as before.
  *
  * Credential-matching (assertPinShape / verifyHash / timingSafeEqual) is
- * IDENTICAL in both branches; only the row read + last_login UPDATE gain the
- * org predicate. `staff` is tenant-owned and carries `organization_id`.
+ * IDENTICAL in both branches; only the row read + UPDATEs gain the org
+ * predicate. `staff` is tenant-owned and carries `organization_id`.
  */
 export async function verifyStaffPin(staffId: number, pin: string, orgId?: OrgId): Promise<StaffPinRow> {
   assertPinShape(pin);
 
-  if (orgId) {
-    return withTenantTransaction(orgId, async (client) => {
-      const result = await client.query(
-        `SELECT id, name, role, status, pin_hash,
-                default_home_path, default_home_path_mobile
-           FROM staff
-          WHERE id = $1
-            AND organization_id = $2
-          LIMIT 1`,
-        [staffId, orgId],
-      );
-      const row = result.rows[0] as StaffPinRow | undefined;
-      if (!row) throw new PinError('NOT_FOUND');
-      if (!row.pin_hash) throw new PinError('NO_PIN');
-
-      const ok = await verifyHash(pin, row.pin_hash);
-      if (!ok) throw new PinError('WRONG');
-
-      // Success → bump last_login_at
-      await client.query(
-        `UPDATE staff SET last_login_at = NOW() WHERE id = $1 AND organization_id = $2`,
-        [staffId, orgId],
-      );
-      return row;
-    });
-  }
-
-  const result = await pool.query(
-    `SELECT id, name, role, status, pin_hash,
-            default_home_path, default_home_path_mobile
-       FROM staff
-      WHERE id = $1
-      LIMIT 1`,
-    [staffId],
-  );
-  const row = result.rows[0] as StaffPinRow | undefined;
+  const row = await readPinRow(staffId, orgId);
   if (!row) throw new PinError('NOT_FOUND');
   if (!row.pin_hash) throw new PinError('NO_PIN');
+  // Refuse BEFORE hashing: a locked PIN is not an oracle and not a CPU sink.
+  if (row.pin_locked) throw new PinError('LOCKED');
 
   const ok = await verifyHash(pin, row.pin_hash);
-  if (!ok) throw new PinError('WRONG');
+  if (!ok) {
+    await recordPinFailure(staffId, orgId);
+    throw new PinError('WRONG');
+  }
 
-  // Success → bump last_login_at
-  await pool.query(
-    `UPDATE staff SET last_login_at = NOW() WHERE id = $1`,
-    [staffId],
-  );
+  await recordPinSuccess(staffId, orgId);
   return row;
 }

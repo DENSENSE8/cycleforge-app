@@ -30,8 +30,12 @@ function constantTimeEquals(a: string, b: string): boolean {
 /**
  * Verify the request against the webhook project's security token. Prefers
  * FedEx's real mechanism (HMAC-SHA256 over the raw body) and falls back to a
- * static bearer/header secret for local replay scripts. Returns true when no
- * secret is configured outside production so dev/preview keep working.
+ * static bearer/header secret for local replay scripts.
+ *
+ * An UNSET secret does NOT open the endpoint: this receiver writes shipments
+ * and tracking events, and NODE_ENV is not a security boundary (preview and
+ * self-hosted deploys run without it set). Unsigned pushes require the explicit
+ * ALLOW_UNSIGNED_WEBHOOKS=1 opt-in; unset ⇒ closed.
  */
 function isAuthorized(req: NextRequest, rawBody: string): boolean {
   const secret =
@@ -39,10 +43,16 @@ function isAuthorized(req: NextRequest, rawBody: string): boolean {
     process.env.FEDEX_WEBHOOK_BEARER ||
     '';
 
-  // Fail closed in production when no secret is configured. Permissive in
-  // development/preview so local replay scripts and previews keep working
-  // without forcing every dev to set the env var.
-  if (!secret) return process.env.NODE_ENV !== 'production';
+  if (!secret) {
+    if (process.env.ALLOW_UNSIGNED_WEBHOOKS === '1') {
+      console.warn(
+        '[webhooks/fedex] FEDEX_WEBHOOK_SECRET unset — accepting unsigned push (ALLOW_UNSIGNED_WEBHOOKS=1)',
+      );
+      return true;
+    }
+    console.error('[webhooks/fedex] FEDEX_WEBHOOK_SECRET unset — rejecting unsigned push');
+    return false;
+  }
 
   // 1. HMAC-SHA256 signature (FedEx's real push mechanism).
   const expected = createHmac('sha256', secret).update(rawBody, 'utf8').digest('base64');

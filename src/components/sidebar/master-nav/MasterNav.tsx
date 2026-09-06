@@ -31,8 +31,10 @@ function toPageNav(item: SidebarNavItem): SidebarPageNav {
  * Router-wired master nav. Org hide/rename via {@link useOrgNavItems}; staff
  * `prefs.spineSlots` hydrates catalog *display* order only — the map is not
  * sortable. Pins drop onto the Pinned cluster (per-staff `quickAccess`).
- * Home · Media Library stay at the top. Stations, Desks, and Operations
- * Studio list under standing group labels.
+ * Home stays at the top (Media Library became a Workspaces row on 2026-09-05).
+ * Stations, Workspaces, Automations and Admin are COLLAPSIBLE sections —
+ * shadcn Collapsible, fold state per device via `useSpineSectionCollapse`,
+ * never list-replace drills. Pinned has no disclosure.
  */
 export function MasterNav({
   permissions,

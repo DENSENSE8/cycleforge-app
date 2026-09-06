@@ -63,13 +63,28 @@ export function readCursorScrubServer(): CursorScrub {
  */
 export type CursorKind = 'click' | 'resize-x' | 'resize-y' | 'grab' | 'grabbing' | 'morph';
 
+/**
+ * Painted edge of a KIND glyph, CSS px. Shared by the layer's paint targets
+ * and every skin's fixed accents so glyph states sit at one scale.
+ */
+export const CURSOR_GLYPH_SIZE = 18;
+
 type CursorAttrs<K extends CursorKind> = {
   'data-cursor': K;
   'data-cursor-label'?: string;
+  'data-cursor-keys'?: string;
 };
 
-export function cursorClickTarget(label?: string): CursorAttrs<'click'> {
-  return label ? { 'data-cursor': 'click', 'data-cursor-label': label } : { 'data-cursor': 'click' };
+/**
+ * `keys` teaches the chord that fires this control — one display string
+ * (`'Shift + Tab'`), painted as keycaps inside the same chip as the label.
+ * Only meaningful with a label: keys alone is a cap with nothing to explain.
+ */
+export function cursorClickTarget(label?: string, keys?: string): CursorAttrs<'click'> {
+  if (!label) return { 'data-cursor': 'click' };
+  return keys
+    ? { 'data-cursor': 'click', 'data-cursor-label': label, 'data-cursor-keys': keys }
+    : { 'data-cursor': 'click', 'data-cursor-label': label };
 }
 
 export function cursorResizeTarget(axis: 'x' | 'y'): CursorAttrs<'resize-x'> | CursorAttrs<'resize-y'> {

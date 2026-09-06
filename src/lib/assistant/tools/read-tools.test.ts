@@ -19,13 +19,21 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { ASSISTANT_TOOLS, listAssistantTools, runAssistantTool } from './index';
 import type { AssistantToolCtx, AssistantToolDeps } from './types';
+import { ALL_PERMISSIONS } from '@/lib/auth/permissions-shared';
 
 const ORG = '11111111-2222-3333-4444-555555555555';
 
 function ctxWith(perms: string[]): AssistantToolCtx {
   return { organizationId: ORG, staffId: 7, permissions: new Set(perms) };
 }
-const FULL_CTX = ctxWith(['dashboard.view', 'studio.view', 'assistant.chat']);
+const FULL_CTX = ctxWith([
+  'dashboard.view',
+  'studio.view',
+  'assistant.chat',
+  // get_roi_gaps is a plain SQL read and belongs IN the org-threading sweep,
+  // so the sweep's context has to be allowed to call it.
+  'operations.view',
+]);
 
 const SEARCH_TOOL_NAMES = new Set([
   'hybrid_entity_search',
@@ -63,6 +71,23 @@ const DOMAIN_TOOL_NAMES = new Set([
   'get_daily_checks',
   'get_my_day',
   'get_project_tasks',
+  // The station parts list is CODE (the registries) — no SQL to sweep.
+  'get_station_catalog',
+]);
+
+/**
+ * Composio-brokered personal app tools. Skipped by the SQL sweep for a
+ * stronger reason than the domain adapters: they hold no SQL at all — they
+ * reach the staffer's own Google account over the Composio session, and their
+ * org scoping is the session identity (`<orgId>:<staffId>`), not a `$1`.
+ * Behaviour (permission denial, needs_connection handoff) is proven against
+ * the live service, not with fakes.
+ */
+const CONNECTED_APP_TOOL_NAMES = new Set([
+  'list_connected_apps',
+  'connect_app',
+  'search_staff_documents',
+  'read_staff_document',
 ]);
 
 /**
@@ -91,6 +116,10 @@ const ALLOWED_TOOL_PERMISSIONS = new Set([
   // Support pilot verb — mirrors the permission the hands-on support console
   // routes require (mirror-the-UI rule, surfaces/registry.ts header).
   'integrations.zendesk',
+  // Composio-brokered personal app connections — two, so granting read of a
+  // connected account never implies the right to attach new ones.
+  'integrations.google.connect',
+  'integrations.google.read',
   // Tool forge — one permission per gateway tool, deliberately NOT assistant.chat
   // (see the header of src/lib/mcp/tool-server.ts for why that distinction is
   // what keeps a write-capable gateway safe behind a read-scoped route gate).
@@ -130,8 +159,8 @@ function fakes(rowsFor?: (text: string) => Array<Record<string, unknown>>) {
   return { deps, cap };
 }
 
-test('registry: 39 tools (35 read + 4 gateway), unique names, model-grade descriptions, valid permissions', () => {
-  assert.equal(ASSISTANT_TOOLS.size, 39);
+test('registry: 45 tools (41 read + 4 gateway), unique names, model-grade descriptions, valid permissions', () => {
+  assert.equal(ASSISTANT_TOOLS.size, 45);
   const expected = [
     'get_signals_by_node', 'get_top_reasons', 'get_unit_journey', 'get_feed_state',
     'get_graph', 'get_node_detail', 'get_benchmarks', 'get_kpis',
@@ -151,6 +180,14 @@ test('registry: 39 tools (35 read + 4 gateway), unique names, model-grade descri
     'triage_orders_csv',
     // Home page is the assistant: the old `daily` / `today` / `tasks` modes.
     'get_daily_checks', 'get_my_day', 'get_project_tasks',
+    // Where the operation is leaking — the home board's headline tile calls
+    // this same tool, so a glance and an answer cannot disagree.
+    'get_roi_gaps',
+    // The station builder's parts list (blocks / sources / actions / surfaces).
+    'get_station_catalog',
+    // The staffer's OWN outside apps, brokered by Composio.
+    'list_connected_apps', 'connect_app',
+    'search_staff_documents', 'read_staff_document',
     // The tool-forge gateway — exactly four, per the pipeline spec.
     'search_tool_registry', 'submit_approval_decision',
     'execute_build_sandbox', 'commit_to_git',
@@ -165,6 +202,42 @@ test('registry: 39 tools (35 read + 4 gateway), unique names, model-grade descri
   }
 });
 
+test('permission sweep: EVERY registered tool refuses a ctx without its permission, before any query', async () => {
+  const NO_PERMS: AssistantToolCtx = { organizationId: ORG, staffId: 7, permissions: new Set() };
+  for (const tool of ASSISTANT_TOOLS.values()) {
+    const { deps, cap } = fakes();
+    // Deliberately valid-looking input: the refusal must not depend on the
+    // payload, and must land before zod and before the first query.
+    const out = await runAssistantTool(tool.name, {}, NO_PERMS, deps);
+    assert.equal(out.ok, false, `${tool.name} answered a caller with no permissions`);
+    assert.equal(out.code, 'forbidden', `${tool.name} returned ${out.code}, not forbidden`);
+    assert.equal(cap.length, 0, `${tool.name} ran ${cap.length} queries before the permission check`);
+  }
+  // …and holding a DIFFERENT permission is not holding this one.
+  for (const tool of ASSISTANT_TOOLS.values()) {
+    const other = tool.permission === 'dashboard.view' ? 'studio.view' : 'dashboard.view';
+    const { deps, cap } = fakes();
+    const out = await runAssistantTool(
+      tool.name,
+      {},
+      { organizationId: ORG, staffId: 7, permissions: new Set([other]) },
+      deps,
+    );
+    if (tool.permission === other) continue;
+    assert.equal(out.code, 'forbidden', `${tool.name} accepted ${other} in place of ${tool.permission}`);
+    assert.equal(cap.length, 0, `${tool.name} queried on the wrong permission`);
+  }
+});
+
+test('every tool permission is a real registry permission (no orphans)', () => {
+  for (const tool of ASSISTANT_TOOLS.values()) {
+    assert.ok(
+      ALL_PERMISSIONS.has(tool.permission),
+      `${tool.name} declares ${tool.permission}, which is not in the permission registry`,
+    );
+  }
+});
+
 test('every SQL tool threads ctx.organizationId as $1 into every query (never model input)', async () => {
   const inputs: Record<string, unknown> = {
     get_unit_journey: { serialUnitId: 5 },
@@ -175,7 +248,14 @@ test('every SQL tool threads ctx.organizationId as $1 into every query (never mo
     list_staff: { nameLike: 'Tu' },
   };
   for (const name of ASSISTANT_TOOLS.keys()) {
-    if (SEARCH_TOOL_NAMES.has(name) || DOMAIN_TOOL_NAMES.has(name) || GATEWAY_TOOL_NAMES.has(name)) continue;
+    if (
+      SEARCH_TOOL_NAMES.has(name) ||
+      DOMAIN_TOOL_NAMES.has(name) ||
+      GATEWAY_TOOL_NAMES.has(name) ||
+      CONNECTED_APP_TOOL_NAMES.has(name)
+    ) {
+      continue;
+    }
     const { deps, cap } = fakes((text) =>
       // give resolveDefinition/get_unit_journey a row so dependent queries run
       text.includes('FROM workflow_definitions') || text.includes('FROM serial_units')
@@ -288,7 +368,9 @@ test('permission gating: studio tools refused without studio.view; search needs 
   // + the To-ship item-rule reads (resolve_item_number, list_staff) (2)
   // + the two home reads a viewer owns (get_daily_checks, get_my_day) (2).
   // get_project_tasks is NOT here — it rides operations.plans.view.
-  assert.equal(names.length, 17);
+  // + the station parts list (get_station_catalog) — same floor as GET /api/stations (1).
+  assert.equal(names.length, 18);
+  assert.ok(names.includes('get_station_catalog'));
   assert.ok(names.includes('get_daily_checks'));
   assert.ok(names.includes('get_my_day'));
   assert.ok(!names.includes('get_project_tasks'));
@@ -348,12 +430,19 @@ test('get_unit_journey: serial is normalized before lookup; not-found short-circ
   assert.equal(cap[0].params[2], 'AB12CD');
 });
 
-test('get_feed_state: exclusions anti-join only when staffId + station given', async () => {
+test('get_feed_state: dismissals are the SESSION staffer\'s — a model-supplied staffId cannot move them', async () => {
   const { deps, cap } = fakes();
-  await runAssistantTool('get_feed_state', { feedKey: 'receiving_triage', staffId: 4, station: 'RECEIVING' }, FULL_CTX, deps);
+  // The model asks for staff 4's rail; the session is staff 7 (FULL_CTX).
+  await runAssistantTool(
+    'get_feed_state',
+    { feedKey: 'receiving_triage', staffId: 4, station: 'RECEIVING' },
+    FULL_CTX,
+    deps,
+  );
   assert.ok(cap[0].text.includes('staff_rail_exclusions'));
-  assert.deepEqual(cap[0].params.slice(3), [4, 'RECEIVING']);
+  assert.deepEqual(cap[0].params.slice(3), [7, 'RECEIVING'], 'the anti-join binds ctx.staffId, never the input');
 
+  // No station → no personal anti-join at all.
   cap.length = 0;
   await runAssistantTool('get_feed_state', { feedKey: 'receiving_triage' }, FULL_CTX, deps);
   assert.ok(!cap[0].text.includes('staff_rail_exclusions'));

@@ -1,5 +1,3 @@
-import { cn } from '@/utils/_cn';
-
 /**
  * Sidebar spine geometry — the ONE place the column width lives.
  *
@@ -24,6 +22,10 @@ import { cn } from '@/utils/_cn';
  * unchanged — `SIDEBAR_SPINE_WIDTH_PX` is that drawer's fixed width AND the
  * desktop resize's persisted default.
  */
+
+import { cornerClass } from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
+
 export const SIDEBAR_SPINE_WIDTH = 'w-[240px]';
 
 /**
@@ -48,10 +50,16 @@ const SIDEBAR_SPINE_WIDTH_PX = 240;
  * GlobalHeader toggle to restore) instead of being the one nav surface that
  * doesn't.
  *
- * **There is no parked state as of 2026-09-05.** Drag-past-min still fires the
- * collapse, but it lands on {@link SIDEBAR_SPINE_RAIL_WIDTH_PX} — the spine is
- * either its remembered width or a 48px icon rail, never zero. A navigator that
- * can navigate nothing is not a state worth having.
+ * **Closed is zero width — the spine has exactly two states (operator ruling
+ * 2026-09-05, re-affirmed that evening).** Its remembered width, or gone.
+ *
+ * A 48px icon rail was built as a collapsed face in between and is deleted. It
+ * charged every route's frame 48px permanently to paint unlabelled glyphs with
+ * no group headers and no drill, and it removed the closed state itself: a
+ * navigator that is always on screen cannot be put away. The doors back
+ * (GlobalHeader toggle, hover-peek on that toggle, ⌘K, the edge strip) all
+ * reopen the column at its remembered width, which is what the rail was
+ * claiming to save.
  */
 export const SIDEBAR_SPINE_RESIZE = {
   storageKey: 'sidebar-spine-width',
@@ -67,42 +75,6 @@ export const SIDEBAR_SPINE_RESIZE = {
  * footer. Shell corner is `cornerClass('surface')`.
  */
 export const SIDEBAR_SPINE_PEEK_INSET_PX = 8;
-
-/**
- * Collapsed width — an ICON RAIL, not a zero-width park (2026-09-05).
- *
- * Collapsing used to take the column to 0 and leave a 6px invisible grab strip
- * behind, so a collapsed navigator navigated nothing: the operator's only doors
- * were the header toggle, ⌘K, and a strip they had to already know about. VS
- * Code and Linear both keep a rail for exactly this reason — collapsing is a
- * request for less WIDTH, not for less navigation.
- *
- * 48px carries the 16px glyph with the same 8px gutters the open row uses, so
- * the icons do not move horizontally when the column expands — the labels
- * simply arrive beside them.
- */
-export const SIDEBAR_SPINE_RAIL_WIDTH_PX = 48;
-
-/**
- * The rail is the SAME DOM as the open column, re-dressed — the peek card
- * already proved that pattern here. Nothing is conditionally rendered, so a
- * row cannot exist in one state and not the other: labels and section headers
- * fold away, glyphs centre, and the row keeps its height, its accent and its
- * drop targets.
- *
- * Labels go `sr-only`, never `hidden`: a screen reader still reads the
- * destination, because a rail is a visual compression, not an information one.
- */
-export const SPINE_RAIL_SHELL_CLASS = cn(
-  '[&_[data-sidebar=menu-button]]:justify-center [&_[data-sidebar=menu-button]]:px-0',
-  '[&_[data-sidebar=menu-button]>span]:sr-only',
-  '[&_[data-sidebar=group-label]]:sr-only',
-  '[&_[data-sidebar=menu-action]]:hidden',
-  '[&_[data-spine-pin-edge]]:hidden',
-  '[&_[data-spine-pin-undo]]:hidden',
-  '[&_[data-spine-pin-empty]]:hidden',
-  '[&_[data-staff-account-footer]_[data-account-label]]:sr-only',
-);
 
 /**
  * Chrome for MasterNav **identity menus** (org/workspace switch + staff ⋯ menu).
@@ -220,12 +192,30 @@ export const SPINE_SECTION_LABEL_STICKY_CLASS = 'sticky top-0 z-10 bg-sidebar';
 export const SPINE_SCROLLPORT_SCROLLBAR_CLASS = 'cf-grid-scrollbar';
 
 /**
- * The one row shell every spine destination shares: flush, full-width, dense.
- * Compose it with a `SPINE_ACCENT` state class; never restate the geometry.
- * Pin rows use this same shell — same padding, same width as the catalog map.
+ * The one row shell every spine destination shares: dense, full-width, and
+ * softly cornered. Compose it with a `SPINE_ACCENT` state class; never restate
+ * the geometry. Pin rows use this same shell — same padding, same width as the
+ * catalog map.
+ *
+ * `cornerClass('chip')` (4px) replaced `rounded-none` on 2026-09-05, with the
+ * lighter palette. Flush-square is right for a DATA surface — the ledger grid,
+ * the station chrome — where a square cell edge is the sheet's own structure.
+ * A navigator is not that surface: its rows are targets on a plane, and at
+ * flush-square a selected row read as a band ruled across the column rather
+ * than the one thing you had picked. 4px is the smallest radius that reads as
+ * intentional at a 28px row; anything rounder would start a second visual
+ * language beside the grid this app is built on.
+ *
+ * `overflow-hidden` rides with the radius: the current page's 2px leading bar
+ * is a square `::before`, so without the clip it pokes out of both rounded
+ * corners. `sidebarMenuButtonVariants` (the vendored shadcn row, which is what
+ * the map itself renders) carries the same two classes for the same reason.
  */
 export const SPINE_ROW_SHELL_CLASS =
-  'ds-raw-button group flex w-full items-center gap-2 rounded-none px-2 text-left transition-colors duration-150';
+  cn(
+    'ds-raw-button group flex w-full items-center gap-2 overflow-hidden px-2 text-left transition-colors duration-150',
+    cornerClass('chip'),
+  );
 
 /**
  * MasterNav Pinned well. No disclosure, no hairline — pin rows are always
@@ -236,7 +226,7 @@ export const SPINE_PINNED_CLUSTER_CLASS = 'group/pinned relative';
 
 /**
  * Category title row. Same `px-2` as {@link SPINE_ROW_SHELL_CLASS} so the
- * trailing pin and the per-row X share one right edge.
+ * trailing pin shares the row gutter's right edge.
  */
 export const SPINE_PINNED_TITLE_ROW_CLASS =
   'relative flex w-full items-center px-2 py-1.5';
@@ -245,10 +235,12 @@ export const SPINE_PINNED_TITLE_ROW_CLASS =
 export const SPINE_PINNED_TITLE_CLASS = 'text-role-micro font-normal text-text-soft';
 
 /**
- * Pin-this-page and unpin X. One slot: `IconButton` xs, same inset as the
- * row’s `px-2` gutter.
+ * Pin-this-page glyph. Same inset as the row’s `px-2` gutter.
+ *
+ * There is no per-row unpin X any more (operator ruling 2026-09-05): a pin
+ * leaves the shelf by being dragged off it, so the row carries no trailing
+ * control and this is the cluster header's slot only.
  */
-export const SPINE_PINNED_TRAIL_CLASS = 'absolute right-2 top-1/2 -translate-y-1/2';
 export const SPINE_PINNED_TRAIL_GLYPH_CLASS = 'h-3.5 w-3.5';
 
 const SPINE_PINNED_HOVER_BASE =
@@ -260,9 +252,5 @@ const SPINE_PINNED_HOVER_BASE =
 export const SPINE_PINNED_CLUSTER_HOVER_CLASS =
   `${SPINE_PINNED_HOVER_BASE} group-hover/pinned:pointer-events-auto group-hover/pinned:opacity-100 group-focus-within/pinned:pointer-events-auto group-focus-within/pinned:opacity-100`;
 
-/**
- * Per-row X. Same fade as {@link SPINE_PINNED_CLUSTER_HOVER_CLASS}, keyed to
- * the row’s own `group` on {@link SPINE_ROW_SHELL_CLASS}.
- */
-export const SPINE_PINNED_ROW_ACTION_CLASS =
-  `${SPINE_PINNED_HOVER_BASE} group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 focus-visible:pointer-events-auto focus-visible:opacity-100`;
+/** Pin-this-page trail slot inset. */
+export const SPINE_PINNED_TRAIL_CLASS = 'absolute right-2 top-1/2 -translate-y-1/2';

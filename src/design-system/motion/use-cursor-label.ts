@@ -40,17 +40,17 @@ export function useCursorLabel({ disabled }: { disabled: boolean }) {
   }, [clearTimer, owner]);
 
   const enter = useCallback(
-    (label: unknown, delayMs: number): boolean => {
+    (label: unknown, delayMs: number, keys?: string): boolean => {
       if (disabled || !isCursorLabelHostLive() || !canRideCursor(label)) return false;
       clearTimer();
       ridingRef.current = true;
       if (delayMs <= 0) {
-        publishCursorLabel(owner, label);
+        publishCursorLabel(owner, label, keys);
         return true;
       }
       timerRef.current = window.setTimeout(() => {
         timerRef.current = null;
-        publishCursorLabel(owner, label);
+        publishCursorLabel(owner, label, keys);
       }, delayMs);
       return true;
     },

@@ -17,9 +17,43 @@
 
 import { z } from 'zod';
 
+/**
+ * A link the panel will hand to the browser. `z.url()` alone is not a scheme
+ * check — `javascript:alert(1)` and `data:text/html,…` are both well-formed
+ * URLs and both were ACCEPTED by this contract, which put a model-authored
+ * (and therefore document-injectable) scheme one click from execution. The
+ * panel opens exactly one scheme.
+ */
+const externalLink = z
+  .string()
+  .url()
+  .max(600)
+  .refine((u) => u.toLowerCase().startsWith('https://'), 'must be an https:// URL');
+
+/**
+ * An in-app route the record card navigates to. `^\/` alone admits
+ * `//evil.test/x` (protocol-relative — an external origin) and `/\evil.test`
+ * (which browsers normalize to the same thing), so the anchor has to exclude
+ * a second separator.
+ */
+const appPath = z
+  .string()
+  .regex(/^\/(?![/\\])/, 'must be an app path starting with a single /')
+  .max(300);
+
+/**
+ * The panel's heading. `z.string()` alone accepted `""`, and local models
+ * routinely send it — the promoted gpt-oss adapter emitted `title: ""` on its
+ * first measured table, qwen3:14b did the same — which renders a titleless
+ * card the operator cannot name in a follow-up question. Empty is a REJECTION
+ * at the chokepoint, which the loop repairs in-turn rather than painting a
+ * blank heading or inventing one here.
+ */
+const artifactTitle = z.string().trim().min(1).max(120);
+
 export const artifactTableSchema = z.object({
   kind: z.literal('table'),
-  title: z.string().max(120),
+  title: artifactTitle,
   columns: z.array(z.string().max(80)).min(1).max(12),
   rows: z.array(z.record(z.string(), z.union([z.string(), z.number(), z.boolean(), z.null()]))).max(200),
   /** What one row IS, e.g. "receiving line" — names the reference when attached to the composer. */
@@ -37,14 +71,14 @@ export const artifactTimelineItemSchema = z.object({
 
 export const artifactTimelineSchema = z.object({
   kind: z.literal('timeline'),
-  title: z.string().max(120),
+  title: artifactTitle,
   subject: z.string().max(120),
   items: z.array(artifactTimelineItemSchema).max(200),
 });
 
 export const artifactTicketThreadSchema = z.object({
   kind: z.literal('ticket_thread'),
-  title: z.string().max(120),
+  title: artifactTitle,
   ticketId: z.number().int().positive(),
   subject: z.string().max(300).nullable().optional(),
   status: z.string().max(60).nullable().optional(),
@@ -62,7 +96,7 @@ export const artifactTicketThreadSchema = z.object({
 
 export const artifactTicketReplyDraftSchema = z.object({
   kind: z.literal('ticket_reply_draft'),
-  title: z.string().max(120),
+  title: artifactTitle,
   ticketId: z.number().int().positive(),
   subject: z.string().max(300),
   body: z.string().max(8000),
@@ -71,7 +105,7 @@ export const artifactTicketReplyDraftSchema = z.object({
 
 export const artifactChartSchema = z.object({
   kind: z.literal('chart'),
-  title: z.string().max(120),
+  title: artifactTitle,
   chartType: z.enum(['bar', 'line', 'donut']),
   series: z.array(z.object({ label: z.string().max(80), value: z.number() })).min(1).max(24),
   unit: z.string().max(20).nullable().optional(),
@@ -79,15 +113,15 @@ export const artifactChartSchema = z.object({
 
 export const artifactRecordSchema = z.object({
   kind: z.literal('record'),
-  title: z.string().max(120),
+  title: artifactTitle,
   /** Absolute app path the record lives at (navigate target). */
-  path: z.string().regex(/^\//).max(300),
+  path: appPath,
   fields: z.array(z.object({ label: z.string().max(80), value: z.string().max(300) })).max(20),
 });
 
 export const artifactImportTriageSchema = z.object({
   kind: z.literal('import_triage'),
-  title: z.string().max(120),
+  title: artifactTitle,
   /** Canonical field → CSV header, from the house auto-mapper. */
   mapping: z.record(z.string(), z.string()),
   rows: z
@@ -111,6 +145,23 @@ export const artifactImportTriageSchema = z.object({
   mappingApplied: z.boolean(),
 });
 
+/**
+ * An external document read through a connected app — the inline retriever.
+ * Plain text only: no HTML, no iframe, no embed. The panel is a read plane, so
+ * a document renders as text plus a link back to the source of record.
+ */
+export const artifactDocumentSchema = z.object({
+  kind: z.literal('document'),
+  title: z.string().trim().min(1).max(200),
+  /** Where it lives, e.g. "Google Docs". */
+  source: z.string().max(60),
+  /** Absolute external URL to open the real document. */
+  url: externalLink.nullable().optional(),
+  /** Extracted plain text, trimmed by the tool before it ever reaches here. */
+  body: z.string().max(20000),
+  lastModified: z.string().max(40).nullable().optional(),
+});
+
 export const sessionArtifactSchema = z.discriminatedUnion('kind', [
   artifactTableSchema,
   artifactTimelineSchema,
@@ -119,6 +170,7 @@ export const sessionArtifactSchema = z.discriminatedUnion('kind', [
   artifactChartSchema,
   artifactRecordSchema,
   artifactImportTriageSchema,
+  artifactDocumentSchema,
 ]);
 
 export type ArtifactTable = z.infer<typeof artifactTableSchema>;
@@ -128,6 +180,7 @@ export type ArtifactTicketReplyDraft = z.infer<typeof artifactTicketReplyDraftSc
 export type ArtifactChart = z.infer<typeof artifactChartSchema>;
 export type ArtifactRecord = z.infer<typeof artifactRecordSchema>;
 export type ArtifactImportTriage = z.infer<typeof artifactImportTriageSchema>;
+export type ArtifactDocument = z.infer<typeof artifactDocumentSchema>;
 export type SessionArtifact = z.infer<typeof sessionArtifactSchema>;
 
 /** Narrowed view of the kinds the view panel can render — used by prompts and tripwires. */
@@ -139,6 +192,7 @@ export const SESSION_ARTIFACT_KINDS = [
   'chart',
   'record',
   'import_triage',
+  'document',
 ] as const;
 
 // ─── Chat-side table interception ────────────────────────────────────────────
@@ -267,6 +321,35 @@ function toCount(n: unknown): number | undefined {
 }
 
 /**
+ * Column headers, plus the machine-key → header aliases the rows need.
+ *
+ * Local models describe a column as an OBJECT — `{name:'unitsPerHour',
+ * label:'Units/hr'}` is what the MLX 27B emits on its first data turn — while
+ * keying every row by the machine name. `cellString` picks `label`, so the
+ * header rendered "Units/hr" and the cell lookup (normalized-key match in
+ * renderers.tsx) then failed against `unitsPerHour`: a valid artifact with a
+ * blank column. The alias carries the object's own machine keys so the row
+ * keys land under the header that was actually rendered.
+ */
+function tableColumns(raw: unknown): { columns: string[]; alias: Map<string, string> } {
+  const alias = new Map<string, string>();
+  if (!Array.isArray(raw)) return { columns: [], alias };
+  const columns = raw.map((col) => {
+    const header = cellString(col);
+    if (col && typeof col === 'object' && !Array.isArray(col)) {
+      for (const key of ['name', 'key', 'field', 'id', 'accessor', 'dataIndex']) {
+        const machine = (col as Record<string, unknown>)[key];
+        if (typeof machine === 'string' && machine && machine !== header && !alias.has(machine)) {
+          alias.set(machine, header);
+        }
+      }
+    }
+    return header;
+  });
+  return { columns, alias };
+}
+
+/**
  * Sanitize a render_artifact payload BEFORE validation: models routinely wrap
  * cells in objects ({value: 3, unit: 'min'}) or stringify dates into objects.
  * The contract stays strict at the CLIENT (the browser never renders a guess);
@@ -279,12 +362,17 @@ export function sanitizeSessionArtifact(raw: unknown): unknown {
   try {
     switch (a.kind) {
       case 'table': {
+        const { columns, alias } = tableColumns(a.columns);
         const rows = Array.isArray(a.rows)
           ? a.rows.map((row) => {
               if (!row || typeof row !== 'object' || Array.isArray(row)) return {};
               const out: Record<string, string | number | boolean | null> = {};
               for (const [k, v] of Object.entries(row as Record<string, unknown>)) {
-                out[k] = v === null ? null : typeof v === 'number' || typeof v === 'boolean' ? v : cellString(v);
+                // An alias never overwrites a key the model already sent under
+                // the header itself — the explicit one wins.
+                const key = alias.get(k) ?? k;
+                if (key !== k && Object.hasOwn(out, key)) continue;
+                out[key] = v === null ? null : typeof v === 'number' || typeof v === 'boolean' ? v : cellString(v);
               }
               return out;
             })
@@ -292,13 +380,13 @@ export function sanitizeSessionArtifact(raw: unknown): unknown {
         return {
           kind: 'table',
           title: cellString(a.title),
-          columns: Array.isArray(a.columns) ? a.columns.map(cellString) : [],
+          columns,
           rows,
           // Optional facets stay ABSENT when null — an explicit `undefined`
           // value still materializes the key on the emitted payload, and the
           // declared shape is "absent unless real".
           ...(a.entityHint == null ? {} : { entityHint: cellString(a.entityHint) }),
-          ...(a.idColumn == null ? {} : { idColumn: cellString(a.idColumn) }),
+          ...(a.idColumn == null ? {} : { idColumn: alias.get(cellString(a.idColumn)) ?? cellString(a.idColumn) }),
         };
       }
       case 'timeline':

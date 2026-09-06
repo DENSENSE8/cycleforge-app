@@ -52,6 +52,14 @@ import {
   getMyDayTool,
   getProjectTasksTool,
 } from './home-tools';
+import {
+  connectApp,
+  listConnectedApps,
+  readStaffDocument,
+  searchStaffDocuments,
+} from './composio-tools';
+import { getRoiGaps } from './roi-gap-tools';
+import { getStationCatalogTool } from './station-tools';
 import { TOOL_FORGE_GATEWAY_TOOLS } from '@/lib/tool-forge/gateway-tools';
 
 const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
@@ -106,6 +114,20 @@ const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
   // resolution / rejected, through the house import lane. The import itself
   // stays a human action on the triage artifact.
   triageOrdersCsvTool,
+  // The staffer's OWN outside apps, brokered by Composio. A missing connection
+  // comes back as `needs_connection` WITH a Connect Link, so the operator is
+  // handed the button in the same turn they asked the question.
+  listConnectedApps,
+  connectApp,
+  searchStaffDocuments,
+  readStaffDocument,
+  // Where the operation is leaking, ranked from live counts. The home board's
+  // headline tile calls THIS tool, so a glance and a question never disagree.
+  getRoiGaps,
+  // The station builder's parts list. The write is propose_mutation
+  // station_definition.save_draft; this read is what makes the proposal name
+  // real block / source / action ids.
+  getStationCatalogTool,
 ];
 
 /**

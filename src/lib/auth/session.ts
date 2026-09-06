@@ -25,10 +25,13 @@
  *   shift is not "signed in no matter what".
  */
 
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import pool from '@/lib/db';
 import { parseOrgSettings } from '@/lib/tenancy/settings';
 import { enforceMaxConcurrentSessions, type ConcurrencyDeps } from '@/lib/auth/session-concurrency';
+import { tenantQuery } from '@/lib/tenancy/db';
+import type { OrgId } from '@/lib/tenancy/constants';
+import { safeStrEqual } from '@/lib/security/safe-compare';
 
 /**
  * Canonical session cookie. Renamed from the legacy `usav_sid` (dogfood-branded)
@@ -474,15 +477,86 @@ export async function touchSession(sid: string): Promise<Date | null> {
   }
 }
 
+/**
+ * Opaque, non-replayable public name for a session: the first 16 hex chars of
+ * sha256(sid). Enforces the invariant that a client (admin UI included) can
+ * address a session without ever holding the bearer credential — a handle
+ * cannot be pasted into `Cookie: cf_sid=…`. One-way and stable, so the same
+ * session keeps the same handle across list → revoke round-trips.
+ */
+export function sessionHandle(sid: string): string {
+  return createHash('sha256').update(sid, 'utf8').digest('hex').slice(0, 16);
+}
+
+/** Shape of a resolved handle: enough to revoke and to audit, never returned to a client. */
+export interface SessionHandleMatch {
+  /** The bearer sid. Server-side only. */
+  sid: string;
+  staffId: number;
+  organizationId: OrgId;
+  /** Echo of the matched handle, normalized to lowercase. */
+  handle: string;
+}
+
+/**
+ * Resolve a client-supplied session handle back to its sid. Enforces the
+ * invariant that a handle only ever names an ACTIVE session of the given
+ * organization: a handle from another tenant (or for an already-revoked or
+ * expired session) resolves to null, so no caller can act on a foreign sid.
+ * Handles are matched in application code (sha256 over the candidate set) —
+ * no pgcrypto dependency.
+ */
+export async function resolveSessionByHandle(
+  handle: string,
+  organizationId: OrgId,
+): Promise<SessionHandleMatch | null> {
+  if (typeof handle !== 'string' || !/^[0-9a-fA-F]{16}$/.test(handle)) return null;
+  if (!organizationId) return null;
+  const wanted = handle.toLowerCase();
+  const r = await tenantQuery<{ sid: string; staff_id: number }>(
+    organizationId,
+    `SELECT sid, staff_id
+       FROM staff_sessions
+      WHERE organization_id = $1
+        AND revoked_at IS NULL
+        AND expires_at > NOW()`,
+    [organizationId],
+  );
+  for (const row of r.rows) {
+    if (safeStrEqual(sessionHandle(row.sid), wanted)) {
+      return { sid: row.sid, staffId: row.staff_id, organizationId, handle: wanted };
+    }
+  }
+  return null;
+}
+
 export async function revokeSession(sid: string): Promise<void> {
   await pool.query(`UPDATE staff_sessions SET revoked_at = NOW() WHERE sid = $1 AND revoked_at IS NULL`, [sid]);
 }
 
-export async function revokeAllSessionsForStaff(staffId: number): Promise<number> {
-  const r = await pool.query(
-    `UPDATE staff_sessions SET revoked_at = NOW() WHERE staff_id = $1 AND revoked_at IS NULL`,
-    [staffId],
-  );
+/**
+ * Revoke every active session of a staffer. `opts.exceptSid` spares exactly
+ * one session — the invariant a self-service credential change needs: sibling
+ * devices are kicked while the caller who just re-authenticated stays signed
+ * in. Returns the number of rows revoked.
+ */
+export async function revokeAllSessionsForStaff(
+  staffId: number,
+  opts?: { exceptSid?: string | null },
+): Promise<number> {
+  const exceptSid = typeof opts?.exceptSid === 'string' && opts.exceptSid.length > 0
+    ? opts.exceptSid
+    : null;
+  const r = exceptSid
+    ? await pool.query(
+        `UPDATE staff_sessions SET revoked_at = NOW()
+          WHERE staff_id = $1 AND revoked_at IS NULL AND sid <> $2`,
+        [staffId, exceptSid],
+      )
+    : await pool.query(
+        `UPDATE staff_sessions SET revoked_at = NOW() WHERE staff_id = $1 AND revoked_at IS NULL`,
+        [staffId],
+      );
   return r.rowCount ?? 0;
 }
 

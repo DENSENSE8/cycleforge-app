@@ -13,6 +13,7 @@
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { fallbackTitle } from '@/lib/ai/session-title';
 
 export interface AssistantHistoryTurn {
   role: 'user' | 'assistant';
@@ -89,19 +90,26 @@ export async function loadAssistantHistory(
     .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content }));
 }
 
+/**
+ * Persist one turn, creating the session on the first message. Returns
+ * `{ created }` so the route can replace the provisional title (a real name
+ * derived from the message via {@link fallbackTitle}) with an AI summary once
+ * the model answers. `(xmax = 0)` is Postgres' insert-vs-conflict tell.
+ */
 export async function persistAssistantTurn(
   orgId: OrgId,
   sessionId: string,
   role: 'user' | 'assistant',
   content: string,
-): Promise<void> {
+): Promise<{ created: boolean }> {
   try {
-    await tenantQuery(
+    const upsert = await tenantQuery<{ created: boolean }>(
       orgId,
       `INSERT INTO ai_chat_sessions (id, organization_id, title, created_at, updated_at)
        VALUES ($1, $2, $3, NOW(), NOW())
-       ON CONFLICT (id) DO UPDATE SET updated_at = NOW()`,
-      [sessionId, orgId, content.slice(0, 80)],
+       ON CONFLICT (id) DO UPDATE SET updated_at = NOW()
+       RETURNING (xmax = 0) AS created`,
+      [sessionId, orgId, fallbackTitle(content)],
     );
     await tenantQuery(
       orgId,
@@ -109,7 +117,32 @@ export async function persistAssistantTurn(
        VALUES ($1, $2, $3, $4, 'assistant')`,
       [orgId, sessionId, role, content],
     );
+    return { created: upsert.rows[0]?.created === true };
   } catch (err) {
     console.warn('[assistant] chat persistence failed (non-fatal):', err);
+    return { created: false };
+  }
+}
+
+/**
+ * Overwrite a session's title — the AI summary landing after creation. Scoped
+ * to the org via the tenant connection so a stray id can never retitle another
+ * tenant's thread.
+ */
+export async function setSessionTitle(
+  orgId: OrgId,
+  sessionId: string,
+  title: string,
+): Promise<void> {
+  const next = title.trim();
+  if (!next) return;
+  try {
+    await tenantQuery(
+      orgId,
+      `UPDATE ai_chat_sessions SET title = $3 WHERE id = $1 AND organization_id = $2`,
+      [sessionId, orgId, next],
+    );
+  } catch (err) {
+    console.warn('[assistant] setSessionTitle failed (non-fatal):', err);
   }
 }

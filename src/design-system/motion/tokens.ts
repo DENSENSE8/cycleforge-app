@@ -42,6 +42,21 @@ export const springArmedTrack = {
 } as const satisfies Transition;
 
 /**
+ * The CONCIERGE spring — chat-surface entrance physics. Softer than
+ * {@link springSnappy}: a little overshoot (stiffness 170 · damping 22) so a
+ * chat turn lands like it was placed, not snapped. Scoped to the session
+ * surface (design-system-ideas-LOOP #8: springs ~stiffness 120–200, damping
+ * 18–25) — station throughput surfaces keep `springSnappy`.
+ */
+export const springConcierge = {
+  type: 'spring' as const,
+  stiffness: 170,
+  damping: 22,
+  mass: 1,
+  restDelta: 0.001,
+} as const satisfies Transition;
+
+/**
  * Instant fade — opacity changes only (tooltips, state icons, save flash).
  * Fast enough that the operator does not wait for it.
  */

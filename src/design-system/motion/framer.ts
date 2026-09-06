@@ -48,4 +48,5 @@ export type {
   Variants,
   PanInfo,
   HTMLMotionProps,
+  MotionValue,
 } from 'motion/react';

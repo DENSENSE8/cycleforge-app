@@ -76,15 +76,13 @@
  *
  * ## Bans
  *
- * - **No hue, anywhere in this module.** A chromatic class here is the bug
- *   this file now exists to prevent, and the guard fails on the class regex —
- *   not on a hardcoded list, so a new hue cannot sneak in under a new name.
  * - **No ring, no shadow, no bevel.** Ops chrome is flush-square and flat;
  *   "depth" is the plane step, never an inset highlight.
  * - **No fill for `expanded` alone.** A parent that is merely open gets
- *   nothing from expansion. A parent that **owns the current child** gets
- *   {@link SpineAccentClasses.ownsActive} — lighter than the child's
- *   current fill, never `aria-current`. Two strengths, one location.
+ *   nothing from expansion — the chevron says open, and a fill would make
+ *   "expanded" compete with "you are here". A parent that **owns the current
+ *   child** gets {@link SpineAccentClasses.ownsActive}. Two strengths, one
+ *   location.
  *
  * ### The "no leading bar on L1" ban is LIFTED (2026-09-05, operator ruling)
  *
@@ -98,16 +96,54 @@
  * flat fill has to reach roughly `#949494`, which on a nav row reads as a
  * pressed button, not a location.
  *
- * So the current page is now marked on **two channels that do not depend on
+ * So the current page is marked on **two channels that do not depend on
  * luminance alone**: a 2px leading bar in `text-default` ink, and the weight
  * step. The bar is the accessible signal (`#0f172a` on white ≈ 17:1); the fill
- * stays as the quiet secondary wash it always was.
+ * is the quiet secondary wash.
  *
- * What the ban was actually protecting still holds and is NOT lifted: no hue,
- * no ring, no shadow, no bevel, and the bar is monochrome ink — the same value
- * as the row's own label, so a selected row still reads as one mark. A leading
- * bar was banned as decoration; it returns as the only channel that answers
- * "where am I" at floor distance.
+ * ### The "no hue" ban is LIFTED for the WASH only (2026-09-05, operator
+ * ruling: "the coloring should be a bit lighter and a bit more friendly and
+ * inviting")
+ *
+ * The greys were doing two jobs and failing the second. `surface-strong`
+ * `#e2e8f0` is the heaviest neutral on the ramp — the token the app uses for
+ * skeletons, tracks and disabled controls — so the current page wore the exact
+ * fill that means "inert" everywhere else, and the whole column read cold and
+ * administrative.
+ *
+ * The ladder is now LIGHTER and tinted:
+ *
+ * | State | Fill | On white |
+ * |---|---|---|
+ * | idle | none | — |
+ * | hover | `surface-hover` `#f8fafc` | 1.03:1 |
+ * | owns the current child | `surface-sunken` `#f1f5f9` | 1.08:1 |
+ * | **current page** | `surface-accent` `#f0f4fb` **+ the 2px ink bar** | wash 1.07:1 · bar ≈17:1 |
+ *
+ * Three things make the hue legal where it was banned:
+ *
+ * 1. **The indicator is the bar, not the wash.** The ban's own arithmetic
+ *    (above) established that no wash on this ground clears 3:1. Once the
+ *    accessible channel is a 17:1 ink bar, the fill is free to be a tint
+ *    instead of a press — it is no longer carrying the state.
+ * 2. **`surface-accent` is a house token** (`themes/light.ts`, `#f0f4fb`),
+ *    already themed per accent family, so this does not fork a colour or
+ *    smuggle a raw hex past `color-neutrals.test.ts`.
+ * 3. **One voice, still.** The tint is a 7%-luminance blue wash, not Scan
+ *    Blue ink — DESIGN.md's One-Voice Rule reserves `#2563eb` for live facts,
+ *    and no row here paints it.
+ *
+ * What is still banned: no ring, no shadow, no bevel, no hue on INK (labels
+ * and glyphs stay `text-default` at every state), no second hue, and no
+ * numbers-as-colour. A monochrome count on a section header is allowed and
+ * shipped — see `SidebarNavList`'s `renderSection`.
+ *
+ * **Hover is now LIGHTER than the current page again**, which an earlier pass
+ * banned ("a wash lighter than canvas made a merely-hovered row out-shout the
+ * page the operator was actually on"). That argument held while the current
+ * page was a bare fill with no bar. It has the bar now, so the strongest mark
+ * in the column belongs to the current page whatever the washes do, and hover
+ * gets to be the faintest touch on the ramp instead of the heaviest.
  */
 
 import { cn } from '@/utils/_cn';
@@ -144,42 +180,35 @@ export type SpineAccentClasses = {
 };
 
 /**
- * Current page: canvas fill on chrome, ink to full contrast.
- * No `border-l` here — the child rail carries "you are here" for nested rows
- * (see {@link spineRailLineClass}); L1 rows carry it on the fill alone,
- * matching a top-level item in a reference sidebar (filled row, no bar) vs a
- * nested one (bar, per the rail below). The fill token MUST differ from
- * {@link appChromeClass} or leaf destinations paint as idle.
- */
-/**
- * **Re-derived 2026-09-05: the ladder is now plane-INDEPENDENT.**
+ * Current page: the tinted wash PLUS the 2px ink bar.
  *
- * The ground is `appChromeClass` white — `SidebarShell` paints it as the
- * aside's only child, covering the `appCanvasClass` the column itself carries.
- * (Read that twice before re-deriving anything here: an earlier pass at this
- * ladder trusted the aside's own class, concluded the plane was canvas, and was
- * wrong.)
+ * The bar is what answers "where am I" — `#0f172a` on white ≈ 17:1, the only
+ * channel on this ground that clears the 3:1 floor for a non-text indicator
+ * (the full arithmetic is in the module docblock; read it before re-deriving
+ * this, because two earlier passes re-derived it against the wrong plane).
  *
- * On that white ground the old ladder was nearly flat. `surface-canvas`
- * `#eef2f7` for the current page is a 1.13:1 step, and the `surface-hover`
- * `#f8fafc` wash is fainter still — so hover and current page were separated by
- * about a percent of luminance, on the one question this column exists to
- * answer. Both fills now step further down the same ramp: `surface-sunken`
- * `#f1f5f9` for the parent/hover wash, `surface-strong` `#e2e8f0` for the page
- * you are on, plus a weight step on the row itself.
+ * The ground is `appChromeClass` white: `SidebarShell` paints it as the
+ * aside's only child and covers the `appCanvasClass` the column itself
+ * carries. Two hosts — docked column and hover-peek card — one white ground.
  *
- * That is better, and still not enough — `#e2e8f0` on white is 1.19:1, under
- * the 3:1 bar for a non-text indicator, so "you are here" currently rests on
- * the weight step. Closing that gap means either a materially darker fill or a
- * leading bar, and this module bans both. It is a live design decision, not an
- * oversight; the ban below is what has to move first.
- *
- * Still no hue, no ring, no bevel.
+ * The wash is `surface-accent` `#f0f4fb` as of 2026-09-05, down from
+ * `surface-strong` `#e2e8f0`: lighter, and the accent family's own tint rather
+ * than the skeleton/disabled grey. It contributes about 1.07:1, which is
+ * decoration by construction — it is riding on top of an indicator that
+ * already passes, not standing in for one. The fill token MUST still differ
+ * from {@link appChromeClass} or a leaf destination paints as idle.
  */
 const CURRENT_PAGE =
-  'relative bg-surface-strong text-text-default before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-text-default before:content-[\'\']';
+  'relative bg-surface-accent text-text-default before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-text-default before:content-[\'\']';
 
-/** Parent of the current child — one step quieter than the current page. */
+/**
+ * Parent of the current child — one step quieter, and NEUTRAL.
+ *
+ * It keeps the grey wash while the current page took the tint, so the two
+ * states differ by hue as well as by the bar: "the section holding your page"
+ * and "your page" are no longer two grey steps a floor operator has to
+ * measure against each other.
+ */
 const OWNS_ACTIVE = 'bg-surface-sunken text-text-default';
 
 /**
@@ -245,14 +274,14 @@ export function spineRailLineClass(active: boolean): string {
 export const SPINE_ACCENT: SpineAccentClasses = {
   activePage: CURRENT_PAGE,
   ownsActive: OWNS_ACTIVE,
-  idlePage: 'text-text-default hover:bg-surface-sunken',
+  idlePage: 'text-text-default hover:bg-surface-hover',
   activePageIcon: 'text-text-default',
   idlePageIcon: 'text-text-default',
   childActive: CURRENT_PAGE,
-  childIdle: 'text-text-default hover:bg-surface-sunken',
+  childIdle: 'text-text-default hover:bg-surface-hover',
   childActiveIcon: 'text-text-default',
   childIdleIcon: 'text-text-default',
-  cmdkSelected: 'data-[selected=true]:bg-surface-strong data-[selected=true]:text-text-default',
+  cmdkSelected: 'data-[selected=true]:bg-surface-accent data-[selected=true]:text-text-default',
   cmdkSelectedIcon: 'group-data-[selected=true]:[&_svg]:text-text-default',
 };
 
@@ -284,7 +313,7 @@ export function spineAccentFor(_sectionId?: string | null): SpineAccentClasses {
  */
 export const SPINE_ACCENT_DATA_ACTIVE = [
   'relative',
-  'data-[active=true]:bg-surface-strong',
+  'data-[active=true]:bg-surface-accent',
   'data-[active=true]:text-text-default',
   // The accessible half of the mark — see "the leading bar ban is LIFTED".
   "data-[active=true]:before:content-['']",

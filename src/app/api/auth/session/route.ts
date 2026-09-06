@@ -19,6 +19,7 @@ import {
   SESSION_COOKIE_NAME,
   LEGACY_SESSION_COOKIE_NAME,
   readSessionCookie,
+  sessionHandle,
   touchSession,
   cookieMaxAgeForSession,
 } from '@/lib/auth/session';
@@ -128,7 +129,10 @@ export async function GET() {
         mobileDisplayConfig: user.mobileDisplayConfig,
         avatarPhotoId: user.avatarPhotoId,
         session: {
-          sid: session.sid,
+          // Opaque handle, not the bearer sid: the browser already holds the
+          // sid in an HttpOnly cookie and must never get a JS-readable copy.
+          // Key name unchanged so AuthContext consumers are unaffected.
+          sid: sessionHandle(session.sid),
           deviceKind: session.deviceKind,
           deviceLabel: session.deviceLabel,
           expiresAt: slidExpiresAt,

@@ -164,7 +164,13 @@ export function DataTableExportMenu<Row>({
         data-testid="data-table-export"
         aria-label={ariaLabel}
         aria-expanded={open}
-        title="Export"
+        // Stays a native `title` on purpose: this button is the
+        // `PopoverTrigger asChild` child, so wrapping it in HoverTooltip would
+        // hand the popover's ref to a component that does not forward one.
+        // MorphCursorLayer lifts a short title onto the cursor chip anyway —
+        // so it gets the same face, and it may as well say something useful
+        // instead of repeating the glyph. ds-allow-title: clone-and-ref trigger.
+        title={ariaLabel}
         // The retired `DataTableExportButton`'s own chrome, carried over
         // verbatim: the glyph face did not change, only what it opens.
         className={cn(

@@ -49,6 +49,13 @@ export const SESSION_SURFACE_ENGINE = {
   draftTool: 'src/lib/assistant/tools/ticket-reply-tools.ts',
   importTriageTool: 'src/lib/assistant/tools/import-triage-tools.ts',
   toolRegistry: 'src/lib/assistant/tools/index.ts',
+  boardOccupant: 'src/components/session/session-panel-occupant.ts',
+  boardPanel: 'src/components/session/board/HomeBoardPanel.tsx',
+  boardTile: 'src/components/session/board/BoardTile.tsx',
+  boardRows: 'src/components/session/board/board-tiles.ts',
+  boardRoute: 'src/app/api/home-board/route.ts',
+  gapTool: 'src/lib/assistant/tools/roi-gap-tools.ts',
+  connectPill: 'src/components/session/ConnectAppPill.tsx',
 } as const;
 
 /** Structural markers the surface files must contain (compile-checked by the tripwire below). */
@@ -93,6 +100,54 @@ export const SESSION_SURFACE_CONTRACT = {
   /** Law 10 — the context ring reflects the model's real context. */
   ringOwned: 'inlineRing',
   ringList: 'data-testid="model-context-list"',
+  /**
+   * Law 11 — the right pane has ONE occupant. The board and the artifact view
+   * are alternatives in a single switch, never siblings competing for the
+   * column, and the board is a pane occupant on `/` rather than a route, so
+   * opening it cannot drop the live thread. ⌘B is the routed verb.
+   */
+  paneOccupantType: "export type SessionPanelOccupant = 'artifact' | 'board'",
+  paneOccupantSwitch: "occupant === 'board'",
+  boardVerbChord: "e.key.toLowerCase() === 'b'",
+  boardRailMarker: 'data-board-rail',
+  boardTileMarker: 'data-board-tile',
+  /** Law 11 — tiles move with the keyboard: ←/→ across the rail, e expands. */
+  boardKeyboardRail: "event.key === 'ArrowRight'",
+  boardKeyboardExpand: "event.key === 'e'",
+  /**
+   * Law 12 — the board and the agent read the SAME registered tools. The route
+   * dispatches through `runAssistantTool`, so a tile cannot drift from an
+   * answer, and a tool the caller lacks permission for degrades to one denied
+   * tile instead of failing the board.
+   */
+  boardDispatch: 'runAssistantTool(tile.tool',
+  boardGapTool: 'get_roi_gaps',
+  /**
+   * Law 13 — an app connection is handed over IN CHAT, as a pill with one CTA,
+   * and the link is always the one the server minted. The chat surface never
+   * collects a credential and the model never builds an OAuth URL.
+   *
+   * `https://` alone is not that guarantee — it admits every https host a
+   * prompt-injected document can name. Both loops therefore check PROVENANCE
+   * at the same chokepoint that validates an artifact: the URL must be one a
+   * connect tool returned in this turn.
+   */
+  connectUiTool: "name: 'request_connection'",
+  connectPillMarker: 'data-connect-pill',
+  connectHttpsOnly: "connectUrl.startsWith('https://')",
+  connectProvenanceChokepoint: 'parseRequestConnectionInput(',
+  connectProvenanceLedger: 'collectMintedConnectUrls(',
+  /**
+   * Law 14 — the LOCAL brain's calls are real calls. `gpt-oss` (the base under
+   * the promoted CycleForge LoRA, served as `default_model`) emits tool intent
+   * as Harmony channel text, never `tool_calls`, and streams its private
+   * `analysis` channel as ordinary content. The loop routes both through the
+   * one shared grammar in `src/lib/ai/harmony.ts` — extraction AND
+   * suppression — so a fine-tuned turn dispatches tools and the operator never
+   * reads the model's deliberation.
+   */
+  harmonyToolBridge: 'parseHarmonyToolCalls(',
+  harmonyTextFilter: 'createHarmonyTextFilter(',
 } as const;
 
 /** Source patterns that would put BEHAVIOR or mutation into the artifact plane. */

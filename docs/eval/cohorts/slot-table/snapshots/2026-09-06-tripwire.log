@@ -1,0 +1,167 @@
+▶ find freshness location gate
+  ✔ rebuilds when find is empty (1.881191ms)
+  ✔ passes when expectedFile is empty (0.273644ms)
+  ✔ fails when every hit is outside the engine file (0.312007ms)
+  ✔ passes when the engine file is not matches[0] (0.274931ms)
+✔ find freshness location gate (4.28528ms)
+▶ slot-table cohort (SoT = engine + PRODUCT_TABLES)
+  ✔ peers are exactly PRODUCT_TABLES ids (no hand list) (1.422151ms)
+  ✔ every engine layout hook file exists and imports useSlotTableLayout (1.053819ms)
+  ✔ engine peers are a subset of PRODUCT_TABLES (opt-in map) (0.188639ms)
+  ✔ CompoundItem title hover actions satisfy paint contract (1.391128ms)
+  ✔ no new *GridRow.tsx — To-ship sheet sync must not add a second table (67.410728ms)
+  ✔ To-ship Google Sheet sync paints UnshippedTable, not CsvImportStagingGridRow (0.34064ms)
+  ✔ engine seam files export the shared hooks (imported, not grepped) (56.751417ms)
+  ✔ compact DateRangePickerField is the ship-by surface (0.395283ms)
+  ✔ ship-by writes through useOptimisticMutation (0.204071ms)
+  ✔ paint law constants document cohort scope (not To-ship alone) (1.242638ms)
+  ✔ graph + critique surfaces include compact ship-by (0.185781ms)
+  ✔ DataTable always mounts the filter funnel (0.354057ms)
+  ✔ shared skeleton has no ⋮ and no Amount track (copy on chips, money under the title) (0.440068ms)
+  ✔ every graphSymbol maps to an existing KEEP engine file (0.823854ms)
+  ✔ header click-to-sort is engine law (chrome only; every data track sorts) (4.964734ms)
+✔ slot-table cohort (SoT = engine + PRODUCT_TABLES) (138.861316ms)
+▶ slot-table header-sort law on compound PRODUCT_TABLES peers
+  ✔ orders / receiving / incoming / tasks / daily / review / sessions / reports ranking default mounts (1.05037ms)
+✔ slot-table header-sort law on compound PRODUCT_TABLES peers (1.158922ms)
+▶ slot-table discover (delete vs keep)
+  ✔ KEEP engine paths exist on disk (1.215074ms)
+  ✔ KEEP includes a materialization for every PRODUCT_TABLES peer on the engine (0.189821ms)
+  ✔ does not list KEEP symbols as DELETE (0.140946ms)
+  ✔ known-debt ratchet: no new drifts, no stale ids (0.622156ms)
+  ✔ has no unblocked hand-model deletes after the compound port (0.166405ms)
+  ✔ keeps only documented non-product table judgment items (0.129829ms)
+✔ slot-table discover (delete vs keep) (3.664858ms)
+▶ isLineMoneyFieldId
+  ✔ matches `{family}.amount` / `{family}.price` and skips cost / occupancy (1.041719ms)
+  ✔ requires money + subtitle on the catalog field (0.254119ms)
+✔ isLineMoneyFieldId (2.478299ms)
+▶ ensureLineMoneySubtitle
+  ✔ pins price after qty (1.078596ms)
+  ✔ clears amountFieldId when that field is the line money (0.172784ms)
+  ✔ is a no-op when the catalog has no line money (0.192618ms)
+✔ ensureLineMoneySubtitle (1.771261ms)
+▶ pinLineMoneyAfterQty
+  ✔ sits money immediately after qty (0.241648ms)
+✔ pinLineMoneyAfterQty (0.366731ms)
+▶ lineMoneySubtitlePart
+  ✔ keeps the currency mark when empty (0.232695ms)
+✔ lineMoneySubtitlePart (0.440596ms)
+▶ LINE_MONEY_LOCKED_REASON
+  ✔ names the under-title lock (0.366727ms)
+✔ LINE_MONEY_LOCKED_REASON (0.519645ms)
+▶ blanket: every SLOT_LAYOUT_TABLES catalog with line money
+  ✔ gets amount/price under the title from an empty product default (1.066673ms)
+✔ blanket: every SLOT_LAYOUT_TABLES catalog with line money (1.224933ms)
+▶ isLineQtyFieldId
+  ✔ matches `{family}.qty` and skips occupancy (0.994859ms)
+  ✔ requires number + subtitle on the catalog field (0.292796ms)
+✔ isLineQtyFieldId (3.854651ms)
+▶ ensureLineQtySubtitle
+  ✔ pins qty first on an empty subtitle band (2.246452ms)
+  ✔ moves qty out of status into subtitle:1 (0.25999ms)
+  ✔ is a no-op when the catalog has no line qty (0.177038ms)
+✔ ensureLineQtySubtitle (3.044ms)
+▶ pinLineQtyFirst / pinLineQtySubtitleBindings
+  ✔ puts qty left of later facts (0.300848ms)
+  ✔ rewrites a subtitle band so qty is first (0.264855ms)
+✔ pinLineQtyFirst / pinLineQtySubtitleBindings (1.275026ms)
+▶ lineQtySubtitlePart
+  ✔ uses the To-ship face: 1 quiet, 2+ warning, widthCh 2 (0.530188ms)
+✔ lineQtySubtitlePart (0.709902ms)
+▶ slotSubtitlePartsFor
+  ✔ applies the qty face and pins first even when ids are reversed (0.423033ms)
+✔ slotSubtitlePartsFor (0.578361ms)
+▶ blanket: every SLOT_LAYOUT_TABLES catalog with `{family}.qty`
+  ✔ gets qty as subtitle:1 from an empty product default — a new table inherits the place (1.226732ms)
+  ✔ moves a status-parked qty onto the first subtitle track (0.19995ms)
+  ✔ does not treat bins.total_qty as line qty (0.147361ms)
+✔ blanket: every SLOT_LAYOUT_TABLES catalog with `{family}.qty` (1.884795ms)
+▶ LINE_QTY_LOCKED_REASON
+  ✔ is the Fields-picker copy (0.163056ms)
+✔ LINE_QTY_LOCKED_REASON (0.238343ms)
+▶ slot-table session laws (operator rulings as greps)
+  ✔ every law has a unique id and an eval hook (1.030913ms)
+  ✔ dates.header-is-dates (0.366565ms)
+  ✔ dates.due-hover-due-date (0.270671ms)
+  ✔ dates.order-hover-order-date (0.191711ms)
+  ✔ dates.hover-helper (0.182052ms)
+  ✔ line-money.no-amount-track (0.45686ms)
+  ✔ line-money.suffix-amount-or-price (0.228414ms)
+  ✔ line-money.inbound-incoming-price (0.189479ms)
+  ✔ line-money.inbound-receiving-price (0.20968ms)
+  ✔ engine.no-orders-only-amount-drop (0.25291ms)
+  ✔ header.no-frozen-sort-prop (0.140053ms)
+  ✔ morphing.not-queueMode-gated (0.147679ms)
+  ✔ overlay.no-display-cohort (0.162366ms)
+  ✔ overlay.idle-helper-owns-stack (0.162617ms)
+  ✔ engine.skeleton-filter-ratchet (0.12708ms)
+  ✔ e2e.parity-includes-dates (0.122901ms)
+  ✔ engine.inbound-shares-skeleton — Incoming and Receiving keys match COMPOUND_COLUMN_KEYS (0.689358ms)
+  ✔ occupancy and last-cost are not line money (0.144365ms)
+✔ slot-table session laws (operator rulings as greps) (6.827123ms)
+▶ one table engine — verbs bind to fields, not to pages
+  ✔ only family CATALOGS declare verbs; the fork set never grows (168.319056ms)
+  ✔ the debt list is real — every named fork still exists, and is still a fork (0.39314ms)
+  ✔ every debt entry says WHY, so the next agent can finish it (0.172898ms)
+  ✔ a catalog module is a real file — the allowlist cannot rot (0.392439ms)
+✔ one table engine — verbs bind to fields, not to pages (170.730701ms)
+▶ one table engine — verbs bind to fields, not to lanes
+  ✔ no per-lane action key list survives anywhere under src/ (507.603202ms)
+  ✔ the engine can express a field-bound, reversible verb at all (0.343494ms)
+  ✔ the reversible verb is declared ONCE, with its field and its direction (134.46249ms)
+  ✔ direction is never read from the route (0.30018ms)
+✔ one table engine — verbs bind to fields, not to lanes (643.12669ms)
+▶ one table engine — the descriptor carries data, not behavior
+  ✔ the shared geometry has no per-family override hook (0.285041ms)
+  ✔ no NEW mount strips Dates/select/thumb off the shared skeleton (93.919484ms)
+  ✔ field catalogs do not revive the Amount COLUMN slot kind (1.421687ms)
+  ✔ settings/admin compound key unions do not keep a dead amount track (142.450801ms)
+  ✔ every compound spreadsheet passes subtitleFieldIds so under-title facts paint (88.516691ms)
+  ✔ AdminTable does not return — DataTable is the only engine (103.541515ms)
+  ✖ raw HTML product tables never grow — remaining sites are named debt (153.846863ms)
+  ✔ GridColumnKey sortable lists do not revive the Amount track (114.924788ms)
+  ✔ no mount filters amount off the skeleton — COMPOUND_TRACKS has none (136.62511ms)
+  ✔ the compound cell does not paint an Amount track (0.42529ms)
+  ✔ the compound view model stays strings and enums — no JSX crosses the seam (0.144963ms)
+✖ one table engine — the descriptor carries data, not behavior (836.808982ms)
+▶ one table engine — the law is quotable and complete
+  ✔ every invariant carries text an agent can act on (0.11244ms)
+  ✔ names the seams a new table must not re-implement (0.074229ms)
+✔ one table engine — the law is quotable and complete (0.258821ms)
+ℹ tests 87
+ℹ suites 22
+ℹ pass 86
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 2108.529729
+
+✖ failing tests:
+
+test at src/lib/tables/table-engine-law.test.ts:10:277
+✖ raw HTML product tables never grow — remaining sites are named debt (153.846863ms)
+  AssertionError [ERR_ASSERTION]: new hand HTML table — a second table engine. Port it or name it in HAND_HTML_TABLE_DEBT / ALLOW:
+  src/components/session/artifacts/renderers.tsx
+  + actual - expected
+  
+  + [
+  +   'src/components/session/artifacts/renderers.tsx'
+  + ]
+  - []
+  
+      at TestContext.<anonymous> (/home/michaelgarisek/Projects/cycleforge-app/src/lib/tables/table-engine-law.test.ts:287:12)
+      at Test.runInAsyncScope (node:async_hooks:226:14)
+      at Test.run (node:internal/test_runner/test:1397:25)
+      at Suite.processPendingSubtests (node:internal/test_runner/test:969:18)
+      at Test.postRun (node:internal/test_runner/test:1537:19)
+      at Test.run (node:internal/test_runner/test:1462:12)
+      at async Suite.processPendingSubtests (node:internal/test_runner/test:969:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'src/components/session/artifacts/renderers.tsx' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

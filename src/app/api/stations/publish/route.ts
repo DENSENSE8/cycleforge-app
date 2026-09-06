@@ -27,6 +27,7 @@ import { validateInboundPublish } from '@/lib/inbound/publish-validation';
 import { isIncomingUniversal } from '@/lib/feature-flags';
 import { resolveInboundSettings } from '@/lib/inbound/org-settings';
 import { hasConnectedEbayBuyerAccount } from '@/lib/ebay/credentials';
+import { publishStationDefinitionPublished } from '@/lib/realtime/publish';
 
 export const dynamic = 'force-dynamic';
 
@@ -107,6 +108,16 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       entityType: AUDIT_ENTITY.STATION_DEFINITION,
       entityId: row.id,
       after: { pageKey: row.page_key, modeKey: row.mode_key, version: row.version },
+    });
+
+    // Realtime nudge: every device on this (page, mode) refetches. Best-effort;
+    // the publisher swallows Ably faults and the flip above already committed.
+    void publishStationDefinitionPublished({
+      organizationId: ctx.organizationId,
+      pageKey: row.page_key,
+      modeKey: row.mode_key,
+      id: published[0]?.id ?? row.id,
+      version: row.version,
     });
 
     return NextResponse.json({ success: true, id: published[0]?.id ?? row.id, version: row.version });

@@ -217,18 +217,16 @@ export const getUnitJourney: AssistantToolDef<
 export const getFeedState: AssistantToolDef<
   z.ZodObject<{
     feedKey: z.ZodString;
-    staffId: z.ZodOptional<z.ZodNumber>;
     station: z.ZodOptional<z.ZodString>;
     limit: z.ZodDefault<z.ZodNumber>;
   }>
 > = {
   name: 'get_feed_state',
   description:
-    "One operator feed's working set: counts by state plus the newest items (memberships minus the given staff member's dismissals when staffId+station are provided). Feed keys: receiving_triage | receiving_unbox | testing_queue | orders_unshipped | fba_outbound | repairs_queue | warranty_claims. NOTE: feeds are populated from Phase 4 onward — empty results before that are expected, not an error.",
+    "One operator feed's working set: counts by state plus the newest items (memberships minus the SIGNED-IN staffer's own dismissals when a station is given). The staffer is resolved from the session, never from you. Feed keys: receiving_triage | receiving_unbox | testing_queue | orders_unshipped | fba_outbound | repairs_queue | warranty_claims. NOTE: feeds are populated from Phase 4 onward — empty results before that are expected, not an error.",
   permission: 'dashboard.view',
   inputSchema: z.object({
     feedKey: z.string().max(64),
-    staffId: z.number().int().positive().optional(),
     station: z.string().max(20).optional(),
     limit: rowLimit(50, 20),
   }),
@@ -240,7 +238,11 @@ export const getFeedState: AssistantToolDef<
        AND x.entity_type = m.entity_type
        AND x.entity_id = m.entity_id
        AND x.staff_id = $4 AND x.station = $5`;
-    const useExclusions = input.staffId != null && !!input.station;
+    // Dismissals are PERSONAL. The staff id used to come out of the model's
+    // arguments, which let a turn read another staffer's rail — the only
+    // identity field anywhere in the registry's inputs. It comes from the
+    // session now, like every other tool's.
+    const useExclusions = ctx.staffId != null && !!input.station;
     const r = await deps.query(
       ctx.organizationId,
       `SELECT m.entity_type, m.entity_id, m.state, m.priority_tier, m.title,
@@ -253,7 +255,7 @@ export const getFeedState: AssistantToolDef<
         ORDER BY m.occurred_at DESC
         LIMIT $3`,
       useExclusions
-        ? [ctx.organizationId, input.feedKey, input.limit, input.staffId, input.station]
+        ? [ctx.organizationId, input.feedKey, input.limit, ctx.staffId, input.station]
         : [ctx.organizationId, input.feedKey, input.limit],
     );
     const counts = await deps.query(

@@ -58,16 +58,29 @@ function constantTimeEquals(a: string, b: string): boolean {
 /**
  * Verify the request against USPS_WEBHOOK_SECRET. Tries, in order: HMAC-SHA256
  * (base64) over the raw body, a shared-secret header echo, the secret embedded
- * in the parsed body, then a static bearer (for replay/testing). Permissive
- * when no secret is set outside production so local replay keeps working.
+ * in the parsed body, then a static bearer (for replay/testing).
+ *
+ * An UNSET secret does NOT open the endpoint: this receiver writes shipments
+ * and tracking events, and NODE_ENV is not a security boundary (preview and
+ * self-hosted deploys run without it set). Unsigned pushes require the explicit
+ * ALLOW_UNSIGNED_WEBHOOKS=1 opt-in; unset ⇒ closed.
  */
-function isAuthorized(req: NextRequest, rawBody: string, parsed: any): boolean {
+function isAuthorized(req: NextRequest, rawBody: string, parsed: unknown): boolean {
   const secret =
     process.env.USPS_WEBHOOK_SECRET ||
     process.env.USPS_WEBHOOK_BEARER ||
     '';
 
-  if (!secret) return process.env.NODE_ENV !== 'production';
+  if (!secret) {
+    if (process.env.ALLOW_UNSIGNED_WEBHOOKS === '1') {
+      console.warn(
+        '[webhooks/usps] USPS_WEBHOOK_SECRET unset — accepting unsigned push (ALLOW_UNSIGNED_WEBHOOKS=1)',
+      );
+      return true;
+    }
+    console.error('[webhooks/usps] USPS_WEBHOOK_SECRET unset — rejecting unsigned push');
+    return false;
+  }
 
   // 1. HMAC-SHA256 signature over the raw body.
   const expected = createHmac('sha256', secret).update(rawBody, 'utf8').digest('base64');
@@ -81,7 +94,9 @@ function isAuthorized(req: NextRequest, rawBody: string, parsed: any): boolean {
   }
 
   // 3. Shared secret echoed in the body (we send `sharedSecret` on subscribe).
-  if (parsed?.sharedSecret && constantTimeEquals(String(parsed.sharedSecret), secret)) return true;
+  const bodySecret =
+    parsed && typeof parsed === 'object' && 'sharedSecret' in parsed ? parsed.sharedSecret : null;
+  if (bodySecret && constantTimeEquals(String(bodySecret), secret)) return true;
 
   // 4. Static bearer / header secret (manual replay & testing).
   const authHeader = req.headers.get('authorization');

@@ -9,7 +9,7 @@ export const SIDEBAR_TITLES: Record<string, string> = {
   search: 'Search',
   operations: 'Operations',
   'ops-photos': 'Media',
-  studio: 'Operations Studio',
+  studio: 'Automations',
   fba: 'Amazon Prep',
   receiving: 'Receiving',
   repair: 'Repair',

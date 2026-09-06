@@ -98,4 +98,25 @@ export {
   cursorResizeTarget,
 } from './cursor-scrub';
 export type { CursorKind } from './cursor-scrub';
+/**
+ * Cursor SKINS — the paintable design families for the layer above. Ids and
+ * persistence live on `./cursor-skin`; components and picker copy on
+ * `./cursor-skins`. Settings' Pointer card is the one adopter of the write
+ * path (`setCursorSkin`); everything else only reads.
+ */
+export {
+  CURSOR_SKINS,
+  type CursorSkin,
+  type CursorSkinCursorProps,
+} from './cursor-skins';
+export {
+  CURSOR_SKIN_IDS,
+  DEFAULT_CURSOR_SKIN,
+  isCursorSkinId,
+  readCursorSkin,
+  readCursorSkinServer,
+  setCursorSkin,
+  subscribeCursorSkin,
+  type CursorSkinId,
+} from './cursor-skin';
 export { usePointerFine } from './use-pointer-fine';

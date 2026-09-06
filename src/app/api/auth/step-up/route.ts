@@ -7,6 +7,10 @@
  * Grants a step-up trust window for the current session and named scope.
  * Required before destructive actions (bin.remove, shipping.void_order,
  * admin.manage_staff, etc).
+ *
+ * The `pin` method is a PIN oracle bounded by a per-IP and per-staff throttle,
+ * and is refused for a staffer forced onto password auth (they step up with a
+ * passkey instead) — mirrors /api/auth/signin.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -20,17 +24,15 @@ import {
 import { grantStepUp } from '@/lib/auth/stepup';
 import { audit } from '@/lib/auth/audit';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/types';
+import { getStaffAuthMethod } from '@/lib/auth/auth-policy';
+import { checkRateLimitAsync, clientIpOrNull } from '@/lib/api-guard';
 
 export const runtime = 'nodejs';
 
-function clientIp(req: NextRequest): string | null {
-  const xff = req.headers.get('x-forwarded-for');
-  if (xff) return xff.split(',')[0]?.trim() || null;
-  return req.headers.get('x-real-ip') || null;
-}
-
 export async function POST(req: NextRequest) {
-  const ip = clientIp(req);
+  // Trusted-hop client IP (api-guard): the leftmost x-forwarded-for hop is
+  // caller-chosen, which made every IP-keyed throttle and audit row forgeable.
+  const ip = clientIpOrNull(req.headers);
   const ua = req.headers.get('user-agent');
 
   try {
@@ -43,6 +45,48 @@ export async function POST(req: NextRequest) {
     if (!scope) return NextResponse.json({ error: 'INVALID_REQUEST', field: 'scope' }, { status: 400 });
 
     if (method === 'pin') {
+      // Per-IP and per-staff throttle: this is the second PIN verification
+      // surface, reachable with any valid session.
+      const ipRl = await checkRateLimitAsync({
+        headers: req.headers,
+        routeKey: 'auth-stepup-pin',
+        limit: 20,
+        windowMs: 10 * 60 * 1000,
+      });
+      if (!ipRl.ok) {
+        return NextResponse.json(
+          { error: 'RATE_LIMITED', retryAfterSec: ipRl.retryAfterSec },
+          { status: 429 },
+        );
+      }
+      const staffRl = await checkRateLimitAsync({
+        headers: req.headers,
+        routeKey: 'auth-stepup-pin-staff',
+        scope: String(me.staffId),
+        limit: 10,
+        windowMs: 10 * 60 * 1000,
+      });
+      if (!staffRl.ok) {
+        return NextResponse.json(
+          { error: 'RATE_LIMITED', retryAfterSec: staffRl.retryAfterSec },
+          { status: 429 },
+        );
+      }
+
+      // A staffer forced onto password auth has no live PIN credential — a
+      // stale hash must not satisfy step-up for them.
+      if ((await getStaffAuthMethod(me.staffId)) === 'password') {
+        await audit({
+          staffId: me.staffId, sid: me.session.sid,
+          event: 'stepup', result: 'denied', ip, userAgent: ua,
+          detail: { scope, method, reason: 'auth_method_password' },
+        });
+        return NextResponse.json(
+          { error: 'AUTH_METHOD_PASSWORD_REQUIRED', hint: 'Confirm with your passkey.' },
+          { status: 403 },
+        );
+      }
+
       const pin = String((body as { pin?: unknown }).pin ?? '');
       try {
         await verifyStaffPin(me.staffId, pin);
@@ -53,7 +97,10 @@ export async function POST(req: NextRequest) {
           detail: { scope, method, reason: err instanceof PinError ? err.code : 'error' },
         });
         if (err instanceof PinError) {
-          return NextResponse.json({ error: err.code }, { status: 401 });
+          return NextResponse.json(
+            { error: err.code },
+            { status: err.code === 'LOCKED' ? 423 : 401 },
+          );
         }
         throw err;
       }

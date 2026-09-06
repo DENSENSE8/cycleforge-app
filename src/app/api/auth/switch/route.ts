@@ -15,6 +15,10 @@
  *
  * Audit event: `signin.switch` with detail.previousStaffId so the chain of
  * "who was here" is recoverable.
+ *
+ * Because no prior session is required, this is a PIN oracle unless it is
+ * bounded: throttled per IP and per target staffId, and refused outright for a
+ * staffer forced onto password auth (mirrors /api/auth/signin).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -28,18 +32,15 @@ import {
   SESSION_COOKIE_NAME,
   LEGACY_SESSION_COOKIE_NAME,
   readSessionSid,
+  sessionHandle,
   type DeviceKind,
 } from '@/lib/auth/session';
 import { audit } from '@/lib/auth/audit';
 import { resolveOrgIdFromRequest } from '@/lib/tenancy/resolve-org-from-request';
+import { getStaffAuthMethod } from '@/lib/auth/auth-policy';
+import { checkRateLimitAsync, clientIpOrNull } from '@/lib/api-guard';
 
 export const runtime = 'nodejs';
-
-function clientIp(req: NextRequest): string | null {
-  const xff = req.headers.get('x-forwarded-for');
-  if (xff) return xff.split(',')[0]?.trim() || null;
-  return req.headers.get('x-real-ip') || null;
-}
 
 function asDeviceKind(raw: unknown): DeviceKind {
   if (raw === 'personal' || raw === 'station' || raw === 'phone') return raw;
@@ -47,11 +48,28 @@ function asDeviceKind(raw: unknown): DeviceKind {
 }
 
 export async function POST(req: NextRequest) {
-  const ip = clientIp(req);
+  // Trusted-hop client IP (api-guard): the leftmost x-forwarded-for hop is
+  // caller-chosen, which made every IP-keyed throttle and audit row forgeable.
+  const ip = clientIpOrNull(req.headers);
   const ua = req.headers.get('user-agent');
   let staffIdForAudit: number | null = null;
 
   try {
+    // Per-IP throttle: this route verifies PINs and needs NO prior session, so
+    // it is the cheapest brute-force surface in the auth set.
+    const ipRl = await checkRateLimitAsync({
+      headers: req.headers,
+      routeKey: 'auth-switch',
+      limit: 20,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!ipRl.ok) {
+      return NextResponse.json(
+        { error: 'RATE_LIMITED', retryAfterSec: ipRl.retryAfterSec },
+        { status: 429 },
+      );
+    }
+
     const body = await req.json().catch(() => ({} as Record<string, unknown>));
     const staffId = Number((body as { staffId?: unknown }).staffId);
     const pin = String((body as { pin?: unknown }).pin ?? '');
@@ -64,6 +82,35 @@ export async function POST(req: NextRequest) {
     staffIdForAudit = staffId;
     if (!pin) {
       return NextResponse.json({ error: 'INVALID_REQUEST', field: 'pin' }, { status: 400 });
+    }
+
+    // Per-target-staff throttle so one staffer's 4-digit PIN can't be walked
+    // faster than the per-IP budget allows across rotating sources.
+    const staffRl = await checkRateLimitAsync({
+      headers: req.headers,
+      routeKey: 'auth-switch-staff',
+      scope: String(staffId),
+      limit: 10,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!staffRl.ok) {
+      return NextResponse.json(
+        { error: 'RATE_LIMITED', retryAfterSec: staffRl.retryAfterSec },
+        { status: 429 },
+      );
+    }
+
+    // Same refusal as /api/auth/signin: a staffer forced onto password auth
+    // must not be reachable through a stale PIN on the station switcher.
+    if ((await getStaffAuthMethod(staffId)) === 'password') {
+      await audit({
+        staffId, event: 'signin.switch', result: 'denied', ip, userAgent: ua,
+        detail: { reason: 'auth_method_password' },
+      });
+      return NextResponse.json(
+        { error: 'AUTH_METHOD_PASSWORD_REQUIRED', hint: 'Sign in with your email and password.' },
+        { status: 403 },
+      );
     }
 
     // Read the current sid (if any) so we can revoke it once the new
@@ -122,7 +169,8 @@ export async function POST(req: NextRequest) {
       staffId,
       role: row.role,
       name: row.name,
-      session: { sid: session.sid, deviceKind: session.deviceKind, expiresAt: session.expiresAt },
+      // Handle, not the raw bearer sid — the cookie carries the credential.
+      session: { sid: sessionHandle(session.sid), deviceKind: session.deviceKind, expiresAt: session.expiresAt },
     });
     res.cookies.set(SESSION_COOKIE_NAME, session.sid, {
       httpOnly: true,
@@ -143,6 +191,7 @@ export async function POST(req: NextRequest) {
       });
       const status = err.code === 'NOT_FOUND' ? 404
         : err.code === 'NO_PIN' ? 409
+        : err.code === 'LOCKED' ? 423
         : 401;
       return NextResponse.json({ error: err.code }, { status });
     }

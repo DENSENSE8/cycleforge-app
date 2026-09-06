@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { getProductManualById } from '@/lib/neon/product-manuals-queries';
 import { isVercelBlobUrl } from '@/lib/blob/vercel-blob-url';
-import { streamVercelBlobResponse } from '@/lib/blob/stream-vercel-blob';
+import { streamVercelBlobResponse, clampInlineMime } from '@/lib/blob/stream-vercel-blob';
+import { fetchSafeExternal, isSafeExternalUrl } from '@/lib/security/safe-external-url';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 export const runtime = 'nodejs';
@@ -61,8 +62,16 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       });
     }
 
+    // Non-blob `source_url` is operator-supplied. Rows written before the
+    // write-time guard landed can still hold an internal/http target, so both
+    // the server-side fetch and the 302 are re-validated here.
+    if (!isSafeExternalUrl(url)) {
+      return NextResponse.json({ error: 'Manual source is not a permitted URL' }, { status: 400 });
+    }
+
     if (download) {
-      const res = await fetch(url, { redirect: 'follow', cache: 'no-store' });
+      // Manual redirects, re-validated per hop — never `redirect: 'follow'`.
+      const res = await fetchSafeExternal(url);
       if (!res.ok) {
         return NextResponse.json({ error: 'Failed to fetch manual bytes' }, { status: 502 });
       }
@@ -71,12 +80,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       const mime =
         headerType.includes('pdf') || filename.toLowerCase().endsWith('.pdf')
           ? 'application/pdf'
-          : headerType || 'application/octet-stream';
+          : clampInlineMime(headerType).contentType;
       return new NextResponse(bytes, {
         headers: {
           'content-type': mime,
           'content-disposition': `attachment; filename="${filename.replace(/[\r\n"]/g, '')}"`,
           'cache-control': 'private, max-age=300',
+          'x-content-type-options': 'nosniff',
         },
       });
     }

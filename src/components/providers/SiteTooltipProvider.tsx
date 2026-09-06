@@ -25,6 +25,7 @@ import React, {
 import { createPortal } from 'react-dom';
 import { Check, Copy, ExternalLink } from '@/components/Icons';
 import { cornerClass } from '@/design-system/tokens/radius';
+import { tooltipChipClass } from '@/design-system/primitives/TooltipChip';
 import {
   clampPortalTooltipPosition,
   isTrustedPortalAnchor,
@@ -262,12 +263,19 @@ export function SiteTooltipProvider({ children }: { children: React.ReactNode })
               className="pointer-events-none z-tooltip"
             >
               <div
-                // Match HoverTooltip chrome height: py-1 + items-center +
-                // leading-none so carrier/platform id bubbles read as one line.
-                // Flush-square — ops density; floating is not a soft-radius escape.
+                // Ground, type and row spacing come from the tooltip-chip SoT,
+                // so the copy bubble reads as the same object as the hover chip
+                // — one hint vocabulary, three hosts.
+                //
+                // Corner: rounded (`control`), operator 2026-09-06. This shell
+                // was deliberately flush-square ("ops density; floating is not
+                // a soft-radius escape"); that ruling is REVERSED for hints.
+                // The chip that rides the pointer is rounded, and a copy bubble
+                // that is square reads as a different, unrelated surface.
                 className={cn(
-                  'relative flex max-w-[min(90vw,24rem)] items-center gap-1.5 bg-surface-inverse px-2 py-1 text-role-caption font-semibold leading-none text-white shadow-md',
-                  cornerClass('flush'),
+                  'relative max-w-[min(90vw,24rem)]',
+                  tooltipChipClass({ row: true }),
+                  cornerClass('control'),
                 )}
               >
                 <span className="font-mono whitespace-nowrap leading-none">

@@ -32,6 +32,8 @@ import {
   kioskPathDogfoodActive,
   staffKioskRedirectOrigin,
 } from '@/lib/tenancy/kiosk-host';
+// Pure string/env, no node:crypto or pg — safe in the edge bundle.
+import { extractTenantSlug } from '@/lib/tenancy/tenant-host';
 
 // Inlined (not imported) to keep the Edge bundle free of node:crypto / pg.
 // Must stay in sync with `src/lib/auth/session.ts` (SESSION_COOKIE_NAME +
@@ -70,8 +72,6 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/api\/beta\//,                     // public marketing beta waitlist + spots counter (no auth)
   /^\/api\/health(?:$|\/)/,
   /^\/api\/ready(?:$|\/)/,
-  // TEMP Cursor debug session 251bbb — remove with /api/agent-debug-log
-  /^\/api\/agent-debug-log(?:$|\/)/,
   /^\/api\/cron\//,                     // Vercel-cron-fired routes (auth via CRON_SECRET inside handler)
   /^\/api\/webhooks\//,                 // carrier + Stripe + integration callbacks
   /^\/api\/billing\/webhook(?:$|\/)/,   // Stripe webhook needs raw body, no cookie
@@ -89,6 +89,14 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/m\/r\/\d+(?:$|\/)/,
   /^\/_next\//,
   /^\/favicon\.ico$/,
+  // Brand icon set + PWA ground assets (public/icon*, apple-touch-icon,
+  // public/brand/*) — the favicon and install icons must render on the
+  // signed-out public routes (/signin, /signup, kiosk), where there is no
+  // session cookie to satisfy the gate. See docs/brand/icon.md.
+  /^\/favicon\.(png|svg)$/,
+  /^\/icon(-\d+)?\.(png|svg)$/,
+  /^\/apple-touch-icon\.png$/,
+  /^\/brand\/[\w.-]+$/,
   /^\/manifest\.(json|webmanifest)$/,
   /^\/sw\.js$/,
   /^\/workbox-/,
@@ -96,55 +104,9 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/.well-known\//,
 ];
 
-// Hostnames that should NOT be treated as a tenant subdomain. Anything else
-// of the form `slug.<root>` is extracted as a tenant slug and stamped onto
-// the request headers so downstream handlers can resolve the org without a
-// per-request hit on the DB at the edge.
-const RESERVED_SUBDOMAINS = new Set<string>([
-  'www',
-  'app',
-  'api',
-  'admin',
-  'docs',
-  'status',
-  'staging',
-  'preview',
-  // Platform kiosk apex (`kiosk.app.cycleforge.ai`) — not a tenant. Tenant
-  // kiosks live at `{slug}.kiosk.app.cycleforge.ai` (first label = slug).
-  'kiosk',
-  // Named Cloudflare dev tunnel (pnpm dev:tunnel:named) — not a tenant slug.
-  'usav-dev',
-]);
-
-function extractTenantSlug(host: string | null): string | null {
-  if (!host) return null;
-  // Strip port if present.
-  const cleaned = host.split(':')[0]!.toLowerCase();
-  // localhost and bare IPs never carry a subdomain.
-  if (cleaned === 'localhost' || /^\d+\.\d+\.\d+\.\d+$/.test(cleaned)) return null;
-  const parts = cleaned.split('.');
-  // Need at least subdomain.root.tld to claim a tenant slug.
-  if (parts.length < 3) return null;
-  const candidate = parts[0]!;
-  if (RESERVED_SUBDOMAINS.has(candidate)) return null;
-  // Vercel preview hostnames like usav-orders-git-foo-bar.vercel.app — the
-  // subdomain there is the project, not a tenant. Cheap heuristic: any host
-  // ending in .vercel.app skips slug extraction.
-  if (cleaned.endsWith('.vercel.app')) return null;
-  // Dev tunnel hostnames (Cloudflare quick tunnels, ngrok) carry a random
-  // subdomain that is not a tenant. Without this, e.g. quiet-frog-1234 from
-  // quiet-frog-1234.trycloudflare.com resolves to an unknown org and every
-  // org-scoped query (staff picker, etc.) comes back empty on the phone.
-  if (
-    cleaned.endsWith('.trycloudflare.com') ||
-    cleaned.endsWith('.ngrok-free.app') ||
-    cleaned.endsWith('.ngrok.app') ||
-    cleaned.endsWith('.ngrok.io')
-  ) {
-    return null;
-  }
-  return candidate;
-}
+// Tenant slug extraction moved to `@/lib/tenancy/tenant-host` so a route
+// handler can derive the tenant from the host instead of trusting the header
+// this proxy stamps (see `resolveOrgIdFromHost`).
 
 const REWRITES: ReadonlyArray<{ prefix: string; target: string }> = [
   { prefix: '/m/b/', target: '/bin/' },
@@ -571,7 +533,9 @@ function resolveAuditLogRedirect(url: NextRequest['nextUrl']): NextRequest['next
  *  - Geolocation / payment disabled. Mic is same-origin only: the phone
  *    companion (`/m/companion`) dictates into the desk composer through
  *    `getUserMedia` (PLAN-companion-composer) — `microphone=()` blocked it.
- *  - frame-ancestors 'self' (CSP) + X-Frame-Options DENY — defense in depth.
+ *  - frame-ancestors 'self' + object-src/base-uri/form-action (CSP) plus
+ *    X-Frame-Options — the CSP directives that need no nonce. The full
+ *    policy ships as Content-Security-Policy-Report-Only (CSP_REPORT_ONLY).
  *  - HSTS with 1y max-age + subdomains. Don't preload yet (irreversible).
  *  - Referrer policy trims cross-origin leak surface.
  *  - nosniff blocks MIME confusion attacks.
@@ -587,6 +551,55 @@ const PERMISSIONS_POLICY = [
   'interest-cohort=()',
 ].join(', ');
 
+// Blob store hostname for THIS project (store id is public — it is the
+// hostname of every blob URL we mint). Kept in sync with the pinned
+// `remotePatterns` entry in next.config.ts.
+const BLOB_STORE_HOST = 'dxo1iaq12ujzkoor.public.blob.vercel-storage.com';
+
+// Enforced CSP directives. Deliberately NO script-src/default-src here: the
+// root layout ships inline boot scripts (theme, station skin, depth, boot
+// splash) and a nonce migration is a separate effort. Everything below is
+// inert for an inline-script app — it only removes plugin execution, <base>
+// hijacking, and off-origin form posts, and keeps framing same-origin.
+const CSP_ENFORCED = [
+  "frame-ancestors 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
+
+// The policy we INTEND to enforce once the inline boot scripts carry a nonce.
+// Shipped report-only so violations land in the browser console / report
+// endpoint without breaking a station mid-shift. Every off-origin host below
+// is one the browser genuinely reaches:
+//   cdnjs.cloudflare.com          pdf.js worker (src/lib/manuals/pdfThumbnail.ts:46)
+//   va.vercel-scripts.com         @vercel/analytics debug loader (DeferredWebTelemetry)
+//   *.ably.io / *.ably-realtime.com  browser Ably realtime + REST fallbacks
+//   <store>.public.blob…          product-manual / photo / attract-media blobs
+//   storage.googleapis.com        PHOTOS_GCS_BUCKET photos
+//   nas-photos.michaelgarisek.com NAS photo tunnel (also in remotePatterns)
+// `unsafe-eval` is dev-only — the Next dev runtime evals HMR payloads, and
+// without it the report-only channel is pure noise locally.
+const CSP_REPORT_ONLY = [
+  "default-src 'self'",
+  [
+    "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://va.vercel-scripts.com",
+    process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'",
+  ].join(''),
+  "style-src 'self' 'unsafe-inline'",
+  `img-src 'self' data: blob: https://${BLOB_STORE_HOST} https://storage.googleapis.com https://nas-photos.michaelgarisek.com`,
+  `media-src 'self' blob: https://${BLOB_STORE_HOST}`,
+  "font-src 'self' data:",
+  "connect-src 'self' blob: https://*.ably.io wss://*.ably.io https://*.ably-realtime.com wss://*.ably-realtime.com",
+  "worker-src 'self' blob: https://cdnjs.cloudflare.com",
+  "frame-src 'self' blob:",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'self'",
+].join('; ');
+
 function applySecurityHeaders(res: NextResponse): NextResponse {
   res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   res.headers.set('X-Content-Type-Options', 'nosniff');
@@ -595,15 +608,32 @@ function applySecurityHeaders(res: NextResponse): NextResponse {
   // Block embedding in iframes from foreign origins. X-Frame-Options is the
   // legacy header; CSP frame-ancestors covers modern browsers.
   res.headers.set('X-Frame-Options', 'SAMEORIGIN');
-  // We intentionally only set frame-ancestors here, not a full CSP — a full
-  // CSP needs hashes/nonces for inline scripts the framework emits, which
-  // is a separate effort. frame-ancestors is safe to set alone.
+  // Enforced: frame-ancestors + the three directives that cannot break an
+  // inline-script app. The full policy (script-src/default-src) rides along
+  // report-only until the root-layout boot scripts carry a nonce.
   const existingCsp = res.headers.get('Content-Security-Policy');
   res.headers.set(
     'Content-Security-Policy',
-    existingCsp ? `${existingCsp}; frame-ancestors 'self'` : `frame-ancestors 'self'`,
+    existingCsp ? `${existingCsp}; ${CSP_ENFORCED}` : CSP_ENFORCED,
   );
+  res.headers.set('Content-Security-Policy-Report-Only', CSP_REPORT_ONLY);
   return res;
+}
+
+/**
+ * Inbound headers with every proxy-authored `x-*` header removed, so no route
+ * can ever read a client-supplied tenant slug / pathname / search string.
+ */
+function proxyRequestHeaders(req: NextRequest): Headers {
+  const headers = new Headers(req.headers);
+  // `x-tenant-slug` feeds pre-auth org resolution (resolve-org-from-request),
+  // so a spoofed value on the apex/preview host would pick the tenant. The
+  // other two are only ever set by us; strip them so a client cannot forge a
+  // pathname/search that a guard or shell seed later trusts.
+  headers.delete('x-tenant-slug');
+  headers.delete('x-pathname');
+  headers.delete('x-search');
+  return headers;
 }
 
 export function proxy(req: NextRequest): NextResponse {
@@ -633,7 +663,7 @@ export function proxy(req: NextRequest): NextResponse {
       );
     }
 
-    const requestHeaders = new Headers(req.headers);
+    const requestHeaders = proxyRequestHeaders(req);
     const tenantSlug = extractTenantSlug(hostHeader);
     if (tenantSlug) {
       requestHeaders.set('x-tenant-slug', tenantSlug);
@@ -663,7 +693,7 @@ export function proxy(req: NextRequest): NextResponse {
 
   // Pass the resolved pathname to RSC pages — used by requirePermission to
   // build a `?next=` query when it redirects to /signin.
-  const requestHeaders = new Headers(req.headers);
+  const requestHeaders = proxyRequestHeaders(req);
   requestHeaders.set('x-pathname', rewriteTarget ?? pathname);
   // …and the query beside it. A ROOT LAYOUT is handed no `searchParams`, so a
   // shell-level paint seed (`maybeSeedShell`) could otherwise only be gated on

@@ -38,7 +38,7 @@ test('exempt paths never block and skip the probe', async () => {
     '/onboarding',
     '/onboarding/template',
     '/settings',
-    '/settings/integrations',
+    '/apps',
     '/settings/billing',
     '/api/onboarding/stats',
     '/signin',

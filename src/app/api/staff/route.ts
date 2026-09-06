@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/drizzle/db';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { staff, staffWeeklySchedule } from '@/lib/drizzle/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { createCacheLookupKey, getCachedJson, invalidateCacheTags, setCachedJson } from '@/lib/cache/upstash-cache';
 import { isTransientDbError, queryWithRetry } from '@/lib/db-retry';
 import { getCurrentStaffDayOfWeek, isStaffBusinessDay } from '@/lib/staff-schedule';
@@ -294,7 +294,7 @@ async function handlePost(request: NextRequest, ctx: AuthContext) {
     }
 }
 
-async function handlePut(request: NextRequest) {
+async function handlePut(request: NextRequest, ctx: AuthContext) {
     try {
         const body = await request.json();
         const { id, name, role, employee_id, active, color_hex, default_home_path } = body;
@@ -329,10 +329,12 @@ async function handlePut(request: NextRequest) {
             }
         }
 
+        // db is neon-HTTP on the owner DSN (BYPASSRLS), so the organization_id
+        // conjunct is the only thing stopping a cross-tenant staff rename/demote.
         const [result] = await db
             .update(staff)
             .set(updateData)
-            .where(eq(staff.id, id))
+            .where(and(eq(staff.id, id), eq(staff.organizationId, ctx.organizationId)))
             .returning();
 
         if (!result) {
@@ -350,7 +352,7 @@ async function handlePut(request: NextRequest) {
     }
 }
 
-async function handleDelete(request: NextRequest) {
+async function handleDelete(request: NextRequest, ctx: AuthContext) {
     try {
         const { searchParams } = new URL(request.url);
         const id = searchParams.get('id');
@@ -363,7 +365,7 @@ async function handleDelete(request: NextRequest) {
         const [result] = await db
             .update(staff)
             .set({ active: false })
-            .where(eq(staff.id, parseInt(id)))
+            .where(and(eq(staff.id, parseInt(id)), eq(staff.organizationId, ctx.organizationId)))
             .returning();
 
         if (!result) {

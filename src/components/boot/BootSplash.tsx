@@ -2,7 +2,7 @@
 
 // No motion import: BootSplash sits on `/signin`'s critical JS graph (the one
 // public route), and the motion barrel statically carries the whole engine.
-// The two ambient loops here (breathing ring, indeterminate sweep) are CSS
+// The two ambient loops here (hammer strike, indeterminate sweep) are CSS
 // keyframes in globals.css — transform/opacity only, compositor-safe.
 
 /**
@@ -49,21 +49,26 @@ export function BootSplash({ label = 'Loading your workspace' }: { label?: strin
         role="status"
         aria-live="polite"
       >
-        {/* breathing ring around the site favicon */}
+        {/* brand mark, LOADING state: the hammer strikes 12→3 while the
+            status light burns amber (working). The tab favicon is the DONE
+            state of the same system — green light. Geometry mirrors
+            public/brand/loading-mark.svg (single source: docs/brand/icon.md);
+            colors are brand DATA, not theme tokens, so the mark never shifts
+            with data-theme. Animation is the CSS keyframes loop below. */}
         <div className="relative flex h-16 w-16 items-center justify-center">
-          <span
-            className="cf-boot-breathe absolute inset-0 rounded-2xl border-2 border-border-soft"
-            aria-hidden
-          />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/favicon.png"
-            alt=""
-            width={44}
-            height={44}
-            className="rounded-xl"
-            aria-hidden
-          />
+          <svg viewBox="0 0 512 512" className="h-16 w-16" aria-hidden>
+            <rect width="512" height="512" rx="118" fill="#2563eb" />
+            <circle cx="256" cy="256" r="150" fill="none" stroke="#ffffff" strokeWidth="44" />
+            <g className="cf-boot-strike" transform="rotate(45 256 256)">
+              <g fill="#ea580c" stroke="#2563eb" strokeWidth="14" strokeLinejoin="round">
+                <rect x="236" y="150" width="40" height="118" rx="20" />
+                <rect x="170" y="90" width="172" height="108" rx="28" />
+              </g>
+              <rect x="170" y="90" width="34" height="108" rx="14" fill="#f97316" />
+              <circle cx="256" cy="144" r="32" fill="#ffffff" />
+              <circle cx="256" cy="144" r="26" fill="#fbbf24" />
+            </g>
+          </svg>
         </div>
 
         {/* indeterminate sweep */}

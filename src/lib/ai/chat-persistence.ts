@@ -1,10 +1,16 @@
 import { db } from '@/lib/drizzle/db';
 import { aiChatSessions, aiChatMessages } from '@/lib/drizzle/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
+import { fallbackTitle } from '@/lib/ai/session-title';
 
 /**
- * Ensure a session row exists, then insert one message.
- * Runs fire-and-forget from the chat route — errors are logged, never thrown.
+ * Ensure a session row exists, then insert one message. Fire-and-forget from
+ * the chat route — errors are logged, never thrown.
+ *
+ * Returns `{ created }` so the route knows this was the FIRST message and can
+ * replace the provisional title with an AI summary (see `generateSessionTitle`
+ * + {@link setSessionTitle}). The provisional title is a real name derived from
+ * the message, never a "New Chat" placeholder.
  */
 export async function persistChatMessage(opts: {
   organizationId: string;
@@ -14,7 +20,7 @@ export async function persistChatMessage(opts: {
   mode?: string | null;
   analysis?: unknown;
   error?: boolean;
-}): Promise<void> {
+}): Promise<{ created: boolean }> {
   try {
     // Upsert session (create if first message, update timestamp otherwise)
     const existing = await db
@@ -23,17 +29,12 @@ export async function persistChatMessage(opts: {
       .where(eq(aiChatSessions.id, opts.sessionId))
       .limit(1);
 
-    if (existing.length === 0) {
-      // Generate title from first user message (first 80 chars)
-      const title =
-        opts.role === 'user'
-          ? opts.content.slice(0, 80) + (opts.content.length > 80 ? '...' : '')
-          : 'New Chat';
-
+    const created = existing.length === 0;
+    if (created) {
       await db.insert(aiChatSessions).values({
         organizationId: opts.organizationId,
         id: opts.sessionId,
-        title,
+        title: fallbackTitle(opts.content),
       });
     } else {
       await db
@@ -52,7 +53,35 @@ export async function persistChatMessage(opts: {
       analysis: opts.analysis ?? null,
       error: opts.error ?? false,
     });
-  } catch (err: any) {
-    console.error('[chat-persistence] error:', err?.message);
+    return { created };
+  } catch (err) {
+    console.error('[chat-persistence] error:', err instanceof Error ? err.message : String(err));
+    return { created: false };
+  }
+}
+
+/**
+ * Overwrite a session's title — the AI summary landing after creation. Scoped
+ * to the org so a stray id can never retitle another tenant's thread.
+ */
+export async function setSessionTitle(
+  organizationId: string,
+  sessionId: string,
+  title: string,
+): Promise<void> {
+  const next = title.trim();
+  if (!next) return;
+  try {
+    await db
+      .update(aiChatSessions)
+      .set({ title: next })
+      .where(
+        and(
+          eq(aiChatSessions.id, sessionId),
+          eq(aiChatSessions.organizationId, organizationId),
+        ),
+      );
+  } catch (err) {
+    console.error('[chat-persistence] setSessionTitle error:', err instanceof Error ? err.message : String(err));
   }
 }

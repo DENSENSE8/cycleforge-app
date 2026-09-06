@@ -3,6 +3,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { isVercelBlobUrl } from '@/lib/blob/vercel-blob-url';
 import { streamVercelBlobResponse } from '@/lib/blob/stream-vercel-blob';
+import { isSafeExternalUrl } from '@/lib/security/safe-external-url';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 export const runtime = 'nodejs';
@@ -64,6 +65,12 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       download,
       fallbackContentType: fallbackType,
     });
+  }
+
+  // Stored open-redirect sink: `document_url` is operator-supplied, so the 302
+  // target must be a public https host before we hand the browser to it.
+  if (!isSafeExternalUrl(url)) {
+    return NextResponse.json({ error: 'Insert source is not a permitted URL' }, { status: 400 });
   }
 
   return NextResponse.redirect(url, { status: 302 });

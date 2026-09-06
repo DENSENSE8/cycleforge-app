@@ -11,6 +11,11 @@
  *     (likely orphan; may be intentional for admin-only perms)
  *   - DB roles that drift from the seed (FYI only — extras may be intentional)
  *
+ * Skipped (exit 0, loud line on stderr) when DATABASE_URL is absent: every check
+ * here compares the DB against the registry, so with no DB there is nothing to
+ * compare and a hosted runner without a DB secret must not be permanently red.
+ * Where a DSN exists (the operator's pre-push), it is fail-closed as above.
+ *
  * Reads .env or .env.local for DATABASE_URL. Read-only — never mutates.
  */
 
@@ -35,8 +40,8 @@ async function main(): Promise<void> {
   loadEnv();
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) {
-    console.error('DATABASE_URL is not set');
-    process.exit(1);
+    console.error('audit-permissions: SKIPPED (no DATABASE_URL) — nothing to compare the registry against.');
+    return;
   }
   const pool = new Pool({ connectionString: dbUrl });
 

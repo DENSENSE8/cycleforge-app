@@ -107,12 +107,17 @@ const COMPILE_INPUTS = Object.freeze([
  * undeclared. `keyArgs` names the args that carry meaning for the RESULT when
  * `args` also carries one the runner varies (the ESLint cache dir).
  *
- * The hygiene / drift gates (knip, jscpd, depcruise, route-auth, tenancy,
- * schema drift + model parity, integration manifest, doc catalog) and their
- * ratchet baselines were DELETED on 2026-08-20 at the operator's instruction —
- * they were the bulk of the verify wall clock. Nothing enforces those
- * invariants automatically any more; those rules were review-only and the
- * doctrine was deleted with the Warehouse OS refactor.
+ * The hygiene / drift gates (knip, jscpd, depcruise, route-auth, schema drift +
+ * model parity, integration manifest, doc catalog) and their ratchet baselines
+ * were DELETED on 2026-08-20 at the operator's instruction — they were the bulk
+ * of the verify wall clock. Two SECURITY gates were re-armed on 2026-09-06
+ * (pen-test handoff §3.7, Wave-2 item 17): the tenancy isolation guard and the
+ * route-permission drift audit. They are `always` because the invariants they
+ * hold — no raw-pool route touching a FORCEd table, no role granting a
+ * permission the registry does not define — are what every cross-tenant fix in
+ * that handoff depends on, and a fast-profile push is exactly where they
+ * regress. Both read `DATABASE_URL` (the permission audit hard-requires it, the
+ * tenancy guard only for invariant B) and both fail CLOSED without it.
  *
  * @param {string} [root]
  * @param {{ eslintCacheDir?: string }} [options]
@@ -147,6 +152,46 @@ export function buildGates(root = process.cwd(), options = {}) {
       env: { NODE_OPTIONS: '--max-old-space-size=4096' },
       profiles: 'always',
       inputs: COMPILE_INPUTS,
+    },
+    {
+      // Handoff §3.7 / Wave-2 item 17. Invariant (A) is static: every route the
+      // audit puts on the raw owner pool (risk != 'low') that touches a FORCEd
+      // table must be GUC-wrapped, carry a `route::table` exemption, or sit in
+      // the ratchet baseline (known debt that may only shrink). Invariant (B)
+      // needs a DSN and self-skips without one. Same flags as the
+      // `tenancy:guard:check` script so there is one way to run it.
+      name: 'Tenancy guard',
+      cmd: localBin(root, 'tsx'),
+      args: ['scripts/tenancy-guard.ts', '--check'],
+      profiles: 'always',
+      inputs: [
+        'src',
+        'package.json',
+        'pnpm-lock.yaml',
+        'scripts/tenancy-guard.ts',
+        'scripts/tenancy-guard-exemptions.ts',
+        'scripts/tenancy-guard-baseline.json',
+        'docs/tenancy/coverage.generated.json',
+        'docs/tenancy/route-audit.generated.json',
+      ],
+    },
+    {
+      // Handoff §3.7 / Wave-2 item 17, second half: the permission registry is
+      // the only thing standing between `withAuth({ permission })` and a role
+      // that grants a string nobody defines. Hard-fails on unknown permissions
+      // in DB roles or staff overrides; needs DATABASE_URL and exits 1 without
+      // it, which is the fail-closed behaviour we want from a gate.
+      name: 'Route permissions',
+      cmd: localBin(root, 'tsx'),
+      args: ['scripts/audit-permissions.ts'],
+      profiles: 'always',
+      inputs: [
+        'src',
+        'package.json',
+        'pnpm-lock.yaml',
+        'scripts/audit-permissions.ts',
+        'docs/security/route-permissions.json',
+      ],
     },
     {
       name: 'Unit tests',

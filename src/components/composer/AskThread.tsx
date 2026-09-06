@@ -6,8 +6,8 @@
  */
 
 import { useEffect, useRef } from 'react';
+import MarkdownRenderer from '@/components/ai/MarkdownRenderer';
 import type { AssistantChatState } from '@/components/assistant/useAssistantChat';
-import { cn } from '@/utils/_cn';
 
 export function AskThread({
   chat,
@@ -36,25 +36,21 @@ export function AskThread({
           {chat.messages.map((m) =>
             m.role === 'user' ? (
               <div key={m.id} className="flex justify-end">
-                <p
-                  className={cn(
-                    'max-w-[min(36rem,85%)] rounded-2xl px-3 py-2 text-role-caption leading-5',
-                    'bg-blue-50 text-blue-900 ring-1 ring-inset ring-blue-100',
-                  )}
-                >
-                  {m.content}
-                </p>
+                <div className="max-w-[min(36rem,85%)] rounded-2xl bg-blue-50 px-3 py-2 text-role-caption leading-5 text-blue-900 ring-1 ring-inset ring-blue-100 [&>*:last-child]:mb-0">
+                  {/* ONE renderer: the operator's markdown formats in the
+                      bubble exactly as the model's formats below it. Bubble
+                      face: no heading tags inside a chat bubble. */}
+                  <MarkdownRenderer content={m.content} variant="bubble" />
+                </div>
+              </div>
+            ) : m.error ? (
+              <div key={m.id} className="min-w-0">
+                {/* Error copy stays plain — it is UI text, not prose. */}
+                <p className="whitespace-pre-wrap text-role-caption leading-6 text-rose-700">{m.content}</p>
               </div>
             ) : (
-              <div key={m.id} className="min-w-0">
-                <p
-                  className={cn(
-                    'whitespace-pre-wrap text-role-caption leading-6 text-text-default',
-                    m.error && 'text-rose-700',
-                  )}
-                >
-                  {m.content || (m.streaming ? '…' : '')}
-                </p>
+              <div key={m.id} className="min-w-0 [&>*:last-child]:mb-0">
+                <MarkdownRenderer content={m.content || (m.streaming ? '…' : '')} />
               </div>
             ),
           )}

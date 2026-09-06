@@ -1,5 +1,6 @@
 import type { NextRequest } from 'next/server';
 import type { AnonymousAuthContext, AuthContext } from '@/lib/auth/auth-context';
+import { clientIpOrNull } from '@/lib/api-guard';
 
 type Queryable = {
   query: (text: string, params?: any[]) => Promise<{ rows: any[] }>;
@@ -756,8 +757,7 @@ export async function recordAudit(
 
   const headers = req?.headers;
   const requestId = headers?.get('x-request-id') ?? null;
-  const xff = headers?.get('x-forwarded-for') ?? null;
-  const ipAddress = xff ? xff.split(',')[0]?.trim() ?? null : headers?.get('x-real-ip') ?? null;
+  const ipAddress = headers ? clientIpOrNull(headers) : null;
   const userAgent = headers?.get('user-agent') ?? null;
 
   if (

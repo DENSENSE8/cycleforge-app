@@ -8,6 +8,8 @@
 
 import type { ActionDefinition, ActionMeta, DataSourceDefinition } from './contract';
 
+import { RECEIVING_CAPTURE_ACTIONS } from './receiving-capture-actions';
+
 const registry = new Map<string, ActionDefinition>();
 
 export function registerAction(def: ActionDefinition): void {
@@ -242,4 +244,6 @@ export function registerBuiltinActions(): void {
   registerAction(shipstationRateShop);
   registerAction(shipstationBuyLabel);
   registerAction(ebaySyncNow);
+  // The Unbox bench procedure, promoted from hand-coded steps (2026-09-06).
+  for (const action of RECEIVING_CAPTURE_ACTIONS) registerAction(action);
 }

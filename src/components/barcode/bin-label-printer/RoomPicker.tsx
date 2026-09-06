@@ -1,5 +1,5 @@
 import { SkeletonCardGrid } from '@/components/ui/SkeletonCard';
-import { ZoneLetterTile } from './ZoneLetterTile';
+import { ZoneLetterTile } from '../ZoneLetterTile';
 
 interface RoomPickerProps {
   rooms: string[];

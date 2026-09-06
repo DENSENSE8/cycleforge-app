@@ -167,6 +167,16 @@ export type CounterSessionEvent = CounterSessionEventBase &
     /** The resync. Carries the whole truth, so it is exempt from the +1 rule. */
     | { type: 'session.snapshot'; snapshot: CounterSessionSnapshot }
     | { type: 'session.claimed'; staffId: number; staffName: string; claimExpiresAtMs: number }
+    /**
+     * Which tablet this visit drives (P5). `null` hands the tablet back.
+     *
+     * The bind is a header change like any other, so it takes a version — two
+     * desks racing for the same iPad cannot both win. The tablet itself learns
+     * from its own `GET /api/kiosk/session` poll rather than from this event:
+     * at bind time it has no snapshot to fold an event into, and at unbind
+     * time the fan-out has no channel left to publish on.
+     */
+    | { type: 'session.device_bound'; kioskDeviceId: number | null }
     | { type: 'session.released'; reason: 'done' | 'takeover' | 'expired' }
     | { type: 'line.added'; line: CounterSessionLine }
     | { type: 'line.updated'; line: CounterSessionLine }
@@ -194,6 +204,7 @@ export type CounterSessionEvent = CounterSessionEventBase &
 export const COUNTER_SESSION_EVENTS = [
   'session.snapshot',
   'session.claimed',
+  'session.device_bound',
   'session.released',
   'line.added',
   'line.updated',
@@ -276,6 +287,10 @@ export function applySessionEvent(
       next.claimedByStaffId = event.staffId;
       next.claimedByStaffName = event.staffName;
       next.claimExpiresAtMs = event.claimExpiresAtMs;
+      break;
+
+    case 'session.device_bound':
+      next.kioskDeviceId = event.kioskDeviceId;
       break;
 
     case 'session.released':

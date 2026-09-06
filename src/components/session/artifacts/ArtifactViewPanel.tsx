@@ -14,11 +14,12 @@
  */
 
 import { useRouter } from 'next/navigation';
-import { Sparkles, X } from '@/components/Icons';
+import { LayoutDashboard, Sparkles, X } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/utils/_cn';
 import { useSessionArtifacts } from '../useSessionArtifacts';
+import { setSessionPanelOccupant } from '../session-panel-occupant';
 import {
   ChartArtifact,
   ImportTriageArtifact,
@@ -45,6 +46,7 @@ export function ArtifactViewPanel({ className }: { className?: string }) {
               {current.artifact?.title ?? 'Unrenderable artifact'}
             </p>
             <div className="flex items-center gap-1">
+              <OpenBoardButton />
               {history.length > 0 ? (
                 <Button variant="ghost" size="sm" onClick={clear} ariaLabel="Clear view panel">
                   Clear
@@ -151,6 +153,33 @@ function EmptyArtifactState() {
       <p className="max-w-xs text-role-caption text-text-faint">
         Tables, timelines, tickets, charts — the assistant lays the answer out on this panel instead of reciting rows.
       </p>
+      {/*
+        The board's front door. It lives in the EMPTY state because that is the
+        pane's dead space: before the first answer there is nothing to read
+        here, and the numbers an operator opens the app for are one click away.
+        The same verb is on the chrome row above once an artifact is mounted,
+        and on ⌘B from anywhere.
+      */}
+      <div className="pt-1">
+        <Button variant="secondary" onClick={() => setSessionPanelOccupant('board')}>
+          <LayoutDashboard className="h-3.5 w-3.5" aria-hidden /> Open home board
+        </Button>
+      </div>
+      <p className="text-role-micro text-text-faint">⌘B</p>
     </div>
+  );
+}
+
+/** The chrome-row twin — reachable while an artifact owns the pane. */
+function OpenBoardButton() {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      onClick={() => setSessionPanelOccupant('board')}
+      ariaLabel="Open home board"
+    >
+      <LayoutDashboard className="h-4 w-4" />
+    </Button>
   );
 }

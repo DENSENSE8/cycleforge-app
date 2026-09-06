@@ -33,7 +33,12 @@ test('every role resolves to the exact catalog object — no copied physics', ()
   assert.equal(motionRole.gesture.press.whileTap, framerGesture.tapPress);
   assert.equal(motionRole.feedback.pulse.transition, framerTransition.chipCopyFeedback);
   assert.equal(motionRole.feedback.hitMarker.transition, framerTransition.hitMarker);
-  assert.equal(motionRole.procedure.advance.transition, framerTransition.procedureStackLayout);
+
+  assert.equal(motionRole.chat.turn.presence, framerPresence.chatTurn);
+  assert.equal(motionRole.chat.turn.transition, framerTransition.chatTurnMount);
+  assert.equal(motionRole.chat.land.presence, framerPresence.chatLand);
+  assert.equal(motionRole.chat.land.transition, framerTransition.chatLandMount);
+  assert.equal(motionRole.chat.stream.transition, framerTransition.chatCaretBreath);
 });
 
 test('named spring / fade presets resolve to the house physics tokens — no copied physics', () => {
@@ -83,12 +88,12 @@ test('routeHistory rises on appear — desk tables never wipe left→right', () 
   assert.equal((animate as { y?: number }).y, 0);
 });
 
-test('there are exactly ten roles', () => {
+test('there are exactly thirteen roles', () => {
   const leaves = Object.values(motionRole).flatMap((group) => Object.keys(group));
   assert.equal(
     leaves.length,
-    10,
-    `Roles: ${leaves.join(', ')}. An eleventh role is a claim that a new JOB exists — ` +
+    13,
+    `Roles: ${leaves.join(', ')}. A fourteenth role is a claim that a new JOB exists — ` +
       'wanting a different duration for an existing job is the drift this layer prevents. ' +
       '`feedback.hitMarker` (2026-08-07) is the seventh: middle confirm depth ≠ pulse ack ' +
       '(Displays open must not withhold DOM behind it). `feedback.liveChange` (2026-08-20) ' +
@@ -99,7 +104,11 @@ test('there are exactly ten roles', () => {
       'pointer layer, where position chases at utility stiffness so the dot never lags a ' +
       'fast hand while size rides the travelling-marker spring so a morph reads as ONE ' +
       'object changing shape. They are the only roles with no station region — a gloved ' +
-      'hand on a mounted screen has no pointer to follow.',
+      'hand on a mounted screen has no pointer to follow. `chat.turn` / `chat.land` / ' +
+      '`chat.stream` (2026-09-06) are eleven through thirteen: the session surface is a ' +
+      'new REGION with new jobs — a transcript turn mounting, the landing state ' +
+      'assembling, and the live-stream feedback breathing. All three are canvas-only; a ' +
+      'concierge spring on a station scan mouth is throughput turned into treacle.',
   );
 });
 

@@ -67,6 +67,8 @@ import {
   type DraftGraphInverse,
 } from '@/lib/workflow/draft-graph-writes';
 
+import { draftDiscardStation, draftSaveStation } from '@/lib/stations/draft-writes';
+
 type Client = FeedWriteClient & DraftGraphClient;
 type Payload = Record<string, unknown>;
 type Inverse = { kind: string; payload: Payload } | null;
@@ -260,6 +262,10 @@ async function dispatchApply(
       return draftToDispatch(await draftRemoveEdge(client, orgId, p as never));
     case 'workflow_draft.set_annotations':
       return draftToDispatch(await draftSetAnnotations(client, orgId, p as never));
+    case 'station_definition.save_draft':
+      return draftToDispatch(await draftSaveStation(client, orgId, p, actorStaffId));
+    case 'station_definition.discard_draft':
+      return draftToDispatch(await draftDiscardStation(client, orgId, p));
     default:
       // review-class kinds never reach dispatchApply; anything else is a gap.
       return { ok: false, status: 400, error: `no apply path for mutation kind "${kind}"` };

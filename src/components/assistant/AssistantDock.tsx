@@ -7,6 +7,7 @@
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { ChevronDown, ChevronUp, Loader2, Send, Sparkles, X } from '@/components/Icons';
+import MarkdownRenderer from '@/components/ai/MarkdownRenderer';
 import { StationComposerHost } from '@/components/composer/StationComposerHost';
 import { Button } from '@/design-system/primitives';
 import { useActiveAssistantContext } from '@/hooks/useAssistantContext';
@@ -152,7 +153,7 @@ export function AssistantDockBody({ onClose }: { onClose: () => void }) {
               <div
                 key={m.id}
                 className={cn(
-                  'rounded-lg px-3 py-2 text-role-caption leading-5',
+                  'rounded-lg px-3 py-2 text-role-caption leading-5 [&>*:last-child]:mb-0',
                   m.role === 'user'
                     ? 'ml-8 bg-blue-50 text-blue-900 ring-1 ring-inset ring-blue-100'
                     : m.error
@@ -160,7 +161,16 @@ export function AssistantDockBody({ onClose }: { onClose: () => void }) {
                       : 'mr-8 bg-surface-canvas text-text-default ring-1 ring-inset ring-border-hairline',
                 )}
               >
-                <p className="whitespace-pre-wrap">{m.content || (m.streaming ? '…' : '')}</p>
+                {/* Message content renders through the ONE markdown renderer;
+                    error copy stays plain — it is UI text, not prose. */}
+                {m.error ? (
+                  <p className="whitespace-pre-wrap">{m.content}</p>
+                ) : (
+                  <MarkdownRenderer
+                    content={m.content || (m.streaming ? '…' : '')}
+                    variant={m.role === 'user' ? 'bubble' : 'prose'}
+                  />
+                )}
               </div>
             ))}
             {chat.activeTool ? (

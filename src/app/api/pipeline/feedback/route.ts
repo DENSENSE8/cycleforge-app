@@ -9,14 +9,14 @@
 
 import { db } from '@/lib/drizzle/db';
 import { trainingSamples } from '@/lib/drizzle/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import type { NextRequest } from 'next/server';
 
 export const runtime = 'nodejs';
 
-export const POST = withAuth(async (request: NextRequest) => {
+export const POST = withAuth(async (request: NextRequest, ctx) => {
   try {
     const body = await request.json() as { sampleId?: number; rating?: number };
 
@@ -39,7 +39,9 @@ export const POST = withAuth(async (request: NextRequest) => {
         status: body.rating >= 2 ? 'rated' : 'rejected',
         ratedAt: new Date(),
       })
-      .where(eq(trainingSamples.id, body.sampleId))
+      // db is neon-HTTP on the owner DSN (BYPASSRLS): the organization_id
+      // conjunct is the only guard against rating another tenant's samples.
+      .where(and(eq(trainingSamples.id, body.sampleId), eq(trainingSamples.organizationId, ctx.organizationId)))
       .returning({ id: trainingSamples.id, rating: trainingSamples.rating });
 
     if (!updated) {

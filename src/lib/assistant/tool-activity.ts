@@ -95,6 +95,15 @@ export const TOOL_ACTIVITY_PHRASES: Readonly<Record<string, string>> = {
   // ── Order intake (session surface) ──────────────────────────────────────
   triage_orders_csv: 'Triaging the pasted orders',
 
+  // ── Where the operation is leaking ──────────────────────────────────────
+  get_roi_gaps: 'Finding where we are leaking',
+
+  // ── The staffer's own outside apps (Composio) ───────────────────────────
+  list_connected_apps: 'Checking your connected apps',
+  connect_app: 'Getting you a connect link',
+  search_staff_documents: 'Searching your Google Docs',
+  read_staff_document: 'Reading that document',
+
   // ── Tool forge gateway ──────────────────────────────────────────────────
   search_tool_registry: 'Checking the tool registry',
   submit_approval_decision: 'Recording the triage decision',
@@ -104,13 +113,20 @@ export const TOOL_ACTIVITY_PHRASES: Readonly<Record<string, string>> = {
 
 /**
  * The line to show while `name` is running. Caller appends its own "…".
+ *
+ * `name` is whatever the MODEL emitted, so the lookup is own-property only:
+ * a call named `__proto__` / `constructor` / `toString` used to resolve
+ * through the object prototype and hand the chat pane an object or a
+ * function to render. The fallback is bounded for the same reason.
  */
 export function toolActivityPhrase(name: string): string {
-  const phrase = TOOL_ACTIVITY_PHRASES[name];
-  if (phrase) return phrase;
+  const phrase = Object.hasOwn(TOOL_ACTIVITY_PHRASES, name)
+    ? TOOL_ACTIVITY_PHRASES[name]
+    : undefined;
+  if (typeof phrase === 'string' && phrase.length > 0) return phrase;
   // No entry is a test failure, not a runtime one: humanise the id rather
   // than render it raw, and never render an empty line.
-  const words = name.replaceAll('_', ' ').trim();
+  const words = name.replaceAll('_', ' ').replace(/\s+/g, ' ').trim().slice(0, 60);
   if (words.length === 0) return 'Working';
   return words.charAt(0).toUpperCase() + words.slice(1);
 }

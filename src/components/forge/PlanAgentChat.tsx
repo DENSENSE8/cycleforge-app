@@ -14,6 +14,7 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, isToolUIPart, type UIMessage } from 'ai';
 import { OmnichannelComposerDock } from '@/design-system/primitives';
 import { Loader2 } from '@/components/Icons';
+import MarkdownRenderer from '@/components/ai/MarkdownRenderer';
 import { cn } from '@/utils/_cn';
 
 function ToolPartRow({ part }: { part: { type: string; state: string; output?: unknown } }) {
@@ -63,16 +64,16 @@ function MessageBubble({ message }: { message: UIMessage }) {
       <p className="text-role-eyebrow uppercase tracking-widest text-text-faint">
         {isUser ? 'You' : 'Plan agent'}
       </p>
-      <div className="space-y-1.5">
+      <div className="space-y-1.5 [&>*:last-child]:mb-0">
         {message.parts.map((part, i) => {
           if (part.type === 'text') {
             return (
-              <p
-                key={`${message.id}-${i}`}
-                className="whitespace-pre-wrap text-role-caption leading-relaxed text-text-default"
-              >
-                {part.text}
-              </p>
+              <div key={`${message.id}-${i}`}>
+                {/* ONE renderer — plan-agent prose is markdown like every
+                    other chat surface. Operator turns take the bubble face
+                    (no heading tags); agent prose keeps heading scale. */}
+                <MarkdownRenderer content={part.text} variant={isUser ? 'bubble' : 'prose'} />
+              </div>
             );
           }
           if (isToolUIPart(part)) {

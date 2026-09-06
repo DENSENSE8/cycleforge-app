@@ -12,6 +12,10 @@
  * Security trade-off (intentional, small-shop UX): anyone at the kiosk can
  * pick an unenrolled staff and set their PIN. Once set, only the owner of
  * that PIN can sign in. To rotate later, an admin must clear pin_hash first.
+ *
+ * Bounded, not gated (self-serve first-PIN enrolment is a live flow): per-IP
+ * and per-staffId throttles, and an `pin.self_create` audit row on success and
+ * on every refusal, so an attempt to claim someone's unenrolled row is visible.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -24,18 +28,14 @@ import {
   cookieMaxAgeForSession,
   asPersistentFlag,
   SESSION_COOKIE_NAME,
+  sessionHandle,
   type DeviceKind,
 } from '@/lib/auth/session';
 import { audit } from '@/lib/auth/audit';
 import { getStaffRole } from '@/lib/auth/permissions';
+import { checkRateLimitAsync, clientIpOrNull } from '@/lib/api-guard';
 
 export const runtime = 'nodejs';
-
-function clientIp(req: NextRequest): string | null {
-  const xff = req.headers.get('x-forwarded-for');
-  if (xff) return xff.split(',')[0]?.trim() || null;
-  return req.headers.get('x-real-ip') || null;
-}
 
 function asDeviceKind(raw: unknown): DeviceKind {
   if (raw === 'station' || raw === 'personal' || raw === 'phone') return raw;
@@ -43,11 +43,42 @@ function asDeviceKind(raw: unknown): DeviceKind {
 }
 
 export async function POST(req: NextRequest) {
-  const ip = clientIp(req);
+  // Trusted-hop client IP (api-guard): the leftmost x-forwarded-for hop is
+  // caller-chosen, which made every IP-keyed throttle and audit row forgeable.
+  const ip = clientIpOrNull(req.headers);
   const ua = req.headers.get('user-agent');
   let staffIdForAudit: number | null = null;
 
+  // Every refusal on this public surface gets an audit row — claiming a
+  // colleague's unenrolled PIN must never be a silent action.
+  const deny = async (reason: string, detail?: Record<string, unknown>): Promise<void> => {
+    await audit({
+      staffId: staffIdForAudit,
+      event: 'pin.self_create',
+      result: 'denied',
+      ip,
+      userAgent: ua,
+      detail: { reason, ...detail },
+    });
+  };
+
   try {
+    // Per-IP throttle: enrolment writes a credential the caller chose, so it
+    // must not be walkable across the roster from one host.
+    const ipRl = await checkRateLimitAsync({
+      headers: req.headers,
+      routeKey: 'auth-pin-create',
+      limit: 10,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!ipRl.ok) {
+      await deny('rate_limited_ip');
+      return NextResponse.json(
+        { error: 'RATE_LIMITED', retryAfterSec: ipRl.retryAfterSec },
+        { status: 429 },
+      );
+    }
+
     const body = await req.json().catch(() => ({} as Record<string, unknown>));
     const staffId = Number((body as { staffId?: unknown }).staffId);
     const pin = String((body as { pin?: unknown }).pin ?? '');
@@ -56,13 +87,34 @@ export async function POST(req: NextRequest) {
     const persistent = asPersistentFlag((body as { persistent?: unknown }).persistent);
 
     if (!Number.isFinite(staffId) || staffId <= 0) {
+      await deny('invalid_staff_id');
       return NextResponse.json({ error: 'INVALID_REQUEST', field: 'staffId' }, { status: 400 });
     }
     staffIdForAudit = staffId;
+
+    // Per-staff throttle: enrolment is a once-per-staffer action, so a burst
+    // against one id is always abuse.
+    const staffRl = await checkRateLimitAsync({
+      headers: req.headers,
+      routeKey: 'auth-pin-create-staff',
+      scope: String(staffId),
+      limit: 5,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!staffRl.ok) {
+      await deny('rate_limited_staff');
+      return NextResponse.json(
+        { error: 'RATE_LIMITED', retryAfterSec: staffRl.retryAfterSec },
+        { status: 429 },
+      );
+    }
+
     if (!pin) {
+      await deny('missing_pin');
       return NextResponse.json({ error: 'INVALID_REQUEST', field: 'pin' }, { status: 400 });
     }
     if (isObviousPin(pin)) {
+      await deny('weak_pin');
       return NextResponse.json({ error: 'WEAK_PIN' }, { status: 400 });
     }
 
@@ -81,6 +133,7 @@ export async function POST(req: NextRequest) {
     // so this public kiosk route can never enroll a dogfood tenant's staff.
     const orgId = await resolveOrgIdFromRequest(req);
     if (orgId === NIL_ORG_ID) {
+      await deny('tenant_required');
       return NextResponse.json({ error: 'TENANT_REQUIRED' }, { status: 404 });
     }
 
@@ -92,6 +145,7 @@ export async function POST(req: NextRequest) {
       [orgId],
     );
     if (parseOrgSettings(settingsR.rows[0]?.settings).requirePasskeyForNewStaff) {
+      await deny('passkey_required');
       return NextResponse.json({ error: 'PASSKEY_REQUIRED' }, { status: 403 });
     }
 
@@ -125,8 +179,15 @@ export async function POST(req: NextRequest) {
         [staffId, orgId],
       );
       const p = probe.rows[0] as { has_pin: boolean; status: string } | undefined;
-      if (!p) return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
-      if (p.has_pin) return NextResponse.json({ error: 'PIN_ALREADY_SET' }, { status: 409 });
+      if (!p) {
+        await deny('not_found');
+        return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+      }
+      if (p.has_pin) {
+        await deny('pin_already_set');
+        return NextResponse.json({ error: 'PIN_ALREADY_SET' }, { status: 409 });
+      }
+      await deny('account_not_active', { status: p.status });
       return NextResponse.json({ error: 'ACCOUNT_NOT_ACTIVE' }, { status: 403 });
     }
 
@@ -155,7 +216,8 @@ export async function POST(req: NextRequest) {
       staffId: row.id,
       role,
       name: row.name,
-      session: { sid: session.sid, deviceKind, expiresAt: session.expiresAt },
+      // Handle, not the raw bearer sid — the cookie carries the credential.
+      session: { sid: sessionHandle(session.sid), deviceKind, expiresAt: session.expiresAt },
     });
     res.cookies.set(SESSION_COOKIE_NAME, session.sid, {
       httpOnly: true,
@@ -167,6 +229,7 @@ export async function POST(req: NextRequest) {
     return res;
   } catch (err) {
     if (err instanceof PinError) {
+      await deny('pin_shape', { code: err.code });
       return NextResponse.json({ error: err.code }, { status: 400 });
     }
     console.error('[/api/auth/pin/create] error:', err);

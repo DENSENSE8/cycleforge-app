@@ -28,6 +28,8 @@ import {
   ensureSessionArtifactListener,
   useSessionArtifacts,
 } from './useSessionArtifacts';
+import { HomeBoardPanel } from './board/HomeBoardPanel';
+import { useSessionPanelOccupant, toggleHomeBoard } from './session-panel-occupant';
 import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
 import { useHorizontalEdgeResize } from '@/design-system/hooks/useHorizontalEdgeResize';
 import { useHeader } from '@/contexts/HeaderContext';
@@ -63,6 +65,25 @@ export function SessionSurface() {
     ensureSessionArtifactListener();
   }, []);
 
+  // Which surface owns the right pane. Opening the board also STARTS the split
+  // (the pane is not mounted in START), and it is a routed verb: ⌘B from
+  // anywhere on the surface, matching how ⌘N owns New and ⌘J owns Ask.
+  const occupant = useSessionPanelOccupant();
+  const boardOpen = occupant === 'board';
+  useEffect(() => {
+    if (boardOpen) setStarted(true);
+  }, [boardOpen]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        toggleHomeBoard();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   const { width, edgeHandleProps, isDragging } = useHorizontalEdgeResize({
     storageKey: CHAT_PANE.storageKey,
     defaultWidth: CHAT_PANE.defaultWidthPx,
@@ -77,14 +98,17 @@ export function SessionSurface() {
     <div className="flex h-full min-h-0" data-session-surface>
       <div
         className={cn('relative flex h-full min-h-0', started ? 'shrink-0' : 'flex-1')}
-        style={started ? { width } : undefined}
+        // The board needs the room, so the chat takes its minimum while it is
+        // open and the operator's stored width comes back when it closes.
+        // Width is the only thing that moves — no tween, per M1.
+        style={started ? { width: boardOpen ? CHAT_PANE.minWidthPx : width } : undefined}
       >
         <AgentSessionPanel
           className="min-w-0 flex-1"
           variant={started ? 'split' : 'start'}
           onStartedChange={onStartedChange}
         />
-        {started ? (
+        {started && !boardOpen ? (
           <HorizontalEdgeResizeHandle
             edgeHandleProps={edgeHandleProps}
             isDragging={isDragging}
@@ -94,7 +118,13 @@ export function SessionSurface() {
           />
         ) : null}
       </div>
-      {started ? <ArtifactViewPanel className="min-w-0 flex-1" /> : null}
+      {started ? (
+        boardOpen ? (
+          <HomeBoardPanel className="min-w-0 flex-1" />
+        ) : (
+          <ArtifactViewPanel className="min-w-0 flex-1" />
+        )
+      ) : null}
     </div>
   );
 }

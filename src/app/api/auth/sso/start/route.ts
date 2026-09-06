@@ -30,6 +30,19 @@ function origin(req: NextRequest): string {
     `${req.nextUrl.protocol}//${req.nextUrl.host}`;
 }
 
+/**
+ * True when `url` is a path that stays on THIS origin once `new URL()` resolves
+ * it. Mirrors documents/[id]/content/route.ts, hardened for the escapes the
+ * bare `startsWith('/')` check misses: `//evil.com` and `/\evil.com` both parse
+ * to an external host, and tab/CR/LF are stripped by the URL parser first, so
+ * `/<TAB>/evil.com` collapses into `//evil.com`.
+ */
+function isSameOriginPath(url: string): boolean {
+  if (!url.startsWith('/')) return false;
+  const stripped = url.replace(/[\t\r\n]/g, '');
+  return stripped.startsWith('/') && !stripped.startsWith('//') && !stripped.startsWith('/\\');
+}
+
 interface ProviderDbRow {
   id: number;
   organization_id: string;
@@ -70,7 +83,10 @@ export const GET = withAuth(async (req) => {
   }
 
   const slug = req.nextUrl.searchParams.get('slug') || req.headers.get('x-tenant-slug');
-  const nextPath = req.nextUrl.searchParams.get('next') || '/dashboard';
+  // Validated HERE, at the write, so the callback can never redirect off-origin
+  // from a stored `next_path` (the row outlives this request).
+  const requestedNext = req.nextUrl.searchParams.get('next');
+  const nextPath = requestedNext && isSameOriginPath(requestedNext) ? requestedNext : '/dashboard';
   const persistent = req.nextUrl.searchParams.get('persist') === '1';
   if (!slug) {
     return NextResponse.json({ error: 'TENANT_REQUIRED' }, { status: 400 });

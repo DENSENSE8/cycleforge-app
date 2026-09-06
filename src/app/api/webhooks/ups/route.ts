@@ -24,16 +24,32 @@ function constantTimeEquals(a: string, b: string): boolean {
   return timingSafeEqual(ab, bb);
 }
 
+/**
+ * Verify the request against the credential registered on the UPS subscription
+ * (echoed header), an HMAC-SHA256 of the raw body, or a static bearer for
+ * replay scripts.
+ *
+ * An UNSET secret does NOT open the endpoint: this receiver writes shipments
+ * and tracking events, and NODE_ENV is not a security boundary (preview and
+ * self-hosted deploys run without it set). Unsigned pushes require the explicit
+ * ALLOW_UNSIGNED_WEBHOOKS=1 opt-in; unset ⇒ closed.
+ */
 function isAuthorized(req: NextRequest, rawBody: string): boolean {
   const secret =
     process.env.UPS_WEBHOOK_SECRET ||
     process.env.UPS_WEBHOOK_BEARER ||
     '';
 
-  // Fail closed in production when no secret is configured. Permissive in
-  // development/preview so local replay scripts and previews keep working
-  // without forcing every dev to set the env var.
-  if (!secret) return process.env.NODE_ENV !== 'production';
+  if (!secret) {
+    if (process.env.ALLOW_UNSIGNED_WEBHOOKS === '1') {
+      console.warn(
+        '[webhooks/ups] UPS_WEBHOOK_SECRET unset — accepting unsigned push (ALLOW_UNSIGNED_WEBHOOKS=1)',
+      );
+      return true;
+    }
+    console.error('[webhooks/ups] UPS_WEBHOOK_SECRET unset — rejecting unsigned push');
+    return false;
+  }
 
   // 1. Credential echo (UPS's documented callback auth).
   for (const header of CREDENTIAL_HEADERS) {

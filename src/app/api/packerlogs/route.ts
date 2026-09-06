@@ -2,7 +2,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import pool from '@/lib/db';
 import { db } from '@/lib/drizzle/db';
 import { packerLogs } from '@/lib/drizzle/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
 import { resolveShipmentId } from '@/lib/shipping/resolve';
 import { createStationActivityLog } from '@/lib/station-activity';
@@ -170,19 +170,44 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json(out.body, { status: out.status });
 }, { permission: 'packing.complete_order' });
 
-export const PUT = withAuth(async (req: NextRequest) => {
+export const PUT = withAuth(async (req: NextRequest, ctx) => {
     try {
-        const body = await req.json();
-        const { id, ...updateData } = body;
+        const body = (await req.json()) as {
+            id?: number | string;
+            shipmentId?: number | string | null;
+            scanRef?: string | null;
+            trackingType?: string;
+            packedBy?: number | string | null;
+        };
+        const rowId = Number(body.id);
 
-        if (!id) {
+        if (!body.id || !Number.isFinite(rowId)) {
             return NextResponse.json({ error: 'ID is required' }, { status: 400 });
         }
 
+        // Explicit allowlist: the old `const { id, ...updateData } = body` let a
+        // caller set ANY drizzle column, including organizationId (moving the row
+        // to another tenant) and id. Only these columns are client-mutable.
+        const updateData: Partial<typeof packerLogs.$inferInsert> = {};
+        if (body.shipmentId !== undefined) {
+            updateData.shipmentId = body.shipmentId === null ? null : Number(body.shipmentId);
+        }
+        if (body.scanRef !== undefined) updateData.scanRef = body.scanRef === null ? null : String(body.scanRef);
+        if (body.trackingType !== undefined) updateData.trackingType = String(body.trackingType);
+        if (body.packedBy !== undefined) {
+            updateData.packedBy = body.packedBy === null ? null : Number(body.packedBy);
+        }
+        if (Object.keys(updateData).length === 0) {
+            return NextResponse.json({ error: 'No updatable fields provided' }, { status: 400 });
+        }
+        updateData.updatedAt = new Date();
+
+        // db is neon-HTTP on the owner DSN (BYPASSRLS): the organization_id
+        // conjunct is the only cross-tenant guard on this update.
         const updatedLog = await db
             .update(packerLogs)
             .set(updateData)
-            .where(eq(packerLogs.id, parseInt(id)))
+            .where(and(eq(packerLogs.id, rowId), eq(packerLogs.organizationId, ctx.organizationId)))
             .returning();
 
         if (updatedLog.length === 0) {

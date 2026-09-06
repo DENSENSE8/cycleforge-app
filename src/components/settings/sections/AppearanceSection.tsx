@@ -42,6 +42,16 @@ import {
   type StationSkinName,
 } from '@/design-system/themes/station-skins';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  CURSOR_SKINS,
+  CURSOR_SKIN_IDS,
+  cursorClickTarget,
+  DEFAULT_CURSOR_SKIN,
+  readCursorSkin,
+  setCursorSkin,
+  type CursorSkin,
+  type CursorSkinId,
+} from '@/design-system/motion';
 import { RoleColorPicker } from '@/components/admin/roles/RoleColorPicker';
 import { getStaffColorHex, themeFromHex } from '@/utils/staff-colors';
 import {
@@ -148,6 +158,64 @@ const TIME_FORMAT_HINTS: Record<TimeFormat, string> = {
   '24h': '00:00–23:59',
 };
 
+/**
+ * Live registry preview — every skin painted at its four desk states, each
+ * one LABELED, by the same Cursor/Shell components the layer renders (the
+ * card cannot drift from what the desk shows). Core and shell are stacked
+ * at rest, which is exactly how they settle on screen when the hand stops.
+ * PRESS is the true press face (a pressed click target): the core/shell
+ * counter-motion, not a shrunken rest mark. Sizes mirror the layer's paint
+ * targets: 12 at rest, 18 on a kind.
+ */
+const CURSOR_PREVIEW_STATES = [
+  { label: 'Rest', kind: 'idle', pressed: false },
+  { label: 'Click', kind: 'click', pressed: false },
+  { label: 'Press', kind: 'click', pressed: true },
+  { label: 'Resize', kind: 'resize-x', pressed: false },
+] as const;
+
+function CursorSkinPreviewMini({ skin, color }: { skin: CursorSkin; color: string }) {
+  const Cursor = skin.Cursor;
+  const Shell = skin.Shell;
+  return (
+    <div className="grid grid-cols-4 overflow-hidden rounded-none border border-border-soft bg-surface-canvas">
+      {CURSOR_PREVIEW_STATES.map(({ label, kind, pressed }) => {
+        const size = kind === 'idle' ? 12 : 18;
+        return (
+          <div
+            key={label}
+            className="flex flex-col items-center gap-1 border-r border-border-soft px-1 py-2 last:border-r-0"
+          >
+            <span className="relative flex h-5 w-5 items-center justify-center">
+              {Shell ? (
+                <Shell
+                  kind={kind}
+                  pressed={pressed}
+                  color={color}
+                  width={size}
+                  height={size}
+                  marginLeft={-size / 2}
+                  marginTop={-size / 2}
+                />
+              ) : null}
+              <Cursor
+                kind={kind}
+                pressed={pressed}
+                color={color}
+                width={size}
+                height={size}
+                marginLeft={-size / 2}
+                marginTop={-size / 2}
+              />
+            </span>
+            <span className="text-role-micro text-text-soft">{label}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function AccentToggleRow({
   label,
   description,
@@ -180,6 +248,11 @@ export function AppearanceSection() {
   });
 
   useEffect(() => { setSettings(getAppearance()); }, []);
+
+  // Cursor skin — device-local like wash/density, read post-hydration so the
+  // SSR'd card can never disagree with itself.
+  const [cursorSkin, setCursorSkinState] = useState<CursorSkinId>(DEFAULT_CURSOR_SKIN);
+  useEffect(() => { setCursorSkinState(readCursorSkin()); }, []);
 
   const { prefs, update } = useStaffPreferences();
   const { user } = useAuth();
@@ -215,6 +288,11 @@ export function AppearanceSection() {
 
   function updateTimeFormat(tf: TimeFormat) {
     setTimeFormat(tf); // instant local feedback + persists via the registered persister
+  }
+
+  function updateCursorSkin(id: CursorSkinId) {
+    setCursorSkin(id); // store: persists + retargets the live MorphCursorLayer
+    setCursorSkinState(id); // card selection follows instantly
   }
 
   function updateDensity(d: Density) {
@@ -341,6 +419,51 @@ export function AppearanceSection() {
         </div>
         <p className="mt-3 text-role-caption text-text-soft">
           Applies to every timestamp across the app. Saved to your account — follows you across devices.
+        </p>
+      </div>
+
+      <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
+        <h3 className="mb-3 text-sm font-semibold text-text-default">Pointer</h3>
+        <p className="mb-3 text-role-caption text-text-soft">
+          The desk cursor — every skin carries the same states (hover, press, resize, grab,
+          morph-to-track); pick the one your hand likes reading. Hover a card to feel it live.
+        </p>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {CURSOR_SKIN_IDS.map((id) => {
+            const skin = CURSOR_SKINS[id];
+            const isActive = cursorSkin === id;
+            return (
+              <button
+                key={id}
+                type="button"
+                onClick={() => updateCursorSkin(id)}
+                // A real click target: hovering a card puts the LIVE cursor in
+                // its click state and pressing shows the press state, so the
+                // picker demonstrates the selected skin while you shop it.
+                {...cursorClickTarget()}
+                className={`ds-raw-button rounded-none border p-2 text-left transition ${
+                  isActive
+                    ? 'border-border-info bg-surface-info ring-2 ring-fill-info/20'
+                    : 'border-border-soft bg-surface-card hover:border-border-default hover:bg-surface-canvas'
+                }`}
+                aria-pressed={isActive}
+              >
+                <CursorSkinPreviewMini skin={skin} color={staffColorHex} />
+                <span className="mt-2 flex items-center justify-between px-0.5">
+                  <span className="text-role-caption font-semibold text-text-default">{skin.label}</span>
+                  {isActive ? (
+                    <span className="h-2 w-2 rounded-full bg-fill-info" aria-hidden />
+                  ) : null}
+                </span>
+                <span className="mt-0.5 block truncate px-0.5 text-role-micro text-text-soft">
+                  {skin.hint}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="mt-3 text-role-caption text-text-soft">
+          Saved on this device. Touch screens and reduced motion keep the system cursor.
         </p>
       </div>
 

@@ -129,6 +129,8 @@ function operatorCopy(code: string | undefined, status: number): string {
       return 'Session not found.';
     case 'DEVICE_FORBIDDEN':
       return 'Not allowed from this device.';
+    case 'DEVICE_BUSY':
+      return 'That tablet is already on another visit. Finish or park that one first.';
     case 'INVALID_PAYLOAD':
       return 'That line is missing a required field.';
 
@@ -297,6 +299,7 @@ export function useCounterSession(sessionId: number | null) {
   useAblyChannel(channel, 'session.status_changed', onBridgeEvent, enabled, { coalesce: 'frame' });
   useAblyChannel(channel, 'session.claimed', onBridgeEvent, enabled, { coalesce: 'frame' });
   useAblyChannel(channel, 'session.released', onBridgeEvent, enabled, { coalesce: 'frame' });
+  useAblyChannel(channel, 'session.device_bound', onBridgeEvent, enabled, { coalesce: 'frame' });
   useAblyChannel(channel, 'session.submitted', onBridgeEvent, enabled, { coalesce: 'frame' });
 
   const id = state.snapshot?.sessionId;
@@ -306,6 +309,19 @@ export function useCounterSession(sessionId: number | null) {
     refresh: useCallback(() => (id ? refresh(id) : Promise.resolve()), [id, refresh]),
     claim: useCallback(
       (takeover?: boolean) => mutate(`/api/counter/session/${id}/claim`, 'POST', { takeover }),
+      [id, mutate],
+    ),
+    /**
+     * Put this visit on a tablet, or hand the tablet back with `null`.
+     *
+     * Not step-up gated: choosing which screen the customer reads moves no
+     * money, and a PIN between a staffer and the iPad in front of them would
+     * be a prompt nobody can explain. The refusals that matter here are
+     * `DEVICE_BUSY` (another open visit holds it) and the version race.
+     */
+    bindDevice: useCallback(
+      (kioskDeviceId: number | null) =>
+        mutate(`/api/counter/session/${id}/device`, 'POST', { kioskDeviceId }),
       [id, mutate],
     ),
     release: useCallback(

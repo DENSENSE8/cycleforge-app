@@ -160,6 +160,14 @@ export const PERMISSIONS = [
   { id: 'home.subscriptions.manage', category: 'ops', label: 'Manage personal subscriptions (follow / mute)' },
   { id: 'ai.search',                category: 'ops', label: 'AI search retrieval (assistant tools)' },
   { id: 'assistant.chat',           category: 'ops', label: 'Use the operations assistant (global AI dock)' },
+  // ─ Composio-brokered personal app connections (2026-09-06) ─
+  // TWO permissions, matching the tool_forge reasoning below. `connect` mints
+  // an OAuth Connect Link for the staffer's OWN Google account; `read` reaches
+  // into what they connected. A floor operator may be allowed to read an ops
+  // doc without being allowed to attach new accounts, and an admin granting
+  // one should not silently grant the other.
+  { id: 'integrations.google.connect', category: 'ops', label: 'Connect your own Google account (Docs / Drive / Gmail)' },
+  { id: 'integrations.google.read',   category: 'ops', label: 'Read your connected Google Docs / Drive / Gmail' },
   // ─ Tool Forge (self-evolving capability pipeline, 2026-08-22c) ─
   // Deliberately FOUR permissions, not one. /api/mcp is gated on
   // `assistant.chat`, which today grants the whole read-tool registry; hanging

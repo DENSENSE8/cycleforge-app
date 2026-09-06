@@ -36,6 +36,48 @@ describe('SIDEBAR_SPINE_PEEK_INSET_PX', () => {
   });
 });
 
+describe('the closed spine', () => {
+  const host = readFileSync(new URL('./SidebarNavColumn.tsx', import.meta.url), 'utf8');
+
+  it('is zero width — there is no collapsed icon face', () => {
+    // The outer box is what the frame charges for. Any non-zero literal here
+    // is the 48px glyph rail coming back, which the operator ruled out on
+    // 2026-09-05: open, or gone.
+    assert.match(host, /width: open \? width : 0 \}/);
+    // …and the inner <aside> writes the same 0, so the open spine's clipped
+    // rows cannot paint into the gutter.
+    assert.match(host, /\{ width: open \? width : 0, transformOrigin/);
+    assert.doesNotMatch(host, /SidebarSpineRail|SIDEBAR_SPINE_RAIL_WIDTH_PX/);
+  });
+
+  it('leaves the open spine inert while closed, and the reopen door outside it', () => {
+    assert.match(host, /inert=\{!navVisible && !peekFace\}/);
+    const asideEnd = host.indexOf('</motion.aside>');
+    const doorMount = host.indexOf('data-testid="sidebar-spine-open-strip"');
+    assert.ok(asideEnd > 0 && doorMount > asideEnd, 'the only way back is inside an inert subtree');
+  });
+
+  it('keeps the grab-to-open door on the collapsed edge, handlers untouched', () => {
+    assert.match(host, /onPointerDown=\{onOpenStripPointerDown\}/);
+    assert.match(host, /onKeyDown=\{onOpenStripKeyDown\}/);
+    // At width 0 the leading and trailing edges are one line, so the strip
+    // rides `left-0`; at `right-0` it would paint outside the viewport.
+    //
+    // The TARGET is `w-6` (24px, the WCAG 2.5.8 floor) and the PAINT is the
+    // 6px `::before` seam — it was 6px of both, which put the only way back
+    // into the navigator under a quarter of that floor, right beside the
+    // resize seam. A `w-1.5` here again is that regression.
+    assert.match(host, /absolute inset-y-0 left-0 z-sticky w-6 cursor-col-resize/);
+    assert.match(host, /before:w-1\.5/);
+    // One action, one accessible name — the header toggle says the same.
+    assert.match(host, /aria-label="Show navigation"/);
+  });
+
+  it('does not tween the collapse', () => {
+    assert.doesNotMatch(host, /transition-\[width\]|animate=\{\{ width/);
+  });
+});
+
 describe('navDropdownFromTop', () => {
   it('drops from the top edge (scale + y) on the snappy spring', () => {
     const { initial, animate, exit } = framerPresence.navDropdownFromTop;

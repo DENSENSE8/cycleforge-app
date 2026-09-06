@@ -78,10 +78,24 @@ const pool: PgPool = new NeonPool({
 // (Phase E1) and TENANT_APP_DATABASE_URL points at its DSN, the GUC wrappers
 // (withTenantConnection / tenantQuery / withTenantTransaction in
 // src/lib/tenancy/db.ts) run on THIS pool, so RLS policies actually apply to
-// those code paths and per-table FORCE can be turned on incrementally. Until the
-// env var is set it ALIASES the owner pool, so behavior is unchanged today.
+// those code paths and per-table FORCE can be turned on incrementally.
 // See docs/tier0-go-live-runbook.md and the tenancy exec plan §Phase E1.
+//
+// Fail closed in production: without this DSN the pool would alias the owner
+// (BYPASSRLS) connection, which makes every `rls_forced` table's policies inert
+// with no runtime signal — the GUC wrappers would look tenant-scoped and not be.
+// In dev the alias is kept, but loudly, so the degraded mode is never silent.
 const tenantConnectionString = process.env.TENANT_APP_DATABASE_URL || '';
+if (!tenantConnectionString) {
+    if (process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production') {
+        throw new Error(
+            '[db] TENANT_APP_DATABASE_URL is not set in production — tenantPool would alias the DB owner (BYPASSRLS) and silently disable RLS on 260 rls_forced tables. Provision the app_tenant role and set TENANT_APP_DATABASE_URL.',
+        );
+    }
+    console.warn(
+        '[db] TENANT_APP_DATABASE_URL is not set — tenantPool is ALIASING the owner (BYPASSRLS) pool, so RLS policies do NOT apply to tenantQuery/withTenantConnection/withTenantTransaction. Dev-only fallback; set the app_tenant DSN to exercise real isolation.',
+    );
+}
 export const tenantPool: PgPool = tenantConnectionString
     ? (new NeonPool({
         connectionString: tenantConnectionString,

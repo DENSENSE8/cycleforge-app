@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -20,7 +20,6 @@ import { Pin } from '@/components/Icons';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import {
   resolveSpineMapEntries,
-  spineStructuralTopPages,
   SPINE_DESKS_SLOT_ID,
   SPINE_STATIONS_SLOT_ID,
 } from '@/lib/nav/spine-slots';
@@ -68,14 +67,32 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
+import { ChevronDown } from '@/components/Icons';
 import { cn } from '@/utils/_cn';
+import { AnimatePresence, motion } from '@/design-system/motion';
+import { useSpineSectionCollapse } from './useSpineSectionCollapse';
+import { framerTransition } from '@/design-system/foundations/motion-framer';
+import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { StaffAccountFooter } from './StaffAccountFooter';
 import { MasterNavPinnedCluster } from './MasterNavPinnedCluster';
+import { usePinUndo } from './use-pin-undo';
+import { SpineSessionHead } from './SpineSessionHead';
+import { useChatSessions } from '@/lib/assistant/use-chat-sessions';
+import { AI_CHAT_NEW_EVENT } from '@/lib/app-events';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { useSessionTitle } from '@/components/session/session-title-store';
 
 /**
  * MasterNav page list on the shadcn Sidebar. Catalog is not sortable.
- * Hold-drag a leaf onto Pinned. Stations / Desks / Operations Studio are
- * standing group labels — never list-replace drills.
+ * Hold-drag a leaf onto Pinned. Stations / Desks / Operations Studio / Admin
+ * are collapsible sections (see `renderSection`) — never list-replace drills.
  */
 const pinCollisionDetection: CollisionDetection = (args) => {
   const pointerHits = pointerWithin(args);
@@ -154,13 +171,12 @@ function DraggableTitleRow({
         onMouseEnter={onMouseEnter}
         aria-label={ariaLabel}
         aria-current={active ? 'page' : undefined}
-        // On the CONTROL, not the label span: in the icon rail that span is
-        // `sr-only`, and a title on a hidden element names nothing.
-        title={label}
         className={cn(draggable && 'touch-none', isDragging && 'cursor-grabbing')}
       >
         <RowIcon className={navIconStrokeClass(SPINE_ROW_ICON_CLASS)} />
-        <span>{label}</span>
+        {/* Title on the label, where truncation happens — the icon rail that
+            made this an sr-only span is gone (2026-09-05). */}
+        <span title={label}>{label}</span>
       </SidebarMenuButton>
     </SidebarMenuItem>
   );
@@ -180,17 +196,46 @@ export function SidebarNavList({
   // dnd-kit reporting a real `over` while the pointer is on the map, so the
   // drop reads as a landing rather than a release into nothing.
   const { setNodeRef: setPinReturnRef } = useDroppable({ id: MASTER_NAV_PIN_RETURN_ID });
-  const { settings, pinAt, reorder, unpin } = useQuickAccess();
+  const { settings, pinAt, reorder } = useQuickAccess();
+  /**
+   * Unpin lives here because the drop is resolved here — the shelf's own
+   * component only paints the vacated slot. See {@link usePinUndo}.
+   */
+  const { undo, unpinWithUndo } = usePinUndo();
+  // Section disclosures — per-device, persisted, closed set only.
+  const { closedSections, setSectionOpen } = useSpineSectionCollapse();
+  // The chevron is the ONE thing this file animates on a section header; the
+  // body's height belongs to the CSS var (see `renderSection`).
+  const chevronTransition = useMotionTransition(framerTransition.upNextChevron);
   const pinIds = useMemo(() => settings.pinned.map((p) => p.id), [settings.pinned]);
   const currentPinned = pinsCoverPageId(activePage.id, settings.pinned);
   const highlightedChildId = activeChildId ?? activePage.children?.[0]?.id ?? null;
-  // Filtered like every other section: a pinned row moves onto the shelf, it
-  // does not also stay here. Without this, pinning Media Library would render
-  // it twice — the duplication the pin is supposed to REPLACE.
-  const topPages = useMemo(
-    () => pagesNotPinned(spineStructuralTopPages(otherPages), settings.pinned),
-    [otherPages, settings.pinned],
-  );
+  /**
+   * The session you are in, resolved for the head's current-session row.
+   *
+   * `?session=<id>` means a replayed thread (its title comes from the fetched
+   * list — now an AI summary); a bare `/` means the live one, whose name the
+   * panel publishes into `session-title-store` (the header switcher reads the
+   * same store, so the two faces can never disagree). Recent threads are NOT a
+   * spine section any more — the header switcher (with its own search box) and
+   * ⌘K hold them.
+   */
+  const { sessions } = useChatSessions();
+  const pathname = usePathname();
+  const currentSessionId = useSearchParams().get('session');
+  const liveSessionTitle = useSessionTitle();
+  const onSessionSurface = pathname === '/';
+  const currentSessionTitle = currentSessionId
+    ? (sessions ?? []).find((s) => s.id === currentSessionId)?.title?.trim() || 'Session'
+    : liveSessionTitle;
+
+  const startNewSession = useCallback(() => {
+    // The panel is the only thing that knows how to start a session; this is
+    // the same event the header switcher and ⌘N fire. `onNavigate('home')`
+    // then does the routing AND closes the mobile drawer.
+    window.dispatchEvent(new CustomEvent(AI_CHAT_NEW_EVENT));
+    onNavigate('home');
+  }, [onNavigate]);
   const stationsSection = SPINE_SECTIONS.find((s) => s.id === 'floor');
   const desksGroup = DESK_GROUPS[0];
   const floorPages = useMemo(
@@ -223,7 +268,11 @@ export function SidebarNavList({
   type SpineBlock =
     | { kind: 'stations' }
     | { kind: 'desks' }
-    | { kind: 'studio'; page: SidebarPageNav }
+    // Any map row that DECLARES children is a parent section — Operations
+    // Studio and, since 2026-09-05, Admin. It used to be `kind: 'studio'`
+    // matched on the literal id, which meant the second page to grow children
+    // silently rendered as a labelless loose row instead.
+    | { kind: 'parent'; page: SidebarPageNav }
     | { kind: 'loose'; pages: SidebarPageNav[] };
 
   const spineBlocks = useMemo<SpineBlock[]>(() => {
@@ -235,8 +284,8 @@ export function SidebarNavList({
       }
       const page = entry.page;
       if (pinsCoverPageId(page.id, settings.pinned)) continue;
-      if (page.id === 'studio' && (page.children?.length ?? 0) > 0) {
-        blocks.push({ kind: 'studio', page });
+      if ((page.children?.length ?? 0) > 0) {
+        blocks.push({ kind: 'parent', page });
         continue;
       }
       const tail = blocks[blocks.length - 1];
@@ -274,11 +323,24 @@ export function SidebarNavList({
   /**
    * What the pointer carries while dragging. Resolved once on drag start so the
    * overlay never re-reads a list that is reordering underneath it.
+   *
+   * `kind` is what the map reads to paint its "Let go to unpin" hint: only a
+   * PIN can leave the shelf, so a map row being dragged toward Pinned must not
+   * put an unpin promise under the pointer.
    */
   const [dragFace, setDragFace] = useState<{
+    kind: 'nav' | 'pin';
     label: string;
     icon: SidebarIconComponent;
   } | null>(null);
+  // The shelf's rect (measured at drag start) and its element — the unpin
+  // decision is geometry against these, not collision detection.
+  const shelfRectRef = useRef<DOMRect | null>(null);
+  const shelfElRef = useRef<HTMLElement | null>(null);
+  const unpinDragActive = dragFace?.kind === 'pin';
+  // Reduced motion collapses this to an instant cut; the hint still appears —
+  // it is information, not decoration.
+  const unpinHintTransition = useMotionTransition(framerTransition.overlayScrim);
 
   const handleDragStart = useCallback(
     (event: DragStartEvent) => {
@@ -286,8 +348,13 @@ export function SidebarNavList({
         | NavPinDragData
         | { type: 'pin'; id: string }
         | undefined;
+      // Measure the shelf NOW — the unpin decision is geometry against this
+      // rect, taken at drag end. Measuring at start is what makes it stable
+      // while lists reorder underneath the pointer.
+      shelfRectRef.current = shelfElRef.current?.getBoundingClientRect() ?? null;
       if (data?.type === 'nav') {
         setDragFace({
+          kind: 'nav',
           label: data.label,
           icon: masterNavFaceForPinHref(data.href)?.icon ?? Pin,
         });
@@ -297,6 +364,7 @@ export function SidebarNavList({
         const pin = settings.pinned.find((p) => p.id === data.id);
         if (!pin) return;
         setDragFace({
+          kind: 'pin',
           label: displayQuickAccessLabel(pin.href, pin.label),
           icon: masterNavFaceForPinHref(pin.href)?.icon ?? Pin,
         });
@@ -305,9 +373,38 @@ export function SidebarNavList({
     [settings.pinned],
   );
 
+  /**
+   * THE UNPIN RULE IS GEOMETRY (operator 2026-09-06 — "it will not unpin
+   * correctly"): while a pin is in flight, the pointer's position against the
+   * shelf's rect decides everything. OUTSIDE the shelf — below it over the
+   * map, or past either edge — is an unpin. INSIDE the shelf reorders at the
+   * slot dnd-kit reports. The old chain (biased collision detection → over id
+   * → "is this a pin target?") had a fallback that could report a pin ROW for
+   * a release over open map, silently turning an unpin into a reorder; the
+   * rect cannot lie. Nav drags mirror it: pinning requires the pointer INSIDE
+   * the shelf.
+   */
+  const pointerOutsideShelf = (event: DragEndEvent, rect: DOMRect | null): boolean => {
+    if (!rect) return true;
+    const activator = event.activatorEvent as PointerEvent | null;
+    if (!activator || typeof activator.clientX !== 'number') return true;
+    const x = activator.clientX + event.delta.x;
+    const y = activator.clientY + event.delta.y;
+    const MARGIN = 8;
+    const SIDE_MARGIN = 48;
+    return (
+      y < rect.top - MARGIN ||
+      y > rect.bottom + MARGIN ||
+      x > rect.right + SIDE_MARGIN
+    );
+  };
+
   const handleDragEnd = useCallback(
     (event: DragEndEvent) => {
       setDragFace(null);
+      // Measure FIRST, clear LAST — the resolution below reads this rect.
+      const shelfRect = shelfRectRef.current;
+      shelfRectRef.current = null;
       const { active, over } = event;
       const overId = over ? String(over.id) : null;
       const activeId = String(active.id);
@@ -317,25 +414,20 @@ export function SidebarNavList({
         const fromId = data?.type === 'pin' ? data.id : activeId.slice('pin:'.length);
         const oldIndex = pinIds.indexOf(fromId);
         if (oldIndex < 0) return;
-        // OUT OF THE SHELF IS OFF THE SHELF (operator ruling 2026-09-05).
-        //
-        // Anywhere that is not a pin target unpins — the map, the header, dead
-        // space, the workspace. It used to take an explicit drop onto the map,
-        // and a release anywhere else was read as a cancelled drag, on the
-        // reasoning that a mis-aimed gesture must not silently delete a slot
-        // the operator arranged. That reasoning predates the undo: the row's
-        // slot is now held open for 12s with a one-click restore, so a
-        // mis-aim costs a click instead of a rebuild, and the gesture gets to
-        // mean the obvious thing.
-        //
-        // The row reappears in whatever section the registry says is its home;
-        // nothing about that home is stored on the pin, so it cannot come back
-        // in the wrong place.
-        if (!overId || !isPinDropOverId(overId)) {
-          unpin(fromId);
+        const pin = settings.pinned[oldIndex];
+        if (!pin) return;
+        // OUT OF THE SHELF IS OFF THE SHELF — by GEOMETRY, not by collision
+        // diplomacy. A release below the shelf, over the map, over the
+        // workspace, or anywhere the pointer has left the rect unpins. The
+        // overlay ("Release to unpin") promised it for the whole gesture.
+        // Undo holds the vacated slot 12s, so a near-miss is a nuisance, not
+        // a rebuild. The row reappears in its registry home — nothing about
+        // that home is stored on the pin.
+        if (pointerOutsideShelf(event, shelfRect)) {
+          unpinWithUndo(pin, oldIndex);
           return;
         }
-        const newIndex = pinIndexFromOverId(overId, pinIds);
+        const newIndex = overId ? pinIndexFromOverId(overId, pinIds) : null;
         if (newIndex == null) return;
         const target =
           overId === MASTER_NAV_PIN_DROP_ID || overId === MASTER_NAV_PIN_EDGE_BOTTOM
@@ -347,6 +439,9 @@ export function SidebarNavList({
       }
 
       if (data?.type !== 'nav') return;
+      // Pinning a map row requires the pointer INSIDE the shelf — the mirror
+      // of the unpin rule. No collision fallback can pin from the workspace.
+      if (pointerOutsideShelf(event, shelfRect)) return;
       if (!overId || !isPinDropOverId(overId)) return;
       if (isStructuralSpinePinHref(data.href)) return;
       const at = pinIndexFromOverId(overId, pinIds);
@@ -355,7 +450,7 @@ export function SidebarNavList({
         at ?? pinIds.length,
       );
     },
-    [pinAt, pinIds, reorder, unpin],
+    [pinAt, pinIds, reorder, settings.pinned, unpinWithUndo],
   );
 
   const renderDraggablePage = (page: SidebarPageNav) => (
@@ -397,20 +492,106 @@ export function SidebarNavList({
     );
   };
 
-  const renderLabeledGroup = (
-    id: string,
+  /**
+   * A labelled section, as a DISCLOSURE (2026-09-05, operator ruling: "the
+   * sidebar should be like a collapsible display… nav should be a parent").
+   *
+   * shadcn's own collapsible-sidebar grammar, unmodified: `Collapsible` wraps
+   * the `SidebarGroup`, the `SidebarGroupLabel` becomes the trigger via
+   * `asChild` so the whole label row is the hit target, and
+   * `CollapsibleContent` owns the rows. Radix supplies `aria-expanded`,
+   * `aria-controls` and — the part that matters most here — it UNMOUNTS a
+   * closed section, so a folded section's destinations leave the tab order
+   * instead of becoming invisible keyboard stops.
+   *
+   * The height tween is CSS on Radix's own measured var
+   * (`.spine-collapsible-content`, `globals.css`); the chevron is the only
+   * motion this file drives. See that rule for the M1 geometry argument.
+   *
+   * The count is not decoration: a folded section has to say what it is
+   * holding, and it is the one number a nav row may carry — monochrome,
+   * tabular, no hue (`spine-section-accent.ts` forbids numbers-as-colour, not
+   * numbers).
+   */
+  const renderSection = (
+    sectionKey: string,
+    domId: string,
     label: string,
-    pages: SidebarPageNav[],
-  ) => (pages.length === 0 ? null : (
-    <SidebarGroup id={id} role="group" aria-label={label}>
-      <SidebarGroupLabel className={SPINE_SECTION_LABEL_STICKY_CLASS}>
-        {label}
-      </SidebarGroupLabel>
-      <SidebarGroupContent>
-        <SidebarMenu>{pages.map((page) => renderDraggablePage(page))}</SidebarMenu>
-      </SidebarGroupContent>
-    </SidebarGroup>
-  ));
+    rows: ReactNode,
+    // `null` = not counted yet (the first paint, before the fetch lands). A
+    // real `0` means "nothing to show" and the section is dropped.
+    rowCount: number | null,
+    /**
+     * This section CONTAINS the page you are on.
+     *
+     * Without it a folded section was a dead end for "where am I": the row
+     * carrying `aria-current` is unmounted while its section is shut, so on a
+     * route inside a folded section the whole navigator showed no location at
+     * all — measured on `/reports` (inside Admin, folded by default), zero
+     * marks anywhere in the column.
+     *
+     * The mark is INK plus the same 2px bar the current row uses, never a
+     * wash: the fill ladder is about 1.01:1 wash-to-wash on this white
+     * ground, so a third wash would say nothing. `aria-current` stays off the
+     * trigger — the trigger is a disclosure, not a destination — and
+     * `data-owns-current` is what a test reads.
+     */
+    ownsCurrent = false,
+  ) => {
+    if (rowCount === 0) return null;
+    const open = !closedSections.has(sectionKey);
+    return (
+      <Collapsible
+        key={sectionKey}
+        open={open}
+        onOpenChange={(next) => setSectionOpen(sectionKey, next)}
+      >
+        <SidebarGroup id={domId} role="group" aria-label={label}>
+          <SidebarGroupLabel asChild className={SPINE_SECTION_LABEL_STICKY_CLASS}>
+            <CollapsibleTrigger
+              data-spine-section-trigger
+              data-owns-current={ownsCurrent ? 'true' : undefined}
+              className={cn(
+                'relative w-full cursor-pointer gap-1.5 hover:text-text-default',
+                // shadcn's `SidebarGroupLabel` ships `outline-hidden`, so a
+                // trigger composed from it had NO visible focus state — the
+                // keyboard operator could not see which section they were on
+                // (WCAG 2.4.7, measured: outline-style none, box-shadow none).
+                focusRing('control', 'accent'),
+                ownsCurrent &&
+                  "font-semibold text-text-default before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-text-default before:content-['']",
+              )}
+            >
+              <span className="min-w-0 truncate">{label}</span>
+              <span className="ml-auto flex shrink-0 items-center gap-1.5">
+                {/* R3: the count is what a FOLDED section says it holds; while
+                    open the rows themselves say it, so the badge is redundant. */}
+                {rowCount == null || open ? null : (
+                  <span className="tabular-nums text-role-micro text-text-soft">
+                    {rowCount}
+                  </span>
+                )}
+                <motion.span
+                  aria-hidden
+                  className="flex shrink-0 text-text-faint"
+                  initial={false}
+                  animate={{ rotate: open ? 0 : -90 }}
+                  transition={chevronTransition}
+                >
+                  <ChevronDown className="h-3.5 w-3.5" />
+                </motion.span>
+              </span>
+            </CollapsibleTrigger>
+          </SidebarGroupLabel>
+          <CollapsibleContent className="spine-collapsible-content">
+            <SidebarGroupContent>
+              <SidebarMenu>{rows}</SidebarMenu>
+            </SidebarGroupContent>
+          </CollapsibleContent>
+        </SidebarGroup>
+      </Collapsible>
+    );
+  };
 
   return (
     // No `role="menu"`: a menu must contain `menuitem`s, and this contains
@@ -432,94 +613,115 @@ export function SidebarNavList({
             SPINE_SCROLLPORT_SCROLLBAR_CLASS,
           )}
         >
-          {topPages.length > 0 ? (
-            <SidebarGroup
-              id="spine-section-top"
-              role="group"
-              // Labelled by ROLE, not by roster. This used to announce "Home and
-              // Media Library"; now that Media Library can be pinned away, that
-              // label named a row a screen-reader user might not find here.
-              aria-label="Top pages"
-            >
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {topPages.map((page) => (
-                    <DraggableTitleRow
-                      key={page.id}
-                      id={page.id}
-                      href={page.href}
-                      label={page.label}
-                      icon={page.icon}
-                      active={page.id === activePage.id}
-                      ariaLabel={`Go to ${page.label}`}
-                      // Home is the one row that cannot be pinned (it is the
-                      // spine's root); everything else up here drags onto the
-                      // shelf like any map row.
-                      draggable={!isStructuralSpinePinHref(page.href)}
-                      onActivate={() => onNavigate(page.id)}
-                      onMouseEnter={onRowHover ? () => onRowHover(page) : undefined}
-                    />
-                  ))}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
-          ) : null}
-          <MasterNavPinnedCluster pinIds={pinIds} />
-          {spineBlocks.map((block) => {
-            if (block.kind === 'stations') {
-              if (!stationsSection) return null;
+          {/* New chat · the session you are in. Home is parked in the registry
+              (`spineBand: false`) — `/` is the session surface, so the
+              current-session row IS the Home row now. Search + Recent moved to
+              the header + ⌘K. */}
+          <SpineSessionHead
+            onNewSession={startNewSession}
+            currentTitle={currentSessionTitle}
+            currentActive={onSessionSurface}
+            onOpenCurrent={() => onNavigate('home')}
+          />
+          <MasterNavPinnedCluster
+            pinIds={pinIds}
+            undo={undo}
+            shelfRef={(el) => {
+              shelfElRef.current = el;
+            }}
+          />
+          {/* The map is the unpin surface. While a PIN is in flight the WHOLE
+              area below the shelf wears the release face — one overlay, one
+              sentence, no dip into collision diplomacy to know what a release
+              means. `pointer-events-none` keeps this pane out of dnd-kit's
+              hit testing; geometry resolves the drop. */}
+          <div className={cn('relative', unpinDragActive && 'min-h-48')}>
+            {spineBlocks.map((block) => {
+              if (block.kind === 'stations') {
+                if (!stationsSection) return null;
+                return (
+                  <div key={SPINE_STATIONS_SLOT_ID}>
+                    {renderSection(
+                      'floor',
+                      'spine-section-floor',
+                      stationsSection.label,
+                      floorPages.map((page) => renderDraggablePage(page)),
+                      floorPages.length,
+                      floorPages.some((page) => page.id === activePage.id),
+                    )}
+                  </div>
+                );
+              }
+              if (block.kind === 'desks') {
+                return (
+                  <div key={SPINE_DESKS_SLOT_ID}>
+                    {renderSection(
+                      'desks',
+                      'spine-section-desks',
+                      desksGroup.label,
+                      deskPages.map((page) => renderDraggablePage(page)),
+                      deskPages.length,
+                      deskPages.some((page) => page.id === activePage.id),
+                    )}
+                  </div>
+                );
+              }
+              if (block.kind === 'parent') {
+                const page = block.page;
+                const children = page.children ?? [];
+                return (
+                  <div key={page.id}>
+                    {renderSection(
+                      page.id,
+                      `spine-section-${page.id}`,
+                      page.label,
+                      children.map((child) => renderChild(page, child)),
+                      children.length,
+                      page.id === activePage.id,
+                    )}
+                  </div>
+                );
+              }
               return (
-                <div key={SPINE_STATIONS_SLOT_ID}>
-                  {renderLabeledGroup(
-                    'spine-section-floor',
-                    stationsSection.label,
-                    floorPages,
-                  )}
-                </div>
-              );
-            }
-            if (block.kind === 'desks') {
-              return (
-                <div key={SPINE_DESKS_SLOT_ID}>
-                  {renderLabeledGroup('spine-section-desks', desksGroup.label, deskPages)}
-                </div>
-              );
-            }
-            if (block.kind === 'studio') {
-              const page = block.page;
-              return (
-                <SidebarGroup
-                  key={page.id}
-                  id="spine-section-studio"
-                  role="group"
-                  aria-label={page.label}
-                >
-                  <SidebarGroupLabel className={SPINE_SECTION_LABEL_STICKY_CLASS}>
-                    {page.label}
-                  </SidebarGroupLabel>
+                // One group per RUN of unlabeled destinations, not one per
+                // destination: `SidebarGroup` carries `px-2 py-1`, so a group per
+                // row put 8px of chrome around every single 28px row and made a
+                // flat list read as N one-row sections. Runs keep the staff's
+                // arranged order — they never hop a labelled section.
+                <SidebarGroup key={`loose-${block.pages[0]!.id}`}>
                   <SidebarGroupContent>
                     <SidebarMenu>
-                      {page.children?.map((child) => renderChild(page, child))}
+                      {block.pages.map((page) => renderDraggablePage(page))}
                     </SidebarMenu>
                   </SidebarGroupContent>
                 </SidebarGroup>
               );
-            }
-            return (
-              // One group per RUN of unlabeled destinations, not one per
-              // destination: `SidebarGroup` carries `px-2 py-1`, so a group per
-              // row put 8px of chrome around every single 28px row and made a
-              // flat list read as N one-row sections. Runs keep the staff's
-              // arranged order — they never hop a labelled section.
-              <SidebarGroup key={`loose-${block.pages[0]!.id}`}>
-                <SidebarGroupContent>
-                  <SidebarMenu>
-                    {block.pages.map((page) => renderDraggablePage(page))}
-                  </SidebarMenu>
-                </SidebarGroupContent>
-              </SidebarGroup>
-            );
-          })}
+            })}
+            <AnimatePresence>
+              {unpinDragActive ? (
+                <motion.div
+                  data-spine-unpin-hint
+                  data-unpin-overlay
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={unpinHintTransition}
+                  className={cn(
+                    'pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-1',
+                    'border border-dashed border-accent-border bg-surface-sunken/90',
+                    cornerClass('surface'),
+                  )}
+                >
+                  <span className="text-role-body font-semibold text-text-default">
+                    Release to unpin
+                  </span>
+                  <span className="text-role-micro text-text-faint">
+                    The pin returns to its home section
+                  </span>
+                </motion.div>
+              ) : null}
+            </AnimatePresence>
+          </div>
         </SidebarContent>
         <DragOverlay dropAnimation={null}>
           {dragFace ? (

@@ -8,6 +8,7 @@ import { insertSquareTransaction } from '@/lib/neon/square-transaction-queries';
 import { publishSaleCompleted } from '@/lib/realtime/walkin-events';
 import { resolveWebhookOrgForSquareMerchant } from '@/lib/shipping/webhook-org-resolver';
 import { checkRateLimitAsync } from '@/lib/api-guard';
+import { safeStrEqual } from '@/lib/security/safe-compare';
 import { isRepairSku } from '@/utils/sku';
 
 const WEBHOOK_SIGNATURE_KEY = () =>
@@ -16,6 +17,14 @@ const WEBHOOK_SIGNATURE_KEY = () =>
 const WEBHOOK_NOTIFICATION_URL = () =>
   (process.env.SQUARE_WEBHOOK_NOTIFICATION_URL || '').trim();
 
+/**
+ * Verify Square's `x-square-hmacsha256-signature` over (notificationUrl + body).
+ *
+ * An UNSET signing key does NOT open the endpoint: this receiver reconciles
+ * counter payments and writes transactions, and NODE_ENV is not a security
+ * boundary (preview and self-hosted deploys run without it set). Unsigned posts
+ * require the explicit ALLOW_UNSIGNED_WEBHOOKS=1 opt-in; unset ⇒ closed.
+ */
 function verifySquareSignature(
   body: string,
   signature: string,
@@ -23,15 +32,14 @@ function verifySquareSignature(
 ): boolean {
   const key = WEBHOOK_SIGNATURE_KEY();
   if (!key) {
-    // Fail closed in production when no signing key is configured (mirror the UPS
-    // receiver). Permissive only in development/preview so local replay scripts
-    // keep working without forcing every dev to set the env var.
-    if (process.env.NODE_ENV === 'production') {
-      console.error('SQUARE_WEBHOOK_SIGNATURE_KEY not set — rejecting webhook in production');
-      return false;
+    if (process.env.ALLOW_UNSIGNED_WEBHOOKS === '1') {
+      console.warn(
+        '[webhooks/square] SQUARE_WEBHOOK_SIGNATURE_KEY unset — skipping verification (ALLOW_UNSIGNED_WEBHOOKS=1)',
+      );
+      return true;
     }
-    console.warn('SQUARE_WEBHOOK_SIGNATURE_KEY not set — skipping verification (non-production)');
-    return true; // Allow in dev
+    console.error('[webhooks/square] SQUARE_WEBHOOK_SIGNATURE_KEY unset — rejecting webhook');
+    return false;
   }
 
   const combined = notificationUrl + body;
@@ -39,7 +47,8 @@ function verifySquareSignature(
     .update(combined)
     .digest('base64');
 
-  return signature === expectedSignature;
+  // Constant-time — a `===` here leaks the matching prefix of the HMAC.
+  return safeStrEqual(signature, expectedSignature);
 }
 
 interface SquareWebhookEvent {

@@ -59,3 +59,33 @@ test('provider config is gated on env presence', () => {
     if (prevSecret !== undefined) process.env.GOOGLE_OAUTH_CLIENT_SECRET = prevSecret; else delete process.env.GOOGLE_OAUTH_CLIENT_SECRET;
   }
 });
+
+test('apple provider config gates on credentials presence and derives endpoints', () => {
+  const prevId = process.env.APPLE_OAUTH_CLIENT_ID;
+  const prevTeam = process.env.APPLE_OAUTH_TEAM_ID;
+  const prevKey = process.env.APPLE_OAUTH_KEY_ID;
+  const prevPriv = process.env.APPLE_OAUTH_PRIVATE_KEY;
+
+  delete process.env.APPLE_OAUTH_CLIENT_ID;
+  delete process.env.APPLE_OAUTH_TEAM_ID;
+  delete process.env.APPLE_OAUTH_KEY_ID;
+  delete process.env.APPLE_OAUTH_PRIVATE_KEY;
+
+  try {
+    strictEqual(isPlatformProviderConfigured('apple'), false, 'unset env → not configured');
+    ok(!configuredPlatformProviders().includes('apple'), 'not advertised when unset');
+
+    process.env.APPLE_OAUTH_CLIENT_ID = 'test-apple-client';
+    process.env.APPLE_OAUTH_TEAM_ID = 'test-team';
+    process.env.APPLE_OAUTH_KEY_ID = 'test-key';
+    process.env.APPLE_OAUTH_PRIVATE_KEY = 'test-priv';
+
+    strictEqual(isPlatformProviderConfigured('apple'), true, 'all keys present → configured');
+    ok(configuredPlatformProviders().includes('apple'), 'advertised when configured');
+  } finally {
+    if (prevId !== undefined) process.env.APPLE_OAUTH_CLIENT_ID = prevId; else delete process.env.APPLE_OAUTH_CLIENT_ID;
+    if (prevTeam !== undefined) process.env.APPLE_OAUTH_TEAM_ID = prevTeam; else delete process.env.APPLE_OAUTH_TEAM_ID;
+    if (prevKey !== undefined) process.env.APPLE_OAUTH_KEY_ID = prevKey; else delete process.env.APPLE_OAUTH_KEY_ID;
+    if (prevPriv !== undefined) process.env.APPLE_OAUTH_PRIVATE_KEY = prevPriv; else delete process.env.APPLE_OAUTH_PRIVATE_KEY;
+  }
+});

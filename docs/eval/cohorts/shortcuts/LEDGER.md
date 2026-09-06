@@ -181,7 +181,7 @@ _No mechanical deletes. Keyboard `?` reveals inside-right Linear overlays; zero 
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-05T19:55:24.889Z · cohort `shortcuts` · run id `2026-09-05T19-54-55-678Z`_
+_Updated 2026-09-05T20:09:08.579Z · cohort `shortcuts` · run id `2026-09-05T20-08-38-650Z`_
 <!-- /eval-ledger:auto:last-run -->
 
 

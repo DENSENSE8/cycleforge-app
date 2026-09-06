@@ -29,8 +29,18 @@ import { test, expect, type Page } from '@playwright/test';
 
 /** The push column's host. Present from first paint; `data-open` is the state. */
 const NAV_COLUMN = '[data-sidebar-nav-column]';
-/** The spine's page list — proof the navigator actually rendered. */
-const PAGES_MENU = '[role="menu"][aria-label="Pages"]';
+/**
+ * The spine's page list — proof the navigator actually rendered.
+ *
+ * NOT `[role="menu"][aria-label="Pages"]`, which this spec asserted until
+ * 2026-09-05 and which never matched: `SidebarNavList` refuses `role="menu"`
+ * on purpose (a menu must contain `menuitem`s; this contains links and
+ * disclosures), so the open assertion was pinning markup the component
+ * documents itself as not shipping. `data-spine-nav` is the navigator's own
+ * root hook — the thing the peek shell styles and the thing that is missing
+ * when MasterNav throws.
+ */
+const PAGES_MENU = '[data-spine-nav]';
 /** GlobalHeader's sidebar control — the leftmost header button. */
 const SIDEBAR_TOGGLE = 'header button';
 /** `SIDEBAR_SPINE_WIDTH_PX`. */
@@ -72,9 +82,6 @@ async function gotoSurface(page: Page, route: string) {
 
 const toggleSpine = (page: Page) => page.locator(SIDEBAR_TOGGLE).first().click();
 
-/** Collapsed width — the icon rail. Mirrors `SIDEBAR_SPINE_RAIL_WIDTH_PX`. */
-const SPINE_RAIL_WIDTH = 48;
-
 /** Settled width of the push column — it tweens, so poll rather than sample. */
 async function spineWidth(page: Page, expected: number, message: string) {
   await expect
@@ -107,11 +114,11 @@ async function expectSpineOpen(page: Page) {
 
 async function expectSpineClosed(page: Page) {
   await expect(page.locator(NAV_COLUMN)).toHaveAttribute('data-open', 'false');
-  // Closed is the 48px ICON RAIL as of 2026-09-05, not zero width. The parked
-  // state was deleted: a navigator that navigates nothing is not a state worth
-  // having, so collapsing narrows the column to its glyphs instead of removing
-  // it. A zero here now means the rail failed to render, which is a regression.
-  await spineWidth(page, SPINE_RAIL_WIDTH, 'the closed column narrows to the icon rail');
+  // Closed is ZERO width (operator ruling 2026-09-05): the spine is either its
+  // remembered width or gone. A 48 here is the collapsed icon rail returning —
+  // it charged every route's frame for a navigator the operator put away, and
+  // it left "closed" unreachable.
+  await spineWidth(page, 0, 'the closed column takes no frame width');
 }
 
 test.describe('sidebar spine — open and close', () => {
@@ -132,12 +139,12 @@ test.describe('sidebar spine — open and close', () => {
 
     const toggle = page.locator(SIDEBAR_TOGGLE).first();
     await expect(toggle, 'the sidebar control must be reachable').toBeVisible();
-    await expect(toggle).toHaveAttribute('aria-label', 'Expand navigation');
+    await expect(toggle).toHaveAttribute('aria-label', 'Show navigation');
 
     await toggle.click();
     await expectSpineOpen(page);
     // The control is a state toggle, so it must announce the new state.
-    await expect(toggle).toHaveAttribute('aria-label', 'Collapse navigation');
+    await expect(toggle).toHaveAttribute('aria-label', 'Hide navigation');
     await expect(toggle).toHaveAttribute('aria-pressed', 'true');
   });
 
@@ -149,7 +156,7 @@ test.describe('sidebar spine — open and close', () => {
 
     await toggleSpine(page);
     await expectSpineClosed(page);
-    await expect(page.locator(SIDEBAR_TOGGLE).first()).toHaveAttribute('aria-label', 'Expand navigation');
+    await expect(page.locator(SIDEBAR_TOGGLE).first()).toHaveAttribute('aria-label', 'Show navigation');
   });
 
   test('open → close → open again (the toggle is not one-shot)', async ({ page }) => {
@@ -172,7 +179,7 @@ test.describe('sidebar spine — open and close', () => {
     await expectSpineClosed(page);
 
     const toggle = page.locator(SIDEBAR_TOGGLE).first();
-    await expect(toggle).toHaveAttribute('aria-label', 'Expand navigation');
+    await expect(toggle).toHaveAttribute('aria-label', 'Show navigation');
 
     await toggle.hover();
     // Former peek openDelay was 180ms — wait past it so a regression would flash.
@@ -217,13 +224,19 @@ test.describe('sidebar spine — open and close', () => {
     // The staff footer is the spine's identity chrome now. The org control that
     // used to sit in the 40px top band was deleted 2026-08-03 — single-org is
     // the norm, so a permanent row naming it restated something that never
-    // changes. Home · Media Library are ordinary map rows (2026-08-28).
-    // Assert the footer.
+    // changes. Assert the footer.
     await expect(
       page.locator(`${NAV_COLUMN} [data-staff-account-footer]`),
       'the staff account footer is missing from the spine',
     ).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Go to Home' })).toBeVisible();
+    // The head: the New chat verb and the session you are in. `Go to Home` was
+    // asserted here until 2026-09-05, when Home left the map — `/` is the
+    // session surface, so the current-session row is that row now. Search left
+    // the head (2026-09-06 R1): it duplicated the header Find / ⌘K.
+    await expect(page.locator('[data-spine-new-session]')).toBeVisible();
+    await expect(page.locator('[data-spine-current-session]')).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Current session' })).toBeVisible();
+    // Media Library is an ordinary Workspaces row (2026-09-05).
     await expect(page.getByRole('button', { name: 'Go to Media Library' })).toBeVisible();
     await expect(page.getByRole('group', { name: 'Stations' })).toBeVisible();
   });
@@ -256,10 +269,25 @@ test.describe('sidebar spine — open and close', () => {
         // report less than clientHeight, so on a map that fits it returns the
         // PORT's height and the overflow reads as a flat 0 — which looks like a
         // measurement and is really just the port measuring itself.
-        const list = port?.querySelector<HTMLElement>('ul[aria-label="Sections"]');
-        if (!port || !list) return null;
+        //
+        // The handle was `ul[aria-label="Sections"]` until 2026-09-05 and that
+        // element has not existed for longer than that: the probe returned
+        // null, the null assertion below failed, and the below-fold ratchet
+        // measured nothing at all. The map is a run of `role="group"` sections
+        // now, so its box is first-top to last-bottom.
+        const groups = port
+          ? Array.from(port.querySelectorAll<HTMLElement>('[role="group"]'))
+          : [];
+        if (!port || groups.length === 0) return null;
         const portRect = port.getBoundingClientRect();
-        const rows = Array.from(port.querySelectorAll<HTMLElement>('button')).map((b) => {
+        const first = groups[0]!.getBoundingClientRect();
+        const last = groups[groups.length - 1]!.getBoundingClientRect();
+        // Destination rows only — a section's own disclosure header is chrome,
+        // and counting it as a row would let a fold "improve" the ratchet by
+        // hiding rows behind a header that still sits above the fold.
+        const rows = Array.from(
+          port.querySelectorAll<HTMLElement>('[aria-label^="Go to "]'),
+        ).map((b) => {
           const r = b.getBoundingClientRect();
           return {
             label: (b.textContent ?? '').trim().replace(/\s+/g, ' ').slice(0, 32),
@@ -270,7 +298,7 @@ test.describe('sidebar spine — open and close', () => {
         return {
           portHeight: Math.round(portRect.height),
           portBottom: Math.round(portRect.bottom),
-          contentHeight: Math.round(list.getBoundingClientRect().height),
+          contentHeight: Math.round(last.bottom - first.top),
           rows,
         };
       });

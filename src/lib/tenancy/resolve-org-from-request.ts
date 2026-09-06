@@ -19,6 +19,7 @@
 
 import type { NextRequest } from 'next/server';
 import { getOrganizationBySlug } from '@/lib/tenancy/organizations';
+import { extractTenantSlug } from '@/lib/tenancy/tenant-host';
 
 /**
  * The all-zero UUID. Used as a fail-closed sentinel: no `staff` / tenant row
@@ -45,6 +46,31 @@ async function resolveSlug(slug: string): Promise<string> {
  */
 export async function resolveOrgIdFromRequest(req: NextRequest): Promise<string> {
   const slug = req.headers.get(TENANT_SLUG_HEADER);
+  if (slug) return resolveSlug(slug);
+
+  const defaultSlug = (process.env.DEFAULT_TENANT_SLUG ?? '').trim();
+  if (defaultSlug) return resolveSlug(defaultSlug);
+
+  return NIL_ORG_ID;
+}
+
+/**
+ * Resolve the org from the request HOST alone, ignoring `x-tenant-slug`.
+ *
+ * `resolveOrgIdFromRequest` trusts the header, which is correct for the ordinary
+ * pre-auth surfaces: `proxy()` deletes any inbound copy before stamping its own.
+ * But a handler invoked without passing through the proxy would inherit a
+ * caller-chosen tenant, so anything that decides *authentication* scope — today
+ * the pinless-signin gate — resolves from the host instead. Same fail-closed
+ * contract: apex, reserved subdomain, localhost, IP, preview/tunnel host, or an
+ * unknown slug all yield `NIL_ORG_ID`.
+ *
+ * `DEFAULT_TENANT_SLUG` is honoured here too, so the documented apex→dogfood DNS
+ * bridge keeps working; it is an explicit operator opt-in, not a silent default.
+ */
+export async function resolveOrgIdFromHost(req: NextRequest): Promise<string> {
+  const host = req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? req.nextUrl.host;
+  const slug = extractTenantSlug(host);
   if (slug) return resolveSlug(slug);
 
   const defaultSlug = (process.env.DEFAULT_TENANT_SLUG ?? '').trim();

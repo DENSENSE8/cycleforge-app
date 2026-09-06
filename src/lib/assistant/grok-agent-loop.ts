@@ -43,18 +43,27 @@ import { z } from 'zod';
 import { listAssistantTools, runAssistantTool } from '@/lib/assistant/tools';
 import type { AssistantToolCtx, AssistantToolDef, AssistantToolDeps } from '@/lib/assistant/tools/types';
 import { buildWriteToolMap, dispatchToolCall, type WriteToolMap } from '@/lib/assistant/tools/dispatch';
-import { toOpenAiFunctionTool, type OpenAiFunctionTool } from '@/lib/assistant/tools/openai-schema';
+import { toOpenAiFunctionTool } from '@/lib/assistant/tools/openai-schema';
+import { subsetAdvertisedTools } from '@/lib/assistant/tool-subsetting';
 import {
   MAX_TURNS,
   UI_TOOLS,
   buildContextFragment,
   buildSystemCore,
+  collectMintedConnectUrls,
   parseRenderArtifactInput,
+  parseRequestConnectionInput,
   type AssistantEmit,
 } from './agent-loop';
 import type { AssistantPageContext } from './context-store';
 import { recoverToolArgsFromContent } from '@/lib/ai/hermes-tool-call';
-import { aiRequestHeaders, type AiProviderConfig } from '@/lib/ai/provider';
+import {
+  createHarmonyTextFilter,
+  looksLikeHarmony,
+  parseHarmonyToolCalls,
+  stripHarmony,
+} from '@/lib/ai/harmony';
+import { aiRequestHeaders, isSelfHostedAiRuntime, type AiProviderConfig } from '@/lib/ai/provider';
 import { ensureGrokChatConfig } from '@/lib/integrations/grok/oauth';
 import type { OrgId } from '@/lib/tenancy/constants';
 
@@ -113,6 +122,12 @@ export interface GrokLoopDeps {
     onToolStart?: (name: string) => void,
   ) => Promise<GrokTurnResult>;
   runTool: typeof runAssistantTool;
+  /**
+   * True when the resolved provider is a self-hosted OpenAI-wire runtime: the
+   * advertisement is subsetted (tool-subsetting.ts) because a local 8B pays
+   * the whole tool block as prefill on every round.
+   */
+  selfHosted?: boolean;
 }
 
 export interface RunGrokAssistantTurnArgs {
@@ -142,6 +157,8 @@ export interface RunGrokAssistantTurnResult {
   toolsUsed: string[];
   /** Tools advertised this turn, for the §18 subsetting budget. */
   toolsAdvertised: number;
+  /** The advertised names this turn — logged so latency is attributable. */
+  advertisedToolNames: string[];
   wireBytes: number;
   error?: string;
 }
@@ -181,12 +198,23 @@ export class GrokWireError extends Error {
 }
 
 function requestBody(config: AiProviderConfig, params: GrokTurnParams): Record<string, unknown> {
+  const selfHosted = isSelfHostedAiRuntime(config);
   return {
     model: config.model,
     stream: params.stream,
     tool_choice: 'auto',
     parallel_tool_calls: true,
-    reasoning_effort: REASONING_EFFORT,
+    // `reasoning_effort` is a SuperGrok-proxy lever. A self-hosted OpenAI-wire
+    // server either ignores it or 400s on it, and a 400 here marks the org's
+    // rounds buffered, so it rides only where it is proven.
+    ...(selfHosted ? {} : { reasoning_effort: REASONING_EFFORT }),
+    // A reasoning model spends the whole round in its think phase and returns
+    // `finish_reason:'length'` with nothing to show; measured on the MLX 27B
+    // through the tunnel, the tool round still lands but the operator-facing
+    // sentence comes back EMPTY ("\n\n") because the prose budget went to the
+    // think phase. The mouth-only path has always disabled it (route.ts); the
+    // tool loop must too, or the local brain answers with a blank bubble.
+    ...(selfHosted ? { chat_template_kwargs: { enable_thinking: false } } : {}),
     messages: params.messages,
     tools: params.tools,
   };
@@ -342,25 +370,40 @@ async function readBufferedRound(res: Response): Promise<GrokTurnResult> {
 }
 
 /**
- * Per-org memory of "streaming with tools does not work here", so one bad
- * proxy day does not make every turn pay a failed streamed round first.
- * Same shape as provider-health's cache: process-local, one hour, no storage.
+ * Per-org-and-provider memory of "streaming with tools does not work here", so
+ * one bad proxy day does not make every turn pay a failed streamed round
+ * first. Same shape as provider-health's cache: process-local, one hour, no
+ * storage.
+ *
+ * The key is a SCOPE, not a bare org id: this loop now also drives the local
+ * self-hosted brain (route.ts hands it an `ollama` config), and keying by org
+ * alone let one MLX 400 push the same org's Grok rounds off streaming for an
+ * hour — and vice versa.
  */
 const BUFFERED_UNTIL = new Map<string, number>();
 const BUFFERED_TTL_MS = 60 * 60 * 1000;
 
-export function grokPrefersBufferedRound(orgId: string, now = Date.now()): boolean {
-  const until = BUFFERED_UNTIL.get(orgId);
+export function grokPrefersBufferedRound(scope: string, now = Date.now()): boolean {
+  const until = BUFFERED_UNTIL.get(scope);
   if (!until) return false;
   if (until <= now) {
-    BUFFERED_UNTIL.delete(orgId);
+    BUFFERED_UNTIL.delete(scope);
     return false;
   }
   return true;
 }
 
-export function markGrokBufferedFallback(orgId: string, now = Date.now()): void {
-  BUFFERED_UNTIL.set(orgId, now + BUFFERED_TTL_MS);
+export function markGrokBufferedFallback(scope: string, now = Date.now()): void {
+  BUFFERED_UNTIL.set(scope, now + BUFFERED_TTL_MS);
+}
+
+/** Host of an endpoint, for memo keys. Falls back to the raw string. */
+function providerHost(baseURL: string): string {
+  try {
+    return new URL(baseURL).host;
+  } catch {
+    return baseURL;
+  }
 }
 
 /** Test seam — the memo is process-global, so suites must be able to clear it. */
@@ -393,6 +436,12 @@ export async function makeGrokLoopDeps(
     throw new Error('Grok (SuperGrok) is not connected for this workspace.');
   }
   let refreshed = false;
+  /**
+   * Buffered-round memo scope: the org AND the endpoint it is talking to.
+   * `AiProviderConfig` carries no provider slot, and the host is the thing
+   * that actually differs between the Grok proxy and a local MLX server.
+   */
+  const memoScope = `${orgId}:${providerHost(config.baseURL)}`;
 
   const runRound = async (
     params: GrokTurnParams,
@@ -405,8 +454,10 @@ export async function makeGrokLoopDeps(
 
   return {
     runTool: runAssistantTool,
+    // Subset the advertisement for self-hosted runtimes (tool-subsetting.ts).
+    selfHosted: isSelfHostedAiRuntime(config),
     streamTurn: async (params, onTextDelta, onToolStart) => {
-      const wantsBuffered = params.stream && grokPrefersBufferedRound(orgId);
+      const wantsBuffered = params.stream && grokPrefersBufferedRound(memoScope);
       const first: GrokTurnParams = wantsBuffered ? { ...params, stream: false } : params;
       try {
         return await runRound(first, onTextDelta, onToolStart);
@@ -436,7 +487,7 @@ export async function makeGrokLoopDeps(
         // A 4xx on a STREAMED tool round is the §17.5 case: retry this round
         // buffered, and remember it for the rest of the hour.
         if (err.retryable && first.stream) {
-          markGrokBufferedFallback(orgId);
+          markGrokBufferedFallback(memoScope);
           return runRound({ ...params, stream: false }, onTextDelta, onToolStart);
         }
         throw err;
@@ -469,23 +520,31 @@ function parseArguments(raw: string): unknown {
 
 /**
  * A round that produced no `tool_calls` but narrated one in the text — some
- * OpenAI-compatible relays do this when their template parser misses. Returns
- * the salvaged call, or null when the text is just an answer.
+ * OpenAI-compatible relays do this when their template parser misses, and
+ * `gpt-oss` on `mlx_lm.server` does it for EVERY call (Harmony channels; see
+ * `@/lib/ai/harmony`). Returns the salvaged calls, or an empty array when the
+ * text is just an answer.
  */
-function toolCallFromNarration(text: string, advertised: ReadonlySet<string>): GrokToolCall | null {
-  if (!text.includes('<tool_call>') && !text.includes('"name"')) return null;
+function toolCallsFromNarration(text: string, advertised: ReadonlySet<string>): GrokToolCall[] {
+  const harmony = parseHarmonyToolCalls(text, advertised).map((call, i) => ({
+    id: `harmony_${i}_${call.name}`,
+    name: call.name,
+    arguments: call.arguments,
+  }));
+  if (harmony.length > 0) return harmony;
+  if (!text.includes('<tool_call>') && !text.includes('"name"')) return [];
   const raw = recoverToolArgsFromContent(text);
-  if (!raw) return null;
+  if (!raw) return [];
   let parsed: { name?: unknown; arguments?: unknown; parameters?: unknown };
   try {
     parsed = JSON.parse(raw) as typeof parsed;
   } catch {
-    return null;
+    return [];
   }
   const name = typeof parsed.name === 'string' ? parsed.name : '';
-  if (!name || !advertised.has(name)) return null;
+  if (!name || !advertised.has(name)) return [];
   const args = parsed.arguments ?? parsed.parameters ?? {};
-  return { id: `narrated_${name}`, name, arguments: JSON.stringify(args) };
+  return [{ id: `narrated_${name}`, name, arguments: JSON.stringify(args) }];
 }
 
 export async function runGrokAssistantTurn(
@@ -507,16 +566,25 @@ export async function runGrokAssistantTurn(
       input_schema: t.input_schema as unknown as Record<string, unknown>,
     }),
   );
-  const tools = [...serverTools, ...writeTools, ...uiTools];
+  const allTools = [...serverTools, ...writeTools, ...uiTools];
+  // A self-hosted runtime prefills the ENTIRE advertisement every round —
+  // measured 11.8 s first-token at 54 tools vs 1.2 s at 3 on the same card.
+  // Subset to the ~8–10 verbs this turn needs; the registry core (finders,
+  // the write chokepoint, render_artifact) always rides.
+  const subset = deps.selfHosted
+    ? subsetAdvertisedTools(args.userMessage, args.context, allTools)
+    : null;
+  const tools = subset?.tools ?? allTools;
   const advertised = new Set(tools.map((t) => t.function.name));
   const wireBytes = Buffer.byteLength(JSON.stringify(tools), 'utf8');
+  const advertisedToolNames = tools.map((t) => t.function.name);
 
   // One system message: stable core, then the voice overlay enrichment chose,
   // then the volatile page context. Grok has no cache-breakpoint concept, so
   // the ordering is for the reader, not the cache — but keeping the same order
   // as the Anthropic loop means one prompt to reason about, not two.
   const system = [
-    buildSystemCore([...advertised]),
+    buildSystemCore(advertisedToolNames),
     (args.voiceOverlay ?? '').trim(),
     buildContextFragment(args.context),
   ]
@@ -543,6 +611,10 @@ export async function runGrokAssistantTurn(
 
   const turnTexts: string[] = [];
   const toolsUsed: string[] = [];
+  /** Connect links this turn's tools actually minted — the pill's provenance. */
+  const mintedConnectUrls = new Set<string>();
+  /** One "answer the operator" nudge per turn, for a model that only reasons. */
+  let nudgedForFinal = false;
   let turns = 0;
 
   try {
@@ -550,10 +622,16 @@ export async function runGrokAssistantTurn(
       turns += 1;
       if (turnTexts.length > 0) args.emit({ type: 'delta', text: '\n\n' });
 
+      // Harmony models stream their PRIVATE `analysis` channel as ordinary
+      // `delta.content`. The filter is a pass-through for every other wire and
+      // keeps only the `final` channel for this one, so the operator never
+      // watches the model deliberate about which tool it lacks.
+      const visible = createHarmonyTextFilter();
       const round = await deps.streamTurn(
         { messages, tools, stream: true },
         (text) => {
-          args.emit({ type: 'delta', text });
+          const shown = visible.push(text);
+          if (shown) args.emit({ type: 'delta', text: shown });
         },
         (name) => {
           // UI tools only: a server read-tool's start is reported by
@@ -561,22 +639,43 @@ export async function runGrokAssistantTurn(
           if (UI_TOOL_NAMES.has(name)) args.emit({ type: 'ui_tool_start', name });
         },
       );
+      // Release whatever the filter held back for a split marker.
+      const tail = visible.flush();
+      if (tail) args.emit({ type: 'delta', text: tail });
 
       // A round is a TOOL round when calls accumulated, whatever finish_reason
       // says — relays have been observed sending "stop" alongside tool_calls.
       let calls = round.toolCalls;
-      let narratedText = round.text;
+      // Persisted/narrated text is the human-visible text, never the channels.
+      let narratedText = stripHarmony(round.text);
       if (calls.length === 0) {
-        const salvaged = toolCallFromNarration(round.text, advertised);
-        if (salvaged) {
-          calls = [salvaged];
+        // Salvage reads the RAW text: the call lives in a suppressed channel.
+        const salvaged = toolCallsFromNarration(round.text, advertised);
+        if (salvaged.length > 0) {
+          calls = salvaged;
           // The narration WAS the call — never show it to the operator.
           narratedText = '';
         }
       }
 
       if (narratedText.trim().length > 0) turnTexts.push(narratedText);
-      if (calls.length === 0) break;
+      if (calls.length === 0) {
+        // A Harmony round that called nothing and said nothing in the `final`
+        // channel spent itself on `analysis` — measured on the promoted
+        // adapter, which ends a tool turn deliberating instead of answering.
+        // Before my filter the operator saw that deliberation; without this
+        // nudge they see an empty bubble. Ask ONCE, then take what comes.
+        if (!nudgedForFinal && turnTexts.length === 0 && looksLikeHarmony(round.text)) {
+          nudgedForFinal = true;
+          messages.push({
+            role: 'user',
+            content:
+              'Answer the operator now in the final channel: 1-3 plain sentences off the tool results above. If you showed data on the panel, say so.',
+          });
+          continue;
+        }
+        break;
+      }
 
       messages.push({
         role: 'assistant',
@@ -614,6 +713,18 @@ export async function runGrokAssistantTurn(
               out.push({ id, content: 'Rendered on the session view panel.' });
               continue;
             }
+            // Provenance check, not a scheme check: the pill may only carry a
+            // link a connect tool returned in THIS turn.
+            if (call.name === 'request_connection') {
+              const pill = parseRequestConnectionInput(input, mintedConnectUrls);
+              if (!pill.ok) {
+                out.push({ id, content: `ERROR: request_connection rejected: ${pill.error}` });
+                continue;
+              }
+              args.emit({ type: 'ui_tool', name: call.name, input: pill.value });
+              out.push({ id, content: 'Connect pill shown in the transcript.' });
+              continue;
+            }
             args.emit({ type: 'ui_tool', name: call.name, input });
             out.push({ id, content: "Dispatched to the user's browser." });
             continue;
@@ -622,6 +733,7 @@ export async function runGrokAssistantTurn(
           const result = await dispatchToolCall(call.name, input, args.ctx, writeMap, runTool);
           args.emit({ type: 'tool_end', name: call.name, ok: result.ok });
           toolsUsed.push(call.name);
+          if (result.ok) collectMintedConnectUrls(result.data, mintedConnectUrls);
           out.push({
             id,
             content: result.ok ? JSON.stringify(result.data) : `ERROR: ${result.error}`,
@@ -639,7 +751,7 @@ export async function runGrokAssistantTurn(
     if (turns >= MAX_TURNS && !text) {
       text = 'I ran out of steps while researching that — try a narrower question.';
     }
-    return { ok: true, text, turns, toolsUsed, toolsAdvertised: tools.length, wireBytes };
+    return { ok: true, text, turns, toolsUsed, toolsAdvertised: tools.length, advertisedToolNames, wireBytes };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'assistant error';
     args.emit({ type: 'error', message });
@@ -649,6 +761,7 @@ export async function runGrokAssistantTurn(
       turns,
       toolsUsed,
       toolsAdvertised: tools.length,
+      advertisedToolNames,
       wireBytes,
       error: message,
     };

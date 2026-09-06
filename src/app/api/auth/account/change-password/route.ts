@@ -15,8 +15,10 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
-import { checkRateLimitAsync } from '@/lib/api-guard';
-import { resolveAccountIdForStaff } from '@/lib/identity/memberships';
+import { checkRateLimitAsync, clientIpOrNull } from '@/lib/api-guard';
+import { resolveAccountIdForStaff, listMembershipsForAccount } from '@/lib/identity/memberships';
+import { revokeAllSessionsForStaff } from '@/lib/auth/session';
+import { audit } from '@/lib/auth/audit';
 import { setAccountPassword } from '@/lib/identity/accounts';
 import { verifyPassword, PasswordError } from '@/lib/identity/password';
 
@@ -28,6 +30,11 @@ const Body = z.object({
 });
 
 export const POST = withAuth(async (req, ctx) => {
+  // Trusted-hop client IP (api-guard): the leftmost x-forwarded-for hop is
+  // caller-chosen, which made every IP-keyed throttle and audit row forgeable.
+  const ip = clientIpOrNull(req.headers);
+  const ua = req.headers.get('user-agent');
+
   const rl = await checkRateLimitAsync({
     headers: req.headers,
     routeKey: 'auth-change-password',
@@ -66,6 +73,11 @@ export const POST = withAuth(async (req, ctx) => {
       ? await verifyPassword(parsed.currentPassword, row.password_hash)
       : false;
     if (!ok) {
+      await audit({
+        staffId: ctx.staffId, sid: ctx.session.sid,
+        event: 'password.changed', result: 'denied', ip, userAgent: ua,
+        detail: { reason: 'current_password_invalid' },
+      });
       return NextResponse.json({ error: 'CURRENT_PASSWORD_INVALID' }, { status: 401 });
     }
   }
@@ -78,6 +90,21 @@ export const POST = withAuth(async (req, ctx) => {
     }
     throw err;
   }
+
+  // Credential rotated → evict every OTHER session for this account (all orgs
+  // it maps into), keeping the caller's own sid alive so a password change
+  // doesn't sign you out of the device you're standing at.
+  const memberships = await listMembershipsForAccount(accountId);
+  let revoked = 0;
+  for (const m of memberships) {
+    revoked += await revokeAllSessionsForStaff(m.staff_id, { exceptSid: ctx.session.sid });
+  }
+
+  await audit({
+    staffId: ctx.staffId, sid: ctx.session.sid,
+    event: 'password.changed', result: 'ok', ip, userAgent: ua,
+    detail: { accountId, siblingSessionsRevoked: revoked },
+  });
 
   return NextResponse.json({ ok: true });
 }, { allowAnonymous: false });

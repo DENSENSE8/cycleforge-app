@@ -11,10 +11,13 @@
  * Default: verifies the PIN, creates a session, sets the httpOnly `cf_sid`
  * cookie, audits the result.
  *
- * Pinless mode: when `AUTH_PINLESS_SIGNIN=true`, an empty/missing `pin` skips
- * verification and signs the staff in by name alone (active status still
- * required). Audited as `signin.pinless`. Temporary measure during rollout
- * — flip the env var off to restore the PIN gate.
+ * Pinless mode: when `AUTH_PINLESS_SIGNIN=true` AND the request resolved to a
+ * real tenant (a known `x-tenant-slug`, or the operator-set
+ * `DEFAULT_TENANT_SLUG` bridge), an empty/missing `pin` skips verification and
+ * signs the staff in by name alone (active status still required). Audited as
+ * `signin.pinless`, throttled per IP and per staffId. An apex / preview /
+ * unknown-slug host resolves to the nil org and never takes this path — see
+ * `isPinlessEnabled`. Flip the env var off to restore the PIN gate everywhere.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -26,25 +29,52 @@ import {
   asPersistentFlag,
   SESSION_COOKIE_NAME,
   LEGACY_SESSION_COOKIE_NAME,
+  sessionHandle,
   type DeviceKind,
 } from '@/lib/auth/session';
 import { audit } from '@/lib/auth/audit';
 import { findActiveShift, clockIn } from '@/lib/auth/shift-clock';
 import { getStaffAuthMethod } from '@/lib/auth/auth-policy';
-import { resolveOrgIdFromRequest, NIL_ORG_ID } from '@/lib/tenancy/resolve-org-from-request';
-import { checkRateLimitAsync } from '@/lib/api-guard';
+import {
+  resolveOrgIdFromRequest,
+  resolveOrgIdFromHost,
+  NIL_ORG_ID,
+} from '@/lib/tenancy/resolve-org-from-request';
+import { checkRateLimitAsync, clientIpOrNull } from '@/lib/api-guard';
 
 export const runtime = 'nodejs';
 
-function isPinlessEnabled(): boolean {
-  const v = (process.env.AUTH_PINLESS_SIGNIN ?? '').toLowerCase().trim();
-  return v === 'true' || v === '1' || v === 'on' || v === 'yes';
+/**
+ * Hosts on which the pinless path may trust the proxy-stamped `x-tenant-slug`
+ * instead of deriving the tenant from the host itself.
+ *
+ * Exists for exactly one reason: the dogfood dev surfaces (`localhost`, the
+ * named Cloudflare tunnel) are hosts whose *slug is deliberately reserved*
+ * (`RESERVED_SUBDOMAINS` in `@/lib/tenancy/tenant-host`), so a host-derived
+ * tenant is `null` there and name-only signin would stop working for the
+ * operator. An explicit allowlist keeps that flow while leaving the production
+ * apex and every preview host closed by default. NEVER add a public hostname.
+ */
+function isPinlessTrustedHost(host: string | null): boolean {
+  if (!host) return false;
+  const bare = host.split(':')[0]!.toLowerCase();
+  const allow = (process.env.AUTH_PINLESS_TRUSTED_HOSTS ?? '')
+    .split(',')
+    .map((h) => h.split(':')[0]!.trim().toLowerCase())
+    .filter(Boolean);
+  return allow.includes(bare);
 }
 
-function clientIp(req: NextRequest): string | null {
-  const xff = req.headers.get('x-forwarded-for');
-  if (xff) return xff.split(',')[0]?.trim() || null;
-  return req.headers.get('x-real-ip') || null;
+/**
+ * Gate for the name-only signin path: enforces that pinless requires BOTH the
+ * `AUTH_PINLESS_SIGNIN` master switch and a request that resolved to a real
+ * tenant — the nil org (apex / preview / unknown slug) can never mint a
+ * session from a `staffId` alone.
+ */
+function isPinlessEnabled(orgId: string): boolean {
+  if (orgId === NIL_ORG_ID) return false;
+  const v = (process.env.AUTH_PINLESS_SIGNIN ?? '').toLowerCase().trim();
+  return v === 'true' || v === '1' || v === 'on' || v === 'yes';
 }
 
 function asDeviceKind(raw: unknown): DeviceKind {
@@ -53,7 +83,9 @@ function asDeviceKind(raw: unknown): DeviceKind {
 }
 
 export async function POST(req: NextRequest) {
-  const ip = clientIp(req);
+  // Trusted-hop client IP (api-guard): the leftmost x-forwarded-for hop is
+  // caller-chosen, which made every IP-keyed throttle and audit row forgeable.
+  const ip = clientIpOrNull(req.headers);
   const ua = req.headers.get('user-agent');
   let staffIdForAudit: number | null = null;
 
@@ -113,7 +145,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const pinless = !pin && isPinlessEnabled();
+    // Tenant-bound twice over. `orgId` above comes from `x-tenant-slug`, which
+    // `proxy()` authors and strips on the way in — correct for the PIN path.
+    // The pinless path additionally requires the HOST itself to name the same
+    // tenant, so a handler reached without the proxy in front (matcher gap,
+    // direct invocation, internal fetch) cannot be handed a tenant by header
+    // and mint a name-only session. Same fail-closed answer on apex/preview.
+    // `AUTH_PINLESS_TRUSTED_HOSTS` is the documented dev escape hatch (see
+    // isPinlessTrustedHost); on any other host the tenant must come from the
+    // host itself, not from a header a caller could supply.
+    const hostTrusted = isPinlessTrustedHost(
+      req.headers.get('x-forwarded-host') ?? req.headers.get('host') ?? req.nextUrl.host,
+    );
+    const hostOrgId = hostTrusted ? orgId : await resolveOrgIdFromHost(req);
+    const pinless = !pin && hostOrgId === orgId && isPinlessEnabled(hostOrgId);
 
     if (!pin && !pinless) {
       return NextResponse.json({ error: 'INVALID_REQUEST', field: 'pin' }, { status: 400 });
@@ -121,6 +166,22 @@ export async function POST(req: NextRequest) {
 
     let row: { name: string; role: string; status: string; default_home_path: string | null; default_home_path_mobile: string | null };
     if (pinless) {
+      // Per-staff throttle. One request is enough to hold a session for a
+      // known staffId (accepted risk, handoff §10), but this bounds walking
+      // the whole roster returned by the public staff picker.
+      const staffRl = await checkRateLimitAsync({
+        headers: req.headers,
+        routeKey: 'auth-signin-pinless',
+        scope: String(staffId),
+        limit: 10,
+        windowMs: 600_000,
+      });
+      if (!staffRl.ok) {
+        return NextResponse.json(
+          { error: 'RATE_LIMITED', retryAfterSec: staffRl.retryAfterSec },
+          { status: 429, headers: staffRl.retryAfterSec ? { 'retry-after': String(staffRl.retryAfterSec) } : undefined },
+        );
+      }
       const lookup = await pool.query<{ name: string; role: string; status: string; default_home_path: string | null; default_home_path_mobile: string | null }>(
         `SELECT name, role, COALESCE(status, 'active') AS status, default_home_path, default_home_path_mobile
            FROM staff
@@ -193,7 +254,9 @@ export async function POST(req: NextRequest) {
       defaultHomePath: row.default_home_path,
       defaultHomePathMobile: row.default_home_path_mobile,
       session: {
-        sid: session.sid,
+        // Never hand the raw bearer sid to a client (handoff §3.2 item 13);
+        // the cookie carries the credential, the body carries a handle.
+        sid: sessionHandle(session.sid),
         deviceKind: session.deviceKind,
         expiresAt: session.expiresAt,
       },
@@ -221,6 +284,7 @@ export async function POST(req: NextRequest) {
       });
       const status = err.code === 'NOT_FOUND' ? 404
         : err.code === 'NO_PIN' ? 409
+        : err.code === 'LOCKED' ? 423
         : 401;
       return NextResponse.json({ error: err.code }, { status });
     }

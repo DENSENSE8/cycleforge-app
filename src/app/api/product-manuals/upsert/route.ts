@@ -1,10 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { upsertProductManual } from '@/lib/product-manuals';
+import { assertSafeExternalUrl } from '@/lib/security/safe-external-url';
 import { withAuth, type AuthContext } from '@/lib/auth/withAuth';
 
 async function handlePost(request: NextRequest, ctx: AuthContext) {
   try {
     const body = await request.json();
+
+    // `sourceUrl` becomes a server-side fetch target and a 302 sink in
+    // /api/product-manuals/[id]/content — reject SSRF/open-redirect targets
+    // here so the caller gets a clean 400 instead of a generic 500.
+    // (`upsertProductManual` re-asserts this; this is the explicit surface.)
+    const sourceUrlRaw = String(body?.sourceUrl || body?.source_url || '').trim();
+    if (sourceUrlRaw) assertSafeExternalUrl(sourceUrlRaw);
 
     // Thread orgId so the upsert GUC-wraps the write, scopes the existing-row
     // lookup to this org's sku_catalog children, and resolves sku_catalog_id

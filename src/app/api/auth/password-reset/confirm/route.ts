@@ -18,20 +18,15 @@ import {
   createSession,
   cookieMaxAgeForSession,
   SESSION_COOKIE_NAME,
+  revokeAllSessionsForStaff,
 } from '@/lib/auth/session';
 import { audit } from '@/lib/auth/audit';
-import { checkRateLimitAsync } from '@/lib/api-guard';
+import { checkRateLimitAsync, clientIpOrNull } from '@/lib/api-guard';
 import { claimPasswordResetToken } from '@/lib/auth/password-reset';
 import { setAccountPassword } from '@/lib/identity/accounts';
 import { listMembershipsForAccount, logAuthEvent } from '@/lib/identity/memberships';
 
 export const runtime = 'nodejs';
-
-function clientIp(req: NextRequest): string | null {
-  const xff = req.headers.get('x-forwarded-for');
-  if (xff) return xff.split(',')[0]?.trim() || null;
-  return req.headers.get('x-real-ip') || null;
-}
 
 const Body = z.object({
   token: z.string().trim().min(1).max(512),
@@ -40,7 +35,9 @@ const Body = z.object({
 });
 
 export async function POST(req: NextRequest) {
-  const ip = clientIp(req);
+  // Trusted-hop client IP (api-guard): the leftmost x-forwarded-for hop is
+  // caller-chosen, which made every IP-keyed throttle and audit row forgeable.
+  const ip = clientIpOrNull(req.headers);
   const ua = req.headers.get('user-agent');
 
   const limited = await checkRateLimitAsync({
@@ -72,6 +69,16 @@ export async function POST(req: NextRequest) {
   await logAuthEvent({ accountId: claim.accountId, orgId: null, event: 'password_reset', ip, userAgent: ua });
 
   const memberships = await listMembershipsForAccount(claim.accountId);
+
+  // The credential just changed, so every session minted under the OLD
+  // password is stale — including the one a thief used to trigger nothing at
+  // all. Revoke across every org this account maps into BEFORE minting the
+  // fresh session below. `memberships` is already filtered to rows with a
+  // staff_id.
+  for (const m of memberships) {
+    await revokeAllSessionsForStaff(m.staff_id);
+  }
+
   if (memberships.length === 0) {
     return NextResponse.json({ ok: true });
   }

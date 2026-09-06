@@ -32,12 +32,6 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet"
 import { Skeleton } from "@/components/ui/skeleton"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 
 const SIDEBAR_WIDTH = "16rem"
 const SIDEBAR_WIDTH_MOBILE = "18rem"
@@ -120,25 +114,23 @@ function SidebarProvider({
 
   return (
     <SidebarContext.Provider value={contextValue}>
-      <TooltipProvider delayDuration={0}>
-        <div
-          data-slot="sidebar-wrapper"
-          style={
-            {
-              "--sidebar-width": SIDEBAR_WIDTH,
-              "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
-              ...style,
-            } as React.CSSProperties
-          }
-          className={cn(
-            "group/sidebar-wrapper flex h-full min-h-0 w-full has-data-[variant=inset]:bg-sidebar",
-            className
-          )}
-          {...props}
-        >
-          {children}
-        </div>
-      </TooltipProvider>
+      <div
+        data-slot="sidebar-wrapper"
+        style={
+          {
+            "--sidebar-width": SIDEBAR_WIDTH,
+            "--sidebar-width-icon": SIDEBAR_WIDTH_ICON,
+            ...style,
+          } as React.CSSProperties
+        }
+        className={cn(
+          "group/sidebar-wrapper flex h-full min-h-0 w-full has-data-[variant=inset]:bg-sidebar",
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </div>
     </SidebarContext.Provider>
   )
 }
@@ -474,7 +466,11 @@ function SidebarMenuItem({ className, ...props }: React.ComponentProps<"li">) {
 // fills; this is what makes that line true.
 const sidebarMenuButtonVariants = cva(
   cn(
-    "ds-raw-button peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded-none px-2 text-left outline-hidden",
+    // `rounded`, not `rounded-none` (2026-09-05): one row system, and the nav
+    // rows are targets on a plane, not cells in a ledger sheet. Matches
+    // `SPINE_ROW_SHELL_CLASS` = cornerClass('chip'); `overflow-hidden` above
+    // clips the current page's square leading bar to that radius.
+    "ds-raw-button peer/menu-button flex w-full items-center gap-2 overflow-hidden rounded px-2 text-left outline-hidden",
     SPINE_ROW_DENSITY.pointer.label,
     SPINE_ACCENT.idlePage,
     SPINE_ACCENT_DATA_ACTIVE,
@@ -502,23 +498,29 @@ const sidebarMenuButtonVariants = cva(
   }
 )
 
+/**
+ * The vendored `tooltip` prop is GONE (2026-09-06). It rendered a Radix
+ * `TooltipContent` — a fourth tooltip skin in raw shadcn vocabulary
+ * (`bg-foreground text-background text-xs`, zoom/fade, an arrow) that no call
+ * site ever used, and whose ground token `--foreground` is not even defined in
+ * this app. The house hint is `HoverTooltip` (cursor chip on a desk, anchored
+ * bubble otherwise) — wrap the row in one, or pass a chord through
+ * `HotkeyTooltip`. See pinned.json HoverTooltip / TooltipChip.
+ */
 function SidebarMenuButton({
   asChild = false,
   isActive = false,
   variant = "default",
   size = "default",
-  tooltip,
   className,
   ...props
 }: React.ComponentProps<"button"> & {
   asChild?: boolean
   isActive?: boolean
-  tooltip?: string | React.ComponentProps<typeof TooltipContent>
 } & VariantProps<typeof sidebarMenuButtonVariants>) {
   const Comp = asChild ? Slot.Root : "button"
-  const { isMobile, state } = useSidebar()
 
-  const button = (
+  return (
     <Comp
       data-slot="sidebar-menu-button"
       data-sidebar="menu-button"
@@ -527,28 +529,6 @@ function SidebarMenuButton({
       className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
       {...props}
     />
-  )
-
-  if (!tooltip) {
-    return button
-  }
-
-  if (typeof tooltip === "string") {
-    tooltip = {
-      children: tooltip,
-    }
-  }
-
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>{button}</TooltipTrigger>
-      <TooltipContent
-        side="right"
-        align="center"
-        hidden={state !== "collapsed" || isMobile}
-        {...tooltip}
-      />
-    </Tooltip>
   )
 }
 

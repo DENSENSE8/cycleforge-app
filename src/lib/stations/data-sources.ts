@@ -9,6 +9,7 @@
  */
 
 import type { DataSourceDefinition, DataSourceMeta, SourceRow, FieldDef, FilterDef } from './contract';
+import { RECEIVING_CAPTURE_SOURCES } from './receiving-capture-sources';
 
 const registry = new Map<string, DataSourceDefinition>();
 
@@ -613,4 +614,6 @@ export function registerBuiltinDataSources(): void {
   registerDataSource(receivingUnboxQueue);
   registerDataSource(testingTechQueue);
   registerDataSource(ebayOpenOrders);
+  // The two feeds the Unbox bench procedure reads (2026-09-06).
+  for (const source of RECEIVING_CAPTURE_SOURCES) registerDataSource(source);
 }

@@ -7,6 +7,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { buildWriteTools } from './tools/write-tools';
 import {
   makeGrokLoopDeps,
   markGrokBufferedFallback,
@@ -488,4 +489,62 @@ test('wire: a 5xx is not retried buffered — it is a proxy outage, not a tools 
   await assert.rejects(deps.streamTurn(PARAMS, () => {}), /503/);
   assert.equal(calls, 1);
   assert.equal((await import('./grok-agent-loop')).grokPrefersBufferedRound(ORG), false);
+});
+
+// ─── Self-hosted advertisement subsetting (train handoff §3) ────────────────
+test('selfHosted deps: the wire advertises the subset, not every verb', async () => {
+  const { deps, cap, emit } = fakes([
+    round({ text: 'Top reason: battery health.', finishReason: 'stop' }),
+  ]);
+  const out = await runGrokAssistantTurn(
+    {
+      ctx: CTX,
+      history: [],
+      userMessage: 'what are the top return reasons this week',
+      writeTools: buildWriteTools(null),
+      emit,
+    },
+    { ...deps, selfHosted: true },
+  );
+  assert.equal(out.ok, true);
+  const sent = cap.rounds[0].tools?.map((t: { function: { name: string } }) => t.function.name) ?? [];
+  // The registry core always rides…
+  for (const name of ['hybrid_entity_search', 'exact_id_serial_search', 'render_artifact', 'propose_mutation']) {
+    assert.ok(sent.includes(name), `${name} must stay advertised`);
+  }
+  // …the relevant verb is picked…
+  assert.ok(sent.includes('get_top_reasons'), 'top-reasons verb should rank in');
+  // …and unrelated verbs stay OFF the wire (the whole point).
+  assert.ok(!sent.includes('get_station_catalog'));
+  assert.ok(!sent.includes('search_photos'));
+  assert.ok(out.wireBytes < 12_000, `wire bytes must drop below the 12 kB budget, got ${out.wireBytes}`);
+  assert.ok(out.toolsAdvertised <= 10, `cap respected, got ${out.toolsAdvertised}`);
+  assert.deepEqual(out.advertisedToolNames, sent, 'the result reports exactly what went on the wire');
+  // The system prompt lists exactly the advertised subset, so the model and
+  // the wire never disagree about what exists.
+  const system = cap.rounds[0].messages[0] as { role: string; content: string };
+  assert.match(system.content, /Available tools: .*get_top_reasons/);
+  assert.doesNotMatch(system.content, /get_station_catalog/);
+});
+
+test('non-selfHosted deps: the full advertisement is untouched (managed runtimes keep every verb)', async () => {
+  const { deps, cap, emit } = fakes([
+    round({ text: 'Answered.', finishReason: 'stop' }),
+  ]);
+  await runGrokAssistantTurn(
+    { ctx: CTX, history: [], userMessage: 'is serial 4400123456 under warranty', emit },
+    deps,
+  );
+  const sent = cap.rounds[0].tools?.map((t: { function: { name: string } }) => t.function.name) ?? [];
+  assert.ok(sent.includes('get_station_catalog'), 'managed runtimes see the whole registry');
+  assert.ok(sent.includes('search_notes'));
+});
+
+test('wire: makeGrokLoopDeps marks loopback endpoints self-hosted', async () => {
+  const deps = await makeGrokLoopDeps(ORG, null, {
+    config: { ...CONFIG, baseURL: 'http://127.0.0.1:8000/v1' },
+    fetchImpl: async () =>
+      sseResponse([JSON.stringify({ choices: [{ delta: { content: 'ok' }, finish_reason: 'stop' }] })]),
+  });
+  assert.equal(deps.selfHosted, true);
 });

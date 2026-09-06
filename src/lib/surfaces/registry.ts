@@ -390,6 +390,27 @@ export const MUTATION_KINDS = {
     permission: 'studio.manage',
   },
 
+  // draft_scoped — station compositions (the screen, not the graph). Same
+  // safety layer: a draft version row that only /api/stations/publish makes
+  // live, after registry re-validation. Call get_station_catalog first —
+  // every block / source / action id must be registered or the save is refused.
+  'station_definition.save_draft': {
+    label: 'Save station draft',
+    trust: 'draft_scoped',
+    targetKind: 'station_definition',
+    description:
+      'Save a station composition as the next DRAFT version. Payload: { pageKey, modeKey, label, config: { slots: { trigger|queue|workspace|advance|header: [{ id, block, source?: { id, filters?, fields? }, display?, actions?, done_when? }] } }, workflowNodeId? }. Registry-validated (unknown block/source/action ids are refused). Publish stays a human step. Revert restores the prior draft or discards the row it created.',
+    permission: 'stations.manage',
+  },
+  'station_definition.discard_draft': {
+    label: 'Discard station draft',
+    trust: 'draft_scoped',
+    targetKind: 'station_definition',
+    description:
+      'Delete one non-active station_definitions row by id: { id }. The active version is refused (409). This is the inverse of save_draft when no prior draft existed; revert saves the content back.',
+    permission: 'stations.manage',
+  },
+
   // auto — listing rule (the "always this staff for this product" rule).
   // Admitted on the same three properties as receiving_photo.reassign:
   //   1. REVERSIBLE — the writer states its inverse (delete the row it

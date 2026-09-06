@@ -41,3 +41,23 @@ test('a dragged pin row stops transforming; only its siblings shift', () => {
     /transform:\s*isDragging\s*\?\s*undefined\s*:\s*CSS\.Transform\.toString\(transform\)/,
   );
 });
+
+/**
+ * The unpin decision is GEOMETRY (operator 2026-09-06): the pointer's position
+ * against the shelf rect — measured at drag START — decides unpin vs reorder.
+ * The old chain let dnd-kit's closestCenter fallback report a pin ROW for a
+ * release over open map, silently turning an unpin into a reorder. The rect is
+ * cleared only AFTER the resolution reads it (the null-before-read bug shipped
+ * once and made every drop an unpin and every pin impossible).
+ */
+test('unpin is resolved by shelf geometry, and the rect outlives the resolution', () => {
+  assert.match(list, /pointerOutsideShelf\(event, shelfRect\)/);
+  assert.match(list, /const shelfRect = shelfRectRef\.current;\s*\n\s*shelfRectRef\.current = null;/);
+  // The rect is measured when the gesture STARTS, not when it ends.
+  assert.match(list, /shelfRectRef\.current = shelfElRef\.current\?\.getBoundingClientRect\(\)/);
+  // The promise is painted over everything below the shelf, before the release.
+  assert.match(list, /data-unpin-overlay/);
+  assert.match(list, /Release to unpin/);
+  // Nav drags mirror it: pinning requires the pointer INSIDE the shelf.
+  assert.match(list, /Pinning a map row requires the pointer INSIDE the shelf/);
+});

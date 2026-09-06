@@ -41,6 +41,7 @@ import { BlockPaletteOverlay } from './BlockPaletteOverlay';
 import { BlockConfigSheet } from './BlockConfigSheet';
 import { StationIcon } from './station-icons';
 import { slotInstances, useStationEditor } from './useStationEditor';
+import { useStationDefinitionsRealtime } from '@/hooks/useStationDefinitionsRealtime';
 
 // ── Sortable block row (edit mode only) ──────────────────────────────────────
 
@@ -110,6 +111,8 @@ interface StationSlotProps {
 }
 
 export function StationSlot({ pageKey, modeKey, slot, stationLabel }: StationSlotProps) {
+  // A desktop publish repaints this slot without a refresh.
+  useStationDefinitionsRealtime(pageKey);
   const { has } = useAuth();
   const queryClient = useQueryClient();
   const canManage = has('stations.manage');

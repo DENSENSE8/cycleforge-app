@@ -1,20 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/drizzle/db';
 import { receivingTasks } from '@/lib/drizzle/schema';
-import { eq, desc } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { ApiError, errorResponse } from '@/lib/api';
 import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { invalidateReceivingViews } from '@/lib/receiving/invalidation';
 import { withAuth } from '@/lib/auth/withAuth';
 
-export const GET = withAuth(async (req: NextRequest) => {
+export const GET = withAuth(async (req: NextRequest, ctx) => {
   try {
     const status = new URL(req.url).searchParams.get('status');
 
+    // db is neon-HTTP on the owner DSN (BYPASSRLS, no app.current_org GUC), so
+    // the organization_id predicate is the only tenant isolation here.
     const results = await db
       .select()
       .from(receivingTasks)
-      .where(status ? eq(receivingTasks.status, status) : undefined)
+      .where(
+        status
+          ? and(eq(receivingTasks.organizationId, ctx.organizationId), eq(receivingTasks.status, status))
+          : eq(receivingTasks.organizationId, ctx.organizationId),
+      )
       .orderBy(desc(receivingTasks.createdAt));
 
     return NextResponse.json(results);
@@ -70,7 +76,7 @@ export const PUT = withAuth(async (req: NextRequest, ctx) => {
     const [result] = await db
       .update(receivingTasks)
       .set(updateData)
-      .where(eq(receivingTasks.id, id))
+      .where(and(eq(receivingTasks.id, id), eq(receivingTasks.organizationId, ctx.organizationId)))
       .returning();
 
     if (!result) throw ApiError.notFound('receiving-task', id);
@@ -91,7 +97,7 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
 
     const [deleted] = await db
       .delete(receivingTasks)
-      .where(eq(receivingTasks.id, parseInt(id)))
+      .where(and(eq(receivingTasks.id, parseInt(id)), eq(receivingTasks.organizationId, ctx.organizationId)))
       .returning({ id: receivingTasks.id });
 
     if (!deleted) throw ApiError.notFound('receiving-task', id);

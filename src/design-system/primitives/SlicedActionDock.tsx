@@ -397,6 +397,7 @@ export function SlicedActionDock({
           <button
             type="button"
             aria-label={menuLabel ?? 'More actions'}
+            // ds-allow-title: DropdownMenuTrigger asChild child — a wrapper would take the ref Radix needs.
             title={menuTitle}
             disabled={loading}
             onClick={(e) => e.stopPropagation()}
@@ -421,6 +422,7 @@ export function SlicedActionDock({
               {item.separatorBefore ? <DropdownMenuSeparator /> : null}
               <DropdownMenuItem
                 disabled={item.disabled}
+                // ds-allow-title: menu item row; one portal per item is what the cursor chip exists to avoid.
                 title={item.title}
                 onSelect={(event) => {
                   if (item.keepOpen) event.preventDefault();
@@ -462,6 +464,7 @@ export function SlicedActionDock({
             ? (menuLabel ?? 'More actions')
             : (endAriaLabel ?? menuLabel ?? 'Scan')
         }
+        // ds-allow-title: carries menuTriggerRef and Radix menu wiring — not wrappable.
         title={menuOpensFromEnd ? menuTitle : endAriaLabel}
         disabled={menuOpensFromEnd ? loading : isDisabled}
         onClick={(e) => {
@@ -506,6 +509,7 @@ export function SlicedActionDock({
               role="menuitem"
               type="button"
               disabled={item.disabled}
+              // ds-allow-title: menu item row; see above.
               title={item.title}
               onClick={(e) => {
                 e.stopPropagation();
@@ -558,6 +562,7 @@ export function SlicedActionDock({
       }}
       aria-pressed={pressed}
       disabled={isDisabled}
+      // ds-allow-title: ref-carrying segment measured by the dock; title rides the cursor chip via title-lift.
       title={title}
       className={cn(
         'inline-flex min-w-0 items-center justify-center gap-2 bg-transparent text-sm font-semibold outline-none transition-[filter] focus-visible:z-30 focus-visible:ring-2 focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-60',
@@ -622,6 +627,7 @@ export function SlicedActionDock({
           onClick={onClick}
           aria-pressed={pressed}
           disabled={isDisabled}
+          // ds-allow-title: motion node measured by the dock; title rides the cursor chip via title-lift.
           title={title}
           whileTap={isDisabled ? undefined : { scale: 0.99 }}
           transition={spring}

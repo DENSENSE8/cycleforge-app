@@ -65,16 +65,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   authUrl.searchParams.set('scope', cfg.scope);
   authUrl.searchParams.set('state', payload.state);
   authUrl.searchParams.set('nonce', payload.nonce);
-  authUrl.searchParams.set('code_challenge', challenge);
-  authUrl.searchParams.set('code_challenge_method', 'S256');
-  authUrl.searchParams.set('prompt', 'select_account');
-  if (provider === 'apple') authUrl.searchParams.set('response_mode', 'query');
+  if (provider !== 'apple') {
+    authUrl.searchParams.set('code_challenge', challenge);
+    authUrl.searchParams.set('code_challenge_method', 'S256');
+    authUrl.searchParams.set('prompt', 'select_account');
+  } else {
+    authUrl.searchParams.set('response_mode', 'form_post');
+  }
 
   const res = NextResponse.redirect(authUrl.toString());
+  const isSecure = origin(req).startsWith('https:') || process.env.NODE_ENV === 'production';
   res.cookies.set(OAUTH_STATE_COOKIE, encodeOAuthState(payload), {
     httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
+    secure: provider === 'apple' ? true : isSecure,
+    sameSite: provider === 'apple' ? 'none' : 'lax',
     path: '/',
     maxAge: OAUTH_STATE_TTL_SECONDS,
   });

@@ -216,10 +216,10 @@ export function ProductDetail({ sku }: ProductDetailProps) {
             <div className="mt-6 text-xs text-text-soft">
                 Looking for ops controls?{' '}
                 <Link
-                    href={`/admin/inventory/sku/${encodeURIComponent(product.sku)}`}
+                    href={`/inventory?view=by-sku&sku=${encodeURIComponent(product.sku)}`}
                     className="text-blue-600 underline"
                 >
-                    Open admin drill-down
+                    Open in Inventory
                 </Link>
             </div>
         </div>

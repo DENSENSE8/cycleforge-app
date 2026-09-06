@@ -30,13 +30,7 @@ import { readSessionSid } from '@/lib/auth/session';
 import type { PermissionString } from '@/lib/auth/permissions-shared';
 import { audit } from '@/lib/auth/audit';
 import { recordAudit } from '@/lib/audit-logs';
-
-function clientIp(req: NextRequest): string | null {
-  const xff = req.headers.get('x-forwarded-for');
-  if (xff) return xff.split(',')[0]?.trim() || null;
-  const real = req.headers.get('x-real-ip');
-  return real || null;
-}
+import { clientIpOrNull } from '@/lib/api-guard';
 
 export type RouteGuardResult =
   | { denied: NextResponse; ctx: null }
@@ -62,7 +56,7 @@ export async function requireRoutePerm(
       event: 'permission.denied',
       result: 'denied',
       sid: user.session.sid,
-      ip: clientIp(req),
+      ip: clientIpOrNull(req.headers),
       userAgent: req.headers.get('user-agent'),
       detail: { permission: perm, api: true, path: req.nextUrl.pathname },
     });

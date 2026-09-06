@@ -20,6 +20,7 @@ import { cursorClickTarget } from '@/design-system/motion/cursor-scrub';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { COMPOSER_SHELL_CORNER } from '@/design-system/tokens/radius';
+import { HotkeyTooltip } from '@/components/ui/HotkeyTooltip';
 import {
   STATION_COMPOSER_CYCLE_CHORD,
   STATION_COMPOSER_MODE_CATALOG,
@@ -74,7 +75,7 @@ const COMPOSER_TOOLBAR_ITEM =
  */
 const COMPOSER_TOOLBAR_GLYPH = 'block h-3.5 w-3.5 shrink-0';
 
-function ModeFace({
+export function ModeFace({
   id,
   active,
   onSelect,
@@ -87,14 +88,18 @@ function ModeFace({
     STATION_COMPOSER_MODE_CATALOG.find((m) => m.id === id) ??
     STATION_COMPOSER_MODE_CATALOG[0]!;
   const Icon = MODE_ICON[id];
-  return (
+  const face = (
     <button
       type="button"
       aria-label={`Composer mode · ${entry.label}`}
       aria-pressed={active}
       data-testid={`composer-mode-${id}`}
       data-composer-mode-face={id}
-      {...cursorClickTarget(entry.label)}
+      // Kind only, no label: the face already reads "Unbox", so a chip that
+      // also reads "Unbox" teaches nothing and puts chrome under the hand on
+      // every pass. The one thing worth teaching here is the chord, and that
+      // rides {@link HotkeyTooltip} below.
+      {...cursorClickTarget()}
       onClick={onSelect}
       className={cn(
         COMPOSER_TOOLBAR_ITEM,
@@ -120,6 +125,17 @@ function ModeFace({
       </span>
       <span className="tracking-wide">{entry.label}</span>
     </button>
+  );
+
+  // Every face teaches the chord, selected or not (operator 2026-09-06). Only
+  // one chip is ever on screen — it rides the pointer — so this is not the
+  // same key printed three times; it is the same answer wherever the hand
+  // happens to ask. The action is the chord's, not the face's: Shift + Tab
+  // cycles the row, so it reads the same on all three.
+  return (
+    <HotkeyTooltip action="Switch mode" chord={STATION_COMPOSER_CYCLE_CHORD}>
+      {face}
+    </HotkeyTooltip>
   );
 }
 
@@ -222,15 +238,7 @@ export function ComposerModeRow({
               onSelect={() => onModeChange('ask')}
             />
           </div>
-          <div className="flex min-w-0 flex-1 items-center gap-1">
-            {leading}
-            <span
-              className="hidden shrink-0 text-role-micro font-normal text-text-faint md:inline"
-              title="Toggle composer mode"
-            >
-              {STATION_COMPOSER_CYCLE_CHORD}
-            </span>
-          </div>
+          <div className="flex min-w-0 flex-1 items-center gap-1">{leading}</div>
         </>
       ) : (
         <>

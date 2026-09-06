@@ -9,7 +9,7 @@ test('the spine has no Go to find field', async ({ page }) => {
   await page.goto('/unbox');
   await expect(page.locator('main').first()).toBeVisible({ timeout: 30_000 });
 
-  const show = page.getByRole('button', { name: 'Expand navigation' });
+  const show = page.getByRole('button', { name: 'Show navigation' });
   if ((await show.count()) > 0) await show.first().click();
   await page.waitForTimeout(600);
 

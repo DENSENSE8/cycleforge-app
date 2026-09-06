@@ -3,10 +3,10 @@
  *
  * Lifted out of the old src/lib/qstash.ts when QStash was removed. Every cron
  * route guards with {@link isAuthorizedCronRequest}; Vercel injects
- * `Authorization: Bearer ${CRON_SECRET}` (and `x-vercel-cron: 1`) on each
- * scheduled invocation.
+ * `Authorization: Bearer ${CRON_SECRET}` on each scheduled invocation.
  */
 
+import { safeStrEqual } from '@/lib/security/safe-compare';
 import { resolvePublicAppUrl } from '@/lib/env-utils';
 
 /**
@@ -22,17 +22,22 @@ export function getAppBaseUrl(): string {
 }
 
 /**
- * Vercel cron requests carry `Authorization: Bearer ${CRON_SECRET}` and an
- * `x-vercel-cron: 1` header. Either signal is sufficient.
+ * True only for a request carrying `Authorization: Bearer ${CRON_SECRET}`.
  *
- * NOTE: an empty/unset CRON_SECRET makes the Bearer path fail closed — set it
- * in the Vercel project env and redeploy (env changes only apply on redeploy).
+ * The `x-vercel-cron: 1` header is deliberately NOT accepted: Vercel documents
+ * it as caller-spoofable, so honouring it would authenticate any internet
+ * client as Vercel Cron on all 42 cron routes. CRON_SECRET is the only control.
+ *
+ * Fails closed when CRON_SECRET is unset — set it in the Vercel project env and
+ * redeploy (env changes only apply on redeploy).
  */
 export function isVercelCronOrigin(headers: Headers): boolean {
   const secret = process.env.CRON_SECRET;
-  if (secret && headers.get('authorization') === `Bearer ${secret}`) return true;
-  if (headers.get('x-vercel-cron') === '1' && process.env.VERCEL === '1') return true;
-  return false;
+  if (!secret) return false;
+  const authorization = headers.get('authorization');
+  if (!authorization) return false;
+  // Constant-time: a `===` here leaks the matching prefix of CRON_SECRET.
+  return safeStrEqual(authorization, `Bearer ${secret}`);
 }
 
 /**

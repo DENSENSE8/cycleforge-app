@@ -46,7 +46,7 @@ The app is moving from a single-tenant internal tool toward a commercial SaaS. B
 | 2 | `settings.brand.name` vs `organizations.name` | Same value, or short alias (e.g. org = legal name, brand = “USAV”)? |
 | 3 | Dogfood tenant receipt email | Keep `info@usavsolutions.com` in letterhead vs new address? |
 | 4 | External integration copy | Zendesk comments: “closed in **Cycle Forge**” vs “USAV Orders”? |
-| 5 | Icon assets | Cycle Forge favicon / 192×512 PWA assets ready, or placeholder until design? |
+| 5 | Icon assets | **Resolved 2026-09-06** — "The Forged Cycle" mark shipped: favicon (SVG+64 PNG), icon-192/icon-512 PWA, apple-touch-icon, electron `build/icon.png`. Spec: `docs/brand/icon.md` |
 
 ---
 

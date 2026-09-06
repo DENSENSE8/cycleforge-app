@@ -6,6 +6,7 @@ import { ChevronDown, Copy, RefreshCw, Send, Sparkles } from '@/components/Icons
 import AiAnswerCard from '@/components/ai/AiAnswerCard';
 import AgentStepTimeline from '@/components/ai/AgentStepTimeline';
 import MarkdownRenderer from '@/components/ai/MarkdownRenderer';
+import { StreamingCaret } from '@/components/ai/StreamingCaret';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { useAiChat, type ChatMessage } from '@/components/ai/useAiChat';
 import AiOrderList from '@/components/ai/AiOrderList';
@@ -284,8 +285,11 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
                           icon={<PencilGlyph />}
                         />
                       </HoverTooltip>
-                      <div className="rounded-xl rounded-br-sm border border-blue-100 bg-blue-50 px-3.5 py-2.5">
-                        <p className="whitespace-pre-wrap text-sm leading-6 text-text-default">{msg.content}</p>
+                      <div className="rounded-xl rounded-br-sm border border-blue-100 bg-blue-50 px-3.5 py-2.5 [&>*:last-child]:mb-0">
+                        {/* Same renderer as the reply below — the operator's
+                            markdown formats in the bubble, never raw. Bubble
+                            face: no heading tags inside a chat bubble. */}
+                        <MarkdownRenderer content={msg.content} variant="bubble" />
                       </div>
                     </div>
                   );
@@ -359,7 +363,7 @@ export default function AiChatConversation({ variant = 'panel', chat }: AiChatCo
                             return (
                               <div className="text-sm leading-7 text-text-default">
                                 <MarkdownRenderer content={msg.streaming ? msg.content : linkifyOrderRefs(msg.content)} />
-                                {showCaret ? <span className="ml-0.5 inline-block h-4 w-[2px] animate-pulse bg-blue-500 align-middle" /> : null}
+                                {showCaret ? <StreamingCaret className="ml-0.5" /> : null}
                               </div>
                             );
                           })()

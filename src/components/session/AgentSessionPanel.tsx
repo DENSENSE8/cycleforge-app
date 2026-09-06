@@ -21,16 +21,25 @@ import { ComposerPlusMenuPanel } from '@/components/composer/ComposerPlusMenu';
 import { StationComposerHost } from '@/components/composer/StationComposerHost';
 import MarkdownRenderer from '@/components/ai/MarkdownRenderer';
 import { Button } from '@/design-system/primitives';
-import { motion, useReducedMotion } from '@/design-system/motion';
+import { AnimatePresence, motion, motionRole, useMotionRole, useReducedMotion } from '@/design-system/motion';
+import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
+import { framerGesture, framerTransition, framerVariants } from '@/design-system/foundations/motion-framer';
+import { AnimateText } from '@/design-system/motion/plus';
+import { ChatTurn } from '@/components/ai/ChatTurn';
+import { ChatPhaseLine } from '@/components/ai/ChatPhaseLine';
+import { StreamingCaret } from '@/components/ai/StreamingCaret';
 import { useActiveAssistantContext, useAssistantContext } from '@/hooks/useAssistantContext';
 import { cn } from '@/utils/_cn';
 import { useAssistantChat } from '@/components/assistant/useAssistantChat';
 import { requestComposerSeed, getLatestComposerSeed } from '@/lib/assistant/composer-seed-store';
 import { extractGfmTables, type ArtifactTable } from '@/lib/assistant/ui-artifacts';
+import { normalizeAssistantProse } from '@/lib/assistant/prose-normalize';
 import { AI_CHAT_NEW_EVENT, SESSION_ARTIFACT_EVENT } from '@/lib/app-events';
-import { toolActivityPhrase } from '@/lib/assistant/tool-activity';
+import { IconButton } from '@/design-system/primitives';
+import { MotionLab } from './motion-lab/MotionLab';
 import { publishSessionTitle } from './session-title-store';
 import { SessionPlusMenu } from './SessionPlusMenu';
+import { ConnectAppPill } from './ConnectAppPill';
 
 interface HistoryMessage {
   id: number;
@@ -81,10 +90,18 @@ export function AgentSessionPanel({
   const scrollRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const [csvOffer, setCsvOffer] = useState<{ rows: number; cols: number; text: string } | null>(null);
+  const [labOpen, setLabOpen] = useState(false);
+  const reduced = useReducedMotion();
+  // The concierge micro-settle, pre-bridged: {duration:0} under reduced motion.
+  const chipSettle = useMotionTransition(framerTransition.chatMicroSettle);
 
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
-  }, [chat.messages]);
+    // Smooth follow between turns; INSTANT while streaming — a chunked stream
+    // re-fires this effect tens of times a second and smooth scroll fights
+    // itself into jank. Reduced motion never animates the scrollport.
+    const behavior: ScrollBehavior = reduced || chat.status === 'streaming' ? 'auto' : 'smooth';
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior });
+  }, [chat.messages, chat.status, reduced]);
 
   // Voice + cross-component drafts land through the seed bus — the host's
   // visible field (ask mode owns its own draft) and the label draft both apply.
@@ -162,6 +179,12 @@ export function AgentSessionPanel({
         e.preventDefault();
         newConversation();
       }
+      // Motion lab — the operator's taste-testing surface for chat motion
+      // (⌘⇧M / Ctrl+Shift+M; ⌘M stays the OS mute). A testing verb, not chrome.
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'm') {
+        e.preventDefault();
+        setLabOpen((v) => !v);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => {
@@ -202,10 +225,14 @@ export function AgentSessionPanel({
     })();
   }, [newParam, newConversation, router, sessionParam]);
 
-  // Publish the thread's name — the header switcher's trigger face. Mirrors how
-  // chat-persistence derives a session title: first user message.
+  // Publish the thread's name — the header switcher's trigger face AND the
+  // spine's current-session row. Preference order: a reopened session's stored
+  // title, then the live AI summary pushed over the `title` SSE frame, then an
+  // optimistic slice of the first message while that summary is in flight. The
+  // generic placeholder only ever shows for a thread with no message yet.
   const currentTitle =
     history?.title ??
+    chat.title ??
     chat.messages.find((m) => m.role === 'user')?.content.slice(0, 60) ??
     'New conversation';
   useEffect(() => {
@@ -378,12 +405,26 @@ export function AgentSessionPanel({
       context,
     );
   }, [chat, context, csvOffer]);
+  // The composer's focus BLOOM — a decorative ring, never a scaled container:
+  // a persistent transform on the mouth would become the containing block for
+  // the plus-menu / context-ring fixed popovers and silently re-anchor them.
+  const [mouthFocused, setMouthFocused] = useState(false);
+  const composerBloom = reduced ? null : (
+    <motion.span
+      aria-hidden
+      className="pointer-events-none absolute -inset-1 rounded-2xl ring-1 ring-text-info/35"
+      initial={{ opacity: 0, scale: 0.996 }}
+      animate={{ opacity: mouthFocused ? 1 : 0, scale: mouthFocused ? 1.004 : 0.996 }}
+      transition={chipSettle}
+    />
+  );
   const composerBlock = (
-    <>
+    <div className="relative" onFocus={() => setMouthFocused(true)} onBlur={() => setMouthFocused(false)}>
+      {composerBloom}
       {csvOffer ? (
-        <div
-          className="mb-1.5 flex items-center justify-between gap-2 rounded-lg border border-border-hairline bg-surface-sunken px-2.5 py-1.5"
+        <ChatTurn
           data-csv-helper
+          className="mb-1.5 flex items-center justify-between gap-2 rounded-lg border border-border-hairline bg-surface-sunken px-2.5 py-1.5"
         >
           <p className="min-w-0 text-role-micro text-text-muted">
             CSV detected — {csvOffer.rows} rows × {csvOffer.cols} columns. Triage for order import?
@@ -396,43 +437,60 @@ export function AgentSessionPanel({
               Dismiss
             </Button>
           </div>
-        </div>
+        </ChatTurn>
       ) : null}
       {composerMouth}
-    </>
+    </div>
   );
 
+  // The Motion Lab door — a testing verb, not session chrome: one quiet icon
+  // at the pane's corner plus the ⌘⇧M chord. Opens the replayable showcase of
+  // every chat-motion preset (the "look at it" step of the loop protocol).
+  const motionLabButton = (
+    <IconButton
+      ariaLabel="Motion lab (Command or Control+Shift+M)"
+      icon={<Sparkles className="h-3.5 w-3.5" />}
+      onClick={() => setLabOpen(true)}
+      className="absolute right-2 top-2 z-30 text-text-faint hover:bg-surface-sunken hover:text-text-muted"
+    />
+  );
   // START — the landing state: one centered column owns the screen.
   if (startMode) {
     return (
-      <div className={cn('flex min-h-0 flex-1 flex-col', className)} aria-label="Agent session">
+      <div className={cn('relative flex min-h-0 flex-1 flex-col', className)} aria-label="Agent session">
+        {motionLabButton}
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center px-6 pb-16">
           <div className="flex w-full max-w-2xl flex-col items-stretch gap-4" data-session-start>
             <WelcomeGreeting />
-            <div className="w-full" onPaste={onComposerPaste}>{composerBlock}</div>
+            <ChatTurn className="w-full" onPaste={onComposerPaste}>{composerBlock}</ChatTurn>
             <div className="flex flex-wrap justify-center gap-1.5 pt-0.5">
               {SUGGESTIONS.map((s) => (
-                <button
+                <motion.button
                   key={s}
                   type="button"
                   onClick={() => {
                     setDraft('');
                     void chat.send(s, context);
                   }}
+                  whileHover={reduced ? undefined : framerGesture.chatHover}
+                  whileTap={reduced ? undefined : framerGesture.chatPress}
+                  transition={chipSettle}
                   className="rounded-full border border-border-hairline px-2.5 py-1 text-role-micro font-medium text-text-muted transition-colors hover:bg-surface-sunken"
                 >
                   {s}
-                </button>
+                </motion.button>
               ))}
             </div>
           </div>
         </div>
+        <AnimatePresence>{labOpen ? <MotionLab onClose={() => setLabOpen(false)} /> : null}</AnimatePresence>
       </div>
     );
   }
 
   return (
-    <div className={cn('flex min-h-0 flex-1 flex-col border-r border-border-hairline', className)} aria-label="Agent session">
+    <div className={cn('relative flex min-h-0 flex-1 flex-col border-r border-border-hairline', className)} aria-label="Agent session">
+      {motionLabButton}
       {/* transcript — chat only; everything else lives in the global header */}
       <div ref={scrollRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto px-3 py-2.5">
         {history ? (
@@ -444,36 +502,64 @@ export function AgentSessionPanel({
           <div className="mt-auto space-y-2.5">
             {shown.map((m) =>
               m.role === 'user' ? (
-                <div
+                <ChatTurn
                   key={m.id}
-                  className="ml-8 rounded-lg bg-blue-50 px-3 py-1.5 text-role-caption leading-5 text-blue-900 ring-1 ring-inset ring-blue-100"
+                  className="ml-8 rounded-lg bg-blue-50 px-3 py-1.5 text-role-caption leading-5 text-blue-900 ring-1 ring-inset ring-blue-100 [&>*:last-child]:mb-0"
                 >
-                  <p className="whitespace-pre-wrap">{m.content}</p>
-                </div>
+                  {/* The operator's turn is markdown too — a pasted list or
+                      **bold** must format in the bubble exactly as the reply
+                      formats below it: ONE renderer, MarkdownRenderer. The
+                      bubble face keeps it flat — no heading tags in a bubble. */}
+                  <MarkdownRenderer content={m.content} variant="bubble" />
+                </ChatTurn>
               ) : m.error ? (
-                <p key={m.id} className="mr-2 text-role-caption leading-5 text-rose-700">
+                <ChatTurn key={m.id} className="mr-2 text-role-caption leading-5 text-rose-700">
                   {m.content}
-                </p>
+                </ChatTurn>
               ) : (
                 // Agent replies are PROSE: plain black markdown, no bubble, no
                 // tables — data belongs to the artifact panel on the right.
-                <AssistantReply key={m.id} id={m.id} content={m.content} streaming={m.streaming} />
+                <ChatTurn key={m.id} className="mr-2 min-w-0">
+                  <AssistantReply id={m.id} content={m.content} streaming={m.streaming} />
+                </ChatTurn>
               ),
             )}
             {chat.activeTool ? (
               // The phase line: what the agent is doing right now, in the
               // operator's words (tool-activity.ts), not the tool id. Sentence
               // case at caption size so it reads as one of the transcript's
-              // own lines and not as a shouted eyebrow label; polite live
-              // region because it is the only signal the turn is moving.
-              <p
-                aria-live="polite"
-                className="flex items-center gap-1.5 text-role-caption leading-5 text-text-muted"
-              >
-                <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
-                {toolActivityPhrase(chat.activeTool)}…
-              </p>
+              // own lines; polite live region because it is the only signal
+              // the turn is moving. Phrase swaps settle out of a character
+              // scramble (ChatPhaseLine) so tool changes read as the SAME
+              // line of work continuing.
+              <ChatTurn>
+                <ChatPhaseLine tool={chat.activeTool} />
+              </ChatTurn>
             ) : null}
+            {/*
+              In-chat OAuth handoffs. They sit at the FOOT of the transcript,
+              after the sentence that raised them, so the ask and the button
+              read as one thought. Newest first, capped in the store — a stack
+              of consent prompts is a UI that gets clicked blindly.
+            */}
+            {chat.connectionPrompts.map((prompt) => (
+              <ChatTurn key={prompt.id}>
+                <ConnectAppPill
+                  prompt={prompt}
+                  onConnected={(landed) => {
+                    // Resume where the operator left off: seed the question that
+                    // needed the app, and let THEM press Enter. Auto-sending
+                    // after an OAuth round trip is how an agent surprises
+                    // somebody with a tool call they did not re-authorize.
+                    const askedFor = [...chat.messages]
+                      .reverse()
+                      .find((m) => m.role === 'user')?.content;
+                    if (askedFor) requestComposerSeed({ text: askedFor, autoSend: false });
+                    window.setTimeout(() => chat.dismissConnectionPrompt(landed.id), 4000);
+                  }}
+                />
+              </ChatTurn>
+            ))}
           </div>
         ) : null}
       </div>
@@ -482,23 +568,27 @@ export function AgentSessionPanel({
       {isEmpty ? (
         <div className="shrink-0 space-y-0.5 border-t border-border-hairline px-3 pt-1.5">
           {SUGGESTIONS.map((s) => (
-            <button
+            <motion.button
               key={s}
               type="button"
               onClick={() => {
                 setDraft('');
                 void chat.send(s, context);
               }}
+              whileHover={reduced ? undefined : framerGesture.chatHover}
+              whileTap={reduced ? undefined : framerGesture.chatPress}
+              transition={chipSettle}
               className="block w-full rounded-lg px-2 py-1 text-left text-role-micro font-medium text-text-muted hover:bg-surface-sunken"
             >
               {s}
-            </button>
+            </motion.button>
           ))}
         </div>
       ) : null}
 
       {/* composer mouth */}
       <div className="shrink-0 px-1.5 pb-1.5 pt-0.5" onPaste={onComposerPaste}>{composerBlock}</div>
+      <AnimatePresence>{labOpen ? <MotionLab onClose={() => setLabOpen(false)} /> : null}</AnimatePresence>
     </div>
   );
 }
@@ -527,31 +617,37 @@ function greetingForHour(hour: number): { hello: string; shine: string } {
   return GREETINGS[4];
 }
 
-const riseStagger = (reduced: boolean, index: number) =>
-  reduced
-    ? { initial: { opacity: 0 }, animate: { opacity: 1 } }
-    : {
-        initial: { opacity: 0, y: 10 },
-        animate: { opacity: 1, y: 0 },
-        transition: { type: 'spring' as const, stiffness: 120, damping: 18, delay: index * 0.08 },
-      };
-
 function WelcomeGreeting() {
   const reduced = useReducedMotion();
+  const { presence, transition } = useMotionRole(motionRole.chat.land);
   const greeting = greetingForHour(new Date().getHours());
   return (
     <div className="flex flex-col items-center gap-0.5 py-1 text-center">
-      <motion.div
-        {...riseStagger(Boolean(reduced), 0)}
-        className="flex items-center justify-center gap-1.5"
-      >
+      <motion.div {...presence} transition={transition} className="flex items-center justify-center gap-1.5">
         <Sparkles className="h-3.5 w-3.5 text-blue-600" />
-        <p className="font-serif text-sm italic text-text-muted">{greeting.hello} —</p>
+        {reduced ? (
+          <p className="font-serif text-sm italic text-text-muted">{greeting.hello} —</p>
+        ) : (
+          // The hello assembles word by word (Motion+ split + the house word
+          // cascade variants) — one sentence coming into focus, not two
+          // blocks trading places.
+          <motion.p
+            className="font-serif text-sm italic text-text-muted"
+            variants={framerVariants.chatWordRiseContainer}
+            initial="hidden"
+            animate="show"
+          >
+            <AnimateText type="word" variants={framerVariants.chatWordRiseWord}>
+              {`${greeting.hello} —`}
+            </AnimateText>
+          </motion.p>
+        )}
       </motion.div>
-      <motion.p
-        {...riseStagger(Boolean(reduced), 1)}
-        className="mx-auto w-fit font-serif text-2xl italic leading-snug"
-      >
+      {/* The shine stays ONE span: the gradient phrase is a single object and
+          a per-word split would restart the ramp per word. It lands on the
+          same deblur-rise as the hello, a beat later via the spring's own
+          travel — the last word and the shine read as one breath. */}
+      <motion.p {...presence} transition={transition} className="mx-auto w-fit font-serif text-2xl italic leading-snug">
         <span
           className="bg-clip-text text-transparent"
           style={{ backgroundImage: 'linear-gradient(90deg, #2563eb 0%, #6d28d9 55%, #f59e0b 100%)' }}
@@ -574,7 +670,12 @@ const dispatchedTables = new Set<string>();
  * turn to settle so partial streaming tables never fire.
  */
 function AssistantReply({ id, content, streaming }: { id: string; content: string; streaming?: boolean }) {
-  const { tables, text } = useMemo(() => extractGfmTables(content), [content]);
+  // Normalize BEFORE extraction so the artifact mover and the renderer see
+  // the same coerced text — an H1 or a tab-indented list is fixed once, here.
+  const { tables, text } = useMemo(
+    () => extractGfmTables(normalizeAssistantProse(content)),
+    [content],
+  );
   useEffect(() => {
     if (streaming || tables.length === 0) return;
     tables.forEach((t, idx) => {
@@ -590,5 +691,10 @@ function AssistantReply({ id, content, streaming }: { id: string; content: strin
       window.dispatchEvent(new CustomEvent(SESSION_ARTIFACT_EVENT, { detail: artifact }));
     });
   }, [id, tables, streaming]);
-  return <MarkdownRenderer content={text} />;
+  return (
+    <div className="min-w-0">
+      <MarkdownRenderer content={text} />
+      {streaming ? <StreamingCaret className="-mt-1" /> : null}
+    </div>
+  );
 }

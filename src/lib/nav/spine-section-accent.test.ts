@@ -19,7 +19,7 @@ describe('spine selected fill vs the planes it renders on', () => {
     assert.ok(!SPINE_ACCENT.activePage.includes(appChromeClass));
     assert.ok(!SPINE_ACCENT.childActive.includes(appCanvasClass));
     assert.ok(!SPINE_ACCENT.childActive.includes(appChromeClass));
-    assert.ok(SPINE_ACCENT.activePage.includes('bg-surface-strong'));
+    assert.ok(SPINE_ACCENT.activePage.includes('bg-surface-accent'));
   });
 
   it('the data-[active] spelling stays in step with the current-page fill', () => {
@@ -58,10 +58,17 @@ describe('spine selected fill vs the planes it renders on', () => {
     assert.notEqual(SPINE_ACCENT.ownsActive, SPINE_ACCENT.activePage);
   });
 
-  it('hover steps the same direction as selection, never lighter than the ground', () => {
-    // A wash lighter than canvas made a merely-hovered row out-shout the page
-    // the operator was actually on.
-    assert.ok(SPINE_ACCENT.idlePage.includes('hover:bg-surface-sunken'));
-    assert.ok(!SPINE_ACCENT.idlePage.includes('hover:bg-surface-hover'));
+  it('hover is the faintest step on the ramp, and the current page still wins', () => {
+    // Inverted 2026-09-05 with the lighter palette. The old rule ("never
+    // lighter than the ground") existed because the current page was a bare
+    // fill, so a lighter hover out-shouted it. The current page now carries a
+    // 17:1 ink bar, which no wash competes with — so hover is free to be the
+    // lightest touch instead of the heaviest, and the column reads lighter.
+    assert.ok(SPINE_ACCENT.idlePage.includes('hover:bg-surface-hover'));
+    assert.ok(!SPINE_ACCENT.idlePage.includes('hover:bg-surface-sunken'));
+    // The mark that answers "where am I" is the bar, not the wash — so hover
+    // and current page can never be confused whatever the fills do.
+    assert.ok(SPINE_ACCENT.activePage.includes('before:bg-text-default'));
+    assert.ok(!SPINE_ACCENT.idlePage.includes('before:'));
   });
 });

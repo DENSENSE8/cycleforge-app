@@ -1,6 +1,7 @@
 import pool from '@/lib/db';
 import { resolveSkuCatalogId } from '@/lib/neon/sku-catalog-queries';
 import { withTenantTransaction } from '@/lib/tenancy/db';
+import { assertSafeExternalUrl } from '@/lib/security/safe-external-url';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { PoolClient } from 'pg';
 
@@ -107,7 +108,13 @@ export async function upsertProductManual(params: {
     || fileName
     || (itemNumber ? `${itemNumber} Manual` : null);
   const googleDocId = extractGoogleDocId(String(params.googleDocIdOrUrl || '')) || null;
-  const sourceUrl = String(params.sourceUrl || '').trim() || null;
+  // `source_url` is later fetched server-side and 302'd to by
+  // /api/product-manuals/[id]/content, so it is an SSRF + open-redirect sink.
+  // Gate it here at write time: https, no credentials, public host only.
+  // The message contains "valid", which both callers map to HTTP 400.
+  const sourceUrlRaw = String(params.sourceUrl || '').trim();
+  if (sourceUrlRaw) assertSafeExternalUrl(sourceUrlRaw);
+  const sourceUrl = sourceUrlRaw || null;
   const status = String(params.status || '').trim().toLowerCase() || 'assigned';
   const folderPath = String(params.folderPath || '').trim()
     || (status === 'assigned' && itemNumber ? `assigned/${itemNumber}` : null);

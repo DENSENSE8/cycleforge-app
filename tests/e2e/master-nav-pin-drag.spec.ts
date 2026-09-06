@@ -106,7 +106,7 @@ test.describe('MasterNav pin drag', () => {
     const pinRow = pinnedCluster(page)
       .getByRole('button', { name: new RegExp(`^Go to ${MEDIA_LIBRARY}`) })
       .first();
-    await holdDrag(page, pinRow, page.getByRole('group', { name: 'Desks' }));
+    await holdDrag(page, pinRow, page.getByRole('group', { name: 'Workspaces' }));
 
     await expect(unpinMedia(page), 'leaves the shelf').toHaveCount(0, { timeout: 8_000 });
     // Home is re-derived from the registry, never stored on the pin — so it

@@ -51,6 +51,8 @@ function encodeBase64Url(value: string): string {
   return Buffer.from(value).toString('base64url');
 }
 
+let cachedAppleSecret: { clientId: string; clientSecret: string; expiresAt: number; cacheKey: string } | null = null;
+
 function appleClientSecret(): { clientId: string; clientSecret: string } | null {
   const clientId = (process.env.APPLE_OAUTH_CLIENT_ID ?? '').trim();
   const teamId = (process.env.APPLE_OAUTH_TEAM_ID ?? '').trim();
@@ -59,19 +61,32 @@ function appleClientSecret(): { clientId: string; clientSecret: string } | null 
   if (!clientId || !teamId || !keyId || !privateKey) return null;
 
   const now = Math.floor(Date.now() / 1000);
-  const header = encodeBase64Url(JSON.stringify({ alg: 'ES256', kid: keyId }));
-  const claims = encodeBase64Url(JSON.stringify({
-    iss: teamId,
-    iat: now,
-    exp: now + 60 * 60 * 24 * 180,
-    aud: 'https://appleid.apple.com',
-    sub: clientId,
-  }));
-  const signer = createSign('SHA256');
-  signer.update(`${header}.${claims}`);
-  signer.end();
-  const signature = signer.sign({ key: privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64url');
-  return { clientId, clientSecret: `${header}.${claims}.${signature}` };
+  const cacheKey = `${clientId}:${teamId}:${keyId}:${privateKey.slice(0, 32)}`;
+  if (cachedAppleSecret && cachedAppleSecret.cacheKey === cacheKey && cachedAppleSecret.expiresAt > now) {
+    return { clientId: cachedAppleSecret.clientId, clientSecret: cachedAppleSecret.clientSecret };
+  }
+
+  try {
+    const header = encodeBase64Url(JSON.stringify({ alg: 'ES256', kid: keyId }));
+    const claims = encodeBase64Url(JSON.stringify({
+      iss: teamId,
+      iat: now,
+      exp: now + 60 * 60 * 24 * 180,
+      aud: 'https://appleid.apple.com',
+      sub: clientId,
+    }));
+    const signer = createSign('SHA256');
+    signer.update(`${header}.${claims}`);
+    signer.end();
+    const signature = signer.sign({ key: privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64url');
+    const clientSecret = `${header}.${claims}.${signature}`;
+    // Cache for 24 hours so we do not re-sign on every request.
+    cachedAppleSecret = { clientId, clientSecret, expiresAt: now + 60 * 60 * 24, cacheKey };
+    return { clientId, clientSecret };
+  } catch (err) {
+    console.error('[appleClientSecret] signing failed:', err);
+    return null;
+  }
 }
 
 function envConfig(provider: PlatformProvider): PlatformProviderConfig | null {
@@ -129,6 +144,14 @@ export function platformProviderConfig(provider: PlatformProvider): PlatformProv
 
 /** True when the provider's client credentials are present in env. */
 export function isPlatformProviderConfigured(provider: PlatformProvider): boolean {
+  if (provider === 'apple') {
+    return Boolean(
+      (process.env.APPLE_OAUTH_CLIENT_ID ?? '').trim() &&
+      (process.env.APPLE_OAUTH_TEAM_ID ?? '').trim() &&
+      (process.env.APPLE_OAUTH_KEY_ID ?? '').trim() &&
+      (process.env.APPLE_OAUTH_PRIVATE_KEY ?? '').trim(),
+    );
+  }
   return envConfig(provider) !== null;
 }
 

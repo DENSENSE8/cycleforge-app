@@ -136,6 +136,73 @@ test('unknown node type in a draft edit → 400 (mapped from the 422 writer stat
   assert.equal((out as { status: number }).status, 400);
 });
 
+test('draft-scoped (station_definition.save_draft): registry-validates, upserts a draft, inverse discards the row it created', async () => {
+  const { deps, cap } = fakes((text) =>
+    text.includes('INSERT INTO station_definitions')
+      ? [{ id: 77, page_key: 'receiving', mode_key: 'receive', label: 'Unbox', workflow_node_id: null, config: { slots: {} }, version: 3, is_active: false, updated_by: 3, updated_at: 'now' }]
+      : [],
+  );
+  const out = await applyAgentMutation(
+    {
+      organizationId: ORG,
+      mutationKind: 'station_definition.save_draft',
+      payload: {
+        pageKey: 'receiving',
+        modeKey: 'receive',
+        label: 'Unbox',
+        config: { slots: { trigger: [{ id: 'blk_scan', block: 'scan_band', display: { surface: 'unbox' } }] } },
+      },
+      proposedByStaffId: 3,
+    },
+    deps,
+  );
+  assert.equal(out.ok, true);
+  assert.equal((out as { status: string }).status, 'applied');
+  assert.equal((out as { trust: string }).trust, 'draft_scoped');
+  assert.equal((out as { targetRef: string }).targetRef, '77');
+  // The upsert ran with the org as $1, and the inverse names the row to discard.
+  const upsert = cap.queries.find((q) => q.text.includes('INSERT INTO station_definitions'));
+  assert.ok(upsert);
+  assert.equal(upsert.params[0], ORG);
+  const ledger = cap.queries.find((q) => q.text.includes('INSERT INTO agent_mutations'));
+  assert.ok(ledger);
+  assert.ok(JSON.stringify(ledger.params).includes('station_definition.discard_draft'));
+});
+
+test('station_definition.save_draft refuses a config naming an unregistered block (400, nothing written)', async () => {
+  const { deps, cap } = fakes();
+  const out = await applyAgentMutation(
+    {
+      organizationId: ORG,
+      mutationKind: 'station_definition.save_draft',
+      payload: {
+        pageKey: 'receiving',
+        modeKey: 'receive',
+        label: 'Unbox',
+        config: { slots: { queue: [{ id: 'blk_x', block: 'not_a_block' }] } },
+      },
+    },
+    deps,
+  );
+  assert.equal(out.ok, false);
+  assert.equal((out as { status: number }).status, 400);
+  assert.ok(!cap.queries.some((q) => q.text.includes('INSERT INTO station_definitions')));
+});
+
+test('station_definition.discard_draft refuses the active version (409)', async () => {
+  const { deps } = fakes((text) =>
+    text.includes('FROM station_definitions')
+      ? [{ id: 5, page_key: 'receiving', mode_key: 'receive', label: 'Unbox', workflow_node_id: null, config: { slots: 'legacy' }, version: 1, is_active: true, updated_by: null, updated_at: 'now' }]
+      : [],
+  );
+  const out = await applyAgentMutation(
+    { organizationId: ORG, mutationKind: 'station_definition.discard_draft', payload: { id: 5 } },
+    deps,
+  );
+  assert.equal(out.ok, false);
+  assert.equal((out as { status: number }).status, 409);
+});
+
 test('unknown mutation kind → 400, no side effects', async () => {
   const { deps, cap } = fakes();
   const out = await applyAgentMutation({ organizationId: ORG, mutationKind: 'staff.delete', payload: {} }, deps);

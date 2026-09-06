@@ -249,18 +249,18 @@ test.describe('sidebar spine — one grammar, a push column, no empty columns', 
     await expect(page.locator(NAV_COLUMN)).toHaveAttribute('data-open', 'true');
   });
 
-  test('/unbox: Stations, Desks, and Operations Studio list under group labels', async ({ page }) => {
+  test('/unbox: Stations, Workspaces, and Automations list under group labels', async ({ page }) => {
     await gotoSurface(page, '/unbox');
     await toggleSpine(page);
     await expect(page.locator(PAGES_MENU)).toBeVisible();
 
     await expect(page.getByRole('button', { name: 'Back to pages' })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Open Scan Stations' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Open Desks' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Open Workspaces' })).toHaveCount(0);
     await expect(page.getByRole('group', { name: 'Pinned' })).toBeVisible();
     await expect(page.getByRole('group', { name: 'Stations' })).toBeVisible();
-    await expect(page.getByRole('group', { name: 'Desks' })).toBeVisible();
-    await expect(page.getByRole('group', { name: 'Operations Studio' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Workspaces' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Automations' })).toBeVisible();
 
     await expect(page.getByRole('button', { name: 'Go to Unbox' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Arrival' })).toBeVisible();
@@ -287,12 +287,12 @@ test.describe('sidebar spine — one grammar, a push column, no empty columns', 
     expect(page.url(), 'listing Stations must not navigate').toBe(before);
   });
 
-  test('/products: Desks group lists pointer desks', async ({ page }) => {
+  test('/products: Workspaces group lists pointer desks', async ({ page }) => {
     await gotoSurface(page, '/products');
     await toggleSpine(page);
     await expect(page.locator(PAGES_MENU)).toBeVisible();
 
-    await expect(page.getByRole('group', { name: 'Desks' })).toBeVisible();
+    await expect(page.getByRole('group', { name: 'Workspaces' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Products' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Shipping' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Operations' })).toBeVisible();

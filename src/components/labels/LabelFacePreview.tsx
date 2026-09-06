@@ -164,6 +164,7 @@ export function LabelFacePreview({
           {html ? (
             <iframe
               ref={iframeRef}
+              // ds-allow-title: iframe title is the required accessible name, not a tooltip.
               title="Label preview"
               srcDoc={html}
               sandbox="allow-same-origin"

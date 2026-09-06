@@ -24,7 +24,7 @@
  * without network.
  */
 
-import { aiRequestHeaders, type AiProviderConfig } from '@/lib/ai/provider';
+import { aiRequestHeaders, isSelfHostedAiRuntime, type AiProviderConfig } from '@/lib/ai/provider';
 
 /** How long a probe answer is trusted before the endpoint is asked again. */
 export const REACHABILITY_TTL_MS = 60_000;
@@ -42,10 +42,27 @@ interface CacheEntry {
 
 const cache = new Map<string, CacheEntry>();
 
+/** How long a FAILED probe is trusted. Shorter than a success on purpose. */
+export const REACHABILITY_FAILURE_TTL_MS = 5_000;
+
+/** Ceiling for the generation liveness check on a self-hosted endpoint. */
+const LIVENESS_TIMEOUT_MS = 10_000;
+
 /**
- * The raw probe — moved here from the chat route unchanged: `/models` with the
- * provider's request headers, 2s abort, any throw or non-2xx is "not
- * reachable".
+ * The raw probe: `/models` with the provider's request headers, 2s abort, any
+ * throw or non-2xx is "not reachable".
+ *
+ * For a SELF-HOSTED endpoint that is not enough. Measured on the Mac's
+ * `mlx_lm.server` (2026-09-06): the generation thread died with
+ * `[METAL] Command buffer execution failed: Insufficient Memory`, and
+ * `GET /v1/models` kept answering 200 every five seconds while a 16-token
+ * completion never returned. The dock kept routing turns into a dead server
+ * because its health check only asked the HTTP layer a question the HTTP layer
+ * could answer alone. So a self-hosted endpoint must also prove it can
+ * GENERATE: one token, 10s ceiling, and a timeout counts as DOWN.
+ *
+ * Managed gateways keep the cheap path — they bill per token and their
+ * `/models` is not served by the inference process.
  */
 export async function isProviderReachable(
   config: AiProviderConfig,
@@ -55,6 +72,34 @@ export async function isProviderReachable(
     const res = await fetchImpl(`${config.baseURL}/models`, {
       headers: aiRequestHeaders(config),
       signal: AbortSignal.timeout(2_000),
+    });
+    if (!res.ok) return false;
+  } catch {
+    return false;
+  }
+  if (!isSelfHostedAiRuntime(config)) return true;
+  return isProviderAlive(config, fetchImpl);
+}
+
+/**
+ * One-token generation. This is the liveness half of the probe above: it is
+ * what a wedged local server fails.
+ */
+export async function isProviderAlive(
+  config: AiProviderConfig,
+  fetchImpl: typeof fetch = fetch,
+): Promise<boolean> {
+  try {
+    const res = await fetchImpl(`${config.baseURL}/chat/completions`, {
+      method: 'POST',
+      headers: aiRequestHeaders(config),
+      body: JSON.stringify({
+        model: config.model,
+        max_tokens: 1,
+        stream: false,
+        messages: [{ role: 'user', content: 'ok' }],
+      }),
+      signal: AbortSignal.timeout(LIVENESS_TIMEOUT_MS),
     });
     return res.ok;
   } catch {
@@ -76,7 +121,14 @@ export async function isProviderReachableCached(
   const at = now();
 
   const hit = cache.get(key);
-  if (hit !== undefined && at - hit.at < ttlMs) return hit.ok;
+  if (hit !== undefined) {
+    // A failure expires FASTER than a success: the recovery case is a tunnel
+    // that just came back (`mlx-tunnel.service` restarts in 5s), and a 60s
+    // negative memo told the operator "no AI provider is reachable" for a
+    // minute after the brain was already answering.
+    const ttl = hit.ok ? ttlMs : Math.min(ttlMs, REACHABILITY_FAILURE_TTL_MS);
+    if (at - hit.at < ttl) return hit.ok;
+  }
 
   const ok = await isProviderReachable(config, deps.fetchImpl ?? fetch);
   cache.set(key, { ok, at: now() });

@@ -11,6 +11,13 @@ export const ASSISTANT_HIGHLIGHT_EVENT = 'app:assistant-highlight' as const;
 export const COMMAND_BAR_OPEN_EVENT = 'app-command-bar-open' as const;
 /** Fired when the find dialog opens or closes — header icon pressed state. */
 export const COMMAND_BAR_OPEN_CHANGE_EVENT = 'app-command-bar-open-change' as const;
+/**
+ * Display string for the chord that opens the palette, authored HERE beside
+ * the event that opens it so a hint and the binding cannot drift. Feed it to
+ * `HotkeyTooltip chord={…}` — never re-type "⌘K" into a label, and never fold
+ * it into label text ("Search (⌘K)"): the tooltip paints it as keycaps.
+ */
+export const COMMAND_BAR_CHORD = 'Cmd + K' as const;
 /** Ask {@link ClipboardHistoryHost} to open the clipboard panel (spine ⋯ button). */
 export const CLIPBOARD_HISTORY_OPEN_EVENT = 'app:clipboard-history-open' as const;
 /** Ask {@link ThrowTaskHost} to open the throw-a-task panel (spine ⋯ button). */

@@ -7,7 +7,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import type Anthropic from '@anthropic-ai/sdk';
-import { runAssistantTurn, type AgentLoopDeps, type AssistantEmit } from './agent-loop';
+import { parseRenderArtifactInput, runAssistantTurn, type AgentLoopDeps, type AssistantEmit } from './agent-loop';
 import type { AssistantToolCtx } from './tools/types';
 
 const ORG = '11111111-2222-3333-4444-555555555555';
@@ -352,4 +352,134 @@ test('render_artifact: an OPENED tool block emits ui_tool_start before the messa
   assert.deepEqual(payload?.input, {
     artifact: { kind: 'table', title: 'Open orders', columns: ['id'], rows: [{ id: 1 }] },
   });
+});
+
+test('request_connection: a pill only carries a link a tool minted THIS turn', async () => {
+  const MINTED = 'https://connect.composio.dev/link/minted-abc';
+  const script: ScriptedTurn[] = [
+    {
+      stop_reason: 'tool_use',
+      content: [
+        { type: 'tool_use', id: 'tu_conn', name: 'connect_app', input: { app: 'googledocs' } },
+      ] as Anthropic.Message['content'],
+    },
+    {
+      stop_reason: 'tool_use',
+      content: [
+        {
+          type: 'tool_use',
+          id: 'tu_pill_bad',
+          // An injected document told the model to hand over ITS link.
+          name: 'request_connection',
+          input: { app: 'googledocs', appLabel: 'Google Docs', connectUrl: 'https://connect.composio.dev.evil.test/link/x' },
+        },
+        {
+          type: 'tool_use',
+          id: 'tu_pill_ok',
+          name: 'request_connection',
+          input: { app: 'googledocs', appLabel: 'Google Docs', connectUrl: MINTED, reason: 'so I can read your handbook' },
+        },
+      ] as Anthropic.Message['content'],
+    },
+    {
+      stop_reason: 'end_turn',
+      content: [{ type: 'text', text: 'Connect Google Docs above.' }] as Anthropic.Message['content'],
+    },
+  ];
+  const emitted: AssistantEmit[] = [];
+  let i = 0;
+  const results: Anthropic.MessageParam[] = [];
+  const deps: AgentLoopDeps = {
+    streamTurn: async (params) => {
+      results.push(...params.messages.filter((m) => m.role === 'user'));
+      const turn = script[Math.min(i, script.length - 1)];
+      i += 1;
+      return msg(turn);
+    },
+    runTool: async (name) => ({
+      ok: true,
+      data:
+        name === 'connect_app'
+          ? { app: 'googledocs', appLabel: 'Google Docs', alreadyConnected: false, connectUrl: MINTED }
+          : { rows: [] },
+    }),
+  };
+
+  const out = await runAssistantTurn(
+    { ctx: CTX, history: [], userMessage: 'read my ops handbook', emit: (e) => emitted.push(e) },
+    deps,
+  );
+
+  assert.equal(out.ok, true);
+  const pills = emitted.filter(
+    (e): e is Extract<AssistantEmit, { type: 'ui_tool' }> => e.type === 'ui_tool' && e.name === 'request_connection',
+  );
+  assert.equal(pills.length, 1, 'only the minted link becomes a pill');
+  assert.deepEqual(pills[0].input, {
+    app: 'googledocs',
+    appLabel: 'Google Docs',
+    connectUrl: MINTED,
+    reason: 'so I can read your handbook',
+  });
+  // The rejection has to come back to the model as an error it can repair,
+  // not silently vanish.
+  const rejection = JSON.stringify(results).includes('request_connection rejected');
+  assert.ok(rejection, 'the unminted link returns an is_error tool_result');
+});
+
+test('artifact links: a model cannot get a non-https scheme or an off-origin path onto the panel', () => {
+  for (const url of ['javascript:alert(1)', 'data:text/html,x', 'http://evil.test/x']) {
+    assert.equal(
+      parseRenderArtifactInput({ artifact: { kind: 'document', title: 'D', source: 'Google Docs', url, body: 'x' } }).success,
+      false,
+      `${url} must not reach the panel`,
+    );
+  }
+  assert.equal(
+    parseRenderArtifactInput({
+      artifact: { kind: 'document', title: 'D', source: 'Google Docs', url: 'https://docs.google.com/document/d/1/edit', body: 'x' },
+    }).success,
+    true,
+  );
+  for (const path of ['//evil.test/steal', '/\\evil.test']) {
+    assert.equal(
+      parseRenderArtifactInput({ artifact: { kind: 'record', title: 'R', path, fields: [] } }).success,
+      false,
+      `${path} is not an app path`,
+    );
+  }
+  assert.equal(
+    parseRenderArtifactInput({ artifact: { kind: 'record', title: 'R', path: '/orders/1', fields: [] } }).success,
+    true,
+  );
+});
+
+test('table columns described as objects still resolve their cells', () => {
+  // What the local MLX 27B emits on its first data turn: columns as
+  // {name,label} objects, rows keyed by the machine name.
+  const parsed = parseRenderArtifactInput({
+    artifact: {
+      kind: 'table',
+      title: 'Packing pace',
+      columns: [
+        { name: 'packer', label: 'Packer' },
+        { name: 'unitsPerHour', label: 'Units/hr' },
+      ],
+      rows: [{ packer: 'Ana Reyes', unitsPerHour: 12.4 }],
+      idColumn: 'packer',
+    },
+  });
+  assert.ok(parsed.success);
+  assert.equal(parsed.data.kind, 'table');
+  const table = parsed.data as Extract<typeof parsed.data, { kind: 'table' }>;
+  assert.deepEqual(table.columns, ['Packer', 'Units/hr']);
+  // Every rendered header addresses a real cell — the row keys followed the
+  // header the sanitizer chose.
+  for (const col of table.columns) {
+    assert.ok(
+      Object.hasOwn(table.rows[0], col),
+      `column ${col} would render blank`,
+    );
+  }
+  assert.equal(table.idColumn, 'Packer', 'the attach id column follows the same rename');
 });

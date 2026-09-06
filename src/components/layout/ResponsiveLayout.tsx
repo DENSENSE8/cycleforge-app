@@ -217,6 +217,13 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
   const onMobileRoute = !!pathname && pathname.startsWith('/m');
   /** Auth / enroll / offline / kiosk-host — no permanent sidebar; page owns full-bleed chrome. */
   const chromeless = isClientPublicPath(pathname) || kioskHost;
+  /**
+   * The assistant surface (`/`). Chromeful — header + nav rail — but frameless
+   * inside: chat pane and artifact panel own the full content width, and the
+   * desk mouth is deliberately not published over them (the chat pane is the
+   * mouth). See the branch in `<main>` below.
+   */
+  const surfaceRoute = !chromeless && pathname === '/';
 
   const closeDrawer = useCallback(() => setDrawerOpen(false), []);
 
@@ -426,6 +433,23 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
                 geometry true. */}
             {chromeless ? (
               children
+            ) : surfaceRoute ? (
+              /*
+                THE SURFACE (`/`) — the assistant's two panes, edge to edge.
+
+                It takes the header and the nav rail (it is a signed-in
+                workspace, not public chrome) and NOTHING else from the desk
+                frame: no `ContextPanelLayout` (home has no context panel) and
+                no `DeskLeadPaneProvider`, because the chat pane IS the mouth
+                and a second mounted field on the same screen is the one thing
+                the AI-first law forbids outright.
+
+                The right rail still exists — global detail stacks (Recents,
+                search actions) open there from anywhere — but as the FLOAT
+                mount: there is no in-flow content row to share on a surface
+                whose two columns already own the full width.
+              */
+              children
             ) : (
               /*
                 The desk mouth is published ONCE, here, for every route in the
@@ -448,9 +472,10 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
               </DeskLeadPaneProvider>
             )}
           </main>
-          {/* Chromeless (auth / enroll / offline): no content row exists to
-              share with an in-flow details column. */}
-          {chromeless ? <RightRailHost inline={false} /> : null}
+          {/* Chromeless (auth / enroll / offline) and the assistant surface:
+              neither has an in-flow content row to share with a details
+              column, so the rail floats. */}
+          {chromeless || surfaceRoute ? <RightRailHost inline={false} /> : null}
         </div>
 
         <CommandBar />

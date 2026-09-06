@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { stat, readdir, readFile, writeFile, mkdir } from 'node:fs/promises';
-import { join, resolve, sep, extname, dirname } from 'node:path';
+import { stat, readdir, readFile, writeFile, mkdir, realpath } from 'node:fs/promises';
+import { join, resolve, sep, extname, dirname, basename } from 'node:path';
 import { requireRoutePerm } from '@/lib/auth/dynamic-route-guard';
 
 export const dynamic = 'force-dynamic';
@@ -69,6 +69,35 @@ function isHidden(name: string): boolean {
   );
 }
 
+/**
+ * Resolve `target` through symlinks and return it only when the *real* path is
+ * still inside ROOT — a lexical `resolve()` check passes a symlink planted in
+ * the SMB share, but `readFile`/`writeFile` follow it out of the share.
+ *
+ * `allowMissing` covers the create case: the leaf may not exist yet, so the
+ * containment test runs against its real parent directory instead.
+ */
+async function containedRealPath(target: string, allowMissing: boolean): Promise<string | null> {
+  let real: string;
+  try {
+    real = await realpath(target);
+  } catch {
+    if (!allowMissing) return null;
+    let parent: string;
+    try {
+      parent = await realpath(dirname(target));
+    } catch {
+      // Parent doesn't exist yet either — mkdir will create it under the
+      // lexically-checked path, so fall back to the lexical target.
+      return target === ROOT || target.startsWith(ROOT + sep) ? target : null;
+    }
+    if (parent !== ROOT && !parent.startsWith(ROOT + sep)) return null;
+    return join(parent, basename(target));
+  }
+  if (real !== ROOT && !real.startsWith(ROOT + sep)) return null;
+  return real;
+}
+
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ path?: string[] }> },
@@ -87,11 +116,18 @@ export async function GET(
 
   const { path: segments = [] } = await params;
   // Next.js URL-decodes catch-all segments, so spaces in "JAN 2026" arrive intact.
-  const target = resolve(ROOT, segments.join('/'));
+  const requested = resolve(ROOT, segments.join('/'));
 
   // Path-traversal guard: the resolved path must stay inside ROOT.
-  if (target !== ROOT && !target.startsWith(ROOT + sep)) {
+  if (requested !== ROOT && !requested.startsWith(ROOT + sep)) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+  // …and the REAL path too: readdir/readFile follow symlinks, so a link
+  // planted inside the SMB share escapes the lexical check above. Missing and
+  // escaping both answer 404 so the share is not a filesystem oracle.
+  const target = await containedRealPath(requested, false);
+  if (target === null) {
+    return NextResponse.json({ error: 'not found' }, { status: 404 });
   }
 
   let info;
@@ -199,11 +235,18 @@ export async function PUT(
   }
 
   const { path: segments = [] } = await params;
-  const target = resolve(ROOT, segments.join('/'));
+  const requested = resolve(ROOT, segments.join('/'));
 
   // Path-traversal guard: the resolved path must stay inside ROOT, and we only
   // accept web-renderable image files (no arbitrary writes).
-  if (!target.startsWith(ROOT + sep)) {
+  if (!requested.startsWith(ROOT + sep)) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 });
+  }
+  // writeFile follows symlinks, so an existing link at the target (or a linked
+  // parent dir for a new file) would write outside the share. Re-check the real
+  // path; `allowMissing` lets the create case validate the parent instead.
+  const target = await containedRealPath(requested, true);
+  if (target === null) {
     return NextResponse.json({ error: 'forbidden' }, { status: 403 });
   }
   if (!IMAGE_RE.test(target)) {

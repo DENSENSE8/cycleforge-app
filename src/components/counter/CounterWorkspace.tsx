@@ -38,6 +38,7 @@ import { safeRandomUUID } from '@/lib/safe-uuid';
 import { computeKioskCartTotals } from '@/lib/kiosk/cart-line';
 import { submitBlocker, submitBlockerCopy } from '@/lib/counter/submit-blocker';
 import { useCounterSession, createCounterSession } from './useCounterSession';
+import { CounterDeviceAction } from './CounterDeviceAction';
 import type { CounterSessionLine, CounterSessionSnapshot } from '@/lib/counter/session-events';
 import type { CounterTransactionResult } from '@/lib/counter/counter-transaction-types';
 
@@ -54,6 +55,24 @@ function parseDollars(raw: string): number | null {
 }
 
 const SECTION_LABEL = 'text-role-eyebrow uppercase tracking-wide text-text-muted';
+
+/**
+ * Session status → what a staffer (and the customer beside them) should read.
+ * The stored value is a DB enum; painting it raw put `submitted` on a desk in
+ * front of a person waiting to be told their sale is done.
+ */
+function visitCopy(status: CounterSessionSnapshot['status']): string {
+  switch (status) {
+    case 'open':
+      return 'In progress';
+    case 'parked':
+      return 'Parked';
+    case 'submitted':
+      return 'Finished';
+    case 'voided':
+      return 'Cancelled';
+  }
+}
 
 export function CounterWorkspace({ sessionId }: { sessionId: number | null }) {
   const session = useCounterSession(sessionId);
@@ -99,23 +118,46 @@ export function CounterWorkspace({ sessionId }: { sessionId: number | null }) {
     setPrice('');
   }, [price, title, session, visible.length]);
 
+  // The header CTA mounts in EVERY state, including "no visit yet": choosing a
+  // tablet is how a visit STARTS on the customer's screen, so it must not be
+  // reachable only from a session that already exists.
+  const deviceAction = (
+    <CounterDeviceAction
+      sessionId={sessionId}
+      boundDeviceId={snapshot?.kioskDeviceId ?? null}
+      disabled={session.busy}
+      onBind={sessionId === null ? undefined : session.bindDevice}
+    />
+  );
+
   if (sessionId === null) {
-    return <EmptyCounter />;
+    return (
+      <>
+        {deviceAction}
+        <EmptyCounter />
+      </>
+    );
   }
 
   if (session.loading && !snapshot) {
     return (
-      <div className="flex h-full items-center justify-center text-role-body text-text-muted">
-        Loading session…
-      </div>
+      <>
+        {deviceAction}
+        <div className="flex h-full items-center justify-center text-role-body text-text-muted">
+          Opening the visit…
+        </div>
+      </>
     );
   }
 
   if (!snapshot) {
     return (
-      <div className="flex h-full items-center justify-center text-role-body text-text-muted">
-        {session.error ?? 'Session not found.'}
-      </div>
+      <>
+        {deviceAction}
+        <div className="flex h-full items-center justify-center text-role-body text-text-muted">
+          {session.error ?? 'That visit is no longer open.'}
+        </div>
+      </>
     );
   }
 
@@ -123,40 +165,37 @@ export function CounterWorkspace({ sessionId }: { sessionId: number | null }) {
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col gap-3 overflow-auto bg-surface-canvas p-4">
-      {/* Band 1 — who holds this counter, and which tablet is bound to it. */}
+      {deviceAction}
+
+      {/*
+        Band 1 — who holds this counter, and whether the customer can see it.
+
+        No session id, no version number, no device row id. They were on here
+        as debugging chrome and they are the wrong kind of fact for this
+        surface: a staffer cannot act on `Version 7`, and this screen sits an
+        arm's length from a customer, so anything that reads like a database is
+        both noise and a small leak. The tablet is named by its LABEL, on the
+        header CTA; the version still governs every write (`expectedVersion`),
+        it just does not need a chip.
+      */}
       <Panel padding="md" radius="none" className="flex flex-wrap items-center gap-3">
         <div className="flex flex-col">
-          <span className={SECTION_LABEL}>Session</span>
-          <span className="text-role-value font-mono">#{snapshot.sessionId}</span>
+          <span className={SECTION_LABEL}>Visit</span>
+          <span className="text-role-value">{visitCopy(snapshot.status)}</span>
         </div>
         <div className="flex flex-col">
-          <span className={SECTION_LABEL}>Version</span>
-          <span className="text-role-value font-mono">{snapshot.version}</span>
-        </div>
-        <div className="flex flex-col">
-          <span className={SECTION_LABEL}>Status</span>
-          <span className="text-role-value">{snapshot.status}</span>
-        </div>
-        <div className="flex flex-col">
-          <span className={SECTION_LABEL}>Tablet</span>
-          <span className="text-role-value font-mono">
-            {snapshot.kioskDeviceId ?? '— none bound'}
+          <span className={SECTION_LABEL}>Customer screen</span>
+          <span className="text-role-value">
+            {snapshot.kioskDeviceId === null
+              ? 'Desk only — no tablet linked'
+              : session.live
+                ? 'Live on the tablet'
+                : 'Linking to the tablet…'}
           </span>
         </div>
         <div className="flex flex-col">
           <span className={SECTION_LABEL}>Held by</span>
-          <span className="text-role-value">{snapshot.claimedByStaffName ?? '— unclaimed'}</span>
-        </div>
-
-        <div className="flex flex-col">
-          <span className={SECTION_LABEL}>Sync</span>
-          <span className="text-role-value">
-            {snapshot.kioskDeviceId === null
-              ? 'polling — no tablet bound'
-              : session.live
-                ? 'live'
-                : 'connecting…'}
-          </span>
+          <span className="text-role-value">{snapshot.claimedByStaffName ?? 'Unclaimed'}</span>
         </div>
 
         <div className="ml-auto flex items-center gap-2">
@@ -312,13 +351,14 @@ function FinishPanel({
         </>
       ) : (
         <>
-          <p className="text-role-body text-text-default">
-            Visit finished
-            {transactionId !== null && (
-              <span className="text-text-muted"> · #{transactionId}</span>
-            )}
-            .
-          </p>
+          {/*
+            "Visit finished · #418" printed the counter_transactions ROW ID at
+            a customer-facing desk. It is not a number anyone quotes — the
+            receipt and the RS tickets below carry the identifiers that mean
+            something outside this database — so it is gone. The id still
+            addresses the receipt route; it just is not on the glass.
+          */}
+          <p className="text-role-body text-text-default">Visit finished.</p>
 
           <div className="flex flex-col gap-1">
             <span className={SECTION_LABEL}>Card</span>
@@ -448,10 +488,19 @@ function LedgerRow({
 }
 
 /**
- * The desk had a URL contract (`?session=<id>`) and no way to mint the id it
- * asks for — every prior visit to `/counter` cold read as a dead end. This is
- * the one call `useCounterSession` cannot make for itself: there is no
- * session to hook onto until this button is pressed.
+ * The cold `/counter` face: no visit open yet.
+ *
+ * The copy here used to read "Open one with `?session=<id>`, or start a new
+ * visit" — a URL contract printed at a customer-facing desk. Operator ruling
+ * 2026-09-05: **never show backend session text or row ids to staff or
+ * customers.** A staffer cannot mint an id, and the person on the other side
+ * of the monitor should never read query-string syntax. The link still carries
+ * `?session=` (that is how a takeover is handed over); it is just not
+ * instructions any more.
+ *
+ * This is the one call `useCounterSession` cannot make for itself: there is no
+ * session to hook onto until this button is pressed. Starting a visit ON a
+ * tablet lives on the header Kiosk CTA.
  */
 function EmptyCounter() {
   const router = useRouter();
@@ -472,9 +521,9 @@ function EmptyCounter() {
 
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 bg-surface-canvas text-center">
-      <p className="text-role-body text-text-default">No session open.</p>
+      <p className="text-role-body text-text-default">No visit open.</p>
       <p className="text-role-caption text-text-muted">
-        Open one with <span className="font-mono">?session=&lt;id&gt;</span>, or start a new visit.
+        Start one here, or use Kiosk to open it on the customer’s tablet.
       </p>
       <Button variant="primary" disabled={starting} onClick={() => void start()}>
         {starting ? 'Starting…' : 'Start visit'}

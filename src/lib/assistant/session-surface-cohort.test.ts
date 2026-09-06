@@ -298,4 +298,120 @@ describe('session-surface cohort (SoT = artifact contract)', () => {
     // renders — the modes exist only inside the dropdown's menu rows.
     assert.doesNotMatch(host, /<ModeFace/);
   });
+
+  it('law 11: the right pane has ONE occupant, and the board is a pane state not a route', () => {
+    const occupant = sessionSurfaceSource(SESSION_SURFACE_ENGINE.boardOccupant);
+    assert.match(occupant, lit(SESSION_SURFACE_CONTRACT.paneOccupantType));
+    // A fresh object from getSnapshot would spin useSyncExternalStore forever.
+    assert.match(occupant, /function getSnapshot\(\): SessionPanelOccupant \{\s*return occupant;/);
+
+    const surface = sessionSurfaceSource(SESSION_SURFACE_ENGINE.surface);
+    assert.match(surface, lit(SESSION_SURFACE_CONTRACT.paneOccupantSwitch));
+    assert.match(surface, lit(SESSION_SURFACE_CONTRACT.boardVerbChord));
+    // The board is NOT a route: no navigation on open, or the live thread dies.
+    assert.doesNotMatch(surface, /router\.push\(['"`]\/board/);
+    // Width is still the only thing that moves when the board takes the pane.
+    assert.doesNotMatch(surface, /transition-\[width\]|animate-/);
+  });
+
+  it('law 11: board tiles move with the keyboard — rail horizontal, tile vertical', () => {
+    const board = sessionSurfaceSource(SESSION_SURFACE_ENGINE.boardPanel);
+    assert.match(board, lit(SESSION_SURFACE_CONTRACT.boardRailMarker));
+    assert.match(board, lit(SESSION_SURFACE_CONTRACT.boardKeyboardRail));
+    assert.match(board, lit(SESSION_SURFACE_CONTRACT.boardKeyboardExpand));
+    assert.match(board, /event\.key === 'Escape'/, 'Esc closes the board / collapses a tile');
+
+    const tile = sessionSurfaceSource(SESSION_SURFACE_ENGINE.boardTile);
+    assert.match(tile, lit(SESSION_SURFACE_CONTRACT.boardTileMarker));
+    assert.match(tile, /tabIndex={0}/, 'a tile is focusable, so Tab works without the arrow keys');
+    // Two scroll axes: the tile keeps ↑/↓ from reaching the rail's handler.
+    assert.match(tile, /event\.stopPropagation\(\)/);
+    assert.match(tile, /overflow-y-auto/);
+  });
+
+  it('law 11: the board plane is READ-only, like the artifact plane', () => {
+    for (const rel of [
+      SESSION_SURFACE_ENGINE.boardPanel,
+      SESSION_SURFACE_ENGINE.boardTile,
+      SESSION_SURFACE_ENGINE.boardRows,
+    ]) {
+      const src = sessionSurfaceSource(rel);
+      for (const [law, pattern] of Object.entries(SESSION_SURFACE_FORBIDDEN)) {
+        assert.doesNotMatch(src, pattern, `${rel} violates ${law}`);
+      }
+      // A tile's only outbound action is seeding the composer — no POSTs.
+      assert.doesNotMatch(src, /method:\s*['"`]POST/, `${rel} must not write`);
+    }
+  });
+
+  it('law 12: the board reads the SAME registered tools the agent calls', () => {
+    const route = sessionSurfaceSource(SESSION_SURFACE_ENGINE.boardRoute);
+    // One implementation, two faces: no board-only SQL, no second query.
+    assert.match(route, lit(SESSION_SURFACE_CONTRACT.boardDispatch));
+    assert.doesNotMatch(route, /SELECT /i, 'a board tile must not carry its own SQL');
+    // A tool the caller cannot read degrades to one denied tile, not a 403 board.
+    assert.match(route, /state: result\.code === 'forbidden' \? 'denied'/);
+
+    // The gap tool is registered, and its ranking is deterministic SQL — the
+    // board's headline tile must never be a model opinion about the business.
+    const registry = sessionSurfaceSource(SESSION_SURFACE_ENGINE.toolRegistry);
+    assert.match(registry, /getRoiGaps/);
+    const gapTool = sessionSurfaceSource(SESSION_SURFACE_ENGINE.gapTool);
+    assert.match(gapTool, lit(SESSION_SURFACE_CONTRACT.boardGapTool));
+    assert.match(gapTool, /organization_id = \$1/, 'every gap query leads with the org predicate');
+  });
+
+  it('law 13: an app connection is handed over in chat, with a server-minted link', () => {
+    // The UI tool is declared ONCE in the Anthropic loop; the Grok loop imports
+    // that array, which is what keeps the two loops in lockstep.
+    const loop = sessionSurfaceSource(SESSION_SURFACE_ENGINE.agentLoop);
+    assert.match(loop, lit(SESSION_SURFACE_CONTRACT.connectUiTool));
+    const grok = sessionSurfaceSource(SESSION_SURFACE_ENGINE.grokLoop);
+    assert.match(grok, /UI_TOOLS/, 'the Grok loop must inherit UI_TOOLS, never re-declare them');
+
+    const hook = sessionSurfaceSource(SESSION_SURFACE_ENGINE.chatHook);
+    assert.match(hook, /name === 'request_connection'/);
+    // Only an https link the server minted may become a clickable button.
+    assert.match(hook, lit(SESSION_SURFACE_CONTRACT.connectHttpsOnly));
+
+    // Provenance, not just scheme: both loops gate the pill on a URL a connect
+    // tool returned in the SAME turn, so a prompt-injected document cannot
+    // dress its own https host in the app's chrome.
+    for (const [rel, src] of [
+      [SESSION_SURFACE_ENGINE.agentLoop, loop],
+      [SESSION_SURFACE_ENGINE.grokLoop, grok],
+    ] as const) {
+      assert.match(
+        src,
+        lit(SESSION_SURFACE_CONTRACT.connectProvenanceChokepoint),
+        `${rel} must validate request_connection at the shared chokepoint`,
+      );
+      assert.match(
+        src,
+        lit(SESSION_SURFACE_CONTRACT.connectProvenanceLedger),
+        `${rel} must record the connect links its tools minted`,
+      );
+    }
+
+    const pill = sessionSurfaceSource(SESSION_SURFACE_ENGINE.connectPill);
+    assert.match(pill, lit(SESSION_SURFACE_CONTRACT.connectPillMarker));
+    assert.match(pill, /<Button/, 'the CTA is a real button, keyboard-reachable');
+    // The chat surface never collects a secret and never builds an OAuth URL.
+    assert.doesNotMatch(pill, /type="password"|client_secret|code_verifier/);
+    assert.doesNotMatch(pill, /accounts\.google\.com|oauth2\/v2\/auth/);
+  });
+
+  it('law 14: the local brain speaks Harmony, and the loop bridges it in one place', () => {
+    const grok = sessionSurfaceSource(SESSION_SURFACE_ENGINE.grokLoop);
+    // Extraction: a Harmony `to=functions.NAME` becomes a dispatched call.
+    assert.match(grok, lit(SESSION_SURFACE_CONTRACT.harmonyToolBridge));
+    // Suppression: the private `analysis` channel never streams to the bubble.
+    assert.match(grok, lit(SESSION_SURFACE_CONTRACT.harmonyTextFilter));
+    // One grammar, in the shared module — never re-inlined in the loop.
+    assert.doesNotMatch(
+      grok,
+      /to=functions\\?\./,
+      'the Harmony grammar lives in src/lib/ai/harmony.ts, not in the loop',
+    );
+  });
 });

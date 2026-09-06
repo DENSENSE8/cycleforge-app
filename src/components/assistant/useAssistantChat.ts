@@ -29,11 +29,32 @@ export interface AssistantMessage {
   error?: boolean;
 }
 
+/**
+ * An inline "Connect <app>" prompt raised by the `request_connection` UI tool.
+ *
+ * It lives on the THREAD, not in a message, because the operator may authorize
+ * minutes later — after more turns — and the pill has to survive that without
+ * rewriting transcript history. `connectUrl` is always a server-minted link.
+ */
+export interface AssistantConnectionPrompt {
+  id: string;
+  app: string;
+  appLabel: string;
+  connectUrl: string;
+  reason: string | null;
+}
+
 export interface AssistantChatState {
   sessionId: string;
   messages: AssistantMessage[];
   status: 'idle' | 'streaming';
   activeTool: string | null;
+  /** Live AI-summarized session title, pushed over the `title` SSE frame. */
+  title?: string;
+  /** Newest first; the pane renders these under the transcript. */
+  connectionPrompts: AssistantConnectionPrompt[];
+  /** Called by the pill once polling shows the app connected. */
+  dismissConnectionPrompt: (id: string) => void;
   send: (text: string, context: AssistantPageContext | null) => Promise<void>;
   reset: () => void;
 }
@@ -59,10 +80,18 @@ type AskThreadSnap = {
   messages: AssistantMessage[];
   status: 'idle' | 'streaming';
   activeTool: string | null;
+  title?: string;
+  connectionPrompts: AssistantConnectionPrompt[];
 };
 
 function emptyThread(): AskThreadSnap {
-  return { sessionId: `asst-${safeRandomUUID()}`, messages: [], status: 'idle', activeTool: null };
+  return {
+    sessionId: `asst-${safeRandomUUID()}`,
+    messages: [],
+    status: 'idle',
+    activeTool: null,
+    connectionPrompts: [],
+  };
 }
 
 let stationSnap: AskThreadSnap = emptyThread();
@@ -114,7 +143,7 @@ export function useAssistantChat(opts?: { shared?: 'station' }): AssistantChatSt
     () => (shared ? getStationAskSnap() : localRef.current),
     [shared],
   );
-  const { sessionId, messages, status, activeTool } = thread;
+  const { sessionId, messages, status, activeTool, connectionPrompts } = thread;
   const abortRef = useRef<AbortController | null>(null);
 
   const runUiTool = useCallback(
@@ -135,6 +164,25 @@ export function useAssistantChat(opts?: { shared?: 'station' }): AssistantChatSt
       // validates the payload against the zod contract before rendering.
       if (name === 'render_artifact') {
         window.dispatchEvent(new CustomEvent(SESSION_ARTIFACT_EVENT, { detail: input.artifact ?? null }));
+        return;
+      }
+      // An in-chat OAuth handoff. The URL is whatever the server-side tool
+      // minted; this only validates that it IS an https URL before it becomes
+      // a clickable button, so a mangled model echo cannot render as a link.
+      if (name === 'request_connection') {
+        const connectUrl = typeof input.connectUrl === 'string' ? input.connectUrl : '';
+        const app = typeof input.app === 'string' ? input.app : '';
+        if (!connectUrl.startsWith('https://') || app.length === 0) return;
+        const prompt: AssistantConnectionPrompt = {
+          id: `${app}:${connectUrl}`,
+          app,
+          appLabel: typeof input.appLabel === 'string' && input.appLabel ? input.appLabel : app,
+          connectUrl,
+          reason: typeof input.reason === 'string' && input.reason ? input.reason : null,
+        };
+        const live = getLive();
+        if (live.connectionPrompts.some((p) => p.id === prompt.id)) return;
+        setThread({ ...live, connectionPrompts: [prompt, ...live.connectionPrompts].slice(0, 3) });
         return;
       }
       // Device tool: tote labels print from THIS workstation through the
@@ -168,7 +216,7 @@ export function useAssistantChat(opts?: { shared?: 'station' }): AssistantChatSt
         return;
       }
     },
-    [router, studio],
+    [router, studio, getLive, setThread],
   );
 
   const send = useCallback(
@@ -252,6 +300,11 @@ export function useAssistantChat(opts?: { shared?: 'station' }): AssistantChatSt
                 error: true,
                 content: m.content || String(payload.message ?? 'The assistant hit an error.'),
               }));
+            } else if (event === 'title' && typeof payload.title === 'string' && payload.title.trim()) {
+              // The server summarized the first message into a real name. Keep
+              // it on the thread; AgentSessionPanel publishes it to the header /
+              // spine current-session row (it owns the session-title store).
+              setThread({ ...getLive(), title: payload.title.trim() });
             }
           }
         }
@@ -277,5 +330,23 @@ export function useAssistantChat(opts?: { shared?: 'station' }): AssistantChatSt
     setThread(emptyThread());
   }, [setThread]);
 
-  return { sessionId, messages, status, activeTool, send, reset };
+  const dismissConnectionPrompt = useCallback(
+    (id: string) => {
+      const live = getLive();
+      setThread({ ...live, connectionPrompts: live.connectionPrompts.filter((p) => p.id !== id) });
+    },
+    [getLive, setThread],
+  );
+
+  return {
+    sessionId,
+    messages,
+    status,
+    activeTool,
+    title: thread.title,
+    connectionPrompts,
+    dismissConnectionPrompt,
+    send,
+    reset,
+  };
 }

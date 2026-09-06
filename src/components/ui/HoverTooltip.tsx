@@ -25,6 +25,7 @@ import {
   useDeferredHoverMount,
   type DeferredHoverBridge,
 } from '@/components/ui/deferred-hover-mount';
+import { TooltipChipBody, tooltipChipClass } from '@/design-system/primitives/TooltipChip';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -68,6 +69,7 @@ import { cn } from '@/utils/_cn';
  */
 export function HoverTooltip({
   label,
+  shortcut,
   children,
   className,
   focusable = true,
@@ -77,6 +79,13 @@ export function HoverTooltip({
   disabled = false,
 }: {
   label: ReactNode;
+  /**
+   * Chord that fires this control, as one display string (`'Shift + Tab'`).
+   * Painted as keycaps inside the tooltip — the cursor chip and the anchored
+   * bubble both — so the hint lives where the hand already is instead of
+   * spending a permanent row of chrome on it.
+   */
+  shortcut?: string;
   children: ReactNode;
   className?: string;
   /** Set false when the trigger sits inside another focusable control (e.g. a row button). */
@@ -117,7 +126,7 @@ export function HoverTooltip({
   const onEnter = () => {
     if (disabled) return;
     // Desk: the cursor carries it. Anywhere else: the anchored bubble.
-    if (cursor.enter(label, openDelayMs)) return;
+    if (cursor.enter(label, openDelayMs, shortcut)) return;
     activate('hover', (h) => h.scheduleShow());
   };
   const onFocusTrigger = () => {
@@ -136,6 +145,7 @@ export function HoverTooltip({
       bridge={bridge}
       triggerRef={triggerRef}
       label={label}
+      shortcut={shortcut}
       placement={placement}
       openDelayMs={openDelayMs}
       disabled={disabled}
@@ -213,6 +223,7 @@ function HoverTooltipBubble({
   bridge,
   triggerRef,
   label,
+  shortcut,
   placement,
   openDelayMs,
   disabled,
@@ -220,6 +231,7 @@ function HoverTooltipBubble({
   bridge: DeferredHoverBridge<HoverTooltipHandle>;
   triggerRef: MutableRefObject<HTMLElement | null>;
   label: ReactNode;
+  shortcut?: string;
   placement: PortalTooltipPlacement;
   openDelayMs: number;
   disabled: boolean;
@@ -324,12 +336,20 @@ function HoverTooltipBubble({
         left: pos?.left ?? -9999,
         visibility: pos ? 'visible' : 'hidden',
       }}
+      // Skin and content order come from the chip SoT; this host owns only the
+      // portal, the clamped position, and its flush corner.
       className={cn(
-        'pointer-events-none z-tooltip max-w-[15rem] bg-surface-inverse px-2 py-1 text-role-caption font-semibold leading-snug text-white shadow-lg whitespace-pre-line',
+        'pointer-events-none z-tooltip',
+        // Prose gets a reading measure, widened so a long label costs two rows
+        // instead of four. A taught chord is one row at any width: a cap here
+        // would push the sentence out past its own ground instead of
+        // shortening it. The portal clamp keeps either inside the viewport.
+        shortcut ? 'max-w-none' : 'max-w-[22rem]',
+        tooltipChipClass({ row: Boolean(shortcut), wrap: !shortcut }),
         cornerClass('flush'),
       )}
     >
-      {label}
+      <TooltipChipBody label={label} chord={shortcut} />
     </span>,
     document.body,
   );

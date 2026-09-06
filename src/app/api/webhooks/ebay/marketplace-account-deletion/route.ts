@@ -8,7 +8,10 @@
  *   https://app.cycleforge.ai/api/webhooks/ebay/marketplace-account-deletion
  *
  * Auth: anonymous webhook under /api/webhooks/* (proxy exemption). Gate is the
- * challenge verification token (GET) + X-EBAY-SIGNATURE (POST).
+ * challenge verification token (GET) + X-EBAY-SIGNATURE (POST). POST signature
+ * verification is mandatory — without EBAY_APP_ID + EBAY_CERT_ID the endpoint
+ * returns 503 rather than purging on an unverified body (production has no
+ * override; non-production needs ALLOW_UNSIGNED_WEBHOOKS=1).
  *
  * Developer-portal note: configuring this URL requires an eBay Developer
  * Program team member with Admin (or equivalent) access on the application.
@@ -25,6 +28,7 @@ import {
   verifyEbayNotificationSignature,
   type MarketplaceDeletionNotification,
 } from '@/lib/ebay/marketplace-account-deletion';
+import { checkRateLimitAsync } from '@/lib/api-guard';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,6 +70,21 @@ export async function GET(req: NextRequest) {
  * then marks the endpoint down.
  */
 export async function POST(req: NextRequest) {
+  // IP rate limit before any body/crypto work — this is an unauthenticated
+  // route whose sink hard-deletes rows, so cap it like the sibling receivers.
+  const rl = await checkRateLimitAsync({
+    headers: req.headers,
+    routeKey: 'webhooks-ebay-account-deletion',
+    limit: 60,
+    windowMs: 60_000,
+  });
+  if (!rl.ok) {
+    return NextResponse.json(
+      { error: 'RATE_LIMITED', retryAfterSec: rl.retryAfterSec },
+      { status: 429 },
+    );
+  }
+
   const rawBody = await req.text();
   let payload: MarketplaceDeletionNotification;
   try {
@@ -77,9 +96,31 @@ export async function POST(req: NextRequest) {
   const signatureHeader =
     req.headers.get('x-ebay-signature') ?? req.headers.get('X-EBAY-SIGNATURE');
   const config = getMarketplaceDeletionConfig();
-  const canVerifySignature = Boolean(config.appId && config.certId);
 
-  if (canVerifySignature) {
+  // Signature verification is MANDATORY: the sink below hard-deletes
+  // ebay_accounts rows in ANY org, keyed on a public seller username. An
+  // unconfigured keyset therefore parks the endpoint (503) instead of falling
+  // through unverified. In production there is no override at all; outside
+  // production an operator must opt in explicitly with ALLOW_UNSIGNED_WEBHOOKS=1
+  // (unset ⇒ closed) so a forgotten env var can never open it by itself.
+  if (!config.appId || !config.certId) {
+    if (
+      process.env.NODE_ENV !== 'production' &&
+      process.env.ALLOW_UNSIGNED_WEBHOOKS === '1'
+    ) {
+      console.warn(
+        '[ebay/marketplace-account-deletion] EBAY_APP_ID/EBAY_CERT_ID unset — processing UNVERIFIED notification (ALLOW_UNSIGNED_WEBHOOKS=1, non-production)',
+      );
+    } else {
+      console.error(
+        '[ebay/marketplace-account-deletion] EBAY_APP_ID/EBAY_CERT_ID unset — cannot verify signature, refusing to purge',
+      );
+      return NextResponse.json(
+        { error: 'Signature verification unavailable' },
+        { status: 503 },
+      );
+    }
+  } else {
     if (!signatureHeader) {
       return NextResponse.json({ error: 'Missing X-EBAY-SIGNATURE' }, { status: 412 });
     }
@@ -101,14 +142,6 @@ export async function POST(req: NextRequest) {
       );
       return NextResponse.json({ error: 'Signature verification failed' }, { status: 412 });
     }
-  } else if (!signatureHeader) {
-    console.warn(
-      '[ebay/marketplace-account-deletion] accepting unsigned POST — set EBAY_APP_ID + EBAY_CERT_ID to verify signatures',
-    );
-  } else {
-    console.warn(
-      '[ebay/marketplace-account-deletion] EBAY_APP_ID/CERT_ID not set — skipping signature verify (portal unlock only; set prod creds before live traffic)',
-    );
   }
 
   const topic = payload?.metadata?.topic;

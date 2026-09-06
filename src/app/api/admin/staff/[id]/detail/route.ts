@@ -13,8 +13,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, type AuthContext } from '@/lib/auth/withAuth';
 import { tenantQuery } from '@/lib/tenancy/db';
+import { sessionHandle } from '@/lib/auth/session';
 
 export const runtime = 'nodejs';
+
+/**
+ * Rows whose `sid` column must be masked before the envelope leaves the
+ * server: the key name stays `sid` (the admin UI reads `s.sid` as its list key
+ * and as the argument to DELETE /api/admin/sessions/[handle]) but the value is
+ * the opaque handle, so a listed session can never be replayed as a cookie.
+ */
+interface AuditSidRow {
+  sid: string | null;
+  [column: string]: unknown;
+}
+interface SessionSidRow {
+  sid: string;
+  [column: string]: unknown;
+}
 
 function idFromUrl(req: NextRequest): number | null {
   const parts = req.nextUrl.pathname.split('/').filter(Boolean);
@@ -60,7 +76,7 @@ export const GET = withAuth(async (req: NextRequest, ctx: AuthContext) => {
     [id, orgId],
   );
   // staff_sessions is tenant-owned: filter on its own organization_id.
-  const sessionsQ = tenantQuery(
+  const sessionsQ = tenantQuery<SessionSidRow>(
     orgId,
     `SELECT sid, device_kind, device_label, ip::text AS ip,
             created_at, last_seen_at, expires_at
@@ -71,7 +87,7 @@ export const GET = withAuth(async (req: NextRequest, ctx: AuthContext) => {
     [id, orgId],
   );
   // auth_audit has no organization_id; scope it via its parent staff row.
-  const auditQ = tenantQuery(
+  const auditQ = tenantQuery<AuditSidRow>(
     orgId,
     `SELECT id, event, result, ip::text AS ip, sid, user_agent, detail, created_at
        FROM auth_audit
@@ -107,11 +123,13 @@ export const GET = withAuth(async (req: NextRequest, ctx: AuthContext) => {
   const staff = staffR.rows[0];
   if (!staff) return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
 
+  // Both `sessions` and `audit` carry a raw `sid` column in the DB. Mask each
+  // to its handle on the way out — same key, non-replayable value.
   return NextResponse.json({
     staff,
     passkeys: passkeysR.rows,
-    sessions: sessionsR.rows,
-    audit: auditR.rows,
+    sessions: sessionsR.rows.map((row) => ({ ...row, sid: sessionHandle(row.sid) })),
+    audit: auditR.rows.map((row) => ({ ...row, sid: row.sid ? sessionHandle(row.sid) : null })),
     roles: rolesR.rows,
     availableRoles: allRolesR.rows,
   });

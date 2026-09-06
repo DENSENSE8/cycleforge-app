@@ -73,12 +73,14 @@ export async function POST(
     const { id } = await params;
     if (!id) throw ApiError.badRequest('id is required');
 
+    // Explicit organization_id conjunct (like the detail/[id]/missing-orders
+    // siblings) — do not rely on the RLS backstop for isolation here.
     const { rows } = await tenantQuery<TriageRowMinimal>(
       orgId,
       `SELECT id, gmail_msg_id, email_subject, email_from, po_numbers, triage_state
          FROM email_missing_purchase_orders
-        WHERE id = $1`,
-      [id],
+        WHERE id = $1 AND organization_id = $2`,
+      [id, orgId],
     );
     if (rows.length === 0) throw ApiError.notFound('email_missing_purchase_orders', id);
     const row = rows[0];
@@ -147,14 +149,15 @@ export async function POST(
              COALESCE(triage_state->'fields', '{}'::jsonb) || ($2::jsonb), true
            )`;
     const sqlParams: unknown[] = suggestedPile
-      ? [id, fieldsPatch, JSON.stringify(suggestedPile)]
-      : [id, fieldsPatch];
+      ? [id, fieldsPatch, JSON.stringify(suggestedPile), orgId]
+      : [id, fieldsPatch, orgId];
+    const orgParamIdx = sqlParams.length;
 
     const { rows: updated } = await tenantQuery(
       orgId,
       `UPDATE email_missing_purchase_orders
           SET triage_state = ${setExpr}
-        WHERE id = $1
+        WHERE id = $1 AND organization_id = $${orgParamIdx}
         RETURNING id, gmail_msg_id, gmail_thread_id, po_numbers, po_numbers_norm,
                   email_subject, email_from, email_received, scanned_at,
                   pile, status, notes, assigned_to,

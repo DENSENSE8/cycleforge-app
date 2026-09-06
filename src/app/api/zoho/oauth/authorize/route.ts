@@ -1,8 +1,18 @@
+import { randomBytes } from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeEnvValue, resolvePublicAppUrl } from '@/lib/env-utils';
 import { withAuth } from '@/lib/auth/withAuth';
+import {
+  encryptIntegrationPayload,
+  isIntegrationKmsConfigured,
+} from '@/lib/integrations/crypto';
 
 export const dynamic = 'force-dynamic';
+
+/** httpOnly cookie carrying the single-use CSRF nonce across the Zoho redirect. */
+const ZOHO_OAUTH_STATE_COOKIE = 'zoho_oauth_state';
+/** State freshness window — matches the cookie maxAge below. */
+const STATE_COOKIE_MAX_AGE_SEC = 600;
 
 /**
  * GET /api/zoho/oauth/authorize
@@ -10,10 +20,16 @@ export const dynamic = 'force-dynamic';
  * Redirects the browser to Zoho's OAuth 2.0 authorization page.
  * After the user grants access, Zoho redirects to /api/zoho/oauth/callback.
  *
- * Required env vars: ZOHO_CLIENT_ID, NEXT_PUBLIC_APP_URL
+ * Carries an AES-GCM `state` (orgId + staffId + nonce + issuedAt) plus a
+ * matching httpOnly nonce cookie — the same binding /api/ebay/connect uses. The
+ * callback derives the tenant from that state instead of the ambient session,
+ * so a link a victim clicks cannot bind the ATTACKER's Zoho refresh token to
+ * the victim's org.
+ *
+ * Required env vars: ZOHO_CLIENT_ID, NEXT_PUBLIC_APP_URL, INTEGRATION_KMS_KEY
  * Optional: ZOHO_DOMAIN (defaults to accounts.zoho.com)
  */
-export const GET = withAuth(async (_request: NextRequest) => {
+export const GET = withAuth(async (_request: NextRequest, ctx) => {
   const clientId = normalizeEnvValue(process.env.ZOHO_CLIENT_ID);
   const domain = normalizeEnvValue(process.env.ZOHO_DOMAIN) || 'accounts.zoho.com';
   const appUrl = resolvePublicAppUrl();
@@ -28,6 +44,14 @@ export const GET = withAuth(async (_request: NextRequest) => {
   if (!appUrl) {
     return NextResponse.json(
       { error: 'NEXT_PUBLIC_APP_URL is not configured in environment variables.' },
+      { status: 500 }
+    );
+  }
+
+  // The state is the tenant binding, so it must be sealed. No key ⇒ no flow.
+  if (!isIntegrationKmsConfigured()) {
+    return NextResponse.json(
+      { error: 'INTEGRATION_KMS_KEY is not configured; cannot mint a signed OAuth state.' },
       { status: 500 }
     );
   }
@@ -52,6 +76,14 @@ export const GET = withAuth(async (_request: NextRequest) => {
     'ZohoInventory.warehouses.READ',
   ].join(',');
 
+  const nonce = randomBytes(16).toString('hex');
+  const state = encryptIntegrationPayload({
+    organizationId: ctx.organizationId,
+    createdBy: ctx.staffId,
+    nonce,
+    issuedAt: Date.now(),
+  });
+
   const authUrl = new URL(`https://${domain}/oauth/v2/auth`);
   authUrl.searchParams.set('scope', scope);
   authUrl.searchParams.set('client_id', clientId);
@@ -59,6 +91,15 @@ export const GET = withAuth(async (_request: NextRequest) => {
   authUrl.searchParams.set('access_type', 'offline');
   authUrl.searchParams.set('prompt', 'consent');
   authUrl.searchParams.set('redirect_uri', redirectUri);
+  authUrl.searchParams.set('state', state);
 
-  return NextResponse.redirect(authUrl.toString());
+  const res = NextResponse.redirect(authUrl.toString());
+  res.cookies.set(ZOHO_OAUTH_STATE_COOKIE, nonce, {
+    httpOnly: true,
+    sameSite: 'lax', // survives the top-level redirect back from Zoho
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: STATE_COOKIE_MAX_AGE_SEC,
+    path: '/',
+  });
+  return res;
 }, { permission: 'integrations.zoho' });

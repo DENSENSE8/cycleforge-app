@@ -168,6 +168,7 @@ test('the projection is pure — the same input twice yields deep-equal output',
 test('the declared Unbox procedure projects with real registries', async () => {
   const { getProcedure } = await import('@/lib/stations/procedure');
   const { listDataSourceMeta } = await import('@/lib/stations/data-sources');
+  const { listActionMeta } = await import('@/lib/stations/actions');
   const { registerStationBuiltins } = await import('@/lib/stations/index');
   registerStationBuiltins();
 
@@ -175,8 +176,11 @@ test('the declared Unbox procedure projects with real registries', async () => {
   assert.ok(unbox, 'unbox procedure is registered');
   const map = buildStationProcedureMap(unbox, {
     sources: new Map(listDataSourceMeta().map((s) => [s.id, s])),
-    actions: new Map(),
+    actions: new Map(listActionMeta().map((a) => [a.id, a])),
   });
+  // 2026-09-06: the capture + commit acts are registered actions now; only
+  // the scan (a trigger, not a row verb) is still code-only.
+  assert.ok(map.counts.composed >= 13, `expected the bench acts composed, got ${map.counts.composed}`);
 
   // Correct with zero traffic: the whole bench procedure, not just the one
   // step the station registry happens to drive today.

@@ -114,7 +114,7 @@ export async function exchangeCode(args: {
   clientSecret: string;
   code: string;
   redirectUri: string;
-  codeVerifier: string;
+  codeVerifier?: string;
 }): Promise<TokenResponse> {
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
@@ -122,8 +122,10 @@ export async function exchangeCode(args: {
     client_secret: args.clientSecret,
     code: args.code,
     redirect_uri: args.redirectUri,
-    code_verifier: args.codeVerifier,
   });
+  if (args.codeVerifier) {
+    body.set('code_verifier', args.codeVerifier);
+  }
   const res = await fetch(args.endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' },

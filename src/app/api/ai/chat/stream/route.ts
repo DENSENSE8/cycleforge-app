@@ -20,7 +20,8 @@ import { NextRequest } from 'next/server';
 import { detectIntents } from '@/lib/ai/intent-router';
 import { queryNemoClawRag } from '@/lib/ai/nemoclaw-rag';
 import { checkRateLimitForOrg } from '@/lib/api-guard';
-import { persistChatMessage } from '@/lib/ai/chat-persistence';
+import { persistChatMessage, setSessionTitle } from '@/lib/ai/chat-persistence';
+import { generateSessionTitle } from '@/lib/ai/session-title';
 import { AiFailoverError, postToAiProvider } from '@/lib/ai/failover';
 import type { OrgId } from '@/lib/tenancy/constants';
 import type { AiStructuredAnswer } from '@/lib/ai/types';
@@ -133,7 +134,15 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
 
   const trimmedMessage = message.trim();
   const organizationId = ctx.organizationId;
-  void persistChatMessage({ organizationId, sessionId, role: 'user', content: trimmedMessage });
+  // First message → the session was created with a provisional title. Replace
+  // it with an AI summary in the background; the chat turn never waits on it.
+  void persistChatMessage({ organizationId, sessionId, role: 'user', content: trimmedMessage })
+    .then(async ({ created }) => {
+      if (!created) return;
+      const title = await generateSessionTitle(organizationId as OrgId, trimmedMessage);
+      await setSessionTitle(organizationId, sessionId, title);
+    })
+    .catch(() => {});
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {

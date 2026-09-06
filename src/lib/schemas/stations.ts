@@ -58,6 +58,18 @@ export const StationPublishBody = z.object({
   id: z.number().int().positive(),
 });
 
+/** Restore: copy version `id` forward as the next draft (never re-activate the old row). */
+export const StationRestoreBody = z.object({
+  id: z.number().int().positive(),
+});
+
+/** Cherry-pick: lift `blockIds` from version `fromId` into version `baseId` as a new draft. */
+export const StationCherryPickBody = z.object({
+  baseId: z.number().int().positive(),
+  fromId: z.number().int().positive(),
+  blockIds: z.array(KeySchema).min(1).max(60),
+});
+
 // ─── Node-bound stations (Operations Studio Phase D / ST5) ───────────────────
 // The node id is taken from the request PATH (never the body, like orgId). The
 // body only carries the editable composition: a label + the slots config. The

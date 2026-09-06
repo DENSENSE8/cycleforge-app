@@ -8,9 +8,12 @@
  *   (A) Static enforcement gate (no DB needed):
  *       For every table that is FORCEd (from docs/tenancy/coverage.generated.json),
  *       EVERY route that touches it (docs/tenancy/route-audit.generated.json
- *       reverse index) must be GUC-wrapped (risk 'low'). If a raw-pool route
- *       touches an enforced table it would silently get zero rows in prod —
- *       fail the build instead.
+ *       reverse index) must be GUC-wrapped (risk 'low'), carry a `route::table`
+ *       exemption (a claim of correctness), or be listed in
+ *       scripts/tenancy-guard-baseline.json (known debt — warns, and the guard
+ *       fails if a baselined pair stops violating, so the list only shrinks).
+ *       If a raw-pool route touches an enforced table it would silently get
+ *       zero rows in prod — fail the build instead.
  *
  *   (B) Live role invariant (needs a DB URL):
  *       If ANY table is FORCEd in the live catalog, the role that serves TENANT
@@ -53,6 +56,40 @@ const runLive = !staticOnly;
 
 const coveragePath = join(repoRoot, 'docs/tenancy/coverage.generated.json');
 const routePath = join(repoRoot, 'docs/tenancy/route-audit.generated.json');
+const BASELINE_REL = 'scripts/tenancy-guard-baseline.json';
+const baselinePath = join(repoRoot, BASELINE_REL);
+
+/**
+ * Loads the ratchet baseline: the `route::table` pairs that are KNOWN debt today,
+ * so the guard can fail on new violations while the existing ones only ever get
+ * removed from the file — a missing file means zero tolerated debt.
+ */
+function loadBaseline(): string[] {
+  if (!existsSync(baselinePath)) return [];
+  const parsed = JSON.parse(readFileSync(baselinePath, 'utf8')) as { entries?: string[] };
+  return parsed.entries ?? [];
+}
+
+type ResolvedExemption = {
+  /** the allowlist key that matched — `route::table`, or the bare route for a legacy entry */
+  key: string;
+  exemption: (typeof ROUTE_TENANCY_EXEMPTIONS)[string];
+  legacy: boolean;
+};
+
+/**
+ * Resolves the exemption for ONE (route, table) pair: an exemption only ever
+ * suppresses the table it was written for, and a bare-route key is accepted as a
+ * deprecated legacy fallback so no single entry silently covers a second table.
+ */
+function resolveExemption(route: string, table: string): ResolvedExemption | null {
+  const compositeKey = `${route}::${table}`;
+  const exact = ROUTE_TENANCY_EXEMPTIONS[compositeKey];
+  if (exact) return { key: compositeKey, exemption: exact, legacy: false };
+  const legacy = ROUTE_TENANCY_EXEMPTIONS[route];
+  if (legacy) return { key: route, exemption: legacy, legacy: true };
+  return null;
+}
 
 async function main() {
 try {
@@ -87,28 +124,47 @@ if (runStatic) {
 
   // A route that touches a FORCEd table on the raw owner pool would silently get
   // zero rows in prod. It clears the gate only if it is EITHER GUC-wrapped
-  // (risk 'low') OR carries a documented, by-design exemption in
-  // ROUTE_TENANCY_EXEMPTIONS (keyed by route path so it survives more tables
-  // being FORCEd). Anything else is an unresolved violation — so the gate stays
-  // a ratchet that catches NEW leaks.
+  // (risk 'low') OR every offending table carries a documented, by-design
+  // exemption in ROUTE_TENANCY_EXEMPTIONS. Exemptions are keyed
+  // `route::table` — a route-only key is still honoured as a DEPRECATED legacy
+  // fallback (the 2026-09 allowlist predates the re-key) but it blanket-exempts
+  // every table the route touches, which is how a real /api/receiving-tasks leak
+  // hid behind a "no-db-false-positive" note. Anything else is an unresolved
+  // violation — so the gate stays a ratchet that catches NEW leaks.
+  const baseline = loadBaseline();
+  const unresolvedBaseline = new Set(baseline);
   const exemptByCategory: Record<string, number> = {};
   const matchedExemptions = new Set<string>();
+  const legacyKeyedRoutes = new Set<string>();
   const exemptLines: string[] = [];
+  const baselinedPairs: string[] = [];
   let staticViolations = 0;
   for (const r of routeAudit.routes) {
     if (r.risk === 'low') continue;
     const offending = r.touched.filter((t) => enforcedSet.has(t));
     if (!offending.length) continue;
-    const exemption = ROUTE_TENANCY_EXEMPTIONS[r.route];
-    if (exemption) {
-      matchedExemptions.add(r.route);
-      exemptByCategory[exemption.category] = (exemptByCategory[exemption.category] ?? 0) + 1;
-      exemptLines.push(`  EXEMPT: ${exemption.category} — ${r.route} — ${exemption.reason}`);
-      continue;
+    const unexempt: string[] = [];
+    for (const table of offending) {
+      const pair = `${r.route}::${table}`;
+      const hit = resolveExemption(r.route, table);
+      if (!hit) {
+        // Known debt: warn, do not fail. Unknown debt: fail. Either way the pair
+        // leaves the baseline the moment the route is GUC-wrapped (below).
+        if (unresolvedBaseline.delete(pair)) baselinedPairs.push(pair);
+        else unexempt.push(table);
+        continue;
+      }
+      matchedExemptions.add(hit.key);
+      if (hit.legacy) legacyKeyedRoutes.add(r.route);
+      exemptByCategory[hit.exemption.category] = (exemptByCategory[hit.exemption.category] ?? 0) + 1;
+      exemptLines.push(
+        `  EXEMPT: ${hit.exemption.category} — ${pair}${hit.legacy ? ' (legacy route-only key)' : ''} — ${hit.exemption.reason}`,
+      );
     }
+    if (!unexempt.length) continue;
     staticViolations++;
     violations.push(
-      `route ${r.route} (risk=${r.risk}) touches ENFORCED table(s) [${offending.join(', ')}] but is not GUC-wrapped or allowlisted`,
+      `route ${r.route} (risk=${r.risk}) touches ENFORCED table(s) [${unexempt.join(', ')}] but is not GUC-wrapped, allowlisted or baselined`,
     );
   }
 
@@ -119,10 +175,35 @@ if (runStatic) {
   console.log(
     `Tenancy guard (A): ${enforced.length} enforced table(s); ` +
       `${matchedExemptions.size} documented exemption(s)${catSummary ? ` (${catSummary})` : ''}; ` +
+      `${baselinedPairs.length}/${baseline.length} baselined debt pair(s); ` +
       `${staticViolations} unresolved static violation(s).`,
   );
+
+  if (baselinedPairs.length) {
+    console.warn(
+      `Tenancy guard (A): ${baselinedPairs.length} known-debt pair(s) from ${BASELINE_REL} (warning, not a failure): ` +
+        `${baselinedPairs.slice(0, 10).join(', ')}${baselinedPairs.length > 10 ? ' …' : ''}`,
+    );
+  }
+
+  // The ratchet: a baseline line that no longer violates is a hard failure, so
+  // the file can only ever get shorter and a fix cannot leave debt behind it.
+  for (const pair of [...unresolvedBaseline].sort()) {
+    violations.push(`stale baseline — remove this line from ${BASELINE_REL}: "${pair}"`);
+  }
   if (listExemptions && exemptLines.length) {
     console.log(exemptLines.sort().join('\n'));
+  }
+
+  // Deprecation: every legacy route-only key blanket-exempts whatever tables the
+  // route happens to touch today, so it silently widens as more tables are
+  // FORCEd. Re-key each one to `route::table`.
+  if (legacyKeyedRoutes.size) {
+    console.warn(
+      `Tenancy guard (A): ${legacyKeyedRoutes.size} route(s) matched a DEPRECATED route-only exemption key — ` +
+        `re-key to 'route::table' (blanket-exempts every table the route touches): ` +
+        `${[...legacyKeyedRoutes].slice(0, 10).join(', ')}${legacyKeyedRoutes.size > 10 ? ' …' : ''}`,
+    );
   }
 
   // Stale-exemption hygiene (non-fatal): an allowlisted route that no longer

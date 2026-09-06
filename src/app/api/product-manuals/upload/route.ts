@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { put, del } from '@vercel/blob';
 import { withAuth } from '@/lib/auth/withAuth';
 import { docxToPdf } from '@/lib/manuals/docxToPdf';
+import { INLINE_SAFE_MIME } from '@/lib/blob/stream-vercel-blob';
 import {
   upsertProductManual,
   updateProductManual,
@@ -12,6 +13,38 @@ import {
 // seconds (longer on a cold sandbox), so we need Node + a generous ceiling.
 export const runtime = 'nodejs';
 export const maxDuration = 120;
+
+/**
+ * Identify the real type of an upload from its leading bytes, restricted to
+ * the four types the preview proxy will ever serve inline
+ * (`INLINE_SAFE_MIME`). Returns null for everything else — including SVG and
+ * HTML, which would otherwise execute on our origin when previewed. The
+ * multipart part's own `Content-Type` is attacker-chosen and never consulted.
+ */
+function sniffInlineSafeMime(buf: Buffer): string | null {
+  if (buf.length >= 5 && buf.subarray(0, 5).toString('latin1') === '%PDF-') {
+    return 'application/pdf';
+  }
+  if (
+    buf.length >= 8
+    && buf.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+  ) {
+    return 'image/png';
+  }
+  if (buf.length >= 3 && buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) {
+    return 'image/jpeg';
+  }
+  if (
+    buf.length >= 12
+    && buf.subarray(0, 4).toString('latin1') === 'RIFF'
+    && buf.subarray(8, 12).toString('latin1') === 'WEBP'
+  ) {
+    return 'image/webp';
+  }
+  return null;
+}
+
+const ALLOWED_UPLOAD_LABEL = Object.keys(INLINE_SAFE_MIME).join(', ');
 
 /**
  * POST /api/product-manuals/upload
@@ -34,8 +67,13 @@ export const maxDuration = 120;
  * PDF; the source Word file is not retained. Applies to both create and
  * replace, so "Replace file" on a PDF manual accepts a Word doc too.
  *
+ * The stored blob's content-type is decided by sniffing the bytes, not by the
+ * multipart part's own `Content-Type`, and must be one of
+ * application/pdf | image/png | image/jpeg | image/webp (415 otherwise).
+ *
  * Form fields:
- *   file          required — PDF, image, or Word doc (.doc/.docx → converted)
+ *   file          required — PDF/PNG/JPEG/WebP, or a Word doc (.doc/.docx →
+ *                 converted to PDF, then sniffed like everything else)
  *   id            optional — when present, replaces the existing manual's blob
  *   displayName   optional — defaults to the file's name (stripped of .pdf)
  *   folderPath    optional — '/'-separated; pre-filled to current breadcrumb
@@ -111,7 +149,6 @@ export const POST = withAuth(
       let buffer: Buffer = Buffer.from(await file.arrayBuffer());
       // Final blob name/type — rewritten to .pdf when we convert a Word doc.
       let outName = safeName || 'manual.pdf';
-      let contentType = file.type || 'application/pdf';
 
       if (isWordDoc) {
         try {
@@ -125,7 +162,16 @@ export const POST = withAuth(
           );
         }
         outName = (safeName || 'manual').replace(/\.docx?$/i, '') + '.pdf';
-        contentType = 'application/pdf';
+      }
+
+      // Trust the bytes, never `file.type`: the stored content-type is what the
+      // preview proxy replays on our origin, and we ship no `script-src`.
+      const contentType = sniffInlineSafeMime(buffer);
+      if (!contentType) {
+        return NextResponse.json(
+          { success: false, error: `unsupported file type — allowed: ${ALLOWED_UPLOAD_LABEL}` },
+          { status: 415 },
+        );
       }
 
       const blobKey = `product-manuals/${Date.now()}_${outName}`;
@@ -151,12 +197,20 @@ export const POST = withAuth(
       if (thumbnailFile instanceof File && thumbnailFile.size > 0) {
         try {
           const thumbBuffer = Buffer.from(await thumbnailFile.arrayBuffer());
-          const thumbKey = `product-manuals/thumbs/${Date.now()}_${safeName || 'manual'}.jpg`;
-          const thumbUploaded = await put(thumbKey, thumbBuffer, {
-            access: 'public',
-            contentType: thumbnailFile.type || 'image/jpeg',
-          });
-          thumbnailUrl = thumbUploaded.url;
+          // Same byte-sniff clamp as the main file. A thumbnail is decorative,
+          // so a non-image part is dropped rather than failing the upload —
+          // but it is never stored, so it can never be replayed inline.
+          const thumbType = sniffInlineSafeMime(thumbBuffer);
+          if (thumbType && thumbType !== 'application/pdf') {
+            const thumbKey = `product-manuals/thumbs/${Date.now()}_${safeName || 'manual'}.jpg`;
+            const thumbUploaded = await put(thumbKey, thumbBuffer, {
+              access: 'public',
+              contentType: thumbType,
+            });
+            thumbnailUrl = thumbUploaded.url;
+          } else {
+            console.warn('[product-manuals/upload] thumbnail rejected: not a png/jpeg/webp');
+          }
         } catch (err) {
           // Thumbnail is decorative — never fail the whole upload over it.
           console.warn('[product-manuals/upload] thumbnail save failed:', err);

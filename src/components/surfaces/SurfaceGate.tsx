@@ -16,6 +16,7 @@ import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import type { ReactNode } from 'react';
 import type { SurfaceKey } from '@/lib/stations/surface-keys';
+import { useStationDefinitionsRealtime } from '@/hooks/useStationDefinitionsRealtime';
 
 // The composed branch is live but OFF the default paint: it needs a published
 // composition AND the per-org `surface_composed_render` flag, and it can never
@@ -63,6 +64,9 @@ export function SurfaceGate({
   surfaceKey: SurfaceKey;
   children: ReactNode;
 }) {
+  // A publish flips legacy ↔ composed live: the resolve query is invalidated
+  // on the org's station channel, so the gate re-decides without a refresh.
+  useStationDefinitionsRealtime();
   const { data } = useQuery(surfaceResolveQuery(surfaceKey));
   if (data?.render === 'composed') return <SurfaceRenderer surfaceKey={surfaceKey} />;
   return <>{children}</>;

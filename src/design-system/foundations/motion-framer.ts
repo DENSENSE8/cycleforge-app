@@ -1,5 +1,5 @@
 import type { Transition, Variants } from '../motion/framer';
-import { cursorFollowSnap, fadeInstant, springArmedTrack, springSnappy } from '../motion/tokens';
+import { cursorFollowSnap, fadeInstant, springArmedTrack, springConcierge, springSnappy } from '../motion/tokens';
 
 /**
  * Cubic-bezier tuples for Framer Motion `ease`.
@@ -174,6 +174,8 @@ export const framerDuration = {
   signInAlternateFade: 0.18,
   /** AI chat "jump to latest" floating pill — mount/unmount */
   chatScrollToLatest: 0.16,
+  /** Chat phase-line scramble — Motion+ ScrambleText reveal per phrase swap */
+  chatPhaseScramble: 0.45,
 } as const;
 
 export const framerDurationTabPager = {
@@ -651,6 +653,41 @@ export const framerTransition = {
    * the same spring rather than a third one invented here.
    */
   cursorMorph: springArmedTrack,
+
+  // ─── Chat surface (session `/` — the concierge canvas) ─────────────────────
+
+  /**
+   * A chat TURN mounting into the transcript — user bubble, assistant prose,
+   * connect pill. Pair with `framerPresence.chatTurn`. The spring is
+   * `springConcierge`: a touch of overshoot so a turn reads as placed.
+   */
+  chatTurnMount: springConcierge,
+
+  /**
+   * The LANDING state (greeting, composer, suggestion row) arriving — pair with
+   * `framerPresence.chatLand`. Same physics as {@link chatTurnMount}; named
+   * separately so the landing can be retuned without re-timing every turn.
+   */
+  chatLandMount: springConcierge,
+
+  /**
+   * Micro-settle for chat INTERACTIVE chrome — chip hover lift, chip press,
+   * composer focus bloom. All targets, one spring, so the surface's small
+   * gestures read as one hand.
+   */
+  chatMicroSettle: springConcierge,
+
+  /**
+   * The streaming caret's breath — opacity + scaleY pulse loop. Not a spring:
+   * a breath is periodic, so it rides an easeInOut loop (~1.05s) that never
+   * resolves. This is the sanctioned replacement for raw `animate-pulse`
+   * carets on the chat surfaces (flat 50% duty square wave = blink, not breath).
+   */
+  chatCaretBreath: {
+    duration: 1.05,
+    repeat: Infinity,
+    ease: 'easeInOut' as const,
+  } satisfies Transition,
 } as const;
 
 /**
@@ -996,13 +1033,49 @@ export const framerPresence = {
     animate: { opacity: 1 },
     exit: { opacity: 0 },
   },
+
+  // ─── Chat surface (session `/` — the concierge canvas) ─────────────────────
+
+  /**
+   * A chat TURN (user bubble · assistant prose · connect pill) mounting into
+   * the transcript — the answer to "why did the reply pop in as a hard cut".
+   * Rises 10px with a 2% settle-in scale; exit sinks 6px toward the composer
+   * so the transcript reads as one continuous column of thought. Opacity +
+   * transform only. Pair with `framerTransition.chatTurnMount` (consume via
+   * `useMotionRole(motionRole.chat.turn)`).
+   */
+  chatTurn: {
+    initial: { opacity: 0, y: 10, scale: 0.98 },
+    animate: { opacity: 1, y: 0, scale: 1 },
+    exit: { opacity: 0, y: -6 },
+  },
+  /**
+   * The LANDING line — greeting hello / shine / composer / suggestion row.
+   * Deblur-rise (blur 6px → 0 while rising 14px): the 2026 hero-text
+   * entrance. `filter` is a reduced-motion-stripped key, so the bridge
+   * collapses this to a pure fade. Pair with `framerTransition.chatLandMount`
+   * via `useMotionRole(motionRole.chat.land)`.
+   */
+  chatLand: {
+    initial: { opacity: 0, y: 14, filter: 'blur(6px)' },
+    animate: { opacity: 1, y: 0, filter: 'blur(0px)' },
+  },
 } as const;
 
-/** Tech / packer grid chips — shared `whileTap` target */
+/**
+ * Gesture targets. Station chips (`tapPress` 0.9) are pressed by a gloved
+ * hand on a mounted screen; chat chips are pressed by a pointer resting on
+ * glass — the chat family gets its own, gentler targets so neither surface
+ * inherits the other's feel. Transition: `framerTransition.chatMicroSettle`.
+ */
 export const framerGesture = {
   tapPress: { scale: 0.9 },
-  cardHover: { scale: 1.002, y: -2 },
+  cardHover: { scale: 1.002 },
   rowHover: { x: 2 },
+  /** Chat chip / pill press — a dimple, not a squash. */
+  chatPress: { scale: 0.97 },
+  /** Chat chip hover — 1px lift, the house "chips lift y:-1" law (#8). */
+  chatHover: { y: -1 },
 } as const;
 
 /**
@@ -1343,6 +1416,36 @@ export const framerVariants: Record<string, Variants> = {
         duration: framerDuration.spineRowMount,
         ease: motionBezier.easeOut,
       },
+    },
+  },
+
+  // ─── Chat surface (session `/` — the concierge canvas) ─────────────────────
+
+  /**
+   * Word-cascade for the LANDING line — Motion+ `AnimateText type="word"`
+   * children carry the WORD variant; the wrapping `motion.div` carries the
+   * CONTAINER and drives `initial="hidden" animate="show"` (labels propagate
+   * to the split words). One word every ~45ms, each rising on
+   * `springConcierge` with a 4px deblur — the sentence assembles itself.
+   *
+   * Reduced motion: call sites gate the split (render plain text) — a word
+   * cascade is pure choreography with no information content.
+   */
+  chatWordRiseContainer: {
+    hidden: {},
+    show: {
+      transition: {
+        staggerChildren: 0.045,
+      },
+    },
+  },
+  chatWordRiseWord: {
+    hidden: { opacity: 0, y: '0.55em', filter: 'blur(4px)' },
+    show: {
+      opacity: 1,
+      y: 0,
+      filter: 'blur(0px)',
+      transition: springConcierge,
     },
   },
 };

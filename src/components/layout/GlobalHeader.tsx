@@ -12,6 +12,7 @@ import {
   TOP_CHROME_BAND_CLASS,
 } from './header-shell';
 import { SidebarCollapseControl } from './SidebarCollapseControl';
+import { GlobalHeaderSearch } from './GlobalHeaderSearch';
 import { appChromeMutedClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
 
@@ -83,7 +84,14 @@ export function GlobalHeader({
         appChromeMutedClass,
       )}
     >
-      {/* Toggle · Recents — one gap-0 cluster. */}
+      {/* Toggle · Find (closed only) · Recents — one gap-0 cluster.
+
+          With the spine CLOSED the search icon sits here, second from the
+          left, the way every agent desktop app arranges a collapsed
+          navigator: the two things you can still do without the map are open
+          it and search it. With the spine OPEN, Search is the spine's own
+          second row and this slot is empty — one search icon on screen at a
+          time, one `COMMAND_BAR_OPEN_EVENT`, one palette. */}
       <div className={HEADER_ICON_CLUSTER} data-header-zone="nav">
         {canCollapseSidebar && onToggleSidebar ? (
           <SidebarCollapseControl
@@ -93,6 +101,7 @@ export function GlobalHeader({
             peekTriggerProps={navPeekTriggerProps}
           />
         ) : null}
+        {sidebarCollapsed ? <GlobalHeaderSearch /> : null}
         {/*
           Scan Stations peer chip is gone (operator 2026-09-01): MasterNav
           hover-peek already lists every floor bench. Recents is work sessions
@@ -107,7 +116,7 @@ export function GlobalHeader({
 
       {/* Beam-height so icon washes lock flush top/bottom. */}
       <div className="flex h-full shrink-0 items-stretch">
-        <GlobalHeaderActions />
+        <GlobalHeaderActions showFind={!sidebarCollapsed} />
       </div>
     </header>
   );

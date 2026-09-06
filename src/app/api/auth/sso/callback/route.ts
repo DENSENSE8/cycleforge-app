@@ -62,6 +62,19 @@ function origin(req: NextRequest): string {
     `${req.nextUrl.protocol}//${req.nextUrl.host}`;
 }
 
+/**
+ * True when `url` is a path that stays on THIS origin once `new URL()` resolves
+ * it. Mirrors documents/[id]/content/route.ts, hardened for the escapes the
+ * bare `startsWith('/')` check misses: `//evil.com` and `/\evil.com` both parse
+ * to an external host, and tab/CR/LF are stripped by the URL parser first, so
+ * `/<TAB>/evil.com` collapses into `//evil.com`.
+ */
+function isSameOriginPath(url: string): boolean {
+  if (!url.startsWith('/')) return false;
+  const stripped = url.replace(/[\t\r\n]/g, '');
+  return stripped.startsWith('/') && !stripped.startsWith('//') && !stripped.startsWith('/\\');
+}
+
 function failRedirect(req: NextRequest, code: string): NextResponse {
   const url = new URL('/signin', origin(req));
   url.searchParams.set('sso_error', code);
@@ -298,7 +311,13 @@ export const GET = withAuth(async (req) => {
     persistent: stateRow.persistent === true,
   });
 
-  const target = new URL(stateRow.next_path || '/dashboard', origin(req));
+  // Re-checked at the sink: rows written before /start validated `next_path`
+  // (or by any other writer) must not turn this into an open redirect.
+  const storedNext = stateRow.next_path;
+  const target = new URL(
+    storedNext && isSameOriginPath(storedNext) ? storedNext : '/dashboard',
+    origin(req),
+  );
   const res = NextResponse.redirect(target);
   res.cookies.set({
     name: SESSION_COOKIE_NAME,

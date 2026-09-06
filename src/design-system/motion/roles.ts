@@ -219,6 +219,50 @@ export const motionRole = {
       regions: ['station', 'workbench'] as const satisfies readonly MotionRegion[],
     },
   },
+
+  /**
+   * The CHAT surface (session `/` — the concierge canvas, 2026-09-06).
+   *
+   * Three jobs, none of which existed before the surface did: a TURN entering
+   * the transcript, the LANDING state assembling, and the STREAM feedback
+   * (the caret's breath). They are 'canvas' region only — the station floor
+   * keeps `springSnappy` cadence, and a concierge spring on a scan mouth is
+   * throughput turned into treacle.
+   */
+  chat: {
+    /**
+     * A chat turn mounting — user bubble, assistant prose block, connect
+     * pill. Physics: `springConcierge` (a touch of overshoot — placed, not
+     * snapped). Previously this surface had NO entrance: replies arrived as
+     * a hard cut (design-system-ideas-LOOP #9).
+     */
+    turn: {
+      presence: framerPresence.chatTurn,
+      transition: framerTransition.chatTurnMount,
+      regions: ['canvas'] as const satisfies readonly MotionRegion[],
+    },
+    /**
+     * The LANDING state assembling — greeting lines, composer, suggestion
+     * row. Deblur-rise on the same concierge spring; the word cascade
+     * (`framerVariants.chatWordRise*`) is the per-word face of the same job.
+     */
+    land: {
+      presence: framerPresence.chatLand,
+      transition: framerTransition.chatLandMount,
+      regions: ['canvas'] as const satisfies readonly MotionRegion[],
+    },
+    /**
+     * STREAM feedback, transition-only like {@link feedback.pulse}: the
+     * element is already mounted and a value (the caret's presence, the
+     * phase line's phrase) is cycling. The caret breath replaces raw
+     * `animate-pulse` (a 50%-duty blink) with an easeInOut breath; the
+     * phase-line morph timing lives beside it in `framerDuration`.
+     */
+    stream: {
+      transition: framerTransition.chatCaretBreath,
+      regions: ['canvas'] as const satisfies readonly MotionRegion[],
+    },
+  },
 } as const;
 
 /** A role that owns a mount/unmount shape — consumable by `useMotionRole`. */

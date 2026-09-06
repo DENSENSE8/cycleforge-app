@@ -8,6 +8,23 @@ allowBuilds:
   protobufjs: true
   sharp: true
   unrs-resolver: true
+# Security overrides for transitive, prod-reachable packages (pen-test §3.8).
+# pnpm 11 reads these HERE, not from `pnpm.overrides` in package.json — that
+# field is ignored with a warning.
+#   axios     proxy inheritance / NO_PROXY bypass in the SDKs carrying the eBay
+#             and Nango OAuth credentials
+#   undici    TLS validation bypass, reached through @vercel/sandbox
+#   dompurify sanitiser behind inbound supplier email (src/lib/po-gmail/messages.ts:27)
+overrides:
+  axios: '>=1.18.0'
+  undici: ^7.29.1
+  dompurify: ^3.4.13
+
+# Registry-worm cooldown: never resolve a version published less than 24h ago.
+# Without this the exclude list below is inert — an exclude from an unset
+# cooldown excludes nothing. Pin `name@version` there to take a fresh release
+# deliberately.
+minimumReleaseAge: 1440
 minimumReleaseAgeExclude:
   - '@ai-sdk/gateway@4.0.16'
   - '@ai-sdk/react@4.0.23'

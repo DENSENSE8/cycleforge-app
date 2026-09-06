@@ -3,6 +3,13 @@
  * PATCH  /api/admin/roles/[id] — partial update (label, color, position, permissions)
  *                                Admin role rejects permission changes.
  * DELETE /api/admin/roles/[id] — only allowed when !is_system AND member_count == 0.
+ *
+ * Tenancy: `roles` is a GLOBAL table (no organization_id, RLS off) and
+ * role-store.ts caches it process-wide, org-unaware. PATCH/DELETE therefore run
+ * an interim relationship guard (callerOrgIsRelatedToRole) so a tenant can only
+ * mutate roles it granted or created. STILL OPEN: the real fix is to give
+ * `roles` an organization_id (or a per-org overlay) + an org-keyed cache —
+ * handoff §3.3 [CRIT] "Global roles table".
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -20,6 +27,38 @@ function idFromUrl(req: NextRequest): number | null {
   const parts = req.nextUrl.pathname.split('/').filter(Boolean);
   const n = Number(parts[parts.length - 1]);
   return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/**
+ * Enforces: the caller's tenant has some relationship to this global `roles` row
+ * — a staff_roles grant on one of its staff, or a `role.created` audit entry
+ * written by one of its staff. `roles` has no organization_id and role-store
+ * caches it process-wide, so mutating an unrelated role silently rewrites
+ * another tenant's permission model. Interim guard until `roles` is org-scoped.
+ */
+async function callerOrgIsRelatedToRole(orgId: string, roleId: number): Promise<boolean> {
+  const r = await tenantQuery<{ related: boolean }>(
+    orgId,
+    `SELECT (
+         EXISTS (
+           SELECT 1
+             FROM staff_roles sr
+             JOIN staff s ON s.id = sr.staff_id
+            WHERE sr.role_id = $1
+              AND s.organization_id = $2
+         )
+         OR EXISTS (
+           SELECT 1
+             FROM auth_audit a
+             JOIN staff s ON s.id = a.staff_id
+            WHERE a.event = 'role.created'
+              AND (a.detail->>'roleId') = $1::TEXT
+              AND s.organization_id = $2
+         )
+       ) AS related`,
+    [roleId, orgId],
+  );
+  return r.rows[0]?.related === true;
 }
 
 function sanitizePermissions(raw: unknown): string[] {
@@ -85,6 +124,11 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
   const cur = await tenantQuery(ctx.organizationId, `SELECT id, key, is_system, permissions FROM roles WHERE id = $1`, [id]);
   const row = cur.rows[0] as { id: number; key: string; is_system: boolean; permissions: string[] } | undefined;
   if (!row) return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+  // Interim cross-tenant guard (roles is global + process-wide cached): refuse
+  // ids this tenant has no relationship to, indistinguishable from missing.
+  if (!(await callerOrgIsRelatedToRole(ctx.organizationId, id))) {
+    return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+  }
 
   const body = await req.json().catch(() => ({} as Record<string, unknown>));
   const sets: string[] = [];
@@ -170,6 +214,11 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
   );
   const row = cur.rows[0] as { id: number; key: string; is_system: boolean; member_count: number } | undefined;
   if (!row) return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+  // Same interim cross-tenant guard as PATCH: a role this tenant never granted
+  // or created is not this tenant's to delete, even with admin.manage_roles.
+  if (!(await callerOrgIsRelatedToRole(ctx.organizationId, id))) {
+    return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
+  }
   if (row.is_system) {
     return NextResponse.json({ error: 'IS_SYSTEM', message: 'Built-in roles cannot be deleted.' }, { status: 409 });
   }

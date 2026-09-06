@@ -98,6 +98,7 @@ import { elevationClass } from '@/design-system/tokens/shadows';
 import { cn } from '@/utils/_cn';
 import { LastUsedMarker, ProviderSignInButton } from '@/components/auth/ProviderSignInButton';
 import type { PlatformProvider } from '@/lib/auth/platform-oauth-types';
+import { SignInQrPanel } from '@/components/auth/SignInQrPanel';
 import {
   readLastSigninEmail,
   readLastSigninMethod,
@@ -750,10 +751,19 @@ export default function SignInPage() {
   // ── Primary: federated identity → email + password → more ─────────────────
   return (
     <Shell>
-      <AuthCard>
-        {/* Tier 1 — the first interactive section: identity providers before email. */}
+      <AuthCard
+        qrPanel={
+          <SignInQrPanel
+            rememberMe={rememberMe}
+            onSuccess={() => finish(null, null, null, null)}
+          />
+        }
+      >
+        <SignInTitle workspaceName={workspaceName} />
+
+        {/* Tier 1 — identity providers directly below the title */}
         {authStep === 'email' && hasFederated && (
-          <div key="federated" className="order-first space-y-2" aria-label="Identity provider sign-in">
+          <div key="federated" className="space-y-2.5" aria-label="Identity provider sign-in">
             {providers.map((p) => (
               <ProviderSignInButton
                 key={p}
@@ -778,9 +788,6 @@ export default function SignInPage() {
             <Divider>or</Divider>
           </div>
         )}
-
-        <SignInTitle workspaceName={workspaceName} />
-
         {/* Tier 2 — the default path. */}
         <form
           className="space-y-4"
@@ -858,21 +865,7 @@ export default function SignInPage() {
           New here? <a href="/signup" className="font-semibold text-blue-600 hover:text-blue-700">Create a workspace</a>
         </p>
 
-        <div className="border-t border-border-hairline pt-4">
-          <Button
-            variant="secondary"
-            size="lg"
-            className="w-full"
-            icon={<QrCode aria-hidden />}
-            disabled={busy}
-            onClick={() => setShowPhoneQr(true)}
-          >
-            Sign in with QR code
-          </Button>
-          <p className="mt-2 text-center text-role-micro text-text-soft">
-            Scan with your phone to continue with Google or another identity provider.
-          </p>
-        </div>
+
       </AuthCard>
       <PhoneSigninQrDialog open={showPhoneQr} onClose={() => setShowPhoneQr(false)} />
     </Shell>
@@ -882,15 +875,45 @@ export default function SignInPage() {
 // ── Card chrome ─────────────────────────────────────────────────────────────
 
 /** The one card on the page. Panel + the raised-soft elevation role (SoT). */
-function AuthCard({ children }: { children: React.ReactNode }) {
+function AuthCard({ children, qrPanel }: { children: React.ReactNode; qrPanel?: React.ReactNode }) {
+  if (!qrPanel) {
+    return (
+      <Panel
+        padding="lg"
+        radius="2xl"
+        elevation="none"
+        className={cn('w-full max-w-sm space-y-5', elevationClass('raised', 'soft'))}
+      >
+        {children}
+      </Panel>
+    );
+  }
+
   return (
     <Panel
-      padding="lg"
+      padding="none"
       radius="2xl"
       elevation="none"
-      className={cn('w-full max-w-sm space-y-5', elevationClass('raised', 'soft'))}
+      className={cn('w-full overflow-hidden', elevationClass('raised', 'soft'))}
+      style={{ maxWidth: 'min(860px, 95vw)', width: '100%' }}
     >
-      {children}
+      <div className="flex flex-col md:flex-row md:items-stretch">
+        <div
+          className="flex-1 min-w-0 p-6 md:p-8 space-y-5 block my-auto"
+          style={{ flex: '1 1 0%', minWidth: 0 }}
+        >
+          {children}
+        </div>
+
+        <div className="hidden md:block w-px bg-border-hairline self-stretch my-6" />
+        <div className="block md:hidden h-px w-full bg-border-hairline" />
+
+        <div
+          className="w-full md:w-[320px] shrink-0 bg-surface-sunken/30 p-6 md:p-8 flex flex-col items-center justify-center"
+        >
+          {qrPanel}
+        </div>
+      </div>
     </Panel>
   );
 }

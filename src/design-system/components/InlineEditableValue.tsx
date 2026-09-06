@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pencil } from '@/components/Icons';
+import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
 type InlineTone = 'neutral' | 'blue' | 'orange' | 'red' | 'green' | 'purple' | 'yellow';
 
@@ -71,15 +72,18 @@ export function InlineEditableValue({
   }
 
   const editButton = showEditIcon ? (
-    <button
-      type="button"
-      onClick={() => setIsEditing((prev) => !prev)}
-      className="shrink-0 text-text-soft transition-colors duration-100 ease-out hover:text-text-default active:scale-95"
-      aria-label="Edit value"
-      title="Edit"
-    >
-      <Pencil className="h-[14px] w-[14px]" />
-    </button>
+    // Icon-only, so the hint is the only thing that names the verb. It also
+    // flips with state, which the native tip could not have said.
+    <HoverTooltip label={isEditing ? 'Stop editing' : 'Edit value'} asChild>
+      <button
+        type="button"
+        onClick={() => setIsEditing((prev) => !prev)}
+        className="shrink-0 text-text-soft transition-colors duration-100 ease-out hover:text-text-default active:scale-95"
+        aria-label="Edit value"
+      >
+        <Pencil className="h-[14px] w-[14px]" />
+      </button>
+    </HoverTooltip>
   ) : null;
 
   return (

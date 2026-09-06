@@ -3,7 +3,7 @@ import { Button, IconButton } from '@/design-system/primitives';
 import { WorkspaceCard } from '@/design-system/components';
 import { STEPS } from './rack-printer-config';
 import { StepPills } from './StepPills';
-import { ZoneLetterTile } from './ZoneLetterTile';
+import { ZoneLetterTile } from '../ZoneLetterTile';
 import { RoomPicker } from './RoomPicker';
 import { NumericStep } from '@/components/barcode/bin-label-printer/NumericStep';
 import { ConfigSheet } from './ConfigSheet';

@@ -1,15 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { normalizeEnvValue, resolvePublicAppUrl } from '@/lib/env-utils';
-import { getCurrentUser } from '@/lib/auth/current-user';
+import { withAuth } from '@/lib/auth/withAuth';
+import { safeStrEqual } from '@/lib/security/safe-compare';
 import {
   getIntegrationCredentials,
   upsertIntegrationCredentials,
   type ZohoCredentials,
 } from '@/lib/integrations/credentials';
-import { assertIntegrationKmsConfigured } from '@/lib/integrations/crypto';
+import {
+  assertIntegrationKmsConfigured,
+  decryptIntegrationPayload,
+} from '@/lib/integrations/crypto';
 import { getInventoryBaseUrl } from '@/lib/zoho/url';
+import type { OrgId } from '@/lib/tenancy/constants';
 
 export const dynamic = 'force-dynamic';
+
+/** httpOnly cookie carrying the single-use CSRF nonce across the Zoho redirect. */
+const ZOHO_OAUTH_STATE_COOKIE = 'zoho_oauth_state';
+/** State freshness window — aligned with the authorize cookie's maxAge (10 min). */
+const STATE_TTL_MS = 10 * 60 * 1000;
+
+/** Sealed tenant binding minted by /api/zoho/oauth/authorize. */
+interface ZohoOauthState {
+  organizationId?: string;
+  createdBy?: number | null;
+  nonce?: string;
+  issuedAt?: number;
+}
 
 /** Env-configured Zoho Inventory org id (USAV dogfood bootstrap). */
 function envZohoOrgId(): string {
@@ -26,12 +44,18 @@ function envZohoOrgId(): string {
  * source of truth. No env vars are written; the Zoho *app* client id/secret are
  * shared across tenants (like Amazon's LWA app) and copied into the encrypted
  * payload so it is self-contained at runtime.
+ * The connecting TENANT comes from the sealed `state` minted by
+ * /api/zoho/oauth/authorize — NOT from the ambient session — and the state is
+ * accepted only when its nonce matches the httpOnly cookie and it is younger
+ * than STATE_TTL_MS. Without that binding, a victim clicking an attacker's link
+ * writes the ATTACKER's Zoho refresh token into the victim org's vault. The
+ * route also requires `integrations.zoho`, matching the authorize side (this is
+ * the half that performs the credential write).
  *
- * The connecting TENANT is resolved from the signed-in admin's session (the
- * Zoho redirect is a top-level same-site navigation, so the session cookie is
- * present). Required env: ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, NEXT_PUBLIC_APP_URL.
+ * Required env: ZOHO_CLIENT_ID, ZOHO_CLIENT_SECRET, NEXT_PUBLIC_APP_URL,
+ * INTEGRATION_KMS_KEY.
  */
-export async function GET(request: NextRequest) {
+export const GET = withAuth(async (request: NextRequest, ctx) => {
   const { searchParams } = request.nextUrl;
 
   const code = searchParams.get('code');
@@ -63,19 +87,67 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Resolve the connecting tenant from the admin's session.
-  const user = await getCurrentUser();
-  if (!user) {
+  // ── Tenant binding: the sealed state, not the ambient session ─────────────
+  const rawState = searchParams.get('state');
+  if (!rawState) {
     return NextResponse.json(
       {
         success: false,
-        error: 'Not signed in.',
-        description: 'Start the Zoho connection from Settings → Integrations while signed in.',
+        error: 'Missing OAuth state.',
+        description: 'Start the Zoho connection from Settings → Integrations so the request is bound to your org.',
       },
-      { status: 401 },
+      { status: 400 },
     );
   }
-  const orgId = user.organizationId;
+
+  let parsedState: ZohoOauthState;
+  try {
+    parsedState = decryptIntegrationPayload<ZohoOauthState>(rawState);
+  } catch {
+    return NextResponse.json(
+      { success: false, error: 'Invalid OAuth state.' },
+      { status: 400 },
+    );
+  }
+
+  const stateOrgId = parsedState.organizationId ?? '';
+  const stateNonce = parsedState.nonce ?? '';
+  if (!stateOrgId || !stateNonce) {
+    return NextResponse.json(
+      { success: false, error: 'Incomplete OAuth state.' },
+      { status: 400 },
+    );
+  }
+  if (!parsedState.issuedAt || Date.now() - parsedState.issuedAt > STATE_TTL_MS) {
+    return NextResponse.json(
+      { success: false, error: 'OAuth state expired.', description: 'Retry the connection from Settings → Integrations.' },
+      { status: 400 },
+    );
+  }
+
+  // CSRF: the nonce inside `state` must match the httpOnly cookie set at
+  // authorize — proves the callback came back to the browser that started it.
+  const cookieNonce = request.cookies.get(ZOHO_OAUTH_STATE_COOKIE)?.value;
+  if (!cookieNonce || !safeStrEqual(cookieNonce, stateNonce)) {
+    return NextResponse.json(
+      { success: false, error: 'Invalid OAuth state.' },
+      { status: 400 },
+    );
+  }
+
+  // Defence in depth: the permission gate authorized THIS session's org, so a
+  // state minted for a different org must not be redeemed under it.
+  if (ctx.organizationId !== stateOrgId) {
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'OAuth state does not belong to the signed-in organization.',
+      },
+      { status: 403 },
+    );
+  }
+
+  const orgId = stateOrgId as OrgId;
 
   // Refuse to connect if we cannot store the secret encrypted in production.
   try {
@@ -256,7 +328,7 @@ export async function GET(request: NextRequest) {
     provider: 'zoho',
     payload,
     displayLabel: zohoOrgName ? `Connected · ${zohoOrgName}` : `Connected · org ${zohoOrgId}`,
-    createdBy: user.staffId,
+    createdBy: parsedState.createdBy ?? ctx.staffId,
   });
 
   // Mint this tenant's per-tenant webhook identity (Wave 3) so inbound Zoho
@@ -274,7 +346,7 @@ export async function GET(request: NextRequest) {
     console.warn('[zoho-oauth] webhook identity mint failed (non-fatal):', err);
   }
 
-  return NextResponse.json({
+  const res = NextResponse.json({
     success: true,
     message: 'Zoho connected. Credentials saved to the encrypted per-tenant vault.',
     organization_id: orgId,
@@ -295,4 +367,7 @@ export async function GET(request: NextRequest) {
         }
       : null,
   });
-}
+  // Single-use: the state has been redeemed, so the nonce must not survive it.
+  res.cookies.delete(ZOHO_OAUTH_STATE_COOKIE);
+  return res;
+}, { permission: 'integrations.zoho' });

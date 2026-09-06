@@ -12,6 +12,7 @@ import { SkeletonCardGrid } from '@/components/ui/SkeletonCard';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { useRoomFinder } from '@/components/warehouse/roomFinderContext';
 import { LABEL_BUILDER_SELECTED } from './label-builder-layout';
+import { ZONE_LETTER_UNASSIGNED_HINT } from './ZoneLetterTile';
 
 interface LabelRoomSidebarProps {
   rooms: string[];
@@ -125,6 +126,10 @@ function NoMatches({ query }: { query: string }) {
   );
 }
 
+/**
+ * The sidebar's own smaller, selectable tile — a different instrument from
+ * {@link ZoneLetterTile} (h-8, `active`), sharing only the sentence.
+ */
 function ZoneLetterTile({ letter, active }: { letter: string | undefined; active: boolean }) {
   if (letter) {
     return (
@@ -140,7 +145,7 @@ function ZoneLetterTile({ letter, active }: { letter: string | undefined; active
     );
   }
   return (
-    <HoverTooltip label="No zone letter assigned yet — go to the Rooms tab" asChild focusable={false}>
+    <HoverTooltip label={ZONE_LETTER_UNASSIGNED_HINT} asChild focusable={false}>
       <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-50 font-mono text-sm font-semibold text-amber-700 ring-1 ring-amber-200">
         ?
       </div>

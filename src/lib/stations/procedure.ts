@@ -340,29 +340,15 @@ export const UNBOX_FLOW_IDS: readonly UnboxFlowId[] = ['found', 'unfound', 'retu
 
 // ─── Unbox ───────────────────────────────────────────────────
 //
-// The pilot, and every act is hand-coded today — each one says so. Reading a
-// flow top to bottom is meant to be the same experience as watching someone
-// work the bench for that inbound type.
+// The pilot. Since 2026-09-06 the capture and commit acts are registered
+// actions (`receiving-capture-actions.ts`) and inherit their lineage from the
+// registry; only the scan itself is still code-only, because it is a trigger
+// the scan band drives, not a verb a row offers. Reading a flow top to bottom
+// is meant to be the same experience as watching someone work the bench for
+// that inbound type.
 
-/**
- * The read/write triple every `/api/receiving-photos` step shares. Declared
- * once because five steps now drive that one route: restating it per step is
- * how a lineage declaration drifts from the SQL it describes, which is the
- * exact failure `data-lineage.guard.test.ts` exists to catch.
- */
-const RECEIVING_PHOTO_READS: TableRef[] = [
-  { table: 'receiving_carton' },
-  { table: 'receiving_scans' },
-  { table: 'receiving_triage' },
-  { table: 'photos', via: '@/lib/photos/service' },
-  { table: 'photo_storage', via: '@/lib/photos/service' },
-];
-
-const RECEIVING_PHOTO_WRITES: TableRef[] = [
-  { table: 'photos', via: '@/lib/photos/service' },
-  { table: 'photo_storage', via: '@/lib/photos/service' },
-  { table: 'photo_entity_links', via: '@/lib/photos/claim-link' },
-];
+// The photo steps' read/write triple lives on `receiving.capture_photo`
+// (receiving-capture-actions.ts) — declared once there, inherited here.
 
 const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
   scan: {
@@ -395,26 +381,8 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     summary:
       'Name what this carton is (PO / return / trade-in / pickup) before anything else can be recorded against it.',
     phase: 'capture',
-    composed: false,
-    endpoint: { method: 'PATCH', path: '/api/receiving/:id' },
-    reads: [
-      { table: 'items' },
-      { table: 'local_pickup_orders' },
-      { table: 'locations' },
-      { table: 'receiving_carton' },
-      { table: 'receiving_line' },
-      { table: 'receiving_line_testing' },
-      { table: 'receiving_line_zoho' },
-      { table: 'receiving_scans' },
-      { table: 'receiving_triage' },
-      { table: 'receiving_unbox' },
-      { table: 'serial_unit_provenance' },
-      { table: 'serial_units' },
-      { table: 'shipping_tracking_numbers' },
-      { table: 'sku_catalog' },
-      { table: 'staff' },
-    ],
-    writes: [{ table: 'receiving_carton' }],
+    composed: true,
+    actionIds: ['receiving.classify_carton'],
   },
   arrival_label_photo: {
     key: 'arrival_label_photo',
@@ -424,10 +392,8 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     phase: 'capture',
     photoStage: 'arrival_package',
     photoAspect: 'shipping_label',
-    composed: false,
-    endpoint: { method: 'POST', path: '/api/receiving-photos' },
-    reads: RECEIVING_PHOTO_READS,
-    writes: RECEIVING_PHOTO_WRITES,
+    composed: true,
+    actionIds: ['receiving.capture_photo'],
   },
   arrival_box_photo: {
     key: 'arrival_box_photo',
@@ -437,10 +403,8 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     phase: 'capture',
     photoStage: 'arrival_package',
     photoAspect: 'box_exterior',
-    composed: false,
-    endpoint: { method: 'POST', path: '/api/receiving-photos' },
-    reads: RECEIVING_PHOTO_READS,
-    writes: RECEIVING_PHOTO_WRITES,
+    composed: true,
+    actionIds: ['receiving.capture_photo'],
   },
   shipping_label_photo: {
     key: 'shipping_label_photo',
@@ -450,10 +414,8 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     phase: 'capture',
     photoStage: 'unbox_carton',
     photoAspect: 'shipping_label',
-    composed: false,
-    endpoint: { method: 'POST', path: '/api/receiving-photos' },
-    reads: RECEIVING_PHOTO_READS,
-    writes: RECEIVING_PHOTO_WRITES,
+    composed: true,
+    actionIds: ['receiving.capture_photo'],
   },
   box_photo: {
     key: 'box_photo',
@@ -463,10 +425,8 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     phase: 'capture',
     photoStage: 'unbox_carton',
     photoAspect: 'box_exterior',
-    composed: false,
-    endpoint: { method: 'POST', path: '/api/receiving-photos' },
-    reads: RECEIVING_PHOTO_READS,
-    writes: RECEIVING_PHOTO_WRITES,
+    composed: true,
+    actionIds: ['receiving.capture_photo'],
   },
   packing_material: {
     key: 'packing_material',
@@ -476,10 +436,8 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     phase: 'capture',
     photoStage: 'unbox_carton',
     photoAspect: 'packing_material',
-    composed: false,
-    endpoint: { method: 'POST', path: '/api/receiving-photos' },
-    reads: RECEIVING_PHOTO_READS,
-    writes: RECEIVING_PHOTO_WRITES,
+    composed: true,
+    actionIds: ['receiving.capture_photo'],
   },
   contents: {
     key: 'contents',
@@ -487,10 +445,8 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     summary:
       'Confirm what is actually in this box against the line list. Nothing recorded that a human had read the manifest before working it \u2014 this step is that fact.',
     phase: 'capture',
-    composed: false,
-    endpoint: { method: 'POST', path: '/api/receiving/:id/contents-confirm' },
-    reads: [{ table: 'receiving_unbox', via: '@/lib/receiving/streets/carton-street-write' }],
-    writes: [{ table: 'receiving_unbox', via: '@/lib/receiving/streets/carton-street-write' }],
+    composed: true,
+    actionIds: ['receiving.confirm_contents'],
   },
   condition: {
     key: 'condition',
@@ -499,10 +455,8 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
       'Grade the unit \u2014 one tap or one scanned condition code. The stored default pre-selects the chip, so this is a confirmation rather than a decision from scratch; it is still an explicit act, and `condition_graded_at` is what records that it happened.',
     phase: 'capture',
     perUnit: true,
-    composed: false,
-    endpoint: { method: 'POST', path: '/api/receiving/lines/:id/condition' },
-    reads: [{ table: 'receiving_line' }],
-    writes: [{ table: 'receiving_line_testing' }],
+    composed: true,
+    actionIds: ['receiving.set_condition'],
   },
   item_photos: {
     key: 'item_photos',
@@ -513,10 +467,8 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     photoStage: 'unbox_item',
     photoAspectSet: ASPECTS_BY_STAGE.unbox_item,
     perUnit: true,
-    composed: false,
-    endpoint: { method: 'POST', path: '/api/receiving-photos' },
-    reads: RECEIVING_PHOTO_READS,
-    writes: RECEIVING_PHOTO_WRITES,
+    composed: true,
+    actionIds: ['receiving.capture_photo'],
   },
   serial: {
     key: 'serial',
@@ -525,18 +477,8 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
       'Scan each unit\u2019s serial, or waive it for a line that genuinely has none. This is what turns a quantity into tracked units.',
     phase: 'capture',
     perUnit: true,
-    composed: false,
-    endpoint: { method: 'POST', path: '/api/receiving/scan-serial' },
-    reads: [
-      { table: 'receiving_line' },
-      { table: 'receiving_line_zoho' },
-      { table: 'serial_units', via: '@/lib/receiving/serial-attach' },
-      { table: 'serial_unit_provenance', via: '@/lib/receiving/serial-attach' },
-    ],
-    writes: [
-      { table: 'serial_units', via: '@/lib/receiving/serial-attach' },
-      { table: 'receiving_line_testing', via: '@/lib/receiving/serial-projection' },
-    ],
+    composed: true,
+    actionIds: ['receiving.scan_serial', 'receiving.serial_absent'],
   },
   label: {
     key: 'label',
@@ -544,20 +486,16 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     summary:
       'Read the face this carton is about to print — the title, the condition and the code the shelf will be found by — and confirm it. A capture step, never the print itself: the printed face is the last thing an operator can still correct for free, and once the sticker is on the box a wrong one costs a re-label at the shelf.',
     phase: 'capture',
-    composed: false,
-    endpoint: { method: 'POST', path: '/api/receiving/lines/:id/label-previewed' },
-    reads: [{ table: 'receiving_line' }],
-    writes: [{ table: 'receiving_line_testing' }],
+    composed: true,
+    actionIds: ['receiving.label_previewed'],
   },
   print: {
     key: 'print',
     label: 'Print the label',
     summary: 'Print the carton or item label. First print wins \u2014 the stamp survives a refresh and another device.',
     phase: 'commit',
-    composed: false,
-    endpoint: { method: 'POST', path: '/api/receiving/lines/:id/label-printed' },
-    reads: [{ table: 'receiving_line' }],
-    writes: [{ table: 'receiving_line_testing' }],
+    composed: true,
+    actionIds: ['receiving.label_printed'],
   },
   stage: {
     key: 'stage',
@@ -565,14 +503,8 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     summary:
       'Scan the putaway bin barcode where this unit will live after receive. Dock Band 1 owns the wedge; the middle Placement panel confirms room · bin · barcode. Distinct from Arrival door carton staging.',
     phase: 'commit',
-    composed: false,
-    endpoint: { method: 'POST', path: '/api/receiving/lines/:id/stage' },
-    reads: [
-      { table: 'receiving_line' },
-      { table: 'receiving_line_putaway' },
-      { table: 'locations' },
-    ],
-    writes: [{ table: 'receiving_line_putaway' }],
+    composed: true,
+    actionIds: ['receiving.stage'],
   },
   receive: {
     key: 'receive',
@@ -580,24 +512,8 @@ const UNBOX_STEP_CATALOG: Record<string, ProcedureStep> = {
     summary:
       'Commit the received quantities: units become inventory, the line advances, and the receipt is pushed to the inventory provider. Prefer the staged location when present; otherwise org default putaway.',
     phase: 'commit',
-    composed: false,
-    endpoint: { method: 'POST', path: '/api/receiving/mark-received-po' },
-    reads: [
-      { table: 'receiving_carton' },
-      { table: 'receiving_line' },
-      { table: 'receiving_line_zoho' },
-      { table: 'serial_units' },
-      { table: 'serial_unit_provenance' },
-      { table: 'shipping_tracking_numbers' },
-      { table: 'staff' },
-      { table: 'inventory_events', via: '@/lib/receiving/receive-line' },
-      { table: 'items', via: '@/lib/receiving/receive-line' },
-    ],
-    writes: [
-      { table: 'receiving_line', via: '@/lib/receiving/receive-line' },
-      { table: 'serial_units', via: '@/lib/receiving/receive-line' },
-      { table: 'sku_stock_ledger', via: '@/lib/receiving/receive-line' },
-    ],
+    composed: true,
+    actionIds: ['receiving.receive'],
   },
 };
 

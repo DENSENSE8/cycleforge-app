@@ -29,6 +29,7 @@ import { recordAudit } from '@/lib/audit-logs';
 import { isTrialBlocked } from '@/lib/billing/trial-gate';
 import { isFeatureGated } from '@/lib/billing/feature-gate';
 import type { EntitlementFeature } from '@/lib/billing/feature-gate';
+import { clientIpOrNull } from '@/lib/api-guard';
 
 /**
  * Auth context handed to wrapped route handlers.
@@ -93,13 +94,6 @@ type AnonymousApiHandler = (req: NextRequest, ctx: AnonymousAuthContext) => Prom
 // that need [id]-style params parse `req.nextUrl.pathname` instead.
 type RouteContext = { params: Promise<Record<string, string | string[] | undefined>> };
 type RouteHandler = (req: NextRequest, ctx: RouteContext) => Promise<Response> | Response;
-
-function clientIp(req: NextRequest): string | null {
-  const xff = req.headers.get('x-forwarded-for');
-  if (xff) return xff.split(',')[0]?.trim() || null;
-  const real = req.headers.get('x-real-ip');
-  return real || null;
-}
 
 /**
  * Best-effort JSON parse of a cloned request/response. Returns null on
@@ -203,7 +197,7 @@ export function withAuth(
         event: 'permission.denied',
         result: 'denied',
         sid: user.session.sid,
-        ip: clientIp(req),
+        ip: clientIpOrNull(req.headers),
         userAgent: req.headers.get('user-agent'),
         detail: { permission: opts.permission, api: true, path: req.nextUrl.pathname },
       });

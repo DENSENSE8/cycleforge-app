@@ -135,6 +135,30 @@ export const UI_TOOLS: Anthropic.Tool[] = [
       required: ['handlingUnitIds'],
     },
   },
+  {
+    // In-chat OAuth handoff. The pill renders in the TRANSCRIPT, not on the
+    // artifact panel: an authorization prompt is an interaction, not data, and
+    // the operator must be able to act on it without leaving the sentence that
+    // caused it. The URL is always a link the SERVER minted (Composio Connect
+    // Link) — the model never constructs an OAuth URL, and no credential ever
+    // travels through chat text.
+    name: 'request_connection',
+    description:
+      'Show the user an inline "Connect <app>" pill with a button, when a tool you called returned status "needs_connection". Pass through the app, appLabel and connectUrl EXACTLY as that tool returned them — never edit, shorten, or invent a connect URL, and never paste the URL as text in your reply. Say one short sentence about what you were trying to do; the pill carries the button, and the app tells you when the connection lands so you can retry the tool.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        app: { type: 'string', description: 'Toolkit slug from the tool result, e.g. googledocs' },
+        appLabel: { type: 'string', description: 'Operator-facing app name, e.g. Google Docs' },
+        connectUrl: { type: 'string', description: 'The connect URL exactly as the tool returned it' },
+        reason: {
+          type: 'string',
+          description: 'One sentence naming what connecting unlocks, e.g. "so I can read your ops handbook"',
+        },
+      },
+      required: ['app', 'appLabel', 'connectUrl'],
+    },
+  },
 ];
 
 const UI_TOOL_NAMES = new Set(UI_TOOLS.map((t) => t.name));
@@ -159,6 +183,76 @@ export function parseRenderArtifactInput(input: unknown) {
   const raw =
     input !== null && typeof input === 'object' && 'artifact' in input ? input.artifact : input;
   return sessionArtifactSchema.safeParse(sanitizeSessionArtifact(raw));
+}
+
+/**
+ * Connect URLs the SERVER minted during this turn.
+ *
+ * `request_connection` used to pass the model's `connectUrl` straight to the
+ * browser, where the only check was `startsWith('https://')` — so any https
+ * host the model could be talked into emitting became a trusted "Connect
+ * Google Docs" button in the operator's own transcript. The agent reads
+ * third-party text (ticket notes, receiving notes, Google Docs bodies), which
+ * makes that a one-hop phishing primitive: injected text names a link, the
+ * pill lends it the app's chrome, the staffer authorizes an attacker.
+ *
+ * The fix is not a host allowlist (Composio's link host is theirs to change)
+ * but provenance: the pill may only carry a URL a Composio tool returned in
+ * THIS turn. Collected from tool results, checked at the chokepoint.
+ */
+export function collectMintedConnectUrls(result: unknown, into: Set<string>): void {
+  const walk = (node: unknown, depth: number): void => {
+    if (depth > 6 || node === null || typeof node !== 'object') return;
+    if (Array.isArray(node)) {
+      for (const item of node.slice(0, 50)) walk(item, depth + 1);
+      return;
+    }
+    for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+      if (key === 'connectUrl' && typeof value === 'string' && value.startsWith('https://')) {
+        into.add(value);
+      } else if (value !== null && typeof value === 'object') {
+        walk(value, depth + 1);
+      }
+    }
+  };
+  walk(result, 0);
+}
+
+export interface ConnectionPillInput {
+  app: string;
+  appLabel: string;
+  connectUrl: string;
+  reason?: string;
+}
+
+/**
+ * Validate a `request_connection` call. Both loops run this before the pill
+ * reaches the browser; a rejection comes back as an error tool result the
+ * model can repair by passing the link through verbatim.
+ */
+export function parseRequestConnectionInput(
+  input: unknown,
+  minted: ReadonlySet<string>,
+): { ok: true; value: ConnectionPillInput } | { ok: false; error: string } {
+  const raw = (input ?? {}) as Record<string, unknown>;
+  const app = typeof raw.app === 'string' ? raw.app.trim() : '';
+  const connectUrl = typeof raw.connectUrl === 'string' ? raw.connectUrl.trim() : '';
+  if (app.length === 0 || app.length > 40) {
+    return { ok: false, error: 'app must be the toolkit slug the tool returned' };
+  }
+  if (!minted.has(connectUrl)) {
+    return {
+      ok: false,
+      error:
+        'connectUrl must be a link a connect tool returned in this turn, copied exactly. Call connect_app (or re-read the needs_connection result) and pass its connectUrl through unchanged — never edit, shorten or compose one.',
+    };
+  }
+  const appLabel = typeof raw.appLabel === 'string' && raw.appLabel.trim() ? raw.appLabel.trim() : app;
+  const reason = typeof raw.reason === 'string' && raw.reason.trim() ? raw.reason.trim().slice(0, 300) : undefined;
+  return {
+    ok: true,
+    value: { app, appLabel: appLabel.slice(0, 60), connectUrl, ...(reason ? { reason } : {}) },
+  };
 }
 
 // ─── System prompt ───────────────────────────────────────────────────────────
@@ -366,6 +460,8 @@ export async function runAssistantTurn(
 
   const turnTexts: string[] = [];
   const toolsUsed: string[] = [];
+  /** Connect links this turn's tools actually minted — the pill's provenance. */
+  const mintedConnectUrls = new Set<string>();
   let turns = 0;
 
   try {
@@ -435,6 +531,27 @@ export async function runAssistantTurn(
               });
               continue;
             }
+            // The pill carries a SERVER-minted link or it does not render:
+            // provenance, not a scheme check (see parseRequestConnectionInput).
+            if (call.name === 'request_connection') {
+              const pill = parseRequestConnectionInput(call.input, mintedConnectUrls);
+              if (!pill.ok) {
+                out.push({
+                  type: 'tool_result',
+                  tool_use_id: call.id,
+                  content: `request_connection rejected: ${pill.error}`,
+                  is_error: true,
+                });
+                continue;
+              }
+              args.emit({ type: 'ui_tool', name: call.name, input: pill.value });
+              out.push({
+                type: 'tool_result',
+                tool_use_id: call.id,
+                content: 'Connect pill shown in the transcript.',
+              });
+              continue;
+            }
             args.emit({ type: 'ui_tool', name: call.name, input: call.input });
             out.push({
               type: 'tool_result',
@@ -447,6 +564,7 @@ export async function runAssistantTurn(
           const result = await dispatchToolCall(call.name, call.input, args.ctx, writeMap, runTool);
           args.emit({ type: 'tool_end', name: call.name, ok: result.ok });
           toolsUsed.push(call.name);
+          if (result.ok) collectMintedConnectUrls(result.data, mintedConnectUrls);
           out.push({
             type: 'tool_result',
             tool_use_id: call.id,

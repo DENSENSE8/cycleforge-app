@@ -103,7 +103,13 @@ export default async function RootLayout({
             <head>
                 <title>{documentTitle}</title>
                 <meta name="description" content={`${PRODUCT_NAME} — Reseller Operations`} />
+                {/* Brand icon set — "The Forged Cycle" (docs/brand/icon.md).
+                    SVG first for vector-crisp tabs where supported; PNG
+                    fallback for the rest. Squircle PNG carries transparent
+                    corners so it sits clean on any browser chrome. */}
+                <link rel="icon" type="image/svg+xml" href="/icon.svg" sizes="any" />
                 <link rel="icon" type="image/png" href="/favicon.png" />
+                <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
                 {/* PWA */}
                 <link rel="manifest" href="/manifest.json" />
                 <meta name="application-name" content={PRODUCT_NAME} />

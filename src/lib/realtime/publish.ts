@@ -760,6 +760,30 @@ export async function publishTechLogChanged(payload: TechLogChangedPayload) {
   });
 }
 
+// ─── Station composition publish ─────────────────────────────────────────
+// Fired by /api/stations/publish after the is_active flip. Every device
+// rendering that (page, mode) refetches its definitions and its surface
+// resolve, so a desktop publish repaints the floor without a refresh.
+
+export interface StationDefinitionPublishedPayload {
+  organizationId: string;
+  pageKey: string;
+  modeKey: string;
+  id: number;
+  version: number;
+}
+
+export async function publishStationDefinitionPublished(payload: StationDefinitionPublishedPayload) {
+  await publishEvent(getStationChannelName(payload.organizationId), 'station-definition.published', {
+    type: 'station-definition.published',
+    pageKey: payload.pageKey,
+    modeKey: payload.modeKey,
+    id: payload.id,
+    version: payload.version,
+    timestamp: formatPSTTimestamp(),
+  });
+}
+
 export async function publishPackerLogChanged(payload: PackerLogChangedPayload) {
   await publishEvent(getStationChannelName(payload.organizationId), 'packer-log.changed', {
     type: 'packer-log.changed',

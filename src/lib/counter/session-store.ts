@@ -540,6 +540,62 @@ export async function releaseSession(
   });
 }
 
+/**
+ * Put this visit on a tablet — or take it off one (`kioskDeviceId: null`).
+ *
+ * This is the verb the whole desk↔iPad bridge was missing. A tablet enrols to
+ * the ORG, never to a desk, so nothing about pairing tells the tablet which
+ * visit to show; `getSessionForDevice` answers "what am I showing?" by looking
+ * for the open session BOUND to that device, and until this ran the only way to
+ * set that binding was at `createSession` time. A desk that had already opened
+ * a visit could never hand it to a tablet, and `session-fanout` short-circuits
+ * on a null device, so such a visit published nothing to anyone.
+ *
+ * **One tablet, one open visit.** `ux_counter_sessions_open_device` enforces it
+ * in the schema; the pre-check here turns the constraint violation into
+ * `DEVICE_BUSY`, which the desk can say out loud ("that iPad is on another
+ * visit") instead of a 500. The check runs in the `write` step rather than
+ * `guard` because it needs the transaction — and being inside it is what makes
+ * the read-then-write atomic against a second desk binding the same iPad.
+ *
+ * Desk-only, like every other header verb (D5): a tablet naming its own
+ * session would be a session-enumeration surface on an unattended device.
+ */
+export async function bindSessionDevice(
+  orgId: OrgId,
+  actor: CounterSessionActor,
+  sessionId: number,
+  args: { expectedVersion: number; kioskDeviceId: number | null },
+  deps: CounterSessionDeps = defaultDeps,
+): Promise<CounterSessionResult> {
+  const denied = refuseDeviceWrite(actor);
+  if (denied) return { ok: false, code: denied, snapshot: null };
+
+  return mutate({
+    orgId,
+    sessionId,
+    expectedVersion: args.expectedVersion,
+    actor,
+    deps,
+    write: async (tx, snapshot) => {
+      const target = args.kioskDeviceId;
+      if (target !== null && target !== snapshot.kioskDeviceId) {
+        const holder = await deps.findOpenSessionIdForDevice(tx, orgId, target);
+        if (holder !== null && holder !== sessionId) return 'DEVICE_BUSY';
+      }
+      await deps.patchHeader(tx, orgId, sessionId, { kioskDeviceId: target });
+      return { kioskDeviceId: target };
+    },
+    event: (version, written) => ({
+      type: 'session.device_bound',
+      sessionId,
+      version,
+      actor: 'desk',
+      kioskDeviceId: written.kioskDeviceId,
+    }),
+  });
+}
+
 export async function addLine(
   orgId: OrgId,
   actor: CounterSessionActor,
