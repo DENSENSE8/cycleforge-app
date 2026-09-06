@@ -37,19 +37,19 @@ const TICKET = 'T-9395';
 
 const ORDER = '04-1234';
 
-// ─── Row 1 · carrier tracking, never seen → Arrival ─────────────────────────
+// ─── Row 1 · carrier tracking, never seen → the door ─────────────────────────
 
 test('carrier tracking never seen opens the Arrival Card and titles the session', () => {
   const d = dispatchScan({ scan: UPS, state: { trackingSeen: false } });
   strictEqual(d.card, 'arrival');
-  strictEqual(d.title, 'Arrival · UPS 4471');
-  strictEqual(d.destination, 'Arrival');
+  strictEqual(d.title, 'Intake · UPS 4471');
+  strictEqual(d.destination, 'the door');
   strictEqual(d.mode, 'preview', 'nothing armed, so it previews');
 });
 
 test('an unknown state is the same as never seen — the honest answer, not a wrong one', () => {
   strictEqual(dispatchScan({ scan: UPS }).card, 'arrival');
-  strictEqual(dispatchScan({ scan: FEDEX }).title, 'Arrival · FedEx 9012');
+  strictEqual(dispatchScan({ scan: FEDEX }).title, 'Intake · FedEx 9012');
   strictEqual(dispatchScan({ scan: USPS }).card, 'arrival');
   strictEqual(dispatchScan({ scan: DHL }).card, 'arrival');
 });

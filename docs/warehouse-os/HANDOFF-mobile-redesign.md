@@ -25,6 +25,13 @@ running on `:3050` while you work.
   (the `mobile` project needs a WebKit download that is not installed — use
   `--project=desktop` plus `test.use({ viewport: { width: 390, height: 844 } })`)
 
+
+**Operator ruling (2026-09-06):** the read-only ID preview ("what would this
+ID do next?") lives behind **long-press on the SCAN CTA** — no third bar
+control; the two-controls bar law stands. Preview renders `dispatchScan`
+output in a sheet whose only action navigates; it never commits. Build order:
+after the rename, with the Stack's Find band consuming the same model.
+
 ## The pivot (2026-09-06, operator) — what changed
 
 The phone is no longer "a set of station pages you navigate between." It is

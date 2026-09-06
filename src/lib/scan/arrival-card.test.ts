@@ -124,13 +124,13 @@ test('a negative or nonsense count is floored, never printed', () => {
 // ─── The title comes from the dispatch table, not from beside it ────────────
 
 test('the title IS the dispatch table title', () => {
-  strictEqual(arrivalTitle(UPS), 'Arrival · UPS 4471');
+  strictEqual(arrivalTitle(UPS), 'Intake · UPS 4471');
   strictEqual(
     arrivalTitle(UPS),
     dispatchScan({ scan: UPS, state: { trackingSeen: false } }).title,
     'one session title, one source',
   );
-  strictEqual(arrivalTitle(FEDEX), 'Arrival · FedEx 9012');
+  strictEqual(arrivalTitle(FEDEX), 'Intake · FedEx 9012');
 });
 
 test('a scan that does not open this Card gets no Arrival title', () => {
@@ -140,8 +140,8 @@ test('a scan that does not open this Card gets no Arrival title', () => {
 });
 
 test('the Field placeholder names the destination the dispatch table named', () => {
-  strictEqual(arrivalFieldPlaceholder(UPS), 'scan · type · say → Arrival');
-  strictEqual(card().fieldPlaceholder, 'scan · type · say → Arrival');
+  strictEqual(arrivalFieldPlaceholder(UPS), 'scan · type · say → the door');
+  strictEqual(card().fieldPlaceholder, 'scan · type · say → the door');
 });
 
 // ─── The Card ───────────────────────────────────────────────────────────────
@@ -149,7 +149,7 @@ test('the Field placeholder names the destination the dispatch table named', () 
 test('the header is ◀ Stack · the title, and the object is the tracking string', () => {
   const model = card();
   strictEqual(model.header.back, 'Stack', 'the Stack is the only thing behind top-left');
-  strictEqual(model.header.title, 'Arrival · UPS 4471');
+  strictEqual(model.header.title, 'Intake · UPS 4471');
   strictEqual(model.title, model.header.title);
   strictEqual(model.tracking, '1Z999AA10123454471', 'the normalised key, printed to match by eye');
   strictEqual(model.carrier, 'UPS');
@@ -229,7 +229,7 @@ test('either verb writes exactly one event, and both name the same session', () 
   ];
   deepStrictEqual(events.map((e) => e.type), ['arrival.racked', 'arrival.unboxed']);
   for (const event of events) {
-    strictEqual(event.title, 'Arrival · UPS 4471');
+    strictEqual(event.title, 'Intake · UPS 4471');
     strictEqual(event.surfaceKey, 'arrival');
     ok(event.reason.length > 0, `${event.verb} → reason`);
   }

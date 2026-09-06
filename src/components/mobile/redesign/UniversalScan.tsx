@@ -44,7 +44,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLabelPrintFeed, type LabelPrintFeedItem } from '@/hooks/useLabelPrintFeed';
 
 const MODES: Array<{ id: ScanMode; label: string; icon: (p: { className?: string }) => JSX.Element; placeholder: string }> = [
-  { id: 'receiving', label: 'Arrival', icon: ReceivingModeArrival, placeholder: 'Arrival' },
+  { id: 'receiving', label: 'Intake', icon: ReceivingModeArrival, placeholder: 'Intake' },
   { id: 'testing', label: 'Testing Orders', icon: TechModeTesting, placeholder: 'Scan a PO label (R-####)' },
   { id: 'cms', label: 'Prepacked Products', icon: Box, placeholder: 'Scan a product / unit label' },
 ];

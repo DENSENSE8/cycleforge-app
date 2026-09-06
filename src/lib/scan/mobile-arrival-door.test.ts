@@ -25,8 +25,8 @@ test('a never-seen UPS tracking number opens Arrival and does not mint', () => {
   const plan = planDoorScan(UPS, false);
   strictEqual(plan.openArrival, true);
   strictEqual(plan.card, 'arrival');
-  strictEqual(plan.title, 'Arrival · UPS 4471');
-  strictEqual(plan.destination, 'Arrival');
+  strictEqual(plan.title, 'Intake · UPS 4471');
+  strictEqual(plan.destination, 'the door');
   strictEqual(plan.mintOnScan, false);
 });
 

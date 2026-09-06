@@ -104,7 +104,7 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Receiving',
     matchPrefixes: ['/m/receiving', '/m/receive', '/m/triage', '/m/unbox', '/m/r/'],
     children: [
-      { kind: 'leaf', id: 'triage', label: 'Arrival', icon: ClipboardList, href: '/m/triage' },
+      { kind: 'leaf', id: 'triage', label: 'Workstation', icon: ClipboardList, href: '/m/triage' },
       { kind: 'leaf', id: 'unboxing', label: 'Unbox', icon: PackageOpen, href: '/m/unbox' },
       { kind: 'leaf', id: 'photos', label: 'Photo feed', icon: PackageOpen, href: '/m/receiving' },
       { kind: 'leaf', id: 'local-pickup', label: 'Walk-In', icon: MapPin, href: '/m/receiving?mode=local-pickup' },
