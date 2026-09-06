@@ -164,17 +164,12 @@ export function WeldedFeedbackPanel({
     >
       <div
         className={cn(
-          // No bottom border and no bottom radius: the composer below supplies
-          // both. `shadow-inner` sinks the panel a plane behind the field it
-          // hinges out of.
-          // ORDER MATTERS: `cn` is tailwind-merge, and `rounded-2xl` owns the
-          // whole corner group — listed after `rounded-b-none` it would drop
-          // it and round the welded edge back off.
-          COMPOSER_SHELL_CORNER,
-          // `relative` positions the edge sweep below. No `overflow-hidden`
-          // here on purpose — the sweep clips itself, and clipping the whole
-          // box would eat the CTA's focus ring at the edges.
-          'relative rounded-b-none border border-b-0 shadow-inner',
+          // De-welded (2026-09-06): the panel is its OWN card — complete
+          // smaller radius, full border, floating above the composer instead
+          // of flaring out of its top line. The composer below keeps its full
+          // silhouette; nothing grabs onto anything.
+          // `relative` positions the edge sweep below.
+          'relative rounded-xl border shadow-sm',
           // The STROKE is the silhouette's, not this half's. It used to be
           // `palette.border`, so the shared outline ran amber down the panel
           // and slate down the composer, and the seam hairline (the composer's

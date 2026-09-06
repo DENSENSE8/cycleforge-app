@@ -159,6 +159,12 @@ export const HAND_HTML_TABLE_ALLOW: readonly string[] = [
   'src/lib/counter/visit-receipt-html.ts',
   'src/lib/serial/serial-journey.ts',
   'src/lib/sheet/sheet-print.ts',
+  // The session view plane's artifact renderer: a READ-ONLY data display the
+  // agent fills via render_artifact (data-only schema pinned by
+  // session-surface-cohort; no verbs, no sort, no selection). It is a VIEW of
+  // tool output, not a desk over a family — the desks themselves stay on the
+  // one engine.
+  'src/components/session/artifacts/renderers.tsx',
 ];
 
 

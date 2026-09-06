@@ -18,7 +18,7 @@
  */
 
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { StationComposerHost } from '@/components/composer/StationComposerHost';
 import { useDeskField } from '@/components/composer/useDeskField';
 import { isOrdersDeskPath } from '@/lib/composer/desk-field';
@@ -33,7 +33,6 @@ import {
   stationComposerArrivalMode,
 } from '@/lib/composer/station-composer-mode';
 import { cn } from '@/utils/_cn';
-import { parseHomeMode } from '@/lib/home/home-modes';
 import { User, X } from '@/components/Icons';
 import { IconButton } from '@/design-system/primitives/IconButton';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -79,7 +78,6 @@ export function DeskComposerAskLane({
   className,
 }: DeskComposerAskLaneProps) {
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const placement = useDeskField();
   const isColumn = variant === 'page-column';
   const leadPaneMouths = useStationComposerDeskCount();
@@ -87,8 +85,9 @@ export function DeskComposerAskLane({
   const [staffTalk, setStaffTalk] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const { dropped, selected } = useWorkingSet();
-  const isHomeTasks =
-    (pathname === '/' || pathname === '') && parseHomeMode(searchParams.get('mode')) === 'tasks';
+  // The project-task working set. Was `/?mode=tasks`; the desk moved to its own
+  // `/tasks` route on 2026-09-05 when `/` became the assistant surface.
+  const isTasksDesk = pathname === '/tasks' || pathname.startsWith('/tasks/');
 
   const onNote = useCallback((next: string) => setNote(next), []);
 
@@ -133,8 +132,8 @@ export function DeskComposerAskLane({
   }, [dropped, note, selected]);
 
   useEffect(() => {
-    if (!isHomeTasks) setStaffTalk(false);
-  }, [isHomeTasks]);
+    if (!isTasksDesk) setStaffTalk(false);
+  }, [isTasksDesk]);
 
   useEffect(() => {
     if (!isColumn) return undefined;
@@ -148,7 +147,7 @@ export function DeskComposerAskLane({
   }, [pathname]);
 
   useEffect(() => {
-    if (!isHomeTasks) return undefined;
+    if (!isTasksDesk) return undefined;
     const working = dropped.map((row) => `• ${row.title} (${row.planTitle})`).join('\n');
     const picked = selected ? `${selected.title} (${selected.planTitle})` : 'none';
     return registerAssistantContext({
@@ -164,12 +163,12 @@ export function DeskComposerAskLane({
         'When they say "this" or "these", prefer the working set, then the selected row.',
       ].join('\n'),
     });
-  }, [dropped, isHomeTasks, selected]);
+  }, [dropped, isTasksDesk, selected]);
 
   if (!placement.mount) return null;
   if (!isColumn && leadPaneMouths > 0) return null;
 
-  const staffFace = isHomeTasks ? (
+  const staffFace = isTasksDesk ? (
     <button
       type="button"
       aria-label="Composer mode · Staff"
@@ -200,7 +199,7 @@ export function DeskComposerAskLane({
       )}
       data-testid="desk-composer-ask-lane"
       onDragOver={
-        isHomeTasks
+        isTasksDesk
           ? (event) => {
               if (![PROJECT_TASK_MIME, 'text/plain'].some((type) => event.dataTransfer.types.includes(type))) {
                 return;
@@ -210,9 +209,9 @@ export function DeskComposerAskLane({
             }
           : undefined
       }
-      onDragLeave={isHomeTasks ? () => setDragOver(false) : undefined}
+      onDragLeave={isTasksDesk ? () => setDragOver(false) : undefined}
       onDrop={
-        isHomeTasks
+        isTasksDesk
           ? (event) => {
               event.preventDefault();
               setDragOver(false);
@@ -224,7 +223,7 @@ export function DeskComposerAskLane({
           : undefined
       }
     >
-      {isHomeTasks && dropped.length > 0 ? (
+      {isTasksDesk && dropped.length > 0 ? (
         <div className="flex flex-wrap gap-1 px-2 pt-2" data-testid="desk-ask-working-set">
           {dropped.map((row) => (
             <span
@@ -252,7 +251,7 @@ export function DeskComposerAskLane({
         labelPlaceholder={
           staffTalk
             ? 'Ping @Name about this task…'
-            : isHomeTasks
+            : isTasksDesk
               ? 'Ask about the selected or dropped tasks…'
               : placement.placeholder
         }

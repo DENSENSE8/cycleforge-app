@@ -17,6 +17,7 @@ import { useStudioWorkspace } from '@/components/studio/StudioWorkspaceContext';
 import type { AssistantPageContext } from '@/lib/assistant/context-store';
 
 import { ASSISTANT_HIGHLIGHT_EVENT } from '@/lib/app-events';
+import { SESSION_ARTIFACT_EVENT, SESSION_ARTIFACT_PENDING_EVENT } from '@/lib/app-events';
 
 export { ASSISTANT_HIGHLIGHT_EVENT };
 
@@ -129,6 +130,28 @@ export function useAssistantChat(opts?: { shared?: 'station' }): AssistantChatSt
         window.dispatchEvent(new CustomEvent(ASSISTANT_HIGHLIGHT_EVENT, { detail: { ref: input.ref } }));
         return;
       }
+      // The agent asked to SHOW something on the session view panel. Fire the
+      // event and move on (the loop already acknowledged); the panel
+      // validates the payload against the zod contract before rendering.
+      if (name === 'render_artifact') {
+        window.dispatchEvent(new CustomEvent(SESSION_ARTIFACT_EVENT, { detail: input.artifact ?? null }));
+        return;
+      }
+      // Device tool: tote labels print from THIS workstation through the
+      // desktop bridge (silent print under Electron, USB/iframe in browser).
+      // Fired-and-shown: the panel reports the outcome in the artifact feed.
+      if (name === 'print_handling_unit_labels' && Array.isArray(input.handlingUnitIds)) {
+        const ids = input.handlingUnitIds
+          .map((v) => Number(v))
+          .filter((v) => Number.isInteger(v) && v > 0)
+          .slice(0, 10);
+        if (ids.length > 0) {
+          void import('@/components/session/print-handling-unit-labels').then((m) =>
+            m.printHandlingUnitLabelsFromChat(ids),
+          );
+        }
+        return;
+      }
       // Canvas-control tools drive the Studio URL view state (?focus/z/lens);
       // setParams hard-routes to /studio, so these also navigate there.
       if (name === 'focus_node' && typeof input.nodeId === 'string' && /^[a-z0-9:_-]+$/i.test(input.nodeId)) {
@@ -216,6 +239,13 @@ export function useAssistantChat(opts?: { shared?: 'station' }): AssistantChatSt
               });
             } else if (event === 'ui_tool') {
               runUiTool(String(payload.name), (payload.input ?? {}) as Record<string, unknown>);
+            } else if (event === 'ui_tool_start' && payload.name === 'render_artifact') {
+              // The model only OPENED the tool block — hold the panel's head
+              // slot now so the answer surface is not blank for the rest of
+              // the message.
+              window.dispatchEvent(
+                new CustomEvent(SESSION_ARTIFACT_PENDING_EVENT, { detail: { pending: true } }),
+              );
             } else if (event === 'error') {
               patchAssistant((m) => ({
                 ...m,
@@ -230,6 +260,11 @@ export function useAssistantChat(opts?: { shared?: 'station' }): AssistantChatSt
         const message = err instanceof Error ? err.message : 'The assistant is unavailable.';
         patchAssistant((m) => ({ ...m, streaming: false, error: true, content: m.content || message }));
       } finally {
+        // Whatever ended the stream — done, abort, error — the placeholder is
+        // released. A stuck skeleton is worse than an empty panel.
+        window.dispatchEvent(
+          new CustomEvent(SESSION_ARTIFACT_PENDING_EVENT, { detail: { pending: false } }),
+        );
         setThread({ ...getLive(), activeTool: null, status: 'idle' });
         abortRef.current = null;
       }

@@ -12,9 +12,10 @@ import {
 import { buildWriteTools } from '@/lib/assistant/tools/write-tools';
 import { loadAssistantHistory, persistAssistantTurn } from '@/lib/assistant/chat-persistence';
 import type { AssistantToolCtx } from '@/lib/assistant/tools/types';
-import { aiRequestHeaders, isSelfHostedAiRuntime, type AiProviderConfig } from '@/lib/ai/provider';
+import { aiRequestHeaders, isSelfHostedAiRuntime } from '@/lib/ai/provider';
 import { resolveOrgAiConfig, resolveOrgAnthropicBrain, type OrgAiConfig } from '@/lib/ai/org-provider';
-import { ensureGrokChatConfig } from '@/lib/integrations/grok/oauth';
+import { isProviderReachableCached } from '@/lib/ai/provider-reachability';
+import { ensureGrokChatConfig, type GrokChatConfig } from '@/lib/integrations/grok/oauth';
 import { CARTON_ASK_SYSTEM } from '@/lib/assistant/carton-ask-brief';
 import { ORG_CHAT_SYSTEM } from '@/lib/assistant/org-chat-facts';
 import { logger } from '@/lib/observability/logger';
@@ -25,8 +26,15 @@ export const maxDuration = 300;
 
 /**
  * POST /api/assistant/chat — the global English assistant (plan §3.2/§3.3).
- * A tool loop over the org-scoped registry; SSE out (meta → delta/tool/ui_tool
- * → done).
+ * A tool loop over the org-scoped registry; SSE out (meta → delta/tool/
+ * ui_tool_start/ui_tool → done).
+ *
+ * TIME TO FIRST BYTE IS A LAW HERE: only the rate-limit guard and body
+ * validation may run before `new ReadableStream` — they are the two answers
+ * that still need a real HTTP status (429/400). Provider resolution, the
+ * gateway reachability probe, history load and the user-row write all happen
+ * inside `start()`, after the first `meta` frame is on the wire. Moving any of
+ * them back out re-introduces seconds of blank bubble.
  *
  * WHICH MOUTH SPEAKS (Ask plan §17.4, PR 1):
  *   1. local_ops        deterministic answer, no model at all.
@@ -82,16 +90,57 @@ function hermesFallbackForced(): boolean {
   return flag === '1' || flag === 'true' || flag === 'yes';
 }
 
-async function isProviderReachable(config: AiProviderConfig): Promise<boolean> {
-  try {
-    const res = await fetch(`${config.baseURL}/models`, {
-      headers: aiRequestHeaders(config),
-      signal: AbortSignal.timeout(2_000),
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
+interface ResolvedProviders {
+  grokConfig: GrokChatConfig | null;
+  hasAnthropic: boolean;
+  fallbackConfig: OrgAiConfig | null;
+  useHermes: boolean;
+}
+
+/**
+ * Which mouth this org can speak with: three DB reads and a live network
+ * probe.
+ *
+ * This runs INSIDE the SSE stream, never before it. It used to be the whole of
+ * time-to-first-byte — the operator sat in front of an empty bubble for the
+ * length of a Grok token refresh plus two org-config reads plus a 2s
+ * reachability probe, and the probe's worst case (a black-holed gateway) is
+ * also its slowest. Nothing here is needed to write the first `meta` frame, so
+ * nothing here gets to hold it up.
+ */
+async function resolveAssistantProviders(organizationId: string): Promise<ResolvedProviders> {
+  // SuperGrok subscription beats metered Anthropic/OpenAI keys: Ask is the
+  // reason the tenant connected Grok. Refresh happens here so a stale host
+  // import does not 401 the first turn.
+  const grokConfig = await ensureGrokChatConfig(organizationId);
+  // Grok now runs the tool loop (PR 1), so a connected session needs no
+  // Anthropic brain at all — not even for a page skill with write verbs. That
+  // was the `skillNeedsTools` split, and it spent Anthropic credits the
+  // operator connected Grok to avoid.
+  const brain = grokConfig ? null : await resolveOrgAnthropicBrain(organizationId);
+  const hasAnthropic = brain !== null;
+  // The flag is a FORCE, not just a permission to resolve the config. It used
+  // to widen `fallbackConfig` only, while `useHermes` still required
+  // `!hasAnthropic` — so on any box with ANTHROPIC_API_KEY set (every dev one)
+  // setting ASSISTANT_HERMES_FALLBACK=1 resolved the local config and then
+  // ignored it. Routing Ask at the local gateway was untestable as a result.
+  const forceHermes = hermesFallbackForced();
+  const fallbackConfig: OrgAiConfig | null =
+    grokConfig ??
+    (!hasAnthropic || forceHermes ? await resolveOrgAiConfig(organizationId, 'chat') : null);
+  // The mouth-only OpenAI-wire path. With Grok connected it now serves ONLY
+  // the classified-facts phrasing round (decided per turn below); everything
+  // else goes through the Grok tool loop.
+  //
+  // The probe is memoized per base URL (`provider-reachability`): the answer
+  // does not change between two messages typed a minute apart, and paying a
+  // network round-trip per turn is what made this block expensive.
+  const useHermes =
+    grokConfig !== null ||
+    ((forceHermes || !hasAnthropic) &&
+      fallbackConfig !== null &&
+      (await isProviderReachableCached(fallbackConfig)));
+  return { grokConfig, hasAnthropic, fallbackConfig, useHermes };
 }
 
 async function streamHermesCompletion(args: {
@@ -197,52 +246,11 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
   const { sessionId, message, context } = parsed.data;
 
-  // SuperGrok subscription beats metered Anthropic/OpenAI keys: Ask is the
-  // reason the tenant connected Grok. Refresh happens here so a stale host
-  // import does not 401 the first turn.
-  const grokConfig = await ensureGrokChatConfig(ctx.organizationId);
-  // Grok now runs the tool loop (PR 1), so a connected session needs no
-  // Anthropic brain at all — not even for a page skill with write verbs. That
-  // was the `skillNeedsTools` split, and it spent Anthropic credits the
-  // operator connected Grok to avoid.
-  const brain = grokConfig ? null : await resolveOrgAnthropicBrain(ctx.organizationId);
-  const hasAnthropic = brain !== null;
-  // The flag is a FORCE, not just a permission to resolve the config. It used
-  // to widen `fallbackConfig` only, while `useHermes` still required
-  // `!hasAnthropic` — so on any box with ANTHROPIC_API_KEY set (every dev one)
-  // setting ASSISTANT_HERMES_FALLBACK=1 resolved the local config and then
-  // ignored it. Routing Ask at the local gateway was untestable as a result.
-  const forceHermes = hermesFallbackForced();
-  const fallbackConfig: OrgAiConfig | null =
-    grokConfig ??
-    (!hasAnthropic || forceHermes ? await resolveOrgAiConfig(ctx.organizationId, 'chat') : null);
-  // The mouth-only OpenAI-wire path. With Grok connected it now serves ONLY
-  // the classified-facts phrasing round (decided per turn below); everything
-  // else goes through the Grok tool loop.
-  const useHermes =
-    grokConfig !== null ||
-    ((forceHermes || !hasAnthropic) &&
-      fallbackConfig !== null &&
-      (await isProviderReachable(fallbackConfig)));
-  if (!hasAnthropic && !useHermes) {
-    return NextResponse.json(
-      {
-        error: 'assistant_unconfigured',
-        detail:
-          'No Anthropic provider is connected for this workspace and no reachable AI provider is available. Connect Grok (SuperGrok) or another provider in Settings → Integrations.',
-      },
-      { status: 503 },
-    );
-  }
-
   const toolCtx: AssistantToolCtx = {
     organizationId: ctx.organizationId,
     staffId: ctx.staffId ?? null,
     permissions: ctx.permissions,
   };
-
-  const history = await loadAssistantHistory(ctx.organizationId, sessionId).catch(() => []);
-  await persistAssistantTurn(ctx.organizationId, sessionId, 'user', message);
 
   const encoder = new TextEncoder();
   const stream = new ReadableStream<Uint8Array>({
@@ -254,10 +262,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           /* client went away */
         }
       };
-      write('meta', {
-        sessionId,
-        provider: grokConfig ? 'grok' : hasAnthropic ? 'anthropic' : 'hermes',
-      });
+      // FIRST BYTE, before any I/O at all. Everything that decides the mouth
+      // (Grok refresh, org brain, gateway probe) and everything that loads or
+      // writes chat rows now happens below, inside this stream — so the client
+      // gets a live turn to render immediately instead of a blank bubble held
+      // by a network probe. `provider` is not knowable yet; a second `meta`
+      // carries the real one as soon as resolution lands.
+      write('meta', { sessionId, provider: 'resolving' });
 
       const ping = setInterval(() => {
         try {
@@ -272,6 +283,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       // (plan §22 H1). It holds nothing between rounds.
       const session = createTenantSession(ctx.organizationId);
       const startedAt = Date.now();
+      let providerMs = 0;
       let enrichMs = 0;
       let firstTokenMs: number | null = null;
       const markFirstToken = () => {
@@ -283,6 +295,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           {
             mode,
             org: ctx.organizationId,
+            provider_ms: providerMs,
             enrich_ms: enrichMs,
             first_token_ms: firstTokenMs,
             total_ms: Date.now() - startedAt,
@@ -295,7 +308,41 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         );
       };
 
+      // The user's own row is a write nobody is waiting to read: starting it
+      // here and awaiting it later keeps it off first-byte without dropping
+      // it. The two rows must still land user-then-assistant, so every
+      // assistant write goes through this and joins the promise first.
+      const userPersisted = persistAssistantTurn(ctx.organizationId, sessionId, 'user', message).catch(
+        (err: unknown) => {
+          logger.warn(
+            { org: ctx.organizationId, session: sessionId, err: String(err) },
+            'ask-user-row-failed',
+          );
+        },
+      );
+      const persistReply = async (text: string) => {
+        await userPersisted;
+        await persistAssistantTurn(ctx.organizationId, sessionId, 'assistant', text);
+      };
+
       try {
+        // Providers and history are independent of each other AND of
+        // enrichment, so they run underneath it: the deterministic local_ops
+        // answer below then costs nothing at all — no token refresh, no
+        // gateway probe, no history read on the critical path.
+        const resolving = Promise.all([
+          (async () => {
+            const at = Date.now();
+            const providers = await resolveAssistantProviders(ctx.organizationId);
+            providerMs = Date.now() - at;
+            return providers;
+          })(),
+          loadAssistantHistory(ctx.organizationId, sessionId).catch(() => []),
+        ]);
+        // A local_ops turn returns without ever joining this, so keep the
+        // rejection handled — the join below still sees the real failure.
+        resolving.catch(() => {});
+
         const enrichStartedAt = Date.now();
         const prepared = await enrichAssistantTurn(
           ctx.organizationId,
@@ -311,11 +358,35 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           const text = formatLocalOpsReply(prepared.resolution);
           markFirstToken();
           write('delta', { text });
-          await persistAssistantTurn(ctx.organizationId, sessionId, 'assistant', text);
+          await persistReply(text);
           write('done', { ok: true, turns: 0, mode: 'local_ops' });
           timing('local_ops');
           return;
         }
+
+        const [providers, history] = await resolving;
+        const { grokConfig, hasAnthropic, fallbackConfig, useHermes } = providers;
+
+        if (!hasAnthropic && !useHermes) {
+          // This used to be a 503. It cannot be one any more — the response
+          // headers left with the first `meta` frame — and that is an upgrade,
+          // not a compromise: the client renders an `error` event straight
+          // into the assistant bubble, so the operator now reads the sentence
+          // in the conversation instead of getting a silently failed fetch.
+          write('error', {
+            message:
+              'No Anthropic provider is connected for this workspace and no reachable AI provider is available. Connect Grok (SuperGrok) or another provider in Settings → Integrations.',
+          });
+          write('done', { ok: false, turns: 0 });
+          timing('unconfigured');
+          return;
+        }
+
+        // The real mouth, now that it is known. Same three values as before.
+        write('meta', {
+          sessionId,
+          provider: grokConfig ? 'grok' : hasAnthropic ? 'anthropic' : 'hermes',
+        });
 
         const voiceSystem =
           prepared.voice === 'carton'
@@ -340,7 +411,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             system: voiceSystem,
           });
           if (hermes.text) {
-            await persistAssistantTurn(ctx.organizationId, sessionId, 'assistant', hermes.text);
+            await persistReply(hermes.text);
           }
           write('done', { ok: hermes.ok, turns: 1, mode: 'hermes' });
           timing('hermes_phrasing', { voice: prepared.voice });
@@ -354,6 +425,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           } else if (e.type === 'tool_start') write('tool', { name: e.name, status: 'start' });
           else if (e.type === 'tool_end') write('tool', { name: e.name, status: 'end', ok: e.ok });
           else if (e.type === 'ui_tool') write('ui_tool', { name: e.name, input: e.input });
+          // The loop opens a UI tool block before its input is parseable and
+          // fires this there, so the artifact panel paints a skeleton instead
+          // of sitting blank for the whole block. Name only — no input yet.
+          else if (e.type === 'ui_tool_start') write('ui_tool_start', { name: e.name });
           else if (e.type === 'error') write('error', { message: e.message });
         };
 
@@ -381,7 +456,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             grokDeps,
           );
           if (result.text) {
-            await persistAssistantTurn(ctx.organizationId, sessionId, 'assistant', result.text);
+            await persistReply(result.text);
           }
           write('done', { ok: result.ok, turns: result.turns, mode: 'grok' });
           timing('grok', {
@@ -406,7 +481,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
             system: voiceSystem,
           });
           if (hermes.text) {
-            await persistAssistantTurn(ctx.organizationId, sessionId, 'assistant', hermes.text);
+            await persistReply(hermes.text);
           }
           write('done', { ok: hermes.ok, turns: 1, mode: 'hermes' });
           timing('hermes');
@@ -426,7 +501,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         });
 
         if (result.text) {
-          await persistAssistantTurn(ctx.organizationId, sessionId, 'assistant', result.text);
+          await persistReply(result.text);
         }
         write('done', { ok: result.ok, turns: result.turns, mode: 'anthropic' });
         timing('anthropic', { turns: result.turns, tools_used: result.toolsUsed });

@@ -55,7 +55,9 @@ test('pin contains Home Search Media Plans Chat Settings; Studio and Admin are m
 
   assert.deepEqual(
     pin!.rows.filter((r) => r.type === 'page').map((r) => r.id),
-    ['home', 'search', 'ops-photos', 'plans-live', 'ai-chat', 'settings'],
+    // `new-conversation` joined the pin on 2026-09-06: the session surface has
+    // no on-screen New button, so ⌘K carries the verb beside Home.
+    ['home', 'new-conversation', 'search', 'ops-photos', 'plans-live', 'ai-chat', 'settings'],
   );
   assert.deepEqual(
     groups

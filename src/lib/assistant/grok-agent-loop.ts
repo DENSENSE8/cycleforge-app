@@ -49,6 +49,7 @@ import {
   UI_TOOLS,
   buildContextFragment,
   buildSystemCore,
+  parseRenderArtifactInput,
   type AssistantEmit,
 } from './agent-loop';
 import type { AssistantPageContext } from './context-store';
@@ -101,7 +102,16 @@ export interface GrokTurnResult {
 
 export interface GrokLoopDeps {
   /** One model round. Streams text through `onTextDelta`; returns the round. */
-  streamTurn: (params: GrokTurnParams, onTextDelta: (text: string) => void) => Promise<GrokTurnResult>;
+  streamTurn: (
+    params: GrokTurnParams,
+    onTextDelta: (text: string) => void,
+    /**
+     * Fired the first time a streamed tool-call fragment carries a NAME (once
+     * per call), before its arguments finish accumulating. Optional so
+     * scripted deps may implement two params.
+     */
+    onToolStart?: (name: string) => void,
+  ) => Promise<GrokTurnResult>;
   runTool: typeof runAssistantTool;
 }
 
@@ -231,8 +241,11 @@ function clearRoundTimer(res: Response): void {
  * Accumulate `tool_calls` fragments by wire index. Keyed by `index`, never by
  * array position: a relay that starts at index 1 would otherwise drop the call
  * or fuse two calls' arguments into one string.
+ *
+ * `onName` fires once per call, the moment its name lands — the earliest point
+ * a UI tool can be announced to the browser.
  */
-function accumulateCalls(): {
+function accumulateCalls(onName?: (name: string) => void): {
   add: (tc: { index?: number; id?: string; function?: { name?: string; arguments?: string } }) => void;
   drain: () => GrokToolCall[];
 } {
@@ -242,7 +255,11 @@ function accumulateCalls(): {
       const index = tc.index ?? 0;
       const entry = byIndex.get(index) ?? { id: '', name: '', arguments: '' };
       if (tc.id) entry.id = tc.id;
-      if (tc.function?.name) entry.name = tc.function.name;
+      if (tc.function?.name) {
+        const firstNaming = entry.name.length === 0;
+        entry.name = tc.function.name;
+        if (firstNaming) onName?.(entry.name);
+      }
       if (typeof tc.function?.arguments === 'string') entry.arguments += tc.function.arguments;
       byIndex.set(index, entry);
     },
@@ -258,8 +275,9 @@ function accumulateCalls(): {
 async function readStreamedRound(
   res: Response,
   onTextDelta: (text: string) => void,
+  onToolStart?: (name: string) => void,
 ): Promise<GrokTurnResult> {
-  const calls = accumulateCalls();
+  const calls = accumulateCalls(onToolStart);
   const reader = res.body!.getReader();
   const decoder = new TextDecoder();
   let buf = '';
@@ -379,18 +397,19 @@ export async function makeGrokLoopDeps(
   const runRound = async (
     params: GrokTurnParams,
     onTextDelta: (text: string) => void,
+    onToolStart?: (name: string) => void,
   ): Promise<GrokTurnResult> => {
     const res = await postRound(config!, sessionId, params, fetchImpl);
-    return params.stream ? readStreamedRound(res, onTextDelta) : readBufferedRound(res);
+    return params.stream ? readStreamedRound(res, onTextDelta, onToolStart) : readBufferedRound(res);
   };
 
   return {
     runTool: runAssistantTool,
-    streamTurn: async (params, onTextDelta) => {
+    streamTurn: async (params, onTextDelta, onToolStart) => {
       const wantsBuffered = params.stream && grokPrefersBufferedRound(orgId);
       const first: GrokTurnParams = wantsBuffered ? { ...params, stream: false } : params;
       try {
-        return await runRound(first, onTextDelta);
+        return await runRound(first, onTextDelta, onToolStart);
       } catch (err) {
         if (!(err instanceof GrokWireError)) throw err;
 
@@ -405,7 +424,7 @@ export async function makeGrokLoopDeps(
           if (!next) throw new Error(SESSION_EXPIRED);
           config = next;
           try {
-            return await runRound(first, onTextDelta);
+            return await runRound(first, onTextDelta, onToolStart);
           } catch (retryErr) {
             if (retryErr instanceof GrokWireError && retryErr.status === 401) {
               throw new Error(SESSION_EXPIRED);
@@ -418,7 +437,7 @@ export async function makeGrokLoopDeps(
         // buffered, and remember it for the rest of the hour.
         if (err.retryable && first.stream) {
           markGrokBufferedFallback(orgId);
-          return runRound({ ...params, stream: false }, onTextDelta);
+          return runRound({ ...params, stream: false }, onTextDelta, onToolStart);
         }
         throw err;
       }
@@ -531,9 +550,17 @@ export async function runGrokAssistantTurn(
       turns += 1;
       if (turnTexts.length > 0) args.emit({ type: 'delta', text: '\n\n' });
 
-      const round = await deps.streamTurn({ messages, tools, stream: true }, (text) => {
-        args.emit({ type: 'delta', text });
-      });
+      const round = await deps.streamTurn(
+        { messages, tools, stream: true },
+        (text) => {
+          args.emit({ type: 'delta', text });
+        },
+        (name) => {
+          // UI tools only: a server read-tool's start is reported by
+          // `tool_start` once its arguments are complete.
+          if (UI_TOOL_NAMES.has(name)) args.emit({ type: 'ui_tool_start', name });
+        },
+      );
 
       // A round is a TOOL round when calls accumulated, whatever finish_reason
       // says — relays have been observed sending "stop" alongside tool_calls.
@@ -569,6 +596,24 @@ export async function runGrokAssistantTurn(
           const id = call.id || `call_${turns}_${i}`;
           const input = parseArguments(call.arguments);
           if (UI_TOOL_NAMES.has(call.name)) {
+            // Same chokepoint validation as the Anthropic loop: a malformed
+            // render_artifact returns as an ERROR tool message the model can
+            // repair in-turn; the browser never renders a guess.
+            if (call.name === 'render_artifact') {
+              const parsed = parseRenderArtifactInput(input);
+              if (!parsed.success) {
+                out.push({
+                  id,
+                  content: `ERROR: render_artifact rejected: ${parsed.error.issues
+                    .map((i) => `${i.path.join('.') || '(root)'} ${i.message}`)
+                    .join('; ')}. Fix the payload (plain strings/numbers only) and re-emit, or answer in text.`,
+                });
+                continue;
+              }
+              args.emit({ type: 'ui_tool', name: call.name, input: { artifact: parsed.data } });
+              out.push({ id, content: 'Rendered on the session view panel.' });
+              continue;
+            }
             args.emit({ type: 'ui_tool', name: call.name, input });
             out.push({ id, content: "Dispatched to the user's browser." });
             continue;

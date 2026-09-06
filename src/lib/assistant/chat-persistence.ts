@@ -19,6 +19,56 @@ export interface AssistantHistoryTurn {
   content: string;
 }
 
+/** One row of the home surface's thread list — the shape the panel renders. */
+export interface AssistantSessionRow {
+  id: string;
+  title: string | null;
+  updatedAt: string;
+  messageCount: number;
+}
+
+/**
+ * Recent threads for the signed-in org, newest first.
+ *
+ * Exists so the home surface can SEED its thread list from the server render
+ * instead of firing `/api/ai/chat-sessions` after hydration: that fetch was a
+ * post-hydration waterfall on the first screen an operator opens. The client
+ * still refetches after a turn (the list changes), so this is a seed, not a
+ * replacement for the route.
+ */
+export async function listAssistantSessions(
+  orgId: OrgId,
+  limit = 30,
+): Promise<AssistantSessionRow[]> {
+  const r = await tenantQuery<{
+    id: string;
+    title: string | null;
+    updated_at: Date | string;
+    message_count: string | number;
+  }>(
+    orgId,
+    `SELECT s.id,
+            s.title,
+            s.updated_at,
+            COUNT(m.id) AS message_count
+       FROM ai_chat_sessions s
+       LEFT JOIN ai_chat_messages m
+              ON m.session_id = s.id
+             AND m.organization_id = s.organization_id
+      WHERE s.organization_id = $1
+      GROUP BY s.id, s.title, s.updated_at
+      ORDER BY s.updated_at DESC
+      LIMIT $2`,
+    [orgId, limit],
+  );
+  return r.rows.map((row) => ({
+    id: row.id,
+    title: row.title,
+    updatedAt: new Date(row.updated_at).toISOString(),
+    messageCount: Number(row.message_count ?? 0),
+  }));
+}
+
 export async function loadAssistantHistory(
   orgId: OrgId,
   sessionId: string,

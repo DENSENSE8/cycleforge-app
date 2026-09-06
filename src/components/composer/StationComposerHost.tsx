@@ -51,6 +51,14 @@ import {
 import { ComposerAskStage } from './ComposerAskStage';
 import { ComposerModeRow } from './ComposerModeRow';
 import {
+  ComposerPlusMenuPanel,
+  ComposerPlusMenuRow,
+  ComposerPlusTrigger,
+} from './ComposerPlusMenu';
+import {
+  STATION_COMPOSER_MODE_CATALOG,
+} from '@/lib/composer/station-composer-mode';
+import {
   NoteComposerInsertRail,
   type NoteComposerInsertAction,
 } from '@/components/receiving/workspace/NoteComposerInsertRail';
@@ -82,7 +90,6 @@ export type StationComposerHostProps = {
   locationAction?: ReactNode;
   trailingAction?: ReactNode;
   chrome?: 'raised' | 'bare';
-  weldTop?: boolean;
   animateMount?: boolean;
   textareaRef?: Ref<HTMLTextAreaElement>;
   ghostSuffix?: string;
@@ -121,7 +128,6 @@ export type StationComposerHostProps = {
   /**
    * Staff reaction welded above the dock — {@link WeldedFeedbackPanel}.
    * Any mode. This is the SoT slot for “what just happened / what to do next.”
-   * Opening it flattens the dock top (`weldTop`).
    */
   reaction?: ReactNode;
   /**
@@ -151,6 +157,34 @@ export type StationComposerHostProps = {
    */
   forceMode?: StationComposerMode;
   /**
+   * TWO-LINE geometry (session surface, 2026-09-06): the mode faces, the
+   * context ring and `inlineCommit` live INSIDE the dock's action row, and
+   * the ComposerModeRow below the outline is not rendered — nothing sits
+   * under the composer.
+   */
+  inlineComposerRow?: boolean;
+  /**
+   * When provided, the leading + opens THIS content instead of the mode's
+   * default insert rail — the surface owns its add-verb menu (files, photos,
+   * # order context, @ staff tasks).
+   */
+  plusMenuContent?: ReactNode;
+  /**
+   * The second row's right-end control in the two-line geometry — the
+   * stateful mic / send button. Render-prop because the state the button
+   * reflects (hasText) is the VISIBLE field's, which the host owns: in ask
+   * mode that is the host's ask draft, not the surface's label draft.
+   * `commit` is the mode-resolved commit (ask → the ask thread; label → the
+   * surface's onLabelCommit).
+   */
+  renderInlineCommit?: (state: { hasText: boolean; busy: boolean; commit: () => void }) => ReactNode;
+  /**
+   * The context ring, owned by the surface: its count must be a REAL
+   * reflection of what the model receives (page context, thread, staged
+   * attachments) — the host has no opinion about it.
+   */
+  inlineRing?: ReactNode;
+  /**
    * `station` (default) hides the site-wide desk Ask lane. `desk` is that lane.
    */
   presenceKind?: StationComposerPresenceKind;
@@ -172,7 +206,6 @@ export function StationComposerHost({
   locationAction,
   trailingAction,
   chrome = 'raised',
-  weldTop = false,
   animateMount = true,
   textareaRef,
   ghostSuffix,
@@ -199,6 +232,10 @@ export function StationComposerHost({
   modeRowLeading,
   showModeFaces = true,
   forceMode,
+  inlineComposerRow = false,
+  inlineRing,
+  plusMenuContent,
+  renderInlineCommit,
   presenceKind = 'station',
   progressPercent = 0,
   progressTone = 'idle',
@@ -214,6 +251,9 @@ export function StationComposerHost({
   const [askDraft, setAskDraft] = useState('');
   const [internalTicketDraft, setInternalTicketDraft] = useState('');
   const [plusOpen, setPlusOpen] = useState(false);
+  const [modeMenuOpen, setModeMenuOpen] = useState(false);
+  const plusAnchorRef = useRef<HTMLButtonElement | null>(null);
+  const modeAnchorRef = useRef<HTMLButtonElement | null>(null);
   const ticketDraft = ticketDraftProp ?? internalTicketDraft;
   const setTicketDraft = onTicketDraftChange ?? setInternalTicketDraft;
   // `null`, not the initial mode: a host has to hear the mode it RESOLVED to,
@@ -334,7 +374,24 @@ export function StationComposerHost({
   // Ticket `+` drills; Unbox `+` keeps its flat coloured insert rail. Leaving
   // Unbox on the rail is deliberate — its rows are one tap each and stacking
   // them behind a submenu would cost the operator an interaction per insert.
-  const leadingPlus = isAsk ? (
+  const leadingPlus = plusMenuContent ? (
+    <>
+      <ComposerPlusTrigger
+        open={plusOpen}
+        onClick={() => setPlusOpen((v) => !v)}
+        ariaLabel="Add context"
+        ref={plusAnchorRef}
+      />
+      <ComposerPlusMenuPanel
+        open={plusOpen}
+        onClose={() => setPlusOpen(false)}
+        anchorRef={plusAnchorRef}
+        ariaLabel="Add context menu"
+      >
+        {plusMenuContent}
+      </ComposerPlusMenuPanel>
+    </>
+  ) : isAsk ? (
     <NoteComposerInsertRail actions={[]} placement="inline" trigger="composer" />
   ) : isTicket ? (
     <ComposerDrillMenu
@@ -362,8 +419,6 @@ export function StationComposerHost({
     : (isTicket ? ticketAccessory : undefined) ?? reaction ?? null;
   const reactionOpen = reactionNode != null;
   const weldAskStage = isAsk && presenceKind === 'desk';
-  const dockWeldTop = weldTop || reactionOpen || weldAskStage;
-
   return (
     <div
       className={cn(
@@ -372,15 +427,15 @@ export function StationComposerHost({
         // the dock's raised shadow). isolate keeps z-raised dock above z-base
         // modes so the shadow paints across the caption.
         'flex min-w-0 isolate flex-col gap-1 bg-surface-card pb-[max(0.25rem,env(safe-area-inset-bottom))]',
-        dockWeldTop ? `${COMPOSER_SHELL_CORNER} rounded-t-none` : COMPOSER_SHELL_CORNER,
+        COMPOSER_SHELL_CORNER,
         className,
       )}
       data-testid="station-composer-host"
       data-composer-mode={mode}
     >
-      <div className="flex min-w-0 flex-col gap-0">
+      <div className="flex min-w-0 flex-col gap-1.5 px-3">
         {weldAskStage ? <ComposerAskStage chat={askChat} /> : null}
-        {reactionOpen ? reactionNode : null}
+        {reactionOpen ? <div className="mx-2">{reactionNode}</div> : null}
       <OmnichannelComposerDock
         ref={dockRef}
         value={value}
@@ -414,11 +469,54 @@ export function StationComposerHost({
         // combobox face. An update on an existing thread stays primary too.
         commitVariant="primary"
         showCommitWithTrailing={false}
-        hideCommitButton={Boolean(printTrailing)}
+        hideCommitButton={inlineComposerRow ? true : Boolean(printTrailing)}
         leadingStart={leadingPlus}
         insetTop={isTicket && !isAsk ? ticketInsetTop : undefined}
         headerEnd={isTicket && !isAsk ? ticketHeaderEnd : undefined}
-        footerStart={isTicket && !isAsk ? ticketFooterStart : undefined}
+        footerStart={
+          inlineComposerRow ? (
+            <div className="relative min-w-0" data-testid="composer-mode-dropdown">
+              <button
+                ref={modeAnchorRef}
+                type="button"
+                onClick={() => setModeMenuOpen((v) => !v)}
+                aria-expanded={modeMenuOpen}
+                aria-label="Composer mode"
+                data-testid="composer-mode-dropdown-trigger"
+                className="ds-raw-button flex h-5 items-center gap-0.5 rounded-sm text-role-micro font-semibold text-text-muted hover:text-text-default"
+              >
+                <span className="text-text-faint">·</span>
+                <span className="tracking-wide">{mode}</span>
+                <span aria-hidden className="text-text-faint">▾</span>
+              </button>
+              {modeMenuOpen ? (
+                <ComposerPlusMenuPanel
+                  open={modeMenuOpen}
+                  onClose={() => setModeMenuOpen(false)}
+                  anchorRef={modeAnchorRef}
+                  ariaLabel="Composer modes"
+                  placement="bottom-end"
+                >
+                  {STATION_COMPOSER_MODE_CATALOG.map((m) => (
+                    <ComposerPlusMenuRow
+                      key={m.id}
+                      selected={mode === m.id}
+                      disabled={m.id === 'ask' && !canAsk}
+                      onClick={() => {
+                        setModeMenuOpen(false);
+                        setMode(m.id);
+                      }}
+                    >
+                      {m.label}
+                    </ComposerPlusMenuRow>
+                  ))}
+                </ComposerPlusMenuPanel>
+              ) : null}
+            </div>
+          ) : isTicket && !isAsk
+            ? ticketFooterStart
+            : undefined
+        }
         commitDisabled={
           commitDisabledResolved === true
             ? true
@@ -450,15 +548,28 @@ export function StationComposerHost({
         matchedPhrase={isTicket || isAsk ? null : matchedPhrase}
         onAcceptGhost={isTicket || isAsk ? undefined : onAcceptGhost}
         onDismissGhost={isTicket || isAsk ? undefined : onDismissGhost}
-        footerEnd={locationFooter}
-        trailingAction={printTrailing}
+        footerEnd={
+          inlineComposerRow ? (
+            <>
+              {inlineRing}
+              {renderInlineCommit?.({
+                hasText: isAsk ? askDraft.trim().length > 0 : labelValue.trim().length > 0,
+                busy: isAsk ? askChat.status === 'streaming' : labelCommitDisabled === true,
+                commit: () => onCommit(),
+              })}
+            </>
+          ) : (
+            locationFooter
+          )
+        }
+        trailingAction={inlineComposerRow ? undefined : printTrailing}
         chrome={chrome}
-        weldTop={dockWeldTop}
         animateMount={animateMount}
         textareaRef={textareaRef}
         onTextareaKeyDown={handleModeKey}
       />
       </div>
+      {inlineComposerRow ? null : (
       <ComposerModeRow
         mode={mode}
         onModeChange={setMode}
@@ -468,6 +579,7 @@ export function StationComposerHost({
         onProgressClick={onProgressClick}
         leading={modeRowLeading}
       />
+      )}
     </div>
   );
 }

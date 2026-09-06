@@ -75,7 +75,6 @@ interface WorkspaceNotesCardProps {
    * feedback panel welded to the composer's top edge (Unbox receive), so the
    * dock drops its top radius and the pair reads as one shape.
    */
-  weldTop?: boolean;
   /**
    * Staff mouth reaction — WeldedFeedbackPanel on StationComposerHost `reaction`.
    * Unbox receive confirm mounts here, not as a sibling above the dock.
@@ -129,7 +128,6 @@ export function WorkspaceNotesCard({
   noteGrain = 'line',
   animateMount = true,
   chrome = 'raised',
-  weldTop = false,
   reaction,
   trailingAction,
   onPrimaryAction,
@@ -182,7 +180,6 @@ export function WorkspaceNotesCard({
         showSyncToPo={!(c.isUnfound ?? false)}
         animateMount={animateMount}
         chrome={chrome}
-        weldTop={weldTop}
         reaction={reaction}
         trailingAction={trailingAction}
         onPrimaryAction={onPrimaryAction}

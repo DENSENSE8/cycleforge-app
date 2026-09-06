@@ -45,6 +45,13 @@ import {
   resolveReceivingLineForOrderTool,
 } from './receiving-photo-tools';
 import { listStaffTool, resolveItemNumberTool } from './item-rule-tools';
+import { draftTicketReplyTool } from './ticket-reply-tools';
+import { triageOrdersCsvTool } from './import-triage-tools';
+import {
+  getDailyChecksTool,
+  getMyDayTool,
+  getProjectTasksTool,
+} from './home-tools';
 import { TOOL_FORGE_GATEWAY_TOOLS } from '@/lib/tool-forge/gateway-tools';
 
 const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
@@ -84,6 +91,21 @@ const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
   // automation_rule.upsert_item_staff.
   resolveItemNumberTool,
   listStaffTool,
+  // Pilot verb (session surface): draft a support reply. The send stays a
+  // human action — the draft renders as a ticket_reply_draft artifact and the
+  // user posts it through the same chokepoint the support console uses.
+  draftTicketReplyTool,
+  // The three surfaces the home page used to render as modes (`daily`,
+  // `today`, `tasks`), demoted to reads now that home IS the assistant. The
+  // model answers "what's on today" by calling one and showing the rows with
+  // render_artifact.
+  getDailyChecksTool,
+  getMyDayTool,
+  getProjectTasksTool,
+  // Order-import triage (session surface): pasted CSV → accepted / needs-
+  // resolution / rejected, through the house import lane. The import itself
+  // stays a human action on the triage artifact.
+  triageOrdersCsvTool,
 ];
 
 /**

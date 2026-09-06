@@ -114,7 +114,6 @@ export function LineNotesCard({
   showSyncToPo = true,
   animateMount = true,
   chrome = 'raised',
-  weldTop = false,
   reaction,
   trailingAction,
   onOpenLocations,
@@ -188,7 +187,6 @@ export function LineNotesCard({
    * Pass-through to OmnichannelComposerDock. True while a feedback panel is
    * welded to this composer's top edge, so the two share one silhouette.
    */
-  weldTop?: boolean;
   /**
    * Staff mouth reaction — WeldedFeedbackPanel on StationComposerHost `reaction`.
    * Receive confirm and any Unbox-mode update mount here, not as a sibling above
@@ -818,7 +816,6 @@ export function LineNotesCard({
         }
         trailingAction={trailingAction}
         chrome={chrome}
-        weldTop={weldTop}
         reaction={reaction}
         animateMount={animateMount}
         textareaRef={textareaRef}

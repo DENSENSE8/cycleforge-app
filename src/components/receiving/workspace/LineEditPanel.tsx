@@ -1137,7 +1137,6 @@ export function LineEditPanel({
                           c={c}
                           returnClaimPrefill={c.returnClaimPrefill}
                           chrome="raised"
-                          weldTop={showReceiveFeedback}
                           reaction={
                             showReceiveFeedback ? (
                               <ReceiveFeedbackRegion

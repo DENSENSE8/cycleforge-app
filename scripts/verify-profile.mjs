@@ -181,6 +181,16 @@ export function buildGates(root = process.cwd(), options = {}) {
       inputs: [...COMPILE_INPUTS, 'tools/eval-ledger', 'tools/design-mcp'],
     },
     {
+      // AI-first session surface: the artifact contract is the SoT (data-only,
+      // read-only view plane, verbs are registered tools, keyboard-reachable).
+      // Runs the tripwire directly — no ledger/snapshot machinery yet.
+      name: 'Cohort: session',
+      cmd: 'node',
+      args: ['--import', 'tsx', '--test', 'src/lib/assistant/session-surface-cohort.test.ts'],
+      profiles: 'full',
+      inputs: [...COMPILE_INPUTS, 'src/components/session'],
+    },
+    {
       name: 'Design critique',
       cmd: 'node',
       args: ['scripts/ds-critique-gate.mjs'],

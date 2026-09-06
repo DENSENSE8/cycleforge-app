@@ -411,6 +411,9 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // (`/?mode=forge&view=live`); active state is query-aware via
   // {@link isSidebarTopPinActive} if the glyph returns.
   { id: 'home',              label: 'Home',           href: '/',                   icon: Home,            kind: 'top' },
+  // New conversation lives in the LEFT NAV (operator 2026-09-06): no on-screen
+  // New button on the surface — the panel binds ⌘N / Ctrl+N to the same verb.
+  { id: 'new-conversation',  label: 'New conversation', href: '/?new=1',        icon: Sparkles,        kind: 'top', spineBand: false },
   { id: 'search',            label: 'Search',         href: '/search',             icon: Search,          kind: 'top', spineBand: false },
   // "Photos" is what staff call this; the label says Media Library, so without
   // the keywords a ⌘K for "photo" would miss the page it is named after.

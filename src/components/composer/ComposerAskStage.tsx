@@ -11,7 +11,7 @@ import type { AssistantChatState } from '@/components/assistant/useAssistantChat
 export function ComposerAskStage({ chat }: { chat: AssistantChatState }) {
   return (
     <div
-      className="flex min-h-0 max-h-[min(52vh,28rem)] flex-col overflow-hidden"
+      className="mx-2 flex min-h-0 max-h-[min(52vh,28rem)] flex-col overflow-hidden rounded-xl border border-border-soft bg-surface-card shadow-sm"
       data-testid="composer-ask-stage"
       role="region"
       aria-label="Ask"

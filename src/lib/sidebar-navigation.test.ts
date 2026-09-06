@@ -51,7 +51,7 @@ test('QA Console nav is sandbox-only', () => {
 test('Home is top-pinned; Operations in Monitor; Sourcing under Inventory; Plans between Media and Chat', () => {
   const items = getSidebarNavItems();
   const topIds = items.filter((item) => item.kind === 'top').map((item) => item.id);
-  assert.deepEqual(topIds, ['home', 'search', 'ops-photos', 'plans-live', 'ai-chat', 'settings']);
+  assert.deepEqual(topIds, ['home', 'new-conversation', 'search', 'ops-photos', 'plans-live', 'ai-chat', 'settings']);
 
   const home = items.find((item) => item.id === 'home');
   assert.ok(home, 'home should ship on prod nav');

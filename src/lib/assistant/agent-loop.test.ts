@@ -288,3 +288,68 @@ test('multi-turn narration accumulates: persisted text matches streamed deltas i
     .join('');
   assert.equal(streamed, out.text); // live bubble === persisted history
 });
+
+test('render_artifact: an OPENED tool block emits ui_tool_start before the message\'s ui_tool', async () => {
+  const script: ScriptedTurn[] = [
+    {
+      stop_reason: 'tool_use',
+      content: [
+        { type: 'tool_use', id: 'tu_kpi', name: 'get_kpis', input: {} },
+        {
+          type: 'tool_use',
+          id: 'tu_art',
+          name: 'render_artifact',
+          input: { artifact: { kind: 'table', title: 'Open orders', columns: ['id'], rows: [{ id: 1 }] } },
+        },
+      ] as Anthropic.Message['content'],
+    },
+    {
+      stop_reason: 'end_turn',
+      content: [{ type: 'text', text: 'On the panel.' }] as Anthropic.Message['content'],
+    },
+  ];
+  const emitted: AssistantEmit[] = [];
+  let i = 0;
+  const deps: AgentLoopDeps = {
+    // The SDK announces each tool block on content_block_start — before the
+    // message (and the tool's input) has finished streaming.
+    streamTurn: async (_params, _onTextDelta, onToolStart) => {
+      const turn = script[Math.min(i, script.length - 1)];
+      i += 1;
+      for (const block of turn.content) {
+        if (block.type === 'tool_use') onToolStart?.(block.name);
+      }
+      return msg(turn);
+    },
+    runTool: async () => ({ ok: true, data: { shipped: 200 } }),
+  };
+
+  const out = await runAssistantTurn(
+    { ctx: CTX, history: [], userMessage: 'show me open orders', emit: (e) => emitted.push(e) },
+    deps,
+  );
+
+  assert.equal(out.ok, true);
+  const startIdx = emitted.findIndex((e) => e.type === 'ui_tool_start');
+  const payloadIdx = emitted.findIndex((e) => e.type === 'ui_tool');
+  assert.ok(startIdx >= 0, 'the opened UI tool block must announce itself');
+  assert.ok(startIdx < payloadIdx, 'the panel gets its placeholder BEFORE the validated payload');
+  // Only UI tools are announced: get_kpis opened first and stayed silent.
+  const announced = emitted.filter(
+    (e): e is Extract<AssistantEmit, { type: 'ui_tool_start' }> => e.type === 'ui_tool_start',
+  );
+  assert.deepEqual(
+    announced.map((e) => e.name),
+    ['render_artifact'],
+  );
+
+  // …and the payload keeps the DECLARED `{ artifact }` shape the client reads
+  // as `input.artifact` (it used to be handed over unwrapped, which never
+  // validated, or flattened, which the browser could not read).
+  const payload = emitted.find(
+    (e): e is Extract<AssistantEmit, { type: 'ui_tool' }> => e.type === 'ui_tool',
+  );
+  assert.deepEqual(payload?.input, {
+    artifact: { kind: 'table', title: 'Open orders', columns: ['id'], rows: [{ id: 1 }] },
+  });
+});

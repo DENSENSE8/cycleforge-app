@@ -19,6 +19,7 @@ import {
   getLatestComposerSeed,
   subscribeComposerSeed,
 } from '@/lib/assistant/composer-seed-store';
+import { toolActivityPhrase } from '@/lib/assistant/tool-activity';
 import { cn } from '@/utils/_cn';
 import { useAssistantChat } from './useAssistantChat';
 import { AssistantEditsTray } from './AssistantEditsTray';
@@ -163,8 +164,12 @@ export function AssistantDockBody({ onClose }: { onClose: () => void }) {
               </div>
             ))}
             {chat.activeTool ? (
-              <p className="flex items-center gap-1.5 text-role-eyebrow font-semibold uppercase tracking-widest text-text-faint">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> {chat.activeTool.replaceAll('_', ' ')}
+              <p
+                aria-live="polite"
+                className="flex items-center gap-1.5 text-role-caption leading-5 text-text-muted"
+              >
+                <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin" />
+                {toolActivityPhrase(chat.activeTool)}…
               </p>
             ) : null}
           </div>
