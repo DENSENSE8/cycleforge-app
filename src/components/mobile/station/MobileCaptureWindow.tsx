@@ -87,6 +87,12 @@ export function MobileCaptureWindow({
   onErrorChange,
   /** Reported up when the operator puts the sheet away, or brings it back. */
   onArmedChange,
+  /**
+   * Bring the sheet back up. A counter, not a boolean: each increment is one
+   * re-arm request from outside (the top bar's CTA), and the effect must fire
+   * per request — a boolean could not ask twice.
+   */
+  armRequest,
 }: {
   onDecode: (value: string) => void;
   label: string;
@@ -95,6 +101,7 @@ export function MobileCaptureWindow({
   statusAlert?: boolean;
   onErrorChange?: (errored: boolean) => void;
   onArmedChange?: (armed: boolean) => void;
+  armRequest?: number;
 }) {
   const scanner = useBarcodeScanner({ dedupMs: DEDUP_MS });
   const { acceptScan, lastScannedValue, resetLastScan, startScanning, stopScanning } = scanner;
@@ -103,6 +110,13 @@ export function MobileCaptureWindow({
   const [open, setOpen] = useState(true);
   /** The keyed fallback, for a label the lens cannot read. */
   const [manualOpen, setManualOpen] = useState(false);
+
+  // Each external re-arm request lifts the sheet. A no-op when it is already
+  // up — the lens was never interrupted.
+  useEffect(() => {
+    if (armRequest) setOpen(true);
+  }, [armRequest]);
+
   const [manual, setManual] = useState('');
 
   // Held in refs so the decode effect can key strictly off the scanned VALUE.

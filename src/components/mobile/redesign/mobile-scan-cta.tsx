@@ -47,11 +47,13 @@ const LONG_PRESS_MS = 450;
 const LONG_PRESS_SLOP_PX = 10;
 
 /**
- * The scan surface's own route — the CTA's destination and its "here" test.
- * Module-local: nothing outside needs it, and a pass-through export nothing
- * imports is dead weight the knip gate counts.
+ * The CTA's destination and its "here" test — the WORKSTATION since the
+ * 2026-09-06 pivot: scanning happens at the station whose whole bottom is a
+ * capture surface. `/m/scan` is a redirect kept for old links, so a pathname
+ * can still read as the old surface mid-navigation.
  */
-const MOBILE_SCAN_PATH = '/m/scan';
+const MOBILE_SCAN_PATH = '/m/triage';
+const LEGACY_SCAN_PATH = '/m/scan';
 
 type NewScanHandler = () => void;
 
@@ -106,14 +108,13 @@ export function MobileScanCta() {
   const router = useRouter();
   const pathname = usePathname();
   const ctx = useContext(MobileScanContext);
-  const onScanSurface = pathname === MOBILE_SCAN_PATH;
-
   const [previewOpen, setPreviewOpen] = useState(false);
   const holdTimerRef = useRef<number | null>(null);
   const holdOriginRef = useRef<{ x: number; y: number } | null>(null);
   // Set when the long-press fires, so the click that follows the pointerup is
   // swallowed: one gesture, one meaning.
   const previewFiredRef = useRef(false);
+  const onScanSurface = pathname === MOBILE_SCAN_PATH || pathname === LEGACY_SCAN_PATH;
 
   const clearHold = useCallback(() => {
     if (holdTimerRef.current != null) {

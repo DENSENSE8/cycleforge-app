@@ -36,6 +36,8 @@ const FIND_DESTINATIONS: readonly StackFindDestination[] = [
   { label: 'Walk-In', href: '/m/receiving?mode=local-pickup' },
   { label: 'Repair', href: '/m/receiving?mode=repair' },
   { label: 'Packing', href: '/m/pack' },
+  { label: 'Testing', href: '/m/testing' },
+  { label: 'Prepacked', href: '/m/prepacked' },
   { label: 'Scan out', href: '/m/scan-out' },
   { label: 'Checklists', href: '/m/checklist' },
   { label: 'Companion', href: '/m/companion' },

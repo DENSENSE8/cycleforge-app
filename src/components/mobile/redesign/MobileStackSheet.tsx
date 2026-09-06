@@ -42,6 +42,14 @@ import type { WorkSession } from '@/lib/sessions/types';
  *  shell's clock — beside a camera decode loop, faster buys nothing. */
 const CLOCK_TICK_MS = 30_000;
 
+const QUEUES = [
+  { id: 'tasks', label: 'Tasks', href: '/m/work' },
+  { id: 'orders', label: 'Work orders', href: '/m/orders' },
+  { id: 'pick', label: 'Pick queue', href: '/m/pick' },
+  { id: 'testing', label: 'Testing', href: '/m/testing' },
+  { id: 'prepacked', label: 'Prepacked', href: '/m/prepacked' },
+  { id: 'scan-out', label: 'Scan out', href: '/m/scan-out' },
+] as const;
 /** Where a block's station lives on the phone. Resume = go here; the surface's
  *  mount sync does the arming. Keys are `work_sessions.scan_type`. */
 const SURFACE_ROUTE: Record<string, string> = {
@@ -49,17 +57,9 @@ const SURFACE_ROUTE: Record<string, string> = {
   triage: '/m/triage',
   pickup: '/m/receiving?mode=local-pickup',
   pack: '/m/pack',
-  test: '/m/scan',
+  test: '/m/testing',
   outbound: '/m/scan-out',
 };
-
-/** The queue band. Each opens the surface that already owns that queue. */
-const QUEUES = [
-  { id: 'tasks', label: 'Tasks', href: '/m/work' },
-  { id: 'orders', label: 'Work orders', href: '/m/orders' },
-  { id: 'pick', label: 'Pick queue', href: '/m/pick' },
-  { id: 'scan-out', label: 'Scan out', href: '/m/scan-out' },
-] as const;
 
 /** Everything Find can reach: the destinations the drawer's tree used to
  *  list, flattened. Scanning remains the other way in. */

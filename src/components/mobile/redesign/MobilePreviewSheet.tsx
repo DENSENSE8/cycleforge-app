@@ -34,16 +34,15 @@ import { previewScan, type ScanPreview } from '@/lib/scan/preview-model';
 import { routeScan } from '@/lib/barcode-routing';
 import { cn } from '@/utils/_cn';
 
-/** Where Open lands, per Card. The workstation owns the door family; the
- *  universal surface owns every read-only class with an existing page. */
+/** Where Open lands, per Card. The workstation is THE scan entry since the
+ *  2026-09-06 pivot; per-class deep links return when the cards carry IDs. */
 const OPEN_ROUTE: Record<ScanPreview['card'], string> = {
   arrival: '/m/triage',
   carton: '/m/triage',
-  qc: '/m/scan',
-  pack: '/m/scan',
-  preview: '/m/scan',
+  qc: '/m/triage',
+  pack: '/m/triage',
+  preview: '/m/triage',
 };
-
 type Lookup = 'checking' | 'done' | 'offline';
 
 export function MobilePreviewSheet({ open, onClose }: { open: boolean; onClose: () => void }) {

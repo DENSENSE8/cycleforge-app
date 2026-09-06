@@ -40,6 +40,7 @@ import { Button } from '@/design-system/primitives';
 import { useNetworkOnline } from '@/hooks/useConnectionHealth';
 import { useScanFeedback } from '@/lib/scan-feedback/useScanFeedback';
 import { vibrateScan } from '@/lib/scan-feedback/play';
+import { useRegisterNewScan } from '@/components/mobile/redesign/mobile-scan-cta';
 import { MobileCaptureWindow } from '@/components/mobile/station/MobileCaptureWindow';
 import { MobileStationShell } from '@/components/mobile/station/MobileStationShell';
 import { STATION_EYEBROW_CLASS } from '@/components/mobile/station/station-chrome';
@@ -97,6 +98,14 @@ function MobileArrivalStationInner() {
    * someone reconciles the door against a carrier manifest.
    */
   const [arrived, setArrived] = useState(0);
+  /**
+   * Re-arm requests from the top bar's SCAN CTA (it reads "New" here): each
+   * one lifts the capture sheet back over the keyboard if the operator had
+   * swiped it away. The station's loop is continuous — there is no "last
+   * result" to clear, only a lens to bring back.
+   */
+  const [armRequest, setArmRequest] = useState(0);
+  useRegisterNewScan(() => setArmRequest((n) => n + 1));
 
   const { playScanFeedback, hapticOn } = useScanFeedback();
   const online = useNetworkOnline();
@@ -216,6 +225,7 @@ function MobileArrivalStationInner() {
           statusAlert={cameraOff || !online}
           onDecode={submitRaw}
           onErrorChange={setCameraOff}
+          armRequest={armRequest}
         />
       }
     />

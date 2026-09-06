@@ -5,9 +5,6 @@
  *   npx tsx --test src/lib/scan/mobile-arrival-door.test.ts
  */
 
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { strictEqual, match, doesNotMatch } from 'node:assert';
 
@@ -19,7 +16,6 @@ import {
 } from './mobile-arrival-door';
 
 const UPS = '1Z 999 AA1 01 2345 4471';
-const HERE = dirname(fileURLToPath(import.meta.url));
 
 test('a never-seen UPS tracking number opens Arrival and does not mint', () => {
   const plan = planDoorScan(UPS, false);
@@ -50,19 +46,6 @@ test('isCarrierTrackingScan is the door gate', () => {
   strictEqual(isCarrierTrackingScan('R-1234'), false);
 });
 
-test('UniversalScan decides trackingSeen from preview, not a minted receivingId', () => {
-  const src = readFileSync(
-    join(HERE, '../../components/mobile/redesign/UniversalScan.tsx'),
-    'utf8',
-  );
-  match(src, /preview-scan/, 'the door read is preview-scan (creates nothing)');
-  match(src, /trackingSeenFromPreview/, 'preview match is the only trackingSeen');
-  doesNotMatch(
-    src,
-    /trackingSeen:\s*verdict\?\.value\.receivingId/,
-    'the dump defect: minted receivingId must not count as seen',
-  );
-});
 
 test('the door classifies a carrier label as tracking, with its carrier', () => {
   const intent = arrivalScanIntent(UPS);

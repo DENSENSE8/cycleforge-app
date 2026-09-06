@@ -32,7 +32,7 @@ function UnitPhotoPageInner() {
 
   const validId = Number.isFinite(serialUnitId) && serialUnitId > 0;
   const headerLabel = titleParam || (unitKey ? `Unit ${unitKey}` : `Unit #${serialUnitId}`);
-  const backHref = backParam || '/m/scan';
+  const backHref = backParam || '/m/triage';
 
   if (!validId) {
     return (
