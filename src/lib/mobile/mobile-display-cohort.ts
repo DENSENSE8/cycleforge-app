@@ -163,6 +163,7 @@ export const MOBILE_DISPLAY_COHORT: readonly MobileDisplayMember[] = [
       'src/components/mobile/redesign/MobileShell.tsx',
       'src/components/mobile/redesign/MobileTopBar.tsx',
       'src/components/mobile/redesign/mobile-scan-cta.tsx',
+      'src/components/mobile/redesign/MobilePreviewSheet.tsx',
     ],
   },
 ];
