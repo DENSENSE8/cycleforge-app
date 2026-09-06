@@ -1,21 +1,17 @@
-import { StaffScheduleTab } from '@/components/admin/StaffScheduleTab';
 import { ConnectionsManagementTab } from '@/components/admin/ConnectionsManagementTab';
-import { GoalsAnalyticsTab } from '@/components/admin/GoalsAnalyticsTab';
-import { QualityDashboardTab } from '@/components/admin/QualityDashboardTab';
-import { FBAManagementTab } from '@/components/admin/FBAManagementTab';
-import { RepairIssuesManagementTab } from '@/components/admin/RepairIssuesManagementTab';
 import { FavoritesManagementTab } from '@/components/admin/FavoritesManagementTab';
-import { LocationsManagementTab } from '@/components/admin/LocationsManagementTab';
-import { AdminLogsTab } from '@/components/admin/AdminLogsTab';
+import { RepairIssuesManagementTab } from '@/components/admin/RepairIssuesManagementTab';
 import { ReasonCodesManagementTab } from '@/components/admin/ReasonCodesManagementTab';
 import { StationNasFoldersTab } from '@/components/admin/StationNasFoldersTab';
 import { PoMailboxAdminSection } from '@/components/admin/PoMailboxAdminSection';
 import { BoseModelsManagementTab } from '@/components/admin/sourcing/BoseModelsManagementTab';
 import { CompatibilityManagementTab } from '@/components/admin/sourcing/CompatibilityManagementTab';
-import { SuppliersManagementTab } from '@/components/admin/sourcing/SuppliersManagementTab';
-import { SystemSyncActivityTab } from '@/components/admin/SystemSyncActivityTab';
 import { AdminOverviewTab } from '@/components/admin/AdminOverviewTab';
-import { getAdminSection, type AdminSection } from '@/components/admin/admin-sections';
+import {
+  ADMIN_SECTION_REDIRECTS,
+  getAdminSection,
+  type AdminSection,
+} from '@/components/admin/admin-sections';
 import { requirePermission } from '@/lib/auth/page-guard';
 import { redirect } from 'next/navigation';
 
@@ -35,22 +31,14 @@ function renderTab(
 ) {
   switch (activeTab) {
     case 'overview':       return <AdminOverviewTab />;
-    case 'goals':          return <GoalsAnalyticsTab />;
-    case 'quality':        return <QualityDashboardTab />;
-    case 'staff_schedule': return <StaffScheduleTab />;
     case 'connections':    return <ConnectionsManagementTab />;
-    case 'fba':            return <FBAManagementTab searchTerm={args.searchValue} />;
     case 'bose_models':    return <BoseModelsManagementTab />;
     case 'compatibility':  return <CompatibilityManagementTab />;
-    case 'suppliers':      return <SuppliersManagementTab />;
-    case 'logs':           return <AdminLogsTab initialSearch={args.searchValue} />;
     case 'reason_codes':   return <ReasonCodesManagementTab />;
-    case 'system_sync':    return <SystemSyncActivityTab />;
     case 'station_photos': return <StationNasFoldersTab mode={args.mode} />;
     case 'po_mailbox':     return <PoMailboxAdminSection />;
     case 'repair_issues':  return <RepairIssuesManagementTab />;
     case 'favorites':      return <FavoritesManagementTab />;
-    case 'locations':      return <LocationsManagementTab />;
   }
 }
 
@@ -75,8 +63,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   // Studio). Redirect the retired admin tab — and its old `reasons` sub-mode
   // deep link, which belongs to Reason Codes now a standalone section again.
   if (rawSection === 'architecture') {
-    if (params.mode === 'reasons') redirect('/admin?section=reason_codes');
-    redirect('/studio');
+    redirect(params.mode === 'reasons' ? '/admin?section=reason_codes' : '/studio');
   }
 
   // Moved to Settings — preserve query params where applicable.
@@ -90,7 +77,18 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     redirect(buildSettingsRedirect('/settings/roles', { roleId: params.roleId }));
   }
   if (rawSection === 'staff') {
-    redirect('/admin?section=staff_schedule');
+    redirect('/operations?mode=staff');
+  }
+
+  // Dissolved sections (W0+W1, 2026-09-06) — one redirect table in
+  // admin-sections.ts is the single list. `logs` keeps its `?search=` filter
+  // (the desk's shared filter band is `q`).
+  const dissolved = ADMIN_SECTION_REDIRECTS[rawSection];
+  if (dissolved) {
+    if (rawSection === 'logs' && params.search) {
+      redirect(`${dissolved}&q=${encodeURIComponent(params.search)}`);
+    }
+    redirect(dissolved);
   }
 
   const activeTab = getAdminSection(params.section);

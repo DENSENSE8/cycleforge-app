@@ -51,7 +51,11 @@ test('QA Console nav is sandbox-only', () => {
 test('Home is top-pinned; Operations in Monitor; Sourcing under Inventory; Plans between Media and Chat', () => {
   const items = getSidebarNavItems();
   const topIds = items.filter((item) => item.kind === 'top').map((item) => item.id);
-  assert.deepEqual(topIds, ['home', 'new-conversation', 'search', 'ops-photos', 'plans-live', 'ai-chat', 'settings']);
+  // `ops-photos` left this list on 2026-09-05 — Media Library is a catalog
+  // DESK now, not a structural row above Pinned. `new-conversation` joined on
+  // 2026-09-06: the New verb routes through the left nav (⌘N / Ctrl+N binds it
+  // too) instead of an on-screen button on the surface.
+  assert.deepEqual(topIds, ['home', 'new-conversation', 'search', 'plans-live', 'ai-chat', 'settings']);
 
   const home = items.find((item) => item.id === 'home');
   assert.ok(home, 'home should ship on prod nav');
@@ -61,7 +65,7 @@ test('Home is top-pinned; Operations in Monitor; Sourcing under Inventory; Plans
   assert.ok(plans, 'plans-live should ship on prod nav');
   assert.equal(plans.kind, 'top', 'plans-live stays a top registry pin (parked from the spine band)');
   assert.equal(plans.label, 'Plans');
-  assert.equal(plans.href, '/?mode=forge&view=live');
+  assert.equal(plans.href, '/forge?view=live');
   assert.equal(plans.requires, 'operations.plans.view');
 
   const aiChat = items.find((item) => item.id === 'ai-chat');
@@ -116,10 +120,18 @@ test('plans-live pin requires operations.plans.view', () => {
   );
 });
 
-test('Search, Plans, Chat, and Settings stay in the registry but stay off the spine map', () => {
+test('Home, Search, Plans, Chat and Settings stay in the registry but stay off the spine map', () => {
   const items = getSidebarNavItems();
   const mapTopIds = items.filter(isSpineMapTopRow).map((item) => item.id);
-  assert.deepEqual(mapTopIds, ['home', 'ops-photos']);
+  // NOTHING paints above Pinned any more. Media Library became a Desks row on
+  // 2026-09-05, and Home followed it off the map the same day: `/` is the
+  // session surface, so the spine head names the session you are in instead of
+  // repeating the route as "Home". Both are still registry destinations.
+  assert.deepEqual(mapTopIds, []);
+  const home = items.find((item) => item.id === 'home');
+  assert.ok(home);
+  assert.equal(home.kind, 'top');
+  assert.equal(home.spineBand, false);
 
   const incoming = items.find((item) => item.id === 'incoming');
   const operations = items.find((item) => item.id === 'operations');
@@ -149,6 +161,10 @@ test('Search, Plans, Chat, and Settings stay in the registry but stay off the sp
 
   const media = items.find((item) => item.id === 'ops-photos');
   assert.equal(media?.label, 'Media Library');
+  // Under Desks with Products, not above Pinned with Home.
+  assert.equal(media?.kind, 'domain');
+  assert.equal(isSpineMapTopRow(media!), false);
+  assert.equal(isSpineDeskItem(media!), true);
 });
 
 test('getSidebarNavItems omits mobile-restricted routes in mobile mode', () => {
@@ -610,7 +626,6 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   // predicate needs >1 child, so a desk that loses its second tab silently
   // stops drawing the band — this asserts the opt-in, not the flag.
   for (const pageId of [
-    'home',
     'outbound',
     'products',
     'inventory',
@@ -710,11 +725,23 @@ test('getSidebarRouteKey does not treat retired /o as a dedicated workspace', ()
 });
 
 // `/search` is header find + browse/detail (no context rail) on `?sel=`.
-test('Home is rail-less — no context column for Today', () => {
+test('Home is the assistant surface: rail-less, tab-less, no child tabs', () => {
   assert.equal(getSidebarRouteKey('/'), 'home');
   // Pattern E (2026-08-12): saved views moved to Band 3 WorkbenchViewsMenu.
   // Declaring the key without a panel would reserve 360px of empty chrome.
   assert.equal(hasSidebarContextPanel('/'), false);
+
+  // The Daily · Today · Tasks routes were DELETED on 2026-09-06 — home is the
+  // session surface alone, and those answers are agent artifacts now
+  // (get_daily_checks / get_my_day / get_project_tasks → render_artifact).
+  const home = getSidebarPageNav('home');
+  assert.deepEqual(home?.children ?? [], [], 'Home has no child tabs — the surface is the whole family');
+  assert.equal(resolveSidebarChild('home', { pathname: '/', params: new URLSearchParams() }), null);
+
+  // No in-page tab row: an opt-in would withdraw the spine drill, and the
+  // family root is the full-bleed surface — which has no frame to draw a band
+  // in. The spine (and the header page switcher) are the doors.
+  assert.equal(hasDeskPageChrome(home), false);
 });
 
 test('/search declares its own route key and is rail-less', () => {
@@ -871,4 +898,70 @@ test('masterNavLabelForPath uses APP_SIDEBAR_NAV L1, never desk tabs or SIDEBAR_
   assert.equal(getMasterNavItem('outbound')?.label, 'Shipping');
   assert.equal(getMasterNavItem('scan-out')?.label, 'Scan out');
   assert.equal(getMasterNavItem('ops-photos')?.label, 'Media Library');
+});
+
+// ── Admin dissolution W0+W1 (2026-09-06) ────────────────────────────────────
+// Eight admin sections moved to their one true home. The desk owns the modes;
+// /admin owns the redirects. These pin the contract so a section cannot
+// silently reappear in the console (and the spine's derived children with it).
+
+test('Operations absorbs the ex-admin performance and system modes', () => {
+  const ops = getSidebarPageNav('operations');
+  const childIds = (ops?.children ?? []).map((c) => c.id);
+  for (const id of ['goals', 'quality', 'staff', 'sync', 'logs']) {
+    assert.ok(childIds.includes(id), `operations child ${id} exists`);
+  }
+  // Each kept the permission gate its admin row carried.
+  const gates = Object.fromEntries(
+    (ops?.children ?? []).map((c) => [c.id, (c as { requires?: string }).requires]),
+  );
+  assert.equal(gates.quality, 'sku_stock.view');
+  assert.equal(gates.staff, 'admin.manage_staff');
+  assert.equal(gates.logs, 'admin.view_logs');
+  // Mode resolution: ?mode= lights the right tab.
+  for (const id of ['goals', 'quality', 'staff', 'sync', 'logs']) {
+    assert.equal(
+      resolveSidebarChild('operations', {
+        pathname: '/operations',
+        params: new URLSearchParams(`mode=${id}`),
+      }),
+      id,
+    );
+  }
+});
+
+test('dissolved admin sections redirect and never render in the console', () => {
+  const { ADMIN_SECTION_OPTIONS, ADMIN_SECTION_REDIRECTS, getAdminSection } =
+    require('@/components/admin/admin-sections') as typeof import('@/components/admin/admin-sections');
+  const consoleValues = new Set(ADMIN_SECTION_OPTIONS.map((s) => s.value));
+  for (const slug of Object.keys(ADMIN_SECTION_REDIRECTS)) {
+    assert.equal(consoleValues.has(slug as never), false, `${slug} must not render in /admin`);
+  }
+  // Every redirect lands on a real home, not a 404 or another redirect hop.
+  const homes = [
+    '/operations?mode=goals',
+    '/operations?mode=quality',
+    '/operations?mode=staff',
+    '/operations?mode=sync',
+    '/operations?mode=logs',
+    '/sourcing?mode=suppliers',
+    '/inventory/locations?tab=manage',
+    '/shipping/fba?fbaMode=catalog',
+  ];
+  for (const home of homes) assert.ok(Object.values(ADMIN_SECTION_REDIRECTS).includes(home));
+  // Remaining sections still resolve (the residue console works).
+  assert.equal(getAdminSection('po_mailbox'), 'po_mailbox');
+  assert.equal(getAdminSection('connections'), 'connections');
+  assert.equal(getAdminSection('bogus'), 'overview');
+});
+
+test('Locations and FBA desks expose their absorbed admin editors', () => {
+  const { LOCATIONS_TABS, parseLocationsTab } = require('@/lib/inventory/locations-path') as
+    typeof import('@/lib/inventory/locations-path');
+  assert.ok(LOCATIONS_TABS.includes('manage'));
+  assert.equal(parseLocationsTab('manage'), 'manage');
+
+  const { resolveFbaMode } = require('@/lib/fba/fba-modes') as typeof import('@/lib/fba/fba-modes');
+  assert.equal(resolveFbaMode('catalog'), 'catalog');
+  assert.equal(resolveFbaMode('bogus'), 'combine');
 });

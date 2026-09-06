@@ -38,7 +38,7 @@ export function StaffCard() {
       primary={count?.active}
       secondary={count ? `${count.active} active · ${count.total} total` : undefined}
       tertiary="Schedule in Admin · roster in Settings"
-      href="/admin?section=staff_schedule"
+      href="/operations?mode=staff"
     />
   );
 }

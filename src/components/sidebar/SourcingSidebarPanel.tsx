@@ -141,7 +141,7 @@ export function SourcingSidebarPanel() {
         ]}
       >
         <p className="px-3 py-4 text-role-caption text-text-soft">
-          Sourcing suppliers ranked by spend. Read-only — add or edit suppliers in Admin › Suppliers.
+          Sourcing suppliers ranked by spend. Pick a row or Add supplier to edit it here.
         </p>
       </SidebarShell>
     );

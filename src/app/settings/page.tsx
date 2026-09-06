@@ -34,7 +34,7 @@ const LEGACY_REDIRECTS: Record<string, string> = {
   organization: '/settings/organization',
   roles: '/settings/roles',
   access: '/settings/access',
-  'operations-log': '/admin?section=logs',
+  'operations-log': '/operations?mode=logs',
 };
 
 const INLINE_SECTIONS: Partial<Record<SettingsSection, ComponentType>> = {

@@ -26,7 +26,6 @@ import {
 import { parseSupportModeWire } from '@/components/sidebar/support/support-sidebar-shared';
 import { parseOperationsModeWire } from '@/components/sidebar/operations/operations-sidebar-shared';
 import { parseForgeViewWire } from '@/components/forge/forge-view';
-import { parseHomeModeWire } from '@/features/home/home-modes';
 import { parseReviewModeWire } from '@/features/review/review-mode';
 import { parseDashboardModeWire } from '@/lib/dashboard/dashboard-domains';
 import { parseLocationsTabWire } from '@/lib/inventory/locations-path';
@@ -177,42 +176,26 @@ const DASHBOARD_ROUTE_PARAMS = defineRouteParams({
 
 
 /**
- * `/` (Home) — Daily · Today.
+ * `/` (Home) — the ASSISTANT SURFACE since 2026-09-05. It owns NO params.
  *
- * Replaces `HOME_MODE_SCOPED_PARAMS`.
+ * It used to own the `?mode=` mode router plus every param its three regions
+ * needed. Those regions are routes now (`/daily`, `/my-day`, `/tasks`), and a
+ * param vocabulary belongs to the route that owns the param — the same move
+ * `/forge` made when it stopped being `/?mode=forge`.
  *
- * Shrank on 2026-08-19 with the mode list: `plan`, `view` and `ticket` belonged
- * to the deleted Tasks mode and to forge, which moved to `/forge` and took its
- * two params with it (see {@link FORGE_ROUTE_PARAMS}).
+ * Declared (rather than deleted) so the shortest prefix in the registry keeps
+ * an explicit, empty contract: an unknown key on `/` is dropped at the
+ * boundary, which is what stops a stale `?mode=today` bookmark from riding
+ * along into the surface.
  */
 const HOME_ROUTE_PARAMS = defineRouteParams({
   route: '/',
-  owns: {
-    mode: paramRoundTrip(parseHomeModeWire),
-    /**
-     * Daily's civil day (`YYYY-MM-DD`) — the day stepper's durable state, which
-     * is what makes a past report linkable to a colleague. Undeclared until
-     * 2026-08-19, so a mode switch through `buildRouteUrl` silently dropped it
-     * (unknown keys are dropped at the boundary — that is the whole contract).
-     */
-    date: paramDateKey,
-    /**
-     * Daily checklist inspector (`HomeDailyMode`). The selected check id, so
-     * a refresh reopens the same right-rail occupant.
-     */
-    item: paramPositiveInt,
-    task: paramText,
-    q: paramText,
-    open: paramPositiveInt,
-    scope: paramText,
-    filter: paramText,
-    /** Today's per-staffer lens (`useMyDayView`). Undeclared until 2026-08-19. */
-    staff: paramPositiveInt,
-    /** Today Watch rail — ticket or tracking intake (`?watch=1`). */
-    watch: paramFlag,
-  },
+  owns: {},
   carries: WORKBENCH_CARRIES,
 });
+
+
+
 
 /**
  * `/forge` — Plans Live (master-plan MDX + TicketStatus + plan agent).
@@ -355,6 +338,12 @@ export const SOURCING_ROUTE_PARAMS = defineRouteParams({
     type: paramText,
     /** Analytics window — composes the existing parser rather than re-listing it. */
     range: paramRoundTrip(parseSourcingAnalyticsRange),
+    /**
+     * Suppliers CRUD editor door (`<id>` or `new`) — swaps the rollup for the
+     * ex-admin supplier card inside the Suppliers mode (admin dissolution
+     * 2026-09-06). Text, not int: `new` is a valid value.
+     */
+    supplier: paramText,
   },
   carries: WORKBENCH_CARRIES,
 });

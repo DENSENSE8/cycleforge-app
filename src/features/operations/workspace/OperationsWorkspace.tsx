@@ -24,6 +24,13 @@ import { OperationsReconciliationView } from './OperationsReconciliationView';
 import { OperationsChecksView } from './OperationsChecksView';
 import { OperationsTvBoard } from './OperationsTvBoard';
 import { SignalsWorkspace } from '@/features/signals/SignalsWorkspace';
+// Admin-dissolution ports (2026-09-06): self-contained client islands from
+// src/components/admin — they mount unchanged as monitor modes.
+import { GoalsAnalyticsTab } from '@/components/admin/GoalsAnalyticsTab';
+import { QualityDashboardTab } from '@/components/admin/QualityDashboardTab';
+import { StaffScheduleTab } from '@/components/admin/StaffScheduleTab';
+import { SystemSyncActivityTab } from '@/components/admin/SystemSyncActivityTab';
+import { AdminLogsTab } from '@/components/admin/AdminLogsTab';
 
 /** Legacy `/operations?mode=plans` → Plans Live (`/forge`). */
 function OperationsPlansRedirect() {
@@ -61,6 +68,15 @@ export function OperationsWorkspace() {
   if (mode === 'insights') return <OperationsInsightsView />;
   if (mode === 'history') return <OperationsHistoryView />;
   if (mode === 'signals') return <SignalsWorkspace />;
+  if (mode === 'goals') return <GoalsAnalyticsTab />;
+  if (mode === 'quality') return <QualityDashboardTab />;
+  if (mode === 'staff') return <StaffScheduleTab />;
+  if (mode === 'sync') return <SystemSyncActivityTab />;
+  if (mode === 'logs') {
+    // Ex-Admin › Operations log carried `?search=`; the desk's shared filter
+    // band is `q` (owned by OPERATIONS_ROUTE_PARAMS).
+    return <AdminLogsTab initialSearch={searchParams.get('q') ?? ''} />;
+  }
   if (mode === 'reconciliation') return <OperationsReconciliationView />;
   if (mode === 'checks') return <OperationsChecksView />;
   if (mode === 'plans') return <OperationsPlansRedirect />;

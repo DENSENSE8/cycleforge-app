@@ -1,21 +1,22 @@
 /**
- * FBA inbound workbench stages (ready / plan / combine / shipped).
+ * FBA inbound workbench stages (ready / plan / combine / shipped / catalog).
  *
  * These live as `?fbaMode=` on the canonical path `/shipping/fba`. Legacy
  * `/shipping?mode=fba` redirects there (next.config). Legacy `?mode=` on `/fba`
  * is still accepted by resolvers during the redirect window. Standalone
  * `/shipping/ready` permanently redirects here with `fbaMode=ready`.
- *
  *   ready   — post-test channel allocation (FBA vs pre-box vs hold)
  *   plan    — staff add FNSKUs to today's planned board (PLANNED items)
  *   combine — combiner pulls PACKED items and combines under one FBA shipment ID
  *   shipped — shipped / history
+ *   catalog — FNSKU catalog rows + CSV imports (ex-Admin › Amazon Prep,
+ *             admin dissolution 2026-09-06)
  *
  * Pure data — no JSX. The facet tab UI is the shared `TableTabs` strip that
  * `FbaOutboundWorkspace` foots its body with.
  */
 
-export type FbaMode = 'ready' | 'plan' | 'combine' | 'shipped';
+export type FbaMode = 'ready' | 'plan' | 'combine' | 'shipped' | 'catalog';
 
 /** Query param for FBA lifecycle stages when nested under Outbound. */
 export const FBA_MODE_PARAM = 'fbaMode' as const;
@@ -23,7 +24,7 @@ export const FBA_MODE_PARAM = 'fbaMode' as const;
 /** Canonical host path for the FBA inbound workbench (under Shipping). */
 export const FBA_OUTBOUND_PATH = '/shipping/fba';
 
-const FBA_MODES: FbaMode[] = ['ready', 'plan', 'combine', 'shipped'];
+const FBA_MODES: FbaMode[] = ['ready', 'plan', 'combine', 'shipped', 'catalog'];
 
 /** Live FBA mode wires — for route-param hygiene (never a hand-copied twin). */
 export const FBA_MODE_WIRE = FBA_MODES;

@@ -16,7 +16,13 @@ import type { JourneyDimension } from '@/lib/timeline/journey';
 
 // ── Sidebar mode switcher ───────────────────────────────────────────────────
 
-export type OperationsMode = 'live' | 'analytics' | 'insights' | 'history' | 'signals' | 'plans' | 'reconciliation' | 'checks';
+export type OperationsMode =
+  | 'live' | 'analytics' | 'insights' | 'history' | 'signals' | 'plans'
+  | 'reconciliation' | 'checks'
+  // Absorbed from /admin on dissolution (W1, 2026-09-06): the monitor desk owns
+  // performance + system observability. Nav children in SIDEBAR_PAGE_NAV carry
+  // each mode's original permission gate.
+  | 'goals' | 'quality' | 'staff' | 'sync' | 'logs';
 
 /**
  * `live` is the default and stays on the bare `/operations` path (no `?mode=`)
@@ -31,7 +37,11 @@ export type OperationsMode = 'live' | 'analytics' | 'insights' | 'history' | 'si
  * - plans           → legacy redirect to Home
  * - reconciliation  → CF-03 smear candidates + open tracking exceptions (Monitor)
  * - checks          → daily-check roster report (who still owes today's list)
- *
+ * - goals           → daily output targets and progress (ex-Admin › Goals)
+ * - quality         → condition grades, failures, repair throughput (ex-Admin › Quality)
+ * - staff           → weekly shifts, availability, shop calendar (ex-Admin › Staff schedule)
+ * - sync            → cron job health + run history (ex-Admin › Sync Activity)
+ * - logs            → bin / SKU / receiving operations log (ex-Admin › Operations log)
  * L2 mode list + icons live in SIDEBAR_PAGE_NAV (GlobalHeader Mode switcher).
  */
 
@@ -47,6 +57,11 @@ export const OPERATIONS_MODES = [
   'plans',
   'reconciliation',
   'checks',
+  'goals',
+  'quality',
+  'staff',
+  'sync',
+  'logs',
 ] as const satisfies readonly OperationsMode[];
 
 export function parseOperationsMode(raw: string | null | undefined): OperationsMode {
@@ -56,7 +71,12 @@ export function parseOperationsMode(raw: string | null | undefined): OperationsM
     raw === 'signals' ||
     raw === 'plans' ||
     raw === 'reconciliation' ||
-    raw === 'checks'
+    raw === 'checks' ||
+    raw === 'goals' ||
+    raw === 'quality' ||
+    raw === 'staff' ||
+    raw === 'sync' ||
+    raw === 'logs'
     ? raw
     : 'live';
 }

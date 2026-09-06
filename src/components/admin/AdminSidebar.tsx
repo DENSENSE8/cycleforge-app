@@ -8,14 +8,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ADMIN_SECTION_OPTIONS, type AdminSection } from './admin-sections';
 
 import { ConnectionsSidebarPanel } from '@/components/sidebar/ConnectionsSidebarPanel';
-import { GoalsSidebarPanel } from '@/components/sidebar/GoalsSidebarPanel';
-import { StaffScheduleSidebarPanel } from './StaffScheduleSidebarPanel';
-import { FbaCatalogSidebarPanel } from './FbaCatalogSidebarPanel';
-import { LogsSidebarPanel } from './LogsSidebarPanel';
 import { NasPhotosSidebarPanel } from './NasPhotosSidebarPanel';
 import { BoseModelsSidebarPanel } from './sourcing/BoseModelsSidebarPanel';
 import { CompatibilitySidebarPanel } from './sourcing/CompatibilitySidebarPanel';
-import { SuppliersSidebarPanel } from './sourcing/SuppliersSidebarPanel';
 
 interface AdminSidebarProps {
   activeSection: AdminSection;
@@ -26,14 +21,11 @@ const ICON_CLS = 'h-4 w-4 shrink-0';
 
 function panelFor(section: AdminSection): JSX.Element | null {
   switch (section) {
-    case 'goals':           return <GoalsSidebarPanel />;
-    case 'staff_schedule':  return <StaffScheduleSidebarPanel />;
-    case 'fba':             return <FbaCatalogSidebarPanel />;
+    // Dissolved W0+W1 (2026-09-06): goals / staff_schedule / fba / suppliers /
+    // logs panels live with their new desks or die with the redirect.
     case 'bose_models':     return <BoseModelsSidebarPanel />;
     case 'compatibility':   return <CompatibilitySidebarPanel />;
-    case 'suppliers':       return <SuppliersSidebarPanel />;
     case 'connections':     return <ConnectionsSidebarPanel />;
-    case 'logs':            return <LogsSidebarPanel />;
     case 'station_photos':  return <NasPhotosSidebarPanel />;
     default:                return null;
   }

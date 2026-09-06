@@ -5,7 +5,7 @@
 
 const INVENTORY_LOCATIONS_PATH = '/inventory/locations' as const;
 
-export type LocationsTab = 'labels' | 'racks' | 'rooms' | 'bins' | 'map';
+export type LocationsTab = 'labels' | 'racks' | 'rooms' | 'bins' | 'map' | 'manage';
 
 /** Live Locations tabs — includes default `labels` (usually omitted). */
 export const LOCATIONS_TABS = [
@@ -14,10 +14,13 @@ export const LOCATIONS_TABS = [
   'rooms',
   'bins',
   'map',
+  // Ex-admin bin editor (admin dissolution, 2026-09-06): rename / barcode /
+  // type / capacity / delete. The Bins tab browses; Manage edits.
+  'manage',
 ] as const satisfies readonly LocationsTab[];
 
 export function parseLocationsTab(raw: string | null | undefined): LocationsTab {
-  if (raw === 'rooms' || raw === 'bins' || raw === 'racks' || raw === 'map') return raw;
+  if (raw === 'rooms' || raw === 'bins' || raw === 'racks' || raw === 'map' || raw === 'manage') return raw;
   return 'labels';
 }
 

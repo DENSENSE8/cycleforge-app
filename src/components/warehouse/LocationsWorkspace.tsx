@@ -34,6 +34,7 @@ import {
   parseLocationsTab,
   type LocationsTab,
 } from '@/lib/inventory/locations-path';
+import { LocationsManagementTab } from '@/components/admin/LocationsManagementTab';
 import { TableTabs } from '@/components/tables/TableStatusBar';
 
 export function LocationsWorkspace() {
@@ -62,6 +63,7 @@ export function LocationsWorkspace() {
             rackCodeParam ? <RackDetailView code={rackCodeParam} /> : <RackLabelWorkspace />
           ) : null}
           {tab === 'map' ? <MapTabBody /> : null}
+          {tab === 'manage' ? <LocationsManagementTab /> : null}
           {tab === 'bins' ? (
             <BinsTabSheet />
           ) : null}
@@ -70,7 +72,10 @@ export function LocationsWorkspace() {
       <TableTabs
         tabs={LOCATIONS_TABS.map((id) => ({
           id,
-          label: id === 'labels' ? 'Bin Tags' : id.charAt(0).toUpperCase() + id.slice(1),
+          label:
+            id === 'labels' ? 'Bin Tags'
+            : id === 'manage' ? 'Manage'
+            : id.charAt(0).toUpperCase() + id.slice(1),
         }))}
         activeTab={tab}
         onTabChange={(id) => setTab(id as LocationsTab)}

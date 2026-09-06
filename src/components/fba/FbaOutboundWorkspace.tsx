@@ -34,6 +34,7 @@ import { useFbaCombine } from '@/app/fba/useFbaCombine';
 import { useFbaDetailPanel } from '@/app/fba/useFbaDetailPanel';
 import { useFbaWorkspaceUrlState } from '@/components/fba/sidebar/fba-workspace-hooks';
 import { cn } from '@/utils/_cn';
+import { FBAManagementTab } from '@/components/admin/FBAManagementTab';
 
 /**
  * The desk MODES, as filter-option vocabulary (`mode:*` ids so Ready's
@@ -45,6 +46,9 @@ const FBA_MODE_OPTIONS = [
   { id: 'mode:ready', mode: 'ready', label: 'Ready' },
   { id: 'mode:plan', mode: 'plan', label: 'Plan' },
   { id: 'mode:shipped', mode: 'shipped', label: 'Shipped' },
+  // Ex-Admin › Amazon Prep FNSKU catalog (admin dissolution, 2026-09-06):
+  // rows + CSV imports. A collection swap, not a status facet — same band.
+  { id: 'mode:catalog', mode: 'catalog', label: 'Catalog' },
 ] as const;
 
 export function FbaOutboundWorkspace() {
@@ -160,6 +164,10 @@ export function FbaOutboundWorkspace() {
         >
           {isReady ? (
             <ReadyWorkspaceBody modeFilter={modeFilterBag} />
+          ) : activeMode === 'catalog' ? (
+            // Catalog owns its own data + sticky header; the board's
+            // error/empty states do not apply to it.
+            <FBAManagementTab searchTerm={searchParams.get('q') ?? ''} />
           ) : error ? (
             <FbaErrorState message={error} onRetry={fetchBoard} theme={stationTheme} />
           ) : (

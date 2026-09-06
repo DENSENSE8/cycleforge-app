@@ -18,7 +18,6 @@ import {
   Layers,
   LayoutDashboard,
   Link2,
-  ListChecks,
   MessageSquare,
   Monitor,
   Package,
@@ -38,6 +37,7 @@ import {
   TrendingUp,
   Workflow,
   Zap,
+  User,
   Warehouse,
   ShelvingUnit,
   StationWalkIn,
@@ -55,8 +55,10 @@ import {
   STATION_PAGE_ICONS,
   TECH_NAV_ICONS,
 } from '@/lib/nav/station-nav-icons';
-import { parseHomeMode } from '@/features/home/home-modes';
 import { parseProductsView } from '@/components/products/products-view';
+// The admin console's own section registry — the spine derives Admin's child
+// rows from it rather than keeping a second list that can drift.
+import { ADMIN_SECTION_OPTIONS, getAdminSection } from '@/components/admin/admin-sections';
 import { OUTBOUND_MODE_PATHS, outboundModeFromPath } from '@/components/outbound/outbound-sidebar-shared';
 import { SHIPPING_EXCEPTIONS_PATH, SHIPPING_ORDERS_PATH, SHIPPING_SHORTAGE_PATH } from '@/lib/shipping/orders-desk';
 import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
@@ -125,7 +127,7 @@ export const STATION_GROUPS = [
 export type DeskGroupId = 'desks';
 
 export const DESK_GROUPS = [
-  { id: 'desks', label: 'Desks', icon: LayoutDashboard },
+  { id: 'desks', label: 'Workspaces', icon: LayoutDashboard },
 ] as const satisfies ReadonlyArray<{
   id: DeskGroupId;
   label: string;
@@ -150,7 +152,7 @@ export type MainGroupId = 'monitor' | 'studio' | 'admin';
  */
 export const MAIN_GROUPS = [
   { id: 'monitor', label: 'Operations', icon: ChartPie },
-  { id: 'studio', label: 'Operations Studio', icon: Workflow },
+  { id: 'studio', label: 'Automations', icon: Workflow },
   { id: 'admin', label: 'Admin', icon: ShieldCheck },
 ] as const satisfies ReadonlyArray<{
   id: MainGroupId;
@@ -404,22 +406,26 @@ export function isMobileAllowedPath(pathname: string | null | undefined): boolea
  * account ⋯ menu (`spineBand: false`). `/studio/catalog` stays an L2 mode.
  */
 export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
-  // Top map rows — Home → Media Library. Search / Plans / Chat / Settings stay
-  // registry rows (`spineBand: false`) so ⌘K and those routes still work.
-  // Search lives in GlobalHeader (`GlobalHeaderSearch`); a spine row would
-  // duplicate that control. Plans deep-links Home forge
-  // (`/?mode=forge&view=live`); active state is query-aware via
-  // {@link isSidebarTopPinActive} if the glyph returns.
-  { id: 'home',              label: 'Home',           href: '/',                   icon: Home,            kind: 'top' },
+  // Top map rows: none. Home, Search, Plans, Chat and Settings all carry
+  // `spineBand: false` — they are real destinations that paint no map row.
+  //
+  // Home — the spine's ROOT ROUTE, and no longer a spine ROW (operator ruling
+  // 2026-09-05: "remove home button and it should just display the current
+  // session that you are on"). `/` IS the session surface, so a row labelled
+  // "Home" and a row naming the session you are in were two doors onto one
+  // place, and the generic one held the premium slot. Parking it keeps it a
+  // real destination for ⌘K, Recents, routing and `getSidebarRouteKey`; the
+  // spine head draws the live session in its place (`SpineSessionHead`).
+  //
+  // Plans keeps `/forge?view=live`; active state is query-aware via
+  // {@link isSidebarTopPinActive} if a glyph ever returns.
+  { id: 'home',              label: 'Home',           href: '/',                   icon: Home,            kind: 'top', spineBand: false },
   // New conversation lives in the LEFT NAV (operator 2026-09-06): no on-screen
   // New button on the surface — the panel binds ⌘N / Ctrl+N to the same verb.
-  { id: 'new-conversation',  label: 'New conversation', href: '/?new=1',        icon: Sparkles,        kind: 'top', spineBand: false },
+  { id: 'new-conversation',  label: 'New conversation', href: '/?new=1',          icon: Sparkles,        kind: 'top', spineBand: false },
   { id: 'search',            label: 'Search',         href: '/search',             icon: Search,          kind: 'top', spineBand: false },
-  // "Photos" is what staff call this; the label says Media Library, so without
-  // the keywords a ⌘K for "photo" would miss the page it is named after.
-  { id: 'ops-photos',        label: 'Media Library',  href: '/ops/photos',         icon: Images,          kind: 'top', requires: 'photos.view', keywords: ['photos', 'photo library', 'images', 'assets', 'gallery'] },
   // Plans — live master-plan console (Home forge). Same landing as `/forge`.
-  { id: 'plans-live',        label: 'Plans',          href: '/?mode=forge&view=live', icon: Zap,           kind: 'top', spineBand: false, requires: 'operations.plans.view' },
+  { id: 'plans-live',        label: 'Plans',          href: '/forge?view=live', icon: Zap,               kind: 'top', spineBand: false, requires: 'operations.plans.view' },
   // Chat — streaming assistant workspace; `/ai` shares it.
   { id: 'ai-chat',           label: 'Chat',           href: '/ai-chat',            icon: MessageSquare,   kind: 'top', spineBand: false, requires: 'dashboard.view' },
   // Settings — parked off the map; the staff ⋯ menu is the spine door.
@@ -455,6 +461,15 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // Absorbs the former Print Labels (product) + Print Documents (manuals) rows —
   // both were aliases of `/products` views that this page already owned.
   { id: 'products',          label: 'Products',    href: '/products',           icon: Tags,            kind: 'domain', domainGroup: 'catalog', requires: 'sku_stock.view' },
+  // A DESK, not a structural top row (operator ruling 2026-09-05). It used to
+  // sit beside Home above Pinned, which spent the spine's most premium slot on
+  // one tool for every operator whether or not they open it; staff who live in
+  // it can pin it there themselves. `catalog` is its domain — it is the asset
+  // catalogue, the peer of Products.
+  //
+  // "Photos" is what staff call this; the label says Media Library, so without
+  // the keywords a ⌘K for "photo" would miss the page it is named after.
+  { id: 'ops-photos',        label: 'Media Library',  href: '/ops/photos',         icon: Images,          kind: 'domain', domainGroup: 'catalog', requires: 'photos.view', keywords: ['photos', 'photo library', 'images', 'assets', 'gallery'] },
   // ── Inventory ─────────────────────────────────────────────────────────────
   // Physical stock + Locations. Sourcing is its own spine section (2026-08-03).
   { id: 'inventory',         label: 'Inventory',   href: '/inventory',          icon: ShelvingUnit,    kind: 'domain', domainGroup: 'inventory', requires: 'sku_stock.view' },
@@ -482,7 +497,7 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // Workflow Studio — canvas definition graph. Catalog sub-route is an L2
   // child in SIDEBAR_PAGE_NAV (⌘K / header Mode / URL). Desktop-only
   // (pan/zoom canvas); MOBILE_RESTRICTED_SIDEBAR_IDS enforces.
-  { id: 'studio',            label: 'Operations Studio', href: '/studio',         icon: Workflow,        kind: 'main', mainGroup: 'studio', requires: 'studio.view' },
+  { id: 'studio',            label: 'Automations',  href: '/studio',         icon: Workflow,        kind: 'main', mainGroup: 'studio', requires: 'studio.view' },
   // Audit Log is no longer a top-level sidebar row — it lives under Admin › Logs
   // (AdminLogsTab, with the Audit filter). The /settings/audit and /audit-log/*
   // routes still resolve directly; only the nav row was removed.
@@ -1171,55 +1186,24 @@ const SUPPORT = '/support';
 // `/packer` still resolves (proxy redirect + shared page).
 const PACK = '/pack';
 const REVIEW = '/review';
+const ADMIN = '/admin';
 
 export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // ── Home ──────────────────────────────────────────────────────────────────
-  // `?mode=` — Daily (default, bare `/`) · Today.
+  // `/` is the ASSISTANT SURFACE as of 2026-09-05 — agent chat left, read-only
+  // artifact panel right. It has no modes, owns no `?mode=` param, and has NO
+  // CHILDREN: Daily · Today · Tasks are agent artifacts now
+  // (`get_daily_checks` / `get_my_day` / `get_project_tasks` →
+  // `render_artifact`), and their `src/features/home/*` routes are deleted.
   //
-  // Home carried these as a full-width `HorizontalButtonSlider` band inside its
-  // own page shell, which is the exact twin `display/workbench.md` forbids:
-  // "L2 Mode lives in GlobalHeader, not the sidebar… never remount a full-width
-  // mode rail as a twin of the header control". The band also stacked a second
-  // pinned row above every Home region, costing 60px of vertical space on the
-  // one screen an operator opens first. Registering here is what the page's own
-  // docblock called the house-final placement; Home modes now live on
-  // DeskPageChrome tabs. `HeaderRecentsSwitcher` is sessions only.
-  {
-    id: 'home', label: 'Home', href: '/', icon: Home, kind: 'top',
-    // Desk page chrome (2026-08-31): Daily · Today · Tasks are drawn as IN-PAGE
-    // tabs by the Home page itself, so the header switcher stops serving them.
-    //
-    // They moved once before, off a full-width `HorizontalButtonSlider` and
-    // into the header page chip, because a page-local mode rail that twins the
-    // GlobalHeader control is banned. This is not that: the frame's tab row is
-    // the ONE page chrome every desk and station now wears, sized to the stage
-    // rather than the canvas, and it is where a page's modes live product-wide.
-    //
-    // No `railless` — Home has no context panel to lose (`home` is absent from
-    // CONTEXT_PANEL_ROUTE_KEYS), so there is nothing to declare.
-    deskChrome: true,
-    children: [
-      // Daily is the LANDING (bare `/`, `mode: null`): the first screen of a
-      // shift is the checklist you run plus the report of who has run theirs.
-      // Mirrors DEFAULT_HOME_MODE — move both together or the bare path and the
-      // parser disagree about which mode owns `/`.
-      { id: 'daily',  label: 'Daily',  icon: ListChecks,     to: () => ({ pathname: '/', params: { mode: null } }) },
-      { id: 'today',  label: 'Today',  icon: Activity,        to: () => ({ pathname: '/', params: { mode: 'today' } }) },
-      // The staffer's OWN task list (`staff_todos`) as a real spreadsheet —
-      // the surface the header pace-and-next popover previews. Not the deleted
-      // ops-plan `tasks` mode; see `home-modes.ts` for why the token is reused.
-      { id: 'tasks',  label: 'Tasks',  icon: ListChecks,      to: () => ({ pathname: '/', params: { mode: 'tasks' } }) },
-      // TWO children, deliberately. `inbox` (subscription feed) and `tasks`
-      // (ops-plan tasks) were deleted 2026-08-19 and `forge` (Plans Live) moved
-      // to its own `/forge` route, where the Plans spine pin now points;
-      // `collab` and `brief` went earlier the same day. Home is the first screen
-      // of a shift, and a switcher slot is not free — a mode earns one by being
-      // opened, not by existing.
-    ],
-    // One parser, not a second copy of the vocabulary — same discipline as
-    // `parseProductsView` / `outboundModeFromPath` above.
-    resolveChild: ({ params }) => parseHomeMode(params.get('mode')),
-  },
+  // It carried `children: []` with a `resolveChild` returning null for a few
+  // hours on 2026-09-05, which DELETED HOME FROM THE NAVIGATOR: an empty
+  // declared array is the hollow-domain signal, so `isSidebarPageReachable`
+  // read it as "declared children, permissions removed them all" and dropped
+  // the row. The spine rendered with no Home at all. A page with no children
+  // OMITS the key — `undefined` means modeless, `[]` means unreachable, and
+  // the two are not interchangeable.
+  { id: 'home', label: 'Home', href: '/', icon: Home, kind: 'top' },
   // ── Sales (front-desk history) ────────────────────────────────────────────
   // The `/dashboard` sales domain, promoted to its own root section (D4). Wire
   // values `?mode=sales|pickup|repairs` — Sales/Pickup thin feeds + Repairs
@@ -1289,6 +1273,15 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       { id: 'history',   label: 'History',   icon: History,   to: () => ({ pathname: OPERATIONS, params: { mode: 'history' } }) },
       { id: 'signals',   label: 'Signals',   icon: Zap,       to: () => ({ pathname: OPERATIONS, params: { mode: 'signals' } }) },
       { id: 'reconciliation', label: 'Reconcile', icon: Link2, to: () => ({ pathname: OPERATIONS, params: { mode: 'reconciliation' } }) },
+      // ── Absorbed from /admin (2026-09-06 dissolution W1) ──────────────────
+      // Performance + system observability are monitor work. Each keeps the
+      // permission gate its admin row carried; the bodies are the ex-admin
+      // tab components mounted by OperationsWorkspace.
+      { id: 'goals',   label: 'Goals',   icon: BarChart3, to: () => ({ pathname: OPERATIONS, params: { mode: 'goals' } }) },
+      { id: 'quality', label: 'Quality', icon: ShieldCheck, requires: 'sku_stock.view', to: () => ({ pathname: OPERATIONS, params: { mode: 'quality' } }) },
+      { id: 'staff',   label: 'People',  icon: User, requires: 'admin.manage_staff', to: () => ({ pathname: OPERATIONS, params: { mode: 'staff' } }) },
+      { id: 'sync',    label: 'Sync',    icon: Activity, to: () => ({ pathname: OPERATIONS, params: { mode: 'sync' } }) },
+      { id: 'logs',    label: 'Logs',    icon: FileText, requires: 'admin.view_logs', to: () => ({ pathname: OPERATIONS, params: { mode: 'logs' } }) },
     ],
     resolveChild: ({ pathname, params }) => {
       if (pathname === REVIEW || pathname.startsWith(`${REVIEW}/`)) {
@@ -1303,6 +1296,11 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       if (m === 'history') return 'history';
       if (m === 'signals') return 'signals';
       if (m === 'reconciliation') return 'reconciliation';
+      if (m === 'goals') return 'goals';
+      if (m === 'quality') return 'quality';
+      if (m === 'staff') return 'staff';
+      if (m === 'sync') return 'sync';
+      if (m === 'logs') return 'logs';
       if (m === 'checks') return 'checks';
       return 'live';
     },
@@ -1761,7 +1759,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // Modes are SUB-PATHS, not `?params`, so `to()` names a pathname and sets no
   // delta — `/studio` and `/studio/catalog` are two routes, not two views of one.
   {
-    id: 'studio', label: 'Operations Studio', href: '/studio', icon: Workflow,
+    id: 'studio', label: 'Automations', href: '/studio', icon: Workflow,
     kind: 'main', mainGroup: 'studio', requires: 'studio.view',
     children: [
       { id: 'graph',   label: 'Studio',  icon: Share2,  to: () => ({ pathname: '/studio' }) },
@@ -1772,9 +1770,45 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
         ? 'catalog'
         : 'graph',
   },
-  // Admin is modeless in the spine + header Mode control — sections live in
-  // AdminSidebar / AdminContextPanel only (`?section=`). Do not reintroduce
-  // admin modes here; the map row navigates to `/admin` as one hop.
+  // ── Admin (map L1) ────────────────────────────────────────────────────────
+  // Admin's console sections are DECLARED CHILDREN as of 2026-09-05 (operator
+  // ruling: "admin should be a parent level with a collapsible display
+  // method"). Until then this comment read *"Admin is modeless in the spine +
+  // header Mode control — sections live in AdminSidebar / AdminContextPanel
+  // only; do not reintroduce admin modes here"*, and the row navigated to
+  // `/admin` as one hop.
+  //
+  // What changed is the spine, not the console: the sections were always real,
+  // deep-linkable `?section=` URLs owned by `ADMIN_SECTION_OPTIONS`, and the
+  // spine now folds them behind a closed disclosure instead of hiding them one
+  // navigation deeper. The old ban's real target — a MODE ROW twinning the
+  // console's own rail in the header — is still banned: no `deskChrome` here,
+  // so `DeskPageChrome` draws no tab strip and the header face stays an
+  // identity chip.
+  //
+  // Children are DERIVED from `ADMIN_SECTION_OPTIONS`, never re-typed: that
+  // array is what `AdminSidebar` renders, so a section added there appears in
+  // the spine, in ⌘K and in Recents on the same commit, with its own
+  // `requires` gate carried across for `filterPageChildren`.
+  {
+    id: 'admin', label: 'Admin', href: '/admin', icon: ShieldCheck,
+    kind: 'main', mainGroup: 'admin', requires: 'admin.view',
+    children: ADMIN_SECTION_OPTIONS.map((section) => ({
+      id: section.value,
+      label: section.label,
+      icon: section.icon,
+      requires: section.requires,
+      group: section.group,
+      // Overview is the landing (`?section=` absent), mirroring
+      // `getAdminSection`'s own fallback — so the bare href and the resolver
+      // agree about which child owns `/admin`.
+      to: () => ({
+        pathname: ADMIN,
+        params: { section: section.value === 'overview' ? null : section.value },
+      }),
+    })),
+    resolveChild: ({ params }) => getAdminSection(params.get('section')),
+  },
 ];
 
 /** Lookup a page's nav entry (children + resolver) by its route/page id. */

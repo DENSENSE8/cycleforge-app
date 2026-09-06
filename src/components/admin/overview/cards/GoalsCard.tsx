@@ -43,7 +43,7 @@ export function GoalsCard() {
       secondary={data ? `${onTrack} on track · ${behind} below 50%` : undefined}
       tertiary={data ? `${data.length} staff tracked` : undefined}
       tone={behind > 0 ? 'warn' : 'good'}
-      href="/admin?section=goals"
+      href="/operations?mode=goals"
     />
   );
 }

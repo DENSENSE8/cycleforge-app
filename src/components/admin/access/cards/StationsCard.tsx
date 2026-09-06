@@ -100,7 +100,7 @@ export function StationsCard({ stations, borderClass, busy, onSave }: StationsCa
           ? <>Chip shows <b>{STATION_LABELS[stations.primary]}</b>{stations.secondary.length > 0 ? ` · Switch between ${stations.secondary.length + 1} stations` : ' · no switch (single station)'}</>
           : <>No assignment — chip falls back to the station derived from the employee code.</>}
         {' · '}
-        <span className="text-text-soft">Set the daily target per station in <a href="/admin?section=goals" className="text-blue-600 hover:underline">Goals</a>.</span>
+        <span className="text-text-soft">Set the daily target per station in <a href="/operations?mode=goals" className="text-blue-600 hover:underline">Goals</a>.</span>
       </div>
     </section>
   );

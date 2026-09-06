@@ -1,33 +1,49 @@
-import type { ComponentType } from 'react';
 import {
-  Activity,
-  BarChart3,
   Camera,
   Cpu,
-  FileText,
   Layers,
   LayoutDashboard,
   Link2,
   Mail,
-  MapPin,
-  Package,
-  ShieldCheck,
   Star,
   Tags,
-  User,
   Wrench,
 } from '@/components/Icons';
 
+/**
+ * The nav's icon contract, restated structurally rather than imported:
+ * `sidebar-navigation.ts` derives Admin's spine children from
+ * {@link ADMIN_SECTION_OPTIONS}, so importing `SidebarIconComponent` from
+ * there would close an import cycle. Every house icon is a function
+ * component, so this is the accurate type — `ComponentType` also admitted
+ * class components, which made the derived array unassignable to
+ * `SidebarChildPage[]`.
+ */
+type AdminSectionIcon = (props: { className?: string }) => JSX.Element;
+
+/**
+ * Residue console — what is left of /admin after the dissolution waves.
+ *
+ * W0+W1 (2026-09-06) moved eight sections to their one true home:
+ * goals / quality / staff_schedule / system_sync / logs → Operations desk
+ * modes; suppliers → Sourcing › Suppliers editor door; locations → Inventory
+ * › Locations `manage` tab; fba → Shipping › FBA `catalog` mode. Those slugs
+ * now REDIRECT in `src/app/admin/page.tsx` — they are not coming back here.
+ *
+ * What remains here is awaiting W2/W3: master data (reason_codes, favorites,
+ * bose_models, compatibility, repair_issues) and the operations/system strays
+ * (po_mailbox, station_photos, connections). When the last tab lands, /admin
+ * dies and this file with it.
+ */
 export type AdminSection =
   | 'overview'
-  | 'goals' | 'staff_schedule' | 'connections' | 'fba'
-  | 'reason_codes' | 'locations' | 'repair_issues' | 'favorites'
-  | 'quality'
-  | 'bose_models' | 'compatibility' | 'suppliers'
-  | 'station_photos' | 'po_mailbox'
-  | 'logs' | 'system_sync';
+  | 'reason_codes' | 'favorites'
+  | 'bose_models' | 'compatibility'
+  | 'repair_issues'
+  | 'po_mailbox' | 'station_photos'
+  | 'connections';
 
-export type AdminGroup = 'Performance' | 'Operations' | 'Data & catalogs' | 'System';
+export type AdminGroup = 'Operations' | 'Data & catalogs' | 'System';
 
 export interface AdminSectionOption {
   value: AdminSection;
@@ -37,44 +53,49 @@ export interface AdminSectionOption {
   group?: AdminGroup;
   /** Permission required to see the row. Omitted = visible to anyone with admin.view. */
   requires?: string;
-  icon: ComponentType<{ className?: string }>;
+  icon: AdminSectionIcon;
 }
 
 export const ADMIN_SECTION_OPTIONS: AdminSectionOption[] = [
   { value: 'overview',     label: 'Overview',     description: 'System health & quick links',                                                       icon: LayoutDashboard },
 
-  { value: 'goals',        label: 'Goals',        description: 'Daily output targets and progress',                            group: 'Performance', icon: BarChart3 },
-  { value: 'quality',      label: 'Quality',      description: 'Condition grades, open failures, repair throughput & risk',    group: 'Performance', icon: ShieldCheck, requires: 'sku_stock.view' },
-
-  { value: 'staff_schedule', label: 'Staff schedule', description: 'Weekly shifts, availability rules, and shop calendar',       group: 'Operations',  icon: User,         requires: 'admin.manage_staff' },
   { value: 'po_mailbox',   label: 'PO Mailbox',   description: 'Triage emailed POs not in inventory, unmatched cartons, and exceptions', group: 'Operations', icon: Mail, requires: 'receiving.view' },
   { value: 'station_photos',label: 'Receiving Photos', description: 'Per-station NAS folder the photo picker opens to',          group: 'Operations', icon: Camera },
 
-  { value: 'fba',          label: 'Amazon Prep',  description: 'FNSKU catalog rows and CSV imports',                           group: 'Data & catalogs', icon: Package },
-  { value: 'locations',    label: 'Locations',    description: 'Edit bin name, barcode, type, and capacity',                   group: 'Data & catalogs', icon: MapPin,       requires: 'sku_stock.manage' },
   { value: 'repair_issues',label: 'Repair Issues',description: 'Global repair issue checklist templates',                       group: 'Data & catalogs', icon: Wrench,       requires: 'repair.intake' },
   { value: 'favorites',    label: 'Favorites',    description: 'Quick-pick SKU shortcuts per workspace',                       group: 'Data & catalogs', icon: Star,         requires: 'sku_stock.manage' },
-  { value: 'bose_models',  label: 'Bose Models',  description: 'Model catalog + the parts compatible with each model',          group: 'Data & catalogs', icon: Cpu,         requires: 'sourcing.view' },
-  { value: 'compatibility',label: 'Compatibility',description: 'Audit the model ↔ part compatibility edge table',               group: 'Data & catalogs', icon: Layers,      requires: 'sourcing.view' },
-  { value: 'suppliers',    label: 'Suppliers',    description: 'Third-party sourcing vendors (eBay sellers, distributors, salvage)', group: 'Data & catalogs', icon: Link2,    requires: 'supplier.view' },
-
-  { value: 'reason_codes', label: 'Reason Codes', description: 'Movement, adjustment & shrinkage reason-code catalog',          group: 'Data & catalogs', icon: Tags,        requires: 'sku_stock.manage' },
+  { value: 'bose_models',  label: 'Bose Models',  description: 'Model catalog + the parts compatible with each model',          group: 'Data & catalogs', icon: Cpu,          requires: 'sourcing.view' },
+  { value: 'compatibility',label: 'Compatibility',description: 'Audit the model ↔ part compatibility edge table',               group: 'Data & catalogs', icon: Layers,       requires: 'sourcing.view' },
+  { value: 'reason_codes', label: 'Reason Codes', description: 'Movement, adjustment & shrinkage reason-code catalog',          group: 'Data & catalogs', icon: Tags,         requires: 'sku_stock.manage' },
 
   { value: 'connections',  label: 'Sync tools',   description: 'Run marketplace syncs, inventory tools, and connection activity', group: 'System',      icon: Link2 },
-  { value: 'logs',         label: 'Operations log', description: 'Bin, SKU & receiving changes across stations',               group: 'System',      icon: FileText,     requires: 'admin.view_logs' },
-  { value: 'system_sync',  label: 'Sync Activity', description: 'Cron job health, last runs, and history across every scheduled sync', group: 'System', icon: Activity },
 ];
-
 /** Legacy section slugs kept for redirects from bookmarks and deep links. */
 export const ADMIN_SECTION_ALIASES: Record<string, AdminSection | 'settings'> = {
-  staff: 'staff_schedule',
   integrations: 'settings',
   access: 'settings',
   roles: 'settings',
 };
 
+/**
+ * Dissolved sections → their new home (W0+W1, 2026-09-06). `/admin` redirects
+ * these before rendering; the query params worth keeping ride along. `staff`
+ * is the legacy spelling of the staff schedule.
+ */
+export const ADMIN_SECTION_REDIRECTS: Record<string, string> = {
+  goals: '/operations?mode=goals',
+  quality: '/operations?mode=quality',
+  staff_schedule: '/operations?mode=staff',
+  staff: '/operations?mode=staff',
+  system_sync: '/operations?mode=sync',
+  logs: '/operations?mode=logs',
+  suppliers: '/sourcing?mode=suppliers',
+  locations: '/inventory/locations?tab=manage',
+  fba: '/shipping/fba?fbaMode=catalog',
+};
+
 export function getAdminSection(raw: string | null | undefined): AdminSection {
-  const v = String(raw ?? '').toLowerCase();
+  const v = String(raw || '').toLowerCase();
   const aliased = ADMIN_SECTION_ALIASES[v];
   if (aliased === 'settings') return 'overview';
   const resolved = (aliased ?? v) as AdminSection;
