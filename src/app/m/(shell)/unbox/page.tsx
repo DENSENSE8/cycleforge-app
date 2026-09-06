@@ -1,11 +1,11 @@
-'use client';
-
 /**
- * /m/unbox — Mobile unbox bench scan entry (mirrors desktop `/unbox`).
+ * /m/unbox — the unbox bench station.
+ * Body: `MobileUnboxStation` (see its docblock). Formerly `Receive.tsx`
+ * (feed + top-mounted input), retired with this port.
  */
 
-import RedesignedMobileReceive from '@/components/mobile/redesign/Receive';
+import MobileUnboxStation from '@/components/mobile/receiving/MobileUnboxStation';
 
-export default function MobileUnboxScanPage() {
-  return <RedesignedMobileReceive surface="unbox" title="Unbox" />;
+export default function MobileUnboxPage() {
+  return <MobileUnboxStation />;
 }
