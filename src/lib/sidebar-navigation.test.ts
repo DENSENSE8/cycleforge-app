@@ -669,10 +669,12 @@ test('resolver matches existing panel derivations for known deep-links', () => {
     resolveSidebarChild('outbound', at('/shipping/orders', 'context=support')),
     null,
   );
-  // Inbound is a leaf desk — no L2 children; dashboard inbound bookmarks still
-  // resolve the page id to `incoming` until the proxy redirects them.
+  // Inbound grew its second face in W2 (2026-09-06): PO Mailbox. Bare
+  // /incoming resolves the default Pipeline child; dashboard inbound bookmarks
+  // still resolve the page id to `incoming` until the proxy redirects them.
   assert.equal(resolveSidebarChild('incoming', at('/dashboard', 'mode=inbound')), null);
-  assert.equal(resolveSidebarChild('incoming', at('/incoming')), null);
+  assert.equal(resolveSidebarChild('incoming', at('/incoming')), 'pipeline');
+  assert.equal(resolveSidebarChild('incoming', at('/incoming', 'view=mailbox')), 'mailbox');
   assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=sales')), 'sales');
   assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=pickup')), 'pickup');
   assert.equal(resolveSidebarChild('sales', at('/dashboard', 'mode=repairs')), 'repairs');
@@ -947,10 +949,15 @@ test('dissolved admin sections redirect and never render in the console', () => 
     '/sourcing?mode=suppliers',
     '/inventory/locations?tab=manage',
     '/shipping/fba?fbaMode=catalog',
+    '/incoming?view=mailbox',
+    '/sourcing?mode=models',
+    '/sourcing?mode=compatibility',
+    '/inventory/reason-codes',
+    '/inventory/favorites',
   ];
   for (const home of homes) assert.ok(Object.values(ADMIN_SECTION_REDIRECTS).includes(home));
   // Remaining sections still resolve (the residue console works).
-  assert.equal(getAdminSection('po_mailbox'), 'po_mailbox');
+  assert.equal(getAdminSection('repair_issues'), 'repair_issues');
   assert.equal(getAdminSection('connections'), 'connections');
   assert.equal(getAdminSection('bogus'), 'overview');
 });
@@ -964,4 +971,32 @@ test('Locations and FBA desks expose their absorbed admin editors', () => {
   const { resolveFbaMode } = require('@/lib/fba/fba-modes') as typeof import('@/lib/fba/fba-modes');
   assert.equal(resolveFbaMode('catalog'), 'catalog');
   assert.equal(resolveFbaMode('bogus'), 'combine');
+});
+
+// ── Admin dissolution W2 (2026-09-06): master data to its desks ─────────────
+test('master-data sections resolve on their domain desks', () => {
+  // Sourcing: models + compatibility are modes now.
+  const sourcing = getSidebarPageNav('sourcing');
+  const sourcingIds = (sourcing?.children ?? []).map((c) => c.id);
+  for (const id of ['models', 'compatibility']) assert.ok(sourcingIds.includes(id), `sourcing child ${id}`);
+  for (const id of ['models', 'compatibility']) {
+    assert.equal(
+      resolveSidebarChild('sourcing', { pathname: '/sourcing', params: new URLSearchParams(`mode=${id}`) }),
+      id,
+    );
+  }
+  // Inbound: mailbox face.
+  const inbound = getSidebarPageNav('incoming');
+  assert.ok((inbound?.children ?? []).some((c) => c.id === 'mailbox'), 'inbound child mailbox');
+  assert.equal(
+    resolveSidebarChild('incoming', { pathname: '/incoming', params: new URLSearchParams('view=mailbox') }),
+    'mailbox',
+  );
+  // Inventory: reason-codes + favorites path children.
+  const inv = getSidebarPageNav('inventory');
+  const invIds = (inv?.children ?? []).map((c) => c.id);
+  for (const id of ['reason-codes', 'favorites']) assert.ok(invIds.includes(id), `inventory child ${id}`);
+  for (const path of ['/inventory/reason-codes', '/inventory/favorites']) {
+    assert.equal(resolveSidebarChild('inventory', { pathname: path, params: new URLSearchParams() }), path.split('/').pop());
+  }
 });

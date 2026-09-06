@@ -36,7 +36,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
 
     if (errParam) {
       return NextResponse.redirect(
-        `${url.origin}/admin?section=po_mailbox&po_gmail_error=${encodeURIComponent(errParam)}`,
+        `${url.origin}/incoming?view=mailbox&po_gmail_error=${encodeURIComponent(errParam)}`,
       );
     }
     if (!code || !state) {
@@ -135,7 +135,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       createdBy: ctx.staffId,
     });
 
-    const res = NextResponse.redirect(`${url.origin}/admin?section=po_mailbox&po_gmail_connected=1`);
+    const res = NextResponse.redirect(`${url.origin}/incoming?view=mailbox&po_gmail_connected=1`);
     res.cookies.delete('po_gmail_oauth_state');
     return res;
   } catch (error) {

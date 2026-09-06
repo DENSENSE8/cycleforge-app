@@ -1,12 +1,7 @@
 import {
   Camera,
-  Cpu,
-  Layers,
   LayoutDashboard,
   Link2,
-  Mail,
-  Star,
-  Tags,
   Wrench,
 } from '@/components/Icons';
 
@@ -27,23 +22,25 @@ type AdminSectionIcon = (props: { className?: string }) => JSX.Element;
  * W0+W1 (2026-09-06) moved eight sections to their one true home:
  * goals / quality / staff_schedule / system_sync / logs → Operations desk
  * modes; suppliers → Sourcing › Suppliers editor door; locations → Inventory
- * › Locations `manage` tab; fba → Shipping › FBA `catalog` mode. Those slugs
- * now REDIRECT in `src/app/admin/page.tsx` — they are not coming back here.
+ * › Locations `manage` tab; fba → Shipping › FBA `catalog` mode.
  *
- * What remains here is awaiting W2/W3: master data (reason_codes, favorites,
- * bose_models, compatibility, repair_issues) and the operations/system strays
- * (po_mailbox, station_photos, connections). When the last tab lands, /admin
- * dies and this file with it.
+ * W2 (2026-09-06) moved the master data: po_mailbox → Inbound
+ * (`/incoming?view=mailbox`); bose_models + compatibility → Sourcing modes;
+ * reason_codes + favorites → Inventory sibling pages.
+ *
+ * What remains is awaiting W3 or a ruling: station_photos (per-device
+ * config → Settings), connections (dies with per-app sync actions), and
+ * repair_issues (parked — the repairs console is a transaction feed, not a
+ * config face; needs a ruling before it moves). When the last tab lands,
+ * /admin dies and this file with it.
  */
 export type AdminSection =
   | 'overview'
-  | 'reason_codes' | 'favorites'
-  | 'bose_models' | 'compatibility'
   | 'repair_issues'
-  | 'po_mailbox' | 'station_photos'
+  | 'station_photos'
   | 'connections';
 
-export type AdminGroup = 'Operations' | 'Data & catalogs' | 'System';
+export type AdminGroup = 'Operations' | 'System';
 
 export interface AdminSectionOption {
   value: AdminSection;
@@ -57,19 +54,14 @@ export interface AdminSectionOption {
 }
 
 export const ADMIN_SECTION_OPTIONS: AdminSectionOption[] = [
-  { value: 'overview',     label: 'Overview',     description: 'System health & quick links',                                                       icon: LayoutDashboard },
+  { value: 'overview',     label: 'Overview',     description: 'System health & quick links',                     icon: LayoutDashboard },
 
-  { value: 'po_mailbox',   label: 'PO Mailbox',   description: 'Triage emailed POs not in inventory, unmatched cartons, and exceptions', group: 'Operations', icon: Mail, requires: 'receiving.view' },
-  { value: 'station_photos',label: 'Receiving Photos', description: 'Per-station NAS folder the photo picker opens to',          group: 'Operations', icon: Camera },
+  { value: 'repair_issues',label: 'Repair Issues',description: 'Global repair issue checklist templates',       group: 'Operations', icon: Wrench, requires: 'repair.intake' },
+  { value: 'station_photos',label: 'Receiving Photos', description: 'Per-station NAS folder the photo picker opens to', group: 'Operations', icon: Camera },
 
-  { value: 'repair_issues',label: 'Repair Issues',description: 'Global repair issue checklist templates',                       group: 'Data & catalogs', icon: Wrench,       requires: 'repair.intake' },
-  { value: 'favorites',    label: 'Favorites',    description: 'Quick-pick SKU shortcuts per workspace',                       group: 'Data & catalogs', icon: Star,         requires: 'sku_stock.manage' },
-  { value: 'bose_models',  label: 'Bose Models',  description: 'Model catalog + the parts compatible with each model',          group: 'Data & catalogs', icon: Cpu,          requires: 'sourcing.view' },
-  { value: 'compatibility',label: 'Compatibility',description: 'Audit the model ↔ part compatibility edge table',               group: 'Data & catalogs', icon: Layers,       requires: 'sourcing.view' },
-  { value: 'reason_codes', label: 'Reason Codes', description: 'Movement, adjustment & shrinkage reason-code catalog',          group: 'Data & catalogs', icon: Tags,         requires: 'sku_stock.manage' },
-
-  { value: 'connections',  label: 'Sync tools',   description: 'Run marketplace syncs, inventory tools, and connection activity', group: 'System',      icon: Link2 },
+  { value: 'connections',  label: 'Sync tools',   description: 'Run marketplace syncs, inventory tools, and connection activity', group: 'System', icon: Link2 },
 ];
+
 /** Legacy section slugs kept for redirects from bookmarks and deep links. */
 export const ADMIN_SECTION_ALIASES: Record<string, AdminSection | 'settings'> = {
   integrations: 'settings',
@@ -78,9 +70,9 @@ export const ADMIN_SECTION_ALIASES: Record<string, AdminSection | 'settings'> = 
 };
 
 /**
- * Dissolved sections → their new home (W0+W1, 2026-09-06). `/admin` redirects
- * these before rendering; the query params worth keeping ride along. `staff`
- * is the legacy spelling of the staff schedule.
+ * Dissolved sections → their new home. `/admin` redirects these before
+ * rendering; query params worth keeping ride along (`logs` keeps `?search=`
+ * as `q`; `po_mailbox` keeps the Gmail OAuth flash params).
  */
 export const ADMIN_SECTION_REDIRECTS: Record<string, string> = {
   goals: '/operations?mode=goals',
@@ -92,6 +84,11 @@ export const ADMIN_SECTION_REDIRECTS: Record<string, string> = {
   suppliers: '/sourcing?mode=suppliers',
   locations: '/inventory/locations?tab=manage',
   fba: '/shipping/fba?fbaMode=catalog',
+  po_mailbox: '/incoming?view=mailbox',
+  bose_models: '/sourcing?mode=models',
+  compatibility: '/sourcing?mode=compatibility',
+  reason_codes: '/inventory/reason-codes',
+  favorites: '/inventory/favorites',
 };
 
 export function getAdminSection(raw: string | null | undefined): AdminSection {

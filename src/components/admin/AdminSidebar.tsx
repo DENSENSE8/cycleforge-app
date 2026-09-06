@@ -9,8 +9,6 @@ import { ADMIN_SECTION_OPTIONS, type AdminSection } from './admin-sections';
 
 import { ConnectionsSidebarPanel } from '@/components/sidebar/ConnectionsSidebarPanel';
 import { NasPhotosSidebarPanel } from './NasPhotosSidebarPanel';
-import { BoseModelsSidebarPanel } from './sourcing/BoseModelsSidebarPanel';
-import { CompatibilitySidebarPanel } from './sourcing/CompatibilitySidebarPanel';
 
 interface AdminSidebarProps {
   activeSection: AdminSection;
@@ -21,10 +19,8 @@ const ICON_CLS = 'h-4 w-4 shrink-0';
 
 function panelFor(section: AdminSection): JSX.Element | null {
   switch (section) {
-    // Dissolved W0+W1 (2026-09-06): goals / staff_schedule / fba / suppliers /
-    // logs panels live with their new desks or die with the redirect.
-    case 'bose_models':     return <BoseModelsSidebarPanel />;
-    case 'compatibility':   return <CompatibilitySidebarPanel />;
+    // W2 (2026-09-06): bose_models / compatibility panels moved with their
+    // tabs to Sourcing; the desk owns the surface now.
     case 'connections':     return <ConnectionsSidebarPanel />;
     case 'station_photos':  return <NasPhotosSidebarPanel />;
     default:                return null;

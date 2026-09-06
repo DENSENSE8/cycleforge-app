@@ -22,5 +22,5 @@ export default async function UnfoundDetailPage({ params }: PageProps) {
     redirect(`/receiving?id=${encodeURIComponent(id)}`);
   }
 
-  redirect('/admin?section=po_mailbox');
+  redirect('/incoming?view=mailbox');
 }

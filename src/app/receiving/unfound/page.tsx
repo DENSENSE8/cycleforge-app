@@ -9,5 +9,5 @@
 import { redirect } from 'next/navigation';
 
 export default function UnfoundPage() {
-  redirect('/admin?section=po_mailbox');
+  redirect('/incoming?view=mailbox');
 }

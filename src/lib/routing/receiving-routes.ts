@@ -201,6 +201,11 @@ export const INCOMING_ROUTE_PARAMS = defineRouteParams({
   owns: {
     /** Desk lane (`pipeline` default, omitted | `docked`). */
     lane: paramEnum(['pipeline', 'docked'] as const),
+    /**
+     * PO Mailbox face (admin dissolution W2, 2026-09-06) — the email-PO /
+     * unmatched triage queue the ex-admin tab owned. Omitted = the lanes.
+     */
+    view: paramEnum(['mailbox'] as const),
     /** Retired Incoming collection face (`pos` only). Hygiene strips leftovers. */
     incview: paramRoundTrip(parseIncomingViewWire),
     /**

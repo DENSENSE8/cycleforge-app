@@ -3,6 +3,7 @@ import { ReceivingSurfacePage } from '@/components/receiving/ReceivingSurfacePag
 import { SurfaceGate } from '@/components/surfaces/SurfaceGate';
 import { SurfaceParamHygiene } from '@/components/routing/SurfaceParamHygiene';
 import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
+import { PoMailboxAdminSection } from '@/components/admin/PoMailboxAdminSection';
 
 /**
  * `/incoming` — the Incoming operator surface (POs Zoho says are issued but not
@@ -34,7 +35,25 @@ import { DeskPageLayout } from '@/components/desk/DeskPageLayout';
  * If Incoming's first paint is worth server-side work later, the prerequisite is
  * a cheap ranking column on that query — not a shorter timeout.
  */
-export default function IncomingPage() {
+export default async function IncomingPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  // PO Mailbox (admin dissolution W2, 2026-09-06): the email-PO / unmatched
+  // triage queue moved here from /admin?section=po_mailbox. It owns its whole
+  // body (sub-tabs + toolbar + table), so it replaces the browse shell rather
+  // than nesting inside it.
+  if ((await searchParams).view === 'mailbox') {
+    return (
+      <>
+        <SurfaceParamHygiene />
+        <DeskPageLayout className="h-full">
+          <PoMailboxAdminSection />
+        </DeskPageLayout>
+      </>
+    );
+  }
   return (
     <>
       <SurfaceParamHygiene />

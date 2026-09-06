@@ -11,6 +11,7 @@ import {
   Clipboard,
   ClipboardList,
   Clock,
+  Cpu,
   FileText,
   History,
   Home,
@@ -1347,11 +1348,22 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     // it by path or `isStationSurfaceRoute` would keep reserving a column for a
     // facet rail the chrome already owns. Saying it here is the same fact
     // without the exception.
-    //
-    // No `deskChrome`: Inbound has no children to draw as tabs. It wears the
-    // frame with an empty tab row, which is the honest shape for a
-    // single-surface desk.
+    // Two faces since 2026-09-06 (admin dissolution W2): Pipeline/Docked lanes
+    // (default) + PO Mailbox (`?view=mailbox`, the ex-admin email-PO triage
+    // queue). `deskChrome` so the faces draw as in-page tabs like every other
+    // desk; still rail-less — Mailbox owns its toolbar.
+    deskChrome: true,
     railless: true,
+    children: [
+      { id: 'pipeline', label: 'Pipeline', icon: RECEIVING_NAV_ICONS.incoming, to: () => ({ pathname: INCOMING, params: { view: null } }) },
+      { id: 'mailbox',  label: 'PO Mailbox', icon: Inbox, requires: 'receiving.view', to: () => ({ pathname: INCOMING, params: { view: 'mailbox' } }) },
+    ],
+    resolveChild: ({ pathname, params }) => {
+      // Dashboard's retired inbound bookmark is on its way to the proxy 308 —
+      // not a tab of this desk. Only URLs already on /incoming light a face.
+      if (pathname !== INCOMING && !pathname.startsWith(`${INCOMING}/`)) return null;
+      return params.get('view') === 'mailbox' ? 'mailbox' : 'pipeline';
+    },
   },
   // Legacy family entry — deep-link / mode-resolution COMPATIBILITY ONLY.
   // Not in APP_SIDEBAR_NAV. Do NOT use as a display or header-family source:
@@ -1407,6 +1419,10 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       { id: 'watchlist', label: 'Watchlist', icon: Star,        to: () => ({ pathname: SOURCING, params: { mode: 'watchlist' } }) },
       { id: 'searches',  label: 'Searches',  icon: Clock,       to: () => ({ pathname: SOURCING, params: { mode: 'searches' } }) },
       { id: 'suppliers', label: 'Suppliers', icon: Link2,       to: () => ({ pathname: SOURCING, params: { mode: 'suppliers' } }) },
+      // Sourcing master data (admin dissolution W2, 2026-09-06) — the ex-admin
+      // management tabs, mounted by SourcingWorkspace.
+      { id: 'models',        label: 'Models',        icon: Cpu,   requires: 'sourcing.view', to: () => ({ pathname: SOURCING, params: { mode: 'models' } }) },
+      { id: 'compatibility', label: 'Compatibility', icon: Layers, requires: 'sourcing.view', to: () => ({ pathname: SOURCING, params: { mode: 'compatibility' } }) },
     ],
     resolveChild: ({ params }) => {
       const m = params.get('mode');
@@ -1414,6 +1430,8 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       if (m === 'watchlist') return 'watchlist';
       if (m === 'searches') return 'searches';
       if (m === 'suppliers') return 'suppliers';
+      if (m === 'models') return 'models';
+      if (m === 'compatibility') return 'compatibility';
       return 'queue';
     },
   },
@@ -1629,6 +1647,10 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       { id: 'replenish', label: 'Replenish', icon: History,    to: () => ({ pathname: INVENTORY, params: { section: 'replenish' } }) },
       // Former Locations L1 (`/warehouse`) — nested Bin Tags · Racks · Rooms · Bins · Map.
       { id: 'locations', label: 'Locations', icon: Warehouse,  to: () => ({ pathname: `${INVENTORY}/locations`, params: {} }) },
+      // Inventory master data (admin dissolution W2, 2026-09-06) — ex-admin
+      // management tabs, sibling pages under the desk frame.
+      { id: 'reason-codes', label: 'Reason Codes', icon: Tags, requires: 'sku_stock.manage', to: () => ({ pathname: `${INVENTORY}/reason-codes`, params: {} }) },
+      { id: 'favorites',    label: 'Quick Picks', icon: Star,   requires: 'sku_stock.manage', to: () => ({ pathname: `${INVENTORY}/favorites`, params: {} }) },
     ],
     resolveChild: ({ pathname, params }) => {
       // Path-based modes (consistent with graph). Legacy `?mode=` still resolves.
@@ -1642,6 +1664,8 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       if (pathname.startsWith(`${INVENTORY}/graph`)) return 'graph';
       if (pathname.startsWith(`${INVENTORY}/triage`)) return 'triage';
       if (pathname.startsWith(`${INVENTORY}/pulse`)) return 'pulse';
+      if (pathname.startsWith(`${INVENTORY}/reason-codes`)) return 'reason-codes';
+      if (pathname.startsWith(`${INVENTORY}/favorites`)) return 'favorites';
       if (params.get('section') === 'replenish') return 'replenish';
       const m = params.get('mode');
       if (m === 'triage') return 'triage';

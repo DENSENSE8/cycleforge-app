@@ -1,11 +1,6 @@
-import { ConnectionsManagementTab } from '@/components/admin/ConnectionsManagementTab';
-import { FavoritesManagementTab } from '@/components/admin/FavoritesManagementTab';
 import { RepairIssuesManagementTab } from '@/components/admin/RepairIssuesManagementTab';
-import { ReasonCodesManagementTab } from '@/components/admin/ReasonCodesManagementTab';
 import { StationNasFoldersTab } from '@/components/admin/StationNasFoldersTab';
-import { PoMailboxAdminSection } from '@/components/admin/PoMailboxAdminSection';
-import { BoseModelsManagementTab } from '@/components/admin/sourcing/BoseModelsManagementTab';
-import { CompatibilityManagementTab } from '@/components/admin/sourcing/CompatibilityManagementTab';
+import { ConnectionsManagementTab } from '@/components/admin/ConnectionsManagementTab';
 import { AdminOverviewTab } from '@/components/admin/AdminOverviewTab';
 import {
   ADMIN_SECTION_REDIRECTS,
@@ -22,6 +17,8 @@ interface AdminPageProps {
     mode?: string;
     staffId?: string;
     roleId?: string;
+    po_gmail_connected?: string;
+    po_gmail_error?: string;
   }>;
 }
 
@@ -32,13 +29,8 @@ function renderTab(
   switch (activeTab) {
     case 'overview':       return <AdminOverviewTab />;
     case 'connections':    return <ConnectionsManagementTab />;
-    case 'bose_models':    return <BoseModelsManagementTab />;
-    case 'compatibility':  return <CompatibilityManagementTab />;
-    case 'reason_codes':   return <ReasonCodesManagementTab />;
     case 'station_photos': return <StationNasFoldersTab mode={args.mode} />;
-    case 'po_mailbox':     return <PoMailboxAdminSection />;
     case 'repair_issues':  return <RepairIssuesManagementTab />;
-    case 'favorites':      return <FavoritesManagementTab />;
   }
 }
 
@@ -61,9 +53,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
 
   // The Operations / architecture board now lives only in /studio (Operations
   // Studio). Redirect the retired admin tab — and its old `reasons` sub-mode
-  // deep link, which belongs to Reason Codes now a standalone section again.
+  // deep link, which belongs to Reason Codes (now /inventory/reason-codes).
   if (rawSection === 'architecture') {
-    redirect(params.mode === 'reasons' ? '/admin?section=reason_codes' : '/studio');
+    redirect(params.mode === 'reasons' ? '/inventory/reason-codes' : '/studio');
   }
 
   // Moved to Settings — preserve query params where applicable.
@@ -76,17 +68,21 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   if (rawSection === 'roles') {
     redirect(buildSettingsRedirect('/settings/roles', { roleId: params.roleId }));
   }
-  if (rawSection === 'staff') {
-    redirect('/operations?mode=staff');
-  }
 
-  // Dissolved sections (W0+W1, 2026-09-06) — one redirect table in
+  // Dissolved sections (W0–W2, 2026-09-06) — one redirect table in
   // admin-sections.ts is the single list. `logs` keeps its `?search=` filter
-  // (the desk's shared filter band is `q`).
+  // (the desk's shared filter band is `q`); `po_mailbox` keeps the Gmail
+  // OAuth flash params so its toast still fires at the new home.
   const dissolved = ADMIN_SECTION_REDIRECTS[rawSection];
   if (dissolved) {
     if (rawSection === 'logs' && params.search) {
       redirect(`${dissolved}&q=${encodeURIComponent(params.search)}`);
+    }
+    if (rawSection === 'po_mailbox' && (params.po_gmail_connected || params.po_gmail_error)) {
+      const flash = params.po_gmail_connected
+        ? `po_gmail_connected=${params.po_gmail_connected}`
+        : `po_gmail_error=${encodeURIComponent(String(params.po_gmail_error))}`;
+      redirect(`${dissolved}&${flash}`);
     }
     redirect(dissolved);
   }

@@ -21,6 +21,8 @@ import { QueuePane } from './workspace/QueuePane';
 import { SearchesPane } from './workspace/SearchesPane';
 import { SuppliersPane } from './workspace/SuppliersPane';
 import { SuppliersManagementTab } from '@/components/admin/sourcing/SuppliersManagementTab';
+import { BoseModelsManagementTab } from '@/components/admin/sourcing/BoseModelsManagementTab';
+import { CompatibilityManagementTab } from '@/components/admin/sourcing/CompatibilityManagementTab';
 import { WatchlistPane } from './workspace/WatchlistPane';
 import { AnalyticsPane } from './workspace/AnalyticsPane';
 
@@ -42,6 +44,10 @@ export function SourcingWorkspace() {
         ) : (
           <SuppliersPane />
         )
+      ) : mode === 'models' ? (
+        <BoseModelsManagementTab />
+      ) : mode === 'compatibility' ? (
+        <CompatibilityManagementTab />
       ) : mode === 'analytics' ? (
         <AnalyticsPane />
       ) : (
