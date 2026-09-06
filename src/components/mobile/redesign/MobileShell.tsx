@@ -9,6 +9,7 @@ import { MobileScanProvider } from './mobile-scan-cta';
 import { TOKENS } from './DesignSystem';
 import { ReceivingPhoneBridgeMount } from '@/components/mobile/receiving/ReceivingPhoneBridgeMount';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
+import { isClientPublicPath } from '@/contexts/AuthContext';
 import { Button } from '@/design-system/primitives';
 import { cn } from '@/utils/_cn';
 
@@ -43,8 +44,7 @@ function MobilePageError(error: Error, reset: () => void) {
 
 /**
  * Routes that must NOT get the host header — because they already own a top bar
- * of their own (a back chevron + record title), or because they run before
- * sign-in.
+ * of their own (a back chevron + record title).
  *
  * This is a DENYLIST on purpose. It replaced an exact-match allowlist of nine
  * paths (2026-08-21), under which every route added since — `/m/identify`,
@@ -55,10 +55,11 @@ function MobilePageError(error: Error, reset: () => void) {
  *
  * A trailing slash is load-bearing: `/m/pick/` excludes the pick DETAIL screen
  * (which owns a bar) while `/m/pick` itself still gets the header.
+ *
+ * PRE-SIGN-IN paths are NOT listed here — `isClientPublicPath` owns those, and
+ * they get no shell at all (see below).
  */
 const OWN_TOP_BAR_PREFIXES = [
-  '/m/signin',
-  '/m/enroll',
   '/m/receiving/po',
   '/m/r/',
   '/m/u/',
@@ -98,6 +99,42 @@ export const RedesignedMobileShell = ({ children }: { children: React.ReactNode 
   useEffect(() => {
     firstPaintRef.current = false;
   }, []);
+
+  /**
+   * PRE-SIGN-IN: the page, and nothing else.
+   *
+   * A phone that asks for `/signin` is REWRITTEN to this group's `/m/signin`
+   * route by the edge proxy (`MOBILE_UA_REWRITES`), and a rewrite keeps the
+   * BROWSER path — so `usePathname()` says `/signin` while the mounted route is
+   * `/m/signin`. Matching the shell's chrome rules against `/m/signin` alone
+   * therefore missed on every phone, and the sign-in card shipped under a menu
+   * button, a "Cycle Forge" title and a SCAN CTA: three controls that either do
+   * nothing or bounce straight back to sign-in, on the one screen whose whole
+   * job is one form.
+   *
+   * `isClientPublicPath` is the same predicate AuthContext and the desktop frame
+   * (`ResponsiveLayout`'s `chromeless`) already use, so sign-in, sign-up, enroll
+   * and the kiosk answer this question in one place instead of three. It matches
+   * `/signin` and `/m/signin` both, which is what makes it survive the rewrite.
+   *
+   * No drawer, no scan provider, no phone bridge: none of them can do anything
+   * without a session, and mounting them pre-auth is work the sign-in screen
+   * pays for and cannot use.
+   */
+  if (pathname && isClientPublicPath(pathname)) {
+    return (
+      <div
+        className={cn(
+          'flex h-full min-h-0 flex-col overflow-hidden font-sans antialiased safe-area-padding',
+          TOKENS.colors.background,
+        )}
+      >
+        <ErrorBoundary label="mobile-public-page" fallback={MobilePageError}>
+          {children}
+        </ErrorBoundary>
+      </div>
+    );
+  }
 
   return (
     // The scan provider wraps BOTH the header and the page: the top-right SCAN
