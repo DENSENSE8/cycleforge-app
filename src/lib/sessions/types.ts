@@ -59,6 +59,13 @@ export type SurfaceSessionBinding =
 export const SESSION_STATUSES = ['open', 'parked', 'ended'] as const;
 export type SessionStatus = (typeof SESSION_STATUSES)[number];
 
+/** Elapsed-time reads join these onto WorkSession (see `intervals` below);
+ *  only the two clock columns are projected — the fold sums those alone. */
+export type WorkSessionIntervalClock = Pick<
+  WorkSessionInterval,
+  'startedAt' | 'endedAt'
+>;
+
 /** One `work_sessions` row, camel-cased. */
 export interface WorkSession {
   id: number;
@@ -95,6 +102,8 @@ export interface WorkSession {
   wrapUp: string | null;
   /** Who wrote `wrapUp`. Physics, not vocabulary. */
   wrapUpSource: WrapUpSource | null;
+  /** Joined only by reads that need elapsed time. Absent = not fetched. */
+  intervals?: readonly WorkSessionIntervalClock[];
 }
 
 export const WRAP_UP_SOURCES = ['staff', 'assistant'] as const;

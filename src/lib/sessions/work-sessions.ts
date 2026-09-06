@@ -246,7 +246,30 @@ function sqlTx(db: SessionQueryable, orgId: OrgId): WorkSessionTx {
           LIMIT $3`,
         [orgId, staffId, limit],
       );
-      return (rows as Array<Record<string, unknown>>).map(mapSession);
+      const sessions = (rows as Array<Record<string, unknown>>).map(mapSession);
+      // The Stack folds elapsed from SUM(intervals), never wall time — a block
+      // parked at 10:00 and resumed at 14:00 carries the work, not the gap.
+      // One extra query per read, additive field; plain row reads stay one.
+      const ids = sessions.map((s) => s.id);
+      const intervals = ids.length
+        ? await db.query(
+            `SELECT session_id, started_at, ended_at FROM work_session_intervals
+              WHERE organization_id = $1 AND session_id = ANY($2::int[])
+              ORDER BY started_at ASC`,
+            [orgId, ids],
+          ).then((r) => r.rows as Array<Record<string, unknown>>)
+        : [];
+      const bySession = new Map<number, { startedAt: string; endedAt: string | null }[]>();
+      for (const iv of intervals) {
+        const sid = Number(iv.session_id);
+        const list = bySession.get(sid) ?? [];
+        list.push({
+          startedAt: String(iv.started_at),
+          endedAt: iv.ended_at == null ? null : String(iv.ended_at),
+        });
+        bySession.set(sid, list);
+      }
+      return sessions.map((s) => ({ ...s, intervals: bySession.get(s.id) ?? [] }));
     },
   };
 }
