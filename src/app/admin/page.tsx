@@ -1,5 +1,4 @@
 import { RepairIssuesManagementTab } from '@/components/admin/RepairIssuesManagementTab';
-import { StationNasFoldersTab } from '@/components/admin/StationNasFoldersTab';
 import { ConnectionsManagementTab } from '@/components/admin/ConnectionsManagementTab';
 import { AdminOverviewTab } from '@/components/admin/AdminOverviewTab';
 import {
@@ -29,7 +28,6 @@ function renderTab(
   switch (activeTab) {
     case 'overview':       return <AdminOverviewTab />;
     case 'connections':    return <ConnectionsManagementTab />;
-    case 'station_photos': return <StationNasFoldersTab mode={args.mode} />;
     case 'repair_issues':  return <RepairIssuesManagementTab />;
   }
 }
@@ -69,7 +67,7 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
     redirect(buildSettingsRedirect('/settings/roles', { roleId: params.roleId }));
   }
 
-  // Dissolved sections (W0–W2, 2026-09-06) — one redirect table in
+  // Dissolved sections (W0–W3, 2026-09-06) — one redirect table in
   // admin-sections.ts is the single list. `logs` keeps its `?search=` filter
   // (the desk's shared filter band is `q`); `po_mailbox` keeps the Gmail
   // OAuth flash params so its toast still fires at the new home.
@@ -77,6 +75,9 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   if (dissolved) {
     if (rawSection === 'logs' && params.search) {
       redirect(`${dissolved}&q=${encodeURIComponent(params.search)}`);
+    }
+    if (rawSection === 'station_photos' && params.mode) {
+      redirect(`${dissolved}&mode=${encodeURIComponent(params.mode)}`);
     }
     if (rawSection === 'po_mailbox' && (params.po_gmail_connected || params.po_gmail_error)) {
       const flash = params.po_gmail_connected

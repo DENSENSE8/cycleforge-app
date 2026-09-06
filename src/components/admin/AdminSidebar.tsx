@@ -8,7 +8,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ADMIN_SECTION_OPTIONS, type AdminSection } from './admin-sections';
 
 import { ConnectionsSidebarPanel } from '@/components/sidebar/ConnectionsSidebarPanel';
-import { NasPhotosSidebarPanel } from './NasPhotosSidebarPanel';
 
 interface AdminSidebarProps {
   activeSection: AdminSection;
@@ -19,10 +18,9 @@ const ICON_CLS = 'h-4 w-4 shrink-0';
 
 function panelFor(section: AdminSection): JSX.Element | null {
   switch (section) {
-    // W2 (2026-09-06): bose_models / compatibility panels moved with their
-    // tabs to Sourcing; the desk owns the surface now.
+    // W2+W3 (2026-09-06): sourcing panels moved with their tabs to Sourcing;
+    // the NAS photos panel moved to Settings › Photos & NAS.
     case 'connections':     return <ConnectionsSidebarPanel />;
-    case 'station_photos':  return <NasPhotosSidebarPanel />;
     default:                return null;
   }
 }

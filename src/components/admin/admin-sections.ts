@@ -1,5 +1,4 @@
 import {
-  Camera,
   LayoutDashboard,
   Link2,
   Wrench,
@@ -28,19 +27,20 @@ type AdminSectionIcon = (props: { className?: string }) => JSX.Element;
  * (`/incoming?view=mailbox`); bose_models + compatibility → Sourcing modes;
  * reason_codes + favorites → Inventory sibling pages.
  *
- * What remains is awaiting W3 or a ruling: station_photos (per-device
- * config → Settings), connections (dies with per-app sync actions), and
- * repair_issues (parked — the repairs console is a transaction feed, not a
- * config face; needs a ruling before it moves). When the last tab lands,
- * /admin dies and this file with it.
+ * W3 (2026-09-06) moved station_photos → Settings › Photos & NAS
+ * (`/settings/photos`).
+ *
+ * What remains: connections (dies with per-app sync actions in the Apps
+ * promotion) and repair_issues (parked — the repairs console is a
+ * transaction feed, not a config face; needs a ruling). When the last tab
+ * lands, /admin dies and this file with it.
  */
 export type AdminSection =
   | 'overview'
   | 'repair_issues'
-  | 'station_photos'
   | 'connections';
 
-export type AdminGroup = 'Operations' | 'System';
+export type AdminGroup = 'System';
 
 export interface AdminSectionOption {
   value: AdminSection;
@@ -56,8 +56,7 @@ export interface AdminSectionOption {
 export const ADMIN_SECTION_OPTIONS: AdminSectionOption[] = [
   { value: 'overview',     label: 'Overview',     description: 'System health & quick links',                     icon: LayoutDashboard },
 
-  { value: 'repair_issues',label: 'Repair Issues',description: 'Global repair issue checklist templates',       group: 'Operations', icon: Wrench, requires: 'repair.intake' },
-  { value: 'station_photos',label: 'Receiving Photos', description: 'Per-station NAS folder the photo picker opens to', group: 'Operations', icon: Camera },
+  { value: 'repair_issues',label: 'Repair Issues',description: 'Global repair issue checklist templates',       group: 'System', icon: Wrench, requires: 'repair.intake' },
 
   { value: 'connections',  label: 'Sync tools',   description: 'Run marketplace syncs, inventory tools, and connection activity', group: 'System', icon: Link2 },
 ];
@@ -85,6 +84,7 @@ export const ADMIN_SECTION_REDIRECTS: Record<string, string> = {
   locations: '/inventory/locations?tab=manage',
   fba: '/shipping/fba?fbaMode=catalog',
   po_mailbox: '/incoming?view=mailbox',
+  station_photos: '/settings/photos',
   bose_models: '/sourcing?mode=models',
   compatibility: '/sourcing?mode=compatibility',
   reason_codes: '/inventory/reason-codes',

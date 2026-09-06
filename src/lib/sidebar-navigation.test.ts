@@ -954,10 +954,12 @@ test('dissolved admin sections redirect and never render in the console', () => 
     '/sourcing?mode=compatibility',
     '/inventory/reason-codes',
     '/inventory/favorites',
+    '/settings/photos',
   ];
   for (const home of homes) assert.ok(Object.values(ADMIN_SECTION_REDIRECTS).includes(home));
   // Remaining sections still resolve (the residue console works).
   assert.equal(getAdminSection('repair_issues'), 'repair_issues');
+  assert.equal(getAdminSection('station_photos'), 'overview');
   assert.equal(getAdminSection('connections'), 'connections');
   assert.equal(getAdminSection('bogus'), 'overview');
 });

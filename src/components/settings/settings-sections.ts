@@ -1,5 +1,6 @@
 import type { ComponentType } from 'react';
 import {
+  Camera,
   FileText,
   Info,
   Link2,
@@ -25,7 +26,7 @@ export type SettingsSection =
   | 'hardware' | 'workstation' | 'quick-access' | 'appearance' | 'keyboard' | 'about'
   | 'security' | 'organization' | 'billing' | 'integrations' | 'team'
   | 'roles' | 'access' | 'sessions' | 'audit' | 'catalog' | 'legal' | 'receiving'
-  | 'devices' | 'ai' | 'stations' | 'qa';
+  | 'devices' | 'ai' | 'stations' | 'photos' | 'qa';
 
 export type SettingsGroup = 'Personal' | 'Organization';
 
@@ -59,6 +60,9 @@ export const SETTINGS_SECTION_OPTIONS: SettingsSectionOption[] = [
   // Gate matches the door it uses — the nickname goes through
   // `PATCH /api/locations/[barcode]/properties`, which is `sku_stock.manage`.
   { id: 'stations',      label: 'Stations',      description: 'Name each packing & testing station',              group: 'Organization', requires: 'sku_stock.manage', icon: Settings },
+  // Ex-Admin › Receiving Photos (W3, 2026-09-06): NAS endpoint, workflow
+  // folders, station picker defaults, photos platform.
+  { id: 'photos',        label: 'Photos & NAS',  description: 'NAS endpoint, storage folders & station defaults',  group: 'Organization', requires: 'admin.view', href: '/settings/photos', icon: Camera },
   { id: 'team',          label: 'Team',          description: 'Invite teammates, roles, deactivate access',       group: 'Organization', requires: 'admin.manage_staff', href: '/settings/staff', icon: User },
   { id: 'roles',         label: 'Roles',         description: 'Define what each role can do',                     group: 'Organization', requires: 'admin.manage_roles', href: '/settings/roles', icon: ShieldCheck },
   { id: 'access',        label: 'Access',        description: 'Per-staff role + page-access matrix',              group: 'Organization', href: '/settings/access', icon: Lock },
