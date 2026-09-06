@@ -85,7 +85,7 @@ const ownsItsOwnTopBar = (pathname: string): boolean =>
  * where a translucent bar wants something to read through it, and there is no
  * first row to hide when the list is short.
  */
-const OVERLAY_HEADER_PREFIXES = ['/m/scan-out'];
+const OVERLAY_HEADER_PREFIXES = ['/m/scan-out', '/m/triage'];
 
 const wantsOverlayHeader = (pathname: string): boolean =>
   OVERLAY_HEADER_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
