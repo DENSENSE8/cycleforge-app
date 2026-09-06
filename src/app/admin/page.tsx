@@ -21,10 +21,7 @@ interface AdminPageProps {
   }>;
 }
 
-function renderTab(
-  activeTab: AdminSection,
-  args: { searchValue: string; mode?: string },
-) {
+function renderTab(activeTab: AdminSection) {
   switch (activeTab) {
     case 'overview':       return <AdminOverviewTab />;
     case 'connections':    return <ConnectionsManagementTab />;
@@ -89,13 +86,12 @@ export default async function AdminPage({ searchParams }: AdminPageProps) {
   }
 
   const activeTab = getAdminSection(params.section);
-  const sidebarSearch = (params.search || '').trim();
 
   return (
     <div className="flex h-full w-full bg-surface-canvas">
       <div className="flex-1 min-w-0 overflow-hidden">
         <div className="h-full min-h-0 w-full">
-          {renderTab(activeTab, { searchValue: sidebarSearch, mode: params.mode })}
+          {renderTab(activeTab)}
         </div>
       </div>
     </div>
