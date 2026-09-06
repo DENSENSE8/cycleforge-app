@@ -53,6 +53,7 @@ export function getMobileAppTitle(
   if (pathname === '/m/receive' || pathname.startsWith('/m/receive/')) return 'Unbox';
   if (pathname === '/m/testing' || pathname.startsWith('/m/testing/')) return 'Testing';
   if (pathname === '/m/prepacked' || pathname.startsWith('/m/prepacked/')) return 'Prepacked';
+  if (pathname === '/m/companion' || pathname.startsWith('/m/companion/')) return 'Companion';
   if (pathname === '/m/receiving' || pathname.startsWith('/m/receiving/')) {
     const mode = searchParams?.get('mode');
     if (mode === 'local-pickup') return 'Walk-In';

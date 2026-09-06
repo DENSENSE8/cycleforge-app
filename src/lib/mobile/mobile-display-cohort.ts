@@ -168,6 +168,32 @@ export const MOBILE_DISPLAY_COHORT: readonly MobileDisplayMember[] = [
       'src/components/mobile/redesign/MobileSidebarDrawer.tsx',
     ],
   },
+  {
+    // Queues: compact chrome + ladder + type cap, but no capture sheet —
+    // these surfaces list work, they do not commit scans (v1 item 3).
+    id: 'queues',
+    route: '/m/home, /m/work',
+    label: 'Queues (home + assigned work)',
+    files: [
+      'src/components/mobile/redesign/Dashboard.tsx',
+      'src/components/mobile/redesign/AssignedOrders.tsx',
+      'src/components/mobile/redesign/MobileAssignedOrdersGroup.tsx',
+    ],
+  },
+  {
+    // v1 item 4: the rest of the (shell) family, law-audited. Violations here
+    // are fixed mechanically only (banned type role, oversized control paint).
+    id: 'shell-rest',
+    route: '/m/*',
+    label: 'Remaining /m surfaces (pick, receiving feed, identify, checklist, companion)',
+    files: [
+      'src/components/mobile/redesign/PickQueue.tsx',
+      'src/components/mobile/redesign/ReceivingLive.tsx',
+      'src/components/mobile/identify/MobileIdentify.tsx',
+      'src/components/mobile/checklist/MobileChecklistPage.tsx',
+      'src/components/mobile/companion/MobileCompanionComposer.tsx',
+    ],
+  },
 ];
 
 /** Every file the law covers, flattened. */
