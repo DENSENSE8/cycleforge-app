@@ -10,6 +10,7 @@ import { TOKENS } from './DesignSystem';
 import { ReceivingPhoneBridgeMount } from '@/components/mobile/receiving/ReceivingPhoneBridgeMount';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
 import { Button } from '@/design-system/primitives';
+import { isClientPublicPath } from '@/contexts/AuthContext';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -98,6 +99,34 @@ export const RedesignedMobileShell = ({ children }: { children: React.ReactNode 
   useEffect(() => {
     firstPaintRef.current = false;
   }, []);
+
+  /**
+   * PRE-SIGN-IN: the page, and nothing else.
+   *
+   * A phone that asks for `/signin` is REWRITTEN to this group's `/m/signin`
+   * route by the edge proxy (`MOBILE_UA_REWRITES`), and a rewrite keeps the
+   * BROWSER path — so `usePathname()` says `/signin` while the mounted route is
+   * `/m/signin`. `isClientPublicPath` matches both spellings, which is what
+   * makes this rule survive the rewrite. Without it the sign-in card shipped
+   * under a menu button, a "Cycle Forge" title and a SCAN CTA: three controls
+   * that either do nothing or bounce straight back to sign-in, on the one
+   * screen whose whole job is one form.
+   *
+   * No drawer, no scan provider, no phone bridge: none of them can do anything
+   * without a session.
+   */
+  if (pathname && isClientPublicPath(pathname)) {
+    return (
+      <div
+        className={cn(
+          'flex h-full min-h-0 flex-col overflow-hidden font-sans antialiased safe-area-padding',
+          TOKENS.colors.background,
+        )}
+      >
+        {children}
+      </div>
+    );
+  }
 
   return (
     // The scan provider wraps BOTH the header and the page: the top-right SCAN

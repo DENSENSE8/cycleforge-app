@@ -933,10 +933,8 @@ function AuthCard({ children, qrPanel }: { children: React.ReactNode; qrPanel?: 
           .cf-auth-card { max-width: 660px !important; }
           .cf-auth-left { flex: 1 1 0% !important; min-width: 0 !important; }
           .cf-auth-qr { width: 230px !important; flex-shrink: 0 !important; }
-        }
         @media (max-width: 767px) {
           .cf-auth-card { max-width: 384px !important; }
-          .cf-auth-qr { width: 100% !important; }
         }
       `}</style>
       <Panel
@@ -951,9 +949,11 @@ function AuthCard({ children, qrPanel }: { children: React.ReactNode; qrPanel?: 
           </div>
 
           <div className="hidden md:block w-px bg-border-hairline self-stretch my-4" />
-          <div className="block md:hidden h-px w-full bg-border-hairline" />
 
-          <div className="cf-auth-qr bg-surface-sunken/30 p-4 flex flex-col items-center justify-center">
+          {/* Desktop-only. A phone cannot scan a QR that is ON the phone —
+              QR pairing is the desk showing a code for the phone to scan, so
+              the column exists only where a second screen is. */}
+          <div className="cf-auth-qr hidden md:flex bg-surface-sunken/30 p-4 flex-col items-center justify-center">
             {qrPanel}
           </div>
         </div>
@@ -1111,7 +1111,6 @@ function SignInTitle({ workspaceName }: { workspaceName: string | null }) {
           {workspaceName ? `Sign in to ${workspaceName}` : 'Sign in to Cycle Forge'}
         </span>
       </h1>
-      <p className="text-role-caption text-text-soft">Use the account you signed up with.</p>
     </div>
   );
 }
