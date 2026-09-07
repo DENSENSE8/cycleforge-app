@@ -102,6 +102,36 @@ writes; every idea ships with its validation or it isn't done.
 - **Cohort grew 17 → 22 assertions**, laws 11–13 (one pane occupant · board
   reads registered tools · in-chat connect handoff).
 
+### 2026-09-06 (late III) — the prose display language
+
+- **★ AI prose got a hierarchy vocabulary.** The ONE renderer
+  (`MarkdownRenderer`) now speaks two faces: `prose` (assistant replies, real
+  h2/h3 scale) and `bubble` (operator turns — headings demote to semibold
+  `<p><strong>`, never a heading tag inside a chat bubble). Lists render a
+  two-tier rhythm: parent items filled disc/decimal at caption size, nested
+  items dash-marked (`list-['–']`, `marker:text-text-faint`) at micro size in
+  muted body, `[&>p]:mb-0` keeps tight/loose wrapping from inflating. Depth
+  is context-driven (set by the nested `ul`/`ol`) and capped — a third level
+  renders as a flat child, never a new rhythm. Markers/colors are all
+  classes; no raw hex. The five user-side call sites pass `variant="bubble"`
+  (session panel, AiChat, dock, AskThread, plan agent).
+- **Generation-side coercion, not prompt-hoping.** `prose-normalize.ts`
+  (pure, no imports) clamps H1→H2, turns tab indents into 2-space steps,
+  blanks lines around heading/list blocks, and demotes bullets past two
+  levels — applied in `AssistantReply` BEFORE `extractGfmTables`, so artifact
+  extraction and the renderer see the same coerced text. Idempotent by test.
+  The model-side prompt contract was deliberately NOT added: reply prompts
+  live in three places (`api/ai/chat/stream`, `api/assistant/chat`,
+  `agent-loop.ts`) — no single SoT to widen.
+- **Verified in-browser (real Chromium on :3050):** 20/20 checks — bubble
+  face, prose reply face, live normalizer coercion (messy H1/tab/glued-list
+  reply comes back clamped), computed styles (disc vs "–" markers, 10px
+  micro under 12px caption, muted nested body, sunken mono chips), and
+  Enter→full-hierarchy-bubble at **91.5ms** against a 500ms budget. Gates:
+  unit 17/17, session cohort 23/23, motion roles 13/13, tsc clean, eslint
+  clean, design critique clean (no token drift), e2e
+  `chat-prose-hierarchy.spec.ts` green on desktop.
+
 ---
 
 ## Typography
