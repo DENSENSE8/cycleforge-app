@@ -22,8 +22,9 @@ import { cn } from '@/utils/_cn';
 
 /**
  * "Which workspace am I in" card + deliberate org switcher. Always-on switching
- * lives on the MasterNav spine top (`OrgWorkspaceControl`); this Settings card
- * remains the fuller management surface (current badge, slug/plan, inline list).
+ * lives at the bottom of the MasterNav spine (`SpineWorkspaceSwitch` rows in
+ * the account ⋯ menu); this Settings card remains the fuller management
+ * surface (current badge, slug/plan, inline list).
  *
  * The switch list renders every membership from the auth envelope. Pre-identity-
  * migration that's always a single entry (the current org), so only the

@@ -32,6 +32,7 @@ import {
 import { FeedbackPopover } from '@/components/quick-access/FeedbackWidget';
 import { useAuth } from '@/contexts/AuthContext';
 import { useStaffSwitcher } from '@/contexts/StaffSwitcherContext';
+import { orgInitials } from '@/lib/identity/switch-org';
 import { cn } from '@/utils/_cn';
 import { useNavArrange } from './nav-arrange-context';
 import { SpineWorkspaceSwitch } from './SpineWorkspaceSwitch';
@@ -62,6 +63,9 @@ type OpenMenu = 'none' | 'more' | 'feedback';
  * anchor so width tracks the spine. Org name in the menu header is
  * load-bearing. The avatar is a separate click target
  * ({@link StaffAvatarEditor}) for colour + photo.
+ * For multi-workspace accounts an ambient org-initials chip sits beside the
+ * avatar ({@link SpineWorkspaceSwitch}'s initials language) — the wrong-tenant
+ * guard; single-workspace accounts see nothing.
  *
  * Floor band = {@link PRIMARY_CHROME_ROW_FACE} (`h-7` · full spine width). No
  * top hairline — the map already has zero horizontal rules. Identity is one
@@ -112,6 +116,24 @@ export function StaffAccountFooter({ className }: { className?: string }) {
           >
             {/* Click the mark to change colour / photo — not Settings. */}
             <StaffAvatarEditor markSize="xs" />
+            {/* Ambient workspace identity (2026-09-06): a multi-org account
+                carries an org-initials chip beside the avatar — the
+                wrong-tenant guard. Same initials language as the
+                SpineWorkspaceSwitch rows; hover names the workspace in full.
+                Single-org accounts see nothing (⋯ header is the story). */}
+            {(user.memberships ?? []).length > 1 ? (
+              <HoverTooltip
+                label={`${user.organizationName}${user.organizationSlug ? ` · ${user.organizationSlug}` : ''}`}
+                asChild
+              >
+                <span
+                  aria-label={`Workspace: ${user.organizationName}`}
+                  className="ml-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-surface-strong text-role-micro font-semibold text-text-muted"
+                >
+                  {orgInitials(user.organizationName)}
+                </span>
+              </HoverTooltip>
+            ) : null}
             {/* Flex-1 ⋯ fills everything left of sign-out — name + dots, no dead gap. */}
             <HoverTooltip label="Account details" asChild>
               <PopoverTrigger asChild>

@@ -4,9 +4,10 @@ export { MasterNavView } from './MasterNavView';
 // no longer a portaled flyout. Its rows live in `SidebarNavList`, which only
 // `MasterNavView` mounts (as the spine's body) and so imports directly; putting
 // it back in the barrel would just be an unused export.
-// `MasterNavHeader` (name-of-now) was replaced by `OrgWorkspaceControl` (mounted
-// only from `MasterNavView`). `StaffAccountFooter` mounts only from
-// `SidebarNavList` — neither needs a barrel export.
+// `MasterNavHeader` went through `OrgWorkspaceControl` and is now
+// `SpineSessionHead`, mounted only from `SidebarNavList` (which only
+// `MasterNavView` mounts). `StaffAccountFooter` mounts only from
+// `SidebarNavList` too — neither needs a barrel export.
 //
 // `useActiveSidebarChild` / `useSidebarChildNav` were re-exported here and never
 // imported through it (every consumer reaches the concrete file), so knip had

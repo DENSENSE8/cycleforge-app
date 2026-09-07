@@ -1,7 +1,8 @@
 /**
  * Shared org/workspace switch helpers.
  *
- * Spine top (`OrgWorkspaceControl`) and Settings → Organization compose from
+ * The spine footer workspace rows (`SpineWorkspaceSwitch`, inside the account
+ * ⋯ menu at the bottom of the nav) and Settings → Organization compose from
  * this module — never fork a second fetch / error map / hard-reload contract.
  *
  * switch-org response shape (see src/app/api/auth/switch-org):
