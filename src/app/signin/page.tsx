@@ -44,6 +44,11 @@ const startAuthentication: StartAuthentication = async (...args) => {
   const mod = await import('@simplewebauthn/browser');
   return mod.startAuthentication(...args);
 };
+type StartRegistration = typeof import('@simplewebauthn/browser')['startRegistration'];
+const startRegistration: StartRegistration = async (...args) => {
+  const mod = await import('@simplewebauthn/browser');
+  return mod.startRegistration(...args);
+};
 import { flushSync } from 'react-dom';
 // Deliberately NO `@/design-system/motion` import here. `/signin` is the one
 // public route, and the motion barrel statically carries the whole engine
@@ -237,6 +242,20 @@ export default function SignInPage() {
   const [lastMethod, setLastMethod] = useState<SigninMethod | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
 
+  // Platform passkey availability (Face ID / Touch ID / Windows Hello). This
+  // decides HIERARCHY, not capability: where a platform authenticator exists,
+  // the passkey is the prominent primary — the most consistent, reliable,
+  // one-gesture sign-in this page can offer — and leaves the drawer; elsewhere
+  // the old order stands instead of promising a Face ID the device cannot show.
+  const [platformPasskey, setPlatformPasskey] = useState(false);
+  useEffect(() => {
+    window.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable?.()
+      .then(setPlatformPasskey)
+      .catch(() => setPlatformPasskey(false));
+  }, []);
+  // Holds the deferred finish while the upgrade question is answered.
+  const [passkeyPrompt, setPasskeyPrompt] = useState<{ proceed: () => void; saving: boolean } | null>(null);
+
   // Surface the redirect error codes from SSO / magic-link / verify flows.
   useEffect(() => {
     const sso = params.get('sso_error');
@@ -334,13 +353,53 @@ export default function SignInPage() {
         setStaffChoiceOrg(data.organizationName ?? null);
         return;
       }
+      // Password worked on a Face ID-capable device and they haven't saved a
+      // passkey (or asked us to stop asking): hold the redirect for ONE
+      // question. This is the industry upgrade moment — ask at success, never
+      // at rest — and every path out of the prompt still finishes the sign-in.
+      if (platformPasskey && !window.localStorage.getItem('cf.passkeyPrompt.dismissed')) {
+        setPasskeyPrompt({ proceed: () => finish(null, null, null, null), saving: false });
+        return;
+      }
       finish(null, null, null, null);
     } catch {
       setError('Sign-in failed. Try again.');
     } finally {
       setBusy(false);
     }
-  }, [email, password, finish]);
+  }, [email, password, finish, platformPasskey]);
+
+  // Save an account passkey from the upgrade prompt. Best effort by design:
+  // the sign-in is already valid — a failed save must never block the
+  // redirect, it just means we ask again next time.
+  const saveAccountPasskey = useCallback(async (proceed: () => void) => {
+    setPasskeyPrompt({ proceed, saving: true });
+    try {
+      const beginRes = await fetch('/api/auth/account/passkey/register/begin', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (!beginRes.ok) throw new Error('begin failed');
+      const beginData = (await beginRes.json()) as {
+        options: Parameters<typeof startRegistration>[0]['optionsJSON'];
+      };
+      const attResp = await startRegistration({ optionsJSON: beginData.options });
+      const finishRes = await fetch('/api/auth/account/passkey/register/finish', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ response: attResp, label: navigator.userAgent.slice(0, 64) }),
+      });
+      if (!finishRes.ok) throw new Error('finish failed');
+      writeLastSigninMethod('passkey');
+    } catch {
+      // Swallowed on purpose (comment above); the prompt closes either way.
+    } finally {
+      proceed();
+    }
+  }, []);
 
   // Advance email → password (the forward swipe). Validates presence only; the
   // real credential check happens on the password submit.
@@ -589,8 +648,12 @@ export default function SignInPage() {
     if (!workspace?.emailFirstSignin) {
       opts.push({ key: 'station', label: 'Sign in on a shared station', onSelect: () => setStationOpen(true) });
     }
+    // Where the platform authenticator exists, the passkey leaves the drawer
+    // entirely — it renders as the landing primary instead, and a second door
+    // to the same gesture is one more thing to learn.
+    if (platformPasskey) return opts.filter((o) => o.key !== 'passkey');
     return opts;
-  }, [submitMagicLink, submitAccountPasskey, workspace?.emailFirstSignin, email]);
+  }, [submitMagicLink, submitAccountPasskey, workspace?.emailFirstSignin, email, platformPasskey]);
 
   // Exactly one option gets lifted out of the drawer — the one that worked here last.
   const promotedOption = useMemo(
@@ -762,6 +825,44 @@ export default function SignInPage() {
   // ── Primary: federated identity → email + password → more ─────────────────
   return (
     <Shell>
+      {passkeyPrompt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-scrim/50 p-4">
+          <Panel padding="lg" radius="2xl" className="w-full max-w-sm space-y-4">
+            <AuthHeader
+              title="Save a passkey?"
+              subtitle="Next time, this device signs in with Face ID — no password."
+            />
+            <Button
+              variant="primary"
+              size="lg"
+              className="w-full"
+              disabled={passkeyPrompt.saving}
+              onClick={() => void saveAccountPasskey(passkeyPrompt.proceed)}
+            >
+              {passkeyPrompt.saving ? 'Saving…' : 'Save passkey'}
+            </Button>
+            <Button
+              variant="secondary"
+              size="lg"
+              className="w-full"
+              disabled={passkeyPrompt.saving}
+              onClick={passkeyPrompt.proceed}
+            >
+              Not now
+            </Button>
+            <div className="flex justify-center">
+              <TextLink
+                onClick={() => {
+                  window.localStorage.setItem('cf.passkeyPrompt.dismissed', '1');
+                  passkeyPrompt.proceed();
+                }}
+              >
+                Don't ask on this device
+              </TextLink>
+            </div>
+          </Panel>
+        </div>
+      )}
       <AuthCard
         qrPanel={
           <SignInQrPanel onSuccess={() => finish(null, null, null, null)} />
@@ -769,7 +870,27 @@ export default function SignInPage() {
       >
         <SignInTitle workspaceName={workspaceName} />
 
-        {/* Tier 1 — identity providers directly below the title */}
+
+        {/* Tier 0 — the passkey, where the device has Face ID / Touch ID /
+            Windows Hello. The most consistent, reliable, one-gesture sign-in
+            this page can offer, so it goes ABOVE everything and the drawer
+            stops carrying a second door to it. */}
+        {authStep === 'choose' && platformPasskey && (
+          <div key="passkey-primary" className="space-y-2.5">
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              className="w-full"
+              disabled={busy}
+              onClick={() => void submitAccountPasskey()}
+            >
+              Sign in with a passkey
+              {lastMethod === 'passkey' && <LastUsedMarker />}
+            </Button>
+            <Divider>or</Divider>
+          </div>
+        )}
         {authStep === 'choose' && hasFederated && (
           <div key="federated" className="space-y-2.5" aria-label="Identity provider sign-in">
             {providers.map((p) => (
