@@ -45,9 +45,15 @@ export function getMobileAppTitle(
   if (pathname === '/m/scan-out' || pathname.startsWith('/m/scan-out/')) return 'Scan out';
   if (pathname === '/m/scan' || pathname.startsWith('/m/scan/')) return 'Scan';
   if (pathname === '/m/identify' || pathname.startsWith('/m/identify/')) return 'Identify';
-  if (pathname === '/m/triage' || pathname.startsWith('/m/triage/')) return 'Arrival';
+  // Workstation pivot (operator 2026-09-06): the surface is the operator's
+  // current workstation, not a destination named for one vocabulary. The door
+  // is what the armed session is doing, and the session title says that.
+  if (pathname === '/m/triage' || pathname.startsWith('/m/triage/')) return 'Workstation';
   if (pathname === '/m/unbox' || pathname.startsWith('/m/unbox/')) return 'Unbox';
   if (pathname === '/m/receive' || pathname.startsWith('/m/receive/')) return 'Unbox';
+  if (pathname === '/m/testing' || pathname.startsWith('/m/testing/')) return 'Testing';
+  if (pathname === '/m/prepacked' || pathname.startsWith('/m/prepacked/')) return 'Prepacked';
+  if (pathname === '/m/companion' || pathname.startsWith('/m/companion/')) return 'Companion';
   if (pathname === '/m/receiving' || pathname.startsWith('/m/receiving/')) {
     const mode = searchParams?.get('mode');
     if (mode === 'local-pickup') return 'Walk-In';
@@ -76,7 +82,7 @@ const DASHBOARD_VIEW_OPTIONS: MobileContextOption[] = [
 ];
 
 const RECEIVING_MODE_OPTIONS: MobileContextOption[] = [
-  { id: 'triage', label: 'Arrival' },
+  { id: 'triage', label: 'Workstation' },
   { id: 'receive', label: 'Unbox' },
   { id: 'history', label: 'History' },
   { id: 'pickup', label: 'Walk-In' },

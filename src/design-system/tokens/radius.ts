@@ -250,12 +250,18 @@ export const TRIAGE_PANEL_INNER_CORNER = 'rounded-lg';
  * The scan window's lip — the camera surface anchored to the bottom of a
  * handheld scan screen.
  *
- * TOP corners only. The bottom edge meets the device bezel, which supplies its
- * own radius; rounding it again leaves a sliver of canvas under the window and
- * reads as a floating sheet rather than the mouth of the screen. Pair with
- * `overflow-hidden` so the video is clipped to the lip.
+ * SQUARE (operator 2026-09-05). It was `rounded-t-3xl`, and a 24px radius on a
+ * surface whose first 28px is a row of controls costs that row both ends: the
+ * Type button and the status pill have to be inset past the curve, so they no
+ * longer line up with the pills on the tape rows above, and the two triangles
+ * of canvas left beside the lip read as a gap between the tape and the lens
+ * rather than as one continuous mouth.
+ *
+ * Squaring it buys the full width for the top row and puts the video's own edge
+ * exactly where the tape ends. `overflow-hidden` stays — a station may still
+ * clip content to the box.
  */
-export const MOBILE_SCAN_WINDOW_CORNER = 'rounded-t-3xl';
+export const MOBILE_SCAN_WINDOW_CORNER = 'rounded-none';
 
 /**
  * A card floating on the mobile scan canvas — the focus card carrying the scan

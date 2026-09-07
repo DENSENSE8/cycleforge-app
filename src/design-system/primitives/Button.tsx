@@ -76,18 +76,27 @@ const desktopSize: Record<ButtonSize, string> = {
   lg: 'h-10 gap-2 px-4 text-sm',
 };
 
-// Mobile — every size meets the 44px minimum touch target.
+// Mobile — the `MOBILE_CONTROL_LADDER` rungs (28 / 36 / 44), not three sizes
+// above the touch floor.
+//
+// These were `h-11 / h-12 / h-14`: every rung at or above 44px, because the
+// house read Apple's 44×44 as the size of the PAINTED control. It is the hit
+// REGION — the HIG says outright that the visible control may be smaller — and
+// applying it to the paint is what put 56px confirms and 48px rows on a 390px
+// screen. Paint small, hit big: `sm`/`md` carry their extra target with padding
+// or a pseudo-element at the call site, and `lg` stays at 44 because it is the
+// screen's one primary action, the single place paint == hit.
 const mobileSize: Record<ButtonSize, string> = {
-  sm: 'h-11 gap-2 px-4 text-role-data',
-  md: 'h-12 gap-2 px-5 text-sm',
-  lg: 'h-14 gap-2.5 px-6 text-base',
+  sm: 'h-8 gap-1.5 px-3 text-role-caption',
+  md: 'h-9 gap-2 px-4 text-role-data',
+  lg: 'h-11 gap-2 px-5 text-sm',
 };
 
-// Icon-only squares (mobile).
+// Icon-only squares (mobile) — same three rungs, square.
 const mobileIconOnly: Record<ButtonSize, string> = {
-  sm: 'h-11 w-11',
-  md: 'h-12 w-12',
-  lg: 'h-14 w-14',
+  sm: 'h-8 w-8',
+  md: 'h-9 w-9',
+  lg: 'h-11 w-11',
 };
 
 const iconBox: Record<ButtonSize, string> = {

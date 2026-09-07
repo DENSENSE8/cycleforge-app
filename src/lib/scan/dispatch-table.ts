@@ -197,14 +197,17 @@ const DISPATCH_TABLE: readonly DispatchRow[] = [
 // that is the plan's "existing" row, not a missing case.
 
 const TITLE_TEMPLATES = {
-  arrival: (carrier: string, last4: string) => `Arrival · ${carrier} ${last4}`,
+  // Workstation pivot (operator 2026-09-06): session blocks name the WORK and
+  // the ID, never a destination called "Arrival" — the door is what you are
+  // doing, not a place the phone navigates to.
+  arrival: (carrier: string, last4: string) => `Intake · ${carrier} ${last4}`,
   qc: (lpn: string) => `QC · LPN ${lpn}`,
   pack: (ref: string) => `Pack · ${ref}`,
 } as const;
 
 /** The Field's placeholder tail — "scan · type · say → {destination}". */
 const CARD_DESTINATION: Record<ScanCard, string> = {
-  arrival: 'Arrival',
+  arrival: 'the door',
   carton: 'the carton',
   qc: 'QC',
   pack: 'Pack',

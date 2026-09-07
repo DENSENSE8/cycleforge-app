@@ -16,7 +16,7 @@ import { cn } from '@/utils/_cn';
 // Mirrors the pages that exist under src/app/m/ — keep in sync.
 const MOBILE_LANDING_OPTIONS: ReadonlyArray<{ value: string; label: string }> = [
   { value: '/m/home',      label: 'Home (hub)' },
-  { value: '/m/scan',      label: 'Scan' },
+  { value: '/m/triage',    label: 'Workstation' },
   { value: '/m/receive',   label: 'Receive (door scan)' },
   { value: '/m/receiving', label: 'Receiving' },
   { value: '/m/pick',      label: 'Pick' },

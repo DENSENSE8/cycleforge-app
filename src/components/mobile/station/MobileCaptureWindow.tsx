@@ -87,6 +87,12 @@ export function MobileCaptureWindow({
   onErrorChange,
   /** Reported up when the operator puts the sheet away, or brings it back. */
   onArmedChange,
+  /**
+   * Bring the sheet back up. A counter, not a boolean: each increment is one
+   * re-arm request from outside (the top bar's CTA), and the effect must fire
+   * per request — a boolean could not ask twice.
+   */
+  armRequest,
 }: {
   onDecode: (value: string) => void;
   label: string;
@@ -95,6 +101,7 @@ export function MobileCaptureWindow({
   statusAlert?: boolean;
   onErrorChange?: (errored: boolean) => void;
   onArmedChange?: (armed: boolean) => void;
+  armRequest?: number;
 }) {
   const scanner = useBarcodeScanner({ dedupMs: DEDUP_MS });
   const { acceptScan, lastScannedValue, resetLastScan, startScanning, stopScanning } = scanner;
@@ -103,6 +110,13 @@ export function MobileCaptureWindow({
   const [open, setOpen] = useState(true);
   /** The keyed fallback, for a label the lens cannot read. */
   const [manualOpen, setManualOpen] = useState(false);
+
+  // Each external re-arm request lifts the sheet. A no-op when it is already
+  // up — the lens was never interrupted.
+  useEffect(() => {
+    if (armRequest) setOpen(true);
+  }, [armRequest]);
+
   const [manual, setManual] = useState('');
 
   // Held in refs so the decode effect can key strictly off the scanned VALUE.
@@ -279,21 +293,26 @@ export function MobileCaptureWindow({
         </form>
       ) : (
         /*
-          Top-left, on the same rail as the status pill top-right.
+          Top-left, on the same 28px rail as the grab bar and the status pill.
 
           It sat bottom-left, which put it in the phone's home-indicator zone —
-          a 44px target 12px off the bottom edge of the screen competes with the
+          a target 12px off the bottom edge of the screen competes with the
           system gesture area and reads as hanging off the sheet. Up here it is
           a matched pair with the pill: same inset, same rail, one row of
           overlay chrome instead of controls scattered in three corners.
+
+          28px painted, 44px hit (`before:-inset-2`): the `inline` rung of
+          MOBILE_CONTROL_LADDER. It painted the full 44 while the lip was
+          rounded, which forced it inboard of the curve and left it half a row
+          below the pill it is supposed to line up with.
         */
         <IconButton
           onClick={() => setManualOpen(true)}
           ariaLabel="Type the label instead"
           radius="pill"
-          icon={<Type className="h-4 w-4" />}
+          icon={<Type className="h-3.5 w-3.5" />}
           className={cn(
-            'absolute left-3 top-3 z-20 h-11 w-11 border-0',
+            "ds-allow-control-size absolute left-2 top-1.5 z-20 h-7 w-7 border-0 before:absolute before:-inset-2 before:content-['']",
             'bg-scrim/55 text-white backdrop-blur hover:bg-scrim/70',
           )}
         />

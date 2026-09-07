@@ -1,24 +1,15 @@
 /**
- * /m/scan — Universal mobile scan entry point.
+ * /m/scan — retired 2026-09-06 (workstation pivot).
  *
- * A SERVER component so the Receiving · Prioritize feed — the default panel and
- * this screen's largest contentful element — is in the first HTML rather than
- * arriving strictly after hydrate + fetch.
- *
- * The seed is capped at one screen. It used to ask for **500 rows** to "mirror
- * the panel's request window"; the panel windows to one screen regardless, so
- * the other 480 were pure document weight. See `mobile-feed-seed.server.ts`.
+ * The universal three-mode pager duplicated the door loop the workstation
+ * already owns and carried desk-style scan chrome. This route now forwards to
+ * the workstation; its two real modes live under their own routes:
+ * /m/testing (PO testing) and /m/prepacked (verify / put-away), reachable from
+ * the Stack's Queues band and Find. Old links and QR stickers keep working.
  */
 
-import { HydrationBoundary } from '@tanstack/react-query';
-import RedesignedMobileUniversalScan from '@/components/mobile/redesign/UniversalScan';
-import { seedMobileScanPrioritize } from '@/lib/queries/mobile-feed-seed.server';
+import { redirect } from 'next/navigation';
 
-export default async function MobileScanPage() {
-  const seed = await seedMobileScanPrioritize();
-  return (
-    <HydrationBoundary state={seed}>
-      <RedesignedMobileUniversalScan />
-    </HydrationBoundary>
-  );
+export default function MobileScanRedirectPage() {
+  redirect('/m/triage');
 }

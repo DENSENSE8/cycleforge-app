@@ -199,7 +199,7 @@ export function MobileIdentify() {
               </div>
               <Button
                 variant="ghost"
-                size="lg"
+                size="sm"
                 onClick={retake}
                 className="h-auto w-full rounded-none bg-stage-contrast py-3.5 text-sm font-semibold text-black active:scale-[0.99]"
               >
@@ -231,7 +231,7 @@ export function MobileIdentify() {
                 <div className="flex gap-2">
                   <Button
                     variant="ghost"
-                    size="lg"
+                    size="sm"
                     onClick={retake}
                     className="h-auto flex-1 rounded-none bg-stage-contrast py-3 text-sm font-semibold text-black"
                   >
@@ -239,7 +239,7 @@ export function MobileIdentify() {
                   </Button>
                   <Button
                     variant="ghost"
-                    size="lg"
+                    size="sm"
                     onClick={() => recvId && (window.location.href = `/m/receive/${recvId}`)}
                     icon={<Search className="h-4 w-4" />}
                     className="h-auto gap-1.5 rounded-none bg-glass/10 px-4 py-3 text-sm font-medium text-white/80"

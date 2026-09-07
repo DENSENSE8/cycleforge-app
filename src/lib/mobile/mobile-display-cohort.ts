@@ -139,6 +139,79 @@ export const MOBILE_DISPLAY_COHORT: readonly MobileDisplayMember[] = [
       'src/components/mobile/redesign/MobileScanOut.tsx',
     ],
   },
+  {
+    id: 'arrival',
+    route: '/m/triage',
+    label: 'Arrival (door intake)',
+    files: [
+      // The station files above are shared with scan-out and are already
+      // law-bound there; listed once, scanned once. What arrival adds is its
+      // own body.
+      'src/components/mobile/receiving/MobileArrivalStation.tsx',
+    ],
+  },
+  {
+    // Not a route: the chrome every `/m` route wears. It belongs in the cohort
+    // because it is the single largest fixed cost on a phone screen — a bar
+    // that grows by 20px spends 20px on twenty surfaces — and because nothing
+    // else was checking it. It was 60px tall with an 18px title until
+    // 2026-09-05.
+    id: 'shell-chrome',
+    route: '/m/*',
+    label: 'Mobile host chrome (top bar + shell)',
+    files: [
+      'src/components/mobile/redesign/MobileShell.tsx',
+      'src/components/mobile/redesign/MobileTopBar.tsx',
+      'src/components/mobile/redesign/mobile-scan-cta.tsx',
+      'src/components/mobile/redesign/MobilePreviewSheet.tsx',
+      'src/components/mobile/redesign/MobileStackSheet.tsx',
+      'src/components/mobile/redesign/MobileSidebarDrawer.tsx',
+    ],
+  },
+  {
+    id: 'unbox',
+    route: '/m/unbox',
+    label: 'Unbox (bench)',
+    files: [
+      'src/components/mobile/receiving/MobileUnboxStation.tsx',
+      'src/components/mobile/receiving/unbox-station-tape.ts',
+    ],
+  },
+  {
+    id: 'pack',
+    route: '/m/pack',
+    label: 'Pack (bench)',
+    files: [
+      'src/components/mobile/packer/MobilePackStation.tsx',
+      'src/components/mobile/packer/pack-station-tape.ts',
+    ],
+  },
+  {
+    // Queues: compact chrome + ladder + type cap, but no capture sheet —
+    // these surfaces list work, they do not commit scans (v1 item 3).
+    id: 'queues',
+    route: '/m/home, /m/work',
+    label: 'Queues (home + assigned work)',
+    files: [
+      'src/components/mobile/redesign/Dashboard.tsx',
+      'src/components/mobile/redesign/AssignedOrders.tsx',
+      'src/components/mobile/redesign/MobileAssignedOrdersGroup.tsx',
+    ],
+  },
+  {
+    // v1 item 4: the rest of the (shell) family, law-audited. Violations here
+    // are fixed mechanically only (banned type role, oversized control paint).
+    id: 'shell-rest',
+    route: '/m/*',
+    label: 'Remaining /m surfaces (pick, receiving feed, identify, checklist, companion)',
+    files: [
+      'src/components/mobile/redesign/PickQueue.tsx',
+      'src/components/mobile/redesign/ReceivingLive.tsx',
+      'src/components/mobile/identify/MobileIdentify.tsx',
+      'src/components/mobile/checklist/MobileChecklistPage.tsx',
+      'src/components/mobile/companion/MobileCompanionComposer.tsx',
+    ],
+  },
 ];
 
 /** Every file the law covers, flattened. */

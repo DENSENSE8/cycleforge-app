@@ -26,8 +26,8 @@ function ModeStarter({
 }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-3 bg-surface-card px-6 text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-none bg-surface-sunken text-text-soft ring-1 ring-inset ring-border-soft">
-        <Icon className="h-7 w-7" />
+      <div className="flex h-11 w-11 items-center justify-center rounded-none bg-surface-sunken text-text-soft ring-1 ring-inset ring-border-soft">
+        <Icon className="h-6 w-6" />
       </div>
       <p className="text-sm font-semibold uppercase tracking-[0.18em] text-text-default">{title}</p>
       <p className="max-w-[280px] text-role-caption font-semibold text-text-soft">{blurb}</p>

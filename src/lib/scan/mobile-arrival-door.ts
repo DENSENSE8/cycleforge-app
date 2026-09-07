@@ -14,7 +14,7 @@
  * Plan: docs/warehouse-os/PLAN-scan-shell-mobile.md → G2.
  */
 
-import { routeScan } from '../barcode-routing';
+import { routeScan, type ScanType } from '../barcode-routing';
 import { dispatchScan, type ScanCard } from './dispatch-table';
 
 export function isCarrierTrackingScan(raw: string): boolean {
@@ -48,5 +48,79 @@ export function planDoorScan(raw: string, trackingSeen: boolean): DoorScanPlan {
     destination: dispatch.destination,
     openArrival: dispatch.card === 'arrival',
     mintOnScan: false,
+  };
+}
+
+/**
+ * What the ARRIVAL STATION can do with a scan, decided from the bytes alone.
+ *
+ * `planDoorScan` answers "which Card", which needs prior state and therefore a
+ * network read. This answers the question that comes BEFORE it — is this thing
+ * even an arrival? — and answers it with no state and no I/O, so a product
+ * label scanned at the door is refused instantly instead of costing a preview
+ * round-trip and then minting a carton for a SKU.
+ *
+ * Three answers, and each is a different next move:
+ *
+ *  - `tracking` — a carrier label. The station reads whether we have seen it
+ *    (preview) and then either logs the arrival or reports the carton.
+ *  - `carton`   — one of OUR printed carton stickers. The receiving id is IN
+ *    the label, so this needs no lookup at all: the box is already in the
+ *    system by construction.
+ *  - `refused`  — anything else. Nothing arrives under a bin, a unit or a
+ *    ticket, and minting a carton for one is how phantom boxes are born.
+ */
+export type ArrivalScanIntent =
+  | { kind: 'tracking'; value: string; carrier: string }
+  | { kind: 'carton'; value: string; receivingId: number }
+  | { kind: 'refused'; value: string; reason: string };
+
+/**
+ * What each refusable class IS, in the operator's words.
+ *
+ * The message has to name the thing they just scanned, or "not an arrival" reads
+ * as a broken station rather than as the wrong label on a good one.
+ */
+const REFUSED_NOUN: Partial<Record<ScanType, string>> = {
+  sku: 'a product label',
+  bin: 'a bin label',
+  'bin-paired-order': 'a bin label',
+  'receiving-line': 'a line label',
+  'serial-unit': 'a unit label',
+  'handling-unit': 'a licence plate',
+  sscc: 'a licence plate',
+  manifest: 'a kit label',
+  'support-ticket': 'a ticket',
+};
+
+/** Our own carton sticker carries its receiving id in the redirect it routes to. */
+const CARTON_REDIRECT_RE = /^\/m\/r\/(\d+)$/;
+
+export function arrivalScanIntent(raw: string): ArrivalScanIntent {
+  const value = raw.trim();
+  const route = value ? routeScan(value) : null;
+
+  // Unroutable bytes. NOT a silent no-op: the operator scanned something, and a
+  // station that says nothing looks like a station that missed the read.
+  if (!route) {
+    return {
+      kind: 'refused',
+      value,
+      reason: 'That is not a carrier tracking number. Scan the carrier label on the box.',
+    };
+  }
+
+  if (route.type === 'carrier-tracking') {
+    return { kind: 'tracking', value: route.value, carrier: route.carrier ?? 'Unknown' };
+  }
+
+  const carton = CARTON_REDIRECT_RE.exec(route.redirect ?? '');
+  if (carton) return { kind: 'carton', value, receivingId: Number(carton[1]) };
+
+  const noun = REFUSED_NOUN[route.type] ?? 'that label';
+  return {
+    kind: 'refused',
+    value,
+    reason: `Nothing arrives under ${noun}. Scan the carrier label on the box.`,
   };
 }

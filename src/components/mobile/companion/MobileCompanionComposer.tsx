@@ -233,7 +233,7 @@ export function MobileCompanionComposer() {
       <div className="flex shrink-0 items-center gap-2 border-b border-border-hairline px-4 py-2.5">
         <Smartphone className="h-4 w-4 text-[var(--ds-color-text-success)]" />
         <p className="text-role-eyebrow uppercase tracking-widest text-text-soft">Companion</p>
-        <p className="ml-auto text-role-micro text-text-faint">
+        <p className="ml-auto text-role-eyebrow text-text-faint">
           {deskContext
             ? `Desk · ${deskContext.route}`
             : 'Paired by staff ID — press the phone button on the desk'}
@@ -243,7 +243,7 @@ export function MobileCompanionComposer() {
       <div className="shrink-0 border-b border-border-hairline">
         <PageContextSection />
         {lastHandoffAt ? (
-          <p className="px-4 pb-2 text-role-micro text-text-faint">
+          <p className="px-4 pb-2 text-role-eyebrow text-text-faint">
             Context received {new Date(lastHandoffAt).toLocaleTimeString()}
           </p>
         ) : null}
@@ -252,7 +252,7 @@ export function MobileCompanionComposer() {
       <div className="min-h-0 flex-1" />
 
       {dictation.error ? (
-        <p className="px-4 pb-1 text-role-micro text-[var(--ds-color-text-danger)]" role="status">
+        <p className="px-4 pb-1 text-role-eyebrow text-[var(--ds-color-text-danger)]" role="status">
           {dictation.error}
         </p>
       ) : null}

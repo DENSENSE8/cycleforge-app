@@ -5,7 +5,7 @@
  *
  * Each doc is stored as JSON (markdown in `md`) so escaping is exact and the
  * source can be regenerated. These are the SAME documents published on the
- * marketing site at cycleforge.com/legal — keep the two in sync when either
+ * marketing site at cycleforge.ai/legal — keep the two in sync when either
  * changes. They are working drafts pending counsel review; the bracketed
  * placeholders (e.g. `[LEGAL ENTITY NAME]`) are intentional.
  */
@@ -35,7 +35,7 @@ export const LEGAL_INDEX_BLURB =
   'These are CycleForge’s current legal documents — Terms of Service, Privacy Policy, and ' +
   'Data Processing Agreement (DPA) — which together govern your use of the platform. They are ' +
   'working drafts maintained alongside our actual architecture and data practices, and have not ' +
-  'yet been finalized with counsel. The authoritative, published versions live at cycleforge.com/legal.';
+  'yet been finalized with counsel. The authoritative, published versions live at cycleforge.ai/legal.';
 
 export function getLegalDoc(slug: string | null | undefined): LegalDoc {
   return LEGAL_DOCS.find((d) => d.slug === slug) ?? LEGAL_DOCS[0];

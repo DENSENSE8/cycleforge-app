@@ -10,11 +10,11 @@ import { ExternalLinkActionIcon } from '@/design-system/components/ExternalLinkA
  * LINK ROWS, not an inline corpus (Impeccable audit + design review,
  * 2026-09-06): the full ToS/Privacy/DPA markdown was ~60% of /settings/me's
  * 23,100px scroll and buried operator controls under bench-irrelevant text.
- * The authoritative copies live at cycleforge.com/legal; each row links out
+ * The authoritative copies live at cycleforge.ai/legal; each row links out
  * and offers the markdown download. The page-level section eyebrow supplies
  * the heading (no duplicate h2 here).
  */
-const LEGAL_SITE_BASE = 'https://cycleforge.com/legal';
+const LEGAL_SITE_BASE = 'https://cycleforge.ai/legal';
 
 function download(doc: LegalDoc) {
   const blob = new Blob([doc.md], { type: 'text/markdown;charset=utf-8' });
@@ -57,7 +57,7 @@ export function LegalSection() {
               className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-default hover:underline"
             >
               {doc.label}
-              <ExternalLinkActionIcon ariaLabel={`Open ${doc.label} on cycleforge.com`} />
+              <ExternalLinkActionIcon ariaLabel={`Open ${doc.label} on cycleforge.ai`} />
             </a>
           </div>
           <Button

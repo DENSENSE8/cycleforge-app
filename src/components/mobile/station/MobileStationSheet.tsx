@@ -167,12 +167,17 @@ export function MobileStationSheet({
       {/* The station's state line, inside its own surface — a count, or what is
           in flight. It used to be a page-level band above the lip, which both
           restated the page title and opened a gap between the tape and the
-          sheet. */}
+          sheet.
+
+          `top-1.5 right-2` puts it on the SAME 28px rail as the grab bar and
+          whatever control a station pins on the left, now that the lip is
+          square: three items, one row, both ends flush to the edge instead of
+          inset past a 24px curve. */}
       {status && (
         <span
           role="status"
           className={cn(
-            'absolute right-3 top-3 z-20 px-2 py-0.5 text-role-eyebrow tabular-nums backdrop-blur',
+            'absolute right-2 top-1.5 z-20 px-2 py-0.5 text-role-eyebrow tabular-nums backdrop-blur',
             'rounded-full',
             STATION_EYEBROW_CLASS,
             statusAlert ? 'bg-rose-600/90 text-white' : 'bg-scrim/55 text-white',
@@ -187,8 +192,9 @@ export function MobileStationSheet({
 
         A decorative pill would leave the dismiss reachable only by gesture,
         which is unusable by keyboard and invisible to AT. As a button it is
-        both: drag it, tap it, or focus it and press Enter. 44px of target with
-        a 4px pill drawn inside — the mark stays small, the hit area does not.
+        both: drag it, tap it, or focus it and press Enter. The row is 28px — the
+        `inline` rung — and it spans the full width, so the target is enormous
+        horizontally even though it is short; the pill drawn inside stays 4px.
 
         White with a dark ring because the lens below is usually pointed at a
         WHITE shipping label, which swallows any light-on-light mark.
@@ -200,7 +206,7 @@ export function MobileStationSheet({
         aria-controls={bodyId}
         aria-label={`Hide ${label.toLowerCase()}`}
         className={cn(
-          'absolute inset-x-0 top-0 z-10 flex h-11 items-start justify-center pt-2.5',
+          'absolute inset-x-0 top-0 z-10 flex h-7 items-center justify-center',
           focusRing('control', 'accent'),
         )}
       >

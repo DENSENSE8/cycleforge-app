@@ -23,16 +23,12 @@ import {
   OAUTH_STATE_COOKIE,
   OAUTH_STATE_TTL_SECONDS,
 } from '@/lib/auth/platform-oauth';
+import { oauthOrigin } from '@/lib/auth/oauth-origin';
 
 export const runtime = 'nodejs';
 
-function origin(req: NextRequest): string {
-  return process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL ||
-    `${req.nextUrl.protocol}//${req.nextUrl.host}`;
-}
-
 function fail(req: NextRequest, code: string): NextResponse {
-  const url = new URL('/signin', origin(req));
+  const url = new URL('/signin', oauthOrigin(req));
   url.searchParams.set('login_error', code);
   return NextResponse.redirect(url);
 }
@@ -61,7 +57,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   const authUrl = new URL(cfg.authorizeUrl);
   authUrl.searchParams.set('response_type', 'code');
   authUrl.searchParams.set('client_id', cfg.clientId);
-  authUrl.searchParams.set('redirect_uri', resolveRedirectUri(cfg, origin(req)));
+  authUrl.searchParams.set('redirect_uri', resolveRedirectUri(cfg, oauthOrigin(req)));
   authUrl.searchParams.set('scope', cfg.scope);
   authUrl.searchParams.set('state', payload.state);
   authUrl.searchParams.set('nonce', payload.nonce);
@@ -74,7 +70,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   }
 
   const res = NextResponse.redirect(authUrl.toString());
-  const isSecure = origin(req).startsWith('https:') || process.env.NODE_ENV === 'production';
+  const isSecure = oauthOrigin(req).startsWith('https:') || process.env.NODE_ENV === 'production';
   res.cookies.set(OAUTH_STATE_COOKIE, encodeOAuthState(payload), {
     httpOnly: true,
     secure: provider === 'apple' ? true : isSecure,
