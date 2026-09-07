@@ -2,7 +2,7 @@
 
 **Status:** COMPLETE — 2026-09-07. Result: `docs/todo/operator-reports-adversarial-VERIFY-RESULT.md`
 (18 FAIL · 2 PASS · 10×S1 · 2×S2 — the foundation is NOT safe to build on yet). Screenshots:
-`~/Desktop/AG UI validation/` (20, one per angle, chat left + AG-UI right) — rig in
+`docs/todo/screenshots/ag-ui-validation/` (20, one per angle, chat left + AG-UI right) — rig in
 `scripts/agui-validation/`, per-shot measurements in `.tmp/agui-validation/shots-report.json`.
 **Subject:** the five operator reports + the `report` artifact + the tool→panel channel
 **Prepared:** 2026-09-07 by the agent that BUILT it, which is exactly why this exists

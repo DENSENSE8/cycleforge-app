@@ -3,7 +3,7 @@
 **Status:** COMPLETE · 2026-09-07
 **Subject:** the five operator reports + the `report` artifact + the tool→panel channel
 **Handoff:** `docs/todo/operator-reports-adversarial-VERIFY-HANDOFF.md`
-**Screenshots:** `~/Desktop/AG UI validation/` — 20 numbered shots, one per angle, chat transcript
+**Screenshots:** `docs/todo/screenshots/ag-ui-validation/` — 20 numbered shots, one per angle, chat transcript
 on the left and the AG-UI artifact plane on the right, plus `evidence/` for the two shots that
 cannot show both panes (a crash and a 320 px squeeze).
 

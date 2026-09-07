@@ -15,13 +15,13 @@
  * renderer crash on a payload that passed zod becomes evidence instead of a
  * blank rectangle.
  *
- * Run: node scripts/agui-validation/shots.mjs ["/out/dir"]
+ * Run: node scripts/agui-validation/shots.mjs ["out/dir"]
+ * Default output: docs/todo/screenshots/ag-ui-validation/
  */
 
 import { chromium } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { homedir } from 'node:os';
 import path from 'node:path';
 
 const BASE_URL = process.env.PW_BASE_URL || 'http://localhost:3050';
@@ -31,7 +31,8 @@ const ONLY = process.env.AGUI_ANGLES
 const CASES = JSON.parse(readFileSync('.tmp/agui-validation/cases.json', 'utf8')).filter(
   (c) => !ONLY || ONLY.has(c.angle),
 );
-const OUT_DIR = process.argv[2] || path.join(homedir(), 'Desktop', 'AG UI validation');
+// Beside the report that cites them, so the evidence travels with the repo.
+const OUT_DIR = process.argv[2] || 'docs/todo/screenshots/ag-ui-validation';
 const STORAGE = 'tests/.auth/admin.json';
 const DEFAULT_VIEWPORT = { width: 1680, height: 1000 };
 
