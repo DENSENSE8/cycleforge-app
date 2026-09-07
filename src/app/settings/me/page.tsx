@@ -63,7 +63,7 @@ export default function PersonalSettingsPage() {
   // Scroll-spy: the active section is the LAST one whose top has passed the
   // band line. The scroll container is this page's own body column (not the
   // window), so the listener and the geometry both target it.
-  const scrollRef = useRef<HTMLElement | null>(null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
   const [active, setActive] = useState<string>(sections[0]?.id ?? 'hardware');
   const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   useEffect(() => {
@@ -71,6 +71,15 @@ export default function PersonalSettingsPage() {
     if (!container) return;
     const onScroll = () => {
       const containerTop = container.getBoundingClientRect().top;
+      // Bottom clamp: the last section often cannot scroll its top past the
+      // band (there is nothing after it to fill the viewport), so at the
+      // bottom of the scroll it wins regardless of geometry.
+      const atBottom =
+        container.scrollTop + container.clientHeight >= container.scrollHeight - 4;
+      if (atBottom && sections.length > 0) {
+        setActive(sections[sections.length - 1].id);
+        return;
+      }
       const line = BAND_OFFSET_PX;
       let current = sections[0]?.id ?? 'hardware';
       for (const s of sections) {

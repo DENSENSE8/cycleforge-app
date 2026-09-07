@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { sectionLabel } from '@/design-system/tokens/typography/presets';
+import { sectionLabel, dataValue, fieldLabel } from '@/design-system/tokens/typography/presets';
 import { SidebarSection, LineItem, ActionButton } from './connections-panel-pieces';
 import type { ConnectionsPanelController } from './useConnectionsPanel';
 
