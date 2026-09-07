@@ -19,8 +19,10 @@
  * DISPLAY CONTRACT — this page looks like the product, not a marketing splash.
  * One calm canvas, one card, house tokens only. The only foreign brand color on
  * the page lives inside ProviderSignInButton, where Google/Microsoft require it.
- * Three tiers, in scan order: federated identity → email+password → everything
- * else behind a disclosure, with the method you used last promoted out of it.
+ * Scan order: QR hero on the right → "or" → Sign in with email (the two-step
+ * form opens on demand) → everything else behind a disclosure, with the method
+ * you used last promoted out of it. There is NO "keep me signed in" control:
+ * sessions are always persistent because switching staff is one tap.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -83,9 +85,7 @@ import { armBootSplash } from '@/lib/boot-flag';
 // route's critical graph behind three unrelated primitives. Deep imports are
 // the established house shape here (108 existing call sites).
 import { Button } from '@/design-system/primitives/Button';
-import { Checkbox } from '@/design-system/primitives/Checkbox';
 import { Panel } from '@/design-system/primitives/Panel';
-import { QrCode } from '@/components/Icons';
 import { RadiantLines } from '@/components/ui/radiant-lines';
 import {
   Dialog,
@@ -214,12 +214,14 @@ export default function SignInPage() {
   // ── Account (email + password) ────────────────────────────────────────────
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  // Apple-style flow: email step → password step. One animated panel swaps at a
-  // time (chip + password travel together); see SignInAuthStepPanels.
-  const [authStep, setAuthStep] = useState<'email' | 'password'>('email');
-  // Default checked — personal devices are the common SMB case; station mode
-  // (shared) has its own uncheck-on-shared affordance below.
-  const [rememberMe, setRememberMe] = useState(true);
+  // Apple-style flow behind a chooser face: QR is the hero, "Sign in with
+  // email" opens the two-step form (email → password, one animated panel at a
+  // time; see SignInAuthStepPanels).
+  const [authStep, setAuthStep] = useState<'choose' | 'email' | 'password'>('choose');
+  // Sessions are ALWAYS persistent — there is no "keep me signed in" option.
+  // The safety valve is staff switching: on shared-account orgs and stations
+  // the roster is one tap away, so a standing session is corrected by
+  // switching staff, not by having signed out.
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -300,7 +302,7 @@ export default function SignInPage() {
         body: JSON.stringify({
           email: email.trim(),
           password,
-          persistent: rememberMe,
+          persistent: true,
           ...(orgId ? { organizationId: orgId } : {}),
         }),
       });
@@ -338,11 +340,7 @@ export default function SignInPage() {
     } finally {
       setBusy(false);
     }
-    // `rememberMe` is a dependency, not decoration: exhaustive-deps is off in
-    // this repo, so a stale closure here silently sends the checkbox's DEFAULT
-    // (true) no matter what the user unchecked — the account form is the
-    // primary flow, so that is the whole feature quietly not working.
-  }, [email, password, finish, rememberMe]);
+  }, [email, password, finish]);
 
   // Advance email → password (the forward swipe). Validates presence only; the
   // real credential check happens on the password submit.
@@ -388,7 +386,7 @@ export default function SignInPage() {
       const finishRes = await fetch('/api/auth/account/passkey/authenticate/finish', {
         method: 'POST', credentials: 'include',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ response: assertion, persistent: rememberMe }),
+        body: JSON.stringify({ response: assertion, persistent: true }),
       });
       if (!finishRes.ok) {
         const data = await finishRes.json().catch(() => ({}));
@@ -401,30 +399,30 @@ export default function SignInPage() {
     } finally {
       setBusy(false);
     }
-  }, [finish, rememberMe]);
+  }, [finish]);
 
   // Redirect flows record on *attempt* — we navigate away before the outcome is
   // known, and this is only ever a display hint on the next visit.
   const startProvider = useCallback((p: PlatformProvider) => {
     writeLastSigninMethod(p);
-    // The checkbox sits right next to these buttons, so it has to survive the
-    // provider round trip — /start stashes it in its httpOnly state cookie.
+    // Sessions are always persistent; /start stashes that in its httpOnly
+    // state cookie so it survives the provider round trip.
     const qs = new URLSearchParams();
     if (next) qs.set('next', next);
-    if (rememberMe) qs.set('persist', '1');
+    qs.set('persist', '1');
     const query = qs.toString();
     window.location.href = `/api/auth/oauth/${p}/start${query ? `?${query}` : ''}`;
-  }, [next, rememberMe]);
+  }, [next]);
 
   const startSso = useCallback((slug: string) => {
     writeLastSigninMethod('sso');
     const qs = new URLSearchParams({ slug });
     if (next) qs.set('next', next);
     // Carried on the sso_auth_state row — the only thing that survives the IdP
-    // redirect — so a federated sign-in honours the box like any other.
-    if (rememberMe) qs.set('persist', '1');
+    // redirect — so a federated sign-in is persistent like any other.
+    qs.set('persist', '1');
     window.location.href = `/api/auth/sso/start?${qs.toString()}`;
-  }, [next, rememberMe]);
+  }, [next]);
 
   // ── Station PIN handlers (reused bricks) ──────────────────────────────────
   const submitPin = useCallback(async (pin: string) => {
@@ -434,8 +432,8 @@ export default function SignInPage() {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         staffId: picked.id, pin,
-        deviceKind: rememberMe ? 'personal' : 'station',
-        persistent: rememberMe,
+        deviceKind: 'personal',
+        persistent: true,
       }),
     });
     if (!r.ok) {
@@ -446,7 +444,7 @@ export default function SignInPage() {
     const d = data as { defaultHomePath?: string | null; defaultHomePathMobile?: string | null };
     finish(picked.id, picked.role, d.defaultHomePath, d.defaultHomePathMobile);
     return { ok: true as const };
-  }, [picked, finish, rememberMe]);
+  }, [picked, finish]);
 
   const submitPinless = useCallback(async (row: StaffPickerRow) => {
     const r = await fetch('/api/auth/signin', {
@@ -454,8 +452,8 @@ export default function SignInPage() {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         staffId: row.id,
-        deviceKind: rememberMe ? 'personal' : 'station',
-        persistent: rememberMe,
+        deviceKind: 'personal',
+        persistent: true,
       }),
     });
     const data = await r.json().catch(() => ({}));
@@ -466,7 +464,7 @@ export default function SignInPage() {
     }
     const d = data as { defaultHomePath?: string | null; defaultHomePathMobile?: string | null };
     finish(row.id, row.role, d.defaultHomePath, d.defaultHomePathMobile);
-  }, [finish, rememberMe]);
+  }, [finish]);
 
   // DOGFOOD / QA — pick a staff to act as (no PIN); owner session already set.
   const actAsStaff = useCallback(async (row: StaffChoiceRow) => {
@@ -478,8 +476,8 @@ export default function SignInPage() {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
           staffId: row.id,
-          deviceKind: rememberMe ? 'personal' : 'station',
-          persistent: rememberMe,
+          deviceKind: 'personal',
+          persistent: true,
         }),
       });
       const data = (await r.json().catch(() => ({}))) as {
@@ -495,7 +493,7 @@ export default function SignInPage() {
       setError('Sign-in failed. Try again.');
       setBusy(false);
     }
-  }, [rememberMe, finish]);
+  }, [finish]);
 
   const handlePick = useCallback((row: StaffPickerRow) => {
     setPicked(row);
@@ -511,8 +509,8 @@ export default function SignInPage() {
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         staffId: picked.id, pin,
-        deviceKind: rememberMe ? 'personal' : 'station',
-        persistent: rememberMe,
+        deviceKind: 'personal',
+        persistent: true,
       }),
     });
     if (!r.ok) {
@@ -523,7 +521,7 @@ export default function SignInPage() {
     const d = data as { defaultHomePath?: string | null; defaultHomePathMobile?: string | null };
     finish(picked.id, picked.role, d.defaultHomePath, d.defaultHomePathMobile);
     return { ok: true as const };
-  }, [picked, finish, rememberMe]);
+  }, [picked, finish]);
 
   const submitStationPasskey = useCallback(async () => {
     if (!picked) return;
@@ -538,7 +536,7 @@ export default function SignInPage() {
     const finishRes = await fetch('/api/auth/passkey/authenticate/finish', {
       method: 'POST', credentials: 'include',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ response: assertion, deviceKind: 'personal', persistent: rememberMe }),
+      body: JSON.stringify({ response: assertion, deviceKind: 'personal', persistent: true }),
     });
     if (!finishRes.ok) {
       const data = await finishRes.json().catch(() => ({}));
@@ -547,7 +545,7 @@ export default function SignInPage() {
     const data = await finishRes.json().catch(() => ({}));
     const d = data as { defaultHomePath?: string | null; defaultHomePathMobile?: string | null };
     finish(picked.id, picked.role, d.defaultHomePath, d.defaultHomePathMobile);
-  }, [picked, finish, rememberMe]);
+  }, [picked, finish]);
 
   const workspaceName = useMemo(
     () => (workspace?.resolved ? workspace.name ?? null : null),
@@ -567,10 +565,24 @@ export default function SignInPage() {
     return { recentStaff: recents, otherStaff: Array.from(byId.values()) };
   }, [staffChoices, recent]);
 
-  // ── Tier 3: everything that isn't federated identity or email+password ─────
+  // ── Tier 3: everything that isn't federated identity, QR, or the email form ─
   const extraOptions = useMemo(() => {
     const opts: { key: string; label: string; method?: SigninMethod; onSelect: () => void }[] = [
-      { key: 'magic-link', label: 'Email me a sign-in link', method: 'magic-link', onSelect: () => void submitMagicLink() },
+      {
+        key: 'magic-link',
+        label: 'Email me a sign-in link',
+        method: 'magic-link',
+        // Needs an email address; from the chooser face there is no input on
+        // screen yet — step into the email form instead of erroring blind.
+        onSelect: () => {
+          if (!email.trim()) {
+            setAuthStep('email');
+            setError('Enter your email to continue.');
+            return;
+          }
+          void submitMagicLink();
+        },
+      },
       { key: 'passkey', label: 'Sign in with a passkey', method: 'passkey', onSelect: () => void submitAccountPasskey() },
     ];
     // Shared-station PIN entry — hidden when the org forces email-first login.
@@ -578,7 +590,7 @@ export default function SignInPage() {
       opts.push({ key: 'station', label: 'Sign in on a shared station', onSelect: () => setStationOpen(true) });
     }
     return opts;
-  }, [submitMagicLink, submitAccountPasskey, workspace?.emailFirstSignin]);
+  }, [submitMagicLink, submitAccountPasskey, workspace?.emailFirstSignin, email]);
 
   // Exactly one option gets lifted out of the drawer — the one that worked here last.
   const promotedOption = useMemo(
@@ -609,7 +621,6 @@ export default function SignInPage() {
             ) : (
               <SetPinPad staff={picked} onSubmit={submitCreatePin} onBack={() => setPicked(null)} />
             )}
-            <RememberMeField id="remember-station" checked={rememberMe} onChange={setRememberMe} />
           </div>
         )}
         <PhoneSigninQrDialog open={showPhoneQr} onClose={() => setShowPhoneQr(false)} />
@@ -753,16 +764,13 @@ export default function SignInPage() {
     <Shell>
       <AuthCard
         qrPanel={
-          <SignInQrPanel
-            rememberMe={rememberMe}
-            onSuccess={() => finish(null, null, null, null)}
-          />
+          <SignInQrPanel onSuccess={() => finish(null, null, null, null)} />
         }
       >
         <SignInTitle workspaceName={workspaceName} />
 
         {/* Tier 1 — identity providers directly below the title */}
-        {authStep === 'email' && hasFederated && (
+        {authStep === 'choose' && hasFederated && (
           <div key="federated" className="space-y-2.5" aria-label="Identity provider sign-in">
             {providers.map((p) => (
               <ProviderSignInButton
@@ -785,47 +793,75 @@ export default function SignInPage() {
                 {lastMethod === 'sso' && <LastUsedMarker />}
               </Button>
             )}
-            <Divider>or</Divider>
           </div>
         )}
-        {/* Tier 2 — the default path. */}
-        <form
-          className="space-y-4"
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (busy) return;
-            if (authStep === 'email') { advanceToPassword(); return; }
-            if (email.trim() && password) void submitAccount();
-          }}
-        >
-          <SignInAuthStepPanels
-            authStep={authStep}
-            email={email}
-            password={password}
-            onEmailChange={setEmail}
-            onPasswordChange={setPassword}
-          />
 
-          <RememberMeField id="remember-account" checked={rememberMe} onChange={setRememberMe} />
+        {/* Tier 2 — the chooser face. QR is the hero on the right; the email
+            path is ONE button behind an "or", not a landing form. */}
+        {authStep === 'choose' && (
+          <div key="choose" className="space-y-2.5">
+            <Divider>or</Divider>
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              className="w-full"
+              disabled={busy}
+              onClick={() => {
+                setError(null);
+                setNotice(null);
+                setAuthStep('email');
+              }}
+            >
+              Sign in with email
+            </Button>
+          </div>
+        )}
 
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            className="w-full"
-            disabled={busy || (authStep === 'email' ? !email.trim() : !password)}
+        {/* Tier 2 (opened) — the email form. One animated panel at a time. */}
+        {authStep !== 'choose' && (
+          <form
+            className="space-y-4"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (busy) return;
+              if (authStep === 'email') { advanceToPassword(); return; }
+              if (email.trim() && password) void submitAccount();
+            }}
           >
-            {authStep === 'email' ? 'Continue' : busy ? 'Signing in…' : 'Sign in'}
-          </Button>
-        </form>
+            {authStep === 'email' && (
+              <TextLink onClick={() => { setAuthStep('choose'); setError(null); setNotice(null); }}>
+                All sign-in options
+              </TextLink>
+            )}
+            <SignInAuthStepPanels
+              authStep={authStep}
+              email={email}
+              password={password}
+              onEmailChange={setEmail}
+              onPasswordChange={setPassword}
+            />
+
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              className="w-full"
+              disabled={busy || (authStep === 'email' ? !email.trim() : !password)}
+            >
+              {authStep === 'email' ? 'Continue' : busy ? 'Signing in…' : 'Sign in'}
+            </Button>
+          </form>
+        )}
 
         {error && <StatusBox tone="danger">{error}</StatusBox>}
         {notice && <StatusBox tone="accent">{notice}</StatusBox>}
 
 
         {/* Tier 3 — one promoted option (what you used last) + a quiet drawer.
-            Hidden on the password step so that stays a single focused action. */}
-        {authStep === 'email' && (
+            Lives on the chooser face: the email form stays a single focused
+            action once opened. */}
+        {authStep === 'choose' && (
           <div key="more" className="space-y-2">
               {promotedOption && (
                 <Button
@@ -890,31 +926,39 @@ function AuthCard({ children, qrPanel }: { children: React.ReactNode; qrPanel?: 
   }
 
   return (
-    <Panel
-      padding="none"
-      radius="2xl"
-      elevation="none"
-      className={cn('w-full overflow-hidden', elevationClass('raised', 'soft'))}
-      style={{ maxWidth: 'min(860px, 95vw)', width: '100%' }}
-    >
-      <div className="flex flex-col md:flex-row md:items-stretch">
-        <div
-          className="flex-1 min-w-0 p-6 md:p-8 space-y-5 block my-auto"
-          style={{ flex: '1 1 0%', minWidth: 0 }}
-        >
-          {children}
-        </div>
+    <>
+      <style>{`
+        .cf-auth-card { width: 100%; border-radius: 1rem; overflow: hidden; }
+        @media (min-width: 768px) {
+          .cf-auth-card { max-width: 660px !important; }
+          .cf-auth-left { flex: 1 1 0% !important; min-width: 0 !important; }
+          .cf-auth-qr { width: 230px !important; flex-shrink: 0 !important; }
+        }
+        @media (max-width: 767px) {
+          .cf-auth-card { max-width: 384px !important; }
+          .cf-auth-qr { width: 100% !important; }
+        }
+      `}</style>
+      <Panel
+        padding="none"
+        radius="2xl"
+        elevation="none"
+        className={cn('cf-auth-card', elevationClass('raised', 'soft'))}
+      >
+        <div className="flex flex-col md:flex-row md:items-stretch">
+          <div className="cf-auth-left p-5 md:p-6 space-y-4 block my-auto">
+            {children}
+          </div>
 
-        <div className="hidden md:block w-px bg-border-hairline self-stretch my-6" />
-        <div className="block md:hidden h-px w-full bg-border-hairline" />
+          <div className="hidden md:block w-px bg-border-hairline self-stretch my-4" />
+          <div className="block md:hidden h-px w-full bg-border-hairline" />
 
-        <div
-          className="w-full md:w-[320px] shrink-0 bg-surface-sunken/30 p-6 md:p-8 flex flex-col items-center justify-center"
-        >
-          {qrPanel}
+          <div className="cf-auth-qr bg-surface-sunken/30 p-4 flex flex-col items-center justify-center">
+            {qrPanel}
+          </div>
         </div>
-      </div>
-    </Panel>
+      </Panel>
+    </>
   );
 }
 
@@ -974,41 +1018,6 @@ function TextLink({ onClick, children }: { onClick: () => void; children: React.
     >
       {children}
     </button>
-  );
-}
-
-interface RememberMeFieldProps {
-  id: string;
-  checked: boolean;
-  onChange: (next: boolean) => void;
-}
-
-/**
- * One shape for one job — the account form and the station PIN pad share this.
- * The shared-computer warning is the part that actually changes behavior, so it
- * ships with the control rather than only on one of the two surfaces.
- *
- * No duration in the copy, on purpose: checked means the session has no idle
- * timeout and slides its absolute window forward on every visit, so there is no
- * honest number to name. The old "30 days" was the absolute ceiling nobody
- * reached — the 12-hour idle window revoked the session first.
- */
-function RememberMeField({ id, checked, onChange }: RememberMeFieldProps) {
-  return (
-    <div className="flex items-start gap-2.5">
-      <Checkbox
-        id={id}
-        checked={checked}
-        onCheckedChange={(v) => onChange(v === true)}
-        className="mt-0.5"
-      />
-      <label htmlFor={id} className="cursor-pointer leading-tight">
-        <span className="block text-role-caption font-medium text-text-default">Keep me signed in</span>
-        <span className="block text-role-micro font-normal normal-case tracking-normal text-text-soft">
-          Uncheck on shared computers
-        </span>
-      </label>
-    </div>
   );
 }
 

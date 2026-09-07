@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { Smartphone, RefreshCw, CheckCircle2, QrCode } from 'lucide-react';
+import { Smartphone, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/design-system/primitives/Button';
 import { cn } from '@/utils/_cn';
 
@@ -12,14 +12,13 @@ const QRCode = dynamic(() => import('react-qr-code'), {
 });
 
 interface SignInQrPanelProps {
-  rememberMe?: boolean;
   onSuccess?: (staffName?: string) => void;
   className?: string;
 }
 
 type QrPanelState = 'loading' | 'active' | 'expired' | 'completed' | 'error';
 
-export function SignInQrPanel({ rememberMe, onSuccess, className }: SignInQrPanelProps) {
+export function SignInQrPanel({ onSuccess, className }: SignInQrPanelProps) {
   const [state, setState] = useState<QrPanelState>('loading');
   const [token, setToken] = useState<string | null>(null);
   const [url, setUrl] = useState<string>('');
@@ -44,7 +43,9 @@ export function SignInQrPanel({ rememberMe, onSuccess, className }: SignInQrPane
       const res = await fetch('/api/auth/qr/begin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ persistent: rememberMe }),
+        // Sessions are always persistent — switching staff is one tap, so a
+        // standing session never needs a "keep me signed in" opt-out.
+        body: JSON.stringify({ persistent: true }),
       });
       if (!res.ok) throw new Error('Could not initialize QR code session.');
       const data = await res.json() as { token: string; url: string; expiresAt: string };
@@ -82,7 +83,7 @@ export function SignInQrPanel({ rememberMe, onSuccess, className }: SignInQrPane
     } catch {
       if (mountedRef.current) setState('error');
     }
-  }, [rememberMe, clearPolling, onSuccess]);
+  }, [clearPolling, onSuccess]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -94,33 +95,25 @@ export function SignInQrPanel({ rememberMe, onSuccess, className }: SignInQrPane
   }, [begin, clearPolling]);
 
   return (
-    <div className={cn('flex flex-col items-center justify-center my-auto text-center space-y-4 p-2', className)}>
-      <div className="space-y-1.5">
-        <div className="inline-flex items-center gap-1.5 rounded-full bg-brand-primary/10 px-2.5 py-0.5 text-xs font-semibold text-brand-primary uppercase tracking-wider">
-          <QrCode className="h-3.5 w-3.5" />
-          <span>Quick Sign In</span>
-        </div>
-        <h2 className="text-role-title text-text-default text-lg font-semibold">Sign in with QR Code</h2>
-        <p className="text-role-micro text-text-soft max-w-[220px]">
-          Scan with your phone camera to log in instantly with Face ID or PIN.
-        </p>
+    <div className={cn('flex flex-col items-center justify-center my-auto text-center space-y-3 p-1', className)}>
+      <div className="space-y-1">
+        <h2 className="text-role-title text-text-default text-base font-semibold">Log in with QR Code</h2>
       </div>
 
-      {/* QR Tile with matching rounded-2xl corner radius */}
-      <div className="relative flex h-[208px] w-[208px] items-center justify-center rounded-2xl border border-border-soft bg-surface-card p-3.5 shadow-sm transition-all">
+      {/* Compact QR Tile with matching rounded-2xl corner radius */}
+      <div className="relative flex h-[156px] w-[156px] items-center justify-center rounded-2xl border border-border-soft bg-surface-card p-2 shadow-sm transition-all">
         {state === 'loading' && (
-          <div className="flex h-full w-full flex-col items-center justify-center space-y-2 rounded-xl bg-surface-sunken animate-pulse">
-            <Smartphone className="h-8 w-8 text-text-faint animate-bounce" />
-            <span className="text-role-micro text-text-soft">Generating code...</span>
+          <div className="flex h-full w-full flex-col items-center justify-center space-y-1 rounded-xl bg-surface-sunken animate-pulse">
+            <Smartphone className="h-6 w-6 text-text-faint animate-bounce" />
+            <span className="text-role-micro text-text-soft">Loading code...</span>
           </div>
         )}
 
         {state === 'active' && url && (
           <div className="rounded-xl overflow-hidden bg-white p-1">
-            <QRCode value={url} size={176} level="M" />
+            <QRCode value={url} size={136} level="M" />
           </div>
         )}
-
         {state === 'expired' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center rounded-2xl bg-surface-card/95 p-4 backdrop-blur-sm">
             <p className="text-sm font-medium text-text-default mb-2">QR Code Expired</p>
@@ -155,7 +148,7 @@ export function SignInQrPanel({ rememberMe, onSuccess, className }: SignInQrPane
         )}
       </div>
 
-      {/* Footer Status Hint */}
+      {/* The one microcopy line — the live dot carries the state. */}
       <div className="flex items-center gap-2 text-role-micro text-text-soft">
         <span className="relative flex h-2 w-2">
           <span className={cn(
@@ -167,7 +160,7 @@ export function SignInQrPanel({ rememberMe, onSuccess, className }: SignInQrPane
             state === 'active' ? 'bg-status-success' : 'bg-text-faint'
           )} />
         </span>
-        <span>{state === 'active' ? 'Point phone camera to log in' : 'Works with mobile camera'}</span>
+        <span>Scan with your phone</span>
       </div>
     </div>
   );
