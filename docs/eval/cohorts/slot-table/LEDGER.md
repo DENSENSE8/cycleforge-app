@@ -58,7 +58,28 @@ _Skipped verify (--skip-verify)._
 ## Tripwire result
 
 <!-- eval-ledger:auto:tripwire-result -->
-**pass** — snapshot `docs/eval/cohorts/slot-table/snapshots/2026-09-05-tripwire.log`
+**FAIL** — snapshot `docs/eval/cohorts/slot-table/snapshots/2026-09-07-tripwire.log`
+```
+▶ find freshness location gate
+  ✔ rebuilds when find is empty (1.64948ms)
+  ✔ passes when expectedFile is empty (0.334493ms)
+  ✔ fails when every hit is outside the engine file (0.664544ms)
+  ✔ passes when the engine file is not matches[0] (0.273534ms)
+✔ find freshness location gate (4.917851ms)
+▶ slot-table cohort (SoT = engine + PRODUCT_TABLES)
+  ✔ peers are exactly PRODUCT_TABLES ids (no hand list) (25.937458ms)
+  ✔ every engine layout hook file exists and imports useSlotTableLayout (1.537848ms)
+  ✔ engine peers are a subset of PRODUCT_TABLES (opt-in map) (0.463273ms)
+  ✔ CompoundItem title hover actions satisfy paint contract (2.134562ms)
+  ✔ no new *GridRow.tsx — To-ship sheet sync must not add a second table (113.780546ms)
+  ✔ To-ship Google Sheet sync paints UnshippedTable, not CsvImportStagingGridRow (0.434744ms)
+  ✔ engine seam files export the shared hooks (imported, not grepped) (78.345107ms)
+  ✔ compact DateRangePickerField is the ship-by surface (0.453108ms)
+  ✔ ship-by writes through useOptimisticMutation (0.26361ms)
+  ✔ paint law constants document cohort scope (not To-ship alone) (4.264273ms)
+  ✔ graph + critique surfaces include compact ship-by (0.326593ms)
+  ✔ Da
+```
 <!-- /eval-ledger:auto:tripwire-result -->
 
 ## Peer matrix (PRODUCT_TABLES × engine opt-in)
@@ -146,7 +167,7 @@ _Skipped verify (--skip-verify)._
 <!-- eval-ledger:auto:discover-next -->
 _No unblocked mechanical deletes._
 
-_Snapshot:_ `docs/eval/cohorts/slot-table/snapshots/2026-09-05-discover.json`
+_Snapshot:_ `docs/eval/cohorts/slot-table/snapshots/2026-09-07-discover.json`
 <!-- /eval-ledger:auto:discover-next -->
 
 ## Discover — DELETE (mechanical)
@@ -294,30 +315,30 @@ _No mechanical deletes. Dual-SoT hand models are gone._
 <!-- eval-ledger:auto:graph-matrix -->
 | Symbol | node_key | files_affected | snapshot |
 |---|---|---|---|
-| CompoundItem | `component:src/components/tables/compound/CompoundCells.tsx:CompoundItem` | 6 | `docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-CompoundItem.json` |
-| CompoundState | `component:src/components/tables/compound/CompoundCells.tsx:CompoundState` | 6 | `docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-CompoundState.json` |
-| useSlotTableLayout | `function:src/components/tables/useSlotTableLayout.ts:useSlotTableLayout` | 58 | `docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-useSlotTableLayout.json` |
-| materializeTracks | `function:src/lib/tables/materialize-tracks.ts:materializeTracks` | 81 | `docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-materializeTracks.json` |
-| getExternalUrlByItemNumber | `function:src/utils/external-item-url.ts:getExternalUrlByItemNumber` | 26 | `docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-getExternalUrlByItemNumber.json` |
-| DateRangePickerField | `component:src/design-system/components/DateRangePickerField.tsx:DateRangePickerField` | 18 | `docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-DateRangePickerField.json` |
-| useOptimisticMutation | `function:src/lib/optimistic/useOptimisticMutation.ts:useOptimisticMutation` | 12 | `docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-useOptimisticMutation.json` |
-| DataTableFilterMenu | `component:src/components/tables/DataTable.tsx:DataTableFilterMenu` | 37 | `docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-DataTableFilterMenu.json` |
-| queueSortForColumnKey | `function:src/utils/queue-display-sort.ts:queueSortForColumnKey` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-queueSortForColumnKey.json` |
-| LedgerGridColumnHeader | `component:src/design-system/components/grid/LedgerGridColumnHeader.tsx:LedgerGridColumnHeader` | 35 | `docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-LedgerGridColumnHeader.json` |
-| isSlotTableChromeTrack | `function:src/lib/tables/slot-table-header-sort.ts:isSlotTableChromeTrack` | 27 | `docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-isSlotTableChromeTrack.json` |
-| AssigneeCombobox | `component:src/design-system/components/AssigneeCombobox.tsx:AssigneeCombobox` | 3 | `docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-AssigneeCombobox.json` |
-| ensureLineQtySubtitle | `function:src/lib/tables/slot-table-line-qty.ts:ensureLineQtySubtitle` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-ensureLineQtySubtitle.json` |
-| pinLineQtyFirst | `function:src/lib/tables/slot-table-line-qty.ts:pinLineQtyFirst` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-pinLineQtyFirst.json` |
-| ensureLineMoneySubtitle | `function:src/lib/tables/slot-table-line-money.ts:ensureLineMoneySubtitle` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-ensureLineMoneySubtitle.json` |
-| pinLineMoneyAfterQty | `function:src/lib/tables/slot-table-line-money.ts:pinLineMoneyAfterQty` | 9 | `docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-pinLineMoneyAfterQty.json` |
-| ordersCompoundColumnsFor | `function:src/lib/dashboard-order-row-layout.ts:ordersCompoundColumnsFor` | 19 | `docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-ordersCompoundColumnsFor.json` |
-| COMPOUND_COLUMN_KEYS | `variable:src/components/tables/compound/compound-columns.ts:COMPOUND_COLUMN_KEYS` | 0 | `docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-COMPOUND_COLUMN_KEYS.json` |
+| CompoundItem | `component:src/components/tables/compound/CompoundCells.tsx:CompoundItem` | 6 | `docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-CompoundItem.json` |
+| CompoundState | `component:src/components/tables/compound/CompoundCells.tsx:CompoundState` | 6 | `docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-CompoundState.json` |
+| useSlotTableLayout | `function:src/components/tables/useSlotTableLayout.ts:useSlotTableLayout` | 58 | `docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-useSlotTableLayout.json` |
+| materializeTracks | `function:src/lib/tables/materialize-tracks.ts:materializeTracks` | 81 | `docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-materializeTracks.json` |
+| getExternalUrlByItemNumber | `function:src/utils/external-item-url.ts:getExternalUrlByItemNumber` | 26 | `docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-getExternalUrlByItemNumber.json` |
+| DateRangePickerField | `component:src/design-system/components/DateRangePickerField.tsx:DateRangePickerField` | 18 | `docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-DateRangePickerField.json` |
+| useOptimisticMutation | `function:src/lib/optimistic/useOptimisticMutation.ts:useOptimisticMutation` | 12 | `docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-useOptimisticMutation.json` |
+| DataTableFilterMenu | `component:src/components/tables/DataTable.tsx:DataTableFilterMenu` | 37 | `docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-DataTableFilterMenu.json` |
+| queueSortForColumnKey | `function:src/utils/queue-display-sort.ts:queueSortForColumnKey` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-queueSortForColumnKey.json` |
+| LedgerGridColumnHeader | `component:src/design-system/components/grid/LedgerGridColumnHeader.tsx:LedgerGridColumnHeader` | 35 | `docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-LedgerGridColumnHeader.json` |
+| isSlotTableChromeTrack | `function:src/lib/tables/slot-table-header-sort.ts:isSlotTableChromeTrack` | 27 | `docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-isSlotTableChromeTrack.json` |
+| AssigneeCombobox | `component:src/design-system/components/AssigneeCombobox.tsx:AssigneeCombobox` | 3 | `docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-AssigneeCombobox.json` |
+| ensureLineQtySubtitle | `function:src/lib/tables/slot-table-line-qty.ts:ensureLineQtySubtitle` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-ensureLineQtySubtitle.json` |
+| pinLineQtyFirst | `function:src/lib/tables/slot-table-line-qty.ts:pinLineQtyFirst` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-pinLineQtyFirst.json` |
+| ensureLineMoneySubtitle | `function:src/lib/tables/slot-table-line-money.ts:ensureLineMoneySubtitle` | 8 | `docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-ensureLineMoneySubtitle.json` |
+| pinLineMoneyAfterQty | `function:src/lib/tables/slot-table-line-money.ts:pinLineMoneyAfterQty` | 9 | `docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-pinLineMoneyAfterQty.json` |
+| ordersCompoundColumnsFor | `function:src/lib/dashboard-order-row-layout.ts:ordersCompoundColumnsFor` | 19 | `docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-ordersCompoundColumnsFor.json` |
+| COMPOUND_COLUMN_KEYS | `variable:src/components/tables/compound/compound-columns.ts:COMPOUND_COLUMN_KEYS` | 0 | `docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-COMPOUND_COLUMN_KEYS.json` |
 <!-- /eval-ledger:auto:graph-matrix -->
 
 ## Design critique
 
 <!-- eval-ledger:auto:design-critique -->
-- `src/components/tables/compound/CompoundCells.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-05-critique-CompoundCells.txt`
+- `src/components/tables/compound/CompoundCells.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-07-critique-CompoundCells.txt`
 ```
 {
   "file": "src/components/tables/compound/CompoundCells.tsx",
@@ -325,7 +346,7 @@ _No mechanical deletes. Dual-SoT hand models are gone._
   "problems": [
     {
 ```
-- `src/components/tables/compound/CompoundRow.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-05-critique-CompoundRow.txt`
+- `src/components/tables/compound/CompoundRow.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-07-critique-CompoundRow.txt`
 ```
 {
   "file": "src/components/tables/compound/CompoundRow.tsx",
@@ -333,7 +354,7 @@ _No mechanical deletes. Dual-SoT hand models are gone._
   "problems": [],
   "design_system_used": [],
 ```
-- `src/components/tables/compound/StageStaffAssignPopover.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-05-critique-StageStaffAssignPopover.txt`
+- `src/components/tables/compound/StageStaffAssignPopover.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-07-critique-StageStaffAssignPopover.txt`
 ```
 {
   "file": "src/components/tables/compound/StageStaffAssignPopover.tsx",
@@ -341,7 +362,7 @@ _No mechanical deletes. Dual-SoT hand models are gone._
   "problems": [],
   "design_system_used": [
 ```
-- `src/design-system/components/AssigneeCombobox.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-05-critique-AssigneeCombobox.txt`
+- `src/design-system/components/AssigneeCombobox.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-07-critique-AssigneeCombobox.txt`
 ```
 {
   "file": "src/design-system/components/AssigneeCombobox.tsx",
@@ -349,7 +370,7 @@ _No mechanical deletes. Dual-SoT hand models are gone._
   "problems": [],
   "design_system_used": [
 ```
-- `src/components/tables/compound/CompoundStaffRosterButton.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-05-critique-CompoundStaffRosterButton.txt`
+- `src/components/tables/compound/CompoundStaffRosterButton.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-07-critique-CompoundStaffRosterButton.txt`
 ```
 {
   "file": "src/components/tables/compound/CompoundStaffRosterButton.tsx",
@@ -357,7 +378,7 @@ _No mechanical deletes. Dual-SoT hand models are gone._
   "problems": [],
   "design_system_used": [
 ```
-- `src/design-system/components/DateRangePickerField.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-05-critique-DateRangePickerField.txt`
+- `src/design-system/components/DateRangePickerField.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-07-critique-DateRangePickerField.txt`
 ```
 {
   "file": "src/design-system/components/DateRangePickerField.tsx",
@@ -365,7 +386,7 @@ _No mechanical deletes. Dual-SoT hand models are gone._
   "problems": [
     {
 ```
-- `src/components/tables/useSlotTableLayout.ts` — `docs/eval/cohorts/slot-table/snapshots/2026-09-05-critique-useSlotTableLayout.txt`
+- `src/components/tables/useSlotTableLayout.ts` — `docs/eval/cohorts/slot-table/snapshots/2026-09-07-critique-useSlotTableLayout.txt`
 ```
 {
   "file": "src/components/tables/useSlotTableLayout.ts",
@@ -373,7 +394,7 @@ _No mechanical deletes. Dual-SoT hand models are gone._
   "problems": [
     {
 ```
-- `src/utils/external-item-url.ts` — `docs/eval/cohorts/slot-table/snapshots/2026-09-05-critique-external-item-url.txt`
+- `src/utils/external-item-url.ts` — `docs/eval/cohorts/slot-table/snapshots/2026-09-07-critique-external-item-url.txt`
 ```
 {
   "file": "src/utils/external-item-url.ts",
@@ -381,7 +402,7 @@ _No mechanical deletes. Dual-SoT hand models are gone._
   "problems": [],
   "design_system_used": [],
 ```
-- `src/components/tables/DataTable.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-05-critique-DataTable.txt`
+- `src/components/tables/DataTable.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-07-critique-DataTable.txt`
 ```
 {
   "file": "src/components/tables/DataTable.tsx",
@@ -389,7 +410,7 @@ _No mechanical deletes. Dual-SoT hand models are gone._
   "problems": [
     {
 ```
-- `src/design-system/components/grid/LedgerGridColumnHeader.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-05-critique-LedgerGridColumnHeader.txt`
+- `src/design-system/components/grid/LedgerGridColumnHeader.tsx` — `docs/eval/cohorts/slot-table/snapshots/2026-09-07-critique-LedgerGridColumnHeader.txt`
 ```
 {
   "file": "src/design-system/components/grid/LedgerGridColumnHeader.tsx",
@@ -402,24 +423,24 @@ _No mechanical deletes. Dual-SoT hand models are gone._
 ## Graph impact (shared symbols)
 
 <!-- eval-ledger:auto:graph-impact -->
-- **CompoundItem** — 6 files, 9 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-CompoundItem.json`)
-- **CompoundState** — 6 files, 9 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-CompoundState.json`)
-- **useSlotTableLayout** — 58 files, 58 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-useSlotTableLayout.json`)
-- **materializeTracks** — 81 files, 111 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-materializeTracks.json`)
-- **getExternalUrlByItemNumber** — 26 files, 29 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-getExternalUrlByItemNumber.json`)
-- **DateRangePickerField** — 18 files, 22 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-DateRangePickerField.json`)
-- **useOptimisticMutation** — 12 files, 12 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-useOptimisticMutation.json`)
-- **DataTableFilterMenu** — 37 files, 37 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-DataTableFilterMenu.json`)
-- **queueSortForColumnKey** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-queueSortForColumnKey.json`)
-- **LedgerGridColumnHeader** — 35 files, 35 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-LedgerGridColumnHeader.json`)
-- **isSlotTableChromeTrack** — 27 files, 43 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-isSlotTableChromeTrack.json`)
-- **AssigneeCombobox** — 3 files, 3 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-AssigneeCombobox.json`)
-- **ensureLineQtySubtitle** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-ensureLineQtySubtitle.json`)
-- **pinLineQtyFirst** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-pinLineQtyFirst.json`)
-- **ensureLineMoneySubtitle** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-ensureLineMoneySubtitle.json`)
-- **pinLineMoneyAfterQty** — 9 files, 9 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-pinLineMoneyAfterQty.json`)
-- **ordersCompoundColumnsFor** — 19 files, 21 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-ordersCompoundColumnsFor.json`)
-- **COMPOUND_COLUMN_KEYS** — 0 files, 0 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-05-impact-COMPOUND_COLUMN_KEYS.json`)
+- **CompoundItem** — 6 files, 9 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-CompoundItem.json`)
+- **CompoundState** — 6 files, 9 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-CompoundState.json`)
+- **useSlotTableLayout** — 58 files, 58 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-useSlotTableLayout.json`)
+- **materializeTracks** — 81 files, 111 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-materializeTracks.json`)
+- **getExternalUrlByItemNumber** — 26 files, 29 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-getExternalUrlByItemNumber.json`)
+- **DateRangePickerField** — 18 files, 22 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-DateRangePickerField.json`)
+- **useOptimisticMutation** — 12 files, 12 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-useOptimisticMutation.json`)
+- **DataTableFilterMenu** — 37 files, 37 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-DataTableFilterMenu.json`)
+- **queueSortForColumnKey** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-queueSortForColumnKey.json`)
+- **LedgerGridColumnHeader** — 35 files, 35 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-LedgerGridColumnHeader.json`)
+- **isSlotTableChromeTrack** — 27 files, 43 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-isSlotTableChromeTrack.json`)
+- **AssigneeCombobox** — 3 files, 3 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-AssigneeCombobox.json`)
+- **ensureLineQtySubtitle** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-ensureLineQtySubtitle.json`)
+- **pinLineQtyFirst** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-pinLineQtyFirst.json`)
+- **ensureLineMoneySubtitle** — 8 files, 8 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-ensureLineMoneySubtitle.json`)
+- **pinLineMoneyAfterQty** — 9 files, 9 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-pinLineMoneyAfterQty.json`)
+- **ordersCompoundColumnsFor** — 19 files, 21 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-ordersCompoundColumnsFor.json`)
+- **COMPOUND_COLUMN_KEYS** — 0 files, 0 symbols (`docs/eval/cohorts/slot-table/snapshots/2026-09-07-impact-COMPOUND_COLUMN_KEYS.json`)
 <!-- /eval-ledger:auto:graph-impact -->
 
 ## Regression tripwires
@@ -439,13 +460,13 @@ _No mechanical deletes. Dual-SoT hand models are gone._
 <!-- eval-ledger:auto:graph-stats -->
 - project: `cycleforge-app`
 - status: `ready`
-- last_built_at: `2026-09-05T18:10:08.450Z`
-- nodes: 40489 · edges: 188731 · embedded: 35261
-- snapshot: `docs/eval/cohorts/slot-table/snapshots/2026-09-05-graph-stats.json`
+- last_built_at: `2026-09-06T22:48:33.312Z`
+- nodes: 41038 · edges: 191462 · embedded: 41038
+- snapshot: `docs/eval/cohorts/slot-table/snapshots/2026-09-07-graph-stats.json`
 <!-- /eval-ledger:auto:graph-stats -->
 
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-05T20:10:21.369Z · cohort `slot-table` · run id `2026-09-05T20-08-31-375Z`_
+_Updated 2026-09-07T16:51:55.330Z · cohort `slot-table` · run id `2026-09-07T16-50-08-207Z`_
 <!-- /eval-ledger:auto:last-run -->

@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { DEFAULT_TIER_MINUTES } from '@/lib/packing/pack-tier-classifier';
 import {
   packingBoxesByTierSegments,
   packingBoxesDistributionRows,
@@ -8,12 +9,18 @@ import {
   tierMinutesFromCounts,
 } from './packing-kpi-chart-segments';
 
+// The weights are DERIVED, never retyped: this test hardcoded 5/14/45 and went
+// red the moment the pack standard moved to 5/15/60, which is the same defect
+// the operator reports were audited for — a printed digit that cannot follow
+// its constant. Change DEFAULT_TIER_MINUTES and these assertions move with it.
+const { SMALL, MEDIUM, LARGE } = DEFAULT_TIER_MINUTES;
+
 test('tierMinutesFromCounts uses DEFAULT_TIER_MINUTES weights', () => {
   const m = tierMinutesFromCounts({ small_count: 2, medium_count: 1, large_count: 1 });
-  assert.equal(m.small, 10);
-  assert.equal(m.medium, 14);
-  assert.equal(m.large, 45);
-  assert.equal(m.total, 69);
+  assert.equal(m.small, 2 * SMALL);
+  assert.equal(m.medium, MEDIUM);
+  assert.equal(m.large, LARGE);
+  assert.equal(m.total, 2 * SMALL + MEDIUM + LARGE);
 });
 
 test('packingBoxesByTierSegments maps S/M/L counts', () => {
@@ -26,9 +33,9 @@ test('packingBoxesByTierSegments maps S/M/L counts', () => {
 
 test('packingMinutesByTierSegments mirrors weighted minutes', () => {
   const segs = packingMinutesByTierSegments({ small_count: 2, medium_count: 18, large_count: 4 });
-  assert.equal(segs[0].value, 10);
-  assert.equal(segs[1].value, 252);
-  assert.equal(segs[2].value, 180);
+  assert.equal(segs[0].value, 2 * SMALL);
+  assert.equal(segs[1].value, 18 * MEDIUM);
+  assert.equal(segs[2].value, 4 * LARGE);
 });
 
 test('packingCapacitySegments splits used vs remaining', () => {
