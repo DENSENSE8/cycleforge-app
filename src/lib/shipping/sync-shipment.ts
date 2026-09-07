@@ -130,12 +130,22 @@ export async function syncShipment(
     // shipment and trigger needless client refetches. Webhook pushes are the
     // real-time path; this poll is the fallback that fires on genuine movement.
     if (inserted > 0) {
-      await publishShipmentStatusChange(
-        shipment.id,
-        'shipping-sync',
-        shipment.tracking_number_normalized,
-        effectiveOrgId,
-      );
+      if (effectiveOrgId) {
+        await publishShipmentStatusChange(
+          shipment.id,
+          'shipping-sync',
+          shipment.tracking_number_normalized,
+          effectiveOrgId,
+        );
+      } else {
+        // No org resolvable for this shipment (none threaded, none on the
+        // row, none via a linked order). The old path silently published under
+        // the dogfood org; skip loudly instead — never attribute a tenant-less
+        // shipment's events to a tenant that never owned it.
+        console.error(
+          `[shipping.sync] shipment id=${shipment.id} tracking=${shipment.tracking_number_normalized}: no organization resolvable — skipping status-change publish`,
+        );
+      }
     }
 
     return {

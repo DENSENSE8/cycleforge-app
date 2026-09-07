@@ -35,6 +35,11 @@ export const runtime = 'nodejs';
  */
 const BOARD_TILES = [
   { id: 'roi_gaps', title: 'Close the gaps', tool: 'get_roi_gaps', input: {} },
+  // The support pillar. Added 2026-09-06 with the home surface's first row: a
+  // ticket assigned to you and unanswered is the only board row with a person
+  // waiting on the other end of it, so the pulse cannot rank the shift
+  // honestly without it.
+  { id: 'support_followups', title: 'Support follow-ups', tool: 'list_support_followups', input: {} },
   { id: 'my_day', title: 'My day', tool: 'get_my_day', input: {} },
   { id: 'daily_checks', title: 'Daily checks', tool: 'get_daily_checks', input: {} },
   { id: 'project_tasks', title: 'Project tasks', tool: 'get_project_tasks', input: {} },

@@ -15,9 +15,7 @@
 
 import { postToAiProvider } from '@/lib/ai/failover';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { stripHarmony } from '@/lib/ai/harmony';
-
-const MAX_TITLE_LEN = 80;
+import { fallbackTitle, sanitizeSessionTitle } from '@/lib/ai/session-title-text';
 
 const TITLE_SYSTEM_PROMPT =
   'You name chat sessions for a warehouse operations app. Given the user\u2019s ' +
@@ -25,47 +23,6 @@ const TITLE_SYSTEM_PROMPT =
   'Title Case. No surrounding quotes, no trailing punctuation, no emoji, no ' +
   'preamble. Reply with ONLY the title. Example message: "how many orders are ' +
   'still unshipped today" \u2192 Unshipped Orders Today.';
-
-/**
- * A real title derived from the message itself — the first non-empty line,
- * whitespace-collapsed and capped. Used both as the instant provisional title
- * and as the fallback when the model is unavailable. Never a placeholder.
- */
-export function fallbackTitle(message: string): string {
-  const firstLine =
-    message
-      .split(/\r?\n/)
-      .map((l) => l.trim())
-      .find((l) => l.length > 0) ?? '';
-  const collapsed = firstLine.replace(/\s+/g, ' ').trim();
-  if (!collapsed) return 'Untitled chat';
-  return collapsed.length > MAX_TITLE_LEN
-    ? `${collapsed.slice(0, MAX_TITLE_LEN - 1).trimEnd()}\u2026`
-    : collapsed;
-}
-
-/**
- * Strip a model title down to a bare name: no quotes, no trailing dots, capped.
- *
- * Harmony first: a self-hosted `gpt-oss` answers this prompt with
- * `<|channel|>analysis<|message|>We need to produce a title…` and the sidebar
- * showed exactly that (measured 2026-09-06). `stripHarmony` keeps only the
- * `final` channel; a pure-analysis reply reduces to '' and the caller falls
- * back to the message's own first line.
- */
-function sanitizeTitle(raw: string): string {
-  const cleaned = stripHarmony(raw)
-    .replace(/[\r\n]+/g, ' ')
-    .replace(/^\s*(?:title\s*[:\-]\s*)/i, '')
-    .replace(/^["'`\u201c\u2018]+|["'`\u201d\u2019]+$/g, '')
-    .replace(/[\s.。!?！？]+$/u, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-  if (!cleaned) return '';
-  return cleaned.length > MAX_TITLE_LEN
-    ? `${cleaned.slice(0, MAX_TITLE_LEN - 1).trimEnd()}\u2026`
-    : cleaned;
-}
 
 /**
  * Summarize the first user message into a short session title via the org's
@@ -104,7 +61,7 @@ export async function generateSessionTitle(
       | { choices?: Array<{ message?: { content?: unknown } }> }
       | null;
     const content = json?.choices?.[0]?.message?.content;
-    const title = typeof content === 'string' ? sanitizeTitle(content) : '';
+    const title = typeof content === 'string' ? sanitizeSessionTitle(content) : '';
     return title || fallbackTitle(message);
   } catch {
     return fallbackTitle(message);

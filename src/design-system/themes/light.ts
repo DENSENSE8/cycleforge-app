@@ -67,6 +67,7 @@ export const lightPalette: ThemePalette = {
     // Extended tone text
     'text-info': '#2563eb', // blue-600
     'text-fulfillment': '#9333ea', // purple-600
+    'text-gilt': '#9d6b30', // warm caramel-bronze — 4.59:1 on card white
     // Solid fills
     'fill-info': '#2563eb',
     'fill-success': '#16a34a',

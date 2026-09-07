@@ -22,6 +22,11 @@ function parseMode(raw: string | null): UnboxPreviewMode {
  * carton creation. So a preview cannot appear in the Unbox recent rail and
  * cannot count toward unboxing — which is the whole contract of the stance.
  *
+ * Tenancy: every resolution read runs through the server deps
+ * (preview-scan-deps.ts) inside `tenantQuery` — the GUC `app.current_org`
+ * scopes `receiving_unbox` (and carton/ticket/shipment lookups) to the
+ * current org under RLS. The route itself holds no pool and issues no SQL.
+ *
  * It is a read, so there is no audit row and no idempotency key (both are for
  * mutations). `receiving.view` is the gate: preview discloses exactly what the
  * carton read surface already does.

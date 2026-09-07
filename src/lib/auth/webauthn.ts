@@ -21,7 +21,9 @@ import type {
   PublicKeyCredentialCreationOptionsJSON,
   PublicKeyCredentialRequestOptionsJSON,
   RegistrationResponseJSON,
-} from '@simplewebauthn/types';
+  // v13: @simplewebauthn/types is retired; the server package now owns and
+  // re-exports these WebAuthn wire types itself.
+} from '@simplewebauthn/server';
 import pool from '@/lib/db';
 import { WEBAUTHN_RP_NAME_DEFAULT } from '@/lib/branding/constants';
 

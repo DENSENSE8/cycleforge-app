@@ -278,9 +278,10 @@ export const GET = withAuth(async (req) => {
       const sid = inserted.rows[0]!.id;
       await client.query(
         `INSERT INTO staff_roles (staff_id, role_id, granted_at)
-         SELECT $1, r.id, now() FROM roles r WHERE r.key = $2
+         SELECT $1, r.id, now() FROM roles r
+          WHERE r.key = $2 AND r.organization_id = $3::uuid
          ON CONFLICT (staff_id, role_id) DO NOTHING`,
-        [sid, role],
+        [sid, role, provider.organizationId],
       );
       return { staffId: sid, accountId };
     });

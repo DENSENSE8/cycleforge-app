@@ -1,16 +1,15 @@
 /**
  * PO Gmail mailbox — auth plumbing only.
  *
- * Token home is DUAL-READ, VAULT-PREFERRED during the integrations-as-SoT
- * migration:
- *   1. organization_integrations (provider='gmail', GmailCredentials) — the
- *      vault row written by the oauth-callback dual-write. When present it is
- *      the source of truth: refresh uses the row's clientId/clientSecret,
- *      refreshed access tokens persist back via upsertIntegrationCredentials,
- *      and invalid_grant flags the row via markIntegrationError.
- *   2. google_oauth_tokens (provider='po_gmail') — the legacy global-singleton
- *      row (plaintext refresh_token, needs_reconnect flags). Read only when NO
- *      vault row exists; behavior on this path is unchanged (USAV-only).
+ * Token home is the integrations VAULT, read exclusively:
+ * organization_integrations (provider='gmail', GmailCredentials), written by
+ * the oauth-callback and backfilled from the legacy google_oauth_tokens
+ * plaintext columns before those were dropped (2026-09-06). When present the
+ * vault row is the source of truth: refresh uses the row's clientId/
+ * clientSecret, refreshed access tokens persist back via
+ * upsertIntegrationCredentials, and invalid_grant flags the row via
+ * markIntegrationError. When NO vault row exists the mailbox is NOT
+ * configured — there is deliberately no fallback path (fail closed).
  *
  * Exposes:
  *   - getAccessToken(): refreshes when expired, persists the new token
@@ -20,7 +19,6 @@
  * messages.ts — this module is auth only.
  */
 
-import pool from '@/lib/db';
 import { DOGFOOD_ORG_ID } from '@/lib/tenancy/constants';
 import {
   getIntegrationCredentials,
@@ -36,8 +34,6 @@ export const PO_GMAIL_SCOPE = [
   'openid',
   'email',
 ].join(' ');
-
-const PROVIDER = 'po_gmail';
 
 /**
  * Thrown when the PO mailbox can't be reached because it's not connected or its
@@ -55,12 +51,11 @@ export class PoGmailNotConnectedError extends Error {
 
 /**
  * Thrown when a tenant OTHER than USAV tries to read or refresh the PO
- * mailbox token. The `google_oauth_tokens` row is a global singleton
- * (provider='po_gmail', no organization_id column) belonging to USAV's
- * connected mailbox — there is intentionally one mailbox, not one per org.
- * This guard makes that ownership explicit so a non-USAV tenant can never
- * touch USAV's credentials, even though the table itself can't isolate rows
- * by org.
+ * mailbox token. The mailbox is a deliberate singleton — one Gmail account
+ * owned by USAV, not one per org — so that ownership is enforced here in
+ * code: every token accessor takes an `orgId` (defaulting to USAV's) and
+ * asserts it through here. A non-USAV org throws before a single byte of the
+ * token is read or refreshed, even though the vault row itself is org-scoped.
  */
 export class PoGmailWrongTenantError extends Error {
   constructor() {
@@ -70,10 +65,10 @@ export class PoGmailWrongTenantError extends Error {
 }
 
 /**
- * Singleton-mailbox tenant guard. The PO Gmail token has no organization_id
- * column, so RLS can't fence it — instead every token accessor takes an
- * `orgId` (defaulting to USAV's) and asserts it through here. Any non-USAV
- * org throws before a single byte of the token is read or refreshed.
+ * Singleton-mailbox tenant guard. The PO Gmail mailbox is a global singleton
+ * owned by USAV, so every token accessor takes an `orgId` (defaulting to
+ * USAV's) and asserts it through here. Any non-USAV org throws before a
+ * single byte of the token is read or refreshed.
  */
 export function assertDogfoodMailbox(orgId: string): void {
   if (orgId !== DOGFOOD_ORG_ID) {
@@ -94,7 +89,7 @@ export function assertDogfoodMailbox(orgId: string): void {
  * instead of catching a thrown `PoGmailWrongTenantError`.
  *
  * Note: this answers "is the PO mailbox feature available to this org at all",
- * NOT "is a mailbox currently connected" (that's a token-row read gated by the
+ * NOT "is a mailbox currently connected" (that's a vault-row read gated by the
  * hard guard). A non-USAV org is never available regardless of connection state.
  */
 export function isPoGmailAvailableForOrg(orgId: string): boolean {
@@ -104,9 +99,9 @@ export function isPoGmailAvailableForOrg(orgId: string): boolean {
 // ─── Vault path (organization_integrations, provider='gmail') ───────────────
 
 /**
- * The vault row for this org's PO mailbox, or null when the org hasn't been
- * migrated / connected through the vault yet (→ legacy-table fallback).
- * Caller must have already run the assertDogfoodMailbox tenant guard.
+ * The vault row for this org's PO mailbox, or null when the mailbox is not
+ * connected (no active vault row). Caller must have already run the
+ * assertDogfoodMailbox tenant guard.
  */
 async function loadVaultCreds(orgId: string): Promise<GmailCredentials | null> {
   const creds = await getIntegrationCredentials<GmailCredentials>(orgId, 'gmail');
@@ -168,118 +163,20 @@ async function getAccessTokenFromVault(orgId: string, creds: GmailCredentials): 
   return accessToken;
 }
 
-// ─── Legacy path (google_oauth_tokens, provider='po_gmail') ─────────────────
+export async function getAccessToken(orgId: string = DOGFOOD_ORG_ID): Promise<string> {
+  assertDogfoodMailbox(orgId);
 
-interface TokenRow {
-  id: number;
-  refresh_token: string;
-  access_token: string | null;
-  expires_at: string | null;
-  account_email: string | null;
-}
-
-async function loadActiveToken(): Promise<TokenRow> {
-  const { rows } = await pool.query<TokenRow>(
-    `SELECT id, refresh_token, access_token, expires_at, account_email
-       FROM google_oauth_tokens
-      WHERE provider = $1
-      LIMIT 1`,
-    [PROVIDER],
-  );
-  if (!rows[0]) {
+  // Vault-only (fail closed): no vault row means the mailbox is not
+  // configured. There is no plaintext fallback — the legacy token columns
+  // are gone.
+  const vault = await loadVaultCreds(orgId);
+  if (!vault) {
     throw new PoGmailNotConnectedError(
       'PO mailbox is not connected. Connect it at Admin → PO Mailbox.',
       false,
     );
   }
-  return rows[0];
-}
-
-async function markNeedsReconnect(reason: string): Promise<void> {
-  await pool.query(
-    `UPDATE google_oauth_tokens
-        SET needs_reconnect = TRUE,
-            needs_reconnect_reason = $1
-      WHERE provider = $2`,
-    [reason.slice(0, 500), PROVIDER],
-  );
-}
-
-async function clearNeedsReconnect(): Promise<void> {
-  await pool.query(
-    `UPDATE google_oauth_tokens
-        SET needs_reconnect = FALSE,
-            needs_reconnect_reason = NULL
-      WHERE provider = $1 AND needs_reconnect = TRUE`,
-    [PROVIDER],
-  );
-}
-
-async function refreshAccessToken(refreshToken: string): Promise<{ accessToken: string; expiresAt: Date }> {
-  const clientId = process.env.PO_GMAIL_CLIENT_ID;
-  const clientSecret = process.env.PO_GMAIL_CLIENT_SECRET;
-  if (!clientId || !clientSecret) {
-    throw new Error('PO_GMAIL_CLIENT_ID / PO_GMAIL_CLIENT_SECRET are not set');
-  }
-
-  const body = new URLSearchParams({
-    client_id: clientId,
-    client_secret: clientSecret,
-    refresh_token: refreshToken,
-    grant_type: 'refresh_token',
-  });
-
-  const res = await fetch(OAUTH_TOKEN_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body,
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    // 400 / 401 here means the refresh token was revoked or rotated
-    // (Google rotates test-mode tokens every 7 days). Flag the row so
-    // the admin UI can surface a reconnect prompt.
-    if (res.status === 400 || res.status === 401) {
-      await markNeedsReconnect(`Token refresh rejected (${res.status}): ${text.slice(0, 200)}`);
-      throw new PoGmailNotConnectedError(
-        'PO mailbox needs reconnect — its Google token expired or was revoked. Reconnect at Admin → PO Mailbox.',
-        true,
-      );
-    }
-    throw new Error(`PO Gmail token refresh failed (${res.status}): ${text}`);
-  }
-  const json = (await res.json()) as { access_token: string; expires_in: number };
-  await clearNeedsReconnect();
-  return {
-    accessToken: json.access_token,
-    expiresAt: new Date(Date.now() + (json.expires_in - 60) * 1000),
-  };
-}
-
-export async function getAccessToken(orgId: string = DOGFOOD_ORG_ID): Promise<string> {
-  assertDogfoodMailbox(orgId);
-
-  // Vault-preferred: when an organization_integrations row exists, it is the
-  // token SoT. Legacy google_oauth_tokens is only read when no vault row.
-  const vault = await loadVaultCreds(orgId);
-  if (vault) {
-    return getAccessTokenFromVault(orgId, vault);
-  }
-
-  const row = await loadActiveToken();
-  const now = Date.now();
-  if (row.access_token && row.expires_at && new Date(row.expires_at).getTime() > now + 30_000) {
-    return row.access_token;
-  }
-  const { accessToken, expiresAt } = await refreshAccessToken(row.refresh_token);
-  await pool.query(
-    `UPDATE google_oauth_tokens
-        SET access_token = $1,
-            expires_at = $2
-      WHERE id = $3`,
-    [accessToken, expiresAt.toISOString(), row.id],
-  );
-  return accessToken;
+  return getAccessTokenFromVault(orgId, vault);
 }
 
 export async function poGmailFetch(
@@ -299,10 +196,5 @@ export async function getConnectedEmail(orgId: string = DOGFOOD_ORG_ID): Promise
   // empty rather than throwing so connection-status reads degrade quietly.
   if (orgId !== DOGFOOD_ORG_ID) return null;
   const vault = await loadVaultCreds(orgId);
-  if (vault) return vault.accountEmail ?? null;
-  const { rows } = await pool.query<{ account_email: string | null }>(
-    `SELECT account_email FROM google_oauth_tokens WHERE provider = $1 LIMIT 1`,
-    [PROVIDER],
-  );
-  return rows[0]?.account_email ?? null;
+  return vault?.accountEmail ?? null;
 }

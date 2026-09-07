@@ -5,14 +5,20 @@ import { ThreadAssignBody } from '@/lib/schemas/threads';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { assignThread, unassignThread } from '@/lib/threads/thread-assignments';
 import { createStaffMessage } from '@/lib/neon/staff-messages-queries';
-import pool from '@/lib/db';
+import { withTenantTransaction } from '@/lib/tenancy/db';
 
 /**
  * POST   /api/threads/[id]/assign — set/replace the thread OWNER (one per thread).
  * DELETE /api/threads/[id]/assign — clear the owner. Both support.thread.manage.
- * On assign we drop a best-effort `support_assignment` staff_messages nudge to
+ * On assign we drop a best-effort `support_assignment` staff-inbox nudge to
  * the new owner (fire-and-forget via after(); never blocks the response).
+ *
+ * Tenant scoping: the assignment helpers run inside their own tenant
+ * transactions (GUC + org conjuncts), and this route's audit writes run under
+ * withTenantTransaction too, so every statement the route issues is
+ * app.current_org-scoped.
  */
+
 function toId(raw: string): number | null {
   const id = Number(raw);
   return Number.isFinite(id) && id > 0 ? id : null;
@@ -47,13 +53,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     // retry / double-click is an idempotent no-op (no duplicate audit or nudge).
     const changed = result.previousStaffId !== parsed.assignedStaffId;
     if (changed) {
-      await recordAudit(pool, gate.ctx, req, {
-        source: 'threads-api',
-        action: AUDIT_ACTION.THREAD_ASSIGN,
-        entityType: AUDIT_ENTITY.ENTITY_THREAD,
-        entityId: threadId,
-        after: { assignedStaffId: parsed.assignedStaffId, reassigned: result.reassigned },
-      });
+      // Audit write under the tenant GUC — the row's org is enforced by the
+      // connection context (RLS once the tenant DSN is split), not just stamped.
+      await withTenantTransaction(gate.ctx.organizationId, (client) =>
+        recordAudit(client, gate.ctx, req, {
+          source: 'threads-api',
+          action: AUDIT_ACTION.THREAD_ASSIGN,
+          entityType: AUDIT_ENTITY.ENTITY_THREAD,
+          entityId: threadId,
+          after: { assignedStaffId: parsed.assignedStaffId, reassigned: result.reassigned },
+        }),
+      );
     }
 
     // Notify the new owner (best-effort). Skip self-assignment + unchanged.
@@ -99,13 +109,15 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
     }
 
     if (!result.idempotent) {
-      await recordAudit(pool, gate.ctx, req, {
-        source: 'threads-api',
-        action: AUDIT_ACTION.THREAD_UNASSIGN,
-        entityType: AUDIT_ENTITY.ENTITY_THREAD,
-        entityId: threadId,
-        before: { assignedStaffId: result.previousStaffId },
-      });
+      await withTenantTransaction(gate.ctx.organizationId, (client) =>
+        recordAudit(client, gate.ctx, req, {
+          source: 'threads-api',
+          action: AUDIT_ACTION.THREAD_UNASSIGN,
+          entityType: AUDIT_ENTITY.ENTITY_THREAD,
+          entityId: threadId,
+          before: { assignedStaffId: result.previousStaffId },
+        }),
+      );
     }
 
     return NextResponse.json({ success: true, idempotent: result.idempotent });

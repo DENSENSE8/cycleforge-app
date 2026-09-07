@@ -9,12 +9,14 @@ import {
   defaultSpineOrder,
   hydrateSpineSlots,
   isSpineSlottable,
+  migrateSpineSlots,
   resolveSpineMapEntries,
   resolveSpineSlotPages,
   spineParentDrillId,
   spineStructuralTopPages,
   SPINE_DESKS_SLOT_ID,
   SPINE_SLOTS_MAX,
+  SPINE_SLOTS_VERSION,
   SPINE_STATIONS_SLOT_ID,
 } from './spine-slots';
 import type { SidebarNavItem } from '@/lib/sidebar-navigation';
@@ -32,14 +34,22 @@ const catalog: SidebarNavItem[] = [
   { id: 'studio', label: 'Operations Studio', href: '/studio', icon: Icon, kind: 'main', mainGroup: 'studio' },
 ];
 
-test('null / empty / absent hydrate to Stations then Desks then remaining L1', () => {
+test('null / empty / absent hydrate lead with Automations, then Stations, then Desks, then remaining L1', () => {
   assert.deepEqual(hydrateSpineSlots(null, catalog), [
+    'studio',
     SPINE_STATIONS_SLOT_ID,
     SPINE_DESKS_SLOT_ID,
-    'studio',
   ]);
   assert.deepEqual(hydrateSpineSlots(undefined, catalog), defaultSpineOrder(catalog));
   assert.deepEqual(hydrateSpineSlots([], catalog), defaultSpineOrder(catalog));
+});
+
+test('defaultSpineOrder leads with Automations only when the catalog carries it', () => {
+  assert.equal(defaultSpineOrder(catalog)[0], 'studio');
+  const withoutStudio = catalog.filter((i) => i.id !== 'studio');
+  const order = defaultSpineOrder(withoutStudio);
+  assert.ok(!order.includes('studio'));
+  assert.equal(order[0], SPINE_STATIONS_SLOT_ID);
 });
 
 test('hydrate keeps staff order and appends new catalog ids', () => {
@@ -69,7 +79,7 @@ test('hydrate collapses legacy desk page ids into one desks slot', () => {
 test('hydrate drops unknown ids and structural / parked tops', () => {
   assert.deepEqual(
     hydrateSpineSlots(['home', 'ghost', SPINE_STATIONS_SLOT_ID, 'search'], catalog),
-    [SPINE_STATIONS_SLOT_ID, SPINE_DESKS_SLOT_ID, 'studio'],
+    [SPINE_STATIONS_SLOT_ID, 'studio', SPINE_DESKS_SLOT_ID],
   );
 });
 
@@ -130,4 +140,36 @@ test('spineStructuralTopPages keeps only painted top map rows', () => {
     spineStructuralTopPages(catalog).map((p) => p.id),
     ['home', 'ops-photos'],
   );
+});
+
+test('a customized operator is floated onto the new default exactly once', () => {
+  const saved = [SPINE_DESKS_SLOT_ID, 'studio', SPINE_STATIONS_SLOT_ID];
+
+  // Pre-versioning: Automations floats to the front, everything else keeps the
+  // order the operator put it in, and the generation is stamped.
+  const first = migrateSpineSlots(saved, catalog, undefined);
+  assert.deepEqual(first.slots, ['studio', SPINE_DESKS_SLOT_ID, SPINE_STATIONS_SLOT_ID]);
+  assert.deepEqual(first.stamp, {
+    spineSlots: ['studio', SPINE_DESKS_SLOT_ID, SPINE_STATIONS_SLOT_ID],
+    spineSlotsVersion: SPINE_SLOTS_VERSION,
+  });
+
+  // Already on this generation: their order is untouched, even when they have
+  // deliberately dragged Automations back down.
+  const second = migrateSpineSlots(saved, catalog, SPINE_SLOTS_VERSION);
+  assert.deepEqual(second.slots, saved);
+  assert.equal(second.stamp, null);
+});
+
+test('an operator with no saved order needs no write — they derive the default', () => {
+  for (const raw of [null, undefined, []]) {
+    const out = migrateSpineSlots(raw, catalog, undefined);
+    assert.deepEqual(out.slots, defaultSpineOrder(catalog));
+    assert.equal(out.stamp, null);
+  }
+});
+
+test('an unresolved catalog never stamps an empty order over a real one', () => {
+  const out = migrateSpineSlots([SPINE_DESKS_SLOT_ID, 'studio'], [], undefined);
+  assert.equal(out.stamp, null);
 });

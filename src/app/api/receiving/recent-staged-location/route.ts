@@ -4,6 +4,12 @@
  * Intended putaway (`receiving_line_putaway.staged_location_id`) from the
  * **newest staged carton that is not the open one**. Powers Unbox notes
  * composer Last entry / Move.
+ *
+ * Tenancy: delegates to fetchMostRecentStagedLocation
+ * (recent-staged-location-server.ts), which runs the lookup inside
+ * `tenantQuery` — the GUC `app.current_org` scopes `receiving_line_putaway`
+ * reads to the current org under RLS; the SQL org conjuncts are
+ * defense-in-depth on top of the GUC.
  */
 
 import { NextRequest, NextResponse } from 'next/server';

@@ -15,6 +15,7 @@ colors:
   border-soft: "#cbd5e1"
   scan-blue: "#2563eb"
   navy-accent: "#1a3a6b"
+  gilt: "#9d6b30"
   success: "#16a34a"
   warning: "#ea580c"
   danger: "#dc2626"
@@ -132,6 +133,7 @@ Cool slate neutrals with a single interactive blue. Functional greens / oranges 
 
 ### Secondary
 - **Navy Accent** (`{colors.navy-accent}`): quieter accent family on surfaces that are not a table link. Do not compete with Scan Blue on the same cell.
+- **Gilt** (`{colors.gilt}`): editorial standout ink — the ONE warm word inside quiet prose (Home's greeting verb, `text-text-gilt`). Cream on dark schemes, caramel-bronze on light so it still clears 4.5:1 on card white. Never a status tone, never a fill, never more than one word in a sentence.
 
 ### Neutral
 - **Slate Ink** (`{colors.slate-ink}`): default text and column headers.

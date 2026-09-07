@@ -534,8 +534,9 @@ function resolveAuditLogRedirect(url: NextRequest['nextUrl']): NextRequest['next
  *    companion (`/m/companion`) dictates into the desk composer through
  *    `getUserMedia` (PLAN-companion-composer) — `microphone=()` blocked it.
  *  - frame-ancestors 'self' + object-src/base-uri/form-action (CSP) plus
- *    X-Frame-Options — the CSP directives that need no nonce. The full
- *    policy ships as Content-Security-Policy-Report-Only (CSP_REPORT_ONLY).
+ *    X-Frame-Options. The full policy ships report-only carrying a
+ *    per-request nonce; enforced script-src joins only behind the explicit
+ *    CSP_ENFORCE_SCRIPT_SRC=1 opt-in (see applySecurityHeaders).
  *  - HSTS with 1y max-age + subdomains. Don't preload yet (irreversible).
  *  - Referrer policy trims cross-origin leak surface.
  *  - nosniff blocks MIME confusion attacks.
@@ -556,11 +557,13 @@ const PERMISSIONS_POLICY = [
 // `remotePatterns` entry in next.config.ts.
 const BLOB_STORE_HOST = 'dxo1iaq12ujzkoor.public.blob.vercel-storage.com';
 
-// Enforced CSP directives. Deliberately NO script-src/default-src here: the
-// root layout ships inline boot scripts (theme, station skin, depth, boot
-// splash) and a nonce migration is a separate effort. Everything below is
-// inert for an inline-script app — it only removes plugin execution, <base>
-// hijacking, and off-origin form posts, and keeps framing same-origin.
+// Enforced CSP directives. script-src is NOT here by default: the root layout
+// ships inline boot scripts (theme, station skin, depth, boot splash) plus
+// Next's own bootstrap scripts, all of which need the per-request nonce from
+// `x-csp-nonce` before a script-src directive can do anything but break the
+// app. Everything below is inert for an inline-script app — it only removes
+// plugin execution, <base> hijacking, and off-origin form posts, and keeps
+// framing same-origin.
 const CSP_ENFORCED = [
   "frame-ancestors 'self'",
   "object-src 'none'",
@@ -568,37 +571,111 @@ const CSP_ENFORCED = [
   "form-action 'self'",
 ].join('; ');
 
-// The policy we INTEND to enforce once the inline boot scripts carry a nonce.
-// Shipped report-only so violations land in the browser console / report
-// endpoint without breaking a station mid-shift. Every off-origin host below
-// is one the browser genuinely reaches:
-//   cdnjs.cloudflare.com          pdf.js worker (src/lib/manuals/pdfThumbnail.ts:46)
-//   va.vercel-scripts.com         @vercel/analytics debug loader (DeferredWebTelemetry)
-//   *.ably.io / *.ably-realtime.com  browser Ably realtime + REST fallbacks
-//   <store>.public.blob…          product-manual / photo / attract-media blobs
-//   storage.googleapis.com        PHOTOS_GCS_BUCKET photos
-//   nas-photos.michaelgarisek.com NAS photo tunnel (also in remotePatterns)
-// `unsafe-eval` is dev-only — the Next dev runtime evals HMR payloads, and
-// without it the report-only channel is pure noise locally.
-const CSP_REPORT_ONLY = [
-  "default-src 'self'",
-  [
-    "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://va.vercel-scripts.com",
-    process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'",
-  ].join(''),
-  "style-src 'self' 'unsafe-inline'",
-  `img-src 'self' data: blob: https://${BLOB_STORE_HOST} https://storage.googleapis.com https://nas-photos.michaelgarisek.com`,
-  `media-src 'self' blob: https://${BLOB_STORE_HOST}`,
-  "font-src 'self' data:",
-  "connect-src 'self' blob: https://*.ably.io wss://*.ably.io https://*.ably-realtime.com wss://*.ably-realtime.com",
-  "worker-src 'self' blob: https://cdnjs.cloudflare.com",
-  "frame-src 'self' blob:",
-  "manifest-src 'self'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'self'",
-].join('; ');
+// Explicit opt-in to enforce script-src with the per-request nonce. Default
+// OFF: flipping this before the layout boot scripts (operator patch to
+// src/app/layout.tsx) and Next's own scripts (auto-nonced from the request
+// CSP header, see propagateCspRequestHeaders) carry nonces breaks every page.
+// Deliberately `=== '1'` — an unset or typo'd value must never enable it.
+const CSP_ENFORCE_SCRIPT_SRC = process.env.CSP_ENFORCE_SCRIPT_SRC === '1';
+
+// Per-request CSP nonce. Web Crypto (this file is bundled for the Edge
+// runtime — no node:crypto); 16 random bytes, standard base64. Returns null
+// if the RNG fails; callers degrade fail-closed (report-only keeps the legacy
+// 'unsafe-inline' shape, enforced drops script-src entirely) rather than
+// shipping a nonceless policy that would either break every inline script or
+// silently over-allow.
+function generateCspNonce(): string | null {
+  try {
+    const bytes = new Uint8Array(16);
+    crypto.getRandomValues(bytes);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+    return btoa(binary);
+  } catch {
+    return null;
+  }
+}
+
+// The policy we INTEND to enforce once every inline script carries the nonce.
+// Shipped report-only so violations surface without breaking a station
+// mid-shift. Nothing server-side collects CSP violation reports — there is no
+// report-uri/report-to endpoint and no /api/csp-report route — so the browser
+// console IS the observation channel; read it there before flipping the flag.
+// script-src carries the per-request nonce + 'strict-dynamic': with
+// strict-dynamic present, host allowlists are IGNORED by CSP3 browsers (a
+// nonce-authenticated loader propagates trust to the scripts it injects),
+// which is why the former explicit hosts are gone — the pdf.js worker has
+// been self-hosted same-origin since the pdfjs v6 upgrade (worker-src 'self'
+// below; public/pdf.worker.min.mjs), and the Vercel analytics loader is
+// injected by nonce-carrying app code. `unsafe-eval` is dev-only — the Next
+// dev runtime evals HMR payloads, and without it the report-only channel is
+// pure noise locally. When no nonce could be minted, fall back to the legacy
+// 'unsafe-inline' shape (report-only cannot break anything; keep observing).
+function cspReportOnlyPolicy(nonce: string | null): string {
+  return [
+    "default-src 'self'",
+    [
+      nonce
+        ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`
+        : "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://va.vercel-scripts.com",
+      process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'",
+    ].join(''),
+    "style-src 'self' 'unsafe-inline'",
+    `img-src 'self' data: blob: https://${BLOB_STORE_HOST} https://storage.googleapis.com https://nas-photos.michaelgarisek.com`,
+    `media-src 'self' blob: https://${BLOB_STORE_HOST}`,
+    "font-src 'self' data:",
+    "connect-src 'self' blob: https://*.ably.io wss://*.ably.io https://*.ably-realtime.com wss://*.ably-realtime.com",
+    "worker-src 'self' blob:",
+    "frame-src 'self' blob:",
+    "manifest-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'self'",
+  ].join('; ');
+}
+
+/**
+ * Hand the nonce (and the nonce-bearing policies) to the app on FORWARDED
+ * requests only (NextResponse.next / rewrite):
+ *   - `x-csp-nonce` — read by the root layout to nonce its inline boot
+ *     scripts (src/app/layout.tsx).
+ *   - `content-security-policy-report-only` / `content-security-policy` —
+ *     Next.js mines a CSP header off the REQUEST for a nonce
+ *     (server/app-render: getScriptNonceFromHeader) and stamps it on its own
+ *     bootstrap scripts, so the framework's inline scripts stop being
+ *     report-only noise today and survive the CSP_ENFORCE_SCRIPT_SRC flip.
+ *
+ * Mechanics: NextResponse.next()/rewrite() serialize `request.headers` into
+ * `x-middleware-override-headers` + `x-middleware-request-<name>` response
+ * headers AT CONSTRUCTION (next/server spec-extension/response.ts), i.e.
+ * before applySecurityHeaders mints the nonce — so we append to the already
+ * serialized override list on the response itself. If Next ever changes that
+ * internal protocol, the append silently no-ops and nonceless scripts
+ * reappear in the report-only console (loud), never a silent bypass.
+ * Non-forwarded responses (redirects, 404s, JSON) carry no override list and
+ * skip propagation — no app HTML renders from them.
+ */
+function propagateCspRequestHeaders(
+  res: NextResponse,
+  nonce: string,
+  reportOnly: string,
+  enforced: string,
+): void {
+  const overridden = res.headers.get('x-middleware-override-headers');
+  if (!overridden) return; // not a forwarded response
+  const keys = overridden.split(',');
+  const append = (key: string, value: string): void => {
+    if (!keys.includes(key)) keys.push(key);
+    res.headers.set(`x-middleware-request-${key}`, value);
+  };
+  append('x-csp-nonce', nonce);
+  append('content-security-policy-report-only', reportOnly);
+  if (CSP_ENFORCE_SCRIPT_SRC) {
+    append('content-security-policy', enforced);
+  }
+  res.headers.set('x-middleware-override-headers', keys.join(','));
+}
 
 function applySecurityHeaders(res: NextResponse): NextResponse {
   res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
@@ -608,15 +685,30 @@ function applySecurityHeaders(res: NextResponse): NextResponse {
   // Block embedding in iframes from foreign origins. X-Frame-Options is the
   // legacy header; CSP frame-ancestors covers modern browsers.
   res.headers.set('X-Frame-Options', 'SAMEORIGIN');
-  // Enforced: frame-ancestors + the three directives that cannot break an
-  // inline-script app. The full policy (script-src/default-src) rides along
-  // report-only until the root-layout boot scripts carry a nonce.
+  // Per-request nonce: report-only always carries it (observation channel);
+  // enforced script-src joins only behind CSP_ENFORCE_SCRIPT_SRC=1 and only
+  // if the nonce actually minted (fail closed on RNG failure).
+  const nonce = generateCspNonce();
+  const reportOnly = cspReportOnlyPolicy(nonce);
+  // Enforced script-src joins ONLY behind the explicit flag AND a minted
+  // nonce: without a nonce the directive would either break every inline
+  // script or silently over-allow.
+  const enforced =
+    CSP_ENFORCE_SCRIPT_SRC && nonce
+      ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'; ${CSP_ENFORCED}`
+      : CSP_ENFORCED;
+  if (nonce) {
+    propagateCspRequestHeaders(res, nonce, reportOnly, enforced);
+  }
+  // Enforced: frame-ancestors + the directives that cannot break an
+  // inline-script app unless the flag above is set. The full policy rides
+  // report-only with this request's nonce.
   const existingCsp = res.headers.get('Content-Security-Policy');
   res.headers.set(
     'Content-Security-Policy',
-    existingCsp ? `${existingCsp}; ${CSP_ENFORCED}` : CSP_ENFORCED,
+    existingCsp ? `${existingCsp}; ${enforced}` : enforced,
   );
-  res.headers.set('Content-Security-Policy-Report-Only', CSP_REPORT_ONLY);
+  res.headers.set('Content-Security-Policy-Report-Only', reportOnly);
   return res;
 }
 
@@ -633,6 +725,13 @@ function proxyRequestHeaders(req: NextRequest): Headers {
   headers.delete('x-tenant-slug');
   headers.delete('x-pathname');
   headers.delete('x-search');
+  // CSP nonce + policy request headers are proxy-authored only
+  // (propagateCspRequestHeaders). Strip client copies so a request can never
+  // smuggle its own nonce (which layout.tsx would trust for the boot
+  // scripts) or a fake CSP that Next's renderer would mine for a nonce.
+  headers.delete('x-csp-nonce');
+  headers.delete('content-security-policy');
+  headers.delete('content-security-policy-report-only');
   return headers;
 }
 

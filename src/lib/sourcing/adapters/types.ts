@@ -20,7 +20,8 @@ export interface ScourRequest {
   conditions?: SourceCondition[];
   maxPriceCents?: number | null;
   limit?: number;
-  orgId?: OrgId;
+  /** Tenant the search runs as — always set by the scour orchestrator. */
+  orgId: OrgId;
 }
 
 export interface SourceAdapter {

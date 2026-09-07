@@ -3,7 +3,9 @@
  * pins reorder only inside that cluster.
  */
 
+import { displaySessionTitle } from '@/lib/ai/session-title-text';
 import { masterNavItemForHref } from '@/lib/sidebar-navigation';
+import { SESSION_PIN_ICON_KEY, type PinInput, type PinnedPage } from './types';
 
 export const MASTER_NAV_PIN_DROP_ID = 'master-nav-pin-drop';
 
@@ -58,6 +60,65 @@ export function pinRowDragId(pinId: string): string {
 }
 
 /**
+ * The AI session a pin points at (`/?session=<id>`), or `null`.
+ *
+ * Feature 3 (binding model B) carries the id in `PinnedPage.sessionId`, but the
+ * href is the durable fact — an older pin, or one written by hand, has only the
+ * query param. Both the pinnability rule and the row's glyph ask this.
+ */
+export function sessionIdFromPinHref(href: string): string | null {
+  try {
+    return new URL(href, 'http://local').searchParams.get('session') || null;
+  } catch {
+    /* not a parseable href — it names no session */
+    return null;
+  }
+}
+
+/**
+ * Does this pin name an AI thread? The ONE predicate both pin surfaces ask.
+ *
+ * Three facts can say so and any one is enough: the binding field, the icon
+ * hint, or the href's `session` param. `MasterNavPinnedCluster` and
+ * `HeaderPinsSwitcher` each resolve a pin's glyph independently; asking this
+ * instead of re-spelling the three-way check is what keeps the header from
+ * drifting back to the Home face the spine already stopped painting.
+ */
+export function isSessionPin(pin: {
+  href: string;
+  sessionId?: string;
+  iconKey?: string;
+}): boolean {
+  return Boolean(
+    pin.sessionId || pin.iconKey === SESSION_PIN_ICON_KEY || sessionIdFromPinHref(pin.href),
+  );
+}
+
+/**
+ * A stored pin, back as a pin WRITE — total over both kinds.
+ *
+ * The only sanctioned way to re-pin something that is already a `PinnedPage`
+ * (undo, drag-back, a future move-between-surfaces). It cannot lose the
+ * session binding the way a hand-written `{ href, label, iconKey }` literal
+ * did, and it re-sanitizes the label on the way through, so a legacy row that
+ * stored raw model markup heals when it is restored rather than persisting the
+ * garbage a second time.
+ */
+export function pinInputFromPinned(pin: PinnedPage): PinInput {
+  const sessionId = pin.sessionId || sessionIdFromPinHref(pin.href);
+  if (sessionId) {
+    return {
+      kind: 'session',
+      href: pin.href,
+      label: displaySessionTitle(pin.label),
+      sessionId,
+      iconKey: SESSION_PIN_ICON_KEY,
+    };
+  }
+  return { kind: 'page', href: pin.href, label: pin.label, iconKey: pin.iconKey };
+}
+
+/**
  * Home is the only row that cannot be pinned.
  *
  * It is the spine's root, it is already the first row on the map, and a pin
@@ -71,6 +132,10 @@ export function pinRowDragId(pinId: string): string {
  * who never open it can let it sit in the map with everything else.
  */
 export function isStructuralSpinePinHref(href: string): boolean {
+  // A session pin (`/?session=<id>`) is a real destination — one specific
+  // thread — not the generic Home surface, so it stays pinnable even though its
+  // pathname resolves to `home` (Feature 3: session pins carry a sessionId).
+  if (sessionIdFromPinHref(href)) return false;
   return masterNavItemForHref(href)?.id === 'home';
 }
 

@@ -11,14 +11,15 @@
  *   - The operator's browser already has the PDF bytes in memory at upload
  *     time, so generating the thumb client-side is free network-wise.
  *
- * pdfjs ships its rendering loop on a Web Worker. We point at the worker
- * file bundled in node_modules via dynamic import — Next.js produces the
- * right URL at build time. If that fails (some bundler configs), the
- * generator returns null and the caller falls back to no thumbnail.
+ * pdfjs ships its rendering loop on a Web Worker. We point at a same-origin
+ * copy of the worker file in public/ (see loadPdfjs) — no third-party origin
+ * is ever fetched. If rendering fails, the generator returns null and the
+ * caller falls back to no thumbnail.
  *
  * Returns null on any failure (encrypted PDF, render error, unsupported
  * source). Callers must treat the result as best-effort.
  */
+import type { getDocument } from 'pdfjs-dist';
 
 const THUMB_WIDTH = 320;       // target render width in CSS px
 const JPEG_QUALITY = 0.85;     // PNG would be larger; JPEG is fine for a preview
@@ -29,24 +30,50 @@ export interface PdfThumbnailResult {
   height: number;
 }
 
-let pdfjsModulePromise: Promise<typeof import('pdfjs-dist')> | null = null;
+/**
+ * pdfjs-dist version whose worker is self-hosted at public/pdf.worker.min.mjs.
+ * MUST be kept in lockstep with package.json: after upgrading pdfjs-dist,
+ * re-copy node_modules/pdfjs-dist/build/pdf.worker.min.mjs to that path and
+ * update this constant. A main/worker version mismatch fails every render,
+ * so we complain loudly instead of letting thumbnails silently die.
+ */
+const SELF_HOSTED_WORKER_VERSION = '6.3.289';
 
-async function loadPdfjs() {
-  if (!pdfjsModulePromise) {
-    pdfjsModulePromise = (async () => {
-      const mod = await import('pdfjs-dist');
-      // Worker source: pin to the matching pdfjs-dist version on a public
-      // CDN. We tried `new URL(..., import.meta.url)` first but that pattern
-      // is bundler-specific — it works under Next.js webpack, breaks under
-      // Turbopack and dev-mode HMR, and silently 404s the worker (which
-      // then makes every render fail with no UI signal). The CDN URL is
-      // immutable per version, cached aggressively, and version-matched
-      // to whatever pdfjs we resolved at runtime — so library upgrades
-      // can't cause silent worker drift.
-      mod.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${mod.version}/pdf.worker.min.mjs`;
-      return mod;
-    })();
+/** The slice of the pdfjs-dist module namespace this file consumes. */
+type PdfjsModule = {
+  version: string;
+  GlobalWorkerOptions: { workerSrc: string };
+  getDocument: typeof getDocument;
+};
+
+async function loadPdfjsModule(): Promise<PdfjsModule> {
+  // Dynamic on purpose: pdfjs-dist (~1.3MB) is browser-only and must stay out
+  // of the initial bundle — it loads only when a thumbnail is first requested.
+  const mod = await import('pdfjs-dist');
+  // Worker source: same-origin copy of pdf.worker.min.mjs served from
+  // public/ by Next.js. We previously pinned a version-matched cdnjs URL,
+  // but that meant every thumbnail render fetched worker code from a
+  // third-party origin. Simply dropping workerSrc is not an option:
+  // pdf.js v6 hard-requires it (the fake-worker fallback itself does
+  // `import(workerSrc)` and throws when it is unset), and the
+  // `new URL(..., import.meta.url)` pattern is bundler-specific — it
+  // works under Next.js webpack but breaks under Turbopack and dev-mode
+  // HMR, silently 404-ing the worker.
+  mod.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+  if (mod.version !== SELF_HOSTED_WORKER_VERSION) {
+    console.error(
+      `[pdfThumbnail] pdfjs-dist ${mod.version} does not match the self-hosted ` +
+        `worker ${SELF_HOSTED_WORKER_VERSION}. Re-copy ` +
+        'node_modules/pdfjs-dist/build/pdf.worker.min.mjs to public/pdf.worker.min.mjs.',
+    );
   }
+  return mod;
+}
+
+let pdfjsModulePromise: Promise<PdfjsModule> | null = null;
+
+function loadPdfjs() {
+  pdfjsModulePromise ??= loadPdfjsModule();
   return pdfjsModulePromise;
 }
 
@@ -68,7 +95,12 @@ export async function generatePdfThumbnail(
           })
         : await source.arrayBuffer();
 
-    const doc = await pdfjs.getDocument({ data }).promise;
+    // pdfjs v6 notes: `isEvalSupported` is gone entirely — the eval-based
+    // font/PostScript code paths were removed from the library (the
+    // arbitrary-JS-on-PDF-open advisory class), so PDF content can no longer
+    // reach eval() and there is no option left to disable.
+    const loadingTask = pdfjs.getDocument({ data });
+    const doc = await loadingTask.promise;
     try {
       const page = await doc.getPage(1);
       const baseViewport = page.getViewport({ scale: 1 });
@@ -85,10 +117,9 @@ export async function generatePdfThumbnail(
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // pdfjs typings drift between minor versions; this `as any` smooths
-      // the difference between the v4 `canvas` param and v5+'s shape.
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await page.render({ canvasContext: ctx, viewport, canvas } as any).promise;
+      // v6 render params: `canvas` is the primary parameter; `canvasContext`
+      // is a backcompat shim that requires canvas to be null. Pass the canvas.
+      await page.render({ canvas, viewport }).promise;
       page.cleanup();
 
       const blob: Blob | null = await new Promise((resolve) => {
@@ -97,7 +128,7 @@ export async function generatePdfThumbnail(
       if (!blob) return null;
       return { blob, width: canvas.width, height: canvas.height };
     } finally {
-      doc.destroy().catch(() => {});
+      loadingTask.destroy().catch(() => {});
     }
   } catch (err) {
     // Encrypted PDFs, malformed inputs, unsupported sources — all land here.

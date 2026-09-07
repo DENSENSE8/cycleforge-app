@@ -1,21 +1,22 @@
-# Cycle Forge brand icon — "The Hammer & the Light"
+# Cycle Forge brand icon — "Strike the Flow"
 
-> **Status:** v3, 2026-09-06. Implements Phase 7 of
+> **Status:** v4 "Strike the Flow" (Grok-Forge direction), 2026-09-06.
+> Exact spec: `docs/brand/decision-strike-the-flow.md` (owner interview decisions). Implements Phase 7 of
 > `docs/cycle-forge-branding-spec.md`. Supersedes v1 "The Forged Cycle"
 > (anvil-in-loop) and v2 "The Strike" (spark) after small-size QA.
 
 ## Concept
 
-The mark is a **hammer mid-strike with a machine status light** — the bench
-tool plus the QC indicator in one glyph:
+The mark is a **soldering iron kissing a flow node** ("The Iron", Rev 3) — Grok-brutalist
+engineering: near-black ground, one forge-orange element, white flow graph,
+and the status LED as the node's core. Story: *the strike powers the flow —
+the node lights green when it passes.*
 
-- **The hammer** — tilted 45° like a clock hand at 1:30: actively working,
-  forging renewed product (dents, solder, capacitors, cosmetic rework).
-- **The light** — a panel LED centered on the hammer head, like a test bench
-  power/PASS lamp. **Green = on / passed / fully loaded** (the system's
-  success token `#16a34a` — the QC bench meaning: green light, it passed).
-  **Amber = working** (`#fbbf24`), shown only in loading states.
-- **The ring** (full mark only) — the renewal cycle the strike forges.
+- **The iron** — 45° diagonal, tip meeting the node: precision repair, the fixer's tool (never a break).
+- **The node** — white donut on the strike diagonal; its core is the LED.
+- **The ring** (full mark only) — the cycle around the strike.
+- **Edges** — two white flow stubs on the favicon/loading variants only;
+  ring variants omit them (they collide with the ring at small sizes).
 
 ### States
 
@@ -46,42 +47,25 @@ the amber swinging hammer; the settled tab shows the same hammer, light green.
 
 | Token | Hex | Use |
 |---|---|---|
-| Forge Blue | `#2563eb` | tile + hammer keyline (the product's scan blue, spent here as brand) |
-| Head Orange | `#ea580c` / `#f97316` | hammer head + striking face |
-| Pass Green | `#16a34a` | status light, done state (system success token) |
-| Work Amber | `#fbbf24` | status light, loading state |
-| Mark White | `#ffffff` | ring, LED bezel |
+| Ground | `#0A0A0B` | tile — near-black neutral (Grok) |
+| Mark White | `#ffffff` | hammer, ring, node, edges — the ONLY static brand hue |
+| Work Amber | `#FBBF24` | loading node core — the one color, only while working |
+| Forge Orange | `#FF4D00` | RETIRED from chrome — marketing hero / future dark accents |
+| Pass Green | `#22C55E` | RETIRED from brand — lives in-app as system success |
 
-Flat fills, no gradients. Blue/orange is a complementary (colorblind-safe)
-pair; the LED is the single semantic accent.
+**Monochrome rule (2026-09-06 revision):** static marks are white on
+`#0A0A0B`, zero color. Color appears exactly once per surface and only when
+it means something: the loading splash carries one amber dot (working);
+green lives where pass/fail state exists (in-app chips/toasts, QC screens).
+A tab favicon has no state — so it has no color.
 
-## Themes — the locked pair
-
-Two themes ship side by side, each as a **glow hero + flat favicon pair**:
-
-| Theme | Tile | Mark | Role |
-|---|---|---|---|
-| **Bright** (default) | `#2563eb` | orange hammer, white ring | tabs / PWA / in-product — the product's scan blue spent as brand |
-| **Dark** (Figma direction) | `#0f172a` | cyan `#22d3ee` hammer + ring | marketing / letterhead alternates |
-
-- **`public/brand/hero-bright.svg` / `hero-dark.svg`** — hero (marketing,
-  letterhead, large-format only): the full mark plus a soft glow (blurred
-  duplicate, `feGaussianBlur` 18, opacity 0.55) and a subtle radial vignette.
-- **The glow layer never ships in the favicon/PWA exports.** They stay flat
-  fills — gradients and glow die at 16px. The hero is a separate file the
-  small sizes simply omit.
-- 16px QA (2026-09-06): both themes hold a bold hammer silhouette; dark
-  (cyan on near-black) actually reads slightly stronger at 16px than bright.
-  Bright stays the live app default because it is the product voice (scan
-  blue) and has months of shipped provenance; dark is one generator flag
-  away (`--theme dark`) if the owner flips.
-- Generate any theme: `python3 scripts/brand/generate-icon-assets.py
-  --theme bright|dark --out <dir>` — recut commands in the docstring.
+Flat fills, no gradients, no glow. In-app tokens unchanged (app stays light Kinetic Ledger).
 
 ## Files
 
 | File | Size | Purpose |
 |---|---|---|
+| `public/brand/icon.master.svg` | vector | **single source of truth** — variant groups `#cf-favicon / #cf-full / #cf-full-square / #cf-loading / #cf-mono` |
 | `public/favicon.png` | 64 | tab favicon — simplified: hammer + big green LED, **no ring** |
 | `public/icon.svg` | vector | SVG favicon, same simplified mark |
 | `public/icon-192.png` / `icon-512.png` | 192/512 | PWA any/maskable — full mark with ring |
@@ -92,6 +76,7 @@ Two themes ship side by side, each as a **glow hero + flat favicon pair**:
 | `public/brand/icon-dark-square.svg` | vector | dark-theme square/maskable master |
 | `public/brand/hero-bright.svg` | vector | hero, bright — mark + glow + vignette (marketing only) |
 | `public/brand/hero-dark.svg` | vector | hero, dark — neon glow + vignette (marketing only) |
+| `public/brand/hero-carbon.svg` | vector | **material hero** — carbon twill + aluminum + steel + forge-orange bore (`#cf-material`; marketing/app-store, ≥240px) |
 | `public/brand/lockup-horizontal.svg` | vector | mark + "Cycle Forge" (Inter 600) |
 | `public/brand/loading-mark.svg` | vector | loading pose source (mirrored inline in `BootSplash.tsx`) |
 

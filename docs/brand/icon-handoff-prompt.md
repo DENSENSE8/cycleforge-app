@@ -40,27 +40,31 @@ head, on a blue tile. It is a STATE SYSTEM, not a picture:
   compositor-safe, `prefers-reduced-motion` rests at the authored 45° pose).
   Mirror any pose change into `public/brand/loading-mark.svg`.
 
-## Canonical generator (single source of truth for geometry)
+## Canonical master (single source of truth)
 
-`scripts/brand/generate-icon-assets.py` — every asset regenerates from the
-numbers in its PALETTE/GEOMETRY blocks (512 grid). It currently reproduces
-the shipped favicon pixel-identically. Edit numbers → regenerate; do NOT
-hand-edit exported SVGs/PNGs.
+`public/brand/icon.master.svg` — ONE file, variant groups `#cf-favicon`
+(no ring, big LED), `#cf-full` (ring + LED), `#cf-full-square` (maskable,
+0.85 safe-zone scale), `#cf-loading` (amber clock-hand pose), `#cf-mono`
+(navy letterhead ink). Dark-theme art (`mark-dark.svg`, `icon-dark-square.svg`) is hand-authored.
+`hero-carbon.svg` derives from `#cf-material` (carbon/aluminum/steel, forge-
+orange bore) — material tier is ≥240px ONLY; ≤192px stays flat schematic.
 
 Iterate like this:
-1. Edit the generator (or add a `--theme` variant). Themes: `bright`
-   (shipped: blue #2563eb tile, #ea580c hammer) vs `dark` (the owner's Figma
-   direction: #0f172a ground, cyan #22d3ee mark + glow layer at hero sizes).
-2. `python3 scripts/brand/generate-icon-assets.py --out /tmp/cf-brand/out`
-3. Rasterize + QA (16px is the acceptance bar; presence beats anatomy):
-   `rsvg-convert -w 16/-w 32/-w 512` then eyeball or vision-QA a montage.
-   Build `magick montage` contact sheets; compare variants side by side.
-4. Recut into the repo (exact commands are in the generator's docstring):
-   public/favicon.png (64), public/icon.svg, icon-192/512, apple-touch-icon
-   (180), build/icon.png (1024), public/brand/*.
-5. Verify: dev server (`pnpm dev`, port 3050) serves assets 200 signed-out
+1. Edit the master (any vector tool; paste into Figma works, paste back out).
+2. `pnpm icon:sync` — regenerates public/icon.svg, favicon.png (64),
+   icon-192/512, apple-touch-icon (180), build/icon.png (1024),
+   brand/{loading-mark,mark,lockup-horizontal}.svg. All raster PNGs derive
+   via rsvg-convert (deterministic).
+3. `pnpm icon:check` — drift guard: fails if committed assets differ from
+   the master. Run before pushing.
+4. QA at 16px (the acceptance bar; presence beats anatomy):
+   `rsvg-convert -w 16` on the favicon variant, montage, eyeball or vision-QA.
+5. Keep the iron geometry (handle/collar/shaft/blunt tip) across all variants. Mirror any loading-pose change into the inline SVG in
+   `src/components/boot/BootSplash.tsx` (it animates via CSS `cf-boot-strike`
+   in `src/app/globals.css`; transform-only, reduced-motion safe).
+6. Verify: dev server (`pnpm dev`, port 3050) serves assets 200 signed-out
    (`src/proxy.ts` allowlists them); `/signin` renders; `npx eslint` +
-   `npx tsc --noEmit` clean; favicon visible in a driven browser tab.
+   `npx tsc --noEmit` clean.
 
 ## Hard rules
 

@@ -3,10 +3,15 @@
  *
  * GET /api/cron/notification-outbox?batch=50&maxBatches=10
  *
- * The async half of the Home subscription pipeline (ops_events trigger →
+ * The async half of the Home subscription pipeline (ops-event trigger →
  * outbox → worker → per-staff inbox). Loops bounded drain batches until the
  * queue is empty or maxBatches is hit, so a burst of receives can't run the
  * function past its duration budget.
+ *
+ * Tenancy: cross-org by design — drainNotificationOutbox claims outbox rows
+ * for every org on the owner pool (BYPASSRLS) and never reads the ops-event
+ * table itself: the DB trigger already copied those rows into
+ * notification_outbox, which is the only queue this worker touches.
  *
  * Auth: Vercel cron origin or CRON_SECRET bearer — the same gate as every other
  * /api/cron route. Cron routes are session-less by design (route-permissions

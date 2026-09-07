@@ -138,7 +138,7 @@ export class InventorySyncService {
       name: row.name,
     })));
 
-    const existingItems = await Promise.all(rows.map((row) => itemRepository.findByZohoId(row.item_id)));
+    const existingItems = await Promise.all(rows.map((row) => itemRepository.findByZohoId(row.item_id, this.organizationId)));
     const locations = await itemRepository.findLocationsByZohoIds(
       this.organizationId,
       Array.from(new Set(locationInputs.map((row) => row.zohoLocationId)))

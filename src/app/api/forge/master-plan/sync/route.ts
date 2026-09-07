@@ -8,7 +8,8 @@
  * Session callers need operations.plans.manage.
  *
  * Body (optional): { mdx?: string } — omit to read the live CRDT room.
- * Does NOT write cycle_forge_runs or user_reported_issues — plan tables only.
+ * Does NOT write the forge-run or user-issue tables — plan tables only, inside
+ * the bridge's own org-GUC-scoped tenant transaction.
  */
 
 import { NextRequest, NextResponse } from 'next/server';

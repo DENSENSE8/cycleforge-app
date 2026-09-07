@@ -4,12 +4,11 @@
  *                                Admin role rejects permission changes.
  * DELETE /api/admin/roles/[id] — only allowed when !is_system AND member_count == 0.
  *
- * Tenancy: `roles` is a GLOBAL table (no organization_id, RLS off) and
- * role-store.ts caches it process-wide, org-unaware. PATCH/DELETE therefore run
- * an interim relationship guard (callerOrgIsRelatedToRole) so a tenant can only
- * mutate roles it granted or created. STILL OPEN: the real fix is to give
- * `roles` an organization_id (or a per-org overlay) + an org-keyed cache —
- * handoff §3.3 [CRIT] "Global roles table".
+ * Tenancy: `roles` is ORG-SCOPED since 2026-09-06 (organization_id NOT NULL,
+ * UNIQUE (organization_id, key), RLS FORCEd; role-store caches per org). Every
+ * statement below carries the org conjunct, so a role id from another org
+ * reads as NOT_FOUND — indistinguishable from missing. The interim
+ * relatedness guard that used to approximate this is deleted.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -29,37 +28,6 @@ function idFromUrl(req: NextRequest): number | null {
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-/**
- * Enforces: the caller's tenant has some relationship to this global `roles` row
- * — a staff_roles grant on one of its staff, or a `role.created` audit entry
- * written by one of its staff. `roles` has no organization_id and role-store
- * caches it process-wide, so mutating an unrelated role silently rewrites
- * another tenant's permission model. Interim guard until `roles` is org-scoped.
- */
-async function callerOrgIsRelatedToRole(orgId: string, roleId: number): Promise<boolean> {
-  const r = await tenantQuery<{ related: boolean }>(
-    orgId,
-    `SELECT (
-         EXISTS (
-           SELECT 1
-             FROM staff_roles sr
-             JOIN staff s ON s.id = sr.staff_id
-            WHERE sr.role_id = $1
-              AND s.organization_id = $2
-         )
-         OR EXISTS (
-           SELECT 1
-             FROM auth_audit a
-             JOIN staff s ON s.id = a.staff_id
-            WHERE a.event = 'role.created'
-              AND (a.detail->>'roleId') = $1::TEXT
-              AND s.organization_id = $2
-         )
-       ) AS related`,
-    [roleId, orgId],
-  );
-  return r.rows[0]?.related === true;
-}
 
 function sanitizePermissions(raw: unknown): string[] {
   if (!Array.isArray(raw)) return [];
@@ -78,9 +46,9 @@ function sanitizePermissions(raw: unknown): string[] {
 export const GET = withAuth(async (req: NextRequest, ctx) => {
   const id = idFromUrl(req);
   if (!id) return NextResponse.json({ error: 'INVALID_ID' }, { status: 400 });
-  // `roles` is GLOBAL (no organization_id) — fetched without an org filter.
-  // Both the member_count and the member list are staff-derived, so they are
-  // scoped to THIS org through the org-owned `staff` parent of staff_roles.
+  // `roles` is org-scoped — the role row itself carries the org conjunct; a
+  // role id from another org reads as NOT_FOUND. Member counts and the
+  // member list are additionally scoped through the org-owned `staff` parent.
   const [roleR, membersR] = await withTenantTransaction(ctx.organizationId, async (client) => {
     const roleQ = client.query(
       `SELECT r.id, r.key, r.label, r.color, r.position, r.permissions, r.is_system,
@@ -95,7 +63,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
             WHERE s.organization_id = $2
             GROUP BY sr.role_id
          ) c ON c.role_id = r.id
-        WHERE r.id = $1`,
+        WHERE r.id = $1 AND r.organization_id = $2::uuid`,
       [id, ctx.organizationId],
     );
     const membersQ = client.query(
@@ -119,16 +87,16 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
   if (!id) return NextResponse.json({ error: 'INVALID_ID' }, { status: 400 });
 
   // Load the existing row so we can enforce the admin-role guardrail and
-  // compute a diff for the audit detail. `roles` is GLOBAL (no organization_id)
-  // — no org predicate; routed through the tenant connection for GUC parity.
-  const cur = await tenantQuery(ctx.organizationId, `SELECT id, key, is_system, permissions FROM roles WHERE id = $1`, [id]);
+  // compute a diff for the audit detail. Org conjunct: a role id from
+  // another org reads as NOT_FOUND.
+  const cur = await tenantQuery(
+    ctx.organizationId,
+    `SELECT id, key, is_system, permissions FROM roles
+      WHERE id = $1 AND organization_id = $2::uuid`,
+    [id, ctx.organizationId],
+  );
   const row = cur.rows[0] as { id: number; key: string; is_system: boolean; permissions: string[] } | undefined;
   if (!row) return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
-  // Interim cross-tenant guard (roles is global + process-wide cached): refuse
-  // ids this tenant has no relationship to, indistinguishable from missing.
-  if (!(await callerOrgIsRelatedToRole(ctx.organizationId, id))) {
-    return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
-  }
 
   const body = await req.json().catch(() => ({} as Record<string, unknown>));
   const sets: string[] = [];
@@ -166,10 +134,11 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
   if (sets.length === 0) return NextResponse.json({ error: 'NO_UPDATES' }, { status: 400 });
 
   sets.push(`updated_at = NOW()`);
-  params.push(id);
+  params.push(id, ctx.organizationId);
   const r = await tenantQuery(
     ctx.organizationId,
-    `UPDATE roles SET ${sets.join(', ')} WHERE id = $${params.length}
+    `UPDATE roles SET ${sets.join(', ')}
+      WHERE id = $${params.length - 1} AND organization_id = $${params.length}::uuid
      RETURNING id, key, label, color, position, permissions, is_system, created_at, updated_at`,
     params,
   );
@@ -193,10 +162,9 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
   const id = idFromUrl(req);
   if (!id) return NextResponse.json({ error: 'INVALID_ID' }, { status: 400 });
 
-  // `roles` is GLOBAL (no organization_id) — the role row is read without an
-  // org filter. The in-use gate, however, must count only THIS org's members
-  // (staff_roles → org-owned staff), so cross-tenant assignments don't leak
-  // into this admin's delete decision.
+  // Org conjunct on the role row: a role id from another org reads as
+  // NOT_FOUND. The in-use gate counts only THIS org's members
+  // (staff_roles → org-owned staff).
   const cur = await tenantQuery(
     ctx.organizationId,
     `SELECT r.id, r.key, r.is_system,
@@ -209,16 +177,11 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
           WHERE s.organization_id = $2
           GROUP BY sr.role_id
        ) c ON c.role_id = r.id
-      WHERE r.id = $1`,
+      WHERE r.id = $1 AND r.organization_id = $2::uuid`,
     [id, ctx.organizationId],
   );
   const row = cur.rows[0] as { id: number; key: string; is_system: boolean; member_count: number } | undefined;
   if (!row) return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
-  // Same interim cross-tenant guard as PATCH: a role this tenant never granted
-  // or created is not this tenant's to delete, even with admin.manage_roles.
-  if (!(await callerOrgIsRelatedToRole(ctx.organizationId, id))) {
-    return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
-  }
   if (row.is_system) {
     return NextResponse.json({ error: 'IS_SYSTEM', message: 'Built-in roles cannot be deleted.' }, { status: 409 });
   }
@@ -226,7 +189,11 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ error: 'ROLE_IN_USE', memberCount: row.member_count, message: 'Remove all members before deleting this role.' }, { status: 409 });
   }
 
-  await tenantQuery(ctx.organizationId, `DELETE FROM roles WHERE id = $1`, [id]);
+  await tenantQuery(
+    ctx.organizationId,
+    `DELETE FROM roles WHERE id = $1 AND organization_id = $2::uuid`,
+    [id, ctx.organizationId],
+  );
   invalidateRoleCache();
   await audit({
     staffId: ctx.staffId, sid: ctx.session?.sid ?? null,

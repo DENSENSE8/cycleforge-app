@@ -50,8 +50,10 @@ export const SESSION_SURFACE_ENGINE = {
   importTriageTool: 'src/lib/assistant/tools/import-triage-tools.ts',
   toolRegistry: 'src/lib/assistant/tools/index.ts',
   boardOccupant: 'src/components/session/session-panel-occupant.ts',
-  boardPanel: 'src/components/session/board/HomeBoardPanel.tsx',
-  boardTile: 'src/components/session/board/BoardTile.tsx',
+  missionPane: 'src/components/session/MissionPane.tsx',
+  triageLedger: 'src/components/session/TriageLedger.tsx',
+  focusWake: 'src/components/session/use-focus-wake.ts',
+  floorFeed: 'src/components/session/useFloorFeed.ts',
   boardRows: 'src/components/session/board/board-tiles.ts',
   boardRoute: 'src/app/api/home-board/route.ts',
   gapTool: 'src/lib/assistant/tools/roi-gap-tools.ts',
@@ -92,8 +94,32 @@ export const SESSION_SURFACE_CONTRACT = {
   triageRenderer: 'export function ImportTriageArtifact',
   triageImportEndpoint: "fetch('/api/orders/import-csv'",
   triagePasteStrip: 'data-csv-helper',
-  /** Law 9 — one mode dropdown + a real + menu; tasks route through the desk API. */
-  modeDropdown: 'composer-mode-dropdown',
+  /**
+   * Law 9 (rewritten 2026-09-06) — ONE COMPOSER DISPLAY.
+   *
+   * The home mouth is the assistant's, and it honors exactly one destination:
+   * the model. It therefore
+   *   • declares its mode set (`modes={['ask']}`) instead of inheriting the
+   *     station's shared Unbox | Ticket | Ask session mode,
+   *   • owns the field (`askOwnedBySurface`), so ONE draft is displayed,
+   *     committed, and seeded — never a label draft behind an ask draft behind
+   *     a ticket draft in the same textarea,
+   *   • NAMES that mode on row two rather than offering a picker whose other
+   *     rows commit nowhere, and
+   *   • derives the row's commit control from the VISIBLE field, so an empty
+   *     composer always offers the microphone and a typed one always offers
+   *     send.
+   *
+   * The superseded law required a three-mode dropdown on this surface. It
+   * shipped a Zendesk claim body and a sticker note on the assistant's home
+   * screen, reachable with Shift+Tab, with a send button reporting a draft the
+   * operator could not see.
+   */
+  composerOneMode: "modes={['ask']}",
+  composerOneField: 'askOwnedBySurface',
+  composerModeNamed: 'data-testid="composer-mode-name"',
+  composerModeSet: 'const honoredModes',
+  composerVisibleFieldCommit: 'hasText: value.trim().length > 0',
   plusMenuContent: 'plusMenuContent',
   plusTaskFile: 'src/components/session/SessionPlusMenu.tsx',
   plusTaskApi: "fetch('/api/ops-plans/tasks'",
@@ -101,19 +127,75 @@ export const SESSION_SURFACE_CONTRACT = {
   ringOwned: 'inlineRing',
   ringList: 'data-testid="model-context-list"',
   /**
-   * Law 11 — the right pane has ONE occupant. The board and the artifact view
-   * are alternatives in a single switch, never siblings competing for the
-   * column, and the board is a pane occupant on `/` rather than a route, so
-   * opening it cannot drop the live thread. ⌘B is the routed verb.
+   * Law 15 (2026-09-06) — THE FIRST ROW IS THE OPERATION.
+   *
+   * The row above the composer states what is stuck across the four pillars
+   * this platform integrates — support, order triage, refurbishment,
+   * fulfillment — worst first, and every item seeds the question its own tool
+   * authored. Constraints that make it an instrument rather than decoration:
+   *
+   *   • its numbers come from `/api/home-board`, i.e. registered tools through
+   *     `runAssistantTool`, so the row, the board rail and the model's answer
+   *     are one query with one permission check. No first-row endpoint.
+   *   • ranking is LANE-first, not magnitude-first: a customer waiting outranks
+   *     any amount of idle stock. The lanes live in one pure, tested module.
+   *   • every item carries a `question` and a click SEEDS it — never sends.
+   *   • the row reads. It never posts, mutates, or writes.
+   */
+  pulseLedgerMarker: 'data-testid="triage-ledger"',
+  pulseRowOnPick: 'onPick',
+  pulseLanes: 'const LANE_RANK',
+  pulseBoardFeed: "fetch('/api/home-board'",
+  pulseTelemetryTotals: 'pulsePillarTotals',
+  /**
+   * Law 17 (2026-09-06) — THE LEDGER IS AN INSTRUMENT.
+   *
+   * The ranked list is the machine's panel, not a poster. Every row is the
+   * same height on the same six-column grid, one typographic voice (sentence
+   * titles beside mono tabular figures in fixed columns), and rank is
+   * POSITION plus one gilt accent — never font size. The superseded first
+   * row mixed 24px serif, ~11px pills and a caption on one baseline; that
+   * mixed-voice failure is what this law exists to prevent. The WHY rides a
+   * HoverTooltip (cursor-morph on the desk) — native `title` tooltips are
+   * the regression, not the convention.
+   */
+  ledgerRowGrid: 'grid-cols-[3ch',
+  ledgerMonoNumerals: 'tabular-nums',
+  ledgerWhy: 'HoverTooltip',
+  /**
+   * Law 11 (v2 2026-09-06) — the right pane has ONE occupant, and its
+   * resting face is the MISSION pane (telemetry strip over the live floor
+   * feed). Artifacts push it aside; closing one returns to the floor. The
+   * pane is state on `/`, never a route, so nothing here can drop the live
+   * thread. ⌘B is the routed verb. The mission plane is READ-only: the
+   * telemetry cells' whole behavior is seeding a question
+   * (`requestComposerSeed`), and the floor feed renders — no hover verbs,
+   * no links, no writes.
    */
   paneOccupantType: "export type SessionPanelOccupant = 'artifact' | 'board'",
-  paneOccupantSwitch: "occupant === 'board'",
+  paneOccupantSwitch: "occupant === 'artifact'",
   boardVerbChord: "e.key.toLowerCase() === 'b'",
-  boardRailMarker: 'data-board-rail',
-  boardTileMarker: 'data-board-tile',
-  /** Law 11 — tiles move with the keyboard: ←/→ across the rail, e expands. */
-  boardKeyboardRail: "event.key === 'ArrowRight'",
-  boardKeyboardExpand: "event.key === 'e'",
+  missionPaneMarker: 'data-testid="mission-pane"',
+  missionTelemetryMarker: 'data-testid="mission-telemetry"',
+  missionFeedMarker: 'data-testid="mission-feed"',
+  missionSeedVerb: 'requestComposerSeed',
+  /**
+   * Law 16 (2026-09-06) — THE POWER-UP.
+   *
+   * The greeting is the RESTING face; the mission frame is EARNED by
+   * activity (`useFocusWake`: pointer travel, key, touch). The transition is
+   * the surface's ONE choreographed moment — the composer is a single node
+   * in both faces, so motion `layout` tweens the room together and no draft,
+   * voice state or focus is ever remounted away. Reduced motion collapses
+   * the choreography to a hard swap. A thread with messages PINS focus;
+   * stillness with an empty thread settles back to the question. The
+   * greeting is never deleted — it is the room's honest off state.
+   */
+  wakeHook: 'useFocusWake',
+  wakePinnedThread: 'pinned: started',
+  wakeOneComposer: 'data-testid="session-composer-dock"',
+  wakeGreetingKept: 'function WelcomeGreeting',
+  wakeReducedHardSwap: 'layout={!reduced}',
   /**
    * Law 12 — the board and the agent read the SAME registered tools. The route
    * dispatches through `runAssistantTool`, so a tile cannot drift from an

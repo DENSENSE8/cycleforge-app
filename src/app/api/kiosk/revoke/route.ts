@@ -1,7 +1,7 @@
 /**
  * POST /api/kiosk/revoke
  *
- * Manager (staff session, `walk_in.enroll_kiosk`) revokes a lost/retired kiosk
+ * Manager (staffed session, `walk_in.enroll_kiosk`) revokes a lost/retired kiosk
  * tablet. Org-scoped: a manager can only revoke a device in their own org. The
  * device token dies server-side immediately (next `withKioskAuth` call → 401);
  * no staff-password rotation is involved.
@@ -12,7 +12,7 @@ import { z } from 'zod';
 import { withAuth } from '@/lib/auth/withAuth';
 import { revokeKioskDevice } from '@/lib/auth/kiosk-device';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
-import pool from '@/lib/db';
+import { withTenantTransaction } from '@/lib/tenancy/db';
 
 export const runtime = 'nodejs';
 
@@ -31,12 +31,16 @@ export const POST = withAuth(
       return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
     }
 
-    await recordAudit(pool, ctx, req, {
-      source: 'kiosk',
-      action: AUDIT_ACTION.KIOSK_REVOKED,
-      entityType: AUDIT_ENTITY.KIOSK_DEVICE,
-      entityId: parsed.data.deviceId,
-    });
+    // Audit write under the tenant GUC; the revoke UPDATE itself runs in
+    // revokeKioskDevice's own tenant transaction (GUC + org conjunct).
+    await withTenantTransaction(ctx.organizationId, (client) =>
+      recordAudit(client, ctx, req, {
+        source: 'kiosk',
+        action: AUDIT_ACTION.KIOSK_REVOKED,
+        entityType: AUDIT_ENTITY.KIOSK_DEVICE,
+        entityId: parsed.data.deviceId,
+      }),
+    );
 
     return NextResponse.json({ ok: true });
   },

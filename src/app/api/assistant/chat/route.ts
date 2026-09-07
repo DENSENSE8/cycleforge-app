@@ -4,6 +4,10 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { checkRateLimitForOrg } from '@/lib/api-guard';
 import { runAssistantTurn, type AssistantEmit } from '@/lib/assistant/agent-loop';
 import { makeGrokLoopDeps, runGrokAssistantTurn } from '@/lib/assistant/grok-agent-loop';
+import {
+  chooseAssistantMouth,
+  type AssistantMouthInputs,
+} from '@/lib/assistant/assistant-mouth';
 import { createTenantSession } from '@/lib/assistant/tenant-session';
 import {
   enrichAssistantTurn,
@@ -16,7 +20,7 @@ import type { AssistantToolCtx } from '@/lib/assistant/tools/types';
 import { aiRequestHeaders, isSelfHostedAiRuntime } from '@/lib/ai/provider';
 import { resolveOrgAiConfig, resolveOrgAnthropicBrain, type OrgAiConfig } from '@/lib/ai/org-provider';
 import { isProviderReachableCached } from '@/lib/ai/provider-reachability';
-import { ensureGrokChatConfig, type GrokChatConfig } from '@/lib/integrations/grok/oauth';
+import { ensureGrokChatConfig } from '@/lib/integrations/grok/oauth';
 import { CARTON_ASK_SYSTEM } from '@/lib/assistant/carton-ask-brief';
 import { ORG_CHAT_SYSTEM } from '@/lib/assistant/org-chat-facts';
 import { logger } from '@/lib/observability/logger';
@@ -37,7 +41,8 @@ export const maxDuration = 300;
  * inside `start()`, after the first `meta` frame is on the wire. Moving any of
  * them back out re-introduces seconds of blank bubble.
  *
- * WHICH MOUTH SPEAKS (Ask plan §17.4, PR 1):
+ * WHICH MOUTH SPEAKS — `chooseAssistantMouth` (assistant-mouth.ts) decides;
+ * this route only resolves the inputs and runs the loop it names:
  *   1. local_ops        deterministic answer, no model at all.
  *   2. classified facts enrichment already put the numbers in the message
  *                       (carton brief / workspace facts), so the turn is a
@@ -45,12 +50,17 @@ export const maxDuration = 300;
  *                       This is the speed king and must not become a tool
  *                       round — it is why "how many packages did I pack this
  *                       week" answers in under two seconds.
- *   3. Grok connected   runGrokAssistantTurn — the full OpenAI-wire tool loop.
- *   4. else Anthropic   runAssistantTurn (the org's key, else the platform's).
- *   5. else OpenAI-wire streamHermesCompletion, mouth-only as before.
+ *   3. wire-tools       runGrokAssistantTurn — the provider-agnostic
+ *                       OpenAI-wire tool loop. EVERY reachable member of the
+ *                       chain gets it: a connected Grok session, the tenant's
+ *                       self-hosted slot, and (2026-09-06) `ai_gateway` /
+ *                       `openai` / `anthropic`-compat / `platform`, which used
+ *                       to fall through to a mouth-only stream that could not
+ *                       call a verb or paint the artifact canvas at all.
+ *   4. anthropic-tools  runAssistantTurn — the native tool-use protocol.
  *
  * The old `skillNeedsTools` split is gone: a page skill naming propose_mutation
- * no longer has to be handed to Anthropic, because Grok can now call tools.
+ * no longer has to be handed to Anthropic, because every mouth calls tools.
  *
  * org/staff/permissions come from ctx — never the body.
  */
@@ -91,27 +101,11 @@ function hermesFallbackForced(): boolean {
   return flag === '1' || flag === 'true' || flag === 'yes';
 }
 
-interface ResolvedProviders {
-  grokConfig: GrokChatConfig | null;
-  hasAnthropic: boolean;
-  fallbackConfig: OrgAiConfig | null;
-  useHermes: boolean;
-  /**
-   * A SELF-HOSTED OpenAI-wire endpoint that can run the full tool loop.
-   *
-   * The loop is provider-agnostic (`postRound` takes an `AiProviderConfig`),
-   * so a local Ollama/MLX server with a tool-calling model answers the same
-   * questions Grok and Anthropic do, for free. This is separate from
-   * `fallbackConfig` because that one also feeds the MOUTH-ONLY phrasing round
-   * — routing a tool question there means the model cannot call anything and
-   * has to invent the answer, which is worse than an error.
-   */
-  localToolConfig: OrgAiConfig | null;
-}
+/** Everything the ladder needs that costs I/O to learn. */
+type ResolvedProviders = Omit<AssistantMouthInputs, 'classifiedFacts'>;
 
 /**
- * Which mouth this org can speak with: three DB reads and a live network
- * probe.
+ * Resolve the ladder's inputs: three DB reads and a live network probe.
  *
  * This runs INSIDE the SSE stream, never before it. It used to be the whole of
  * time-to-first-byte — the operator sat in front of an empty bubble for the
@@ -119,19 +113,22 @@ interface ResolvedProviders {
  * reachability probe, and the probe's worst case (a black-holed gateway) is
  * also its slowest. Nothing here is needed to write the first `meta` frame, so
  * nothing here gets to hold it up.
+ *
+ * The DECISION is not here. It is `chooseAssistantMouth`, so that the one
+ * property that matters — a reachable provider is never answered by a mouth
+ * that cannot call a tool — is a unit test instead of four `if` blocks buried
+ * in a stream closure.
  */
 async function resolveAssistantProviders(organizationId: string): Promise<ResolvedProviders> {
   // SuperGrok subscription beats metered Anthropic/OpenAI keys: Ask is the
   // reason the tenant connected Grok. Refresh happens here so a stale host
   // import does not 401 the first turn.
   const grokConfig = await ensureGrokChatConfig(organizationId);
-  // Grok now runs the tool loop (PR 1), so a connected session needs no
-  // Anthropic brain at all — not even for a page skill with write verbs. That
-  // was the `skillNeedsTools` split, and it spent Anthropic credits the
-  // operator connected Grok to avoid.
+  // Grok runs the tool loop, so a connected session needs no Anthropic brain
+  // at all — not even for a page skill with write verbs. That was the
+  // `skillNeedsTools` split, and it spent Anthropic credits the operator
+  // connected Grok to avoid.
   const brain = grokConfig ? null : await resolveOrgAnthropicBrain(organizationId);
-  const hasAnthropic = brain !== null;
-  const forceHermes = hermesFallbackForced();
   // Resolve the chain UNCONDITIONALLY (2026-09-06). It used to be gated on
   // `!hasAnthropic || forceHermes`, which made Anthropic a hard-coded
   // preference: on any box carrying ANTHROPIC_API_KEY — every dev one — a
@@ -139,26 +136,19 @@ async function resolveAssistantProviders(organizationId: string): Promise<Resolv
   // work without spending metered credits. The ORDER preference
   // (`aiProviderSequence`, local-first by default) is the thing that decides,
   // not the presence of one vendor's key.
-  const fallbackConfig: OrgAiConfig | null =
+  const chatConfig: OrgAiConfig | null =
     grokConfig ?? (await resolveOrgAiConfig(organizationId, 'chat'));
   // The probe is memoized per base URL (`provider-reachability`): the answer
   // does not change between two messages typed a minute apart, and paying a
   // network round-trip per turn is what made this block expensive.
-  const fallbackReachable =
-    fallbackConfig !== null && (await isProviderReachableCached(fallbackConfig));
-  // A self-hosted endpoint gets the TOOL loop, not the mouth-only path: it is
-  // the free way to exercise every registered verb. `ollama` is the house slot
-  // for any OpenAI-compatible local server (Ollama, MLX, LM Studio) — see
-  // provider-order.ts.
-  const localToolConfig =
-    fallbackConfig !== null && fallbackConfig.source === 'ollama' && fallbackReachable
-      ? fallbackConfig
-      : null;
-  // The mouth-only OpenAI-wire path. With Grok connected it now serves ONLY
-  // the classified-facts phrasing round (decided per turn below).
-  const useHermes =
-    grokConfig !== null || ((forceHermes || !hasAnthropic) && fallbackReachable);
-  return { grokConfig, hasAnthropic, fallbackConfig, useHermes, localToolConfig };
+  const chatReachable = chatConfig !== null && (await isProviderReachableCached(chatConfig));
+  return {
+    grokConfig,
+    hasAnthropic: brain !== null,
+    chatConfig,
+    chatReachable,
+    forceWireFallback: hermesFallbackForced(),
+  };
 }
 
 async function streamHermesCompletion(args: {
@@ -396,9 +386,20 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         }
 
         const [providers, history] = await resolving;
-        const { grokConfig, hasAnthropic, fallbackConfig, useHermes, localToolConfig } = providers;
 
-        if (!hasAnthropic && !useHermes && !localToolConfig) {
+        const voiceSystem =
+          prepared.voice === 'carton'
+            ? CARTON_ASK_SYSTEM
+            : prepared.voice === 'org_chat'
+              ? ORG_CHAT_SYSTEM
+              : undefined;
+
+        const mouth = chooseAssistantMouth({
+          ...providers,
+          classifiedFacts: voiceSystem !== undefined,
+        });
+
+        if (mouth.kind === 'unconfigured') {
           // This used to be a 503. It cannot be one any more — the response
           // headers left with the first `meta` frame — and that is an upgrade,
           // not a compromise: the client renders an `error` event straight
@@ -418,53 +419,36 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           return;
         }
 
-        // The real mouth, now that it is known.
+        // The real mouth, now that it is known. It names the PROVIDER, not the
+        // transport: every managed endpoint used to report `hermes` because
+        // they all shared the mouth-only path, which made a gateway turn and a
+        // local turn indistinguishable in the log.
         write('meta', {
           sessionId,
-          provider: grokConfig
-            ? 'grok'
-            : localToolConfig
-              ? localToolConfig.source
-              : hasAnthropic
-                ? 'anthropic'
-                : 'hermes',
+          provider: mouth.kind === 'anthropic-tools' ? 'anthropic' : mouth.config.source,
         });
-
-        const voiceSystem =
-          prepared.voice === 'carton'
-            ? CARTON_ASK_SYSTEM
-            : prepared.voice === 'org_chat'
-              ? ORG_CHAT_SYSTEM
-              : undefined;
 
         // A classified turn already HAS its numbers in the message. Phrasing
         // them is one completion with no tools — the sub-two-second path. It
-        // must not be turned into a tool round for the sake of uniformity.
-        //
-        // But it must not STEAL a turn from the tool loop either: with
-        // `local-first`, `fallbackConfig` IS the local model, so every carton /
-        // org_chat turn was routed mouth-only — no tools, and the model
-        // inventing whatever the enrichment did not already carry. When a local
-        // tool loop is available it wins; the phrasing shortcut is for the
-        // managed mouth (Grok/platform) it was written for.
-        const phrasingOnly =
-          voiceSystem !== undefined && useHermes && fallbackConfig !== null && localToolConfig === null;
-        if (phrasingOnly) {
-          const hermes = await streamHermesCompletion({
+        // must not be turned into a tool round for the sake of uniformity, and
+        // `chooseAssistantMouth` is where that exception is scoped: it yields
+        // to a self-hosted loop, which is free and can verify the numbers.
+        if (mouth.kind === 'phrasing') {
+          const phrased = await streamHermesCompletion({
             sessionId,
             enrichedMessage: prepared.userMessage,
             write: (event, data) => {
               if (event === 'delta') markFirstToken();
               write(event, data);
             },
-            config: fallbackConfig!,
+            config: mouth.config,
             system: voiceSystem,
           });
-          if (hermes.text) {
-            await persistReply(hermes.text);
+          if (phrased.text) {
+            await persistReply(phrased.text);
           }
-          write('done', { ok: hermes.ok, turns: 1, mode: 'hermes' });
-          timing('hermes_phrasing', { voice: prepared.voice });
+          write('done', { ok: phrased.ok, turns: 1, mode: 'phrasing' });
+          timing('phrasing', { voice: prepared.voice, provider: mouth.config.source });
           return;
         }
 
@@ -486,104 +470,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         // inside the tools themselves.
         const writeTools = buildWriteTools(sessionId, undefined, ctx.permissions);
         const toolDeps = { query: session.query };
-
-        if (grokConfig) {
-          const grokDeps = await makeGrokLoopDeps(ctx.organizationId, sessionId, {
-            config: grokConfig,
-          });
-          const result = await runGrokAssistantTurn(
-            {
-              ctx: toolCtx,
-              history,
-              userMessage: prepared.userMessage,
-              context: context ?? null,
-              voiceOverlay: voiceSystem ?? null,
-              writeTools,
-              toolDeps,
-              runToolBatch: session.runBatch,
-              emit,
-            },
-            grokDeps,
-          );
-          if (result.text) {
-            await persistReply(result.text);
-          }
-          write('done', { ok: result.ok, turns: result.turns, mode: 'grok' });
-          timing('grok', {
-            turns: result.turns,
-            tools_used: result.toolsUsed,
-            tools_advertised: result.toolsAdvertised,
-            advertised_tools: result.advertisedToolNames,
-            wire_bytes: result.wireBytes,
-          });
-          return;
-        }
-
-        // The FREE tool loop: a self-hosted OpenAI-wire model runs the same
-        // registered verbs Grok and Anthropic do. It sits above `useHermes`
-        // deliberately — the mouth-only path cannot call a tool, so sending a
-        // "what is the packing pace" question there would make the model
-        // invent the number instead of reading it.
-        //
-        // `resolveConfig` is overridden because the loop's default re-resolve
-        // on a 401 is `ensureGrokChatConfig`; a local endpoint has nothing to
-        // do with Grok credentials and must not trigger a token refresh.
-        if (localToolConfig) {
-          const localDeps = await makeGrokLoopDeps(ctx.organizationId, sessionId, {
-            config: localToolConfig,
-            resolveConfig: async () => localToolConfig,
-          });
-          const result = await runGrokAssistantTurn(
-            {
-              ctx: toolCtx,
-              history,
-              userMessage: prepared.userMessage,
-              context: context ?? null,
-              voiceOverlay: voiceSystem ?? null,
-              writeTools,
-              toolDeps,
-              runToolBatch: session.runBatch,
-              emit,
-            },
-            localDeps,
-          );
-          if (result.text) {
-            await persistReply(result.text);
-          }
-          write('done', { ok: result.ok, turns: result.turns, mode: localToolConfig.source });
-          timing('local_tool_loop', {
-            provider: localToolConfig.source,
-            model: localToolConfig.model,
-            turns: result.turns,
-            tools_used: result.toolsUsed,
-            tools_advertised: result.toolsAdvertised,
-            advertised_tools: result.advertisedToolNames,
-            wire_bytes: result.wireBytes,
-          });
-          return;
-        }
-
-        if (useHermes) {
-          const hermes = await streamHermesCompletion({
-            sessionId,
-            enrichedMessage: prepared.userMessage,
-            write: (event, data) => {
-              if (event === 'delta') markFirstToken();
-              write(event, data);
-            },
-            // `useHermes` is only true when this resolved non-null.
-            config: fallbackConfig!,
-            system: voiceSystem,
-          });
-          if (hermes.text) {
-            await persistReply(hermes.text);
-          }
-          write('done', { ok: hermes.ok, turns: 1, mode: 'hermes' });
-          timing('hermes');
-          return;
-        }
-
-        const result = await runAssistantTurn({
+        const turnArgs = {
           ctx: toolCtx,
           history,
           userMessage: prepared.userMessage,
@@ -593,13 +480,45 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
           toolDeps,
           runToolBatch: session.runBatch,
           emit,
-        });
+        };
 
+        if (mouth.kind === 'anthropic-tools') {
+          const result = await runAssistantTurn(turnArgs);
+          if (result.text) {
+            await persistReply(result.text);
+          }
+          write('done', { ok: result.ok, turns: result.turns, mode: 'anthropic' });
+          timing('anthropic', { turns: result.turns, tools_used: result.toolsUsed });
+          return;
+        }
+
+        // ONE call site for the OpenAI wire, for EVERY provider on it. There
+        // used to be three blocks here: Grok, the self-hosted slot, and a
+        // mouth-only stream beside them — and the triplication is precisely
+        // what let the third one keep advertising no tools while the other two
+        // ran the full registry. A question about the packing pace sent there
+        // could not read the number, so the model invented it.
+        const wireDeps = await makeGrokLoopDeps(ctx.organizationId, sessionId, {
+          config: mouth.config,
+          // A pinned endpoint has no OAuth session to rotate, so the loop's
+          // default 401 re-resolve (`ensureGrokChatConfig`) must not fire —
+          // only a connected Grok session is `refreshable`.
+          ...(mouth.refreshable ? {} : { resolveConfig: async () => mouth.config }),
+        });
+        const result = await runGrokAssistantTurn(turnArgs, wireDeps);
         if (result.text) {
           await persistReply(result.text);
         }
-        write('done', { ok: result.ok, turns: result.turns, mode: 'anthropic' });
-        timing('anthropic', { turns: result.turns, tools_used: result.toolsUsed });
+        write('done', { ok: result.ok, turns: result.turns, mode: mouth.config.source });
+        timing('wire_tool_loop', {
+          provider: mouth.config.source,
+          model: mouth.config.model,
+          turns: result.turns,
+          tools_used: result.toolsUsed,
+          tools_advertised: result.toolsAdvertised,
+          advertised_tools: result.advertisedToolNames,
+          wire_bytes: result.wireBytes,
+        });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         write('error', { message: msg });

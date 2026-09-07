@@ -1,10 +1,20 @@
 export type PackTier = 'SMALL' | 'MEDIUM' | 'LARGE';
 
-/** Operational defaults aligned with USAV refurb pack lanes (minutes per box). */
+/**
+ * The PACK STANDARD — minutes of attended work one box of each tier is
+ * expected to take. Owner-declared 2026-09-06 (was 5 / 14 / 45): a small item
+ * is five minutes, a medium item is fifteen, a big one is an hour.
+ *
+ * This is the single source of truth for every earned-minute number in the
+ * product: the packer KPI rollup, the per-scan packing report, the FBA
+ * fillable-units estimate, and the `standards[]` block printed on the face of
+ * every operator report so the owner can audit the arithmetic rather than
+ * trust it. Change it here and every one of those moves together.
+ */
 export const DEFAULT_TIER_MINUTES: Record<PackTier, number> = {
   SMALL: 5,
-  MEDIUM: 14,
-  LARGE: 45,
+  MEDIUM: 15,
+  LARGE: 60,
 };
 
 type ClassifyInput = {

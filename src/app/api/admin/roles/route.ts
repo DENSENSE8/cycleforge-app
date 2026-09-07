@@ -44,9 +44,9 @@ function partitionPermissions(raw: unknown): { valid: string[]; unknown: string[
 }
 
 export const GET = withAuth(async (_req: NextRequest, ctx) => {
-  // `roles` is a GLOBAL system table (no organization_id) — it is not org-scoped.
-  // Member counts, however, MUST only count staff in THIS org: staff_roles is a
-  // global junction, so we scope through the org-owned `staff` parent.
+  // `roles` is org-scoped since 2026-09-06 — the outer query carries the org
+  // conjunct, and member counts count only THIS org's staff through the
+  // org-owned `staff` parent of staff_roles.
   const r = await tenantQuery(
     ctx.organizationId,
     `SELECT r.id, r.key, r.label, r.color, r.position, r.permissions, r.is_system,
@@ -60,6 +60,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
           WHERE s.organization_id = $1
           GROUP BY sr.role_id
        ) c ON c.role_id = r.id
+      WHERE r.organization_id = $1::uuid
       ORDER BY r.position ASC, r.id ASC`,
     [ctx.organizationId],
   );
@@ -89,16 +90,15 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   }
 
   const position = Number.isFinite(Number(positionRaw)) ? Math.max(0, Math.floor(Number(positionRaw))) : 500;
-
   try {
-    // `roles` is a GLOBAL system table (no organization_id) — do NOT stamp an
-    // org on the row. Routed through the tenant connection only for GUC parity.
+    // `roles` is org-scoped — the row is stamped with the caller's org; the
+    // UNIQUE (organization_id, key) constraint makes key-collisions per-org.
     const r = await tenantQuery(
       ctx.organizationId,
-      `INSERT INTO roles (key, label, color, position, permissions, is_system)
-       VALUES ($1, $2, $3, $4, $5::TEXT[], FALSE)
+      `INSERT INTO roles (organization_id, key, label, color, position, permissions, is_system)
+       VALUES ($1::uuid, $2, $3, $4, $5, $6::TEXT[], FALSE)
        RETURNING id, key, label, color, position, permissions, is_system, created_at, updated_at`,
-      [key, label, color, position, permissions],
+      [ctx.organizationId, key, label, color, position, permissions],
     );
     const created = r.rows[0];
     invalidateRoleCache();

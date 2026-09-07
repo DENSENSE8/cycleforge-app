@@ -78,6 +78,19 @@ test('addPin prepends and preserves exact href', () => {
   assert.equal(getSettings().pinned[0]!.label, 'Receiving');
 });
 
+test('sessionId survives sanitize + addPin, absent when unset (Feature 3 model B)', () => {
+  const out = sanitizePinned([
+    { id: '1', label: 'Shipping', href: '/shipping', addedAt: 1, sessionId: 'oc-abc' },
+    { id: '2', label: 'Products', href: '/products', addedAt: 2 },
+  ]);
+  assert.equal(out[0]!.sessionId, 'oc-abc');
+  assert.equal(out[1]!.sessionId, undefined);
+
+  const { result } = addPin({ label: 'Sourcing', href: '/sourcing', sessionId: 'oc-xyz' });
+  assert.equal(result, 'added');
+  assert.equal(getSettings().pinned[0]!.sessionId, 'oc-xyz');
+});
+
 test('hydratePinned replaces local order without duplicating', () => {
   addPin({ label: 'A', href: '/a' });
   addPin({ label: 'B', href: '/b' });
@@ -113,6 +126,15 @@ test('insertPin accepts Media Library', () => {
   // themselves, and it leaves the top group when they do (pagesNotPinned).
   insertPin({ label: 'Media Library', href: '/ops/photos' });
   assert.deepEqual(getSettings().pinned.map((p) => p.href), ['/ops/photos']);
+});
+
+test('insertPin keeps the session binding — the undo path re-pins through it', () => {
+  // The defect this pins: `insertPin` took no `sessionId`, so taking back an
+  // accidental unpin handed the thread back as a bare Home row (2026-09-07).
+  insertPin({ label: 'Packing pace', href: '/?session=oc-abc', sessionId: 'oc-abc' }, 0);
+  const restored = getSettings().pinned[0]!;
+  assert.equal(restored.href, '/?session=oc-abc');
+  assert.equal(restored.sessionId, 'oc-abc');
 });
 
 test('reorderPins respects id order', () => {

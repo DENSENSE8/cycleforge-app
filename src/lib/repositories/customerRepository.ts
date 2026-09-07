@@ -1,6 +1,6 @@
 import { db } from '@/lib/drizzle/db';
 import { customers } from '@/lib/drizzle/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 
 export interface UpsertCustomerInput {
   organizationId: string;
@@ -30,29 +30,41 @@ export interface UpsertCustomerInput {
 }
 
 export interface CustomerRepository {
-  findById(id: number): Promise<typeof customers.$inferSelect | null>;
-  findByEmail(email: string): Promise<typeof customers.$inferSelect | null>;
+  /** Org-scoped: an id lookup must never resolve another tenant's row. */
+  findById(id: number, orgId: string): Promise<typeof customers.$inferSelect | null>;
+  findByEmail(email: string, orgId: string): Promise<typeof customers.$inferSelect | null>;
   upsert(input: UpsertCustomerInput): Promise<typeof customers.$inferSelect>;
 }
 
 export class DrizzleCustomerRepository implements CustomerRepository {
-  async findById(id: number) {
-    const rows = await db.select().from(customers).where(eq(customers.id, id)).limit(1);
+  async findById(id: number, orgId: string) {
+    const rows = await db.select().from(customers)
+      .where(and(eq(customers.id, id), eq(customers.organizationId, orgId)))
+      .limit(1);
     return rows[0] ?? null;
   }
 
-  async findByEmail(email: string) {
-    const rows = await db.select().from(customers).where(eq(customers.email, email)).limit(1);
+  async findByEmail(email: string, orgId: string) {
+    const rows = await db.select().from(customers)
+      .where(and(eq(customers.email, email), eq(customers.organizationId, orgId)))
+      .limit(1);
     return rows[0] ?? null;
   }
 
   async upsert(input: UpsertCustomerInput) {
+    // Match keys are org-scoped: a colliding email / zohoContactId / orderId
+    // across two orgs must never migrate or overwrite another tenant's
+    // customer row (audit 2026-09-06 — reachable from OrderSyncService on an
+    // attacker-chosen buyer email).
     const match = input.zohoContactId
-      ? await db.select().from(customers).where(eq(customers.zohoContactId, input.zohoContactId)).limit(1)
+      ? await db.select().from(customers)
+          .where(and(eq(customers.zohoContactId, input.zohoContactId), eq(customers.organizationId, input.organizationId))).limit(1)
       : input.email
-        ? await db.select().from(customers).where(eq(customers.email, input.email)).limit(1)
+        ? await db.select().from(customers)
+            .where(and(eq(customers.email, input.email), eq(customers.organizationId, input.organizationId))).limit(1)
         : input.orderId
-          ? await db.select().from(customers).where(eq(customers.orderId, input.orderId)).limit(1)
+          ? await db.select().from(customers)
+              .where(and(eq(customers.orderId, input.orderId), eq(customers.organizationId, input.organizationId))).limit(1)
           : [];
 
     const existing = match[0] ?? null;

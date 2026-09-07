@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { PO_GMAIL_SCOPE, assertDogfoodMailbox, PoGmailWrongTenantError } from '@/lib/po-gmail/client';
 import { upsertIntegrationCredentials, type GmailCredentials } from '@/lib/integrations/credentials';
@@ -92,32 +91,13 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
 
     const expiresAtMs = Date.now() + (tokens.expires_in - 60) * 1000;
-    const expiresAt = new Date(expiresAtMs).toISOString();
 
-    // Legacy home (google_oauth_tokens) — kept during the vault migration so
-    // the legacy fallback read path keeps working. Do not remove until the
-    // token-SoT cutover retires the table.
-    await pool.query(
-      `INSERT INTO google_oauth_tokens
-         (provider, account_email, scope, refresh_token, access_token, expires_at,
-          connected_by_staff_id, needs_reconnect, needs_reconnect_reason)
-       VALUES ('po_gmail', $1, $2, $3, $4, $5, $6, FALSE, NULL)
-       ON CONFLICT (provider) DO UPDATE
-         SET account_email = EXCLUDED.account_email,
-             scope = EXCLUDED.scope,
-             refresh_token = EXCLUDED.refresh_token,
-             access_token = EXCLUDED.access_token,
-             expires_at = EXCLUDED.expires_at,
-             connected_by_staff_id = EXCLUDED.connected_by_staff_id,
-             needs_reconnect = FALSE,
-             needs_reconnect_reason = NULL`,
-      [accountEmail, PO_GMAIL_SCOPE, tokens.refresh_token, tokens.access_token, expiresAt, ctx.staffId],
-    );
-
-    // Vault dual-write (organization_integrations, provider='gmail') — the
-    // preferred token home the po-gmail client reads first. App-level OAuth
-    // client creds are copied into the row so the refresh path is
-    // self-contained at runtime (mirrors GoogleDriveCredentials / Amazon LWA).
+    // Vault-only token home (organization_integrations, provider='gmail'):
+    // the payload is an AES-256-GCM envelope under INTEGRATION_KMS_KEY. The
+    // google_oauth_tokens plaintext token columns were dropped (2026-09-06)
+    // — tokens are never stored outside the vault. App-level OAuth client
+    // creds are copied into the row so the refresh path is self-contained at
+    // runtime (mirrors GoogleDriveCredentials / Amazon LWA).
     const vaultPayload: GmailCredentials = {
       clientId,
       clientSecret,

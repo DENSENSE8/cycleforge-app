@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><g id="cf-material">
+    <defs>
+      <linearGradient id="towA" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#191b20"/><stop offset=".5" stop-color="#2e3138"/><stop offset="1" stop-color="#141519"/>
+      </linearGradient>
+      <linearGradient id="towB" x1="1" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#191b20"/><stop offset=".5" stop-color="#2e3138"/><stop offset="1" stop-color="#141519"/>
+      </linearGradient>
+      <pattern id="carbon" width="28" height="28" patternUnits="userSpaceOnUse">
+        <rect width="28" height="28" fill="#0e0f12"/>
+        <rect x="0" y="0" width="14" height="14" fill="url(#towA)"/>
+        <rect x="14" y="14" width="14" height="14" fill="url(#towA)"/>
+        <rect x="14" y="0" width="14" height="14" fill="url(#towB)"/>
+        <rect x="0" y="14" width="14" height="14" fill="url(#towB)"/>
+      </pattern>
+      <linearGradient id="alu" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f2f3f5"/><stop offset=".18" stop-color="#c9cdd3"/>
+        <stop offset=".5" stop-color="#8f959d"/><stop offset=".82" stop-color="#cdd1d7"/>
+        <stop offset="1" stop-color="#6d737b"/>
+      </linearGradient>
+      <linearGradient id="aluHandle" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#e8eaee"/><stop offset=".5" stop-color="#9aa0a8"/><stop offset="1" stop-color="#c9cdd3"/>
+      </linearGradient>
+      <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#9aa0a8"/>
+        <stop offset=".7" stop-color="#dfe2e7"/><stop offset="1" stop-color="#7d838b"/>
+      </linearGradient>
+      <radialGradient id="bore" cx=".5" cy=".5" r=".5">
+        <stop offset="0" stop-color="#ffb37a"/><stop offset=".35" stop-color="#ff4d00"/>
+        <stop offset=".8" stop-color="#7a2600"/><stop offset="1" stop-color="#1a0a02"/>
+      </radialGradient>
+    </defs>
+    <rect width="512" height="512" rx="118" fill="url(#carbon)"/>
+    <rect x="3" y="3" width="506" height="506" rx="115" fill="none" stroke="#3d4149" stroke-width="2" opacity=".55"/>
+    <circle cx="256" cy="256" r="150" fill="none" stroke="url(#steel)" stroke-width="44"/>
+    <g transform="rotate(45 256 256)">
+      <g stroke="#0c0d10" stroke-width="10" stroke-linejoin="round">
+        <rect x="244" y="58" width="24" height="26" rx="8" fill="url(#alu)"/>
+        <rect x="214" y="82" width="84" height="128" rx="18" fill="url(#aluHandle)"/>
+        <path d="M229 210 h54 l27 22 -27 22 h-54 l-27 -22 z" fill="url(#alu)"/>
+        <rect x="242" y="254" width="28" height="56" fill="url(#alu)"/>
+        <path d="M242 310 h28 l7 64 h-42 z" fill="#5d626a"/>
+      </g>
+      <rect x="214" y="120" width="84" height="9" fill="#0c0d10"/>
+      <rect x="214" y="142" width="84" height="9" fill="#0c0d10"/>
+      <rect x="220" y="90" width="52" height="12" rx="6" fill="#ffffff" opacity=".35"/>
+    </g>
+    <circle cx="223" cy="289" r="68" fill="#0e0f12"/>
+    <circle cx="223" cy="289" r="68" fill="none" stroke="url(#steel)" stroke-width="24"/>
+    <circle cx="223" cy="289" r="30" fill="url(#bore)"/>
+    <circle cx="213" cy="279" r="7" fill="#ffffff" opacity=".5"/>
+  </g></svg>

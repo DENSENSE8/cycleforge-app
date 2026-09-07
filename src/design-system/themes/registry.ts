@@ -95,6 +95,10 @@ export const THEME_VAR_KEYS = [
   // Extended tone text (dashboard categories, informational accents)
   'text-info',
   'text-fulfillment',
+  // Editorial standout ink — the ONE warm word inside quiet prose (the Home
+  // greeting's verb). Cream on dark schemes, champagne-bronze on light so it
+  // still clears 4.5:1 on card white. Never a status tone, never a fill.
+  'text-gilt',
   // Solid fills (progress bars, accent lines, saturated indicators)
   'fill-info',
   'fill-success',

@@ -26,7 +26,7 @@ const VALID_STATUSES: ReadonlySet<string> = new Set(['OPEN', 'STAGED', 'IN_TEST'
  * Staging-board list of boxes/trays with member counts.
  */
 export const GET = withAuth(
-  async (request: NextRequest) => {
+  async (request: NextRequest, ctx) => {
     const { searchParams } = new URL(request.url);
     const statusRaw = String(searchParams.get('status') || '').trim().toUpperCase();
     const status = VALID_STATUSES.has(statusRaw) ? (statusRaw as HandlingUnitStatus) : null;
@@ -35,7 +35,11 @@ export const GET = withAuth(
     const limit = Math.min(Number(searchParams.get('limit') || 100), 500);
     const offset = Math.max(Number(searchParams.get('offset') || 0), 0);
 
-    const { items, total } = await listHandlingUnits({ status, locationId, limit, offset });
+    // Org-scoped read: without orgId the helper falls to the owner pool with
+    // NO organization_id predicate — a cross-tenant staging-board leak
+    // (audit 2026-09-06). With it, the read runs GUC-scoped on the tenant
+    // pool under RLS.
+    const { items, total } = await listHandlingUnits({ status, locationId, limit, offset }, ctx.organizationId);
     return NextResponse.json({ success: true, handling_units: items, total, limit, offset });
   },
   { permission: 'handling_unit.view' },

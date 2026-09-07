@@ -108,10 +108,25 @@ function resolveTunnelAuth() {
 
 const tunnelAuth = resolveTunnelAuth();
 
-/** The port the Cloudflare dashboard's remote ingress points at. */
-const DASHBOARD_SERVICE_PORT = DEFAULT_DEV_PORT;
-/** Any other port needs a LOCAL ingress override — remote config can't know it. */
-const needsLocalIngress = DEV_PORT !== DASHBOARD_SERVICE_PORT;
+/**
+ * What the tunnel ACTUALLY dials. Unknown until the connector tells us.
+ *
+ * This used to be `const DASHBOARD_SERVICE_PORT = DEFAULT_DEV_PORT` — a guess
+ * that the dashboard route matched our dev port. On 2026-09-06 it did not: the
+ * remote ingress read `http://localhost:3051` while dev ran on 3050, so every
+ * request 502'd with `dial tcp [::1]:3051: connect: connection refused` while
+ * this banner cheerfully printed "→ http://localhost:3050". The guess made the
+ * one number you need to trust the one number we invented.
+ *
+ * cloudflared logs the effective config on connect (`Updated to new
+ * configuration config=…`). We parse THAT and report it, so the banner can
+ * only ever show a fact.
+ */
+let effectiveIngress = null;
+/** True once cloudflared reports it pulled config from the dashboard. */
+let remoteManaged = false;
+/** Origin dial failures cloudflared reports, surfaced instead of buried. */
+const originErrors = new Set();
 
 /** Scratch dir for the isolated config + (when needed) a fetched credentials file. */
 const isolatedDir = mkdtempSync(resolve(tmpdir(), "usav-cf-tunnel-"));
@@ -230,16 +245,15 @@ function ensureTunnelAuth() {
 }
 
 function tunnelSpawnArgs() {
-  // Token mode is fully remote-managed: cloudflared pulls its ingress/route
-  // from the Cloudflare dashboard (Zero Trust → Tunnels → Published app →
-  // Service URL: http://localhost:3000). Passing a local --config OVERRIDES that
-  // ingress — an empty/404 config makes every request 404 even once connected.
-  // So on the dashboard's own port we run clean, and only override the ingress
-  // when this lane is on a different port (PORT=3050 pnpm dev:tunnel).
+  // Token mode is REMOTELY managed, and remote config WINS. Verified
+  // 2026-09-06: cloudflared logged `Loading configuration from …/config.yml`
+  // and then, one line later, `Updated to new configuration config=…3051…`.
+  // So a local `ingress:` block does NOT override the dashboard here — the old
+  // comment claiming it did was the reason this script believed it could point
+  // itself at any port. It cannot. The dashboard route is the only thing that
+  // decides, and all we can do is REPORT what it decided (see startTunnel).
   if (tunnelAuth.mode === "token") {
-    const args = ["tunnel", "--no-autoupdate"];
-    if (needsLocalIngress) args.push("--config", createIsolatedConfigPath());
-    return [...args, "run", "--token", tunnelAuth.token];
+    return ["tunnel", "--no-autoupdate", "run", "--token", tunnelAuth.token];
   }
 
   switch (tunnelAuth.mode) {
@@ -322,6 +336,125 @@ function startNext() {
   });
 }
 
+/**
+ * cloudflared prints its effective config once per connect:
+ *
+ *   INF Updated to new configuration config="{\"ingress\":[{\"hostname\":…}]}" version=3
+ *
+ * That line is the ONLY authoritative statement of which localhost port the
+ * tunnel dials. Parse it; never infer it.
+ */
+function parseEffectiveIngress(text) {
+  const match = text.match(/Updated to new configuration config="(.+?)" version=/);
+  if (!match) return null;
+  try {
+    // The log escapes the JSON for display; unescape before parsing.
+    const parsed = JSON.parse(match[1].replace(/\\"/g, '"').replace(/\\\\/g, "\\"));
+    return Array.isArray(parsed.ingress) ? parsed.ingress : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The rule that will serve our hostname, or the catch-all if none matches. */
+function ruleForHost(ingress, host) {
+  if (!ingress) return null;
+  return (
+    ingress.find((r) => r.hostname === host) ??
+    ingress.find((r) => !r.hostname) ??
+    null
+  );
+}
+
+function portOfService(service) {
+  const m = String(service ?? "").match(/:(\d{2,5})(?:\/|$)/);
+  return m ? Number(m[1]) : null;
+}
+
+/** Does anything answer on this port right now? Returns the status, or null. */
+async function portAnswers(port) {
+  try {
+    const res = await fetch(`http://127.0.0.1:${port}/`, {
+      redirect: "manual",
+      signal: AbortSignal.timeout(4000),
+    });
+    return res.status;
+  } catch {
+    return null;
+  }
+}
+
+async function printTruthBanner() {
+  const rule = ruleForHost(effectiveIngress, DEFAULT_HOST);
+  const service = rule?.service ?? null;
+  const originPort = portOfService(service);
+  const devStatus = await portAnswers(DEV_PORT);
+  // The port the tunnel dials may be served by something else (e.g. a socat
+  // bridge). Traffic then works even though the route disagrees with our port,
+  // and saying "will 502" there would be crying wolf.
+  const originStatus =
+    originPort != null && originPort !== DEV_PORT ? await portAnswers(originPort) : devStatus;
+  const matched = originPort != null && originPort === DEV_PORT;
+  const bridged = !matched && originPort != null && originStatus != null;
+
+  log("");
+  if (!service) {
+    log(`${BOLD}${YELLOW}━━ dev tunnel connected · ORIGIN UNKNOWN ━━${RESET}`);
+    log(`  ${YELLOW}cloudflared never reported its config, so this script`);
+    log(`  cannot tell you which port the tunnel dials. Do not trust any`);
+    log(`  number here — check Zero Trust → Tunnels → Public Hostname.${RESET}`);
+  } else if (matched && devStatus != null) {
+    log(`${BOLD}${GREEN}━━ dev tunnel is up ━━${RESET}`);
+    log("");
+    log(`  ${BOLD}${CYAN}https://${DEFAULT_HOST}${RESET}`);
+    log(`  ${GREEN}→ ${service}${RESET}  ${DIM}(reported by cloudflared)${RESET}`);
+    log(`  ${DIM}dev server on :${DEV_PORT} answered ${devStatus}${RESET}`);
+  } else if (bridged) {
+    log(`${BOLD}${YELLOW}━━ dev tunnel is up — VIA A BRIDGE, route still wrong ━━${RESET}`);
+    log("");
+    log(`  ${BOLD}${CYAN}https://${DEFAULT_HOST}${RESET}`);
+    log(`  ${YELLOW}→ ${service}${RESET}  ${DIM}(answered ${originStatus} — something is forwarding it)${RESET}`);
+    log(`  ${DIM}dev server itself is on :${DEV_PORT} (answered ${devStatus ?? "nothing"})${RESET}`);
+    log("");
+    log(`  ${DIM}Traffic works, but the dashboard route still names port ${originPort}.`);
+    log(`  Kill the forwarder and this 502s again — fix the route to`);
+    log(`  ${CYAN}http://127.0.0.1:${DEV_PORT}${RESET}${DIM} and drop the bridge.${RESET}`);
+  } else {
+    log(`${BOLD}${RED}━━ TUNNEL MISCONFIGURED — requests will 502 ━━${RESET}`);
+    log("");
+    log(`  tunnel dials   ${BOLD}${RED}${service}${RESET}${
+      originPort != null ? `  ${DIM}(port ${originPort})${RESET}` : ""
+    }`);
+    log(`  dev server on  ${BOLD}${CYAN}:${DEV_PORT}${RESET}  ${
+      devStatus != null
+        ? `${DIM}(answered ${devStatus})${RESET}`
+        : `${RED}(NOTHING LISTENING)${RESET}`
+    }`);
+    log("");
+    if (originPort != null && originPort !== DEV_PORT) {
+      log(`  ${YELLOW}The dashboard route points at a port your dev server is not on.${RESET}`);
+      if (remoteManaged) {
+        log(`  ${DIM}This tunnel is REMOTELY managed — a local ingress block cannot`);
+        log(`  override it, so this is not fixable from the repo.${RESET}`);
+      }
+      log("");
+      log(`  ${BOLD}Fix (one field):${RESET}`);
+      log(`    Zero Trust → Networks → Tunnels → Public Hostname`);
+      log(`    ${DEFAULT_HOST} → ${CYAN}http://127.0.0.1:${DEV_PORT}${RESET}`);
+      log(`  ${DIM}Use 127.0.0.1, not localhost: cloudflared resolves localhost`);
+      log(`  to [::1] first.${RESET}`);
+      log("");
+      log(`  ${BOLD}Or bridge it now, without the dashboard:${RESET}`);
+      log(`    ${CYAN}socat TCP-LISTEN:${originPort},fork,reuseaddr,bind=127.0.0.1 TCP:127.0.0.1:${DEV_PORT}${RESET}`);
+    }
+  }
+  for (const err of originErrors) {
+    log("");
+    log(`  ${RED}origin error:${RESET} ${err}`);
+  }
+  log("");
+}
+
 function startTunnel() {
   const authLabel =
     tunnelAuth.mode === "token"
@@ -330,8 +463,11 @@ function startTunnel() {
         ? `tunnel ${tunnelAuth.tunnelId}`
         : `named tunnel "${tunnelAuth.tunnelName}"`;
   banner(`Starting Cloudflare dev tunnel (${authLabel})`);
-  log(`${DIM}Route in Zero Trust should point to ${CYAN}http://localhost:${DEV_PORT}${RESET}${DIM}.${RESET}`);
+  // Deliberately NOT claiming where the route points — that is reported after
+  // the connector tells us, below.
+  log(`${DIM}Dev server: ${CYAN}http://127.0.0.1:${DEV_PORT}${RESET}`);
   log(`${DIM}Public URL: ${CYAN}https://${DEFAULT_HOST}${RESET}`);
+  log(`${DIM}Waiting for cloudflared to report its effective origin…${RESET}`);
   log("");
 
   tunnelProc = spawn("cloudflared", tunnelSpawnArgs(), {
@@ -339,27 +475,30 @@ function startTunnel() {
     shell: false,
   });
 
-  let readyPrinted = false;
+  let bannerPrinted = false;
+  let connected = false;
+  const maybePrint = () => {
+    if (bannerPrinted || !connected) return;
+    bannerPrinted = true;
+    // Config arrives just after the first connection registers.
+    setTimeout(() => void printTruthBanner(), 600);
+  };
+
   const handle = (chunk) => {
     const text = chunk.toString();
     process.stdout.write(`${DIM}[tunnel]${RESET} ${text}`);
 
-    if (
-      !readyPrinted &&
-      /Registered tunnel connection|Connection established/i.test(text)
-    ) {
-      readyPrinted = true;
-      setTimeout(() => {
-        log("");
-        log(`${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}`);
-        log(`${BOLD}${GREEN}  Named dev tunnel is up${RESET}`);
-        log("");
-        log(`  ${BOLD}${CYAN}https://${DEFAULT_HOST}${RESET}`);
-        log(`  ${DIM}→ http://localhost:${DEV_PORT}${RESET}`);
-        log("");
-        log(`${BOLD}${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${RESET}`);
-        log("");
-      }, 250);
+    const ingress = parseEffectiveIngress(text);
+    if (ingress) {
+      effectiveIngress = ingress;
+      remoteManaged = true;
+    }
+    const originError = text.match(/Unable to reach the origin service[^"]*/);
+    if (originError) originErrors.add(originError[0].trim());
+
+    if (/Registered tunnel connection|Connection established/i.test(text)) {
+      connected = true;
+      maybePrint();
     }
   };
 
@@ -368,7 +507,9 @@ function startTunnel() {
   tunnelProc.on("exit", (code) => {
     if (!shuttingDown) {
       log(`${RED}cloudflared exited with code ${code}${RESET}`);
-      if (tunnelAuth.mode === "token") {
+      if (/address already in use/.test([...originErrors].join(" "))) {
+        log(`${YELLOW}Tip:${RESET} another cloudflared owns the metrics port — stop it first (${CYAN}systemctl --user stop cloudflared${RESET}).`);
+      } else if (tunnelAuth.mode === "token") {
         log(
           `${YELLOW}Tip:${RESET} refresh ${CYAN}CLOUDFLARE_TUNNEL_TOKEN${RESET} from Cloudflare Zero Trust → Tunnels → Configure (use the long ${CYAN}eyJ…${RESET} token, not the tunnel UUID).`,
         );
@@ -384,5 +525,18 @@ function startTunnel() {
 
 ensureCloudflared();
 ensureTunnelAuth();
-startNext();
-setTimeout(startTunnel, 1500);
+
+/**
+ * `DEV_TUNNEL_REPORT_ONLY=1` connects, prints what the tunnel actually dials,
+ * and exits — no Next.js. Use it to answer "which port is the tunnel on?"
+ * without booting a second dev server (`npm run dev:tunnel:check`).
+ */
+if (process.env.DEV_TUNNEL_REPORT_ONLY === "1") {
+  startTunnel();
+  setTimeout(() => {
+    void printTruthBanner().then(() => shutdown(effectiveIngress ? 0 : 1));
+  }, 8000);
+} else {
+  startNext();
+  setTimeout(startTunnel, 1500);
+}

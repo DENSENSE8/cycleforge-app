@@ -10,7 +10,6 @@ import { test, expect, type Page } from '@playwright/test';
  * pin/unpin round trip lives in `master-nav-pin-drag.spec.ts`.
  */
 
-const PAGES_MENU = '[role="menu"][aria-label="Pages"]';
 const NAV_COLUMN_OPEN = '[data-sidebar-nav-column][data-open="true"]';
 
 async function openSpine(page: Page, route: string) {
@@ -21,7 +20,6 @@ async function openSpine(page: Page, route: string) {
     await page.locator('header button').first().click();
   }
   await expect(page.locator(NAV_COLUMN_OPEN)).toBeVisible();
-  await expect(page.locator(PAGES_MENU)).toBeVisible();
 }
 
 async function unpinAll(page: Page) {

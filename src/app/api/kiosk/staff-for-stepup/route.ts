@@ -40,7 +40,7 @@ export const GET = withKioskAuth(async (_req: NextRequest, ctx) => {
 
   const eligible = [];
   for (const row of rows) {
-    const perms = await effectivePermissionsForStaff(Number(row.id), {}, orgId);
+    const perms = await effectivePermissionsForStaff(Number(row.id), orgId);
     if (!perms.has('walk_in.take_payment')) continue;
     eligible.push({
       id: Number(row.id),

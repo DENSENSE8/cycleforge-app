@@ -23,15 +23,19 @@ export interface RolePreview {
   notes: string[];
 }
 
-export async function previewAsRole(roleKey: string): Promise<RolePreview> {
+export async function previewAsRole(roleKey: string, orgId: string): Promise<RolePreview> {
   const catalog = QA_PREVIEW_ROLES.find((r) => r.key === roleKey);
   if (!catalog) {
     throw Object.assign(new Error(`Unknown preview role: ${roleKey}`), { status: 400 });
   }
 
+  // roles is org-scoped (2026-09-06): resolve the preview against the QA
+  // org's own slice — a key-only lookup would fan out across every org.
   const r = await pool.query<{ key: string; label: string; permissions: string[] }>(
-    `SELECT key, label, permissions FROM roles WHERE key = $1 LIMIT 1`,
-    [catalog.key],
+    `SELECT key, label, permissions FROM roles
+      WHERE key = $1 AND organization_id = $2::uuid
+      LIMIT 1`,
+    [catalog.key, orgId],
   );
   const row = r.rows[0];
   const permissionsList = row?.permissions ?? [];

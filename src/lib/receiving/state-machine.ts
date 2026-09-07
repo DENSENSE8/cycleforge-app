@@ -149,7 +149,7 @@ export async function transitionReceivingLine(
    * nothing: it locked and UPDATEd `receiving_line` with no `organization_id`
    * predicate — so another tenant's line advanced its workflow_status, its
    * stage clocks and its exception_code — and then stamped the
-   * `inventory_events` row `orgId ?? DOGFOOD_ORG_ID`, filing the audit trail
+   * `inventory_events` row with an explicit dogfood-org fallback, filing the audit
    * under the dogfood tenant. `inventory_events` is FORCE-RLS but with a
    * dogfood-fallback column default, so nothing failed loudly.
    */

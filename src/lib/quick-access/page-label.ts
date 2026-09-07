@@ -75,10 +75,19 @@ export function resolveQuickAccessLabelFromLocation(
   return href ? resolveQuickAccessLabel(href) : 'Page';
 }
 
-/** Paint-time pin copy: live MasterNav / settings / admin, else stored name. */
+/**
+ * Paint-time pin copy: live MasterNav / settings / admin, else stored name.
+ *
+ * A SESSION pin keeps its stored name. Its href is `/?session=<id>`, which
+ * resolves to the Home face, so the live-label rule renamed every pinned thread
+ * to "Home" — two pinned sessions were two rows both reading Home (measured
+ * 2026-09-07). The stored label is the thread's AI title, which is the whole
+ * point of the binding.
+ */
 export function displayQuickAccessLabel(href: string, storedLabel: string): string {
   try {
     const url = new URL(href, 'http://local');
+    if (url.searchParams.get('session') && storedLabel.trim()) return storedLabel.trim();
     const special = specialSectionLabel(url.pathname, url.searchParams);
     if (special) return special;
     const item = masterNavItemForPath(url.pathname, url.searchParams);

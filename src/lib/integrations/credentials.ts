@@ -50,9 +50,9 @@ export type IntegrationProvider =
   | 'stripe'
   | 'nextiva'
   | 'shipstation'
-  // Email inbox — the PO mailbox (Gmail). Legacy token home is the
-  // google_oauth_tokens table; src/lib/po-gmail/client.ts dual-reads
-  // (vault first) during the migration.
+  // Email inbox — the PO mailbox (Gmail). Sole token home since the
+  // 2026-09-06 google_oauth_tokens plaintext-column drop; src/lib/po-gmail/
+  // client.ts reads the vault only and fails closed when it is empty.
   | 'gmail'
   // AI search providers (per-org BYOK — docs/ai-search-modernization-plan.md).
   // 'ollama' above doubles as the self-hosted/custom OpenAI-compatible slot.
@@ -191,8 +191,8 @@ export interface AblyCredentials { apiKey: string }
  * Gmail (PO mailbox) credentials — the email_inbox capability. The shared app
  * client id/secret are copied into the row so the refresh path is
  * self-contained at runtime (mirrors GoogleDriveCredentials / Amazon LWA).
- * Legacy home is the google_oauth_tokens table; the po-gmail client dual-reads
- * (vault first) until the cutover completes.
+ * The vault row is the only token home — the legacy google_oauth_tokens
+ * plaintext token columns were dropped 2026-09-06.
  */
 export interface GmailCredentials {
   clientId: string;
@@ -475,8 +475,8 @@ function envFallback(provider: IntegrationProvider): unknown | null {
       // explicitly via the connect route, never auto-read as an env bridge.
       return null;
     case 'gmail':
-      // OAuth-only (PO mailbox). Legacy tokens live in google_oauth_tokens and
-      // are dual-read by the po-gmail client — never mirrored from env here.
+      // OAuth-only (PO mailbox). Tokens live only in the vault — never
+      // mirrored from env here.
       return null;
     case 'ecwid': case 'square':
       return null; // Add when needed.

@@ -236,6 +236,17 @@ export function buildGates(root = process.cwd(), options = {}) {
       inputs: [...COMPILE_INPUTS, 'src/components/session'],
     },
     {
+      // Session MEMORY: lifecycle + the pin that binds a thread to a place.
+      // Reversible delete, tombstone-not-drop, legible titles, and a pin that
+      // keeps its session through an undo. Same cheap rung as the surface
+      // cohort — the tripwire IS the gate, no snapshot machinery.
+      name: 'Cohort: session-memory',
+      cmd: 'node',
+      args: ['--import', 'tsx', '--test', 'src/lib/assistant/session-memory-cohort.test.ts'],
+      profiles: 'full',
+      inputs: [...COMPILE_INPUTS, 'src/lib/quick-access', 'src/components/sidebar/master-nav'],
+    },
+    {
       name: 'Design critique',
       cmd: 'node',
       args: ['scripts/ds-critique-gate.mjs'],

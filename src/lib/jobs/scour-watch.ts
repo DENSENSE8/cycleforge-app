@@ -24,14 +24,15 @@ export interface ScourWatchResult {
 }
 
 /**
- * Run the scour watcher for ONE org (or the legacy global pass when `orgId` is
- * omitted). The cron fans this out per eBay-connected org via
+ * Run the scour watcher for ONE org — REQUIRED, un-defaulted (the legacy
+ * org-less global pass is gone: it scoured under the dogfood org's eBay
+ * credentials). The cron fans this out per eBay-connected org via
  * forEachOrgWithProvider('ebay', …) so each org's due searches are read,
  * scoured, and marked under THAT org's GUC + eBay credentials — never a global
  * USAV-cred pass over every tenant's searches. `getDueSourcingSearches`,
- * `scour`, and `markSourcingSearchRun` all org-scope when given an orgId.
+ * `scour`, and `markSourcingSearchRun` all org-scope on it.
  */
-export async function runScourWatch(orgId?: OrgId): Promise<ScourWatchResult> {
+export async function runScourWatch(orgId: OrgId): Promise<ScourWatchResult> {
   const due = await getDueSourcingSearches(orgId);
   let withHits = 0;
   let candidatesSaved = 0;

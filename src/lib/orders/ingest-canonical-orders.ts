@@ -19,17 +19,16 @@
  * what lets a second source reuse the pipeline instead of copying an
  * `INSERT INTO orders` — there were nine such copies when this was written.
  *
- * Tenancy: when `orgId` is supplied every tenant-table read/write goes through
- * the GUC-carrying helpers (`tenantQuery` / `withTenantDrizzle`) and is scoped
- * by org. When omitted the legacy raw-pool path runs and writes are stamped
- * with `transitionalDogfoodOrgId()` — byte-identical to the prior behavior.
+ * Tenancy: `orgId` is REQUIRED. Every tenant-table read/write goes through the
+ * GUC-carrying helpers (`tenantQuery` / `withTenantDrizzle`) and is scoped +
+ * stamped by org. (It used to be optional with a legacy raw-pool path stamped
+ * with the dogfood org when omitted — that silently misrouted an org-less
+ * import to USAV; the fallback is gone.)
  */
 import { and, desc, eq, inArray } from 'drizzle-orm';
-import pool from '@/lib/db';
-import { db } from '@/lib/drizzle/db';
 import { customers as customersTable, orders as ordersTable } from '@/lib/drizzle/schema';
 import { withTenantDrizzle } from '@/lib/drizzle/tenant-db';
-import { transitionalDogfoodOrgId, tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
+import { tenantQuery, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT } from '@/lib/neon/work-assignments-conflict';
 import { invalidateAllOrdersApiCaches } from '@/lib/orders/invalidation';
@@ -175,8 +174,7 @@ function customerNameKeySql(expr: string): string {
  */
 async function resolveCustomersByName(
   requests: Array<{ name: string; sourceOrderId: string }>,
-  effectiveOrgId: OrgId,
-  orgId?: OrgId,
+  orgId: OrgId,
 ): Promise<Map<string, number>> {
   const resolved = new Map<string, number>();
 
@@ -193,7 +191,7 @@ async function resolveCustomersByName(
 
   const keys = Array.from(wanted.keys());
   const runQuery = <T extends Record<string, unknown>>(sql: string, params: unknown[]) =>
-    orgId ? tenantQuery<T>(orgId, sql, params) : pool.query<T>(sql, params);
+    tenantQuery<T>(orgId, sql, params);
 
   // Match on customer_name OR display_name — the same two columns
   // `findCustomerByName` reads, so a customer created by any other surface is
@@ -207,7 +205,7 @@ async function resolveCustomersByName(
       WHERE organization_id = $2
         AND ${nameKeyExpr} = ANY($1::text[])
       ORDER BY created_at ASC, id ASC`,
-    [keys, effectiveOrgId],
+    [keys, orgId],
   );
   // Oldest first, so the earliest row wins a name with duplicates already in
   // the book — new orders join the established customer, not a later copy.
@@ -224,7 +222,7 @@ async function resolveCustomersByName(
     const parts = name.split(/\s+/);
     const base = i * 5;
     values.push(
-      effectiveOrgId,
+      orgId,
       name,
       parts[0] || '',
       parts.length > 1 ? parts.slice(1).join(' ') : '',
@@ -254,57 +252,38 @@ async function resolveCustomersByName(
  * Upsert rather than insert so a re-sync moves the deadline instead of creating
  * a second assignment.
  */
-async function upsertOrderDeadline(orderId: number, deadlineAt: Date | null, orgId?: OrgId) {
-  const selectSql = (scoped: boolean) => `
-    SELECT id
-      FROM work_assignments
-     WHERE entity_type = 'ORDER'
-       AND entity_id   = $1
-       AND work_type   = 'TEST'
-       AND status IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS')
-       ${scoped ? 'AND organization_id = $2' : ''}
-     ORDER BY
-       CASE status WHEN 'IN_PROGRESS' THEN 1 WHEN 'ASSIGNED' THEN 2 WHEN 'OPEN' THEN 3 END,
-       id DESC
-     LIMIT 1`;
-
-  if (orgId) {
-    await withTenantTransaction(orgId, async (client) => {
-      const existing = await client.query(selectSql(true), [orderId, orgId]);
-      if (existing.rows.length > 0) {
-        await client.query(
-          `UPDATE work_assignments SET deadline_at = $1, updated_at = NOW()
-            WHERE id = $2 AND organization_id = $3`,
-          [deadlineAt, existing.rows[0].id, orgId],
-        );
-        return;
-      }
+async function upsertOrderDeadline(orderId: number, deadlineAt: Date | null, orgId: OrgId) {
+  await withTenantTransaction(orgId, async (client) => {
+    const existing = await client.query(
+      `SELECT id
+         FROM work_assignments
+        WHERE entity_type = 'ORDER'
+          AND entity_id   = $1
+          AND work_type   = 'TEST'
+          AND status IN ('OPEN', 'ASSIGNED', 'IN_PROGRESS')
+          AND organization_id = $2
+        ORDER BY
+          CASE status WHEN 'IN_PROGRESS' THEN 1 WHEN 'ASSIGNED' THEN 2 WHEN 'OPEN' THEN 3 END,
+          id DESC
+        LIMIT 1`,
+      [orderId, orgId],
+    );
+    if (existing.rows.length > 0) {
       await client.query(
-        `INSERT INTO work_assignments
-           (organization_id, entity_type, entity_id, work_type, assigned_tech_id, status, priority, deadline_at)
-         VALUES ($1, 'ORDER', $2, 'TEST', NULL, 'OPEN', 100, $3)
-         ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT} DO NOTHING`,
-        [orgId, orderId, deadlineAt],
+        `UPDATE work_assignments SET deadline_at = $1, updated_at = NOW()
+           WHERE id = $2 AND organization_id = $3`,
+        [deadlineAt, existing.rows[0].id, orgId],
       );
-    });
-    return;
-  }
-
-  const existing = await pool.query(selectSql(false), [orderId]);
-  if (existing.rows.length > 0) {
-    await pool.query(`UPDATE work_assignments SET deadline_at = $1, updated_at = NOW() WHERE id = $2`, [
-      deadlineAt,
-      existing.rows[0].id,
-    ]);
-    return;
-  }
-  await pool.query(
-    `INSERT INTO work_assignments
-       (organization_id, entity_type, entity_id, work_type, assigned_tech_id, status, priority, deadline_at)
-     VALUES ($1, 'ORDER', $2, 'TEST', NULL, 'OPEN', 100, $3)
-     ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT} DO NOTHING`,
-    [transitionalDogfoodOrgId(), orderId, deadlineAt],
-  );
+      return;
+    }
+    await client.query(
+      `INSERT INTO work_assignments
+         (organization_id, entity_type, entity_id, work_type, assigned_tech_id, status, priority, deadline_at)
+       VALUES ($1, 'ORDER', $2, 'TEST', NULL, 'OPEN', 100, $3)
+       ON CONFLICT ${WORK_ASSIGNMENTS_ACTIVE_ON_CONFLICT} DO NOTHING`,
+      [orgId, orderId, deadlineAt],
+    );
+  });
 }
 
 /**
@@ -317,19 +296,18 @@ async function upsertOrderShipmentLinks(
   shipmentIds: number[],
   primaryShipmentId: number | null,
   source: string,
-  orgId?: OrgId,
+  orgId: OrgId,
 ) {
   const uniqueIds = Array.from(
     new Set(shipmentIds.map(Number).filter((id) => Number.isFinite(id) && id > 0)),
   );
   if (uniqueIds.length === 0) return;
 
-  const effectiveOrg = orgId ?? transitionalDogfoodOrgId();
-  await withTenantTransaction(effectiveOrg, async (client) => {
+  await withTenantTransaction(orgId, async (client) => {
     for (const sid of uniqueIds) {
       const isPrimary = primaryShipmentId != null && sid === primaryShipmentId;
       await linkShipment(
-        effectiveOrg,
+        orgId,
         {
           ownerType: 'ORDER',
           ownerId: orderRowId,
@@ -346,8 +324,9 @@ async function upsertOrderShipmentLinks(
 }
 
 interface IngestCanonicalOrdersOptions {
-  /** Tenant scope. Omitted → legacy raw-pool path stamped with the dogfood org. */
-  orgId?: OrgId;
+  /** Tenant scope — REQUIRED, un-defaulted: an org-less import used to run the
+   * legacy raw-pool path stamped with the dogfood org. */
+  orgId: OrgId;
   /** Provenance recorded on `shipment_links`. */
   source: string;
   progress?: SyncProgress;
@@ -443,7 +422,6 @@ export async function ingestCanonicalOrders(
     fallbackProductTitle = '',
   }: IngestCanonicalOrdersOptions,
 ): Promise<IngestCanonicalOrdersResult> {
-  const effectiveOrgId: OrgId = orgId ?? transitionalDogfoodOrgId();
   const canonicalOrders = groupCanonicalOrderLines(lines);
   if (canonicalOrders.length === 0) return emptyIngestResult();
 
@@ -473,7 +451,7 @@ export async function ingestCanonicalOrders(
   const shipmentIdCache = new Map<string, number | null>();
 
   const readShipmentRows = async (sql: string, params: unknown[]) =>
-    orgId ? await tenantQuery(orgId, sql, params) : await pool.query(sql, params);
+    await tenantQuery(orgId, sql, params);
 
   const absorbShipmentRows = (rows: any[]) => {
     rows.forEach((row) => {
@@ -550,19 +528,13 @@ export async function ingestCanonicalOrders(
     createdAt: ordersTable.createdAt,
   } as const;
 
-  const existingOrders = orgId
-    ? await withTenantDrizzle(orgId, (tx) =>
-        tx
-          .select(orderProjectionCols)
-          .from(ordersTable)
-          .where(and(inArray(ordersTable.orderId, sourceOrderIds), eq(ordersTable.organizationId, orgId)))
-          .orderBy(desc(ordersTable.createdAt)),
-      )
-    : await db
-        .select(orderProjectionCols)
-        .from(ordersTable)
-        .where(inArray(ordersTable.orderId, sourceOrderIds))
-        .orderBy(desc(ordersTable.createdAt));
+  const existingOrders = await withTenantDrizzle(orgId, (tx) =>
+    tx
+      .select(orderProjectionCols)
+      .from(ordersTable)
+      .where(and(inArray(ordersTable.orderId, sourceOrderIds), eq(ordersTable.organizationId, orgId)))
+      .orderBy(desc(ordersTable.createdAt)),
+  );
 
   const customerProjectionCols = {
     id: customersTable.id,
@@ -570,21 +542,15 @@ export async function ingestCanonicalOrders(
     createdAt: customersTable.createdAt,
   } as const;
 
-  const sourceCustomers = orgId
-    ? await withTenantDrizzle(orgId, (tx) =>
-        tx
-          .select(customerProjectionCols)
-          .from(customersTable)
-          .where(
-            and(inArray(customersTable.orderId, sourceOrderIds), eq(customersTable.organizationId, orgId)),
-          )
-          .orderBy(desc(customersTable.createdAt)),
+  const sourceCustomers = await withTenantDrizzle(orgId, (tx) =>
+    tx
+      .select(customerProjectionCols)
+      .from(customersTable)
+      .where(
+        and(inArray(customersTable.orderId, sourceOrderIds), eq(customersTable.organizationId, orgId)),
       )
-    : await db
-        .select(customerProjectionCols)
-        .from(customersTable)
-        .where(inArray(customersTable.orderId, sourceOrderIds))
-        .orderBy(desc(customersTable.createdAt));
+      .orderBy(desc(customersTable.createdAt)),
+  );
 
   const toProjection = (order: (typeof existingOrders)[number]): OrderProjection => ({
     id: Number(order.id),
@@ -648,7 +614,6 @@ export async function ingestCanonicalOrders(
       }
       return names;
     })(),
-    effectiveOrgId,
     orgId,
   );
 
@@ -671,21 +636,14 @@ export async function ingestCanonicalOrders(
     });
 
     if (lookupSkus.size > 0) {
-      const result = orgId
-        ? await tenantQuery(
-            orgId,
-            `SELECT id, sku, product_title
-               FROM sku_catalog
-              WHERE sku = ANY($1::text[]) AND product_title IS NOT NULL AND product_title <> ''
-                AND organization_id = $2`,
-            [Array.from(lookupSkus), orgId],
-          )
-        : await pool.query(
-            `SELECT id, sku, product_title
-               FROM sku_catalog
-              WHERE sku = ANY($1::text[]) AND product_title IS NOT NULL AND product_title <> ''`,
-            [Array.from(lookupSkus)],
-          );
+      const result = await tenantQuery(
+        orgId,
+        `SELECT id, sku, product_title
+           FROM sku_catalog
+          WHERE sku = ANY($1::text[]) AND product_title IS NOT NULL AND product_title <> ''
+            AND organization_id = $2`,
+        [Array.from(lookupSkus), orgId],
+      );
       for (const row of result.rows) {
         const sku = String(row.sku || '').trim();
         const title = String(row.product_title || '').trim();
@@ -697,26 +655,17 @@ export async function ingestCanonicalOrders(
     }
 
     if (lookupItemNumbers.size > 0) {
-      const result = orgId
-        ? await tenantQuery(
-            orgId,
-            `SELECT spi.platform_sku, spi.platform_item_id, sc.id, sc.product_title, sc.sku
-               FROM sku_platform_ids spi
-               JOIN sku_catalog sc ON sc.id = spi.sku_catalog_id
-                AND sc.organization_id = spi.organization_id
-              WHERE (spi.platform_sku = ANY($1::text[]) OR spi.platform_item_id = ANY($1::text[]))
-                AND sc.product_title IS NOT NULL AND sc.product_title <> ''
-                AND spi.organization_id = $2`,
-            [Array.from(lookupItemNumbers), orgId],
-          )
-        : await pool.query(
-            `SELECT spi.platform_sku, spi.platform_item_id, sc.id, sc.product_title, sc.sku
-               FROM sku_platform_ids spi
-               JOIN sku_catalog sc ON sc.id = spi.sku_catalog_id
-              WHERE (spi.platform_sku = ANY($1::text[]) OR spi.platform_item_id = ANY($1::text[]))
-                AND sc.product_title IS NOT NULL AND sc.product_title <> ''`,
-            [Array.from(lookupItemNumbers)],
-          );
+      const result = await tenantQuery(
+        orgId,
+        `SELECT spi.platform_sku, spi.platform_item_id, sc.id, sc.product_title, sc.sku
+           FROM sku_platform_ids spi
+           JOIN sku_catalog sc ON sc.id = spi.sku_catalog_id
+            AND sc.organization_id = spi.organization_id
+          WHERE (spi.platform_sku = ANY($1::text[]) OR spi.platform_item_id = ANY($1::text[]))
+            AND sc.product_title IS NOT NULL AND sc.product_title <> ''
+            AND spi.organization_id = $2`,
+        [Array.from(lookupItemNumbers), orgId],
+      );
       for (const row of result.rows) {
         const title = String(row.product_title || '').trim();
         const id = Number(row.id);
@@ -1001,7 +950,7 @@ export async function ingestCanonicalOrders(
         values: {
           // Explicit stamp: Drizzle's neon-http client can't carry the GUC, so
           // orders.organization_id (NOT NULL) must be set here.
-          organizationId: effectiveOrgId,
+          organizationId: orgId,
           orderId,
           externalLineId: lineId,
           itemNumber: catalogLink.itemNumber || '',
@@ -1027,13 +976,9 @@ export async function ingestCanonicalOrders(
   if (ordersToDelete.length > 0) {
     progress({ type: 'phase', phase: 'updating', count: ordersToDelete.length });
     const deleteIds = ordersToDelete.map((e) => e.id);
-    if (orgId) {
-      await withTenantDrizzle(orgId, (tx) =>
-        tx.delete(ordersTable).where(and(inArray(ordersTable.id, deleteIds), eq(ordersTable.organizationId, orgId))),
-      );
-    } else {
-      await db.delete(ordersTable).where(inArray(ordersTable.id, deleteIds));
-    }
+    await withTenantDrizzle(orgId, (tx) =>
+      tx.delete(ordersTable).where(and(inArray(ordersTable.id, deleteIds), eq(ordersTable.organizationId, orgId))),
+    );
     for (const entry of ordersToDelete) progress({ type: 'detail', kind: 'deleted', row: entry.detail });
   }
 
@@ -1041,28 +986,18 @@ export async function ingestCanonicalOrders(
     progress({ type: 'phase', phase: 'updating', count: ordersToBackfill.length });
     // Each UPDATE is additionally scoped by organization_id so it can never
     // touch another tenant's row even if an id collision were possible.
-    if (orgId) {
-      await withTenantDrizzle(orgId, (tx) =>
-        Promise.all(
-          ordersToBackfill.map((entry) => {
-            const compacted = compactUpdateValues(entry.values);
-            if (Object.keys(compacted).length === 0) return Promise.resolve();
-            return tx
-              .update(ordersTable)
-              .set(compacted)
-              .where(and(eq(ordersTable.id, entry.id), eq(ordersTable.organizationId, orgId)));
-          }),
-        ),
-      );
-    } else {
-      await Promise.all(
+    await withTenantDrizzle(orgId, (tx) =>
+      Promise.all(
         ordersToBackfill.map((entry) => {
           const compacted = compactUpdateValues(entry.values);
           if (Object.keys(compacted).length === 0) return Promise.resolve();
-          return db.update(ordersTable).set(compacted).where(eq(ordersTable.id, entry.id));
+          return tx
+            .update(ordersTable)
+            .set(compacted)
+            .where(and(eq(ordersTable.id, entry.id), eq(ordersTable.organizationId, orgId)));
         }),
-      );
-    }
+      ),
+    );
     for (const entry of ordersToBackfill) progress({ type: 'detail', kind: 'updated', row: entry.detail });
   }
 
@@ -1070,11 +1005,9 @@ export async function ingestCanonicalOrders(
   if (ordersToInsert.length > 0) {
     progress({ type: 'phase', phase: 'inserting', count: ordersToInsert.length });
     const insertValues = ordersToInsert.map((entry) => entry.values);
-    const insertedOrders = orgId
-      ? await withTenantDrizzle(orgId, (tx) =>
-          tx.insert(ordersTable).values(insertValues).returning({ id: ordersTable.id }),
-        )
-      : await db.insert(ordersTable).values(insertValues).returning({ id: ordersTable.id });
+    const insertedOrders = await withTenantDrizzle(orgId, (tx) =>
+      tx.insert(ordersTable).values(insertValues).returning({ id: ordersTable.id }),
+    );
     for (const entry of ordersToInsert) progress({ type: 'detail', kind: 'inserted', row: entry.detail });
 
     insertedOrderIds = insertedOrders.map((o) => o.id);
@@ -1113,7 +1046,7 @@ export async function ingestCanonicalOrders(
   if (insertedOrderIds.length > 0) {
     try {
       const { autoCageNewOrders } = await import('./auto-cage');
-      const caged = await autoCageNewOrders(effectiveOrgId, insertedOrderIds);
+      const caged = await autoCageNewOrders(orgId, insertedOrderIds);
       if (caged.length > 0) {
         console.warn(`[ingestCanonicalOrders] auto-caged ${caged.length}/${insertedOrderIds.length} new orders for triage`);
       }
@@ -1124,7 +1057,6 @@ export async function ingestCanonicalOrders(
 
   // Listing → staff automations (TEST assign on import / first item_number).
   // Best-effort: a rules/table miss must never fail ingest.
-  if (orgId) {
     try {
       const { applyListingAssignment } = await import('@/lib/automations/apply-listing-assignment');
       const automationTargets: Array<{
@@ -1188,12 +1120,11 @@ export async function ingestCanonicalOrders(
     } catch (err) {
       console.warn('[ingestCanonicalOrders] listing automation unavailable:', err);
     }
-  }
 
   // Explicit catalog-link chores for NEW unmatched item numbers only (no
   // historical orphan scan). Upserts unpaired sku_platform_ids + Review queue.
   if (catalogLinkChoresToEnqueue.length > 0) {
-    await enqueueCatalogLinkChoresForImport(effectiveOrgId, catalogLinkChoresToEnqueue);
+    await enqueueCatalogLinkChoresForImport(orgId, catalogLinkChoresToEnqueue);
     for (const detail of detailsUnmatchedCatalog) {
       progress({ type: 'detail', kind: 'unmatchedCatalog', row: detail });
     }
@@ -1212,10 +1143,10 @@ export async function ingestCanonicalOrders(
     ),
   );
 
-  await invalidateAllOrdersApiCaches([], effectiveOrgId);
+  await invalidateAllOrdersApiCaches([], orgId);
   progress({ type: 'phase', phase: 'publishing' });
   if (processedIds.length > 0) {
-    await publishOrderChanged({ organizationId: effectiveOrgId, orderIds: processedIds, source });
+    await publishOrderChanged({ organizationId: orgId, orderIds: processedIds, source });
   }
   for (const detail of detailsUnknownTitle) progress({ type: 'detail', kind: 'unknownTitle', row: detail });
 

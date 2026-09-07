@@ -9,9 +9,10 @@ export const dynamic = 'force-dynamic';
  * GET /api/serial-units/[id]/print-history
  *
  * Ordered (newest-first) label print jobs for a serial unit — the read side of
- * the `label_print_jobs` ledger. Proves reprint-vs-first-issue and surfaces the
- * exact DataMatrix payload that was on each sticker. Org-scoped. Auth:
- * `print.label`.
+ * the label print-job ledger. Proves reprint-vs-first-issue and surfaces the
+ * exact DataMatrix payload that was on each sticker. Org-scoped: the query in
+ * getPrintHistoryForUnit runs inside an org-GUC-scoped tenant query with an
+ * explicit org conjunct. Auth: `print.label`.
  */
 export const GET = withAuth(
   async (request, ctx) => {

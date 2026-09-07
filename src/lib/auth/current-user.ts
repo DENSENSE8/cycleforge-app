@@ -113,7 +113,7 @@ async function buildCurrentUser(session: SessionRow | null): Promise<CurrentUser
   if (!session) return null;
   const [overrides, roles] = await Promise.all([
     loadStaffOverrides(session.staffId, session.organizationId),
-    loadRolesForStaff(session.staffId),
+    loadRolesForStaff(session.staffId, session.organizationId),
   ]);
   // Primary role: first row from loadRolesForStaff (already position-ordered).
   // Falls back to the staff.role column if no assignments exist. Falls back

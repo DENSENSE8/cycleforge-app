@@ -49,7 +49,7 @@ import {
   type StationComposerPresenceKind,
 } from '@/lib/composer/station-composer-presence';
 import { ComposerAskStage } from './ComposerAskStage';
-import { ComposerModeRow } from './ComposerModeRow';
+import { ComposerModeRow, STATION_COMPOSER_MODE_ICON } from './ComposerModeRow';
 import {
   ComposerPlusMenuPanel,
   ComposerPlusMenuRow,
@@ -157,6 +157,24 @@ export type StationComposerHostProps = {
    */
   forceMode?: StationComposerMode;
   /**
+   * The modes this mouth actually HONORS. Default is the whole station catalog.
+   *
+   * A surface with one real destination passes it alone (`['ask']` on the
+   * assistant home): the row-two chip then NAMES that destination instead of
+   * offering a picker whose other rows commit nowhere — Ticket with no
+   * `onTicketCommit` is a dead Enter, and Unbox on a chat surface is a sticker
+   * note nobody prints. A single-mode mouth also stands down from the
+   * Shift+Tab cycle so it cannot rewrite the station's shared session mode.
+   */
+  modes?: readonly StationComposerMode[];
+  /**
+   * The surface IS the assistant (session home): its label trio already sends
+   * to the model and renders the transcript, so Ask must NOT fork a second
+   * draft, a second commit or a second chat send behind the same textarea.
+   * One field, one commit, one thread.
+   */
+  askOwnedBySurface?: boolean;
+  /**
    * TWO-LINE geometry (session surface, 2026-09-06): the mode faces, the
    * context ring and `inlineCommit` live INSIDE the dock's action row, and
    * the ComposerModeRow below the outline is not rendered — nothing sits
@@ -170,12 +188,13 @@ export type StationComposerHostProps = {
    */
   plusMenuContent?: ReactNode;
   /**
-   * The second row's right-end control in the two-line geometry — the
-   * stateful mic / send button. Render-prop because the state the button
-   * reflects (hasText) is the VISIBLE field's, which the host owns: in ask
-   * mode that is the host's ask draft, not the surface's label draft.
-   * `commit` is the mode-resolved commit (ask → the ask thread; label → the
-   * surface's onLabelCommit).
+   * The second row's right-end control in the two-line geometry — the stateful
+   * mic / send button.
+   *
+   * `hasText` is ALWAYS the VISIBLE field's, whatever the mode resolved to, and
+   * `commit` is that same field's commit. It used to read the label draft while
+   * the field on screen showed the ticket or ask draft, so an empty composer
+   * offered Send and a typed one offered the microphone.
    */
   renderInlineCommit?: (state: { hasText: boolean; busy: boolean; commit: () => void }) => ReactNode;
   /**
@@ -232,6 +251,8 @@ export function StationComposerHost({
   modeRowLeading,
   showModeFaces = true,
   forceMode,
+  modes,
+  askOwnedBySurface = false,
   inlineComposerRow = false,
   inlineRing,
   plusMenuContent,
@@ -243,7 +264,17 @@ export function StationComposerHost({
   className,
 }: StationComposerHostProps) {
   const { mode: sessionMode, setMode, cycleMode } = useStationComposerMode();
-  const mode = forceMode ?? sessionMode;
+  // The honored set, in catalog order. A mouth that names one mode resolves to
+  // it no matter what the shared session / `?composerMode=` says, and a shared
+  // mode this mouth cannot honor falls back to the first one it can.
+  const honoredModes: readonly StationComposerMode[] =
+    modes && modes.length > 0
+      ? STATION_COMPOSER_MODE_CATALOG.map((m) => m.id).filter((id) => modes.includes(id))
+      : STATION_COMPOSER_MODE_CATALOG.map((m) => m.id);
+  const singleMode = honoredModes.length < 2;
+  const mode =
+    forceMode ??
+    (honoredModes.includes(sessionMode) ? sessionMode : (honoredModes[0] ?? sessionMode));
   const { has } = useAuth();
   const canAsk = has('assistant.chat');
   const askChat = useAssistantChat({ shared: presenceKind === 'desk' ? undefined : 'station' });
@@ -287,13 +318,27 @@ export function StationComposerHost({
   const askContextRef = useRef(askContext);
   askChatRef.current = askChat;
   askContextRef.current = askContext;
+  // The surface's own field/commit, read through a ref so the seed effect does
+  // not re-fire on every parent render.
+  const surfaceFieldRef = useRef({ owned: askOwnedBySurface, onChange: onLabelChange, onCommit: onLabelCommit });
+  surfaceFieldRef.current = { owned: askOwnedBySurface, onChange: onLabelChange, onCommit: onLabelCommit };
 
   useEffect(() => {
     if (seedSeq === prevSeedSeqRef.current) return;
     prevSeedSeqRef.current = seedSeq;
     const seed = getLatestComposerSeed();
     if (!seed?.text) return;
-    if (mode !== 'ask') setMode('ask');
+    // A single-mode mouth never rewrites the station's SHARED session mode —
+    // its own mode cannot change, and the write would move every other mouth.
+    if (mode !== 'ask' && !singleMode) setMode('ask');
+    const surface = surfaceFieldRef.current;
+    if (surface.owned) {
+      // ONE field: a voice transcript lands in the draft that is on screen.
+      // Writing `askDraft` here seeded a field nobody was looking at.
+      if (seed.autoSend) surface.onCommit(seed.text);
+      else surface.onChange(seed.text);
+      return;
+    }
     if (seed.autoSend) {
       if (askChatRef.current.status === 'streaming') {
         setAskDraft(seed.text);
@@ -304,38 +349,43 @@ export function StationComposerHost({
       return;
     }
     setAskDraft(seed.text);
-  }, [seedSeq, mode, setMode]);
+  }, [seedSeq, mode, setMode, singleMode]);
 
   const isTicket = mode === 'ticket';
   const isAsk = mode === 'ask';
-  const value = isAsk ? askDraft : isTicket ? ticketDraft : labelValue;
-  const onChange = isAsk ? setAskDraft : isTicket ? setTicketDraft : onLabelChange;
-  const onCommit = isAsk
-    ? (live?: string) => {
-        const text = (live ?? askDraft).trim();
-        if (!text || !canAsk || askChat.status === 'streaming') return;
-        setAskDraft('');
-        void askChat.send(text, askContext);
-      }
-    : isTicket
-      ? (_live?: string) => {
-          onTicketCommit?.();
+  /**
+   * ONE visible field, ONE commit. `surfaceAsk` = the assistant surface owns
+   * the Ask field (session home): Ask then reads and commits the SAME draft the
+   * label trio does, instead of the host forking a second draft and a second
+   * `useAssistantChat.send` behind the same textarea.
+   */
+  const surfaceAsk = isAsk && askOwnedBySurface;
+  const onLabelField = surfaceAsk || (!isAsk && !isTicket);
+  const value = onLabelField ? labelValue : isAsk ? askDraft : ticketDraft;
+  const onChange = onLabelField ? onLabelChange : isAsk ? setAskDraft : setTicketDraft;
+  const onCommit = onLabelField
+    ? onLabelCommit
+    : isAsk
+      ? (live?: string) => {
+          const text = (live ?? askDraft).trim();
+          if (!text || !canAsk || askChat.status === 'streaming') return;
+          setAskDraft('');
+          void askChat.send(text, askContext);
         }
-      : onLabelCommit;
-  const onBlur = isTicket || isAsk ? undefined : onLabelBlur;
+      : (_live?: string) => {
+          onTicketCommit?.();
+        };
+  const onBlur = onLabelField ? onLabelBlur : undefined;
 
   const keepTrailing = stationComposerModeKeepsTrailingAction(mode);
   const printTrailing = keepTrailing ? trailingAction : undefined;
   const locationFooter = locationAction;
 
-  const placeholder = isAsk
-    ? stationComposerModePlaceholder('ask')
-    : isTicket
-    ? stationComposerModePlaceholder(mode, { ticketLabel, hasTicket })
-    : labelPlaceholder === ''
+  const placeholder = onLabelField
+    ? labelPlaceholder === ''
       ? ''
-      : (labelPlaceholder ??
-        stationComposerModePlaceholder(mode, { ticketLabel, hasTicket }));
+      : (labelPlaceholder ?? stationComposerModePlaceholder(mode, { ticketLabel, hasTicket }))
+    : stationComposerModePlaceholder(mode, { ticketLabel, hasTicket });
 
   // DOCUMENT-scoped, not textarea-scoped (2026-08-31). These chords hung off
   // the composer's own onKeyDown, so they only fired while the field had focus
@@ -351,6 +401,9 @@ export function StationComposerHost({
   // mode from the CURRENT one rather than toggling, so both compute the same
   // target and the second call is a no-op write.
   useEffect(() => {
+    // A mouth that honors one mode has nothing to cycle, and cycleMode writes
+    // the SHARED session mode — a chord here would move every other mouth.
+    if (singleMode) return;
     const onKeyDown = (e: globalThis.KeyboardEvent) => {
       if (!classifyStationComposerModeKey(e)) return;
       e.preventDefault();
@@ -358,7 +411,7 @@ export function StationComposerHost({
     };
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [cycleMode]);
+  }, [cycleMode, singleMode]);
 
   // The textarea still delegates to the host's ghost-autocomplete handler; the
   // mode chords are no longer handled here — the document listener above owns
@@ -408,16 +461,23 @@ export function StationComposerHost({
     />
   );
 
-  const commitDisabledResolved = isAsk
-    ? !canAsk || askChat.status === 'streaming' || askDraft.trim().length === 0
-    : isTicket
-      ? ticketCommitDisabled === true || ticketDraft.trim().length === 0
-      : labelCommitDisabled;
+  const commitDisabledResolved = onLabelField
+    ? labelCommitDisabled
+    : isAsk
+      ? !canAsk || askChat.status === 'streaming' || askDraft.trim().length === 0
+      : ticketCommitDisabled === true || ticketDraft.trim().length === 0;
 
   const reactionNode = isAsk
     ? null
     : (isTicket ? ticketAccessory : undefined) ?? reaction ?? null;
   const reactionOpen = reactionNode != null;
+  // The row-two chip wears the catalog LABEL ("Ask"), not the raw mode id: the
+  // id is a URL/session value, and lowercase "ask" beside the operator's own
+  // sentence reads like a log line.
+  const modeLabel = STATION_COMPOSER_MODE_CATALOG.find((m) => m.id === mode)?.label ?? mode;
+  // Icon ALWAYS leftmost on the mode face — same glyph the below-outline mode
+  // row draws, so a mode reads the same wherever it is named.
+  const ModeGlyph = STATION_COMPOSER_MODE_ICON[mode];
   const weldAskStage = isAsk && presenceKind === 'desk';
   return (
     <div
@@ -475,43 +535,59 @@ export function StationComposerHost({
         headerEnd={isTicket && !isAsk ? ticketHeaderEnd : undefined}
         footerStart={
           inlineComposerRow ? (
-            <div className="relative min-w-0" data-testid="composer-mode-dropdown">
-              <button
-                ref={modeAnchorRef}
-                type="button"
-                onClick={() => setModeMenuOpen((v) => !v)}
-                aria-expanded={modeMenuOpen}
-                aria-label="Composer mode"
-                data-testid="composer-mode-dropdown-trigger"
-                className="ds-raw-button flex h-5 items-center gap-0.5 rounded-sm text-role-micro font-semibold text-text-muted hover:text-text-default"
-              >
-                <span className="text-text-faint">·</span>
-                <span className="tracking-wide">{mode}</span>
-                <span aria-hidden className="text-text-faint">▾</span>
-              </button>
-              {modeMenuOpen ? (
-                <ComposerPlusMenuPanel
-                  open={modeMenuOpen}
-                  onClose={() => setModeMenuOpen(false)}
-                  anchorRef={modeAnchorRef}
-                  ariaLabel="Composer modes"
-                  placement="bottom-end"
+            // Row two is ONE 28px row, middle-aligned end to end: the mode face
+            // here, the context ring and the commit control at the other end
+            // all sit in `h-7` boxes so their centers land on the same line.
+            <div className="relative flex h-7 min-w-0 items-center" data-testid="composer-mode-dropdown">
+              {singleMode ? (
+                // One honored destination: the chip NAMES it. A picker whose
+                // other rows commit nowhere is chrome that lies.
+                <span
+                  data-testid="composer-mode-name"
+                  className="flex h-7 items-center gap-1 text-role-micro font-semibold tracking-wide text-text-muted"
                 >
-                  {STATION_COMPOSER_MODE_CATALOG.map((m) => (
-                    <ComposerPlusMenuRow
-                      key={m.id}
-                      selected={mode === m.id}
-                      disabled={m.id === 'ask' && !canAsk}
-                      onClick={() => {
-                        setModeMenuOpen(false);
-                        setMode(m.id);
-                      }}
+                  <ModeGlyph className="block h-3.5 w-3.5 shrink-0" />
+                  {modeLabel}
+                </span>
+              ) : (
+                <>
+                  <button
+                    ref={modeAnchorRef}
+                    onClick={() => setModeMenuOpen((v) => !v)}
+                    aria-expanded={modeMenuOpen}
+                    aria-label="Composer mode"
+                    data-testid="composer-mode-dropdown-trigger"
+                    className="ds-raw-button flex h-7 items-center gap-1 rounded-sm text-role-micro font-semibold text-text-muted hover:text-text-default"
+                  >
+                    <ModeGlyph className="block h-3.5 w-3.5 shrink-0" />
+                    <span className="tracking-wide">{modeLabel}</span>
+                    <span aria-hidden className="text-text-faint">▾</span>
+                  </button>
+                  {modeMenuOpen ? (
+                    <ComposerPlusMenuPanel
+                      open={modeMenuOpen}
+                      onClose={() => setModeMenuOpen(false)}
+                      anchorRef={modeAnchorRef}
+                      ariaLabel="Composer modes"
+                      placement="bottom-end"
                     >
-                      {m.label}
-                    </ComposerPlusMenuRow>
-                  ))}
-                </ComposerPlusMenuPanel>
-              ) : null}
+                      {STATION_COMPOSER_MODE_CATALOG.filter((m) => honoredModes.includes(m.id)).map((m) => (
+                        <ComposerPlusMenuRow
+                          key={m.id}
+                          selected={mode === m.id}
+                          disabled={m.id === 'ask' && !canAsk}
+                          onClick={() => {
+                            setModeMenuOpen(false);
+                            setMode(m.id);
+                          }}
+                        >
+                          {m.label}
+                        </ComposerPlusMenuRow>
+                      ))}
+                    </ComposerPlusMenuPanel>
+                  ) : null}
+                </>
+              )}
             </div>
           ) : isTicket && !isAsk
             ? ticketFooterStart
@@ -527,22 +603,22 @@ export function StationComposerHost({
         placeholder={placeholder}
         ariaLabel={stationComposerModeAriaLabel(mode, { ticketLabel, hasTicket })}
         commitAriaLabel={
-          isAsk
-            ? 'Send Ask'
-            : isTicket
-              ? (ticketCommitLabel ?? stationComposerTicketCommitLabel(hasTicket))
-              : labelCommitAriaLabel
+          onLabelField
+            ? labelCommitAriaLabel
+            : isAsk
+              ? 'Send Ask'
+              : (ticketCommitLabel ?? stationComposerTicketCommitLabel(hasTicket))
         }
         commitTooltip={
-          isAsk
-            ? 'Ask (Enter) · Shift+Enter for newline'
-            : isTicket
-            ? ticketCommitLabel
-              ? `${ticketCommitLabel} (Enter)`
-              : hasTicket
-                ? 'Update ticket (Enter) · Shift+Enter for newline'
-                : 'Create ticket (Enter)'
-            : labelCommitTooltip
+          onLabelField
+            ? labelCommitTooltip
+            : isAsk
+              ? 'Ask (Enter) · Shift+Enter for newline'
+              : ticketCommitLabel
+                ? `${ticketCommitLabel} (Enter)`
+                : hasTicket
+                  ? 'Update ticket (Enter) · Shift+Enter for newline'
+                  : 'Create ticket (Enter)'
         }
         ghostSuffix={isTicket || isAsk ? undefined : ghostSuffix}
         matchedPhrase={isTicket || isAsk ? null : matchedPhrase}
@@ -553,8 +629,9 @@ export function StationComposerHost({
             <>
               {inlineRing}
               {renderInlineCommit?.({
-                hasText: isAsk ? askDraft.trim().length > 0 : labelValue.trim().length > 0,
-                busy: isAsk ? askChat.status === 'streaming' : labelCommitDisabled === true,
+                // The VISIBLE field, always — see renderInlineCommit's contract.
+                hasText: value.trim().length > 0,
+                busy: commitDisabledResolved === true && value.trim().length > 0,
                 commit: () => onCommit(),
               })}
             </>

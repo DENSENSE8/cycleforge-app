@@ -1,6 +1,6 @@
 import type { BrowseCondition } from '@/lib/ebay/browse-client';
 import { saveCandidate } from '@/lib/neon/sourcing-queries';
-import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
+import type { OrgId } from '@/lib/tenancy/constants';
 import type { CandidateSource, NormalizedCandidate } from '@/lib/sourcing/normalize';
 import { buildScourQuery, type ScourRequest } from './adapters/types';
 import { getEnabledAdapters } from './adapters';
@@ -33,7 +33,10 @@ export interface SearchSecondaryMarketParams {
   skuId?: number | null;
   boseModelId?: number | null;
   sourcingAlertId?: number | null;
-  orgId?: OrgId;
+  /** Tenant scope — REQUIRED: creds, the ebay_api_calls usage log, and saved
+   * candidates are all per-org; an org-less scour used to silently run (and
+   * log) under the dogfood org. */
+  orgId: OrgId;
   /** Restrict the scour to specific channels (default: all enabled). */
   sources?: CandidateSource[];
 }
@@ -50,7 +53,7 @@ export interface SearchSecondaryMarketResult {
 export async function scour(
   params: SearchSecondaryMarketParams,
 ): Promise<SearchSecondaryMarketResult> {
-  const orgId = params.orgId ?? DOGFOOD_ORG_ID;
+  const orgId = params.orgId;
   const req: ScourRequest = {
     query: params.query ?? null,
     modelNumber: params.modelNumber ?? null,

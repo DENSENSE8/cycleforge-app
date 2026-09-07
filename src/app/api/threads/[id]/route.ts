@@ -9,7 +9,7 @@ import pool from '@/lib/db';
 /**
  * PATCH /api/threads/[id]  — update thread status (open | snoozed | resolved).
  * DELETE /api/threads/[id] — soft-delete (tombstone; non-destructive, the
- *                            ops_events / audit trail stays intact). Idempotent.
+ *                            ops-event / audit trail stays intact). Idempotent.
  * Both gated by support.thread.manage.
  */
 function parseThreadId(raw: string): number | null {

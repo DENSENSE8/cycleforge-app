@@ -30,9 +30,12 @@ const FULL_CTX = ctxWith([
   'dashboard.view',
   'studio.view',
   'assistant.chat',
-  // get_roi_gaps is a plain SQL read and belongs IN the org-threading sweep,
-  // so the sweep's context has to be allowed to call it.
+  // get_roi_gaps and the operator reports are plain SQL reads and belong IN
+  // the org-threading sweep, so the sweep's context has to be allowed to call
+  // them (get_unbox_backlog rides receiving.view).
   'operations.view',
+  'receiving.view',
+  'work_orders.view',
 ]);
 
 const SEARCH_TOOL_NAMES = new Set([
@@ -159,8 +162,8 @@ function fakes(rowsFor?: (text: string) => Array<Record<string, unknown>>) {
   return { deps, cap };
 }
 
-test('registry: 45 tools (41 read + 4 gateway), unique names, model-grade descriptions, valid permissions', () => {
-  assert.equal(ASSISTANT_TOOLS.size, 45);
+test('registry: 50 tools (46 read + 4 gateway), unique names, model-grade descriptions, valid permissions', () => {
+  assert.equal(ASSISTANT_TOOLS.size, 50);
   const expected = [
     'get_signals_by_node', 'get_top_reasons', 'get_unit_journey', 'get_feed_state',
     'get_graph', 'get_node_detail', 'get_benchmarks', 'get_kpis',
@@ -185,6 +188,11 @@ test('registry: 45 tools (41 read + 4 gateway), unique names, model-grade descri
     'get_roi_gaps',
     // The station builder's parts list (blocks / sources / actions / surfaces).
     'get_station_catalog',
+    // The five operator reports — one artifact kind, five owner questions.
+    // Each returns its artifact ALREADY BUILT (tool-artifact.ts): the panel
+    // gets the bytes Postgres produced, the model gets a one-line summary.
+    'get_packing_performance', 'get_unbox_backlog', 'get_order_value_rank',
+    'get_roi_rank', 'get_delegation_plan',
     // The staffer's OWN outside apps, brokered by Composio.
     'list_connected_apps', 'connect_app',
     'search_staff_documents', 'read_staff_document',
@@ -369,8 +377,11 @@ test('permission gating: studio tools refused without studio.view; search needs 
   // + the two home reads a viewer owns (get_daily_checks, get_my_day) (2).
   // get_project_tasks is NOT here — it rides operations.plans.view.
   // + the station parts list (get_station_catalog) — same floor as GET /api/stations (1).
-  assert.equal(names.length, 18);
+  // + the one operator report a dashboard viewer owns: the biggest-order
+  // question rides the same floor as the dashboard it summarizes (1).
+  assert.equal(names.length, 19);
   assert.ok(names.includes('get_station_catalog'));
+  assert.ok(names.includes('get_order_value_rank'));
   assert.ok(names.includes('get_daily_checks'));
   assert.ok(names.includes('get_my_day'));
   assert.ok(!names.includes('get_project_tasks'));

@@ -20,7 +20,10 @@ import { useSyncExternalStore } from 'react';
 
 export type SessionPanelOccupant = 'artifact' | 'board';
 
-let occupant: SessionPanelOccupant = 'artifact';
+// Default is the BOARD (the mission pane) since 2026-09-06: the right pane's
+// resting face is the floor, and artifacts push it aside the moment the model
+// renders one. Closing an artifact returns here.
+let occupant: SessionPanelOccupant = 'board';
 const listeners = new Set<() => void>();
 
 function emit(): void {
@@ -37,15 +40,23 @@ function getSnapshot(): SessionPanelOccupant {
   return occupant;
 }
 
-/** Server render has no board open; the store is client state. */
+/** Server render has no pane open; the store is client state. */
 function getServerSnapshot(): SessionPanelOccupant {
-  return 'artifact';
+  return 'board';
 }
 
 export function setSessionPanelOccupant(next: SessionPanelOccupant): void {
   if (occupant === next) return;
   occupant = next;
   emit();
+}
+
+/**
+ * Plain read, outside React — the artifact store promotes the pane on arrival
+ * and the tests assert what the surface will switch on.
+ */
+export function getSessionPanelOccupant(): SessionPanelOccupant {
+  return occupant;
 }
 
 export function toggleHomeBoard(): void {

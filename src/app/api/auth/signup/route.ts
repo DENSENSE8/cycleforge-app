@@ -160,20 +160,29 @@ export const POST = withAuth(async (req: NextRequest) => {
     );
     staffId = staffRes.rows[0]!.id;
 
-    // 5. Wire to the admin role (if the roles taxonomy exists in this DB)
+    // 5. Seed this org's system-role taxonomy. Copy the built-ins from the
+    // oldest org that has them (roles are per-org since 2026-09-06 — a
+    // key-only lookup would fan out to every org's row). On a fresh DB with
+    // no taxonomy anywhere this copies nothing and 5b seeds admin alone.
     await client.query(
-      `INSERT INTO staff_roles (staff_id, role_id)
-       SELECT $1, r.id FROM roles r WHERE r.key = 'admin'
-       ON CONFLICT DO NOTHING`,
-      [staffId],
+      `INSERT INTO roles
+         (organization_id, key, label, color, position, permissions, is_system, mobile_defaults)
+       SELECT $1::uuid, r.key, r.label, r.color, r.position, r.permissions, r.is_system, r.mobile_defaults
+         FROM roles r
+        WHERE r.is_system
+          AND r.organization_id = (
+            SELECT MIN(organization_id) FROM roles WHERE is_system
+          )
+       ON CONFLICT (organization_id, key) DO NOTHING`,
+      [orgId],
     );
 
-    // 5b. WS2.2 — admin-role self-heal. The wire above silently no-ops on a fresh
-    // DB whose global `roles` table was never seeded, leaving the admin with no
-    // permissions. ensureAdminRoleWired seeds the admin role row (idempotent) and
-    // retries the wire so the first admin ALWAYS ends up with the admin role.
-    // Runs on this transaction client → shares the signup commit/rollback.
-    await ensureAdminRoleWired(staffId, client);
+    // 5b. WS2.2 — admin-role self-heal. The taxonomy copy above may be empty
+    // on a fresh DB; ensureAdminRoleWired seeds this org's admin role row
+    // (idempotent) and wires it so the first admin ALWAYS ends up with the
+    // admin role. Runs on this transaction client → shares signup's
+    // commit/rollback.
+    await ensureAdminRoleWired(staffId, orgId, client);
 
     await client.query('COMMIT');
   } catch (err) {

@@ -22,7 +22,7 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import type { AnonymousAuthContext } from '@/lib/auth/withAuth';
 import { getCurrentUserBySid } from '@/lib/auth/current-user';
 import { readSessionSid } from '@/lib/auth/session';
-import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
+import type { OrgId } from '@/lib/tenancy/constants';
 
 const ROUTE_LOCATION_SWAP = 'locations.barcode.swap';
 
@@ -74,14 +74,22 @@ export async function POST(
 
     // Resolve session org up-front so the bin lookup + both adjustBinQty
     // writes + the bin_contents read + the inventory_events write are all
-    // tenant-scoped. Anonymous callers fall back to legacy un-scoped behavior.
+    // tenant-scoped. This handler REQUIRES a session org: every write below is
+    // attributed to a concrete tenant and an anonymous caller has none. The
+    // removed dogfood fallback attributed body-staffId anonymous swaps to USAV
+    // while assertPermission checked the staff row's own (possibly different)
+    // org — a cross-tenant misattribution. Anonymous callers now fail closed.
     const ctx = await resolveCtx(request);
-    const orgId = ctx.organizationId ?? undefined;
-    // Idempotency CACHE namespace only (data scoping uses `orgId` above, which
-    // is undefined for anon legacy-QR callers). Anonymous callers fall back to
-    // the dogfood org for the cache key namespace; the swap write stays
-    // unscoped for them. Sanctioned dogfood fallback (guard-allowlisted).
-    const idempotencyOrgId: OrgId = ctx.organizationId ?? DOGFOOD_ORG_ID;
+    if (!ctx.organizationId) {
+      return NextResponse.json(
+        { error: 'Authentication required: no organization context for this swap' },
+        { status: 401 },
+      );
+    }
+    const orgId: OrgId = ctx.organizationId;
+    // The idempotency CACHE row is namespaced by the same session org (there
+    // is no longer a separate anonymous namespace).
+    const idempotencyOrgId: OrgId = orgId;
 
     // ─── Idempotency: replay cached responses for the same key ──────────────
     const idempotencyKey = readIdempotencyKey(
@@ -132,23 +140,15 @@ export async function POST(
     }
 
     // Current qty on the old SKU's bin row. `sku` collides across orgs, so the
-    // probe is org-scoped when a session org is present.
-    const oldRowRes = orgId
-      ? await tenantQuery<{ qty: number; min_qty: number | null; max_qty: number | null }>(
-          orgId,
-          `SELECT qty, min_qty, max_qty
-       FROM bin_contents
-       WHERE location_id = $1 AND sku = $2 AND organization_id = $3
-       LIMIT 1`,
-          [loc.id, oldSku, orgId],
-        )
-      : await pool.query<{ qty: number; min_qty: number | null; max_qty: number | null }>(
-          `SELECT qty, min_qty, max_qty
-       FROM bin_contents
-       WHERE location_id = $1 AND sku = $2
-       LIMIT 1`,
-          [loc.id, oldSku],
-        );
+    // probe is org-scoped.
+    const oldRowRes = await tenantQuery<{ qty: number; min_qty: number | null; max_qty: number | null }>(
+      orgId,
+      `SELECT qty, min_qty, max_qty
+   FROM bin_contents
+   WHERE location_id = $1 AND sku = $2 AND organization_id = $3
+   LIMIT 1`,
+      [loc.id, oldSku, orgId],
+    );
     const oldQty = Number(oldRowRes.rows[0]?.qty ?? 0);
     if (oldQty <= 0) {
       return respond(
@@ -183,9 +183,9 @@ export async function POST(
     // 3. inventory_events row for the lifecycle timeline — non-quantity
     //    event that joins the two ledger rows together by intent.
     //    recordInventoryEvent relies on the `app.current_org` GUC default to
-    //    stamp the tenant. Run it inside withTenantTransaction (with the
-    //    idempotencyOrgId fallback, so an anonymous-context swap still attributes
-    //    to USAV instead of inserting a NULL organization_id and being dropped).
+    //    stamp the tenant. Run it inside withTenantTransaction under the
+    //    caller's session org (always present — anonymous swaps are rejected
+    //    above), so the event can never land under a fallback tenant.
     try {
       await withTenantTransaction(idempotencyOrgId, (client) =>
         recordInventoryEvent({

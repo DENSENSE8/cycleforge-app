@@ -1,13 +1,16 @@
 'use client';
 
 /**
- * Hollow context ring — ported from Warehouse OS `AssistantFeed` ContextRing
- * (shell.css `.context-ring` / `.context-ring-dot`).
+ * Context ring — the native AI context mark on the composer's second row.
  *
- * Sits BELOW the composer outline, bottom-right of `.composer-row`.
- * A ring is an ANNULUS: transparent centre, stroke is the whole mark.
- * Count > 0 deepens the stroke (+ optional badge); never fills the disc solid
- * as a bullet. Colour/opacity only — never geometry (M1).
+ * ONE face in every state: a NEUTRAL ring with a filled centre. It is a
+ * standing indicator of what the model is being handed, not an alert and not a
+ * live fact, so it never takes Scan Blue and never wears a count bubble — the
+ * number lives in the panel it opens. Attached vs empty is a one-step ink
+ * change on the same geometry (colour/opacity only, never geometry — M1).
+ *
+ * `h-7` matches the commit control at the other end of the row, so the mark's
+ * centre lands on the row's middle line.
  */
 
 import { cn } from '@/utils/_cn';
@@ -19,7 +22,7 @@ export function ComposerContextRing({
   pressed = false,
   label = 'Context',
 }: {
-  /** Attached context chips. 0 = empty muted stroke. */
+  /** Attached context items. 0 = the quiet resting face. */
   count?: number;
   onClick?: () => void;
   pressed?: boolean;
@@ -40,23 +43,21 @@ export function ComposerContextRing({
       aria-pressed={pressed}
       onClick={onClick}
       className={cn(
-        'ds-raw-button context-ring relative inline-flex h-5 w-5 shrink-0 items-center justify-center',
+        'ds-raw-button context-ring relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
+        'transition-colors hover:bg-surface-hover',
         focusRing('control', 'accent'),
-        pressed && 'ring-2 ring-blue-500/30',
+        pressed && 'bg-surface-sunken',
       )}
     >
       <span
         aria-hidden
         className={cn(
-          'context-ring-dot block h-3 w-3 rounded-full border-2 bg-transparent transition-colors duration-75',
-          filled ? 'border-blue-600' : 'border-border-strong',
+          'context-ring-dot block h-3 w-3 rounded-full border-2 transition-colors duration-75',
+          filled
+            ? 'border-text-muted bg-text-muted/30'
+            : 'border-border-emphasis bg-surface-strong',
         )}
       />
-      {filled ? (
-        <span className="pointer-events-none absolute -right-1 -top-1 flex h-3 min-w-3 items-center justify-center rounded-full bg-blue-600 px-0.5 text-[9px] font-semibold leading-none text-white">
-          {count > 9 ? '9+' : count}
-        </span>
-      ) : null}
     </button>
   );
 }

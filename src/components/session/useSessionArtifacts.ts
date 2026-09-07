@@ -14,12 +14,27 @@
  * streaming, so the panel paints a placeholder immediately and the arriving
  * artifact REPLACES it. The slot is not history — it never occupies a
  * MAX_ARTIFACTS row, is never selectable, and any stream ending releases it.
+ *
+ * ## Arrival takes the pane
+ *
+ * Both arrival doors promote the right pane to the artifact plane
+ * (`setSessionPanelOccupant('artifact')`), which is what `SessionSurface`'s
+ * "the board is the RESTING occupant; `render_artifact` pushes it aside"
+ * contract has always claimed. Until this store said so, nothing did: the
+ * occupant rested on `board` and only ⌘B moved it, so a report the model
+ * rendered was valid, stacked, and invisible — the operator was looking at the
+ * floor feed. A REJECTED payload promotes too: the refusal notice is the answer
+ * to "where is my report", and hiding it behind a chord is how an owner
+ * concludes the assistant ignored him. Releasing a pending slot does NOT demote
+ * — the operator's pane is his, and a stream that ended without an artifact
+ * must not yank the surface out from under him.
  */
 
 import { useCallback, useMemo, useSyncExternalStore } from 'react';
 import { SESSION_ARTIFACT_EVENT, SESSION_ARTIFACT_PENDING_EVENT } from '@/lib/app-events';
 import { sessionArtifactSchema, type SessionArtifact } from '@/lib/assistant/ui-artifacts';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import { setSessionPanelOccupant } from './session-panel-occupant';
 
 export interface SessionArtifactEntry {
   id: string;
@@ -47,12 +62,17 @@ function pushEntry(entry: SessionArtifactEntry): void {
   // stack a real artifact beside its own placeholder.
   pending = null;
   entries = [entry, ...entries].slice(0, MAX_ARTIFACTS);
+  // The answer takes the column it was rendered for.
+  setSessionPanelOccupant('artifact');
   emit();
 }
 
 function setPending(next: boolean): void {
   if (next) {
     pending = { id: `pending-${safeRandomUUID()}`, artifact: null, pending: true, at: Date.now() };
+    // Claim the pane while the payload is still streaming, so the skeleton is
+    // where the finished report will be — not one chord away from it.
+    setSessionPanelOccupant('artifact');
   } else if (!pending) {
     return;
   } else {

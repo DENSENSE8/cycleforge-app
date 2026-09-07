@@ -77,12 +77,13 @@ export const POST = withAuth(async (req, ctx) => {
        RETURNING id, name, role, status, employee_code`,
       [name, canonical, employeeCode, orgId],
     );
-    const row = r.rows[0] as { id: number; name: string; role: string; status: string };
+    const row = r.rows[0] as { id: number; name: string; role: string; status: string; employee_code: string };
     await client.query(
       `INSERT INTO staff_roles (staff_id, role_id, granted_at, granted_by)
-       SELECT $1, r.id, NOW(), $3 FROM roles r WHERE r.key = $2
+       SELECT $1, r.id, NOW(), $3 FROM roles r
+        WHERE r.key = $2 AND r.organization_id = $4::uuid
        ON CONFLICT (staff_id, role_id) DO NOTHING`,
-      [row.id, canonical, ctx.staffId ?? null],
+      [row.id, canonical, ctx.staffId ?? null, ctx.organizationId],
     );
     return row;
   });

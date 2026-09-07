@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!--
+    Cycle Forge brand icon — THE SINGLE SOURCE OF TRUTH.
+    Direction: "The Iron" (Revision 3) — docs/brand/decision-strike-the-flow.md
+
+    Edit this file, then run:  pnpm icon:sync
+    Every derived asset regenerates from the variant groups below:
+      #cf-favicon      -> public/icon.svg, public/favicon.png (64)   [no ring, solid node]
+      #cf-full         -> public/icon-192.png (192), lockup          [ring + donut node]
+      #cf-full-square  -> public/icon-512.png (maskable), apple-touch-icon (180),
+                          build/icon.png (1024, electron)            [full-bleed, 0.85 safe zone]
+      #cf-loading      -> public/brand/loading-mark.svg              [amber joint, sweep pass]
+      #cf-mono         -> public/brand/mark.svg                      [single white ink]
+      #cf-material     -> public/brand/hero-carbon.svg               [carbon/aluminum/steel, >=240px]
+
+    MONOCHROME RULE: static marks are white on #0A0A0B — color appears only
+    where it means something (loading = amber #FBBF24 joint). The iron is
+    the fixer's tool: repair, not break; the bore is the forge's heat.
+  -->
+
+  <!-- FAVICON: iron kisses the node; no ring; SOLID disc (16px floor) -->
+  <g id="cf-favicon">
+    <rect width="512" height="512" rx="118" fill="#0A0A0B"/>
+    <g transform="rotate(45 256 256)"><g fill="#FFFFFF"><rect x="244" y="58" width="24" height="26" rx="8"/><rect x="214" y="82" width="84" height="128" rx="18"/><rect x="214" y="120" width="84" height="9" fill="#0A0A0B"/><rect x="214" y="142" width="84" height="9" fill="#0A0A0B"/><path d="M229 210 h54 l27 22 -27 22 h-54 l-27 -22 z"/><rect x="242" y="254" width="28" height="56"/><path d="M242 310 h28 l7 64 h-42 z"/></g></g>
+    <circle cx="223" cy="289" r="80" fill="#FFFFFF"/>
+  </g>
+
+  <!-- FULL: cycle ring + iron + donut node. PWA any + lockup -->
+  <g id="cf-full">
+    <rect width="512" height="512" rx="118" fill="#0A0A0B"/>
+    <circle cx="256" cy="256" r="150" fill="none" stroke="#FFFFFF" stroke-width="44"/>
+    <g transform="rotate(45 256 256)"><g fill="#FFFFFF" stroke="#0A0A0B" stroke-width="10" stroke-linejoin="round"><rect x="244" y="58" width="24" height="26" rx="8"/><rect x="214" y="82" width="84" height="128" rx="18"/><rect x="214" y="120" width="84" height="9" fill="#0A0A0B"/><rect x="214" y="142" width="84" height="9" fill="#0A0A0B"/><path d="M229 210 h54 l27 22 -27 22 h-54 l-27 -22 z"/><rect x="242" y="254" width="28" height="56"/><path d="M242 310 h28 l7 64 h-42 z"/></g></g>
+    <circle cx="223" cy="289" r="68" fill="none" stroke="#FFFFFF" stroke-width="24"/>
+    <circle cx="223" cy="289" r="30" fill="#FFFFFF"/>
+  </g>
+
+  <!-- FULL SQUARE: full-bleed (maskable / iOS / electron), art x0.85 -->
+  <g id="cf-full-square">
+    <rect width="512" height="512" fill="#0A0A0B"/>
+    <g transform="translate(256 256) scale(0.85) translate(-256 -256)">
+      <circle cx="256" cy="256" r="150" fill="none" stroke="#FFFFFF" stroke-width="44"/>
+      <g transform="rotate(45 256 256)"><g fill="#FFFFFF" stroke="#0A0A0B" stroke-width="10" stroke-linejoin="round"><rect x="244" y="58" width="24" height="26" rx="8"/><rect x="214" y="82" width="84" height="128" rx="18"/><rect x="214" y="120" width="84" height="9" fill="#0A0A0B"/><rect x="214" y="142" width="84" height="9" fill="#0A0A0B"/><path d="M229 210 h54 l27 22 -27 22 h-54 l-27 -22 z"/><rect x="242" y="254" width="28" height="56"/><path d="M242 310 h28 l7 64 h-42 z"/></g></g>
+      <circle cx="223" cy="289" r="68" fill="none" stroke="#FFFFFF" stroke-width="24"/>
+      <circle cx="223" cy="289" r="30" fill="#FFFFFF"/>
+    </g>
+  </g>
+
+  <!-- LOADING: the iron sweeps its solder pass 12->3 (CSS cf-boot-strike);
+       the joint at 3 o'clock heats AMBER while working. -->
+  <g id="cf-loading">
+    <rect width="512" height="512" rx="118" fill="#0A0A0B"/>
+    <g class="cf-hammer" transform="rotate(45 256 256)"><g fill="#FFFFFF" stroke="#0A0A0B" stroke-width="10" stroke-linejoin="round"><rect x="240" y="60" width="32" height="24" rx="8"/><rect x="222" y="84" width="68" height="104" rx="16"/><rect x="222" y="112" width="68" height="8" fill="#0A0A0B"/><path d="M232 188 h48 l20 18 -20 18 h-48 l-20 -18 z"/><rect x="243" y="224" width="26" height="44"/><path d="M243 268 h26 l6 46 h-38 z"/></g></g>
+    <path d="M400 326 V396" stroke="#FFFFFF" stroke-width="24" stroke-linecap="round"/>
+    <path d="M438 262 L486 300" stroke="#FFFFFF" stroke-width="24" stroke-linecap="round"/>
+    <circle cx="400" cy="256" r="60" fill="none" stroke="#FFFFFF" stroke-width="24"/>
+    <circle cx="400" cy="256" r="26" fill="#FBBF24"/>
+  </g>
+
+  <!-- MONO: single white ink on transparent, letterhead/print/etch -->
+  <g id="cf-mono">
+    <circle cx="256" cy="256" r="150" fill="none" stroke="#FFFFFF" stroke-width="44"/>
+    <g transform="rotate(45 256 256)"><g fill="#FFFFFF"><rect x="244" y="58" width="24" height="26" rx="8"/><rect x="214" y="82" width="84" height="128" rx="18"/><rect x="214" y="120" width="84" height="9" fill="#0A0A0B"/><rect x="214" y="142" width="84" height="9" fill="#0A0A0B"/><path d="M229 210 h54 l27 22 -27 22 h-54 l-27 -22 z"/><rect x="242" y="254" width="28" height="56"/><path d="M242 310 h28 l7 64 h-42 z"/></g></g>
+    <circle cx="223" cy="289" r="68" fill="none" stroke="#FFFFFF" stroke-width="24"/>
+    <circle cx="223" cy="289" r="30" fill="#FFFFFF"/>
+  </g>
+
+  <!-- MATERIAL ("the part"): manufactured hero — carbon-twill tile,
+       machined-aluminum iron, brushed-steel ring/node, forge-orange bore.
+       Marketing/app-store scale only. -> public/brand/hero-carbon.svg -->
+  <g id="cf-material">
+    <defs>
+      <linearGradient id="towA" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#191b20"/><stop offset=".5" stop-color="#2e3138"/><stop offset="1" stop-color="#141519"/>
+      </linearGradient>
+      <linearGradient id="towB" x1="1" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#191b20"/><stop offset=".5" stop-color="#2e3138"/><stop offset="1" stop-color="#141519"/>
+      </linearGradient>
+      <pattern id="carbon" width="28" height="28" patternUnits="userSpaceOnUse">
+        <rect width="28" height="28" fill="#0e0f12"/>
+        <rect x="0" y="0" width="14" height="14" fill="url(#towA)"/>
+        <rect x="14" y="14" width="14" height="14" fill="url(#towA)"/>
+        <rect x="14" y="0" width="14" height="14" fill="url(#towB)"/>
+        <rect x="0" y="14" width="14" height="14" fill="url(#towB)"/>
+      </pattern>
+      <linearGradient id="alu" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="#f2f3f5"/><stop offset=".18" stop-color="#c9cdd3"/>
+        <stop offset=".5" stop-color="#8f959d"/><stop offset=".82" stop-color="#cdd1d7"/>
+        <stop offset="1" stop-color="#6d737b"/>
+      </linearGradient>
+      <linearGradient id="aluHandle" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0" stop-color="#e8eaee"/><stop offset=".5" stop-color="#9aa0a8"/><stop offset="1" stop-color="#c9cdd3"/>
+      </linearGradient>
+      <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="#ffffff"/><stop offset=".45" stop-color="#9aa0a8"/>
+        <stop offset=".7" stop-color="#dfe2e7"/><stop offset="1" stop-color="#7d838b"/>
+      </linearGradient>
+      <radialGradient id="bore" cx=".5" cy=".5" r=".5">
+        <stop offset="0" stop-color="#ffb37a"/><stop offset=".35" stop-color="#ff4d00"/>
+        <stop offset=".8" stop-color="#7a2600"/><stop offset="1" stop-color="#1a0a02"/>
+      </radialGradient>
+    </defs>
+    <rect width="512" height="512" rx="118" fill="url(#carbon)"/>
+    <rect x="3" y="3" width="506" height="506" rx="115" fill="none" stroke="#3d4149" stroke-width="2" opacity=".55"/>
+    <circle cx="256" cy="256" r="150" fill="none" stroke="url(#steel)" stroke-width="44"/>
+    <g transform="rotate(45 256 256)">
+      <g stroke="#0c0d10" stroke-width="10" stroke-linejoin="round">
+        <rect x="244" y="58" width="24" height="26" rx="8" fill="url(#alu)"/>
+        <rect x="214" y="82" width="84" height="128" rx="18" fill="url(#aluHandle)"/>
+        <path d="M229 210 h54 l27 22 -27 22 h-54 l-27 -22 z" fill="url(#alu)"/>
+        <rect x="242" y="254" width="28" height="56" fill="url(#alu)"/>
+        <path d="M242 310 h28 l7 64 h-42 z" fill="#5d626a"/>
+      </g>
+      <rect x="214" y="120" width="84" height="9" fill="#0c0d10"/>
+      <rect x="214" y="142" width="84" height="9" fill="#0c0d10"/>
+      <rect x="220" y="90" width="52" height="12" rx="6" fill="#ffffff" opacity=".35"/>
+    </g>
+    <circle cx="223" cy="289" r="68" fill="#0e0f12"/>
+    <circle cx="223" cy="289" r="68" fill="none" stroke="url(#steel)" stroke-width="24"/>
+    <circle cx="223" cy="289" r="30" fill="url(#bore)"/>
+    <circle cx="213" cy="279" r="7" fill="#ffffff" opacity=".5"/>
+  </g>
+</svg>

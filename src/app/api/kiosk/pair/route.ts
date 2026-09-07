@@ -30,7 +30,7 @@ import {
   SESSION_COOKIE_NAME,
 } from '@/lib/auth/session';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
-import pool from '@/lib/db';
+import { withTenantTransaction } from '@/lib/tenancy/db';
 import { isKioskHost, kioskPathDogfoodActive, parseKioskHost } from '@/lib/tenancy/kiosk-host';
 import { resolveOrgIdFromRequest, NIL_ORG_ID } from '@/lib/tenancy/resolve-org-from-request';
 
@@ -79,16 +79,21 @@ async function handlePair(req: NextRequest) {
       return NextResponse.json({ error: 'INVALID_PAIRING_CODE' }, { status: 404 });
     }
 
-    // ctx is null (anonymous) — stamp the org from the paired row so the audit
-    // row is tenant-filterable; attribute to no staff (a device paired itself).
-    await recordAudit(pool, null, req, {
-      source: 'kiosk',
-      action: AUDIT_ACTION.KIOSK_PAIRED,
-      entityType: AUDIT_ENTITY.KIOSK_DEVICE,
-      entityId: pairing.deviceId,
-      organizationIdOverride: pairing.organizationId,
-      extra: { via: `kiosk_device:${pairing.deviceId}`, label: pairing.label },
-    });
+    // ctx is null (anonymous) — the org comes from the PAIRED DEVICE ROW (never
+    // the request), so both the audit transaction's GUC and the row's stamped
+    // org are the device's own tenant; attribute to no staff (a device paired
+    // itself). The pairing UPDATE itself is pre-auth on the owner pool by
+    // design (org unknown until the code matches) and reads the org from the row.
+    await withTenantTransaction(pairing.organizationId, (client) =>
+      recordAudit(client, null, req, {
+        source: 'kiosk',
+        action: AUDIT_ACTION.KIOSK_PAIRED,
+        entityType: AUDIT_ENTITY.KIOSK_DEVICE,
+        entityId: pairing.deviceId,
+        organizationIdOverride: pairing.organizationId,
+        extra: { via: `kiosk_device:${pairing.deviceId}`, label: pairing.label },
+      }),
+    );
 
     const res = NextResponse.json({
       ok: true,

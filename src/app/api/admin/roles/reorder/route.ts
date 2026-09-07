@@ -44,15 +44,17 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
     params.push(id, i + 1);
     valueParts.push(`($${params.length - 1}::INT, $${params.length}::INT)`);
   });
-  // `roles` is GLOBAL (no organization_id) — position is a system-wide ordering;
-  // no org predicate. Routed through the tenant connection for GUC parity.
+  // `roles` is org-scoped — position is a per-org ordering; the UPDATE
+  // carries the org conjunct so another org's ids in the array are no-ops.
+  params.push(ctx.organizationId);
   await tenantQuery(
     ctx.organizationId,
     `UPDATE roles r
         SET position = v.position,
             updated_at = NOW()
        FROM (VALUES ${valueParts.join(', ')}) AS v(id, position)
-      WHERE r.id = v.id`,
+      WHERE r.id = v.id
+        AND r.organization_id = $${params.length}::uuid`,
     params,
   );
 

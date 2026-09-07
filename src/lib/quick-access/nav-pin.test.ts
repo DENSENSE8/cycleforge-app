@@ -9,6 +9,7 @@ import {
   isPinEdgeOverId,
   isStructuralSpinePinHref,
   pinIndexFromOverId,
+  pinInputFromPinned,
 } from './nav-pin';
 
 test('pinIndexFromOverId: drop zone appends, pin: id inserts at that row', () => {
@@ -32,6 +33,63 @@ test('isStructuralSpinePinHref: Home only', () => {
   assert.equal(isStructuralSpinePinHref('/?mode=today'), true);
   assert.equal(isStructuralSpinePinHref('/unbox'), false);
   assert.equal(isStructuralSpinePinHref('/products'), false);
+});
+
+test('pinInputFromPinned is lossless for a session pin', () => {
+  const stored = {
+    id: 'p1',
+    label: 'Packing pace',
+    href: '/?session=oc-abc',
+    iconKey: 'ai-chat',
+    addedAt: 1,
+    sessionId: 'oc-abc',
+  };
+  const input = pinInputFromPinned(stored);
+  assert.equal(input.kind, 'session');
+  assert.equal(input.kind === 'session' ? input.sessionId : null, 'oc-abc');
+  assert.equal(input.label, 'Packing pace');
+});
+
+test('pinInputFromPinned recovers a binding carried only by the href', () => {
+  // A pin written before Feature 3, or by hand: the query param is the durable
+  // fact, so a restore must not demote it to a page pin.
+  const input = pinInputFromPinned({
+    id: 'p2',
+    label: 'Home',
+    href: '/?session=oc-legacy',
+    addedAt: 1,
+  });
+  assert.equal(input.kind === 'session' ? input.sessionId : null, 'oc-legacy');
+});
+
+test('pinInputFromPinned heals a label that stored raw model markup', () => {
+  const input = pinInputFromPinned({
+    id: 'p3',
+    label: '<|channel|>analysis<|message|>Packing pace',
+    href: '/?session=oc-raw',
+    addedAt: 1,
+    sessionId: 'oc-raw',
+  });
+  assert.doesNotMatch(input.label, /<\|/);
+});
+
+test('pinInputFromPinned leaves an ordinary page pin a page pin', () => {
+  const input = pinInputFromPinned({
+    id: 'p4',
+    label: 'Shipping',
+    href: '/shipping',
+    iconKey: 'outbound',
+    addedAt: 1,
+  });
+  assert.equal(input.kind, 'page');
+  assert.equal(input.iconKey, 'outbound');
+});
+
+test('a session pin (/?session=<id>) is a real destination, not the Home root', () => {
+  // Feature 3: a specific thread is pinnable even though `/` resolves to home.
+  assert.equal(isStructuralSpinePinHref('/?session=oc-abc'), false);
+  // Bare Home and non-session query Home stay blocked.
+  assert.equal(isStructuralSpinePinHref('/?session='), true);
 });
 
 test('Media Library is pinnable — it is a tool, not the spine root', () => {

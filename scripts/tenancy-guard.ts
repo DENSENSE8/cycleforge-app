@@ -13,7 +13,9 @@
  *       scripts/tenancy-guard-baseline.json (known debt — warns, and the guard
  *       fails if a baselined pair stops violating, so the list only shrinks).
  *       If a raw-pool route touches an enforced table it would silently get
- *       zero rows in prod — fail the build instead.
+ *       zero rows in prod — fail the build instead. Every exemption entry must
+ *       also carry an `addedAt` review date (YYYY-MM-DD); a missing stamp is a
+ *       hard failure, so an entry can never outlive its last honest review.
  *
  *   (B) Live role invariant (needs a DB URL):
  *       If ANY table is FORCEd in the live catalog, the role that serves TENANT
@@ -101,6 +103,19 @@ try {
 }
 
 const violations: string[] = [];
+
+// ── exemption schema gate ───────────────────────────────────────────────────
+// Every allowlist entry must carry addedAt (YYYY-MM-DD) — the date it was last
+// reviewed/admitted — so exemptions stay traceable to a human decision. A
+// missing or malformed stamp is a hard failure even alongside otherwise-clean
+// runs: it means the entry bypassed the discipline the allowlist depends on.
+for (const [key, entry] of Object.entries(ROUTE_TENANCY_EXEMPTIONS)) {
+  if (typeof entry.addedAt !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(entry.addedAt)) {
+    violations.push(
+      `exemption "${key}" lacks a valid addedAt (YYYY-MM-DD) — record the date this exemption was last reviewed`,
+    );
+  }
+}
 
 // ── (A) static enforcement gate ─────────────────────────────────────────────
 if (runStatic) {

@@ -303,7 +303,7 @@ export async function resolveKioskStepUp(
   try {
     const row = await verifyStaffPin(staffId, pin, orgId);
     if (requiredPermission) {
-      const permissions = await effectivePermissionsForStaff(row.id, {}, orgId);
+      const permissions = await effectivePermissionsForStaff(row.id, orgId);
       if (!permissions.has(requiredPermission)) {
         // Authenticated, but not authorized for THIS action. Log it — a real
         // person tried to take an action their role does not cover, and that is

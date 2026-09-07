@@ -60,6 +60,7 @@ export const cyberpunkPalette: ThemePalette = {
     // Extended tone text
     'text-info': '#7dd3fc',
     'text-fulfillment': '#d8b4fe',
+    'text-gilt': '#f0dfb8', // cream — the one non-neon word
     // Solid fills
     'fill-info': '#38bdf8',
     'fill-success': '#2fe08d',

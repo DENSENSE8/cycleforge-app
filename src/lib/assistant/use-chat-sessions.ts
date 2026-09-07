@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { AI_CHAT_NEW_EVENT } from '@/lib/app-events';
+import { AI_CHAT_NEW_EVENT, AI_CHAT_SESSIONS_CHANGED_EVENT } from '@/lib/app-events';
 
 /**
  * Recent agent sessions — ONE fetcher for every surface that lists them.
@@ -51,10 +51,15 @@ export function useChatSessions({ enabled = true }: { enabled?: boolean } = {}) 
   useEffect(() => {
     if (!enabled) return undefined;
     // A new session renames nothing until its first turn lands, so this is a
-    // refetch on the verb, not an optimistic insert.
-    const onNew = () => void reload();
-    window.addEventListener(AI_CHAT_NEW_EVENT, onNew);
-    return () => window.removeEventListener(AI_CHAT_NEW_EVENT, onNew);
+    // refetch on the verb, not an optimistic insert. Rename/delete broadcast
+    // the CHANGED event, which is the same "reload the list" signal.
+    const onChange = () => void reload();
+    window.addEventListener(AI_CHAT_NEW_EVENT, onChange);
+    window.addEventListener(AI_CHAT_SESSIONS_CHANGED_EVENT, onChange);
+    return () => {
+      window.removeEventListener(AI_CHAT_NEW_EVENT, onChange);
+      window.removeEventListener(AI_CHAT_SESSIONS_CHANGED_EVENT, onChange);
+    };
   }, [enabled, reload]);
 
   return { sessions, loading, reload };

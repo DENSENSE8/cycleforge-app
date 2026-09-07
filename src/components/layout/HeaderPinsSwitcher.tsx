@@ -26,16 +26,15 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { GripVertical, Pin, Star, X } from '@/components/Icons';
+import { GripVertical, MessageSquare, Pin, Star, X } from '@/components/Icons';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuickAccess } from '@/lib/quick-access/use-quick-access';
 import {
   MAX_PIN_HOTKEY_SLOTS,
   type PinnedPage,
 } from '@/lib/quick-access/types';
-import {
-  pinHotkeyLabel,
-} from '@/lib/quick-access/pin-hotkeys';
+import { pinHotkeyLabel } from '@/lib/quick-access/pin-hotkeys';
+import { isSessionPin } from '@/lib/quick-access/nav-pin';
 import {
   resolveQuickAccessHref,
   resolveQuickAccessLabelFromLocation,
@@ -64,6 +63,10 @@ import {
 } from './header-shell';
 
 function resolvePinIcon(pin: PinnedPage): SidebarIconComponent {
+  // Session-first, BEFORE the href lookup: `/?session=<id>` resolves to the
+  // Home face, so an href-first switcher paints every pinned thread with the
+  // Home glyph. Same rule the spine shelf runs — one predicate, both surfaces.
+  if (isSessionPin(pin)) return MessageSquare;
   const fromHref = masterNavFaceForPinHref(pin.href)?.icon;
   if (fromHref) return fromHref;
   if (pin.iconKey && pin.iconKey !== 'unknown') {
@@ -177,6 +180,7 @@ export function HeaderPinsSwitcher() {
       user?.organizationName,
     );
     pin({
+      kind: 'page',
       label,
       href: currentHref,
       iconKey: getMasterNavItem(getSidebarNavPageId(pathname, searchParams))?.id,

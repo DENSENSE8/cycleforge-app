@@ -84,15 +84,19 @@ import { StaffAccountFooter } from './StaffAccountFooter';
 import { MasterNavPinnedCluster } from './MasterNavPinnedCluster';
 import { usePinUndo } from './use-pin-undo';
 import { SpineSessionHead } from './SpineSessionHead';
+import { SpineSessionsList } from './SpineSessionsList';
 import { useChatSessions } from '@/lib/assistant/use-chat-sessions';
+import { displaySessionTitle } from '@/lib/ai/session-title-text';
 import { AI_CHAT_NEW_EVENT } from '@/lib/app-events';
+import { sessionPinHref } from '@/lib/assistant/use-session-actions';
 import { usePathname, useSearchParams } from 'next/navigation';
 import { useSessionTitle } from '@/components/session/session-title-store';
 
 /**
  * MasterNav page list on the shadcn Sidebar. Catalog is not sortable.
- * Hold-drag a leaf onto Pinned. Stations / Desks / Operations Studio / Admin
- * are collapsible sections (see `renderSection`) — never list-replace drills.
+ * Hold-drag a leaf onto Pinned. Stations and Workspaces are collapsible
+ * sections (see `renderSection`); Automations leads the map as a flat
+ * `spineFlat` row — never list-replace drills.
  */
 const pinCollisionDetection: CollisionDetection = (args) => {
   const pointerHits = pointerWithin(args);
@@ -117,6 +121,8 @@ interface SidebarNavListProps {
   activeChildId: string | null;
   otherPages: SidebarPageNav[];
   onNavigate: (pageId: string, childId?: string) => void;
+  /** Land on an exact href (a session thread) — one push, drawer closed. */
+  onOpenHref: (href: string) => void;
   onRowHover?: (page: SidebarPageNav) => void;
   spineOrder: string[];
   className?: string;
@@ -187,6 +193,7 @@ export function SidebarNavList({
   activeChildId,
   otherPages,
   onNavigate,
+  onOpenHref,
   onRowHover,
   spineOrder,
   className,
@@ -226,7 +233,10 @@ export function SidebarNavList({
   const liveSessionTitle = useSessionTitle();
   const onSessionSurface = pathname === '/';
   const currentSessionTitle = currentSessionId
-    ? (sessions ?? []).find((s) => s.id === currentSessionId)?.title?.trim() || 'Session'
+    ? displaySessionTitle(
+        (sessions ?? []).find((s) => s.id === currentSessionId)?.title,
+        'Session',
+      )
     : liveSessionTitle;
 
   const startNewSession = useCallback(() => {
@@ -236,6 +246,14 @@ export function SidebarNavList({
     window.dispatchEvent(new CustomEvent(AI_CHAT_NEW_EVENT));
     onNavigate('home');
   }, [onNavigate]);
+  /**
+   * Open a specific past thread — ONE navigation. `sessionPinHref` is the same
+   * URL shape a session PIN stores, so the thread has exactly one address.
+   */
+  const openSession = useCallback(
+    (id: string) => onOpenHref(sessionPinHref(id)),
+    [onOpenHref],
+  );
   const stationsSection = SPINE_SECTIONS.find((s) => s.id === 'floor');
   const desksGroup = DESK_GROUPS[0];
   const floorPages = useMemo(
@@ -249,6 +267,19 @@ export function SidebarNavList({
   const deskPages = useMemo(
     () => pagesNotPinned(otherPages.filter((p) => isSpineDeskItem(p)), settings.pinned),
     [otherPages, settings.pinned],
+  );
+  // R9: the section's FULL home roster, pinned rows included. `floorPages` /
+  // `deskPages` above are the navigable set (pinned rows moved to the shelf);
+  // these keep every destination in its arranged slot so the render can paint
+  // a vacated marker exactly where the pinned row used to sit — spatial memory
+  // survives the move.
+  const floorPagesAll = useMemo(
+    () => otherPages.filter((p) => spineSectionIdForPage(p) === 'floor'),
+    [otherPages],
+  );
+  const deskPagesAll = useMemo(
+    () => otherPages.filter((p) => isSpineDeskItem(p)),
+    [otherPages],
   );
 
   const mapEntries = useMemo(
@@ -284,7 +315,9 @@ export function SidebarNavList({
       }
       const page = entry.page;
       if (pinsCoverPageId(page.id, settings.pinned)) continue;
-      if ((page.children?.length ?? 0) > 0) {
+      // `spineFlat` L1s (Automations) declare children for ⌘K / the mode
+      // switcher but paint as ONE loose map row, not a disclosure.
+      if ((page.children?.length ?? 0) > 0 && !page.spineFlat) {
         blocks.push({ kind: 'parent', page });
         continue;
       }
@@ -446,7 +479,7 @@ export function SidebarNavList({
       if (isStructuralSpinePinHref(data.href)) return;
       const at = pinIndexFromOverId(overId, pinIds);
       pinAt(
-        { href: data.href, label: data.label, iconKey: data.iconKey },
+        { kind: 'page', href: data.href, label: data.label, iconKey: data.iconKey },
         at ?? pinIds.length,
       );
     },
@@ -467,6 +500,47 @@ export function SidebarNavList({
       onMouseEnter={onRowHover ? () => onRowHover(page) : undefined}
     />
   );
+
+  /**
+   * R9 — the vacated slot a pinned row leaves behind.
+   *
+   * A pinned destination is MOVED to the shelf, not copied. Dropping its home
+   * row silently reflowed the section, so an operator who reaches by position
+   * ("Receiving is the third Station") landed on the wrong one. This paints a
+   * quiet WHISPER in the same slot — the label at faint ink with a trailing pin
+   * glyph saying WHERE it went — so the arrangement is recognisable at a
+   * glance.
+   *
+   * Deliberately NOT a second destination: the shelf pin is the one place this
+   * page is reached from ("moved, not copied" — see `pagesNotPinned`), so the
+   * marker is inert — no button, no `Go to` name, `aria-hidden` so assistive
+   * tech hears the page once (from the pin). Held to `h-4` at `text-role-micro`
+   * rather than the row's `h-7`: a slot cue costs a sliver of the column, never
+   * a full repeated row, which is also what keeps the at-rest map inside its
+   * fold budget when several pins vacate one section.
+   */
+  const renderVacatedRow = (page: SidebarPageNav) => (
+    <li
+      key={`vacated-${page.id}`}
+      data-spine-vacated
+      aria-hidden
+      title={`${page.label} — pinned above`}
+      className={cn(SPINE_ROW_SHELL_CLASS, 'h-4 text-text-faint')}
+    >
+      <page.icon className="h-3 w-3 shrink-0" />
+      <span className="min-w-0 flex-1 truncate text-role-micro">{page.label}</span>
+      <Pin className="h-2.5 w-2.5 shrink-0" />
+    </li>
+  );
+
+  // Paint a home section in its arranged order, swapping any pinned-away row
+  // for its vacated marker (R9) so positions never shift under a pin.
+  const renderSectionRows = (pages: SidebarPageNav[]) =>
+    pages.map((page) =>
+      pinsCoverPageId(page.id, settings.pinned)
+        ? renderVacatedRow(page)
+        : renderDraggablePage(page),
+    );
 
   const renderChild = (
     page: SidebarPageNav,
@@ -546,7 +620,7 @@ export function SidebarNavList({
         open={open}
         onOpenChange={(next) => setSectionOpen(sectionKey, next)}
       >
-        <SidebarGroup id={domId} role="group" aria-label={label}>
+        <SidebarGroup id={domId} role="group" aria-label={label} className="group/section">
           <SidebarGroupLabel asChild className={SPINE_SECTION_LABEL_STICKY_CLASS}>
             <CollapsibleTrigger
               data-spine-section-trigger
@@ -573,7 +647,18 @@ export function SidebarNavList({
                 )}
                 <motion.span
                   aria-hidden
-                  className="flex shrink-0 text-text-faint"
+                  className={cn(
+                    'flex shrink-0 text-text-faint transition-opacity',
+                    // R7: on an OPEN section the chevron is a quiet affordance —
+                    // the disclosure state is already legible from the rows, so
+                    // the glyph rests at zero opacity and reveals only on
+                    // hover/focus of the section (pointer intent, or a keyboard
+                    // operator landing anywhere inside it). A FOLDED section
+                    // keeps it lit: there the chevron is the ONLY sign the row
+                    // opens, and it sits beside the count the fold shows.
+                    open &&
+                      'opacity-0 group-hover/section:opacity-100 group-focus-within/section:opacity-100',
+                  )}
                   initial={false}
                   animate={{ rotate: open ? 0 : -90 }}
                   transition={chevronTransition}
@@ -626,10 +711,14 @@ export function SidebarNavList({
           <MasterNavPinnedCluster
             pinIds={pinIds}
             undo={undo}
+            onKeyboardUnpin={unpinWithUndo}
             shelfRef={(el) => {
               shelfElRef.current = el;
             }}
           />
+          {/* Recent sessions — always-visible under Pinned (Feature 2). The
+              current thread is excluded (the head already names it). */}
+          <SpineSessionsList onOpenSession={openSession} />
           {/* The map is the unpin surface. While a PIN is in flight the WHOLE
               area below the shelf wears the release face — one overlay, one
               sentence, no dip into collision diplomacy to know what a release
@@ -645,8 +734,8 @@ export function SidebarNavList({
                       'floor',
                       'spine-section-floor',
                       stationsSection.label,
-                      floorPages.map((page) => renderDraggablePage(page)),
-                      floorPages.length,
+                      renderSectionRows(floorPagesAll),
+                      floorPagesAll.length,
                       floorPages.some((page) => page.id === activePage.id),
                     )}
                   </div>
@@ -659,8 +748,8 @@ export function SidebarNavList({
                       'desks',
                       'spine-section-desks',
                       desksGroup.label,
-                      deskPages.map((page) => renderDraggablePage(page)),
-                      deskPages.length,
+                      renderSectionRows(deskPagesAll),
+                      deskPagesAll.length,
                       deskPages.some((page) => page.id === activePage.id),
                     )}
                   </div>

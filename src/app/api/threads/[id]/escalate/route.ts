@@ -6,6 +6,7 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { escalateThreadToTicket } from '@/lib/threads/escalate';
 import { HelpdeskNotConnectedError } from '@/lib/integrations/helpdesk';
 import { withIdempotencyClaim, readIdempotencyKey } from '@/lib/api-idempotency';
+import { withTenantTransaction } from '@/lib/tenancy/db';
 import pool from '@/lib/db';
 
 /**
@@ -64,13 +65,18 @@ export async function POST(
         // Audit only a real escalation (a fresh ticket was created + attached),
         // never the idempotent replay of an already-linked thread.
         if (result.created) {
-          await recordAudit(pool, gate.ctx, req, {
-            source: 'threads-api',
-            action: AUDIT_ACTION.THREAD_TICKET_ATTACH,
-            entityType: AUDIT_ENTITY.ENTITY_THREAD,
-            entityId: threadId,
-            after: { supportTicketId: result.supportTicketId, mode: parsed.mode },
-          });
+          // Audit write under the tenant GUC (the escalation itself runs in
+          // escalateThreadToTicket's own tenant transaction; the idempotency
+          // claim above is ctx/org-stamped by design).
+          await withTenantTransaction(gate.ctx.organizationId, (client) =>
+            recordAudit(client, gate.ctx, req, {
+              source: 'threads-api',
+              action: AUDIT_ACTION.THREAD_TICKET_ATTACH,
+              entityType: AUDIT_ENTITY.ENTITY_THREAD,
+              entityId: threadId,
+              after: { supportTicketId: result.supportTicketId, mode: parsed.mode },
+            }),
+          );
         }
 
         return {

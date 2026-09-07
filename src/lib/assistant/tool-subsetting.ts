@@ -21,8 +21,11 @@
 
 import type { OpenAiFunctionTool } from '@/lib/assistant/tools/openai-schema';
 
-/** Total advertisement budget for a self-hosted turn (core + UI + ranked). */
-export const SELF_HOSTED_TOOL_CAP_DEFAULT = 10;
+/** Total advertisement budget for a self-hosted turn (core + UI + ranked).
+ * 8 not 10: measured on the 16 GB card, 10-tool rows push QLoRA training
+ * activations past what is left after the OS desktop — and the wire budget
+ * only improves (≈9.6 kB at 8). Still inside the handoff's "~8–10" target. */
+export const SELF_HOSTED_TOOL_CAP_DEFAULT = 8;
 
 /** Server verbs every turn can reach for, whatever the question was. */
 const ALWAYS_ON_CORE: Record<string, true> = {
@@ -61,7 +64,7 @@ const TOOL_ALIASES: Record<string, readonly string[]> = {
   get_graph: ['workflow graph', 'operations graph', 'the graph', 'nodes and edges', 'whole workflow'],
   get_node_detail: ['node detail', 'station detail', 'occupancy', 'one station', 'this node'],
   get_benchmarks: ['benchmark', 'industry', 'typical values', 'how do we compare', 'vertical'],
-  get_kpis: ['kpi', 'kpis', 'throughput', 'event counts', 'how many received', 'how many shipped'],
+  get_kpis: ['kpi', 'kpis', 'throughput', 'event counts', 'how many received', 'how many shipped', 'weekly throughput', 'received this week', 'kpi rollup'],
   search_notes: ['notes', 'buyer note', 'reason code', 'search reasons', 'tech notes'],
   get_mutation_history: ['what did you change', 'mutation history', 'your changes', 'what have you changed'],
   get_chat_history: ['chat history', 'previous conversations', 'past sessions', 'as we discussed', 'yesterday we'],
@@ -77,7 +80,7 @@ const TOOL_ALIASES: Record<string, readonly string[]> = {
   search_photos: ['photos', 'photo', 'pictures', 'damage', 'media library'],
   get_receiving_by_tracking: ['which carton', 'receiving carton', 'carton for', 'receiving for this'],
   get_ticket_entities: ['zendesk', 'ticket entities', 'ticket link'],
-  get_packing_kpi: ['packing pace', 'packer', 'packed most', 'packing kpi', 'are we on capacity', 'pack rate'],
+  get_packing_kpi: ['packing pace', 'packer', 'packed most', 'packing kpi', 'are we on capacity', 'pack rate', 'packing performance', 'packer counts', 'last shift'],
   resolve_receiving_line_for_order: ['line for order', 'photos from order', 'move the photos', 'lines on'],
   list_receiving_line_photos: ['photos on the line', 'line photos', 'photos on this carton'],
   resolve_item_number: ['item number', 'create a rule', 'resolve product', 'asin', 'listing rule'],
@@ -89,10 +92,54 @@ const TOOL_ALIASES: Record<string, readonly string[]> = {
   triage_orders_csv: ['csv', 'import orders', 'pasted orders', 'triage this', 'pending orders spreadsheet'],
   list_connected_apps: ['connected apps', 'my apps', 'integrations', 'which apps'],
   connect_app: ['connect', 'sign in to', 'hook up'],
-  search_staff_documents: ['google docs', 'my docs', 'search documents', 'handbook', 'document search'],
-  read_staff_document: ['read the document', 'read the doc', 'document text', 'open the doc'],
+  search_staff_documents: ['google docs', 'my docs', 'search documents', 'handbook', 'document search', 'ops handbook', 'sop', 'find the doc'],
+  read_staff_document: ['read the document', 'read the doc', 'document text', 'open the doc', 'read the handbook', 'read the ops handbook', 'what does the sop say', 'show me the text of'],
   get_roi_gaps: ['roi', 'gaps', 'leaking', 'losing money', 'fix first', 'biggest gaps', 'where are we losing'],
   get_station_catalog: ['station catalog', 'parts list', 'blocks', 'composition', 'station builder'],
+  // The five operator reports. These aliases are the OWNER'S OWN SENTENCES —
+  // the phrases he types, not the tool's vocabulary. A self-hosted runtime only
+  // sees a subsetted advertisement, so a report the keywords cannot reach is a
+  // report that does not exist on the local box.
+  get_packing_performance: [
+    'packing performance',
+    'how many boxes did',
+    'packer efficiency',
+    'wait minutes',
+    'minutes per box',
+    'packed today',
+    'pack floor',
+  ],
+  get_unbox_backlog: [
+    'left to be unboxed',
+    'unbox backlog',
+    'boxes to open',
+    'waiting at receiving',
+    'packages to open',
+    'not unboxed',
+  ],
+  get_order_value_rank: [
+    'most expensive order',
+    'highest value order',
+    'biggest order',
+    'value in the building',
+    'expensive order in the warehouse',
+  ],
+  get_roi_rank: [
+    'highest roi',
+    'highest rois',
+    'biggest gaps',
+    'clear the backlog',
+    'fix first',
+    'where are we leaking',
+  ],
+  get_delegation_plan: [
+    'delegate',
+    'who should attack',
+    'who is free',
+    'pending tasks',
+    'roster load',
+    'who can i send',
+  ],
   search_tool_registry: ['tool forge', 'registry of tools', 'search the tool registry'],
   submit_approval_decision: ['approval', 'approve the request', 'decision on the request'],
   execute_build_sandbox: ['build sandbox', 'run the build', 'sandbox'],

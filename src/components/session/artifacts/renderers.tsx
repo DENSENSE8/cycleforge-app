@@ -483,3 +483,12 @@ export function RecordArtifact({ artifact, onOpen }: { artifact: ArtifactRecord;
     </div>
   );
 }
+
+// ─── report ──────────────────────────────────────────────────────────────────
+
+/**
+ * The operator report lives in its own file — headline, KPI grid, section
+ * tables, standards, notes — and is re-exported here so the view panel keeps
+ * mounting every renderer from this one registry.
+ */
+export { ReportArtifact } from './ReportArtifact';

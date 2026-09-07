@@ -59,6 +59,7 @@ export const forestPalette: ThemePalette = {
     // Extended tone text
     'text-info': '#85b8f5',
     'text-fulfillment': '#cbaef2',
+    'text-gilt': '#eeddb0', // cream against moss
     // Solid fills
     'fill-info': '#3f8cf2',
     'fill-success': '#37c46f',

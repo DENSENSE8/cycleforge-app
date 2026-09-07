@@ -26,7 +26,6 @@
 
 import pool from '@/lib/db';
 import { getCurrentPSTDateKey } from '@/utils/date';
-import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 import { withZohoCredential } from '@/lib/zoho/with-zoho-credential';
 import { zohoClient, ZohoInventoryClient } from '@/lib/zoho/ZohoInventoryClient';
 import { salesOrderRepository } from '@/lib/repositories/salesOrderRepository';
@@ -500,7 +499,7 @@ async function defaultEnsureSalesOrder(
   order: ShippedFulfillmentOrder,
   orgId: string
 ): Promise<string> {
-  const local = await salesOrderRepository.findByReference(order.referenceNumber);
+  const local = await salesOrderRepository.findByReference(order.referenceNumber, orgId);
   if (local?.zohoSoId) return local.zohoSoId;
 
   const existingZoho = await zohoClient.findSalesOrderByReference(order.referenceNumber);
@@ -549,8 +548,10 @@ export interface SyncRunOptions {
   config?: Partial<FulfillmentSyncConfig>;
   /** Inject deps for testing; production callers omit this. */
   deps?: Partial<FulfillmentDeps>;
-  /** Tenant to push for. Crons fan out per org; defaults to transitional USAV. */
-  orgId?: string;
+  /** Tenant to push for — REQUIRED, un-defaulted. Crons fan out per org; the
+   * manual route threads ctx.organizationId. (The old dogfood-org default
+   * silently pushed an org-less run under USAV.) */
+  orgId: string;
 }
 
 export interface SyncRunReport {
@@ -572,12 +573,12 @@ export interface SyncRunReport {
  * Zoho fulfillment chain. Returns an aggregate report; the caller advances the
  * sync cursor when `errored === 0`.
  */
-export async function syncShippedOrdersToZoho(opts: SyncRunOptions = {}): Promise<SyncRunReport> {
+export async function syncShippedOrdersToZoho(opts: SyncRunOptions): Promise<SyncRunReport> {
   const start = Date.now();
   const runStartedAt = new Date().toISOString();
   const config = getFulfillmentSyncConfig(opts.config);
   const dryRun = opts.dryRun ?? config.dryRunDefault;
-  const orgId = opts.orgId ?? opts.deps?.orgId ?? transitionalDogfoodOrgId();
+  const orgId = opts.orgId;
 
   const deps: FulfillmentDeps = {
     client: opts.deps?.client ?? zohoClient,

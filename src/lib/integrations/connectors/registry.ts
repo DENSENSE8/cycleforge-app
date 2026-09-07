@@ -130,9 +130,10 @@ const CONNECTORS: Record<IntegrationProvider, IntegrationConnector> = {
     refresh: (orgId) => import('./grok').then((m) => m.grokRefresh(orgId)),
   },
   // Email inbox — the PO mailbox (Gmail). The OAuth island under
-  // /api/admin/po-gmail/* remains the live flow; tokens are being migrated
-  // from google_oauth_tokens into the vault (dual-read in src/lib/po-gmail/
-  // client.ts). Registered here so 'email_inbox' gating/labels resolve.
+  // /api/admin/po-gmail/* remains the live flow; tokens live only in the
+  // vault (src/lib/po-gmail/client.ts reads it exclusively — the legacy
+  // google_oauth_tokens token columns were dropped 2026-09-06). Registered
+  // here so 'email_inbox' gating/labels resolve.
   gmail: {
     provider: 'gmail',
     authKind: 'oauth',

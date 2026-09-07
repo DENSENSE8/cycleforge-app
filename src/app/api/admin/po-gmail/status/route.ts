@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server';
-import pool from '@/lib/db';
 import { withAuth } from '@/lib/auth/withAuth';
 import { errorResponse } from '@/lib/api';
 import { assertDogfoodMailbox, PoGmailWrongTenantError } from '@/lib/po-gmail/client';
@@ -7,14 +6,6 @@ import { getIntegrationCredentials, type GmailCredentials } from '@/lib/integrat
 import { getConnectionStatus } from '@/lib/integrations/connectors/connections';
 
 export const dynamic = 'force-dynamic';
-
-interface Row {
-  account_email: string | null;
-  created_at: string;
-  scope: string | null;
-  needs_reconnect: boolean;
-  needs_reconnect_reason: string | null;
-}
 
 const DISCONNECTED = {
   connected: false,
@@ -29,9 +20,10 @@ export const GET = withAuth(async (_req, ctx) => {
   try {
     assertDogfoodMailbox(ctx.organizationId);
 
-    // Vault-first: the organization_integrations row (provider='gmail') is the
-    // preferred token home. Report its state; the legacy google_oauth_tokens
-    // row is only consulted when no vault row exists (pre-migration connect).
+    // The organization_integrations row (provider='gmail') is the only token
+    // home since the 2026-09-06 google_oauth_tokens plaintext-column drop.
+    // No vault row → not connected; the po-gmail client fails closed the
+    // same way (the legacy metadata row carries no tokens).
     const vault = await getConnectionStatus(ctx.organizationId, 'gmail');
     if (vault) {
       const creds = vault.connected
@@ -47,21 +39,7 @@ export const GET = withAuth(async (_req, ctx) => {
       });
     }
 
-    // Legacy fallback — same row shape as before the vault migration.
-    const { rows, rowCount } = await pool.query<Row>(
-      `SELECT account_email, created_at, scope, needs_reconnect, needs_reconnect_reason
-         FROM google_oauth_tokens
-        WHERE provider = 'po_gmail'
-        LIMIT 1`,
-    );
-    return NextResponse.json({
-      connected: (rowCount ?? 0) > 0,
-      accountEmail: rows[0]?.account_email ?? null,
-      connectedAt: rows[0]?.created_at ?? null,
-      scope: rows[0]?.scope ?? null,
-      needsReconnect: rows[0]?.needs_reconnect ?? false,
-      needsReconnectReason: rows[0]?.needs_reconnect_reason ?? null,
-    });
+    return NextResponse.json(DISCONNECTED);
   } catch (error) {
     if (error instanceof PoGmailWrongTenantError) {
       return NextResponse.json(DISCONNECTED);

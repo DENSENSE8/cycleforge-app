@@ -42,7 +42,9 @@
  * Recent threads live in the header switcher and ⌘K, not a spine section.
  */
 
-import { MessageSquare, Sparkles } from '@/components/Icons';
+import { useEffect, useState } from 'react';
+import { AskMark, MessageSquare } from '@/components/Icons';
+import { isAppleModPlatform } from '@/lib/quick-access/pin-hotkeys';
 import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import {
   SPINE_ROW_DENSITY,
@@ -98,6 +100,15 @@ export function SpineSessionHead({
   currentActive: boolean;
   onOpenCurrent: () => void;
 }) {
+  // Platform-aware head chord (R8). SSR and first client paint MUST agree, so
+  // the initial value mirrors `isAppleModPlatform()`'s server branch (⌘, the
+  // `typeof navigator === 'undefined'` default); the real platform is read in
+  // a mounted effect, after hydration, so a non-Apple client swaps to Ctrl+N
+  // without a hydration mismatch.
+  const [chord, setChord] = useState('⌘N');
+  useEffect(() => {
+    setChord(isAppleModPlatform() ? '⌘N' : 'Ctrl+N');
+  }, []);
   return (
     <div data-spine-head className="flex flex-col">
       <div className="flex flex-col gap-1 px-2 py-1">
@@ -113,9 +124,11 @@ export function SpineSessionHead({
           aria-keyshortcuts="Meta+N Control+N"
           className={HEAD_ROW_CLASS}
         >
-          <Sparkles className={navIconStrokeClass(SPINE_ROW_ICON_CLASS)} />
+          {/* `AskMark`, the assistant's own glyph — not the app-wide sparkle
+              this row used to borrow. One identity, one mark. */}
+          <AskMark className={navIconStrokeClass(SPINE_ROW_ICON_CLASS)} />
           <span className="min-w-0 flex-1 truncate text-left">New chat</span>
-          <SpineHeadKbd chord="⌘N" />
+          <SpineHeadKbd chord={chord} />
         </button>
       </div>
       {/* The session you are in — the current thread, named by the AI summary

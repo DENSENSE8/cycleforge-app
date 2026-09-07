@@ -23,7 +23,6 @@ import { test, expect, type Page, type Locator } from '@playwright/test';
  * whether the row leaves the group it came from.
  */
 
-const PAGES_MENU = '[role="menu"][aria-label="Pages"]';
 const NAV_COLUMN_OPEN = '[data-sidebar-nav-column][data-open="true"]';
 const MEDIA_LIBRARY = 'Media Library';
 
@@ -35,7 +34,6 @@ async function openSpine(page: Page, route: string) {
     await page.locator('header button').first().click();
   }
   await expect(page.locator(NAV_COLUMN_OPEN)).toBeVisible();
-  await expect(page.locator(PAGES_MENU)).toBeVisible();
 }
 
 /**

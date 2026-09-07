@@ -16,7 +16,7 @@ export const GET = withAuth(async (req, ctx) => {
     return NextResponse.json({ success: true, roles: QA_PREVIEW_ROLES });
   }
   try {
-    const preview = await previewAsRole(role);
+    const preview = await previewAsRole(role, ctx.organizationId);
     return NextResponse.json({ success: true, preview });
   } catch (err) {
     const status = typeof err === 'object' && err && 'status' in err ? Number((err as { status: number }).status) : 500;

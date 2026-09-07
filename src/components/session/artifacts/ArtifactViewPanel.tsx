@@ -24,6 +24,7 @@ import {
   ChartArtifact,
   ImportTriageArtifact,
   RecordArtifact,
+  ReportArtifact,
   TableArtifact,
   TicketReplyDraftArtifact,
   TicketThreadArtifact,
@@ -121,6 +122,8 @@ function renderArtifact(
       return <RecordArtifact artifact={artifact} onOpen={navigate} />;
     case 'import_triage':
       return <ImportTriageArtifact artifact={artifact} />;
+    case 'report':
+      return <ReportArtifact artifact={artifact} />;
   }
 }
 

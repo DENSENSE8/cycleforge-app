@@ -89,7 +89,8 @@ function pinnedEqual(a: PinnedPage[], b: PinnedPage[]): boolean {
       x.label !== y.label ||
       x.href !== y.href ||
       x.iconKey !== y.iconKey ||
-      x.addedAt !== y.addedAt
+      x.addedAt !== y.addedAt ||
+      x.sessionId !== y.sessionId
     ) {
       return false;
     }
@@ -115,6 +116,7 @@ export function sanitizePinned(pinned: PinnedPage[]): PinnedPage[] {
       href: p.href.slice(0, 2000),
       iconKey: typeof p.iconKey === 'string' ? p.iconKey.slice(0, 64) : undefined,
       addedAt: typeof p.addedAt === 'number' && Number.isFinite(p.addedAt) ? p.addedAt : Date.now(),
+      sessionId: typeof p.sessionId === 'string' && p.sessionId ? p.sessionId.slice(0, 64) : undefined,
     });
     if (out.length >= MAX_PINS) break;
   }
@@ -168,6 +170,7 @@ export function addPin(input: {
   label: string;
   href: string;
   iconKey?: string;
+  sessionId?: string;
 }): { settings: QuickAccessSettings; result: 'added' | 'duplicate' | 'full' } {
   const current = getSettings();
   if (isStructuralSpinePinHref(input.href)) {
@@ -185,6 +188,7 @@ export function addPin(input: {
     href: input.href,
     iconKey: input.iconKey,
     addedAt: Date.now(),
+    sessionId: input.sessionId || undefined,
   };
   const settings = setSettings({ pinned: [pin, ...current.pinned] });
   persistPinsToServer(settings.pinned);
@@ -196,7 +200,7 @@ export function addPin(input: {
  * omitted). A href that is already pinned moves to that index.
  */
 export function insertPin(
-  input: { label: string; href: string; iconKey?: string },
+  input: { label: string; href: string; iconKey?: string; sessionId?: string },
   atIndex?: number,
 ): { settings: QuickAccessSettings; result: 'added' | 'moved' | 'full' } {
   const current = getSettings();
@@ -222,6 +226,10 @@ export function insertPin(
     href: input.href,
     iconKey: input.iconKey,
     addedAt: Date.now(),
+    // Same field `addPin` writes: a pin dropped onto the shelf, or handed back
+    // by undo, keeps the thread it names. Dropping it here is how an undone
+    // unpin used to return a session pin as a bare Home row.
+    sessionId: input.sessionId || undefined,
   };
   const idx =
     atIndex == null

@@ -69,6 +69,7 @@ export const darkPalette: ThemePalette = {
     // Extended tone text — -300 shades (same ramp the neutral remap uses)
     'text-info': '#93c5fd',
     'text-fulfillment': '#d8b4fe',
+    'text-gilt': '#f0dfb8', // cream
     // Solid fills — one step brighter than light so they carry on dark
     'fill-info': '#3b82f6',
     'fill-success': '#22c55e',

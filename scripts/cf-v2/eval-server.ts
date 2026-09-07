@@ -311,7 +311,30 @@ async function main() {
   const rows: GoldenRow[] = readFileSync(GOLDENS, 'utf8').split('\n').filter((l) => l.trim()).map((l) => JSON.parse(l));
   const results: RowResult[] = [];
   for (const row of rows) {
-    const r = await runRow(row);
+    // One transport hiccup (server restart mid-row, socket cut) must not kill
+    // the run: retry the row once, then score it as a hard fail.
+    let r: RowResult | null = null;
+    for (let attempt = 0; attempt < 2 && !r; attempt++) {
+      try {
+        r = await runRow(row);
+      } catch (err) {
+        if (attempt === 0) {
+          const { promise, resolve } = Promise.withResolvers<void>();
+          setTimeout(resolve, 3000);
+          await promise;
+        } else {
+          console.log(`${row.id}: TRANSPORT-FAIL ${String(err).slice(0, 120)}`);
+        }
+      }
+    }
+    if (!r) {
+      r = {
+        id: row.id, pass: false, tool_ok: false, refuse_ok: false, invented_id: false,
+        tenant_arg_leak: false, unadvertised_call: false, artifact_valid: null,
+        artifact_first_try: null, empty_honest: null, called_tools: [], turns: 0,
+        first_token_ms: -1, text: '',
+      };
+    }
     results.push(r);
     console.log(
       `${r.id}: pass=${r.pass} tool_ok=${r.tool_ok} ftms=${r.first_token_ms} turns=${r.turns} tools=[${r.called_tools.join(',')}]`,

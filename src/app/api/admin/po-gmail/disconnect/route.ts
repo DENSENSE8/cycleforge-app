@@ -11,8 +11,9 @@ export const dynamic = 'force-dynamic';
 export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     assertDogfoodMailbox(ctx.organizationId);
-    // Dual-delete: the vault row (preferred token home) AND the legacy
-    // google_oauth_tokens row, so no read path can resurrect the connection.
+    // Delete the vault row (the only token home since the 2026-09-06
+    // plaintext-column drop) AND the legacy google_oauth_tokens metadata
+    // row, so no read path can resurrect the connection.
     await deleteIntegrationCredentials(ctx.organizationId, 'gmail');
     await pool.query(`DELETE FROM google_oauth_tokens WHERE provider = 'po_gmail'`);
     await recordAudit(pool, ctx, req, {

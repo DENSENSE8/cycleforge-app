@@ -60,6 +60,9 @@ import {
 } from './composio-tools';
 import { getRoiGaps } from './roi-gap-tools';
 import { getStationCatalogTool } from './station-tools';
+import { getPackingPerformanceTool } from './report-tools-packing';
+import { getOrderValueRankTool, getUnboxBacklogTool } from './report-tools-inbound';
+import { getDelegationPlanTool, getRoiRankTool } from './report-tools-roi';
 import { TOOL_FORGE_GATEWAY_TOOLS } from '@/lib/tool-forge/gateway-tools';
 
 const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
@@ -128,6 +131,16 @@ const READ_TOOLS: ReadonlyArray<AssistantToolDef<any, unknown>> = [
   // station_definition.save_draft; this read is what makes the proposal name
   // real block / source / action ids.
   getStationCatalogTool,
+  // ─── The five operator reports ─────────────────────────────────────────────
+  // One artifact kind (`report`), five questions an owner actually asks. These
+  // return their artifact ALREADY BUILT (`tool-artifact.ts`): the panel gets
+  // the bytes Postgres produced and the model gets a one-line summary, so a
+  // report's numbers cannot drift through a model retyping them.
+  getPackingPerformanceTool,
+  getUnboxBacklogTool,
+  getOrderValueRankTool,
+  getRoiRankTool,
+  getDelegationPlanTool,
 ];
 
 /**

@@ -102,7 +102,7 @@ export class OrderSyncService {
       throw new Error('channelOrderId is required');
     }
 
-    const existing = await salesOrderRepository.findByReference(referenceNumber);
+    const existing = await salesOrderRepository.findByReference(referenceNumber, orgId);
     if (existing) return existing;
 
     const existingZoho = await zohoClient.findSalesOrderByReference(referenceNumber);
@@ -115,7 +115,7 @@ export class OrderSyncService {
 
     try {
       const contact = await this.findOrCreateContact(orgId, rawOrder);
-      const lineItems = await this.resolveLineItems(rawOrder.items);
+      const lineItems = await this.resolveLineItems(orgId, rawOrder.items);
 
       const zohoSO = await zohoClient.createSalesOrder({
         customer_id: contact.zohoContactId!,
@@ -167,7 +167,7 @@ export class OrderSyncService {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown Zoho sales order ingestion error';
-      const current = await salesOrderRepository.findByReference(referenceNumber);
+      const current = await salesOrderRepository.findByReference(referenceNumber, orgId);
       if (!current) {
         await salesOrderRepository.create({
           organizationId: orgId,
@@ -191,7 +191,7 @@ export class OrderSyncService {
 
   private async findOrCreateContact(orgId: string, rawOrder: ChannelOrder) {
     const email = rawOrder.buyer.email?.trim().toLowerCase() || null;
-    const existingLocal = email ? await customerRepository.findByEmail(email) : null;
+    const existingLocal = email ? await customerRepository.findByEmail(email, orgId) : null;
     if (existingLocal?.zohoContactId) {
       return existingLocal;
     }
@@ -220,7 +220,7 @@ export class OrderSyncService {
     });
   }
 
-  private async resolveLineItems(items: ChannelOrderItem[]): Promise<ResolvedLineItem[]> {
+  private async resolveLineItems(orgId: string, items: ChannelOrderItem[]): Promise<ResolvedLineItem[]> {
     if (!Array.isArray(items) || items.length === 0) {
       throw new Error('Order has no line items');
     }
@@ -231,7 +231,7 @@ export class OrderSyncService {
         throw new Error('Line item sku is required');
       }
 
-      const localItem = await itemRepository.findBySku(sku);
+      const localItem = await itemRepository.findBySku(sku, orgId);
       if (!localItem?.zohoItemId) {
         throw new Error(`Missing Zoho item mapping for SKU ${sku}`);
       }

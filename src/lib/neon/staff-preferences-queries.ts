@@ -203,6 +203,12 @@ export interface StaffPreferences {
    * catalog in registry order. Hydrated in `src/lib/nav/spine-slots.ts`.
    */
   spineSlots?: string[] | null;
+  /**
+   * Default-order generation this staffer's {@link spineSlots} sits on
+   * (`SPINE_SLOTS_VERSION`). Absent = pre-versioning: a new default is floated
+   * into their saved order once, then this is stamped.
+   */
+  spineSlotsVersion?: number | null;
 }
 
 /** Read one staffer's prefs bag (empty object when no row yet). */

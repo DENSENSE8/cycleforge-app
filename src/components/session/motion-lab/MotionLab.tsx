@@ -168,7 +168,7 @@ export function MotionLab({ onClose }: { onClose: () => void }) {
         </LabCard>
         <LabCard
           title="Landing deblur-rise"
-          intent="The greeting's shine resolves from blur(6px) while rising — hero text coming into focus."
+          intent="The greeting's second line resolves from blur(6px) while rising — hero text coming into focus."
           source="motionRole.chat.land"
         >
           <LandDemo />

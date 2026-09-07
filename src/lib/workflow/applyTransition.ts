@@ -74,7 +74,7 @@ export interface ApplyTransitionArgs {
 
   /**
    * Tenant id — REQUIRED. Scopes the status write, stamps the event, and
-   * enrolls the tap. Was optional with a `?? DOGFOOD_ORG_ID` fallback in
+   * enrolls the tap. Was optional with an explicit dogfood-org fallback in
    * `defaultDeps.recordEvent`, so an org-less call wrote a real transition and
    * filed the audit row under the dogfood tenant.
    */

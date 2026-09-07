@@ -7,6 +7,13 @@
 
 export const AI_CHAT_PROMPT_EVENT = 'app:ai-chat-prompt' as const;
 export const AI_CHAT_NEW_EVENT = 'app:ai-chat-new' as const;
+/**
+ * A session was renamed, deleted, or otherwise mutated — every list that shows
+ * sessions (the spine Sessions list, the header switcher) refetches. Distinct
+ * from {@link AI_CHAT_NEW_EVENT}: that starts a NEW thread (and other listeners
+ * act on it), this only says "the recent list changed, reload it."
+ */
+export const AI_CHAT_SESSIONS_CHANGED_EVENT = 'app:ai-chat-sessions-changed' as const;
 export const ASSISTANT_HIGHLIGHT_EVENT = 'app:assistant-highlight' as const;
 export const COMMAND_BAR_OPEN_EVENT = 'app-command-bar-open' as const;
 /** Fired when the find dialog opens or closes — header icon pressed state. */

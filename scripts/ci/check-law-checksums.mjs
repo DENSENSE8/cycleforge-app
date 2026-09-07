@@ -34,6 +34,7 @@ const LAWS = [
   'src/lib/tables/slot-table-header-sort.ts',
   'src/lib/keyboard/shortcut-display-cohort.ts',
   'src/lib/station/scan-station-overlay-cohort.ts',
+  'src/lib/assistant/session-memory-cohort.ts',
 ];
 
 const hash = (file) =>

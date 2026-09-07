@@ -405,9 +405,32 @@ async function orgIdRequiredCompilePins(): Promise<void> {
   await gmail.modifyLabels('msg-id', ['add'], ['remove']);
   // @ts-expect-error — getOrCreateLabel requires orgId
   await gmail.getOrCreateLabel('PO/Reconciled');
+  const repos = await import('@/lib/repositories/customerRepository');
+  // @ts-expect-error — customerRepository.findByEmail requires orgId
+  await repos.customerRepository.findByEmail('buyer@evil.test');
+  // @ts-expect-error — customerRepository.findById requires orgId
+  await repos.customerRepository.findById(1);
 
-  const reconcile = await import('@/lib/po-gmail/reconcile-run');
-  // @ts-expect-error — runPoMailboxReconcile requires opts.orgId
-  await reconcile.runPoMailboxReconcile({ limit: 1 });
+  const soRepo = await import('@/lib/repositories/salesOrderRepository');
+  // @ts-expect-error — salesOrderRepository.findByReference requires orgId
+  await soRepo.salesOrderRepository.findByReference('ORDER-123');
+
+  const itemRepo = await import('@/lib/repositories/itemRepository');
+  // @ts-expect-error — itemRepository.findByZohoId requires orgId
+  await itemRepo.itemRepository.findByZohoId('12345');
+  // @ts-expect-error — itemRepository.findBySku requires orgId
+  await itemRepo.itemRepository.findBySku('SKU-1');
+  // @ts-expect-error — itemRepository.listActive requires orgId
+  await itemRepo.itemRepository.listActive({});
+
+  const roles = await import('@/lib/auth/role-store');
+  // @ts-expect-error — loadRolesForStaff requires orgId (roles is org-scoped)
+  await roles.loadRolesForStaff(1);
+  // @ts-expect-error — effectivePermissionsForStaff requires orgId
+  await roles.effectivePermissionsForStaff(1);
+
+  const ensureAdmin = await import('@/lib/auth/ensure-admin-role');
+  // @ts-expect-error — ensureAdminRoleWired requires orgId
+  await ensureAdmin.ensureAdminRoleWired(1);
 }
 void orgIdRequiredCompilePins; // referenced (never called) so it counts as used

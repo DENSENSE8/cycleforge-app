@@ -36,10 +36,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     (async () => {
         try {
             const result = await runGoogleSheetsTransferOrders(
+                orgId,
                 manualSheetName,
                 'sheets',
                 stream.emit,
-                orgId,
                 spreadsheetId,
             );
             stream.emit({ type: 'result', result: result as unknown as Record<string, unknown> });
@@ -86,7 +86,7 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         );
     }
     try {
-        const result = await runGoogleSheetsTransferOrders(undefined, 'sheets', undefined, orgId, spreadsheetId);
+        const result = await runGoogleSheetsTransferOrders(orgId, undefined, 'sheets', undefined, spreadsheetId);
         logRouteMetric({
             route: '/api/google-sheets/transfer-orders',
             method: 'GET',

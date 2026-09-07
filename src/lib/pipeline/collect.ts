@@ -15,6 +15,9 @@ import { trainingSamples } from '@/lib/drizzle/schema';
 import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 import type { TrainingPairInput } from './types';
 
+// Tenancy: the self-improvement pipeline is dogfood-org-only tooling by
+// construction; every training_samples row is deliberately stamped with the
+// transitional USAV org (explicit choice, not a column default).
 // ─── Pipeline Collector ──────────────────────────────────────
 
 /**

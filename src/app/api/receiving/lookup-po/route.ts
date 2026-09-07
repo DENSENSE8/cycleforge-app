@@ -1936,7 +1936,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
         zoho_reachable: true,
         scan_id: unmatchedScanId,
       },
-    }, undefined, ctx.organizationId).catch((err) => {
+    }, ctx.organizationId).catch((err) => {
       console.warn('lookup-po: upsertOpenTrackingException (receiving) failed', err);
       return null;
     });

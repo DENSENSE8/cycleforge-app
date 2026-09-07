@@ -59,6 +59,7 @@ export const emberPalette: ThemePalette = {
     // Extended tone text
     'text-info': '#93b4fd',
     'text-fulfillment': '#d0a6f8',
+    'text-gilt': '#f2e3c4', // cream on warm coal
     // Solid fills
     'fill-info': '#4c7dfb',
     'fill-success': '#34c77b',

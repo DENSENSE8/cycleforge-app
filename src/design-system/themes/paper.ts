@@ -61,6 +61,7 @@ export const paperPalette: ThemePalette = {
     // Extended tone text
     'text-info': '#1d4ed8',
     'text-fulfillment': '#7e22ce',
+    'text-gilt': '#8f6533', // deeper bronze — the card is already cream
     // Solid fills
     'fill-info': '#1d4ed8',
     'fill-success': '#15803d',

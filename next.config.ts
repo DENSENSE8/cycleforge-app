@@ -91,9 +91,16 @@ const withPWA = withPWAInit({
                 options: { cacheName: "gstatic-fonts", expiration: { maxEntries: 4, maxAgeSeconds: 365 * 24 * 60 * 60 } },
             },
             {
-                urlPattern: /\/api\/(?!auth).*/i,
-                handler: "NetworkFirst",
-                options: { cacheName: "api-cache", networkTimeoutSeconds: 10, expiration: { maxEntries: 128, maxAgeSeconds: 24 * 60 * 60 } },
+                // /api carries authenticated, per-user JSON. A SW-cached copy
+                // is a cross-user leak on shared devices (kiosk / station
+                // profile), so /api responses must NEVER be served from a
+                // cache — not even as an offline fallback. Was NetworkFirst
+                // for /api/(?!auth) with a 24h TTL; NetworkOnly now covers
+                // ALL /api (incl. /api/auth, already uncached before). Keep
+                // this the only /api rule: workbox resolves routes in
+                // registration order.
+                urlPattern: /\/api\/.*/i,
+                handler: "NetworkOnly",
             },
         ],
     },
@@ -217,6 +224,11 @@ const nextConfig: NextConfig = {
     },
     serverExternalPackages: [
         '@anthropic-ai/sdk',
+        // The unified LLM API. Its 10 wire adapters are behind lazy imports and
+        // it hard-depends on @aws-sdk/client-bedrock-runtime + @google/genai,
+        // which this app never calls: bundling it would drag ~40 MB of dead
+        // SDK into every server function to reach two adapters.
+        '@earendil-works/pi-ai',
         '@google-cloud/storage',
         '@google-cloud/vision',
         '@googleapis/sheets',

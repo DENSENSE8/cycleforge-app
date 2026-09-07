@@ -16,6 +16,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { pinInputFromPinned } from '@/lib/quick-access/nav-pin';
 import { displayQuickAccessLabel } from '@/lib/quick-access/page-label';
 import type { PinnedPage } from '@/lib/quick-access/types';
 import { useQuickAccess } from '@/lib/quick-access/use-quick-access';
@@ -71,7 +72,10 @@ export function usePinUndo(): {
     if (!undoable) return;
     const { pin, index } = undoable;
     forget();
-    pinAt({ href: pin.href, label: pin.label, iconKey: pin.iconKey }, index);
+    // The whole pin, converted once — never a hand-picked subset. A literal
+    // here is what silently dropped `sessionId`, so taking back an accidental
+    // unpin returned a session pin as a nameless Home row.
+    pinAt(pinInputFromPinned(pin), index);
   }, [undoable, forget, pinAt]);
 
   return {

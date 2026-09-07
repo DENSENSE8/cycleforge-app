@@ -20,7 +20,6 @@ type QrPanelState = 'loading' | 'active' | 'expired' | 'completed' | 'error';
 
 export function SignInQrPanel({ onSuccess, className }: SignInQrPanelProps) {
   const [state, setState] = useState<QrPanelState>('loading');
-  const [token, setToken] = useState<string | null>(null);
   const [url, setUrl] = useState<string>('');
   const [staffName, setStaffName] = useState<string | null>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -36,7 +35,6 @@ export function SignInQrPanel({ onSuccess, className }: SignInQrPanelProps) {
   const begin = useCallback(async () => {
     clearPolling();
     setState('loading');
-    setToken(null);
     setUrl('');
 
     try {
@@ -51,7 +49,6 @@ export function SignInQrPanel({ onSuccess, className }: SignInQrPanelProps) {
       const data = await res.json() as { token: string; url: string; expiresAt: string };
 
       if (!mountedRef.current) return;
-      setToken(data.token);
       setUrl(data.url);
       setState('active');
 

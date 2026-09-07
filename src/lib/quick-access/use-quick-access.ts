@@ -13,6 +13,7 @@ import {
   setSettings,
 } from './storage';
 import type {
+  PinInput,
   PinnedPage,
   QuickAccessSettings,
 } from './types';
@@ -48,16 +49,21 @@ export function useQuickAccess() {
     emitChanged();
   }, []);
 
-  const pin = useCallback((input: { label: string; href: string; iconKey?: string }) => {
-    const { settings: next, result } = addPin(input);
+  // Both writes take the discriminated {@link PinInput}: `kind` is what stops a
+  // partial copy of a stored pin (which drops `sessionId`) from type-checking.
+  // `kind` is a compile-time discriminant only — storage persists the fields.
+  const pin = useCallback((input: PinInput) => {
+    const { kind: _kind, ...fields } = input;
+    const { settings: next, result } = addPin(fields);
     setSettingsState(next);
     emitChanged();
     return result;
   }, []);
 
   const pinAt = useCallback(
-    (input: { label: string; href: string; iconKey?: string }, atIndex?: number) => {
-      const { settings: next, result } = insertPin(input, atIndex);
+    (input: PinInput, atIndex?: number) => {
+      const { kind: _kind, ...fields } = input;
+      const { settings: next, result } = insertPin(fields, atIndex);
       setSettingsState(next);
       emitChanged();
       return result;

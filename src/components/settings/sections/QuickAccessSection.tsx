@@ -79,7 +79,7 @@ export function QuickAccessSection() {
       return;
     }
     const label = addLabel.trim() || resolveQuickAccessLabel(href);
-    const result = pin({ href, label });
+    const result = pin({ kind: 'page', href, label });
     if (result === 'duplicate') setAddError('Already pinned');
     else if (result === 'full') setAddError(`Limit reached (${MAX_PINS})`);
     else {

@@ -57,6 +57,29 @@ export async function getStaffRole(staffId: number): Promise<StaffRole> {
 }
 
 /**
+ * Organization of a staff row (60s cached). Roles are org-scoped since
+ * 2026-09-06, so permission resolution always needs the staff's org. Derived
+ * from the STAFF ROW, never from caller input — a body-supplied staffId can
+ * only ever resolve permissions in its own org. Returns null when the staff
+ * row does not exist (callers must treat that as deny).
+ */
+const orgCache = new Map<number, { orgId: string | null; expiresAt: number }>();
+
+async function getStaffOrgId(staffId: number): Promise<string | null> {
+  const cached = orgCache.get(staffId);
+  if (cached && cached.expiresAt > Date.now()) return cached.orgId;
+  const r = await pool
+    .query<{ organization_id: string | null }>(
+      `SELECT organization_id FROM staff WHERE id = $1 LIMIT 1`,
+      [staffId],
+    )
+    .catch(() => undefined);
+  const orgId = r?.rows[0]?.organization_id ?? null;
+  orgCache.set(staffId, { orgId, expiresAt: Date.now() + CACHE_TTL_MS });
+  return orgId;
+}
+
+/**
  * Server-side gate: throws PermissionDeniedError if the staff lacks the
  * permission. Route handlers catch this and convert to 403 via
  * `permissionDeniedResponse`.
@@ -74,6 +97,13 @@ export async function assertPermission(
   if (validId === 0) {
     throw new PermissionDeniedError(action, role, null);
   }
+  // Org scope: derived from the staff row itself (see getStaffOrgId). A
+  // missing staff row or missing org is DENY, never a global lookup — roles
+  // are per-org and an org-less resolve would read another tenant's grants.
+  const orgId = await getStaffOrgId(validId);
+  if (!orgId) {
+    throw new PermissionDeniedError(action, role, validId);
+  }
   // Look up staff overrides so the check matches the DB-backed effective set.
   const overrides = await pool
     .query<{ permissions_added: string[] | null; permissions_removed: string[] | null }>(
@@ -82,7 +112,7 @@ export async function assertPermission(
     )
     .then((r) => r.rows[0])
     .catch(() => undefined);
-  const effective = await effectivePermissionsForStaff(validId, {
+  const effective = await effectivePermissionsForStaff(validId, orgId, {
     added: overrides?.permissions_added ?? [],
     removed: overrides?.permissions_removed ?? [],
   });

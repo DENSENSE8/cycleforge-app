@@ -31,14 +31,22 @@ export interface InsertSalesOrder {
 }
 
 export interface SalesOrderRepository {
-  findByReference(referenceNumber: string): Promise<typeof salesOrders.$inferSelect | null>;
+  /**
+   * Org-scoped since 2026-09-06: a reference number is only unique within a
+   * tenant — the same marketplace order id synced by two orgs must resolve
+   * to two rows, never to whichever tenant wrote first (cross-tenant record
+   * theft, audit 2026-09-06).
+   */
+  findByReference(referenceNumber: string, orgId: OrgId): Promise<typeof salesOrders.$inferSelect | null>;
   create(input: InsertSalesOrder): Promise<typeof salesOrders.$inferSelect>;
   markZohoError(orgId: OrgId, referenceNumber: string, errorMessage: string): Promise<void>;
 }
 
 export class DrizzleSalesOrderRepository implements SalesOrderRepository {
-  async findByReference(referenceNumber: string) {
-    const rows = await db.select().from(salesOrders).where(eq(salesOrders.referenceNumber, referenceNumber)).limit(1);
+  async findByReference(referenceNumber: string, orgId: OrgId) {
+    const rows = await db.select().from(salesOrders)
+      .where(and(eq(salesOrders.referenceNumber, referenceNumber), eq(salesOrders.organizationId, orgId)))
+      .limit(1);
     return rows[0] ?? null;
   }
 
@@ -72,7 +80,7 @@ export class DrizzleSalesOrderRepository implements SalesOrderRepository {
   }
 
   async markZohoError(orgId: OrgId, referenceNumber: string, errorMessage: string) {
-    const existing = await this.findByReference(referenceNumber);
+    const existing = await this.findByReference(referenceNumber, orgId);
     if (!existing) return;
     // The caller (OrderSyncService.ingestExternalOrder) supplies the session
     // org. Guard against a reference number that resolves to a different

@@ -1,7 +1,7 @@
 import { db } from '@/lib/drizzle/db';
 import { aiChatSessions, aiChatMessages } from '@/lib/drizzle/schema';
 import { and, eq } from 'drizzle-orm';
-import { fallbackTitle } from '@/lib/ai/session-title';
+import { fallbackTitle } from '@/lib/ai/session-title-text';
 
 /**
  * Ensure a session row exists, then insert one message. Fire-and-forget from

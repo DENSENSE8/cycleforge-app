@@ -14,7 +14,7 @@
  */
 
 import { type ComponentType, type ReactNode } from 'react';
-import { PackageOpen, Sparkles, Ticket } from '@/components/Icons';
+import { AskMark, PackageOpen, Ticket } from '@/components/Icons';
 import { ScanStationProgressRing } from '@/components/station/ScanStationProgressRing';
 import { cursorClickTarget } from '@/design-system/motion/cursor-scrub';
 import { cn } from '@/utils/_cn';
@@ -27,14 +27,26 @@ import {
   type StationComposerMode,
 } from '@/lib/composer/station-composer-mode';
 
-const MODE_ICON: Record<
+/**
+ * The mode glyph, exported: every face that names a mode — this row and the
+ * dock's inline row-two chip — draws the SAME icon left of the same word.
+ *
+ * `ask` is {@link AskMark}, NOT `Sparkles` (2026-09-06). The sparkle is the
+ * app's general "AI touched this" sticker in eight other jobs; borrowing it
+ * for the assistant's own identity made the operator's one conversational
+ * surface look like a consumer novelty. The assistant now owns a machined
+ * mark, and this map is the single swap point for it.
+ */
+export const STATION_COMPOSER_MODE_ICON: Record<
   StationComposerMode,
   ComponentType<{ className?: string }>
 > = {
   unbox: PackageOpen,
   ticket: Ticket,
-  ask: Sparkles,
+  ask: AskMark,
 };
+
+const MODE_ICON = STATION_COMPOSER_MODE_ICON;
 
 const MODE_ICON_TONE: Record<StationComposerMode, string> = {
   unbox: 'text-blue-600',

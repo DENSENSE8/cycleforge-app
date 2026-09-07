@@ -6,7 +6,9 @@ export const runtime = 'nodejs';
 
 /**
  * GET /api/my-day — BFF for the My Day workbench at `/`.
- * Composes work_assignments, inbox interrupts, and permission-filtered queue cards.
+ * Composes work-assignment queues, inbox interrupts, and permission-filtered
+ * queue cards. Every leg of aggregateMyDayFeed runs org-GUC-scoped (tenant
+ * queries with explicit org conjuncts in the work-order/inbox helpers).
  */
 export const GET = withAuth(async (_req, ctx) => {
   try {

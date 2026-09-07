@@ -13,7 +13,7 @@
 
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
-import { fallbackTitle } from '@/lib/ai/session-title';
+import { fallbackTitle } from '@/lib/ai/session-title-text';
 
 export interface AssistantHistoryTurn {
   role: 'user' | 'assistant';

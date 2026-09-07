@@ -4,12 +4,16 @@ import { parseBody } from '@/lib/schemas/parse';
 import { ThreadAttachTicketBody } from '@/lib/schemas/threads';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { attachSupportTicket } from '@/lib/threads/threads';
-import pool from '@/lib/db';
+import { withTenantTransaction } from '@/lib/tenancy/db';
 
 /**
- * POST /api/threads/[id]/attach-ticket — attach an existing support_tickets
- * row to a ticketless thread (D6 seam). Idempotent on the same ticket;
+ * POST /api/threads/[id]/attach-ticket — attach an existing support-ticket row
+ * to a ticketless thread (D6 seam). Idempotent on the same ticket;
  * 409 when a different ticket is already attached.
+ *
+ * Tenant scoping: attachSupportTicket runs inside its own tenant transaction
+ * (GUC + org conjuncts); the audit write below runs under withTenantTransaction
+ * as well, so every statement the route issues is app.current_org-scoped.
  */
 export async function POST(
   req: NextRequest,
@@ -39,13 +43,15 @@ export async function POST(
     }
 
     if (!result.idempotent) {
-      await recordAudit(pool, gate.ctx, req, {
-        source: 'threads-api',
-        action: AUDIT_ACTION.THREAD_TICKET_ATTACH,
-        entityType: AUDIT_ENTITY.ENTITY_THREAD,
-        entityId: threadId,
-        after: { supportTicketId: parsed.supportTicketId },
-      });
+      await withTenantTransaction(gate.ctx.organizationId, (client) =>
+        recordAudit(client, gate.ctx, req, {
+          source: 'threads-api',
+          action: AUDIT_ACTION.THREAD_TICKET_ATTACH,
+          entityType: AUDIT_ENTITY.ENTITY_THREAD,
+          entityId: threadId,
+          after: { supportTicketId: parsed.supportTicketId },
+        }),
+      );
     }
 
     return NextResponse.json({ success: true, thread: result.thread, idempotent: result.idempotent });

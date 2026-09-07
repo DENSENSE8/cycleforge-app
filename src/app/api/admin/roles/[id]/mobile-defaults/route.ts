@@ -37,9 +37,13 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
   const raw = (body as { config: unknown }).config;
   const clean = raw === null ? null : sanitizeMobileDisplayConfig(raw);
 
-  // `roles` is GLOBAL (no organization_id) — no org predicate; routed through
-  // the tenant connection for GUC parity.
-  const existsR = await tenantQuery(ctx.organizationId, `SELECT id, key FROM roles WHERE id = $1 LIMIT 1`, [id]);
+  // `roles` is org-scoped — existence check and UPDATE both carry the org
+  // conjunct; a role id from another org reads as NOT_FOUND.
+  const existsR = await tenantQuery(
+    ctx.organizationId,
+    `SELECT id, key FROM roles WHERE id = $1 AND organization_id = $2::uuid LIMIT 1`,
+    [id, ctx.organizationId],
+  );
   if (!existsR.rows[0]) return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
 
   const r = await tenantQuery(
@@ -47,9 +51,9 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
     `UPDATE roles
         SET mobile_defaults = $2::jsonb,
             updated_at = NOW()
-      WHERE id = $1
+      WHERE id = $1 AND organization_id = $3::uuid
       RETURNING id, key, mobile_defaults`,
-    [id, clean ? JSON.stringify(clean) : null],
+    [id, clean ? JSON.stringify(clean) : null, ctx.organizationId],
   );
 
   // Cached roles snapshot includes mobile_defaults — drop so the next read

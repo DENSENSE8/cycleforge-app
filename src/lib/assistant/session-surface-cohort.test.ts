@@ -262,9 +262,29 @@ describe('session-surface cohort (SoT = artifact contract)', () => {
     );
   });
 
-  it('composer modes live in ONE dropdown and the + menu is the surface-owned verb menu', () => {
+  it('law 9: the home composer is ONE display — one mode, one field, one commit', () => {
+    const panel = sessionSurfaceSource(SESSION_SURFACE_ENGINE.sessionPanel);
     const host = sessionSurfaceSource('src/components/composer/StationComposerHost.tsx');
-    assert.match(host, lit(SESSION_SURFACE_CONTRACT.modeDropdown));
+    // The surface declares its mode set and owns the field it displays.
+    assert.match(panel, lit(SESSION_SURFACE_CONTRACT.composerOneMode));
+    assert.match(panel, lit(SESSION_SURFACE_CONTRACT.composerOneField));
+    // The host honors a declared set instead of the station's shared session
+    // mode, and names a single honored mode instead of faking a picker.
+    assert.match(host, lit(SESSION_SURFACE_CONTRACT.composerModeSet));
+    assert.match(host, lit(SESSION_SURFACE_CONTRACT.composerModeNamed));
+    // The row's commit control reads the VISIBLE field: empty → microphone.
+    assert.match(host, lit(SESSION_SURFACE_CONTRACT.composerVisibleFieldCommit));
+    // The panel no longer reads the seed bus itself — one seed reader, the host.
+    assert.doesNotMatch(panel, /getLatestComposerSeed/);
+    // The three faces stay gone from the action row.
+    assert.doesNotMatch(host, /<ModeFace/);
+    // + trigger leftmost: the host passes leadingPlus as leadingStart, so the
+    // + always renders left of the mode name.
+    assert.match(host, /leadingStart={leadingPlus}/);
+  });
+
+  it('the + menu is the surface-owned verb menu', () => {
+    const host = sessionSurfaceSource('src/components/composer/StationComposerHost.tsx');
     assert.match(host, lit(SESSION_SURFACE_CONTRACT.plusMenuContent));
     // The session's + menu: files, photos, # order, log, @ staff task.
     const plus = sessionSurfaceSource(SESSION_SURFACE_ENGINE.sessionSwitcher.replace('SessionSwitcher', 'SessionPlusMenu'));
@@ -280,66 +300,120 @@ describe('session-surface cohort (SoT = artifact contract)', () => {
     assert.match(plus, /SESSION_ARTIFACT_EVENT/);
   });
 
-  it('the context ring reflects the model’s real context, and modes stay in one dropdown', () => {
+  it('law 10: the context ring reflects the model’s real context, at the row’s right end', () => {
     const panel = sessionSurfaceSource(SESSION_SURFACE_ENGINE.sessionPanel);
     // The ring is surface-owned and lists real context items (page, thread,
     // staged attachments) — never a static zero.
     assert.match(panel, /inlineRing=/);
     assert.match(panel, lit(SESSION_SURFACE_CONTRACT.ringList));
     assert.match(panel, /Thread/, 'the thread length is part of the reflected context');
-    // One dropdown for the modes, + trigger leftmost: the host passes
-    // leadingPlus as leadingStart (the + trigger) and the dropdown as
-    // footerStart — so the + always renders left of the mode dropdown.
-    const host = sessionSurfaceSource('src/components/composer/StationComposerHost.tsx');
-    assert.match(host, lit(SESSION_SURFACE_CONTRACT.modeDropdown));
-    assert.match(host, /leadingStart={leadingPlus}/);
-    assert.match(host, /STATION_COMPOSER_MODE_CATALOG\.map\(\(m\) => \(/);
-    // The three faces are GONE from the action row: no standing ModeFace
-    // renders — the modes exist only inside the dropdown's menu rows.
-    assert.doesNotMatch(host, /<ModeFace/);
   });
 
-  it('law 11: the right pane has ONE occupant, and the board is a pane state not a route', () => {
+  it('law 15: the first plane is the OPERATION — board tools in, seeded questions out, no second query', () => {
+    const panel = sessionSurfaceSource(SESSION_SURFACE_ENGINE.sessionPanel);
+    const ledger = sessionSurfaceSource(SESSION_SURFACE_ENGINE.triageLedger);
+    const feed = sessionSurfaceSource('src/components/session/useOperatorPulse.ts');
+    const rank = sessionSurfaceSource('src/lib/assistant/operator-pulse.ts');
+    const pane = sessionSurfaceSource(SESSION_SURFACE_ENGINE.missionPane);
+    // The panel mounts the ledger and hands its picks to the composer draft.
+    assert.match(panel, /<TriageLedger/);
+    assert.match(panel, lit(SESSION_SURFACE_CONTRACT.pulseRowOnPick));
+    assert.match(ledger, lit(SESSION_SURFACE_CONTRACT.pulseLedgerMarker));
+    // The telemetry strip sums the SAME ranked items — one query feeds the
+    // ledger, the strip and the model's answers.
+    assert.match(pane, lit(SESSION_SURFACE_CONTRACT.pulseTelemetryTotals));
+    // Numbers come from the board route (registered tools), never a bespoke
+    // first-plane endpoint and never raw SQL on the client.
+    assert.match(feed, lit(SESSION_SURFACE_CONTRACT.pulseBoardFeed));
+    assert.doesNotMatch(feed, /fetch\((['"`])\/api\/(?!home-board)/);
+    // Ranking is lane-first and lives in the pure module, with the lanes in
+    // business order: promised before blocked before latent.
+    assert.match(rank, lit(SESSION_SURFACE_CONTRACT.pulseLanes));
+    assert.match(rank, /promised: 0, blocked: 1, latent: 2/);
+    // Every item is a verb: the ledger seeds a question and never auto-sends
+    // or mutates from the first plane.
+    assert.match(rank, /question: string/);
+    assert.doesNotMatch(ledger, /autoSend/);
+    assert.doesNotMatch(ledger, /method:\s*'POST'/);
+    // The FULL ranked set renders — no cap hiding work the operator asked to see.
+    assert.doesNotMatch(ledger, /MAX_ITEMS/);
+  });
+
+  it('law 17: the ledger is an INSTRUMENT — one voice, fixed columns, mono tabular figures', () => {
+    const ledger = sessionSurfaceSource(SESSION_SURFACE_ENGINE.triageLedger);
+    // Every row (and the skeleton) shares ONE grid — columns cannot drift.
+    assert.match(ledger, lit(SESSION_SURFACE_CONTRACT.ledgerRowGrid));
+    assert.match(ledger, lit(SESSION_SURFACE_CONTRACT.ledgerMonoNumerals));
+    // Rank by position + one accent, never font size: no display-serif, no
+    // size jump between rows.
+    assert.doesNotMatch(ledger, /font-serif/);
+    assert.doesNotMatch(ledger, /text-(2xl|3xl)/);
+    // The WHY rides the house tooltip, never a native title attribute.
+    assert.match(ledger, lit(SESSION_SURFACE_CONTRACT.ledgerWhy));
+    assert.doesNotMatch(ledger, /\ntitle=\{/, 'native title tooltips are the regression');
+  });
+
+  it('law 16: the power-up — greeting kept, one composer node, wake by activity', () => {
+    const panel = sessionSurfaceSource(SESSION_SURFACE_ENGINE.sessionPanel);
+    const surface = sessionSurfaceSource(SESSION_SURFACE_ENGINE.surface);
+    const wake = sessionSurfaceSource(SESSION_SURFACE_ENGINE.focusWake);
+    // The greeting component SURVIVES as the resting face — never deleted.
+    assert.match(panel, lit(SESSION_SURFACE_CONTRACT.wakeGreetingKept));
+    // The mouth is ONE node across both faces, so the wake never remounts
+    // the field.
+    assert.match(panel, lit(SESSION_SURFACE_CONTRACT.wakeOneComposer));
+    // Activity wakes; a live thread pins; stillness with an empty thread
+    // settles back.
+    assert.match(surface, lit(SESSION_SURFACE_CONTRACT.wakeHook));
+    assert.match(surface, lit(SESSION_SURFACE_CONTRACT.wakePinnedThread));
+    assert.match(wake, /IDLE_MS/);
+    // Reduced motion collapses the choreography to a hard swap.
+    assert.match(panel, lit(SESSION_SURFACE_CONTRACT.wakeReducedHardSwap));
+  });
+
+  it('law 11: the right pane has ONE occupant, and the mission pane is its resting face', () => {
     const occupant = sessionSurfaceSource(SESSION_SURFACE_ENGINE.boardOccupant);
     assert.match(occupant, lit(SESSION_SURFACE_CONTRACT.paneOccupantType));
+    // The board (mission) is the DEFAULT, artifacts push it aside.
+    assert.match(occupant, /= 'board';/);
     // A fresh object from getSnapshot would spin useSyncExternalStore forever.
     assert.match(occupant, /function getSnapshot\(\): SessionPanelOccupant \{\s*return occupant;/);
 
     const surface = sessionSurfaceSource(SESSION_SURFACE_ENGINE.surface);
     assert.match(surface, lit(SESSION_SURFACE_CONTRACT.paneOccupantSwitch));
     assert.match(surface, lit(SESSION_SURFACE_CONTRACT.boardVerbChord));
-    // The board is NOT a route: no navigation on open, or the live thread dies.
+    // The pane is NOT a route: no navigation on open, or the live thread dies.
     assert.doesNotMatch(surface, /router\.push\(['"`]\/board/);
-    // Width is still the only thing that moves when the board takes the pane.
-    assert.doesNotMatch(surface, /transition-\[width\]|animate-/);
+    // After the wake settles, width is still the only thing that moves.
+    assert.match(surface, /springConcierge/, 'the wake itself is the one choreography');
   });
 
-  it('law 11: board tiles move with the keyboard — rail horizontal, tile vertical', () => {
-    const board = sessionSurfaceSource(SESSION_SURFACE_ENGINE.boardPanel);
-    assert.match(board, lit(SESSION_SURFACE_CONTRACT.boardRailMarker));
-    assert.match(board, lit(SESSION_SURFACE_CONTRACT.boardKeyboardRail));
-    assert.match(board, lit(SESSION_SURFACE_CONTRACT.boardKeyboardExpand));
-    assert.match(board, /event\.key === 'Escape'/, 'Esc closes the board / collapses a tile');
-
-    const tile = sessionSurfaceSource(SESSION_SURFACE_ENGINE.boardTile);
-    assert.match(tile, lit(SESSION_SURFACE_CONTRACT.boardTileMarker));
-    assert.match(tile, /tabIndex={0}/, 'a tile is focusable, so Tab works without the arrow keys');
-    // Two scroll axes: the tile keeps ↑/↓ from reaching the rail's handler.
-    assert.match(tile, /event\.stopPropagation\(\)/);
-    assert.match(tile, /overflow-y-auto/);
+  it('law 11: the mission pane is telemetry over a live floor feed', () => {
+    const pane = sessionSurfaceSource(SESSION_SURFACE_ENGINE.missionPane);
+    assert.match(pane, lit(SESSION_SURFACE_CONTRACT.missionPaneMarker));
+    assert.match(pane, lit(SESSION_SURFACE_CONTRACT.missionTelemetryMarker));
+    assert.match(pane, lit(SESSION_SURFACE_CONTRACT.missionFeedMarker));
+    // The strip's ONLY behavior is seeding the composer draft.
+    assert.match(pane, lit(SESSION_SURFACE_CONTRACT.missionSeedVerb));
+    assert.match(pane, /autoSend: false/);
+    // The floor feed is ambient: it renders, it never acts.
+    const feed = sessionSurfaceSource(SESSION_SURFACE_ENGINE.floorFeed);
+    assert.match(feed, /\/api\/activity\/feed/);
+    assert.doesNotMatch(feed, /method:\s*['"`]POST/);
   });
 
-  it('law 11: the board plane is READ-only, like the artifact plane', () => {
+  it('law 11: the mission plane is READ-only, like the artifact plane', () => {
     for (const rel of [
-      SESSION_SURFACE_ENGINE.boardPanel,
-      SESSION_SURFACE_ENGINE.boardTile,
+      SESSION_SURFACE_ENGINE.missionPane,
+      SESSION_SURFACE_ENGINE.triageLedger,
+      SESSION_SURFACE_ENGINE.floorFeed,
       SESSION_SURFACE_ENGINE.boardRows,
     ]) {
       const src = sessionSurfaceSource(rel);
       for (const [law, pattern] of Object.entries(SESSION_SURFACE_FORBIDDEN)) {
         assert.doesNotMatch(src, pattern, `${rel} violates ${law}`);
       }
-      // A tile's only outbound action is seeding the composer — no POSTs.
+      // The plane's only outbound action is seeding the composer — no POSTs.
       assert.doesNotMatch(src, /method:\s*['"`]POST/, `${rel} must not write`);
     }
   });

@@ -10,8 +10,13 @@ import {
 /**
  * GET /api/threads/[id]/connections — the thread's "connecting dots": derived
  * related entities (order → tracking / serials / SKU; repair → serial → order;
- * serial → order) resolved read-side, PLUS curated thread_links, PLUS the
+ * serial → order) resolved read-side, PLUS the curated manual links, PLUS the
  * current owner. Read-only; support.thread.view.
+ *
+ * Tenant scoping: every helper below (getThread, resolveThreadConnections,
+ * resolveThreadLinksAsConnections, getThreadAssignment) opens its own
+ * org-GUC-scoped tenant transaction with explicit org conjuncts — the route
+ * issues no raw-pool statements.
  */
 function toId(raw: string): number | null {
   const id = Number(raw);

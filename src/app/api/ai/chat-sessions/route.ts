@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/drizzle/db';
 import { aiChatSessions, aiChatMessages } from '@/lib/drizzle/schema';
-import { desc, eq, and, count } from 'drizzle-orm';
+import { desc, eq, and, count, isNull, sql } from 'drizzle-orm';
 import { withAuth } from '@/lib/auth/withAuth';
 
 export const runtime = 'nodejs';
@@ -30,7 +30,7 @@ export const GET = withAuth(async (_req: NextRequest, ctx) => {
           eq(aiChatMessages.organizationId, ctx.organizationId),
         ),
       )
-      .where(eq(aiChatSessions.organizationId, ctx.organizationId))
+      .where(and(eq(aiChatSessions.organizationId, ctx.organizationId), isNull(aiChatSessions.deletedAt)))
       .groupBy(aiChatSessions.id)
       .orderBy(desc(aiChatSessions.updatedAt))
       .limit(30);
@@ -51,8 +51,12 @@ export const DELETE = withAuth(async (req: NextRequest, ctx) => {
     if (!sessionId) {
       return NextResponse.json({ error: 'id is required' }, { status: 400 });
     }
+    // Soft-delete (recoverable): the canonical path is DELETE
+    // /api/ai/chat-sessions/[sessionId]; this query-param form stays for
+    // existing callers but now archives rather than destroying the transcript.
     await db
-      .delete(aiChatSessions)
+      .update(aiChatSessions)
+      .set({ deletedAt: sql`now()` })
       .where(and(eq(aiChatSessions.id, sessionId), eq(aiChatSessions.organizationId, ctx.organizationId)));
     return NextResponse.json({ ok: true });
   } catch (err: any) {

@@ -97,26 +97,29 @@ export const GET = withAuth(async (req: NextRequest, ctx: AuthContext) => {
       LIMIT 20`,
     [id, orgId],
   );
-  // roles and staff_roles are system-global (no organization_id column); they
-  // are intentionally shared across tenants, so no org predicate is added.
+  // staff_roles is a global junction (no organization_id), but grants are
+  // intra-org by construction since roles became org-scoped (2026-09-06);
+  // the roles join carries the org conjunct for defense. The all-roles
+  // picker MUST be org-scoped — it feeds the assignment UI.
   const rolesQ = tenantQuery(
     orgId,
     `SELECT r.id, r.key, r.label, r.color, r.position, r.permissions, r.is_system,
             r.mobile_defaults,
             sr.granted_at, sr.granted_by
        FROM staff_roles sr
-       JOIN roles r ON r.id = sr.role_id
+       JOIN roles r ON r.id = sr.role_id AND r.organization_id = $2::uuid
       WHERE sr.staff_id = $1
       ORDER BY r.position ASC, r.id ASC`,
-    [id],
+    [id, orgId],
   );
   const allRolesQ = tenantQuery(
     orgId,
     `SELECT id, key, label, color, position, permissions, is_system, mobile_defaults
        FROM roles
+      WHERE organization_id = $1::uuid
       ORDER BY position ASC, id ASC`,
+    [orgId],
   );
-
   const [staffR, passkeysR, sessionsR, auditR, rolesR, allRolesR] = await Promise.all([
     staffQ, passkeysQ, sessionsQ, auditQ, rolesQ, allRolesQ,
   ]);

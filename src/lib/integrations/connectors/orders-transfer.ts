@@ -62,10 +62,10 @@ export async function googleSheetsSync(
   }
   try {
     const r = await runGoogleSheetsTransferOrders(
+      orgId,
       opts?.manualSheetName,
       'sheets',
       undefined,
-      orgId,
       spreadsheetId,
     );
     return toOutcome(r);
@@ -77,7 +77,7 @@ export async function googleSheetsSync(
 /** Ecwid Direct order import (Ecwid API rows only; no sheet read). */
 export async function ecwidSync(orgId: OrgId): Promise<SyncOutcome> {
   try {
-    const r = await runGoogleSheetsTransferOrders(undefined, 'ecwid', undefined, orgId);
+    const r = await runGoogleSheetsTransferOrders(orgId, undefined, 'ecwid', undefined);
     return toOutcome(r);
   } catch (e) {
     return toError(e);

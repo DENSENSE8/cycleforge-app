@@ -3,6 +3,12 @@
  * `staff_roles` assignments. Hot-path readers (current-user.ts, withAuth)
  * go through here instead of hitting the DB on every request.
  *
+ * Since 2026-09-06 `roles` is ORG-SCOPED (roles.organization_id, RLS FORCEd,
+ * UNIQUE (organization_id, key) — see 2026-09-06_roles_per_org.sql). Every
+ * entry point here therefore takes a REQUIRED OrgId and the caches are keyed
+ * by org first: a role key/id from another tenant is a different row and can
+ * never leak through a shared snapshot.
+ *
  * Cache invalidation is event-driven: the admin endpoints that mutate roles
  * or assignments call `invalidateRoleCache()` / `invalidateStaffRolesCache(id)`
  * after the write. A 60-second wall-clock TTL also expires entries naturally
@@ -39,18 +45,23 @@ interface RolesSnapshot {
   expiresAt: number;
 }
 
-let rolesCache: RolesSnapshot | null = null;
-let inflightRoles: Promise<RolesSnapshot> | null = null;
+/** One snapshot per org — the same role key in two orgs is two rows. */
+const rolesCache = new Map<OrgId, RolesSnapshot>();
+const inflightRoles = new Map<OrgId, Promise<RolesSnapshot>>();
 
 /**
- * Load and cache the entire `roles` table. Single SELECT — the table is
- * tiny (<100 rows typical), so we never page.
+ * Load and cache an org's slice of `roles`. Single SELECT — the per-org table
+ * is tiny (<100 rows typical), so we never page. Reads run on the owner pool
+ * (BYPASSRLS) with an explicit organization_id predicate; the org key on the
+ * cache, not RLS, is what keeps snapshots from bleeding across tenants here.
  */
-async function fetchRoles(): Promise<RolesSnapshot> {
+async function fetchRoles(orgId: OrgId): Promise<RolesSnapshot> {
   const r = await pool.query(
     `SELECT id, key, label, color, position, permissions, is_system, mobile_defaults
        FROM roles
+      WHERE organization_id = $1::uuid
       ORDER BY position ASC, id ASC`,
+    [orgId],
   );
   const rows: RoleRow[] = (r.rows as Array<{
     id: number; key: string; label: string; color: string;
@@ -76,23 +87,25 @@ async function fetchRoles(): Promise<RolesSnapshot> {
   return { byId, byKey, orderedByPosition: rows, expiresAt: Date.now() + ROLE_TTL_MS };
 }
 
-async function getRolesSnapshot(): Promise<RolesSnapshot> {
-  const now = Date.now();
-  if (rolesCache && rolesCache.expiresAt > now) return rolesCache;
-  if (inflightRoles) return inflightRoles;
-  inflightRoles = fetchRoles().then((snap) => {
-    rolesCache = snap;
-    inflightRoles = null;
+async function getRolesSnapshot(orgId: OrgId): Promise<RolesSnapshot> {
+  const cached = rolesCache.get(orgId);
+  if (cached && cached.expiresAt > Date.now()) return cached;
+  const inflight = inflightRoles.get(orgId);
+  if (inflight) return inflight;
+  const p = fetchRoles(orgId).then((snap) => {
+    rolesCache.set(orgId, snap);
+    inflightRoles.delete(orgId);
     return snap;
   }).catch((err) => {
-    inflightRoles = null;
+    inflightRoles.delete(orgId);
     throw err;
   });
-  return inflightRoles;
+  inflightRoles.set(orgId, p);
+  return p;
 }
 
 export function invalidateRoleCache(): void {
-  rolesCache = null;
+  rolesCache.clear();
 }
 
 // ─── Per-staff assignment cache ─────────────────────────────────────────
@@ -103,54 +116,42 @@ interface StaffAssignmentSnapshot {
 }
 
 const STAFF_ROLES_TTL_MS = 60_000;
-const staffRolesCache = new Map<number, StaffAssignmentSnapshot>();
+/** Keyed `${orgId}:${staffId}` — assignments are only meaningful per org. */
+const staffRolesCache = new Map<string, StaffAssignmentSnapshot>();
 
 /**
- * Load role ids assigned to a staff. Order: roles.position ASC (primary
- * role first). Stale entries are refreshed on next read; an explicit
- * invalidate is used after writes for instant correctness.
+ * Load role ids assigned to a staff, scoped to the staff's org. Order:
+ * roles.position ASC (primary role first). Stale entries are refreshed on
+ * next read; an explicit invalidate is used after writes for instant
+ * correctness.
  *
- * `roles`/`staff_roles` are GLOBAL system tables (no organization_id), so the
- * assignment rows themselves are never org-filtered. When `orgId` is supplied,
- * the lookup is gated through the `staff` PARENT's org — the staff must belong
- * to that org or the call resolves to an empty set (a staffId from another org
- * reads as if it has no assignments, never leaking another tenant's roles).
- * That org-gated path runs through `tenantQuery` and bypasses the per-staff
- * cache (whose key is the bare staffId and is shared with the no-org sign-in
- * path), so a security-filtered miss can never poison the unfiltered hot path.
- * When `orgId` is omitted the behavior is byte-identical to before.
+ * Runs through `tenantQuery` (org GUC + tenant pool) and requires the
+ * grant's `roles` row to belong to the SAME org as the staff parent, so a
+ * stray cross-org grant row could never resolve even if one existed.
  */
-async function loadStaffRoleIds(staffId: number, orgId?: OrgId): Promise<number[]> {
-  if (orgId) {
-    const r = await tenantQuery<{ role_id: number }>(
-      orgId,
-      `SELECT sr.role_id
-         FROM staff_roles sr
-         JOIN roles r ON r.id = sr.role_id
-         JOIN staff s ON s.id = sr.staff_id
-        WHERE sr.staff_id = $1 AND s.organization_id = $2
-        ORDER BY r.position ASC, r.id ASC`,
-      [staffId, orgId],
-    );
-    return r.rows.map((row) => row.role_id);
-  }
-  const cached = staffRolesCache.get(staffId);
+async function loadStaffRoleIds(staffId: number, orgId: OrgId): Promise<number[]> {
+  const cacheKey = `${orgId}:${staffId}`;
+  const cached = staffRolesCache.get(cacheKey);
   if (cached && cached.expiresAt > Date.now()) return cached.roleIds;
-  const r = await pool.query(
+  const r = await tenantQuery<{ role_id: number }>(
+    orgId,
     `SELECT sr.role_id
        FROM staff_roles sr
        JOIN roles r ON r.id = sr.role_id
+       JOIN staff s ON s.id = sr.staff_id
       WHERE sr.staff_id = $1
+        AND s.organization_id = $2::uuid
+        AND r.organization_id = $2::uuid
       ORDER BY r.position ASC, r.id ASC`,
-    [staffId],
+    [staffId, orgId],
   );
-  const roleIds = (r.rows as Array<{ role_id: number }>).map((row) => row.role_id);
-  staffRolesCache.set(staffId, { roleIds, expiresAt: Date.now() + STAFF_ROLES_TTL_MS });
+  const roleIds = r.rows.map((row) => row.role_id);
+  staffRolesCache.set(cacheKey, { roleIds, expiresAt: Date.now() + STAFF_ROLES_TTL_MS });
   return roleIds;
 }
 
-export async function loadRolesForStaff(staffId: number, orgId?: OrgId): Promise<RoleRow[]> {
-  const [ids, snap] = await Promise.all([loadStaffRoleIds(staffId, orgId), getRolesSnapshot()]);
+export async function loadRolesForStaff(staffId: number, orgId: OrgId): Promise<RoleRow[]> {
+  const [ids, snap] = await Promise.all([loadStaffRoleIds(staffId, orgId), getRolesSnapshot(orgId)]);
   const out: RoleRow[] = [];
   for (const id of ids) {
     const r = snap.byId.get(id);
@@ -163,7 +164,10 @@ export function invalidateStaffRolesCache(staffId?: number): void {
   if (staffId == null) {
     staffRolesCache.clear();
   } else {
-    staffRolesCache.delete(staffId);
+    const suffix = `:${staffId}`;
+    for (const key of staffRolesCache.keys()) {
+      if (key.endsWith(suffix)) staffRolesCache.delete(key);
+    }
   }
 }
 
@@ -178,10 +182,9 @@ export function invalidateStaffRolesCache(staffId?: number): void {
  */
 export async function effectivePermissionsForStaff(
   staffId: number,
+  orgId: OrgId,
   overrides: { added?: ReadonlyArray<string>; removed?: ReadonlyArray<string> } = {},
-  orgId?: OrgId,
 ): Promise<Set<PermissionString>> {
   const roles = await loadRolesForStaff(staffId, orgId);
   return computeEffectivePermissions(roles, overrides.added ?? [], overrides.removed ?? []);
 }
-

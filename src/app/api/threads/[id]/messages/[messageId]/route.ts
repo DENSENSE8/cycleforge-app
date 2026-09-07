@@ -4,13 +4,18 @@ import { parseBody } from '@/lib/schemas/parse';
 import { ThreadMessageEditBody } from '@/lib/schemas/threads';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { editThreadMessage, deleteThreadMessage } from '@/lib/threads/threads';
-import pool from '@/lib/db';
+import { withTenantTransaction } from '@/lib/tenancy/db';
 
 /**
  * PATCH  /api/threads/[id]/messages/[messageId] — edit a message body.
  * DELETE /api/threads/[id]/messages/[messageId] — soft-delete a message.
  * Gated by support.thread.manage; the manage grant authorizes moderating any
  * message (canManageAll), and we record the acting staff for the audit trail.
+ *
+ * Tenant scoping: editThreadMessage / deleteThreadMessage run inside their own
+ * tenant transactions (GUC + org conjuncts); the audit writes below run under
+ * withTenantTransaction too, so every statement the route issues is
+ * app.current_org-scoped.
  */
 function toId(raw: string): number | null {
   const id = Number(raw);
@@ -48,13 +53,15 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: result.error }, { status: result.status });
     }
 
-    await recordAudit(pool, gate.ctx, req, {
-      source: 'threads-api',
-      action: AUDIT_ACTION.THREAD_MESSAGE_EDIT,
-      entityType: AUDIT_ENTITY.ENTITY_THREAD,
-      entityId: threadId,
-      after: { messageId },
-    });
+    await withTenantTransaction(gate.ctx.organizationId, (client) =>
+      recordAudit(client, gate.ctx, req, {
+        source: 'threads-api',
+        action: AUDIT_ACTION.THREAD_MESSAGE_EDIT,
+        entityType: AUDIT_ENTITY.ENTITY_THREAD,
+        entityId: threadId,
+        after: { messageId },
+      }),
+    );
 
     return NextResponse.json({ success: true, message: result.message });
   } catch (error: any) {
@@ -90,13 +97,15 @@ export async function DELETE(
     }
 
     if (!result.idempotent) {
-      await recordAudit(pool, gate.ctx, req, {
-        source: 'threads-api',
-        action: AUDIT_ACTION.THREAD_MESSAGE_DELETE,
-        entityType: AUDIT_ENTITY.ENTITY_THREAD,
-        entityId: threadId,
-        after: { messageId },
-      });
+      await withTenantTransaction(gate.ctx.organizationId, (client) =>
+        recordAudit(client, gate.ctx, req, {
+          source: 'threads-api',
+          action: AUDIT_ACTION.THREAD_MESSAGE_DELETE,
+          entityType: AUDIT_ENTITY.ENTITY_THREAD,
+          entityId: threadId,
+          after: { messageId },
+        }),
+      );
     }
 
     return NextResponse.json({ success: true, idempotent: result.idempotent });

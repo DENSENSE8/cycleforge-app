@@ -150,7 +150,7 @@ export async function issueRmaForClaim(
   },
   /**
    * Tenant scope — REQUIRED, and deliberately un-defaulted. This used to be
-   * optional with a `?? DOGFOOD_ORG_ID` fallback inside, which is a strictly
+   * optional with an explicit dogfood-org fallback inside, which is a strictly
    * worse failure mode than a missing filter: a caller that forgot to thread an
    * org did not read unscoped, it ran the whole transaction under the dogfood
    * tenant's identity and wrote warranty_claims as them. Making it required

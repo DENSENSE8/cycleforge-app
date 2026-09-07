@@ -13,3 +13,4 @@ export * from './icons/nav';
 export * from './icons/voice';
 export * from './icons/nav-weight';
 export * from './icons/stations';
+export * from './icons/assistant';

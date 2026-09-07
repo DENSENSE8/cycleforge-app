@@ -11,6 +11,11 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
+  SESSION_MEMORY_COHORT_TRIPWIRE,
+  SESSION_MEMORY_ENGINE,
+  SESSION_MEMORY_GRAPH_SYMBOLS,
+} from '@/lib/assistant/session-memory-cohort';
+import {
   SHORTCUT_DISPLAY_ENGINE,
   SHORTCUT_DISPLAY_FORBIDDEN,
   SHORTCUT_DISPLAY_PAINT_LAW,
@@ -60,7 +65,13 @@ export function terms(s: string): string[] {
 
 export type RefuseRule = { id: string; why: string; diffPattern?: RegExp };
 
-export type RouteCohort = 'slot-table' | 'shortcuts' | `station:${string}` | 'discover' | 'composer';
+export type RouteCohort =
+  | 'slot-table'
+  | 'shortcuts'
+  | `station:${string}`
+  | 'discover'
+  | 'composer'
+  | 'session-memory';
 
 export type RouteRule = {
   cohort: RouteCohort;
@@ -353,11 +364,79 @@ function discoverRoute(): InternalRoute {
   };
 }
 
+/**
+ * Session MEMORY — the nav/session surfaces had NO route coverage until
+ * 2026-09-07, which is why four memory defects (Home glyph on a thread, a
+ * thread labelled "Home", an `aria-hidden` binding, and an undo that dropped
+ * the binding) all shipped unchallenged. The refuse patterns below are the
+ * shapes each of those regressions took, so the write gate answers before an
+ * edit lands instead of a handoff doc having to remember.
+ */
+function sessionMemoryRoute(): InternalRoute {
+  return {
+    cohort: 'session-memory',
+    keywords: ['session', 'memory', 'undo', 'restore', 'thread', 'pin', 'sessions'],
+    evalCommand: 'pnpm run eval:session-memory',
+    graphSymbols: [...SESSION_MEMORY_GRAPH_SYMBOLS],
+    engineFiles: unique([
+      ...Object.values(SESSION_MEMORY_ENGINE),
+      'src/lib/assistant/session-memory-cohort.ts',
+      SESSION_MEMORY_COHORT_TRIPWIRE,
+    ]),
+    mounts: ['MessageSquare'],
+    // The cohort + its tripwire SPELL the banned tokens; they must stay editable.
+    refuseSkipFiles: [
+      'src/lib/assistant/session-memory-cohort.ts',
+      SESSION_MEMORY_COHORT_TRIPWIRE,
+    ],
+    refuse: [
+      {
+        id: 'session-memory.hand-picked-repin',
+        why: 'A re-pin must convert a whole stored pin via pinInputFromPinned. A { href, label, iconKey } literal type-checks and silently drops sessionId — an undone unpin then returns a session pin as a nameless Home row.',
+        diffPattern: /pinAt\(\s*\{\s*href:[^}]*iconKey:[^}]*\}\s*,/,
+      },
+      {
+        id: 'session-memory.href-first-pin-face',
+        why: "Ask what a pin IS before where it points. '/?session=<id>' resolves to the Home face, so an href-first resolver paints every pinned thread with the Home glyph. Call isSessionPin(pin) first.",
+        diffPattern: /const fromHref = masterNavFaceForPinHref\(pin\.href\)\?\.icon;\s*\n\s*if \(fromHref\) return fromHref;\s*\n\s*if \(pin\.iconKey/,
+      },
+      {
+        id: 'session-memory.retention-promise',
+        why: 'No purge job exists for ai_chat_sessions. Never promise a retention window in copy or docs — an unenforced number of days is a promise the product cannot keep.',
+        diffPattern: /recoverable for \d+ days/i,
+      },
+      {
+        id: 'session-memory.raw-title-paint',
+        why: 'A stored title reaches paint only through displaySessionTitle. Rows written before Harmony-stripping still hold <|channel|>analysis…, so the READ path sanitizes too.',
+        diffPattern: /\{\s*session\.title\s*\}/,
+      },
+      {
+        id: 'session-memory.hard-delete',
+        why: 'A session row is tombstoned, never dropped — the row is what the undo restores.',
+        diffPattern: /DELETE\s+FROM\s+ai_chat_sessions|db\s*\.\s*delete\s*\(\s*aiChatSessions/i,
+      },
+      {
+        id: 'session-memory.aria-hidden-binding',
+        why: "A bound thread's title is part of the row's accessible name. It was hover-only and aria-hidden, so AT users never heard which session a pin carried.",
+        diffPattern: /aria-hidden[\s\S]{0,80}\{sessionTitle\}/,
+      },
+    ],
+    minScore: 2,
+  };
+}
+
 export function allRouteRules(): RouteRule[] {
   const stations = SCAN_STATION_OVERLAY_COHORT.map((m) => stationRoute(m.id)).filter(
     (r): r is InternalRoute => r != null,
   );
-  return [slotTableRoute(), shortcutsRoute(), composerRoute(), discoverRoute(), ...stations].map(publicRoute);
+  return [
+    slotTableRoute(),
+    shortcutsRoute(),
+    composerRoute(),
+    discoverRoute(),
+    sessionMemoryRoute(),
+    ...stations,
+  ].map(publicRoute);
 }
 
 function publicRoute(route: InternalRoute): RouteRule {

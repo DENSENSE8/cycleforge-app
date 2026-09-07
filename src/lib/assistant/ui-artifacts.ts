@@ -162,6 +162,116 @@ export const artifactDocumentSchema = z.object({
   lastModified: z.string().max(40).nullable().optional(),
 });
 
+// ─── The operator report ─────────────────────────────────────────────────────
+
+/**
+ * A REPORT is the answer to one named operating question, laid out so an owner
+ * who has run a warehouse for fifteen years can read it once and act.
+ *
+ * ## Why one kind and not five
+ *
+ * The five questions this was built for (packing performance, unbox backlog,
+ * most expensive order in the building, biggest gaps, who to delegate to) do
+ * not differ in SHAPE. Each one is: a headline number, a handful of named KPIs
+ * with verdicts, one or two detail tables, the standards the math used, and the
+ * follow-up sentences. Five artifact kinds would be five renderers, five sets
+ * of vocabulary and five places to drift — the same fork `table-engine-law.ts`
+ * forbids for desks. The report is the engine; a question contributes DATA.
+ *
+ * ## Why the definitions ride along
+ *
+ * `kpis[].definition` and `standards[]` are not decoration. A number an owner
+ * cannot audit is a number he has to phone someone about, and "42 boxes" means
+ * nothing until the report says which boxes it counted and from when. Every
+ * report therefore carries its own arithmetic on its face: the standard minutes
+ * per pack tier, the age window, the lane predicate. That is what makes the
+ * artifact READABLE rather than merely rendered.
+ *
+ * Still data, never behavior (law 1): `followUps[].question` is a SENTENCE the
+ * composer seeds, exactly like `RoiGap.question` already does. No callbacks, no
+ * mutations, no hrefs the panel did not validate.
+ */
+
+/** A number the owner is expected to judge, with the arithmetic attached. */
+export const artifactReportKpiSchema = z.object({
+  id: z.string().max(60),
+  label: z.string().max(80),
+  /** Pre-formatted by the tool — the panel never does money or rounding math. */
+  value: z.string().max(40),
+  unit: z.string().max(24).nullable().optional(),
+  /** What good looks like, in the same unit. Omit when the org has no target. */
+  target: z.string().max(40).nullable().optional(),
+  /** Signed change vs the comparison window, e.g. "+12%" or "-3 boxes". */
+  delta: z.string().max(24).nullable().optional(),
+  /**
+   * The verdict. `neutral` is for a fact with no good/bad direction (headcount,
+   * window length) and is the honest answer when no target exists — a report
+   * that paints every tile green teaches an owner to stop reading the colors.
+   */
+  status: z.enum(['good', 'watch', 'bad', 'neutral']),
+  /** How this number was computed, in one sentence the owner can audit. */
+  definition: z.string().max(400),
+});
+
+export const artifactReportColumnSchema = z.object({
+  key: z.string().max(60),
+  label: z.string().max(60),
+  /** Numbers right, words left. Defaults to left when omitted. */
+  align: z.enum(['left', 'right']).optional(),
+  unit: z.string().max(24).nullable().optional(),
+});
+
+const reportCell = z.union([z.string().max(300), z.number(), z.null()]);
+
+export const artifactReportSectionSchema = z.object({
+  title: z.string().max(120),
+  /** One line of context under the section heading. */
+  note: z.string().max(400).nullable().optional(),
+  columns: z.array(artifactReportColumnSchema).min(1).max(14),
+  rows: z.array(z.record(z.string(), reportCell)).max(300),
+  /** Footer row, keyed by the same column keys. */
+  totals: z.record(z.string(), reportCell).nullable().optional(),
+});
+
+/**
+ * A declared operating standard the report's math depends on — the pack tier
+ * minutes, the workday length, the age window. Printed on the report so the
+ * owner can disagree with the STANDARD instead of distrusting the RESULT.
+ */
+export const artifactReportStandardSchema = z.object({
+  label: z.string().max(80),
+  value: z.string().max(40),
+  unit: z.string().max(24).nullable().optional(),
+  note: z.string().max(300).nullable().optional(),
+});
+
+export const artifactReportSchema = z.object({
+  kind: z.literal('report'),
+  title: artifactTitle,
+  /** The exact sentence this report answers, echoed back for the record. */
+  question: z.string().trim().min(1).max(300),
+  /** When the numbers were read, in the operator's timezone. */
+  asOf: z.string().max(60),
+  /** What was counted: the day, the lane, the staff member, the window. */
+  scope: z.string().max(200),
+  /** The single number the question asked for. */
+  headline: z.object({
+    value: z.string().max(60),
+    unit: z.string().max(24).nullable().optional(),
+    label: z.string().max(120),
+    hint: z.string().max(200).nullable().optional(),
+  }),
+  kpis: z.array(artifactReportKpiSchema).max(8),
+  sections: z.array(artifactReportSectionSchema).max(4),
+  standards: z.array(artifactReportStandardSchema).max(8),
+  /** Definitions, caveats and known blind spots. The owner reads these. */
+  notes: z.array(z.string().max(400)).max(12),
+  /** Follow-up sentences the composer seeds on click. Data, not behavior. */
+  followUps: z
+    .array(z.object({ label: z.string().max(80), question: z.string().max(300) }))
+    .max(6),
+});
+
 export const sessionArtifactSchema = z.discriminatedUnion('kind', [
   artifactTableSchema,
   artifactTimelineSchema,
@@ -171,6 +281,7 @@ export const sessionArtifactSchema = z.discriminatedUnion('kind', [
   artifactRecordSchema,
   artifactImportTriageSchema,
   artifactDocumentSchema,
+  artifactReportSchema,
 ]);
 
 export type ArtifactTable = z.infer<typeof artifactTableSchema>;
@@ -181,6 +292,10 @@ export type ArtifactChart = z.infer<typeof artifactChartSchema>;
 export type ArtifactRecord = z.infer<typeof artifactRecordSchema>;
 export type ArtifactImportTriage = z.infer<typeof artifactImportTriageSchema>;
 export type ArtifactDocument = z.infer<typeof artifactDocumentSchema>;
+export type ArtifactReport = z.infer<typeof artifactReportSchema>;
+export type ArtifactReportKpi = z.infer<typeof artifactReportKpiSchema>;
+export type ArtifactReportSection = z.infer<typeof artifactReportSectionSchema>;
+export type ArtifactReportStandard = z.infer<typeof artifactReportStandardSchema>;
 export type SessionArtifact = z.infer<typeof sessionArtifactSchema>;
 
 /** Narrowed view of the kinds the view panel can render — used by prompts and tripwires. */
@@ -193,6 +308,7 @@ export const SESSION_ARTIFACT_KINDS = [
   'record',
   'import_triage',
   'document',
+  'report',
 ] as const;
 
 // ─── Chat-side table interception ────────────────────────────────────────────

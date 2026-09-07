@@ -67,17 +67,12 @@ export function LandDemo() {
     <motion.p
       {...presence}
       transition={transition}
-      className="mx-auto w-fit font-serif text-xl italic leading-snug"
+      className="mx-auto w-fit text-role-body leading-snug text-text-muted"
     >
-      {/* The greeting's own gradient — identical hexes to AgentSessionPanel's
-          shine, because this demo IS that line (the token debate is open in
-          the ink backlog; the demo must not drift from the real surface). */}
-      <span
-        className="bg-clip-text text-transparent"
-        style={{ backgroundImage: 'linear-gradient(90deg, #2563eb 0%, #6d28d9 55%, #f59e0b 100%)' }}
-      >
-        your business, beautifully in hand.
-      </span>
+      {/* This demo IS the greeting's second line, so it wears the same ink: one
+          gilt italic verb inside quiet prose. It used to carry a copy of the
+          three-stop gradient that line no longer has. */}
+      your business, <em className="italic text-text-gilt">beautifully</em> in hand.
     </motion.p>
   );
 }

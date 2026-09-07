@@ -2,6 +2,7 @@ allowBuilds:
   # Desktop shell — electron's postinstall downloads the Chromium binary, so the
   # shell cannot launch without it. electron-winstaller only runs when building
   # the Windows installer. Plan: docs/todo/electron-desktop-shell-PLAN.md
+  '@google/genai': set this to true or false
   electron: true
   electron-winstaller: true
   esbuild: true

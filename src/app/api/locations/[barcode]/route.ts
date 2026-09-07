@@ -27,7 +27,7 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import type { AnonymousAuthContext } from '@/lib/auth/withAuth';
 import { getCurrentUserBySid } from '@/lib/auth/current-user';
 import { readSessionSid } from '@/lib/auth/session';
-import { DOGFOOD_ORG_ID, type OrgId } from '@/lib/tenancy/constants';
+import type { OrgId } from '@/lib/tenancy/constants';
 
 const ROUTE_LOCATION_PATCH = 'locations.barcode.patch';
 
@@ -138,16 +138,25 @@ export async function PATCH(
     if (parsed instanceof NextResponse) return parsed;
 
     // Resolve session org up-front so the lookup + every write below is
-    // tenant-scoped. Anonymous callers (no session) fall back to legacy
-    // un-scoped behavior (orgId undefined).
+    // tenant-scoped. This handler REQUIRES a session org: adjustBinQty /
+    // upsertBinContent / the idempotency cache all attribute the write to a
+    // concrete tenant, and an anonymous caller has none. The removed dogfood
+    // fallback used to attribute body-staffId anonymous scans to USAV while
+    // assertPermission checked the staff row's own (possibly different) org —
+    // a cross-tenant misattribution. Anonymous callers now fail closed; a
+    // purely anonymous scan (no body staffId either) was already denied by
+    // assertPermission before any write.
     const ctx = await resolveCtx(request);
-    const orgId = ctx.organizationId ?? undefined;
-    // The idempotency CACHE row (not data scoping — that uses `orgId` above,
-    // which is undefined for anon) requires a concrete tenant key. Anonymous
-    // legacy-QR callers fall back to the dogfood org for the cache NAMESPACE
-    // only; the actual location write remains unscoped for them. This is the
-    // one sanctioned dogfood fallback here (guard-allowlisted).
-    const idempotencyOrgId: OrgId = ctx.organizationId ?? DOGFOOD_ORG_ID;
+    if (!ctx.organizationId) {
+      return NextResponse.json(
+        { error: 'Authentication required: no organization context for this bin write' },
+        { status: 401 },
+      );
+    }
+    const orgId: OrgId = ctx.organizationId;
+    // Same tenant keys the idempotency CACHE row is namespaced by (data scoping
+    // above uses the same `orgId` — there is no longer a separate anon path).
+    const idempotencyOrgId: OrgId = orgId;
 
     // ─── Idempotency: replay cached responses for the same key ──────────────
     const idempotencyKey = readIdempotencyKey(request, body?.clientEventId ?? body?.idempotencyKey);

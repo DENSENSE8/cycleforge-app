@@ -177,6 +177,8 @@ const config = {
                 // Extended tone text (dashboard categories / informational accents).
                 'text-info': 'var(--ds-color-text-info)',
                 'text-fulfillment': 'var(--ds-color-text-fulfillment)',
+                // Editorial standout ink — one warm word inside quiet prose.
+                'text-gilt': 'var(--ds-color-text-gilt)',
                 // Solid tone fills — progress bars, accent lines, saturated
                 // indicators (bg-fill-info, …). Themed per palette.
                 'fill-info': 'var(--ds-color-fill-info)',

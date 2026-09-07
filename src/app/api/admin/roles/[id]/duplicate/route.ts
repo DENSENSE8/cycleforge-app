@@ -37,10 +37,15 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     return NextResponse.json({ error: 'INVALID_KEY' }, { status: 400 });
   }
 
-  // `roles` is GLOBAL (no organization_id) — both the source read and the
-  // duplicate insert carry no org column; routed through the tenant connection
-  // for GUC parity.
-  const src = await tenantQuery(ctx.organizationId, `SELECT key, label, color, position, permissions FROM roles WHERE id = $1`, [srcId]);
+  // `roles` is org-scoped: the source read carries the org conjunct and the
+  // duplicate is stamped with the caller's org. UNIQUE (organization_id, key)
+  // makes key collisions per-org (23505 still maps to KEY_TAKEN below).
+  const src = await tenantQuery(
+    ctx.organizationId,
+    `SELECT key, label, color, position, permissions FROM roles
+      WHERE id = $1 AND organization_id = $2::uuid`,
+    [srcId, ctx.organizationId],
+  );
   const srcRow = src.rows[0] as { key: string; label: string; color: string; position: number; permissions: string[] } | undefined;
   if (!srcRow) return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
 
@@ -49,10 +54,10 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
   try {
     const r = await tenantQuery(
       ctx.organizationId,
-      `INSERT INTO roles (key, label, color, position, permissions, is_system)
-       VALUES ($1, $2, $3, $4, $5::TEXT[], FALSE)
+      `INSERT INTO roles (organization_id, key, label, color, position, permissions, is_system)
+       VALUES ($1::uuid, $2, $3, $4, $5, $6::TEXT[], FALSE)
        RETURNING id, key, label, color, position, permissions, is_system, created_at, updated_at`,
-      [key, label, srcRow.color, srcRow.position + 1, srcRow.permissions],
+      [ctx.organizationId, key, label, srcRow.color, srcRow.position + 1, srcRow.permissions],
     );
     invalidateRoleCache();
     await audit({

@@ -141,34 +141,46 @@ async function main() {
   await client.connect();
 
   try {
-    // 1. Upsert system roles.
-    for (const r of SEED) {
-      await client.query(
-        `INSERT INTO roles (key, label, color, position, permissions, is_system)
-         VALUES ($1, $2, $3, $4, $5::TEXT[], TRUE)
-         ON CONFLICT (key) DO UPDATE SET
-           -- Only refresh the metadata (label/color/position). Permissions are
-           -- not overwritten on re-seed so admin edits aren't blown away.
-           label = EXCLUDED.label,
-           color = EXCLUDED.color,
-           position = EXCLUDED.position,
-           is_system = TRUE,
-           updated_at = NOW()`,
-        [r.key, r.label, r.color, r.position, r.permissions],
-      );
+    // 0. Every organization gets its own copy of the taxonomy (roles is
+    //    org-scoped since 2026-09-06: organization_id NOT NULL, UNIQUE
+    //    (organization_id, key)).
+    const orgs = await client.query(`SELECT id FROM organizations ORDER BY created_at`);
+    if (orgs.rows.length === 0) {
+      console.error('No organizations exist — nothing to seed into. Aborting.');
+      process.exit(1);
     }
-    console.log(`✓ Seeded ${SEED.length} system roles`);
+
+    // 1. Upsert system roles per org.
+    let seeded = 0;
+    for (const org of orgs.rows) {
+      for (const r of SEED) {
+        await client.query(
+          `INSERT INTO roles (organization_id, key, label, color, position, permissions, is_system)
+           VALUES ($1::uuid, $2, $3, $4, $5, $6::TEXT[], TRUE)
+           ON CONFLICT (organization_id, key) DO UPDATE SET
+             -- Only refresh the metadata (label/color/position). Permissions are
+             -- not overwritten on re-seed so admin edits aren't blown away.
+             label = EXCLUDED.label,
+             color = EXCLUDED.color,
+             position = EXCLUDED.position,
+             is_system = TRUE,
+             updated_at = NOW()`,
+          [org.id, r.key, r.label, r.color, r.position, r.permissions],
+        );
+        seeded += 1;
+      }
+    }
+    console.log(`✓ Seeded ${SEED.length} system roles into ${orgs.rows.length} org(s) (${seeded} upserts)`);
 
     // 2. Back-fill staff_roles from staff.role for any staff missing an
     //    assignment. Aliases (`receiving` → `receiver`, `readonly` → `viewer`)
-    //    are resolved here so legacy rows map cleanly.
+    //    are resolved here so legacy rows map cleanly. Roles are per-org, so
+    //    the map joins on (key, the staff's own organization_id).
     const backfill = await client.query(`
-      WITH role_map AS (
-        SELECT id, key FROM roles
-      ),
-      canonical AS (
+      WITH canonical AS (
         SELECT
           s.id AS staff_id,
+          s.organization_id AS org_id,
           CASE LOWER(COALESCE(s.role, 'viewer'))
             WHEN 'receiving' THEN 'receiver'
             WHEN 'readonly'  THEN 'viewer'
@@ -178,9 +190,9 @@ async function main() {
         WHERE COALESCE(s.active, TRUE) = TRUE
       )
       INSERT INTO staff_roles (staff_id, role_id, granted_at, granted_by)
-      SELECT c.staff_id, rm.id, NOW(), NULL
+      SELECT c.staff_id, r.id, NOW(), NULL
         FROM canonical c
-        JOIN role_map rm ON rm.key = c.role_key
+        JOIN roles r ON r.key = c.role_key AND r.organization_id = c.org_id
        WHERE NOT EXISTS (
          SELECT 1 FROM staff_roles sr WHERE sr.staff_id = c.staff_id
        )
@@ -192,9 +204,10 @@ async function main() {
     // 3. Sanity check.
     const counts = await client.query(`
       SELECT
-        (SELECT COUNT(*) FROM roles)              AS total_roles,
+        (SELECT COUNT(*) FROM organizations)  AS orgs,
+        (SELECT COUNT(*) FROM roles)           AS total_roles,
         (SELECT COUNT(*) FROM roles WHERE is_system) AS system_roles,
-        (SELECT COUNT(*) FROM staff_roles)        AS assignments,
+        (SELECT COUNT(*) FROM staff_roles)     AS assignments,
         (SELECT COUNT(DISTINCT staff_id) FROM staff_roles) AS staff_with_role
     `);
     console.table(counts.rows[0]);

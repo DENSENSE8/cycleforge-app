@@ -59,10 +59,19 @@ export function spineParentDrillId(_section: SpineSectionId | null): string | nu
 }
 
 /**
- * Default order: Stations, then Desks, then remaining L1 (Studio · Admin).
+ * Default order: Automations FIRST (marketplace-first IA, 2026-09-06), then
+ * Stations, then Desks, then the remaining L1 rows.
  */
 export function defaultSpineOrder(allowed: readonly SidebarNavItem[]): string[] {
   const out: string[] = [];
+  // Automations leads the map: the automated system you assemble is the first
+  // thing the spine names, above the Stations and Workspaces you operate. Guard
+  // on the catalog actually carrying the row (and it being slottable) so a
+  // gated-out tenant never leads with a phantom.
+  const leadsWithAutomations = allowed.some(
+    (item) => item.id === 'studio' && isSpineSlottable(item),
+  );
+  if (leadsWithAutomations) out.push('studio');
   if (allowed.some((item) => item.kind === 'station')) {
     out.push(SPINE_STATIONS_SLOT_ID);
   }
@@ -71,6 +80,7 @@ export function defaultSpineOrder(allowed: readonly SidebarNavItem[]): string[] 
   }
   for (const item of allowed) {
     if (!isSpineSlottable(item)) continue;
+    if (item.id === 'studio') continue; // already led with it
     out.push(item.id);
     if (out.length >= SPINE_SLOTS_MAX) break;
   }
@@ -116,6 +126,59 @@ export function hydrateSpineSlots(
     if (out.length >= SPINE_SLOTS_MAX) break;
   }
   return out;
+}
+
+/**
+ * Current default-order generation. Bump when the DEFAULT order changes in a
+ * way existing operators should inherit.
+ *
+ * v1 (2026-09-06): Automations (`studio`) leads the map.
+ */
+export const SPINE_SLOTS_VERSION = 1;
+
+export interface SpineSlotsMigration {
+  /** Order to render now. */
+  slots: string[];
+  /**
+   * Prefs to persist ONCE, or `null` when nothing should be written. Present
+   * only for an operator whose saved order predates {@link SPINE_SLOTS_VERSION}.
+   */
+  stamp: { spineSlots: string[]; spineSlotsVersion: number } | null;
+}
+
+/**
+ * Roll a saved order onto the current default generation without overwriting
+ * the operator's arrangement.
+ *
+ * A saved `spineSlots` is protected state: it is the operator saying where
+ * their work lives. So a new default is NOT applied by replacing that list —
+ * v1 floats `studio` to the front and leaves every other row in the order the
+ * operator put it in, then stamps the version so no operator is ever floated
+ * twice (they may drag Automations back down and it stays down).
+ *
+ * An operator with NO saved order needs no write at all: {@link hydrateSpineSlots}
+ * already derives the current default for them, and a future generation will
+ * derive that one.
+ */
+export function migrateSpineSlots(
+  raw: readonly string[] | null | undefined,
+  allowed: readonly SidebarNavItem[],
+  savedVersion: number | null | undefined,
+): SpineSlotsMigration {
+  const slots = hydrateSpineSlots(raw, allowed);
+  if (!raw || raw.length === 0) return { slots, stamp: null };
+  // A catalog that has not resolved yet (permissions still loading) hydrates to
+  // nothing — stamping that would persist an EMPTY order over a real one.
+  if (allowed.length === 0 || slots.length === 0) return { slots, stamp: null };
+  if ((savedVersion ?? 0) >= SPINE_SLOTS_VERSION) return { slots, stamp: null };
+
+  const lead = slots.indexOf('studio');
+  const floated =
+    lead > 0 ? ['studio', ...slots.filter((id) => id !== 'studio')] : slots;
+  return {
+    slots: floated,
+    stamp: { spineSlots: floated, spineSlotsVersion: SPINE_SLOTS_VERSION },
+  };
 }
 
 /**

@@ -6,7 +6,14 @@ import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { listThreadMessages, postThreadMessage } from '@/lib/threads/threads';
 import { publishDbEvent } from '@/lib/realtime/db-events';
 import { safeRandomUUID } from '@/lib/safe-uuid';
-import pool from '@/lib/db';
+import { withTenantTransaction } from '@/lib/tenancy/db';
+
+/**
+ * Tenant scoping: listThreadMessages / postThreadMessage run inside their own
+ * tenant transactions (GUC + org conjuncts); the audit write below runs under
+ * withTenantTransaction too, so every statement the route issues is
+ * app.current_org-scoped.
+ */
 
 /**
  * GET /api/threads/[id]/messages?limit&before — ascending page of messages
@@ -90,13 +97,15 @@ export async function POST(
     }
 
     if (!result.idempotent) {
-      await recordAudit(pool, gate.ctx, req, {
-        source: 'threads-api',
-        action: AUDIT_ACTION.THREAD_MESSAGE_POST,
-        entityType: AUDIT_ENTITY.ENTITY_THREAD,
-        entityId: threadId,
-        after: { messageId: result.message.id, visibility: result.message.visibility },
-      });
+      await withTenantTransaction(gate.ctx.organizationId, (client) =>
+        recordAudit(client, gate.ctx, req, {
+          source: 'threads-api',
+          action: AUDIT_ACTION.THREAD_MESSAGE_POST,
+          entityType: AUDIT_ENTITY.ENTITY_THREAD,
+          entityId: threadId,
+          after: { messageId: result.message.id, visibility: result.message.visibility },
+        }),
+      );
 
       // Best-effort realtime nudge so open panels refetch — never blocks the response.
       const message = result.message;

@@ -4,6 +4,8 @@
  * (cross-device).
  */
 
+import type { DisplayTitle } from '@/lib/ai/session-title-text';
+
 export interface ActionToggles {
   /** Open the phone-history popover (recent packed orders, tap to resume). */
   phoneHistory: boolean;
@@ -22,7 +24,52 @@ export interface PinnedPage {
   iconKey?: string;
   /** Epoch ms when added. Used for sort + diagnostics. */
   addedAt: number;
+  /**
+   * Optional AI session this pin is working within (Feature 3, binding model
+   * B). When set, the pin renders the page label as its title and the bound
+   * session's AI summary as a hover-revealed subtitle — "where" + "what am I
+   * doing there." Additive and back-compatible: pins without it render as
+   * before. Looked up against {@link ChatSessionRow} by id at render.
+   */
+  sessionId?: string;
 }
+
+/**
+ * The input a pin WRITE takes — discriminated, because the two kinds of pin
+ * carry different load-bearing facts and the compiler is the only reliable
+ * guard against dropping one.
+ *
+ * A session pin's `sessionId` is its provenance: the thread it names. Before
+ * this union, the shelf's undo path re-pinned a dragged-out pin as
+ * `{ href, label, iconKey }` — structurally a valid pin, so it type-checked,
+ * and a session pin came back as a nameless Home row with its binding gone
+ * (measured 2026-09-07). Taking back an accidental unpin destroyed the exact
+ * fact the undo existed to protect.
+ *
+ * `kind` makes that shape unrepresentable: a partial copy of a `PinnedPage` no
+ * longer satisfies the input, so every re-pin path goes through
+ * {@link pinInputFromPinned}, which is total.
+ */
+export type PagePinInput = {
+  kind: 'page';
+  label: string;
+  href: string;
+  iconKey?: string;
+};
+
+export type SessionPinInput = {
+  kind: 'session';
+  /** Sanitized at the boundary — a pin label outlives the row it was copied from. */
+  label: DisplayTitle;
+  href: string;
+  sessionId: string;
+  iconKey?: typeof SESSION_PIN_ICON_KEY;
+};
+
+export type PinInput = PagePinInput | SessionPinInput;
+
+/** Icon hint every session pin carries. One spelling, both pin surfaces. */
+export const SESSION_PIN_ICON_KEY = 'ai-chat';
 
 export interface QuickAccessSettings {
   version: 1;

@@ -43,14 +43,15 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     [staffId, ctx.organizationId],
   );
   if (!probe.rows[0]) return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
-  const r = await pool.query(
+  const r = await tenantQuery(
+    ctx.organizationId,
     `SELECT r.id, r.key, r.label, r.color, r.position, r.permissions, r.is_system,
             sr.granted_at, sr.granted_by
        FROM staff_roles sr
-       JOIN roles r ON r.id = sr.role_id
+       JOIN roles r ON r.id = sr.role_id AND r.organization_id = $2::uuid
       WHERE sr.staff_id = $1
       ORDER BY r.position ASC, r.id ASC`,
-    [staffId],
+    [staffId, ctx.organizationId],
   );
   return NextResponse.json({ roles: r.rows });
 }, { permission: 'admin.manage_staff' });
@@ -79,12 +80,15 @@ export const PUT = withAuth(async (req: NextRequest, ctx) => {
     [staffId, ctx.organizationId],
   );
   if (!probe.rows[0]) return NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 });
-
-  // Verify all requested role ids exist (avoid orphan FK failures + give a
-  // clearer error message to the caller). `roles` is system-global — no org
-  // predicate here.
+  // Verify all requested role ids exist IN THIS ORG (avoid orphan FK failures
+  // + a clearer error to the caller). A role id from another org reads as
+  // UNKNOWN_ROLES — it can never be grafted onto this org's staff.
   if (wanted.size > 0) {
-    const r = await pool.query(`SELECT id FROM roles WHERE id = ANY($1::INT[])`, [Array.from(wanted)]);
+    const r = await tenantQuery(
+      ctx.organizationId,
+      `SELECT id FROM roles WHERE id = ANY($1::INT[]) AND organization_id = $2::uuid`,
+      [Array.from(wanted), ctx.organizationId],
+    );
     const present = new Set((r.rows as Array<{ id: number }>).map((row) => row.id));
     const missing = Array.from(wanted).filter((id) => !present.has(id));
     if (missing.length > 0) {
@@ -104,9 +108,10 @@ export const PUT = withAuth(async (req: NextRequest, ctx) => {
 
   // Use a single transaction so a partial failure leaves the assignment set
   // unchanged. Run it under the org GUC: the staff parent is already org-gated
-  // by the probe above, and the trailing `staff` UPDATE re-asserts the org
-  // predicate so it can never sync a row in another org. `staff_roles`/`roles`
-  // have no organization_id, so they remain scoped only by the gated staffId.
+  // by the probe above, every roleId was validated against THIS org's roles
+  // above, and the trailing `staff` UPDATE re-asserts the org predicate so it
+  // can never sync a row in another org. staff_roles is a global junction;
+  // grants are intra-org by construction (roles.organization_id).
   await withTenantTransaction(ctx.organizationId, async (client) => {
     if (toRemove.length > 0) {
       await client.query(
@@ -128,11 +133,11 @@ export const PUT = withAuth(async (req: NextRequest, ctx) => {
     const primary = await client.query(
       `SELECT r.key
          FROM staff_roles sr
-         JOIN roles r ON r.id = sr.role_id
+         JOIN roles r ON r.id = sr.role_id AND r.organization_id = $2::uuid
         WHERE sr.staff_id = $1
         ORDER BY r.position ASC, r.id ASC
         LIMIT 1`,
-      [staffId],
+      [staffId, ctx.organizationId],
     );
     if (primary.rows[0]?.key) {
       await client.query(

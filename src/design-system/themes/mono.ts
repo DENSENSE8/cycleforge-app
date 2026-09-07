@@ -64,6 +64,7 @@ export const monoPalette: ThemePalette = {
     // Extended tone text — informational tones go gray in mono
     'text-info': '#3f3f46',
     'text-fulfillment': '#3f3f46',
+    'text-gilt': '#3f3f46', // grayscale identity: emphasis is italic, not gold
     // Solid fills — grayscale except the safety triad
     'fill-info': '#52525b',
     'fill-success': '#166534',

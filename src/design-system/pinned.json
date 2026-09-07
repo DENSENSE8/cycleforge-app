@@ -364,5 +364,15 @@
     "useWhen": "cmd-k, command palette, global search shortcut, quick access, jump to page",
     "doNot": "Results never surface past chat / agent sessions — Recents in MasterNav is the one place session history lives. Do not fold chat or agent history into cmd-k result groups.",
     "law": "src/components/CommandBar.tsx. Operator 2026-08-26: 'it must not display the sessions in the search of cmd K.'"
+  },
+  "TriageLedger": {
+    "useWhen": "ranked task list, ROI ledger, triage rows, what needs me now, first plane of the home surface, mission control task list, operator pulse rows",
+    "doNot": "Do not express rank with font size, serif, or pill chips — position plus one gilt accent on the #1 index only. Do not mix voices inside a row: titles are sentence-case text-sm, figures are INSTRUMENT_VALUE mono tabular in fixed columns, all rows one grid one baseline one height. Do not use native title attributes — the why rides HoverTooltip (cursor-morph on the desk). Do not cap the ranked set; the ledger scrolls vertically by lane.",
+    "law": "src/components/session/TriageLedger.tsx. Operator 2026-09-06: six fixed columns (rank title lane count age verb); lane headers cut on transition; skeleton rows match the grid; click seeds never sends (Law 15)."
+  },
+  "MissionPane": {
+    "useWhen": "mission pane, floor telemetry, right pane resting occupant, live floor feed, activity feed panel, what is happening on the floor now, pillar counts strip",
+    "doNot": "Do not hand-roll a second telemetry plate — INSTRUMENT_PLATE / INSTRUMENT_CELL / INSTRUMENT_VALUE from tokens/instrument. Do not add behavior to the floor feed: rows render, period (read-only law). The strip cells may seed requestComposerSeed only — never autoSend, never POST. Do not fetch a second board query — pulsePillarTotals over the SAME ranked items the ledger draws.",
+    "law": "src/components/session/MissionPane.tsx. Operator 2026-09-06: telemetry strip over live /api/activity/feed; board occupant default; ambient feed rows are plain li with mono clock + eyebrow tag."
   }
 }

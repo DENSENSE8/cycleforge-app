@@ -60,3 +60,45 @@ test('error → status mapping', () => {
   strictEqual(actAsErrorStatus('TARGET_NOT_FOUND'), 404);
   strictEqual(actAsErrorStatus('CROSS_ORG'), 404);
 });
+
+test('permission ceiling: denies when the target holds a permission the caller lacks', () => {
+  const d = evaluateActAs({
+    sharedAccountEnabled: true,
+    callerOrgId: ORG_A,
+    target: { orgId: ORG_A, active: true },
+    callerPermissions: new Set(['orders.view']),
+    targetPermissions: new Set(['orders.view', 'admin.manage_staff']),
+  });
+  deepStrictEqual(d, { ok: false, error: 'TARGET_EXCEEDS_CALLER' });
+  strictEqual(actAsErrorStatus('TARGET_EXCEEDS_CALLER'), 403);
+});
+
+test('permission ceiling: allows when the target set is a subset of the caller set', () => {
+  deepStrictEqual(
+    evaluateActAs({
+      sharedAccountEnabled: true,
+      callerOrgId: ORG_A,
+      target: { orgId: ORG_A, active: true },
+      callerPermissions: new Set(['orders.view', 'admin.manage_staff']),
+      targetPermissions: new Set(['orders.view']),
+    }),
+    { ok: true },
+  );
+});
+
+test('permission ceiling: equal sets and absent sets both pass', () => {
+  const perms = new Set(['orders.view']);
+  deepStrictEqual(
+    evaluateActAs({
+      sharedAccountEnabled: true, callerOrgId: ORG_A,
+      target: { orgId: ORG_A, active: true },
+      callerPermissions: perms, targetPermissions: new Set(['orders.view']),
+    }),
+    { ok: true },
+  );
+  // No permission sets supplied (legacy callers / unit path) → gate is a no-op.
+  deepStrictEqual(
+    evaluateActAs({ sharedAccountEnabled: true, callerOrgId: ORG_A, target: { orgId: ORG_A, active: true } }),
+    { ok: true },
+  );
+});

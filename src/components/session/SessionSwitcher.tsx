@@ -15,10 +15,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronDown, Loader2, Search, Sparkles } from '@/components/Icons';
+import { AskMark, ChevronDown, Loader2, Search } from '@/components/Icons';
 import { AI_CHAT_NEW_EVENT } from '@/lib/app-events';
 import { useChatSessions } from '@/lib/assistant/use-chat-sessions';
 import { cn } from '@/utils/_cn';
+import { displaySessionTitle } from '@/lib/ai/session-title-text';
 import { getSessionTitle, subscribeSessionTitle } from './session-title-store';
 
 export function SessionSwitcher({ className }: { className?: string }) {
@@ -57,7 +58,10 @@ export function SessionSwitcher({ className }: { className?: string }) {
   }, [router]);
 
   const q = query.trim().toLowerCase();
-  const filtered = q ? (sessions ?? []).filter((s) => (s.title ?? '').toLowerCase().includes(q)) : (sessions ?? []);
+  // Match and render the CLEAN title — searching raw text would let a stale
+  // `<|channel|>analysis…` row answer to "analysis".
+  const rows = (sessions ?? []).map((s) => ({ id: s.id, title: displaySessionTitle(s.title) }));
+  const filtered = q ? rows.filter((s) => s.title.toLowerCase().includes(q)) : rows;
 
   return (
     <div className={cn('relative min-w-0', className)} data-session-switcher>
@@ -68,7 +72,11 @@ export function SessionSwitcher({ className }: { className?: string }) {
         aria-label="Switch session"
         className="flex max-w-72 items-center gap-1.5 rounded-lg px-1.5 py-1 hover:bg-surface-sunken"
       >
-        <Sparkles className="h-3.5 w-3.5 shrink-0 text-blue-600" />
+        {/* The assistant's own mark, not the app-wide `Sparkles` sticker: this
+            trigger IS the thread, and the identity glyph is owned by
+            `AskMark` (src/components/icons/assistant.tsx). Scan Blue stays —
+            this is a live, interactive fact per the One-Voice Rule. */}
+        <AskMark className="h-3.5 w-3.5 shrink-0 text-blue-600" />
         <span className="min-w-0 truncate text-left text-role-caption font-semibold text-text-default">
           {title}
         </span>
@@ -113,7 +121,7 @@ export function SessionSwitcher({ className }: { className?: string }) {
                         onClick={() => pick(s.id)}
                         className="block w-full truncate rounded-lg px-2 py-1 text-left text-role-caption text-text-muted hover:bg-surface-sunken"
                       >
-                        {s.title ?? s.id}
+                        {s.title}
                       </button>
                     </li>
                   ))}

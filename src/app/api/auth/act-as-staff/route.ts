@@ -35,6 +35,7 @@ import {
 import { audit } from '@/lib/auth/audit';
 import { parseOrgSettings, isSharedStaffAccountOrg } from '@/lib/tenancy/settings';
 import { evaluateActAs, actAsErrorStatus } from '@/lib/auth/act-as-staff';
+import { effectivePermissionsForStaff } from '@/lib/auth/role-store';
 import { checkRateLimitAsync } from '@/lib/api-guard';
 
 export const runtime = 'nodejs';
@@ -110,10 +111,24 @@ export async function POST(req: NextRequest) {
   );
   const target = targetRes.rows[0] ?? null;
 
+  // Permission ceiling (operator-approved 2026-09-06): acting as someone may
+  // never grant a permission the caller lacks. Both sets resolve org-scoped
+  // through the same resolver withAuth uses (roles + per-staff overrides).
+  let callerPerms: ReadonlySet<string> | undefined;
+  let targetPerms: ReadonlySet<string> | undefined;
+  if (target && target.organization_id === callerOrgId) {
+    [callerPerms, targetPerms] = await Promise.all([
+      effectivePermissionsForStaff(prev.staffId, callerOrgId),
+      effectivePermissionsForStaff(parsed.staffId, callerOrgId),
+    ]);
+  }
+
   const decision = evaluateActAs({
     sharedAccountEnabled,
     callerOrgId,
     target: target ? { orgId: target.organization_id, active: target.active } : null,
+    callerPermissions: callerPerms,
+    targetPermissions: targetPerms,
   });
   if (!decision.ok) {
     await audit({

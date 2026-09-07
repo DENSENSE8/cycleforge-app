@@ -13,7 +13,6 @@ import { isAuthorizedCronRequest } from '@/lib/cron/auth';
 import { withCronRun } from '@/lib/cron/run-log';
 import { withCronLock } from '@/lib/cron/lock';
 import { orderSyncService, type ChannelOrder } from '@/services/OrderSyncService';
-import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 120;
@@ -53,7 +52,26 @@ export async function GET(req: NextRequest) {
       let done = 0;
       let failed = 0;
       for (const row of rows) {
-        const orgId = row.organization_id ?? transitionalDogfoodOrgId();
+        // organization_id is NULLable on order_ingest_queue (its column default
+        // is the app.current_org GUC, and rows can be enqueued with no org
+        // bound). A row with no org has no tenant to ingest under — the old
+        // dogfood fallback silently wrote those orders to USAV. Skip loudly
+        // instead; never substitute a default org.
+        if (!row.organization_id) {
+          console.error(
+            `[cron.zoho.orders-ingest-drain] queue row id=${row.id} channel_order_id=${row.channel_order_id} has NULL organization_id — marking failed (no tenant to ingest under)`,
+          );
+          await pool.query(
+            `UPDATE order_ingest_queue
+                SET status = 'failed', processed_at = NOW(),
+                    last_error = 'NULL organization_id — no tenant to ingest under'
+              WHERE id = $1`,
+            [row.id],
+          );
+          failed++;
+          continue;
+        }
+        const orgId = row.organization_id;
         try {
           await orderSyncService.ingestExternalOrder(orgId, row.payload);
           await pool.query(

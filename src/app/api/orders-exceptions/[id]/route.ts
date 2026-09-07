@@ -8,7 +8,7 @@ import {
 } from '@/lib/orders-exceptions';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { invalidateCacheTags } from '@/lib/cache/upstash-cache';
-import pool from '@/lib/db';
+import { withTenantTransaction } from '@/lib/tenancy/db';
 
 /**
  * PATCH /api/orders-exceptions/[id] — update tracking on a hold-bucket row.
@@ -51,14 +51,18 @@ export async function PATCH(
     }
 
     await invalidateCacheTags(['orders', 'shipped']);
-    await recordAudit(pool, gate.ctx, req, {
-      source: 'orders-exceptions-api',
-      action: AUDIT_ACTION.ORDERS_EXCEPTION_UPDATE,
-      entityType: AUDIT_ENTITY.ORDERS_EXCEPTION,
-      entityId: id,
-      before: { ...result.before },
-      after: { ...result.after },
-    });
+    // Audit write under the tenant GUC, matching the exception update itself
+    // (which runs in its own tenant transaction with org conjuncts).
+    await withTenantTransaction(orgId, (client) =>
+      recordAudit(client, gate.ctx, req, {
+        source: 'orders-exceptions-api',
+        action: AUDIT_ACTION.ORDERS_EXCEPTION_UPDATE,
+        entityType: AUDIT_ENTITY.ORDERS_EXCEPTION,
+        entityId: id,
+        before: { ...result.before },
+        after: { ...result.after },
+      }),
+    );
 
     // Confirm still visible under the tenant GUC (defense in depth).
     const refreshed = await getOrderExceptionById(id, orgId);

@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
             const spreadsheetId = await resolveTransferSourceSpreadsheetId(orgId);
             if (!spreadsheetId) return { skipped: 'no_source_spreadsheet' };
             try {
-              return await runGoogleSheetsTransferOrders(undefined, 'sheets', undefined, orgId, spreadsheetId);
+              return await runGoogleSheetsTransferOrders(orgId, undefined, 'sheets', undefined, spreadsheetId);
             } catch (err) {
               // A job-level condition (no data in tab / missing headers) is NOT a
               // tenant failure — mirror the prior top-level handling that surfaced

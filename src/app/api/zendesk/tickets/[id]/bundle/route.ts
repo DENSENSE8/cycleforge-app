@@ -15,8 +15,10 @@ export const dynamic = 'force-dynamic';
  * GET /api/zendesk/tickets/:id/bundle
  *
  * One round-trip for the support detail panel: ticket, enriched comments,
- * agents, in-website assignment, and linked entity photos. Responses are
- * Redis-cached (90s) per org+ticket; mutations invalidate the cache tag.
+ * agents, in-website assignment, and the linked entity's photo set. Responses
+ * are Redis-cached (90s) per org+ticket; mutations invalidate the cache tag.
+ * Photo/entity reads inside loadZendeskTicketBundle are org-GUC-scoped tenant
+ * queries with explicit org conjuncts.
  */
 
 function notConfigured(context: string): NextResponse {

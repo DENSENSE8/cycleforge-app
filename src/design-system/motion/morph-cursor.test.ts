@@ -194,7 +194,7 @@ test('two speeds: the hotspot never lags, only the shell may trail', () => {
   assert.match(layer, /kind !== 'morph' && !scrub/);
   // The shell wears the same halo as the core (it is half the mark).
   const shellBlock = layer.slice(layer.indexOf('morph-cursor-shell'), layer.indexOf('morph-cursor"', layer.indexOf('morph-cursor-shell')));
-  assert.match(shellBlock, /filter: CURSOR_HALO/);
+  assert.match(shellBlock, /style=\{HALO_ANCHOR\}/);
 });
 
 test('state accents crossfade — they never pop in and out of the DOM', () => {
@@ -252,9 +252,14 @@ test('the mark wears the find-me halo — a white outline, and nothing else', ()
   // readout carry their own ground and must stay outside it.
   assert.match(
     layer,
-    /data-cursor-halo="" style=\{\{ filter: CURSOR_HALO \}\}>\s*<Cursor[\s\S]*?\{readout/,
+    /data-cursor-halo="" style=\{HALO_ANCHOR\}>\s*<Cursor[\s\S]*?\{readout/,
     'halo wraps the skin, not the chips',
   );
+  // The halo HOST is a zero-size anchor pinned to the hotspot: a CSS filter
+  // makes it the containing block for absolute descendants, so an in-flow
+  // halo dragged by the dot's negative margins sits 9px off the hand and
+  // every glyph anchors crooked (measured 2026-09-06). Keep it absolute.
+  assert.match(layer, /position: 'absolute',\s*\n\s*left: 0,\s*\n\s*top: 0,\s*\n\s*width: 0,\s*\n\s*height: 0,/, 'halo anchors at the hotspot, not in flow');
 });
 
 test('the skin is picked on the desk, persisted on the desk', () => {

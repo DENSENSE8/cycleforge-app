@@ -29,6 +29,10 @@ import { eq, sql } from 'drizzle-orm';
 import { db } from '@/lib/drizzle/db';
 import { pipelineTasks, pipelineCycles } from '@/lib/drizzle/schema';
 import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
+// Tenancy: the self-improvement pipeline is dogfood-org-only tooling by
+// construction; its pipeline_tasks / pipeline_cycles rows are deliberately
+// stamped with the transitional USAV org (explicit choice, not a column
+// default).
 import { discoverTasks } from './discover';
 import { implementTask } from './agent';
 import { validateChanges } from './validate';

@@ -7,7 +7,7 @@
 import { MAX_PIN_HOTKEY_SLOTS } from './types';
 
 /** True when the UI should show ⌘ rather than Ctrl+. */
-function isAppleModPlatform(): boolean {
+export function isAppleModPlatform(): boolean {
   if (typeof navigator === 'undefined') return true;
   return /Mac|iPhone|iPad|iPod/i.test(navigator.platform)
     || /Mac OS|iPhone|iPad|iPod/i.test(navigator.userAgent);

@@ -154,8 +154,8 @@ export async function sortSerialUnitToParts(
 
   // serial_units.organization_id is NOT NULL (2026-05-23 business-table pass,
   // restated in 2026-06-19_serial_units_org_scoped_unique.sql:22), so this is a
-  // data-integrity check, not a fallback. It used to read
-  // `?? DOGFOOD_ORG_ID` — a default on a column that cannot be null, which
+  // data-integrity check, not a fallback. It used to substitute the dogfood
+  // org — a default on a column that cannot be null, which
   // could only ever fire if the row shape lied, and would then silently sort
   // another tenant's unit into the dogfood org's parts bin.
   const orgId = unit.organization_id as OrgId | null;

@@ -1,6 +1,5 @@
 import pool from '@/lib/db';
 import { normalizeTrackingKey18, normalizeTrackingLast8 } from '@/lib/tracking-format';
-import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 export type ExceptionDomain = 'orders' | 'receiving';
@@ -53,14 +52,14 @@ export interface UpsertTrackingExceptionParams {
 
 export async function upsertOpenTrackingException(
   params: UpsertTrackingExceptionParams,
+  // Tenant scope — REQUIRED, un-defaulted. tracking_exceptions is tenant-owned
+  // with a usav-fallback column default, so an unstamped INSERT silently
+  // misroutes to the USAV org instead of crashing; the removed dogfood-org
+  // fallback did exactly that for any caller that forgot to thread its org.
+  // Required now, so the compiler catches the miss at the call site.
+  orgId: OrgId,
   dbClient: DbClient = pool,
-  // tracking_exceptions is tenant-owned with a usav-fallback default. Callers
-  // that have a request org should thread it; session-less callers fall back to
-  // the transitional USAV org (the established single-tenant convention) so the
-  // INSERT is always stamped explicitly rather than relying on the GUC default.
-  orgId?: OrgId,
 ): Promise<TrackingExceptionRecord | null> {
-  const effectiveOrgId = orgId ?? transitionalDogfoodOrgId();
   const tracking = String(params.trackingNumber || '').trim();
   if (!tracking || tracking.includes(':')) return null;
 
@@ -85,7 +84,7 @@ export async function upsertOpenTrackingException(
         )
       ORDER BY id DESC
       LIMIT 1`,
-    [key18, params.domain, params.sourceStation, normalizedLast8, effectiveOrgId],
+    [key18, params.domain, params.sourceStation, normalizedLast8, orgId],
   );
 
   if (existing.rows.length > 0) {
@@ -148,7 +147,7 @@ export async function upsertOpenTrackingException(
       params.receivingId ?? null,
       params.lastError ?? null,
       params.domainMetadata ? JSON.stringify(params.domainMetadata) : null,
-      effectiveOrgId,
+      orgId,
     ],
   );
   return (inserted.rows[0] as TrackingExceptionRecord) ?? null;

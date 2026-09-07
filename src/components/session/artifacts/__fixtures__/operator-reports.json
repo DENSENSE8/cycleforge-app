@@ -1,0 +1,1856 @@
+{
+  "packing-performance": {
+    "question": "What is Maria's packing performance today?",
+    "summary": "Maria Delgado completed 8 boxes on 2026-09-06 (PT) — 2h 05m earned against 1h 58m handled, 106% efficiency, 21m waiting. The report is on the panel.",
+    "artifact": {
+      "kind": "report",
+      "title": "Packing performance",
+      "question": "What is Maria Delgado's packing performance today?",
+      "asOf": "Sep 6, 2026, 11:40 AM PT",
+      "scope": "Maria Delgado · 2026-09-06 (PT)",
+      "headline": {
+        "value": "8",
+        "unit": "boxes",
+        "label": "Boxes packed",
+        "hint": "4 small · 3 medium · 1 big"
+      },
+      "kpis": [
+        {
+          "id": "boxes",
+          "label": "Boxes packed",
+          "value": "8",
+          "unit": "boxes",
+          "status": "neutral",
+          "definition": "PACK_COMPLETED scans on the PACK station for the scope, on the selected PST day."
+        },
+        {
+          "id": "earned_minutes",
+          "label": "Earned minutes",
+          "value": "2h 05m",
+          "unit": "min",
+          "status": "neutral",
+          "definition": "Standard minutes the work was worth: 5 small, 15 medium, 60 big per box, or the per-SKU estimate when the operator has profiled it."
+        },
+        {
+          "id": "handle_minutes",
+          "label": "Handle minutes",
+          "value": "1h 58m",
+          "unit": "min",
+          "status": "neutral",
+          "definition": "Clock time from each PACK_SCAN to its matching PACK_COMPLETED, summed. Unpaired completions contribute nothing."
+        },
+        {
+          "id": "wait_minutes",
+          "label": "Wait minutes",
+          "value": "21m",
+          "unit": "min",
+          "target": "3 min/box",
+          "status": "good",
+          "definition": "Idle time between boxes: previous completion to the next scan, clamped at zero, gaps over 90 min excluded as breaks. Verdict is on wait per box (3m)."
+        },
+        {
+          "id": "efficiency",
+          "label": "Efficiency",
+          "value": "106%",
+          "target": "100%",
+          "status": "good",
+          "definition": "Earned minutes ÷ handle minutes. Over 100% means the floor beat the pack standard."
+        },
+        {
+          "id": "utilization",
+          "label": "Utilization",
+          "value": "50%",
+          "target": "80%",
+          "status": "bad",
+          "definition": "Handle minutes ÷ attended minutes (first scan to last completion). Low utilization is a feeding problem, not a packer problem."
+        },
+        {
+          "id": "minutes_per_box",
+          "label": "Minutes per box",
+          "value": "15m",
+          "unit": "min/box",
+          "status": "neutral",
+          "definition": "Handle minutes ÷ boxes packed. Compare against the tier mix before reading it as a pace."
+        },
+        {
+          "id": "capacity_left",
+          "label": "Capacity left",
+          "value": "6h 02m",
+          "unit": "min",
+          "status": "neutral",
+          "definition": "Workday minutes minus handle minutes for this packer."
+        }
+      ],
+      "sections": [
+        {
+          "title": "Per packer",
+          "note": "Earned is standard minutes for the tier mix; handle is scan-to-complete clock time.",
+          "columns": [
+            {
+              "key": "packer",
+              "label": "Packer",
+              "align": "left"
+            },
+            {
+              "key": "boxes",
+              "label": "Boxes",
+              "align": "right"
+            },
+            {
+              "key": "small",
+              "label": "Small",
+              "align": "right"
+            },
+            {
+              "key": "medium",
+              "label": "Medium",
+              "align": "right"
+            },
+            {
+              "key": "large",
+              "label": "Big",
+              "align": "right"
+            },
+            {
+              "key": "earned",
+              "label": "Earned",
+              "align": "right",
+              "unit": "min"
+            },
+            {
+              "key": "handle",
+              "label": "Handle",
+              "align": "right",
+              "unit": "min"
+            },
+            {
+              "key": "wait",
+              "label": "Wait",
+              "align": "right",
+              "unit": "min"
+            },
+            {
+              "key": "efficiency",
+              "label": "Efficiency",
+              "align": "right"
+            },
+            {
+              "key": "utilization",
+              "label": "Utilization",
+              "align": "right"
+            },
+            {
+              "key": "pct_of_day",
+              "label": "% of day",
+              "align": "right"
+            }
+          ],
+          "rows": [
+            {
+              "packer": "Maria Delgado",
+              "boxes": "8",
+              "small": "4",
+              "medium": "3",
+              "large": "1",
+              "earned": "2h 05m",
+              "handle": "1h 58m",
+              "wait": "21m",
+              "efficiency": "106%",
+              "utilization": "50%",
+              "pct_of_day": "25%"
+            }
+          ],
+          "totals": {
+            "packer": "Maria Delgado",
+            "boxes": "8",
+            "small": "4",
+            "medium": "3",
+            "large": "1",
+            "earned": "2h 05m",
+            "handle": "1h 58m",
+            "wait": "21m",
+            "efficiency": "106%",
+            "utilization": "50%",
+            "pct_of_day": "25%"
+          }
+        },
+        {
+          "title": "Item number to time",
+          "note": "Newest first, one row per completed pack scan (max 200).",
+          "columns": [
+            {
+              "key": "packed_at",
+              "label": "Packed",
+              "align": "left"
+            },
+            {
+              "key": "item_number",
+              "label": "Item #",
+              "align": "left"
+            },
+            {
+              "key": "sku",
+              "label": "SKU",
+              "align": "left"
+            },
+            {
+              "key": "product",
+              "label": "Product",
+              "align": "left"
+            },
+            {
+              "key": "tier",
+              "label": "Tier",
+              "align": "left"
+            },
+            {
+              "key": "standard",
+              "label": "Standard",
+              "align": "right",
+              "unit": "min"
+            },
+            {
+              "key": "handle",
+              "label": "Handle",
+              "align": "right",
+              "unit": "min"
+            },
+            {
+              "key": "wait",
+              "label": "Wait",
+              "align": "right",
+              "unit": "min"
+            },
+            {
+              "key": "packer",
+              "label": "Packer",
+              "align": "left"
+            }
+          ],
+          "rows": [
+            {
+              "packed_at": "11:35",
+              "item_number": "9087661234",
+              "sku": "BOSE-LS650",
+              "product": "Bose Lifestyle 650 home theater system, console + 5 omnijew…",
+              "tier": "Big",
+              "standard": "1h",
+              "handle": "52m",
+              "wait": "4m",
+              "packer": "Maria Delgado"
+            },
+            {
+              "packed_at": "10:31",
+              "item_number": "4455661122",
+              "sku": "BOSE-WAVE-IV",
+              "product": "Bose Wave Music System IV with remote and pedestal",
+              "tier": "Medium",
+              "standard": "15m",
+              "handle": "17m",
+              "wait": "9m",
+              "packer": "Maria Delgado"
+            },
+            {
+              "packed_at": "10:05",
+              "item_number": "4455661123",
+              "sku": "BOSE-SD-II",
+              "product": "Bose SoundDock Series II digital music system",
+              "tier": "Medium",
+              "standard": "15m",
+              "handle": "13m",
+              "wait": "2m",
+              "packer": "Maria Delgado"
+            },
+            {
+              "packed_at": "09:50",
+              "item_number": "7788990011",
+              "sku": "BOSE-RMT-20",
+              "product": "Bose universal remote, OEM replacement",
+              "tier": "Small",
+              "standard": "5m",
+              "handle": "4m",
+              "wait": "1m",
+              "packer": "Maria Delgado"
+            },
+            {
+              "packed_at": "09:44",
+              "item_number": "TRK-770041",
+              "sku": "—",
+              "product": "—",
+              "tier": "Small",
+              "standard": "5m",
+              "handle": "7m",
+              "wait": "break 2h",
+              "packer": "Maria Delgado"
+            },
+            {
+              "packed_at": "09:31",
+              "item_number": "7788990012",
+              "sku": "BOSE-PSU-12",
+              "product": "Bose power supply, 12V OEM",
+              "tier": "Small",
+              "standard": "5m",
+              "handle": "5m",
+              "wait": "3m",
+              "packer": "Maria Delgado"
+            },
+            {
+              "packed_at": "09:20",
+              "item_number": "4455661124",
+              "sku": "BOSE-ACM-10",
+              "product": "Bose Acoustimass 10 Series V speaker system",
+              "tier": "Medium",
+              "standard": "15m",
+              "handle": "14m",
+              "wait": "2m",
+              "packer": "Maria Delgado"
+            },
+            {
+              "packed_at": "09:06",
+              "item_number": "1122334455",
+              "sku": "BOSE-SOLO5",
+              "product": "Bose Solo 5 TV sound system",
+              "tier": "Small",
+              "standard": "5m",
+              "handle": "6m",
+              "wait": "—",
+              "packer": "Maria Delgado"
+            }
+          ]
+        },
+        {
+          "title": "Tier mix vs standard",
+          "note": "Variance is actual handle minus earned: positive means the tier ran over standard.",
+          "columns": [
+            {
+              "key": "tier",
+              "label": "Tier",
+              "align": "left"
+            },
+            {
+              "key": "boxes",
+              "label": "Boxes",
+              "align": "right"
+            },
+            {
+              "key": "standard_each",
+              "label": "Standard each",
+              "align": "right",
+              "unit": "min"
+            },
+            {
+              "key": "earned",
+              "label": "Earned",
+              "align": "right",
+              "unit": "min"
+            },
+            {
+              "key": "actual",
+              "label": "Actual",
+              "align": "right",
+              "unit": "min"
+            },
+            {
+              "key": "variance",
+              "label": "Variance",
+              "align": "right",
+              "unit": "min"
+            }
+          ],
+          "rows": [
+            {
+              "tier": "Small",
+              "boxes": "4",
+              "standard_each": "5m",
+              "earned": "20m",
+              "actual": "22m",
+              "variance": "+2m"
+            },
+            {
+              "tier": "Medium",
+              "boxes": "3",
+              "standard_each": "15m",
+              "earned": "45m",
+              "actual": "44m",
+              "variance": "-1m"
+            },
+            {
+              "tier": "Big",
+              "boxes": "1",
+              "standard_each": "1h",
+              "earned": "1h",
+              "actual": "52m",
+              "variance": "-8m"
+            }
+          ]
+        }
+      ],
+      "standards": [
+        {
+          "label": "Small item",
+          "value": "5",
+          "unit": "min/box",
+          "note": "Pack-and-label parts: boards, cables, remotes, adapters. Little or no prep."
+        },
+        {
+          "label": "Medium item",
+          "value": "15",
+          "unit": "min/box",
+          "note": "Semi-complete units needing clean, accessories, PSU, remote, careful pack."
+        },
+        {
+          "label": "Big item",
+          "value": "60",
+          "unit": "min/box",
+          "note": "Full heavy systems: Lifestyle / home theater stacks, multi-component, double-box."
+        },
+        {
+          "label": "Workday",
+          "value": "480",
+          "unit": "min/day",
+          "note": "Per packer, at 2 packer headcount — 960 floor minutes a day."
+        },
+        {
+          "label": "Break threshold",
+          "value": "90",
+          "unit": "min",
+          "note": "An idle gap longer than this counts as a break and is excluded from wait minutes."
+        }
+      ],
+      "notes": [
+        "Wait minutes are queue/idle time between boxes — previous completion to the next scan. Gaps over 90 min are treated as breaks, not wait: 1 today.",
+        "Unpaired completions have no preceding PACK_SCAN, so they carry no handle or wait time: 0 of 8 boxes.",
+        "Pack tier comes from the operator SKU profile when the box is linked, otherwise from the title rules — tier source: rules 7 · sku_profile 1.",
+        "This counts PACK_COMPLETED scans only: a box scanned but never completed is not on this report."
+      ],
+      "followUps": [
+        {
+          "label": "Yesterday",
+          "question": "What was the pack floor's packing performance yesterday?"
+        },
+        {
+          "label": "Slowest items",
+          "question": "Which items took the longest to pack today?"
+        },
+        {
+          "label": "Whole floor",
+          "question": "What is the pack floor's packing performance on 2026-09-06?"
+        }
+      ]
+    }
+  },
+  "unbox-backlog": {
+    "question": "How many boxes are left to be unboxed?",
+    "summary": "25 boxes (215 expected units) are waiting to be unboxed; the oldest has been sitting 11 days. 3 are already open on the bench and unfinished, 3 have no PO match.",
+    "artifact": {
+      "kind": "report",
+      "title": "Unbox backlog",
+      "question": "How many boxes are left to be unboxed?",
+      "asOf": "Sep 6, 2026, 11:40 AM PT",
+      "scope": "Receiving · cartons in the building, not yet unboxed",
+      "headline": {
+        "value": "25",
+        "unit": "boxes",
+        "label": "Boxes waiting to be unboxed",
+        "hint": "Oldest has been waiting 11 days."
+      },
+      "kpis": [
+        {
+          "id": "boxes_waiting",
+          "label": "Boxes waiting",
+          "value": "25",
+          "unit": "boxes",
+          "status": "neutral",
+          "definition": "Cartons (receiving_carton rows) with a triage door scan or a receiving scan whose receiving_unbox.unboxed_at is still NULL. One row = one physical box."
+        },
+        {
+          "id": "units_waiting",
+          "label": "Units waiting",
+          "value": "215",
+          "unit": "units",
+          "status": "neutral",
+          "definition": "SUM(receiving_line.quantity_expected) across the lines on those cartons. A line with no expected quantity contributes 0, so this is a floor, not a guess."
+        },
+        {
+          "id": "oldest_days",
+          "label": "Oldest box",
+          "value": "11 days",
+          "unit": "days",
+          "status": "bad",
+          "definition": "Whole calendar days in America/Los_Angeles since COALESCE(door_received_at, receiving_date_time, created_at) on the oldest waiting carton. Good ≤ 2 days, watch ≤ 5."
+        },
+        {
+          "id": "on_bench",
+          "label": "On the bench",
+          "value": "3",
+          "unit": "boxes",
+          "status": "watch",
+          "definition": "Waiting cartons with receiving_unbox.opened_at set but unboxed_at still NULL — opened on the bench and abandoned half-done. Close these out first: the box is already open."
+        },
+        {
+          "id": "returns",
+          "label": "Returns",
+          "value": "3",
+          "unit": "boxes",
+          "status": "neutral",
+          "definition": "Waiting cartons flagged receiving_carton.is_return."
+        },
+        {
+          "id": "priority",
+          "label": "Priority",
+          "value": "1",
+          "unit": "boxes",
+          "status": "neutral",
+          "definition": "Waiting cartons flagged receiving_carton.is_priority — the shared unbox/test urgency flag (tier 0 or a manual toggle)."
+        },
+        {
+          "id": "unfound",
+          "label": "Unfound",
+          "value": "3",
+          "unit": "boxes",
+          "status": "watch",
+          "definition": "Waiting cartons whose receiving_triage.pairing_state = 'UNFOUND' — no purchase order matched, so they cannot be received against a PO until someone identifies them."
+        }
+      ],
+      "sections": [
+        {
+          "title": "Age of the backlog",
+          "note": "Whole calendar days since the carton arrived, in America/Los_Angeles.",
+          "columns": [
+            {
+              "key": "bucket",
+              "label": "Age"
+            },
+            {
+              "key": "boxes",
+              "label": "Boxes",
+              "align": "right"
+            },
+            {
+              "key": "units",
+              "label": "Units",
+              "align": "right"
+            },
+            {
+              "key": "oldest",
+              "label": "Oldest",
+              "align": "right"
+            }
+          ],
+          "rows": [
+            {
+              "bucket": "Today",
+              "boxes": "9",
+              "units": "74",
+              "oldest": "0 days"
+            },
+            {
+              "bucket": "1 day",
+              "boxes": "6",
+              "units": "51",
+              "oldest": "1 day"
+            },
+            {
+              "bucket": "2-3 days",
+              "boxes": "7",
+              "units": "59",
+              "oldest": "3 days"
+            },
+            {
+              "bucket": "4-7 days",
+              "boxes": "2",
+              "units": "19",
+              "oldest": "6 days"
+            },
+            {
+              "bucket": "8+ days",
+              "boxes": "1",
+              "units": "12",
+              "oldest": "11 days"
+            }
+          ],
+          "totals": {
+            "bucket": "Total",
+            "boxes": "25",
+            "units": "215",
+            "oldest": "11 days"
+          }
+        },
+        {
+          "title": "Where it came from",
+          "note": "receiving_carton.source — how the carton entered the building.",
+          "columns": [
+            {
+              "key": "source",
+              "label": "Source"
+            },
+            {
+              "key": "boxes",
+              "label": "Boxes",
+              "align": "right"
+            },
+            {
+              "key": "units",
+              "label": "Units",
+              "align": "right"
+            },
+            {
+              "key": "returns",
+              "label": "Returns",
+              "align": "right"
+            },
+            {
+              "key": "unfound",
+              "label": "Unfound",
+              "align": "right"
+            },
+            {
+              "key": "oldest_days",
+              "label": "Oldest",
+              "align": "right"
+            }
+          ],
+          "rows": [
+            {
+              "source": "zoho_po",
+              "boxes": "16",
+              "units": "141",
+              "returns": "0",
+              "unfound": "1",
+              "oldest_days": "11 days"
+            },
+            {
+              "source": "unmatched",
+              "boxes": "6",
+              "units": "48",
+              "returns": "0",
+              "unfound": "2",
+              "oldest_days": "6 days"
+            },
+            {
+              "source": "local_pickup",
+              "boxes": "3",
+              "units": "26",
+              "returns": "3",
+              "unfound": "0",
+              "oldest_days": "3 days"
+            }
+          ]
+        },
+        {
+          "title": "Oldest boxes first",
+          "note": "Oldest 5 of 25 waiting cartons.",
+          "columns": [
+            {
+              "key": "age",
+              "label": "Age"
+            },
+            {
+              "key": "arrived",
+              "label": "Arrived"
+            },
+            {
+              "key": "box",
+              "label": "Box"
+            },
+            {
+              "key": "po",
+              "label": "PO"
+            },
+            {
+              "key": "lines",
+              "label": "Lines",
+              "align": "right"
+            },
+            {
+              "key": "units",
+              "label": "Units",
+              "align": "right"
+            },
+            {
+              "key": "flags",
+              "label": "Flags"
+            }
+          ],
+          "rows": [
+            {
+              "age": "11 days",
+              "arrived": "Aug 26, 2026",
+              "box": "#41207",
+              "po": "PO-8841",
+              "lines": "3",
+              "units": "12",
+              "flags": "Unfound"
+            },
+            {
+              "age": "6 days",
+              "arrived": "Aug 31, 2026",
+              "box": "#41288",
+              "po": "—",
+              "lines": "2",
+              "units": "9",
+              "flags": "Priority · Unfound · On bench"
+            },
+            {
+              "age": "6 days",
+              "arrived": "Aug 31, 2026",
+              "box": "#41290",
+              "po": "PO-8902",
+              "lines": "1",
+              "units": "10",
+              "flags": "—"
+            },
+            {
+              "age": "3 days",
+              "arrived": "Sep 3, 2026",
+              "box": "#41341",
+              "po": "PO-8933",
+              "lines": "4",
+              "units": "14",
+              "flags": "Return"
+            },
+            {
+              "age": "1 day",
+              "arrived": "Sep 5, 2026",
+              "box": "#41402",
+              "po": "PO-8961",
+              "lines": "2",
+              "units": "11",
+              "flags": "Priority"
+            }
+          ]
+        }
+      ],
+      "standards": [
+        {
+          "label": "Bucket · Today",
+          "value": "0",
+          "unit": "days",
+          "note": "Whole calendar days in America/Los_Angeles between the arrival date and today."
+        },
+        {
+          "label": "Bucket · 1 day",
+          "value": "1",
+          "unit": "days",
+          "note": null
+        },
+        {
+          "label": "Bucket · 2-3 days",
+          "value": "2–3",
+          "unit": "days",
+          "note": null
+        },
+        {
+          "label": "Bucket · 4-7 days",
+          "value": "4–7",
+          "unit": "days",
+          "note": null
+        },
+        {
+          "label": "Bucket · 8+ days",
+          "value": "8+",
+          "unit": "days",
+          "note": null
+        },
+        {
+          "label": "Backlog predicate",
+          "value": "arrived AND unboxed_at IS NULL",
+          "unit": null,
+          "note": "A carton counts when it has a triage door scan or a receiving scan, and receiving_unbox.unboxed_at is still NULL."
+        },
+        {
+          "label": "Arrival timestamp",
+          "value": "door → scan time → created",
+          "unit": null,
+          "note": "Age is measured from COALESCE(receiving_triage.door_received_at, receiving_carton.receiving_date_time, receiving_carton.created_at)."
+        }
+      ],
+      "notes": [
+        "Left to be unboxed = a carton that arrived (triage door scan, or at least one receiving scan) and whose unbox milestone is unstamped (receiving_unbox.unboxed_at IS NULL). Same predicate as the triage \"to unbox\" queue, so this count matches the bench.",
+        "A carton is ONE physical box, not one item. Units are SUM(receiving_line.quantity_expected) across the lines on the carton; a line with no expected quantity counts as 0.",
+        "There is no weight or dimension column on a carton, so this report offers no volume, tonnage or \"how long will it take\" estimate. Sizing the pile is done by box count and units only.",
+        "Blind spot: a carrier-delivered package that was never scanned at the dock is physically here but NOT in this count — nothing recorded its arrival. That hunt is the delivered-but-unscanned queue at /api/receiving-lines/incoming/delivered-unscanned."
+      ],
+      "followUps": [
+        {
+          "label": "Oldest box",
+          "question": "Show me the oldest box waiting to be unboxed"
+        },
+        {
+          "label": "Delivered but never scanned",
+          "question": "Which delivered packages were never scanned at the dock?"
+        }
+      ]
+    }
+  },
+  "order-value-rank": {
+    "question": "What is the most expensive order currently in the warehouse?",
+    "summary": "The most expensive order still in the building is 11-12874-40012 at $3,299 (PICKED, 6 days old). 37 orders worth $21,021 of sale value are being held; $4,588 of that is past its ship-by. Sale price, not margin.",
+    "artifact": {
+      "kind": "report",
+      "title": "Order value in the building",
+      "question": "What is the most expensive order currently in the warehouse?",
+      "asOf": "Sep 6, 2026, 11:40 AM PT",
+      "scope": "Orders still in the building · top 5",
+      "headline": {
+        "value": "$3,299",
+        "unit": null,
+        "label": "Most expensive order in the building",
+        "hint": "11-12874-40012 · PICKED · 6 days old"
+      },
+      "kpis": [
+        {
+          "id": "top_order_value",
+          "label": "Top order value",
+          "value": "$3,299",
+          "unit": "USD",
+          "status": "neutral",
+          "definition": "SUM(orders.sale_amount) over every line sharing this orders.order_id, among orders still in the building. Sale price, not margin."
+        },
+        {
+          "id": "top_order_age",
+          "label": "Top order age",
+          "value": "6 days",
+          "unit": "days",
+          "status": "bad",
+          "definition": "Whole days between now and COALESCE(orders.order_date, orders.created_at) on the top order, taking the oldest of its lines. Good ≤ 2 days, watch ≤ 5."
+        },
+        {
+          "id": "top_order_stage",
+          "label": "Top order stage",
+          "value": "PICKED",
+          "unit": null,
+          "status": "neutral",
+          "definition": "The least advanced line on the top order: AWAITING_LABEL (no shipment), BLOCKED (out of stock), PENDING, PICKED (tech scan or serial) or PACKED (pack scan)."
+        },
+        {
+          "id": "orders_in_building",
+          "label": "Orders in building",
+          "value": "37",
+          "unit": "orders",
+          "status": "neutral",
+          "definition": "Distinct orders.order_id groups passing all four \"still here\" clauses: no SHIP_CONFIRM, no carrier custody, not AFN, not caged without a catalog SKU."
+        },
+        {
+          "id": "value_in_building",
+          "label": "Value in building",
+          "value": "$21,021",
+          "unit": "USD",
+          "status": "neutral",
+          "definition": "SUM(orders.sale_amount) across every line of every order still in the building. This is SALE value at risk of sitting, not margin — no cost or fee column exists."
+        },
+        {
+          "id": "at_risk_value",
+          "label": "Past ship-by value",
+          "value": "$4,588",
+          "unit": "USD",
+          "status": "bad",
+          "definition": "Sale value of orders whose earliest ORDER/TEST work_assignments.deadline_at is already in the past. Any dollar past due reads bad."
+        }
+      ],
+      "sections": [
+        {
+          "title": "Top orders by value",
+          "note": "Ranked by SUM(sale_amount) over the lines of each order_id. Sale price, not margin.",
+          "columns": [
+            {
+              "key": "rank",
+              "label": "#",
+              "align": "right"
+            },
+            {
+              "key": "order",
+              "label": "Order"
+            },
+            {
+              "key": "value",
+              "label": "Value",
+              "align": "right"
+            },
+            {
+              "key": "lines",
+              "label": "Lines",
+              "align": "right"
+            },
+            {
+              "key": "stage",
+              "label": "Stage"
+            },
+            {
+              "key": "age",
+              "label": "Age",
+              "align": "right"
+            },
+            {
+              "key": "ship_by",
+              "label": "Ship by"
+            },
+            {
+              "key": "channel",
+              "label": "Channel"
+            },
+            {
+              "key": "tracking",
+              "label": "Tracking"
+            }
+          ],
+          "rows": [
+            {
+              "rank": 1,
+              "order": "11-12874-40012",
+              "value": "$3,299",
+              "lines": "4",
+              "stage": "PICKED",
+              "age": "6 days",
+              "ship_by": "Sep 5, 2026 · past due",
+              "channel": "ebay_main",
+              "tracking": "1Z999AA10123456784"
+            },
+            {
+              "rank": 2,
+              "order": "11-12880-41155",
+              "value": "$2,277",
+              "lines": "2",
+              "stage": "BLOCKED",
+              "age": "12 days",
+              "ship_by": "Sep 1, 2026 · past due",
+              "channel": "amazon_mfn",
+              "tracking": "—"
+            },
+            {
+              "rank": 3,
+              "order": "11-12901-42003",
+              "value": "$1,899",
+              "lines": "3",
+              "stage": "PACKED",
+              "age": "2 days",
+              "ship_by": "Sep 8, 2026",
+              "channel": "ebay_main",
+              "tracking": "1Z999AA10199887766"
+            },
+            {
+              "rank": 4,
+              "order": "11-12912-42188",
+              "value": "$1,499",
+              "lines": "1",
+              "stage": "PENDING",
+              "age": "9 days",
+              "ship_by": "Sep 4, 2026 · past due",
+              "channel": "shopify",
+              "tracking": "—"
+            },
+            {
+              "rank": 5,
+              "order": "11-12933-43001",
+              "value": "$1,240",
+              "lines": "2",
+              "stage": "AWAITING_LABEL",
+              "age": "2 days",
+              "ship_by": "—",
+              "channel": "square",
+              "tracking": "—"
+            }
+          ]
+        },
+        {
+          "title": "Lines in the top order",
+          "note": "Every line still in the building on order 11-12874-40012.",
+          "columns": [
+            {
+              "key": "sku",
+              "label": "SKU"
+            },
+            {
+              "key": "product",
+              "label": "Product"
+            },
+            {
+              "key": "qty",
+              "label": "Qty",
+              "align": "right"
+            },
+            {
+              "key": "value",
+              "label": "Value",
+              "align": "right"
+            }
+          ],
+          "rows": [
+            {
+              "sku": "BOSE-LS650",
+              "product": "Bose Lifestyle 650 home theater system",
+              "qty": "1",
+              "value": "$2,199"
+            },
+            {
+              "sku": "BOSE-ACM-10",
+              "product": "Bose Acoustimass 10 Series V speaker system",
+              "qty": "1",
+              "value": "$649.00"
+            },
+            {
+              "sku": "BOSE-WAVE-IV",
+              "product": "Bose Wave Music System IV",
+              "qty": "1",
+              "value": "$399.00"
+            },
+            {
+              "sku": "BOSE-RMT-20",
+              "product": "Bose universal remote, OEM",
+              "qty": "2",
+              "value": "$52.00"
+            }
+          ]
+        },
+        {
+          "title": "Value by stage",
+          "note": "An order's stage is its least advanced line — one held line holds the order.",
+          "columns": [
+            {
+              "key": "stage",
+              "label": "Stage"
+            },
+            {
+              "key": "orders",
+              "label": "Orders",
+              "align": "right"
+            },
+            {
+              "key": "value",
+              "label": "Value",
+              "align": "right"
+            },
+            {
+              "key": "oldest_days",
+              "label": "Oldest",
+              "align": "right"
+            }
+          ],
+          "rows": [
+            {
+              "stage": "PACKED",
+              "orders": "6",
+              "value": "$7,412",
+              "oldest_days": "4 days"
+            },
+            {
+              "stage": "PICKED",
+              "orders": "9",
+              "value": "$5,189",
+              "oldest_days": "6 days"
+            },
+            {
+              "stage": "PENDING",
+              "orders": "14",
+              "value": "$4,903",
+              "oldest_days": "9 days"
+            },
+            {
+              "stage": "AWAITING_LABEL",
+              "orders": "5",
+              "value": "$1,240",
+              "oldest_days": "2 days"
+            },
+            {
+              "stage": "BLOCKED",
+              "orders": "3",
+              "value": "$2,277",
+              "oldest_days": "12 days"
+            }
+          ],
+          "totals": {
+            "stage": "Total",
+            "orders": "37",
+            "value": "$21,021",
+            "oldest_days": "12 days"
+          }
+        }
+      ],
+      "standards": [
+        {
+          "label": "Not scanned out",
+          "value": "no SHIP_CONFIRM",
+          "unit": null,
+          "note": "The order's shipment has no station_activity_logs row with activity_type = 'SHIP_CONFIRM' — nobody scanned it out at the dock."
+        },
+        {
+          "label": "Not in carrier custody",
+          "value": "LABEL_CREATED / UNKNOWN",
+          "unit": null,
+          "note": "shipping_tracking_numbers shows no acceptance, transit, out-for-delivery or delivery, and no latest_status_category beyond LABEL_CREATED or UNKNOWN."
+        },
+        {
+          "label": "Not Amazon-fulfilled",
+          "value": "fulfillment_channel <> 'AFN'",
+          "unit": null,
+          "note": "AFN/FBA orders are shipped by Amazon, so they are never physically here."
+        },
+        {
+          "label": "Not caged without a SKU",
+          "value": "release_state <> 'caged'",
+          "unit": null,
+          "note": "A caged row with no sku_catalog_id is a gated placeholder, not stock standing on the floor."
+        }
+      ],
+      "notes": [
+        "Order value is SUM(orders.sale_amount) over every row sharing the same orders.order_id — `orders` is a line table, so one row is one line, not one order.",
+        "This is SALE price, not profit. There is no cost, fee or margin column on orders, so no margin, no landed cost and no net figure is computed or implied anywhere on this report.",
+        "Amazon-fulfilled orders (fulfillment_channel = AFN) are excluded: Amazon picks, packs and ships those, so they are not sitting in this warehouse.",
+        "Ship-by is not a column on orders. It is work_assignments.deadline_at for the ORDER/TEST assignment on the order row — the earliest such deadline when the order has several lines.",
+        "An order's stage is its LEAST advanced line (AWAITING_LABEL → BLOCKED → PENDING → PICKED → PACKED), because one unlabeled or out-of-stock line holds the whole order."
+      ],
+      "followUps": [
+        {
+          "label": "Top order journey",
+          "question": "Show me the full history of order 11-12874-40012"
+        },
+        {
+          "label": "Past ship-by",
+          "question": "Which orders in the warehouse are past their ship-by date?"
+        }
+      ]
+    }
+  },
+  "roi-rank": {
+    "question": "What are the highest ROIs right now?",
+    "summary": "Top gap is Received but never listed: 148 units stuck, oldest 34 days, about 14h 48m (1.9 person-days) to clear. 6 of 6 gaps are open, 2d 8h of work in total. No dollar value is attached — this ranking is units × age weight, not revenue.",
+    "artifact": {
+      "kind": "report",
+      "title": "Highest ROIs right now",
+      "question": "What are the highest ROIs right now?",
+      "asOf": "Sep 6, 2026, 11:40 AM PT",
+      "scope": "6 open gaps of 6 tracked, live row counts",
+      "headline": {
+        "value": "148",
+        "unit": "units",
+        "label": "Biggest gap: Received but never listed",
+        "hint": "oldest 34 days · about 14h 48m to clear"
+      },
+      "kpis": [
+        {
+          "id": "top_gap",
+          "label": "Top gap",
+          "value": "Received but never listed",
+          "status": "neutral",
+          "definition": "The gap with the highest priority. priority = units × ageWeight, where ageWeight = 1 + min(oldestDays, 60) / 30 (0 days = 1.0x, 30 days = 2.0x, 60+ days = 3.0x, capped)."
+        },
+        {
+          "id": "top_gap_units",
+          "label": "Stuck in top gap",
+          "value": "148",
+          "unit": "units",
+          "status": "neutral",
+          "definition": "Live row count for \"Received but never listed\" — an exact count, not an estimate."
+        },
+        {
+          "id": "top_gap_age",
+          "label": "Top gap oldest",
+          "value": "34 days",
+          "unit": null,
+          "status": "bad",
+          "definition": "Age of the oldest item in the top gap. Good under 7 days, watch under 30, bad beyond — age is what turns a pile into a loss."
+        },
+        {
+          "id": "total_stuck",
+          "label": "Total stuck",
+          "value": "295",
+          "unit": "items",
+          "status": "neutral",
+          "definition": "Sum of the live counts across all open gaps. Mixed units (units, orders, SKUs), so it is a volume, not a total of one thing."
+        },
+        {
+          "id": "total_effort",
+          "label": "Effort to clear all",
+          "value": "2d 8h",
+          "unit": null,
+          "status": "neutral",
+          "definition": "Σ units × the declared minutes-per-unit standard for each gap (6 unlisted, 15 dead stock, 12 order exception, 20 receiving exception, 10 on hold, 45 repair). Standards, not measurements."
+        },
+        {
+          "id": "person_days",
+          "label": "Person-days to clear",
+          "value": "7.1",
+          "unit": "person-days",
+          "status": "bad",
+          "definition": "Total effort ÷ a 480-minute workday (org_pack_capacity.workday_minutes). One person-day or less is a day's work; past three it needs a plan."
+        },
+        {
+          "id": "gaps_open",
+          "label": "Gaps open",
+          "value": "6",
+          "unit": "of 6",
+          "status": "neutral",
+          "definition": "How many of the six tracked gaps have at least one item stuck right now."
+        }
+      ],
+      "sections": [
+        {
+          "title": "Gaps ranked by priority",
+          "note": "priority = units × ageWeight, where ageWeight = 1 + min(oldestDays, 60) / 30 (0 days = 1.0x, 30 days = 2.0x, 60+ days = 3.0x, capped)",
+          "columns": [
+            {
+              "key": "rank",
+              "label": "#",
+              "align": "right"
+            },
+            {
+              "key": "gap",
+              "label": "Gap"
+            },
+            {
+              "key": "units",
+              "label": "Stuck",
+              "align": "right"
+            },
+            {
+              "key": "unit",
+              "label": "Counting"
+            },
+            {
+              "key": "oldest_days",
+              "label": "Oldest",
+              "align": "right",
+              "unit": "days"
+            },
+            {
+              "key": "age_weight",
+              "label": "Age weight",
+              "align": "right"
+            },
+            {
+              "key": "priority",
+              "label": "Priority",
+              "align": "right"
+            },
+            {
+              "key": "effort",
+              "label": "Effort",
+              "align": "right",
+              "unit": "min"
+            },
+            {
+              "key": "payback",
+              "label": "Payback",
+              "align": "right",
+              "unit": "priority/hr"
+            },
+            {
+              "key": "why",
+              "label": "Why it costs"
+            }
+          ],
+          "rows": [
+            {
+              "rank": 1,
+              "gap": "Received but never listed",
+              "units": "148",
+              "unit": "units",
+              "oldest_days": "34",
+              "age_weight": "2.13x",
+              "priority": "315.7",
+              "effort": "14h 48m",
+              "payback": "21.3",
+              "why": "Inventory that arrived, got put away, and never reached a channel earns nothing while it ages."
+            },
+            {
+              "rank": 2,
+              "gap": "Dead stock (90+ days dormant)",
+              "units": "62",
+              "unit": "skus",
+              "oldest_days": "121",
+              "age_weight": "3.00x",
+              "priority": "186.0",
+              "effort": "15h 30m",
+              "payback": "12.0",
+              "why": "Stock nothing has moved in a quarter is carrying cost with no demand signal behind it."
+            },
+            {
+              "rank": 3,
+              "gap": "Units on hold",
+              "units": "37",
+              "unit": "units",
+              "oldest_days": "6",
+              "age_weight": "1.20x",
+              "priority": "44.4",
+              "effort": "6h 10m",
+              "payback": "7.2",
+              "why": "A hold with no disposition is a decision nobody has made yet."
+            },
+            {
+              "rank": 4,
+              "gap": "Open receiving exceptions",
+              "units": "23",
+              "unit": "units",
+              "oldest_days": "17",
+              "age_weight": "1.57x",
+              "priority": "36.0",
+              "effort": "7h 40m",
+              "payback": "4.7",
+              "why": "A carton stuck in receiving exception never becomes sellable inventory."
+            },
+            {
+              "rank": 5,
+              "gap": "Repairs started, not finished",
+              "units": "14",
+              "unit": "units",
+              "oldest_days": "22",
+              "age_weight": "1.73x",
+              "priority": "24.3",
+              "effort": "10h 30m",
+              "payback": "2.3",
+              "why": "Labour and parts are already sunk into these; unfinished means the spend has not converted."
+            },
+            {
+              "rank": 6,
+              "gap": "Open order exceptions",
+              "units": "11",
+              "unit": "orders",
+              "oldest_days": "9",
+              "age_weight": "1.30x",
+              "priority": "14.3",
+              "effort": "2h 12m",
+              "payback": "6.5",
+              "why": "Every open exception is an order a customer is waiting on that no station is working."
+            }
+          ]
+        },
+        {
+          "title": "Effort to clear",
+          "note": "Minutes-per-unit are declared standards; person-days divide by a 480-minute workday.",
+          "columns": [
+            {
+              "key": "gap",
+              "label": "Gap"
+            },
+            {
+              "key": "units",
+              "label": "Stuck",
+              "align": "right"
+            },
+            {
+              "key": "min_per_unit",
+              "label": "Min each",
+              "align": "right",
+              "unit": "min"
+            },
+            {
+              "key": "effort",
+              "label": "Effort",
+              "align": "right",
+              "unit": "min"
+            },
+            {
+              "key": "person_days",
+              "label": "Person-days",
+              "align": "right"
+            },
+            {
+              "key": "share",
+              "label": "Share of effort",
+              "align": "right"
+            }
+          ],
+          "rows": [
+            {
+              "gap": "Received but never listed",
+              "units": "148",
+              "min_per_unit": "6",
+              "effort": "14h 48m",
+              "person_days": "1.85",
+              "share": "26%"
+            },
+            {
+              "gap": "Dead stock (90+ days dormant)",
+              "units": "62",
+              "min_per_unit": "15",
+              "effort": "15h 30m",
+              "person_days": "1.94",
+              "share": "27%"
+            },
+            {
+              "gap": "Units on hold",
+              "units": "37",
+              "min_per_unit": "10",
+              "effort": "6h 10m",
+              "person_days": "0.77",
+              "share": "11%"
+            },
+            {
+              "gap": "Open receiving exceptions",
+              "units": "23",
+              "min_per_unit": "20",
+              "effort": "7h 40m",
+              "person_days": "0.96",
+              "share": "13%"
+            },
+            {
+              "gap": "Repairs started, not finished",
+              "units": "14",
+              "min_per_unit": "45",
+              "effort": "10h 30m",
+              "person_days": "1.31",
+              "share": "18%"
+            },
+            {
+              "gap": "Open order exceptions",
+              "units": "11",
+              "min_per_unit": "12",
+              "effort": "2h 12m",
+              "person_days": "0.28",
+              "share": "4%"
+            }
+          ],
+          "totals": {
+            "gap": "6 gaps shown",
+            "units": "295",
+            "min_per_unit": "—",
+            "effort": "2d 8h",
+            "person_days": "7.10",
+            "share": "100%"
+          }
+        }
+      ],
+      "standards": [
+        {
+          "label": "Priority formula",
+          "value": "units × ageWeight",
+          "unit": null,
+          "note": "priority = units × ageWeight, where ageWeight = 1 + min(oldestDays, 60) / 30 (0 days = 1.0x, 30 days = 2.0x, 60+ days = 3.0x, capped)"
+        },
+        {
+          "label": "Workday",
+          "value": "480",
+          "unit": "min/person/day",
+          "note": "org_pack_capacity.workday_minutes, or the 480-minute default when unset."
+        },
+        {
+          "label": "Received but never listed",
+          "value": "6",
+          "unit": "min/unit",
+          "note": "Declared operating standard, not a measurement."
+        },
+        {
+          "label": "Dead stock (90+ days dormant)",
+          "value": "15",
+          "unit": "min/sku",
+          "note": "Declared operating standard, not a measurement."
+        },
+        {
+          "label": "Units on hold",
+          "value": "10",
+          "unit": "min/unit",
+          "note": "Declared operating standard, not a measurement."
+        },
+        {
+          "label": "Open receiving exceptions",
+          "value": "20",
+          "unit": "min/unit",
+          "note": "Declared operating standard, not a measurement."
+        },
+        {
+          "label": "Repairs started, not finished",
+          "value": "45",
+          "unit": "min/unit",
+          "note": "Declared operating standard, not a measurement."
+        },
+        {
+          "label": "Open order exceptions",
+          "value": "12",
+          "unit": "min/order",
+          "note": "Declared operating standard, not a measurement."
+        }
+      ],
+      "notes": [
+        "Every number in the Stuck column is a LIVE row count from the table named in the gap — never an estimate, never a model guess.",
+        "NO dollar figure is attached to any gap. This schema carries no reliable per-unit price, so a revenue ranking would be invented; effort and age are declared or measured, and are what the ranking uses instead.",
+        "The minutes-per-unit figures are declared operating standards, not measurements. Change one and the ranking changes — that is the point of printing them.",
+        "A gap is a CATEGORY, not a work order. Use the follow-up question under a gap to pull the actual rows before assigning anyone.",
+        "Person-days divide total effort by a 480-minute workday from org_pack_capacity.workday_minutes."
+      ],
+      "followUps": [
+        {
+          "label": "Received but never listed",
+          "question": "Show me the units that were received but never listed, oldest first"
+        },
+        {
+          "label": "Dead stock (90+ days dormant)",
+          "question": "Show me dead stock dormant for more than 90 days"
+        },
+        {
+          "label": "Units on hold",
+          "question": "Show me the units on hold and why"
+        }
+      ]
+    }
+  },
+  "delegation-plan": {
+    "question": "Which staff can I delegate to attack the highest ROIs in terms of pending tasks?",
+    "summary": "Send Ana Ruiz (TECH, 7h 20m free, 2 pending) at Received but never listed — 148 stuck, about 14h 48m to clear. 2 staff are eligible on TECH; 0 pending items have no owner at all.",
+    "artifact": {
+      "kind": "report",
+      "title": "Who to delegate the highest ROIs to",
+      "question": "Which staff can I delegate to attack the highest ROIs in terms of pending tasks?",
+      "asOf": "Sep 6, 2026, 11:40 AM PT",
+      "scope": "Top 3 gaps · 5 active staff · pending floor and desk work",
+      "headline": {
+        "value": "Ana Ruiz",
+        "unit": null,
+        "label": "Best first delegation",
+        "hint": "Received but never listed · TECH · 7h 20m free"
+      },
+      "kpis": [
+        {
+          "id": "recommended",
+          "label": "Send first",
+          "value": "Ana Ruiz",
+          "status": "neutral",
+          "definition": "The eligible staffer with the most free capacity for the top gap's station (TECH). Eligibility is staff_stations, with an employee_id prefix fallback."
+        },
+        {
+          "id": "recommended_free",
+          "label": "Their free capacity",
+          "value": "7h 20m",
+          "unit": null,
+          "status": "good",
+          "definition": "480-minute workday minus 20 minutes per pending task. Good at half a day or better; bad once the assumed load fills the day."
+        },
+        {
+          "id": "top_gap",
+          "label": "Top gap",
+          "value": "Received but never listed",
+          "status": "neutral",
+          "definition": "The highest-priority gap from the ROI ranking (units × ageWeight), cleared by the station in the declared gap→station map."
+        },
+        {
+          "id": "eligible_staff",
+          "label": "Eligible on TECH",
+          "value": "2",
+          "unit": "staff",
+          "status": "good",
+          "definition": "Active staff whose stations include TECH. One deep is a single point of failure; zero means the station is unstaffed."
+        },
+        {
+          "id": "roster_pending",
+          "label": "Roster pending",
+          "value": "25",
+          "unit": "tasks",
+          "status": "neutral",
+          "definition": "All pending floor assignments plus desk tasks currently owned by an active staffer."
+        },
+        {
+          "id": "unassigned_pending",
+          "label": "Unowned pending",
+          "value": "0",
+          "unit": "tasks",
+          "status": "good",
+          "definition": "Pending floor and desk work with a NULL assignee — NOBODY owns these, so nobody will finish them."
+        },
+        {
+          "id": "most_loaded",
+          "label": "Most loaded",
+          "value": "Maria Delgado · 9 tasks",
+          "status": "neutral",
+          "definition": "The active staffer holding the most pending tasks across floor and desk. Do not stack the top gap here."
+        }
+      ],
+      "sections": [
+        {
+          "title": "Who to send at the top 3 gaps",
+          "note": "Staff listed least-loaded first, by free capacity. Eligibility comes from the declared gap→station map.",
+          "columns": [
+            {
+              "key": "gap",
+              "label": "Gap"
+            },
+            {
+              "key": "station",
+              "label": "Station"
+            },
+            {
+              "key": "units",
+              "label": "Stuck",
+              "align": "right"
+            },
+            {
+              "key": "effort",
+              "label": "Effort",
+              "align": "right",
+              "unit": "min"
+            },
+            {
+              "key": "staff",
+              "label": "Staff (best first)"
+            },
+            {
+              "key": "best_free",
+              "label": "Best free",
+              "align": "right",
+              "unit": "min"
+            },
+            {
+              "key": "note",
+              "label": "Note"
+            }
+          ],
+          "rows": [
+            {
+              "gap": "Received but never listed",
+              "station": "TECH",
+              "units": "148",
+              "effort": "14h 48m",
+              "staff": "Ana Ruiz, Devon Price",
+              "best_free": "7h 20m",
+              "note": ""
+            },
+            {
+              "gap": "Dead stock (90+ days dormant)",
+              "station": "SALES",
+              "units": "62",
+              "effort": "15h 30m",
+              "staff": "Priya Nair",
+              "best_free": "7h",
+              "note": ""
+            },
+            {
+              "gap": "Units on hold",
+              "station": "TECH",
+              "units": "37",
+              "effort": "6h 10m",
+              "staff": "Ana Ruiz, Devon Price",
+              "best_free": "7h 20m",
+              "note": ""
+            }
+          ]
+        },
+        {
+          "title": "Roster load",
+          "note": "Active staff only. Free = 480 min − 20 min per pending task.",
+          "columns": [
+            {
+              "key": "staff",
+              "label": "Staff"
+            },
+            {
+              "key": "role",
+              "label": "Role"
+            },
+            {
+              "key": "stations",
+              "label": "Stations"
+            },
+            {
+              "key": "floor_tasks",
+              "label": "Floor",
+              "align": "right"
+            },
+            {
+              "key": "desk_tasks",
+              "label": "Desk",
+              "align": "right"
+            },
+            {
+              "key": "urgent",
+              "label": "Urgent",
+              "align": "right"
+            },
+            {
+              "key": "overdue",
+              "label": "Overdue",
+              "align": "right"
+            },
+            {
+              "key": "scans_today",
+              "label": "Scans today",
+              "align": "right"
+            },
+            {
+              "key": "free",
+              "label": "Free",
+              "align": "right",
+              "unit": "min"
+            },
+            {
+              "key": "verdict",
+              "label": "Verdict"
+            }
+          ],
+          "rows": [
+            {
+              "staff": "Maria Delgado",
+              "role": "packer",
+              "stations": "PACK",
+              "floor_tasks": "9",
+              "desk_tasks": "0",
+              "urgent": "2",
+              "overdue": "1",
+              "scans_today": "31",
+              "free": "5h",
+              "verdict": "Open"
+            },
+            {
+              "staff": "Devon Price",
+              "role": "tech",
+              "stations": "TECH",
+              "floor_tasks": "4",
+              "desk_tasks": "1",
+              "urgent": "0",
+              "overdue": "0",
+              "scans_today": "18",
+              "free": "6h 20m",
+              "verdict": "Open"
+            },
+            {
+              "staff": "Ana Ruiz",
+              "role": "tech",
+              "stations": "TECH, UNBOX",
+              "floor_tasks": "2",
+              "desk_tasks": "0",
+              "urgent": "1",
+              "overdue": "0",
+              "scans_today": "22",
+              "free": "7h 20m",
+              "verdict": "Open"
+            },
+            {
+              "staff": "Sam Okafor",
+              "role": "receiver",
+              "stations": "UNBOX (derived)",
+              "floor_tasks": "6",
+              "desk_tasks": "0",
+              "urgent": "0",
+              "overdue": "2",
+              "scans_today": "9",
+              "free": "6h",
+              "verdict": "Open"
+            },
+            {
+              "staff": "Priya Nair",
+              "role": "lister",
+              "stations": "SALES",
+              "floor_tasks": "0",
+              "desk_tasks": "3",
+              "urgent": "1",
+              "overdue": "1",
+              "scans_today": "2",
+              "free": "7h",
+              "verdict": "Open"
+            }
+          ],
+          "totals": {
+            "staff": "5 active",
+            "role": "—",
+            "stations": "—",
+            "floor_tasks": "21",
+            "desk_tasks": "4",
+            "urgent": "4",
+            "overdue": "4",
+            "scans_today": "82",
+            "free": "1d 7h",
+            "verdict": "—"
+          }
+        },
+        {
+          "title": "Unowned pending work",
+          "note": "Pending items with a NULL assignee, floor first. Desk rows carry no priority — ops_plan_tasks has no priority column.",
+          "columns": [
+            {
+              "key": "source",
+              "label": "Source"
+            },
+            {
+              "key": "what",
+              "label": "What"
+            },
+            {
+              "key": "entity",
+              "label": "Entity"
+            },
+            {
+              "key": "priority",
+              "label": "Priority"
+            },
+            {
+              "key": "due",
+              "label": "Due"
+            },
+            {
+              "key": "age",
+              "label": "Age",
+              "align": "right",
+              "unit": "days"
+            }
+          ],
+          "rows": [
+            {
+              "source": "Floor",
+              "what": "TEST",
+              "entity": "ORDER #42188",
+              "priority": "10",
+              "due": "no due date",
+              "age": "5"
+            },
+            {
+              "source": "Floor",
+              "what": "REPAIR",
+              "entity": "UNIT #7714",
+              "priority": "100",
+              "due": "no due date",
+              "age": "12"
+            },
+            {
+              "source": "Desk",
+              "what": "Relist dormant Wave stock",
+              "entity": "plan: Q3 dead stock",
+              "priority": "—",
+              "due": "2026-09-03T23:00:00Z",
+              "age": "8"
+            }
+          ]
+        }
+      ],
+      "standards": [
+        {
+          "label": "Minutes per pending task",
+          "value": "20",
+          "unit": "min/task",
+          "note": "ASSUMPTION, not a measurement — neither work_assignments nor ops_plan_tasks records an expected duration."
+        },
+        {
+          "label": "Workday",
+          "value": "480",
+          "unit": "min/person/day",
+          "note": "org_pack_capacity.workday_minutes, or the 480-minute default when unset."
+        },
+        {
+          "label": "Free capacity formula",
+          "value": "workday − tasks × 20",
+          "unit": null,
+          "note": "free_minutes = workday_minutes − (pending_tasks × ASSUMED_MINUTES_PER_TASK). Pending = floor work OPEN/ASSIGNED/IN_PROGRESS plus desk tasks open/in_progress."
+        },
+        {
+          "label": "Gap → station",
+          "value": "declared map",
+          "unit": null,
+          "note": "unlisted_units→TECH, dead_stock→SALES, open_order_exceptions→PACK, open_receiving_exceptions→UNBOX, units_on_hold→TECH, repairs_in_flight→TECH"
+        }
+      ],
+      "notes": [
+        "free_minutes is capacity MINUS an assumed 20 minutes per pending task. That 20 is an assumption, printed here so it can be argued with — no table in this schema records a per-task duration.",
+        "Station eligibility comes from staff_stations. 1 staffer has no staff_stations row, so their station was DERIVED from the employee_id prefix and is marked \"(derived)\".",
+        "Delegating is a human action. This report names WHO; the assignment itself is made with the existing verb, POST /api/tasks (permission work_orders.claim), which this report does not call.",
+        "ops_plan_tasks has no priority column, so desk urgency comes from due_at only: \"urgent\" means due within a day, \"overdue\" means already past.",
+        "Gap counts are live row counts from the ROI ranking (units × ageWeight); no dollar value is attached to any of them."
+      ],
+      "followUps": [
+        {
+          "label": "Assign the top gap",
+          "question": "Throw Ana Ruiz a task for the Received but never listed backlog"
+        },
+        {
+          "label": "Who is free now",
+          "question": "Which staff have the most free capacity right now?"
+        }
+      ]
+    }
+  }
+}

@@ -2,16 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { DEFAULT_TIER_MINUTES } from './pack-tier-classifier';
 
-function minutesForTier(tier: 'SMALL' | 'MEDIUM' | 'LARGE'): number {
-  if (tier === 'SMALL') return DEFAULT_TIER_MINUTES.SMALL;
-  if (tier === 'LARGE') return DEFAULT_TIER_MINUTES.LARGE;
-  return DEFAULT_TIER_MINUTES.MEDIUM;
-}
-
-test('tier minutes defaults match capacity assumptions', () => {
-  assert.equal(minutesForTier('SMALL'), 5);
-  assert.equal(minutesForTier('MEDIUM'), 14);
-  assert.equal(minutesForTier('LARGE'), 45);
+test('the pack standard is the owner-declared 5 / 15 / 60 minutes', () => {
+  // Not an incidental default: this is the earned-minutes basis for every
+  // packer KPI, and the number printed in each report's `standards[]` block.
+  assert.deepEqual(DEFAULT_TIER_MINUTES, { SMALL: 5, MEDIUM: 15, LARGE: 60 });
 });
 
 test('packerKpiSummaryToCsvRows formats per-packer table', async () => {

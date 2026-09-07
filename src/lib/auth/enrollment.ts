@@ -2,9 +2,15 @@
  * One-time enrollment tokens. An admin generates one for a new staff row;
  * the staff opens it on their phone (via QR), sets a PIN, optionally
  * registers a passkey. Token is single-use and time-limited (24h default).
+ *
+ * Storage: only the sha256 DIGEST is persisted (the `token` column) — the
+ * raw 32-char base64url token lives solely in the QR / invite URL, so a
+ * leaked DB row is not a replayable credential. Same posture as
+ * password_reset_tokens / email_login_tokens; pre-2026-09-06 rows were
+ * rehashed in place by 2026-09-06_hash_enrollment_tokens.sql.
  */
 
-import { randomBytes } from 'node:crypto';
+import { randomBytes, createHash } from 'node:crypto';
 import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -20,6 +26,13 @@ interface EnrollmentDbRow {
   created_at: Date;
 }
 
+/** createEnrollment's RETURNING shape — deliberately excludes `token`: the
+ * stored digest must never be mistaken for (or surfaced as) the bearer. */
+type EnrollmentWriteRow = Pick<
+  EnrollmentDbRow,
+  'staff_id' | 'created_by' | 'expires_at' | 'consumed_at' | 'created_at'
+>;
+
 export interface EnrollmentToken {
   token: string;
   staffId: number;
@@ -34,6 +47,12 @@ function newToken(): string {
   return randomBytes(24).toString('base64url');
 }
 
+/** sha256 of a raw enrollment token — the value stored in
+ * `staff_enrollments.token`. Mirrors hashResetToken / hashVerificationToken. */
+export function hashEnrollmentToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex');
+}
+
 export interface CreateEnrollmentOpts {
   staffId: number;
   createdBy?: number | null;
@@ -45,6 +64,9 @@ export async function createEnrollment(
   orgId?: OrgId,
 ): Promise<EnrollmentToken> {
   const token = newToken();
+  // Persist the sha256 digest, never the raw token (see file header). The raw
+  // value only lives in the returned object → the caller's QR / invite URL.
+  const tokenHash = hashEnrollmentToken(token);
   const ttlHours = opts.ttlHours ?? DEFAULT_TTL_HOURS;
   // `staff_enrollments` has no organization_id of its own — it is child-scoped
   // via staff_id → staff. When an admin context supplies orgId, gate the INSERT
@@ -53,29 +75,29 @@ export async function createEnrollment(
   // staff belongs to this org. (No org → byte-identical legacy path for the
   // sign-in/transitional callers.)
   const r = orgId
-    ? await tenantQuery<EnrollmentDbRow>(
+    ? await tenantQuery<EnrollmentWriteRow>(
         orgId,
         `INSERT INTO staff_enrollments (token, staff_id, created_by, expires_at)
          SELECT $1, s.id, $3, NOW() + ($4 || ' hours')::INTERVAL
            FROM staff s
           WHERE s.id = $2 AND s.organization_id = $5
-         RETURNING token, staff_id, created_by, expires_at, consumed_at, created_at`,
-        [token, opts.staffId, opts.createdBy ?? null, String(ttlHours), orgId],
+         RETURNING staff_id, created_by, expires_at, consumed_at, created_at`,
+        [tokenHash, opts.staffId, opts.createdBy ?? null, String(ttlHours), orgId],
       )
     : await pool.query(
         `INSERT INTO staff_enrollments (token, staff_id, created_by, expires_at)
          VALUES ($1, $2, $3, NOW() + ($4 || ' hours')::INTERVAL)
-         RETURNING token, staff_id, created_by, expires_at, consumed_at, created_at`,
-        [token, opts.staffId, opts.createdBy ?? null, String(ttlHours)],
+         RETURNING staff_id, created_by, expires_at, consumed_at, created_at`,
+        [tokenHash, opts.staffId, opts.createdBy ?? null, String(ttlHours)],
       );
-  const row = r.rows[0] as EnrollmentDbRow | undefined;
+  const row = r.rows[0] as EnrollmentWriteRow | undefined;
   if (!row) {
     // Org-gated path: target staff is not in this org (cross-tenant attempt) or
     // does not exist → surface as not-found rather than silently succeeding.
     throw new Error('createEnrollment: staff not found in organization');
   }
   return {
-    token: row.token,
+    token,
     staffId: row.staff_id,
     createdBy: row.created_by,
     expiresAt: row.expires_at,
@@ -86,6 +108,8 @@ export async function createEnrollment(
 
 export async function loadEnrollment(token: string, orgId?: OrgId): Promise<EnrollmentToken | null> {
   if (!token || token.length < 16) return null;
+  // Lookup compares the sha256 digest — the raw token never reaches the DB.
+  const tokenHash = hashEnrollmentToken(token);
   // No own organization_id column → org-scope via the staff parent. When orgId
   // is supplied, a token whose staff lives in another org reads as not-found.
   // Sign-in callers omit orgId and keep the byte-identical legacy lookup.
@@ -97,21 +121,21 @@ export async function loadEnrollment(token: string, orgId?: OrgId): Promise<Enro
            JOIN staff s ON s.id = e.staff_id
           WHERE e.token = $1 AND s.organization_id = $2
           LIMIT 1`,
-        [token, orgId],
+        [tokenHash, orgId],
       )
     : await pool.query(
         `SELECT token, staff_id, created_by, expires_at, consumed_at, created_at
            FROM staff_enrollments
           WHERE token = $1
           LIMIT 1`,
-        [token],
+        [tokenHash],
       );
   const row = r.rows[0] as EnrollmentDbRow | undefined;
   if (!row) return null;
   if (row.consumed_at) return null;
   if (row.expires_at.getTime() <= Date.now()) return null;
   return {
-    token: row.token,
+    token,
     staffId: row.staff_id,
     createdBy: row.created_by,
     expiresAt: row.expires_at,
@@ -128,6 +152,7 @@ export async function consumeEnrollment(token: string, orgId?: OrgId): Promise<E
   // No own organization_id column → gate the mutation on the staff parent's org
   // via a correlated EXISTS. A token belonging to another org's staff is left
   // untouched and reads as not-found. Sign-in callers omit orgId → byte-identical.
+  const tokenHash = hashEnrollmentToken(token);
   const r = orgId
     ? await tenantQuery<EnrollmentDbRow>(
         orgId,
@@ -141,7 +166,7 @@ export async function consumeEnrollment(token: string, orgId?: OrgId): Promise<E
                WHERE s.id = e.staff_id AND s.organization_id = $2
             )
           RETURNING e.token, e.staff_id, e.created_by, e.expires_at, e.consumed_at, e.created_at`,
-        [token, orgId],
+        [tokenHash, orgId],
       )
     : await pool.query(
         `UPDATE staff_enrollments
@@ -150,12 +175,12 @@ export async function consumeEnrollment(token: string, orgId?: OrgId): Promise<E
             AND consumed_at IS NULL
             AND expires_at > NOW()
           RETURNING token, staff_id, created_by, expires_at, consumed_at, created_at`,
-        [token],
+        [tokenHash],
       );
   const row = r.rows[0] as EnrollmentDbRow | undefined;
   if (!row) return null;
   return {
-    token: row.token,
+    token,
     staffId: row.staff_id,
     createdBy: row.created_by,
     expiresAt: row.expires_at,

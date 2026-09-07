@@ -8,6 +8,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import { SHORTCUT_DISPLAY_ENGINE } from '@/lib/keyboard/shortcut-display-cohort';
+import { SESSION_MEMORY_GRAPH_SYMBOLS } from '@/lib/assistant/session-memory-cohort';
 import {
   overlayCohortWorkspacePaths,
   OVERLAY_SHELL_GRAPH_SYMBOLS,
@@ -35,6 +36,7 @@ const COHORT_SYMBOLS = new Set<string>([
   'DataTable',
   ...SCAN_STATION_OVERLAY_COHORT.flatMap((m) => [m.exportName, ...m.graphSymbolsExtra]),
   ...OVERLAY_SHELL_GRAPH_SYMBOLS,
+  ...SESSION_MEMORY_GRAPH_SYMBOLS,
   'ItemRecordQtyBadge',
 ]);
 

@@ -320,6 +320,14 @@ type SidebarNavItemFields = {
    * Parked surfaces (Search, Plans, Chat, Settings) use `false`.
    */
   spineBand?: boolean;
+  /**
+   * Render this L1 as a single flat map row even though it declares `children`.
+   * The children stay live for ⌘K, the header Mode switcher and deep links, but
+   * the spine paints ONE row (its `href`) instead of a collapsible disclosure.
+   * Automations uses this: the marketplace landing IS the row; Studio and
+   * Catalog are surfaces reached inside it, not spine sub-rows.
+   */
+  spineFlat?: boolean;
 };
 
 /**
@@ -491,7 +499,7 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // Workflow Studio — canvas definition graph. Catalog sub-route is an L2
   // child in SIDEBAR_PAGE_NAV (⌘K / header Mode / URL). Desktop-only
   // (pan/zoom canvas); MOBILE_RESTRICTED_SIDEBAR_IDS enforces.
-  { id: 'studio',            label: 'Automations',  href: '/studio',         icon: Workflow,        kind: 'main', mainGroup: 'studio', requires: 'studio.view' },
+  { id: 'studio',            label: 'Automations',  href: '/automations',    icon: Workflow,        kind: 'main', mainGroup: 'studio', requires: 'studio.view' },
   // Admin is DISSOLVED (2026-09-06, W0-W3): every section found its one true
   // home and /admin is a redirect table. No spine row — permission is
   // `requires` on rows, not a destination.
@@ -720,6 +728,10 @@ export function getSidebarRouteKey(pathname: string | null): SidebarRouteKey {
   if (pathname === '/operations' || pathname.startsWith('/operations/')) return 'operations';
   if (pathname === '/signals' || pathname.startsWith('/signals/')) return 'operations';
   if (pathname === '/ops/photos' || pathname.startsWith('/ops/photos/')) return 'ops-photos';
+  // `/automations` is the AI-first marketplace landing; `/studio` (+ children)
+  // stays the advanced builder. Both resolve to the `studio` L1 so the row
+  // lights on either surface.
+  if (pathname === '/automations' || pathname.startsWith('/automations/')) return 'studio';
   if (pathname === '/studio' || pathname.startsWith('/studio/')) return 'studio';
   if (pathname === '/fba' || pathname.startsWith('/fba/')) return 'fba';
   // `/unbox` + `/triage` are the first-class receiving surfaces — they reuse the
@@ -1775,8 +1787,8 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
   // Modes are SUB-PATHS, not `?params`, so `to()` names a pathname and sets no
   // delta — `/studio` and `/studio/catalog` are two routes, not two views of one.
   {
-    id: 'studio', label: 'Automations', href: '/studio', icon: Workflow,
-    kind: 'main', mainGroup: 'studio', requires: 'studio.view',
+    id: 'studio', label: 'Automations', href: '/automations', icon: Workflow,
+    kind: 'main', mainGroup: 'studio', requires: 'studio.view', spineFlat: true,
     children: [
       { id: 'graph',   label: 'Studio',  icon: Share2,  to: () => ({ pathname: '/studio' }) },
       { id: 'catalog', label: 'Catalog', icon: Layers,  to: () => ({ pathname: '/studio/catalog' }) },

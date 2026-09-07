@@ -28,6 +28,7 @@ import { sessionArtifactSchema, sanitizeSessionArtifact } from './ui-artifacts';
 import { listAssistantTools, runAssistantTool } from '@/lib/assistant/tools';
 import type { AssistantToolCtx, AssistantToolDef, AssistantToolDeps } from '@/lib/assistant/tools/types';
 import { buildWriteToolMap, dispatchToolCall } from '@/lib/assistant/tools/dispatch';
+import { splitToolArtifact } from '@/lib/assistant/tool-artifact';
 import type { AssistantPageContext } from './context-store';
 import { resolveOrgAnthropicBrain } from '@/lib/ai/org-provider';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -267,6 +268,7 @@ export function buildSystemCore(toolNames: string[]): string {
     'UI tools (navigate, highlight) run in the user\'s browser. The view panel beside the chat (the home surface) is where data LANDS: for ANY data the user asks to see (rows, a journey, a ticket conversation, aggregates, a record), you MUST call render_artifact with that data — even if you already ran the read tool. Keep the chat text to 1–3 sentences pointing at the panel; NEVER answer a data question with only a markdown table in text, and NEVER navigate the user to another page to show an answer. Navigate only when the user explicitly asks to go somewhere ("open the shipping desk"). The panel is read-only — if the user wants a change, that is propose_mutation or a drafted reply they send themselves.',
     'Chat text is PROSE in markdown (sentences, short lists, bold). NEVER put a markdown table, chart, or ASCII graphic in chat text — data displays exclusively through render_artifact on the panel. Any table you write in chat is stripped from the reply and moved to the panel anyway, so write it as an artifact from the start.',
     'ORDER IMPORT TRIAGE: when the operator pastes CSV rows of pending orders (or asks to import orders), call triage_orders_csv with the raw pasted text. It returns the header mapping and every row classified — accepted, needs_resolution (with the exact missing fields), or rejected. Render it as an import_triage artifact. For rows needing an item number that carry a title or SKU, call resolve_item_number per row and re-render the triage with the resolved numbers; never invent one. The user imports the accepted rows from the panel — importing is their action, never yours.',
+    'OPERATOR REPORTS — five questions have a purpose-built report tool, and for these you MUST use it instead of composing raw reads: "what is <name>\'s packing performance" / "how many boxes did <name> pack" / "packer efficiency" / "wait minutes" → get_packing_performance. "how many boxes are left to be unboxed" / "what is waiting at receiving" → get_unbox_backlog. "what is the most expensive order currently in the warehouse" / "biggest order we are holding" → get_order_value_rank. "what are the highest ROIs" / "where are we leaking" / "what should we fix first" → get_roi_rank. "which staff can I delegate to" / "who should attack the highest ROIs" / "who is free" → get_delegation_plan. A report tool RENDERS ITS OWN PANEL: it returns { rendered: true, summary } and the report is already on screen, so do NOT call render_artifact after one and do NOT restate its tables in chat. Say the headline in one or two sentences and name the one thing you would do next. If the operator names a staff member, pass the name through — never guess which person they meant.',
     'Grounding: report numbers exactly as tools return them; if a tool returns empty or fails, say so plainly and continue with what you have. Never invent identifiers.',
     'Style: plain sentences, lead with the answer, keep it short. Use the org\'s vocabulary (cartons, lines, serials, feeds, nodes).',
     `Available tools: ${toolNames.join(', ')}.`,
@@ -565,10 +567,16 @@ export async function runAssistantTurn(
           args.emit({ type: 'tool_end', name: call.name, ok: result.ok });
           toolsUsed.push(call.name);
           if (result.ok) collectMintedConnectUrls(result.data, mintedConnectUrls);
+          // Report tools carry their artifact; the panel gets the payload, the
+          // model gets the summary (`tool-artifact.ts`).
+          const carried = result.ok ? splitToolArtifact(result.data) : null;
+          if (carried) {
+            args.emit({ type: 'ui_tool', name: 'render_artifact', input: { artifact: carried.artifact } });
+          }
           out.push({
             type: 'tool_result',
             tool_use_id: call.id,
-            content: result.ok ? JSON.stringify(result.data) : result.error,
+            content: result.ok ? JSON.stringify(carried ? carried.modelData : result.data) : result.error,
             is_error: !result.ok || undefined,
           });
         }

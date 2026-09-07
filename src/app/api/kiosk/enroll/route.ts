@@ -1,13 +1,13 @@
 /**
  * POST /api/kiosk/enroll
  *
- * Manager (staff session, `walk_in.enroll_kiosk`) mints a one-time, short-lived
+ * Manager (staffed session, `walk_in.enroll_kiosk`) mints a one-time, short-lived
  * pairing code for a NEW kiosk tablet. Returns the raw code ONCE (shown to the
  * operator, who carries it to the tablet's /kiosk pairing screen) plus the
  * `deviceId`. Only the code hash is persisted. The tablet then calls
  * /api/kiosk/pair to exchange it for a long-lived device token.
  *
- * Mirrors the staff `enroll-token` route, but the principal being provisioned
+ * Mirrors the staffed `enroll-token` route, but the principal being provisioned
  * is a DEVICE (kiosk_devices), never a person.
  */
 
@@ -16,7 +16,7 @@ import { z } from 'zod';
 import { withAuth } from '@/lib/auth/withAuth';
 import { createKioskEnrollment, DEFAULT_ENROLL_TTL_MINUTES } from '@/lib/auth/kiosk-device';
 import { recordAudit, AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
-import pool from '@/lib/db';
+import { withTenantTransaction } from '@/lib/tenancy/db';
 
 export const runtime = 'nodejs';
 
@@ -39,13 +39,19 @@ export const POST = withAuth(
       ttlMinutes: parsed.data.ttlMinutes ?? DEFAULT_ENROLL_TTL_MINUTES,
     });
 
-    await recordAudit(pool, ctx, req, {
-      source: 'kiosk',
-      action: AUDIT_ACTION.KIOSK_ENROLLED,
-      entityType: AUDIT_ENTITY.KIOSK_DEVICE,
-      entityId: enrollment.deviceId,
-      after: { label: parsed.data.label, expiresAt: enrollment.expiresAt },
-    });
+    // Audit write under the tenant GUC — the row's org is enforced by the
+    // connection context (RLS once the tenant DSN is split), not just stamped.
+    // The enrollment INSERT itself runs in createKioskEnrollment's own tenant
+    // transaction, so every statement the route issues is org-GUC-scoped.
+    await withTenantTransaction(ctx.organizationId, (client) =>
+      recordAudit(client, ctx, req, {
+        source: 'kiosk',
+        action: AUDIT_ACTION.KIOSK_ENROLLED,
+        entityType: AUDIT_ENTITY.KIOSK_DEVICE,
+        entityId: enrollment.deviceId,
+        after: { label: parsed.data.label, expiresAt: enrollment.expiresAt },
+      }),
+    );
 
     return NextResponse.json({
       deviceId: enrollment.deviceId,

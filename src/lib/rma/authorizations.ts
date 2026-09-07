@@ -247,7 +247,7 @@ export interface RecordDispositionInput {
    * `withTenantTransaction` (GUC set, RLS backstop) and the org-bearing
    * co-tables (serial_units / order_unit_allocations) get an explicit
    * `organization_id` predicate. It used to be optional, and the two internal
-   * `orgId ?? DOGFOOD_ORG_ID` substitutions below meant an org-less caller did
+   * dogfood-org substitutions below meant an org-less caller did
    * not fall back to an unscoped write — it wrote the event and the restock
    * under the dogfood tenant's identity.
    */

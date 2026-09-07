@@ -1,1 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="118" fill="#2563eb"/><g transform="rotate(45 256 256)"><g fill="#ea580c" stroke="#2563eb" stroke-width="16" stroke-linejoin="round"><rect x="227.50" y="217.72" width="57.00" height="269.04" rx="28.50"/><rect x="155.68" y="110.56" width="200.64" height="118.56" rx="30"/></g><rect x="155.68" y="110.56" width="41.04" height="118.56" rx="30" fill="#f97316"/></g><circle cx="316.92" cy="195.08" r="42.00" fill="#ffffff"/><circle cx="316.92" cy="195.08" r="34.00" fill="#16a34a"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><g id="cf-favicon">
+    <rect width="512" height="512" rx="118" fill="#0A0A0B"/>
+    <g transform="rotate(45 256 256)"><g fill="#FFFFFF"><rect x="244" y="58" width="24" height="26" rx="8"/><rect x="214" y="82" width="84" height="128" rx="18"/><rect x="214" y="120" width="84" height="9" fill="#0A0A0B"/><rect x="214" y="142" width="84" height="9" fill="#0A0A0B"/><path d="M229 210 h54 l27 22 -27 22 h-54 l-27 -22 z"/><rect x="242" y="254" width="28" height="56"/><path d="M242 310 h28 l7 64 h-42 z"/></g></g>
+    <circle cx="223" cy="289" r="80" fill="#FFFFFF"/>
+  </g></svg>

@@ -98,6 +98,16 @@ export const TOOL_ACTIVITY_PHRASES: Readonly<Record<string, string>> = {
   // ── Where the operation is leaking ──────────────────────────────────────
   get_roi_gaps: 'Finding where we are leaking',
 
+  // ── Station composition (Studio) ────────────────────────────────────────
+  get_station_catalog: 'Listing the station parts',
+
+  // ── The five operator reports ───────────────────────────────────────────
+  get_packing_performance: 'Building the packing report',
+  get_unbox_backlog: 'Counting the unbox backlog',
+  get_order_value_rank: 'Ranking orders by value',
+  get_roi_rank: 'Ranking the gaps by priority',
+  get_delegation_plan: 'Matching staff to the gaps',
+
   // ── The staffer's own outside apps (Composio) ───────────────────────────
   list_connected_apps: 'Checking your connected apps',
   connect_app: 'Getting you a connect link',

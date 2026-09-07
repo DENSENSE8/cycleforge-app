@@ -342,6 +342,13 @@ export const StaffPreferencesPutBody = z
      * drop; new catalog ids append. Cap 40. See `src/lib/nav/spine-slots.ts`.
      */
     spineSlots: z.array(z.string().min(1).max(64)).max(40).nullable().optional(),
+    /**
+     * Generation of the DEFAULT spine order this staffer's `spineSlots` was
+     * last rolled onto (`SPINE_SLOTS_VERSION`). Absent / `0` = pre-versioning,
+     * so a new default is floated into their saved order exactly once and this
+     * is stamped. A saved order is protected state — never hard-overwritten.
+     */
+    spineSlotsVersion: z.number().int().min(0).max(1000).nullable().optional(),
   })
   .strict();
 

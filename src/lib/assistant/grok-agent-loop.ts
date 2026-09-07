@@ -1,11 +1,23 @@
 /**
- * SuperGrok tool loop (Ask plan §17) — the OpenAI-wire twin of agent-loop.ts.
+ * The OpenAI-wire tool loop (Ask plan §17) — the twin of agent-loop.ts, which
+ * speaks Anthropic's native tool-use protocol instead.
  *
  * Grok used to be mouth-only: `streamHermesCompletion` posted `{model, stream,
  * messages}` and read `delta.content`, so a Grok-connected workspace could ask
  * questions but never reach a tool, and every write turn had to be handed to
- * Anthropic. This module gives Grok the same registry, the same dispatch
+ * Anthropic. This module gives the wire the same registry, the same dispatch
  * chokepoint and the same UI-tool namespace the Anthropic loop has.
+ *
+ * IT IS NOT GROK-SPECIFIC, despite the file name. Nothing here branches on a
+ * vendor: `requestBody` keys its two optional levers off
+ * `isSelfHostedAiRuntime` (a capability), Harmony handling is content-sniffed
+ * and a no-op on every other wire, and the endpoint arrives as an
+ * `AiProviderConfig`. Since 2026-09-06 the route has exactly ONE call site
+ * feeding it every reachable member of the chain — Grok, the tenant's
+ * self-hosted slot, `ai_gateway`, `openai`, `anthropic`-compat and the
+ * `platform` leaf. Four of those six used to fall through to the mouth-only
+ * path and could therefore never call a verb or paint the artifact canvas;
+ * see `assistant-mouth.ts`. Do not add a second loop for a new provider.
  *
  * WIRE (decided by the PR-0 probe, 2026-09-05 — plan §17.1 / §23.B):
  * adapter A, `POST {baseURL}/chat/completions` with `stream:true`,
@@ -43,7 +55,7 @@ import { z } from 'zod';
 import { listAssistantTools, runAssistantTool } from '@/lib/assistant/tools';
 import type { AssistantToolCtx, AssistantToolDef, AssistantToolDeps } from '@/lib/assistant/tools/types';
 import { buildWriteToolMap, dispatchToolCall, type WriteToolMap } from '@/lib/assistant/tools/dispatch';
-import { toOpenAiFunctionTool } from '@/lib/assistant/tools/openai-schema';
+import { toOpenAiFunctionTool, type OpenAiFunctionTool } from '@/lib/assistant/tools/openai-schema';
 import { subsetAdvertisedTools } from '@/lib/assistant/tool-subsetting';
 import {
   MAX_TURNS,
@@ -57,6 +69,7 @@ import {
 } from './agent-loop';
 import type { AssistantPageContext } from './context-store';
 import { recoverToolArgsFromContent } from '@/lib/ai/hermes-tool-call';
+import { splitToolArtifact } from '@/lib/assistant/tool-artifact';
 import {
   createHarmonyTextFilter,
   looksLikeHarmony,
@@ -734,9 +747,19 @@ export async function runGrokAssistantTurn(
           args.emit({ type: 'tool_end', name: call.name, ok: result.ok });
           toolsUsed.push(call.name);
           if (result.ok) collectMintedConnectUrls(result.data, mintedConnectUrls);
+          // A report tool hands back a validated artifact plus a short summary.
+          // The artifact goes straight to the panel and the model is told only
+          // that it rendered — see `tool-artifact.ts` for why the model must
+          // never be the one to retype a report's numbers.
+          const carried = result.ok ? splitToolArtifact(result.data) : null;
+          if (carried) {
+            args.emit({ type: 'ui_tool', name: 'render_artifact', input: { artifact: carried.artifact } });
+          }
           out.push({
             id,
-            content: result.ok ? JSON.stringify(result.data) : `ERROR: ${result.error}`,
+            content: result.ok
+              ? JSON.stringify(carried ? carried.modelData : result.data)
+              : `ERROR: ${result.error}`,
           });
         }
         return out;

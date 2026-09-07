@@ -12,3 +12,4 @@ export * from './app-surface';
 export * from './table-surface';
 export * from './desk-stage';
 export * from './menu-tone';
+export * from './instrument';

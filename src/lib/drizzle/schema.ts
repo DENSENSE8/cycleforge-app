@@ -254,11 +254,15 @@ export const staff = pgTable('staff', {
   avatarPhotoId: bigint('avatar_photo_id', { mode: 'number' }),
 });
 
-// Editable roles taxonomy. is_system rows are seeded built-ins and cannot
-// be deleted from the admin UI. See 2026-05-19_editable_roles.sql.
+// Editable roles taxonomy — ORG-SCOPED since 2026-09-06: every org holds its
+// own copy of the system roles and its custom roles; (organization_id, key)
+// is unique per org. See 2026-09-06_roles_per_org.sql. is_system rows are
+// seeded built-ins and cannot be deleted from the admin UI. See
+// 2026-05-19_editable_roles.sql.
 export const roles = pgTable('roles', {
   id: serial('id').primaryKey(),
-  key: text('key').notNull().unique(),
+  organizationId: uuid('organization_id').notNull(),
+  key: text('key').notNull(),
   label: text('label').notNull(),
   color: varchar('color', { length: 7 }).notNull().default('#6b7280'),
   position: integer('position').notNull().default(100),
@@ -271,6 +275,7 @@ export const roles = pgTable('roles', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   positionIdx: index('idx_roles_position').on(table.position),
+  orgKeyUnique: uniqueIndex('roles_org_key_key').on(table.organizationId, table.key),
 }));
 
 // Many-to-many: a staff can hold several roles.
@@ -699,7 +704,7 @@ export const customers = pgTable('customers', {
 export const items = pgTable('items', {
   organizationId: orgIdCol(),
   id: uuid('id').primaryKey().defaultRandom(),
-  zohoItemId: text('zoho_item_id').notNull().unique(),
+  zohoItemId: text('zoho_item_id').notNull(),
   zohoItemGroupId: text('zoho_item_group_id'),
   name: text('name').notNull(),
   sku: text('sku'),
@@ -732,6 +737,9 @@ export const items = pgTable('items', {
   upcIdx: index('items_upc_idx').on(table.upc),
   statusIdx: index('items_status_idx').on(table.status),
   zohoModifiedIdx: index('items_zoho_modified_idx').on(table.zohoLastModified),
+  // Composite since 2026-09-06 — the global zoho_item_id UNIQUE was the
+  // cross-tenant key (see 2026-09-06_items_composite_unique.sql).
+  orgZohoUnique: uniqueIndex('items_org_zoho_item_key').on(table.organizationId, table.zohoItemId),
 }));
 
 export const zohoLocations = pgTable('zoho_locations', {
@@ -835,20 +843,23 @@ export const replenishmentOrderLines = pgTable('replenishment_order_lines', {
 
 export const itemStockCache = pgTable('item_stock_cache', {
   id: uuid('id').primaryKey().defaultRandom(),
-  zohoItemId: text('zoho_item_id').notNull().unique(),
+  organizationId: uuid('organization_id').notNull(),
+  zohoItemId: text('zoho_item_id').notNull(),
   itemId: uuid('item_id').references(() => items.id),
   quantityAvailable: numeric('quantity_available', { precision: 12, scale: 2 }).notNull().default('0'),
   quantityOnHand: numeric('quantity_on_hand', { precision: 12, scale: 2 }).notNull().default('0'),
   incomingQuantity: numeric('incoming_quantity', { precision: 12, scale: 2 }).notNull().default('0'),
   openPoIds: text('open_po_ids').array(),
   syncError: text('sync_error'),
-  lastSyncedAt: timestamp('last_synced_at', { withTimezone: true }),
+  lastSyncedAt: timestamp('last_synced_at'),
 }, (table) => ({
   itemIdx: index('isc_item_id_idx').on(table.itemId),
+  // Composite since 2026-09-06 — the global zoho_item_id UNIQUE was the
+  // cross-tenant key (see 2026-09-06_items_composite_unique.sql).
+  orgZohoUnique: uniqueIndex('item_stock_cache_org_zoho_key').on(table.organizationId, table.zohoItemId),
 }));
 
 export const replenishmentStatusLog = pgTable('replenishment_status_log', {
-  id: uuid('id').primaryKey().defaultRandom(),
   replenishmentRequestId: uuid('replenishment_request_id').notNull().references(() => replenishmentRequests.id, { onDelete: 'cascade' }),
   fromStatus: replenishmentStatusEnum('from_status'),
   toStatus: replenishmentStatusEnum('to_status').notNull(),
@@ -3939,6 +3950,9 @@ export const aiChatSessions = pgTable('ai_chat_sessions', {
   title: text('title'),                             // auto-generated from first message
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  // Recoverable soft-delete (2026-09-06). NULL = live; a timestamp = archived,
+  // excluded from every list but restorable within the retention window.
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
 }, (table) => ({
   updatedIdx: index('ai_chat_sessions_updated_idx').on(table.updatedAt),
 }));

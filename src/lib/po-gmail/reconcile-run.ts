@@ -273,13 +273,17 @@ export async function runPoMailboxReconcile(opts: ReconcileRunOpts): Promise<Rec
         } else if (item.status === 'in_zoho' || item.status === 'received') {
           // If this gmail_msg_id was previously logged as missing, mark
           // it resolved (the PO has since appeared in receiving_lines).
+          // Org filter is the tenant boundary: gmail_msg_id is unique per
+          // mailbox, not globally (the upsert conflict key includes
+          // organization_id), so this must never flip another org's row.
           const { rowCount } = await client.query(
             `UPDATE email_missing_purchase_orders
                 SET status      = 'resolved',
                     resolved_at = NOW()
               WHERE gmail_msg_id = $1
-                AND status       = 'pending'`,
-            [item.id],
+                AND status       = 'pending'
+                AND organization_id = $2::uuid`,
+            [item.id, orgId],
           );
           resolved += rowCount ?? 0;
 
@@ -315,11 +319,14 @@ export async function runPoMailboxReconcile(opts: ReconcileRunOpts): Promise<Rec
 
       // Belt-and-suspenders auto-resolve: any pending rows in the
       // worklist whose POs now exist in receiving_lines (regardless of
-      // whether we scanned them again) should clear.
+      // whether we scanned them again) should clear. Org filter is the
+      // tenant boundary: a normalized-PO collision must never flip another
+      // org's pending worklist rows (audit 2026-09-06).
       const ar = await client.query(
         `UPDATE email_missing_purchase_orders e
             SET status = 'resolved', resolved_at = NOW()
           WHERE e.status = 'pending'
+            AND e.organization_id = $1::uuid
             AND EXISTS (
               SELECT 1
               FROM receiving_line_zoho rz
@@ -327,6 +334,7 @@ export async function runPoMailboxReconcile(opts: ReconcileRunOpts): Promise<Rec
                 ON rl.id = rz.receiving_line_id AND rl.organization_id = rz.organization_id
               WHERE rz.zoho_purchaseorder_number_norm = ANY(e.po_numbers_norm)
             )`,
+        [orgId],
       );
       resolved += ar.rowCount ?? 0;
 

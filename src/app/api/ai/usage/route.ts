@@ -21,6 +21,7 @@ import { withAuth } from '@/lib/auth/withAuth';
 import { resolveOrgAiConfig } from '@/lib/ai/org-provider';
 import { getAiUsageMarginPercent, summarizeAiUsage } from '@/lib/ai/usage';
 import { applyMarginMicrocents } from '@/lib/ai/model-pricing';
+import { withTenantConnection } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 
 function hostOf(baseURL: string): string {
@@ -37,10 +38,14 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     const daysRaw = Number(req.nextUrl.searchParams.get('days'));
     const days = Number.isFinite(daysRaw) ? Math.min(Math.max(Math.floor(daysRaw), 1), 90) : 30;
 
+    // The usage rollup runs under the tenant GUC (withTenantConnection) so the
+    // read is org-scoped by connection context, with the query's explicit
+    // organization_id conjunct as defense-in-depth. The provider/margin reads
+    // resolve their own org-scoped rows.
     const [chat, embed, summary, marginPercent] = await Promise.all([
       resolveOrgAiConfig(orgId, 'chat'),
       resolveOrgAiConfig(orgId, 'embed'),
-      summarizeAiUsage(orgId, days),
+      withTenantConnection(orgId, (client) => summarizeAiUsage(orgId, days, client)),
       getAiUsageMarginPercent(orgId),
     ]);
 

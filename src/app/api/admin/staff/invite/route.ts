@@ -19,6 +19,7 @@ import { z } from 'zod';
 import { randomBytes } from 'node:crypto';
 import { withAuth } from '@/lib/auth/withAuth';
 import { withTenantTransaction } from '@/lib/tenancy/db';
+import { hashEnrollmentToken } from '@/lib/auth/enrollment';
 import { sendEmailBestEffort } from '@/lib/email/send';
 import { getOrganization } from '@/lib/tenancy/organizations';
 import { canonicalRole, ALL_ROLES, type StaffRole } from '@/lib/auth/permissions';
@@ -76,18 +77,20 @@ export const POST = withAuth(async (req, ctx) => {
     // Assign the matching role in `staff_roles` — effective permissions are
     // resolved from this junction, not the `staff.role` column. Without it the
     // invited staff would enroll into an account with zero permissions and 403
-    // on every gated route.
     await client.query(
       `INSERT INTO staff_roles (staff_id, role_id, granted_at, granted_by)
-       SELECT $1, r.id, NOW(), $3 FROM roles r WHERE r.key = $2
+       SELECT $1, r.id, NOW(), $3 FROM roles r
+        WHERE r.key = $2 AND r.organization_id = $4::uuid
        ON CONFLICT (staff_id, role_id) DO NOTHING`,
-      [id, canonical, ctx.staffId ?? null],
+      [id, canonical, ctx.staffId ?? null, ctx.organizationId],
     );
 
+    // Same storage contract as createEnrollment: persist the sha256 digest;
+    // the raw token below only ever lives in the invite URL / response.
     await client.query(
       `INSERT INTO staff_enrollments (token, staff_id, created_by, expires_at)
        VALUES ($1, $2, $3, now() + interval '14 days')`,
-      [token, id, ctx.staffId],
+      [hashEnrollmentToken(token), id, ctx.staffId],
     );
 
     return id;

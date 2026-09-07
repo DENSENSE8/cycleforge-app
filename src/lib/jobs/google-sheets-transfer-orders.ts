@@ -353,17 +353,19 @@ async function fetchEcwidLines(effectiveOrgId: OrgId, progress: SyncProgress): P
 }
 
 export async function runGoogleSheetsTransferOrders(
+  // Tenant the import runs as — REQUIRED, un-defaulted (an org-less run used
+  // to import under the dogfood org). Route callers thread ctx.organizationId;
+  // the per-org cron fan-out passes each org it is iterating.
+  orgId: OrgId,
   manualSheetName?: string,
   source: TransferOrdersSource = 'all',
   progress: SyncProgress = noopProgress,
-  orgId?: OrgId,
   // Which Google Sheet to read. Defaults to USAV's hardcoded sheet so existing
   // (USAV-context) callers are byte-identical. The per-org cron fan-out passes
   // each org's OWN sheet id so a tenant is never read from another tenant's sheet.
   sourceSpreadsheetId: string = DOGFOOD_SOURCE_SPREADSHEET_ID,
 ): Promise<GoogleSheetsTransferOrdersJobResult> {
   const startedAt = Date.now();
-  const effectiveOrgId: OrgId = orgId ?? transitionalDogfoodOrgId();
 
   progress({ type: 'phase', phase: 'starting' });
 
@@ -371,8 +373,8 @@ export async function runGoogleSheetsTransferOrders(
     const sheet =
       source === 'ecwid'
         ? null
-        : await fetchSheetLines(sourceSpreadsheetId, manualSheetName, progress, effectiveOrgId);
-    const ecwidLines = source === 'sheets' ? [] : await fetchEcwidLines(effectiveOrgId, progress);
+        : await fetchSheetLines(sourceSpreadsheetId, manualSheetName, progress, orgId);
+    const ecwidLines = source === 'sheets' ? [] : await fetchEcwidLines(orgId, progress);
 
     const tabName = sheet?.tabName ?? '(ecwid-api)';
     const skips = sheet?.skips ?? emptyTransferSheetSkipCounts();

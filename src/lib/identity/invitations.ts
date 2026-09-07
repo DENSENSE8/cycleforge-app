@@ -12,7 +12,7 @@
  * operate at the account+membership layer and can create the staff row.
  *
  * Token handling: a 24-byte base64url token is emailed; only its sha256 hash is
- * stored (unlike staff_enrollments which stores the raw token).
+ * stored (staff_enrollments moved to this same posture on 2026-09-06).
  *
  * See docs/identity-layer-plan.md.
  */
@@ -258,9 +258,10 @@ export async function acceptInvitation(input: {
       staffId = staffRes.rows[0]!.id;
       await client.query(
         `INSERT INTO staff_roles (staff_id, role_id, granted_at)
-         SELECT $1, r.id, NOW() FROM roles r WHERE r.key = $2
+         SELECT $1, r.id, NOW() FROM roles r
+          WHERE r.key = $2 AND r.organization_id = $3::uuid
          ON CONFLICT (staff_id, role_id) DO NOTHING`,
-        [staffId, canonical],
+        [staffId, canonical, invite.org_id],
       );
     }
 

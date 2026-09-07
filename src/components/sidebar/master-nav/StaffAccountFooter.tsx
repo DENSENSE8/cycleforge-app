@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { ArrowUpDown, Clipboard, MessageSquare, MoreHorizontal, Power, RefreshCw, Settings } from '@/components/Icons';
+import { ArrowUpDown, Clipboard, MessageSquare, MoreHorizontal, Power, RefreshCw, RotateCcw, Settings } from '@/components/Icons';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import {
   SIDEBAR_SPINE_MENU_ACTION_CLASS,
@@ -34,6 +34,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useStaffSwitcher } from '@/contexts/StaffSwitcherContext';
 import { orgInitials } from '@/lib/identity/switch-org';
 import { cn } from '@/utils/_cn';
+import { toast } from '@/lib/toast';
+import { useStaffPreferences } from '@/hooks/useStaffPreferences';
+import { SPINE_SLOTS_VERSION } from '@/lib/nav/spine-slots';
 import { useNavArrange } from './nav-arrange-context';
 import { SpineWorkspaceSwitch } from './SpineWorkspaceSwitch';
 
@@ -78,6 +81,7 @@ export function StaffAccountFooter({ className }: { className?: string }) {
   const { user, signOut } = useAuth();
   const { canArrange, arranging, setArranging } = useNavArrange();
   const { openSwitcher } = useStaffSwitcher();
+  const { prefs, update } = useStaffPreferences();
   const [menu, setMenu] = useState<OpenMenu>('none');
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -261,6 +265,27 @@ export function StaffAccountFooter({ className }: { className?: string }) {
                 <span className={SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS}>
                   {arranging ? 'Done arranging tabs' : 'Arrange tabs'}
                 </span>
+              </button>
+            ) : null}
+            {/* Agency, not force: a new DEFAULT order is floated into a saved
+                arrangement once and never again, so this is how an operator
+                re-derives the current default on purpose. Clearing `spineSlots`
+                (not writing a fresh list) is what makes it re-derive — and the
+                version is stamped so the float never re-runs. Hidden for an
+                operator who has no saved order: they are already on it. */}
+            {prefs?.spineSlots?.length ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setMenu('none');
+                  update({ spineSlots: null, spineSlotsVersion: SPINE_SLOTS_VERSION });
+                  toast.success('Nav order reset to the default');
+                }}
+                className={cn('ds-raw-button', SIDEBAR_SPINE_MENU_ACTION_CLASS)}
+              >
+                <RotateCcw className="h-3 w-3 shrink-0 text-text-muted" />
+                <span className={SIDEBAR_SPINE_MENU_ACTION_LABEL_CLASS}>Reset nav order</span>
               </button>
             ) : null}
             <Link

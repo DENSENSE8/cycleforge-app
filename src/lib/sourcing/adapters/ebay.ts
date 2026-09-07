@@ -3,7 +3,6 @@ import { browseSearch } from '@/lib/ebay/browse-client';
 import { getIntegrationCredentials, type EbayCredentials } from '@/lib/integrations/credentials';
 import { normalizeEnvValue } from '@/lib/env-utils';
 import { normalizeBrowseItems } from '@/lib/sourcing/normalize';
-import { transitionalDogfoodOrgId } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { buildScourQuery, type ScourRequest, type SourceAdapter } from './types';
 
@@ -18,17 +17,17 @@ async function logCall(
   latencyMs: number,
   statusCode: number,
   errorMessage: string | null,
-  orgId?: OrgId,
+  orgId: OrgId,
 ) {
   try {
     // ebay_api_calls is tenant-owned with a usav-fallback default — an unstamped
-    // insert silently misroutes to USAV. Stamp the calling org explicitly; this
-    // adapter runs from session-less scour jobs that may not thread one, so fall
-    // back to the transitional USAV org (the established single-tenant convention).
+    // insert silently misroutes to USAV. The org is REQUIRED here so the
+    // compiler catches an adapter that forgets to thread it; the scour
+    // orchestrator always sets ScourRequest.orgId.
     await pool.query(
       `INSERT INTO ebay_api_calls (method, endpoint, latency_ms, status_code, error_message, created_at, organization_id)
        VALUES ('GET', $1, $2, $3, $4, NOW(), $5::uuid)`,
-      [endpoint, latencyMs, statusCode, errorMessage, orgId ?? transitionalDogfoodOrgId()],
+      [endpoint, latencyMs, statusCode, errorMessage, orgId],
     );
   } catch (err) {
     console.warn('[sourcing.ebay] ebay_api_calls log failed:', err instanceof Error ? err.message : err);

@@ -21,7 +21,7 @@
  */
 import type { PoolClient } from 'pg';
 import { detectCarrier, normalizeTrackingNumber } from '@/lib/shipping/normalize';
-import { transitionalDogfoodOrgId, withTenantTransaction } from '@/lib/tenancy/db';
+import { withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { linkShipment, unlinkShipment, setPrimaryShipmentLink } from '@/lib/shipping/shipment-links';
 import { healShipmentOrganizationId } from '@/lib/shipping/repository';
@@ -35,15 +35,12 @@ type Tx = Pick<PoolClient, 'query'>;
 // NOT inside withTenantTransaction — so there is no `app.current_org` GUC to
 // auto-stamp `organization_id`. Both tenant-owned tables written here carry the
 // column with a `usav-fallback` default (an unstamped INSERT silently misroutes
-// to the USAV org rather than crashing). To make multi-tenant correct we thread
-// an OPTIONAL `organizationId` and STAMP it explicitly on every INSERT:
+// to the USAV org rather than crashing), so the org is REQUIRED on every
+// exporter and STAMPed explicitly on every INSERT:
 //   - shipping_tracking_numbers (tenant-owned, has organization_id)
 //   - order_shipment_links      (tenant-owned, has organization_id)
-// When the caller doesn't thread one we fall back to transitionalDogfoodOrgId(),
-// which preserves today's single-tenant (USAV) behavior exactly while letting
-// multi-tenant callers pass their real `ctx.organizationId`. All current callers
-// (orders/assign, orders/[id]/tracking, shipped/scan-out) have ctx.organizationId
-// in scope and now pass it through.
+// The removed dogfood-org fallback silently attributed an org-less call's
+// writes to USAV; a caller that forgets the org is now a compile error.
 
 /**
  * Is this shipment currently owned by any order — via `orders.shipment_id` or an
@@ -67,9 +64,8 @@ export async function upsertOrderTracking(
   orderIds: number[],
   shippingTrackingNumber: string | null | undefined,
   client: Tx,
-  organizationId?: OrgId,
+  orgId: OrgId,
 ): Promise<void> {
-  const orgId = organizationId ?? transitionalDogfoodOrgId();
   const existingOrders = await client.query(
     `SELECT id, shipment_id
      FROM orders
@@ -294,9 +290,8 @@ export async function updateShipmentTrackingById(
   shipmentId: number,
   shippingTrackingNumber: string,
   client: Tx,
-  organizationId?: OrgId,
+  orgId: OrgId,
 ): Promise<void> {
-  const orgId = organizationId ?? transitionalDogfoodOrgId();
   const rawTracking = String(shippingTrackingNumber || '').trim();
   if (!rawTracking) throw new Error('Tracking number is required');
 
@@ -412,9 +407,8 @@ export async function createAdditionalShipmentLink(
   orderIds: number[],
   shippingTrackingNumber: string,
   client: Tx,
-  organizationId?: OrgId,
+  orgId: OrgId,
 ): Promise<number> {
-  const orgId = organizationId ?? transitionalDogfoodOrgId();
   const rawTracking = String(shippingTrackingNumber || '').trim();
   if (!rawTracking) throw new Error('Tracking number is required');
 
@@ -454,7 +448,7 @@ export async function createAdditionalShipmentLink(
           throw new Error('Tracking number already exists on another shipment');
         }
       } else {
-        await updateShipmentTrackingById(orderIds, shipmentId, rawTracking, client, organizationId);
+        await updateShipmentTrackingById(orderIds, shipmentId, rawTracking, client, orgId);
       }
     }
   } else {
@@ -609,11 +603,12 @@ export interface ApplyOrderTrackingOps {
   /** Which shipment should become orders.shipment_id after the batch. */
   setPrimaryShipmentId?: number | null;
   /**
-   * Owning org. Threaded into every tenant-owned INSERT (shipping_tracking_numbers,
-   * order_shipment_links) so they stamp organization_id explicitly. Omitted →
-   * transitionalDogfoodOrgId() (today's single-tenant USAV behavior).
+   * Owning org — REQUIRED, un-defaulted. Threaded into every tenant-owned
+   * INSERT (shipping_tracking_numbers, order_shipment_links) so they stamp
+   * organization_id explicitly; the removed dogfood-org fallback silently
+   * attributed an org-less batch to USAV.
    */
-  organizationId?: OrgId;
+  organizationId: OrgId;
 }
 
 export interface ApplyOrderTrackingResult {
@@ -636,7 +631,7 @@ export async function reconcileOrderTrackingSet(
   orderIds: number[],
   desiredRaw: string[],
   client: Tx,
-  organizationId?: OrgId,
+  orgId: OrgId,
 ): Promise<{ shipmentIds: number[]; primaryShipmentId: number | null }> {
   // Normalize + dedupe the desired list, preserving order.
   const desired: Array<{ raw: string; key: string }> = [];
@@ -689,7 +684,7 @@ export async function reconcileOrderTrackingSet(
       shipmentIds.push(existing);
       continue;
     }
-    const createdId = await createAdditionalShipmentLink(orderIds, d.raw, client, organizationId);
+    const createdId = await createAdditionalShipmentLink(orderIds, d.raw, client, orgId);
     shipmentIds.push(createdId);
     currentByKey.set(d.key, createdId);
   }
@@ -709,7 +704,6 @@ export async function reconcileOrderTrackingSet(
     [primaryShipmentId, orderIds],
   );
   if (primaryShipmentId) {
-    const orgId = organizationId ?? transitionalDogfoodOrgId();
     for (const orderId of orderIds) {
       await setPrimaryShipmentLink(orgId, 'ORDER', orderId, primaryShipmentId, client);
     }
@@ -726,8 +720,7 @@ export async function reconcileOrderTrackingSet(
 export async function applyOrderTrackingOps(
   ops: ApplyOrderTrackingOps,
 ): Promise<ApplyOrderTrackingResult> {
-  const { orderIds, setTrackingNumbers, primaryTrackingNumber, edits, creates, deletes, setPrimaryShipmentId, organizationId } = ops;
-  const orgId = organizationId ?? transitionalDogfoodOrgId();
+  const { orderIds, setTrackingNumbers, primaryTrackingNumber, edits, creates, deletes, setPrimaryShipmentId, organizationId: orgId } = ops;
   // Run the whole multi-statement batch on the tenant pool inside ONE
   // GUC-scoped transaction (SET LOCAL app.current_org). The low-level helpers
   // receive this same tenant client, so every write is RLS-subject and
@@ -741,13 +734,13 @@ export async function applyOrderTrackingOps(
         orderIds,
         setTrackingNumbers,
         client,
-        organizationId,
+        orgId,
       );
       return { createdShipmentIds: shipmentIds, primaryShipmentId };
     }
 
     if (primaryTrackingNumber !== undefined) {
-      await upsertOrderTracking(orderIds, primaryTrackingNumber, client, organizationId);
+      await upsertOrderTracking(orderIds, primaryTrackingNumber, client, orgId);
     }
 
     if (Array.isArray(edits) && edits.length > 0) {
@@ -756,7 +749,7 @@ export async function applyOrderTrackingOps(
         const nextTracking = String(edit?.trackingNumber || '').trim();
         if (!Number.isFinite(shipmentId) || shipmentId <= 0) continue;
         if (!nextTracking) continue;
-        await updateShipmentTrackingById(orderIds, shipmentId, nextTracking, client, organizationId);
+        await updateShipmentTrackingById(orderIds, shipmentId, nextTracking, client, orgId);
       }
     }
 
@@ -765,7 +758,7 @@ export async function applyOrderTrackingOps(
       for (const create of creates) {
         const nextTracking = String(create?.trackingNumber || '').trim();
         if (!nextTracking) continue;
-        const createdId = await createAdditionalShipmentLink(orderIds, nextTracking, client, organizationId);
+        const createdId = await createAdditionalShipmentLink(orderIds, nextTracking, client, orgId);
         createdShipmentIds.push(createdId);
       }
     }

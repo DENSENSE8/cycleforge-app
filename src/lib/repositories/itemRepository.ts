@@ -64,11 +64,13 @@ export interface UpsertItemLocationStockInput {
 }
 
 export interface ItemRepository {
-  findById(id: string): Promise<typeof items.$inferSelect | null>;
-  findByZohoId(zohoId: string): Promise<typeof items.$inferSelect | null>;
-  findBySku(sku: string): Promise<typeof items.$inferSelect | null>;
+  /** Org-scoped lookups since 2026-09-06 — a global-key lookup is
+   * cross-tenant record theft once two orgs share a Zoho item id or SKU. */
+  findById(id: string, orgId: string): Promise<typeof items.$inferSelect | null>;
+  findByZohoId(zohoId: string, orgId: string): Promise<typeof items.$inferSelect | null>;
+  findBySku(sku: string, orgId: string): Promise<typeof items.$inferSelect | null>;
   upsertMany(rows: InsertItem[]): Promise<void>;
-  listActive(pagination: PaginationParams): Promise<PaginatedResult<typeof items.$inferSelect>>;
+  listActive(pagination: PaginationParams, orgId: string): Promise<PaginatedResult<typeof items.$inferSelect>>;
   upsertLocations(orgId: string, rows: UpsertLocationInput[]): Promise<void>;
   findLocationsByZohoIds(
     orgId: string,
@@ -78,25 +80,34 @@ export interface ItemRepository {
 }
 
 export class DrizzleItemRepository implements ItemRepository {
-  async findById(id: string) {
-    const rows = await db.select().from(items).where(eq(items.id, id)).limit(1);
+  async findById(id: string, orgId: string) {
+    const rows = await db.select().from(items)
+      .where(and(eq(items.id, id), eq(items.organizationId, orgId)))
+      .limit(1);
     return rows[0] ?? null;
   }
 
-  async findByZohoId(zohoId: string) {
-    const rows = await db.select().from(items).where(eq(items.zohoItemId, zohoId)).limit(1);
+  async findByZohoId(zohoId: string, orgId: string) {
+    const rows = await db.select().from(items)
+      .where(and(eq(items.zohoItemId, zohoId), eq(items.organizationId, orgId)))
+      .limit(1);
     return rows[0] ?? null;
   }
 
-  async findBySku(sku: string) {
-    const rows = await db.select().from(items).where(eq(items.sku, sku)).limit(1);
+  async findBySku(sku: string, orgId: string) {
+    const rows = await db.select().from(items)
+      .where(and(eq(items.sku, sku), eq(items.organizationId, orgId)))
+      .limit(1);
     return rows[0] ?? null;
   }
-
   async upsertMany(rows: InsertItem[]): Promise<void> {
     if (rows.length === 0) return;
+    // Conflict target is (organization_id, zoho_item_id) — the global
+    // items.zoho_item_id UNIQUE was the cross-tenant bug: a colliding Zoho
+    // item id from another org hijacked this org's mirror row (audit
+    // 2026-09-06). Migration 2026-09-06_items_composite_unique.sql.
     await db.insert(items).values(rows).onConflictDoUpdate({
-      target: items.zohoItemId,
+      target: [items.organizationId, items.zohoItemId],
       set: {
         zohoItemGroupId: sql`excluded.zoho_item_group_id`,
         name: sql`excluded.name`,
@@ -149,12 +160,13 @@ export class DrizzleItemRepository implements ItemRepository {
     }
   }
 
-  async listActive(pagination: PaginationParams) {
+  async listActive(pagination: PaginationParams, orgId: string) {
     const limit = Math.max(1, Math.min(200, pagination.limit ?? 50));
     const offset = Math.max(0, pagination.offset ?? 0);
+    const activeInOrg = and(eq(items.status, 'active'), eq(items.organizationId, orgId));
     const [rows, totalResult] = await Promise.all([
-      db.select().from(items).where(eq(items.status, 'active')).orderBy(asc(items.name)).limit(limit).offset(offset),
-      db.select({ count: sql<number>`count(*)::int` }).from(items).where(eq(items.status, 'active')),
+      db.select().from(items).where(activeInOrg).orderBy(asc(items.name)).limit(limit).offset(offset),
+      db.select({ count: sql<number>`count(*)::int` }).from(items).where(activeInOrg),
     ]);
     return {
       rows,

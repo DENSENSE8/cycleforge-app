@@ -49,25 +49,32 @@ export function BootSplash({ label = 'Loading your workspace' }: { label?: strin
         role="status"
         aria-live="polite"
       >
-        {/* brand mark, LOADING state: the hammer strikes 12→3 while the
-            status light burns amber (working). The tab favicon is the DONE
-            state of the same system — green light. Geometry mirrors
-            public/brand/loading-mark.svg (single source: docs/brand/icon.md);
+        {/* brand mark, LOADING state ("The Iron", Revision 3 —
+            docs/brand/decision-strike-the-flow.md): the soldering iron
+            sweeps its pass 12→3 to the flow node; the joint heats AMBER
+            while working — the only color on the splash (color = state).
+            The tab favicon is the DONE state: schematic white.
+            Geometry mirrors public/brand/loading-mark.svg, derived from
+            #cf-loading in public/brand/icon.master.svg via `pnpm icon:sync`;
             colors are brand DATA, not theme tokens, so the mark never shifts
             with data-theme. Animation is the CSS keyframes loop below. */}
         <div className="relative flex h-16 w-16 items-center justify-center">
           <svg viewBox="0 0 512 512" className="h-16 w-16" aria-hidden>
-            <rect width="512" height="512" rx="118" fill="#2563eb" />
-            <circle cx="256" cy="256" r="150" fill="none" stroke="#ffffff" strokeWidth="44" />
+            <rect width="512" height="512" rx="118" fill="#0A0A0B" />
             <g className="cf-boot-strike" transform="rotate(45 256 256)">
-              <g fill="#ea580c" stroke="#2563eb" strokeWidth="14" strokeLinejoin="round">
-                <rect x="236" y="150" width="40" height="118" rx="20" />
-                <rect x="170" y="90" width="172" height="108" rx="28" />
+              <g fill="#ffffff" stroke="#0A0A0B" strokeWidth="10" strokeLinejoin="round">
+                <rect x="240" y="60" width="32" height="24" rx="8" />
+                <rect x="222" y="84" width="68" height="104" rx="16" />
+                <rect x="222" y="112" width="68" height="8" fill="#0A0A0B" />
+                <path d="M232 188 h48 l20 18 -20 18 h-48 l-20 -18 z" />
+                <rect x="243" y="224" width="26" height="44" />
+                <path d="M243 268 h26 l6 46 h-38 z" />
               </g>
-              <rect x="170" y="90" width="34" height="108" rx="14" fill="#f97316" />
-              <circle cx="256" cy="144" r="32" fill="#ffffff" />
-              <circle cx="256" cy="144" r="26" fill="#fbbf24" />
             </g>
+            <path d="M400 326 V396" stroke="#ffffff" strokeWidth="24" strokeLinecap="round" />
+            <path d="M438 262 L486 300" stroke="#ffffff" strokeWidth="24" strokeLinecap="round" />
+            <circle cx="400" cy="256" r="60" fill="none" stroke="#ffffff" strokeWidth="24" />
+            <circle cx="400" cy="256" r="26" fill="#FBBF24" />
           </svg>
         </div>
 

@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 import {
   APP_SIDEBAR_NAV,
   filterPageChildren,
@@ -15,7 +16,7 @@ import { applyOrgNavToPage } from '@/lib/nav/org-nav';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
 import { useAuth } from '@/contexts/AuthContext';
 import { prefetchNavData } from '@/lib/nav/nav-data-prefetch';
-import { hydrateSpineSlots } from '@/lib/nav/spine-slots';
+import { migrateSpineSlots } from '@/lib/nav/spine-slots';
 import { useActiveSidebarChild } from './useActiveSidebarChild';
 import { useSidebarChildNav } from './useSidebarChildNav';
 import { PinHotkeysListener } from '@/components/layout/PinHotkeysListener';
@@ -49,7 +50,7 @@ export function MasterNav({
 }) {
   const { pageId, childId } = useActiveSidebarChild();
   const navigate = useSidebarChildNav();
-  const { prefs } = useStaffPreferences();
+  const { prefs, update } = useStaffPreferences();
   const definition = useOrgNavDefinition();
 
   const { user } = useAuth();
@@ -68,10 +69,21 @@ export function MasterNav({
     [navItems, permissions, definition],
   );
 
-  const spineOrder = useMemo(
-    () => hydrateSpineSlots(prefs?.spineSlots, navItems),
-    [prefs?.spineSlots, navItems],
+  // Rolling a new DEFAULT order onto an operator who already arranged their
+  // spine: float the new lead row to the front of THEIR order, keep everything
+  // else where they put it, and stamp the generation so it happens exactly
+  // once — drag Automations back down and it stays down.
+  const migration = useMemo(
+    () => migrateSpineSlots(prefs?.spineSlots, navItems, prefs?.spineSlotsVersion),
+    [prefs?.spineSlots, prefs?.spineSlotsVersion, navItems],
   );
+  const spineOrder = migration.slots;
+  const stampedRef = useRef(false);
+  useEffect(() => {
+    if (!migration.stamp || stampedRef.current) return;
+    stampedRef.current = true;
+    update(migration.stamp);
+  }, [migration.stamp, update]);
 
   const activePage = useMemo<SidebarPageNav>(() => {
     const found = pages.find((p) => p.id === pageId);
@@ -91,6 +103,19 @@ export function MasterNav({
     [navigate, onNavigate],
   );
 
+  // Opening a specific session is ONE navigation. It used to call
+  // `onNavigate('home')` (routing to bare `/`) and then push
+  // `/?session=<id>` — two pushes, two renders, a history entry on `/` the
+  // operator never asked for. Here the drawer closes and the URL lands once.
+  const router = useRouter();
+  const handleOpenHref = useCallback(
+    (href: string) => {
+      router.push(href);
+      onNavigate?.();
+    },
+    [router, onNavigate],
+  );
+
   const queryClient = useQueryClient();
   const handleRowHover = useCallback(
     (page: SidebarPageNav) => prefetchNavData(page.href, queryClient),
@@ -107,6 +132,7 @@ export function MasterNav({
         activeChildId={childId}
         otherPages={pages}
         onNavigate={handleNavigate}
+        onOpenHref={handleOpenHref}
         onRowHover={handleRowHover}
         spineOrder={spineOrder}
         className={className}

@@ -45,7 +45,7 @@ async function runTrackingOps(
   req: NextRequest,
   id: number,
   ctx: NonNullable<Awaited<ReturnType<typeof requireRoutePerm>>['ctx']>,
-  ops: Omit<ApplyOrderTrackingOps, 'orderIds'>,
+  ops: Omit<ApplyOrderTrackingOps, 'orderIds' | 'organizationId'>,
 ): Promise<NextResponse> {
   const before = await getOrderById(id, ctx.organizationId);
   if (!before) {

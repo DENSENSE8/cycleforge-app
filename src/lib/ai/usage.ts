@@ -9,6 +9,8 @@
  */
 
 import pool from '@/lib/db';
+import type { PoolClient } from 'pg';
+import { withTenantConnection } from '@/lib/tenancy/db';
 import { estimateCostMicrocents } from '@/lib/ai/model-pricing';
 import { getOrganization } from '@/lib/tenancy/organizations';
 import type { OrgId } from '@/lib/tenancy/constants';
@@ -86,26 +88,47 @@ export interface AiUsageSummaryRow {
   unknownRateCalls: number;
 }
 
+/** Raw pg row for the usage rollup; bigint sums arrive as strings. */
+interface AiUsageRawRow {
+  capability: string;
+  provider: string;
+  model: string;
+  context: string;
+  calls: number;
+  input_tokens: string | number;
+  output_tokens: string | number;
+  cost_microcents: string | number;
+  unknown_rate_calls: number;
+}
+
 /** Month-to-date (or windowed) per-model rollup for the settings breakdown. */
 export async function summarizeAiUsage(
   orgId: OrgId,
   sinceDays = 30,
+  client?: PoolClient,
 ): Promise<AiUsageSummaryRow[]> {
-  const res = await pool.query(
-    `SELECT capability, provider, model, context,
-            COUNT(*)::int                            AS calls,
-            COALESCE(SUM(input_tokens), 0)::bigint   AS input_tokens,
-            COALESCE(SUM(output_tokens), 0)::bigint  AS output_tokens,
-            COALESCE(SUM(cost_microcents), 0)::bigint AS cost_microcents,
-            COUNT(*) FILTER (WHERE cost_microcents IS NULL)::int AS unknown_rate_calls
-     FROM ai_usage_events
-     WHERE organization_id = $1
-       AND created_at >= now() - ($2::int * INTERVAL '1 day')
-     GROUP BY capability, provider, model, context
-     ORDER BY cost_microcents DESC NULLS LAST, calls DESC`,
-    [orgId, sinceDays],
-  );
-  return res.rows.map((r: any) => ({
+  // The same query value must serve both branches (direct client vs the
+  // withTenantConnection callback), so it lives in one place.
+  const query = (c: PoolClient) =>
+    c.query<AiUsageRawRow>(
+      `SELECT capability, provider, model, context,
+              COUNT(*)::int                            AS calls,
+              COALESCE(SUM(input_tokens), 0)::bigint   AS input_tokens,
+              COALESCE(SUM(output_tokens), 0)::bigint  AS output_tokens,
+              COALESCE(SUM(cost_microcents), 0)::bigint AS cost_microcents,
+              COUNT(*) FILTER (WHERE cost_microcents IS NULL)::int AS unknown_rate_calls
+       FROM ai_usage_events
+       WHERE organization_id = $1
+         AND created_at >= now() - ($2::int * INTERVAL '1 day')
+       GROUP BY capability, provider, model, context
+       ORDER BY cost_microcents DESC NULLS LAST, calls DESC`,
+      [orgId, sinceDays],
+    );
+  // Tenant-scoped: a caller-provided GUC-bearing client joins its transaction;
+  // otherwise the rollup runs inside its own app.current_org scope. The
+  // organization_id conjunct stays as defense-in-depth.
+  const res = await (client ? query(client) : withTenantConnection(orgId, query));
+  return res.rows.map((r) => ({
     capability: String(r.capability),
     provider: String(r.provider),
     model: String(r.model),
