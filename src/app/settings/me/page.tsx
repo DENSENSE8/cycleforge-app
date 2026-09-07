@@ -95,11 +95,17 @@ export default function PersonalSettingsPage() {
 
   const scrollTo = useCallback((id: string) => {
     setActive(id);
-    sectionRefs.current[id]?.scrollIntoView({
+    // Scroll THIS container, not scrollIntoView: the generic form also scrolls
+    // every other scrollable ancestor (window, sidebar) and compromises, which
+    // stopped short of the target on the deep sections.
+    const container = scrollRef.current;
+    const el = sectionRefs.current[id];
+    if (!container || !el) return;
+    container.scrollTo({
+      top: container.scrollTop + (el.getBoundingClientRect().top - container.getBoundingClientRect().top) - 72,
       behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
         ? 'auto'
         : 'smooth',
-      block: 'start',
     });
   }, []);
 
