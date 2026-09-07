@@ -2,23 +2,23 @@
 
 /**
  * `/settings/me` — the Personal settings as ONE scroll page with a sticky
- * anchor-pill strip (2026-09-06 rail removal). Hardware · Workstation · Quick
- * Access · Appearance · Keyboard · Receiving · Security · About · Legal are
- * tuned together, so they render stacked with scroll-spy pills; each section
- * keeps its `#<id>` anchor for deep links (`/settings?section=appearance`
- * redirects here with the fragment).
+ * anchor-pill strip (2026-09-06 rail removal; simplified same-day after the
+ * Impeccable audit). Hardware · Workstation · Quick Access · Appearance ·
+ * Keyboard · Receiving · Security · About · Legal are tuned together, so they
+ * render stacked with scroll-spy pills; each section keeps its `#<id>` anchor
+ * for deep links (`/settings?section=appearance` redirects here).
  *
- * Pills are navigation, not chrome: clicking scrolls smoothly; the active pill
- * follows the section in view (IntersectionObserver). The strip is sticky under
- * the page top so it survives the whole scroll.
+ * Scroll-spy computes from scroll position (last section whose top passes the
+ * sticky band), not IntersectionObserver — the IO band raced `scroll-mt` and
+ * reported the section ABOVE the target after anchor jumps (audit P1 #1).
+ * Clicking a pill sets `active` synchronously and honors
+ * `prefers-reduced-motion` for the scroll behavior.
  */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { ChevronLeft } from '@/components/Icons';
-import {
-  HardwareSection,
-} from '@/components/settings/sections/HardwareSection';
+import { HardwareSection } from '@/components/settings/sections/HardwareSection';
 import { WorkstationSection } from '@/components/settings/sections/WorkstationSection';
 import { QuickAccessSection } from '@/components/settings/sections/QuickAccessSection';
 import { AppearanceSection } from '@/components/settings/sections/AppearanceSection';
@@ -50,80 +50,96 @@ const ME_BODIES: Record<string, () => React.ReactNode> = {
   legal: () => <LegalSection />,
 };
 
+/** Distance from viewport top to the section-identity line: the sticky band
+ * (~80px) plus breathing room. Kept in one place so the spy and the CSS
+ * `scroll-mt` agree. */
+const BAND_OFFSET_PX = 112;
+
 export default function PersonalSettingsPage() {
   const sections = useMemo(
     () => SETTINGS_SECTION_OPTIONS.filter((s) => s.group === 'Personal' && ME_BODIES[s.id]),
     [],
   );
+  // Scroll-spy: the active section is the LAST one whose top has passed the
+  // band line. The scroll container is this page's own body column (not the
+  // window), so the listener and the geometry both target it.
+  const scrollRef = useRef<HTMLElement | null>(null);
   const [active, setActive] = useState<string>(sections[0]?.id ?? 'hardware');
-  const observerRef = useRef<IntersectionObserver | null>(null);
-
+  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
   useEffect(() => {
-    observerRef.current = new IntersectionObserver(
-      (entries) => {
-        // The topmost section intersecting the band wins.
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-        if (visible[0]?.target.id) setActive(visible[0].target.id);
-      },
-      { rootMargin: '-96px 0px -60% 0px', threshold: 0 },
-    );
-    for (const s of sections) {
-      const el = document.getElementById(s.id);
-      if (el) observerRef.current.observe(el);
-    }
-    return () => observerRef.current?.disconnect();
+    const container = scrollRef.current;
+    if (!container) return;
+    const onScroll = () => {
+      const containerTop = container.getBoundingClientRect().top;
+      const line = BAND_OFFSET_PX;
+      let current = sections[0]?.id ?? 'hardware';
+      for (const s of sections) {
+        const el = sectionRefs.current[s.id];
+        if (el && el.getBoundingClientRect().top - containerTop <= line) current = s.id;
+      }
+      setActive(current);
+    };
+    onScroll();
+    container.addEventListener('scroll', onScroll, { passive: true });
+    return () => container.removeEventListener('scroll', onScroll);
   }, [sections]);
+
+  const scrollTo = useCallback((id: string) => {
+    setActive(id);
+    sectionRefs.current[id]?.scrollIntoView({
+      behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'auto'
+        : 'smooth',
+      block: 'start',
+    });
+  }, []);
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-surface-canvas">
-      {/* Sticky band: back door + anchor pills. */}
+      {/* Sticky band: back door + title + anchor pills in ONE row. */}
       <div
         className={cn(
-          'sticky top-0 z-sticky flex flex-col gap-2 border-b border-border-soft px-6 py-3',
+          'sticky top-0 z-sticky flex items-center gap-3 overflow-x-auto border-b border-border-soft px-6 py-2.5',
           appChromeMutedClass,
         )}
       >
-        <div className="flex items-center gap-3">
-          <Link
-            href="/settings"
-            className="inline-flex items-center gap-1 text-role-caption font-semibold text-text-muted hover:text-text-default"
-          >
-            <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
-            Settings
-          </Link>
-          <span className="text-role-caption text-text-faint" aria-hidden>·</span>
-          <h1 className="text-role-body font-semibold text-text-default">Your setup</h1>
-        </div>
-        <nav aria-label="Your setup sections" className="flex gap-1.5 overflow-x-auto pb-0.5">
+        <Link
+          href="/settings"
+          className="inline-flex shrink-0 items-center gap-1 text-role-caption font-semibold text-text-muted hover:text-text-default"
+        >
+          <ChevronLeft className="h-3.5 w-3.5" aria-hidden />
+          Settings
+        </Link>
+        <h1 className="shrink-0 text-role-body font-semibold text-text-default">Your setup</h1>
+        <span className="h-4 w-px shrink-0 bg-border-soft" aria-hidden />
+        <nav aria-label="Your setup sections" className="flex gap-1.5">
           {sections.map((s) => (
-            <a
+            <button
               key={s.id}
-              href={`#${s.id}`}
-              onClick={(e) => {
-                e.preventDefault();
-                document.getElementById(s.id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }}
+              type="button"
+              onClick={() => scrollTo(s.id)}
               aria-current={active === s.id ? 'true' : undefined}
               className={cn(
                 'shrink-0 rounded-full px-3 py-1 text-role-caption font-semibold transition-colors',
                 active === s.id
-                  ? 'bg-surface-inverse text-white'
+                  ? 'bg-surface-inverse text-inverse'
                   : 'bg-surface-sunken text-text-muted hover:text-text-default',
               )}
             >
               {s.label}
-            </a>
+            </button>
           ))}
         </nav>
       </div>
 
-      <main className="flex-1 overflow-y-auto">
+      <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
         {sections.map((s) => (
           <section
             key={s.id}
             id={s.id}
+            ref={(el) => {
+              sectionRefs.current[s.id] = el;
+            }}
             className="mx-auto max-w-3xl scroll-mt-28 px-6 py-8"
           >
             <h2 className="mb-4 text-role-eyebrow uppercase tracking-[0.18em] text-text-faint">
@@ -132,7 +148,7 @@ export default function PersonalSettingsPage() {
             {ME_BODIES[s.id]()}
           </section>
         ))}
-      </main>
+      </div>
     </div>
   );
 }

@@ -1,15 +1,17 @@
 'use client';
 
 /**
- * `/settings` landing — grouped card grid (2026-09-06 rail removal). The
- * Personal sections collapse into one "Your setup" card linking the
- * `/settings/me` scroll page; the org sections group into category clusters in
- * the same visual language as the `/apps` marketplace listing (eyebrow header +
- * two-column card grid). Permission gating is the registry's `requires`.
+ * `/settings` landing — grouped card grid (2026-09-06 rail removal; simplified
+ * same-day after the Impeccable critique). The Personal sections collapse into
+ * one "Your setup" card linking the `/settings/me` scroll page; the org
+ * sections group into category clusters in the same visual language as the
+ * `/apps` marketplace listing (eyebrow header + two-column card grid).
+ * Permission gating is the registry's `requires`.
  *
- * What this replaces: the SettingsSidebar context rail — on a surface that
- * already sits beside the app spine, a second vertical rail was double-sidebar
- * chrome. Cards carry the same label/description data the rail did.
+ * Simplifications applied: one line of copy on the Your-setup card (it used to
+ * list all nine sections twice), categories with a single section render
+ * headerless (a wrapper heading that adds no choice is scan cost), and the
+ * card-link class is exported once for other surfaces (SuppliersPane rows).
  */
 
 import Link from 'next/link';
@@ -27,11 +29,19 @@ const CATEGORY_ORDER: SettingsCategory[] = [
   'workspace', 'apps', 'people', 'data', 'devices', 'developer',
 ];
 
-export function SettingsLanding() {
-  const { has, isLoaded, user } = useAuth();
+/** One card-link idiom for settings-family surfaces (landing cards, supplier
+ * rows): soft border, card fill, hover lift. */
+export const SETTINGS_CARD_LINK_CLASS = cn(
+  'block rounded-2xl border border-border-soft bg-surface-card p-4',
+  'transition-colors hover:border-border-default hover:bg-surface-hover',
+);
 
-  const personal = useMemo(
-    () => SETTINGS_SECTION_OPTIONS.filter((s) => s.group === 'Personal'),
+export function SettingsLanding() {
+  const { has, isLoaded } = useAuth();
+
+  const personalLabels = useMemo(
+    () =>
+      SETTINGS_SECTION_OPTIONS.filter((s) => s.group === 'Personal').map((s) => s.label),
     [],
   );
 
@@ -60,32 +70,30 @@ export function SettingsLanding() {
         <h2 className="text-role-caption font-semibold uppercase tracking-[0.18em] text-text-faint">
           Your setup
         </h2>
-        <Link
-          href="/settings/me"
-          className="block rounded-2xl border border-border-soft bg-surface-card p-5 transition-colors hover:border-border-default hover:bg-surface-hover"
-        >
-          <div className="flex items-baseline justify-between gap-3">
-            <p className="text-role-body font-semibold text-text-default">
-              Hardware · Workstation · Appearance · Keyboard · Security…
-            </p>
-            <span className="shrink-0 text-role-caption font-semibold text-text-info">Open →</span>
-          </div>
+        <Link href="/settings/me" className={SETTINGS_CARD_LINK_CLASS}>
+          <p className="text-role-body font-semibold text-text-default">
+            {personalLabels.join(' · ')}
+          </p>
           <p className="mt-1 text-role-data text-text-soft">
-            {personal.map((s) => s.label).join(' · ')}
+            Tuned together on one page — open to adjust yours.
           </p>
         </Link>
       </section>
 
       {CATEGORY_ORDER.map((category) => {
-        const sections = visibleOrg.filter(
-          (s) => SETTINGS_SECTION_CATEGORY[s.id as keyof typeof SETTINGS_SECTION_CATEGORY] === category,
-        );
+        const sections = visibleOrg.filter((s) => SETTINGS_SECTION_CATEGORY[s.id] === category);
         if (sections.length === 0) return null;
-        return (
-          <section key={category} className="space-y-3">
+        // A single-section category renders headerless: the card's own label
+        // already says what the header would.
+        const header =
+          sections.length > 1 ? (
             <h2 className="text-role-caption font-semibold uppercase tracking-[0.18em] text-text-faint">
               {SETTINGS_CATEGORY_LABELS[category]}
             </h2>
+          ) : null;
+        return (
+          <section key={category} className={cn('space-y-3', !header && 'space-y-0')}>
+            {header}
             <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
               {sections.map((s) => {
                 const Icon = s.icon;
@@ -93,10 +101,7 @@ export function SettingsLanding() {
                   <Link
                     key={s.id}
                     href={s.href ?? `/settings/${s.id}`}
-                    className={cn(
-                      'flex items-start gap-3 rounded-2xl border border-border-soft bg-surface-card p-4',
-                      'transition-colors hover:border-border-default hover:bg-surface-hover',
-                    )}
+                    className={cn(SETTINGS_CARD_LINK_CLASS, 'flex items-start gap-3')}
                   >
                     <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-surface-sunken text-text-muted">
                       <Icon className="h-4 w-4" />
@@ -116,10 +121,6 @@ export function SettingsLanding() {
           </section>
         );
       })}
-
-      {!isLoaded || user ? null : (
-        <p className="text-role-caption text-text-faint">Sign in to see workspace sections.</p>
-      )}
     </div>
   );
 }

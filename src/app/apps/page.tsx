@@ -76,6 +76,7 @@ export default async function IntegrationsPage({
   const ebayOauthError =
     typeof sp.ebay_oauth_error === 'string' ? sp.ebay_oauth_error : undefined;
   const grokDevice = sp.grok_device === '1';
+  const connectedOnly = sp.filter === 'connected';
   const grokUserCode = typeof sp.user_code === 'string' ? sp.user_code : '';
   const grokVerificationUri = typeof sp.verification_uri === 'string' ? sp.verification_uri : '';
   const nangoReady = isNangoConfigured();
@@ -167,12 +168,15 @@ export default async function IntegrationsPage({
     };
   };
 
-  const connectedCount = PROVIDER_CATALOG.filter((p) => buildState(p).status === 'connected').length;
+  // State per provider, computed ONCE (the render map and the count read it).
+  const states = new Map(PROVIDER_CATALOG.map((p) => [p.key, buildState(p)]));
+  const connectedCount = PROVIDER_CATALOG.filter((p) => states.get(p.key)?.status === 'connected').length;
 
   return (
     <div className="flex h-full min-h-0 flex-col bg-surface-canvas antialiased">
-      <PageHeader eyebrow="Settings" value="Integrations" maxWidth="5xl" />
-      <main className="min-h-0 flex-1 overflow-y-auto">
+      <PageHeader eyebrow="Apps" value="Marketplace" maxWidth="5xl" rightSlot={null} />
+      <h1 className="sr-only">Apps</h1>
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-5xl space-y-6 px-6 py-6">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-role-data text-text-soft">
@@ -196,9 +200,17 @@ export default async function IntegrationsPage({
                 {limit.used} / {limit.max} integrations{limit.atLimit ? ' · upgrade to add more' : ''}
               </span>
             )}
-            <span className="rounded-full bg-surface-sunken px-2.5 py-1 text-role-caption font-semibold text-text-muted">
-              {connectedCount} / {PROVIDER_CATALOG.length} connected
-            </span>
+            <Link
+              href={connectedOnly ? '/apps' : '/apps?filter=connected'}
+              aria-pressed={connectedOnly}
+              className={`rounded-full px-2.5 py-1 text-role-caption font-semibold transition-colors ${
+                connectedOnly
+                  ? 'bg-surface-inverse text-inverse'
+                  : 'bg-surface-sunken text-text-muted hover:text-text-default'
+              }`}
+            >
+              {connectedCount} / {PROVIDER_CATALOG.length} connected{connectedOnly ? ' · showing only these' : ''}
+            </Link>
           </div>
         </div>
 
@@ -211,14 +223,15 @@ export default async function IntegrationsPage({
         )}
 
         {INTEGRATION_CATEGORIES.map((category) => {
-          const providers = PROVIDER_CATALOG.filter((p) => p.category === category);
+          let providers = PROVIDER_CATALOG.filter((p) => p.category === category);
+          if (connectedOnly) providers = providers.filter((p) => states.get(p.key)?.status === 'connected');
           if (providers.length === 0) return null;
           return (
             <section key={category} className="space-y-3">
               <h2 className="text-role-caption font-semibold uppercase tracking-[0.18em] text-text-faint">{category}</h2>
               <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
                 {providers.map((def) => {
-                  const state = buildState(def);
+                  const state = states.get(def.key)!;
                   const connector = getConnector(def.key);
                   return (
                     <IntegrationCard
@@ -243,7 +256,7 @@ export default async function IntegrationsPage({
           </Panel>
         </section>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

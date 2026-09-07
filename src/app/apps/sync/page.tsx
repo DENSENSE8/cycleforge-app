@@ -2,6 +2,7 @@
 
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { PageHeader } from '@/components/ui/pane-header';
 import { ConnectionsSidebarPanel } from '@/components/sidebar/ConnectionsSidebarPanel';
 import { ZohoManagementPage } from '@/components/admin/connections/ZohoManagementPage';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
@@ -31,7 +32,9 @@ function AppsSyncBody() {
 export default function AppsSyncPage() {
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-surface-canvas">
-      <main className="min-h-0 flex-1 overflow-hidden">
+      <PageHeader eyebrow="Apps" value="Sync tools" backHref="/apps" maxWidth="2xl" />
+      <h1 className="sr-only">Sync tools</h1>
+      <div className="min-h-0 flex-1 overflow-hidden">
         <Suspense
           fallback={
             <div className="flex h-full w-full items-center justify-center bg-surface-canvas">
@@ -41,7 +44,7 @@ export default function AppsSyncPage() {
         >
           <AppsSyncBody />
         </Suspense>
-      </main>
+      </div>
     </div>
   );
 }

@@ -1,45 +1,37 @@
 import { redirect } from 'next/navigation';
 import { SettingsLanding } from '@/components/settings/SettingsLanding';
+import {
+  SETTINGS_SECTION_OPTIONS,
+  settingsSectionRoute,
+} from '@/components/settings/settings-sections';
 
 /**
  * `/settings` — the landing (2026-09-06 rail removal): a grouped card grid in
  * the /apps visual language. Personal sections collapse into the "Your setup"
  * card → `/settings/me` (one scroll page with anchor pills); org sections group
- * into Workspace / Apps / Access & People / Data & catalogs / Devices /
- * Developer clusters, permission-gated per row.
+ * into category clusters, permission-gated per row.
  *
- * `?section=<id>` (the old inline-tab addressing, and last session's interim
- * route-redirect layer) still resolves — personal sections land on their
- * `/settings/me#<anchor>`, org sections on their routes.
+ * `?section=<id>` (the old inline-tab addressing) still resolves — DERIVED
+ * from the registry (personal → `/settings/me#<anchor>`, org → its route) plus
+ * the legacy spellings the registry cannot express. An unknown section value
+ * cleans the URL with a redirect to bare `/settings` rather than lingering in
+ * the address bar.
  */
-const SECTION_ROUTES: Record<string, string> = {
-  hardware: '/settings/me#hardware',
-  workstation: '/settings/me#workstation',
-  'quick-access': '/settings/me#quick-access',
-  appearance: '/settings/me#appearance',
-  keyboard: '/settings/me#keyboard',
-  receiving: '/settings/me#receiving',
-  security: '/settings/me#security',
-  about: '/settings/me#about',
-  legal: '/settings/me#legal',
-  organization: '/settings/organization',
-  billing: '/settings/billing',
-  integrations: '/apps',
-  ai: '/settings/ai',
-  catalog: '/settings/catalog',
-  stations: '/settings/stations',
-  photos: '/settings/photos',
-  'repair-issues': '/settings/repair-issues',
-  team: '/settings/staff',
-  staff: '/settings/staff',
-  roles: '/settings/roles',
-  access: '/settings/access',
-  sessions: '/settings/sessions',
-  devices: '/settings/devices',
-  audit: '/settings/audit',
-  qa: '/settings/qa',
+const LEGACY_SECTION_ALIASES: Record<string, string> = {
+  staff: 'team',
   'operations-log': '/operations?mode=logs',
 };
+
+function sectionRoute(id: string): string | null {
+  const legacy = LEGACY_SECTION_ALIASES[id];
+  if (legacy) return legacy.startsWith('/') ? legacy : sectionRoute(legacy);
+  const known = SETTINGS_SECTION_OPTIONS.some((s) => s.id === id);
+  if (!known) return null;
+  const def = SETTINGS_SECTION_OPTIONS.find((s) => s.id === id)!;
+  return def.group === 'Personal'
+    ? `/settings/me#${def.id}`
+    : settingsSectionRoute(def.id);
+}
 
 export default async function SettingsPage({
   searchParams,
@@ -50,14 +42,14 @@ export default async function SettingsPage({
   const section = String(Array.isArray(raw.section) ? raw.section[0] : raw.section || '')
     .trim()
     .toLowerCase();
-  if (section && SECTION_ROUTES[section]) {
-    redirect(SECTION_ROUTES[section]);
+  if (section) {
+    redirect(sectionRoute(section) ?? '/settings');
   }
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-surface-canvas">
-      <main className="flex-1 overflow-y-auto">
+      <div className="min-h-0 flex-1 overflow-y-auto">
         <SettingsLanding />
-      </main>
+      </div>
     </div>
   );
 }

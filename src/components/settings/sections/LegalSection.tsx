@@ -1,44 +1,37 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import MarkdownRenderer from '@/components/ai/MarkdownRenderer';
-import { Button, Panel } from '@/design-system/primitives';
 import { LEGAL_DOCS, LEGAL_INDEX_BLURB, type LegalDoc } from '@/content/legal';
+import { Button } from '@/design-system/primitives';
+import { ExternalLinkActionIcon } from '@/design-system/components/ExternalLinkActionIcon';
 
 /**
  * Settings → Legal & Policies.
  *
- * Read-only viewer for the CycleForge legal baseline (Terms of Service, Privacy
- * Policy, Data Processing Agreement). The documents are the SAME ones published
- * on the marketing site at cycleforge.com/legal; the markdown source lives in
- * src/content/legal/*.json. They are working drafts pending counsel review, so
- * we surface a persistent disclaimer banner above the body.
+ * LINK ROWS, not an inline corpus (Impeccable audit + design review,
+ * 2026-09-06): the full ToS/Privacy/DPA markdown was ~60% of /settings/me's
+ * 23,100px scroll and buried operator controls under bench-irrelevant text.
+ * The authoritative copies live at cycleforge.com/legal; each row links out
+ * and offers the markdown download. The page-level section eyebrow supplies
+ * the heading (no duplicate h2 here).
  */
+const LEGAL_SITE_BASE = 'https://cycleforge.com/legal';
+
+function download(doc: LegalDoc) {
+  const blob = new Blob([doc.md], { type: 'text/markdown;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `cycleforge-${doc.slug}.md`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export function LegalSection() {
-  const [activeSlug, setActiveSlug] = useState<LegalDoc['slug']>(LEGAL_DOCS[0].slug);
-  const active = useMemo(
-    () => LEGAL_DOCS.find((d) => d.slug === activeSlug) ?? LEGAL_DOCS[0],
-    [activeSlug],
-  );
-
-  function download(doc: LegalDoc) {
-    const blob = new Blob([doc.md], { type: 'text/markdown;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `cycleforge-${doc.slug}.md`;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(url);
-  }
-
   return (
-    <div className="space-y-6">
-      <header className="space-y-1">
-        <h2 className="text-xl font-semibold text-text-default">Legal &amp; Policies</h2>
-        <p className="text-sm text-text-muted">{LEGAL_INDEX_BLURB}</p>
-      </header>
+    <div className="space-y-3">
+      <p className="text-sm text-text-muted">{LEGAL_INDEX_BLURB}</p>
 
       {/* Draft disclaimer — these are pre-counsel working drafts. */}
       <div className="rounded-xl border border-dashed border-border-warning bg-surface-warning px-4 py-3">
@@ -46,48 +39,38 @@ export function LegalSection() {
           Draft — pending legal review
         </p>
         <p className="mt-1 text-xs leading-5 text-text-warning">
-          These documents reflect CycleForge’s actual architecture and data practices but have not
-          yet been reviewed by a licensed attorney and are not legal advice. Bracketed placeholders
-          (e.g. <code className="rounded bg-surface-warning px-1 py-0.5 font-mono">[LEGAL ENTITY NAME]</code>)
-          must be completed before publication.
+          Working drafts, not legal advice; bracketed placeholders must be completed
+          before publication.
         </p>
       </div>
 
-      {/* Document switcher — Terms / Privacy / DPA. */}
-      <div className="flex flex-wrap items-center gap-2" role="tablist" aria-label="Legal documents">
-        {LEGAL_DOCS.map((doc) => {
-          const selected = doc.slug === activeSlug;
-          return (
-            <Button
-              key={doc.slug}
-              type="button"
-              role="tab"
-              aria-selected={selected}
-              variant={selected ? 'primary' : 'secondary'}
-              size="sm"
-              onClick={() => setActiveSlug(doc.slug)}
-              className="px-3 py-1.5 text-xs"
+      {LEGAL_DOCS.map((doc) => (
+        <div
+          key={doc.slug}
+          className="flex items-center gap-3 rounded-xl border border-border-soft bg-surface-card p-4"
+        >
+          <div className="min-w-0 flex-1">
+            <a
+              href={`${LEGAL_SITE_BASE}/${doc.slug}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-text-default hover:underline"
             >
               {doc.label}
-            </Button>
-          );
-        })}
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          onClick={() => download(active)}
-          className="ml-auto px-3 py-1.5 text-xs text-text-muted"
-        >
-          Download .md
-        </Button>
-      </div>
-
-      <Panel padding="lg">
-        <article className="legal-doc max-w-none">
-          <MarkdownRenderer content={active.md} />
-        </article>
-      </Panel>
+              <ExternalLinkActionIcon ariaLabel={`Open ${doc.label} on cycleforge.com`} />
+            </a>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => download(doc)}
+            className="shrink-0"
+          >
+            Download .md
+          </Button>
+        </div>
+      ))}
     </div>
   );
 }

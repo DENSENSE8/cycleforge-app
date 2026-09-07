@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react';
 import { motion } from '@/design-system/motion';
 import { RefreshCw } from '@/components/Icons';
-import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { framerTransition } from '@/design-system/foundations/motion-framer';
-import { sectionLabel, dataValue, fieldLabel } from '@/design-system/tokens/typography/presets';
+import { sectionLabel, dataValue } from '@/design-system/tokens/typography/presets';
+import { cn } from '@/utils/_cn';
 
 export function SidebarSection({
   title,
@@ -22,6 +22,7 @@ export function SidebarSection({
       <button
         type="button"
         onClick={onToggle}
+        aria-expanded={expanded}
         className="ds-raw-button flex w-full items-center justify-between border-b border-border-soft px-0 py-0 text-left hover:bg-surface-hover"
       >
         <span className={`px-4 py-3 ${sectionLabel}`}>{title}</span>
@@ -55,52 +56,58 @@ export function LineItem({
     <div className="flex items-stretch justify-between gap-3 border-b border-border-soft bg-surface-card">
       <div className="min-w-0 px-4 py-3">
         <p className={dataValue}>{label}</p>
-        {detail ? <p className={`mt-0.5 ${fieldLabel} leading-relaxed text-text-soft`}>{detail}</p> : null}
+        {detail ? (
+          <p className="mt-0.5 text-role-caption leading-relaxed text-text-soft">{detail}</p>
+        ) : null}
       </div>
       <div className="flex shrink-0 items-stretch gap-0">{right}</div>
     </div>
   );
 }
 
+/**
+ * Action cell. Promoted from the 48px sidebar rail to a full page
+ * (admin dissolution W3c), so it finally has room for WORDS: a labeled button
+ * (glance-verified, not a two-letter glyph) with the tone tokens — the raw
+ * blue/green/indigo palette it grew up with retired with the rail.
+ */
 export function ActionButton({
   onClick,
   loading,
   title,
+  label,
   tone = 'default',
   disabled,
 }: {
   onClick: () => void;
   loading?: boolean;
   title: string;
-  tone?: 'default' | 'blue' | 'green' | 'indigo';
+  /** Visible button text; falls back to the title. */
+  label?: string;
+  tone?: 'default' | 'info' | 'success';
   disabled?: boolean;
 }) {
-  const bgToneClass =
-    tone === 'blue'
-      ? 'border-blue-300 bg-blue-50'
-      : tone === 'green'
-        ? 'border-green-300 bg-green-50'
-        : tone === 'indigo'
-          ? 'border-indigo-300 bg-indigo-50'
-          : 'border-border-soft bg-surface-card hover:bg-surface-sunken';
-  const iconToneClass =
-    tone === 'blue'
-      ? 'text-blue-700'
-      : tone === 'green'
-        ? 'text-green-700'
-        : tone === 'indigo'
-          ? 'text-indigo-700'
-          : 'text-text-muted';
+  const toneClass =
+    tone === 'info'
+      ? 'border-l border-border-info bg-surface-info text-text-info hover:bg-surface-hover'
+      : tone === 'success'
+        ? 'border-l border-border-success bg-surface-success text-text-success hover:bg-surface-hover'
+        : 'border-l border-border-soft bg-surface-card text-text-default hover:bg-surface-sunken';
 
   return (
     <HoverTooltip label={title} focusable={false} asChild>
-      <IconButton
-        ariaLabel={title}
+      <button
+        type="button"
         onClick={onClick}
         disabled={disabled || loading}
-        className={`inline-flex h-full w-12 items-center justify-center border-l transition-colors disabled:opacity-50 ${bgToneClass}`}
-        icon={<RefreshCw className={`h-3.5 w-3.5 ${iconToneClass} ${loading ? 'animate-spin' : ''}`} />}
-      />
+        className={cn(
+          'ds-raw-button inline-flex h-full items-center gap-1.5 px-3 text-role-caption font-semibold transition-colors disabled:opacity-50',
+          toneClass,
+        )}
+      >
+        <RefreshCw className={cn('h-3.5 w-3.5 shrink-0', loading && 'animate-spin')} aria-hidden />
+        {label ?? title}
+      </button>
     </HoverTooltip>
   );
 }

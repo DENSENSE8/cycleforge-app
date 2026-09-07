@@ -33,10 +33,11 @@ const ROLES: { value: WorkstationRole; label: string }[] = [
   { value: 'admin', label: 'Admin' },
 ];
 
-const FIELD_CLS =
-  'w-full rounded-xl border border-border-default bg-surface-card px-3 py-2 text-sm text-text-default ' +
-  cn('placeholder:text-text-faint', focusRing('field', 'accent')) +
-  focusRing('field', 'accent');
+const FIELD_CLS = cn(
+  'w-full rounded-xl border border-border-default bg-surface-card px-3 py-2 text-sm text-text-default',
+  'placeholder:text-text-faint',
+  focusRing('field', 'accent'),
+);
 
 const DEVICE_ACTION_CLS = cn(
   'ds-raw-button inline-flex w-full items-center gap-2 rounded-xl border border-border-soft bg-surface-card px-4 py-2 text-left text-xs font-semibold text-text-default hover:bg-surface-canvas',

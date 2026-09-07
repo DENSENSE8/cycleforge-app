@@ -169,7 +169,7 @@ export function SecuritySection() {
   return (
     <section className="space-y-8">
       <header>
-        <h1 className="sr-only">Security</h1>
+        <h2 className="sr-only">Security</h2>
         <p className="text-sm text-text-soft">Manage your password, PIN, and passkeys.</p>
       </header>
 
