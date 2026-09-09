@@ -30,7 +30,7 @@ const VIEW: CompoundRowView = {
   stateLabel: 'PENDING',
   stateTone: 'neutral',
   delay: null,
-  amount: '$10.00',
+  amount: null,
 };
 
 const paint = (key: string) =>
@@ -63,6 +63,12 @@ describe('the compound gutters are flush', () => {
     });
   }
 
+  it('select face sits at the top of the row cell', () => {
+    const html = paint('select');
+    assert.match(html, /items-start justify-center/);
+    assert.match(html, /\bpt-1\b/);
+  });
+
   for (const key of ['fulfillment', 'item', 'state']) {
     it(`${key} KEEPS its inset — flush is for the gutters only`, () => {
       // Text that touches the column rule is unreadable. The operator asked for
@@ -91,8 +97,14 @@ describe('the select gutter is the shared cell, under a compound model only', ()
     // Kept from the Orders row this cell replaced — one attribute, one meaning,
     // on every family now.
     assert.match(html, /data-select-gutter/);
-    assert.match(html, /data-select-chrome="flush"/);
-    assert.match(html, /data-click-select-face="off"/);
+    // 2026-09-04: the body face is the 16px rounded square revealed by row
+    // hover, not the full-bleed block. The MARK is still present at rest —
+    // hover reveals the box around it, it does not summon the check.
+    assert.match(html, /data-select-chrome="hover"/);
+    assert.match(html, /data-select-square-face="off"/);
+    assert.doesNotMatch(html, /data-click-select-face/, 'no full-bleed face in the body gutter');
+    // The click point stays the whole cell — operators never aim at the box.
+    assert.match(html, /h-full w-full/);
   });
 
   it('refuses `select` when a FLAT model is mounted', () => {
@@ -128,7 +140,7 @@ describe('the select gutter is the shared cell, under a compound model only', ()
     );
     assert.match(html, /data-col="select"/);
     assert.doesNotMatch(html, /role="checkbox"/);
-    assert.doesNotMatch(html, /data-click-select-face/);
+    assert.doesNotMatch(html, /data-select-square-face/);
   });
 
   it('is decorative — not a second control — when the ROW owns the toggle', () => {
@@ -149,7 +161,7 @@ describe('the select gutter is the shared cell, under a compound model only', ()
     );
     assert.doesNotMatch(html, /role="checkbox"/);
     // …but it still PAINTS membership, which is the point.
-    assert.match(html, /data-click-select-face="on"/);
+    assert.match(html, /data-select-square-face="on"/);
   });
 });
 

@@ -11,12 +11,21 @@
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { firstNote, formatCompoundDelayFace } from '@/components/tables/compound/compound-row-model';
+import {
+  firstNote,
+  formatCompoundDelayAgeFace,
+  formatCompoundStageStampFace,
+  formatDayGap,
+  compoundDatesHoverLabel,
+  COMPOUND_DATES_ORDER_HOVER,
+  COMPOUND_DATES_DUE_HOVER,
+} from '@/components/tables/compound/compound-row-model';
 import {
   COMPOUND_COLUMN_KEYS,
   COMPOUND_TRACKS,
   compoundRowEstimateFor,
 } from '@/components/tables/compound/compound-columns';
+import { gridHeaderShowsLabel } from '@/design-system/components/grid/grid-column-geometry';
 import {
   COMPOUND_GUTTER_PX,
   COMPOUND_GUTTER_TRACK_REM,
@@ -58,32 +67,31 @@ const FAMILIES = [
  * stay identical.
  */
 /**
- * No `actions` — Orders drops the shared ⋮ track (operator ruling 2026-08-31).
- * The other families keep it, which is why this list is not just
- * `COMPOUND_TRACKS` plus the status band.
+ * No `amount` — line money lives under the title on every family
+ * (`ensureLineMoneySubtitle`). Copy order / copy tracking live on the identity
+ * chips. The ⋮ track is gone from the shared skeleton for everyone.
  */
 const ORDERS_KEYS = [
   'select',
-  'thumb',
   'fulfillment',
+  'thumb',
   'item',
+  'dates',
   'state',
   'status:1',
-  'amount',
   '_fill',
 ] as const;
 
 describe('compound layout is shared, not forked', () => {
   it('every shared family declares the SAME tracks, in the same order', () => {
-    // HARD RULE: image · ids · title · status · open. The photo is leftmost.
+    // HARD RULE: select · ids · image · title · dates · status · slack.
     assert.deepEqual(keys(COMPOUND_TRACKS), [
       'select',
-      'thumb',
       'fulfillment',
+      'thumb',
       'item',
+      'dates',
       'state',
-      'amount',
-      'actions',
       '_fill',
     ]);
     for (const [name, model] of FAMILIES) {
@@ -140,18 +148,24 @@ describe('compound layout is shared, not forked', () => {
     );
   });
 
-  it('pins the IMAGE — the hard rule says it is always leftmost', () => {
+  it('pins the IDENTITY pane — select · ids · image', () => {
     for (const [name, model] of FAMILIES) {
-      assert.deepEqual(model.filter((c) => c.frozen).map((c) => c.key), ['select', 'thumb'], name);
+      assert.deepEqual(
+        model.filter((c) => c.frozen).map((c) => c.key),
+        ['select', 'fulfillment', 'thumb'],
+        name,
+      );
     }
     assert.deepEqual(
       ORDERS_COMPOUND_COLUMNS.filter((c) => c.frozen).map((c) => c.key),
-      ['select', 'thumb'],
+      ['select', 'fulfillment', 'thumb'],
     );
     const thumb = COMPOUND_TRACKS.find((c) => c.key === 'thumb');
     assert.equal(thumb?.gridLabel, 'Image');
-    assert.equal(thumb?.headerForceLabel, true);
-    assert.equal(thumb?.headerGlyphOnly, undefined);
+    assert.equal(thumb?.type, 'image');
+    // Engine law: the header is the Image glyph on every mount (tabs fork
+    // rows, not this track). Fit / headerForceLabel must not paint the word.
+    assert.equal(gridHeaderShowsLabel(thumb!), false);
   });
 
   it('freezes a contiguous prefix in every family', () => {
@@ -165,27 +179,18 @@ describe('compound layout is shared, not forked', () => {
   });
 });
 
-describe('the two gutters are one square', () => {
+describe('the photo gutter is a square; the select gutter is not', () => {
   const select = COMPOUND_TRACKS.find((c) => c.key === 'select')!;
   const thumb = COMPOUND_TRACKS.find((c) => c.key === 'thumb')!;
 
-  it('gives select and thumb exactly the same width', () => {
-    // The operator's words: "the selection column must be exactly the same size
-    // as the photos column". Both read `COMPOUND_GUTTER_TRACK_REM`, so this is
-    // a property of construction — but pin it, because the failure mode is two
-    // literals that drift by a rem and look merely "a bit off".
-    assert.equal(select.width, thumb.width);
-    assert.equal(select.width, `minmax(${COMPOUND_GUTTER_TRACK_REM}rem, ${COMPOUND_GUTTER_TRACK_REM}rem)`);
-  });
-
-  it('makes that square the ROW BOX, so a photo fills it uncropped', () => {
+  it('keeps the photo gutter as the ROW BOX so a photo fills it uncropped', () => {
     assert.equal(COMPOUND_GUTTER_PX, COMPOUND_ROW_PX);
     assert.equal(COMPOUND_GUTTER_TRACK_REM * 16, COMPOUND_ROW_PX);
+    assert.equal(thumb.width, `minmax(${COMPOUND_GUTTER_TRACK_REM}rem, ${COMPOUND_GUTTER_TRACK_REM}rem)`);
   });
 
-  it('pins BOTH gutters, because a drag could only break the equality', () => {
-    // `isGridColumnResizable` refuses `select` unconditionally, so a draggable
-    // `thumb` cannot stay equal to it. Fixing both is the only coherent answer.
+  it('keeps select narrower than the photo — a 16px checkbox does not need a 48px well', () => {
+    assert.notEqual(select.width, thumb.width);
     assert.equal(select.resizable, false);
     assert.equal(thumb.resizable, false);
   });
@@ -197,14 +202,14 @@ describe('column widths are operator-adjustable', () => {
     // gutter between a short order chip and the item title on every row, and no
     // operator could close it. Width is now a default, not a ceiling.
     const resizable = COMPOUND_TRACKS.filter((c) => c.resizable !== false).map((c) => c.key);
-    assert.deepEqual(resizable, ['fulfillment', 'item', 'state', 'amount']);
+    assert.deepEqual(resizable, ['fulfillment', 'item', 'dates', 'state']);
   });
 
   it('leaves only fixed-content chrome un-draggable', () => {
-    // The two 48px gutters, `actions` (a 2.5rem ⋮ button) and `_fill`
-    // (structural slack). Dragging any could only add or steal whitespace.
+    // The two gutters and `_fill` (structural slack). Dragging any could only
+    // add or steal whitespace.
     const fixed = COMPOUND_TRACKS.filter((c) => c.resizable === false).map((c) => c.key);
-    assert.deepEqual(fixed, ['select', 'thumb', 'actions', '_fill']);
+    assert.deepEqual(fixed, ['select', 'thumb', '_fill']);
   });
 
   it('gives every draggable track a content floor', () => {
@@ -251,58 +256,6 @@ describe('firstNote', () => {
   });
 });
 
-describe('formatCompoundDelayFace', () => {
-  it('paints the civil date, not On time, when a date is present', () => {
-    const face = formatCompoundDelayFace({
-      days: 0,
-      overdue: false,
-      dateLabel: 'Aug 17',
-      dateKey: '2026-08-17',
-    });
-    assert.equal(face.text, 'Aug 17');
-    assert.match(face.toneClass, /text-text-faint/);
-  });
-
-  it('uses default ink for due-today', () => {
-    const face = formatCompoundDelayFace({
-      days: 0,
-      overdue: false,
-      dateLabel: 'Aug 17',
-      dateKey: '2026-08-17',
-      dueToday: true,
-    });
-    assert.equal(face.text, 'Aug 17');
-    assert.match(face.toneClass, /text-text-default/);
-  });
-
-  it('keeps the date and suffixes lateness when overdue', () => {
-    const face = formatCompoundDelayFace({
-      days: 15,
-      overdue: true,
-      dateLabel: 'Aug 14',
-      dateKey: '2026-08-14',
-    });
-    assert.equal(face.text, 'Aug 14 · 15d late');
-    assert.match(face.toneClass, /text-text-danger/);
-  });
-
-  it('falls back to relative faces when the family has no civil date', () => {
-    assert.equal(
-      formatCompoundDelayFace({ days: 1, overdue: true }).text,
-      '1d late',
-    );
-    assert.equal(formatCompoundDelayFace({ days: 0, overdue: false }).text, 'On time');
-    assert.equal(formatCompoundDelayFace(null).text, 'On time');
-  });
-
-  it('an editable missing date is a dash, never a fake On time', () => {
-    assert.equal(
-      formatCompoundDelayFace(null, { editable: true, missingText: '--' }).text,
-      '--',
-    );
-  });
-});
-
 describe('every table measures the same row', () => {
   it('one constant owns the row box — paint AND the virtualizer estimate', () => {
     // Receiving rendered a single visible line while To-Ship rendered two,
@@ -341,5 +294,114 @@ describe('every table measures the same row', () => {
     const mod = await import('@/components/tables/compound/compound-row-chrome');
     assert.equal(mod.COMPOUND_ROW_PX, COMPOUND_ROW_PX);
     assert.equal(mod.COMPOUND_GUTTER_PX, COMPOUND_GUTTER_PX);
+  });
+});
+
+describe('formatDayGap — the shortest unit that still reads true', () => {
+  it('counts days under a month', () => {
+    assert.equal(formatDayGap(0), '0d');
+    assert.equal(formatDayGap(2), '2d');
+    assert.equal(formatDayGap(29), '29d');
+  });
+
+  it('rolls up to months, then years, so the face stays two characters', () => {
+    assert.equal(formatDayGap(30), '1m');
+    assert.equal(formatDayGap(75), '2m');
+    assert.equal(formatDayGap(364), '12m');
+    assert.equal(formatDayGap(400), '1y');
+  });
+});
+
+describe('formatCompoundDelayAgeFace — the DATES deadline line', () => {
+  it('paints the AGE, never the civil day', () => {
+    const face = formatCompoundDelayAgeFace({
+      days: 2,
+      overdue: true,
+      dateLabel: 'Sep 2',
+      dateKey: '2026-09-02',
+    });
+    assert.equal(face.text, '2d late');
+    // The operator's rule: the date belongs to the hover, not to the cell.
+    assert.ok(!face.text.includes('Sep'));
+  });
+
+  it('rolls a long overdue up to months', () => {
+    assert.equal(
+      formatCompoundDelayAgeFace({ days: 45, overdue: true, dateKey: '2026-07-21' }).text,
+      '1m late',
+    );
+  });
+
+  it('says due today rather than 0d late', () => {
+    const face = formatCompoundDelayAgeFace({
+      days: 0,
+      overdue: false,
+      dateKey: '2026-09-04',
+      dueToday: true,
+    });
+    assert.equal(face.text, 'Due today');
+  });
+
+  it('counts down to a future deadline', () => {
+    const face = formatCompoundDelayAgeFace({
+      days: 0,
+      overdue: false,
+      dateKey: '2026-09-20',
+      daysUntil: 16,
+    });
+    assert.equal(face.text, 'in 16d');
+  });
+
+  it('falls back to On time for a deadline with no countdown', () => {
+    assert.equal(
+      formatCompoundDelayAgeFace({ days: 0, overdue: false, dateKey: '2026-09-20' }).text,
+      'On time',
+    );
+  });
+
+  it('paints the missing mark when there is no deadline at all', () => {
+    assert.equal(formatCompoundDelayAgeFace(null, { missingText: '--' }).text, '--');
+  });
+});
+
+describe('compoundDatesHoverLabel — DATES cursor chip', () => {
+  it('always names the line so every product table gets a hover', () => {
+    assert.equal(compoundDatesHoverLabel('order'), COMPOUND_DATES_ORDER_HOVER);
+    assert.equal(compoundDatesHoverLabel('due'), COMPOUND_DATES_DUE_HOVER);
+  });
+
+  it('keeps family detail after the field name', () => {
+    assert.equal(
+      compoundDatesHoverLabel('order', 'Ordered · Aug 20, 2026'),
+      'Order date · Ordered · Aug 20, 2026',
+    );
+    assert.equal(
+      compoundDatesHoverLabel('due', 'Ship by · Aug 17 · 2 days late'),
+      'Due date · Aug 17 · 2 days late',
+    );
+  });
+});
+
+describe('formatCompoundStageStampFace — short time on the track', () => {
+  it('paints time-of-day from the raw instant, not Sep 4, 9:41 AM', () => {
+    const face = formatCompoundStageStampFace({
+      who: 'SA',
+      at: 'Sep 4, 9:41 AM',
+      atInstant: '2026-07-13T16:15:00-07:00',
+      station: null,
+    });
+    assert.ok(face);
+    assert.doesNotMatch(String(face), /Sep|Jul|,/);
+  });
+
+  it('falls back to the long stamp when there is no instant', () => {
+    assert.equal(
+      formatCompoundStageStampFace({
+        who: 'SA',
+        at: 'Sep 4, 9:41 AM',
+        station: null,
+      }),
+      'Sep 4, 9:41 AM',
+    );
   });
 });

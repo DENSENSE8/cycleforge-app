@@ -26,7 +26,7 @@
  * re-navigating to the lit tab would read as "clear my filters".
  */
 
-import { useCallback, useMemo } from 'react';
+import { createElement, useCallback, useMemo } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useActiveSidebarChild } from '@/components/sidebar/master-nav/useActiveSidebarChild';
@@ -36,6 +36,7 @@ import {
   getSidebarPageNav,
   hasDeskPageChrome,
 } from '@/lib/sidebar-navigation';
+import { navIconStrokeClass } from '@/components/icons/nav-weight';
 import type { DeskPageTab } from '@/design-system/components/DeskPageChrome';
 
 export interface DeskPageChromeTabs {
@@ -92,7 +93,18 @@ export function useDeskPageChromeTabs(): DeskPageChromeTabs {
 
   const tabs = useMemo<DeskPageTab[]>(
     () =>
-      (tabbedPage?.children ?? []).map((child) => ({ id: child.id, label: child.label })),
+      (tabbedPage?.children ?? []).map((child) => {
+        const ChildIcon = child.icon;
+        return {
+          id: child.id,
+          label: child.label,
+          icon: ChildIcon
+            ? createElement(ChildIcon, {
+                className: navIconStrokeClass('h-3.5 w-3.5 shrink-0'),
+              })
+            : undefined,
+        };
+      }),
     [tabbedPage],
   );
 

@@ -38,7 +38,7 @@
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { LedgerGridColumnModel } from './grid-surface-descriptor';
 
-export type GridColumnAlign = 'start' | 'end';
+export type GridColumnAlign = 'start' | 'end' | 'center';
 
 
 /**
@@ -117,7 +117,9 @@ export function resolveGridColumnAlign(
  * zig-zag the Law of Strict Alignment forbids.
  */
 function alignClass(align: GridColumnAlign): string {
-  return align === 'end' ? 'justify-end text-right' : 'justify-start text-left';
+  if (align === 'end') return 'justify-end text-right';
+  if (align === 'center') return 'justify-center text-center';
+  return 'justify-start text-left';
 }
 
 /** Header justification — pass `resolveGridColumnAlign(column)`, never a literal. */

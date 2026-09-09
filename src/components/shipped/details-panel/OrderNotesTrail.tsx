@@ -38,16 +38,12 @@ export function OrderNotesTrail({
   orderId,
   legacyNote,
   className,
+  autoFocus = false,
 }: {
   orderId: number;
-  /**
-   * The legacy scalar `orders.notes` for this row, if it still carries one.
-   * Rendered read-only: nothing in the product writes it, and its only writer
-   * is order ingest stamping the note the SOURCE sent (a sheet's `Note` cell, a
-   * buyer comment).
-   */
   legacyNote?: string | null;
   className?: string;
+  autoFocus?: boolean;
 }) {
   const [draft, setDraft] = useState('');
 

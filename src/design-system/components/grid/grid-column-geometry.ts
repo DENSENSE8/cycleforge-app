@@ -43,6 +43,7 @@ interface HeaderLike extends TrackLike {
   labelFitRem?: number;
   headerGlyphOnly?: boolean;
   headerForceLabel?: boolean;
+  type?: string;
 }
 interface FrozenTrackLike extends TrackLike {
   key: string;
@@ -124,6 +125,7 @@ export function gridColumnTrackRem(column: TrackLike): number {
  */
 export function gridHeaderShowsLabel(column: HeaderLike, label?: string): boolean {
   if (column.headerGlyphOnly) return false;
+  if (column.key === 'thumb' || column.type === 'image') return false;
   if (column.headerForceLabel) return true;
   if (isFlexTrack(column)) return true;
   const trackRem = gridColumnTrackRem(column);

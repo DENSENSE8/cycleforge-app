@@ -63,6 +63,14 @@ export const INCOMING_FIELD_CATALOG: FieldCatalog = [
     paths: { expected: 'quantity_expected', received: 'quantity_received' },
   },
   {
+    id: 'incoming.price',
+    family: 'incoming',
+    label: 'Price',
+    displayType: 'money',
+    slotKinds: ['status', 'subtitle'],
+    paths: { value: 'unit_price' },
+  },
+  {
     id: 'incoming.status',
     family: 'incoming',
     label: 'Status',

@@ -26,8 +26,11 @@ function Command({ className, ...props }: React.ComponentProps<typeof CommandPri
 
 const CommandInput = React.forwardRef<
   React.ComponentRef<typeof CommandPrimitive.Input>,
-  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input>
->(function CommandInput({ className, ...props }, ref) {
+  React.ComponentPropsWithoutRef<typeof CommandPrimitive.Input> & {
+    /** Combobox header accessory (All staff). Never forwarded to the input. */
+    trailing?: React.ReactNode;
+  }
+>(function CommandInput({ className, trailing, ...props }, ref) {
   return (
     <div
       data-slot="command-input-wrapper"
@@ -38,11 +41,12 @@ const CommandInput = React.forwardRef<
         ref={ref}
         data-slot="command-input"
         className={cn(
-          'flex h-9 w-full bg-transparent py-2 text-sm outline-none placeholder:text-text-faint disabled:opacity-50',
+          'flex h-9 min-w-0 w-full flex-1 bg-transparent py-2 text-sm outline-none placeholder:text-text-faint disabled:opacity-50',
           className,
         )}
         {...props}
       />
+      {trailing}
     </div>
   );
 });

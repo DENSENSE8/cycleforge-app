@@ -87,6 +87,15 @@ export function parseListingUrl(raw: string | null | undefined): ListingUrlParse
   };
 }
 
+/** Toolbar paste → item number. Listing URLs yield the id inside; bare text is trimmed as-is. */
+export function itemNumberFromPaste(raw: string | null | undefined): string {
+  const trimmed = String(raw ?? '').trim();
+  if (!trimmed) return '';
+  const parsed = parseListingUrl(trimmed);
+  return parsed.ok ? parsed.candidate.itemNumber : trimmed;
+}
+
+
 /**
  * The href to open when CHECKING an item number before approving it.
  *

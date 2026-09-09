@@ -25,6 +25,7 @@
  * family binding.
  */
 
+import type { ComponentType, RefObject } from 'react';
 import type {
   GridSurfaceDescriptor,
   LedgerGridColumnModel,
@@ -52,18 +53,25 @@ import type { TableDefinition } from '@/lib/tables/table-definition';
  * ## Absence is a legitimate answer, and it carries its reason
  *
  * Some of these surfaces are ruled honest-absence and must NOT grow a peek to
- * make the family look symmetrical — the reasons live in
- * `band3-find-only.guard.test.ts`'s `NO_DESK_PEEK_SURFACES` and are restated on
- * the binding so the next agent reads them at the mount they are about. That
- * guard was cited here for a long time without existing; it was written
- * 2026-08-31 (seller-table-program wave 1.5), and it is now the authority on
- * how many such surfaces there are — this sentence used to say "three", which
- * had already gone stale. The
- * `reason` string is the whole point of the non-`inspector` arms: a bare
- * `kind: 'none'` would be a silence with a type annotation.
+ * make the family look symmetrical — the `reason` on the binding is what you
+ * read at the mount. A bare `kind: 'none'` would be a silence with a type
+ * annotation.
  */
 export type TableRecordPlane =
-  /** A `RightRailHost` occupant — the house desk peek. */
+  /**
+   * Center Lock L2 — multi-field record form stacked on the desk stage (or the
+   * scan-station 720 center). The table stays mounted underneath. **This is the
+   * only record plane for new desk bindings** (law Q5).
+   */
+  | {
+      readonly kind: 'stage-overlay';
+      /** Why this surface opens a record overlay (optional audit trail). */
+      readonly reason?: string;
+    }
+  /**
+   * Legacy `RightRailHost` peek — **forbidden on new master-nav desk bindings.**
+   * Existing `detail:*` occupants (orders, incoming, repair, …) are migration debt.
+   */
   | {
       readonly kind: 'inspector';
       /**
@@ -105,7 +113,53 @@ export interface TableSurfaceBinding<Row, C extends LedgerGridColumnModel> {
   readonly makeDescriptor: (visible: readonly C[]) => GridSurfaceDescriptor<Row, C>;
   /**
    * What a picked row opens. See {@link TableRecordPlane} — every registered
-   * binding declares one, and the non-`inspector` arms state why.
+   * binding declares one. New desks use `stage-overlay`; `inspector` is legacy debt.
    */
   readonly recordPlane: TableRecordPlane;
+  /**
+   * The ROW-ANCHORED action plane — what opens beside a row when it is picked
+   * in the select gutter (To-ship's CYC-82 assign manifold).
+   *
+   * ## Why it is declared HERE
+   *
+   * The plane is the last thing that forced a family to own a row component.
+   * The shared {@link CompoundRow} paints every cell, but it had nowhere to put
+   * a panel that is anchored to the row and painted beside it — so To-ship
+   * mapped the columns itself and mounted the panel by hand, which is
+   * `OrdersQueueTableRow`, 1300 lines of shell the engine already had.
+   *
+   * Declaring it on the BINDING keeps invariant 2 (`REGISTER_ENTITY_NOT_PAGE`):
+   * one entity, one plane, every mount. It is not a mount parameter, not a page
+   * prop, and not per-row JSX — a page cannot introduce a plane, and two lanes
+   * of the same entity cannot disagree about what picking a row opens.
+   *
+   * A component reference is admissible on the binding for the same reason
+   * {@link makeDescriptor} is: the binding is the family's registration, not the
+   * Zod-validated pure-data {@link definition}. What invariant 3 forbids is
+   * behaviour in the DESCRIPTOR that varies per mount — this varies per ENTITY,
+   * exactly once.
+   *
+   * Omit it and the row simply has no plane; nothing else changes.
+   */
+  readonly rowPlane?: TableRowPlane<Row>;
+}
+
+/** Props the engine hands a registered {@link TableRowPlane}. */
+export interface TableRowPlaneProps<Row> {
+  row: Row;
+  open: boolean;
+  onClose: () => void;
+  /**
+   * The ROW element. Anchor to this, never to the gutter cell: anchoring to the
+   * cell parks the panel on top of the columns the operator is reading, while
+   * the row anchor puts it in the page margin beside the row it acts on.
+   */
+  anchorRef: RefObject<HTMLElement | null>;
+}
+
+export interface TableRowPlane<Row> {
+  /** Why this entity opens a plane off the gutter (audit trail, like recordPlane). */
+  readonly reason: string;
+  /** Mounted by the engine as the row's last child. */
+  readonly Component: ComponentType<TableRowPlaneProps<Row>>;
 }

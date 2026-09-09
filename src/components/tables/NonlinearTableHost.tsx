@@ -110,6 +110,7 @@ export interface NonlinearTableHostProps<Row, K extends string, C extends Ledger
   // ── Page chrome passthrough ────────────────────────────────────────────────
   scrollRef?: RefObject<HTMLDivElement | null>;
   className?: string;
+  bodyPrefix?: ReactNode;
 }
 
 export function NonlinearTableHost<Row, K extends string, C extends LedgerGridColumnModel>({
@@ -139,6 +140,7 @@ export function NonlinearTableHost<Row, K extends string, C extends LedgerGridCo
   scrollToKey,
   scrollRef,
   className,
+  bodyPrefix,
 }: NonlinearTableHostProps<Row, K, C>) {
   const { definition } = binding;
   const mounted = columns ?? binding.columns;
@@ -180,6 +182,7 @@ export function NonlinearTableHost<Row, K extends string, C extends LedgerGridCo
       renderColumnHeader={renderColumnHeader}
       renderGroup={renderGroup}
       renderRow={renderRow}
+      bodyPrefix={bodyPrefix}
     />
   );
 }

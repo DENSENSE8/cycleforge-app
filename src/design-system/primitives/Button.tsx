@@ -6,6 +6,7 @@ import { cn } from '@/utils/_cn';
 import { focusRing } from '../tokens/focus-ring';
 import { COMPOSER_SHELL_CORNER, cornerClass } from '../tokens/radius';
 import { useUIModeOptional } from '../providers/UIModeProvider';
+import { cursorClickTarget } from '@/design-system/motion/cursor-scrub';
 import { BUTTON_VARIANTS, type ButtonVariant } from './button-variants';
 
 export type { ButtonVariant } from './button-variants';
@@ -36,25 +37,20 @@ export interface ButtonProps
   /** Accessible label — required when `iconOnly` and children aren't a plain string. */
   ariaLabel?: string;
   /**
-   * Corner. Default `flush` — the zero-radius ops law, and what every existing
-   * call site keeps.
+   * Corner. Default `surface` — desk / workbench CTAs.
+   *
+   * Scan-station chrome that must sit flush on the bench passes `flush`.
+   * Composer-dock CTAs pass `composer`. Header desk actions stay `pill`
+   * (`DeskHeaderAction`).
    *
    * This is a PROP because the alternative is `className="rounded-2xl"`, and a
-   * radius override on a primitive is exactly what the DS bans. `Panel` has
-   * resolved its corner through a `radius` prop since it was written; this
-   * brings `Button` to the same API rather than leaving one primitive
-   * overridable and the other not.
+   * radius override on a primitive is exactly what the DS bans.
    *
-   * - `flush` — `cornerClass('flush')`. The default. Ops chrome.
+   * - `flush` — `cornerClass('flush')`. Scan stations, grid cells, hairline rows.
    * - `composer` — {@link COMPOSER_SHELL_CORNER}. ONLY for a CTA inside the
-   *   `OmnichannelComposerDock` shell family, where soft corners are the
-   *   declared house grammar (the footer track and the Send control are
-   *   already soft). Naming it after the family it belongs to is the point: a
-   *   workbench CTA reaching for `radius="composer"` is visibly claiming
-   *   something untrue.
-   * - `surface` — `cornerClass('surface')`. Soft rounded rectangle. Mobile
-   *   chrome that sits beside inset-grouped cards (hamburger · scan CTA).
-   * - `pill` — `cornerClass('pill')`. The surviving `rounded-full` role.
+   *   `OmnichannelComposerDock` shell family.
+   * - `surface` — `cornerClass('surface')`. Default desk CTA.
+   * - `pill` — `cornerClass('pill')`. Header actions.
    */
   radius?: 'flush' | 'composer' | 'surface' | 'pill';
 }
@@ -65,11 +61,8 @@ const variantClasses = BUTTON_VARIANTS;
 
 // ─── Size classes ────────────────────────────────────────────────────────────
 
-/** Solid CTAs are flush industrial squares; `radius` opts a shell family out. */
-const BUTTON_CORNER = cornerClass('flush');
-
 const BUTTON_RADIUS: Record<NonNullable<ButtonProps['radius']>, string> = {
-  flush: BUTTON_CORNER,
+  flush: cornerClass('flush'),
   composer: COMPOSER_SHELL_CORNER,
   surface: cornerClass('surface'),
   pill: cornerClass('pill'),
@@ -83,18 +76,27 @@ const desktopSize: Record<ButtonSize, string> = {
   lg: 'h-10 gap-2 px-4 text-sm',
 };
 
-// Mobile — every size meets the 44px minimum touch target.
+// Mobile — the `MOBILE_CONTROL_LADDER` rungs (28 / 36 / 44), not three sizes
+// above the touch floor.
+//
+// These were `h-11 / h-12 / h-14`: every rung at or above 44px, because the
+// house read Apple's 44×44 as the size of the PAINTED control. It is the hit
+// REGION — the HIG says outright that the visible control may be smaller — and
+// applying it to the paint is what put 56px confirms and 48px rows on a 390px
+// screen. Paint small, hit big: `sm`/`md` carry their extra target with padding
+// or a pseudo-element at the call site, and `lg` stays at 44 because it is the
+// screen's one primary action, the single place paint == hit.
 const mobileSize: Record<ButtonSize, string> = {
-  sm: 'h-11 gap-2 px-4 text-role-data',
-  md: 'h-12 gap-2 px-5 text-sm',
-  lg: 'h-14 gap-2.5 px-6 text-base',
+  sm: 'h-8 gap-1.5 px-3 text-role-caption',
+  md: 'h-9 gap-2 px-4 text-role-data',
+  lg: 'h-11 gap-2 px-5 text-sm',
 };
 
-// Icon-only squares (mobile).
+// Icon-only squares (mobile) — same three rungs, square.
 const mobileIconOnly: Record<ButtonSize, string> = {
-  sm: 'h-11 w-11',
-  md: 'h-12 w-12',
-  lg: 'h-14 w-14',
+  sm: 'h-8 w-8',
+  md: 'h-9 w-9',
+  lg: 'h-11 w-11',
 };
 
 const iconBox: Record<ButtonSize, string> = {
@@ -130,9 +132,9 @@ const PRESS_FEEDBACK =
  * `danger` · `success` · `execute`). Replaces the ~1,300 hand-rolled
  * `<button className="bg-… px-… rounded-…">` scattered across the app.
  *
- * - Corner SoT: `radius` prop, default `flush` → `rounded-none`. Soft opt-ins:
+ * - Corner SoT: `radius` prop, default `surface` → `rounded-xl`. Soft opt-ins:
  *   `radius="composer"` (the `OmnichannelComposerDock` shell family) and
- *   `radius="surface"` (mobile chrome beside inset-grouped cards).
+ *   `radius="flush"` (scan-station bleed chrome).
  * - Children-based API: `<Button variant="brand" icon={<Plus />}>Save</Button>`
  * - CSS press feedback (`active:scale`) on every variant — no motion engine
  * - Mode-aware: promotes to 44px+ touch targets on mobile via `UIModeProvider`
@@ -143,7 +145,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     children,
     variant = 'primary',
     size = 'md',
-    radius = 'flush',
+    radius = 'surface',
     icon,
     iconRight,
     loading = false,
@@ -191,6 +193,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
         BUTTON_RADIUS[radius],
         className,
       )}
+      {...(!isDisabled ? cursorClickTarget() : null)}
       {...rest}
     >
       {loading ? (

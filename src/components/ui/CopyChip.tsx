@@ -73,7 +73,7 @@ export const HashIcon = () => (
  * group-count variants) follows.
  *
  *   id        gray / hash       internal order ids, PO#s, source order #s
- *   tracking  blue / ring-dot   outbound carrier tracking numbers ONLY
+ *   tracking  blue / map-pin    outbound carrier tracking numbers ONLY
  *   serial    emerald / barcode device/unit serial numbers
  *   sku       yellow / pencil   SKU-driven values (static scan refs, sku-table serials)
  *   fnsku     purple / package  Amazon FNSKUs scanned at FBA intake ONLY
@@ -96,8 +96,7 @@ export const CHIP_TONES = {
     dot: 'bg-border-emphasis',
   },
   tracking: {
-    // Identity is the carrier ring dot ({@link BrandIdentityDot}), not MapPin.
-    icon: null,
+    icon: <MapPin className="h-4 w-4 shrink-0" />,
     iconClass: 'inline-flex items-center justify-center text-blue-500',
     dot: 'bg-blue-500',
   },

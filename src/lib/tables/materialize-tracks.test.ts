@@ -27,12 +27,11 @@ const CATALOG: FieldCatalog = [
 /** Compound-shaped chrome skeleton (keys only matter to the materializer). */
 const BASE: readonly MaterializableTrack[] = [
   { key: 'select', width: 'minmax(3rem, 3rem)' },
-  { key: 'thumb', width: 'minmax(3rem, 3rem)' },
   { key: 'fulfillment', width: 'minmax(6.5rem, 6.5rem)' },
+  { key: 'thumb', width: 'minmax(3rem, 3rem)' },
   { key: 'item', width: 'minmax(18rem, 18rem)' },
+  { key: 'dates', width: 'minmax(7rem, 7rem)' },
   { key: 'state', width: 'minmax(10rem, 10rem)' },
-  { key: 'amount', width: 'minmax(7rem, 7rem)' },
-  { key: 'actions', width: 'minmax(2.5rem, 2.5rem)' },
   { key: '_fill', width: 'minmax(0rem, 1fr)' },
 ];
 
@@ -52,7 +51,7 @@ describe('materializeTracks — compound', () => {
     const tracks = materializeTracks({ layout: layout(), catalog: CATALOG, base: BASE });
     assert.deepEqual(
       tracks.map((t) => t.key),
-      ['select', 'thumb', 'fulfillment', 'item', 'state', 'status:1', 'amount', 'actions', '_fill'],
+      ['select', 'fulfillment', 'thumb', 'item', 'dates', 'state', 'status:1', '_fill'],
     );
     const status1 = tracks.find((t) => t.key === 'status:1')!;
     assert.equal(status1.label, 'Pick');
@@ -148,9 +147,9 @@ describe('materializeTracks — sheet', () => {
     assert.deepEqual(
       tracks.map((t) => t.key),
       [
-        'select', 'thumb', 'fulfillment', 'item',
+        'select', 'fulfillment', 'thumb', 'item',
         'subtitle:1', 'subtitle:2',
-        'state', 'status:1', 'amount', 'actions', '_fill',
+        'dates', 'state', 'status:1', '_fill',
       ],
     );
   });

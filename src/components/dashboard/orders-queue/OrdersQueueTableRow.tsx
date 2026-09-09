@@ -4,26 +4,28 @@ import { gridDataCellClass } from '@/design-system/components/grid';
 import { isCompoundColumnModel } from '@/components/tables/compound/compound-columns';
 import { renderCompoundGridCell } from '@/components/tables/compound/CompoundGridCell';
 import { ignoreRowSelectFromSubtitle } from '@/components/tables/compound/useSubtitlePointerReorder';
-import type { CompoundRowAction } from '@/components/tables/compound/compound-row-model';
-import { copyToClipboard } from '@/utils/_dom';
-import {
-  rowActionsContextMenu,
-  rowActionsKeyDown,
-} from '@/components/tables/compound/compound-row-actions';
 import { ordersCompoundView } from '@/lib/orders/orders-compound-view';
+import { useOrderStatusTrail } from '@/components/orders/OrderStatusTrailOverlay';
 import {
   ordersSlotValues,
   ordersSubtitleParts,
 } from '@/lib/tables/field-catalog/orders-resolve';
-import { Fragment, memo, useCallback, useMemo, useRef, type ReactNode } from 'react';
+import {
+  Fragment,
+  memo,
+  useCallback,
+  useMemo,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+  type Ref,
+} from 'react';
 import { motion } from '@/design-system/motion';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import { useMotionPresence, useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
-import { Plus } from '@/components/Icons';
-import { useRouter } from 'next/navigation';
-import { useOrderIdentityCellNodes, OrderIdentityChips } from '@/components/ui/OrderIdentityChips';
+import { OrderIdentityChips } from '@/components/ui/OrderIdentityChips';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
   RowTitle,
   RowMetaColumns,
@@ -33,13 +35,16 @@ import {
 } from '@/components/ui/RowMetaColumns';
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import {
-  GridRowCheckbox,
   isEmptyGutterChrome,
   type GridSelectGutterChrome,
 } from '@/components/ui/GridRowCheckbox';
+import {
+  MorphingRowActionMenu,
+  MorphingSelectGutter,
+} from '@/components/outbound/orders/to-ship/MorphingRowActionMenu';
+import { applyMorphingGutterClick } from '@/lib/outbound/morphing-row-action';
 import type { GridSurfaceCapabilities } from '@/design-system/components/grid';
 import { isFbaOrder, marketplaceOrderUrl } from '@/utils/order-platform';
-import { getExternalUrlByItemNumber } from '@/utils/external-item-url';
 import { useOrderChannelLabel } from '@/hooks/useCatalog';
 import {
   formatDateWithOrdinal,
@@ -60,37 +65,25 @@ import { conditionGradeTextClass, conditionGradeTone, orderRowQtyTone } from '@/
 import { resolveOrderRowFlag } from '@/lib/orders/order-row-flags';
 import {
   conditionDescription,
-  conditionGradeTableLabel,
   conditionOptions,
-  isEmptyMetaDash,
   resolveConditionGrade,
 } from '@/lib/conditions';
 import type {
   CompoundSubtitleSelect,
   CompoundSubtitleEdit,
-  CompoundSubtitleCopy,
 } from '@/components/tables/compound/compound-row-model';
 import {
   formatQueueRowDateCell,
   formatSalePrice,
   queueRowShipBySource,
-  queueRowTestedAtRaw,
   type OrdersQueueMode,
   type QueueRowRecord,
   type RowStatusMeta,
 } from './helpers';
 import {
   GridAgeCellValue,
-  GridCellDash,
   GridDateCellValue,
-  GridMonthDayTimeCellValue,
-  GridStaffCellValue,
-  GridStatusCellValue,
 } from '@/components/ui/grid-cells';
-import {
-  PACK_BENCH_CHIP_TONE,
-  packBenchShortLabel,
-} from '@/lib/packing/pack-bench-display';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
@@ -101,6 +94,11 @@ export interface OrdersQueueTableRowProps {
   /** Multi-select on — lead checkbox toggles; click selects instead of opening. */
   selectMode: boolean;
   isChecked: boolean;
+  /**
+   * Multi-line order parent already painted the ids. Leaf fulfillment stays
+   * quiet so the same order # is not reprinted per SKU.
+   */
+  quietIdentity?: boolean;
   isMobile: boolean;
   useAlternateStripe: boolean;
   testerDisplay: string;
@@ -154,9 +152,8 @@ export interface OrdersQueueTableRowProps {
   queueMode?: OrdersQueueMode;
   /** Ordered VISIBLE column models (already sanitized + visibility-resolved).
    *  REQUIRED — there is no canonical fallback since the Wave-1 hand-model
-   *  kill: the outbound desks pass the compound slot materialization, the
-   *  station benches pass their own `STATION_HISTORY_COLUMNS`. Header + rows +
-   *  group summaries must receive the SAME list. */
+   *  kill: outbound desks and station benches pass the compound slot
+   *  materialization. Header + rows + group summaries must receive the SAME list. */
   columns: readonly OrdersQueueColumn[];
   /**
    * Bound subtitle field ids from the effective slot layout (compound morph
@@ -193,6 +190,11 @@ export interface OrdersQueueTableRowProps {
    */
   onRequestReplaceTracking?: (record: ShippedOrder) => void;
   /**
+   * To-ship tracking hover Label — paperwork walk (table XOR). Omit on
+   * packed/shipped/history.
+   */
+  onOpenLabels?: (record: ShippedOrder) => void;
+  /**
    * Present ⇒ the compound item cell's bound CONDITION subtitle part edits in
    * place (grade menu over the condition SoT, `null` = clear). Absent ⇒ the
    * same part is read-only — the house capability law. A scalar PATCH through
@@ -213,10 +215,16 @@ export interface OrdersQueueTableRowProps {
     value: string | null,
   ) => void;
   /**
-   * Present ⇒ the STATUS delay line edits ship-by in place (civil `YYYY-MM-DD`,
-   * `null` = clear). Same assign waist as condition / qty.
+   * Present ⇒ the DATES cell's deadline line edits ship-by in place (civil
+   * `YYYY-MM-DD`, `null` = clear). Same assign waist as condition / qty.
    */
   onCommitShipBy?: (record: ShippedOrder, dateKey: string | null) => void;
+  /**
+   * Present ⇒ the DATES cell's ORDER-DATE line is editable, for the row whose
+   * imported date is wrong (operator 2026-09-04). Same waist again — it writes
+   * `orders.order_date` through `/api/orders/assign`, never a second endpoint.
+   */
+  onCommitOrderedAt?: (record: ShippedOrder, dateKey: string | null) => void;
   /**
    * Present ⇒ pending Pick / Packed stage marks open a searchable staff
    * combobox (full roster, one lane per column). Done stages stay read-only.
@@ -228,6 +236,17 @@ export interface OrdersQueueTableRowProps {
     staffId: number | null,
     staffName: string | null,
   ) => void;
+  /**
+   * Persist a staffer's floor role (picker / packer) from Pick / Pack chips
+   * in the cell combo (and the actions-column roster). Name-click still
+   * assigns only people who already have that lane.
+   */
+  onSetStaffLaneRole?: (
+    staffId: number,
+    role: 'technician' | 'packer',
+    staffName: string,
+    notice?: { face: 'technician' | 'packer'; eligible: boolean },
+  ) => void;
 }
 
 /** In-cell editors this row can host (one open at a time).
@@ -235,8 +254,8 @@ export interface OrdersQueueTableRowProps {
  *  anchor in the collection map; correction lives at the record plane.
  *  Notes · listing link · OOS are record-plane only. */
 
-/** The identity payload {@link useOrderIdentityCellNodes} consumes. */
-type OrderIdentityCellProps = Parameters<typeof useOrderIdentityCellNodes>[0];
+/** Identity chips payload for the mobile stack. */
+type OrderIdentityCellProps = Omit<ComponentProps<typeof OrderIdentityChips>, 'isMobile'>;
 
 /** Station rows carry a `scan_ref`; outbound rows do not. */
 function rowScanRef(record: QueueRowRecord): string | null {
@@ -261,9 +280,7 @@ const CONDITION_SELECT_BASE = conditionOptions('table').map((opt) => ({
  * The tracks that carry no fact — the structural slack column, and any key a
  * mounted model declares that its cell registry does not claim.
  *
- * Shared by BOTH column models (the compound map below and the flat switch in
- * {@link OrdersQueueFlatRowCells}) so the sheet's leftover width cannot be
- * painted two ways depending on which model happens to be mounted.
+ * Shared slack / unclaimed-key face for the compound map.
  */
 function renderStructuralCell(
   col: OrdersQueueColumn,
@@ -328,7 +345,7 @@ interface OrdersQueueRowShellProps {
   onClick: React.MouseEventHandler<HTMLDivElement>;
   onDoubleClick: React.MouseEventHandler<HTMLDivElement>;
   onMouseDown: React.MouseEventHandler<HTMLDivElement>;
-  onContextMenu: React.MouseEventHandler<HTMLDivElement>;
+  onContextMenu?: React.MouseEventHandler<HTMLDivElement>;
   onKeyDown: React.KeyboardEventHandler<HTMLDivElement>;
   children: ReactNode;
 }
@@ -358,6 +375,8 @@ function AnimatedOrdersQueueRowShell({
   animateLayout: boolean;
   /** Board / list rows nudge on hover; the grid skin never does. */
   hoverLift: boolean;
+  /** The row element — the CYC-82 assign menu anchors to its gutter cell. */
+  ref?: Ref<HTMLDivElement>;
 }) {
   const rowPresence = useMotionPresence(framerPresence.tableRow);
   const mountTransition = useMotionTransition(framerTransition.tableRowMount);
@@ -383,28 +402,12 @@ function AnimatedOrdersQueueRowShell({
 }
 
 /**
- * The FLAT (one-line spreadsheet) cells + the mobile stacked row.
- *
- * ## Why this is a component and not a block inside the row
- *
- * Every hook this row owned served this half of it — the channel resolver, the
- * identity chip nodes, the clipboard history behind the paste chip, the assign
- * mutation behind the in-cell editors, the editor state, the router behind the
- * "no label yet" jump. Eighteen of the row's twenty-two hooks, and NONE of them
- * can reach a cell under the compound model, which is what To-ship mounts. A
- * hook cannot be skipped by an `if`, so the only way to stop paying for it is
- * for the code that needs it to be a child that the compound path never
- * renders.
- *
- * It is not a fork of the row: the shell (box, roles, paint, gestures) stays in
- * {@link OrdersQueueTableRow} and both models render THROUGH it. What differs
- * here is only which cells fill it.
+ * Mobile stacked identity (chips + meta). Not a second table: desktop always
+ * paints through {@link renderCompoundGridCell}.
  */
-interface OrdersQueueFlatRowCellsProps {
+interface OrdersQueueMobileStackProps {
   record: QueueRowRecord;
   columns: readonly OrdersQueueColumn[];
-  /** The row's resolved cell-class waist (rule + inset + per-staff display). */
-  cellClass: (col: OrdersQueueColumn, rule?: boolean) => string;
   isMobile: boolean;
   gridSkin: boolean;
   selectMode: boolean;
@@ -417,17 +420,15 @@ interface OrdersQueueFlatRowCellsProps {
   /** Already capability-gated by the row — `null` means "surface says no". */
   rowFlag: ReturnType<typeof resolveOrderRowFlag>;
   daysLate: number | null;
-  testerDisplay: string;
   trackingAction?: React.ReactNode;
   serialChip?: React.ReactNode;
   onToggleSelect?: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
   onRequestReplaceTracking?: (record: ShippedOrder) => void;
 }
 
-function OrdersQueueFlatRowCells({
+function OrdersQueueMobileStack({
   record,
   columns,
-  cellClass: dataCell,
   isMobile,
   gridSkin,
   selectMode,
@@ -438,27 +439,19 @@ function OrdersQueueFlatRowCells({
   rowStatus,
   rowFlag,
   daysLate,
-  testerDisplay,
   trackingAction,
   serialChip,
   onToggleSelect,
   onRequestReplaceTracking,
-}: OrdersQueueFlatRowCellsProps) {
+}: OrdersQueueMobileStackProps) {
   const orderChannelLabel = useOrderChannelLabel();
-  const router = useRouter();
   const assignOrder = useOrderAssignment();
-  const conditionCellRef = useRef<HTMLDivElement | null>(null);
 
   const qty = parseInt(String(record.quantity || '1'), 10) || 1;
   const trackingRaw =
     (record.tracking_number as string | undefined) ||
     record.shipping_tracking_number ||
     '';
-
-  // In-cell editing was deleted with the display layer on 2026-08-29
-  // (`docs/todo/one-table-sot-teardown-HANDOFF.md` § 4.2). `gridSkin` still
-  // decides the airtable CELL PAINT; it no longer arms an editor.
-  const gridEditable = gridSkin && !isMobile;
 
   const onPasteTracking = useCallback(
     (value: string) => {
@@ -474,14 +467,9 @@ function OrdersQueueFlatRowCells({
     [assignOrder, record.id],
   );
 
-  const conditionValue = String(record.condition || '').trim();
-  const conditionLabel = conditionGradeTableLabel(conditionValue);
-  const conditionEmpty = isEmptyMetaDash(conditionLabel);
-
   /**
-   * The identity payload — the `order` / `tracking` cells and the mobile chip
-   * cluster. Under COMPOUND the identity rides the `fulfillment` track, which
-   * reads the compound view instead, and this component is never rendered.
+   * The identity payload — the mobile chip cluster. Desktop identity rides the
+   * compound `fulfillment` track.
    */
   const identityChipProps: OrderIdentityCellProps = {
     // The channel is carried by the ORDER cell's brand dot (the identity
@@ -525,11 +513,6 @@ function OrdersQueueFlatRowCells({
     showPlatform: false,
   };
 
-  // Chip nodes built once per row; the registry places each in its own cell so
-  // order / tracking survive any column order.
-  const identityNodes = useOrderIdentityCellNodes(identityChipProps);
-
-  // Mobile keeps the right-packed icon cluster (order + tracking; no platform).
   const chipsNode = isMobile ? (
     <OrderIdentityChips {...identityChipProps} isMobile={isMobile} />
   ) : null;
@@ -628,21 +611,18 @@ function OrdersQueueFlatRowCells({
         isEmptyGutterChrome(selectGutterChrome) ? 'items-stretch p-0' : 'justify-center',
         LEDGER_GRID_FROZEN_CELL,
       )}
-      // Offset from the MOUNTED model, never a static list — the bench mounts
-      // its own flat array now (`STATION_HISTORY_COLUMNS`).
+      // Offset from the MOUNTED model.
       style={{ left: gridFrozenLeft(columns, 'select') }}
       onClick={(e) => (selectMode || gridSkin || clickSelect) && e.stopPropagation()}
     >
       {gridSkin || selectMode || clickSelect ? (
         onToggleSelect ? (
-          <GridRowCheckbox
-            checked={isChecked}
-            // Shift-click extends from the anchor. This was `{ shiftKey: false }`
-            // — the range walk existed in `useTableSelectMode` the whole time
-            // and no caller could ever reach it.
-            onToggle={(event) => onToggleSelect(record, event)}
-            label={isChecked ? 'Deselect row' : 'Select row'}
+          <MorphingSelectGutter
+            record={record}
+            isChecked={isChecked}
             chrome={selectGutterChrome}
+            onToggleSelect={onToggleSelect}
+            enabled
           />
         ) : (
           <span
@@ -661,206 +641,14 @@ function OrdersQueueFlatRowCells({
     </div>
   );
 
-  // ── Per-column cell registry (desktop) ───────────────────────────────────
-  // The ONLY desktop cell render path: header, rows, and group summaries map
-  // over the same ordered list, so reorder is a list change — not a CSS trick.
-  const renderDesktopCell = (col: OrdersQueueColumn, last: boolean): ReactNode => {
-    const rule = !last;
-    switch (col.key) {
-      case 'select':
-        return leadControls;
-      case 'title':
-        return (
-          <div
-            data-col="title"
-            // Identity column — collection-map read-only
-            // (`GRID_IDENTITY_COLUMN_KEYS`). The
-            // product title is a catalog fact + this row's identity anchor; a
-            // text caret (click / Enter / F2 / printable) put a destructive
-            // typo one keystroke away. Correction happens at the record plane.
-            // No focus ring on the title itself: the ring is the tell that a
-            // cell edits, and clicks must fall through to the row (open record).
-            className={cn(dataCell(col, rule), LEDGER_GRID_FROZEN_CELL, 'gap-1.5')}
-            style={{ left: gridFrozenLeft(columns, 'title') }}
-            data-frozen-edge
-          >
-            {flagIndicator}
-            {/* Status chip lives in the Status column on gridSkin; board/mobile keep the title-dot.
-                No dot at all when the queue has no per-row status (Labels). */}
-            {!gridSkin && rowStatus ? (
-              <HoverTooltip label={`${rowStatus.label} — ${rowStatus.description}`} focusable={false}>
-                <span className={cn('h-2 w-2 shrink-0 rounded-full', rowStatus.dot)} />
-              </HoverTooltip>
-            ) : null}
-            <span className="min-w-0 flex-1 truncate text-role-data text-text-default">
-              {record.product_title || 'Unknown Product'}
-            </span>
-          </div>
-        );
-      case 'condition': {
-        // Unbox flush grade face — uppercase table label + conditionGradeTextClass.
-        const gradeFace = conditionEmpty ? (
-          <GridCellDash />
-        ) : (
-          <span
-            className={cn(
-              'min-w-0 truncate text-role-eyebrow uppercase',
-              conditionGradeTextClass(conditionValue),
-            )}
-          >
-            {conditionLabel}
-          </span>
-        );
-        return (
-          <div
-            data-col="condition"
-            ref={conditionCellRef}
-            className={dataCell(col, rule)}
-          >
-            {gradeFace}
-          </div>
-        );
-      }
-      case 'age':
-        // Display-only derived days late — ship-by correction lives on the
-        // record plane, not as an in-cell edit on this urgency track.
-        return (
-          <div
-            data-col="age"
-            className={cn(dataCell(col, rule), LEDGER_GRID_FROZEN_CELL)}
-            style={{ left: gridFrozenLeft(columns, 'age') }}
-          >
-            <GridAgeCellValue
-              daysLate={daysLate}
-              tooltip={ageTooltip}
-                    />
-          </div>
-        );
-      case 'tester':
-        // TESTED lane (plan §9): scan actor → assignee → staff-id lookup, all
-        // normalized upstream into `testerDisplay` ('---' when truly missing).
-        return (
-          <div data-col="tester" className={dataCell(col, rule)}>
-            <GridStaffCellValue name={testerDisplay} />
-          </div>
-        );
-      case 'testedAt': {
-        const testedAtRaw = queueRowTestedAtRaw(record);
-        return (
-          <div data-col="testedAt" className={dataCell(col, rule)}>
-            {testedAtRaw ? (
-              <GridMonthDayTimeCellValue
-                raw={testedAtRaw}
-                className="text-text-muted"
-              />
-            ) : (
-              <GridCellDash />
-            )}
-          </div>
-        );
-      }
-      case 'packStation': {
-        // Bench label resolves from the SoT (`Station 2` / `Staging`), never a
-        // cell-local regex — this hand-rolled its own `QA ` strip until
-        // 2026-08-10, so it drifted from the chip row showing the same benches.
-        // `GridStatusCellValue` falls back to `GridCellDash` on an empty value,
-        // so an unstaged order needs no branch of its own.
-        const benchName = record.pack_location_name;
-        return (
-          <div data-col="packStation" className={dataCell(col, rule)}>
-            <GridStatusCellValue
-              label={
-                benchName
-                  ? packBenchShortLabel({
-                      locationName: String(benchName),
-                      locationKind: String(record.pack_location_kind || ''),
-                    })
-                  : null
-              }
-              toneClass={PACK_BENCH_CHIP_TONE}
-              tooltip={benchName ? `Staged at ${benchName}` : null}
-            />
-          </div>
-        );
-      }
-      case 'qty':
-        return (
-          <div
-            data-col="qty"
-            className={cn(dataCell(col, rule), gridEditable && cn('relative', focusRing('cell')))}
-          >
-            {/* Same type scale as the Date / Age cells — numerals must not
-                read a step smaller than their neighbor facts. */}
-            <span
-              className={cn(
-                'min-w-0 truncate tabular-nums normal-case tracking-normal',
-                orderRowQtyTone(qty),
-              )}
-            >
-              {qty}
-            </span>
-          </div>
-        );
-      case 'order':
-        // Identity pane — order stays pinned with ship-by + product while
-        // qty…tracking scroll. Read-only in the collection map for the same
-        // reason `title` is: correction happens at the record plane. No focus
-        // ring — clicks fall through to open the row.
-        return (
-          <div
-            data-col="order"
-            className={cn(dataCell(col, rule), LEDGER_GRID_FROZEN_CELL)}
-            style={{ left: gridFrozenLeft(columns, 'order') }}
-          >
-            {identityNodes.order}
-          </div>
-        );
-      case 'tracking':
-        // Pending grid: a row with no tracking has no label yet — that's a
-        // different status, surfaced as a compact soft-accent + icon that
-        // jumps to the outbound label station (`/shipping?open=`) to print.
-        // Icon-only keeps the tracking track as narrow as last-8 chips.
-        // The paste-from-clipboard chip stays a Labels/board-only tool.
-        return (
-          <div data-col="tracking" className={dataCell(col, rule)}>
-            {gridSkin && !trackingRaw ? (
-              <HoverTooltip label="No label yet — create it at the shipping station" focusable={false}>
-                <button
-                  type="button"
-                  data-add-label
-                  aria-label={`Create shipping label — order ${record.order_id || record.id}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    router.push(`/shipping?open=${record.id}`);
-                  }}
-                  onKeyDown={(e) => e.stopPropagation()}
-                  className={cn(
-                    'ds-raw-button inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md ring-1 ring-inset transition-colors',
-                    'bg-surface-accent text-text-accent ring-border-accent hover:bg-surface-accent/80',
-                    focusRing('cell'),
-                  )}
-                >
-                  <Plus className="h-3 w-3" aria-hidden />
-                </button>
-              </HoverTooltip>
-            ) : (
-              identityNodes.tracking
-            )}
-          </div>
-        );
-      case '_fill':
-      default:
-        // Slack track / unclaimed key — one face, shared with the compound map.
-        return renderStructuralCell(col, rule, dataCell);
-    }
-  };
-
   return (
     <>
       {isMobile ? (
         <>
           <div className="flex min-w-0 flex-col">
-            <RowTitle
+            <div className="flex min-w-0 items-center gap-1.5">
+              {flagIndicator}
+              <RowTitle
               leading={selectMode ? leadControls : undefined}
               // Empty dot keeps the leading track (so titles stay aligned down
               // the list) while saying nothing, which is the point.
@@ -870,6 +658,7 @@ function OrdersQueueFlatRowCells({
               }
               title={record.product_title || 'Unknown Product'}
             />
+            </div>
             <RowMetaColumns
               indent={metaIndentFor('default', selectMode)}
               qty={<span className={orderRowQtyTone(qty)}>{qty}</span>}
@@ -887,13 +676,7 @@ function OrdersQueueFlatRowCells({
           </div>
           {chipsNode}
         </>
-      ) : (
-        // Fragments (no DOM) keep every cell a DIRECT grid child — the airtable
-        // skin's `[data-order-row-id] > *` border rules depend on it.
-        columns.map((col, i) => (
-          <Fragment key={col.key}>{renderDesktopCell(col, i === columns.length - 1)}</Fragment>
-        ))
-      )}
+      ) : null}
 
     </>
   );
@@ -920,6 +703,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   isSelected,
   selectMode,
   isChecked,
+  quietIdentity = false,
   useAlternateStripe,
   testerDisplay,
   packerDisplay,
@@ -946,34 +730,45 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   onRowClick,
   onRowOpen,
   onRequestReplaceTracking,
+  onOpenLabels,
   onCommitCondition,
   onCommitSubtitleField,
   onCommitShipBy,
+  onCommitOrderedAt,
   onCommitStageAssign,
+  onSetStaffLaneRole,
 }: OrdersQueueTableRowProps) {
+  const statusTrail = useOrderStatusTrail();
   /**
    * WHICH COLUMN MODEL is mounted — this row's one layout discriminant.
    *
-   * `columns` arrives as either the COMPOUND slot materialization
-   * (`ordersCompoundColumnsFor` — every outbound desk) or the station benches'
-   * FLAT legacy model (`STATION_HISTORY_COLUMNS` — the last flat mount,
-   * pending the station-history kill item). They are sibling ARRAYS, never a
-   * mix, so one `isCompoundColumnModel` probe answers it. Mobile never maps
-   * `columns` at all — it paints the chip cluster + meta row — so it is FLAT
-   * by definition whatever model the host happened to pass.
-   *
-   * The two models paint DISJOINT payloads, and everything below is derived per
-   * row per render. To-ship mounts COMPOUND, so the whole flat identity payload
-   * (chip props, marketplace URL, FBA test, carrier brand dot, the Intl
-   * ship-by / lateness formatting) was being built for every row in the window
-   * to feed cells that do not exist there — and, mounted flat,
-   * `ordersCompoundView` is the same waste pointed the other way.
-   *
-   * This gates the DERIVATION only. What each model renders is unchanged.
+   * `columns` is the compound slot materialization (`ordersCompoundColumnsFor`).
+   * Mobile never maps `columns` — it paints the chip cluster + meta row.
    */
   const compoundLayout = !isMobile && isCompoundColumnModel(columns);
 
   const isStagedRow = queueMode === 'staged' || queueMode === 'shipped';
+
+  // CYC-82 — the row action manifold that opens off the leading checkbox.
+  // Every outbound compound lane that paints a select gutter (To-ship,
+  // Shipped, staged, labels, exceptions) uses this manifold. Gating it on
+  // `queueMode === 'fulfillment'` was a fork: Shipped still had the checkbox
+  // but no left actions. The panel mounts BESIDE the cells rather than inside
+  // the gutter cell because the desktop gutter is painted by the shared
+  // compound engine, which takes data and not JSX; the row anchors the panel
+  // to itself so the panel lands outside the table's left edge.
+  const rowRef = useRef<HTMLDivElement>(null);
+  const morphingAnchorRef = useRef<HTMLElement | null>(null);
+  const [morphingOpen, setMorphingOpen] = useState(false);
+  const morphingEnabled = compoundLayout && Boolean(onToggleSelect);
+  const closeMorphingMenu = useCallback(() => setMorphingOpen(false), []);
+  const openMorphingMenu = useCallback(() => {
+    // Anchor the ROW, not the gutter cell: the manifold opens `left-start`, so
+    // anchoring the row parks it in the page margin OUTSIDE the table rather
+    // than on top of the columns the operator is reading.
+    morphingAnchorRef.current = rowRef.current;
+    setMorphingOpen(true);
+  }, []);
 
   // Zebra is OFF under the airtable skin. That skin already draws a full cell
   // rule grid (right + bottom on every cell) inside a raised card frame, so a
@@ -1011,6 +806,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   const dataCell = (col: OrdersQueueColumn, rule = true) =>
     gridDataCellClass(col, { rule, inset: cellInset });
 
+  const itemNumberValue = String(record.item_number ?? '').trim();
+
   // The condition subtitle part edits in place only when the surface passed
   // the commit capability AND the layout actually binds the fact. Editors are
   // matched to parts by key, so an org that unbinds condition sheds the
@@ -1030,7 +827,12 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
               // highlights its grade as current — the deleted flat editor's rule.
               current: resolveConditionGrade(record.condition) === opt.value,
             })),
-            clearLabel: 'Clear condition',
+            // NO clear row (operator 2026-09-04: "it must always be a
+            // condition in the row"). Every line has a grade — an unknown one
+            // is `--` until somebody picks, not a state an operator sets on
+            // purpose — so offering "Clear" offered a way to make a fact worse.
+            // The seven grades are the whole vocabulary; picking a different
+            // one is the edit.
             onCommit: (value) => onCommitCondition(record, value),
           },
         ]
@@ -1043,7 +845,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
    * and the lifecycle statuses. Those three are identity and history: an order
    * number is what the marketplace calls this row, a tracking number is what
    * the carrier calls the parcel, and a status is a record of something that
-   * already happened. A queue may not rewrite any of them from a list view.
+   * already happened. The item number is the one exception: it is editable from
+   * the product-title hover actions.
    */
   const editableSubtitle = Boolean(compoundLayout && onCommitSubtitleField);
   const subtitleEdits: readonly CompoundSubtitleEdit[] | undefined =
@@ -1059,7 +862,37 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                   onCommitSubtitleField(record, 'orders.qty', value),
               }]
             : []),
-          // Item number is the Listing control (open on click, copy on hover).
+          ...(subtitleFieldIds?.includes('orders.item_number')
+            ? [{
+                partKey: 'orders.item_number',
+                label: 'Item number',
+                value: itemNumberValue,
+                onCommit: (value: string | null) =>
+                  onCommitSubtitleField(record, 'orders.item_number', value),
+              }]
+            : []),
+          ...(subtitleFieldIds?.includes('orders.amount')
+            ? [{
+                partKey: 'orders.amount',
+                label: 'Amount',
+                // The RAW figure, not the formatted face: an operator edits
+                // `49.99`, not `$49.99`, and the cell re-formats on commit.
+                value: record.sale_amount == null ? '' : String(record.sale_amount),
+                kind: 'numeric' as const,
+                // Figma width-field: drag X by $1 (Shift $10, Control $0.01 damped).
+                // Control-up grace before dollars — the pointer is still displaced.
+                scrub: {
+                  step: 1,
+                  coarseStep: 10,
+                  fineStep: 0.01,
+                  min: 0,
+                  decimals: 2,
+                  money: true,
+                },
+                onCommit: (value: string | null) =>
+                  onCommitSubtitleField(record, 'orders.amount', value),
+              }]
+            : []),
           ...(subtitleFieldIds?.includes('orders.notes')
             ? [{
                 partKey: 'orders.notes',
@@ -1072,18 +905,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         ]
       : undefined;
 
-  // Item number is never painted as digits. Bound ⇒ listing glyph in the
-  // trailing cluster (info when a URL exists, faint when missing).
-  const itemNumberValue = String(record.item_number ?? '').trim();
-  const listingHref = getExternalUrlByItemNumber(itemNumberValue);
-  const subtitleCopies: readonly CompoundSubtitleCopy[] | undefined =
-    compoundLayout && subtitleFieldIds?.includes('orders.item_number')
-      ? [{
-          partKey: 'orders.item_number',
-          value: itemNumberValue,
-          openHref: listingHref,
-        }]
-      : undefined;
+  // The item number is a title-hover action, not an under-title glyph.
 
   // One adapter call per row — the compound cells all read this. Built here
   // (not per cell) so a five-column row maps once, and from the SAME resolved
@@ -1128,6 +950,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
               dotClass: rowFlag.dotClass,
             }
           : null,
+        quietIdentity,
       })
     : null;
 
@@ -1141,6 +964,14 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         }
       : undefined;
 
+  const orderedAtEdit =
+    compoundView && onCommitOrderedAt
+      ? {
+          value: compoundView.orderedAt?.dateKey ?? '',
+          onCommit: (dateKey: string | null) => onCommitOrderedAt(record, dateKey),
+        }
+      : undefined;
+
   const stageAssigns = useMemo(() => {
     if (!compoundView || !onCommitStageAssign) return undefined;
     return {
@@ -1150,6 +981,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         role: 'technician' as const,
         onCommit: (staffId: number | null, staffName: string | null) =>
           onCommitStageAssign(record, 'orders.picked', staffId, staffName),
+        onSetLaneRole: onSetStaffLaneRole,
       },
       'orders.packed': {
         selectedStaffId: packerId,
@@ -1157,50 +989,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         role: 'packer' as const,
         onCommit: (staffId: number | null, staffName: string | null) =>
           onCommitStageAssign(record, 'orders.packed', staffId, staffName),
+        onSetLaneRole: onSetStaffLaneRole,
       },
     };
-  }, [compoundView, onCommitStageAssign, testerId, packerId, record]);
-
-  /*
-   * The row's ⋮ verbs.
-   *
-   * The menu used to hold "Open" alone — a duplicate of clicking the row, in a
-   * permanent 2.5rem track. Now that the row opens the menu from the keyboard
-   * and from a right-click, the track had to be worth reaching: these are the
-   * two identifiers an operator retypes into a marketplace or a carrier site,
-   * and until now they were only obtainable by hovering the exact chip that
-   * carries them. Reads, not writes — a row menu is not where a queue should
-   * offer to mutate an order it is not showing the consequences of.
-   */
-  const orderNumber = String(record.order_id || '').trim();
-  const trackingNumber = String(
-    record.shipping_tracking_number || record.tracking_number || '',
-  ).trim();
-  const rowMenuActions = useMemo(() => {
-    const items: CompoundRowAction[] = [];
-    if (orderNumber) {
-      items.push({
-        key: 'copy-order',
-        label: 'Copy order number',
-        onSelect: () => {
-          void copyToClipboard(orderNumber, { historyKind: 'order', historyDisplay: orderNumber });
-        },
-      });
-    }
-    if (trackingNumber) {
-      items.push({
-        key: 'copy-tracking',
-        label: 'Copy tracking number',
-        onSelect: () => {
-          void copyToClipboard(trackingNumber, {
-            historyKind: 'tracking',
-            historyDisplay: trackingNumber,
-          });
-        },
-      });
-    }
-    return items;
-  }, [orderNumber, trackingNumber]);
+  }, [compoundView, onCommitStageAssign, onSetStaffLaneRole, testerId, packerId, record]);
 
   // ── The cells — one shell, two column models ─────────────────────────────
   // Fragments (no DOM) keep every cell a DIRECT grid child — the airtable
@@ -1216,45 +1008,10 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // note editor came down with the display layer. `order_notes` was never going
   // to edit in place anyway — it is an append-only trail, and rewriting
   // someone's statement is the failure that ruling exists to prevent.
-  const cells = compoundView ? (
-    columns.map((col, i) => {
-      const rule = i !== columns.length - 1;
-      const compoundCell = renderCompoundGridCell({
-        col,
-        columns,
-        rule,
-        view: compoundView,
-        subtitleSelects,
-        subtitleEdits,
-        subtitleCopies,
-        subtitleNoteKey: 'orders.notes',
-        noteText: record.notes ?? null,
-        shipByEdit,
-        stageAssigns,
-        onOpen: onRowOpen ? () => onRowOpen(record) : undefined,
-        actions: rowMenuActions,
-        // Bulk membership. The mobile stacked row keeps its own leading slot.
-        select: {
-          checked: isChecked,
-          onToggle: onToggleSelect
-            ? (event: { shiftKey: boolean }) => onToggleSelect(record, event)
-            : undefined,
-          label: isChecked ? 'Deselect row' : 'Select row',
-        },
-      });
-      // The renderer owns six tracks (the five view cells plus `select`);
-      // `_fill` is structural and lands on the shared face below.
-      return (
-        <Fragment key={col.key}>
-          {compoundCell || renderStructuralCell(col, rule, dataCell)}
-        </Fragment>
-      );
-    })
-  ) : (
-    <OrdersQueueFlatRowCells
+  const cells = isMobile ? (
+    <OrdersQueueMobileStack
       record={record}
       columns={columns}
-      cellClass={dataCell}
       isMobile={isMobile}
       gridSkin={gridSkin}
       selectMode={selectMode}
@@ -1265,12 +1022,73 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
       rowStatus={rowStatus}
       rowFlag={rowFlag}
       daysLate={daysLate}
-      testerDisplay={testerDisplay}
       trackingAction={trackingAction}
       serialChip={serialChip}
       onToggleSelect={onToggleSelect}
       onRequestReplaceTracking={onRequestReplaceTracking}
     />
+  ) : (
+    columns.map((col, i) => {
+      const rule = i !== columns.length - 1;
+      const compoundCell = compoundView
+        ? renderCompoundGridCell({
+            col,
+            columns,
+            rule,
+            view: compoundView,
+            subtitleSelects,
+            subtitleEdits,
+            subtitleNoteKey: 'orders.notes',
+            noteText: record.notes ?? null,
+            shipByEdit,
+            orderedAtEdit,
+            stageAssigns,
+            onOpenLabels: onOpenLabels ? () => onOpenLabels(record) : undefined,
+            onStateOpen: statusTrail
+              ? () =>
+                  statusTrail.open({
+                    orderPk: record.id,
+                    orderId: record.order_id || '',
+                    tracking: compoundView.tracking,
+                    stateLabel: rowStatus?.label ?? compoundView.stateLabel ?? 'Status',
+                  })
+              : undefined,
+            select: {
+              checked: isChecked,
+              // CYC-82 — the checkbox ALWAYS toggles (including unselect).
+              // Opening the assign menu is a side-effect of becoming selected,
+              // never a substitute for the toggle. Shift stays the range walk.
+              onToggle: onToggleSelect
+                ? (event: { shiftKey: boolean }) => {
+                    if (!morphingEnabled) {
+                      onToggleSelect(record, event);
+                      return;
+                    }
+                    applyMorphingGutterClick({
+                      isChecked,
+                      shiftKey: event.shiftKey,
+                      onToggle: (next) => onToggleSelect(record, next),
+                      onOpenMenu: openMorphingMenu,
+                      onCloseMenu: closeMorphingMenu,
+                    });
+                  }
+                : undefined,
+              label: morphingEnabled
+                ? isChecked
+                  ? 'Deselect row'
+                  : 'Select row and assign'
+                : isChecked
+                  ? 'Deselect row'
+                  : 'Select row',
+            },
+          })
+        : null;
+      return (
+        <Fragment key={col.key}>
+          {compoundCell || renderStructuralCell(col, rule, dataCell)}
+        </Fragment>
+      );
+    })
   );
 
   const shell: OrdersQueueRowShellProps = {
@@ -1289,14 +1107,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
     onMouseDown: (event) => {
       if ((selectMode || clickSelect) && event.shiftKey) event.preventDefault();
     },
-    onContextMenu: (event) => {
-      rowActionsContextMenu(event);
-    },
     onKeyDown: (event) => {
-      // Shift+F10 / Menu key → the row's ⋮ verbs. Checked before the grid's own
-      // chords so the platform gesture is never shadowed; a row whose family
-      // passes no verbs falls straight through to them.
-      if (rowActionsKeyDown(event)) return;
       if (clickSelect) {
         if (event.key === ' ') {
           event.preventDefault();
@@ -1346,14 +1157,14 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
             'cursor-pointer border-b border-border-hairline transition-colors',
             QUEUE_ROW.px,
             isStagedRow
-              ? 'py-2.5 hover:bg-blue-50/50'
+              ? 'py-2.5 hover:bg-surface-info/50'
               : 'hover:bg-surface-hover py-1.5',
             // Idle zebra (off-grid only — see `stripeRow`): opaque canvas
             // where the caller asks, translucent otherwise. Selection
             // overrides stripe; triage flag beats zebra.
             isStagedRow
               ? (selectMode ? isChecked : isSelected)
-                ? 'bg-blue-50/80'
+                ? 'bg-surface-info/80'
                 : stripeRow
                   ? opaqueStripe
                     ? 'bg-surface-canvas'
@@ -1383,7 +1194,19 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
               : { backgroundColor: rowFillHex }),
           }
         : undefined,
-    children: cells,
+    children: (
+      <>
+        {cells}
+        {morphingEnabled ? (
+          <MorphingRowActionMenu
+            record={record}
+            open={morphingOpen}
+            onClose={closeMorphingMenu}
+            anchorRef={morphingAnchorRef}
+          />
+        ) : null}
+      </>
+    ),
   };
 
   // A row that animates NOTHING is a plain box: no motion component, no
@@ -1391,10 +1214,11 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   // moment any of the three is live, the shell above is handed to the motion
   // host unchanged.
   if (!animatePresence && !animateLayout && !hoverLift) {
-    return <div {...shell} />;
+    return <div ref={rowRef} {...shell} />;
   }
   return (
     <AnimatedOrdersQueueRowShell
+      ref={rowRef}
       animatePresence={animatePresence}
       animateLayout={animateLayout}
       hoverLift={hoverLift}
@@ -1407,6 +1231,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.isSelected !== next.isSelected) return false;
   if (prev.selectMode !== next.selectMode) return false;
   if (prev.isChecked !== next.isChecked) return false;
+  if (prev.quietIdentity !== next.quietIdentity) return false;
   if (prev.useAlternateStripe !== next.useAlternateStripe) return false;
   if (prev.opaqueStripe !== next.opaqueStripe) return false;
   if (prev.gridSkin !== next.gridSkin) return false;
@@ -1452,6 +1277,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   if (prev.onCommitCondition !== next.onCommitCondition) return false;
   if (prev.onCommitShipBy !== next.onCommitShipBy) return false;
   if (prev.onCommitStageAssign !== next.onCommitStageAssign) return false;
+  if (prev.onSetStaffLaneRole !== next.onSetStaffLaneRole) return false;
   if (prev.testerId !== next.testerId) return false;
   if (prev.packerId !== next.packerId) return false;
   // Live fields the COMPOUND `fulfillment` / `item` tracks paint. A label

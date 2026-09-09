@@ -7,6 +7,8 @@ export interface ShippedOrder {
   id: number;
   deadline_at?: string | null;
   ship_by_date?: string | null;
+  /** Channel-placed date (ISO). Seeds the DATES top line. */
+  order_date?: string | null;
   order_id: string;
   product_title: string;
   quantity?: string | null;
@@ -84,6 +86,8 @@ export interface ShippedOrder {
   is_shipped?: boolean;
   /** Operator blocked the line — `orders.is_out_of_stock`. */
   is_out_of_stock?: boolean;
+  /** Operator-marked urgent. */
+  is_urgent?: boolean;
   /** Catalog listing image from `sku_catalog.image_url` (orders queue join). */
   catalog_image_url?: string | null;
   shipment_status?: string | null;

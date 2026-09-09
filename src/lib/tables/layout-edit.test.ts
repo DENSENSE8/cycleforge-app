@@ -15,6 +15,7 @@ import {
   toggleFieldBinding,
 } from './layout-edit';
 import { MAX_STATUS_SLOTS, slotLimitMessage, type SlotLayout } from './slot-layout-core';
+import { LINE_QTY_LOCKED_REASON } from './slot-table-line-qty';
 
 const IDENTITY: FieldDef = {
   id: 'orders.order_id', family: 'orders', label: 'Order', displayType: 'id', slotKinds: ['identity'],
@@ -79,6 +80,14 @@ describe('toggleFieldBinding', () => {
     assert.deepEqual(result.layout.statusBindings, [{ fieldId: 'orders.picked' }]);
   });
 
+  it('refuses unbinding line qty', () => {
+    const bound = layout({ subtitleBindings: [{ fieldId: 'orders.qty' }] });
+    assert.deepEqual(toggleFieldBinding(bound, QTY), {
+      ok: false,
+      reason: LINE_QTY_LOCKED_REASON,
+    });
+  });
+
   it('refuses the 11th status binding with the limit copy', () => {
     const full = layout({
       statusBindings: Array.from({ length: MAX_STATUS_SLOTS }, (_, i) => ({
@@ -104,24 +113,39 @@ describe('toggleFieldBinding', () => {
 describe('moveFieldBinding', () => {
   it('swaps a bound field with its neighbour, in its own band only', () => {
     const bound = layout({
-      subtitleBindings: [{ fieldId: 'orders.qty' }, { fieldId: 'orders.notes' }],
+      subtitleBindings: [
+        { fieldId: 'orders.qty' },
+        { fieldId: 'orders.notes' },
+        { fieldId: 'orders.condition' },
+      ],
     });
-    const result = moveFieldBinding(bound, NOTES, 'up');
+    const result = moveFieldBinding(bound, COND, 'up');
     assert.ok(result.ok);
     if (!result.ok) return;
     assert.deepEqual(result.layout.subtitleBindings, [
-      { fieldId: 'orders.notes' },
       { fieldId: 'orders.qty' },
+      { fieldId: 'orders.condition' },
+      { fieldId: 'orders.notes' },
     ]);
     // The other band is untouched — a move never crosses bands.
     assert.deepEqual(result.layout.statusBindings, bound.statusBindings);
+  });
+
+  it('refuses moving line qty', () => {
+    const bound = layout({
+      subtitleBindings: [{ fieldId: 'orders.qty' }, { fieldId: 'orders.notes' }],
+    });
+    assert.deepEqual(moveFieldBinding(bound, QTY, 'down'), {
+      ok: false,
+      reason: LINE_QTY_LOCKED_REASON,
+    });
   });
 
   it('is a no-op at the band edge and never mutates the input', () => {
     const bound = layout({
       subtitleBindings: [{ fieldId: 'orders.qty' }, { fieldId: 'orders.notes' }],
     });
-    const result = moveFieldBinding(bound, QTY, 'up');
+    const result = moveFieldBinding(bound, NOTES, 'down');
     assert.ok(result.ok);
     if (!result.ok) return;
     assert.deepEqual(result.layout.subtitleBindings, bound.subtitleBindings);
@@ -150,25 +174,29 @@ describe('reorderFieldBinding', () => {
     assert.ok(result.ok);
     if (!result.ok) return;
     assert.deepEqual(result.layout.subtitleBindings, [
-      { fieldId: 'orders.item_number' },
       { fieldId: 'orders.qty' },
+      { fieldId: 'orders.item_number' },
       { fieldId: 'orders.condition' },
     ]);
     assert.deepEqual(bound.subtitleBindings[0], { fieldId: 'orders.qty' });
   });
 
-  it('clamps a drop past the last track to last, and is a no-op at the same index', () => {
+  it('refuses reordering line qty; clamps other fields past the last track', () => {
     const bound = layout({
       subtitleBindings: [{ fieldId: 'orders.qty' }, { fieldId: 'orders.notes' }],
     });
-    const clamped = reorderFieldBinding(bound, QTY, 99);
+    assert.deepEqual(reorderFieldBinding(bound, QTY, 99), {
+      ok: false,
+      reason: LINE_QTY_LOCKED_REASON,
+    });
+    const clamped = reorderFieldBinding(bound, NOTES, 99);
     assert.ok(clamped.ok);
     if (!clamped.ok) return;
     assert.deepEqual(clamped.layout.subtitleBindings, [
-      { fieldId: 'orders.notes' },
       { fieldId: 'orders.qty' },
+      { fieldId: 'orders.notes' },
     ]);
-    const same = reorderFieldBinding(bound, QTY, 0);
+    const same = reorderFieldBinding(bound, NOTES, 1);
     assert.ok(same.ok);
     if (!same.ok) return;
     assert.equal(same.layout, bound);
@@ -188,8 +216,8 @@ describe('reorderFieldBindingByDrop', () => {
     assert.ok(result.ok);
     if (!result.ok) return;
     assert.deepEqual(result.layout.subtitleBindings, [
-      { fieldId: 'orders.item_number' },
       { fieldId: 'orders.qty' },
+      { fieldId: 'orders.item_number' },
       { fieldId: 'orders.condition' },
     ]);
   });
@@ -243,7 +271,8 @@ describe('slotFieldOptions', () => {
       },
       {
         fieldId: 'orders.qty', label: 'Qty', band: 'subtitle', bound: true,
-        bindingIndex: 1, canMoveUp: true, canMoveDown: false,
+        bindingIndex: 1, canMoveUp: false, canMoveDown: false,
+        disabledReason: LINE_QTY_LOCKED_REASON,
       },
     ]);
   });

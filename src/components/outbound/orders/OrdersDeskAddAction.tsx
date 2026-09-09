@@ -125,6 +125,16 @@ export function OrdersDeskAddAction({
             disabled: row.disabled,
             separatorBefore: row.separatorBefore,
           })),
+          ...(canImport
+            ? [
+                {
+                  label: 'Upload orders CSV',
+                  icon: <FileText aria-hidden className="h-3.5 w-3.5" />,
+                  onClick: () => onMethod('file'),
+                  separatorBefore: true,
+                },
+              ]
+            : []),
           ...(exportAction
             ? [
                 {
@@ -134,7 +144,7 @@ export function OrdersDeskAddAction({
                   icon: <Download aria-hidden className="h-3.5 w-3.5" />,
                   onClick: exportAction.run,
                   disabled: exportAction.empty,
-                  separatorBefore: true,
+                  separatorBefore: !canImport,
                 },
               ]
             : []),
@@ -144,15 +154,6 @@ export function OrdersDeskAddAction({
             onClick: onAdd,
             separatorBefore: true,
           },
-          ...(canImport
-            ? [
-                {
-                  label: 'Import from file (CSV)',
-                  icon: <FileText aria-hidden className="h-3.5 w-3.5" />,
-                  onClick: () => onMethod('file'),
-                },
-              ]
-            : []),
         ]}
         className="shrink-0"
       />

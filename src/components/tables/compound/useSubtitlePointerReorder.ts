@@ -25,6 +25,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from 'react';
+import { subtitleReorderIgnoresScrubTarget } from './scrub-number';
 
 export const SUBTITLE_REORDER_THRESHOLD_PX = 6;
 
@@ -228,6 +229,9 @@ export function useSubtitlePointerReorder(
       return {
         onPointerDownCapture: (event: ReactPointerEvent<HTMLElement>) => {
           if (event.button !== 0) return;
+          // Price (and any Figma-scrub number) owns horizontal drag. Reorder
+          // still starts from qty / condition / notes.
+          if (subtitleReorderIgnoresScrubTarget(event.target)) return;
           originRef.current = {
             key,
             x: event.clientX,

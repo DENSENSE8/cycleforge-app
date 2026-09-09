@@ -172,7 +172,7 @@ export const tableDefinitionColumnSchema = z.strictObject({
   type: z.enum(COLUMN_TYPE_VALUES).optional(),
   dateFace: z.enum(DATE_COLUMN_FACE_VALUES).optional(),
   minTrackRem: z.number().positive().optional(),
-  align: z.enum(['start', 'end']).optional(),
+  align: z.enum(['start', 'end', 'center']).optional(),
   resizable: z.boolean().optional(),
   omitCellIcon: z.boolean().optional(),
   frozen: z.boolean().optional(),

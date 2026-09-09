@@ -7,4 +7,4 @@
  * unchanged. → bundle altitude.
  */
 
-export type PlatformProvider = 'google' | 'microsoft';
+export type PlatformProvider = 'google' | 'apple' | 'microsoft';

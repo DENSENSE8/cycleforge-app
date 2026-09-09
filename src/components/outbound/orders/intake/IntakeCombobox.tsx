@@ -23,7 +23,7 @@
  */
 
 import * as React from 'react';
-import { Check, ChevronDown } from '@/components/Icons';
+import { Check, ChevronDown, Package } from '@/components/Icons';
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -34,6 +34,7 @@ import {
   CommandList,
 } from '@/components/ui/command';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 export interface IntakeComboboxOption {
@@ -44,6 +45,49 @@ export interface IntakeComboboxOption {
   meta?: string;
   /** Render the label in the mono face (identifiers: SKUs, item numbers). */
   mono?: boolean;
+  /**
+   * Zoho / catalog product photo. When any option carries one, every option
+   * paints a thumb slot so rows stay aligned; text-only comboboxes (platform,
+   * channel) stay text-only.
+   */
+  imageUrl?: string | null;
+}
+
+function CatalogOptionThumb({
+  imageUrl,
+  size,
+}: {
+  imageUrl?: string | null;
+  size: 'trigger' | 'option';
+}) {
+  return (
+    <span
+      className={cn(
+        'relative flex shrink-0 items-center justify-center overflow-hidden bg-surface-canvas ring-1 ring-border-soft',
+        size === 'trigger' ? 'h-6 w-6' : 'h-10 w-10',
+        cornerClass('row'),
+      )}
+      aria-hidden
+    >
+      {imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- catalog / Zoho proxy host
+        <img
+          src={imageUrl}
+          alt=""
+          className="size-full object-cover"
+          loading="lazy"
+          decoding="async"
+          onError={(e) => {
+            e.currentTarget.style.display = 'none';
+          }}
+        />
+      ) : (
+        <Package
+          className={cn('text-text-faint', size === 'trigger' ? 'h-3 w-3' : 'h-4 w-4')}
+        />
+      )}
+    </span>
+  );
 }
 
 export function IntakeCombobox({
@@ -98,6 +142,7 @@ export function IntakeCombobox({
   const [open, setOpen] = React.useState(false);
   const async = typeof onQueryChange === 'function';
   const selected = options.find((o) => o.value === value) ?? null;
+  const showThumbs = options.some((o) => Boolean(o.imageUrl));
 
   const groups = React.useMemo(() => {
     const order: string[] = [];
@@ -126,8 +171,11 @@ export function IntakeCombobox({
           data-testid={testId}
           className={cn('h-9 w-full justify-between px-3 font-normal', className)}
         >
-          <span className={cn('truncate', selected ? 'text-text-default' : 'text-text-faint')}>
-            {selected ? selected.label : placeholder}
+          <span className={cn('flex min-w-0 items-center gap-2', selected ? 'text-text-default' : 'text-text-faint')}>
+            {selected?.imageUrl ? (
+              <CatalogOptionThumb imageUrl={selected.imageUrl} size="trigger" />
+            ) : null}
+            <span className="truncate">{selected ? selected.label : placeholder}</span>
           </span>
           <ChevronDown className="h-3.5 w-3.5 shrink-0 text-text-faint" aria-hidden />
         </Button>
@@ -163,6 +211,9 @@ export function IntakeCombobox({
                       setOpen(false);
                     }}
                   >
+                    {showThumbs ? (
+                      <CatalogOptionThumb imageUrl={opt.imageUrl} size="option" />
+                    ) : null}
                     <span className="min-w-0 flex-1">
                       <span className={cn('block truncate', opt.mono && 'font-mono')}>
                         {opt.label}

@@ -21,6 +21,24 @@ import {
   slotLimitMessage,
   type SlotLayout,
 } from '@/lib/tables/slot-layout-core';
+import {
+  isLineMoneyFieldId,
+  LINE_MONEY_LOCKED_REASON,
+  pinLineMoneySubtitleBindings,
+} from '@/lib/tables/slot-table-line-money';
+import {
+  isLineQtyFieldId,
+  LINE_QTY_LOCKED_REASON,
+  pinLineQtySubtitleBindings,
+} from '@/lib/tables/slot-table-line-qty';
+
+function pinSubtitleIdentityBindings(layout: SlotLayout): SlotLayout {
+  return pinLineMoneySubtitleBindings(pinLineQtySubtitleBindings(layout));
+}
+
+function isSubtitleIdentityFieldId(fieldId: string): boolean {
+  return isLineQtyFieldId(fieldId) || isLineMoneyFieldId(fieldId);
+}
 
 /** One row of the Fields picker, as data. */
 export interface SlotFieldOption {
@@ -45,7 +63,15 @@ export type ToggleBindingResult =
   | { ok: true; layout: SlotLayout }
   | { ok: false; reason: string };
 
+function subtitleIdentityLockReason(fieldId: string): string | null {
+  if (isLineQtyFieldId(fieldId)) return LINE_QTY_LOCKED_REASON;
+  if (isLineMoneyFieldId(fieldId)) return LINE_MONEY_LOCKED_REASON;
+  return null;
+}
+
 function bandFor(field: FieldDef): 'status' | 'subtitle' | null {
+  // Qty / price are subtitle identity even when the catalog also allows status.
+  if (isSubtitleIdentityFieldId(field.id) && fieldAllowsSlot(field, 'subtitle')) return 'subtitle';
   if (fieldAllowsSlot(field, 'status')) return 'status';
   if (fieldAllowsSlot(field, 'subtitle')) return 'subtitle';
   return null;
@@ -70,13 +96,15 @@ export function toggleFieldBinding(layout: SlotLayout, field: FieldDef): ToggleB
   const cap = band === 'status' ? MAX_STATUS_SLOTS : MAX_SUBTITLE_SLOTS;
 
   if (isBoundIn(layout, band, field.id)) {
+    const locked = subtitleIdentityLockReason(field.id);
+    if (locked) return { ok: false, reason: locked };
     const next = bindings.filter((b) => b.fieldId !== field.id);
     return {
       ok: true,
       layout:
         band === 'status'
           ? { ...layout, statusBindings: next }
-          : { ...layout, subtitleBindings: next },
+          : pinSubtitleIdentityBindings({ ...layout, subtitleBindings: next }),
     };
   }
 
@@ -89,7 +117,7 @@ export function toggleFieldBinding(layout: SlotLayout, field: FieldDef): ToggleB
     layout:
       band === 'status'
         ? { ...layout, statusBindings: next }
-        : { ...layout, subtitleBindings: next },
+        : pinSubtitleIdentityBindings({ ...layout, subtitleBindings: next }),
   };
 }
 
@@ -110,6 +138,8 @@ export function moveFieldBinding(
   if (!band) {
     return { ok: false, reason: `'${field.label}' is not a bindable column` };
   }
+  const locked = subtitleIdentityLockReason(field.id);
+  if (locked) return { ok: false, reason: locked };
   const bindings = band === 'status' ? layout.statusBindings : layout.subtitleBindings;
   const at = bindings.findIndex((b) => b.fieldId === field.id);
   if (at < 0) {
@@ -126,7 +156,7 @@ export function moveFieldBinding(
     layout:
       band === 'status'
         ? { ...layout, statusBindings: next }
-        : { ...layout, subtitleBindings: next },
+        : pinSubtitleIdentityBindings({ ...layout, subtitleBindings: next }),
   };
 }
 
@@ -151,6 +181,8 @@ export function reorderFieldBinding(
   if (!band) {
     return { ok: false, reason: `'${field.label}' is not a bindable column` };
   }
+  const locked = subtitleIdentityLockReason(field.id);
+  if (locked) return { ok: false, reason: locked };
   const bindings = band === 'status' ? layout.statusBindings : layout.subtitleBindings;
   const at = bindings.findIndex((b) => b.fieldId === field.id);
   if (at < 0) {
@@ -168,7 +200,7 @@ export function reorderFieldBinding(
     layout:
       band === 'status'
         ? { ...layout, statusBindings: next }
-        : { ...layout, subtitleBindings: next },
+        : pinSubtitleIdentityBindings({ ...layout, subtitleBindings: next }),
   };
 }
 
@@ -225,17 +257,20 @@ export function slotFieldOptions(layout: SlotLayout, catalog: FieldCatalog): Slo
     const bindingIndex = bindings.findIndex((b) => b.fieldId === field.id);
     const bound = bindingIndex >= 0;
     const full = band === 'status' ? statusFull : subtitleFull;
+    const identityLocked = bound && isSubtitleIdentityFieldId(field.id);
+    const identityReason = identityLocked ? subtitleIdentityLockReason(field.id) : null;
     options.push({
       fieldId: field.id,
       label: field.label,
       band,
       bound,
       ...(!bound && full ? { disabledReason: slotLimitMessage(band) } : null),
+      ...(identityReason ? { disabledReason: identityReason } : null),
       ...(bound
         ? {
             bindingIndex,
-            canMoveUp: bindingIndex > 0,
-            canMoveDown: bindingIndex < bindings.length - 1,
+            canMoveUp: identityLocked ? false : bindingIndex > 0,
+            canMoveDown: identityLocked ? false : bindingIndex < bindings.length - 1,
           }
         : null),
     });

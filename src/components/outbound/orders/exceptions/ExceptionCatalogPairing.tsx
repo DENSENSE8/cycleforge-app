@@ -44,6 +44,7 @@ export interface CatalogHit {
   sku: string;
   product_title?: string | null;
   productTitle?: string | null;
+  image_url?: string | null;
 }
 
 /**
@@ -130,6 +131,7 @@ export function ExceptionCatalogPairing({
           label: hit.sku,
           mono: true,
           meta: hit.productTitle ?? hit.product_title ?? undefined,
+          imageUrl: hit.image_url,
         }))}
         query={query}
         onQueryChange={onQueryChange}

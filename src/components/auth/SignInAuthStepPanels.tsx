@@ -1,51 +1,43 @@
 'use client';
 
 /**
- * Sign-in credential fields.
+ * Sign-in credential fields — email AND password, together, one step.
  *
- * Both text entries stay on screen — email is always visible, and the password
- * field renders in beneath it once the user continues. There is no panel swap
- * and no back chip: the email is right there to edit, so nothing needs to travel
- * or be restored.
+ * There was a second step here until 2026-09-07: the email field alone, a
+ * `Continue` button, then the password revealed underneath. That shape earns
+ * its keep when the identifier decides the method (an SSO tenant, a
+ * passkey-only account) — this card has already offered Google, Apple, passkey
+ * and QR above it, so by the time someone picks "Sign in with email" they have
+ * chosen the password path and the extra press only delayed it. Password
+ * managers also fill both fields in one gesture, which the split defeated.
  *
- * The reveal is a plain conditional render — no motion import. This component
- * sits on `/signin`'s critical JS graph (the one public route), and the motion
- * barrel statically carries the whole engine; evicting it here is part of what
- * emptied ~48KB gz out of that graph (2026-08-28). The old framer reveal also
- * tweened `height: auto`, which the house motion law bans outright (a reflow
- * per frame) — showing the field at once is both the fast and the legal shape.
+ * No motion import. This component sits on `/signin`'s critical JS graph (the
+ * one public route) and the motion barrel statically carries the whole engine;
+ * evicting it here is part of what emptied ~48KB gz out of that graph
+ * (2026-08-28).
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 // Deep path, not the barrel — see the note in `src/app/signin/page.tsx`.
 import { TextField } from '@/design-system/primitives/TextField';
 
 export interface SignInAuthStepPanelsProps {
-  authStep: 'email' | 'password';
   email: string;
   password: string;
   onEmailChange: (value: string) => void;
   onPasswordChange: (value: string) => void;
+  /** Back control on the left of the bottom row: returns to the method list. */
+  onAllOptions?: () => void;
 }
 
 export function SignInAuthStepPanels({
-  authStep,
   email,
   password,
   onEmailChange,
   onPasswordChange,
+  onAllOptions,
 }: SignInAuthStepPanelsProps) {
-  const passwordRef = useRef<HTMLInputElement>(null);
   const [showPassword, setShowPassword] = useState(false);
-
-  useEffect(() => {
-    if (authStep !== 'password') {
-      setShowPassword(false);
-      return;
-    }
-    // The field is present the frame this flips, so focus lands immediately.
-    passwordRef.current?.focus();
-  }, [authStep]);
 
   return (
     <div className="space-y-3">
@@ -54,18 +46,16 @@ export function SignInAuthStepPanels({
         name="email"
         label="Email"
         type="email"
-        autoComplete="email"
+        autoComplete="email webauthn"
         autoFocus
         value={email}
         onChange={onEmailChange}
       />
 
-      {authStep === 'password' && (
-        <div key="password-field" className="space-y-1.5">
-          <TextField
-            ref={passwordRef}
-            id="password"
-            name="password"
+      <div className="space-y-1.5">
+        <TextField
+          id="password"
+          name="password"
             label="Password"
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
@@ -115,7 +105,32 @@ export function SignInAuthStepPanels({
               </button>
             }
           />
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between gap-2">
+            {onAllOptions ? (
+              <button
+                type="button"
+                onClick={onAllOptions}
+                // ds-raw-button: tertiary back control - the page TextLink's
+                // quiet shape, never a second blue action in this row.
+                className="inline-flex items-center gap-1 rounded text-left text-role-caption font-semibold text-text-soft transition-colors hover:text-text-default"
+              >
+                <svg
+                  className="h-3.5 w-3.5"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden
+                >
+                  <path d="M15 18l-6-6 6-6" />
+                </svg>
+                All sign-in options
+              </button>
+            ) : (
+              <span aria-hidden />
+            )}
             <a
               href="/signin/reset"
               className="text-role-caption font-semibold text-blue-600 hover:text-blue-700"
@@ -123,8 +138,7 @@ export function SignInAuthStepPanels({
               Forgot password?
             </a>
           </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

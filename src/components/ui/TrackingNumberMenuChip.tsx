@@ -6,7 +6,8 @@
  * Carton-context parity ({@link IdentityLinkChip} tracking slot):
  *   • Chip click = copy (via {@link TrackingOrSkuScanChip})
  *   • Hover → white side menu (prefer trailing/right): **Open** (carrier page) ·
- *     **Edit** (host opens the record inspector / replace flow) — never below
+ *     **Edit** (host opens the record inspector / replace flow) · host
+ *     {@link extraItems} (To-ship **Label** → paperwork walk) — never below
  *     the chip in LedgerGrid (that blocks vertical row travel)
  *   • Dense uppercase verbs + ExternalLink / Pencil — same face as Unbox
  *
@@ -19,6 +20,7 @@
 import { ExternalLink, Pencil } from '@/components/Icons';
 import { TrackingOrSkuScanChip } from '@/components/ui/CopyChip';
 import { CopyChipHoverMenu, type CopyChipHoverMenuItem } from '@/components/ui/CopyChipHoverMenu';
+import { trackingHoverMenuHasActions } from '@/lib/tables/slot-action-overlay';
 import { resolveTrackingOpenUrl } from '@/lib/tracking-format';
 
 interface TrackingNumberMenuChipProps {
@@ -35,6 +37,12 @@ interface TrackingNumberMenuChipProps {
    * Omit to hide the Edit menu row — never clipboard-steals.
    */
   onEdit?: () => void;
+  /**
+   * Extra hover-menu rows after Open / Edit (To-ship **Label**, which opens
+   * the paperwork walk on `?paperwork=`). Omit on receiving / inbound chips —
+   * those hosts have no walk to open.
+   */
+  extraItems?: readonly CopyChipHoverMenuItem[];
   onMenuOpenChange?: (open: boolean) => void;
   /** When false, omit any leftover leading glyph (grid column already labeled TRACK). */
   showIcon?: boolean;
@@ -47,6 +55,7 @@ export function TrackingNumberMenuChip({
   carrierHint = null,
   plain = false,
   onEdit,
+  extraItems,
   onMenuOpenChange,
   showIcon,
   dense = false,
@@ -78,8 +87,16 @@ export function TrackingNumberMenuChip({
     });
   }
 
-  // No Edit and no usable Open → plain chip (copy + dark full-value tooltip).
-  if (!onEdit && !trackingUrl) {
+  if (extraItems?.length) items.push(...extraItems);
+
+  // No Edit, no Open, no extras → plain chip (copy + dark full-value tooltip).
+  if (
+    !trackingHoverMenuHasActions({
+      trackingUrl,
+      hasEdit: Boolean(onEdit),
+      extraCount: extraItems?.length ?? 0,
+    })
+  ) {
     return (
       <TrackingOrSkuScanChip
         value={value}

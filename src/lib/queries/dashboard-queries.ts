@@ -41,6 +41,8 @@ export interface OrderQueryParams {
   /** Coarse stage facet (?stage), filtered SERVER-side; absent = all
    *  in-warehouse stages. Fulfillment STATE / lane (?ustatus) stays a client filter. */
   stage?: 'pending' | 'tested' | 'packed';
+  /** Shortage desk: only operator-blocked rows. */
+  blockedOnly?: boolean;
   /** Row ceiling for the fulfillment page (Phase 2). Grows on "Load more"; the
    *  server truncates + the counts endpoint's total drives whether more exist. */
   limit?: number;

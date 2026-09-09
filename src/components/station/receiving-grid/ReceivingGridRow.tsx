@@ -47,6 +47,8 @@ import {
 import { receivingActivityDateCell } from './receiving-grid-date';
 
 interface ReceivingGridRowProps {
+  /** Fold parent is speaking the PO/order — dash it here. */
+  quietIdentity?: boolean;
   row: ReceivingLineRow;
   index: number;
   isMobile: boolean;
@@ -101,6 +103,7 @@ interface ReceivingGridRowProps {
   rowFillHex?: string | null;
   selectGutterChrome?: GridSelectGutterChrome;
   customFieldDefs?: readonly CustomFieldDef[];
+  subtitleFieldIds?: readonly string[];
   /** Inline note edit. Absent ⇒ the note line is read-only on this surface. */
 }
 
@@ -132,8 +135,10 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
   onOpenWorkspace,
   historyTriageMenu = false,
   rowFillHex = null,
+  quietIdentity: _quietIdentity = false,
   selectGutterChrome = 'always',
   customFieldDefs,
+  subtitleFieldIds: _subtitleFieldIds,
 }: ReceivingGridRowProps) {
   useTimeFormat();
   const resolvePlatformMeta = usePlatformMeta();

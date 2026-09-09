@@ -11,6 +11,7 @@ import {
   extendTo,
   selectAll,
   selectOnlyAt,
+  setMany,
   toggleAt,
   type SelectionAnchorState,
 } from '@/lib/selection/selection-anchor';
@@ -66,6 +67,8 @@ export function useTableSelectMode<T>({
   selectEvery: () => void;
   /** Drop every checked row (the rail's close / the header's Clear). */
   clear: () => void;
+  /** Check or uncheck a named set (order-parent checkbox) without replacing the rest. */
+  setMany: (ids: readonly number[], checked: boolean) => void;
   isSelected: (id: number) => boolean;
 } {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set());
@@ -138,6 +141,13 @@ export function useTableSelectMode<T>({
     applyAnchor((state) => clearSelection(state));
   }, [applyAnchor]);
 
+  const setManyIds = useCallback(
+    (ids: readonly number[], checked: boolean) => {
+      applyAnchor((state) => setMany(state, ids, checked));
+    },
+    [applyAnchor],
+  );
+
   const isSelected = useCallback((id: number) => selectedIds.has(id), [selectedIds]);
 
   // Broadcast the resolved selected rows whenever the checked set changes.
@@ -178,5 +188,5 @@ export function useTableSelectMode<T>({
     emitSelectionTotal(scope, selectMode ? rows.length : 0);
   }, [scope, selectMode, rows.length]);
 
-  return { selectedIds, toggle, selectOnly, selectEvery, clear, isSelected };
+  return { selectedIds, toggle, selectOnly, selectEvery, clear, setMany: setManyIds, isSelected };
 }

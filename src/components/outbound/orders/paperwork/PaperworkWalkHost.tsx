@@ -15,17 +15,19 @@ import type { ShippedOrder } from '@/types/orders';
 export function PaperworkWalkHost({
   rows,
   selectedId,
-  loading,
+  loading = false,
   onSelect,
   onAdvance,
+  onPrev,
   onExit,
   onFactsChanged,
 }: {
   rows: ShippedOrder[];
   selectedId: number;
-  loading: boolean;
-  onSelect: (id: number) => void;
+  loading?: boolean;
+  onSelect?: (id: number) => void;
   onAdvance: () => void;
+  onPrev?: () => void;
   onExit: () => void;
   onFactsChanged: () => void;
 }) {
@@ -58,7 +60,7 @@ export function PaperworkWalkHost({
         <PaperworkRecentRail
           rows={rows}
           selectedId={selected.id}
-          onSelect={onSelect}
+          onSelect={onSelect ?? (() => {})}
           loading={loading}
         />
       </aside>

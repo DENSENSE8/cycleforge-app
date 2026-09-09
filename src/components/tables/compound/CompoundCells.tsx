@@ -22,29 +22,48 @@
  * from the MOUNTED columns now, which every family already passes.
  */
 
-import { useState, type ReactNode } from 'react';
+import { forwardRef, useRef, useState, type ComponentType, type HTMLAttributes, type ReactNode } from 'react';
 import Image from 'next/image';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
+  AlertCircle,
+  AlertTriangle,
   Check,
   ChevronRight,
   Copy,
   ExternalLink,
   FileText,
+  Hash,
+  CalendarClock,
   MoreHorizontal,
   Package,
   PackageSearch,
   PackingModeStandard,
+  Pencil,
   ShippingModeScanOut,
 } from '@/components/Icons';
 import type { FieldDisplayType } from '@/lib/tables/field-catalog/types';
+import { pinLineMoneyAfterQty } from '@/lib/tables/slot-table-line-money';
+import { pinLineQtyFirst } from '@/lib/tables/slot-table-line-qty';
+import {
+  compoundSlotAgeFace,
+  compoundSlotFaceFor,
+  compoundSlotInstantFace,
+} from './compound-slot-face';
 import { StaffAvatar } from '@/components/identity';
 import { BrandIdentityDot, GridCellDash } from '@/components/ui/grid-cells';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { ITEM_RECORD_MOBILE_STAGE } from '@/design-system/tokens/item-record-mobile';
-import { GridClickSelectFace, GridRowCheckbox } from '@/components/ui/GridRowCheckbox';
+import {
+  GridRowCheckbox,
+  GridSelectSquareFace,
+  type GridSelectGutterChrome,
+} from '@/components/ui/GridRowCheckbox';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
-import { CopyChipHoverMenu } from '@/components/ui/CopyChipHoverMenu';
+import {
+  CopyChipHoverMenu,
+  type CopyChipHoverMenuItem,
+} from '@/components/ui/CopyChipHoverMenu';
 import { OrderNumberMenuChip } from '@/components/ui/OrderNumberMenuChip';
 import { TrackingNumberMenuChip } from '@/components/ui/TrackingNumberMenuChip';
 import { carrierBrandDotPaint, resolveCarrierBrand } from '@/lib/carrier-brand';
@@ -55,7 +74,10 @@ import { copyToClipboard } from '@/utils/_dom';
 import { cn } from '@/utils/_cn';
 import { useSlotLayoutReorder } from '@/components/tables/SlotLayoutReorderContext';
 import { useSubtitlePointerReorder } from './useSubtitlePointerReorder';
+import { CompoundSubtitleTextEditor } from './CompoundSubtitleTextEditor';
 import { CompoundCell, CompoundLine } from './CompoundCell';
+import { CopyableCellValue } from '@/components/ui/CopyChip';
+import { ProductTitleLink } from './ProductTitleLink';
 import { COMPOUND_GUTTER_PX, COMPOUND_ROW_PX } from './compound-row-chrome';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
 import {
@@ -67,23 +89,29 @@ import {
 import { EMPTY_META_DASH } from '@/lib/conditions';
 import { dateKeyToLocalDate, localDateToDateKey } from '@/utils/date';
 import {
-  formatCompoundDelayFace,
+  canAssignCompoundStage,
+  compoundDatesHoverLabel,
+  formatCompoundDelayAgeFace,
+  formatCompoundStageStampFace,
   formatCompoundStageStepLine,
+  type CompoundOrderedAtEdit,
   type CompoundRowAction,
   type CompoundRowView,
   type CompoundShipByEdit,
   type CompoundSlotValue,
   type CompoundStageAssign,
+  type CompoundStaffRoster,
   type CompoundStageStepFacts,
   type CompoundStateTone,
   type CompoundSubtitlePart,
   type CompoundSubtitleSelect,
   type CompoundSubtitleEdit,
-  type CompoundSubtitleCopy,
 } from './compound-row-model';
+import { StageStaffAssignPopover } from './StageStaffAssignPopover';
+import { CompoundStaffRosterButton } from './CompoundStaffRosterButton';
 
 /**
- * Column 2 — the photo, EDGE TO EDGE.
+ * Column 4 — the photo, EDGE TO EDGE. Identity (select · order) precedes it.
  *
  * It fills its cell corner to corner: no inset, no border, no centring slack.
  * The cell is a square of the row box (`COMPOUND_GUTTER_TRACK_REM`).
@@ -159,11 +187,37 @@ export function CompoundThumb({ view }: { view: CompoundRowView }) {
  * Incoming and To-Ship; "this task is done" on Tasks. Same control, same
  * picture, different handler.
  */
+/**
+ * The row's LEADING EDGE RAIL — 3px, full height, hard against the left edge.
+ *
+ * Rides INSIDE the select gutter rather than in a track of its own: see
+ * {@link CompoundRowView.edgeMark} for why a flag column was refused. The
+ * checkbox centres in the same cell and the rail sits outside its box, so the
+ * two never compete for the same pixels — the control keeps the middle, the
+ * signal keeps the edge.
+ *
+ * `aria-hidden` with a `title`: the WORD reaches assistive tech through the
+ * row's own facts (the status pill, the urgent binding), and a second
+ * announcement of "Urgent" on every row is noise. The title serves the mouse.
+ */
+function CompoundEdgeRail({ mark }: { mark: NonNullable<CompoundRowView['edgeMark']> }) {
+  return (
+    <HoverTooltip label={mark.label} asChild focusable={false}><span
+      className={cn('absolute inset-y-0 left-0 w-[3px] shrink-0', mark.barClass)}
+     
+      data-edge-mark={mark.label}
+      aria-hidden
+    /></HoverTooltip>
+  );
+}
+
 export function CompoundSelect({
   checked,
   onToggle,
   label,
   disabled = false,
+  chrome = 'hover',
+  edgeMark,
 }: {
   checked: boolean | 'mixed';
   /** Present ⇒ a real checkbox. Absent ⇒ a decorative face (row owns toggle). */
@@ -171,18 +225,36 @@ export function CompoundSelect({
   onToggle?: (event: { shiftKey: boolean }) => void;
   label: string;
   disabled?: boolean;
+  /**
+   * Leaf compound rows stay `'hover'`. Order-group parent chrome passes
+   * `'always'` so the fold checkbox is findable without hunting a hover.
+   */
+  chrome?: GridSelectGutterChrome;
+  /** Leading edge rail — urgent / blocked. See {@link CompoundEdgeRail}. */
+  edgeMark?: CompoundRowView['edgeMark'];
 }) {
+  const rail = edgeMark ? <CompoundEdgeRail mark={edgeMark} /> : null;
+  // Decorative face — the ROW owns the toggle on click-select surfaces. Same
+  // square the real control paints, so the two planes cannot look different.
   if (!onToggle) {
-    return <GridClickSelectFace checked={checked} className="absolute inset-0" />;
+    return (
+      <span className="relative flex h-full w-full items-center justify-center">
+        {rail}
+        <GridSelectSquareFace checked={checked} />
+      </span>
+    );
   }
   return (
-    <GridRowCheckbox
-      checked={checked}
-      onToggle={onToggle}
-      label={label}
-      disabled={disabled}
-      chrome="flush"
-    />
+    <span className="relative flex h-full w-full">
+      {rail}
+      <GridRowCheckbox
+        checked={checked}
+        onToggle={onToggle}
+        label={label}
+        disabled={disabled}
+        chrome={chrome}
+      />
+    </span>
   );
 }
 
@@ -220,175 +292,53 @@ export function CompoundSelect({
  * and opens on click only — same law as the ⋮ actions button and the old
  * note-editor trigger before it.
  */
-/**
- * A subtitle part being retyped.
- *
- * Opens on click, commits on Enter or blur, abandons on Escape — the shape an
- * operator already knows from a spreadsheet, and the reason this is a bare
- * input rather than the DS `InlineEditableValue` (which is a controlled
- * per-keystroke component with no consumers, so adopting it here would mean
- * owning its state anyway plus a second editing grammar on one line).
- *
- * It writes only on a real change. An editor that opens and closes untouched
- * firing a mutation is how a queue gets audit rows nobody caused.
- */
-function CompoundSubtitleTextEditor({
-  part,
+function isItemNumberSubtitlePart(key: string | undefined): boolean {
+  return Boolean(key?.endsWith('.item_number'));
+}
+
+function CompoundItemNumberEditor({
   edit,
-  face,
-  skipClick,
+  onClose,
 }: {
-  part: CompoundSubtitlePart;
   edit: CompoundSubtitleEdit;
-  face: ReactNode;
-  skipClick?: () => boolean;
+  onClose: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(edit.value);
 
-  const open = () => {
-    setDraft(edit.value);
-    setEditing(true);
-  };
-
   const commit = () => {
-    setEditing(false);
+    onClose();
     const next = draft.trim();
     if (next === edit.value.trim()) return;
     edit.onCommit(next.length > 0 ? next : null);
   };
 
-  if (editing) {
-    return (
-      <input
-        autoFocus
-        value={draft}
-        inputMode={edit.kind === 'numeric' ? 'numeric' : undefined}
-        placeholder={edit.placeholder}
-        aria-label={edit.label}
-        size={part.widthCh ?? 2}
-        onChange={(event) => setDraft(event.target.value)}
-        onClick={(event) => event.stopPropagation()}
-        onBlur={commit}
-        onKeyDown={(event) => {
-          event.stopPropagation();
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            commit();
-          } else if (event.key === 'Escape') {
-            event.preventDefault();
-            setEditing(false);
-          }
-        }}
-        className={cn(
-          // Caret only — no padded box, no border, no focus ring. The idle
-          // face is the quantity on the caption track; editing is typing into
-          // that same run.
-          'm-0 appearance-none border-0 bg-transparent p-0 shadow-none',
-          'h-3 tabular-nums leading-none outline-none',
-          part.toneClass ?? 'text-text-muted',
-        )}
-        style={part.widthCh != null ? { width: `${part.widthCh}ch` } : { width: '2ch' }}
-      />
-    );
-  }
-
   return (
-    <span
-      role="button"
-      tabIndex={-1}
-      aria-label={`Edit ${edit.label.toLowerCase()}: ${part.text}`}
-      onClick={(event) => {
+    <input
+      autoFocus
+      value={draft}
+      aria-label={edit.label}
+      placeholder={edit.placeholder}
+      onChange={(event) => setDraft(event.target.value)}
+      onClick={(event) => event.stopPropagation()}
+      onPointerDown={(event) => event.stopPropagation()}
+      onBlur={commit}
+      onKeyDown={(event) => {
         event.stopPropagation();
-        if (skipClick?.()) return;
-        open();
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          commit();
+        } else if (event.key === 'Escape') {
+          event.preventDefault();
+          onClose();
+        }
       }}
       className={cn(
-        'ds-raw-button inline-flex h-3 min-w-0 items-center leading-none text-left',
-        'hover:underline decoration-dotted underline-offset-2',
-        part.toneClass ?? 'text-text-muted',
-        focusRing('control'),
+        'm-0 h-3 min-w-0 appearance-none border-0 bg-transparent p-0',
+        'text-role-caption text-text-default shadow-none outline-none',
       )}
-    >
-      {face}
-    </span>
+      size={Math.max(edit.value.length, 8)}
+    />
   );
-}
-
-/**
- * A subtitle listing control.
- *
- * The face is ALWAYS the external-link glyph — never the word "Listing", never
- * the item number. Live listing → info blue, click opens. Missing item number
- * or missing URL → faint (grayed-out) icon, same box, so the slot does not
- * vanish and the line does not jump.
- */
-function CompoundSubtitleCopyChip({
-  copy,
-  skipClick,
-  dragActive,
-}: {
-  copy: CompoundSubtitleCopy;
-  /** True after a reorder drag — open-listing must not fire on drop. */
-  skipClick?: () => boolean;
-  /** Hide the hover copy menu while the subtitle line is being reordered. */
-  dragActive?: boolean;
-}) {
-  const href = String(copy.openHref ?? '').trim() || null;
-  const handle = String(copy.value ?? '').trim();
-  const live = Boolean(href);
-  const copyItems = handle
-    ? [
-        {
-          id: 'copy-item',
-          label: 'Copy item number',
-          icon: <Copy />,
-          onSelect: () => {
-            void copyToClipboard(handle, {
-              historyKind: 'sku',
-              historyDisplay: handle,
-            });
-          },
-        },
-      ]
-    : [];
-
-  const glyph = (
-    <span
-      role="button"
-      tabIndex={-1}
-      aria-label={live ? 'Open listing' : handle ? 'Listing' : 'No listing'}
-      aria-disabled={live ? undefined : true}
-      onClick={(event) => {
-        event.stopPropagation();
-        if (skipClick?.()) return;
-        if (href) window.open(href, '_blank', 'noopener,noreferrer');
-      }}
-      className={cn(
-        'ds-raw-button inline-flex h-3 w-3 shrink-0 items-center justify-center',
-        live ? 'text-text-info' : 'text-text-faint',
-        focusRing('control'),
-      )}
-    >
-      <ExternalLink className="h-3 w-3 shrink-0" aria-hidden />
-    </span>
-  );
-
-  return (
-    <span onClick={(event) => event.stopPropagation()}>
-      {copyItems.length > 0 && !dragActive ? (
-        <CopyChipHoverMenu menuLabel="Listing actions" denseLabel className="h-3" items={copyItems}>
-          {glyph}
-        </CopyChipHoverMenu>
-      ) : (
-        glyph
-      )}
-    </span>
-  );
-}
-
-function isListingSubtitlePart(key: string | undefined): boolean {
-  return Boolean(key?.endsWith('.item_number'));
 }
 
 /**
@@ -491,8 +441,27 @@ function CompoundSubtitleNote({
   const body = text.trim();
   const has = body.length > 0;
 
+  /*
+   * With a note written, the glyph is a fact and is always painted. With none,
+   * it is an AFFORDANCE — "you can write one here" — and an affordance on every
+   * row of a dense queue is 200 identical marks competing with the facts around
+   * them. So an empty note rides the row's own hover, the same reveal the empty
+   * select square uses (`group/row`, declared by `ledgerGridRowShellClass`).
+   *
+   * `focus-within` keeps it reachable by keyboard, where there is no hover at
+   * all, and the opacity transition means the line never reflows: the glyph
+   * always occupies its box (operator 2026-09-04 asked for the icon on row
+   * hover, not for the row to change shape under the pointer).
+   */
   const glyph = (
-    <FileText className="h-3 w-3 shrink-0 text-text-faint" aria-hidden />
+    <FileText
+      className={cn(
+        'h-3 w-3 shrink-0 text-text-faint',
+        !text.trim() &&
+          'opacity-0 transition-opacity group-hover/row:opacity-100 focus-within:opacity-100',
+      )}
+      aria-hidden
+    />
   );
   const face = has ? (
     <span className="min-w-0 truncate text-text-muted">{body}</span>
@@ -527,11 +496,11 @@ function CompoundSubtitleNote({
       }}
     >
       <DropdownMenuTrigger asChild>
-        <span
+        <HoverTooltip label={has ? body : 'Add a note'} asChild focusable={false}><span
           role="button"
           tabIndex={-1}
           aria-label={has ? `Edit note: ${body}` : 'Add a note'}
-          title={has ? body : 'Add a note'}
+         
           onClick={(event) => event.stopPropagation()}
           className={cn(
             'ds-raw-button inline-flex h-3 items-center leading-none',
@@ -540,7 +509,7 @@ function CompoundSubtitleNote({
           )}
         >
           {face}
-        </span>
+        </span></HoverTooltip>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         side="bottom"
@@ -582,18 +551,16 @@ export function CompoundItem({
   view,
   subtitleSelects,
   subtitleEdits,
-  subtitleCopies,
   subtitleNoteKey,
   noteText,
   onReorderSubtitle,
+  extraTitleActions,
 }: {
   view: CompoundRowView;
   /** Present ⇒ the parts these claim (by key) edit in place. */
   subtitleSelects?: readonly CompoundSubtitleSelect[];
   /** Present ⇒ the parts these claim retype in place (free text / number). */
   subtitleEdits?: readonly CompoundSubtitleEdit[];
-  /** Present ⇒ the parts these claim paint as a copy chip. */
-  subtitleCopies?: readonly CompoundSubtitleCopy[];
   /** Part key of the NOTE fact — pinned right as a glyph instead of inline. */
   subtitleNoteKey?: string;
   /** The note's full text (the part's face may be truncated or a placeholder). */
@@ -604,19 +571,26 @@ export function CompoundItem({
    * field id). See `docs/todo/subtitle-band-reorder-PLAN.md`.
    */
   onReorderSubtitle?: (dragKey: string, dropKey: string) => void;
+  /** Row verbs that used to live on a ⋮ track — listing, void, open. */
+  extraTitleActions?: readonly CopyChipHoverMenuItem[];
 }) {
   // Bound subtitles REPLACE the note line: parts in binding order, sitting
-  // LEFT under the title. Listing is the external-link glyph — never the
-  // item number. No middle dots. Notes stay in that cluster; the editor
-  // opens bottom-right of the glyph. Absent parts ⇒ the legacy note fallback.
-  const parts = view.subtitleParts;
+  // LEFT under the title. Item number is intentionally not painted here; its
+  // actions live on the product title hover surface. Notes stay in that
+  // cluster. Absent parts ⇒ the legacy note fallback.
+  const parts = view.subtitleParts
+    ? pinLineMoneyAfterQty(pinLineQtyFirst(view.subtitleParts))
+    : view.subtitleParts;
   const selectFor = (part: CompoundSubtitlePart): CompoundSubtitleSelect | undefined =>
     part.key ? subtitleSelects?.find((s) => s.partKey === part.key) : undefined;
 
   const editFor = (part: CompoundSubtitlePart): CompoundSubtitleEdit | undefined =>
     part.key ? subtitleEdits?.find((e) => e.partKey === part.key) : undefined;
-  const copyFor = (part: CompoundSubtitlePart): CompoundSubtitleCopy | undefined =>
-    part.key ? subtitleCopies?.find((c) => c.partKey === part.key) : undefined;
+  const itemNumberPart = parts?.find((part) => isItemNumberSubtitlePart(part.key));
+  const itemNumberEdit = subtitleEdits?.find((edit) => isItemNumberSubtitlePart(edit.partKey));
+  const itemNumberValue = String(itemNumberPart?.text ?? itemNumberEdit?.value ?? '').trim();
+  const listingHref = String(view.titleHref ?? '').trim() || null;
+  const [editingItemNumber, setEditingItemNumber] = useState(false);
 
   /*
    * Click-and-hold reorder of the under-title facts.
@@ -636,15 +610,6 @@ export function CompoundItem({
   const renderPart = (part: CompoundSubtitlePart, i: number) => {
     const select = selectFor(part);
     const edit = editFor(part);
-    const copy =
-      copyFor(part) ??
-      (isListingSubtitlePart(part.key)
-        ? {
-            partKey: part.key!,
-            value: String(part.text ?? '').trim(),
-            openHref: String(view.titleHref ?? '').trim() || null,
-          }
-        : undefined);
     const face = (
       <span
         className={cn(
@@ -652,7 +617,10 @@ export function CompoundItem({
           // line-height, so qty / condition sit on the glyph's centre line.
           'inline-flex h-3 items-center leading-none',
           part.toneClass,
-          part.widthCh != null && 'tabular-nums',
+          // A reserved box is a box: tabular figures so digits sit on the same
+          // stems down the column, and `overflow-hidden` so a value longer than
+          // the reservation clips instead of running over the fact beside it.
+          part.widthCh != null && 'tabular-nums overflow-hidden',
         )}
         style={part.widthCh != null ? { width: `${part.widthCh}ch` } : undefined}
       >
@@ -668,17 +636,11 @@ export function CompoundItem({
         {...dragBind}
         className={cn(
           'inline-flex h-3 min-w-0 select-none items-center [&_svg]:pointer-events-none',
-          reorderable && (draggingKey ? 'cursor-grabbing' : 'cursor-grab'),
+          reorderable && !edit?.scrub && (draggingKey ? 'cursor-grabbing' : 'cursor-grab'),
           overKey === partKey && 'bg-surface-sunken',
         )}
       >
-        {copy ? (
-          <CompoundSubtitleCopyChip
-            copy={copy}
-            skipClick={skipClick}
-            dragActive={Boolean(draggingKey)}
-          />
-        ) : edit ? (
+        {edit ? (
           <CompoundSubtitleTextEditor
             part={part}
             edit={edit}
@@ -701,13 +663,15 @@ export function CompoundItem({
   };
 
   /*
-   * Notes stay in the left cluster (after qty / condition / listing). They
+   * Notes stay in the left cluster (after qty / condition). They
    * used to pin right, which is what made the under-title facts look like
    * they belonged to the identity column. The editor still opens to the
    * bottom-right of the glyph — that is a menu placement, not a face.
    */
   const noteKey = subtitleNoteKey;
-  const inlineParts = parts?.filter((p) => p.key !== noteKey);
+  const inlineParts = parts?.filter(
+    (p) => p.key !== noteKey && !isItemNumberSubtitlePart(p.key),
+  );
   const notePart = noteKey ? parts?.find((p) => p.key === noteKey) : undefined;
   const noteEdit = noteKey ? subtitleEdits?.find((e) => e.partKey === noteKey) : undefined;
   const noteBody = (() => {
@@ -718,15 +682,20 @@ export function CompoundItem({
   })();
   const noteGlyph = notePart ? (
     <CompoundSubtitleNote text={noteBody} edit={noteEdit} />
+  ) : view.note ? (
+    <CompoundSubtitleNote text={view.note} />
   ) : null;
 
   /*
-   * LEFT under the title: qty, condition, listing glyph, notes glyph.
+   * LEFT under the title: qty, condition, and notes glyph.
    * Same `h-3` box, no middle dots. `justify-start` — a trailing cluster
    * was the wrong reading of "open the note to the bottom right".
    */
+  const itemNumberEditor = editingItemNumber && itemNumberEdit ? (
+    <CompoundItemNumberEditor edit={itemNumberEdit} onClose={() => setEditingItemNumber(false)} />
+  ) : null;
   const noteLine = parts ? (
-    inlineParts && (inlineParts.length > 0 || noteGlyph) ? (
+    inlineParts && (inlineParts.length > 0 || noteGlyph || itemNumberEditor) ? (
       <span
         className="flex h-3 min-w-0 items-center justify-start gap-1 whitespace-nowrap leading-none"
         data-subtitle-reorder={reorderable ? 'true' : undefined}
@@ -735,6 +704,7 @@ export function CompoundItem({
         onClick={(event) => event.stopPropagation()}
       >
         {inlineParts.map(renderPart)}
+        {itemNumberEditor}
         {noteGlyph ? (
           <span className="flex h-3 shrink-0 items-center">{noteGlyph}</span>
         ) : null}
@@ -747,33 +717,60 @@ export function CompoundItem({
   ) : null;
 
   const flagMark = view.flagMark ?? null;
-  const titleHref = String(view.titleHref ?? '').trim() || null;
+  const titleActions: CopyChipHoverMenuItem[] = [];
+  if (itemNumberEdit) {
+    titleActions.push({
+      id: 'edit-item-number',
+      label: 'Edit item number',
+      icon: <Pencil />,
+      onSelect: () => setEditingItemNumber(true),
+    });
+  }
+  if (itemNumberPart || itemNumberEdit || listingHref) {
+    titleActions.push({
+      id: 'open-listing',
+      label: 'Open listing',
+      icon: <ExternalLink />,
+      tone: 'accent',
+      disabled: !listingHref,
+      onSelect: () => {
+        if (listingHref) window.open(listingHref, '_blank', 'noopener,noreferrer');
+      },
+    });
+  }
+  if (itemNumberValue) {
+    titleActions.push({
+      id: 'copy-item-number',
+      label: 'Copy item number',
+      icon: <Copy />,
+      onSelect: () => {
+        void copyToClipboard(itemNumberValue, {
+          historyKind: 'sku',
+          historyDisplay: itemNumberValue,
+        });
+      },
+    });
+  }
+  if (extraTitleActions && extraTitleActions.length > 0) {
+    titleActions.push(...extraTitleActions);
+  }
+
   const titleLine = view.title ? (
-    titleHref ? (
-      <HoverTooltip label={titleHref} asChild>
-        <CompoundLine>
-          <a
-            href={titleHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(event) => event.stopPropagation()}
-            className={cn(
-              'min-w-0 truncate text-text-default hover:text-text-info hover:underline',
-              'focus-visible:text-text-info focus-visible:underline underline-offset-2',
-              focusRing('control'),
-            )}
-          >
-            {view.title}
-          </a>
-        </CompoundLine>
-      </HoverTooltip>
-    ) : (
-      <HoverTooltip label={view.title} asChild>
-        <CompoundLine>{view.title}</CompoundLine>
-      </HoverTooltip>
-    )
+    <ProductTitleLink title={view.title} href={listingHref} />
   ) : (
     <span className="text-text-faint">Untitled</span>
+  );
+  const titleWithActions = titleActions.length > 0 ? (
+    <CopyChipHoverMenu
+      menuLabel="Item number actions"
+      items={titleActions}
+      denseLabel
+      className="min-w-0"
+    >
+      {titleLine}
+    </CopyChipHoverMenu>
+  ) : (
+    titleLine
   );
 
   return (
@@ -786,10 +783,10 @@ export function CompoundItem({
                 <span className="sr-only">{`Flagged ${flagMark.label}`}</span>
               </span>
             </HoverTooltip>
-            {titleLine}
+            {titleWithActions}
           </span>
         ) : (
-          titleLine
+          titleWithActions
         )
       }
       secondary={noteLine}
@@ -799,6 +796,7 @@ export function CompoundItem({
 
 /**
  * Column 3 — the row's IDENTITY: order number over its tracking number.
+ * Frozen in the left pane with select and the photo (operator 2026-09-04).
  *
  * **The leading mark is the brand DOT, never the type glyph.** That is the
  * house identity law (`AGENTS.md`), and it is why this cell composes
@@ -820,56 +818,142 @@ export function CompoundItem({
  * routinely) there was nothing to infer from at all.
  *
  * Copy / Open / Edit verbs are not hand-rolled — the two menu chips own them.
+ * To-ship Label is an extraItems row: it opens the paperwork overlay
+ * ({@link PaperworkWalkHost} over the mounted table), it does not paint a
+ * second chip or an in-row band.
  */
-export function CompoundFulfillment({ view }: { view: CompoundRowView }) {
+
+function CompoundIdentityMarks({ view }: { view: CompoundRowView }) {
+  const label = view.edgeMark?.label ?? '';
+  const marks: Array<{
+    key: string;
+    name: string;
+    className: string;
+    Icon: typeof AlertTriangle;
+  }> = [];
+  if (label === 'Exception') {
+    marks.push({ key: 'exception', name: 'Exception', className: 'text-rose-600', Icon: AlertTriangle });
+  }
+  if (label === 'Out of stock') {
+    marks.push({ key: 'oos', name: 'Out of stock', className: 'text-amber-600', Icon: Package });
+  }
+  if (label === 'Urgent') {
+    marks.push({ key: 'urgent', name: 'Urgent', className: 'text-violet-600', Icon: AlertCircle });
+  }
+  if (view.stateTone === 'done') {
+    marks.push({ key: 'fulfilled', name: 'Fulfilled', className: 'text-emerald-600', Icon: Check });
+  }
+  if (marks.length === 0) return null;
+  return (
+    <span
+      className="flex h-full w-4 shrink-0 flex-col items-center justify-center gap-0.5"
+      data-row-marks=""
+    >
+      {marks.map((mark) => (
+        <HoverTooltip key={mark.key} label={mark.name} asChild focusable={false}>
+          <span className={cn('inline-flex', mark.className)}>
+            <mark.Icon className="h-3 w-3" aria-hidden />
+          </span>
+        </HoverTooltip>
+      ))}
+    </span>
+  );
+}
+
+export function CompoundFulfillment({
+  view,
+  onOpenLabels,
+}: {
+  view: CompoundRowView;
+  onOpenLabels?: () => void;
+}) {
   const orderMeta = resolveMarketplacePlatformMeta(view.orderId, view.platformValue);
   const platformDot = platformMetaBrandDot(orderMeta);
   const orderOpenHref = view.orderId
     ? marketplaceOrderUrl(view.orderId, view.platformValue)
     : null;
-  const carrierDot = view.tracking
-    ? carrierBrandDotPaint(resolveCarrierBrand(view.tracking, view.carrier))
+  const trackings =
+    view.trackings && view.trackings.length > 0
+      ? view.trackings
+      : view.tracking
+        ? [view.tracking]
+        : [];
+  const leafTracking = view.tracking ?? trackings[0] ?? null;
+  const carrierDot = leafTracking
+    ? carrierBrandDotPaint(resolveCarrierBrand(leafTracking, view.carrier))
     : null;
+  const labelItems: CopyChipHoverMenuItem[] | undefined = onOpenLabels
+    ? [
+        {
+          id: 'open-labels',
+          label: 'Label',
+          icon: <FileText />,
+          onSelect: onOpenLabels,
+        },
+      ]
+    : undefined;
+
+  if (view.quietIdentity) {
+    return (
+      <CompoundCell
+        primary={<GridCellDash />}
+        secondary={<GridCellDash />}
+      />
+    );
+  }
 
   return (
-    <CompoundCell
-      primary={
-        view.orderId ? (
-          <span className="inline-flex min-w-0 items-center gap-1.5">
-            <BrandIdentityDot className={platformDot.className} style={platformDot.style} />
-            <OrderNumberMenuChip
-              value={view.orderId}
-              platformLabel={orderMeta.value ? orderMeta.label : null}
-              openHref={orderOpenHref}
-              plain
-              dense
-            />
-          </span>
-        ) : (
-          <GridCellDash />
-        )
-      }
-      secondary={
-        view.tracking && carrierDot ? (
-          <span className="inline-flex min-w-0 items-center gap-1.5">
-            <BrandIdentityDot
-              className={carrierDot.className}
-              style={carrierDot.style}
-              // RING = tracking. The filled dot on the line above is the order.
-              variant="ring"
-            />
-            <TrackingNumberMenuChip
-              value={view.tracking}
-              carrierHint={view.carrier}
-              showIcon={false}
-              dense
-            />
-          </span>
-        ) : (
-          <GridCellDash />
-        )
-      }
-    />
+    <div className="flex h-full min-w-0 w-full items-stretch">
+      <div className="min-w-0 flex-1">
+        <CompoundCell
+          primary={
+            view.orderId ? (
+              <span className="inline-flex min-w-0 items-center gap-1.5">
+                <BrandIdentityDot className={platformDot.className} style={platformDot.style} />
+                <OrderNumberMenuChip
+                  value={view.orderId}
+                  platformLabel={orderMeta.value ? orderMeta.label : null}
+                  openHref={orderOpenHref}
+                  plain
+                  dense
+                />
+              </span>
+            ) : (
+              <GridCellDash />
+            )
+          }
+          secondary={
+            leafTracking && carrierDot ? (
+              <span className="inline-flex min-w-0 items-center gap-1.5">
+                <BrandIdentityDot
+                  className={carrierDot.className}
+                  style={carrierDot.style}
+                  variant="ring"
+                />
+                <TrackingNumberMenuChip
+                  value={leafTracking}
+                  carrierHint={view.carrier}
+                  showIcon={false}
+                  dense
+                  extraItems={labelItems}
+                />
+              </span>
+            ) : onOpenLabels && labelItems ? (
+              <CopyChipHoverMenu
+                menuLabel="Tracking actions"
+                items={labelItems}
+                denseLabel
+              >
+                <GridCellDash />
+              </CopyChipHoverMenu>
+            ) : (
+              <GridCellDash />
+            )
+          }
+        />
+      </div>
+      <CompoundIdentityMarks view={view} />
+    </div>
   );
 }
 
@@ -882,58 +966,207 @@ export function CompoundFulfillment({ view }: { view: CompoundRowView }) {
  */
 const STATE_TONE_CLASS: Record<CompoundStateTone, { pill: string; dot: string }> = {
   neutral: { pill: 'bg-surface-sunken text-text-muted', dot: 'bg-text-faint' },
-  done: { pill: 'bg-surface-sunken text-text-default', dot: 'bg-emerald-500' },
-  alert: { pill: 'bg-rose-50 text-rose-700', dot: 'bg-rose-500' },
+  done: { pill: 'bg-surface-sunken text-text-default', dot: 'bg-fill-success' },
+  alert: { pill: 'bg-surface-danger text-text-danger', dot: 'bg-fill-danger' },
 };
 
 /**
- * STATUS column — the state pill over the DELAY.
+ * DATES column — when it STARTED over how late it IS.
  *
- * The second line is WHEN the row must ship (civil day), not a relative
- * "On time" / "1d late" that hides the date. Lateness is tone + a suffix.
- * Families that never supplied a date keep the relative face.
+ * ```text
+ * ┌────────────────┐
+ * │ #  Sep 1       │  order date  — Hash, same mark as the order id
+ * │ ⏱  2d late     │  ship-by     — CalendarClock; ink follows the AGE
+ * └────────────────┘
+ * ```
  *
- * Editable ship-by is {@link DateRangePickerField} `variant="compact"` —
- * one day, calendar only, click commits. Never a range filter, never a
- * native date input, never a click-to-retype caption.
+ * ## One field, twice — not a date beside a date-picker
+ *
+ * Both lines are the SAME control: `DateRangePickerField variant="compact"`,
+ * the same month grid, click-to-commit. Glyphs name WHICH date: `Hash` on the
+ * order line, `CalendarClock` on the deadline. The deadline glyph does not
+ * swap when a row goes late — `currentColor` follows {@link formatCompoundDelayAgeFace}.
+ * Hover always names the line (`Order date` / `Due date`) via HoverTooltip
+ * so MorphCursorLayer carries the chip on every PRODUCT_TABLES peer. The top line
+ * used to be plain text beside a picker, and two dates in one cell wearing two
+ * different faces read as two different kinds of fact — which they are not
+ * (operator 2026-09-04: *"must use the exact same display for the days date the
+ * ship by date"*). A line the surface cannot commit renders the identical field
+ * `disabled`: the display is unchanged, only the click is gone. That is also
+ * what makes the dates FIXABLE in place — a wrong import date is corrected on
+ * the row instead of in a record page.
+ *
+ * ## The deadline line paints the AGE
+ *
+ * `2d late`, `1m late`, `Due today`, `in 3d` — never `Sep 2`. Nobody triages on
+ * a civil day; they triage on how far past it is, and printing the date made
+ * every row a subtraction (operator 2026-09-04). The date is not lost: it is
+ * the hover, together with the lateness in words. See
+ * {@link formatCompoundDelayAgeFace}.
+ *
+ * The top line keeps its date, because a purchase date has no "age" an operator
+ * acts on — and its tooltip says whether it is the channel's order date or our
+ * import stamp ({@link ordersOrderedAt}).
  */
-export function CompoundState({
+export function CompoundDates({
   view,
   shipByEdit,
+  orderedAtEdit,
 }: {
   view: CompoundRowView;
   shipByEdit?: CompoundShipByEdit;
+  orderedAtEdit?: CompoundOrderedAtEdit;
 }) {
-  const tone = STATE_TONE_CLASS[view.stateTone];
-  const face = formatCompoundDelayFace(view.delay, {
-    editable: Boolean(shipByEdit),
-    missingText: EMPTY_META_DASH,
-  });
-  const delayNode = shipByEdit ? (
+  const face = formatCompoundDelayAgeFace(view.delay, { missingText: EMPTY_META_DASH });
+
+  const dueNode = (
+    <CompoundDateField
+      dateKey={shipByEdit?.value ?? view.delay?.dateKey ?? null}
+      faceLabel={face.text}
+      toneClass={face.toneClass}
+      onCommit={shipByEdit?.onCommit}
+      label="Due date"
+      glyph={CalendarClock}
+    />
+  );
+
+  const dueWrapped = (
+    <HoverTooltip label={compoundDatesHoverLabel('due', view.delayTip)} asChild>
+      {dueNode}
+    </HoverTooltip>
+  );
+
+  const startedNode = (
+    <CompoundDateField
+      dateKey={orderedAtEdit?.value ?? view.orderedAt?.dateKey ?? null}
+      faceLabel={view.orderedAt?.label || EMPTY_META_DASH}
+      // Quiet ink: the start date is context for the deadline under it, never
+      // the thing being triaged on.
+      toneClass="text-text-muted"
+      onCommit={orderedAtEdit?.onCommit}
+      label="Order date"
+      glyph={Hash}
+    />
+  );
+
+  const startedWrapped = (
+    <HoverTooltip label={compoundDatesHoverLabel('order', view.orderedAt?.tip)} asChild>
+      {startedNode}
+    </HoverTooltip>
+  );
+
+  return <CompoundCell primary={startedWrapped} secondary={dueWrapped} />;
+}
+
+/**
+ * One line of the DATES cell: the house compact date field, painted to fill it.
+ *
+ * Shared by both lines so the two can never drift — the geometry, the glyph
+ * slot and the disabled face are declared once. `onCommit` absent ⇒ disabled:
+ * same picture, no popover, which is the honest face for a surface that has no
+ * write for this fact.
+ *
+ * The wrapper swallows pointer events so opening the calendar does not also
+ * open the record — a row click is the record everywhere else on this grid.
+ */
+const CompoundDateField = forwardRef<
+  HTMLDivElement,
+  {
+    dateKey: string | null;
+    faceLabel: string;
+    toneClass: string;
+    onCommit?: (dateKey: string | null) => void;
+    label: string;
+    glyph: ComponentType<{ className?: string }>;
+  } & HTMLAttributes<HTMLDivElement>
+>(function CompoundDateField(
+  { dateKey, faceLabel, toneClass, onCommit, label, glyph: Glyph, onClick, onPointerDown, ...rest },
+  ref,
+) {
+  const current = (dateKey ?? '').trim();
+  return (
     <div
+      ref={ref}
       className="min-w-0 w-full self-stretch"
-      onClick={(event) => event.stopPropagation()}
-      onPointerDown={(event) => event.stopPropagation()}
+      onClick={(event) => {
+        event.stopPropagation();
+        onClick?.(event);
+      }}
+      onPointerDown={(event) => {
+        event.stopPropagation();
+        onPointerDown?.(event);
+      }}
+      {...rest}
     >
       <DateRangePickerField
         variant="compact"
-        value={dateKeyToLocalDate(shipByEdit.value)}
+        ariaLabel={label}
+        leadingGlyph={Glyph}
+        clickCursor
+        value={dateKeyToLocalDate(current)}
+        faceLabel={faceLabel}
+        disabled={!onCommit}
         onChange={(day) => {
           const key = localDateToDateKey(day);
-          if (!key || key === shipByEdit.value.trim()) return;
-          shipByEdit.onCommit(key);
+          if (!key || key === current) return;
+          onCommit?.(key);
         }}
         className={cn(
           'h-full min-h-0 w-full gap-1 border-0 bg-transparent px-0 py-0 shadow-none',
           'hover:border-0 hover:bg-transparent',
+          'disabled:opacity-100 disabled:cursor-pointer',
           'text-role-caption font-medium',
-          face.toneClass,
+          toneClass,
         )}
       />
     </div>
-  ) : (
-    <CompoundLine className={face.toneClass}>{face.text}</CompoundLine>
   );
+});
+
+/** Next-step face → paint. Same three tones the pill uses, one line down. */
+const NEXT_STEP_TONE_CLASS = {
+  next: 'text-text-muted',
+  done: 'text-text-default',
+  blocked: 'text-text-danger',
+} as const;
+
+/**
+ * STATUS column — the state pill over the NEXT STEP.
+ *
+ * Where the row IS, then where it is GOING: the station that picks it up next
+ * ("Pack", "Scan out"), or the finished marker when nothing does. A floor
+ * screen answers "what happens to this one" without a click, which is what the
+ * second line of a status column is for — it held the ship-by date until
+ * 2026-09-04, and a deadline is a date, so it moved to {@link CompoundDates}.
+ *
+ * A family that has not modelled its pipeline supplies no `nextStep` and the
+ * line stays blank. Better an empty track than a guess at somebody else's
+ * workflow.
+ */
+export function CompoundState({
+  view,
+  onOpen,
+}: {
+  view: CompoundRowView;
+  /** Present ⇒ the cell opens the carrier trail (orders desks). */
+  onOpen?: () => void;
+}) {
+  const tone = STATE_TONE_CLASS[view.stateTone];
+  const next = view.nextStep ?? null;
+
+  const nextNode = next ? (
+    <CompoundLine
+      className={
+        next.done
+          ? NEXT_STEP_TONE_CLASS.done
+          : next.blocked
+            ? NEXT_STEP_TONE_CLASS.blocked
+            : NEXT_STEP_TONE_CLASS.next
+      }
+    >
+      {next.label}
+    </CompoundLine>
+  ) : null;
 
   const pill = (
     <span
@@ -948,28 +1181,46 @@ export function CompoundState({
     </span>
   );
 
-  const delayWrapped =
-    view.delayTip && !shipByEdit ? (
-      <HoverTooltip label={view.delayTip} asChild>
-        {delayNode}
+  const nextWrapped =
+    next?.tip && nextNode ? (
+      <HoverTooltip label={next.tip} asChild>
+        {nextNode}
       </HoverTooltip>
     ) : (
-      delayNode
+      nextNode
     );
 
   return (
-    <CompoundCell
-      primary={
-        view.stateTip ? (
-          <HoverTooltip label={view.stateTip} asChild>
-            {pill}
-          </HoverTooltip>
-        ) : (
-          pill
-        )
-      }
-      secondary={delayWrapped}
-    />
+    <div className="relative flex h-full min-w-0 w-full items-stretch">
+      <CompoundCell
+        primary={
+          view.stateTip && !onOpen ? (
+            <HoverTooltip label={view.stateTip} asChild>
+              {pill}
+            </HoverTooltip>
+          ) : (
+            pill
+          )
+        }
+        secondary={nextWrapped}
+      />
+      {onOpen ? (
+        <HoverTooltip
+          label={view.stateTip || `${view.stateLabel}, open carrier trail`}
+          asChild
+        >
+          <button
+            type="button"
+            className={cn('absolute inset-0 cursor-pointer', focusRing('cell'))}
+            aria-label={`${view.stateLabel}, open carrier trail`}
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpen();
+            }}
+          />
+        </HoverTooltip>
+      ) : null}
+    </div>
   );
 }
 
@@ -1000,10 +1251,11 @@ export function CompoundState({
  *   survives as the circle's accessible name only, so AT still hears the
  *   state. An assigned-but-undone row keeps the assignee's mark beside the
  *   dash — "this is Michael's" is still the actionable read. When
- *   {@link CompoundStageAssign} is present and the step has no `at`, that
- *   mark (or the empty unclaimed circle) is display-only — assign commits from
- *   the column-foot person icons under Pick / Packed (bottom-up staff search,
- *   no cell popover). Full roster; no WorkOrder grid.
+ *   {@link CompoundStageAssign} is present and the step has no `at`, the
+ *   empty dashed mark (and the pending claimed mark) is the combo trigger:
+ *   click opens {@link StageStaffAssignPopover}. Stamped steps stay
+ *   read-only. Bulk assign stays the column-foot person icons. Full roster;
+ *   no WorkOrder grid.
  * - **The name lives in the tooltip.** Names are ragged; the mark is 28px
  *   always. The full `who · time · station` line rides the hover, and the
  *   mark's `alt` names the actor for screen readers.
@@ -1018,7 +1270,8 @@ export function CompoundState({
  *
  * An unclaimed / unstamped step paints an empty circle in the mark's slot
  * (same 28px as the `sm` avatar) and a dash next to the glyph — Pick and
- * Packed share this face; neither invents a blank cell.
+ * Packed share this face; neither invents a blank cell. That empty face is
+ * the assign combo when the host armed {@link CompoundStageAssign}.
  */
 export function CompoundStageStep({
   labels,
@@ -1034,6 +1287,9 @@ export function CompoundStageStep({
 }) {
   const tip = formatCompoundStageStepLine(facts);
   const filled = Boolean(facts?.at);
+  const assignable = canAssignCompoundStage(assign, facts?.at);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [open, setOpen] = useState(false);
   const assignedStaffId =
     assign?.selectedStaffId != null && assign.selectedStaffId > 0
       ? assign.selectedStaffId
@@ -1042,10 +1298,10 @@ export function CompoundStageStep({
   const actorName = (facts?.who ?? '').trim() || null;
   const hasActor = Boolean(actorId || actorName);
   // Past tense → exact stamp on the secondary. Pending claim → "Assigned".
-  // Stamp also rides the hover tip via `tip`. Assign commits from the
-  // column-foot person icons (bottom-up search) — never a cell popover.
+  // Stamp also rides the hover tip via `tip`. Pending cells with a host
+  // handler open the staff combo on the mark itself.
   const showAssigned = !filled && hasActor;
-  const stampLine = filled ? (facts?.at ?? null) : null;
+  const stampLine = filled ? formatCompoundStageStampFace(facts) : null;
 
   const markFace = hasActor ? (
     <StaffAvatar
@@ -1065,50 +1321,101 @@ export function CompoundStageStep({
     />
   );
 
-  const body = (
+  const lines = (
+    <CompoundCell
+      className="flex-1"
+      primary={
+        filled ? (
+          <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-text-default">
+            <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <CompoundLine>{labels.done}</CompoundLine>
+          </span>
+        ) : showAssigned ? (
+          // Claimed but not stamped: keep the column verb (PICK / PACK), not a dash.
+          <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
+            <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <CompoundLine>{labels.pending}</CompoundLine>
+          </span>
+        ) : (
+          <span className="inline-flex min-w-0 items-center gap-1 text-text-muted">
+            <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
+            <GridCellDash />
+            <span className="sr-only">{labels.pending}</span>
+          </span>
+        )
+      }
+      secondary={
+        stampLine ? (
+          <CompoundLine className="text-text-muted" mono>
+            {stampLine}
+          </CompoundLine>
+        ) : showAssigned ? (
+          <CompoundLine className="text-text-muted">Assigned</CompoundLine>
+        ) : null
+      }
+    />
+  );
+
+  const face = (
     <div className="flex h-full min-w-0 items-center gap-1.5">
       {markFace}
-      <CompoundCell
-        className="flex-1"
-        primary={
-          filled ? (
-            <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-text-default">
-              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              <CompoundLine>{labels.done}</CompoundLine>
-            </span>
-          ) : showAssigned ? (
-            // Claimed but not stamped: keep the column verb (PICK / PACK), not a dash.
-            <span className="inline-flex min-w-0 items-center gap-1 text-[11px] font-semibold uppercase tracking-wide text-text-muted">
-              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              <CompoundLine>{labels.pending}</CompoundLine>
-            </span>
-          ) : (
-            <span className="inline-flex min-w-0 items-center gap-1 text-text-muted">
-              <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              <GridCellDash />
-              <span className="sr-only">{labels.pending}</span>
-            </span>
-          )
-        }
-        secondary={
-          stampLine ? (
-            <CompoundLine className="text-text-muted" mono>
-              {stampLine}
-            </CompoundLine>
-          ) : showAssigned ? (
-            <CompoundLine className="text-text-muted">Assigned</CompoundLine>
-          ) : null
-        }
-      />
+      {lines}
     </div>
   );
 
-  return tip ? (
-    <HoverTooltip label={tip} asChild>
+  const trigger =
+    assignable && assign ? (
+      <button
+        ref={triggerRef}
+        type="button"
+        className={cn(
+          'flex h-full min-w-0 w-full items-center gap-1.5 text-left',
+          'hover:bg-surface-hover',
+          focusRing,
+        )}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-label={hasActor ? `Reassign ${assign.label}` : `Assign ${assign.label}`}
+        data-testid="compound-stage-assign-trigger"
+        onClick={(event) => {
+          event.stopPropagation();
+          event.preventDefault();
+          setOpen((next) => !next);
+        }}
+        onPointerDown={(event) => event.stopPropagation()}
+      >
+        {markFace}
+        {lines}
+      </button>
+    ) : (
+      face
+    );
+
+  const body =
+    tip && !assignable ? (
+      <HoverTooltip label={tip} asChild>
+        {trigger}
+      </HoverTooltip>
+    ) : (
+      trigger
+    );
+
+  return (
+    <>
       {body}
-    </HoverTooltip>
-  ) : (
-    body
+      {assignable && assign ? (
+        <StageStaffAssignPopover
+          open={open}
+          onClose={() => setOpen(false)}
+          anchorRef={triggerRef}
+          label={assign.label}
+          role={assign.role}
+          selectedStaffId={assign.selectedStaffId}
+          onCommit={assign.onCommit}
+          onSetLaneRole={assign.onSetLaneRole}
+        />
+      ) : null}
+    </>
   );
 }
 
@@ -1165,59 +1472,63 @@ export function CompoundSlotCell({
     );
   }
   const text = value?.kind === 'value' ? value.text : null;
-  return (
-    <CompoundCell
-      primary={
-        text ? (
-          <HoverTooltip label={text} asChild>
-            <CompoundLine>{text}</CompoundLine>
-          </HoverTooltip>
-        ) : (
-          <GridCellDash />
-        )
-      }
-      secondary={null}
-    />
-  );
+  return <CompoundCell primary={compoundSlotPrimary(displayType, text)} secondary={null} />;
 }
 
 /**
- * AMOUNT column — the money, end-aligned, over the arithmetic behind it.
+ * The slot body for a plain resolved fact — chosen by the field's DISPLAY TYPE,
+ * never by its id.
  *
- * End-aligned and `tabular-nums` because that is what a money column is FOR: a
- * digit lines up under a digit, so an operator scanning a cart or a queue can
- * see which row is the big one without reading any of them. Left-aligned
- * currency in a ragged column defeats the only reason to have the column.
+ * This is the engine capability that retired the inventory-events cell map: an
+ * age face for a date, a mono chip for a short enum, a copy affordance on a
+ * code. A family that binds `inventory-events.occurred`, `orders.tracking` or
+ * anything else of those types inherits the same face, which is the whole
+ * argument of invariant 1 — the faces were never about the family.
  *
- * A CREDIT (a trade-in, a refund) paints differently as well as carrying its
- * minus sign. One character of difference at the head of a tabular figure is
- * exactly the thing a tired eye slides over, and mistaking a −$120 trade-in for
- * a $120 sale is the expensive direction to be wrong in.
- *
- * `null` renders an empty track. A checklist item has no money, and an empty
- * cell is the honest answer — a `$0.00` would be a number nobody entered.
+ * The tooltip carries the fact the face compresses (the absolute instant behind
+ * an age, the full text behind a clipped line), so nothing is lost to the
+ * shorter face.
  */
-export function CompoundAmount({ view }: { view: CompoundRowView }) {
-  return (
-    <CompoundCell
-      align="end"
-      primary={
-        view.amount ? (
-          <CompoundLine
-            mono
-            className={cn(
-              'font-semibold',
-              view.amountCredit ? 'text-text-success' : 'text-text-default',
-            )}
-          >
-            {view.amount}
+function compoundSlotPrimary(
+  displayType: FieldDisplayType | undefined,
+  text: string | null,
+): ReactNode {
+  if (!text) return <GridCellDash />;
+  switch (compoundSlotFaceFor(displayType)) {
+    case 'age': {
+      const face = compoundSlotAgeFace(text);
+      // Not an instant after all (a civil day, a free string): paint it as-is
+      // rather than dashing a fact the resolver did hand over.
+      if (!face) break;
+      return (
+        <HoverTooltip label={compoundSlotInstantFace(text) ?? text} asChild>
+          <CompoundLine className="text-text-faint">{face}</CompoundLine>
+        </HoverTooltip>
+      );
+    }
+    case 'tag':
+      return (
+        <HoverTooltip label={text} asChild>
+          <span className="inline-flex min-w-0 max-w-full items-center truncate rounded bg-surface-sunken px-1.5 py-0.5 font-mono text-role-micro uppercase tracking-wide text-text-muted">
+            {text}
+          </span>
+        </HoverTooltip>
+      );
+    case 'code':
+      return (
+        <HoverTooltip label={text} asChild>
+          <CompoundLine>
+            <CopyableCellValue value={text} className="min-w-0 text-role-data" />
           </CompoundLine>
-        ) : null
-      }
-      secondary={
-        view.amountNote ? <CompoundLine mono>{view.amountNote}</CompoundLine> : null
-      }
-    />
+        </HoverTooltip>
+      );
+    default:
+      break;
+  }
+  return (
+    <HoverTooltip label={text} asChild>
+      <CompoundLine>{text}</CompoundLine>
+    </HoverTooltip>
   );
 }
 
@@ -1245,59 +1556,56 @@ export function CompoundActions({
   onOpen,
   actions,
   label,
+  staffRoster,
 }: {
   onOpen?: () => void;
   actions?: readonly CompoundRowAction[];
   /** Names WHICH row the menu belongs to, for screen readers. */
   label?: string;
+  staffRoster?: CompoundStaffRoster;
 }) {
   const items: CompoundRowAction[] = [
     ...(onOpen ? [{ key: 'open', label: 'Open', onSelect: onOpen }] : []),
     ...(actions ?? []),
   ];
-  if (items.length === 0) return null;
+  if (items.length === 0 && !staffRoster) return null;
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          tabIndex={-1}
-          aria-label={label ? `Actions for ${label}` : 'Row actions'}
-          data-row-actions
-          className={cn(
-            'inline-flex h-6 w-6 items-center justify-center text-text-faint',
-            // Quiet until the row is hovered — a column of ⋮ on every row is
-            // ink competing with the data. Opacity composites off the main
-            // thread, so this costs no layout on a scrolling grid.
-            'opacity-0 transition-opacity group-hover/row:opacity-100',
-            // Opened from the keyboard or a right-click, the pointer is nowhere
-            // near this row — without this the menu would appear anchored to an
-            // invisible trigger.
-            'data-[state=open]:opacity-100',
-            'hover:text-text-default focus-visible:opacity-100',
-            focusRing('control'),
-          )}
-          // The row's own click would select or open — this is "show me the
-          // verbs", which is a third thing.
-          onClick={(event) => event.stopPropagation()}
-        >
-          <MoreHorizontal className="h-4 w-4" />
-        </button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        {items.map((action) => (
-          <DropdownMenuItem
-            key={action.key}
-            disabled={action.disabled}
-            onSelect={() => action.onSelect()}
-            className={cn(action.tone === 'danger' && 'text-text-danger')}
-          >
-            {action.label}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuContent>
-    </DropdownMenu>
+    <div className="flex items-center justify-start gap-0.5">
+      {staffRoster ? <CompoundStaffRosterButton roster={staffRoster} label={label} /> : null}
+      {items.length > 0 ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              tabIndex={-1}
+              aria-label={label ? `Actions for ${label}` : 'Row actions'}
+              data-row-actions
+              className={cn(
+                'inline-flex h-6 w-6 items-center justify-center text-text-faint',
+                'hover:text-text-default focus-visible:opacity-100',
+                focusRing('control'),
+              )}
+              onClick={(event) => event.stopPropagation()}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            {items.map((action) => (
+              <DropdownMenuItem
+                key={action.key}
+                disabled={action.disabled}
+                onSelect={() => action.onSelect()}
+                className={cn(action.tone === 'danger' && 'text-text-danger')}
+              >
+                {action.label}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : null}
+    </div>
   );
 }
 

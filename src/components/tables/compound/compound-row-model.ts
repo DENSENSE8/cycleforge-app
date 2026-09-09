@@ -1,3 +1,5 @@
+import { formatOpsStageTime } from '@/utils/date';
+
 /**
  * The COMPOUND row view-model — one shape every table adapts into.
  *
@@ -37,6 +39,32 @@ export interface CompoundDelay {
   dateKey?: string | null;
   /** True when `dateKey` is warehouse-today — due today, not merely on time. */
   dueToday?: boolean;
+  /**
+   * Whole days from warehouse-today UNTIL the deadline, for a deadline that has
+   * not passed. `days` cannot carry this: lateness clamps at zero
+   * (`getDaysLateNullable`), so a queue of future ship-bys is all `0` and the
+   * age face would have nothing to count. Absent ⇒ the face says `On time`
+   * rather than inventing a countdown.
+   */
+  daysUntil?: number | null;
+}
+
+/**
+ * Where a row goes next — the STATUS cell's second line.
+ *
+ * Strings and flags, like every other part of this model: the family resolves
+ * its own pipeline (which station, what it is called) and hands over a face.
+ * The chrome never imports a lifecycle SoT.
+ */
+export interface CompoundNextStep {
+  /** The station or step this row is headed for ("Pack", "Scan out"). */
+  label: string;
+  /** Terminal — nothing comes next. Paints the finished face. */
+  done?: boolean;
+  /** Needs a human before it can move (a hold). Paints the alert tone. */
+  blocked?: boolean;
+  /** Hover detail — the full phrase when the track clips it. */
+  tip?: string;
 }
 
 /** Lifecycle tone — deliberately small, and deliberately not a colour. */
@@ -61,7 +89,8 @@ export interface CompoundRowView {
    *
    * Present ⇒ the title is an `<a>` to this href (new tab). Absent ⇒ the title
    * stays plain text. A join, not a second field: Orders derives it from the
-   * item number (`getExternalUrlByItemNumber`). Other families omit it.
+   * item number and Receiving derives its primary link from the receiving listing
+   * resolver.
    */
   titleHref?: string | null;
   /**
@@ -82,11 +111,46 @@ export interface CompoundRowView {
     tip: string;
     dotClass: string;
   } | null;
+  /**
+   * LEADING EDGE RAIL — a full-height bar at the row's left edge, inside the
+   * select gutter.
+   *
+   * The answer to "where does an urgent / blocked mark go so staff see it
+   * first" (operator 2026-09-04). It is leftmost and at a FIXED x, so it scans
+   * down a column the way a mark beside the title cannot — but it is not a
+   * TRACK: a dedicated flag column would spend width on every row for a fact
+   * that is absent on almost all of them, and the desk is already at the dense
+   * ceiling (`MAX_DEFAULT_VISIBLE_TRACKS`). It is also not a glyph inside the
+   * select gutter: that 24px track holds a 16px control, and a second mark in
+   * it is the "two faces for one control" fork this grid has already paid for
+   * twice.
+   *
+   * Colour is an ACCELERATOR, never the fact — `label` is the accessible name
+   * and the hover word, so the rail is legible without the hue (the badge rule:
+   * meaning never rides on colour alone).
+   */
+  edgeMark?: {
+    /** Operator word — "Urgent", "Out of stock". The fact, not the paint. */
+    label: string;
+    /** Solid background class for the 3px bar, from the family's SoT. */
+    barClass: string;
+  } | null;
 
   /** Column 3 top — the fulfillment handle (order #, PO). */
   orderId: string | null;
-  /** Column 3 bottom — carrier tracking. */
+  /** Column 3 bottom — carrier tracking (this line's primary). */
   tracking: string | null;
+  /**
+   * Every tracking number on this commercial object, first-seen order.
+   * Parent chrome stacks them; a singleton paints `tracking` (the first).
+   */
+  trackings?: readonly string[] | null;
+  /**
+   * True when a multi-line order parent already painted the ids. The leaf
+   * fulfillment cell stays quiet (dashes) so the same order # is not printed
+   * once per SKU.
+   */
+  quietIdentity?: boolean;
   /** Raw source-platform value — resolved to the ORDER identity brand dot. */
   platformValue: string | null;
   /**
@@ -96,7 +160,25 @@ export interface CompoundRowView {
    */
   carrier: string | null;
 
-  /** Column 4 top — the state pill. */
+  /**
+   * DATES column, top — when the row STARTED (an order's purchase date, a PO's
+   * raised date). Pre-formatted to a compact civil face by the adapter, same
+   * contract as {@link amount}: the view model is strings, and how a tenant
+   * writes a date is not a table cell's decision.
+   *
+   * `null` (or absent) paints the meta dash. A family that has no such stamp
+   * says nothing rather than borrowing the deadline — the two lines of this
+   * cell are START over DUE, and a due date on both lines is a lie by
+   * repetition.
+   */
+  orderedAt?: {
+    label: string;
+    tip?: string;
+    /** `YYYY-MM-DD` — seeds the calendar and is what an edit commits against. */
+    dateKey?: string | null;
+  } | null;
+
+  /** Column 5 top — the state pill. */
   stateLabel: string;
   stateTone: CompoundStateTone;
   /**
@@ -109,16 +191,38 @@ export interface CompoundRowView {
    */
   stateTip?: string;
   /**
-   * STATUS column, bottom — the DELAY, not a generic timestamp.
+   * DATES column, bottom — the DELAY, not a generic timestamp.
    *
    * When {@link CompoundDelay.dateLabel} is present the cell paints that civil
    * day (lateness is tone + a "Nd late" suffix). Families that only know
    * relative urgency omit the date and keep the on-time / Nd-late face.
    * `null` with no editor is the on-time face, never a blank line.
+   *
+   * It rode the STATUS column's second line until 2026-09-04. Nothing about
+   * the fact changed — it is the same delay, the same editor and the same
+   * tone — but a deadline is a DATE, and it now sits with the other date, one
+   * column left, which is what frees the status cell to say {@link nextStep}.
    */
   delay: CompoundDelay | null;
   /** Hover detail for the delay (the actual deadline instant). */
   delayTip?: string;
+
+  /**
+   * STATUS column, bottom — where this row goes NEXT.
+   *
+   * The state pill says where the row IS; on a floor the immediately useful
+   * second question is where it is HEADED — which station picks it up, or that
+   * nothing does because it is finished. That was unanswerable while the
+   * deadline occupied this line.
+   *
+   * `done: true` is the terminal marker (scanned out, delivered): the cell
+   * paints a finished face rather than a station name, because "next: nothing"
+   * is a fact worth stating plainly and an empty line reads as missing data.
+   *
+   * Absent ⇒ the line is blank. A family that has not modelled its pipeline
+   * must not have a next step invented for it.
+   */
+  nextStep?: CompoundNextStep | null;
 
   /**
    * AMOUNT column, top — the money this row is worth, already formatted.
@@ -171,6 +275,16 @@ export interface CompoundRowView {
    */
   subtitleParts?: readonly CompoundSubtitlePart[];
 }
+
+/**
+ * House money face — sale, credit, or empty slot.
+ *
+ * One hue so a figure is findable down a dense line of otherwise-neutral
+ * facts. `text-text-success` is the theme token (`--ds-color-text-success`),
+ * never a raw emerald. Weight pairs it with qty on the under-title line.
+ * One module export — do not redeclare this constant in this file.
+ */
+export const COMPOUND_MONEY_TONE_CLASS = 'font-semibold text-text-success';
 
 /** One toned fragment of the item cell's bound subtitle line. */
 export interface CompoundSubtitlePart {
@@ -243,7 +357,30 @@ export interface CompoundSubtitleSelect {
  * `onCommit` receives the trimmed string, or `null` when the operator clears
  * it. It is called only when the value actually changed — an editor that opens
  * and closes untouched must not write.
+ *
+ * `scrub` is the Figma width-field gesture on the idle face: drag on X to
+ * change the number, click (no drag) to type. Do not mount `ScrubSlider`
+ * here — that maps clientX onto a track, not delta-X on the number itself.
  */
+export interface CompoundSubtitleScrub {
+  /** 1px of drag (or one arrow key) in the default band. */
+  step: number;
+  /** Shift+drag / Shift+arrow. */
+  coarseStep: number;
+  /**
+   * Control+drag / Control+arrow (Alt still aliases). Omit to ignore.
+   * Control-up parks the origin and keeps this band for a grace period so
+   * leftover pointer travel is not dollars.
+   */
+  fineStep?: number;
+  min?: number;
+  max?: number;
+  /** Snap + commit precision (`2` for money). */
+  decimals: number;
+  /** Live face is currency (`$49.99`), not a bare figure. */
+  money?: boolean;
+}
+
 export interface CompoundSubtitleEdit {
   /** The {@link CompoundSubtitlePart.key} this editor claims. */
   partKey: string;
@@ -254,6 +391,8 @@ export interface CompoundSubtitleEdit {
   /** `numeric` gets an inputMode + a numeric keypad on a tablet. */
   kind?: 'text' | 'numeric';
   placeholder?: string;
+  /** Present ⇒ drag-to-scrub the idle face; absent ⇒ click-to-type only. */
+  scrub?: CompoundSubtitleScrub;
   onCommit: (value: string | null) => void;
 }
 
@@ -271,28 +410,19 @@ export interface CompoundShipByEdit {
 }
 
 /**
- * A subtitle part that paints as a copy chip instead of bare text.
+ * The DATES cell's TOP line as an editable day — the order date.
  *
- * The face is always the listing glyph — never {@link value}. Live
- * {@link openHref} ⇒ info-blue, click opens. Missing URL or missing handle ⇒
- * faint (grayed-out) icon. Hover copies {@link value} only when a handle exists.
+ * Same shape and same law as {@link CompoundShipByEdit}, and separate for the
+ * same reason the two lines are separate facts: an order date is what the
+ * channel said, a ship-by is what we owe. Present ⇒ the line is a live
+ * `DateRangePickerField variant="compact"`; absent ⇒ the identical field,
+ * disabled — the display never changes, only whether it commits (operator
+ * 2026-09-04: the calendar is there so staff can fix a wrong date in place).
  */
-export interface CompoundSubtitleCopy {
-  /** The {@link CompoundSubtitlePart.key} this chip claims. */
-  partKey: string;
-  /**
-   * The full value to place on the clipboard. Never painted — the face is
-   * the listing icon.
-   */
+export interface CompoundOrderedAtEdit {
+  /** Civil key currently on the row (`YYYY-MM-DD`); empty when missing. */
   value: string;
-  /** Unused. Kept so older call sites that passed a last-8 face still type-check. */
-  display?: string;
-  /**
-   * Listing URL. Present ⇒ click opens this href (info-blue icon). Absent ⇒
-   * grayed-out icon (missing item number or unjoinable listing). Hover copies
-   * {@link value} only when a handle exists.
-   */
-  openHref?: string | null;
+  onCommit: (dateKey: string | null) => void;
 }
 
 /**
@@ -322,16 +452,28 @@ export interface CompoundStageStepFacts {
    * the unclaimed placeholder.
    */
   whoStaffId?: number | null;
+  /** Long civil stamp — hover / `formatCompoundStageStepLine`. */
   at: string | null;
+  /**
+   * Raw instant for the painted face ({@link formatCompoundStageStampFace}).
+   * Absent ⇒ the cell falls back to {@link at}.
+   */
+  atInstant?: string | null;
   station: string | null;
 }
 
 /**
- * Presence ⇒ the stage MARK invites assign while the step is still pending
+ * Presence ⇒ the stage MARK is a staff combo while the step is still pending
  * (`!at`). Done stages stay read-only. One lane per column — never a dual
  * tester+packer picker inside a single Pick or Packed cell.
  */
 export type CompoundStageAssignRole = 'technician' | 'packer';
+
+/** Roster switch copy: Packed face = packer on/off, not the persisted opposite role. */
+export type StaffLaneRoleNotice = {
+  face: CompoundStageAssignRole;
+  eligible: boolean;
+};
 
 export interface CompoundStageAssign {
   /** Current assignee for this lane (not the scan-completion actor). */
@@ -340,6 +482,29 @@ export interface CompoundStageAssign {
   label: string;
   role: CompoundStageAssignRole;
   onCommit: (staffId: number | null, staffName: string | null) => void;
+  /**
+   * Persist a member's floor role from roster mode (All staff).
+   * Assign mode still name-clicks only when they already match `role`.
+   */
+  onSetLaneRole?: (
+    staffId: number,
+    role: CompoundStageAssignRole,
+    staffName: string,
+    notice?: StaffLaneRoleNotice,
+  ) => void;
+}
+
+/**
+ * Far-right actions-column roster. Sets a member's floor role (picker /
+ * packer) only — it does not assign the order.
+ */
+export interface CompoundStaffRoster {
+  onSetLaneRole: (
+    staffId: number,
+    role: CompoundStageAssignRole,
+    staffName: string,
+    notice?: StaffLaneRoleNotice,
+  ) => void;
 }
 
 /** Assign chrome only when the host armed a handler and the step has no stamp. */
@@ -366,37 +531,111 @@ export function formatCompoundStageStepLine(
 }
 
 /**
- * STATUS-column second line. The civil date is the face when the family
- * supplied one; lateness is tone (and a suffix when overdue). Families that
- * only know relative urgency keep "On time" / "Nd late". An editable blank
- * is `--`, never a fake "On time".
+ * Painted stamp on a stage track — time or "12m ago", never `Sep 4, 9:41 AM`.
+ * The long civil stamp stays on {@link formatCompoundStageStepLine} (hover).
+ * 8rem cannot hold month+day+time after the 28px avatar (operator 2026-09-04).
  */
-export function formatCompoundDelayFace(
+export function formatCompoundStageStampFace(
+  step: CompoundStageStepFacts | null | undefined,
+): string | null {
+  if (!step) return null;
+  const instant = String(step.atInstant ?? '').trim();
+  if (instant) {
+    const short = formatOpsStageTime(instant);
+    if (short && short !== '--:--') return short;
+  }
+  const at = String(step.at ?? '').trim();
+  return at || null;
+}
+
+/**
+ * A day count as the shortest unit that still reads true: `4d`, `2m`, `1y`.
+ *
+ * A queue is worked in days, and a row that has been late for eleven weeks does
+ * not become more legible as `77d` — the digits grow while the meaning stops
+ * changing. Rolling up at a month keeps the face two characters wide at every
+ * magnitude, which is what lets the column stay 7rem.
+ *
+ * Deliberately coarse: 30-day months and 365-day years, because this is a
+ * MAGNITUDE for a glance and the exact civil date is one hover away. A calendar-
+ * accurate month difference would disagree with the `Nd` it replaces at the
+ * boundary and buy nothing an operator can act on.
+ */
+export function formatDayGap(days: number): string {
+  const d = Math.max(0, Math.round(days));
+  if (d < 30) return `${d}d`;
+  if (d < 365) return `${Math.floor(d / 30)}m`;
+  return `${Math.floor(d / 365)}y`;
+}
+
+/**
+ * The DATES cell's deadline line — the AGE, never the date.
+ *
+ * Operator 2026-09-04: *"the ship by date must not display the date it should
+ * display the age or days — if ship by date is 9/2 then '2d late' or '1m late'
+ * for month, and on hover tooltip for more details."*
+ *
+ * The reasoning is the queue's: a ship-by prints as a civil day, but nobody
+ * triages on `Sep 2` — they triage on how far past it is now, and reading the
+ * one off the other is arithmetic the operator was doing in their head on every
+ * row. The date is not lost; it moves to the hover, where the detail belongs.
+ * It REPLACED `formatCompoundDelayFace`, which printed `Aug 17 · 2d late` and
+ * had no callers left once the deadline moved into the DATES cell. Deleted
+ * rather than kept behind a flag: two faces for one fact is how the grid ends
+ * up showing both, on different surfaces, for no reason anyone can name.
+ *
+ * Faces, in precedence order: overdue → `2d late` · due today → `Due today` ·
+ * a future deadline → `in 3d` · a deadline with no countdown → `On time` ·
+ * nothing at all → the missing mark.
+ */
+export function formatCompoundDelayAgeFace(
   delay: CompoundDelay | null,
-  options: { editable?: boolean; missingText?: string } = {},
+  options: { missingText?: string } = {},
 ): { text: string; toneClass: string } {
   const missing = options.missingText ?? '--';
-  if (delay?.dateLabel) {
-    const late = delay.overdue && delay.days > 0;
+  if (delay?.overdue && delay.days > 0) {
     return {
-      text: late ? `${delay.dateLabel} · ${delay.days}d late` : delay.dateLabel,
-      toneClass: delay.overdue
-        ? 'font-semibold text-text-danger'
-        : delay.dueToday
-          ? 'text-text-default'
-          : 'text-text-faint',
-    };
-  }
-  if (delay?.overdue) {
-    return {
-      text: `${delay.days}d late`,
+      text: `${formatDayGap(delay.days)} late`,
       toneClass: 'font-semibold text-text-danger',
     };
   }
-  if (options.editable) {
-    return { text: missing, toneClass: 'text-text-faint' };
+  if (delay?.dueToday) {
+    return { text: 'Due today', toneClass: 'text-text-default' };
   }
-  return { text: 'On time', toneClass: 'text-text-faint' };
+  if (delay?.daysUntil != null && delay.daysUntil > 0) {
+    return { text: `in ${formatDayGap(delay.daysUntil)}`, toneClass: 'text-text-faint' };
+  }
+  if (delay?.dateKey || delay?.dateLabel) {
+    return { text: 'On time', toneClass: 'text-text-faint' };
+  }
+  return { text: missing, toneClass: 'text-text-faint' };
+}
+
+/** DATES hover — always these words, so Hash / CalendarClock are labeled. */
+export const COMPOUND_DATES_ORDER_HOVER = 'Order date';
+/** Deadline line — portable across PRODUCT_TABLES (orders ship-by, tasks due, …). */
+export const COMPOUND_DATES_DUE_HOVER = 'Due date';
+
+/**
+ * Hover copy for one DATES line. The field name always leads so every
+ * PRODUCT_TABLES peer (not just Orders) names the line. Family detail (civil
+ * day, Ordered vs Imported, lateness in words) rides after ` · ` when present.
+ *
+ * Short enough to ride {@link MorphCursorLayer} when there is no extra; a long
+ * family tip falls back to the anchored bubble via HoverTooltip.
+ */
+export function compoundDatesHoverLabel(
+  kind: 'order' | 'due',
+  detail?: string | null,
+): string {
+  const name = kind === 'order' ? COMPOUND_DATES_ORDER_HOVER : COMPOUND_DATES_DUE_HOVER;
+  const extra = (detail ?? '').trim();
+  if (!extra) return name;
+  if (extra === name || extra.startsWith(`${name} ·`)) return extra;
+  if (kind === 'due' && /^(Ship by|Due date)\b/i.test(extra)) {
+    return extra.replace(/^(Ship by|Due date)/i, name);
+  }
+  return `${name} · ${extra}`;
 }
 
 /**

@@ -4,6 +4,7 @@ import { ChevronDown, ChevronUp } from '@/components/Icons';
 import { ColumnTypeGlyph } from './column-type-glyph';
 import { gridHeaderShowsLabel } from './grid-column-geometry';
 import type { LedgerGridColumnModel } from './grid-surface-descriptor';
+import { cn } from '@/utils/_cn';
 
 type GridHeaderSortDir = 'asc' | 'desc';
 
@@ -69,14 +70,13 @@ export function GridHeaderLabel({
     );
 
   if (!showLabel) {
+    const center = column.key === 'thumb' || column.type === 'image';
     return (
-      <>
-        {/* The column still has to be nameable to a screen reader when the
-            visual label degrades to a mark. */}
+      <span className={cn('inline-flex items-center', center && 'w-full justify-center')}>
         <span className="sr-only">{fullLabel}</span>
         {typeMark}
         {sortMark}
-      </>
+      </span>
     );
   }
 

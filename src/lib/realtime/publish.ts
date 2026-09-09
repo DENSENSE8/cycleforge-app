@@ -1152,3 +1152,35 @@ export async function publishCounterSessionEvent(payload: {
     { ...payload.event, timestamp: formatPSTTimestamp() },
   );
 }
+
+/**
+ * QR sign-in push: the phone authorized, the desktop completes now.
+ *
+ * Unlike every other event here, the channel is anonymous
+ * (`qr-auth:<hash>`, see `qr-auth-channel.ts`) because the desktop listening
+ * for it is PRE-AUTH. Publish-only from the server; the desktop's grant is
+ * subscribe-only. Best-effort: the desktop's polling is the fallback, so a
+ * failed publish costs latency, never correctness.
+ */
+export async function publishQrAuthorized(tokenHash: string, staffName: string | null) {
+  await publishEvent(`qr-auth:${tokenHash}`, 'session.authorized', {
+    staffName,
+    at: new Date().toISOString(),
+  });
+}
+
+/**
+ * A station asked for remote step-up approval. Broadcast on the org
+ * dashboard channel so any manager surface (desk toast or the /m/step-ups
+ * list) can pick it up live; the list also polls, so the push is
+ * acceleration, not dependency.
+ */
+export async function publishStepUpRequested(
+  organizationId: string,
+  request: { id: number; scope: string; requesterName: string },
+) {
+  await publishEvent(getDashboardChannelName(organizationId), 'step_up_requested', {
+    ...request,
+    at: new Date().toISOString(),
+  });
+}

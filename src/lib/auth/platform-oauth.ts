@@ -1,5 +1,5 @@
 /**
- * Platform social login (Google, then Microsoft) — the "Continue with Google"
+ * Platform social login (Google, Apple, then Microsoft) — the provider buttons
  * button on /signin.
  *
  * THIS IS DELIBERATELY SEPARATE from the tenant Google Drive / PO Gmail OAuth
@@ -19,7 +19,7 @@
  * JWKS verification is tracked as a follow-up (out of scope for this wave).
  */
 
-import { randomBytes } from 'node:crypto';
+import { createSign, randomBytes } from 'node:crypto';
 
 import type { PlatformProvider } from './platform-oauth-types';
 
@@ -47,6 +47,48 @@ export const OAUTH_STATE_COOKIE = 'cf_oauth';
 /** State cookie lifetime — the round-trip to the IdP and back. */
 export const OAUTH_STATE_TTL_SECONDS = 10 * 60;
 
+function encodeBase64Url(value: string): string {
+  return Buffer.from(value).toString('base64url');
+}
+
+let cachedAppleSecret: { clientId: string; clientSecret: string; expiresAt: number; cacheKey: string } | null = null;
+
+function appleClientSecret(): { clientId: string; clientSecret: string } | null {
+  const clientId = (process.env.APPLE_OAUTH_CLIENT_ID ?? '').trim();
+  const teamId = (process.env.APPLE_OAUTH_TEAM_ID ?? '').trim();
+  const keyId = (process.env.APPLE_OAUTH_KEY_ID ?? '').trim();
+  const privateKey = (process.env.APPLE_OAUTH_PRIVATE_KEY ?? '').trim().replace(/\\n/g, '\n');
+  if (!clientId || !teamId || !keyId || !privateKey) return null;
+
+  const now = Math.floor(Date.now() / 1000);
+  const cacheKey = `${clientId}:${teamId}:${keyId}:${privateKey.slice(0, 32)}`;
+  if (cachedAppleSecret && cachedAppleSecret.cacheKey === cacheKey && cachedAppleSecret.expiresAt > now) {
+    return { clientId: cachedAppleSecret.clientId, clientSecret: cachedAppleSecret.clientSecret };
+  }
+
+  try {
+    const header = encodeBase64Url(JSON.stringify({ alg: 'ES256', kid: keyId }));
+    const claims = encodeBase64Url(JSON.stringify({
+      iss: teamId,
+      iat: now,
+      exp: now + 60 * 60 * 24 * 180,
+      aud: 'https://appleid.apple.com',
+      sub: clientId,
+    }));
+    const signer = createSign('SHA256');
+    signer.update(`${header}.${claims}`);
+    signer.end();
+    const signature = signer.sign({ key: privateKey, dsaEncoding: 'ieee-p1363' }).toString('base64url');
+    const clientSecret = `${header}.${claims}.${signature}`;
+    // Cache for 24 hours so we do not re-sign on every request.
+    cachedAppleSecret = { clientId, clientSecret, expiresAt: now + 60 * 60 * 24, cacheKey };
+    return { clientId, clientSecret };
+  } catch (err) {
+    console.error('[appleClientSecret] signing failed:', err);
+    return null;
+  }
+}
+
 function envConfig(provider: PlatformProvider): PlatformProviderConfig | null {
   if (provider === 'google') {
     const clientId = (process.env.GOOGLE_OAUTH_CLIENT_ID ?? '').trim();
@@ -61,6 +103,20 @@ function envConfig(provider: PlatformProvider): PlatformProviderConfig | null {
       tokenUrl: 'https://oauth2.googleapis.com/token',
       userinfoUrl: 'https://openidconnect.googleapis.com/v1/userinfo',
       scope: 'openid email profile',
+    };
+  }
+  if (provider === 'apple') {
+    const credentials = appleClientSecret();
+    if (!credentials) return null;
+    return {
+      provider,
+      clientId: credentials.clientId,
+      clientSecret: credentials.clientSecret,
+      redirectUri: (process.env.APPLE_OAUTH_REDIRECT_URI ?? '').trim() || null,
+      authorizeUrl: 'https://appleid.apple.com/auth/authorize',
+      tokenUrl: 'https://appleid.apple.com/auth/token',
+      userinfoUrl: '',
+      scope: 'openid email name',
     };
   }
   // Microsoft (built after Google works). Uses the /common multi-tenant endpoint
@@ -88,12 +144,20 @@ export function platformProviderConfig(provider: PlatformProvider): PlatformProv
 
 /** True when the provider's client credentials are present in env. */
 export function isPlatformProviderConfigured(provider: PlatformProvider): boolean {
+  if (provider === 'apple') {
+    return Boolean(
+      (process.env.APPLE_OAUTH_CLIENT_ID ?? '').trim() &&
+      (process.env.APPLE_OAUTH_TEAM_ID ?? '').trim() &&
+      (process.env.APPLE_OAUTH_KEY_ID ?? '').trim() &&
+      (process.env.APPLE_OAUTH_PRIVATE_KEY ?? '').trim(),
+    );
+  }
   return envConfig(provider) !== null;
 }
 
 /** Which platform login buttons to show on /signin. */
 export function configuredPlatformProviders(): PlatformProvider[] {
-  return (['google', 'microsoft'] as PlatformProvider[]).filter(isPlatformProviderConfigured);
+  return (['google', 'apple', 'microsoft'] as PlatformProvider[]).filter(isPlatformProviderConfigured);
 }
 
 export function resolveRedirectUri(cfg: PlatformProviderConfig, origin: string): string {
@@ -113,11 +177,19 @@ export interface OAuthStatePayload {
    * the user actually made, not something a page can forge after the fact.
    */
   persistent: boolean;
+  /**
+   * IDENTITY LINKING: the account to attach the returning identity to,
+   * instead of signing in with it. Set only by /start when `link=1` AND the
+   * caller holds that account's session — the callback re-verifies both, so
+   * the cookie alone can never graft an identity onto someone's account.
+   * Null on every ordinary sign-in state.
+   */
+  linkAccountId?: string | null;
 }
 
 export function newOAuthState(
   provider: PlatformProvider,
-  opts: { slug?: string | null; next?: string | null; verifier: string; persistent?: boolean },
+  opts: { slug?: string | null; next?: string | null; verifier: string; persistent?: boolean; linkAccountId?: string | null },
 ): OAuthStatePayload {
   return {
     provider,
@@ -127,6 +199,7 @@ export function newOAuthState(
     slug: opts.slug ?? null,
     next: opts.next ?? null,
     persistent: opts.persistent === true,
+    linkAccountId: opts.linkAccountId ?? null,
   };
 }
 
@@ -138,12 +211,12 @@ export function decodeOAuthState(raw: string | undefined | null): OAuthStatePayl
   if (!raw) return null;
   try {
     const obj = JSON.parse(Buffer.from(raw, 'base64url').toString('utf8')) as OAuthStatePayload;
-    if (!obj.state || !obj.nonce || !obj.verifier || (obj.provider !== 'google' && obj.provider !== 'microsoft')) {
+    if (!obj.state || !obj.nonce || !obj.verifier || !['google', 'apple', 'microsoft'].includes(obj.provider)) {
       return null;
     }
-    // A cookie minted before this field existed decodes as undefined — read it
-    // as false rather than granting an indefinite session by accident.
-    return { ...obj, persistent: obj.persistent === true };
+    // Same pre-existing-cookie tolerance as `persistent`: absent decodes as
+    // null, never as a stale account id.
+    return { ...obj, persistent: obj.persistent === true, linkAccountId: obj.linkAccountId ?? null };
   } catch {
     return null;
   }

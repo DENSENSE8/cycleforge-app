@@ -30,6 +30,8 @@ const CLIENT_PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/signup(?:$|\/)/,                  // public account creation — must match proxy.ts
   /^\/account\/signin(?:$|\/)/,         // account-level sign-in — must match proxy.ts
   /^\/m\/signin(?:$|\/)/,
+  /^\/m\/qr-auth(?:$|\/)/,             // workstation QR auth - chromeless + exempt from the anon redirect;
+                                        // mirrors proxy.ts PUBLIC_PATHS.
   /^\/not-authorized(?:$|\/)/,
   /^\/m\/enroll\//,
   /^\/kiosk(?:$|\/)/,                    // customer-facing kiosk — chromeless, no staff nav (must match proxy.ts)

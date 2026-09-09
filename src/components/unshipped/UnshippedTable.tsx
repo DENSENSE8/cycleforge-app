@@ -7,6 +7,7 @@ import { getOrdersChannelName, safeChannelName } from '@/lib/realtime/channels';
 import type { DashboardSearchSectionProps } from '@/components/dashboard/DashboardSearchSectionProps';
 import { DataTable, downloadDataTableCsv, type DataTableExport } from '@/components/tables/DataTable';
 import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
+import { OrderStatusTrailStage } from '@/components/orders/OrderStatusTrailOverlay';
 import { useToShipChrome } from '@/components/unshipped/useToShipChrome';
 import { DASHBOARD_ORDERS_SELECTION_SCOPE } from '@/lib/selection/dashboard-scopes';
 import {
@@ -15,6 +16,7 @@ import {
 } from '@/lib/dashboard/order-export-csv';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
+import { PackAwaitingFeedback } from '@/components/packer/PackAwaitingFeedback';
 import { dispatchCloseShippedDetails, dispatchOpenShippedDetails } from '@/utils/events';
 import { unshippedOrdersQuery, unshippedQueueCountsQuery } from '@/lib/queries/dashboard-queries';
 import {
@@ -24,7 +26,7 @@ import {
 import { Button } from '@/design-system/primitives';
 import { GridDegradedBox } from '@/design-system/components/grid';
 import { RefreshCw } from '@/components/Icons';
-import { useRailStatusBarActions, useRailActionSnapshot } from '@/components/right-rail/RailSelectionActions';
+import { useRailActionSnapshot } from '@/components/right-rail/RailSelectionActions';
 import { useAblyChannel } from '@/hooks/useAblyChannel';
 import { useAuth } from '@/contexts/AuthContext';
 import { deriveFulfillmentState, fulfillmentLaneTotals, type FulfillmentState } from '@/lib/unshipped-state';
@@ -77,6 +79,27 @@ export interface UnshippedTableProps extends DashboardSearchSectionProps {
    * `tested` = TESTED only. Omit for station embeds (all lanes + `?ustatus`).
    */
   fulfillmentLane?: 'pending' | 'tested';
+  /**
+   * Pin this desk to ONE derived pre-dock state, whatever the URL says.
+   *
+   * The Pending (ex-Shortage) desk is the case this exists for. Its page has
+   * always DOCUMENTED itself as "locked to BLOCKED rows", but nothing enforced
+   * it: the mount passed no lane and no filter, so the desk actually painted
+   * every unshipped order and its `?ustatus` came from whatever the last link
+   * carried. A desk whose whole job is one lane cannot leave that lane to a
+   * query parameter — the operator opens the tab and sees packed orders.
+   *
+   * It BEATS `?ustatus` rather than seeding it: a seeded param is one stray
+   * link away from being wrong again, and this is the desk's identity, not a
+   * refinement of it.
+   */
+  lockedFulfillmentState?: FulfillmentState;
+  /**
+   * Soft idle copy when the board has nothing to show (and when the fetch
+   * failed with zero rows). Pack uses "Awaiting scan" instead of a red
+   * degraded alert or a first-run sales-channel CTA.
+   */
+  awaitingMessage?: string;
   /** SSR stand-in handoff — primary queue has paintable rows (seed or fetch). */
   onPrimaryPainted?: () => void;
 }
@@ -144,6 +167,8 @@ export function UnshippedTable({
   railSelection = false,
   onOpenRecord,
   fulfillmentLane,
+  lockedFulfillmentState,
+  awaitingMessage,
   onPrimaryPainted,
 }: UnshippedTableProps = {}) {
   const pathname = usePathname();
@@ -174,7 +199,9 @@ export function UnshippedTable({
           : 'all';
   // Click-to-filter from the status legend (`?ustatus`) — exact derived pre-dock
   // state. Composes on top of the coarse `?stage` facet.
-  const statusFilter = String(searchParams.get('ustatus') || '').trim().toUpperCase() as FulfillmentState | '';
+  const urlStatusFilter = String(searchParams.get('ustatus') || '').trim().toUpperCase() as FulfillmentState | '';
+  // A desk that declares its lane owns it — see `lockedFulfillmentState`.
+  const statusFilter: FulfillmentState | '' = lockedFulfillmentState ?? urlStatusFilter;
   // Urgent-only board filter — operator-flagged expedited rows (orders.is_urgent).
   // Wire param is still `attention` (kept for deep-link / saved-pref stability);
   // its meaning is now "urgent only", not the legacy blocked ∪ late fire queue.
@@ -241,6 +268,9 @@ export function UnshippedTable({
       stage: stageFilter === 'all' ? undefined : stageFilter,
       // Bounded page (Phase 2); search stays unbounded.
       limit: deferredSearchQuery ? undefined : rowLimit,
+      // A desk locked to BLOCKED asks the server for the blocked scope — the
+      // To-ship scope would never hand it a label-less blocked row to filter.
+      blockedOnly: lockedFulfillmentState === 'BLOCKED',
     }),
     // Keep rows visible while search/stage refetch, but never bleed the previous
     // staff scope into a new one — that made ?staff= look like it wasn't filtering.
@@ -363,8 +393,8 @@ export function UnshippedTable({
   );
 
   useEffect(() => {
-    const handleAssignmentUpdated = (e: any) => {
-      const detail = e?.detail || {};
+    const handleAssignmentUpdated = (e: Event) => {
+      const detail = (e instanceof CustomEvent ? e.detail : null) || {};
       const orderIds = Array.isArray(detail.orderIds) ? detail.orderIds : [];
       if (orderIds.length === 0) return;
 
@@ -385,10 +415,10 @@ export function UnshippedTable({
       invalidateUnshippedCounts(queryClient);
     };
 
-    window.addEventListener('order-assignment-updated' as any, handleAssignmentUpdated as any);
+    window.addEventListener('order-assignment-updated', handleAssignmentUpdated);
 
     return () => {
-      window.removeEventListener('order-assignment-updated' as any, handleAssignmentUpdated as any);
+      window.removeEventListener('order-assignment-updated', handleAssignmentUpdated);
     };
   }, [queryClient]);
 
@@ -500,6 +530,13 @@ export function UnshippedTable({
           } else if (state !== statusFilter) {
             return false;
           }
+        } else if (stageFilter === 'pending') {
+          if (lifecycle === 'PACKED_STAGED') return false;
+          if (state === 'TESTED') return false;
+        } else if (stageFilter === 'tested') {
+          if (state !== 'TESTED') return false;
+        } else if (stageFilter === 'packed') {
+          if (lifecycle !== 'PACKED_STAGED') return false;
         }
 
         if (urgentOnly && !row.is_urgent) return false;
@@ -526,6 +563,7 @@ export function UnshippedTable({
       allRecords,
       fulfillmentLane,
       statusFilter,
+      stageFilter,
       urgentOnly,
       lateOnly,
       rowFlagFilter,
@@ -597,6 +635,32 @@ export function UnshippedTable({
     patchPaperwork(Number(first.id));
   }, [cagedOnly, paperworkId, patchPaperwork, records, selectedRailRows]);
 
+  /**
+   * Tracking-hover **Label** door (`useOrdersSpreadsheet.onOpenLabels`) — the
+   * third entrance the walk documents, beside the header CTA and the selection
+   * bar. It opens ON the hovered row instead of the head of the queue, and the
+   * step list stays the whole visible queue so Next keeps walking from there.
+   *
+   * The chain (CompoundFulfillment → CompoundGridCell → OrdersQueueTableRow →
+   * useOrdersSpreadsheet) was already plumbed; only this last hop was missing,
+   * so the menu painted Open with no Label and the e2e that pins the door sat
+   * behind a `rowCount === 0` skip.
+   */
+  const openLabelsWalkForRecord = useCallback(
+    (record: ShippedOrder) => {
+      if (cagedOnly) return;
+      const id = Number(record?.id);
+      if (!Number.isFinite(id) || id <= 0) return;
+      setWalkIds(
+        [...new Set(records.map((r) => Number(r.id)))].filter(
+          (rowId) => Number.isFinite(rowId) && rowId > 0,
+        ),
+      );
+      patchPaperwork(id);
+    },
+    [cagedOnly, patchPaperwork, records],
+  );
+
   const advancePaperworkWalk = useCallback(() => {
     const list = walkRows.length > 0 ? walkRows : records;
     const current = Number(paperworkId);
@@ -608,6 +672,15 @@ export function UnshippedTable({
     }
     patchPaperwork(orderIdOf(next));
   }, [closePaperworkWalk, paperworkId, patchPaperwork, records, walkRows]);
+
+  const retreatPaperworkWalk = useCallback(() => {
+    const list = walkRows.length > 0 ? walkRows : records;
+    const current = Number(paperworkId);
+    const idx = list.findIndex((r) => orderIdOf(r) === current);
+    const prev = idx > 0 ? list[idx - 1] : null;
+    if (!prev) return;
+    patchPaperwork(orderIdOf(prev));
+  }, [paperworkId, patchPaperwork, records, walkRows]);
 
   const handlePaperworkFactsChanged = useCallback(() => {
     invalidateUnshippedCounts(queryClient);
@@ -631,6 +704,17 @@ export function UnshippedTable({
   // active search/filter sees the "connect a sales channel" CTA instead of three
   // empty lanes that read as broken. Any active search/status/staff filter falls
   // through to the board, which owns its own typed "no matches" empty per lane.
+  // Pack (and similar embeds) pass `awaitingMessage` so idle / failed-empty
+  // reads as "Awaiting scan" — never a rose degraded alert.
+  const isIdleEmpty =
+    !query.isLoading &&
+    allRecords.length === 0 &&
+    !searchQuery &&
+    !statusFilter &&
+    !urgentOnly &&
+    stageFilter === 'all' &&
+    staffId === undefined;
+
   const isFirstRunEmpty =
     // An empty cage is not a brand-new org — showing "connect a sales channel"
     // there would answer a question nobody asked.
@@ -640,13 +724,15 @@ export function UnshippedTable({
     // up. The degraded gate below catches it first; this keeps the teaching
     // state honest on its own terms.
     !queueError &&
-    !query.isLoading &&
-    allRecords.length === 0 &&
-    !searchQuery &&
-    !statusFilter &&
-    !urgentOnly &&
-    stageFilter === 'all' &&
-    staffId === undefined;
+    isIdleEmpty;
+
+  if (awaitingMessage && (isIdleEmpty || (query.isError && allRecords.length === 0))) {
+    return (
+      <div className="flex h-full w-full items-center justify-center bg-surface-card p-6">
+        <PackAwaitingFeedback message={awaitingMessage} />
+      </div>
+    );
+  }
 
   // Degraded outranks every absence state: with nothing to show and a failed
   // read, the only honest screen is the one that says so and offers the retry.
@@ -679,7 +765,9 @@ export function UnshippedTable({
   // two branches keep reading `byStage`.
   const laneTotals = fulfillmentLaneTotals(queueCounts);
   const stageTotal =
-    fulfillmentLane === 'pending'
+    lockedFulfillmentState === 'BLOCKED'
+      ? laneTotals.blocked
+      : fulfillmentLane === 'pending'
       ? laneTotals.pending
       : fulfillmentLane === 'tested'
         ? laneTotals.tested
@@ -733,47 +821,55 @@ export function UnshippedTable({
     />
   ) : null;
 
-  if (paperworkId != null && onToShipDesk) {
-    return (
-      <>
-        {labelsCta}
-        {exportMenu}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
-          <PaperworkWalkHost
-            rows={walkRows.length > 0 ? walkRows : records}
-            selectedId={paperworkId}
-            loading={query.isLoading}
-            onSelect={(id) => patchPaperwork(id)}
-            onAdvance={advancePaperworkWalk}
-            onExit={closePaperworkWalk}
-            onFactsChanged={handlePaperworkFactsChanged}
-          />
-        </div>
-      </>
-    );
-  }
-
   return (
     <>
       {labelsCta}
       {exportMenu}
-      <UnshippedSheet
-        records={records}
-        loading={cagedOnly ? cagedQuery.isLoading : query.isLoading}
-        searchValue={searchQuery}
-        selectMode={selectMode}
-        railSelection={railSelection}
-        onOpenRecord={handleOpenRecord}
-        onClearSearch={clearSearch}
-        searchEmptyTitle={searchEmptyTitle}
-        searchResultLabel={searchResultLabel}
-        clearSearchLabel={clearSearchLabel}
-        onLoadMore={onLoadMore}
-        copyExport={copyExport}
-        copyExportPlacement={onToShipDesk ? 'menu' : 'header'}
-        stale={queueError}
-        onRetryStale={retryQueue}
-      />
+      {/*
+        Q5 stage. Walk + STATUS trail are SIBLINGS of the sheet inside
+        {@link OrderStatusTrailStage}'s `relative` box, never a body swap.
+        {@link PaperworkWalkHost} is a `fill="stage"` DeskStageOverlay
+        (`absolute inset-0`), so it needs a positioned box the size of the
+        table to cover, and Center Lock says the DataTable stays mounted
+        underneath it. Swapping the body instead unmounted the grid — the
+        operator lost scroll position, cursor and check-set on every Labels
+        press, and the walk's own `?paperwork=` exit remounted a cold table.
+
+        The wrapper is unconditional on purpose. Adding it only while the walk
+        is open would move `UnshippedSheet` in the tree and remount the grid —
+        the table flash `tests/e2e/to-ship-paperwork-walk.spec.ts` pins.
+      */}
+      <OrderStatusTrailStage>
+        <UnshippedSheet
+          records={records}
+          loading={cagedOnly ? cagedQuery.isLoading : query.isLoading}
+          searchValue={searchQuery}
+          selectMode={selectMode}
+          railSelection={railSelection}
+          onOpenRecord={handleOpenRecord}
+          onClearSearch={clearSearch}
+          searchEmptyTitle={searchEmptyTitle}
+          searchResultLabel={searchResultLabel}
+          clearSearchLabel={clearSearchLabel}
+          onLoadMore={onLoadMore}
+          copyExport={copyExport}
+          copyExportPlacement={onToShipDesk ? 'menu' : 'header'}
+          onOpenLabels={onToShipDesk ? openLabelsWalkForRecord : undefined}
+          stale={queueError}
+          onRetryStale={retryQueue}
+          shortageDesk={lockedFulfillmentState === 'BLOCKED'}
+        />
+        {paperworkId != null && onToShipDesk ? (
+          <PaperworkWalkHost
+            rows={walkRows.length > 0 ? walkRows : records}
+            selectedId={paperworkId}
+            onAdvance={advancePaperworkWalk}
+            onPrev={retreatPaperworkWalk}
+            onExit={closePaperworkWalk}
+            onFactsChanged={handlePaperworkFactsChanged}
+          />
+        ) : null}
+      </OrderStatusTrailStage>
     </>
   );
 }
@@ -840,8 +936,10 @@ function UnshippedSheet({
   onLoadMore,
   copyExport,
   copyExportPlacement = 'header',
+  onOpenLabels,
   stale = false,
   onRetryStale,
+  shortageDesk = false,
 }: {
   records: ShippedOrder[];
   loading: boolean;
@@ -859,12 +957,16 @@ function UnshippedSheet({
   onLoadMore?: () => void;
   copyExport: DataTableExport<ShippedOrder>;
   copyExportPlacement?: 'header' | 'menu';
+  /** Tracking-hover Label → paperwork walk. Omitted off the To-ship desk. */
+  onOpenLabels?: (record: ShippedOrder) => void;
   /** A read failed while these rows were already painted — see {@link QueueStaleBand}. */
   stale?: boolean;
   onRetryStale?: () => void;
+  /** Pending (ex-Shortage) desk — coverage column, blocked chrome total. */
+  shortageDesk?: boolean;
 }) {
   const sheet = useOrdersSpreadsheet({
-    ariaLabel: 'Shelved unshipped orders',
+    ariaLabel: shortageDesk ? 'Pending out-of-stock orders' : 'Shelved unshipped orders',
     records,
     loading,
     searchValue,
@@ -877,15 +979,14 @@ function UnshippedSheet({
     selectionScope: DASHBOARD_ORDERS_SELECTION_SCOPE,
     railSelection,
     queueMode: 'fulfillment',
+    shortageDesk,
     searchEmptyTitle,
     searchResultLabel,
     clearSearchLabel,
+    onOpenLabels,
     'data-testid': 'pending-grid-body',
   });
-  const chrome = useToShipChrome();
-  // Live verbs from the first checkbox — Assign / Listing → staff / … sit
-  // flush-left on the status bar. The rail still owns the long form at 3+.
-  const selectionActions = useRailStatusBarActions();
+  const chrome = useToShipChrome({ blockedQueue: shortageDesk });
 
   // The spreadsheet hook publishes the cursor (it owns grouping + folds);
   // this lane only turns the keyboard on.
@@ -899,9 +1000,8 @@ function UnshippedSheet({
         {...chrome}
         copyExport={copyExport}
         copyExportPlacement={copyExportPlacement}
-        selectionActions={selectionActions}
-        selectionActionLayout="columns"
         exportFilename="to-ship.csv"
+        onLoadMore={onLoadMore}
       />
     </div>
   );

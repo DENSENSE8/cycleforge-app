@@ -66,6 +66,7 @@ interface OrdersQueuePlane {
   ) => void;
   handleRowOpen: (record: ShippedOrder) => void;
   handleToggleSelect: (record: ShippedOrder, event: { shiftKey: boolean }) => void;
+  handleToggleGroup: (ids: readonly number[], checked: boolean) => void;
   handleRequestReplaceTracking: (record: ShippedOrder) => void;
 }
 
@@ -90,7 +91,7 @@ export function useOrdersQueuePlane({
   // record. Sheets click-to-select (row click toggles the set) is off.
   const clickSelect = false;
   const { fillsById } = useGridRowFills(tableId);
-  const { selectedIds, toggle, selectOnly, clear } = useTableSelectMode<ShippedOrder>({
+  const { selectedIds, toggle, selectOnly, clear, setMany } = useTableSelectMode<ShippedOrder>({
     scope: selectionScope,
     selectMode: true,
     rows: displayedRecords,
@@ -316,6 +317,13 @@ export function useOrdersQueuePlane({
     [toggle],
   );
 
+  const handleToggleGroup = useCallback(
+    (ids: readonly number[], checked: boolean) => {
+      setMany(ids, checked);
+    },
+    [setMany],
+  );
+
   return {
     selectedIds,
     selectedRecord,
@@ -324,6 +332,7 @@ export function useOrdersQueuePlane({
     handleRowAction,
     handleRowOpen,
     handleToggleSelect,
+    handleToggleGroup,
     handleRequestReplaceTracking,
   };
 }

@@ -58,7 +58,7 @@ import {
 import { parseHomeMode } from '@/features/home/home-modes';
 import { parseProductsView } from '@/components/products/products-view';
 import { OUTBOUND_MODE_PATHS, outboundModeFromPath } from '@/components/outbound/outbound-sidebar-shared';
-import { SHIPPING_EXCEPTIONS_PATH, SHIPPING_ORDERS_PATH } from '@/lib/shipping/orders-desk';
+import { SHIPPING_EXCEPTIONS_PATH, SHIPPING_ORDERS_PATH, SHIPPING_SHORTAGE_PATH } from '@/lib/shipping/orders-desk';
 import { SHIPPING_SHIPPED_PATH } from '@/lib/shipping/shipped-desk';
 import { routeParamsFor } from '@/lib/routing/registry';
 import { parseRouteParams } from '@/lib/routing/route-params';
@@ -1367,6 +1367,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     // still has a rail to keep.
     railless: true,
     children: [
+      { id: 'shortage', label: 'Pending',   icon: AlertCircle,                  requires: 'orders.view', to: () => ({ pathname: SHIPPING_SHORTAGE_PATH, params: {} }) },
       { id: 'orders',   label: 'To ship',   icon: LayoutDashboard,              requires: 'orders.view', to: () => ({ pathname: SHIPPING_ORDERS_PATH, params: {} }) },
       { id: 'fba',      label: 'Amazon Prep', icon: SHIPPING_NAV_ICONS.fba,      to: () => ({ pathname: OUTBOUND_MODE_PATHS.fba }) },
       // `packing.view` because the archive IS the packer log: `/api/packerlogs`
@@ -1390,6 +1391,12 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
         pathname.startsWith(`${SHIPPING_SHIPPED_PATH}/`)
       ) {
         return 'shipped';
+      }
+      if (
+        pathname === SHIPPING_SHORTAGE_PATH ||
+        pathname.startsWith(`${SHIPPING_SHORTAGE_PATH}/`)
+      ) {
+        return 'shortage';
       }
       // Exceptions is its own path and must resolve BEFORE the orders
       // catch-all below, or the workbench would light "To ship" — a tab for a

@@ -12,7 +12,6 @@ import {
   sqlOrderHasShipConfirm,
   sqlOrderHasTechScan,
 } from '@/lib/orders/order-grain-sql';
-import { liveWorkingSetSql } from '@/lib/orders/exception-membership';
 import { withAuth } from '@/lib/auth/withAuth';
 import { WAREHOUSE_TIME_ZONE } from '@/utils/date';
 import { parsePackedDateKey } from '@/lib/packed/packed-filters';
@@ -662,20 +661,14 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       // CF-04: exclude only when THIS order has a pack fact — not when a sibling
       // sharing the carton was packed (shipment-grain NOT EXISTS was the vanish bug).
       sql += ` AND NOT ${sqlOrderHasPackScan('o')}`;
-      // Exception-held stays out of the live working set (R-FLOW-7): caged
-      // AND unpaired. Pairing lands the order on this board even when manuals
-      // or a shipping label are still missing — those are paperwork, not
-      // another table. NULL release_state = released (legacy rows).
-      sql += ` AND ${liveWorkingSetSql('o')}`;
+      // Operator 2026-09-09: exception-held (caged ∩ unpaired) stays ON
+      // To-ship so staff see pending work here, not only on Exceptions.
       sql += ` AND NOT ${sqlOrderHasShipConfirm('o')}`;
     }
 
     if (inWarehouse) {
       sql += ` AND o.shipment_id IS NOT NULL`;
       sql += ` AND COALESCE(TRIM(stn.tracking_number_raw), '') <> ''`;
-      // Same exception-held predicate as fulfillmentScope — the To-ship desk's
-      // in-building set is live work; unpaired+caged is by definition not.
-      sql += ` AND ${liveWorkingSetSql('o')}`;
       sql += ` AND NOT ${sqlOrderHasShipConfirm('o')}`;
     }
 

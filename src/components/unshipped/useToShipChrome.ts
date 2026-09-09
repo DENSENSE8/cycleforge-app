@@ -80,7 +80,7 @@ export interface ToShipChrome {
   totalCount: number | undefined;
 }
 
-export function useToShipChrome(): ToShipChrome {
+export function useToShipChrome(_opts?: { blockedQueue?: boolean }): ToShipChrome {
   const searchParams = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState, type ComponentType } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import type { DateRange } from 'react-day-picker';
 import { format } from 'date-fns';
@@ -8,6 +8,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { CalendarRangeSelect } from '@/components/ui/calendar-range-select';
 import { Calendar as CalendarIcon, ChevronDown, X } from '@/components/Icons';
 import { DROPDOWN_SHELL_CORNER } from '@/design-system/tokens/radius';
+import { cursorClickTarget } from '@/design-system/motion';
 import { cn } from '@/utils/_cn';
 import { computeWeekRange, dateKeyToLocalDate } from '@/utils/date';
 
@@ -15,7 +16,7 @@ export const DATE_RANGE_PICKER_VARIANTS = {
   range:
     'filter date range from-to period: presets + month grid + Clear/Apply; idle face includes the year; X clears',
   compact:
-    'ship-by due date single day in a cell: month grid only; click commits; no year; no X; face always paints MMM d or --; replace native input type=date',
+    'ship-by due date single day in a cell: month grid only; click commits; no year; no X; face paints MMM d or -- unless the surface supplies faceLabel (slot-table ship-by paints its AGE); replace native input type=date',
 } as const;
 
 export type DateRangePickerVariant = keyof typeof DATE_RANGE_PICKER_VARIANTS;
@@ -42,6 +43,38 @@ export type DateRangePickerCompactProps = SharedFieldProps & {
   value: Date | undefined;
   /** Always a day. Compact cannot clear. */
   onChange: (next: Date) => void;
+  /**
+   * Override the trigger WORD when the surface has a truer face for this day
+   * than the day itself.
+   *
+   * The slot table's ship-by is the case this exists for: an operator working a
+   * queue does not ask "what is the date", they ask "how late is this", so the
+   * cell paints `2d late` / `1m late` and hands the civil date to the hover
+   * tooltip (operator 2026-09-04). The CONTROL is unchanged — same month grid,
+   * click still commits — which is the point: one date field, two faces, not a
+   * second inline date control.
+   *
+   * Never a blank string: an empty face is what `--` is for, and the trigger is
+   * a click target that must always show something.
+   */
+  faceLabel?: string;
+  /**
+   * Accessible name for the trigger. Needed once {@link faceLabel} is in play:
+   * the visible word can be `2d late`, which says the value but not the field.
+   */
+  ariaLabel?: string;
+  /**
+   * Leading glyph. Omit for the house calendar (form / filter mounts). Pass a
+   * house icon for the slot-table DATES cell (`Hash` order date, `CalendarClock`
+   * ship-by). A custom glyph inherits the trigger ink so overdue paint reaches
+   * the mark; the default calendar stays faint.
+   */
+  leadingGlyph?: ComponentType<{ className?: string }>;
+  /**
+   * Desk pointer: Chrome click glyph. Slot-table DATES opts in so hover rides
+   * MorphCursorLayer together with HoverTooltip's label chip.
+   */
+  clickCursor?: boolean;
 };
 
 export type DateRangePickerFieldProps = DateRangePickerRangeProps | DateRangePickerCompactProps;
@@ -104,13 +137,13 @@ const POPOVER_CLASS = cn(
  * Trigger + popover over the house calendar.
  *
  * Slot-table ship-by / due date / pick a date in a cell is **compact** —
- * not the filter range, not a native `input type=date`, not InlineEditableValue.
+ * not the filter range, not a native `input type=date`.
  *
  * - `range` (default): filter grammar. Presets, month grid, Clear/Apply, X
  *   on the trigger, year in the face.
  * - `compact`: one civil day. Calendar only — no presets, no footer, no X.
  *   Clicking a day commits and closes. Face is `MMM d` (no year) and is never
- *   blank (`--` until a day exists).
+ *   blank (`--` until a day exists). Slot-table DATES passes `leadingGlyph`.
  */
 export function DateRangePickerField(props: DateRangePickerFieldProps) {
   if (props.variant === 'compact') {
@@ -126,6 +159,10 @@ function CompactDatePickerField({
   fromDate,
   toDate,
   className,
+  faceLabel,
+  ariaLabel,
+  leadingGlyph: LeadingGlyph,
+  clickCursor = false,
 }: DateRangePickerCompactProps) {
   const [open, setOpen] = useState(false);
   // Paint the picked day immediately; the parent cache is the source of truth
@@ -136,7 +173,9 @@ function CompactDatePickerField({
     setSelected(value);
   }, [value]);
 
-  const label = selected ? format(selected, 'MMM d') : '--';
+  // The surface's face wins when it has one (ship-by paints its age); the day
+  // itself is the default, and `--` is the never-blank floor.
+  const label = faceLabel?.trim() || (selected ? format(selected, 'MMM d') : '--');
 
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
@@ -144,9 +183,15 @@ function CompactDatePickerField({
         <button
           type="button"
           disabled={disabled}
+          aria-label={ariaLabel}
+          {...(clickCursor ? cursorClickTarget() : null)}
           className={cn(TRIGGER_CLASS, 'text-text-default', className)}
         >
-          <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-text-faint" />
+          {LeadingGlyph ? (
+            <LeadingGlyph className="h-3.5 w-3.5 shrink-0" />
+          ) : (
+            <CalendarIcon className="h-3.5 w-3.5 shrink-0 text-text-faint" />
+          )}
           <span className="flex-1 truncate">{label}</span>
         </button>
       </Popover.Trigger>
@@ -192,12 +237,14 @@ function RangeDatePickerField({
 }: DateRangePickerRangeProps) {
   const [open, setOpen] = useState(autoOpen);
   const [draft, setDraft] = useState<DateRange | undefined>(value);
+  const valueRef = useRef(value);
+  valueRef.current = value;
 
   useEffect(() => {
     if (!autoOpen) return;
-    setDraft(value);
+    setDraft(valueRef.current);
     setOpen(true);
-  }, [autoOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [autoOpen]);
 
   const handleOpenChange = (next: boolean) => {
     if (next) setDraft(value);

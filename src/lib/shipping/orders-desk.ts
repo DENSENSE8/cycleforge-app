@@ -12,6 +12,11 @@
 export const SHIPPING_ORDERS_PATH = '/shipping/orders';
 
 /**
+ * Shortage / need-to-buy workbench. A Shipping PEER, not a To-ship facet:
+ * out-of-stock lines are the procurement queue. Reads as Pending in the tab.
+ */
+export const SHIPPING_SHORTAGE_PATH = '/shipping/shortage';
+/**
  * The order-exception workbench. A Shipping PEER, not a To-ship lens: caged and
  * unpaired orders are excluded from the To-ship queue by predicate, so its
  * queue semantics genuinely cannot express them.

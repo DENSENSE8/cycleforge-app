@@ -31,6 +31,8 @@ import {
   OrdersDeskAddAction,
   type OrderIntakeMethod,
 } from '@/components/outbound/orders/OrdersDeskAddAction';
+import { OrdersDeskPastImportsAction } from '@/components/outbound/orders/OrdersDeskPastImportsAction';
+import { OrderPasteIntake } from '@/components/outbound/orders/OrderPasteIntake';
 import { useTableImportParam } from '@/hooks/useTableImportParam';
 import { useTableImportFilePicker } from '@/components/tables/import/TableImportFileButton';
 import { useOrdersSync } from '@/hooks/useOrdersSync';
@@ -215,8 +217,10 @@ function OutboundOrdersDeskContent({
             canImport={canImportOrders && csv.live}
             syncing={sync.isTransferring}
           />
+          <OrdersDeskPastImportsAction />
           {/* The picker's hidden <input>; `csv.open()` above clicks it. */}
           {csv.input}
+          {canImportOrders && csv.live ? <OrderPasteIntake /> : null}
           {/*
             The intake session is a CENTERED overlay (operator override
             2026-08-30) — `?triage=` opens it in the middle of the desk. The

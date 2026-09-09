@@ -128,6 +128,8 @@ export interface DeskPageTab {
   label: string;
   /** Rows behind the tab. Omit for honest absence — never print a fake 0. */
   count?: number;
+  /** Optional glyph from the house catalog (adapter renders the node). */
+  icon?: ReactNode;
 }
 
 export interface DeskPageChromeProps {
@@ -327,6 +329,7 @@ export function DeskPageChrome({
                           : 'border-transparent text-text-muted hover:text-text-default',
                       )}
                     >
+                      {tab.icon}
                       <span className="truncate">{tab.label}</span>
                       {typeof tab.count === 'number' ? (
                         <span

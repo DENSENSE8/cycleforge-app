@@ -34,23 +34,33 @@
  * is disagree about how the row is BUILT.
  */
 
-import type { HTMLAttributes, ReactNode } from 'react';
+import type { HTMLAttributes, ReactNode, Ref } from 'react';
 import {
   gridDataCellClass,
   LedgerGridLeafRow,
   type GridSurfaceCapabilities,
+  type LedgerGridColumnModel,
 } from '@/design-system/components/grid';
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
 import { renderCompoundGridCell } from './CompoundGridCell';
-import type { CompoundRowAction, CompoundRowView } from './compound-row-model';
+import type { FieldDisplayType } from '@/lib/tables/field-catalog/types';
+import type {
+  CompoundOrderedAtEdit,
+  CompoundRowAction,
+  CompoundRowView,
+  CompoundShipByEdit,
+  CompoundStageAssign,
+  CompoundStaffRoster,
+  CompoundSubtitleEdit,
+  CompoundSubtitleSelect,
+} from './compound-row-model';
 
 /** Structural — every family's column interface satisfies it. */
-interface CompoundRowColumn {
-  key: string;
-  width: string;
-  frozen?: boolean;
-  hideKey?: string;
-  align?: 'start' | 'end';
+interface CompoundRowColumn extends LedgerGridColumnModel {
+  fieldId?: string;
+  slotIconKey?: string;
+  slotDisplayType?: FieldDisplayType;
+  slotStageLabels?: Readonly<{ done: string; pending: string }>;
 }
 
 export interface CompoundRowProps<C extends CompoundRowColumn>
@@ -69,12 +79,87 @@ export interface CompoundRowProps<C extends CompoundRowColumn>
     label: string;
     disabled?: boolean;
   };
-  /** Present ⇒ the ⋮ menu carries an "Open" item. */
+  /** Present ⇒ the title hover carries an "Open" item. */
   onOpen?: () => void;
-  /** Extra verbs for this row's ⋮ menu, after "Open". */
+  /** Present ⇒ STATUS opens the carrier trail. */
+  onStateOpen?: () => void;
+  /** Extra verbs for this row's title hover, after "Open". */
   actions?: readonly CompoundRowAction[];
+  /**
+   * Stage-lane assign, keyed by catalog field id. Presence on a bound
+   * `stage_event` track arms the empty/pending mark as a staff combo.
+   */
+  stageAssigns?: Readonly<Partial<Record<string, CompoundStageAssign>>>;
+  /** Present ⇒ the actions column mounts the all-staff role roster. */
+  staffRoster?: CompoundStaffRoster;
+
+  /*
+   * ── The IN-CELL EDIT capabilities ──────────────────────────────────────────
+   *
+   * Every one of these is a capability OBJECT the shared cells already know how
+   * to paint (`renderCompoundGridCell` has taken them since the compound cells
+   * landed); they were simply not reachable from this component, so a family
+   * that wanted an editable row had to bypass it and map the columns itself.
+   * That is how `OrdersQueueTableRow` came to exist — a 1300-line family row
+   * whose desktop branch is this component with more props.
+   *
+   * They are DATA and callbacks, never JSX and never render props: presence of
+   * the object arms the editor, absence leaves the identical cell read-only.
+   * `compound-row-capability.test.ts` pins that this list stays complete — a
+   * new cell capability that this row does not forward is a new reason to write
+   * a family row, which is the fork invariant 1 exists to refuse.
+   */
+
+  /** In-place SELECT editors for bound subtitle parts, matched by part key. */
+  subtitleSelects?: readonly CompoundSubtitleSelect[];
+  /** Free-text / numeric in-place editors, matched to parts by key. */
+  subtitleEdits?: readonly CompoundSubtitleEdit[];
+  /** Part key of the NOTE fact — pinned right as a glyph. */
+  subtitleNoteKey?: string;
+  /** The note's full text (the glyph's hover / editor seed). */
+  noteText?: string | null;
+  /** Present ⇒ the inline under-title facts drag to reorder (field onto field). */
+  onReorderSubtitle?: (dragKey: string, dropKey: string) => void;
+  /** Present ⇒ the DATES cell's deadline line COMMITS; absent leaves it disabled. */
+  shipByEdit?: CompoundShipByEdit;
+  /** Same, for the DATES cell's order-date line. */
+  orderedAtEdit?: CompoundOrderedAtEdit;
+  /** Present ⇒ the tracking line opens the paperwork walk. */
+  onOpenLabels?: () => void;
+  /**
+   * Optional triage wash for the whole row — the family's own SoT class, gated
+   * by `capabilities.rowTriageFlags` inside `ledgerRowFillClass`.
+   *
+   * The fill CASCADE (selection → triage flag → personal paint) is already
+   * engine-owned on `LedgerGridLeafRow`; this row simply had no way to hand it
+   * the flag, so a family with row flags had to rebuild the shell to apply one.
+   * That is `OrdersQueueTableRow`'s zebra/fill branch, and it is why the same
+   * cascade exists twice today with two different precedence orders.
+   */
+  flagClass?: string | null;
+  /**
+   * When false, skip the shared scroll-min shell width var. Forwarded rather
+   * than re-derived: a family that wants the airtable skin's shared width must
+   * not have to rebuild the shell to ask for it.
+   */
+  scrollMinContent?: boolean;
   /** Override mobile stacking (almost always false under LedgerGrid). */
   isMobile?: boolean;
+  /**
+   * The row element — what a row-anchored plane positions against.
+   *
+   * Supplied by {@link CompoundPlaneRow}, the only engine caller that mounts a
+   * plane. A family never passes this: it does not own the plane either.
+   */
+  ref?: Ref<HTMLDivElement>;
+  /**
+   * The registered row-anchored plane, already bound to its row.
+   *
+   * Engine-supplied and engine-only (`CompoundPlaneRow` reads it off
+   * `TableSurfaceBinding.rowPlane`). It is not a family slot: what a picked row
+   * opens is a property of the ENTITY, declared once at registration.
+   */
+  plane?: ReactNode;
 }
 
 export function CompoundRow<C extends CompoundRowColumn>({
@@ -84,8 +169,23 @@ export function CompoundRow<C extends CompoundRowColumn>({
   capabilities,
   select,
   onOpen,
+  onStateOpen,
   actions,
+  stageAssigns,
+  staffRoster,
+  subtitleSelects,
+  subtitleEdits,
+  subtitleNoteKey,
+  noteText,
+  onReorderSubtitle,
+  shipByEdit,
+  orderedAtEdit,
+  onOpenLabels,
+  flagClass,
+  scrollMinContent,
   isMobile = false,
+  ref,
+  plane,
   className,
   ...rowProps
 }: CompoundRowProps<C>) {
@@ -101,7 +201,18 @@ export function CompoundRow<C extends CompoundRowColumn>({
       view,
       select,
       onOpen,
+      onStateOpen,
       actions,
+      stageAssigns,
+      staffRoster,
+      subtitleSelects,
+      subtitleEdits,
+      subtitleNoteKey,
+      noteText,
+      onReorderSubtitle,
+      shipByEdit,
+      orderedAtEdit,
+      onOpenLabels,
     });
     if (cell) return cell;
 
@@ -125,8 +236,13 @@ export function CompoundRow<C extends CompoundRowColumn>({
       template={gridTemplate(columns)}
       selected={selected}
       capabilities={capabilities}
+      flagClass={flagClass}
+      scrollMinContent={scrollMinContent}
       isMobile={isMobile}
+      ref={ref}
       renderCell={(col, { last }) => renderCell(col, last)}
-    />
+    >
+      {plane}
+    </LedgerGridLeafRow>
   );
 }

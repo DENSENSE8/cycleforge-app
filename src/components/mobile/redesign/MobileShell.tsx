@@ -9,6 +9,7 @@ import { MobileScanProvider } from './mobile-scan-cta';
 import { TOKENS } from './DesignSystem';
 import { ReceivingPhoneBridgeMount } from '@/components/mobile/receiving/ReceivingPhoneBridgeMount';
 import { ErrorBoundary } from '@/components/error/ErrorBoundary';
+import { isClientPublicPath } from '@/contexts/AuthContext';
 import { Button } from '@/design-system/primitives';
 
 /**
@@ -54,10 +55,11 @@ function MobilePageError(error: Error, reset: () => void) {
  *
  * A trailing slash is load-bearing: `/m/pick/` excludes the pick DETAIL screen
  * (which owns a bar) while `/m/pick` itself still gets the header.
+ *
+ * PRE-SIGN-IN paths are NOT listed here — `isClientPublicPath` owns those, and
+ * they get no shell at all (see below).
  */
 const OWN_TOP_BAR_PREFIXES = [
-  '/m/signin',
-  '/m/enroll',
   '/m/receiving/po',
   '/m/r/',
   '/m/u/',
@@ -81,6 +83,27 @@ export const RedesignedMobileShell = ({ children }: { children: React.ReactNode 
   useEffect(() => {
     firstPaintRef.current = false;
   }, []);
+
+  /**
+   * PRE-SIGN-IN: the page, and nothing else. Same predicate AuthContext and
+   * the desktop frame already use — matches `/signin` and `/m/signin` both
+   * (survives the UA rewrite) and `/m/qr-auth` (workstation authorize).
+   * No drawer, no scan provider, no phone bridge: none of them can do
+   * anything without a session, and mounting them here is the hamburger +
+   * SCAN leak on the phone QR-auth page.
+   */
+  if (pathname && isClientPublicPath(pathname)) {
+    return (
+      <div
+        className={`flex h-full min-h-0 flex-col overflow-hidden font-sans antialiased safe-area-padding ${TOKENS.colors.background}`}
+      >
+        <ErrorBoundary label="mobile-public-page" fallback={MobilePageError}>
+          {children}
+        </ErrorBoundary>
+      </div>
+    );
+  }
+
 
   return (
     // The scan provider wraps BOTH the header and the page: the top-right SCAN

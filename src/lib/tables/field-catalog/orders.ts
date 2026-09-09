@@ -114,38 +114,29 @@ export const ORDERS_FIELD_CATALOG: FieldCatalog = [
     family: 'orders',
     label: 'Amount',
     displayType: 'money',
-    slotKinds: ['amount'],
+    slotKinds: ['subtitle'],
     paths: { value: 'sale_amount' },
   },
 ];
 
 /**
  * The PRODUCT default To-ship layout: the pick step in status:1, and
- * `qty · condition · notes` under the title (operator lock 2026-08-30, in
- * that order) — an org with no override sees the secondary line without
- * binding anything. Packed stays in the catalog for an org to bind. Scanned
- * out is catalog-bindable but {@link omitShippedOnlyBindings} keeps it off
- * working-queue paints. `amountFieldId` DOCUMENTS the money fact in slot
- * terms; this ship the compound chrome's amount track still paints
- * `sale_amount` directly through the adapter (`ordersCompoundView`), so the
- * binding is declarative until the amount cell resolves through the catalog.
+ * `qty · amount · condition · item # · notes` under the title. Money is a
+ * SUBTITLE binding, not `amountFieldId` — a field may not be bound twice.
  * Guard: `orders.test.ts` parses this against the catalog.
  */
 export const ORDERS_PRODUCT_LAYOUT: SlotLayout = {
   morph: 'compound',
   identityFieldId: 'orders.order_id',
   statusBindings: [{ fieldId: 'orders.picked' }],
-  // Under the title, in scan order (operator ruling 2026-08-31): how many, what
-  // grade, which item, then whatever the last operator said about it. The item
-  // number joined on that ruling — it is the number a packer reads off the shelf
-  // label, and it was a catalog field no default ever bound.
   subtitleBindings: [
     { fieldId: 'orders.qty' },
+    { fieldId: 'orders.amount' },
     { fieldId: 'orders.condition' },
     { fieldId: 'orders.item_number' },
     { fieldId: 'orders.notes' },
   ],
-  amountFieldId: 'orders.amount',
+  amountFieldId: null,
 };
 
 /**

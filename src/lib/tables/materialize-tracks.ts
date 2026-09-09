@@ -7,8 +7,9 @@
  * keeps every width/pref keyed by that slot intact.
  *
  * The family supplies its chrome skeleton (`base`) — the structural tracks the
- * morph always paints (select · thumb · fulfillment · item · state · amount ·
- * actions · _fill on the compound row). The materializer inserts the BOUND
+ * morph always paints (select · fulfillment · thumb · item · dates · state ·
+ * _fill on the compound row). Line money is a subtitle, not a chrome track.
+ * The materializer inserts the BOUND
  * bands into it:
  *
  * - **status band** — one track per status binding, keyed `status:N`, labeled
@@ -71,7 +72,7 @@ export interface MaterializableTrack extends SlotTrackFields {
   gridLabel?: string;
   labelFitRem?: number;
   type?: ColumnType;
-  align?: 'start' | 'end';
+  align?: 'start' | 'end' | 'center';
   resizable?: boolean;
   minTrackRem?: number;
   sortable?: boolean;
@@ -85,7 +86,7 @@ export interface MaterializableTrack extends SlotTrackFields {
 export function trackGeometryFor(displayType: FieldDisplayType): {
   width: string;
   type: ColumnType;
-  align?: 'start' | 'end';
+  align?: 'start' | 'end' | 'center';
   minTrackRem?: number;
   labelFitRem: number;
   resizable: boolean;

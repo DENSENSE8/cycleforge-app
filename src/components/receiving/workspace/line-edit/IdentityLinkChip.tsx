@@ -296,11 +296,9 @@ export function IdentityLinkChip({
             tone={tone}
             editing={isEditing}
             // Tone SoT wins; ExternalLink is listing-only.
-            // Carton tracking leads with the carrier ring identity dot.
+            // Carton tracking uses the shared MapPin tracking tone by default.
             icon={
-              tone === 'tracking' ? (
-                null
-              ) : tone ? (
+              tone ? (
                 undefined
               ) : showExternalIcon ? (
                 <ExternalLink className="h-4 w-4 shrink-0" />
@@ -319,7 +317,6 @@ export function IdentityLinkChip({
             // faces may truncate; identity locks do not.
             displayWidth={lockLast8Width ? 'last8' : 'content'}
             truncateDisplay={lockLast8Width ? false : grow}
-            outerPad={tone === 'tracking' ? 'flush' : undefined}
             carrierHint={tone === 'tracking' ? carrierHint : null}
             platformLabel={tone === 'id' ? platformLabel : null}
             // Hover shows the full value via the site tooltip above. Open/Edit

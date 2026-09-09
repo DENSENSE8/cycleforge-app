@@ -4,7 +4,6 @@ import { createCacheLookupKey, getCachedJson, setCachedJson } from '@/lib/cache/
 import { logRouteMetric } from '@/lib/route-metrics';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
 import { sqlOrderHasPackScan, sqlOrderHasShipConfirm, sqlOrderHasTechScan } from '@/lib/orders/order-grain-sql';
-import { liveWorkingSetSql } from '@/lib/orders/exception-membership';
 import { PRINT_PACKET_INCOMPLETE_SQL } from '@/lib/orders/print-packet';
 import { withAuth } from '@/lib/auth/withAuth';
 import { countOpenPlacementsByLocation } from '@/lib/packing/pack-placement';
@@ -131,10 +130,6 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
          */
         AND NOT ${SHIPPED_BY_CARRIER_SQL}
         AND COALESCE(o.fulfillment_channel, '') <> 'AFN'
-        /* Exception-held stays out of the live queue (R-FLOW-7) —
-         * same predicate the fulfillmentScope feed applies, kept in lockstep
-         * so the tab totals never exceed the rows on screen. */
-        AND ${liveWorkingSetSql('o')}
         AND NOT ${sqlOrderHasShipConfirm('o')}${staffClause}
       GROUP BY 1, 2, 3
     `;
@@ -180,7 +175,6 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       WHERE o.organization_id = $1
         AND NOT ${SHIPPED_BY_CARRIER_SQL}
         AND COALESCE(o.fulfillment_channel, '') <> 'AFN'
-        AND ${liveWorkingSetSql('o')}
         AND NOT ${sqlOrderHasShipConfirm('o')}${staffClause}
         AND ${PRINT_PACKET_INCOMPLETE_SQL}
     `;

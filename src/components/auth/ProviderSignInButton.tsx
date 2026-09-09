@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Federated identity buttons — Google and Microsoft.
+ * Federated identity buttons — Google, Apple, and Microsoft.
  *
  * These are the ONE place in the app where foreign brand colors are correct.
  * Both providers require their own mark and chrome as a condition of using their
@@ -31,6 +31,7 @@
  * color-tokens.guard.test.ts — brand chrome owned by a third party, not ours.
  */
 
+import { RotateCcw } from 'lucide-react';
 import type { PlatformProvider } from '@/lib/auth/platform-oauth-types';
 import { cn } from '@/utils/_cn';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -71,13 +72,24 @@ function MicrosoftMark() {
   );
 }
 
+/** Apple's monochrome mark, kept black/white on its required brand chrome. */
+function AppleMark() {
+  return (
+    <svg className="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24" aria-hidden focusable="false">
+      <path fill="currentColor" d="M17.05 12.54c-.02-2.03 1.66-3.01 1.74-3.06a3.74 3.74 0 0 0-2.95-1.6c-1.24-.13-2.44.74-3.07.74-.64 0-1.62-.72-2.66-.7a3.93 3.93 0 0 0-3.3 2.01c-1.42 2.46-.36 6.08 1 8.07.67.97 1.46 2.05 2.5 2.01 1.01-.04 1.39-.65 2.61-.65 1.22 0 1.56.65 2.62.63 1.09-.02 1.77-.98 2.43-1.95a8 8 0 0 0 1.11-2.26 3.5 3.5 0 0 1-2.03-3.24Zm-2.02-5.98a3.56 3.56 0 0 0 .81-2.55 3.62 3.62 0 0 0-2.34 1.21 3.4 3.4 0 0 0-.83 2.46 2.99 2.99 0 0 0 2.36-1.12Z" />
+    </svg>
+  );
+}
+
 const PROVIDER_LABEL: Record<PlatformProvider, string> = {
   google: 'Continue with Google',
+  apple: 'Continue with Apple',
   microsoft: 'Sign in with Microsoft',
 };
 
 const PROVIDER_MARK: Record<PlatformProvider, () => React.JSX.Element> = {
   google: GoogleMark,
+  apple: AppleMark,
   microsoft: MicrosoftMark,
 };
 
@@ -91,6 +103,8 @@ const PROVIDER_MARK: Record<PlatformProvider, () => React.JSX.Element> = {
 const PROVIDER_CHROME: Record<PlatformProvider, string> = {
   // ds-allow-hex: Google brand spec — light theme fill/stroke/text.
   google: 'bg-[#FFFFFF] border-[#747775] text-[#1F1F1F] hover:bg-[#F8F9FA]',
+  // ds-allow-hex: Apple brand spec — monochrome black mark and text.
+  apple: 'bg-[#000000] border-[#000000] text-[#FFFFFF] hover:bg-[#1D1D1F]',
   // ds-allow-hex: Microsoft brand spec — light theme fill/border/text.
   microsoft: 'bg-[#FFFFFF] border-[#8C8C8C] text-[#5E5E5E] hover:bg-[#F8F8F8]',
 };
@@ -99,7 +113,7 @@ interface ProviderSignInButtonProps {
   provider: PlatformProvider;
   onClick: () => void;
   disabled?: boolean;
-  /** Renders the quiet "Last used" marker for the returning-user hint. */
+  /** Renders the quiet "last used" recency marker for the returning user. */
   lastUsed?: boolean;
 }
 
@@ -118,15 +132,21 @@ export function ProviderSignInButton({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        'flex h-10 w-full items-center rounded-lg border',
+        'relative flex h-10 w-full items-center rounded-lg border',
         // Google's web spec fixes these at 12 / 10 / 12px. They must NOT ride the
         // density scale — brand geometry stays constant across ops densities.
-        'gap-[10px] pl-[12px] pr-[12px]', // ds-allow-spacing: third-party brand geometry
-        // Google Sans Medium 14/20 — Roboto is the documented public substitute.
-        "font-['Roboto',var(--ds-font-sans),system-ui,sans-serif] text-sm font-medium leading-5",
+        'gap-2.5 pl-3 pr-3', // ds-allow-spacing: third-party brand geometry
+        // House sans (Geist) by operator call 2026-09-07 — the provider buttons
+        // used to hard-code Roboto per Google's brand spec, which left the two
+        // biggest buttons on the card in a third typeface. Provider GLYPHS stay
+        // brand-accurate; the label rides the app face.
+        'font-[var(--ds-font-sans)] text-sm font-medium leading-5',
         'transition-colors disabled:cursor-not-allowed disabled:opacity-60',
         focusRing('control'),
         PROVIDER_CHROME[provider],
+        // The recency glyph is absolutely positioned, so the label needs the
+        // gutter reserved or a long localized label would run under it.
+        lastUsed && 'pr-9', // ds-allow-spacing: paired with the absolute marker
       )}
     >
       <Mark />
@@ -137,13 +157,24 @@ export function ProviderSignInButton({
 }
 
 /**
- * Quiet trailing "Last used" hint. Deliberately house-tokened, not brand-colored
- * — it is our annotation, not part of the provider's button.
+ * Quiet trailing recency marker: a counter-clockwise circle arrow, the
+ * universal "recent" glyph. It replaced a "Last used" text chip (2026-09-07,
+ * operator call) — the words were three times the width of the signal they
+ * carried and forced the button label off centre on the house buttons.
+ *
+ * Absolutely positioned, so it costs the label no width and never shifts a
+ * centred label: the parent MUST be `relative` (ProviderSignInButton is; the
+ * house `Button` usages on the sign-in card pass `relative`). House-tokened,
+ * not brand-colored — it is our annotation, not part of the provider's button.
+ *
+ * `aria-hidden` on the glyph + an `sr-only` phrase: a screen reader gets
+ * "Last used" as words, sighted operators get the icon.
  */
 export function LastUsedMarker() {
   return (
-    <span className="ml-auto shrink-0 rounded bg-surface-canvas px-1.5 py-0.5 text-role-micro font-semibold uppercase tracking-widest text-text-soft">
-      Last used
+    <span className="pointer-events-none absolute right-3 top-1/2 flex -translate-y-1/2 items-center text-text-faint">
+      <RotateCcw className="h-3.5 w-3.5" strokeWidth={2} aria-hidden="true" />
+      <span className="sr-only">Last used</span>
     </span>
   );
 }

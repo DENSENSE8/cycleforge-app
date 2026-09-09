@@ -4,10 +4,11 @@ import type { LedgerGridColumnModel } from './grid-surface-descriptor';
 import { cn } from '@/utils/_cn';
 
 /** Structural, dependency-free — every family's column model satisfies it. */
-interface DataCellColumn extends Pick<LedgerGridColumnModel, 'type' | 'align'> {
+interface DataCellColumn {
   key: string;
+  type?: LedgerGridColumnModel['type'];
+  align?: LedgerGridColumnModel['align'];
   frozen?: boolean;
-  /** Per-staff display bucket key (`staff_preferences.tableColumns.<id>`). */
   hideKey?: string;
 }
 

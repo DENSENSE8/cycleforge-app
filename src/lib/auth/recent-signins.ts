@@ -37,6 +37,7 @@ export function writeRecentSignin(staffId: number): void {
 export type SigninMethod =
   | 'password'
   | 'google'
+  | 'apple'
   | 'microsoft'
   | 'sso'
   | 'magic-link'
@@ -47,6 +48,7 @@ const LAST_SIGNIN_METHOD_KEY = 'cf.lastSigninMethod';
 const SIGNIN_METHODS: readonly SigninMethod[] = [
   'password',
   'google',
+  'apple',
   'microsoft',
   'sso',
   'magic-link',

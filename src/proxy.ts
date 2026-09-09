@@ -47,6 +47,8 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/signup(?:$|\/)/,                  // public account creation
   /^\/account\/signin(?:$|\/)/,         // account-level (email/passkey) sign-in
   /^\/m\/signin(?:$|\/)/,
+  /^\/m\/qr-auth(?:$|\/)/,              // workstation QR auth page - anon phone with a token must land here,
+                                          // not bounce to /signin (authorize route enforces session-or-PIN).
   /^\/not-authorized(?:$|\/)/,
   /^\/m\/enroll\//,
   /^\/kiosk(?:$|\/)/,                    // customer-facing kiosk (device-token principal; no staff session)

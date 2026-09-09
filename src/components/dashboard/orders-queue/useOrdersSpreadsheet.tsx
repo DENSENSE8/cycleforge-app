@@ -167,6 +167,9 @@ export interface UseOrdersSpreadsheetOptions {
    * the band host must not animate geometry (M1/M2/M5).
    */
   renderActiveWorkBand?: (record: ShippedOrder) => ReactNode;
+  /** Shortage / blocked-queue paint. Optional — ignored when unset. */
+  shortageDesk?: boolean;
+  onOpenLabels?: (record: ShippedOrder) => void;
 }
 
 /**
@@ -269,6 +272,7 @@ export function useOrdersSpreadsheet({
     handleRowAction,
     handleRowOpen,
     handleToggleSelect,
+    handleToggleGroup,
     handleRequestReplaceTracking,
   } = useOrdersQueuePlane({
     displayedRecords,
@@ -447,6 +451,7 @@ export function useOrdersSpreadsheet({
       stripeIndex: number,
       visible: readonly OrdersQueueColumn[],
       rowIndex?: number,
+      quietIdentity = false,
     ) => {
       const r = record as QueueRowRecord;
       const testerName =
@@ -477,6 +482,7 @@ export function useOrdersSpreadsheet({
           isSelected={selectedRecord?.id === record.id || selectedIds.has(Number(record.id))}
           selectMode={selectMode}
           isChecked={selectedIds.has(Number(record.id))}
+          quietIdentity={quietIdentity}
           isMobile={isMobile}
           useAlternateStripe={stripeIndex % 2 === 1}
           testerDisplay={normalizePersonName(testerName)}
@@ -624,8 +630,11 @@ export function useOrdersSpreadsheet({
         group={group}
         baseStripeIndex={baseStripeIndex}
         rowIndex={rowIndex}
-        renderRow={(record, stripeIndex, leafRowIndex) =>
-          renderLeaf(record, stripeIndex, visible, leafRowIndex)
+        columns={visible}
+        selectedIds={selectedIds}
+        onToggleGroup={handleToggleGroup}
+        renderRow={(record, stripeIndex, leafRowIndex, quietIdentity) =>
+          renderLeaf(record, stripeIndex, visible, leafRowIndex, quietIdentity)
         }
       />
     ),

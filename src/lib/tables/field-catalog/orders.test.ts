@@ -52,19 +52,19 @@ describe('orders catalog', () => {
     }
   });
 
-  it('product default parses against the catalog (picked in status:1, qty · condition · item # · notes under the title)', () => {
+  it('product default parses against the catalog (picked in status:1, qty · amount · condition · item # · notes under the title)', () => {
     const parsed = parseSlotLayout(ORDERS_PRODUCT_LAYOUT, ORDERS_FIELD_CATALOG);
     assert.equal(parsed.morph, 'compound');
     assert.deepEqual(parsed.statusBindings, [{ fieldId: 'orders.picked' }]);
-    // Operator lock 2026-08-30, extended 2026-08-31 with the item number:
-    // the default under-title line, IN THIS ORDER.
     assert.deepEqual(parsed.subtitleBindings, [
       { fieldId: 'orders.qty' },
+      { fieldId: 'orders.amount' },
       { fieldId: 'orders.condition' },
       { fieldId: 'orders.item_number' },
       { fieldId: 'orders.notes' },
     ]);
     assert.equal(parsed.identityFieldId, 'orders.order_id');
+    assert.equal(parsed.amountFieldId, null);
   });
 
   it('omitShippedOnlyBindings drops scanned_out and leaves other status slots', () => {

@@ -12,13 +12,12 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { StaffAvatar } from '@/components/identity';
 // Deep paths, not the barrel — see the note in `src/app/signin/page.tsx`.
 // Lazy-loaded by `/signin` (public chrome, which mounts no `MotionConfig`), so
 // the barrel's engine-carrying primitives must not ride in on this chunk.
 import { Panel } from '@/design-system/primitives/Panel';
+import { StaffChoiceRowButton } from '@/components/auth/StaffChoiceRowButton';
 import { Button } from '@/design-system/primitives/Button';
-import { getStaffTheme, type StationTheme } from '@/utils/staff-colors';
 import { SkeletonBase } from '@/design-system/components/Skeletons';
 
 export type StaffRow = {
@@ -51,25 +50,6 @@ interface StaffPickerListProps {
   /** Case-insensitive name/role filter. Empty = full roster. */
   query?: string;
 }
-
-const THEME_ROW: Record<StationTheme, {
-  hoverBg: string;
-  hoverRing: string;
-  chevron: string;
-  avatarRing: string;
-  recentDot: string;
-  nameHover: string;
-}> = {
-  green:     { hoverBg: 'hover:bg-emerald-50',  hoverRing: 'hover:ring-emerald-200', chevron: 'text-emerald-600', avatarRing: 'ring-emerald-100',  recentDot: 'bg-emerald-400',  nameHover: 'group-hover:text-emerald-900' },
-  blue:      { hoverBg: 'hover:bg-blue-50',     hoverRing: 'hover:ring-blue-200',    chevron: 'text-blue-600',    avatarRing: 'ring-blue-100',     recentDot: 'bg-blue-400',     nameHover: 'group-hover:text-blue-900' },
-  purple:    { hoverBg: 'hover:bg-purple-50',   hoverRing: 'hover:ring-purple-200',  chevron: 'text-purple-600',  avatarRing: 'ring-purple-100',   recentDot: 'bg-purple-400',   nameHover: 'group-hover:text-purple-900' },
-  yellow:    { hoverBg: 'hover:bg-amber-50',    hoverRing: 'hover:ring-amber-200',   chevron: 'text-amber-600',   avatarRing: 'ring-amber-100',    recentDot: 'bg-amber-400',    nameHover: 'group-hover:text-amber-900' },
-  // ds-allow-raw-neutral: identity hue — staff/label color vocabulary, not chrome
-  black:     { hoverBg: 'hover:bg-surface-sunken',   hoverRing: 'hover:ring-border-default',   chevron: 'text-text-muted',   avatarRing: 'ring-border-soft',    recentDot: 'bg-slate-500',    nameHover: 'group-hover:text-text-default' },
-  red:       { hoverBg: 'hover:bg-red-50',      hoverRing: 'hover:ring-red-200',     chevron: 'text-red-600',     avatarRing: 'ring-red-100',      recentDot: 'bg-red-400',      nameHover: 'group-hover:text-red-900' },
-  lightblue: { hoverBg: 'hover:bg-sky-50',      hoverRing: 'hover:ring-sky-200',     chevron: 'text-sky-600',     avatarRing: 'ring-sky-100',      recentDot: 'bg-sky-400',      nameHover: 'group-hover:text-sky-900' },
-  pink:      { hoverBg: 'hover:bg-pink-50',     hoverRing: 'hover:ring-pink-200',    chevron: 'text-pink-600',    avatarRing: 'ring-pink-100',     recentDot: 'bg-pink-400',     nameHover: 'group-hover:text-pink-900' },
-};
 
 function staffMatchesQuery(staff: StaffRow, query: string): boolean {
   const q = query.trim().toLowerCase();
@@ -250,54 +230,32 @@ interface RowProps {
 }
 
 function Row({ staff: s, onPick, onMessage, isRecent }: RowProps) {
-  const theme = getStaffTheme(s);
-  const t = THEME_ROW[theme];
   const needsSetup = !s.has_pin;
   return (
-    <button
-      type="button"
-      onClick={() => {
+    // ONE staff row on the auth surface: the shared StaffChoiceRowButton
+    // (email-flow display, operator 2026-09-08). The old per-staff
+    // theme-hover variance table is gone with it - one identity, not two.
+    <StaffChoiceRowButton
+      staffId={s.id}
+      name={s.name}
+      role={s.role}
+      colorHex={s.color_hex}
+      avatarPhotoId={s.avatar_photo_id ?? null}
+      isRecent={isRecent}
+      ariaLabel={needsSetup ? `Set up PIN for ${s.name}, ${s.role}` : `Sign in as ${s.name}, ${s.role}`}
+      onPick={() => {
         onMessage?.(null);
         onPick(s);
       }}
-      className={`ds-raw-button group flex w-full cursor-pointer items-center gap-3 border-b border-border-hairline px-3.5 py-3 text-left ring-1 ring-transparent transition-all duration-150 last:border-b-0 ${t.hoverBg} ${t.hoverRing}`}
-      aria-label={needsSetup ? `Set up PIN for ${s.name}, ${s.role}` : `Sign in as ${s.name}, ${s.role}`}
-    >
-      <div className="relative flex-shrink-0">
-        {isRecent && (
-          <span className={`absolute -right-0.5 -top-0.5 z-[1] h-2.5 w-2.5 rounded-full ${t.recentDot} ring-2 ring-white`} aria-hidden />
-        )}
-        <StaffAvatar
-          staffId={s.id}
-          name={s.name}
-          colorHex={s.color_hex}
-          avatarPhotoId={s.avatar_photo_id ?? null}
-          size="lg"
-          ring={false}
-          className={`ring-4 ${t.avatarRing} transition-transform duration-150 group-hover:scale-[1.04]`}
-        />
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className={`truncate text-base font-semibold text-text-default transition-colors ${t.nameHover}`}>{s.name}</div>
-        <div className="truncate text-role-caption font-medium uppercase tracking-[0.14em] text-text-soft">
-          {s.role.replace(/_/g, ' ')}
-          {needsSetup && (
-            <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-blue-50 px-1.5 py-0.5 text-role-eyebrow font-semibold tracking-normal text-blue-700 ring-1 ring-inset ring-blue-100">
-              <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                <path d="M12 5v14" /><path d="M5 12h14" />
-              </svg>
-              Tap to set up
-            </span>
-          )}
-        </div>
-      </div>
-      <svg
-        className={`h-4 w-4 flex-shrink-0 transition-all group-hover:translate-x-0.5 ${t.chevron}`}
-        viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden
-      >
-        <path d="M9 18l6-6-6-6"/>
-      </svg>
-    </button>
+      pill={needsSetup ? (
+        <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-surface-info px-1.5 py-0.5 text-role-eyebrow font-semibold tracking-normal text-text-info ring-1 ring-inset ring-border-info">
+          <svg className="h-2.5 w-2.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M12 5v14" /><path d="M5 12h14" />
+          </svg>
+          Tap to set up
+        </span>
+      ) : undefined}
+    />
   );
 }
 

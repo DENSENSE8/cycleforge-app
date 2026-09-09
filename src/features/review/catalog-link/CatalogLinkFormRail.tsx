@@ -41,7 +41,7 @@
  */
 
 import { useEffect, useState, type ReactNode } from 'react';
-import { AlertTriangle, Check, Flag, Link2, Loader2 } from '@/components/Icons';
+import { AlertTriangle, Check, Flag, Link2, Loader2, Package } from '@/components/Icons';
 import { SearchField } from '@/design-system/primitives';
 import { ListingApprovalSection } from '@/features/review/catalog-link/ListingApprovalSection';
 import { DetailStackRailRegistrar } from '@/components/right-rail/DetailStackRailRegistrar';
@@ -54,6 +54,7 @@ import {
 import { toast } from '@/lib/toast';
 import { formatDateTimePST } from '@/utils/date';
 import { focusRing } from '@/design-system/tokens/focus-ring';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { sourcePlatformMetaFromLabel } from '@/lib/source-platform';
@@ -69,6 +70,7 @@ interface CatalogSearchRow {
   id: number;
   sku: string;
   product_title: string | null;
+  image_url?: string | null;
 }
 
 // ── Shared chrome ─────────────────────────────────────────────────────────────
@@ -379,16 +381,44 @@ function CatalogLinkFormBody({
                   onClick={() => setSelected(row)}
                   aria-pressed={active}
                   className={cn(
-                    'ds-raw-button flex w-full flex-col rounded-lg px-3 py-2 text-left transition-colors',
+                    'ds-raw-button flex w-full items-center gap-3 px-3 py-2 text-left transition-colors',
+                    cornerClass('control'),
                     focusRing('control', 'neutral'),
                     active
-                      ? 'bg-blue-50 ring-1 ring-inset ring-blue-400'
+                      ? 'bg-surface-hover ring-1 ring-inset ring-border-default'
                       : 'hover:bg-surface-sunken',
                   )}
                 >
-                  <span className="text-role-caption font-semibold text-text-default">{row.sku}</span>
-                  <span className="truncate text-role-micro uppercase tracking-widest text-text-soft">
-                    {row.product_title || 'Untitled'}
+                  <span
+                    className={cn(
+                      'relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden bg-surface-canvas ring-1 ring-border-soft',
+                      cornerClass('row'),
+                    )}
+                    aria-hidden
+                  >
+                    {row.image_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- Zoho proxy host
+                      <img
+                        src={row.image_url}
+                        alt=""
+                        className="size-full object-cover"
+                        loading="lazy"
+                        decoding="async"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <Package className="h-4 w-4 text-text-faint" />
+                    )}
+                  </span>
+                  <span className="flex min-w-0 flex-1 flex-col">
+                    <span className="truncate text-role-caption font-semibold text-text-default">
+                      {row.product_title || 'Untitled'}
+                    </span>
+                    <span className="truncate font-mono text-role-micro text-text-soft">
+                      {row.sku}
+                    </span>
                   </span>
                 </button>
               </li>

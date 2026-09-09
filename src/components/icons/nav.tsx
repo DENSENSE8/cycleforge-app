@@ -3,6 +3,7 @@
 // Re-exported verbatim through ../Icons.tsx — do not change export names.
 
 import {
+  CalendarClock as LucideCalendarClock,
   ChartPie as LucideChartPie,
   DoorOpen as LucideDoorOpen,
   ScanBarcode as LucideScanBarcode,
@@ -158,6 +159,12 @@ export const List = ({ className = "w-6 h-6" }: { className?: string }) => (
     <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
     </svg>
+);
+
+
+/** Calendar + clock — ship-by / due-date face. Ink follows the trigger (`currentColor`). */
+export const CalendarClock = ({ className = "w-6 h-6" }: { className?: string }) => (
+    <LucideCalendarClock className={className} />
 );
 
 export const MapPin = ({ className = "w-6 h-6" }: { className?: string }) => (

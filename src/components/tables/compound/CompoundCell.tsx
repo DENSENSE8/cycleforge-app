@@ -31,7 +31,7 @@ export interface CompoundCellProps {
   primary: ReactNode;
   /** Bottom line — the qualifier. Absent content still holds its track. */
   secondary?: ReactNode;
-  align?: 'start' | 'end';
+  align?: 'start' | 'end' | 'center';
   className?: string;
 }
 
@@ -41,7 +41,12 @@ export function CompoundCell({
   align = 'start',
   className,
 }: CompoundCellProps) {
-  const justify = align === 'end' ? 'justify-end text-right' : 'justify-start text-left';
+  const justify =
+    align === 'end'
+      ? 'justify-end text-right'
+      : align === 'center'
+        ? 'justify-center text-center'
+        : 'justify-start text-left';
   return (
     <div
       // `h-full`, NOT a min-height. The wrapper cell owns the row box

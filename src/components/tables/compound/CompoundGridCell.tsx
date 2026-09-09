@@ -46,7 +46,7 @@ import {
   CompoundFulfillment,
   CompoundItem,
   CompoundActions,
-  CompoundAmount,
+  CompoundDates,
   CompoundSelect,
   CompoundSlotCell,
   CompoundState,
@@ -59,9 +59,10 @@ import type {
   CompoundRowView,
   CompoundSubtitleSelect,
   CompoundSubtitleEdit,
-  CompoundSubtitleCopy,
+  CompoundOrderedAtEdit,
   CompoundShipByEdit,
   CompoundStageAssign,
+  CompoundStaffRoster,
 } from './compound-row-model';
 
 /**
@@ -74,7 +75,7 @@ interface CompoundCellColumn {
   width: string;
   frozen?: boolean;
   hideKey?: string;
-  align?: 'start' | 'end';
+  align?: 'start' | 'end' | 'center';
   /** Slot-track metadata (materialized `status:N` columns) — see
    *  `materialize-tracks.ts`. Absent on the structural chrome tracks. */
   label?: string;
@@ -97,10 +98,10 @@ export interface CompoundGridCellParams<C extends CompoundCellColumn> {
    * can read the sheet's format context); this function stays pure.
    */
   formatClass?: string;
-  /** Present ⇒ the ⋮ menu carries an "Open" item. */
+  /** Present ⇒ the title hover menu carries an "Open" item. */
   onOpen?: () => void;
   /**
-   * Extra verbs for this row's ⋮ menu, after "Open".
+   * Extra verbs for this row's title hover, after listing/copy.
    *
    * Presentational entries only (label + callback). A family cannot pass JSX,
    * which is what stops a bespoke control reappearing inside the shared row.
@@ -114,8 +115,8 @@ export interface CompoundGridCellParams<C extends CompoundCellColumn> {
    * decides interactive-vs-decorative — see {@link CompoundSelect}.
    *
    * What a tick MEANS is the family's: bulk membership on Receiving, Incoming
-   * and To-Ship; "done" on Tasks. The picture is the same everywhere, which is
-   * the point — an operator learns one mark.
+   * and To-Ship; row select + Morphing on Tasks. The picture is the same
+   * everywhere, which is the point — an operator learns one mark.
    */
   select?: {
     checked: boolean | 'mixed';
@@ -132,22 +133,36 @@ export interface CompoundGridCellParams<C extends CompoundCellColumn> {
   subtitleSelects?: readonly CompoundSubtitleSelect[];
   /** Free-text / numeric in-place editors, matched to parts by key. */
   subtitleEdits?: readonly CompoundSubtitleEdit[];
-  /** Parts that paint as a copy chip, matched by key. */
-  subtitleCopies?: readonly CompoundSubtitleCopy[];
+
   /** Part key of the NOTE fact — pinned right as a glyph. */
   subtitleNoteKey?: string;
   /** The note's full text. */
   noteText?: string | null;
   /** Present ⇒ the inline under-title facts drag to reorder (field onto field). */
   onReorderSubtitle?: (dragKey: string, dropKey: string) => void;
-  /** Present ⇒ the status delay line mounts DateRangePickerField. */
+  /** Present ⇒ the DATES cell's deadline line COMMITS; absent leaves the same
+   *  field disabled (see {@link CompoundDates}). */
   shipByEdit?: CompoundShipByEdit;
+  /** Same, for the DATES cell's order-date line. */
+  orderedAtEdit?: CompoundOrderedAtEdit;
+  /**
+   * To-ship identity tracking hover → paperwork walk. Omit on every other
+   * family — Receiving must not grow a Label verb.
+   */
+  onOpenLabels?: () => void;
+  /**
+   * Present ⇒ STATUS opens the carrier trail overlay. Omit on families
+   * without an order timeline (Receiving).
+   */
+  onStateOpen?: () => void;
   /**
    * Stage-lane assign, keyed by catalog field id (`orders.picked` /
-   * `orders.packed`). Presence on a bound status track arms the mark popover
-   * while the step is still pending; done stages stay read-only.
+   * `orders.packed`). Presence on a bound status track arms the empty/pending
+   * mark as a staff combo; done stages stay read-only.
    */
   stageAssigns?: Readonly<Partial<Record<string, CompoundStageAssign>>>;
+  /** Present ⇒ the actions track mounts the all-staff Pick/Pack role roster. */
+  staffRoster?: CompoundStaffRoster;
 }
 
 /**
@@ -165,10 +180,10 @@ export function isCompoundCellKey(key: string): boolean {
     key === 'thumb' ||
     key === 'item' ||
     key === 'fulfillment' ||
+    key === 'dates' ||
     key === 'state' ||
     // Materialized slot tracks (`status:1…N`) — the old hard-coded `tested`.
     key.startsWith('status:') ||
-    key === 'amount' ||
     key === 'actions'
   );
 }
@@ -197,12 +212,15 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
   select,
   subtitleSelects,
   subtitleEdits,
-  subtitleCopies,
   subtitleNoteKey,
   noteText,
   onReorderSubtitle,
   shipByEdit,
+  orderedAtEdit,
   stageAssigns,
+  staffRoster,
+  onOpenLabels,
+  onStateOpen,
   formatClass,
 }: CompoundGridCellParams<C>): ReactNode {
   // `select` is only ours when a COMPOUND model is mounted — see
@@ -292,6 +310,7 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
             onToggle={select.onToggle}
             label={select.label}
             disabled={select.disabled}
+            edgeMark={view.edgeMark}
           />
         ) : null}
       </div>
@@ -327,7 +346,7 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
     case 'fulfillment':
       return (
         <div data-col="fulfillment" data-frozen-edge={frozenEdge} className={className} style={style}>
-          <CompoundFulfillment view={view} />
+          <CompoundFulfillment view={view} onOpenLabels={onOpenLabels} />
         </div>
       );
     case 'item':
@@ -337,30 +356,52 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
             view={view}
             subtitleSelects={subtitleSelects}
             subtitleEdits={subtitleEdits}
-            subtitleCopies={subtitleCopies}
             subtitleNoteKey={subtitleNoteKey}
             noteText={noteText}
             onReorderSubtitle={onReorderSubtitle}
+            extraTitleActions={[
+              ...(onOpen ? [{ id: 'open', label: 'Open', onSelect: onOpen }] : []),
+              ...(actions ?? []).map((action) => ({
+                id: action.key,
+                label: action.label,
+                tone: action.tone,
+                disabled: action.disabled,
+                onSelect: action.onSelect,
+              })),
+            ]}
           />
+        </div>
+      );
+    case 'dates':
+      return (
+        <div data-col="dates" data-frozen-edge={frozenEdge} className={className} style={style}>
+          <CompoundDates view={view} shipByEdit={shipByEdit} orderedAtEdit={orderedAtEdit} />
         </div>
       );
     case 'state':
       return (
-        <div data-col="state" data-frozen-edge={frozenEdge} className={className} style={style}>
-          <CompoundState view={view} shipByEdit={shipByEdit} />
+        <div
+          data-col="state"
+          data-frozen-edge={frozenEdge}
+          className={className}
+          style={style}
+          onClick={onStateOpen ? (event) => event.stopPropagation() : undefined}
+        >
+          <CompoundState view={view} onOpen={onStateOpen} />
         </div>
       );
-    case 'amount':
+    case 'actions':
       return (
-        <div data-col="amount" data-frozen-edge={frozenEdge} className={cn(className, 'justify-end')} style={style}>
-          <CompoundAmount view={view} />
+        <div data-col="actions" data-frozen-edge={frozenEdge} className={cn(className, 'justify-start')} style={style}>
+          <CompoundActions
+            onOpen={onOpen}
+            actions={actions}
+            label={view.title}
+            staffRoster={staffRoster}
+          />
         </div>
       );
     default:
-      return (
-        <div data-col="actions" data-frozen-edge={frozenEdge} className={cn(className, 'justify-end')} style={style}>
-          <CompoundActions onOpen={onOpen} actions={actions} label={view.title} />
-        </div>
-      );
+      return null;
   }
 }

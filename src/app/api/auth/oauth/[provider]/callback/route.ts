@@ -1,5 +1,5 @@
 /**
- * GET /api/auth/oauth/[provider]/callback  (PUBLIC)  — provider ∈ google | microsoft
+ * GET /api/auth/oauth/[provider]/callback  (PUBLIC)  — provider ∈ google | apple | microsoft
  *
  * Completes platform social login: verifies the CSRF state + nonce, exchanges
  * the code for tokens, resolves (or provisions) the account by federated
@@ -23,7 +23,8 @@ import {
   getAccountByEmail,
   createAccount,
 } from '@/lib/identity/accounts';
-import { listMembershipsForAccount, logAuthEvent } from '@/lib/identity/memberships';
+import { listMembershipsForAccount, logAuthEvent, resolveAccountIdForStaff } from '@/lib/identity/memberships';
+import { getCurrentUser } from '@/lib/auth/current-user';
 import { getOrganizationBySlug } from '@/lib/tenancy/organizations';
 import {
   createSession,
@@ -32,13 +33,9 @@ import {
   LEGACY_SESSION_COOKIE_NAME,
 } from '@/lib/auth/session';
 import { audit } from '@/lib/auth/audit';
+import { oauthOrigin } from '@/lib/auth/oauth-origin';
 
 export const runtime = 'nodejs';
-
-function origin(req: NextRequest): string {
-  return process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL ||
-    `${req.nextUrl.protocol}//${req.nextUrl.host}`;
-}
 
 function clearStateCookie(res: NextResponse): void {
   res.cookies.set(OAUTH_STATE_COOKIE, '', {
@@ -46,17 +43,69 @@ function clearStateCookie(res: NextResponse): void {
   });
 }
 
+/**
+ * True when `url` is a path that stays on THIS origin once `new URL()` resolves
+ * it. Mirrors documents/[id]/content/route.ts, hardened for the two escapes the
+ * bare `startsWith('/')` check misses: `//evil.com` and `/\evil.com` both parse
+ * to an external host, and tab/CR/LF are stripped by the URL parser first, so
+ * `/<TAB>/evil.com` collapses into `//evil.com`.
+ */
+function isSameOriginPath(url: string): boolean {
+  if (!url.startsWith('/')) return false;
+  const stripped = url.replace(/[\t\r\n]/g, '');
+  return stripped.startsWith('/') && !stripped.startsWith('//') && !stripped.startsWith('/\\');
+}
+
 function fail(req: NextRequest, code: string): NextResponse {
-  const url = new URL('/signin', origin(req));
+  const url = new URL('/signin', oauthOrigin(req));
   url.searchParams.set('login_error', code);
   const res = NextResponse.redirect(url);
   clearStateCookie(res);
   return res;
 }
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
-  const { provider } = await params;
-  if (provider !== 'google' && provider !== 'microsoft') return fail(req, 'oauth_unknown_provider');
+interface CallbackParams {
+  code: string | null;
+  state: string | null;
+  error: string | null;
+  userName: string | null;
+}
+
+async function extractCallbackParams(req: NextRequest): Promise<CallbackParams> {
+  if (req.method === 'POST') {
+    try {
+      const formData = await req.formData();
+      const code = formData.get('code')?.toString() || null;
+      const state = formData.get('state')?.toString() || null;
+      const error = formData.get('error')?.toString() || null;
+      let userName: string | null = null;
+      const userRaw = formData.get('user')?.toString();
+      if (userRaw) {
+        try {
+          const userObj = JSON.parse(userRaw) as { name?: { firstName?: string; lastName?: string } };
+          if (userObj.name) {
+            const parts = [userObj.name.firstName, userObj.name.lastName].filter(Boolean);
+            if (parts.length > 0) userName = parts.join(' ');
+          }
+        } catch {
+          // ignore malformed user json
+        }
+      }
+      return { code, state, error, userName };
+    } catch {
+      return { code: null, state: null, error: 'invalid_form_data', userName: null };
+    }
+  }
+  return {
+    code: req.nextUrl.searchParams.get('code'),
+    state: req.nextUrl.searchParams.get('state'),
+    error: req.nextUrl.searchParams.get('error'),
+    userName: null,
+  };
+}
+
+async function handleCallback(req: NextRequest, provider: string): Promise<NextResponse> {
+  if (provider !== 'google' && provider !== 'apple' && provider !== 'microsoft') return fail(req, 'oauth_unknown_provider');
 
   const rl = await checkRateLimitAsync({
     headers: req.headers,
@@ -66,15 +115,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   });
   if (!rl.ok) return fail(req, 'rate_limited');
 
-  if (req.nextUrl.searchParams.get('error')) return fail(req, 'oauth_denied');
+  const { code, state: stateParam, error, userName } = await extractCallbackParams(req);
+  if (error) return fail(req, 'oauth_denied');
 
   const cfg = platformProviderConfig(provider as PlatformProvider);
   if (!cfg) return fail(req, 'oauth_unconfigured');
 
-  const code = req.nextUrl.searchParams.get('code');
-  const stateParam = req.nextUrl.searchParams.get('state');
   const payload = decodeOAuthState(req.cookies.get(OAUTH_STATE_COOKIE)?.value);
-  // CSRF: the state in the URL must match the one we stashed in the httpOnly cookie.
+  // CSRF: the state in the URL / form post must match the one we stashed in the httpOnly cookie.
   if (!code || !stateParam || !payload || payload.provider !== provider || payload.state !== stateParam) {
     return fail(req, 'oauth_state');
   }
@@ -82,48 +130,96 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || null;
   const ua = req.headers.get('user-agent');
 
-  // Exchange the code (PKCE) directly with the provider token endpoint (TLS +
+  // Exchange the code directly with the provider token endpoint (TLS +
   // our client secret ⇒ the id_token is provider-authenticated).
   let sub: string | undefined;
   let email: string | undefined;
-  let name: string | undefined;
+  // OIDC Core §5.7: an unverified email must never be used as a unique
+  // identifier. Absent claim ⇒ NOT verified. Same rule as sso/callback.
+  let emailVerified = false;
+  let name: string | undefined = userName || undefined;
   try {
     const token = await exchangeCode({
       endpoint: cfg.tokenUrl,
       clientId: cfg.clientId,
       clientSecret: cfg.clientSecret,
       code,
-      redirectUri: resolveRedirectUri(cfg, origin(req)),
-      codeVerifier: payload.verifier,
+      redirectUri: resolveRedirectUri(cfg, oauthOrigin(req)),
+      codeVerifier: provider === 'apple' ? undefined : payload.verifier,
     });
     const claims = token.id_token ? decodeIdTokenClaimsUnsafe(token.id_token) : null;
-    // Nonce binding: the id_token nonce must equal the one we generated.
-    if (token.id_token && claims && (claims as { nonce?: string }).nonce && (claims as { nonce?: string }).nonce !== payload.nonce) {
+    // Nonce binding, unconditional: all three providers are asked for `openid`
+    // and are sent a `nonce`, so an id_token echoing OUR nonce must come back.
+    // A missing id_token, missing claim or mismatch means this code was not the
+    // one this browser started with (code injection) — refuse it.
+    if (!claims || (claims as { nonce?: string }).nonce !== payload.nonce) {
       return fail(req, 'oauth_nonce');
     }
-    if (claims?.sub) {
+    if (claims.sub) {
       sub = claims.sub;
       email = claims.email;
-      name = claims.name;
+      emailVerified = claims.email_verified === true;
+      name = claims.name || name;
     }
     // Fallback to userinfo when the id_token lacks the claims.
-    if ((!sub || !email) && token.access_token) {
+    if ((!sub || !email) && token.access_token && cfg.userinfoUrl) {
       const info = await fetchUserInfo({ endpoint: cfg.userinfoUrl, accessToken: token.access_token });
       sub = sub || info.sub;
-      email = email || info.email;
+      if (!email && info.email) {
+        email = info.email;
+        emailVerified = info.email_verified === true;
+      }
       name = name || info.name;
     }
   } catch (err) {
     console.error(`[oauth/${provider}/callback] exchange failed:`, err);
     return fail(req, 'oauth_exchange');
   }
-
   if (!sub) return fail(req, 'oauth_no_subject');
+
+  // IDENTITY LINKING: this round trip was "attach the provider to MY
+  // account", not "sign in". Both gates re-checked HERE because the state
+  // cookie is 10 minutes old: (1) someone still holds the target account's
+  // session, (2) the identity is not already owned by a different account —
+  // grafting it there would be a takeover. On success we link and return to
+  // Settings; no session is minted (the caller never left theirs).
+  if (payload.linkAccountId) {
+    const me = await getCurrentUser();
+    const sessionAccountId = me ? await resolveAccountIdForStaff(me.staffId) : null;
+    if (sessionAccountId !== payload.linkAccountId) {
+      return fail(req, 'link_session_mismatch');
+    }
+    const ownerOfIdentity = await getAccountIdByIdentity(provider, sub);
+    if (ownerOfIdentity && ownerOfIdentity !== payload.linkAccountId) {
+      return fail(req, 'identity_in_use');
+    }
+    await linkAccountIdentity({
+      accountId: payload.linkAccountId,
+      provider,
+      subject: sub,
+      emailAtLink: email ?? null,
+    });
+    await logAuthEvent({
+      accountId: payload.linkAccountId,
+      orgId: null,
+      event: 'identity_linked',
+      ip,
+      userAgent: ua,
+    });
+    const dest = new URL(payload.next || '/settings/security', oauthOrigin(req));
+    dest.searchParams.set('linked', provider);
+    return NextResponse.redirect(dest);
+  }
 
   // Resolve or provision the account by the stable federated identity.
   let accountId = await getAccountIdByIdentity(provider, sub);
   if (!accountId) {
-    const existing = email ? await getAccountByEmail(email) : null;
+    // Adoption by email is a takeover primitive when the provider has not
+    // verified it (nOAuth: Microsoft defaults to /common, where an attacker
+    // controls the unverified `email` claim). Only a VERIFIED email may match
+    // onto a pre-existing account; otherwise provision a fresh subject-keyed
+    // one that still records the email.
+    const existing = email && emailVerified ? await getAccountByEmail(email) : null;
     if (existing) {
       accountId = existing.id;
     } else {
@@ -159,8 +255,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   });
   await logAuthEvent({ accountId, orgId: target.organization_id, event: 'login', ip, userAgent: ua });
 
-  const dest = payload.next && payload.next.startsWith('/') ? payload.next : '/';
-  const res = NextResponse.redirect(new URL(dest, origin(req)));
+  const dest = payload.next && isSameOriginPath(payload.next) ? payload.next : '/';
+  const res = NextResponse.redirect(new URL(dest, oauthOrigin(req)));
   res.cookies.set(SESSION_COOKIE_NAME, session.sid, {
     httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/',
     maxAge: cookieMaxAgeForSession(session),
@@ -170,4 +266,14 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ prov
   });
   clearStateCookie(res);
   return res;
+}
+
+export async function GET(req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
+  const { provider } = await params;
+  return handleCallback(req, provider);
+}
+
+export async function POST(req: NextRequest, { params }: { params: Promise<{ provider: string }> }) {
+  const { provider } = await params;
+  return handleCallback(req, provider);
 }

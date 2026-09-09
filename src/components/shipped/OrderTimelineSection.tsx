@@ -77,17 +77,15 @@ function tag(items: TimelineItem[], lens: TaggedItem['lens']): TaggedItem[] {
 
 export function OrderTimelineSection({
   orderId,
-  /**
-   * Station flush host — drop the desk `mx-8` inset so the trail sits edge-to-
-   * edge under centre tabs (Labels Print · Documents · Timeline).
-   */
   flush = false,
+  initialLens = 'all',
 }: {
   orderId: number;
   flush?: boolean;
+  initialLens?: OrderTimelineLens;
 }) {
   const [groupMode, setGroupMode] = useState<TimelineGroupMode>('time');
-  const [lens, setLens] = useState<OrderTimelineLens>('all');
+  const [lens, setLens] = useState<OrderTimelineLens>(initialLens);
   const [showPhotos, setShowPhotos] = useState(false);
 
   const { data, isLoading } = useQuery(orderTimelineQuery(orderId));

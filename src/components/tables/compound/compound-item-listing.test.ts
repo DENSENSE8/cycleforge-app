@@ -1,7 +1,7 @@
 /**
  * To-ship listing join: title is a black/blue-on-hover hyperlink. Under the
- * title, qty · condition · listing glyph · notes sit LEFT — never the item
- * number, never middle dots. The notes editor opens bottom-right of the glyph.
+ * title, qty · condition · notes sit LEFT — the item-number listing actions
+ * live on the product-title hover surface.
  */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
@@ -9,7 +9,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { COMPOUND_TRACKS } from './compound-columns';
 import { renderCompoundGridCell } from './CompoundGridCell';
-import type { CompoundRowView, CompoundSubtitleCopy } from './compound-row-model';
+import type { CompoundRowView, CompoundSubtitleEdit } from './compound-row-model';
 
 const VIEW: CompoundRowView = {
   id: '1',
@@ -23,7 +23,7 @@ const VIEW: CompoundRowView = {
   stateLabel: 'PENDING',
   stateTone: 'neutral',
   delay: null,
-  amount: '$49.99',
+  amount: null,
   subtitleParts: [
     { text: '1', key: 'orders.qty', widthCh: 2 },
     { text: 'Used', key: 'orders.condition' },
@@ -33,10 +33,10 @@ const VIEW: CompoundRowView = {
 
 function paintItem(
   view: CompoundRowView,
-  copies?: readonly CompoundSubtitleCopy[],
   extras?: {
     subtitleNoteKey?: string;
     noteText?: string | null;
+    subtitleEdits?: readonly CompoundSubtitleEdit[];
   },
 ) {
   return renderToStaticMarkup(
@@ -48,7 +48,7 @@ function paintItem(
         columns: COMPOUND_TRACKS,
         rule: true,
         view,
-        subtitleCopies: copies,
+        subtitleEdits: extras?.subtitleEdits,
         subtitleNoteKey: extras?.subtitleNoteKey,
         noteText: extras?.noteText,
       }) as React.ReactElement,
@@ -74,25 +74,88 @@ describe('compound item listing join', () => {
     assert.match(html, /text-text-default hover:text-text-info/);
   });
 
-  it('paints the listing icon under the title and never the item number', () => {
+  it('removes the listing icon from under the title and keeps the item number hidden', () => {
     const html = paintItem(
       { ...VIEW, titleHref: 'https://www.ebay.com/itm/123456789012' },
-      [
-        {
+      {
+        subtitleEdits: [{
           partKey: 'orders.item_number',
+          label: 'Item number',
           value: '123456789012',
-          openHref: 'https://www.ebay.com/itm/123456789012',
-        },
-      ],
+          onCommit: () => undefined,
+        }],
+      },
     );
-    assert.doesNotMatch(html, />Listing</);
-    assert.match(html, /aria-label="Open listing"/);
-    assert.match(html, /text-text-info/);
-    assert.match(html, /h-3 w-3/);
+    assert.doesNotMatch(html, /aria-label="Open listing"/);
     assert.doesNotMatch(html, />56789012</);
     assert.match(html, />1</);
     assert.match(html, /Used/);
     assert.match(html, /justify-start/);
+  });
+
+  it('paints a Figma-style scrub host on an editable price', () => {
+    const html = paintItem(
+      {
+        ...VIEW,
+        subtitleParts: [
+          { text: '$49.99', key: 'orders.amount', toneClass: 'font-semibold text-text-success', widthCh: 8 },
+        ],
+      },
+      {
+        subtitleEdits: [{
+          partKey: 'orders.amount',
+          label: 'Amount',
+          value: '49.99',
+          kind: 'numeric',
+          scrub: { step: 1, coarseStep: 10, fineStep: 0.01, min: 0, decimals: 2, money: true },
+          onCommit: () => undefined,
+        }],
+      },
+    );
+    assert.match(html, /data-subtitle-scrub=""/);
+    assert.match(html, /data-cursor="resize-x"/);
+    assert.match(html, /data-slot="input-group"/);
+    assert.match(html, /data-money-prefix=""/);
+    assert.match(html, /role="spinbutton"/);
+    assert.match(html, />\$</);
+    assert.match(html, /49\.99/);
+    assert.doesNotMatch(html, /border-border-success/);
+  });
+
+  it('paints the price in the house money tone', () => {
+    const html = paintItem({
+      ...VIEW,
+      subtitleParts: [
+        { text: '$49.99', key: 'orders.amount', toneClass: 'font-semibold text-text-success', widthCh: 8 },
+      ],
+    });
+    assert.match(html, /text-text-success/);
+    assert.match(html, /\$49\.99/);
+  });
+
+  it('paints qty left-most even when subtitleParts arrive reversed', () => {
+    const html = paintItem({
+      ...VIEW,
+      subtitleParts: [
+        { text: 'Used', key: 'orders.condition' },
+        { text: '4', key: 'orders.qty', widthCh: 2 },
+      ],
+    });
+    const qtyAt = html.indexOf('>4<');
+    const condAt = html.indexOf('Used');
+    assert.ok(qtyAt >= 0 && condAt >= 0 && qtyAt < condAt);
+  });
+
+  it('keeps the row note when the only bound part is qty', () => {
+    const html = paintItem(
+      {
+        ...VIEW,
+        note: 'leave at dock',
+        subtitleParts: [{ text: '1', key: 'orders.qty', widthCh: 2 }],
+      },
+    );
+    assert.match(html, />1</);
+    assert.match(html, /leave at dock/);
   });
 
   it('does not invent middle-dot separators between under-title facts', () => {
@@ -102,7 +165,7 @@ describe('compound item listing join', () => {
     assert.match(html, /Used/);
   });
 
-  it('paints a faint listing glyph when the item number is missing', () => {
+  it('does not paint a listing glyph when the item number is missing', () => {
     const html = paintItem({
       ...VIEW,
       subtitleParts: [
@@ -111,8 +174,7 @@ describe('compound item listing join', () => {
         { text: '', key: 'orders.item_number' },
       ],
     });
-    assert.match(html, /aria-label="No listing"/);
-    assert.match(html, /text-text-faint/);
+    assert.doesNotMatch(html, /aria-label="No listing"/);
   });
 
   it('paints written notes as muted subtitle text, not the glyph', () => {
@@ -124,7 +186,6 @@ describe('compound item listing join', () => {
           { text: 'leave at dock', key: 'orders.notes' },
         ],
       },
-      undefined,
       { subtitleNoteKey: 'orders.notes', noteText: 'leave at dock' },
     );
     assert.match(html, /leave at dock/);
@@ -138,7 +199,6 @@ describe('compound item listing join', () => {
         ...VIEW,
         subtitleParts: [...VIEW.subtitleParts, { text: '--', key: 'orders.notes' }],
       },
-      undefined,
       { subtitleNoteKey: 'orders.notes', noteText: '' },
     );
     assert.doesNotMatch(html, /leave at dock/);
@@ -163,7 +223,7 @@ describe('compound item listing join', () => {
     assert.match(html, /data-subtitle-reorder="true"/);
     assert.match(html, /data-subtitle-part="orders.qty"/);
     assert.match(html, /data-subtitle-part="orders.condition"/);
-    assert.match(html, /data-subtitle-part="orders.item_number"/);
+    assert.doesNotMatch(html, /data-subtitle-part="orders.item_number"/);
     assert.match(html, /justify-start/);
     assert.doesNotMatch(html, /draggable="true"/);
   });

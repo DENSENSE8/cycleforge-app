@@ -63,9 +63,36 @@ export { useMotionRole, useMotionPressRole } from './use-motion-role';
 export { useOverlaySwapHardCut } from './use-overlay-swap-hard-cut';
 
 /**
+ * Idle browse hide + overlay pane stack — the only legal way a floor station
+ * implements visibility-hide / inert / zIndex.panel. Workspaces call these;
+ * they do not re-type the styles.
+ */
+export { idleBrowseLayerProps, overlayPaneStyle } from './idle-overlay';
+
+/**
  * The live-change pulse — the only symbol app code needs. Its attribute name,
  * mark duration, predicate and ref shape stay on `./use-live-value-change`:
  * re-exporting them here would add four barrel entries nothing imports, which
  * is the mid-wire-SoT-reads-as-dead trap the header above describes.
  */
 export { useLiveValueChange } from './use-live-value-change';
+
+/**
+ * The desk pointer-cursor layer — mount `MorphCursorLayer` ONCE, app-wide. It
+ * is `(pointer: fine)` gated, so a floor station never mounts it and never
+ * attaches a `pointermove` listener.
+ *
+ * A control opts into the morph with `cursorMorphTarget()` and publishes its
+ * live drag value with `useCursorScrub`. `publishCursorScrub` stays on
+ * `./cursor-scrub` — imperative writes belong to the few controls that own a
+ * scrub, not on the barrel every animated surface imports.
+ */
+export { useCursorScrub } from './use-cursor-scrub';
+export {
+  cursorClickTarget,
+  cursorGrabTarget,
+  cursorMorphTarget,
+  cursorResizeTarget,
+} from './cursor-scrub';
+export type { CursorKind } from './cursor-scrub';
+export { usePointerFine } from './use-pointer-fine';
