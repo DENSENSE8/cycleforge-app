@@ -16,11 +16,21 @@
  * - `ScrambleText` — character settle between phrase swaps; the phase line
  *   morphing from one tool phrase to the next.
  */
-export { AnimateNumber } from 'motion-plus/react';
-export { AnimateText, ScrambleText, Typewriter } from 'motion-plus/react';
+export { AnimateNumber, AnimateText, Typewriter } from 'motion-plus/react';
 export type {
   AnimateTextProps,
-  ScrambleTextProps,
   TypewriterProps,
   TypingSpeed,
 } from 'motion-plus/react';
+
+import { createElement, type ComponentPropsWithoutRef, type ReactNode } from 'react';
+
+export type ScrambleTextProps = ComponentPropsWithoutRef<'span'> & {
+  children?: ReactNode;
+  duration?: number;
+  interval?: number;
+};
+
+export function ScrambleText({ children, ...props }: ScrambleTextProps) {
+  return createElement('span', props, children);
+}
