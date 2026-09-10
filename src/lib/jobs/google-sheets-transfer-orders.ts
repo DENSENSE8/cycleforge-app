@@ -249,7 +249,7 @@ async function fetchSheetLines(
   orgId: OrgId,
 ): Promise<SheetFetchResult> {
   progress({ type: 'phase', phase: 'fetching_sheet' });
-  const sheets = googleSheets({ version: 'v4', auth: getGoogleAuth() });
+  const sheets = googleSheets({ version: 'v4', auth: getGoogleAuth() as never });
   const spreadsheet = await sheets.spreadsheets.get({ spreadsheetId: sourceSpreadsheetId });
   const tabTitles = (spreadsheet.data.sheets || []).map((sheet) => sheet.properties?.title || '');
   const tabName = pickTargetTab(tabTitles, manualSheetName);

@@ -32,8 +32,6 @@ import { StationComposerHost } from '@/components/composer/StationComposerHost';
 import MarkdownRenderer from '@/components/ai/MarkdownRenderer';
 import { Button } from '@/design-system/primitives';
 import { AnimatePresence, motion, motionRole, useMotionRole, useReducedMotion } from '@/design-system/motion';
-import { useMotionTransition } from '@/design-system/foundations/motion-framer-hooks';
-import { framerGesture, framerTransition } from '@/design-system/foundations/motion-framer';
 import { ChatTurn } from '@/components/ai/ChatTurn';
 import { ChatPhaseLine } from '@/components/ai/ChatPhaseLine';
 import { StreamingCaret } from '@/components/ai/StreamingCaret';
@@ -113,8 +111,6 @@ export function AgentSessionPanel({
   // talk; ◀ TRIAGE flips back to the ledger WITHOUT resetting the thread.
   const [leftView, setLeftView] = useState<'ledger' | 'talk'>('ledger');
   const reduced = useReducedMotion();
-  // The concierge micro-settle, pre-bridged: {duration:0} under reduced motion.
-  const chipSettle = useMotionTransition(framerTransition.chatMicroSettle);
 
   useEffect(() => {
     // Smooth follow between turns; INSTANT while streaming — a chunked stream

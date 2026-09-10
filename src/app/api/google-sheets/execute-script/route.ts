@@ -87,7 +87,7 @@ async function executeCheckShippedOrders(orgId: OrgId) {
 
 async function executeSyncTechSerialNumbers(orgId: OrgId) {
     const auth = getGoogleAuth();
-    const sheets = googleSheets({ version: 'v4', auth });
+    const sheets = googleSheets({ version: 'v4', auth: auth as never });
     const spreadsheetId = requiredSpreadsheetId();
     if (!spreadsheetId) throw new Error('SPREADSHEET_ID is not configured');
 
@@ -257,7 +257,7 @@ async function executeSyncTechSerialNumbers(orgId: OrgId) {
 
 async function executeSyncPackerLogs(orgId: OrgId) {
     const auth = getGoogleAuth();
-    const sheets = googleSheets({ version: 'v4', auth });
+    const sheets = googleSheets({ version: 'v4', auth: auth as never });
     const spreadsheetId = requiredSpreadsheetId();
     if (!spreadsheetId) throw new Error('SPREADSHEET_ID is not configured');
 

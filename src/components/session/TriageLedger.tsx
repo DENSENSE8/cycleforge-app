@@ -53,7 +53,6 @@ import { INSTRUMENT_VALUE } from '@/design-system/tokens/instrument';
 import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
-  PULSE_LANES,
   PULSE_LANE_FACE,
   type PulseItem,
   type PulseLane,
