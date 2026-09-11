@@ -79,6 +79,7 @@ export function toShippedOrderFromApi(raw: Record<string, unknown> | null | unde
     test_date_time: asNullableString(raw.test_date_time),
     packer_id: asNullableNumber(raw.packer_id),
     packed_by: asNullableNumber(raw.packed_by),
+    packed_by_name: asNullableString(raw.packed_by_name),
     packed_at: asNullableString(raw.packed_at),
     packer_photos_url: raw.packer_photos_url ?? null,
     tracking_type: asNullableString(raw.tracking_type),

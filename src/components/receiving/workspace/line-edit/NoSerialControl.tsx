@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, type ComponentType } from 'react';
-import { AlertTriangle, Barcode, Boxes, Check, Tag, X } from '@/components/Icons';
+import { AlertTriangle, Boxes, Check, ScanBarcode, Tag, X } from '@/components/Icons';
 import { Popover } from '@/design-system/primitives';
 import { CHIP_TONES } from '@/components/ui/CopyChip';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
@@ -58,13 +58,13 @@ type Glyph = ComponentType<{ className?: string }>;
  * codes fall back to the generic serial glyph.
  */
 const REASON_ICON: Record<string, Glyph> = {
-  NOT_SERIALIZED: Barcode,
+  NOT_SERIALIZED: ScanBarcode,
   UNREADABLE: AlertTriangle,
   MISSING_LABEL: Tag,
   BULK: Boxes,
 };
 const reasonIcon = (code: string | null | undefined): Glyph =>
-  (code && REASON_ICON[code]) || Barcode;
+  (code && REASON_ICON[code]) || ScanBarcode;
 
 /**
  * Menu-row + clear affordance tones keyed off reason *severity*. Committed chip
@@ -193,7 +193,7 @@ export function NoSerialControl({
               : 'border-border-default text-text-faint hover:border-border-default hover:bg-surface-hover hover:text-text-muted'
           }`}
         >
-          <Barcode className="h-4 w-4" />
+          <ScanBarcode className="h-4 w-4" />
           <ChevronGlyph />
         </button>
       </HoverTooltip>

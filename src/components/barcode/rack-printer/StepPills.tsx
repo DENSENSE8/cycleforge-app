@@ -2,8 +2,14 @@ import React, { useRef } from 'react';
 import { useHorizontalWheelScroll } from '@/hooks/useHorizontalWheelScroll';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { noPad, pad2 } from '@/lib/barcode-routing';
-import { LABEL_BUILDER_SELECTED } from '../label-builder-layout';
+import { LABEL_BUILDER_STEP } from '../label-builder-layout';
 import { STEPS, type Step } from './rack-printer-config';
+
+/**
+ * Callers: RackBuilderDesktop/Mobile. No data schemas.
+ * User: "tabs and the pills are from different tokens" / "Displayed per use case."
+ * Path chips use LABEL_BUILDER_STEP (blue surface) — not TabSwitch.
+ */
 
 interface StepPillsProps {
   activeStep: Step;
@@ -15,8 +21,16 @@ interface StepPillsProps {
   onPillClick: (step: Step) => void;
 }
 
-/** Horizontal zone → aisle → bay → level breadcrumb pills. */
-export function StepPills({ activeStep, zoneLetter, roomName, aisle, bay, level, onPillClick }: StepPillsProps) {
+/** Bay location path chips — LABEL_BUILDER_STEP, not TabSwitch. */
+export function StepPills({
+  activeStep,
+  zoneLetter,
+  roomName,
+  aisle,
+  bay,
+  level,
+  onPillClick,
+}: StepPillsProps) {
   const values: Record<Step, string | undefined> = {
     zone: zoneLetter,
     aisle: aisle != null ? pad2(aisle) : undefined,
@@ -29,9 +43,9 @@ export function StepPills({ activeStep, zoneLetter, roomName, aisle, bay, level,
   return (
     <div
       ref={scrollRef}
-      className="flex w-full min-w-0 overflow-x-scroll overflow-y-hidden overscroll-x-contain rounded-xl bg-surface-card px-2 py-1.5 ring-1 ring-border-soft/60 [-ms-overflow-style:none] [scrollbar-width:none] [-webkit-overflow-scrolling:touch] [&::-webkit-scrollbar]:hidden"
+      className={LABEL_BUILDER_STEP.track}
       role="navigation"
-      aria-label="Rack location steps"
+      aria-label="Bay location steps"
     >
       <div className="flex w-max max-w-none flex-none flex-nowrap items-center gap-1">
         {STEPS.map(({ id, label }, idx) => {
@@ -47,12 +61,12 @@ export function StepPills({ activeStep, zoneLetter, roomName, aisle, bay, level,
               onClick={() => onPillClick(id)}
               disabled={!isClickable}
               aria-current={isActive ? 'step' : undefined}
-              className={`ds-raw-button flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-role-caption font-semibold transition-colors ${
+              className={`${LABEL_BUILDER_STEP.chipBase} ${
                 isActive
-                  ? LABEL_BUILDER_SELECTED.solid
+                  ? LABEL_BUILDER_STEP.chipActive
                   : isDone
-                    ? `${LABEL_BUILDER_SELECTED.done} cursor-pointer`
-                    : 'bg-surface-sunken text-text-faint cursor-not-allowed'
+                    ? LABEL_BUILDER_STEP.chipDone
+                    : LABEL_BUILDER_STEP.chipIdle
               }`}
             >
               <span className="text-role-micro uppercase tracking-wider opacity-80">{label}</span>
@@ -68,7 +82,11 @@ export function StepPills({ activeStep, zoneLetter, roomName, aisle, bay, level,
               ) : (
                 pill
               )}
-              {showChevron && <span className="shrink-0 text-role-micro text-text-faint">›</span>}
+              {showChevron && (
+                <span className="shrink-0 px-0.5 text-role-micro text-text-faint" aria-hidden>
+                  ›
+                </span>
+              )}
             </React.Fragment>
           );
         })}

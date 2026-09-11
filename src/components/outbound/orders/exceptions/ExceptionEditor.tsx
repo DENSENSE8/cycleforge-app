@@ -3,16 +3,14 @@
 /**
  * The exception editor — pair this order's item number to a Zoho catalog SKU.
  *
- * {@link TriageScrollLayout} with `knobs`: Catalog Pairing + the identity
- * fields that pairing reads. Writes compose existing endpoints; this file
- * owns no persistence. Pairing is the release from this queue (R-FLOW-7) —
- * manuals and shipping labels are a sibling To-ship form, not this one.
+ * Form sits under the carton identity header. The left rail is the held-order
+ * queue (Unbox-width sash + resolve-count subtitle) — not the pairing fields.
+ * No {@link TriageScrollKnobs}: the jump rail stole measure from a short form.
  */
 
-import { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useState, type ReactNode } from 'react';
 import { ShippingEntityContextHeader } from '@/components/tech/shipping/ShippingEntityContextHeader';
 import type { ActiveStationOrder } from '@/hooks/station/types';
-import { TriageScrollLayout } from '@/design-system/components/TriageScrollLayout';
 import { toast } from '@/lib/toast';
 import { useSkuCatalogSearch } from '@/hooks/useSkuCatalogSearch';
 import type { OrderExceptionRow } from '@/lib/orders/order-exception-types';
@@ -21,6 +19,9 @@ import {
   ExceptionUnpairedBanner,
 } from './ExceptionCatalogPairing';
 import { ExceptionOrderFields } from './ExceptionOrderFields';
+import { ExceptionsWalkSidebar } from './ExceptionsWalkSidebar';
+import { CONTEXT_PANEL_HOST_CLASS } from '@/components/sidebar/context-panel-column';
+import { TriageScrollLayout } from '@/design-system/components/TriageScrollLayout';
 
 async function postJson(url: string, body: unknown, method = 'POST') {
   const res = await fetch(url, {
@@ -40,11 +41,14 @@ export function ExceptionEditor({
   row,
   onChanged,
   onExit,
+  queue,
 }: {
   row: OrderExceptionRow;
   onChanged: (opts?: { resolved?: boolean }) => void;
   /** Leave this order — the context header's ◁, the ✕, and Escape all land here. */
   onExit: () => void;
+  /** Held-order list — Unbox recents slot in the left rail. */
+  queue: ReactNode;
 }) {
   const fieldId = useId();
 
@@ -210,56 +214,58 @@ export function ExceptionEditor({
   }, [pairTo, row.productTitle, row.sku, sku, title]);
 
   return (
-    <TriageScrollLayout
-      data-testid="exception-editor"
-      knobs
-      header={
-        <div className="border-b border-border-hairline">
-          <ShippingEntityContextHeader
-            activeOrder={activeOrder}
-            onExitToList={onExit}
-          />
-        </div>
-      }
-      banner={<ExceptionUnpairedBanner row={row} />}
-      sections={[
-        {
-          id: 'catalog-pairing',
-          label: 'Catalog Pairing',
-          children: (
-            <ExceptionCatalogPairing
-              fieldId={fieldId}
-              row={row}
-              query={query}
-              onQueryChange={setQuery}
-              hits={hits}
-              searching={searching}
-              pairing={pairing}
-              onPair={(id) => void pairTo(id)}
-              sku={sku}
-              creating={creating}
-              onCreateAndPair={() => void createAndPair()}
+    <div className={CONTEXT_PANEL_HOST_CLASS} data-testid="exception-editor">
+      <ExceptionsWalkSidebar>{queue}</ExceptionsWalkSidebar>
+      <TriageScrollLayout
+        className="min-h-0 min-w-0 flex-1"
+        header={
+          <div className="border-b border-border-hairline">
+            <ShippingEntityContextHeader
+              activeOrder={activeOrder}
+              onExitToList={onExit}
             />
-          ),
-        },
-        {
-          id: 'order-details',
-          label: 'Order Details',
-          children: (
-            <ExceptionOrderFields
-              fieldId={fieldId}
-              itemNumber={itemNumber}
-              sku={sku}
-              title={title}
-              dirty={dirty}
-              saving={saving}
-              onItemNumber={setItemNumber}
-              onSku={setSku}
-              onTitle={setTitle}
-            />
-          ),
-        },
-      ]}
-    />
+          </div>
+        }
+        banner={<ExceptionUnpairedBanner row={row} />}
+        sections={[
+          {
+            id: 'catalog-pairing',
+            label: 'Catalog Pairing',
+            children: (
+              <ExceptionCatalogPairing
+                fieldId={fieldId}
+                row={row}
+                query={query}
+                onQueryChange={setQuery}
+                hits={hits}
+                searching={searching}
+                pairing={pairing}
+                onPair={(id) => void pairTo(id)}
+                sku={sku}
+                creating={creating}
+                onCreateAndPair={() => void createAndPair()}
+              />
+            ),
+          },
+          {
+            id: 'order-details',
+            label: 'Order Details',
+            children: (
+              <ExceptionOrderFields
+                fieldId={fieldId}
+                itemNumber={itemNumber}
+                sku={sku}
+                title={title}
+                dirty={dirty}
+                saving={saving}
+                onItemNumber={setItemNumber}
+                onSku={setSku}
+                onTitle={setTitle}
+              />
+            ),
+          },
+        ]}
+      />
+    </div>
   );
 }

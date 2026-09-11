@@ -35,3 +35,14 @@ test('resultToScanOutPane falls back to the raw scan when tracking is empty', ()
   assert.equal(pane.qty, 1);
   assert.equal(pane.status, 'pending');
 });
+
+test('cancelled block is a distinct pane status, not a successful ship-out', () => {
+  const pane = resultToScanOutPane(
+    { shipmentId: 9, message: 'Order is cancelled — do not ship. Pull this package.' },
+    'blk',
+    '1ZCANCELLED',
+  );
+  assert.equal(pane.status, 'blk');
+  assert.equal(pane.shipmentId, 9);
+  assert.match(String(pane.message), /cancelled/i);
+});

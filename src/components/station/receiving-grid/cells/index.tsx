@@ -34,6 +34,7 @@ import {
 } from './receiving-grid-cell-types';
 
 export type { ReceivingGridCellCtx } from './receiving-grid-cell-types';
+export { receivingCompoundRowView } from './ReceivingCompoundCells';
 export {
   displayReceivingProductTitle,
   incomingDateCell,
@@ -50,6 +51,11 @@ export function renderReceivingGridCell(
   col: ReceivingGridColumn | IncomingGridColumn,
   last: boolean,
   ctx: ReceivingGridCellCtx,
+  detail?: {
+    open: boolean;
+    onToggle: () => void;
+    label: string;
+  },
 ): ReactNode {
   const rule = !last;
   const props = { col, rule, ctx };
@@ -61,7 +67,7 @@ export function renderReceivingGridCell(
   // `select` is claimed only under a compound model — the FLAT Unbox / Testing
   // / Pickup grids keep `ReceivingSelectCell` and its 16px checklist square.
   if (claimsCompoundCell(col.key, ctx.columns)) {
-    return renderReceivingCompoundCell(col, rule, ctx);
+    return renderReceivingCompoundCell(col, rule, ctx, detail);
   }
   switch (col.key) {
     case 'select':

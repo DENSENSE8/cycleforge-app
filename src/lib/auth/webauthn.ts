@@ -24,26 +24,39 @@ import type {
 } from '@simplewebauthn/types';
 import pool from '@/lib/db';
 import { WEBAUTHN_RP_NAME_DEFAULT } from '@/lib/branding/constants';
+import { staffWebAuthnExpectedOrigins } from '@/lib/auth/webauthn-rp';
+
+export {
+  staffWebAuthnRpId,
+  isStaffWebAuthnHost,
+  staffWebAuthnExpectedOrigins,
+  isUnsignedQrVerifiedClaim,
+} from '@/lib/auth/webauthn-rp';
 
 export const PASSKEY_CHALLENGE_COOKIE = 'cf_wac';
 
 /**
- * Returns { rpID, rpName, origin } resolved against the request.
- * Override via env in prod; fall back to request headers in dev.
+ * Returns { rpID, rpName, origin, expectedOrigins } for staff (and account)
+ * WebAuthn. rpID is the parent staff app host so tenant subdomains share one
+ * Face ID. expectedOrigins covers apex + the request's `{slug}.app…` origin.
+ *
+ * Callers: passkey register/authenticate routes, step-up, QR authorize,
+ * account WebAuthn (`webauthn-account.ts`).
  */
 export function getRpFromRequest(req: NextRequest): {
   rpID: string;
   rpName: string;
   origin: string;
+  expectedOrigins: string[];
 } {
   const envOrigin = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || '').replace(/\/+$/, '');
-  const reqOrigin = req.nextUrl.origin;
-  const origin = envOrigin || reqOrigin;
-  const rpID = new URL(origin).hostname;
+  const resolved = staffWebAuthnExpectedOrigins({
+    requestOrigin: req.nextUrl.origin,
+    envOrigin,
+  });
   return {
-    rpID,
+    ...resolved,
     rpName: process.env.WEBAUTHN_RP_NAME || WEBAUTHN_RP_NAME_DEFAULT,
-    origin,
   };
 }
 
@@ -157,11 +170,11 @@ export async function verifyRegistration(opts: {
   expectedChallenge: string;
   response: RegistrationResponseJSON;
 }) {
-  const { rpID, origin } = getRpFromRequest(opts.req);
+  const { rpID, expectedOrigins } = getRpFromRequest(opts.req);
   return verifyRegistrationResponse({
     response: opts.response,
     expectedChallenge: opts.expectedChallenge,
-    expectedOrigin: origin,
+    expectedOrigin: expectedOrigins,
     expectedRPID: rpID,
     requireUserVerification: false,
   });
@@ -195,7 +208,7 @@ export async function verifyAuthentication(opts: {
   expectedChallenge: string;
   response: AuthenticationResponseJSON;
 }) {
-  const { rpID, origin } = getRpFromRequest(opts.req);
+  const { rpID, expectedOrigins } = getRpFromRequest(opts.req);
   // base64url credentialId from the browser
   const passkey = await findPasskeyByCredentialId(opts.response.id);
   if (!passkey) {
@@ -204,7 +217,7 @@ export async function verifyAuthentication(opts: {
   const verification = await verifyAuthenticationResponse({
     response: opts.response,
     expectedChallenge: opts.expectedChallenge,
-    expectedOrigin: origin,
+    expectedOrigin: expectedOrigins,
     expectedRPID: rpID,
     requireUserVerification: false,
     credential: {

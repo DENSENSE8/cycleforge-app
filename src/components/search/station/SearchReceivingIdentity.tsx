@@ -43,11 +43,15 @@ export function SearchReceivingIdentity({
   receiving,
   lines,
   linkedOrder,
+  onExitToList,
+  exitLabel = 'Back to results',
   onOpenPhotosDisplay,
 }: {
   receiving: CartonInspectorReceiving;
   lines?: ReadonlyArray<CartonInspectorLine> | null;
   linkedOrder?: ShippedOrder | null;
+  onExitToList?: () => void;
+  exitLabel?: string;
   /** Unbox grammar: double-click Photos → Displays → Photos. */
   onOpenPhotosDisplay?: () => void;
 }) {
@@ -117,6 +121,8 @@ export function SearchReceivingIdentity({
       onPlatformSelect={() => {}}
       receivingType={String(receiving.intake_type ?? '').trim()}
       onTypeSelect={() => {}}
+      onExitToList={onExitToList}
+      exitLabel={exitLabel}
       onOpenPhotosDisplay={onOpenPhotosDisplay}
     />
   );

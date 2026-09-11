@@ -77,6 +77,11 @@ function pretty(eventType: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 }
 
+/** FIND / timeline face title for a lifecycle event_type. */
+export function inventoryEventTitle(eventType: string): string {
+  return EVENT_MAP[eventType]?.title ?? pretty(eventType);
+}
+
 function binHref(barcode: string): string {
   return `/inventory/location/${encodeURIComponent(barcode)}`;
 }

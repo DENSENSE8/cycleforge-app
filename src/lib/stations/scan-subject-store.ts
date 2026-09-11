@@ -17,11 +17,11 @@
  * long enough to survive a coffee break.
  */
 
-export type ScanSubjectKind = 'unit';
+export type ScanSubjectKind = 'unit' | 'order';
 
 export interface ScanSubject {
   kind: ScanSubjectKind;
-  /** The resolvable key — a bare serial, a minted `unit_uid`, or a numeric id. */
+  /** Unit: serial / unit_uid / numeric id. Order: `orders.id` as a decimal string. */
   value: string;
   /** Epoch ms of the scan that set it. */
   at: number;

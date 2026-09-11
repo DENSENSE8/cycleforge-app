@@ -16,6 +16,7 @@ import {
   Box,
   Truck,
   Clock,
+  ScanBarcode,
 } from '@/components/Icons';
 
 const ICONS: Record<string, React.FC<{ className?: string }>> = {
@@ -29,6 +30,8 @@ const ICONS: Record<string, React.FC<{ className?: string }>> = {
   Box,
   Truck,
   Clock,
+  ScanBarcode,
+  Barcode: ScanBarcode,
 };
 
 export function StationIcon({ name, className }: { name: string; className?: string }) {

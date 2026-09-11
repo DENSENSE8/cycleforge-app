@@ -18,7 +18,8 @@ const OperationsSidebarPanel = dynamic(() => import('@/components/sidebar/Operat
 const StudioSidebarPanel = dynamic(() => import('@/components/sidebar/StudioSidebarPanel').then((m) => m.StudioSidebarPanel));
 const SupportSidebarPanel = dynamic(() => import('@/components/sidebar/SupportSidebarPanel').then((m) => m.SupportSidebarPanel));
 const AiChatSidebarPanel = dynamic(() => import('@/components/sidebar/AiChatSidebarPanel').then((m) => m.AiChatSidebarPanel));
-const SettingsSidebar = dynamic(() => import('@/components/sidebar/SettingsSidebarPanel').then((m) => m.SettingsSidebar));
+const RolesSidebarPanel = dynamic(() => import('@/components/admin/RolesSidebarPanel').then((m) => m.RolesSidebarPanel));
+const AccessSidebarPanel = dynamic(() => import('@/components/admin/AccessSidebarPanel').then((m) => m.AccessSidebarPanel));
 const AuditLogSidebarPanel = dynamic(() => import('@/components/sidebar/AuditLogSidebarPanel').then((m) => m.AuditLogSidebarPanel));
 const ReceivingSidebarPanel = dynamic(() => import('@/components/sidebar/ReceivingSidebarPanel').then((m) => m.ReceivingSidebarPanel));
 const FbaSidebarPanel = dynamic(() => import('@/components/fba/sidebar').then((m) => m.FbaSidebarPanel));
@@ -51,7 +52,17 @@ export function SidebarContextPanel({ onBackToAppNav }: { onBackToAppNav?: () =>
   if (routeKey === 'studio') return <StudioSidebarPanel />;
   if (routeKey === 'support') return <SupportSidebarPanel />;
   if (routeKey === 'ai-chat') return <AiChatSidebarPanel />;
-  if (routeKey === 'settings') return <SettingsSidebar />;
+  // Settings overview is railless (card landing). Roles / Access keep their
+  // picker panels — the editors still say "choose from the sidebar".
+  if (routeKey === 'settings') {
+    if (pathname === '/settings/roles' || pathname.startsWith('/settings/roles/')) {
+      return <RolesSidebarPanel basePath="/settings/roles" />;
+    }
+    if (pathname === '/settings/access' || pathname.startsWith('/settings/access/')) {
+      return <AccessSidebarPanel basePath="/settings/access" />;
+    }
+    return null;
+  }
   if (routeKey === 'audit-log') return <AuditLogSidebarPanel />;
   if (routeKey === 'receiving') return <ReceivingSidebarPanel />;
   if (routeKey === 'fba') return <FbaSidebarPanel />;

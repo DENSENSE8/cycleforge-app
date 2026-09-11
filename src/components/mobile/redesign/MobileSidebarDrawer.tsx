@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from '@/design-system/motion';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   PackageOpen,
-  ClipboardList,
   MapPin,
   ChevronDown,
   X,
@@ -98,6 +97,7 @@ type NavItem = LeafItem | GroupItem;
 // first, and the corner stops being the answer.
 const NAV_ITEMS: NavItem[] = [
   { kind: 'leaf', id: 'home', label: 'Home', href: '/m/home' },
+  { kind: 'leaf', id: 'find', label: 'Find', href: '/m/search' },
   { kind: 'leaf', id: 'picks', label: 'Picks', href: '/m/pick' },
   {
     kind: 'group',
@@ -105,14 +105,15 @@ const NAV_ITEMS: NavItem[] = [
     label: 'Receiving',
     matchPrefixes: ['/m/receiving', '/m/receive', '/m/triage', '/m/unbox', '/m/r/'],
     children: [
-      { kind: 'leaf', id: 'triage', label: 'Arrival', icon: ClipboardList, href: '/m/triage' },
       { kind: 'leaf', id: 'unboxing', label: 'Unbox', icon: PackageOpen, href: '/m/unbox' },
       { kind: 'leaf', id: 'photos', label: 'Photo feed', icon: PackageOpen, href: '/m/receiving' },
       { kind: 'leaf', id: 'local-pickup', label: 'Walk-In', icon: MapPin, href: '/m/receiving?mode=local-pickup' },
+      { kind: 'leaf', id: 'consult', label: 'Consult', icon: MapPin, href: '/m/consult' },
       { kind: 'leaf', id: 'repair', label: 'Repair', icon: ReceivingModeRepair, href: '/m/receiving?mode=repair' },
     ],
   },
   { kind: 'leaf', id: 'packing', label: 'Packing', href: '/m/pack' },
+  { kind: 'leaf', id: 'print', label: 'Print', href: '/m/print' },
   { kind: 'leaf', id: 'checklist', label: 'Checklists', href: '/m/checklist' },
 ];
 

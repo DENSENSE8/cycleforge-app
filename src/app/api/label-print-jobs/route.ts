@@ -19,7 +19,7 @@ export const dynamic = 'force-dynamic';
  * `actorStaffId` is taken from the session, never the body. Auth: `print.label`.
  */
 const JobSchema = z.object({
-  jobType: z.enum(['UNIT', 'MANIFEST', 'HANDLING_UNIT', 'REPRINT']),
+  jobType: z.enum(['UNIT', 'MANIFEST', 'HANDLING_UNIT', 'REPRINT', 'LOCATION']),
   serialUnitId: z.number().int().positive().nullable().optional(),
   manifestId: z.number().int().positive().nullable().optional(),
   handlingUnitId: z.number().int().positive().nullable().optional(),

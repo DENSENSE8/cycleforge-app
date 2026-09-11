@@ -17,6 +17,7 @@ import {
   formatCompoundStageStampFace,
   formatDayGap,
   compoundDatesHoverLabel,
+  COMPOUND_DATES_START_HOVER,
   COMPOUND_DATES_ORDER_HOVER,
   COMPOUND_DATES_DUE_HOVER,
 } from '@/components/tables/compound/compound-row-model';
@@ -362,23 +363,50 @@ describe('formatCompoundDelayAgeFace — the DATES deadline line', () => {
   it('paints the missing mark when there is no deadline at all', () => {
     assert.equal(formatCompoundDelayAgeFace(null, { missingText: '--' }).text, '--');
   });
+
+  it('paints faceLabel for secondary temporal facts (dwell) instead of --', () => {
+    const face = formatCompoundDelayAgeFace({
+      days: 0,
+      overdue: false,
+      faceLabel: '8d',
+    });
+    assert.equal(face.text, '8d');
+    assert.doesNotMatch(face.text, /late|On time|Due/);
+  });
 });
 
 describe('compoundDatesHoverLabel — DATES cursor chip', () => {
   it('always names the line so every product table gets a hover', () => {
+    assert.equal(compoundDatesHoverLabel('start'), COMPOUND_DATES_START_HOVER);
     assert.equal(compoundDatesHoverLabel('order'), COMPOUND_DATES_ORDER_HOVER);
+    assert.equal(COMPOUND_DATES_ORDER_HOVER, COMPOUND_DATES_START_HOVER);
     assert.equal(compoundDatesHoverLabel('due'), COMPOUND_DATES_DUE_HOVER);
   });
 
-  it('keeps family detail after the field name', () => {
+  it('lets a family tip that already names the Hash line own the chip', () => {
     assert.equal(
-      compoundDatesHoverLabel('order', 'Ordered · Aug 20, 2026'),
-      'Order date · Ordered · Aug 20, 2026',
+      compoundDatesHoverLabel('start', 'Ordered · Aug 20, 2026'),
+      'Ordered · Aug 20, 2026',
     );
+    assert.equal(
+      compoundDatesHoverLabel('start', 'Last seen Sep 2 · Enrolled Sep 2'),
+      'Last seen Sep 2 · Enrolled Sep 2',
+    );
+  });
+
+  it('prefixes anonymous start detail with Start date', () => {
+    assert.equal(
+      compoundDatesHoverLabel('start', 'Aug 20, 2026'),
+      'Start date · Aug 20, 2026',
+    );
+  });
+
+  it('rewrites Ship by tips to Due date; keeps Dwell verbatim', () => {
     assert.equal(
       compoundDatesHoverLabel('due', 'Ship by · Aug 17 · 2 days late'),
       'Due date · Aug 17 · 2 days late',
     );
+    assert.equal(compoundDatesHoverLabel('due', 'Dwell · 8d'), 'Dwell · 8d');
   });
 });
 

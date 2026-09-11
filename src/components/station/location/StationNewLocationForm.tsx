@@ -24,10 +24,9 @@
  * bin label printer uses — `POST /api/locations/register` via
  * {@link registerLocations} — so the row lands in `locations` with the canonical
  * flat barcode (`A0101101`), idempotently, reactivating a soft-deleted row
- * rather than duplicating it. The sticker is the same {@link PrintLabel} card on
- * the same 3in × 2in `@page`. That format is load-bearing: it is the only one
- * `extractArrivalLocationBarcode` decodes, so a hand-typed barcode would make a
- * row you can pick from a dropdown but never scan.
+ * rather than duplicating it. The sticker is the shared 2×1 {@link printLocationLabelsJob}
+ * face (same HTML as Unbox / {@link LabelFacePreview}). The encoded barcode is
+ * still the flat location code `extractArrivalLocationBarcode` decodes.
  *
  * Placement then runs through the port's writer — at Arrival
  * `useTriageStaging.selectShelf`, so the lane auto-route and its manual-wins
@@ -39,7 +38,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { MapPin, Printer } from '@/components/Icons';
-import { PrintLabel } from '@/components/barcode/bin-label-printer';
 import { registerLocations } from '@/components/barcode/bin-label-printer/bin-printer-api';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { SELECT_CLASS } from '@/components/sidebar/receiving/receiving-sidebar-shared';
@@ -48,7 +46,9 @@ import { FlushTerminalFooter } from '@/design-system/primitives/FlushTerminalFoo
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useLocations } from '@/hooks/useLocations';
 import { useOrgGs1 } from '@/hooks/useOrgGs1';
+import { useAuth } from '@/contexts/AuthContext';
 import { locationCode, type LocationSegments } from '@/lib/barcode-routing';
+import { printLocationLabelsJob } from '@/lib/print/printLocationLabel';
 import {
   printableRoomNames,
   suggestNextPosition,
@@ -112,6 +112,7 @@ export function StationNewLocationForm({
 }) {
   const { rooms, loading: roomsLoading } = useLocations();
   const { identity: orgGs1 } = useOrgGs1();
+  const { user } = useAuth();
   const { locations, place: placeAt, refreshCatalog, canPlaceMinted } = port;
 
   const roomNames = useMemo(() => printableRoomNames(rooms), [rooms]);
@@ -121,7 +122,6 @@ export function StationNewLocationForm({
   const [level, setLevel] = useState(1);
   const [position, setPosition] = useState(1);
   const [busy, setBusy] = useState(false);
-  const [printSegments, setPrintSegments] = useState<LocationSegments | null>(null);
 
   // Seed the room once the catalog lands; the operator can change it.
   useEffect(() => {
@@ -184,12 +184,11 @@ export function StationNewLocationForm({
       // worse than no sticker (the printer flows hold the same line).
       await registerLocations(room, [segments]);
       refreshCatalog();
-      setPrintSegments(segments);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          window.print();
-          setTimeout(() => setPrintSegments(null), 250);
-        });
+      await printLocationLabelsJob({
+        segments: [segments],
+        roomName: room,
+        gln: orgGs1?.gln ?? '',
+        orgSlug: user?.organizationSlug,
       });
     } catch (err) {
       toast.error(
@@ -198,7 +197,7 @@ export function StationNewLocationForm({
     } finally {
       setBusy(false);
     }
-  }, [refreshCatalog, room, segments]);
+  }, [orgGs1?.gln, refreshCatalog, room, segments, user?.organizationSlug]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -290,17 +289,6 @@ export function StationNewLocationForm({
           </Button>
         ) : null}
       </FlushTerminalFooter>
-
-      {/* Print zone — hidden on screen, fills the 3in × 2in page on print. */}
-      <div className="label-print-zone">
-        {printSegments ? (
-          <PrintLabel
-            segments={printSegments}
-            roomName={room}
-            gln={orgGs1?.gln ?? ''}
-          />
-        ) : null}
-      </div>
     </div>
   );
 }

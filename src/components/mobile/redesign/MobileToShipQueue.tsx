@@ -22,8 +22,6 @@ import {
   Inset,
   SearchField,
 } from '@/design-system/primitives';
-import { cornerClass } from '@/design-system/tokens/radius';
-import { sectionLabel } from '@/design-system/tokens/typography/presets';
 import { cn } from '@/utils/_cn';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
 import { bandWorkOrderRows } from '@/lib/work-orders/deadline-bands';
@@ -42,11 +40,12 @@ import {
 } from '@/lib/work-orders/to-ship-assignment';
 import { MobileToShipRow } from '@/components/mobile/redesign/MobileToShipRow';
 import { MobileToShipSheet } from '@/components/mobile/redesign/MobileToShipSheet';
-import { useToShipOrders } from '@/components/mobile/redesign/useToShipOrders';
+import { useToShipOrders, type MobileToShipFeed } from '@/components/mobile/redesign/useToShipOrders';
 import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import type { WorkOrderRow } from '@/components/work-orders/types';
+import type { OrderShortageIdentity } from '@/lib/orders/order-shortage-identity';
 
-export function MobileToShipQueue() {
+export function MobileToShipQueue({ feed = 'unshipped' }: { feed?: MobileToShipFeed } = {}) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -56,6 +55,7 @@ export function MobileToShipQueue() {
   const { rows, isPending, isError, isFetching } = useToShipOrders({
     enabled: true,
     searchQuery,
+    feed,
   });
   const { getStaffName } = useStaffNameMap();
   const { mutate: assignOrder } = useOrderAssignment();
@@ -64,7 +64,7 @@ export function MobileToShipQueue() {
 
   const groups = useMemo(() => {
     const filtered = sortToShipRows(
-      filterToShipByQuery(filterToShipByTab(rows, tab), searchQuery),
+      filterToShipByQuery(filterToShipByTab(rows, tab), searchQuery, getStaffName),
       sort,
       getStaffName,
     );
@@ -99,7 +99,7 @@ export function MobileToShipQueue() {
   );
 
   const onOutOfStock = useCallback(
-    (row: WorkOrderRow) => {
+    (row: WorkOrderRow, identity?: OrderShortageIdentity) => {
       setOosIds((current) => {
         if (current.has(row.entityId)) return current;
         const next = new Set(current);
@@ -107,7 +107,22 @@ export function MobileToShipQueue() {
         return next;
       });
       assignOrder(
-        { orderId: row.entityId, isOutOfStock: true },
+        {
+          orderId: row.entityId,
+          isOutOfStock: true,
+          ...(identity
+            ? {
+                oosKind: identity.kind,
+                oosSku: identity.sku,
+                oosSkuCatalogId: identity.skuCatalogId,
+                oosKitPartId: identity.kitPartId,
+                oosQtyShort: identity.qtyShort,
+                oosTitle: identity.title,
+                oosZohoItemId: identity.zohoItemId,
+                oosItemId: identity.itemId,
+              }
+            : {}),
+        },
         {
           onError: () => {
             setOosIds((current) => {
@@ -132,19 +147,35 @@ export function MobileToShipQueue() {
     [router],
   );
 
+  const onPassPicker = useCallback(
+    (row: WorkOrderRow, staff: { id: number; name: string }) => {
+      assignOrder({
+        orderId: row.entityId,
+        testerId: staff.id,
+        testerName: staff.name,
+      });
+      setSheetRow((current) =>
+        current?.id === row.id
+          ? { ...current, techId: staff.id, techName: staff.name, status: 'ASSIGNED' }
+          : current,
+      );
+    },
+    [assignOrder],
+  );
+
   const sortLabel = MOBILE_TO_SHIP_SORTS.find((option) => option.id === sort)?.label ?? 'Ship by';
 
   return (
     <div data-testid="to-ship-queue" className="flex h-full min-h-full flex-col bg-surface-card">
       <div className="bg-surface-card">
         <Inset space="chip">
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-1.5">
             <div className="flex items-center justify-between gap-2">
               <div
                 role="tablist"
                 aria-label="Order assignment"
                 data-testid="to-ship-tablist"
-                className="flex min-w-0 flex-wrap items-center gap-1"
+                className="flex min-w-0 flex-wrap items-center gap-2"
               >
                 {MOBILE_TO_SHIP_TABS.map((option) => {
                   const selected = option.id === tab;
@@ -156,11 +187,10 @@ export function MobileToShipQueue() {
                       aria-selected={selected}
                       onClick={() => replaceParams({ tab: option.id })}
                       className={cn(
-                        'ds-raw-button px-2 py-0.5 text-role-eyebrow font-semibold',
-                        cornerClass('surface'),
+                        'ds-raw-button rounded-full px-2 py-0.5 text-role-caption font-semibold',
                         selected
-                          ? 'bg-surface-sunken text-text-default ring-1 ring-border-soft'
-                          : 'text-text-soft',
+                          ? 'bg-text-default text-surface-card'
+                          : 'text-text-muted',
                       )}
                     >
                       {option.label}
@@ -172,7 +202,7 @@ export function MobileToShipQueue() {
                 <DropdownMenuTrigger asChild>
                   <IconButton
                     size="xs"
-                    radius="surface"
+                    radius="pill"
                     ariaLabel={`Sort, ${sortLabel}`}
                     data-testid="to-ship-sort"
                     icon={<ArrowUpDown className="h-3.5 w-3.5" />}
@@ -195,7 +225,7 @@ export function MobileToShipQueue() {
               <SearchField
                 value={searchQuery}
                 onChange={(value) => replaceParams({ q: value })}
-                placeholder="Search order"
+                placeholder="Search product, SKU, item…"
                 tone="neutral"
                 hideUnderline
                 isSearching={isFetching && Boolean(searchQuery.trim())}
@@ -208,11 +238,11 @@ export function MobileToShipQueue() {
       <div className="min-h-0 flex-1 overflow-y-auto bg-surface-card">
         <Inset space="chip">
           {isPending ? (
-            <p className="text-role-eyebrow text-text-muted">Loading…</p>
+            <p className="text-role-caption text-text-muted">Loading…</p>
           ) : isError ? (
-            <p className="text-role-eyebrow text-text-muted">Couldn&apos;t load orders.</p>
+            <p className="text-role-caption text-text-muted">Couldn&apos;t load orders.</p>
           ) : groups.length === 0 ? (
-            <p className="text-role-eyebrow text-text-muted">
+            <p className="text-role-caption text-text-muted">
               {searchQuery.trim() ? 'No matching orders.' : 'No orders in this view.'}
             </p>
           ) : (
@@ -220,17 +250,11 @@ export function MobileToShipQueue() {
               {groups.map((group) => (
                 <section key={group.band + group.label}>
                   {group.label ? (
-                    <h2
-                      className={cn(
-                        sectionLabel,
-                        'mb-2 bg-surface-sunken px-4 py-1.5 font-bold text-text-muted',
-                        cornerClass('surface'),
-                      )}
-                    >
+                    <h2 className="mb-1.5 px-1 text-role-eyebrow font-semibold uppercase tracking-widest text-amber-700">
                       {group.label}
                     </h2>
                   ) : null}
-                  <ul className="flex flex-col gap-3">
+                  <ul className="flex flex-col gap-2">
                     {group.rows.map((row) => (
                       <li key={row.id}>
                         <MobileToShipRow
@@ -239,7 +263,6 @@ export function MobileToShipQueue() {
                           blocked={oosIds.has(row.entityId) || isToShipOutOfStock(row)}
                           onOpen={setSheetRow}
                           onProcess={onProcess}
-                          onOutOfStock={onOutOfStock}
                         />
                       </li>
                     ))}
@@ -258,6 +281,7 @@ export function MobileToShipQueue() {
         onProcess={onProcess}
         onOutOfStock={onOutOfStock}
         onOpenDetail={onOpenDetail}
+        onPassPicker={onPassPicker}
         blocked={sheetRow != null && (oosIds.has(sheetRow.entityId) || isToShipOutOfStock(sheetRow))}
         resolveName={getStaffName}
       />

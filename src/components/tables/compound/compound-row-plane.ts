@@ -15,20 +15,29 @@
  *
  * The rule itself: **the checkbox ALWAYS toggles, including unselect.** Opening
  * the plane is a side-effect of becoming selected, never a substitute for the
- * toggle. Shift stays the range walk and never opens the plane — triage must
- * not be interrupted by a popover.
+ * toggle. Shift is the range walk. Adding another row, or unselecting one while
+ * others remain, MUST NOT unmount the plane — bulk verbs ride that one bar.
  */
+
+let livePlanes = 0;
+
+/** Morphing / row-plane hosts call this while they are painted. */
+export function rememberRowPlaneOpen(open: boolean): void {
+  livePlanes += open ? 1 : -1;
+  if (livePlanes < 0) livePlanes = 0;
+}
 
 /** What one gutter click means: does it extend a range, and does the plane open? */
 export function compoundRowPlaneGutterClick(args: {
   isChecked: boolean;
   shiftKey: boolean;
-}): { extend: boolean; menu: 'open' | 'close' } {
-  if (args.shiftKey) return { extend: true, menu: 'close' };
-  return { extend: false, menu: args.isChecked ? 'close' : 'open' };
+}): { extend: boolean; menu: 'open' | 'close' | 'keep' } {
+  if (args.shiftKey) return { extend: true, menu: 'keep' };
+  if (!args.isChecked) return { extend: false, menu: livePlanes > 0 ? 'keep' : 'open' };
+  return { extend: false, menu: 'keep' };
 }
 
-/** Apply {@link compoundRowPlaneGutterClick}: toggle first, then open or close. */
+/** Apply {@link compoundRowPlaneGutterClick}: toggle first, then open or leave the plane. */
 export function applyCompoundRowPlaneGutterClick(args: {
   isChecked: boolean;
   shiftKey: boolean;
@@ -42,5 +51,5 @@ export function applyCompoundRowPlaneGutterClick(args: {
   });
   args.onToggle({ shiftKey: intent.extend });
   if (intent.menu === 'open') args.onOpenMenu();
-  else args.onCloseMenu();
+  else if (intent.menu === 'close') args.onCloseMenu();
 }

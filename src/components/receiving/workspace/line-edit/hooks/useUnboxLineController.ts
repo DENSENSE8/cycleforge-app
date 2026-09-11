@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/lib/toast';
+import { returnOrderImportedCopy, returnOrderLineFill } from '@/lib/receiving/return-order-imported';
 import { receivingPhotosQueryKey } from '@/lib/queries/receiving-queries';
 import {
   deriveReceivingPhotoStageCounts,
@@ -899,7 +900,28 @@ export function useUnboxLineController(
           if (listingUrl) core.setListingLink(listingUrl);
           core.setPoEditorOpen(false);
           autoBoundOrderRef.current = trimmed;
-          toast.success(`Imported order ${data.matched_order?.order_id ?? trimmed} as a return`);
+          const mo = data.matched_order as
+            | { order_id?: string | null; product_title?: string | null; sku?: string | null; account_source?: string | null }
+            | null
+            | undefined;
+          const copy = returnOrderImportedCopy({
+            orderId: String(mo?.order_id ?? trimmed),
+            productTitle: mo?.product_title,
+            sku: mo?.sku,
+            platform: mo?.account_source,
+          });
+          toast.success(copy.title, { description: copy.description });
+          if (mo?.order_id) {
+            dispatchUnboxRailLineUpdated({
+              id: row.id,
+              ...returnOrderLineFill({
+                orderId: String(mo.order_id),
+                productTitle: mo.product_title,
+                sku: mo.sku,
+                platform: mo.account_source,
+              }),
+            });
+          }
           if (data.line_patch) {
             dispatchUnboxRailLineUpdated(
               data.line_patch as Partial<ReceivingLineRow> & { id: number },

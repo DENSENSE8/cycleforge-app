@@ -1,12 +1,13 @@
 /**
  * Receiving-line rail selection occupancy.
  *
- * Same cardinality idea as `selection-occupancy.ts` (orders), but receiving has
- * no compare pane in this wave and splits Incoming (1 → existing
- * `detail:incoming` inspector) from Unbox History (1-row left-click →
- * `detail:history` triage) from batch (2+ → `detail:receiving-line-batch`).
+ * Same rule as `selection-occupancy.ts` (orders): slot-table selection stays on
+ * the table. Incoming 1-check / Unbox History batch no longer claim
+ * `RightRailHost`. Record open is dblclick / Enter / left-click triage, not
+ * checkbox cardinality.
  *
- * Reuses `normalizeRailSelection` so id hygiene stays one place.
+ * Reuses `normalizeRailSelection` so id hygiene stays one place. Occupant ids
+ * stay reserved so old registrars do not invent a fourth id.
  */
 
 import { normalizeRailSelection } from '@/lib/right-rail/selection-occupancy';
@@ -40,38 +41,17 @@ type ReceivingRailOccupancy =
 /**
  * | surface   | selected | kind |
  * |-----------|----------|------|
- * | either    | 0        | none |
- * | incoming  | 1        | inspect (`detail:incoming`) |
- * | incoming  | 2+       | attention (batch shell) |
- * | lines     | 1        | attention (batch shell when History inspect closed;
- * |           |          | History left-click opens `detail:history` outside
- * |           |          | this helper) |
- * | lines     | 2+       | attention (batch shell) |
+ * | either    | any      | none |
  *
- * Incoming 1-check must open `detail:incoming` (ReceivingDashboard wires
- * selectedRows → setIncomingDetails); the batch shell never claims Incoming 1.
+ * Record open is dblclick / Enter (Incoming) or History left-click triage —
+ * not a check-set. The batch shell never claims the slot.
  */
 export function resolveReceivingRailOccupancy(
   ids: readonly (number | string | null | undefined)[],
-  surface: ReceivingRailSurface,
+  _surface: ReceivingRailSurface,
 ): ReceivingRailOccupancy {
-  const lineIds = normalizeRailSelection(ids);
-
-  if (lineIds.length === 0) return { kind: 'none' };
-
-  if (surface === 'incoming' && lineIds.length === 1) {
-    return {
-      kind: 'inspect',
-      occupantId: RECEIVING_RAIL_OCCUPANT_ID.inspect,
-      lineIds: [lineIds[0]!],
-    };
-  }
-
-  return {
-    kind: 'attention',
-    occupantId: RECEIVING_RAIL_OCCUPANT_ID.attention,
-    lineIds,
-  };
+  normalizeRailSelection(ids);
+  return { kind: 'none' };
 }
 
 export function isReceivingRailBatchActive(

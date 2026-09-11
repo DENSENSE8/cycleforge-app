@@ -41,6 +41,12 @@
 
 import { useCallback, useSyncExternalStore } from 'react';
 import { safeRandomUUID } from '@/lib/safe-uuid';
+import {
+  faceFromConsultStance,
+  type ConsultPresentation,
+  type ConsultStance,
+  EMPTY_CONSULT_PRESENTATION,
+} from '@/lib/counter/consult-stance';
 import type {
   BuybackPayload,
   KioskCartLine,
@@ -58,6 +64,8 @@ interface KioskSessionSnapshot {
   lines: KioskCartLine[];
   activeCommand: KioskCommandId;
   face: KioskFace;
+  consultStance: ConsultStance;
+  presentation: ConsultPresentation;
   /**
    * When staff manually flips to customer (or back), orientation auto-enter
    * must not fight them until they clear the override.
@@ -71,6 +79,8 @@ interface KioskSessionSnapshot {
   customerPhone: string;
   customerName: string;
   customerEmail: string;
+  /** Street address for intake + receipt — optional until the customer is on file. */
+  customerAddress: string;
   /** Waiting-for-card started-at (ms). Null when not awaiting Terminal. */
   awaitingCardSinceMs: number | null;
   /**
@@ -90,12 +100,15 @@ const INITIAL: KioskSessionSnapshot = {
   lines: [],
   activeCommand: 'retail',
   face: 'staff',
+  consultStance: 'work',
+  presentation: { ...EMPTY_CONSULT_PRESENTATION },
   faceManualOverride: false,
   pickupPrefill: null,
   buybackImeiPrefill: null,
   customerPhone: '',
   customerName: '',
   customerEmail: '',
+  customerAddress: '',
   awaitingCardSinceMs: null,
   sharedSessionId: null,
   sharedVersion: 0,
@@ -117,6 +130,8 @@ export interface KioskSharedWriter {
   addLine(line: KioskCartLine): void | Promise<void>;
   updateLine(id: string, patch: Partial<Omit<KioskCartLine, 'id' | 'type'>>): void | Promise<void>;
   removeLine(id: string): void | Promise<void>;
+  setConsultStance?(stance: ConsultStance): void | Promise<void>;
+  setPresentation?(presentation: ConsultPresentation): void | Promise<void>;
 }
 
 let sharedWriter: KioskSharedWriter | null = null;
@@ -161,6 +176,7 @@ export const kioskSessionStore = {
       customerPhone: '',
       customerName: '',
       customerEmail: '',
+      customerAddress: '',
       awaitingCardSinceMs: null,
       pickupPrefill: null,
       buybackImeiPrefill: null,
@@ -172,15 +188,33 @@ export const kioskSessionStore = {
       ...snapshot,
       activeCommand: command,
       // Command switch never clears lines — that was the silo bug.
+      // It also never resets consult stance (Work · Show · Verify).
     });
   },
-  setFace(face: KioskFace, opts?: { manual?: boolean }): void {
+  setConsultStance(stance: ConsultStance, opts?: { manual?: boolean }): void {
+    const face = faceFromConsultStance(stance);
     const manual = opts?.manual ?? false;
+    const bound = snapshot.sharedSessionId !== null;
     setSnapshot({
       ...snapshot,
+      consultStance: stance,
       face,
       faceManualOverride: manual ? true : snapshot.faceManualOverride,
     });
+    if (bound && sharedWriter?.setConsultStance) {
+      void sharedWriter.setConsultStance(stance);
+    }
+  },
+  setPresentation(presentation: ConsultPresentation): void {
+    const bound = snapshot.sharedSessionId !== null;
+    setSnapshot({ ...snapshot, presentation });
+    if (bound && sharedWriter?.setPresentation) {
+      void sharedWriter.setPresentation(presentation);
+    }
+  },
+  setFace(face: KioskFace, opts?: { manual?: boolean }): void {
+    // Orientation and legacy callers speak face; Verify is what "customer" meant.
+    kioskSessionStore.setConsultStance(face === 'staff' ? 'work' : 'verify', opts);
   },
   clearFaceManualOverride(): void {
     if (!snapshot.faceManualOverride) return;
@@ -190,12 +224,14 @@ export const kioskSessionStore = {
     phone?: string;
     name?: string;
     email?: string;
+    address?: string;
   }): void {
     setSnapshot({
       ...snapshot,
       customerPhone: fields.phone ?? snapshot.customerPhone,
       customerName: fields.name ?? snapshot.customerName,
       customerEmail: fields.email ?? snapshot.customerEmail,
+      customerAddress: fields.address ?? snapshot.customerAddress,
     });
   },
   setPickupPrefill(value: string | null): void {
@@ -242,6 +278,8 @@ export const kioskSessionStore = {
      * decaying wait, it just never had a real prompt to render.
      */
     awaitingCardSinceMs?: number | null;
+    consultStance?: ConsultStance;
+    presentation?: ConsultPresentation;
   }): void {
     if (
       snapshot.sharedSessionId === input.sessionId &&
@@ -260,6 +298,11 @@ export const kioskSessionStore = {
       customerPhone: '',
       sharedAwaitingSignatureLineIds: input.awaitingSignatureLineIds,
       activeCommand: input.activeCommand ?? snapshot.activeCommand,
+      consultStance: input.consultStance ?? snapshot.consultStance,
+      presentation: input.presentation ?? snapshot.presentation,
+      face: input.consultStance
+        ? faceFromConsultStance(input.consultStance)
+        : snapshot.face,
       awaitingCardSinceMs:
         input.awaitingCardSinceMs === undefined
           ? snapshot.awaitingCardSinceMs
@@ -280,6 +323,8 @@ export const kioskSessionStore = {
       ...INITIAL,
       activeCommand: snapshot.activeCommand,
       face: snapshot.face,
+      consultStance: snapshot.consultStance,
+      presentation: snapshot.presentation,
       faceManualOverride: snapshot.faceManualOverride,
     });
   },
@@ -400,6 +445,15 @@ export function useKioskSessionActions() {
       (c: KioskCommandId) => kioskSessionStore.setActiveCommand(c),
       [],
     ),
+    setConsultStance: useCallback(
+      (stance: ConsultStance, opts?: { manual?: boolean }) =>
+        kioskSessionStore.setConsultStance(stance, opts),
+      [],
+    ),
+    setPresentation: useCallback(
+      (presentation: ConsultPresentation) => kioskSessionStore.setPresentation(presentation),
+      [],
+    ),
     setFace: useCallback(
       (face: KioskFace, opts?: { manual?: boolean }) =>
         kioskSessionStore.setFace(face, opts),
@@ -410,7 +464,7 @@ export function useKioskSessionActions() {
       [],
     ),
     setCustomer: useCallback(
-      (fields: { phone?: string; name?: string; email?: string }) =>
+      (fields: { phone?: string; name?: string; email?: string; address?: string }) =>
         kioskSessionStore.setCustomer(fields),
       [],
     ),

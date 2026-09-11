@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { LocationDataMatrix } from '../LocationDataMatrix';
-import { bayHand, noPad, pad2, rackCode, rackToLocation, type RackSegments } from '@/lib/barcode-routing';
+import { formatLocationBayFace, noPad, pad2, rackCode, rackToLocation, type RackSegments } from '@/lib/barcode-routing';
 import { encodePrintMatrix } from '@/lib/qr/platform-link';
 import { useAuth } from '@/contexts/AuthContext';
 import { orgWarehouseLabel } from '@/lib/branding/letterhead';
@@ -23,12 +23,12 @@ export function RackPrintLabel({ segments, roomName, gln }: { segments: RackSegm
   return (
     <div className="label-print-card" style={labelCardStyle}>
       <div style={labelLeftStyle}>
-        <div style={labelEyebrowStyle}>{orgWarehouseLabel(user?.organizationName || 'Workspace', 'Rack')}</div>
+        <div style={labelEyebrowStyle}>{orgWarehouseLabel(user?.organizationName || 'Workspace', 'Bay')}</div>
         <div style={labelCodeStyle}>{code}</div>
         {roomName && <div style={labelRoomStyle}>{roomName}</div>}
         <div style={labelHumanStyle}>
-          Aisle {pad2(segments.aisle)} · Bay {pad2(segments.bay)} ({bayHand(segments.bay)})<br />
-          Level {noPad(segments.level)} · whole rack
+          Aisle {pad2(segments.aisle)} · {formatLocationBayFace(segments.bay)}<br />
+          Level {noPad(segments.level)} · whole bay
         </div>
       </div>
       <div style={labelQrStyle}>

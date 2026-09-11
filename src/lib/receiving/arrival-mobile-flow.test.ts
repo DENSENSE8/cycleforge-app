@@ -35,13 +35,13 @@ test('parseArrivalReceivingId', () => {
 test('mobileArrivalClassifyHref + photos handoff land on platform', () => {
   assert.equal(
     mobileArrivalClassifyHref(7, 'platform'),
-    '/m/triage?rid=7&step=platform',
+    '/m/scan?rid=7&step=platform',
   );
   const photos = mobileArrivalPhotosThenClassifyHref(7, { title: '1Z' });
   assert.match(photos, /\/m\/r\/7\/photos\?/);
   assert.match(photos, /stage=arrival_package/);
   assert.match(photos, /guided=1/);
-  assert.match(photos, /back=%2Fm%2Ftriage%3Frid%3D7%26step%3Dplatform/);
+  assert.match(photos, /back=%2Fm%2Fscan%3Frid%3D7%26step%3Dplatform/);
 });
 
 test('next / prev classify steps', () => {

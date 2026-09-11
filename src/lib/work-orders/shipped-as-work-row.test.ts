@@ -58,6 +58,26 @@ describe('shippedOrderAsWorkRow', () => {
     assert.equal(row.imageUrl, 'https://cdn.example/bike.jpg');
   });
 
+  it('maps sale amount onto the work-row price face', () => {
+    const row = shippedOrderAsWorkRow(
+      order({ id: 6, sale_amount: '49.99', currency: 'USD' }),
+    );
+    assert.equal(row.saleAmount, '49.99');
+    assert.equal(row.currency, 'USD');
+  });
+
+  it('maps catalog category and serial onto the work-row search fields', () => {
+    const row = shippedOrderAsWorkRow(
+      order({
+        id: 5,
+        catalog_category: 'Frames',
+        serial_number: 'SN-9',
+      }),
+    );
+    assert.equal(row.catalogCategory, 'Frames');
+    assert.equal(row.serialNumber, 'SN-9');
+  });
+
   it('maps is_out_of_stock onto the work-row outOfStock face', () => {
     const row = shippedOrderAsWorkRow(order({ id: 3, is_out_of_stock: true }));
     assert.equal(row.outOfStock, 'Out of stock');

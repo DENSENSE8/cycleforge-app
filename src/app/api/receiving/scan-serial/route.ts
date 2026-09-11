@@ -233,7 +233,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     // a linkage failure must never fail the scan itself.
     let matchedOrder: ReturnedSerialMatchedOrder | null = null;
     let linePatch: ReturnLinkageLinePatch | null = null;
-    if (serialResult.is_return && isReceivingReturnAutolink()) {
+    if (isReceivingReturnAutolink()) {
       try {
         const link = await linkReturnedSerial(
           {

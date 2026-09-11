@@ -494,6 +494,91 @@ test.describe('To-ship · DataTable chrome', () => {
     await expect(bar.getByTestId('data-table-copy-selection')).toHaveCount(0);
   });
 
+  test('selecting a row parks actions under the column header, delete far right', async ({
+    page,
+  }, testInfo) => {
+    const row = page.locator('[data-order-row-id]').first();
+    await expect(row).toBeVisible({ timeout: 20_000 });
+    await row.locator('[data-select-gutter] [role="checkbox"]').click();
+
+    const bar = page.getByTestId('morphing-row-action-menu');
+    await expect(bar).toBeVisible();
+    const header = page.locator('[data-grid-col-header]').first();
+    await expect(header).toBeVisible();
+
+    const headerBox = await header.boundingBox();
+    const barBox = await bar.boundingBox();
+    const rowBox = await row.boundingBox();
+    if (!headerBox || !barBox || !rowBox) throw new Error('missing geometry');
+    expect(barBox.y, 'action row is below the column header').toBeGreaterThanOrEqual(
+      headerBox.y + headerBox.height - 1,
+    );
+    expect(barBox.y, 'action row is not above the column header').toBeGreaterThan(headerBox.y);
+
+    const more = page.getByTestId('morphing-row-more-actions');
+    const trash = page.getByTestId('morphing-row-delete');
+    const moreBox = await more.boundingBox();
+    const trashBox = await trash.boundingBox();
+    if (!moreBox || !trashBox) throw new Error('missing more/delete');
+    expect(trashBox.x, 'Delete is to the right of ⋮').toBeGreaterThan(moreBox.x);
+
+    await toolbar(page).click({ position: { x: 8, y: 8 } });
+    const gridBox = await page.locator('[data-cf-grid]').first().boundingBox();
+    if (gridBox) {
+      const sideX =
+        gridBox.x > 24 ? Math.max(4, gridBox.x - 12) : gridBox.x + gridBox.width + 8;
+      await page.mouse.click(sideX, barBox.y + Math.min(8, barBox.height / 2));
+    }
+    await expect(bar, 'click-off to either side must not dismiss a selected bar').toBeVisible();
+
+    const yPort = page.getByTestId('pending-grid-body-scroll');
+    await expect(yPort).toBeVisible();
+    const barBefore = await bar.boundingBox();
+    const headerBefore = await header.boundingBox();
+    if (!barBefore || !headerBefore) throw new Error('missing geometry before row scroll');
+    const scrolled = await yPort.evaluate((el) => {
+      el.scrollTop += 400;
+      return el.scrollTop;
+    });
+    expect(scrolled, 'the row port actually moved').toBeGreaterThan(300);
+    await expect(bar, 'bar must survive virtualizing the selected row').toBeVisible();
+    const barAfter = await bar.boundingBox();
+    const headerAfter = await header.boundingBox();
+    if (!headerAfter || !barAfter) throw new Error('missing geometry after row scroll');
+    expect(barAfter.y, 'action row stays under the header while scrolling').toBeGreaterThanOrEqual(
+      headerAfter.y + headerAfter.height - 1,
+    );
+    expect(
+      Math.abs(barAfter.y - barBefore.y),
+      'action row must not ride the row port',
+    ).toBeLessThan(4);
+    expect(barAfter.y, 'action row did not scroll away with the rows').toBeLessThan(
+      headerAfter.y + headerAfter.height + barAfter.height + 8,
+    );
+
+    const tableShot = {
+      x: Math.max(0, headerBox.x),
+      y: Math.max(0, headerBox.y - 4),
+      width: headerBox.width,
+      height: Math.min(280, rowBox.y + rowBox.height - headerBox.y + 12),
+    };
+    await page.screenshot({
+      path: testInfo.outputPath('morphing-under-header.png'),
+      clip: tableShot,
+    });
+    await more.click();
+    await expect(page.getByRole('menuitem', { name: 'More information' })).toBeVisible();
+    await page.screenshot({
+      path: testInfo.outputPath('morphing-more-menu.png'),
+      clip: {
+        x: tableShot.x,
+        y: tableShot.y,
+        width: tableShot.width,
+        height: Math.min(360, (page.viewportSize()?.height ?? 900) - tableShot.y),
+      },
+    });
+  });
+
   test('KPI is gone from the desk', async ({ page }) => {
     await expect(page.locator('[data-workbench-kpi-band]')).toHaveCount(0);
     await expect(page.getByTestId('workbench-kpi-collapse-toggle')).toHaveCount(0);

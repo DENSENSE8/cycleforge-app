@@ -47,6 +47,12 @@ interface ShippedDetailsPanelProps {
   onUpdate: () => void;
   /** Inspector capability lane — not a body layout switch. */
   context?: 'dashboard' | 'queue' | 'fulfillment' | 'labels' | 'staged' | 'shipped' | 'station' | 'packer' | 'packed';
+  /**
+   * `rail` — legacy `DetailStackRailRegistrar` / `RightRailHost` (stations,
+   * search, staged embeds). `stage` — Center Lock body only; chrome lives on
+   * {@link DeskStageOverlay}.
+   */
+  surface?: 'rail' | 'stage';
 }
 
 export function ShippedDetailsPanel({
@@ -54,6 +60,7 @@ export function ShippedDetailsPanel({
   onClose,
   onUpdate,
   context = 'shipped',
+  surface = 'rail',
 }: ShippedDetailsPanelProps) {
   const router = useRouter();
   /**
@@ -280,6 +287,29 @@ export function ShippedDetailsPanel({
       </DropdownMenu>
     ) : null;
 
+  const panelBody = (
+    <div
+      className="flex h-full min-h-0 flex-col overflow-hidden"
+      data-testid="order-inspector-panel"
+      data-order-inspector=""
+    >
+      <DeskInspectorIndexShell
+        stance="index"
+        leaves={leaves}
+        activeId={navId}
+        onActiveIdChange={onNavChange}
+        indexRightSlot={moreSlot}
+        ariaLabel="Order topics"
+        testId="order-inspector-index"
+        backLabel="Back to topics"
+      />
+    </div>
+  );
+
+  if (surface === 'stage') {
+    return panelBody;
+  }
+
   return (
     <DetailStackRailRegistrar
       id="detail:order"
@@ -289,24 +319,7 @@ export function ShippedDetailsPanel({
       collapsedStrip={false}
       ariaLabel={`Order ${liveMeta.orderIdDisplay} details`}
     >
-      <div
-        className="flex h-full min-h-0 flex-col overflow-hidden"
-        data-testid="order-inspector-panel"
-        data-order-inspector=""
-      >
-        {/* No stacked chrome row — the Displays-column contract is ONE band
-            (back + title + host ⤢ / ✕). Queue position lives on the left rail. */}
-        <DeskInspectorIndexShell
-          stance="index"
-          leaves={leaves}
-          activeId={navId}
-          onActiveIdChange={onNavChange}
-          indexRightSlot={moreSlot}
-          ariaLabel="Order topics"
-          testId="order-inspector-index"
-          backLabel="Back to topics"
-        />
-      </div>
+      {panelBody}
     </DetailStackRailRegistrar>
   );
 }

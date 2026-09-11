@@ -2,16 +2,21 @@
 
 /**
  * Inventory › Locations workspace — Receiving Sheets flush recipe:
- * Band 1 tabs · Band 2 KPI (Bins) · Band 3 triage · sheet grid.
+ * Band 1 nested facet dropdown under DeskPageChrome · Band 2 KPI (Bins) ·
+ * Band 3 triage · sheet grid.
  *
- * Replaces the framed `/warehouse` desk. Nested tool tabs (Bin Tags / Racks /
+ * Replaces the framed `/warehouse` desk. Nested tools (Labels / Bays /
  * Rooms / Map) keep their bodies; any data table mounts flush.
+ *
+ * Callers: `src/app/inventory/locations/page.tsx` (L16). Existing workspace —
+ * not a second Locations surface. URL `?tab=` only; no data-file I/O.
+ * User: "Update the second tabs into a drop-down…" / "Ensure that the drop
+ * down is in the center and fixed width, same width as the other components"
  */
 
 import { useCallback, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-
 
 import { useBinsOverview, type BinsOverviewRow } from '@/hooks/useBinsOverview';
 import { BinsTable } from './BinsTable';
@@ -32,7 +37,25 @@ import {
   parseLocationsTab,
   type LocationsTab,
 } from '@/lib/inventory/locations-path';
-import { TableTabs } from '@/components/tables/TableStatusBar';
+import { LOCATION_BAY_LABEL_PLURAL } from '@/lib/barcode-routing';
+import { LABEL_BUILDER } from '@/components/barcode/label-builder-layout';
+import { ChevronDown } from '@/components/Icons';
+import { Button } from '@/design-system/primitives';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/design-system/primitives/DropdownMenu';
+import { cn } from '@/utils/_cn';
+
+/** Visible Locations facets — same set the old TableTabs painted. */
+const LOCATIONS_FACET_TABS = LOCATIONS_TABS.filter((id) => id !== 'bins');
+
+function locationsFacetLabel(id: LocationsTab): string {
+  if (id === 'bays') return LOCATION_BAY_LABEL_PLURAL;
+  return id.charAt(0).toUpperCase() + id.slice(1);
+}
 
 export function LocationsWorkspace() {
   const searchParams = useSearchParams();
@@ -48,14 +71,48 @@ export function LocationsWorkspace() {
     [pathname, router, searchParams],
   );
   const rackCodeParam = searchParams.get('code');
+  const faceTab: LocationsTab = tab === 'bins' ? 'labels' : tab;
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-col">
+      {/*
+        Second-level Locations modes — centered dropdown under DeskPageChrome.
+        Width matches the Labels/Bays builder column (`LABEL_BUILDER.contentShell`
+        + page pad) so it lines up with the step-pill track below.
+      */}
+      <div className={cn('flex-none', LABEL_BUILDER.pagePad, 'pb-0')}>
+        <div className={LABEL_BUILDER.contentShell}>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="secondary"
+                size="sm"
+                className="h-9 w-full justify-between"
+                ariaLabel="Locations tool"
+                iconRight={<ChevronDown className="h-3.5 w-3.5" />}
+              >
+                {locationsFacetLabel(faceTab)}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-0">
+              {LOCATIONS_FACET_TABS.map((id) => (
+                <DropdownMenuItem
+                  key={id}
+                  onSelect={() => setTab(id)}
+                  className={cn(id === faceTab && 'font-semibold text-text-default')}
+                >
+                  {locationsFacetLabel(id)}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
       <DashboardScrollShell className="h-full bg-transparent">
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
           {tab === 'rooms' ? <RoomDetailForm /> : null}
           {tab === 'labels' ? <LabelPrintWorkspace /> : null}
-          {tab === 'racks' ? (
+          {tab === 'bays' ? (
             rackCodeParam ? <RackDetailView code={rackCodeParam} /> : <RackLabelWorkspace />
           ) : null}
           {tab === 'map' ? <MapTabBody /> : null}
@@ -64,15 +121,6 @@ export function LocationsWorkspace() {
           ) : null}
         </div>
       </DashboardScrollShell>
-      <TableTabs
-        tabs={LOCATIONS_TABS.filter((id) => id !== 'bins').map((id) => ({
-          id,
-          label: id.charAt(0).toUpperCase() + id.slice(1),
-        }))}
-        activeTab={tab === 'bins' ? undefined : tab}
-        onTabChange={(id) => setTab(id === tab ? 'bins' : (id as LocationsTab))}
-        className="border-t border-border-soft bg-surface-card"
-      />
     </div>
   );
 }

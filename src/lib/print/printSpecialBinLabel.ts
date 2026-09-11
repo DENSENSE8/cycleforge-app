@@ -21,6 +21,7 @@ import {
 } from '@/lib/inventory/returns-test-bin-symbol';
 import { SPECIAL_BIN_BARCODES } from '@/lib/inventory/special-bins';
 import { packBenchShortLabel } from '@/lib/packing/pack-bench-display';
+import { clampLabelCopies } from '@/lib/print/labelCopies';
 
 interface SpecialBinLabelPayload {
   barcode: string;
@@ -126,30 +127,42 @@ export function specialBinPayloadToFace(payload: SpecialBinLabelPayload): LabelF
   };
 }
 
-/** Print a 2×1 flat-barcode location label (browser print shell). */
-function printFlatLocationTag(payload: SpecialBinLabelPayload): void {
-  if (typeof window === 'undefined') return;
+/** Print a 2×1 flat-barcode location label (silent USB when paired). */
+async function printFlatLocationTagJob(
+  payload: SpecialBinLabelPayload,
+  copies = 1,
+): Promise<'usb' | 'iframe' | 'skipped'> {
+  if (typeof window === 'undefined') return 'skipped';
   const face = specialBinPayloadToFace(payload);
-  if (!face.matrix.value) return;
+  if (!face.matrix.value) return 'skipped';
 
   const legacyPopup = reserveLegacyPrintPopup();
-  void import('@/lib/print/printLabel').then(({ printLabel }) => {
-    printLabel({
-      name: payload.docName?.trim() || `Bin ${face.matrix.value}`,
-      ...buildFaceInfoHtml(face),
-      dataMatrix: face.matrix,
-      hri: face.hri,
-      legacyPopup,
-    });
+  const { printLabelJob } = await import('@/lib/print/printLabel');
+  return printLabelJob({
+    name: payload.docName?.trim() || `Bin ${face.matrix.value}`,
+    ...buildFaceInfoHtml(face),
+    dataMatrix: face.matrix,
+    hri: face.hri,
+    face,
+    copies: clampLabelCopies(copies),
+    legacyPopup,
   });
 }
 
+function printFlatLocationTag(payload: SpecialBinLabelPayload, copies = 1): void {
+  void printFlatLocationTagJob(payload, copies);
+}
+
 /** Print from a warehouse overview / flyout row when it is a special barcode. */
-export function printSpecialBinLabelFromRow(row: {
-  barcode: string | null;
-  room?: string | null;
-  name?: string;
-}, returnsOverride?: string | null): boolean {
+export function printSpecialBinLabelFromRow(
+  row: {
+    barcode: string | null;
+    room?: string | null;
+    name?: string;
+  },
+  returnsOverride?: string | null,
+  copies = 1,
+): boolean {
   const code = (row.barcode ?? '').trim();
   if (!isSpecialBinBarcode(code, returnsOverride)) return false;
   printFlatLocationTag(
@@ -158,8 +171,31 @@ export function printSpecialBinLabelFromRow(row: {
       name: row.name,
       returnsOverride,
     }),
+    copies,
   );
   return true;
+}
+
+/** Awaitable bulk print — one silent USB job with TSPL PRINT N, not N dialogs. */
+export async function printSpecialBinLabelJob(
+  row: {
+    barcode: string | null;
+    room?: string | null;
+    name?: string;
+  },
+  returnsOverride?: string | null,
+  copies = 1,
+): Promise<'usb' | 'iframe' | 'skipped'> {
+  const code = (row.barcode ?? '').trim();
+  if (!isSpecialBinBarcode(code, returnsOverride)) return 'skipped';
+  return printFlatLocationTagJob(
+    specialBinFaceForBarcode(code, {
+      room: row.room,
+      name: row.name,
+      returnsOverride,
+    }),
+    copies,
+  );
 }
 
 /** Returns-bin defaults — thin wrapper over the special-bin face. */

@@ -287,6 +287,8 @@ async function runSlotTable(skipVerify) {
     `- ${SLOT_TABLE_PAINT_LAW.listingChip}`,
     `- ${SLOT_TABLE_PAINT_LAW.shipBy}`,
     `- ${SLOT_TABLE_PAINT_LAW.filter}`,
+    `- ${SLOT_TABLE_PAINT_LAW.groupParentSelect}`,
+    `- ${SLOT_TABLE_PAINT_LAW.leafDetailSelect}`,
     `- ${SLOT_TABLE_PAINT_LAW.scope}`,
   ].join('\n')
 

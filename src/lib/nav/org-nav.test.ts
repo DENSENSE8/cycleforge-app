@@ -5,7 +5,7 @@
 
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mergeOrgNav, parseNavDefinition, type NavDefinition } from './org-nav';
+import { mergeOrgNav, parseNavDefinition, applyOrgNavToPage, type NavDefinition } from './org-nav';
 import type { SidebarNavItem } from '@/lib/sidebar-navigation';
 
 const Icon = () => null as unknown as JSX.Element;
@@ -69,4 +69,34 @@ test('parseNavDefinition narrows jsonb defensively', () => {
     parseNavDefinition({ entries: [{ id: 'a', hidden: true }, { id: 42 }, { bad: 1 }, { id: 'b', order: 2, label: 'B' }] }),
     { entries: [{ id: 'a', hidden: true }, { id: 'b', order: 2, label: 'B' }] },
   );
+});
+
+test('applyOrgNavToPage stamps label and child order without minting unknown children', () => {
+  const page = {
+    id: 'outbound',
+    label: 'Shipping',
+    href: '/shipping',
+    icon: Icon,
+    kind: 'domain' as const,
+    domainGroup: 'fulfillment' as const,
+    children: [
+      { id: 'orders', label: 'To ship', icon: Icon, to: () => ({ pathname: '/shipping/orders' }) },
+      { id: 'shipped', label: 'Shipped', icon: Icon, to: () => ({ pathname: '/shipping/shipped' }) },
+    ],
+  };
+  const next = applyOrgNavToPage(page, {
+    entries: [
+      {
+        id: 'outbound',
+        label: 'Fulfillment',
+        children: [{ id: 'shipped', label: 'Out the door', order: 0 }, { id: 'ghost', hidden: true }],
+      },
+    ],
+  });
+  assert.equal(next.label, 'Fulfillment');
+  assert.deepEqual(
+    next.children?.map((c) => c.id),
+    ['shipped', 'orders'],
+  );
+  assert.equal(next.children?.[0]?.label, 'Out the door');
 });

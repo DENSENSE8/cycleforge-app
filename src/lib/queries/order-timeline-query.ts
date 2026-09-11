@@ -32,6 +32,13 @@ import type {
   UnitTimelinePhotoRow,
 } from '@/lib/timeline';
 
+/** Completed picking_sessions rows for FIND pick hops. */
+export interface OrderPickSessionRow {
+  id: number;
+  ended_at: string | null;
+  actor_name: string | null;
+}
+
 export interface OrderTimelinePayload {
   events: OrderAuditRow[];
   lifecycle: InventoryTimelineRow[];
@@ -40,6 +47,9 @@ export interface OrderTimelinePayload {
   carrierEvents: CarrierEvent[];
   rmaEvents: RmaTimelineRow[];
   unitPhotos: UnitTimelinePhotoRow[];
+  pickSessions: OrderPickSessionRow[];
+  /** PACK-station SAL — FIND only. Workplace timeline still uses audit PACK_COMPLETED. */
+  packEvents: StationActivityRow[];
 }
 
 /** The one key. `OrderDocumentsSection` invalidates this exact shape. */
@@ -63,6 +73,8 @@ export async function fetchOrderTimeline(orderId: number): Promise<OrderTimeline
     carrierEvents: (json.carrierEvents ?? []) as CarrierEvent[],
     rmaEvents: (json.rmaEvents ?? []) as RmaTimelineRow[],
     unitPhotos: (json.unitPhotos ?? []) as UnitTimelinePhotoRow[],
+    pickSessions: (json.pickSessions ?? []) as OrderPickSessionRow[],
+    packEvents: (json.packEvents ?? []) as StationActivityRow[],
   };
 }
 

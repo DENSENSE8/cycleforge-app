@@ -44,7 +44,7 @@ describe('compound slot faces', () => {
     assert.equal(compoundSlotFaceFor('id'), 'code');
     assert.equal(compoundSlotFaceFor('tracking'), 'code');
     assert.equal(compoundSlotFaceFor('text'), 'plain');
-    assert.equal(compoundSlotFaceFor('person'), 'plain');
+    assert.equal(compoundSlotFaceFor('person'), 'person');
     assert.equal(compoundSlotFaceFor(undefined), 'plain');
   });
 });

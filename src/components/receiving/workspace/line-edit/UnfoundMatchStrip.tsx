@@ -73,6 +73,7 @@ import {
   StackedRowIdentity,
 } from '@/components/ui/StackedRowIdentity';
 import { toast } from '@/lib/toast';
+import { returnOrderImportedCopy, returnOrderLineFill } from '@/lib/receiving/return-order-imported';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
@@ -498,7 +499,27 @@ function OrderSearchRow({
           toast.error(data?.error || `No shipped order “${orderId}” to link`);
           return;
         }
-        toast.success(`Linked order ${data.matched_order?.order_id ?? orderId} as a return`);
+        const mo = data.matched_order as
+          | { order_id?: string | null; product_title?: string | null; sku?: string | null; account_source?: string | null }
+          | undefined;
+        const copy = returnOrderImportedCopy({
+          orderId: String(mo?.order_id ?? orderId),
+          productTitle: mo?.product_title,
+          sku: mo?.sku,
+          platform: mo?.account_source,
+        });
+        toast.success(copy.title, { description: copy.description });
+        if (data.line_patch?.id && mo?.order_id) {
+          dispatchUnboxRailLineUpdated({
+            id: data.line_patch.id,
+            ...returnOrderLineFill({
+              orderId: String(mo.order_id),
+              productTitle: mo.product_title,
+              sku: mo.sku,
+              platform: mo.account_source,
+            }),
+          });
+        }
         // The server returns the exact row patch (type→RETURN, listing, carton
         // source, order#, status). Apply it optimistically so the accordion /
         // table / rail flip within a frame — the old field-less

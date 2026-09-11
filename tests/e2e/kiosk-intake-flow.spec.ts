@@ -131,23 +131,32 @@ async function fillWhenHydrated(field: Locator, value: string): Promise<void> {
   }).toPass({ timeout: 15_000 });
 }
 
-/** Drive the tablet's on-screen pairing flow on the proven `/kiosk` welcome floor. */
-async function pairViaUi(page: Page, code: string): Promise<void> {
-  await page.goto('/kiosk');
-  await page.getByRole('button', { name: /set up this tablet/i }).click();
-  await expect(page.getByRole('heading', { name: /pair this tablet/i })).toBeVisible();
-  await page.getByPlaceholder(/setup code/i).fill(code);
-  await page.getByRole('button', { name: /pair tablet/i }).click();
-  await expect(page.getByRole('heading', { name: /how can we help/i })).toBeVisible();
+/** Dogfood autopair lands on the catalog trail (command dropdown + All products). */
+async function waitForKioskCatalog(page: Page): Promise<void> {
+  await expect(page.getByTestId('kiosk-command-menu')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId('kiosk-catalog-trail')).toBeVisible();
+  await expect(page.getByTestId('kiosk-catalog-trail').getByTestId('kiosk-command-menu')).toBeVisible();
 }
 
-/** Pair on `/kiosk/v2` (landscape shell) — unpaired devices auto-route to pair via settings 401. */
-async function pairViaUiV2(page: Page, code: string): Promise<void> {
+/** Open the trail command menu and pick Repair / Sales / Buyback / Pickup. */
+async function selectKioskCommand(
+  page: Page,
+  command: 'repair' | 'sales' | 'buyback' | 'pickup',
+): Promise<void> {
+  await page.getByTestId('kiosk-command-menu').click();
+  await page.getByTestId(`kiosk-command-${command}`).click();
+}
+
+/** Open `/kiosk` — same catalog shell as `/kiosk/v2` (no welcome tiles). */
+async function pairViaUi(page: Page, _code: string): Promise<void> {
+  await page.goto('/kiosk');
+  await waitForKioskCatalog(page);
+}
+
+/** Open `/kiosk/v2` landscape shell. */
+async function pairViaUiV2(page: Page, _code: string): Promise<void> {
   await page.goto('/kiosk/v2');
-  await expect(page.getByRole('heading', { name: /pair this tablet/i })).toBeVisible();
-  await page.getByPlaceholder(/setup code/i).fill(code);
-  await page.getByRole('button', { name: /pair tablet/i }).click();
-  await expect(page.getByTestId('kiosk-mode-spine')).toBeVisible();
+  await waitForKioskCatalog(page);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -591,7 +600,7 @@ const TABLET_FACTORS: ReadonlyArray<{ name: string; descriptor: Record<string, u
 
 for (const factor of TABLET_FACTORS) {
   test.describe(`Kiosk tablet UI — ${factor.name}`, () => {
-    test('pair on-screen, then open a live service tile on /kiosk', async ({
+    test('pair on-screen, then land on the catalog shell on /kiosk', async ({
       request,
       browser,
       baseURL,
@@ -601,16 +610,16 @@ for (const factor of TABLET_FACTORS) {
       try {
         await pairViaUi(page, code);
 
-        await expect(page.getByRole('heading', { name: /how can we help/i })).toBeVisible();
-        await expect(page.getByRole('button', { name: /repair drop-off/i })).toBeVisible();
-        await expect(page.getByRole('button', { name: /buy \/ sell/i })).toBeVisible();
+        await expect(page.getByRole('heading', { name: /how can we help/i })).toHaveCount(0);
+        await expect(page.getByTestId('kiosk-catalog-category')).toBeVisible();
+        await expect(page.getByTestId('kiosk-shell-header')).toHaveCount(0);
       } finally {
         await context.close();
         await revokeDevice(request, deviceId);
       }
     });
 
-    test('landscape shell on /kiosk/v2: mode spine + catalog rail', async ({
+    test('landscape shell on /kiosk/v2: trail command menu + utilities', async ({
       request,
       browser,
       baseURL,
@@ -620,21 +629,24 @@ for (const factor of TABLET_FACTORS) {
       try {
         await pairViaUiV2(page, code);
 
-        // Default collapsed icon rail — Catalog + products keep the floor.
-        const spine = page.getByTestId('kiosk-mode-spine');
-        await expect(spine).toBeVisible();
-        await expect(spine).toHaveAttribute('data-spine-expanded', 'false');
+        await expect(page.getByTestId('kiosk-command-menu')).toBeVisible();
+        await expect(page.getByTestId('kiosk-mode-spine')).toHaveCount(0);
+        await expect(page.getByTestId('kiosk-spine-toggle')).toHaveCount(0);
+        await expect(page.getByTestId('kiosk-utility-spine')).toHaveCount(0);
         await expect(page.getByTestId('kiosk-spine-search')).toHaveCount(0);
-        await expect(spine.getByText('Repair', { exact: true })).toHaveCount(0);
-        await expect(page.getByRole('heading', { name: /catalog/i })).toBeVisible();
-        await expect(page.getByRole('heading', { name: /all (repairs|items)/i })).toBeVisible();
+        await expect(page.getByTestId('kiosk-catalog-search')).toBeVisible();
+        await expect(page.getByTestId('kiosk-catalog-trail')).toBeVisible();
+        await expect(page.getByTestId('kiosk-catalog-category')).toBeVisible();
+        await expect(page.getByTestId('kiosk-catalog-nav')).toHaveCount(0);
+        await expect(page.getByRole('button', { name: /^go back$/i })).toHaveCount(0);
+        await expect(page.getByTestId('kiosk-catalog-search').getByPlaceholder(/search all products/i)).toBeVisible();
+        await expect(page.getByRole('heading', { name: /catalog/i })).toHaveCount(0);
+        await expect(page.getByRole('heading', { name: /all (repairs|items)/i })).toHaveCount(0);
         await expect(page.locator('[class*="fixed"][class*="bottom-0"]')).toHaveCount(0);
 
-        await expect(page.getByRole('tablist', { name: /kiosk commands/i })).toBeVisible();
-        await expect(page.getByRole('tab', { name: /repair drop-off/i })).toBeVisible();
-        // Right utility spine: cart glyph on top, paperwork under it. Panels are
-        // closed at rest — the glyph is the toggle.
-        await expect(page.getByTestId('kiosk-utility-spine')).toBeVisible();
+        await expect(page.getByRole('tablist', { name: /kiosk commands/i })).toHaveCount(0);
+
+        await expect(page.getByTestId('kiosk-catalog-trail').getByTestId('kiosk-utility-cart')).toBeVisible();
         await expect(page.getByTestId('kiosk-cart-ledger')).toHaveCount(0);
         await page.getByTestId('kiosk-utility-cart').click();
         await expect(page.getByTestId('kiosk-cart-ledger')).toBeVisible();
@@ -644,77 +656,79 @@ for (const factor of TABLET_FACTORS) {
         await page.getByTestId('kiosk-utility-paperwork').click();
         await expect(page.getByTestId('kiosk-paperwork-panel')).toHaveCount(0);
 
-        // Triage is the third slot — an empty ticket is itself a blocker.
-        await page.getByTestId('kiosk-utility-triage').click();
-        await expect(page.getByTestId('kiosk-triage-panel')).toBeVisible();
-        await expect(page.getByTestId('kiosk-triage-item').first()).toBeVisible();
-        // Picking a command returns the centre to the work surface — a panel
-        // must never stay parked over the thing the operator just chose to do.
-        await page.getByRole('tab', { name: /repair drop-off/i }).click();
-        await expect(page.getByTestId('kiosk-triage-panel')).toHaveCount(0);
+        await expect(page.getByTestId('kiosk-consult-stance-rail')).toBeVisible();
+        await expect(page.getByTestId('kiosk-consult-stance-menu')).toBeVisible();
+        await page.getByTestId('kiosk-consult-stance-menu').click();
+        await expect(page.getByTestId('kiosk-consult-stance-work')).toBeVisible();
+        await expect(page.getByTestId('kiosk-consult-stance-show')).toBeVisible();
+        await expect(page.getByTestId('kiosk-consult-stance-verify')).toBeVisible();
+        await page.keyboard.press('Escape');
+
+        // Trail order: stance left of paperwork left of cart (cart far-right).
+        const trail = page.getByTestId('kiosk-catalog-trail').filter({ visible: true });
+        const stanceBox = (await trail.getByTestId('kiosk-consult-stance-menu').boundingBox())!;
+        const paperworkBox = (await trail.getByTestId('kiosk-utility-paperwork').boundingBox())!;
+        const cartBox = (await trail.getByTestId('kiosk-utility-cart').boundingBox())!;
+        expect(stanceBox.x).toBeLessThan(paperworkBox.x);
+        expect(paperworkBox.x).toBeLessThan(cartBox.x);
+
+        await page.getByTestId('kiosk-command-menu').click();
+        await expect(page.getByTestId('kiosk-command-repair')).toBeVisible();
+        await expect(page.getByTestId('kiosk-command-sales')).toBeVisible();
+        await expect(page.getByTestId('kiosk-command-buyback')).toBeVisible();
+        await expect(page.getByTestId('kiosk-command-pickup')).toBeVisible();
+        await expect(page.getByTestId('kiosk-spine-exit')).toBeVisible();
+        await page.keyboard.press('Escape');
+
+        await page.getByTestId('kiosk-utility-cart').click();
+        await expect(page.getByTestId('kiosk-cart-ledger')).toBeVisible();
+        await selectKioskCommand(page, 'repair');
+        await expect(page.getByTestId('kiosk-cart-ledger')).toHaveCount(0);
         await expect(page.getByTestId('kiosk-work-surface')).toBeVisible();
 
-        await page.getByTestId('kiosk-spine-toggle').click();
-        await expect(spine).toHaveAttribute('data-spine-expanded', 'true');
-        await expect(page.getByTestId('kiosk-spine-search')).toBeVisible();
-        await expect(spine.getByText('Repair', { exact: true })).toBeVisible();
-        await expect(spine.getByText('Retail', { exact: true })).toBeVisible();
-        await expect(spine.getByText('Buyback', { exact: true })).toBeVisible();
-        await expect(spine.getByText('Pickup', { exact: true })).toBeVisible();
+        await selectKioskCommand(page, 'sales');
+        await expect(page.getByTestId('kiosk-catalog-search')).toBeVisible();
+        await expect(page.getByTestId('kiosk-catalog-trail').getByTestId('kiosk-utility-cart')).toBeVisible();
 
-        // Command switch must NOT confirm / clear the cart session.
-        await page.getByRole('tab', { name: /buy \/ sell|retail/i }).click();
-        await expect(page.getByRole('heading', { name: /all items/i })).toBeVisible();
-        await expect(page.getByTestId('kiosk-utility-spine')).toBeVisible();
-
-        await page.getByRole('tab', { name: /order pickup/i }).click();
+        await selectKioskCommand(page, 'pickup');
         await expect(page.getByRole('heading', { name: /^pickup$/i })).toBeVisible();
         await expect(page.getByText(/find your order/i)).toBeVisible();
         await expect(page.getByRole('button', { name: /look up order/i })).toBeVisible();
 
-        await page.getByTestId('kiosk-spine-toggle').click();
-        await expect(spine).toHaveAttribute('data-spine-expanded', 'false');
-        await expect(page.getByTestId('kiosk-spine-search')).toHaveCount(0);
-        await expect(page.getByRole('tab', { name: /order pickup/i })).toBeVisible();
+        await expect(page.getByTestId('kiosk-command-menu')).toBeVisible();
+        await expect(page.getByTestId('kiosk-mode-spine')).toHaveCount(0);
+        await expect(page.getByRole('heading', { name: /^pickup$/i })).toBeVisible();
 
-        // Face toggles are gone from the chrome — orientation (or Esc) owns the flip.
         await expect(page.getByTestId('kiosk-show-customer')).toHaveCount(0);
         await expect(page.getByTestId('kiosk-return-staff')).toHaveCount(0);
-        await expect(page.getByTestId('kiosk-utility-spine')).toBeVisible();
+        await expect(page.getByTestId('kiosk-utility-spine')).toHaveCount(0);
       } finally {
         await context.close();
         await revokeDevice(request, deviceId);
       }
     });
 
-    test('an unpaired tablet can open the pairing screen on /kiosk', async ({
+    test('an unpaired tablet still opens the catalog shell on /kiosk', async ({
       browser,
       baseURL,
     }) => {
       const { context, page } = await newTabletPage(browser, baseURL!, factor.descriptor);
       try {
         await page.goto('/kiosk');
-        await page.getByRole('button', { name: /set up this tablet/i }).click();
-        await expect(page.getByRole('heading', { name: /pair this tablet/i })).toBeVisible();
-        await expect(page.getByPlaceholder(/setup code/i)).toBeVisible();
+        await waitForKioskCatalog(page);
+        await expect(page.getByRole('heading', { name: /how can we help/i })).toHaveCount(0);
       } finally {
         await context.close();
       }
     });
 
-    test('a bad setup code shows a teaching error, not a pair', async ({ browser, baseURL }) => {
+    test('a bad setup code is not a pairing UI on /kiosk', async ({ browser, baseURL }) => {
       const { context, page } = await newTabletPage(browser, baseURL!, factor.descriptor);
       try {
         await page.goto('/kiosk');
-        await page.getByRole('button', { name: /set up this tablet/i }).click();
-        await expect(page.getByRole('heading', { name: /pair this tablet/i })).toBeVisible();
-
-        // 8+ chars so it passes the client length gate and actually POSTs → 404.
-        await page.getByPlaceholder(/setup code/i).fill('bogus-code-123');
-        await page.getByRole('button', { name: /pair tablet/i }).click();
-        await expect(page.getByText(/invalid or expired/i)).toBeVisible();
-
-        await expect(page.getByRole('heading', { name: /pair this tablet/i })).toBeVisible();
+        await waitForKioskCatalog(page);
+        await expect(page.getByRole('heading', { name: /pair this tablet/i })).toHaveCount(0);
+        await expect(page.getByRole('heading', { name: /how can we help/i })).toHaveCount(0);
       } finally {
         await context.close();
       }
@@ -731,8 +745,6 @@ test.describe('Settings → Kiosk devices (manager surface)', () => {
     page,
   }) => {
     const label = uniqueLabel('E2E Settings');
-    // The KioskDevicesSection revoke uses window.confirm — auto-accept it.
-    page.on('dialog', (d) => void d.accept());
 
     await page.goto('/settings?section=devices');
 
@@ -748,10 +760,11 @@ test.describe('Settings → Kiosk devices (manager surface)', () => {
     await expect(row).toBeVisible();
     await expect(row.getByText(/awaiting pairing/i)).toBeVisible();
 
-    // Revoke it from the row → status flips to Revoked and the action disappears.
-    await row.getByRole('button', { name: /revoke/i }).click();
+    // Trailing Revoke → stage-overlay confirm (not window.confirm).
+    await row.getByRole('button', { name: /^revoke$/i }).click();
+    await page.getByRole('button', { name: /confirm revoke/i }).click();
     await expect(row.getByText(/revoked/i)).toBeVisible();
-    await expect(row.getByRole('button', { name: /revoke/i })).toHaveCount(0);
+    await expect(row.getByRole('button', { name: /^revoke$/i })).toHaveCount(0);
   });
 });
 
@@ -795,7 +808,7 @@ async function signOn(page: Page): Promise<void> {
  * state the issue, fill the customer block, sign, and put the line in the cart.
  */
 async function buildRepairLine(page: Page, customer: { name: string; phone: string }): Promise<void> {
-  await page.getByRole('tab', { name: /repair drop-off/i }).click();
+  await selectKioskCommand(page, 'repair');
 
   // The repair catalog is the live `-RS` projection; take whatever the first
   // priced service is rather than pinning a SKU that the store may retire.
@@ -881,8 +894,8 @@ test.describe('Kiosk v2 — customer happy paths (iPad landscape)', () => {
       // is that the SESSION survives, not that the column is visible. The shell
       // publishes it as `data-cart-empty`, which is chrome-independent.
       const shell = page.getByTestId('kiosk-shell');
-      for (const command of [/buy \/ sell|retail/i, /order pickup/i, /repair drop-off/i]) {
-        await page.getByRole('tab', { name: command }).click();
+      for (const command of ['sales', 'pickup', 'repair'] as const) {
+        await selectKioskCommand(page, command);
         await expect(shell).toHaveAttribute('data-cart-empty', 'false');
         await expect(page.getByTestId('kiosk-work-surface')).toBeVisible();
       }
@@ -901,9 +914,8 @@ test.describe('Kiosk v2 — customer happy paths (iPad landscape)', () => {
       await editor.getByTestId('kiosk-line-done').click();
       await expect(editor).toHaveCount(0);
 
-      // TRIAGE — a clear ticket says so; the badge and the list agree.
-      await page.getByTestId('kiosk-utility-triage').click();
-      await expect(page.getByTestId('kiosk-triage-panel')).toBeVisible();
+      // Stance rail stays on the far-right column (Work · Show · Verify).
+      await expect(page.getByTestId('kiosk-consult-stance-rail')).toBeVisible();
 
       // DELETE — void the whole ticket (two-tap confirm).
       await page.getByTestId('kiosk-utility-cart').click();
@@ -952,7 +964,7 @@ test.describe('Kiosk v2 — customer happy paths (iPad landscape)', () => {
     const { context, page } = await newTabletPage(browser, baseURL!, TABLET);
     try {
       await pairViaUiV2(page, code);
-      await page.getByRole('tab', { name: /order pickup/i }).click();
+      await selectKioskCommand(page, 'pickup');
 
       const pane = page.getByTestId('kiosk-pickup-pane');
       await expect(pane).toBeVisible();
@@ -970,7 +982,7 @@ test.describe('Kiosk v2 — customer happy paths (iPad landscape)', () => {
       await revokeDevice(request, deviceId);
     }
   });
-  test('rail glyphs swap the CENTER stage — never a drawer over the work', async ({
+  test('utility glyphs swap the CENTER stage — never a drawer over the work', async ({
     request,
     browser,
     baseURL,
@@ -982,30 +994,28 @@ test.describe('Kiosk v2 — customer happy paths (iPad landscape)', () => {
       await pairViaUiV2(page, code);
 
       const work = page.getByTestId('kiosk-work-surface');
-      const spine = page.getByTestId('kiosk-utility-spine');
+      const trail = page.getByTestId('kiosk-catalog-trail').filter({ visible: true });
       await expect(work).toBeVisible();
+      await expect(trail).toBeVisible();
       await page.screenshot({ path: 'test-results/kiosk-center-1-catalog.png', fullPage: false });
 
-      const spineBox = (await spine.boundingBox())!;
+      const viewport = page.viewportSize()!;
 
       for (const [slot, panelId, shot] of [
         ['cart', 'kiosk-cart-ledger', 'kiosk-center-2-cart.png'],
         ['paperwork', 'kiosk-paperwork-panel', 'kiosk-center-3-paperwork.png'],
-        ['triage', 'kiosk-triage-panel', 'kiosk-center-4-triage.png'],
       ] as const) {
         await page.getByTestId(`kiosk-utility-${slot}`).click();
         const panel = page.getByTestId(panelId);
         await expect(panel).toBeVisible();
+        await expect(page.getByTestId('kiosk-catalog-trail').filter({ visible: true })).toBeVisible();
+        await expect(page.getByTestId('kiosk-catalog-trail').filter({ visible: true }).getByTestId('kiosk-utility-cart')).toBeVisible();
 
-        // 1. It REPLACED the work surface — a drawer would leave it on screen.
         await expect(work).toBeHidden();
 
-        // 2. It occupies the centre stage, not a ~320px strip pinned to the
-        //    right edge: it must start left of the rail by much more than a
-        //    drawer would, and end where the rail begins.
         const box = (await panel.boundingBox())!;
-        expect(box.width).toBeGreaterThan(600);
-        expect(Math.abs(box.x + box.width - spineBox.x)).toBeLessThan(4);
+        expect(box.width).toBeGreaterThan(viewport.width * 0.85);
+        expect(box.x).toBeLessThan(24);
 
         // 3. Nothing floats: the panel is in flow, so the page never scrolls
         //    horizontally and no overlay sits above the work.
@@ -1018,9 +1028,9 @@ test.describe('Kiosk v2 — customer happy paths (iPad landscape)', () => {
       }
 
       // Toggling the active glyph returns the centre to the work surface.
-      await page.getByTestId('kiosk-utility-triage').click();
+      await page.getByTestId('kiosk-utility-paperwork').click();
       await expect(work).toBeVisible();
-      await expect(page.getByTestId('kiosk-triage-panel')).toHaveCount(0);
+      await expect(page.getByTestId('kiosk-paperwork-panel')).toHaveCount(0);
     } finally {
       await context.close();
       await revokeDevice(request, deviceId);

@@ -53,7 +53,13 @@ function useScanHistorySelection(): number | null {
   useEffect(() => {
     const handlePreview = (e: Event) => {
       const detail = (e as CustomEvent<UpNextPreviewPayload>).detail;
-      setSelectedOrderId(detail && detail.kind === 'order' ? detail.order.id : null);
+      setSelectedOrderId(
+        detail?.kind === 'order'
+          ? detail.order.id
+          : detail?.kind === 'find' && detail.sel.entityType === 'order'
+            ? detail.sel.id
+            : null,
+      );
     };
     const handleActive = (e: Event) => {
       const detail = (e as CustomEvent<{ activeOrder: ActiveStationOrder } | null>).detail;
@@ -140,7 +146,7 @@ export function ShippingStaffScanHistoryRail({
       onSelect={(row) => {
         const order = techRecordToPreviewOrder(row);
         dispatchUpNextPreview(
-          selectedOrderId === order.id ? null : { kind: 'order', order },
+          selectedOrderId === order.id ? null : { kind: 'find', sel: { entityType: 'order', id: order.id } },
         );
       }}
       getStatusDot={getTechRecordStatusDot}

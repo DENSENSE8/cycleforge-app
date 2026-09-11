@@ -15,6 +15,7 @@ import {
   getInboxChannelName,
   getPhoneBridgeChannelName,
   getPackerBridgeChannelName,
+  getStaffPrintBridgeChannelName,
   getStaffStationBridgeChannelName,
   getScanLogChannelName,
   getDbChannelPrefix,
@@ -75,6 +76,7 @@ async function createTokenRequest(req: NextRequest, ctx: AuthContext) {
   const inboxOwn = getInboxChannelName(orgId, staffId);
   const phoneOwn = getPhoneBridgeChannelName(orgId, staffId);
   const packerOwn = getPackerBridgeChannelName(orgId, staffId);
+  const printOwn = getStaffPrintBridgeChannelName(orgId, staffId);
   const staffStationOwn = getStaffStationBridgeChannelName(orgId, staffId);
   const scanLogOwn = getScanLogChannelName(orgId, staffId);
 
@@ -98,6 +100,7 @@ async function createTokenRequest(req: NextRequest, ctx: AuthContext) {
     [inboxOwn]: ['subscribe', 'publish'],
     [phoneOwn]: ['subscribe', 'publish'],
     [packerOwn]: ['subscribe', 'publish'],
+    [printOwn]: ['subscribe', 'publish'],
     [staffStationOwn]: ['subscribe', 'publish'],
     [scanLogOwn]: ['subscribe', 'publish'],
   };

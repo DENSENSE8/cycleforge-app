@@ -75,8 +75,18 @@ export function useShippedFilterActions(basePath?: string) {
     replaceWith((p) => {
       const from = toISODate(next?.from);
       const to = toISODate(next?.to ?? next?.from);
-      from ? p.set('dateFrom', from) : p.delete('dateFrom');
-      to ? p.set('dateTo', to) : p.delete('dateTo');
+      if (!from) {
+        p.delete('dateFrom');
+        p.delete('dateTo');
+        p.delete('shippedWeekOffset');
+        p.set('allDates', '1');
+        return;
+      }
+      p.delete('allDates');
+      p.delete('shippedWeekOffset');
+      p.set('dateFrom', from);
+      if (to) p.set('dateTo', to);
+      else p.delete('dateTo');
     });
   }, [replaceWith]);
 
@@ -87,6 +97,8 @@ export function useShippedFilterActions(basePath?: string) {
   const clearAll = useCallback(() => {
     replaceWith((p) => {
       ['exceptions', 'carrier', 'statusCategory', 'testedBy', 'packedBy', 'dateFrom', 'dateTo', 'staff'].forEach((k) => p.delete(k));
+      p.set('allDates', '1');
+      p.delete('shippedWeekOffset');
     });
   }, [replaceWith]);
 

@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import { routeScan } from '@/lib/barcode-routing';
 import {
   isSpecialBinBarcode,
+  printSpecialBinLabelJob,
   returnsBinPayloadToFace,
   specialBinFaceForBarcode,
   specialBinPayloadToFace,
@@ -39,6 +40,13 @@ describe('specialBinPayloadToFace', () => {
   it('scanned matrix routes as a bin', () => {
     const face = specialBinPayloadToFace(specialBinFaceForBarcode('UNSORTED'));
     assert.equal(routeScan(face.matrix.value)?.type, 'bin');
+  });
+});
+
+describe('printSpecialBinLabelJob', () => {
+  it('skips structured aisle/bay codes', async () => {
+    const result = await printSpecialBinLabelJob({ barcode: 'A0101101' });
+    assert.equal(result, 'skipped');
   });
 });
 

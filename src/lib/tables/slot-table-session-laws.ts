@@ -45,11 +45,15 @@ export const SLOT_TABLE_SESSION_LAWS: readonly SlotTableSessionLaw[] = [
     eval: 'slot-table',
   },
   {
-    id: 'dates.order-hover-order-date',
-    date: '2026-09-05',
-    ruling: 'DATES top line hover is Order date. Hash glyph. Do not swap the glyph when the row is late.',
+    // Gate: importers = slot-table session-law tripwire + eval:cohort.
+    // API: none. Schema: SessionLaw id rename. User: "implement 1-4" Start date
+    // agnosticism — never Order date on non-order peers.
+    id: 'dates.start-hover-start-date',
+    date: '2026-09-11',
+    ruling:
+      'DATES top line hover default is Start date (portable), not Order date. Hash glyph. Family tips that lead with Last seen / Enrolled / Ordered / … own the chip. startedHover is the Hash SoT parallel to delayTip.',
     file: 'src/components/tables/compound/compound-row-model.ts',
-    mustMatch: "export const COMPOUND_DATES_ORDER_HOVER = 'Order date'",
+    mustMatch: "export const COMPOUND_DATES_START_HOVER = 'Start date'",
     eval: 'slot-table',
   },
   {
@@ -111,9 +115,9 @@ export const SLOT_TABLE_SESSION_LAWS: readonly SlotTableSessionLaw[] = [
     id: 'header.no-frozen-sort-prop',
     date: '2026-09-04',
     ruling:
-      'Outbound OrdersGridHost lanes share ?sort= via useQueueDisplaySort. Passing sort= froze Shipped / Review / Staged headers.',
+      'Outbound DataTable lanes share ?sort= via useQueueDisplaySort. Passing sort= froze Shipped / Review / Staged headers.',
     file: 'src/lib/tables/slot-table-cohort.test.ts',
-    mustMatch: 'must not freeze OrdersGridHost sort',
+    mustMatch: 'must not freeze DataTable sort',
     eval: 'slot-table',
   },
   {
@@ -159,6 +163,52 @@ export const SLOT_TABLE_SESSION_LAWS: readonly SlotTableSessionLaw[] = [
       'Compound-row parity must require the Dates track. Omitting it let a family drop Dates and stay green.',
     file: 'tests/e2e/compound-row-parity.spec.ts',
     mustMatch: "'fulfillment', 'thumb', 'item', 'dates', 'state'",
+    eval: 'slot-table',
+  },
+  {
+    id: 'chrome.action-row-below-header',
+    date: '2026-09-10',
+    ruling:
+      'Row verbs sit below the column header in an empty:hidden in-flow slot. Never cover the column labels.',
+    file: 'src/design-system/components/grid/LedgerGrid.tsx',
+    mustMatch: 'empty:hidden',
+    eval: 'slot-table',
+  },
+  {
+    id: 'chrome.notes-inline-one-row',
+    date: '2026-09-10',
+    ruling:
+      'Desktop Notes morphs the action row into a one-row composer. BottomSheet only on /m/ URLs.',
+    file: 'src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx',
+    mustMatch: 'isMorphingMobileUrl',
+    eval: 'slot-table',
+  },
+  {
+    id: 'chrome.oos-shortage-identity',
+    date: '2026-09-10',
+    ruling:
+      'Out of stock is shortage identity (SKU/kit part), not a note. Hover is the product card. Toast View Pending → SHIPPING_SHORTAGE_PATH. Kit components come from sku_relationships (then sku_kit_parts) — never Zoho -P parsing.',
+    file: 'src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx',
+    mustMatch: 'composition',
+    eval: 'slot-table',
+  },
+  {
+    id: 'staff.combo-is-assignee-combobox',
+    date: '2026-09-11',
+    ruling:
+      'Every staff combobox is AssigneeCombobox via StageStaffAssignPopover. Rows paint StaffAvatar + name. Never SearchableSelectField for people.',
+    file: 'src/components/tables/compound/StageStaffAssignPopover.tsx',
+    mustMatch: 'StaffAvatar',
+    eval: 'slot-table',
+  },
+  {
+    id: 'staff.morphing-scan-out-uses-stage-popover',
+    date: '2026-09-11',
+    ruling:
+      'Scan-out staff on the Morphing action strip is StageStaffAssignPopover, not SearchableSelectField.',
+    file: 'src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx',
+    mustMatch: 'StageStaffAssignPopover',
+    mustNotMatch: 'SearchableSelectField',
     eval: 'slot-table',
   },
 ] as const;

@@ -42,6 +42,8 @@ export function KioskTriagePanel({
     customerPhone: session.customerPhone,
     customerName: session.customerName,
     customerEmail: session.customerEmail,
+    // Callers: KioskCartLedger blockers. User: "intake their information like name, email address, phone number, address"
+    customerAddress: session.customerAddress,
   });
   const blockers = items.filter((i) => i.severity === 'block');
   const warnings = items.filter((i) => i.severity === 'warn');

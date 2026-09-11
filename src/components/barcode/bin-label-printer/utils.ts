@@ -1,4 +1,4 @@
-import { bayHand, noPad, pad2 } from '@/lib/barcode-routing';
+import { formatLocationBayFace, noPad, pad2 } from '@/lib/barcode-routing';
 
 interface PartialSegments {
   zone?: string;
@@ -34,7 +34,7 @@ export function partialCode(s: PartialSegments): string {
 export function humanReadable(s: PartialSegments): string {
   const out: string[] = [];
   if (s.aisle != null) out.push(`Aisle ${pad2(s.aisle)}`);
-  if (s.bay != null) out.push(`Bay ${pad2(s.bay)} (${bayHand(s.bay)})`);
+  if (s.bay != null) out.push(formatLocationBayFace(s.bay));
   if (s.level != null) out.push(`Level ${noPad(s.level)}`);
   if (s.position != null) out.push(`Position ${pad2(s.position)}`);
   return out.join(' → ') || 'Pick a room above';

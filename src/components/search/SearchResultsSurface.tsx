@@ -19,7 +19,7 @@ import { useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEven
 import { AnimatePresence, motion } from '@/design-system/motion';
 import { Search } from '@/components/Icons';
 import { SearchResultRow, type SearchRowDensity } from '@/components/search/SearchResultRow';
-import { MonitorListBlock } from '@/design-system/components/monitor';
+import { SearchHitLine } from '@/components/search/SearchHitLine';
 import { EmptyState } from '@/design-system/primitives';
 import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
 import {
@@ -40,8 +40,6 @@ import {
   isSearchSelActive,
   type SearchSelection,
 } from '@/lib/search/search-selection';
-import { cornerClass } from '@/design-system/tokens/radius';
-import { cn } from '@/utils/_cn';
 
 export interface SearchResultsSurfaceProps {
   query: string;
@@ -212,15 +210,7 @@ export function SearchResultsSurface({
   const hasRefine = Boolean(etype || hstat);
   const showResults = state.status === 'done' && displayHits.length > 0;
   const isCompact = density === 'compact' || density === 'dropdown';
-  /**
-   * `dropdown` means "I am mounted inside a host that already owns a surface" —
-   * the header dropdown and the `/search` stage browse panel. `MonitorListBlock`
-   * draws its own `rounded-xl border bg-surface-card`, which is right on a
-   * Monitor rollup and is a card-inside-a-card here. Both hosts were migrated to
-   * flush shells; the nested one survived because it lives a component down,
-   * where their guards do not read.
-   */
-  const listChrome = density === 'dropdown' ? 'flush' : 'card';
+
 
   function isActive(hit: AiSearchHit): boolean {
     if (activeSel) return isSearchSelActive(activeSel, hit);
@@ -230,15 +220,15 @@ export function SearchResultsSurface({
   return (
     <div className={className}>
       {state.status === 'done' && state.hits.length > 0 && (
-        <p className="px-3 pt-2 pb-1.5 text-role-eyebrow uppercase text-text-soft">
+        <p className="px-4 pt-3 pb-1.5 text-role-caption text-text-soft">
           {hasRefine
             ? `${displayHits.length} of ${state.hits.length === 50 ? '50+' : state.hits.length}`
             : state.hits.length === 50
               ? '50+'
               : state.hits.length}{' '}
           result
-          {(hasRefine ? displayHits.length : state.hits.length) === 1 ? '' : 's'} for “{q}”
-          {sort === 'date' ? ' · by date' : ''}
+          {(hasRefine ? displayHits.length : state.hits.length) === 1 ? '' : 's'}
+          {sort === 'date' ? ' by date' : ''}
         </p>
       )}
 
@@ -246,11 +236,7 @@ export function SearchResultsSurface({
         <EmptyState
           icon={<Search className="h-6 w-6 text-text-faint" />}
           title="Search everything, from anywhere"
-          description="Orders, serial units, receiving cartons, SKUs, repairs and FBA shipments — one query."
-          className={cn(
-            'mx-3 mt-2 border border-dashed border-border-soft bg-surface-canvas py-10',
-            cornerClass('flush'),
-          )}
+          description="Orders, serial units, receiving cartons, SKUs, repairs and FBA shipments. One query."
         />
       )}
 
@@ -259,23 +245,20 @@ export function SearchResultsSurface({
           tone="danger"
           title="Search failed"
           description="Try again in a moment."
-          className={cn(
-            'mx-3 mt-2 border border-dashed border-border-danger bg-surface-danger py-8',
-            cornerClass('flush'),
-          )}
         />
       )}
-      {/* Absolute zero hits: header dropdown owns feedback — no page EmptyState. */}
+      {state.status === 'done' && state.hits.length === 0 && q && (
+        <EmptyState
+          icon={<Search className="h-6 w-6 text-text-faint" />}
+          title="No matches"
+          description="Nothing in orders, units, cartons, SKUs, repairs or FBA matched this query."
+        />
+      )}
       {state.status === 'done' && state.hits.length > 0 && displayHits.length === 0 && q && (
         <EmptyState
           icon={<Search className="h-6 w-6 text-text-faint" />}
           title="No results match these filters"
-          description="Clear a refine chip or pick a broader type / status."
-          className={cn(
-            'mx-3 border border-dashed border-border-soft bg-surface-canvas',
-            cornerClass('flush'),
-            isCompact ? 'py-6' : 'py-8',
-          )}
+          description="Clear a refine chip or pick a broader type or status."
         />
       )}
 
@@ -287,20 +270,24 @@ export function SearchResultsSurface({
             transition={transition}
             className="pb-4"
           >
-            <MonitorListBlock chrome={listChrome}>
+            <ul className="divide-y divide-border-hairline" data-testid="search-index">
               {displayHits.map((hit) => (
                 <li key={`${hit.entityType}:${hit.id}`}>
-                  <SearchResultRow
-                    hit={hit}
-                    density={density}
-                    onNavigate={onSelectHit}
-                    active={isActive(hit)}
-                    showJourneyAction={showJourneyAction}
-                    packout={hit.entityType === 'order' ? packoutById?.[hit.id] : undefined}
-                  />
+                  {isCompact ? (
+                    <SearchResultRow
+                      hit={hit}
+                      density={density}
+                      onNavigate={onSelectHit}
+                      active={isActive(hit)}
+                      showJourneyAction={showJourneyAction}
+                      packout={hit.entityType === 'order' ? packoutById?.[hit.id] : undefined}
+                    />
+                  ) : (
+                    <SearchHitLine hit={hit} active={isActive(hit)} onNavigate={onSelectHit} />
+                  )}
                 </li>
               ))}
-            </MonitorListBlock>
+            </ul>
           </motion.div>
         ) : null}
       </AnimatePresence>

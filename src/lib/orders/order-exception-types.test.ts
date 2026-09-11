@@ -3,6 +3,9 @@ import { describe, it } from 'node:test';
 import {
   ORDER_EXCEPTION_BLOCKER_LABEL,
   deriveOrderExceptionBlockers,
+  exceptionPairingResolveCount,
+  exceptionRailMetaCount,
+  sortExceptionQueueRows,
 } from '@/lib/orders/order-exception-types';
 
 /** Paired with an item number — the only facts this queue cares about. */
@@ -63,5 +66,37 @@ describe('deriveOrderExceptionBlockers', () => {
         `${blocker} needs a label`,
       );
     }
+  });
+});
+
+describe('sortExceptionQueueRows', () => {
+  it('counts this order plus unpaired siblings', () => {
+    assert.equal(exceptionPairingResolveCount({ siblingUnpairedCount: 0 }), 1);
+    assert.equal(exceptionPairingResolveCount({ siblingUnpairedCount: 3 }), 4);
+  });
+
+  it('puts the banner sibling count on the rail meta, not order qty', () => {
+    assert.equal(
+      exceptionRailMetaCount({ siblingUnpairedCount: 51, quantity: '1' }),
+      '51',
+    );
+    assert.equal(
+      exceptionRailMetaCount({ siblingUnpairedCount: 0, quantity: '3' }),
+      '3',
+    );
+    assert.equal(
+      exceptionRailMetaCount({ siblingUnpairedCount: 0, quantity: null }),
+      '1',
+    );
+  });
+
+  it('pins missing item numbers, then highest pair-once fan-out', () => {
+    const sorted = sortExceptionQueueRows([
+      { id: 1, blockers: ['unpaired'] as const, siblingUnpairedCount: 0 },
+      { id: 2, blockers: ['unpaired'] as const, siblingUnpairedCount: 5 },
+      { id: 3, blockers: ['unpaired', 'no_item_number'] as const, siblingUnpairedCount: 0 },
+      { id: 4, blockers: ['unpaired'] as const, siblingUnpairedCount: 5 },
+    ]);
+    assert.deepEqual(sorted.map((r) => r.id), [3, 4, 2, 1]);
   });
 });

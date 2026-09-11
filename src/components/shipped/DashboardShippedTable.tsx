@@ -2,7 +2,7 @@
 
 /**
  * Dashboard · Shipped — week-bucketed packer-log list on the shared outbound
- * spreadsheet ({@link OrdersGridHost} / LedgerGrid). Day bands and swimlane
+ * spreadsheet (`useOrdersSpreadsheet` / DataTable). Day bands and swimlane
  * board are retired; Date is a per-row column.
  *
  * Rebuilt 2026-08-29 (Phase 4a, `docs/todo/one-sheet-table-sot-PLAN.md`). The
@@ -36,11 +36,11 @@ import { useShippedTableFilters } from '@/components/shipped/dashboard-table/use
 import { useShippedTableRecords } from '@/components/shipped/dashboard-table/useShippedTableRecords';
 import { useShippedTableGrouping } from '@/components/shipped/dashboard-table/useShippedTableGrouping';
 import { useShippedDetailsSelection } from '@/components/shipped/dashboard-table/useShippedDetailsSelection';
-import { useShippedPeriodControls } from '@/components/shipped/dashboard-table/useShippedPeriodControls';
 import { useRecordCursorKeyboard } from '@/hooks/useRecordCursorKeyboard';
 import { ShippedTableEmptyState } from '@/components/shipped/dashboard-table/ShippedTableEmptyState';
-import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
-import type { DataTableFilterOption } from '@/components/tables/DataTable';
+import { DataTable, type DataTableFilterOption } from '@/components/tables/DataTable';
+import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
+import { OrderStatusTrailStage } from '@/components/orders/OrderStatusTrailOverlay';
 import { useShippedFilterActions } from '@/components/shipping/shipped-filter/useShippedFilterActions';
 import {
   CARRIERS,
@@ -48,6 +48,11 @@ import {
   TYPE_ITEMS,
   type ShippedTypeFilter,
 } from '@/components/shipping/shipped-filter/shipped-filter-constants';
+import {
+  parseISODate,
+  shippedWeekFilterActive,
+  toISODate,
+} from '@/lib/shipping/shipped-filter/shipped-filter-params';
 import type {
   CarrierCode,
   ShipmentStatusCategory,
@@ -96,18 +101,20 @@ export function DashboardShippedTable({
 }: DashboardShippedTableProps = {}) {
   const filters = useShippedTableFilters({ packedBy, testedBy, lockedOutboundStatus });
   const { query, derivedRecords, searchMeta, pagination } = useShippedTableRecords(filters);
-  const { orderedRecords, totalCount } = useShippedTableGrouping(derivedRecords);
+  const { orderedRecords } = useShippedTableGrouping(derivedRecords);
   const { handleRowClick } = useShippedDetailsSelection();
 
-  // The OrdersGridHost below publishes the cursor (it owns grouping + folds);
+  // The spreadsheet hook publishes the cursor (it owns grouping + folds);
   // this lane only turns the keyboard on. `embedded` still gates it so a nested
   // mount does not bind a second ambient listener.
   useRecordCursorKeyboard({ enabled: !embedded, scope: 'record' });
 
   const refine = useShippedFilterActions();
-  const period = useShippedPeriodControls(filters);
-  const periodRange = period.activeRange ?? filters.weekRange;
-  const { weekOffset, setPeriodWeek } = filters;
+  const weekFilterActive = shippedWeekFilterActive({
+    allDates: filters.allDates,
+    hasDateRange: filters.hasDateRange,
+    anyCarrierFilter: filters.anyCarrierFilter,
+  });
 
   const byId = useMemo(() => {
     const map = new Map<number, DerivedPackerRecord>();
@@ -194,13 +201,42 @@ export function DashboardShippedTable({
    * gets the live range and the setter, and free-form selection lands in the
    * same two params a deep link uses.
    */
-  const dateMenu = useMemo(
-    () => ({ range: refine.dateRange, onRangeChange: refine.setDateRange }),
-    [refine.dateRange, refine.setDateRange],
-  );
+  const dateMenu = useMemo(() => {
+    const range = filters.allDates
+      ? undefined
+      : filters.hasDateRange
+        ? {
+            from: parseISODate(filters.dateFrom),
+            to: parseISODate(filters.dateTo),
+          }
+        : weekFilterActive
+          ? {
+              from: parseISODate(filters.weekRange.startStr),
+              to: parseISODate(filters.weekRange.endStr),
+            }
+          : undefined;
+    return {
+      range,
+      onRangeChange: (next: { from?: Date; to?: Date } | undefined) => {
+        if (!next?.from) {
+          filters.clearPeriod();
+          return;
+        }
+        const from = toISODate(next.from);
+        const to = toISODate(next.to ?? next.from);
+        if (from && to) filters.setPeriodRange(from, to);
+      },
+    };
+  }, [filters, weekFilterActive]);
 
   const shippedFilter = useMemo(() => {
     const options: DataTableFilterOption[] = [
+      {
+        id: 'period:week',
+        group: 'Period',
+        label: 'This week',
+        active: weekFilterActive,
+      },
       {
         id: 'attention',
         group: 'Needs attention',
@@ -231,6 +267,11 @@ export function DashboardShippedTable({
     return {
       options,
       onToggle: (id: string) => {
+        if (id === 'period:week') {
+          if (weekFilterActive) filters.clearPeriod();
+          else filters.setPeriodWeek(0);
+          return;
+        }
         if (id === 'attention') return refine.toggleExceptions();
         const [kind, value] = id.split(':');
         if (kind === 'type') {
@@ -249,39 +290,46 @@ export function DashboardShippedTable({
           );
         }
       },
-      onClearAll: () => refine.clearAll(),
+      onClearAll: () => {
+        refine.clearAll();
+        filters.clearPeriod();
+      },
     };
-  }, [refine]);
+  }, [filters, refine, weekFilterActive]);
+
+  const sheet = useOrdersSpreadsheet({
+    ariaLabel: 'Shipped orders',
+    records: gridRecords,
+    loading: query.isLoading,
+    searchValue: filters.search,
+    onOpenRecord,
+    onCloseRecord: () => undefined,
+    onClearSearch: filters.clearSearch,
+    emptyMessage: 'No shipped orders',
+    firstRunEmpty: idleEmptyNode,
+    searchEmptyTitle,
+    searchResultLabel,
+    clearSearchLabel,
+    queueMode: 'shipped',
+    selectMode,
+    selectionScope: DASHBOARD_ORDERS_SELECTION_SCOPE,
+    railSelection,
+    'data-testid': 'shipped-grid-body',
+  });
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-canvas">
       {/* The period picker sits with the rows it scopes, not on a chrome row. */}
       <div className="relative flex min-h-0 min-w-0 flex-1 flex-col" data-testid="column-table-body">
-        <OrdersGridHost
-          ariaLabel="Shipped orders"
-          records={gridRecords}
-          loading={query.isLoading}
-          search={{ value: filters.search, onChange: filters.setSearch, placeholder: 'Filter shipped…' }}
-          filter={shippedFilter}
-          dateMenu={dateMenu}
-          exportFilename="shipped.csv"
-          searchValue={filters.search}
-          onClearSearch={filters.clearSearch}
-          emptyMessage="No shipped orders"
-          firstRunEmpty={idleEmptyNode}
-          searchEmptyTitle={searchEmptyTitle}
-          searchResultLabel={searchResultLabel}
-          clearSearchLabel={clearSearchLabel}
-          totalCount={totalCount}
-          queueMode="shipped"
-          sort="newest"
-          selectMode={selectMode}
-          selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
-          railSelection={railSelection}
-          data-testid="shipped-grid-body"
-          onOpenRecord={onOpenRecord}
-          onCloseRecord={() => undefined}
-        />
+        <OrderStatusTrailStage>
+          <DataTable
+            {...sheet}
+            search={{ value: filters.search, onChange: filters.setSearch, placeholder: 'Filter shipped…' }}
+            filter={shippedFilter}
+            dateMenu={dateMenu}
+            exportFilename="shipped.csv"
+          />
+        </OrderStatusTrailStage>
       </div>
       {loadMoreFooter}
     </div>

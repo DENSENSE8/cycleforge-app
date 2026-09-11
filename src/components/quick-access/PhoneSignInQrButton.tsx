@@ -14,17 +14,21 @@ import {
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { cn } from '@/utils/_cn';
 import { HEADER_ICON_BTN_CLASS, TOP_CHROME_ICON_GLYPH } from '@/components/layout/header-shell';
+import { COMPOSER_SHELL_CORNER } from '@/design-system/tokens/radius';
 
 /**
  * The scan overlay on its own, controlled — encodes the mobile sign-in URL
  * (`<origin>/m/signin`) so staff can point a phone camera at it and open the
  * site without typing anything.
  *
- * Split out from {@link PhoneSignInQrButton} 2026-08-01 so the two surfaces
- * that offer this action can share ONE dialog: the mobile header keeps the icon
- * trigger below, and Settings → Workstation drives this from a "This device"
- * row. Re-typing the QR markup at the second call site would have been the
- * page-local fork the house rules ban.
+ * This is a **deep link**, not a pairing / device-code session. It does not
+ * mint a token and does not sign the phone in. Real desk↔phone pairing lives
+ * on `/signin` ({@link SignInQrPanel} → `/m/qr-auth?token=…`).
+ *
+ * Split out from {@link PhoneSignInQrButton} 2026-08-01 so every surface that
+ * offers this action shares ONE dialog: Settings → Workstation and the desk
+ * spine account ⋯. Re-typing the QR markup at a second call site would have
+ * been the page-local fork the house rules ban.
  */
 export function PhoneSignInQrDialog({
   open,
@@ -43,7 +47,12 @@ export function PhoneSignInQrDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[min(20rem,calc(100vw-2rem))] max-w-none items-center text-center">
+      <DialogContent
+        className={cn(
+          'w-[min(20rem,calc(100vw-2rem))] max-w-none items-center overflow-hidden text-center',
+          COMPOSER_SHELL_CORNER,
+        )}
+      >
         <DialogHeader className="items-center space-y-1 text-center">
           <DialogDescription className="text-role-micro uppercase tracking-widest text-text-soft">
             Scan to open on your phone

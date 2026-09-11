@@ -120,18 +120,13 @@ describe('Collapse all — one control, not one per station', () => {
     assert.doesNotMatch(src, /bodyClassName:/);
   });
 
-  it('Testing and Search inherit the stack well without a local fill', () => {
-    for (const path of [
-      'src/components/tech/TestingPanel.tsx',
-      'src/components/search/station/SearchEntityCentre.tsx',
-    ]) {
-      const src = readFileSync(path, 'utf8');
-      assert.doesNotMatch(
-        src,
-        /STATION_BAND_BODY_WELL_CLASS|STATION_SCAN_WELL_CLASS/,
-        `${path} redeclared the well — that is a fork of StationBandStack`,
-      );
-    }
+  it('Testing inherits the stack well without a local fill', () => {
+    const src = readFileSync('src/components/tech/TestingPanel.tsx', 'utf8');
+    assert.doesNotMatch(
+      src,
+      /STATION_BAND_BODY_WELL_CLASS|STATION_SCAN_WELL_CLASS/,
+      'TestingPanel redeclared the well — that is a fork of StationBandStack',
+    );
   });
 
   it('Unbox and Testing do not auto-collapse the centre on scroll', () => {

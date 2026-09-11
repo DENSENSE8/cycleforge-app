@@ -5,15 +5,16 @@
  *   - `activeOrderPane` — a scanned/active order, dispatched by
  *     `useStationTestingController` via `tech-active-order-changed` (null clears
  *     it, returning the pane to the history table).
- *   - `previewOrder` — an Up Next card click (`tech-upnext-preview`); lower
- *     priority than the active order, which clears any standing preview.
+   *   - `previewSel` — an Up Next card click or scan-bar preview (`tech-upnext-preview`);
+   *     lower priority than the active order, which clears any standing preview.
+   *     Preview paints the FIND column (`SearchFindPreviewEmbed`), not Displays.
  * Extracted from TechDashboard; behaviour is unchanged.
  */
 
 import { useEffect, useState } from 'react';
 import type { ActiveStationOrder, ResolvedProductManual } from '@/hooks/useStationTestingController';
-import type { Order } from '@/components/station/upnext/upnext-types';
 import type { UpNextPreviewPayload } from '@/utils/events';
+import type { SearchSelection } from '@/lib/search/search-selection';
 
 export interface TechActiveOrderPane {
   activeOrder: ActiveStationOrder;
@@ -24,8 +25,8 @@ export interface TechActiveOrderPane {
 export interface TechOrderPanes {
   activeOrderPane: TechActiveOrderPane | null;
   setActiveOrderPane: React.Dispatch<React.SetStateAction<TechActiveOrderPane | null>>;
-  previewOrder: Order | null;
-  setPreviewOrder: React.Dispatch<React.SetStateAction<Order | null>>;
+  previewSel: SearchSelection | null;
+  setPreviewSel: React.Dispatch<React.SetStateAction<SearchSelection | null>>;
 }
 
 export function useTechOrderPanes(): TechOrderPanes {
@@ -34,7 +35,7 @@ export function useTechOrderPanes(): TechOrderPanes {
   const [activeOrderPane, setActiveOrderPane] = useState<TechActiveOrderPane | null>(null);
   // Populated by `tech-upnext-preview` (a tech clicked an Up Next card). Lower
   // priority than the active order: if both are set, active wins.
-  const [previewOrder, setPreviewOrder] = useState<Order | null>(null);
+  const [previewSel, setPreviewSel] = useState<SearchSelection | null>(null);
 
   // Active-order changes from the sidebar controller. Null clears the pane back
   // to history; a resolved active order also clears any standing preview.
@@ -42,7 +43,7 @@ export function useTechOrderPanes(): TechOrderPanes {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<TechActiveOrderPane | null>).detail;
       setActiveOrderPane(detail || null);
-      if (detail) setPreviewOrder(null);
+      if (detail) setPreviewSel(null);
     };
     window.addEventListener('tech-active-order-changed', handler);
     return () => window.removeEventListener('tech-active-order-changed', handler);
@@ -52,15 +53,17 @@ export function useTechOrderPanes(): TechOrderPanes {
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<UpNextPreviewPayload>).detail;
-      if (detail && detail.kind === 'order') {
-        setPreviewOrder(detail.order);
+      if (detail?.kind === 'find') {
+        setPreviewSel(detail.sel);
+      } else if (detail?.kind === 'order') {
+        setPreviewSel({ entityType: 'order', id: detail.order.id });
       } else {
-        setPreviewOrder(null);
+        setPreviewSel(null);
       }
     };
     window.addEventListener('tech-upnext-preview', handler);
     return () => window.removeEventListener('tech-upnext-preview', handler);
   }, []);
 
-  return { activeOrderPane, setActiveOrderPane, previewOrder, setPreviewOrder };
+  return { activeOrderPane, setActiveOrderPane, previewSel, setPreviewSel };
 }

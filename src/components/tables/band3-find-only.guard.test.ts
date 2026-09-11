@@ -49,6 +49,8 @@ const NO_DESK_PEEK_SURFACES: Readonly<Record<string, string>> = {
   // A personal task is fully expressed by its row — the title edits in cell and
   // the checkbox completes it. A panel would hold a copy of the row.
   'my-day.today': 'A task is fully expressed by its row',
+  // An inventory event already happened — there is no record behind the row.
+  'inventory.events': 'there is no record behind the row',
 };
 
 describe('desk-peek surface law', () => {

@@ -49,6 +49,7 @@ import { publishReceivingLogChanged } from '@/lib/realtime/publish';
 import { withAuth } from '@/lib/auth/withAuth';
 import { AUDIT_ACTION, AUDIT_ENTITY } from '@/lib/audit-logs';
 import { transitionReceivingLine } from '@/lib/receiving/state-machine';
+import { advanceShortageForReceivingLines } from '@/lib/orders/shortage-inbound';
 
 // Which current statuses may advance when a match links lines (chokepoint fold,
 // §7 Step D). → MATCHED only from pre-match states; → UNBOXED additionally from
@@ -304,6 +305,12 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
             skippedLines.map((l) => `${l.id}:${l.workflow_status}`).join(', '),
         );
       }
+
+      await advanceShortageForReceivingLines(client, {
+        orgId,
+        receivingLineIds: lineIds,
+        nextWorkflow: nextStatus,
+      });
 
       // ── Create work_assignments for lines that need testing ─────────────────
       const testLines = candidateLines.filter((l) => l.needs_test && l.assigned_tech_id);

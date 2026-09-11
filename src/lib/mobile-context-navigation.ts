@@ -7,6 +7,7 @@ import {
 import {
   getActiveSettingsSection,
   resolveSettingsSectionFromPath,
+  settingsSectionRoute,
   SETTINGS_SECTION_OPTIONS as SETTINGS_REGISTRY,
   type SettingsSection,
 } from '@/components/settings/settings-sections';
@@ -35,12 +36,16 @@ export function getMobileAppTitle(
   if (!pathname) return PRODUCT_NAME;
   if (pathname === '/m/home' || pathname.startsWith('/m/home/')) return 'Home';
   if (pathname === '/m/work' || pathname.startsWith('/m/work/')) return 'Orders';
+  if (pathname === '/m/search' || pathname.startsWith('/m/search/')) return 'Find';
   if (pathname === '/m/pick' || pathname.startsWith('/m/pick/')) return 'Picks';
   if (pathname === '/m/pack' || pathname.startsWith('/m/pack/')) return 'Packing';
+  if (pathname === '/m/print' || pathname.startsWith('/m/print/')) return 'Print';
   if (pathname === '/m/checklist' || pathname.startsWith('/m/checklist/')) return 'Checklists';
   if (pathname === '/m/scan' || pathname.startsWith('/m/scan/')) return 'Scan';
+  if (pathname === '/m/id/pick' || pathname.startsWith('/m/id/pick/')) return 'Picks';
+  if (pathname === '/m/id' || pathname.startsWith('/m/id/')) return 'Scan out';
+  if (pathname === '/m/triage' || pathname.startsWith('/m/triage/')) return 'Scan';
   if (pathname === '/m/identify' || pathname.startsWith('/m/identify/')) return 'Identify';
-  if (pathname === '/m/triage' || pathname.startsWith('/m/triage/')) return 'Arrival';
   if (pathname === '/m/unbox' || pathname.startsWith('/m/unbox/')) return 'Unbox';
   if (pathname === '/m/receive' || pathname.startsWith('/m/receive/')) return 'Unbox';
   if (pathname === '/m/receiving' || pathname.startsWith('/m/receiving/')) {
@@ -93,9 +98,13 @@ const SETTINGS_REQUIRES: Partial<Record<SettingsSection, string>> = {
   roles: 'admin.manage_roles',
   organization: 'admin.view',
   billing: 'admin.view',
+  ai: 'admin.view',
   integrations: 'admin.view',
   catalog: 'admin.manage_features',
+  stations: 'sku_stock.manage',
+  receiving: 'admin.view',
   sessions: 'admin.view_sessions',
+  devices: 'walk_in.enroll_kiosk',
   audit: 'admin.view_logs',
 };
 
@@ -142,13 +151,11 @@ export function getMobileContextRowConfig(
         options: visible,
         onSelect: (id) => {
           const def = SETTINGS_REGISTRY.find((s) => s.id === id);
-          if (def?.href) {
-            navigate(def.href);
+          if (def?.group === 'Personal') {
+            navigate(`/settings/me#${def.id}`);
             return;
           }
-          const params = new URLSearchParams(searchParams.toString());
-          params.set('section', id);
-          navigate(`/settings?${params.toString()}`);
+          navigate(settingsSectionRoute(id as SettingsSection));
         },
       };
     }

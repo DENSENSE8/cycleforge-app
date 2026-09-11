@@ -12,7 +12,6 @@ import {
 } from '@/lib/tables/field-catalog/catalog-link';
 import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
-import { GRID_FILL_COLUMN } from '@/design-system/components/grid';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
 import type { ColumnType } from '@/lib/tables/table-columns';
 
@@ -27,10 +26,12 @@ export type CatalogLinkGridColumnKey =
   /** Compound (two-row) presentation tracks — see {@link CATALOG_LINK_COMPOUND_COLUMNS}. */
   | 'thumb'
   | 'fulfillment'
+  | 'dates'
   | 'state'
-  | 'amount'
   | 'actions'
   | '_fill'
+  /** Legacy URL `?colsort=amount` bookmark — not a chrome track. */
+  | 'amount'
   /** Materialized slot tracks — keys are slot indices, never field ids. */
   | `status:${number}`
   | `subtitle:${number}`;
@@ -58,68 +59,10 @@ export interface CatalogLinkGridColumn extends SlotTrackFields {
  * `select` is a structural gutter with no verb of its own — a click opens the
  * catalog-link rail. `item` (the listing number) is the reading track and is
  * hideable because the compound mount already carries it as fulfillment.
+ *
+ * The hand flat array (`CATALOG_LINK_GRID_COLUMNS`) is DELETED — the compound
+ * materialization below is the one column model, and the desk mounts it.
  */
-export const CATALOG_LINK_GRID_COLUMNS: readonly CatalogLinkGridColumn[] = [
-  { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
-  {
-    key: 'item',
-    width: 'minmax(12rem, 12rem)',
-    label: 'Item number',
-    type: 'id',
-    hideKey: 'item',
-    resizable: true,
-    omitCellIcon: true,
-    labelFitRem: 7,
-  },
-  {
-    key: 'source',
-    width: 'minmax(6rem, 6rem)',
-    label: 'Account',
-    type: 'external',
-    hideKey: 'source',
-    labelFitRem: 5,
-  },
-  {
-    key: 'sku',
-    width: 'minmax(8rem, 8rem)',
-    label: 'SKU',
-    type: 'id',
-    hideKey: 'sku',
-    resizable: true,
-    omitCellIcon: true,
-    labelFitRem: 4,
-  },
-  {
-    key: 'orders',
-    width: 'minmax(5.5rem, 5.5rem)',
-    label: 'Orders',
-    type: 'number',
-    align: 'end',
-    hideKey: 'orders',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'first',
-    width: 'minmax(7rem, 7rem)',
-    label: 'First seen',
-    type: 'date',
-    dateFace: 'stamp',
-    hideKey: 'first',
-    tier: 'optional',
-    labelFitRem: 6,
-  },
-  {
-    key: 'last',
-    width: 'minmax(7rem, 7rem)',
-    label: 'Last seen',
-    type: 'date',
-    dateFace: 'stamp',
-    hideKey: 'last',
-    labelFitRem: 6,
-  },
-  GRID_FILL_COLUMN,
-] as const;
-
 export function catalogLinkCompoundColumnsFor(
   layout: SlotLayout,
 ): readonly CatalogLinkGridColumn[] {
@@ -153,15 +96,22 @@ export const CATALOG_LINK_COMPOUND_COLUMNS: readonly CatalogLinkGridColumn[] =
  * `useUrlColumnSort` then refused to store — the header moved and nothing
  * happened. That is the same class of dead-header bug `queue-display-sort`
  * documents for To-Ship; it is fixed by naming the track here.
+ *
+ * Declared as the literal it always resolved to. It used to be derived by
+ * filtering the deleted `CATALOG_LINK_GRID_COLUMNS` — a sort vocabulary is not
+ * a column layout, and deriving it from a dead model kept the model alive for
+ * nothing.
  */
 const CATALOG_LINK_GRID_SORTABLE_KEYS: readonly CatalogLinkGridColumnKey[] = [
-  ...CATALOG_LINK_GRID_COLUMNS.filter((c) => c.sortable !== false && c.key !== 'select').map(
-    (c) => c.key,
-  ),
   'item',
+  'source',
+  'sku',
+  'orders',
+  'first',
+  'last',
   'fulfillment',
+  'dates',
   'state',
-  'amount',
 ];
 
 export function isCatalogLinkGridSortable(key: string): key is CatalogLinkGridColumnKey {
@@ -178,19 +128,19 @@ export function isCatalogLinkGridSortable(key: string): key is CatalogLinkGridCo
  * still names its own shape.
  */
 export const CATALOG_LINK_SORT_TYPES: Readonly<Record<string, ColumnType>> = {
+  dates: 'date',
   item: 'text',
   fulfillment: 'id',
   source: 'external',
   sku: 'id',
   orders: 'number',
-  amount: 'number',
   first: 'date',
   last: 'date',
   state: 'date',
 };
 
 export function defaultDirForCatalogLinkGridSort(key: CatalogLinkGridColumnKey): GridSortDir {
-  return key === 'last' || key === 'first' || key === 'orders' || key === 'amount' || key === 'state'
+  return key === 'last' || key === 'first' || key === 'orders' || key === 'state'
     ? 'desc'
     : 'asc';
 }

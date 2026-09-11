@@ -157,6 +157,7 @@ function factText<Row>(
   const value = resolve(row, fieldId);
   if (!value) return '';
   if (value.kind === 'value') return value.text ?? '';
+  if (value.kind === 'person') return value.name ?? '';
   // A stage step's searchable text is who did it and where — the parts the
   // operator can actually read off the cell.
   return [value.who, value.at, value.station].filter(Boolean).join(' ');

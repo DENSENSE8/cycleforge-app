@@ -23,10 +23,10 @@ export interface LabelFaceModel {
    * Layout family. `receiving` (default) = the 4-corner carton face
    * (platform·date / notes / condition·corner). `product` = the unit/testing
    * face where the product title fills a full top row, with condition·color on
-   * the bottom row and no center band. This is where receiving and product
-   * labels intentionally diverge.
+   * the bottom row and no center band. `location` = coordinate-only inventory
+   * sticker: large alphanumeric code, no room name / zone kicker / level gloss.
    */
-  kind?: 'receiving' | 'product';
+  kind?: 'receiving' | 'product' | 'location';
   /** Top-left (receiving: platform/type). For `product`, holds the full-top-row title. */
   topLeft: string;
   /** Top-right — date (receiving). Unused by `product`. */
@@ -63,17 +63,29 @@ export const LABEL_FACE_CSS =
   '.bl{flex:1 1 auto;min-width:0;font-size:9px;font-weight:900;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
   '.br{flex:0 0 auto;font-size:9px;font-weight:900;letter-spacing:0.3px;line-height:1.05;color:#000;white-space:nowrap;font-variant-numeric:tabular-nums}';
 
+/** Coordinate-only location sticker — large code, no room / zone / level gloss. */
+export const LOCATION_LABEL_FACE_CSS =
+  '.lcode{flex:1 1 auto;width:100%;min-width:0;font-size:16px;font-weight:800;font-family:ui-monospace,Menlo,Consolas,monospace;letter-spacing:-0.04em;line-height:1.05;color:#000;overflow-wrap:anywhere;word-break:break-word;display:flex;align-items:center}';
+
 /**
  * Build the info-column HTML + CSS for a label face. Feed the result straight
  * into the shared `printLabel`/`buildLabelHtml` shell along with `model.matrix`
- * and `model.hri`. Branches on `model.kind`: `product` puts the title in a full
- * top row with condition·color beneath; `receiving` keeps the 4-corner grid.
+ * and `model.hri`. Branches on `model.kind`: `location` is a single large code;
+ * `product` puts the title in a full top row with condition·color beneath;
+ * `receiving` keeps the 4-corner grid.
  */
 export function buildFaceInfoHtml(model: LabelFaceModel): {
   infoHtml: string;
   infoCss: string;
-  infoAlign: 'space-between';
+  infoAlign: 'space-between' | 'center';
 } {
+  if (model.kind === 'location') {
+    return {
+      infoHtml: `<div class="lcode">${escapeLabelHtml(model.center)}</div>`,
+      infoCss: LABEL_FACE_CSS + LOCATION_LABEL_FACE_CSS,
+      infoAlign: 'center',
+    };
+  }
   if (model.kind === 'product') {
     const infoHtml =
       `<div class="ptitle">${escapeLabelHtml(model.topLeft)}</div>` +
@@ -115,7 +127,9 @@ export function patchLabelFaceDocument(
     if (el) el.textContent = text;
   };
 
-  if (model.kind === 'product') {
+  if (model.kind === 'location') {
+    setText('.lcode', model.center);
+  } else if (model.kind === 'product') {
     setText('.ptitle', model.topLeft);
     setText('.bl', model.bottomLeft);
     setText('.br', model.bottomRight);

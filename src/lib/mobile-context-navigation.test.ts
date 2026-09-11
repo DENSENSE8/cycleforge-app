@@ -25,11 +25,15 @@ test('getMobileAppTitle resolves receiving-family route labels', () => {
 test('getMobileAppTitle resolves mobile home and assigned-orders routes', () => {
   assert.equal(getMobileAppTitle('/m/home'), 'Home');
   assert.equal(getMobileAppTitle('/m/work'), 'Orders');
+  assert.equal(getMobileAppTitle('/m/search'), 'Find');
   assert.equal(getMobileAppTitle('/m/pick'), 'Picks');
   assert.equal(getMobileAppTitle('/m/pack'), 'Packing');
+  assert.equal(getMobileAppTitle('/m/print'), 'Print');
   assert.equal(getMobileAppTitle('/m/scan'), 'Scan');
+  assert.equal(getMobileAppTitle('/m/id/scan-out/42'), 'Scan out');
+  assert.equal(getMobileAppTitle('/m/id/pick/42'), 'Picks');
   assert.equal(getMobileAppTitle('/m/checklist'), 'Checklists');
-  assert.equal(getMobileAppTitle('/m/triage'), 'Arrival');
+  assert.equal(getMobileAppTitle('/m/triage'), 'Scan');
   assert.equal(getMobileAppTitle('/m/unbox'), 'Unbox');
   assert.equal(getMobileAppTitle('/m/receiving'), 'Photo feed');
   assert.equal(

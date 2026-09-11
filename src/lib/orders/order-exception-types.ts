@@ -71,3 +71,49 @@ export function deriveOrderExceptionBlockers(facts: {
   if (!present(facts.itemNumber)) blockers.push('no_item_number');
   return blockers;
 }
+
+/**
+ * How many held orders pairing this row's item number will clear — this order
+ * plus {@link OrderExceptionRow.siblingUnpairedCount}.
+ */
+export function exceptionPairingResolveCount(
+  row: Pick<OrderExceptionRow, 'siblingUnpairedCount'>,
+): number {
+  return 1 + Math.max(0, row.siblingUnpairedCount);
+}
+
+/**
+ * Rail meta under the title: the pair-once fan-out the banner already names
+ * (`siblingUnpairedCount`), else this order's quantity (Unbox-rail shape).
+ */
+export function exceptionRailMetaCount(
+  row: Pick<OrderExceptionRow, 'siblingUnpairedCount' | 'quantity'>,
+): string {
+  const siblings = Math.max(0, row.siblingUnpairedCount);
+  if (siblings > 0) return String(siblings);
+  const n = Number(row.quantity);
+  return String(Number.isFinite(n) && n > 0 ? n : 1);
+}
+
+/**
+ * Worklist order: missing item numbers first (pairing cannot start), then
+ * highest pair-once fan-out, then newer ids. Pins impact and urgency at the
+ * top of the rail — not a "Resolves N" caption.
+ */
+export function compareExceptionQueueRows(
+  a: Pick<OrderExceptionRow, 'id' | 'blockers' | 'siblingUnpairedCount'>,
+  b: Pick<OrderExceptionRow, 'id' | 'blockers' | 'siblingUnpairedCount'>,
+): number {
+  const aNoItem = a.blockers.includes('no_item_number') ? 0 : 1;
+  const bNoItem = b.blockers.includes('no_item_number') ? 0 : 1;
+  if (aNoItem !== bNoItem) return aNoItem - bNoItem;
+  const resolve = exceptionPairingResolveCount(b) - exceptionPairingResolveCount(a);
+  if (resolve !== 0) return resolve;
+  return b.id - a.id;
+}
+
+export function sortExceptionQueueRows<T extends Pick<OrderExceptionRow, 'id' | 'blockers' | 'siblingUnpairedCount'>>(
+  rows: readonly T[],
+): T[] {
+  return [...rows].sort(compareExceptionQueueRows);
+}

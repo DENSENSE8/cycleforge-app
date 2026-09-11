@@ -136,13 +136,89 @@ export const VERB_CATALOG_MODULES = [
  * page that declares a verb fails the cohort immediately, which is the case
  * this whole module exists to prevent.
  */
-export const VERB_DECLARATION_DEBT: readonly { file: string; why: string }[] = [];
+export const VERB_DECLARATION_DEBT: readonly { file: string; why: string }[] = [
+  {
+    file: 'src/components/photos/PhotoLibraryPage.tsx',
+    why: 'Photo library mints bulk SelectionAction literals on the page instead of a family catalog. Bind keys from a media catalog; do not grow a second verb plane.',
+  },
+  {
+    file: 'src/components/tech/useTechTestingSelection.tsx',
+    why: 'Tech testing mints assign-to-me / assign-to outside the receiving verb catalog. Bind those keys on the receiving family instead of a second declaration.',
+  },
+];
 
 /**
  * `AdminTable` is gone. Settings desks and the admin SKU ops dump left it;
  * `/admin/inventory/sku/[sku]` redirects to `/inventory?sku=`. The tripwire
  * greps for the import — there is no allowlist. DataTable is the engine.
  */
+
+/**
+ * Settings / admin SKU ops still import AdminTable. DataTable is the engine;
+ * this list is shrink-only. An id leaves when that surface mounts DataTable.
+ */
+export const ADMIN_TABLE_DEBT: readonly { file: string; why: string }[] = [
+  {
+    file: 'src/app/admin/inventory/_inventory-admin/StatusSections.tsx',
+    why: 'Admin SKU ops still mounts AdminTable. Port to DataTable; this list is shrink-only.',
+  },
+  {
+    file: 'src/app/admin/inventory/_inventory-admin/TableSections.tsx',
+    why: 'Admin SKU ops still mounts AdminTable. Port to DataTable; this list is shrink-only.',
+  },
+  {
+    file: 'src/app/admin/inventory/bulk-allocate/page.tsx',
+    why: 'Admin SKU ops still mounts AdminTable. Port to DataTable; this list is shrink-only.',
+  },
+  {
+    file: 'src/app/admin/inventory/cycle-counts/[id]/page.tsx',
+    why: 'Admin SKU ops still mounts AdminTable. Port to DataTable; this list is shrink-only.',
+  },
+  {
+    file: 'src/app/admin/inventory/cycle-counts/page.tsx',
+    why: 'Admin SKU ops still mounts AdminTable. Port to DataTable; this list is shrink-only.',
+  },
+  {
+    file: 'src/app/admin/inventory/holds/page.tsx',
+    why: 'Admin SKU ops still mounts AdminTable. Port to DataTable; this list is shrink-only.',
+  },
+  {
+    file: 'src/app/admin/inventory/returns/page.tsx',
+    why: 'Admin SKU ops still mounts AdminTable. Port to DataTable; this list is shrink-only.',
+  },
+  {
+    file: 'src/app/admin/inventory/sku/[sku]/page.tsx',
+    why: 'Admin SKU ops still mounts AdminTable. Port to DataTable; this list is shrink-only.',
+  },
+  {
+    file: 'src/app/admin/inventory/throughput/page.tsx',
+    why: 'Admin SKU ops still mounts AdminTable. Port to DataTable; this list is shrink-only.',
+  },
+  {
+    file: 'src/app/reports/page.tsx',
+    why: 'Reports still mounts AdminTable. Port to DataTable; this list is shrink-only.',
+  },
+  {
+    file: 'src/app/settings/ai/page.tsx',
+    why: 'Settings AI usage still mounts AdminTable. Port to DataTable; this list is shrink-only.',
+  },
+  {
+    file: 'src/app/settings/audit/page.tsx',
+    why: 'Settings audit still mounts AdminTable. Port to DataTable; this list is shrink-only.',
+  },
+  {
+    file: 'src/app/settings/staff/StaffTable.tsx',
+    why: 'Staff directory still mounts AdminTable. Port to DataTable; this list is shrink-only.',
+  },
+  {
+    file: 'src/components/admin/sourcing/CompatibilityManagementTab.tsx',
+    why: 'Compatibility still mounts AdminTable. Port to DataTable; this list is shrink-only.',
+  },
+  {
+    file: 'src/components/settings/sections/SessionsSection.tsx',
+    why: 'Auth sessions still mounts AdminTable. Port to DataTable; this list is shrink-only.',
+  },
+];
 
 /**
  * Raw `<table>` product row lists — the same second-engine class AdminTable
@@ -162,6 +238,14 @@ export const HAND_HTML_TABLE_DEBT: readonly { file: string; why: string }[] = [
   {
     file: 'src/components/sidebar/receiving/incoming/IncomingReturnsImportStagingHost.tsx',
     why: 'Incoming returns CSV staging is a hand HTML grid. To-ship already mounts CsvImportStagingHost → DataTable / orders-import. Reuse that host (or register an incoming-import family); do not grow a third staging engine.',
+  },
+  {
+    file: 'src/design-system/components/AdminTable/AdminTable.tsx',
+    why: 'AdminTable is the second table engine settings/admin still paint. Leaves this list when every ADMIN_TABLE_DEBT mount is DataTable and this file is deleted.',
+  },
+  {
+    file: 'src/app/admin/inventory/throughput/page.tsx',
+    why: 'Throughput heatmap is a hand HTML table beside an AdminTable mount. Port the desk to DataTable; do not grow a third grid for the heatmap.',
   },
 ];
 
@@ -247,7 +331,23 @@ export const FORBIDDEN_LANE_KEY_LISTS = [
  * Named 2026-09-05 from the session-law scan. Do not grow this list to paint
  * fewer columns; hide a track with layout/data, not a per-family geometry cut.
  */
-export const COMPOUND_SKELETON_FILTER_DEBT: readonly { file: string; drops: string; why: string }[] = [];
+export const COMPOUND_SKELETON_FILTER_DEBT: readonly { file: string; drops: string; why: string }[] = [
+  {
+    file: 'src/components/inventory/events-grid/inventory-events-grid-layout.ts',
+    drops: 'dates, select',
+    why: 'Inventory events drops Dates and select after the sheet→compound port: an event has no deadline pair and no bulk verb, and the dense ceiling is 10 tracks.',
+  },
+  {
+    file: 'src/components/settings/kiosk-devices/kiosk-devices-grid-layout.ts',
+    drops: 'thumb',
+    why: 'Kiosk devices drops Image only — no photo gutter. Select and Dates stay (multi-select + last-seen/enrolled on the Hash line).',
+  },
+  {
+    file: 'src/components/settings/kiosk-slot-events/kiosk-slot-events-grid-layout.ts',
+    drops: 'dates, select',
+    why: 'Kiosk slot history drops Dates and select: a transition has no start/deadline pair and no bulk verb; occurred is a bound STATUS track. Revoke stays on kiosk-devices.',
+  },
+];
 
 export const ENGINE_OWNED_SEAMS = [
   'geometry (compound-columns.ts)',

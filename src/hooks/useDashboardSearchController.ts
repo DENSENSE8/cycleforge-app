@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useOptimisticUrlParam } from '@/hooks/useOptimisticUrlParam';
 import {
@@ -32,7 +32,9 @@ export function useDashboardSearchController() {
   const searchParams = useSearchParams();
 
   const orderView = getDashboardOrderViewFromSearch(searchParams);
-  const searchQuery = String(searchParams.get('search') || '').trim();
+  // Search is session-local. URL replacement per character causes a soft
+  // navigation/remount and clears the controlled table field.
+  const [searchQuery, setSearchQuery] = useState('');
   const shippedFilterParam = searchParams.get('shippedFilter');
   const shippedFilter: ShippedTypeFilter = useMemo(() => {
     if (shippedFilterParam === 'orders') return 'orders';
@@ -116,21 +118,7 @@ export function useDashboardSearchController() {
     shareKey: 'outbound-order-ingest',
   });
 
-  const setSearch = useCallback(async (nextValue: string) => {
-    const trimmed = nextValue.trim();
-    const current = String(searchParams.get('search') || '').trim();
-    // Always no-op when the query is unchanged. A previous version only skipped when
-    // `openOrderId` was absent; re-applying the same search (e.g. ShippedSidebar
-    // handleSearch re-running after a details panel opened) would strip `openOrderId`
-    // and immediately close ShippedDetailsPanel.
-    if (trimmed === current) return;
-
-    updateSearch((params) => {
-      if (trimmed) params.set('search', trimmed);
-      else params.delete('search');
-      params.delete('openOrderId');
-    });
-  }, [searchParams, updateSearch]);
+  const setSearch = useCallback((nextValue: string) => setSearchQuery(nextValue), []);
 
   const setOrderView = useCallback((nextView: DashboardOrderView) => {
     updateSearch((params) => {

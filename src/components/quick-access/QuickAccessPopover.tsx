@@ -82,7 +82,7 @@ export function QuickAccessPopover({
             </div>
           </div>
           <Link
-            href="/settings?section=quick-access"
+            href="/settings/me#quick-access"
             onClick={onClose}
             className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-text-faint transition hover:bg-surface-card hover:text-text-default"
             aria-label="Manage in Settings"

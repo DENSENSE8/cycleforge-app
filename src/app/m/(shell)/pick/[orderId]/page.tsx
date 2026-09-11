@@ -48,6 +48,7 @@ function PickerInner() {
     detailsExpanded, setDetailsExpanded, scanError, scanner,
     currentTask, totalTasks, doneCount, allDone,
     handleConfirmPick, handleShortPick, handleScanDecode,
+    scanRequired, scanMatched,
   } = c;
 
   // ── Render gates
@@ -115,6 +116,7 @@ function PickerInner() {
               : 'Confirm pick'
           }
           onConfirm={() => void handleConfirmPick()}
+          disabled={scanRequired && !scanMatched}
           loading={confirming}
           tone={currentIndex >= totalTasks - 1 ? 'success' : 'primary'}
           secondary={{

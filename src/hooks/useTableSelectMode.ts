@@ -6,6 +6,7 @@ import {
   emitSelectionTotal,
   onToggleAll,
 } from '@/lib/selection/table-selection';
+import { slotTableSelectableIds } from '@/lib/tables/slot-table-visible';
 import {
   clearSelection,
   extendTo,
@@ -90,11 +91,14 @@ export function useTableSelectMode<T>({
    */
   const anchorStateFor = useCallback(
     (selected: ReadonlySet<number>): SelectionAnchorState => ({
-      ids: rowsRef.current.map((r) => getIdRef.current(r)),
+      ids: [...slotTableSelectableIds(
+        scope,
+        rowsRef.current.map((r) => getIdRef.current(r)),
+      )],
       selected,
       anchorId: anchorRef.current,
     }),
-    [],
+    [scope],
   );
 
   /**
@@ -169,23 +173,27 @@ export function useTableSelectMode<T>({
     setSelectedIds((prev) => (prev.size ? new Set() : prev));
     emitSelection(scope, []);
   }, [scope, selectMode]);
-
-  // Header "Select all" / "Clear" → toggle every currently-visible row.
   useEffect(() => {
     return onToggleAll(scope, (mode) => {
       if (mode !== 'all') anchorRef.current = null;
-      setSelectedIds(
-        mode === 'all'
-          ? new Set(rowsRef.current.map((r) => getIdRef.current(r)))
-          : new Set(),
+      const ids = slotTableSelectableIds(
+        scope,
+        rowsRef.current.map((r) => getIdRef.current(r)),
       );
+      setSelectedIds(mode === 'all' ? new Set(ids) : new Set());
     });
   }, [scope]);
 
-  // Publish the selectable total so the action bar's select-all ring can fill.
-  // Zero outside select mode so a stale "all selected" never lingers.
   useEffect(() => {
-    emitSelectionTotal(scope, selectMode ? rows.length : 0);
+    emitSelectionTotal(
+      scope,
+      selectMode
+        ? slotTableSelectableIds(
+            scope,
+            rowsRef.current.map((r) => getIdRef.current(r)),
+          ).length
+        : 0,
+    );
   }, [scope, selectMode, rows.length]);
 
   return { selectedIds, toggle, selectOnly, selectEvery, clear, setMany: setManyIds, isSelected };

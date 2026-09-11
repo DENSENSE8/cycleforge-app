@@ -72,12 +72,6 @@ export interface ToShipChrome {
     onToggle: (id: string) => void;
     onClearAll: () => void;
   };
-  /**
-   * Rows behind the CURRENT narrowing — `undefined` when no server count
-   * describes it. See {@link useToShipChrome} for why that is the honest answer
-   * rather than falling back to the queue total.
-   */
-  totalCount: number | undefined;
 }
 
 export function useToShipChrome(_opts?: { blockedQueue?: boolean }): ToShipChrome {
@@ -95,49 +89,6 @@ export function useToShipChrome(_opts?: { blockedQueue?: boolean }): ToShipChrom
   const activeFacet = getToShipTriageFacetFromSearch(searchParams);
   const stage = String(searchParams.get('stage') || '').toLowerCase();
 
-  /*
-   * The denominator, and when there isn't one.
-   *
-   * The bar was handed `queueCounts.total` unconditionally, so a facet-narrowed
-   * view read "12 of 922": a count of rows the operator had just filtered away.
-   * A footer underneath then printed a SECOND, stage-aware sentence against a
-   * different denominator, and neither described the set on screen.
-   *
-   * A denominator is published only when a server count actually answers for
-   * what is rendered — one facet alone, or one stage alone. Facets and stages
-   * COMPOSE (the whole reason they are banded apart in the menu), and no
-   * endpoint counts the intersection, so that case publishes nothing and the
-   * bar prints "N rows". Same law as the today strip and the tab counts: no
-   * number beats a number that is answering a different question.
-   */
-  const facetTotal =
-    activeFacet === 'must_ship'
-      ? queueCounts?.mustShip
-      : activeFacet === 'urgent'
-        ? queueCounts?.urgent
-        : activeFacet === 'blocked'
-          ? laneTotals.blocked
-          : activeFacet === 'caged'
-            ? cagedCount
-            : undefined;
-  const stageTotal =
-    stage === 'pending'
-      ? laneTotals.pending
-      : stage === 'tested'
-        ? laneTotals.tested
-        : stage === 'packed'
-          ? (queueCounts?.byStage as { packed?: number } | undefined)?.packed
-          : undefined;
-  const facetActive = activeFacet !== 'all';
-  const stageActive = stageTotal !== undefined;
-  const narrowedTotal =
-    facetActive && stageActive
-      ? undefined // two narrowings, no count for their intersection
-      : facetActive
-        ? facetTotal
-        : stageActive
-          ? stageTotal
-          : queueCounts?.total;
 
   const replaceParams = useCallback(
     (mutate: (params: URLSearchParams) => void) => {
@@ -245,6 +196,5 @@ export function useToShipChrome(_opts?: { blockedQueue?: boolean }): ToShipChrom
       onToggle: onToggleFilter,
       onClearAll: onClearAllFilters,
     },
-    totalCount: narrowedTotal,
   };
 }

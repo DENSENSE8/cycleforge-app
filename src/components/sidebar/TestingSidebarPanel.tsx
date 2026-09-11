@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
-import { Barcode, Hash, MapPin, Package, Pencil } from '@/components/Icons';
+import { Hash, MapPin, Package, Pencil, ScanBarcode } from '@/components/Icons';
 import { SIDEBAR_GUTTER } from '@/components/layout/header-shell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { TestingScanBar } from '@/components/sidebar/receiving/TestingScanBar';
@@ -76,7 +76,7 @@ function viaAckMeta(via: ResolvedVia): { label: string; Icon: typeof MapPin; chi
       return { label: 'SKU', Icon: Pencil, chip: 'bg-yellow-50 text-yellow-700 ring-yellow-200' };
     case 'serial':
     case 'unit_id':
-      return { label: via === 'unit_id' ? 'Unit ID' : 'Serial', Icon: Barcode, chip: 'bg-emerald-50 text-emerald-700 ring-emerald-200' };
+      return { label: via === 'unit_id' ? 'Unit ID' : 'Serial', Icon: ScanBarcode, chip: 'bg-emerald-50 text-emerald-700 ring-emerald-200' };
     case 'handle':
     case 'receiving_id':
     default:

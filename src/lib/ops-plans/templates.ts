@@ -96,7 +96,7 @@ export const PLAN_TEMPLATES: Record<string, PlanTemplate> = {
         title: 'Locations & receiving',
         tasks: [
           {
-            title: 'Walk bin hierarchy with floor leads (room → rack → bin) against live locations UI',
+            title: 'Walk bin hierarchy with floor leads (room → bay → bin) against live locations UI',
             clientEventId: 'conn-adopt:loc-hierarchy',
           },
           {

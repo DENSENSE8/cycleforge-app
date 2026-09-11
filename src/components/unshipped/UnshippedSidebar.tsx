@@ -23,19 +23,14 @@ export default function UnshippedSidebar(props: UnshippedSidebarProps) {
     filterControl,
     embedded = false,
     hideSectionHeader = false,
-    searchValue = '',
   } = props;
   // ── Stage filter (fulfillment queue only) ─────────────────────────────────
   const stageParam = String(searchParams.get('stage') || 'all').toLowerCase();
 
   useEffect(() => {
     if (stageParam !== 'awaiting') return;
-    const params = new URLSearchParams();
-    const q = searchValue.trim() || searchParams.get('search')?.trim();
-    if (q) params.set('q', q);
-    const qs = params.toString();
-    router.replace(qs ? `${SHIPPING_PATH}?${qs}` : SHIPPING_PATH, { scroll: false });
-  }, [stageParam, searchValue, searchParams, router]);
+    router.replace(SHIPPING_PATH, { scroll: false });
+  }, [stageParam, router]);
 
   const containerVariants = {
     hidden: { opacity: 0 },

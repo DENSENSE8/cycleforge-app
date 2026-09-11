@@ -208,7 +208,7 @@ test('unfound carton + resolved v2 order → full link, allocation flip, promote
   assert.equal(captured.taps[0].input, undefined);
 });
 
-test('real Zoho-PO carton → allocation flip only, never reclassified', async () => {
+test('real Zoho-PO carton → line source_order_id writes, carton never reclassified', async () => {
   const { deps, calls, captured } = makeDeps({
     prior: basePrior(),
     carton: { source: 'zoho_po', zoho_purchaseorder_id: 'PO-9', source_platform: 'ebay' },
@@ -217,14 +217,17 @@ test('real Zoho-PO carton → allocation flip only, never reclassified', async (
 
   const res = await linkReturnedSerial(INPUT, ORG, deps);
 
-  assert.equal(res.linked, true); // order still resolved
-  assert.equal(res.allocationReturned, true); // orders-side truth still closed
-  assert.equal(res.promotedToFound, false); // but the PO carton is untouched
-  assert.ok(!calls.some((c) => c.sql.includes('UPDATE receiving_line')));
+  assert.equal(res.linked, true);
+  assert.equal(res.allocationReturned, true);
+  assert.equal(res.promotedToFound, false);
+  assert.ok(calls.some((c) => c.sql.includes('UPDATE receiving_line') && c.sql.includes('source_order_id')));
   assert.ok(!calls.some((c) => c.sql.includes("CASE WHEN source = 'unmatched'")));
-  assert.equal(captured.upsertReturn.length, 0);
-  assert.equal(captured.unboxUpserts.length, 0); // ineligible → no unbox stamp either
+  assert.equal(captured.upsertReturn.length, 1);
+  assert.equal(captured.upsertReturn[0].sourceOrderId, 'EBAY-123');
+  assert.equal(captured.unboxUpserts.length, 0);
   assert.equal(captured.exceptionsResolved.length, 0);
+  assert.ok(res.linePatch);
+  assert.equal(res.linePatch?.receiving_type, 'RETURN');
 });
 
 test('no prior order resolved → flags is_return only, no order import', async () => {
@@ -234,7 +237,7 @@ test('no prior order resolved → flags is_return only, no order import', async 
     allocFlipCount: 0,
   });
 
-  const res = await linkReturnedSerial(INPUT, ORG, deps);
+  const res = await linkReturnedSerial({ ...INPUT, priorStatus: 'SHIPPED' }, ORG, deps);
 
   assert.equal(res.linked, false);
   assert.equal(res.matchedOrder, null);

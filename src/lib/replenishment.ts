@@ -6,6 +6,8 @@ import { zohoGet, zohoPost } from '@/lib/zoho/httpClient';
 import { withZohoOrg } from '@/lib/zoho/tenant-context';
 import { withTenantConnection, withTenantTransaction } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { attachShortageReplenishment } from '@/lib/orders/order-line-shortage';
+import { earmarkPoForReplenishmentRequest } from '@/lib/orders/shortage-inbound';
 
 export type ReplenishmentStatus =
   | 'detected'
@@ -95,8 +97,6 @@ function itemVendorMetadata(customFields: unknown) {
 }
 
 async function getOrderItemContext(orderId: number, client: DbClient, orgId: OrgId) {
-  // String-key JOIN (items.sku = orders.sku): align the join on organization_id
-  // too and gate the order row by org.
   const result = await client.query(
     `SELECT
        o.id,
@@ -105,6 +105,8 @@ async function getOrderItemContext(orderId: number, client: DbClient, orgId: Org
        o.sku,
        o.quantity,
        o.is_out_of_stock,
+       o.oos_sku,
+       o.oos_qty_short,
        i.id AS item_id,
        i.zoho_item_id,
        i.name AS item_name,
@@ -113,7 +115,33 @@ async function getOrderItemContext(orderId: number, client: DbClient, orgId: Org
        i.quantity_on_hand AS item_quantity_on_hand,
        i.custom_fields
      FROM orders o
-     LEFT JOIN items i ON i.sku = o.sku AND i.organization_id = o.organization_id
+     LEFT JOIN LATERAL (
+       SELECT i2.id, i2.zoho_item_id, i2.name, i2.purchase_rate,
+              i2.quantity_available, i2.quantity_on_hand, i2.custom_fields
+         FROM items i2
+         LEFT JOIN sku_catalog sc
+           ON sc.organization_id = o.organization_id
+          AND (
+            sc.id = o.oos_sku_catalog_id
+            OR sc.id = o.sku_catalog_id
+          )
+        WHERE i2.organization_id = o.organization_id
+          AND (
+            (sc.provider_item_id IS NOT NULL AND i2.zoho_item_id = sc.provider_item_id)
+            OR (NULLIF(BTRIM(o.oos_zoho_item_id), '') IS NOT NULL AND i2.zoho_item_id = BTRIM(o.oos_zoho_item_id))
+            OR (NULLIF(BTRIM(o.oos_sku), '') IS NOT NULL AND i2.sku = BTRIM(o.oos_sku))
+            OR (NULLIF(BTRIM(o.sku), '') IS NOT NULL AND i2.sku = BTRIM(o.sku))
+          )
+        ORDER BY
+          CASE
+            WHEN sc.provider_item_id IS NOT NULL AND i2.zoho_item_id = sc.provider_item_id AND sc.id = o.oos_sku_catalog_id THEN 0
+            WHEN NULLIF(BTRIM(o.oos_zoho_item_id), '') IS NOT NULL AND i2.zoho_item_id = BTRIM(o.oos_zoho_item_id) THEN 1
+            WHEN sc.provider_item_id IS NOT NULL AND i2.zoho_item_id = sc.provider_item_id THEN 2
+            WHEN i2.sku = BTRIM(o.oos_sku) THEN 3
+            ELSE 4
+          END
+        LIMIT 1
+     ) i ON TRUE
      WHERE o.id = $1
        AND o.organization_id = $2
      LIMIT 1`,
@@ -409,7 +437,7 @@ async function ensureReplenishmentForOrderBody(
   }
 
   const stock = await getOrRefreshStockCache(order.zoho_item_id, client, orgId);
-  const orderQty = normalizeQuantity(order.quantity);
+  const orderQty = normalizeQuantity(order.oos_qty_short ?? order.quantity);
   const shortfall = forceFullQuantity ? orderQty : Math.max(0, orderQty - toNumber(stock?.quantity_available, 0));
   const quantityNeeded = shortfall > 0 ? shortfall : orderQty;
 
@@ -484,6 +512,12 @@ async function ensureReplenishmentForOrderBody(
   );
 
   await recomputeRequestQuantity(String(requestId), client, orgId);
+
+  await attachShortageReplenishment(client, {
+    orgId,
+    orderId,
+    replenishmentRequestId: String(requestId),
+  });
 
   if (cleanText(reason)) {
     await client.query(
@@ -779,6 +813,12 @@ export async function createDraftPurchaseOrders(
           [request.id, poId, poNumber, orgId]
         );
         await deps.transitionStatus(request.id, 'po_created', 'system', `Zoho PO ${poNumber} created`, client, orgId);
+        await earmarkPoForReplenishmentRequest(client, {
+          orgId,
+          replenishmentRequestId: request.id,
+          zohoPoId: poId,
+          zohoPoNumber: poNumber,
+        });
       }
     });
 

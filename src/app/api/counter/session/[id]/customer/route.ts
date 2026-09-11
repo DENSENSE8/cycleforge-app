@@ -23,6 +23,8 @@ const BodySchema = z.object({
   phone: z.string().trim().max(32).default(''),
   name: z.string().trim().max(120).default(''),
   email: z.string().trim().max(200).default(''),
+  // Callers: CounterWorkspace. API: PATCH /api/counter/session/[id]/customer. Schema: CounterSessionCustomer. User: "intake their information like name, email address, phone number, address"
+  address: z.string().trim().max(400).default(''),
 });
 
 export const PATCH = withAuth(

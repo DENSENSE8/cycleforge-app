@@ -1,104 +1,92 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { Loader2, RefreshCw } from '@/components/Icons';
+/**
+ * Inventory › Ledger activity — the last 50 inventory events, on the ONE table.
+ *
+ * This was a hand-rolled `<ul>` of `EventRow` cards: fixed spans, no header, no
+ * sort, no Fields picker, no org binding — a second table display. Every fact
+ * the card painted is a bound field in `INVENTORY_EVENTS_FIELD_CATALOG`. This
+ * file is the FEED; the display is {@link useInventoryEventsSpreadsheet} →
+ * DataTable. `PulseWorkspace` points the same family at a different feed.
+ */
+
+import { useCallback, useEffect, useState } from 'react';
+import { RefreshCw } from '@/components/Icons';
 import { Button } from '@/design-system/primitives';
-import { EventRow } from './EventRow';
+import { DataTable } from '@/components/tables/DataTable';
+import { useInventoryEventsSpreadsheet } from './events-grid/useInventoryEventsSpreadsheet';
 import type { PulseEventRow, PulseEventsResponse } from './types';
 
 const PULSE_LIMIT = 50;
 const REFRESH_INTERVAL_MS = 30_000;
 
 export function PulseView() {
-    const [events, setEvents] = useState<PulseEventRow[] | null>(null);
-    const [error, setError] = useState<string | null>(null);
-    const [fetching, setFetching] = useState(false);
-    const lastFetchRef = useRef<number>(0);
+  const [events, setEvents] = useState<PulseEventRow[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [fetching, setFetching] = useState(false);
 
-    const fetchEvents = async () => {
-        setFetching(true);
-        setError(null);
+  const fetchEvents = useCallback(async () => {
+    setFetching(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/inventory-events?limit=${PULSE_LIMIT}`, {
+        credentials: 'same-origin',
+      });
+      if (!res.ok) {
+        let message = `HTTP ${res.status}`;
         try {
-            const res = await fetch(`/api/inventory-events?limit=${PULSE_LIMIT}`, {
-                credentials: 'same-origin',
-            });
-            if (!res.ok) {
-                let message = `HTTP ${res.status}`;
-                try {
-                    const body = await res.json();
-                    if (body?.error) message = body.error;
-                } catch {
-                    // ignore JSON parse failure
-                }
-                throw new Error(message);
-            }
-            const data: PulseEventsResponse = await res.json();
-            setEvents(data.events);
-            lastFetchRef.current = Date.now();
-        } catch (err: unknown) {
-            const message = err instanceof Error ? err.message : 'Failed to load events';
-            setError(message);
-        } finally {
-            setFetching(false);
+          const body = await res.json();
+          if (body?.error) message = body.error;
+        } catch {
+          // ignore JSON parse failure
         }
-    };
-
-    useEffect(() => {
-        fetchEvents();
-        const handle = window.setInterval(() => {
-            // Only refetch when the document is visible — avoids burning
-            // Neon CU when an operator's laptop is locked.
-            if (document.visibilityState === 'visible') fetchEvents();
-        }, REFRESH_INTERVAL_MS);
-        return () => window.clearInterval(handle);
-    }, []);
-
-    if (events === null && fetching) {
-        return (
-            <div className="flex items-center justify-center py-16 text-text-faint">
-                <Loader2 className="h-5 w-5 animate-spin" />
-                <span className="ml-2 text-sm">Loading recent activity…</span>
-            </div>
-        );
+        throw new Error(message);
+      }
+      const data: PulseEventsResponse = await res.json();
+      setEvents(data.events);
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to load events';
+      setError(message);
+    } finally {
+      setFetching(false);
     }
+  }, []);
 
-    if (error && events === null) {
-        return (
-            <div className="mx-4 my-8 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 sm:mx-6">
-                {error}
-            </div>
-        );
-    }
+  useEffect(() => {
+    void fetchEvents();
+    const handle = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void fetchEvents();
+    }, REFRESH_INTERVAL_MS);
+    return () => window.clearInterval(handle);
+  }, [fetchEvents]);
 
-    return (
-        <section>
-            <header className="flex items-center justify-between px-4 py-2 sm:px-6">
-                <div>
-                    <h2 className="text-sm font-semibold text-text-default">Recent activity</h2>
-                    <p className="text-xs text-text-soft">
-                        Last {events?.length ?? 0} inventory events · auto-refresh 30s
-                    </p>
-                </div>
-                <Button
-                    variant="secondary"
-                    size="sm"
-                    icon={<RefreshCw />}
-                    loading={fetching}
-                    onClick={fetchEvents}
-                >
-                    Refresh
-                </Button>
-            </header>
+  const sheet = useInventoryEventsSpreadsheet({
+    events: events ?? [],
+    loading: events === null && fetching,
+    emptyMessage: error ?? 'No inventory events yet.',
+  });
 
-            {events && events.length === 0 ? (
-                <div className="px-4 py-12 text-center text-sm text-text-faint sm:px-6">
-                    No inventory events yet.
-                </div>
-            ) : (
-                <ul role="list">
-                    {events?.map((event) => <EventRow key={event.id} event={event} />)}
-                </ul>
-            )}
-        </section>
-    );
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+      <header className="flex shrink-0 items-center justify-between px-4 py-2 sm:px-6">
+        <div>
+          <h2 className="text-sm font-semibold text-text-default">Recent activity</h2>
+          <p className="text-xs text-text-soft">
+            Last {events?.length ?? 0} inventory events · auto-refresh 30s
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          size="sm"
+          icon={<RefreshCw />}
+          loading={fetching}
+          onClick={() => void fetchEvents()}
+        >
+          Refresh
+        </Button>
+      </header>
+
+      <DataTable {...sheet} />
+    </div>
+  );
 }

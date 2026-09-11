@@ -14,6 +14,7 @@ import { getOrganization, updateOrgSettings } from '@/lib/tenancy/organizations'
 import type { OrgId } from '@/lib/tenancy/constants';
 import {
   ATTRACT_ALLOWED_MIME,
+  ATTRACT_BLOB_CACHE_MAX_AGE_SEC,
   attractBlobKey,
   attractMediaMaxBytes,
   isOrgAttractBlobUrl,
@@ -85,6 +86,7 @@ export const POST = withAuth(async (request: NextRequest, ctx) => {
     const uploaded = await put(blobKey, buffer, {
       access: 'public',
       contentType: mime,
+      cacheControlMaxAge: ATTRACT_BLOB_CACHE_MAX_AGE_SEC,
     });
 
     const previous = await replaceAttractUrl(orgId, uploaded.url);

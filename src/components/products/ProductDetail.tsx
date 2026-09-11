@@ -6,6 +6,7 @@ import { Loader2, ExternalLink } from '@/components/Icons';
 import type { ProductDetailPayload } from './types';
 import { InventoryMasterChip } from '@/components/products/InventoryMasterChip';
 import { ProductGtinField } from '@/components/products/ProductGtinField';
+import { BundleComponentsStrip } from '@/components/products/BundleComponentsStrip';
 import { PlatformMark } from '@/components/ui/PlatformMark';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { sourcePlatformMeta } from '@/lib/source-platform';
@@ -180,6 +181,12 @@ export function ProductDetail({ sku }: ProductDetailProps) {
                         <div className="text-xs text-text-faint">No serial units tracked.</div>
                     )}
                 </DetailCard>
+
+                <BundleComponentsStrip
+                    catalogId={product.id}
+                    sku={product.sku}
+                    className="sm:col-span-2"
+                />
 
                 <DetailCard
                     title={`Platform links (${platforms.length})`}

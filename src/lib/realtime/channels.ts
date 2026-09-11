@@ -146,6 +146,14 @@ export const getPackerBridgeChannelName = (orgId: string, staffId: number | stri
   `${orgChannelPrefix(orgId)}:packer:${normalizeChannelName(String(staffId), 'none')}`;
 
 /**
+ * Phone→desktop silent print (staff ID ↔ this computer ↔ USB). Page- and
+ * station-agnostic — not a Pack clone. Phone publishes `staff_print_job`;
+ * the signed-in desktop host prints and acks.
+ */
+export const getStaffPrintBridgeChannelName = (orgId: string, staffId: number | string) =>
+  `${orgChannelPrefix(orgId)}:print:${normalizeChannelName(String(staffId), 'none')}`;
+
+/**
  * Per-staff desktop↔phone lookup echo bridge. Was the raw `station:{staffId}`,
  * renamed to `staffstation:` so the org's `:station:*` broadcast grant can never
  * widen to this per-staff bridge.

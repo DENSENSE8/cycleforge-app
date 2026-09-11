@@ -29,6 +29,8 @@ import { verifyStaffPin, PinError } from '@/lib/auth/pin';
 import { effectivePermissionsForStaff } from '@/lib/auth/role-store';
 import type { PermissionString } from '@/lib/auth/permissions-shared';
 import type { OrgId } from '@/lib/tenancy/constants';
+import { withKioskDeviceDerived } from '@/lib/kiosk/kiosk-device-derived';
+import type { KioskHardwareStatus } from '@/lib/kiosk/kiosk-device-row';
 
 /** Device-token cookie. Distinct from the staff `cf_sid` so a kiosk can never present a staff session. */
 export const KIOSK_COOKIE_NAME = 'cf_kiosk';
@@ -175,6 +177,65 @@ export async function pairKioskDevice(
   return { deviceId: row.id, organizationId: row.organization_id, label: row.label, token };
 }
 
+/** Stable label for the one dogfood tablet row (token is reissued, not a new row). */
+export const DOGFOOD_KIOSK_DEVICE_LABEL = 'Dogfood auto-bind';
+
+/**
+ * Mint or rotate an active device token for a named kiosk row.
+ *
+ * Callers: POST /api/kiosk/dev-autopair (dogfood: bind every kiosk/tablet tab
+ * to org #1 with no pairing UI).
+ * Affected API: sets `cf_kiosk` after this returns.
+ * Data schemas: `kiosk_devices`.
+ * User: "Whenever you open a kiosk or a tablet page, I must see it automatically
+ * connected to organization one for dog food testing".
+ */
+export async function issueActiveKioskDeviceToken(
+  orgId: OrgId,
+  label: string,
+): Promise<{ token: string; deviceId: number; organizationId: string; label: string }> {
+  // Owner-pool autocommit, same as `pairKioskDevice`. Neon serverless +
+  // BEGIN/COMMIT on the tenant wrapper was returning an id that never landed
+  // (sequence bumped, row absent) so `cf_kiosk` hashed to nothing → KIOSK_UNPAIRED.
+  const token = newDeviceToken();
+  const hash = sha256(token);
+  const existing = await pool.query<{ id: number }>(
+    `SELECT id FROM kiosk_devices
+      WHERE organization_id = $1 AND label = $2
+      ORDER BY id ASC
+      LIMIT 1`,
+    [orgId, label],
+  );
+  if (existing.rows[0]) {
+    const deviceId = Number(existing.rows[0].id);
+    const upd = await pool.query<{ id: number }>(
+      `UPDATE kiosk_devices
+          SET device_token_hash = $1, status = 'active', updated_at = now(), revoked_at = NULL
+        WHERE id = $2 AND organization_id = $3
+        RETURNING id`,
+      [hash, deviceId, orgId],
+    );
+    if (!upd.rows[0]) {
+      throw new Error('DOGFOOD_KIOSK_UPDATE_FAILED');
+    }
+    return { token, deviceId, organizationId: orgId, label };
+  }
+  const staff = await pool.query<{ id: number }>(
+    `SELECT id FROM staff WHERE organization_id = $1 ORDER BY id ASC LIMIT 1`,
+    [orgId],
+  );
+  const staffId = staff.rows[0] ? Number(staff.rows[0].id) : null;
+  const ins = await pool.query<{ id: number }>(
+    `INSERT INTO kiosk_devices (
+       organization_id, label, status, device_token_hash, enrolled_by_staff_id
+     ) VALUES ($1, $2, 'active', $3, $4)
+     RETURNING id`,
+    [orgId, label, hash, staffId],
+  );
+  const deviceId = Number(ins.rows[0]!.id);
+  return { token, deviceId, organizationId: orgId, label };
+}
+
 // ── Listing (manager, authed) ───────────────────────────────────────────────
 
 interface KioskDeviceSummary {
@@ -184,8 +245,12 @@ interface KioskDeviceSummary {
   lastSeenAt: string | null;
   createdAt: string;
   enrolledByStaffId: number | null;
+  /** Joined staff.name — person face never paints Staff #id. */
+  enrolledByName: string | null;
   /** Square Terminal paired to this lane; null = cash / payment-link only. */
   squareTerminalDeviceId: string | null;
+  dwellSeconds: number | null;
+  hardwareStatus: KioskHardwareStatus;
 }
 
 /**
@@ -196,28 +261,36 @@ interface KioskDeviceSummary {
 export async function listKioskDevices(orgId: OrgId): Promise<KioskDeviceSummary[]> {
   return withTenantTransaction(orgId, async (client) => {
     const r = await client.query(
-      `SELECT id, label, status, last_seen_at, created_at, enrolled_by_staff_id,
-              square_terminal_device_id
-         FROM kiosk_devices
-        WHERE organization_id = $1
-        ORDER BY created_at DESC, id DESC`,
+      `SELECT d.id, d.label, d.status, d.last_seen_at, d.created_at, d.enrolled_by_staff_id,
+              d.square_terminal_device_id,
+              s.name AS enrolled_by_name
+         FROM kiosk_devices d
+         LEFT JOIN staff s
+           ON s.id = d.enrolled_by_staff_id
+          AND s.organization_id = d.organization_id
+        WHERE d.organization_id = $1
+        ORDER BY d.created_at DESC, d.id DESC`,
       [orgId],
     );
     return (r.rows as Array<{
       id: number; label: string; status: KioskDeviceSummary['status'];
       last_seen_at: Date | null; created_at: Date; enrolled_by_staff_id: number | null;
+      enrolled_by_name: string | null;
       square_terminal_device_id: string | null;
-    }>).map((row) => ({
-      // pg serializes bigint as a string; the summary type (and the revoke
-      // route's `z.number()` body) expect a real number, so coerce at the waist.
-      id: Number(row.id),
-      label: row.label,
-      status: row.status,
-      lastSeenAt: row.last_seen_at ? row.last_seen_at.toISOString() : null,
-      createdAt: row.created_at.toISOString(),
-      enrolledByStaffId: row.enrolled_by_staff_id,
-      squareTerminalDeviceId: row.square_terminal_device_id,
-    }));
+    }>).map((row) =>
+      withKioskDeviceDerived({
+        // pg serializes bigint as a string; the summary type (and the revoke
+        // route's `z.number()` body) expect a real number, so coerce at the waist.
+        id: Number(row.id),
+        label: row.label,
+        status: row.status,
+        lastSeenAt: row.last_seen_at ? row.last_seen_at.toISOString() : null,
+        createdAt: row.created_at.toISOString(),
+        enrolledByStaffId: row.enrolled_by_staff_id,
+        enrolledByName: String(row.enrolled_by_name ?? '').trim() || null,
+        squareTerminalDeviceId: row.square_terminal_device_id,
+      }),
+    );
   });
 }
 

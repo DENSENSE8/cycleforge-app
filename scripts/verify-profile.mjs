@@ -96,8 +96,11 @@ export const ALL_GATES = [
   },
   {
     name: 'Typecheck',
-    cmd: localBin('tsc'),
-    args: ['--noEmit', '-p', 'tsconfig.json'],
+    // `next typegen` → stable `.next/types`, then tsc. Never typecheck against
+    // `.next/dev/types` while Turbopack is rewriting routes.d.ts mid-flight
+    // (TS1005 / unterminated template → false machine-eval red).
+    cmd: 'node',
+    args: ['scripts/typecheck.mjs'],
     env: { NODE_OPTIONS: '--max-old-space-size=6144' },
     profiles: 'always',
   },

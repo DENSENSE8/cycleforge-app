@@ -32,6 +32,13 @@ interface ScanSurfaceProps {
   onDecode: (value: string) => void;
   /** Optional placeholder for the manual entry input. */
   manualPlaceholder?: string;
+  /**
+   * Show the collapsed “Type code manually” dock under the camera.
+   * Default true. Desk handoff sign-in hides this — the host owns the code field.
+   * Callers: SignInQrScanDialog (false), PickerTaskCard (default).
+   * User: "does not say paste a pairing link" + camera collapses to pairing code.
+   */
+  showManualEntry?: boolean;
   /** Tone for the corner brackets — defaults to brand blue. */
   bracketTone?: 'blue' | 'emerald' | 'amber';
   /** Aspect ratio for the camera frame. Default `4 / 3`. */
@@ -48,6 +55,7 @@ export function ScanSurface({
   scanner,
   onDecode,
   manualPlaceholder = 'Type code…',
+  showManualEntry = true,
   bracketTone = 'blue',
   aspectRatio = '4 / 3',
 }: ScanSurfaceProps) {
@@ -172,52 +180,54 @@ export function ScanSurface({
         )}
       </div>
 
-      {/* Manual entry dock — collapsed by default */}
-      <div className="bg-stage-raised px-3 py-2.5">
-        {manualOpen ? (
-          <form onSubmit={handleManualSubmit} className="flex items-center gap-2">
-            <input
-              ref={inputRef}
-              value={manualValue}
-              onChange={(e) => setManualValue(e.target.value)}
-              placeholder={manualPlaceholder}
-              autoComplete="off"
-              inputMode="text"
-              className={cn("h-11 flex-1 rounded-none border border-glass/10 bg-glass/5 px-3 text-sm text-white placeholder:text-white/40", focusRing('field', 'accent'))}
-            />
-            <Button
-              type="submit"
-              variant="primary"
-              size="sm"
-              disabled={!manualValue.trim()}
-              className="h-11"
-            >
-              Send
-            </Button>
+      {/* Manual entry dock — collapsed by default; host may hide when it owns typing. */}
+      {showManualEntry ? (
+        <div className="bg-stage-raised px-3 py-2.5">
+          {manualOpen ? (
+            <form onSubmit={handleManualSubmit} className="flex items-center gap-2">
+              <input
+                ref={inputRef}
+                value={manualValue}
+                onChange={(e) => setManualValue(e.target.value)}
+                placeholder={manualPlaceholder}
+                autoComplete="off"
+                inputMode="text"
+                className={cn("h-11 flex-1 rounded-none border border-glass/10 bg-glass/5 px-3 text-sm text-white placeholder:text-white/40", focusRing('field', 'accent'))}
+              />
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                disabled={!manualValue.trim()}
+                className="h-11"
+              >
+                Send
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setManualValue('');
+                  setManualOpen(false);
+                }}
+                className="h-11 bg-glass/5 text-white/80 hover:bg-glass/10 hover:text-white"
+                ariaLabel="Cancel manual entry"
+              >
+                Cancel
+              </Button>
+            </form>
+          ) : (
             <Button
               variant="ghost"
-              size="sm"
-              onClick={() => {
-                setManualValue('');
-                setManualOpen(false);
-              }}
-              className="h-11 bg-glass/5 text-white/80 hover:bg-glass/10 hover:text-white"
-              ariaLabel="Cancel manual entry"
+              onClick={() => setManualOpen(true)}
+              icon={<ScanLine aria-hidden="true" />}
+              className="h-10 w-full text-white/75 hover:text-white"
             >
-              Cancel
+              Type code manually
             </Button>
-          </form>
-        ) : (
-          <Button
-            variant="ghost"
-            onClick={() => setManualOpen(true)}
-            icon={<ScanLine aria-hidden="true" />}
-            className="h-10 w-full text-white/75 hover:text-white"
-          >
-            Type code manually
-          </Button>
-        )}
-      </div>
+          )}
+        </div>
+      ) : null}
     </div>
   );
 }

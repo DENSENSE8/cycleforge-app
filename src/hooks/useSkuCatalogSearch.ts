@@ -9,6 +9,7 @@ export interface SkuCatalogItem {
   id: number;
   sku: string;
   zoho_sku: string | null;
+  zoho_item_id?: string | null;
   product_title: string;
   category: string | null;
   upc: string | null;

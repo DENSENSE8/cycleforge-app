@@ -293,13 +293,15 @@ export function RailRow<TRow>({
           actions={rowActions}
           rowLabel={rowLabel ?? String(reconcileKey ?? index + 1)}
           open={menuOpen}
+          peekOpen={previewOpen}
           onOpenChange={(next) => {
-            // Never leave the peek stacked under the menu — two overlays for one
-            // row is one too many, and the late unmount closed the menu.
-            if (next) dismiss();
-            setMenuOpen(next);
+            if (next) {
+              dismiss();
+              requestAnimationFrame(() => setMenuOpen(true));
+              return;
+            }
+            setMenuOpen(false);
           }}
-          onPointerEnter={dismiss}
           isFocusedRow={isFocused}
         />
       ) : null}

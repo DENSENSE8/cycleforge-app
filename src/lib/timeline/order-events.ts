@@ -44,6 +44,11 @@ function pretty(action: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 }
 
+/** FIND / timeline face title for an order audit action. */
+export function orderAuditTitle(action: string): string {
+  return ACTION_MAP[action]?.title ?? pretty(action);
+}
+
 function prettyFieldKey(key: string): string {
   switch (key) {
     case 'isOutOfStock': return 'Out of stock';

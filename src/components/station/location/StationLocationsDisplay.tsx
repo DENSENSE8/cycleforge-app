@@ -3,7 +3,8 @@
 /**
  * @domain-job Station Displays → **Locations** — browse the addresses this
  *   warehouse has, place the open entity on one, reprint a scuffed sticker,
- *   or mint a new spot without leaving the bench.
+ *   or mint a new spot without leaving the bench. Reprints use the shared 2×1
+ *   {@link printLocationLabelsJob} face (same HTML as Unbox).
  * @hardware-target Station
  * @density floor
  * @justification Cannot reuse `LocationCrudDialog` — that is the Inventory
@@ -42,10 +43,9 @@
  * **It composes, it does not fork.** Addresses are minted by the same waist the
  * bin label printer uses — `POST /api/locations/register` via
  * {@link registerLocations} — so a row lands in `locations` with the canonical
- * flat barcode, idempotently. The sticker is the same {@link PrintLabel} card on
- * the same 3in × 2in `@page`. That format is load-bearing: it is the only one
- * `extractArrivalLocationBarcode` decodes, so a hand-typed barcode would make a
- * shelf you can pick but never scan.
+ * flat barcode, idempotently. The sticker is the shared 2×1
+ * {@link printLocationLabelsJob} face (same HTML as Unbox). The encoded barcode
+ * is still the flat location code `extractArrivalLocationBarcode` decodes.
  *
  * Placement runs through the port's own writer — at Arrival that is
  * `useTriageStaging.selectShelf`, so the lane auto-route and its manual-wins
@@ -64,7 +64,6 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { MapPin, Plus, Printer } from '@/components/Icons';
-import { PrintLabel } from '@/components/barcode/bin-label-printer';
 import { registerLocations } from '@/components/barcode/bin-label-printer/bin-printer-api';
 import {
   StationArmedVerbList,
@@ -74,7 +73,9 @@ import { SearchField } from '@/design-system/primitives/SearchField';
 import { SearchableSelectField } from '@/design-system/components';
 import { DISPLAYS_BODY_INSET } from '@/design-system/shells/detail-stack';
 import { useOrgGs1 } from '@/hooks/useOrgGs1';
-import { parseLocationCodeFlat, type LocationSegments } from '@/lib/barcode-routing';
+import { useAuth } from '@/contexts/AuthContext';
+import { parseLocationCodeFlat } from '@/lib/barcode-routing';
+import { printLocationLabelsJob } from '@/lib/print/printLocationLabel';
 import { useSegmentChords } from '@/lib/keyboard/useSegmentChords';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
@@ -114,6 +115,7 @@ export function StationLocationsDisplay({
     suggestionLoading = false,
   } = port;
   const { identity: orgGs1 } = useOrgGs1();
+  const { user } = useAuth();
 
   const [mode, setMode] = useState<LocationsMode>('place');
 
@@ -126,7 +128,6 @@ export function StationLocationsDisplay({
   });
   const [query, setQuery] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [printSegments, setPrintSegments] = useState<LocationSegments | null>(null);
 
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -183,15 +184,14 @@ export function StationLocationsDisplay({
         // A reprint of an EXISTING shelf must not be blocked by a re-register
         // hiccup; the row is already in the table.
       }
-      setPrintSegments(segments);
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          window.print();
-          setTimeout(() => setPrintSegments(null), 250);
-        });
+      await printLocationLabelsJob({
+        segments: [segments],
+        roomName: room || '',
+        gln: orgGs1?.gln ?? '',
+        orgSlug: user?.organizationSlug,
       });
     },
-    [port],
+    [orgGs1?.gln, port, user?.organizationSlug],
   );
 
   /**
@@ -220,14 +220,6 @@ export function StationLocationsDisplay({
     },
     [locations, mode, place, print],
   );
-
-  const printRoom = useMemo(() => {
-    if (!printSegments) return '';
-    const flat = `${printSegments.zone}`;
-    return (
-      locations.find((l) => (l.barcode ?? '').startsWith(flat))?.room ?? ''
-    );
-  }, [locations, printSegments]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -401,17 +393,6 @@ export function StationLocationsDisplay({
           </div>
         </>
       )}
-
-      {/* Print zone — hidden on screen, fills the 3in × 2in page on print. */}
-      <div className="label-print-zone">
-        {printSegments ? (
-          <PrintLabel
-            segments={printSegments}
-            roomName={printRoom}
-            gln={orgGs1?.gln ?? ''}
-          />
-        ) : null}
-      </div>
     </div>
   );
 }

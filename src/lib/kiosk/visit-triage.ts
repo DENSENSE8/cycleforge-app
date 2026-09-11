@@ -46,6 +46,8 @@ export interface KioskTriageSession {
   customerPhone: string;
   customerName: string;
   customerEmail: string;
+  /** Callers: KioskCartLedger, KioskShell, KioskTriagePanel. API: none (pure). Schema: session snapshot. User: "intake their information like name, email address, phone number, address". */
+  customerAddress?: string;
 }
 
 function repairIssues(line: KioskCartLine): KioskTriageItem[] {
@@ -191,6 +193,22 @@ export function collectKioskTriage(session: KioskTriageSession): KioskTriageItem
       severity: 'warn',
       target: 'customer',
       message: 'No customer name on the visit.',
+    });
+  }
+  if (!session.customerEmail?.trim()) {
+    cartLevel.push({
+      id: 'customer:email',
+      severity: 'warn',
+      target: 'customer',
+      message: 'No email on the visit.',
+    });
+  }
+  if (!session.customerAddress?.trim()) {
+    cartLevel.push({
+      id: 'customer:address',
+      severity: 'warn',
+      target: 'customer',
+      message: 'No address on the visit.',
     });
   }
 

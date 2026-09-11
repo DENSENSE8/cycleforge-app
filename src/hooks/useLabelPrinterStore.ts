@@ -103,7 +103,15 @@ function createStore<T extends object>(key: string, eventName: string) {
   }
 
   function patch(partial: Partial<T>): void {
-    setState((prev) => ({ ...prev, ...partial }));
+    setState((prev) => {
+      const next = { ...prev };
+      for (const key of Object.keys(partial) as Array<keyof T>) {
+        const value = partial[key];
+        if (value === undefined) delete (next as Record<string, unknown>)[key as string];
+        else (next as Record<string, unknown>)[key as string] = value as unknown;
+      }
+      return next;
+    });
   }
 
   function reset(): void {

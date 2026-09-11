@@ -38,12 +38,13 @@ const SIDEBAR_ROUTES = [
 /** Routes with no sidebar of their own — must never reserve a column. */
 const PANEL_LESS_ROUTES = ['/reports', '/release-notes'] as const;
 
-const PAGES_MENU = '[role="menu"][aria-label="Pages"]';
+const PAGES_MENU = '[data-spine-nav][aria-label="Pages"]';
 /** The push column's host. Present from first paint; `data-open` is the state. */
 const NAV_COLUMN = '[data-sidebar-nav-column]';
 const NAV_COLUMN_OPEN = '[data-sidebar-nav-column][data-open="true"]';
-/** GlobalHeader's sidebar control — the leftmost header button. */
-const SIDEBAR_TOGGLE = 'header button';
+/** Header toggle when closed; spine-head toggle when open. */
+const SIDEBAR_TOGGLE =
+  '[data-testid="sidebar-collapse-control"] button, [data-spine-nav-toggle]';
 /** The spine's own width token (`SIDEBAR_SPINE_WIDTH_PX`). */
 const SPINE_WIDTH = 240;
 /**
@@ -237,19 +238,21 @@ test.describe('sidebar spine — one grammar, a push column, no empty columns', 
     await expect(page.locator(NAV_COLUMN)).toHaveAttribute('data-open', 'true');
   });
 
-  test('/unbox: Scan Stations drills; hold-drag reorders the root map', async ({ page }) => {
+  test('/unbox: Scan Stations lists benches in place; Workspaces holds desks', async ({ page }) => {
     await gotoSurface(page, '/unbox');
     await toggleSpine(page);
     await expect(page.locator(PAGES_MENU)).toBeVisible();
 
-    // Floor benches live behind the Scan Stations parent drill (not root L1s).
-    await expect(page.getByRole('button', { name: 'Open Scan Stations' })).toHaveAttribute(
-      'aria-current',
-      'page',
+    await expect(page.getByRole('button', { name: 'Scan Stations' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    await expect(page.getByRole('button', { name: 'Scan Stations' })).toHaveAttribute(
+      'data-owns-current',
+      'true',
     );
     await expect(page.getByRole('button', { name: 'Go to Unbox' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Arrival' })).toBeVisible();
-    // QC and Ready to Pack are flat benches (no parent Testing drill).
     await expect(page.getByRole('button', { name: 'Go to Quality Control' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Ready to Pack' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Testing' })).toHaveCount(0);
@@ -257,38 +260,29 @@ test.describe('sidebar spine — one grammar, a push column, no empty columns', 
     await expect(page.getByRole('button', { name: 'Go to Repair Service' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Packing' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Packing Review' })).toHaveCount(0);
-    await expect(page.getByRole('button', { name: 'Back to pages' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Back to pages' })).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Back to pages' }).click();
-    await expect(page.getByRole('button', { name: 'Open Scan Stations' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Open Shipping' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Go to Unbox' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Workspaces' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Go to Shipping' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Add to spine' })).toHaveCount(0);
   });
 
-  test('/products: opening a multi-child page list-replaces instead of navigating', async ({ page }) => {
+  test('/products: Shipping is a Workspaces leaf that navigates', async ({ page }) => {
     await gotoSurface(page, '/products');
     await toggleSpine(page);
     await expect(page.locator(PAGES_MENU)).toBeVisible();
-    const before = page.url();
 
-    await page.getByRole('button', { name: 'Open Shipping' }).click();
-
-    expect(page.url(), 'Open Shipping must not navigate').toBe(before);
-    await expect(page.getByRole('button', { name: 'Go to Labels' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Go to To ship' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Go to Amazon Prep' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Go to Packing Review' })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Go to Shipping' }).click();
+    await expect.poll(() => page.url()).toMatch(/shipping/);
   });
 
-  test('/products: Operations drill lists Packing Review', async ({ page }) => {
+  test('/products: Operations is a Workspaces leaf, not a list-replace drill', async ({ page }) => {
     await gotoSurface(page, '/products');
     await toggleSpine(page);
     await expect(page.locator(PAGES_MENU)).toBeVisible();
 
-    await page.getByRole('button', { name: 'Open Operations' }).click();
-    await expect(page.getByRole('button', { name: 'Go to Packing Review' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Go to Live' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Go to Operations' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Go to Packing Review' })).toHaveCount(0);
   });
 
   /**
@@ -299,7 +293,7 @@ test.describe('sidebar spine — one grammar, a push column, no empty columns', 
     await toggleSpine(page);
     await expect(page.locator(PAGES_MENU)).toBeVisible();
 
-    const row = page.getByRole('button', { name: 'Open Shipping' });
+    const row = page.getByRole('button', { name: 'Go to Shipping' });
     await expect(row, 'exactly one control per page row').toHaveCount(1);
     const rowBox = (await row.boundingBox())!;
     const listBox = (await page.locator(PAGES_MENU).boundingBox())!;
@@ -313,14 +307,13 @@ test.describe('sidebar spine — one grammar, a push column, no empty columns', 
     await gotoSurface(page, '/unbox');
     await expect(page.locator('main [aria-label="Receiving mode"]')).toHaveCount(0);
     await expect(page.locator('header [aria-label^="Receiving mode"]')).toHaveCount(1);
-    await expect(page.locator('header [aria-label="Recents"]')).toHaveCount(1);
+    await expect(page.locator('header [aria-label="Recents"]')).toHaveCount(0);
   });
 
-  test('/products: L2 Mode + Recents live in GlobalHeader', async ({ page }) => {
+  test('/products: L2 Mode lives in GlobalHeader on floor chips only; Recents is unmounted', async ({ page }) => {
     await gotoSurface(page, '/products');
     await expect(page.locator('main [aria-label="Products view"]')).toHaveCount(0);
-    await expect(page.locator('header [aria-label^="Products mode"]')).toHaveCount(1);
-    await expect(page.locator('header [aria-label="Recents"]')).toHaveCount(1);
+    await expect(page.locator('header [aria-label="Recents"]')).toHaveCount(0);
   });
 
   test('/unbox: the spine header has no modes dropdown trigger', async ({ page }) => {

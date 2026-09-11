@@ -82,9 +82,10 @@ export function RailRowMenu({
   rowLabel,
   open,
   onOpenChange,
-  /** True when this row is the rail's focused (roving-tabindex) row. */
   isFocusedRow,
-  onPointerEnter,
+  /** True while the row hover peek is up — the ⋮ sits on the path into that
+   *  card; it must not steal the pointer (exceptions copy chips, Unbox peek). */
+  peekOpen = false,
 }: {
   actions: RailRowAction[];
   /** Row identity for the accessible name — never a bare "More". */
@@ -92,14 +93,7 @@ export function RailRowMenu({
   open: boolean;
   onOpenChange: (next: boolean) => void;
   isFocusedRow: boolean;
-  /**
-   * Fired the moment the pointer reaches the trigger. The host uses it to close
-   * the row's hover peek FIRST: the peek opens on a 0ms delay, so it is always
-   * up by the time a hand arrives at the ⋮, and letting it unmount in the same
-   * commit that mounts the menu made Radix read the churn as an outside
-   * interaction and close the menu it had just opened.
-   */
-  onPointerEnter?: () => void;
+  peekOpen?: boolean;
 }) {
   if (actions.length === 0) return null;
 
@@ -122,21 +116,20 @@ export function RailRowMenu({
           // this trigger holds focus it is driving, not the list, so its keys
           // must not also step or open the row underneath it.
           onKeyDown={(e) => e.stopPropagation()}
-          onPointerEnter={onPointerEnter}
           aria-label={`Actions for ${rowLabel}`}
           className={cn(
             'absolute inset-y-0 right-0 z-raised flex items-center justify-end text-text-faint',
-            // Same `w-8` cell the age occupies, so the ⋮ lands exactly where the
-            // resting mark was — one glyph swapping for another, in place.
             'w-8',
-            // Opacity only. Never width/margin/inset — those reflow the row.
-            'pointer-events-none opacity-0 transition-opacity duration-100 ease-out',
-            'group-hover/railrow:pointer-events-auto group-hover/railrow:opacity-100',
-            'hover:text-text-default focus:pointer-events-auto focus:opacity-100',
+            'opacity-0 transition-opacity duration-100 ease-out',
+            peekOpen
+              ? 'pointer-events-none group-hover/railrow:pointer-events-none'
+              : cn(
+                  'pointer-events-none',
+                  'group-hover/railrow:pointer-events-auto group-hover/railrow:opacity-100',
+                  'hover:text-text-default focus:pointer-events-auto focus:opacity-100',
+                ),
+            'group-hover/railrow:opacity-100',
             'data-[state=open]:pointer-events-auto data-[state=open]:text-text-default data-[state=open]:opacity-100',
-            // No hover to reveal it with → resident, and at a real tap size. The
-            // BOX grows leftward; the glyph below stays pinned to the same
-            // track, so touch gets a bigger target at the identical position.
             'coarse:pointer-events-auto coarse:w-11 coarse:opacity-100',
             focusRing('control', 'accent'),
           )}

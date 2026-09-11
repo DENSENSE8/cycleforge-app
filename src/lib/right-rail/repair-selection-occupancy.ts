@@ -1,12 +1,9 @@
 /**
  * Repair-queue rail selection occupancy.
  *
- * Cardinality → body (mirrors receiving / orders occupancy SoTs):
- * | selected | kind |
- * |----------|------|
- * | 0 | none |
- * | 1 | inspect — existing RepairDetailsPanel (`detail:repair`) |
- * | 2+ | attention — RepairRailShell (`detail:repair-batch`) |
+ * Slot-table selection stays on the table (mirrors orders / receiving occupancy
+ * SoTs). Checkbox cardinality never claims `RightRailHost`. Record open is row
+ * click / `?openRepair=`, not a 1-check inspect or a 2+ batch shell.
  *
  * Plan: hoard History rail SoT → Wave 3 Repair.
  */
@@ -37,24 +34,8 @@ type RepairRailOccupancy =
 export function resolveRepairRailOccupancy(
   ids: readonly (number | string | null | undefined)[],
 ): RepairRailOccupancy {
-  const repairIds = normalizeRailSelection(ids);
-
-  if (repairIds.length === 0) return { kind: 'none' };
-
-  if (repairIds.length === 1) {
-    return {
-      kind: 'inspect',
-      occupantId: REPAIR_RAIL_OCCUPANT_ID.inspect,
-      repairId: repairIds[0]!,
-      repairIds: [repairIds[0]!],
-    };
-  }
-
-  return {
-    kind: 'attention',
-    occupantId: REPAIR_RAIL_OCCUPANT_ID.attention,
-    repairIds,
-  };
+  normalizeRailSelection(ids);
+  return { kind: 'none' };
 }
 
 export function isRepairRailBatchActive(occupancy: RepairRailOccupancy): boolean {

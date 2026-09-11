@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { bustScanOutCaches } from '@/lib/outbound/outbound-cache-keys';
+import { setScanSubject } from '@/lib/stations/scan-subject-store';
 import {
   SCAN_OUT_ACTIVE_EVENT,
   dispatchScanOutActive,
@@ -29,9 +30,15 @@ export interface ScanOutResult {
   ok: boolean;
   matched: boolean;
   duplicate?: boolean;
+  /** Order is in a state that must never leave (`canceled` / `cancelled`). */
+  blocked?: boolean;
+  blockReason?: string | null;
+  orderStatus?: string | null;
+  shipConfirmedAt?: string | null;
   alreadyDelivered?: boolean;
   shipmentId?: number;
   tracking?: string | null;
+  receivingId?: number | null;
   orderRowId?: number | null;
   orderId?: string | null;
   productTitle?: string | null;
@@ -40,6 +47,7 @@ export interface ScanOutResult {
   condition?: string | null;
   quantity?: number | null;
   accountSource?: string | null;
+  imageUrl?: string | null;
   message?: string | null;
 }
 
@@ -57,6 +65,7 @@ export interface ActiveScanOut {
 
 function statusText(status: ScanOutStatus, result: ScanOutResult | null): string {
   if (status === 'pending') return 'Scanning…';
+  if (status === 'blk') return result?.message || 'Do not ship';
   if (status === 'miss') return result?.message || 'No shipment found for that label';
   if (status === 'exc') return 'Delivered already';
   if (status === 'dup') return 'Already scanned out';
@@ -131,6 +140,7 @@ export function useScanOutStation() {
 
       let status: ScanOutStatus;
       if (!result.matched) status = 'miss';
+      else if (result.blocked) status = 'blk';
       else if (result.alreadyDelivered) status = 'exc';
       else if (result.duplicate) status = 'dup';
       else status = 'ok';
@@ -149,10 +159,11 @@ export function useScanOutStation() {
         } else if (status !== 'ok') {
           setUndoable(null);
         }
-        if (status === 'ok' || status === 'dup' || status === 'exc') {
+        if (status === 'ok' || status === 'dup' || status === 'exc' || status === 'blk') {
           lastGoodRef.current = pane;
           if (pane.orderRowId != null && pane.orderRowId > 0) {
             setNoteOrderRowId(pane.orderRowId);
+            setScanSubject('order', String(pane.orderRowId));
           }
           dispatchScanOutActive(pane);
         } else if (status === 'miss' || status === 'err') {

@@ -61,6 +61,7 @@
  */
 
 import type { ReactNode } from 'react';
+import { ChevronLeft, ChevronRight } from '@/components/Icons';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { Button, type ButtonVariant } from '@/design-system/primitives/Button';
 import { KeyboardKey } from '@/design-system/primitives/KeyboardKey';
@@ -68,6 +69,8 @@ import { cornerClass } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useSelectionStatusBarHotkeys } from '@/hooks/useSelectionStatusBarHotkeys';
 import { cn } from '@/utils/_cn';
+import { formatSlotTableCount } from '@/lib/tables/slot-table-page';
+
 
 /** One tab in the strip. Never an `all` entry — see {@link DataTable}. */
 export interface DataTableTab {
@@ -89,7 +92,7 @@ export interface DataTableTab {
  * went with it.
  *
  * What survives is the SECOND level — sub-modes inside one page tab (Locations'
- * Bin Tags / Racks / Rooms, Support's ticket statuses, Walk-in's per-mode
+ * Bin Tags / Bays / Rooms, Support's ticket statuses, Walk-in's per-mode
  * lanes). Those are not page navigation and do not belong on the page frame.
  */
 export interface DataTableTabStrip {
@@ -152,12 +155,19 @@ export interface TableStatusBarProps {
    */
   selectionActions?: readonly TableStatusSelectionAction[];
   /**
-   * The next page, as part of the count sentence rather than a band under it.
-   *
-   * "Showing 200 of 847" used to be printed a second time by a footer below the
-   * bar, against a different denominator — two answers to "how many are left",
-   * neither matching the active filter. One sentence, one owner, and one fewer
-   * band inserted after first paint.
+   * Previous / next page, drawn with the count sentence. Page size lives in
+   * the table toolbar dropdown (20 / 50 / 100 / 200).
+   */
+  pager?: {
+    pageIndex: number;
+    pageCount: number;
+    onPrev: () => void;
+    onNext: () => void;
+    nextDisabled?: boolean;
+  };
+  /**
+   * The next fetch, as part of the count sentence rather than a band under it.
+   * Prefer {@link pager} — kept for surfaces that still grow a loaded window.
    */
   onLoadMore?: () => void;
 }
@@ -296,6 +306,7 @@ export function TableStatusBar({
   total,
   selected = 0,
   selectionActions,
+  pager,
   onLoadMore,
 }: TableStatusBarProps) {
   const hasSelection = selected > 0;
@@ -371,11 +382,6 @@ export function TableStatusBar({
       </div>
 
       <div className="flex shrink-0 items-center gap-2 px-3 text-role-micro text-text-soft">
-        {/*
-          Zero selected renders NOTHING. "0 selected" is a sentence about
-          something that has not happened, and it trains an operator to stop
-          reading the corner the moment a real count appears there.
-        */}
         {selected > 0 ? (
           <span
             className="tabular-nums font-semibold text-text-default"
@@ -384,14 +390,43 @@ export function TableStatusBar({
             {selected.toLocaleString()} selected
           </span>
         ) : null}
+        {pager && (pager.pageCount > 1 || onLoadMore) ? (
+          <button
+            type="button"
+            onClick={pager.onPrev}
+            disabled={pager.pageIndex <= 0}
+            data-testid="data-table-page-prev"
+            aria-label="Previous page"
+            className={cn(
+              'ds-raw-button inline-flex items-center text-text-soft',
+              focusRing('control'),
+              'disabled:opacity-40',
+            )}
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
+        ) : null}
         {typeof shown === 'number' ? (
           <span className="tabular-nums" data-testid="data-table-row-count">
-            {typeof total === 'number'
-              ? `${shown.toLocaleString()} of ${total.toLocaleString()}`
-              : `${shown.toLocaleString()} ${shown === 1 ? 'row' : 'rows'}`}
+            {formatSlotTableCount(shown, total)}
           </span>
         ) : null}
-        {onLoadMore ? (
+        {pager && (pager.pageCount > 1 || onLoadMore) ? (
+          <button
+            type="button"
+            onClick={pager.onNext}
+            disabled={pager.pageIndex >= pager.pageCount - 1 && (pager.nextDisabled ?? !onLoadMore)}
+            data-testid="data-table-page-next"
+            aria-label="Next page"
+            className={cn(
+              'ds-raw-button inline-flex items-center text-text-soft',
+              focusRing('control'),
+              'disabled:opacity-40',
+            )}
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
+        ) : onLoadMore ? (
           <button
             type="button"
             onClick={onLoadMore}

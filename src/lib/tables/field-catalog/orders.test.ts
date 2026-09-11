@@ -101,6 +101,13 @@ describe('orders catalog', () => {
   it('does NOT offer a title subtitle — the item cell already leads with it', () => {
     assert.equal(ORDERS_FIELD_CATALOG.find((f) => f.id === 'orders.title'), undefined);
   });
+
+  it('Pack column header is Pack — cell done-face stays Packed', () => {
+    const packed = ORDERS_FIELD_CATALOG.find((f) => f.id === 'orders.packed');
+    assert.equal(packed?.label, 'Pack');
+    assert.equal(packed?.stageLabels?.done, 'Packed');
+    assert.equal(packed?.stageLabels?.pending, 'Pack');
+  });
 });
 
 describe('resolveOrdersSlotValue — stage events', () => {

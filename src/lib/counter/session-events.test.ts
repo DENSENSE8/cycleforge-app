@@ -122,6 +122,7 @@ describe('vocabulary exports', () => {
     const producible: CounterSessionEvent['type'][] = [
       'session.snapshot',
       'session.claimed',
+      'session.device_bound',
       'session.released',
       'line.added',
       'line.updated',
@@ -129,6 +130,7 @@ describe('vocabulary exports', () => {
       'session.customer_changed',
       'session.command_changed',
       'session.face_changed',
+      'session.presentation_changed',
       'session.status_changed',
       'session.submitted',
       'session.payment_changed',
@@ -390,6 +392,30 @@ describe('applySessionEvent — lease and lifecycle', () => {
     ]);
     assert.equal(resumed.status, 'open');
   });
+
+  it('binds and unbinds a tablet without touching lines', () => {
+    const bound = applyAll(fresh(), [
+      {
+        type: 'session.device_bound',
+        sessionId: SESSION_ID,
+        version: 1,
+        actor: 'desk',
+        kioskDeviceId: 3,
+      },
+    ]);
+    assert.equal(bound.kioskDeviceId, 3);
+    assert.deepEqual(bound.lines, []);
+    const unbound = applyAll(bound, [
+      {
+        type: 'session.device_bound',
+        sessionId: SESSION_ID,
+        version: 2,
+        actor: 'desk',
+        kioskDeviceId: null,
+      },
+    ]);
+    assert.equal(unbound.kioskDeviceId, null);
+  });
 });
 
 describe('projectForDevicePrincipal — D6 allowlist', () => {
@@ -421,11 +447,13 @@ describe('projectForDevicePrincipal — D6 allowlist', () => {
       'activeCommand',
       'awaitingCardSinceMs',
       'awaitingSignatureLineIds',
+      'consultStance',
       'customerName',
       'customerPhoneMasked',
       'face',
       'lines',
       'paymentState',
+      'presentation',
       'sessionId',
       'status',
       'version',
@@ -518,6 +546,60 @@ describe('projectForDevicePrincipal — D6 allowlist', () => {
       },
     ]);
     assert.deepEqual(projectForDevicePrincipal(signed).awaitingSignatureLineIds, []);
+  });
+});
+
+describe('applySessionEvent — consult stance', () => {
+  it('flips Show without touching lines', () => {
+    const start = applyAll(fresh(), [added(1, line())]);
+    const end = applyAll(start, [
+      {
+        type: 'session.face_changed',
+        sessionId: SESSION_ID,
+        version: 2,
+        actor: 'desk',
+        face: 'customer',
+        consultStance: 'show',
+      },
+    ]);
+    assert.equal(end.consultStance, 'show');
+    assert.equal(end.face, 'customer');
+    assert.equal(end.lines.length, 1);
+    assert.equal(end.lines[0].title, start.lines[0].title);
+    assert.equal(end.activeCommand, start.activeCommand);
+  });
+
+  it('recovers Verify from a legacy customer face event', () => {
+    const end = applyAll(fresh(), [
+      {
+        type: 'session.face_changed',
+        sessionId: SESSION_ID,
+        version: 1,
+        actor: 'kiosk',
+        face: 'customer',
+      },
+    ]);
+    assert.equal(end.consultStance, 'verify');
+    assert.equal(end.face, 'customer');
+  });
+});
+
+describe('applySessionEvent — presentation', () => {
+  it('sets the Show proposal without mutating lines', () => {
+    const start = applyAll(fresh(), [added(1, line())]);
+    const end = applyAll(start, [
+      {
+        type: 'session.presentation_changed',
+        sessionId: SESSION_ID,
+        version: 2,
+        actor: 'desk',
+        presentation: { lineId: 'r1', catalog: null },
+      },
+    ]);
+    assert.equal(end.presentation.lineId, 'r1');
+    assert.equal(end.lines.length, 1);
+    assert.equal(end.lines[0].title, start.lines[0].title);
+    assert.equal(end.consultStance, start.consultStance);
   });
 });
 

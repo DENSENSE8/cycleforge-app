@@ -1,7 +1,7 @@
 'use client';
 
 import { getLast8 } from '@/lib/copy-chip-format';
-import { Barcode, Package } from '@/components/Icons';
+import { Package, ScanBarcode } from '@/components/Icons';
 
 /** Last 8 of a serial for a compact preview chip. */
 export function serialLast8(value: string): string {
@@ -90,7 +90,7 @@ export function SerialPreviewStrip({
                 : 'bg-surface-canvas text-text-muted ring-border-soft'
             }`}
           >
-            <Barcode className="h-2.5 w-2.5 shrink-0" />
+            <ScanBarcode className="h-2.5 w-2.5 shrink-0" />
             {serialLast8(s.serial_number)}
           </span>
         );

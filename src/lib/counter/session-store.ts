@@ -11,7 +11,7 @@
  * Putting D5 in the routes would mean re-deciding it in nine files, and the
  * tenth would get it wrong. Every mutation here takes an `actor`, and a
  * `kiosk` actor is refused for every line write — add, update, void, price —
- * leaving the tablet exactly three verbs: set customer, sign, confirm.
+ * leaving the tablet four verbs: set customer, sign, confirm, and consult stance.
  *
  * ### Concurrency is the version predicate, not a lock
  *
@@ -58,6 +58,13 @@ import {
   type CounterSessionSnapshot,
   type CounterSessionStatus,
 } from './session-events';
+import {
+  consultStanceFromFace,
+  faceFromConsultStance,
+  parseConsultPresentation,
+  type ConsultPresentation,
+  type ConsultStance,
+} from './consult-stance';
 
 // ── Actor + result vocabulary ───────────────────────────────────────────────
 
@@ -157,6 +164,8 @@ export interface HeaderPatch {
   status?: CounterSessionStatus;
   activeCommand?: KioskCommandId;
   face?: CounterSessionFace;
+  consultStance?: ConsultStance;
+  presentation?: ConsultPresentation;
   customer?: CounterSessionCustomer;
 }
 
@@ -536,6 +545,134 @@ export async function releaseSession(
       version,
       actor: 'desk',
       reason: written.reason,
+    }),
+  });
+}
+
+/**
+ * Put this visit on a tablet — or take it off one (`kioskDeviceId: null`).
+ *
+ * This is the verb the whole desk↔iPad bridge was missing. A tablet enrols to
+ * the ORG, never to a desk, so nothing about pairing tells the tablet which
+ * visit to show; `getSessionForDevice` answers "what am I showing?" by looking
+ * for the open session BOUND to that device, and until this ran the only way to
+ * set that binding was at `createSession` time. A desk that had already opened
+ * a visit could never hand it to a tablet, and `session-fanout` short-circuits
+ * on a null device, so such a visit published nothing to anyone.
+ *
+ * **One tablet, one open visit.** `ux_counter_sessions_open_device` enforces it
+ * in the schema; the pre-check here turns the constraint violation into
+ * `DEVICE_BUSY`, which the desk can say out loud ("that iPad is on another
+ * visit") instead of a 500. The check runs in the `write` step rather than
+ * `guard` because it needs the transaction — and being inside it is what makes
+ * the read-then-write atomic against a second desk binding the same iPad.
+ *
+ * Desk-only, like every other header verb (D5): a tablet naming its own
+ * session would be a session-enumeration surface on an unattended device.
+ */
+export async function bindSessionDevice(
+  orgId: OrgId,
+  actor: CounterSessionActor,
+  sessionId: number,
+  args: { expectedVersion: number; kioskDeviceId: number | null },
+  deps: CounterSessionDeps = defaultDeps,
+): Promise<CounterSessionResult> {
+  const denied = refuseDeviceWrite(actor);
+  if (denied) return { ok: false, code: denied, snapshot: null };
+
+  return mutate({
+    orgId,
+    sessionId,
+    expectedVersion: args.expectedVersion,
+    actor,
+    deps,
+    write: async (tx, snapshot) => {
+      const target = args.kioskDeviceId;
+      if (target !== null && target !== snapshot.kioskDeviceId) {
+        const holder = await deps.findOpenSessionIdForDevice(tx, orgId, target);
+        if (holder !== null && holder !== sessionId) return 'DEVICE_BUSY';
+      }
+      await deps.patchHeader(tx, orgId, sessionId, { kioskDeviceId: target });
+      return { kioskDeviceId: target };
+    },
+    event: (version, written) => ({
+      type: 'session.device_bound',
+      sessionId,
+      version,
+      actor: 'desk',
+      kioskDeviceId: written.kioskDeviceId,
+    }),
+  });
+}
+
+/**
+ * Work · Show · Verify. Does not touch lines, identity, or command.
+ *
+ * Allowed from desk **and** kiosk: the iPad chrome and a flipped tablet both
+ * need to publish the stance so the other screen converges. Money stays
+ * staff-only; this is not money.
+ */
+export async function setConsultStance(
+  orgId: OrgId,
+  actor: CounterSessionActor,
+  sessionId: number,
+  args: { expectedVersion: number; consultStance: ConsultStance },
+  deps: CounterSessionDeps = defaultDeps,
+): Promise<CounterSessionResult> {
+  const face = faceFromConsultStance(args.consultStance);
+  return mutate({
+    orgId,
+    sessionId,
+    expectedVersion: args.expectedVersion,
+    actor,
+    deps,
+    write: async (tx) => {
+      await deps.patchHeader(tx, orgId, sessionId, {
+        consultStance: args.consultStance,
+        face,
+      });
+      return { consultStance: args.consultStance, face };
+    },
+    event: (version, written) => ({
+      type: 'session.face_changed',
+      sessionId,
+      version,
+      actor: actor.kind === 'kiosk' ? 'kiosk' : 'desk',
+      face: written.face,
+      consultStance: written.consultStance,
+    }),
+  });
+}
+
+/**
+ * What Show paints. Does not touch lines, identity, command, or stance.
+ * Desk and kiosk both write — staff on either screen picks the proposal.
+ */
+export async function setConsultPresentation(
+  orgId: OrgId,
+  actor: CounterSessionActor,
+  sessionId: number,
+  args: { expectedVersion: number; presentation: ConsultPresentation },
+  deps: CounterSessionDeps = defaultDeps,
+): Promise<CounterSessionResult> {
+  return mutate({
+    orgId,
+    sessionId,
+    expectedVersion: args.expectedVersion,
+    actor,
+    deps,
+    write: async (tx) => {
+      await deps.patchHeader(tx, orgId, sessionId, {
+        presentation: args.presentation,
+      });
+      return { presentation: args.presentation };
+    },
+    event: (version, written) => ({
+      type: 'session.presentation_changed',
+      sessionId,
+      version,
+      actor: actor.kind === 'kiosk' ? 'kiosk' : 'desk',
+      presentation: written.presentation,
     }),
   });
 }
@@ -1012,7 +1149,8 @@ const defaultDeps: CounterSessionDeps = {
   async readSnapshot(tx, orgId, sessionId) {
     const header = await asClient(tx).query(
       `SELECT s.id, s.version, s.status, s.kiosk_device_id, s.claimed_by_staff_id,
-              s.claim_expires_at, s.active_command, s.face,
+              s.claim_expires_at, s.active_command, s.face, s.consult_stance,
+              s.consult_presentation,
               s.customer_phone, s.customer_name, s.customer_email,
               s.counter_transaction_id, s.payment_state, s.terminal_checkout_id,
               s.awaiting_card_since, st.name AS claimed_by_staff_name
@@ -1044,6 +1182,8 @@ const defaultDeps: CounterSessionDeps = {
       claimExpiresAtMs: msOrNull(row.claim_expires_at),
       activeCommand: row.active_command as KioskCommandId,
       face: row.face as CounterSessionFace,
+      consultStance: (row.consult_stance as ConsultStance | null) ?? consultStanceFromFace(row.face as CounterSessionFace),
+      presentation: parseConsultPresentation(row.consult_presentation),
       customer: {
         phone: row.customer_phone ?? '',
         name: row.customer_name ?? '',
@@ -1123,6 +1263,11 @@ const defaultDeps: CounterSessionDeps = {
     if (patch.status) push('status', patch.status);
     if (patch.activeCommand) push('active_command', patch.activeCommand);
     if (patch.face) push('face', patch.face);
+    if (patch.consultStance) push('consult_stance', patch.consultStance);
+    if (patch.presentation !== undefined) {
+      values.push(JSON.stringify(patch.presentation));
+      sets.push(`consult_presentation = $${values.length}::jsonb`);
+    }
     if (patch.customer) {
       push('customer_phone', patch.customer.phone);
       push('customer_name', patch.customer.name);

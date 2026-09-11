@@ -1,12 +1,13 @@
 'use client';
 
 /**
- * Mobile enrollment landing — scanned from the admin-generated QR.
+ * Mobile enrollment — invite QR.
  *
- *   1. Verify token + show "Welcome <name>"
- *   2. Set a 6-digit PIN (numpad)
- *   3. Optional: "Add passkey on this phone" (WebAuthn registration)
- *   4. Send them to /signin afterwards so the next visit works.
+ * Callers / importers: admin enroll QR → `/m/enroll/[token]`.
+ * Affected API: GET/POST `/api/auth/enroll/[token]`; passkey register begin/finish
+ *   with `enrollmentToken` (passkey first; PIN optional on complete).
+ * Schemas: enrollment token; staff_passkeys; optional staff PIN hash.
+ * User instruction: Enroll passkey first, PIN optional.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -14,9 +15,13 @@ import { useParams, useRouter } from 'next/navigation';
 import { startRegistration } from '@simplewebauthn/browser';
 import { Button } from '@/design-system/primitives';
 
-type Stage = 'loading' | 'invalid' | 'set-pin' | 'optional-passkey' | 'done';
+type Stage = 'loading' | 'invalid' | 'register-passkey' | 'optional-pin' | 'done';
 
-interface StaffInfo { id: number; name: string; role: string }
+interface StaffInfo {
+  id: number;
+  name: string;
+  role: string;
+}
 
 export default function EnrollPage() {
   const { token } = useParams<{ token: string }>();
@@ -34,37 +39,44 @@ export default function EnrollPage() {
     void (async () => {
       try {
         const r = await fetch(`/api/auth/enroll/${token}`, { cache: 'no-store' });
-        if (!r.ok) { setStage('invalid'); return; }
-        const data = await r.json() as { staff: StaffInfo };
+        if (!r.ok) {
+          setStage('invalid');
+          return;
+        }
+        const data = (await r.json()) as { staff: StaffInfo };
         setStaff(data.staff);
-        setStage('set-pin');
+        setStage('register-passkey');
       } catch {
         setStage('invalid');
       }
     })();
   }, [token]);
 
-  const submit = useCallback(async () => {
-    if (pin.length < 4) return;
-    setBusy(true);
-    setErr(null);
-    try {
-      const r = await fetch(`/api/auth/enroll/${token}`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ pin }),
-      });
-      if (!r.ok) {
-        const data = await r.json().catch(() => ({}));
-        setErr(humanError((data as { error?: string }).error));
-        return;
+  const completeEnrollment = useCallback(
+    async (optionalPin?: string) => {
+      setBusy(true);
+      setErr(null);
+      try {
+        const body = optionalPin ? { pin: optionalPin } : {};
+        const r = await fetch(`/api/auth/enroll/${token}`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify(body),
+        });
+        if (!r.ok) {
+          const data = await r.json().catch(() => ({}));
+          setErr(humanError((data as { error?: string }).error));
+          return false;
+        }
+        setStage('done');
+        return true;
+      } finally {
+        setBusy(false);
       }
-      setStage('optional-passkey');
-    } finally {
-      setBusy(false);
-    }
-  }, [pin, token]);
+    },
+    [token],
+  );
 
   const addPasskey = useCallback(async () => {
     setBusy(true);
@@ -74,10 +86,12 @@ export default function EnrollPage() {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({}),
+        body: JSON.stringify({ enrollmentToken: token }),
       });
-      if (!beginRes.ok) throw new Error('Could not start passkey registration.');
-      const beginData = await beginRes.json() as { options: Parameters<typeof startRegistration>[0]['optionsJSON'] };
+      if (!beginRes.ok) throw new Error('Could not start Face ID registration.');
+      const beginData = (await beginRes.json()) as {
+        options: Parameters<typeof startRegistration>[0]['optionsJSON'];
+      };
       const attResp = await startRegistration({ optionsJSON: beginData.options });
       const finishRes = await fetch('/api/auth/passkey/register/finish', {
         method: 'POST',
@@ -86,19 +100,24 @@ export default function EnrollPage() {
         body: JSON.stringify({
           response: attResp,
           deviceLabel: navigator.userAgent.slice(0, 64),
+          enrollmentToken: token,
         }),
       });
-      if (!finishRes.ok) throw new Error('Could not save passkey.');
-      setStage('done');
+      if (!finishRes.ok) throw new Error('Could not save Face ID.');
+      setStage('optional-pin');
     } catch (e) {
-      setErr(e instanceof Error ? e.message : 'Passkey setup failed.');
+      setErr(e instanceof Error ? e.message : 'Face ID setup failed.');
     } finally {
       setBusy(false);
     }
-  }, []);
+  }, [token]);
 
   if (stage === 'loading') {
-    return <Shell><div style={{ color: '#666' }}>Loading…</div></Shell>;
+    return (
+      <Shell>
+        <div style={{ color: '#666' }}>Loading…</div>
+      </Shell>
+    );
   }
   if (stage === 'invalid' || !staff) {
     return (
@@ -110,7 +129,33 @@ export default function EnrollPage() {
     );
   }
 
-  if (stage === 'set-pin') {
+  if (stage === 'register-passkey') {
+    return (
+      <Shell>
+        <div style={{ ...avatarStyle, width: 72, height: 72, fontSize: 26, marginBottom: 12 }}>
+          {staff.name
+            .split(/\s+/)
+            .slice(0, 2)
+            .map((p) => p[0]?.toUpperCase() ?? '')
+            .join('')}
+        </div>
+        <h1 style={{ margin: 0, fontSize: 22 }}>Welcome, {staff.name}</h1>
+        <p style={{ color: '#666', fontSize: 14, marginTop: 6, textAlign: 'center', maxWidth: 320 }}>
+          Set up Face ID on this phone. That is your sign-in credential for desks and the PWA.
+          If you enrolled a passkey only on a tenant hostname before, register again here so it
+          uses the shared app host.
+        </p>
+        {err && <div style={errorStyle}>{err}</div>}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 280, marginTop: 16 }}>
+          <Button variant="brand" size="lg" className="w-full" disabled={busy} onClick={() => void addPasskey()}>
+            {busy ? 'Waiting…' : 'Set up Face ID'}
+          </Button>
+        </div>
+      </Shell>
+    );
+  }
+
+  if (stage === 'optional-pin') {
     const targetPin = step === 'enter' ? pin : confirmPin;
     const press = (d: string) => {
       setErr(null);
@@ -126,12 +171,12 @@ export default function EnrollPage() {
           if (next.length === 6) {
             setTimeout(() => {
               if (next !== pin) {
-                setErr('PINs don\'t match. Try again.');
+                setErr("PINs don't match. Try again.");
                 setPin('');
                 setConfirmPin('');
                 setStep('enter');
               } else {
-                void submit();
+                void completeEnrollment(next);
               }
             }, 80);
           }
@@ -149,49 +194,47 @@ export default function EnrollPage() {
     };
     return (
       <Shell>
-        <div style={{ ...avatarStyle, width: 72, height: 72, fontSize: 26, marginBottom: 12 }}>
-          {staff.name.split(/\s+/).slice(0, 2).map((p) => p[0]?.toUpperCase() ?? '').join('')}
-        </div>
-        <h1 style={{ margin: 0, fontSize: 22 }}>Welcome, {staff.name}</h1>
-        <p style={{ color: '#666', fontSize: 14, marginTop: 6 }}>
-          {step === 'enter' ? 'Set a 6-digit PIN.' : 'Re-enter your PIN to confirm.'}
+        <div style={{ fontSize: 48, lineHeight: 1, marginBottom: 8 }}>✅</div>
+        <h1 style={{ margin: 0, fontSize: 22 }}>Face ID saved.</h1>
+        <p style={{ color: '#666', marginTop: 6, textAlign: 'center', maxWidth: 320 }}>
+          Optional: set a 6-digit PIN for shared stations later. You can skip this.
         </p>
         <div style={dotsRowStyle}>
-          {[0,1,2,3,4,5].map((i) => (
+          {[0, 1, 2, 3, 4, 5].map((i) => (
             <div key={i} style={{ ...dotStyle, background: i < targetPin.length ? '#111' : '#e5e5e5' }} />
           ))}
         </div>
         {err && <div style={errorStyle}>{err}</div>}
         {/* ds-raw-button: bespoke inline-styled circular numpad keypad — not a design-system Button */}
         <div style={numpadStyle}>
-          {['1','2','3','4','5','6','7','8','9'].map((d) => (
-            <button key={d} type="button" disabled={busy} style={padStyle} onClick={() => press(d)}>{d}</button>
+          {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
+            <button key={d} type="button" disabled={busy} style={padStyle} onClick={() => press(d)}>
+              {d}
+            </button>
           ))}
           <button type="button" className="ds-raw-button" style={{ ...padStyle, visibility: 'hidden' }} aria-hidden />
-          <button type="button" className="ds-raw-button" disabled={busy} style={padStyle} onClick={() => press('0')}>0</button>
-          <button type="button" className="ds-raw-button" disabled={busy || targetPin.length === 0} style={padStyle} onClick={back}>⌫</button>
+          <button type="button" className="ds-raw-button" disabled={busy} style={padStyle} onClick={() => press('0')}>
+            0
+          </button>
+          <button
+            type="button"
+            className="ds-raw-button"
+            disabled={busy || targetPin.length === 0}
+            style={padStyle}
+            onClick={back}
+          >
+            ⌫
+          </button>
         </div>
-      </Shell>
-    );
-  }
-
-  if (stage === 'optional-passkey') {
-    return (
-      <Shell>
-        <div style={{ fontSize: 48, lineHeight: 1, marginBottom: 8 }}>✅</div>
-        <h1 style={{ margin: 0, fontSize: 22 }}>PIN saved.</h1>
-        <p style={{ color: '#666', marginTop: 6, textAlign: 'center', maxWidth: 320 }}>
-          Add a passkey for one-tap sign in on this phone? Uses Face ID, Touch ID, or your device PIN.
-        </p>
-        {err && <div style={errorStyle}>{err}</div>}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: 280, marginTop: 16 }}>
-          <Button variant="brand" size="lg" className="w-full" disabled={busy} onClick={addPasskey}>
-            {busy ? 'Adding…' : 'Add passkey'}
-          </Button>
-          <Button variant="secondary" size="lg" className="w-full" onClick={() => setStage('done')}>
-            Skip for now
-          </Button>
-        </div>
+        <Button
+          variant="secondary"
+          size="lg"
+          className="mt-4 w-[280px]"
+          disabled={busy}
+          onClick={() => void completeEnrollment()}
+        >
+          Skip PIN — finish setup
+        </Button>
       </Shell>
     );
   }
@@ -201,10 +244,10 @@ export default function EnrollPage() {
       <div style={{ fontSize: 56, lineHeight: 1, marginBottom: 8 }}>🎉</div>
       <h1 style={{ margin: 0, fontSize: 22 }}>You&apos;re all set.</h1>
       <p style={{ color: '#666', marginTop: 6, textAlign: 'center', maxWidth: 320 }}>
-        You can close this page or open the app on a station — your name will appear in the sign-in picker.
+        Face ID is ready on this phone. Use it to sign in or authorize a desk QR.
       </p>
-      <Button variant="brand" size="lg" className="mt-[18px] w-[220px]" onClick={() => router.replace('/signin')}>
-        Open sign-in
+      <Button variant="brand" size="lg" className="mt-[18px] w-[220px]" onClick={() => router.replace('/m/signin')}>
+        Open phone sign-in
       </Button>
     </Shell>
   );
@@ -212,41 +255,72 @@ export default function EnrollPage() {
 
 function humanError(code: string | undefined): string {
   switch (code) {
-    case 'TOO_SHORT':   return 'PIN is too short.';
-    case 'TOO_LONG':    return 'PIN is too long.';
-    case 'NOT_NUMERIC': return 'Digits only, please.';
-    case 'INVALID_ENROLLMENT': return 'This invitation has expired.';
-    default: return 'Something went wrong. Try again.';
+    case 'TOO_SHORT':
+      return 'PIN is too short.';
+    case 'TOO_LONG':
+      return 'PIN is too long.';
+    case 'NOT_NUMERIC':
+      return 'Digits only, please.';
+    case 'INVALID_ENROLLMENT':
+      return 'This invitation has expired.';
+    case 'PASSKEY_REQUIRED':
+      return 'Set up Face ID before finishing.';
+    default:
+      return 'Something went wrong. Try again.';
   }
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{
-      position: 'fixed', inset: 0,
-      background: '#fafafa',
-      padding: '32px 24px 64px',
-      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start',
-      fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
-      overflowY: 'auto',
-    }}>
+    <div
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: '#fafafa',
+        padding: '32px 24px 64px',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'flex-start',
+        fontFamily: 'system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+        overflowY: 'auto',
+      }}
+    >
       {children}
     </div>
   );
 }
 
 const avatarStyle: React.CSSProperties = {
-  width: 52, height: 52, borderRadius: 999, background: '#111', color: '#fff',
-  display: 'flex', alignItems: 'center', justifyContent: 'center',
-  fontWeight: 700, fontSize: 18, letterSpacing: 0.5,
+  width: 52,
+  height: 52,
+  borderRadius: 999,
+  background: '#111',
+  color: '#fff',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  fontWeight: 700,
+  fontSize: 18,
+  letterSpacing: 0.5,
 };
 const dotsRowStyle: React.CSSProperties = { display: 'flex', gap: 12, marginTop: 20, marginBottom: 16 };
 const dotStyle: React.CSSProperties = { width: 14, height: 14, borderRadius: 999, transition: 'background 80ms' };
 const numpadStyle: React.CSSProperties = {
-  display: 'grid', gridTemplateColumns: 'repeat(3, 80px)', gap: 12, marginTop: 8,
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, 80px)',
+  gap: 12,
+  marginTop: 8,
 };
 const padStyle: React.CSSProperties = {
-  height: 80, width: 80, borderRadius: 999, background: '#fff',
-  border: '1px solid #e6e6e6', fontSize: 26, fontWeight: 600, color: '#111', cursor: 'pointer',
+  height: 80,
+  width: 80,
+  borderRadius: 999,
+  background: '#fff',
+  border: '1px solid #e6e6e6',
+  fontSize: 26,
+  fontWeight: 600,
+  color: '#111',
+  cursor: 'pointer',
 };
 const errorStyle: React.CSSProperties = { color: '#b00020', fontSize: 13, marginTop: 4 };

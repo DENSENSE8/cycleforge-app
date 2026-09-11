@@ -30,9 +30,10 @@ import { test, expect, type Page } from '@playwright/test';
 /** The push column's host. Present from first paint; `data-open` is the state. */
 const NAV_COLUMN = '[data-sidebar-nav-column]';
 /** The spine's page list — proof the navigator actually rendered. */
-const PAGES_MENU = '[role="menu"][aria-label="Pages"]';
-/** GlobalHeader's sidebar control — the leftmost header button. */
-const SIDEBAR_TOGGLE = 'header button';
+const PAGES_MENU = '[data-spine-nav][aria-label="Pages"]';
+/** Header toggle when closed; spine-head toggle when open. */
+const SIDEBAR_TOGGLE =
+  '[data-testid="sidebar-collapse-control"] button, [data-spine-nav-toggle]';
 /** `SIDEBAR_SPINE_WIDTH_PX`. */
 const SPINE_WIDTH = 240;
 
@@ -129,9 +130,9 @@ test.describe('sidebar spine — open and close', () => {
 
     await toggle.click();
     await expectSpineOpen(page);
-    // The control is a state toggle, so it must announce the new state.
-    await expect(toggle).toHaveAttribute('aria-label', 'Hide navigation');
-    await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+    const openToggle = page.locator('[data-spine-nav-toggle]');
+    await expect(openToggle).toHaveAttribute('aria-label', 'Hide navigation');
+    await expect(openToggle).toHaveAttribute('aria-pressed', 'true');
   });
 
   test('the same control closes it again', async ({ page }) => {
@@ -160,7 +161,7 @@ test.describe('sidebar spine — open and close', () => {
     await expectSpineOpen(page);
   });
 
-  test('collapsed toggle hover does not peek top destinations', async ({ page }) => {
+  test('collapsed toggle hover peeks the navigator, not the old pin card', async ({ page }) => {
     await gotoSurface(page, ROUTE);
     await expectSpineClosed(page);
 
@@ -168,8 +169,7 @@ test.describe('sidebar spine — open and close', () => {
     await expect(toggle).toHaveAttribute('aria-label', 'Show navigation');
 
     await toggle.hover();
-    // Former peek openDelay was 180ms — wait past it so a regression would flash.
-    await page.waitForTimeout(300);
+    await expect(page.getByTestId('sidebar-spine-peek')).toBeVisible({ timeout: 5_000 });
     await expect(page.getByTestId('sidebar-top-pins-peek')).toHaveCount(0);
     await expect(page.getByRole('navigation', { name: 'Quick destinations' })).toHaveCount(0);
 
@@ -218,7 +218,7 @@ test.describe('sidebar spine — open and close', () => {
     ).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Home' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Go to Media Library' })).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Open Scan Stations' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Scan Stations' })).toBeVisible();
   });
 
   /**

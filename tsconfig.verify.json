@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.json",
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next-perf/types/**/*.ts",
+    ".next-perf-si/types/**/*.ts",
+    ".next-crashfix/types/**/*.ts",
+    ".next-perf-lh/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    ".next/dev/**",
+    ".next-perf/dev/**",
+    ".next-perf-si/dev/**",
+    ".next-crashfix/dev/**",
+    ".next-perf-lh/dev/**"
+  ]
+}

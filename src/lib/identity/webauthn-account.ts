@@ -178,11 +178,11 @@ export async function verifyAccountRegistration(opts: {
   expectedChallenge: string;
   response: RegistrationResponseJSON;
 }) {
-  const { rpID, origin } = getRpFromRequest(opts.req);
+  const { rpID, expectedOrigins } = getRpFromRequest(opts.req);
   return verifyRegistrationResponse({
     response: opts.response,
     expectedChallenge: opts.expectedChallenge,
-    expectedOrigin: origin,
+    expectedOrigin: expectedOrigins,
     expectedRPID: rpID,
     requireUserVerification: false,
   });
@@ -208,14 +208,14 @@ export async function verifyAccountAuthentication(opts: {
   expectedChallenge: string;
   response: AuthenticationResponseJSON;
 }) {
-  const { rpID, origin } = getRpFromRequest(opts.req);
+  const { rpID, expectedOrigins } = getRpFromRequest(opts.req);
   const passkey = await findAccountPasskeyByCredentialId(opts.response.id);
   if (!passkey) return { verified: false as const, passkey: null };
 
   const verification = await verifyAuthenticationResponse({
     response: opts.response,
     expectedChallenge: opts.expectedChallenge,
-    expectedOrigin: origin,
+    expectedOrigin: expectedOrigins,
     expectedRPID: rpID,
     requireUserVerification: false,
     credential: {

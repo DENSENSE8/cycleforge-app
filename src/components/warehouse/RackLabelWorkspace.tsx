@@ -1,13 +1,13 @@
 'use client';
 
 /**
- * Main-area Racks workspace.
+ * Main-area Bays workspace.
  *
- * Hosts the rack-level label printer — same picker scaffolding as the bin
+ * Hosts the bay-level label printer — same picker scaffolding as the bin
  * label printer but without the position step. Each printed label
- * identifies a whole rack column on one level (zone/aisle/bay/level),
+ * identifies a whole bay column on one level (zone/aisle/bay/level),
  * stored under the position=0 sentinel so scan routing can distinguish
- * rack scans from bin scans.
+ * bay scans from bin scans.
  */
 
 import { RackLabelPrinter } from '@/components/barcode/RackLabelPrinter';

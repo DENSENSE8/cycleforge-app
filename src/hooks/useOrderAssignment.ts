@@ -15,6 +15,15 @@ export type OrderAssignPayload = {
   shipByDate?: string | null;
   outOfStock?: string | null;
   isOutOfStock?: boolean;
+  /** Shortage identity — written with isOutOfStock true; cleared when false. */
+  oosKind?: 'listing' | 'kit_part' | 'catalog_child' | 'catalog_other' | null;
+  oosSku?: string | null;
+  oosSkuCatalogId?: number | null;
+  oosKitPartId?: number | null;
+  oosQtyShort?: number | null;
+  oosTitle?: string | null;
+  oosZohoItemId?: string | null;
+  oosItemId?: string | null;
   /** Operator urgent / expedited toggle (orders.is_urgent). */
   isUrgent?: boolean;
   shippingTrackingNumber?: string | null;
@@ -83,6 +92,51 @@ function applyOptimisticUpdate(current: unknown, payload: OrderAssignPayload): u
       next.isOutOfStock = boolValue;
       next.out_of_stock = payload.outOfStock;
       next.outOfStock = payload.outOfStock;
+      if (boolValue) {
+        if (payload.oosKind !== undefined) {
+          next.oos_kind = payload.oosKind;
+          next.oosKind = payload.oosKind;
+        }
+        if (payload.oosSku !== undefined) {
+          next.oos_sku = payload.oosSku;
+          next.oosSku = payload.oosSku;
+        }
+        if (payload.oosSkuCatalogId !== undefined) {
+          next.oos_sku_catalog_id = payload.oosSkuCatalogId;
+          next.oosSkuCatalogId = payload.oosSkuCatalogId;
+        }
+        if (payload.oosKitPartId !== undefined) {
+          next.oos_kit_part_id = payload.oosKitPartId;
+          next.oosKitPartId = payload.oosKitPartId;
+        }
+        if (payload.oosQtyShort !== undefined) {
+          next.oos_qty_short = payload.oosQtyShort;
+          next.oosQtyShort = payload.oosQtyShort;
+        }
+        if (payload.oosTitle !== undefined) {
+          next.oos_title = payload.oosTitle;
+          next.oosTitle = payload.oosTitle;
+        }
+        if (payload.oosZohoItemId !== undefined) {
+          next.oos_zoho_item_id = payload.oosZohoItemId;
+          next.oosZohoItemId = payload.oosZohoItemId;
+        }
+      } else {
+        next.oos_kind = null;
+        next.oosKind = null;
+        next.oos_sku = null;
+        next.oosSku = null;
+        next.oos_sku_catalog_id = null;
+        next.oosSkuCatalogId = null;
+        next.oos_kit_part_id = null;
+        next.oosKitPartId = null;
+        next.oos_qty_short = null;
+        next.oosQtyShort = null;
+        next.oos_title = null;
+        next.oosTitle = null;
+        next.oos_zoho_item_id = null;
+        next.oosZohoItemId = null;
+      }
     }
     if (payload.isUrgent !== undefined) {
       next.is_urgent = payload.isUrgent;
@@ -156,6 +210,8 @@ export function useOrderAssignment() {
     onSuccess: (_data, payload) => {
       if (payload.shippingTrackingNumber !== undefined) {
         bustLabelsCaches(queryClient);
+        bustFulfillmentCaches(queryClient);
+      } else if (payload.isUrgent !== undefined || payload.isOutOfStock !== undefined) {
         bustFulfillmentCaches(queryClient);
       }
       if (typeof window === 'undefined') return;

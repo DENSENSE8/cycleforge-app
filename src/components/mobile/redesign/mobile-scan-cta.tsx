@@ -114,21 +114,24 @@ export function MobileScanCta() {
   return (
     <Button
       variant="secondary"
-      size="lg"
+      size="sm"
       onClick={onClick}
-      icon={onScanSurface ? <Plus className="h-4 w-4" /> : <Barcode className="h-4 w-4" />}
+      icon={onScanSurface ? <Plus className="h-3.5 w-3.5" /> : <Barcode className="h-3.5 w-3.5" />}
       aria-label={onScanSurface ? 'Start a new scan' : 'Go to scan'}
       radius="surface"
-      // ds-allow-control-size — 44px exactly, the touch floor, because this one
-      // is aimed at with a gloved thumb while walking.
+      // ds-allow-control-size — 32px PAINTED with a 44px hit region carried by
+      // the pseudo-element (32 + 6 + 6), which is `MOBILE_CONTROL_LADDER`'s
+      // paint-small-hit-big rule. It used to paint the full 44 and set the bar's
+      // height with it; the thumb target is unchanged, the chrome is 12px
+      // shorter, and the label dropped from 14px to 12px with it.
       //
       // QUIET on purpose (2026-08-21). It shipped as a saturated `primary` slab
       // with a coloured shadow and 0.16em bold caps, which made a squared,
       // monochrome header bar carry one loud blue block. The affordance was
-      // never the fill — it is the FIXED CORNER, the label, and the 44px box.
+      // never the fill — it is the FIXED CORNER, the label, and the target.
       // Volume was doing nothing the position wasn't already doing, and it
       // fought the spine treatment it sits above ("No hue, anywhere").
-      className="h-11 shrink-0 px-3 text-role-body font-semibold tracking-tight"
+      className="relative h-8 shrink-0 px-2.5 text-role-caption font-semibold tracking-tight before:absolute before:-inset-1.5 before:content-['']"
     >
       {/* The label states which of the two behaviours the tap will take, so the
           dual role is legible instead of hidden behind an identical face. */}

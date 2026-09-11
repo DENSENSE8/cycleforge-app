@@ -20,7 +20,6 @@
 // above is about NAMING and glyph uniqueness, not weight.
 
 import {
-  Barcode,
   Box,
   Boxes,
   Package,
@@ -33,7 +32,7 @@ import {
 } from './commerce';
 import { ClipboardList, Inbox, Printer } from './media';
 import { AlertTriangle, ShieldCheck } from './status';
-import { DoorOpen, Wrench } from './nav';
+import { DoorOpen, ScanBarcode, Wrench } from './nav';
 
 type IconComponent = (props: { className?: string }) => JSX.Element;
 
@@ -107,8 +106,8 @@ export const ShippingModeReady: IconComponent = ClipboardList;
 /** Amazon Prep under Shipping — multi-box Amazon prep. */
 export const ShippingModeFba: IconComponent = Boxes;
 
-/** Scan-out / carrier handoff confirm. */
-export const ShippingModeScanOut: IconComponent = Barcode;
+/** Scan-out / carrier handoff confirm — lucide scan-barcode (same family as Scan Stations). */
+export const ShippingModeScanOut: IconComponent = ScanBarcode;
 
 // ── Packing station L2 modes ─────────────────────────────────────────────────
 

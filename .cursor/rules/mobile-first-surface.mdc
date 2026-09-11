@@ -1,0 +1,51 @@
+---
+description: >-
+  Repo-wide mobile-first surface law — every product verb must be doable on
+  /m first; desktop frames the phone SoT. Applies to all CycleForge surfaces.
+alwaysApply: true
+---
+
+# Mobile-first surface (repo-wide)
+
+<!--
+  Callers: every Cursor agent session (alwaysApply).
+  SoT: docs/mobile-first/SURFACE_LAW.md
+  User: "span repo-wide" / "do everything on the mobile app first."
+-->
+
+**SoT:** [`docs/mobile-first/SURFACE_LAW.md`](../../docs/mobile-first/SURFACE_LAW.md)  
+**Checklist:** `src/lib/mobile/mobile-first-surface.ts`
+
+## Binding rule
+
+Every operator verb in this product must be completable on the **mobile web
+app (`/m/*`) first**. Desktop desks, stations, and kiosk faces consume that
+SoT (phone-width frame + gutters / compact recents) — they do not invent a
+second IA phones cannot run. Warehouse OS is one domain among many; this law
+is **repo-wide**.
+
+## When building or reviewing UI
+
+1. Classify the job: **A** floor `/m`, **B** phone browse, **C** dense desk,
+   **D** station/kiosk (`SURFACE_LAW` §3).
+2. New or ported verbs: ship **A/B under `/m`** before treating C/D as done.
+3. Desktop large viewports: **phone frame pattern** — fixed phone column,
+   thick side gutters; compact recents top-left only — not a full desk rail.
+4. **One job / sticky CTA / token family per use case** (TabSwitch ≠ path chips
+   ≠ TableTabs). See `SURFACE_LAW` §5–§6.
+5. No hover-only; no dual `lg:hidden` + `hidden lg:block` full flows.
+6. `ds_contract` / `ds_tokens` / `ds_critique` before `src/**/*.{tsx,jsx,css}` writes.
+7. Prefer existing `/m` kit: `RedesignedMobileShell`, Pick (`/m/pick`), Work
+   (`/m/work`), item-record mobile, `BottomSheet`, `IconButton size="touch"`.
+
+## Refuse
+
+- “Desktop-only; mobile later.”
+- Desktop-shrunk desks called mobile-first.
+- Parallel mobile design systems outside `src/components/mobile/` + DS pins.
+
+## Start URLs
+
+- Pick queue: `/m/pick`
+- Pick session: `/m/pick/[orderId]`
+- Orders: `/m/work`

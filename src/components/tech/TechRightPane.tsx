@@ -26,12 +26,12 @@ import { ShippingWorkspaceView } from '@/components/tech/shipping/ShippingWorksp
 import { ReceivingInboundFeed } from '@/components/station/ReceivingInboundFeed';
 import { ActiveOrderWorkspace } from '@/components/tech/ActiveOrderWorkspace';
 import { TestingLineWorkspace } from '@/components/tech/TestingLineWorkspace';
-import { previewOrderToActiveShape } from '@/components/tech/tech-dashboard-helpers';
+import { SearchFindPreviewEmbed } from '@/components/search/SearchFindPreviewEmbed';
 import { zIndex } from '@/design-system/tokens/z-index';
 import { appWorkCanvasClass } from '@/design-system/tokens/app-surface';
 import { appSurfaceFillClass } from '@/design-system/components/AppSurfaceFill';
 import { cn } from '@/utils/_cn';
-import type { Order } from '@/components/station/upnext/upnext-types';
+import type { SearchSelection } from '@/lib/search/search-selection';
 import type { TechActiveOrderPane } from '@/components/tech/useTechOrderPanes';
 import type { TechRightViewMode } from '@/components/tech/useTechRightView';
 
@@ -46,7 +46,7 @@ interface TechRightPaneProps {
   onCloseActiveOrder: () => void;
   /** Sync condition (and other local fields) after Displays edits. */
   onActiveOrderChange?: (next: TechActiveOrderPane['activeOrder']) => void;
-  previewOrder: Order | null;
+  previewSel: SearchSelection | null;
   onClosePreview: () => void;
 }
 
@@ -60,7 +60,7 @@ export function TechRightPane({
   activeOrderPane,
   onCloseActiveOrder,
   onActiveOrderChange,
-  previewOrder,
+  previewSel,
   onClosePreview,
 }: TechRightPaneProps) {
   if (rightViewMode === 'receiving') {
@@ -86,7 +86,7 @@ export function TechRightPane({
       activeOrderPane={activeOrderPane}
       onCloseActiveOrder={onCloseActiveOrder}
       onActiveOrderChange={onActiveOrderChange}
-      previewOrder={previewOrder}
+      previewSel={previewSel}
       onClosePreview={onClosePreview}
     />
   );
@@ -97,27 +97,27 @@ function ShippingOrderWorkspace({
   activeOrderPane,
   onCloseActiveOrder,
   onActiveOrderChange,
-  previewOrder,
+  previewSel,
   onClosePreview,
 }: {
   techId: string;
   activeOrderPane: TechActiveOrderPane | null;
   onCloseActiveOrder: () => void;
   onActiveOrderChange?: (next: TechActiveOrderPane['activeOrder']) => void;
-  previewOrder: Order | null;
+  previewSel: SearchSelection | null;
   onClosePreview: () => void;
 }) {
   const { presence: panePresence, transition: paneTransition } = useMotionRole(
     motionRole.swap.scan,
   );
-  const showOverlay = !!activeOrderPane || !!previewOrder;
+  const showOverlay = !!activeOrderPane || !!previewSel;
 
   const entitySwapHardCut = useOverlaySwapHardCut(showOverlay);
 
   const overlayKey = activeOrderPane
     ? `active-${activeOrderPane.activeOrder.tracking || activeOrderPane.activeOrder.orderId}`
-    : previewOrder
-      ? `preview-${previewOrder.id}`
+    : previewSel
+      ? `preview-${previewSel.entityType}:${previewSel.id}`
       : 'none';
 
   return (
@@ -157,7 +157,7 @@ function ShippingOrderWorkspace({
               }}
             />
           </motion.div>
-        ) : previewOrder ? (
+        ) : previewSel ? (
           <motion.div
             key={overlayKey}
             initial={entitySwapHardCut ? false : panePresence.initial}
@@ -167,12 +167,7 @@ function ShippingOrderWorkspace({
             style={{ zIndex: zIndex.panel + (entitySwapHardCut ? 1 : 0) }}
             className={cn('absolute inset-0 flex min-h-0 flex-col', appSurfaceFillClass('canvas'))}
           >
-            <ActiveOrderWorkspace
-              activeOrder={previewOrderToActiveShape(previewOrder)}
-              mode="preview"
-              previewOrder={previewOrder}
-              onClose={onClosePreview}
-            />
+            <SearchFindPreviewEmbed sel={previewSel} onClose={onClosePreview} />
           </motion.div>
         ) : null}
       </AnimatePresence>

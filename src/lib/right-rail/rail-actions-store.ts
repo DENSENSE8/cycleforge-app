@@ -33,9 +33,10 @@ interface RailActionSnapshot<T = unknown> {
   scope: string;
   /** Currently selected rows, in selection order. */
   rows: T[];
-  /** Lane-scoped actions. Already filtered by the publisher's lane SoT
-   *  (`orderBulkActionKeys`); the region still resolves per-selection
-   *  count/predicate constraints so it never renders a dead control. */
+  /** The family's verb catalog, already narrowed to the verbs this mount can
+   *  resolve (`offeredSelectionActions`). The region still resolves each verb
+   *  against the SELECTION — count, predicate and direction — so it never
+   *  renders a dead control. There is no lane list on either side. */
   actions: SelectionAction<T>[];
   /** Selectable rows on screen — the "N of M" denominator. */
   total: number;

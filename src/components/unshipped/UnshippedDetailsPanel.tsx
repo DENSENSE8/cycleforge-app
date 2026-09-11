@@ -7,8 +7,9 @@ interface UnshippedDetailsPanelProps {
   shipped: ShippedOrder;
   onClose: () => void;
   onUpdate: () => void;
+  surface?: 'rail' | 'stage';
 }
 
-export function UnshippedDetailsPanel(props: UnshippedDetailsPanelProps) {
-  return <ShippedDetailsPanel {...props} context="fulfillment" />;
+export function UnshippedDetailsPanel({ surface, ...props }: UnshippedDetailsPanelProps) {
+  return <ShippedDetailsPanel {...props} context="fulfillment" surface={surface} />;
 }

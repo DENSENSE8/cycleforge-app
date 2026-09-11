@@ -273,12 +273,16 @@ const KIOSK_HOST_ALLOWED_PATHS: ReadonlyArray<RegExp> = [
   /^\/$/,
   /^\/kiosk(?:$|\/)/,
   /^\/api\/kiosk\/pair(?:$|\/)/,
+  /^\/api\/kiosk\/dev-autopair(?:$|\/)/,
   /^\/api\/kiosk\/intake(?:$|\/)/,
+  // Callers: kiosk print buttons. API: GET /api/kiosk/visit/[id]/receipt. User: "print out a receipt including everything"
+  /^\/api\/kiosk\/visit(?:$|\/)/,
   /^\/api\/kiosk\/repair(?:$|\/)/,
   /^\/api\/kiosk\/sales(?:$|\/)/,
   /^\/api\/kiosk\/settings(?:$|\/)/,
   /^\/api\/kiosk\/staff-for-stepup(?:$|\/)/,
   /^\/api\/kiosk\/pickup(?:$|\/)/,
+  /^\/api\/kiosk\/session(?:$|\/)/,
   /^\/_next\//,
   /^\/favicon\.ico$/,
   /^\/manifest\.(json|webmanifest)$/,
@@ -291,15 +295,6 @@ const KIOSK_HOST_ALLOWED_PATHS: ReadonlyArray<RegExp> = [
   /^\/offline(?:$|\/)/,
 ];
 
-/** Dev-only local-testing convenience — see /api/kiosk/dev-autopair/route.ts.
- *  The route itself 404s in production regardless, but it must never even
- *  appear reachable on a real kiosk-host deployment's allowlist. */
-const KIOSK_HOST_DEV_ONLY_ALLOWED_PATHS: ReadonlyArray<RegExp> = [
-  /^\/api\/kiosk\/dev-autopair(?:$|\/)/,
-];
-
 export function isKioskHostAllowedPath(pathname: string): boolean {
-  if (KIOSK_HOST_ALLOWED_PATHS.some((re) => re.test(pathname))) return true;
-  if (process.env.NODE_ENV === 'production') return false;
-  return KIOSK_HOST_DEV_ONLY_ALLOWED_PATHS.some((re) => re.test(pathname));
+  return KIOSK_HOST_ALLOWED_PATHS.some((re) => re.test(pathname));
 }

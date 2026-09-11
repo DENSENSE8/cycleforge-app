@@ -326,8 +326,10 @@ export function KioskCounterPane({
             <KioskCustomerIntake
               heading={null}
               className="bg-surface-card"
-              value={{ phone: draft.phone, name: draft.name, email: draft.email }}
-              onChange={(next) => patch(next)}
+              value={{ phone: draft.phone, name: draft.name, email: draft.email, address: draft.address }}
+              onChange={(next) =>
+                patch({ phone: next.phone, name: next.name, email: next.email, address: next.address })
+              }
               extras={<>
               {showOrderLookup ? (
                 <TextField

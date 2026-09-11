@@ -41,6 +41,9 @@ import { Button } from '@/design-system/primitives';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { STATION_SCAN_WELL_CLASS } from '@/components/station/scan-depth';
 import { cn } from '@/utils/_cn';
+import { useAuth } from '@/contexts/AuthContext';
+import { IdentificationJobFace } from '@/components/identification/IdentificationJobFace';
+import { identificationFromScanOut, type ScanOutCartonJson } from '@/lib/identification';
 import type { ActiveStationOrder } from '@/hooks/useStationTestingController';
 import type { ScanOutActivePane } from '@/components/outbound/scan-out/scan-out-active';
 import {
@@ -57,6 +60,7 @@ const STATUS_TONE: Record<ScanOutActivePane['status'], string> = {
   ok: 'bg-emerald-50 text-emerald-800 ring-1 ring-inset ring-emerald-200',
   dup: 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200',
   exc: 'bg-amber-50 text-amber-800 ring-1 ring-inset ring-amber-200',
+  blk: 'bg-surface-danger text-text-danger ring-1 ring-inset ring-border-danger',
   pending: 'bg-surface-canvas text-text-muted ring-1 ring-inset ring-border-soft',
   miss: 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200',
   err: 'bg-rose-50 text-rose-800 ring-1 ring-inset ring-rose-200',
@@ -70,6 +74,8 @@ function statusLabel(pane: ScanOutActivePane): string {
       return 'Already scanned out';
     case 'exc':
       return pane.message || 'Delivered already';
+    case 'blk':
+      return pane.message || 'Do not ship — order cancelled';
     case 'pending':
       return 'Scanning…';
     case 'miss':
@@ -79,6 +85,26 @@ function statusLabel(pane: ScanOutActivePane): string {
     default:
       return '';
   }
+}
+
+function paneToCartonJson(pane: ScanOutActivePane): ScanOutCartonJson {
+  return {
+    ok: pane.status !== 'err',
+    matched: pane.status !== 'miss' && pane.status !== 'err',
+    blocked: pane.status === 'blk',
+    alreadyDelivered: pane.status === 'exc',
+    duplicate: pane.status === 'dup',
+    orderRowId: pane.orderRowId,
+    orderId: pane.orderId,
+    productTitle: pane.productTitle,
+    sku: pane.sku,
+    itemNumber: pane.itemNumber,
+    condition: pane.condition,
+    quantity: pane.qty,
+    tracking: pane.tracking,
+    shipmentId: pane.shipmentId,
+    message: pane.message ?? null,
+  };
 }
 
 function paneToStationOrder(pane: ScanOutActivePane): ActiveStationOrder {
@@ -109,7 +135,24 @@ export function ScanOutActivePanel({
   canUndo?: boolean;
   isUndoing?: boolean;
 }) {
+  const { user } = useAuth();
   const activeOrder = useMemo(() => paneToStationOrder(pane), [pane]);
+  const jobFace = useMemo(() => {
+    if (pane.status === 'pending') return null;
+    const org = String(user?.organizationId ?? '').trim();
+    if (!org) return null;
+    const json = paneToCartonJson(pane);
+    return {
+      result: identificationFromScanOut({
+        source: 'scan',
+        organizationId: org,
+        clientEventId: `scan:scan_out:${pane.orderRowId ?? pane.tracking}:${pane.status}`,
+        json,
+        requestedKey: pane.tracking || pane.orderId,
+      }),
+      carton: json,
+    };
+  }, [pane, user?.organizationId]);
   const onExit = useCallback(() => dispatchScanOutActive(null), []);
   const [activeSideTab, setActiveSideTab] = useState<ScanOutDisplayNav | null>(null);
 
@@ -296,10 +339,14 @@ export function ScanOutActivePanel({
                   className={cn(STATION_SCAN_WELL_CLASS, "flex min-h-0 flex-1 flex-col items-center justify-center inset-empty text-center")}
                   data-testid="scan-out-ops-centre"
                 >
-                  <p className="text-role-caption text-text-muted">
-                    Scan the next carrier label below. Notes land on this package in the same
-                    field.
-                  </p>
+                  {jobFace ? (
+                    <IdentificationJobFace result={jobFace.result} carton={jobFace.carton} />
+                  ) : (
+                    <p className="text-role-caption text-text-muted">
+                      Scan the next carrier label below. Notes land on this package in the same
+                      field.
+                    </p>
+                  )}
                 </div>
               </StationWorkbench>
             </div>

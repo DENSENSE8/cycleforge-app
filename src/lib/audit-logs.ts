@@ -602,6 +602,8 @@ export const AUDIT_ACTION = {
   AUTOMATION_RULE_DELETE: 'automation_rule.delete',
   // Dock scan-out: the package physically left the warehouse (SHIP_CONFIRM event)
   SHIP_CONFIRM_SCAN: 'shipment.scan_out',
+  /** Reversal of a scan-out. The commit is audited; so is taking it back. */
+  SHIP_CONFIRM_UNDO: 'shipment.scan_out.undo',
   // Bose Sourcing Engine — compatibility DB + alternative sourcing
   BOSE_MODEL_CREATE: 'bose_model.create',
   BOSE_MODEL_UPDATE: 'bose_model.update',

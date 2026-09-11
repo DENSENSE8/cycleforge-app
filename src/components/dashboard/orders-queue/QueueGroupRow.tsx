@@ -1,14 +1,17 @@
 'use client';
 
 import { useState, type ReactNode } from 'react';
-import { SlotTableGroupParentRow } from '@/components/tables/compound/SlotTableGroupParentRow';
+import {
+  SlotTableGroupFold,
+  SlotTableGroupParentRow,
+} from '@/components/tables/compound/SlotTableGroupParentRow';
 import type { RowGroup } from '@/lib/group-rows';
 import { orderCarrierBoxes } from '@/lib/orders/order-group-identity';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import { resolveMarketplacePlatformMeta } from '@/lib/marketplace-order-id';
 import { platformMetaBrandDot } from '@/lib/source-platform';
 import { marketplaceOrderUrl } from '@/utils/order-platform';
-import { ordersCompoundView, ordersEdgeMark } from '@/lib/orders/orders-compound-view';
+import { ordersCompoundView, ordersEdgeMark, ordersGroupItemStatus } from '@/lib/orders/orders-compound-view';
 import { ordersSlotValues } from '@/lib/tables/field-catalog/orders-resolve';
 import { lineQtySubtitlePart } from '@/lib/tables/slot-table-line-qty';
 import { lineMoneySubtitlePart } from '@/lib/tables/slot-table-line-money';
@@ -95,7 +98,7 @@ export function QueueGroupRow({
   const multi = group.rows.length > 1;
   const [folded, setFolded] = useState(false);
   return (
-    <>
+    <SlotTableGroupFold multi={multi}>
       {multi ? (
         <QueueOrderParentRow
           group={group}
@@ -113,10 +116,10 @@ export function QueueGroupRow({
               row,
               baseStripeIndex + i,
               rowIndex == null ? undefined : rowIndex + i,
-              false,
+              multi,
             ),
           )}
-    </>
+    </SlotTableGroupFold>
   );
 }
 
@@ -155,6 +158,7 @@ function QueueOrderParentRow({
         ),
       ],
     }),
+    itemStatus: ordersGroupItemStatus(group.rows),
     edgeMark: ordersEdgeMark({
       has_exception: group.rows.some((row) => Boolean(row.has_exception)),
       is_urgent: group.rows.some((row) => Boolean(row.is_urgent)),

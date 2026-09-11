@@ -5,10 +5,9 @@
  * listing facts without forking a third evaluator for Studio floor graphs.
  */
 
-export type AutomationTriggerKey =
-  | 'order.imported'
-  | 'order.item_number_set'
-  | 'unit.test_passed';
+import type { AutomationTriggerKey } from '@/lib/schemas/automations';
+
+export type { AutomationTriggerKey };
 
 export type AssignWorkAction = {
   type: 'assign_work';
@@ -155,6 +154,12 @@ export function selectActionsForTrigger(
   actions: readonly AssignWorkAction[],
   triggerKey: AutomationTriggerKey,
 ): AssignWorkAction[] {
+  if (triggerKey === 'identification.completed') {
+    // P2: trigger exists for P3 subscribers. TEST|PACK never run on this key —
+    // listing upserts stay on LISTING_AUTOMATION_TRIGGER_KEYS so dock scans
+    // cannot assign testers.
+    return [];
+  }
   if (triggerKey === 'unit.test_passed') {
     return actions.filter((a) => a.work_type === 'PACK');
   }

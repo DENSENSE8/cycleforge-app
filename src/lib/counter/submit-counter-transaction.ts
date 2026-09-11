@@ -129,8 +129,10 @@ export interface SubmitCounterTransactionDeps {
   findCustomerByPhoneDigits(orgId: OrgId, phoneDigits: string): Promise<ResolvedCustomer | null>;
   createCustomer(
     orgId: OrgId,
-    args: { name: string; phone: string; email?: string },
+    args: { name: string; phone: string; email?: string; address?: string },
   ): Promise<ResolvedCustomer>;
+  /** Callers: submitCounterTransaction after phone match. Schema: customers.shipping_address_1. User: "intake their information like name, email address, phone number, address" */
+  patchCustomerAddress?(orgId: OrgId, customerId: number, address: string): Promise<void>;
 
   /** The header for this client_event_id, if this submit is a replay. */
   findHeaderByClientEvent(orgId: OrgId, clientEventId: string): Promise<HeaderRow | null>;
@@ -318,6 +320,15 @@ const defaultDeps: SubmitCounterTransactionDeps = {
       storedName:
         created.display_name?.trim() || created.customer_name?.trim() || args.name,
     };
+  },
+  async patchCustomerAddress(orgId, customerId, address) {
+    await tenantQuery(
+      orgId,
+      `UPDATE customers
+          SET shipping_address_1 = $1, updated_at = NOW()
+        WHERE organization_id = $2 AND id = $3`,
+      [address, orgId, customerId],
+    );
   },
 
   async findHeaderByClientEvent(orgId, clientEventId) {
@@ -532,7 +543,16 @@ export async function submitCounterTransaction(
     if (!displayName) {
       throw new CounterTransactionValidationError(['Name (no customer matched that phone)']);
     }
-    customer = await deps.createCustomer(orgId, { name: displayName, phone, email });
+    customer = await deps.createCustomer(orgId, {
+      name: displayName,
+      phone,
+      email,
+      address: String(input.customer?.address ?? '').trim() || undefined,
+    });
+  }
+  const address = String(input.customer?.address ?? '').trim();
+  if (address && deps.patchCustomerAddress) {
+    await deps.patchCustomerAddress(orgId, customer.id, address);
   }
   // A typed name wins (the customer is standing there correcting it); otherwise
   // fall back to the name already on file.

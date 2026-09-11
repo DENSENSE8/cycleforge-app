@@ -3,7 +3,7 @@
  * (a `SlotLayout` materialization since the wave 1.4 hand-model kill) into the
  * TanStack defs `LedgerGridSurface` mounts. Sortability, default direction and
  * locks all derive from the columns handed in — never a module constant. Row ORDER stays with the
- * house comparator in `UnitsWorkspaceView` (state math only).
+ * house comparator in `useUnitsSpreadsheet` (state math only).
  */
 
 import {

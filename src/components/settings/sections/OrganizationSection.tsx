@@ -591,8 +591,8 @@ export function OrganizationSection() {
               placeholder="USAV"
             />
             <span className="mt-1 block text-xs text-text-soft">
-              Shown on the screensaver when no kiosk image is uploaded. Painted in your primary
-              color.
+              Wordmark for a future staff lock screen when no image is uploaded.
+              Painted in your primary color. Not shown after idle.
             </span>
           </label>
           <label className="block">

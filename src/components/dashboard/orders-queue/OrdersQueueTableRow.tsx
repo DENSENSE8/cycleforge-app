@@ -3,6 +3,8 @@
 import { gridDataCellClass } from '@/design-system/components/grid';
 import { isCompoundColumnModel } from '@/components/tables/compound/compound-columns';
 import { renderCompoundGridCell } from '@/components/tables/compound/CompoundGridCell';
+import { CompoundRowDetailHost } from '@/components/tables/compound/CompoundRowDetailHost';
+import { useCompoundRowDetail } from '@/components/tables/compound/useCompoundRowDetail';
 import { ignoreRowSelectFromSubtitle } from '@/components/tables/compound/useSubtitlePointerReorder';
 import { ordersCompoundView } from '@/lib/orders/orders-compound-view';
 import { useOrderStatusTrail } from '@/components/orders/OrderStatusTrailOverlay';
@@ -16,7 +18,6 @@ import {
   useCallback,
   useMemo,
   useRef,
-  useState,
   type ComponentProps,
   type ReactNode,
   type Ref,
@@ -39,7 +40,6 @@ import {
   type GridSelectGutterChrome,
 } from '@/components/ui/GridRowCheckbox';
 import {
-  MorphingRowActionMenu,
   MorphingSelectGutter,
 } from '@/components/outbound/orders/to-ship/MorphingRowActionMenu';
 import { applyMorphingGutterClick } from '@/lib/outbound/morphing-row-action';
@@ -99,6 +99,11 @@ export interface OrdersQueueTableRowProps {
    * quiet so the same order # is not reprinted per SKU.
    */
   quietIdentity?: boolean;
+  /**
+   * Bundle / kit face from batch composition map (sku_catalog_id).
+   * Null / omitted ⇒ flat listing title only.
+   */
+  kitFace?: import('@/lib/orders/order-kit-composition').KitFace | null;
   isMobile: boolean;
   useAlternateStripe: boolean;
   testerDisplay: string;
@@ -130,7 +135,7 @@ export interface OrdersQueueTableRowProps {
    */
   gridSkin?: boolean;
   /** Sheets click-select: row click toggles bulk; double-click opens. Gutter
-   * still mounts a real checkbox (`selectGutterChrome='always'` on To-ship).
+   * still mounts a real checkbox (`selectGutterChrome='hover'` on To-ship).
    */
   clickSelect?: boolean;
   /** Select-gutter face chrome — `'always'` paints the 16px checklist square. */
@@ -338,6 +343,7 @@ interface OrdersQueueRowShellProps {
   'aria-label': string;
   'data-order-row-id': string;
   'data-marketplace-order-id'?: string;
+  'data-group-child'?: string;
   role: React.AriaRole;
   tabIndex: number;
   className: string;
@@ -704,6 +710,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   selectMode,
   isChecked,
   quietIdentity = false,
+  kitFace = null,
   useAlternateStripe,
   testerDisplay,
   packerDisplay,
@@ -719,7 +726,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
   opaqueStripe = false,
   gridSkin = false,
   clickSelect = false,
-  selectGutterChrome = 'always',
+  selectGutterChrome = 'hover',
   rowFillHex = null,
   rowIndex,
   onToggleSelect,
@@ -749,26 +756,12 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
 
   const isStagedRow = queueMode === 'staged' || queueMode === 'shipped';
 
-  // CYC-82 — the row action manifold that opens off the leading checkbox.
-  // Every outbound compound lane that paints a select gutter (To-ship,
-  // Shipped, staged, labels, exceptions) uses this manifold. Gating it on
-  // `queueMode === 'fulfillment'` was a fork: Shipped still had the checkbox
-  // but no left actions. The panel mounts BESIDE the cells rather than inside
-  // the gutter cell because the desktop gutter is painted by the shared
-  // compound engine, which takes data and not JSX; the row anchors the panel
-  // to itself so the panel lands outside the table's left edge.
+  // CYC-82 — the row action manifold opens off the leading checkbox.
+  // The bar itself lives on {@link OrdersMorphingHost} in the spreadsheet
+  // prefix so virtualizing this row out of the window cannot unmount it.
   const rowRef = useRef<HTMLDivElement>(null);
-  const morphingAnchorRef = useRef<HTMLElement | null>(null);
-  const [morphingOpen, setMorphingOpen] = useState(false);
   const morphingEnabled = compoundLayout && Boolean(onToggleSelect);
-  const closeMorphingMenu = useCallback(() => setMorphingOpen(false), []);
-  const openMorphingMenu = useCallback(() => {
-    // Anchor the ROW, not the gutter cell: the manifold opens `left-start`, so
-    // anchoring the row parks it in the page margin OUTSIDE the table rather
-    // than on top of the columns the operator is reading.
-    morphingAnchorRef.current = rowRef.current;
-    setMorphingOpen(true);
-  }, []);
+  const detailState = useCompoundRowDetail(String(record.id));
 
   // Zebra is OFF under the airtable skin. That skin already draws a full cell
   // rule grid (right + bottom on every cell) inside a raised card frame, so a
@@ -951,6 +944,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
             }
           : null,
         quietIdentity,
+        kitFace: kitFace ?? null,
       })
     : null;
 
@@ -1068,8 +1062,8 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                       isChecked,
                       shiftKey: event.shiftKey,
                       onToggle: (next) => onToggleSelect(record, next),
-                      onOpenMenu: openMorphingMenu,
-                      onCloseMenu: closeMorphingMenu,
+                      onOpenMenu: () => {},
+                      onCloseMenu: () => {},
                     });
                   }
                 : undefined,
@@ -1080,6 +1074,13 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
                 : isChecked
                   ? 'Deselect row'
                   : 'Select row',
+              detail: compoundView.detail
+                ? {
+                    open: detailState.open,
+                    onToggle: detailState.toggle,
+                    label: compoundView.title.trim() || 'this line',
+                  }
+                : undefined,
             },
           })
         : null;
@@ -1142,6 +1143,7 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
         : `Open order ${record.order_id || record.id}`,
     'data-order-row-id': String(record.id),
     'data-marketplace-order-id': String(record.order_id || ''),
+    'data-group-child': quietIdentity ? '' : undefined,
     className: cn(
       'group/row relative',
       ledgerGridRowShellClass(isMobile, { scrollMinContent: gridSkin }),
@@ -1194,36 +1196,39 @@ export const OrdersQueueTableRow = memo(function OrdersQueueTableRow({
               : { backgroundColor: rowFillHex }),
           }
         : undefined,
-    children: (
-      <>
-        {cells}
-        {morphingEnabled ? (
-          <MorphingRowActionMenu
-            record={record}
-            open={morphingOpen}
-            onClose={closeMorphingMenu}
-            anchorRef={morphingAnchorRef}
-          />
-        ) : null}
-      </>
-    ),
+    children: cells,
   };
 
   // A row that animates NOTHING is a plain box: no motion component, no
   // presence/layout context subscriptions, no reduced-motion bridges. The
   // moment any of the three is live, the shell above is handed to the motion
   // host unchanged.
-  if (!animatePresence && !animateLayout && !hoverLift) {
-    return <div ref={rowRef} {...shell} />;
-  }
+  const leaf =
+    !animatePresence && !animateLayout && !hoverLift ? (
+      <div ref={rowRef} {...shell} />
+    ) : (
+      <AnimatedOrdersQueueRowShell
+        ref={rowRef}
+        animatePresence={animatePresence}
+        animateLayout={animateLayout}
+        hoverLift={hoverLift}
+        {...shell}
+      />
+    );
+
+  if (!compoundView?.detail || isMobile) return leaf;
+
   return (
-    <AnimatedOrdersQueueRowShell
-      ref={rowRef}
-      animatePresence={animatePresence}
-      animateLayout={animateLayout}
-      hoverLift={hoverLift}
-      {...shell}
-    />
+    <CompoundRowDetailHost
+      rowId={String(record.id)}
+      detail={compoundView.detail}
+      title={compoundView.title}
+      columns={columns}
+      detailOpen={detailState.open}
+      onCloseDetail={detailState.close}
+    >
+      {leaf}
+    </CompoundRowDetailHost>
   );
 }, (prev, next) => {
   if (prev.isMobile !== next.isMobile) return false;

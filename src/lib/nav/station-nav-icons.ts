@@ -105,7 +105,7 @@ export const STATION_GLYPH_KEYS = {
   'shipping.labels': 'Printer',
   'shipping.ready': 'ClipboardList',
   'shipping.fba': 'Boxes',
-  'shipping.scan-out': 'Barcode',
+  'shipping.scan-out': 'ScanBarcode',
   'packing.standard': 'Box',
   'packing.fragile': 'AlertTriangle',
   'packing.multi': 'Package',

@@ -6,7 +6,7 @@
 import { tenantQuery } from '@/lib/tenancy/db';
 import type { OrgId } from '@/lib/tenancy/constants';
 import { normalizeItemNumber } from '@/lib/automations/listing-match';
-import { AUTOMATION_TRIGGER_KEYS } from '@/lib/schemas/automations';
+import { LISTING_AUTOMATION_TRIGGER_KEYS } from '@/lib/schemas/automations';
 import { upsertOrderAssignment } from '@/lib/work-assignments/upsert-order-assignment';
 import { applyListingAssignment } from '@/lib/automations/apply-listing-assignment';
 
@@ -107,7 +107,7 @@ async function upsertRuleForItemNumber(
         existing.rows[0].id,
         organizationId,
         name,
-        [...AUTOMATION_TRIGGER_KEYS],
+        [...LISTING_AUTOMATION_TRIGGER_KEYS],
         JSON.stringify(whenJson),
         JSON.stringify(thenJson),
         actorStaffId,
@@ -127,7 +127,7 @@ async function upsertRuleForItemNumber(
     [
       organizationId,
       name,
-      [...AUTOMATION_TRIGGER_KEYS],
+      [...LISTING_AUTOMATION_TRIGGER_KEYS],
       JSON.stringify(whenJson),
       JSON.stringify(thenJson),
       actorStaffId,

@@ -111,6 +111,7 @@ async function tabletSession(tablet: APIRequestContext) {
   expect(res.ok(), `tablet read should succeed (HTTP ${res.status()})`).toBeTruthy();
   return (await res.json()) as {
     session: {
+      sessionId: number;
       version: number;
       lines: Array<{ id: string; title: string; quantity: number }>;
       customerName: string;
@@ -453,6 +454,112 @@ test.describe('P6 · version discipline (D3)', () => {
       expect(read.channel, 'the device payload carries its bridge').toBeTruthy();
       expect(read.channel).toMatch(/^org:[0-9a-f-]{36}:kiosk:\d+$/i);
       expect(read.channel).toContain(`:kiosk:${deviceId}`);
+    } finally {
+      await tablet.dispose();
+      await request.post('/api/kiosk/revoke', { data: { deviceId } }).catch(() => {});
+    }
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 0 — desk → this iPad after the visit already exists.
+// `docs/todo/kiosk-counter-consult-PLAN.md`: create desk-only, then bind;
+// DEVICE_BUSY; unbind returns the tablet to its local cart.
+// Playwright qa-desktop runs this file. APIs: POST /api/counter/session,
+// POST /api/counter/session/{id}/device, GET /api/kiosk/session.
+// Schema: counter_sessions.kiosk_device_id (one open visit per tablet).
+// User: "Great, continue to build out phase 0."
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function openDeskOnlySession(staff: APIRequestContext): Promise<{ sessionId: number; version: number }> {
+  const res = await staff.post('/api/counter/session', {
+    data: { clientEventId: crypto.randomUUID(), kioskDeviceId: null },
+    headers: { 'content-type': 'application/json' },
+  });
+  expect(res.ok(), `desk-only create should succeed (HTTP ${res.status()})`).toBeTruthy();
+  const body = (await res.json()) as { snapshot: { sessionId: number; version: number } };
+  return { sessionId: body.snapshot.sessionId, version: body.snapshot.version };
+}
+
+async function bindDevice(
+  staff: APIRequestContext,
+  sessionId: number,
+  expectedVersion: number,
+  kioskDeviceId: number | null,
+) {
+  return staff.post(`/api/counter/session/${sessionId}/device`, {
+    data: { expectedVersion, kioskDeviceId },
+    headers: { 'content-type': 'application/json' },
+  });
+}
+
+test.describe('Phase 0 · bind an open visit onto a tablet', () => {
+  test('a desk-only visit paints on the iPad only after POST /device', async ({
+    request,
+    baseURL,
+  }) => {
+    const { deviceId, tablet } = await enrollAndPair(request, baseURL!);
+    const { sessionId, version } = await openDeskOnlySession(request);
+
+    try {
+      expect((await tabletSession(tablet)).session, 'unbound tablet is idle').toBeNull();
+
+      const bound = await bindDevice(request, sessionId, version, deviceId);
+      expect(bound.ok(), `bind should succeed (HTTP ${bound.status()})`).toBeTruthy();
+
+      await expect
+        .poll(async () => (await tabletSession(tablet)).session?.sessionId ?? null, {
+          timeout: CONVERGE_MS,
+        })
+        .toBe(sessionId);
+    } finally {
+      await tablet.dispose();
+      await request.post('/api/kiosk/revoke', { data: { deviceId } }).catch(() => {});
+    }
+  });
+
+  test('DEVICE_BUSY refuses a silent steal when another open visit holds the tablet', async ({
+    request,
+    baseURL,
+  }) => {
+    const { deviceId, tablet } = await enrollAndPair(request, baseURL!);
+    const holderId = await openSession(request, deviceId);
+    const { sessionId: otherId, version } = await openDeskOnlySession(request);
+
+    try {
+      const steal = await bindDevice(request, otherId, version, deviceId);
+      expect(steal.status(), 'busy tablet is a 409').toBe(409);
+      const body = (await steal.json()) as { error: string };
+      expect(body.error).toBe('DEVICE_BUSY');
+
+      const still = await tabletSession(tablet);
+      expect(still.session?.sessionId, 'the first visit keeps the tablet').toBe(holderId);
+    } finally {
+      await tablet.dispose();
+      await request.post('/api/kiosk/revoke', { data: { deviceId } }).catch(() => {});
+    }
+  });
+
+  test('unbind hands the iPad back — GET /api/kiosk/session is idle, desk visit stays', async ({
+    request,
+    baseURL,
+  }) => {
+    const { deviceId, tablet } = await enrollAndPair(request, baseURL!);
+    const sessionId = await openSession(request, deviceId);
+
+    try {
+      expect((await tabletSession(tablet)).session?.sessionId).toBe(sessionId);
+
+      const before = await deskSnapshot(request, sessionId);
+      const unbound = await bindDevice(request, sessionId, before.version, null);
+      expect(unbound.ok(), `unbind should succeed (HTTP ${unbound.status()})`).toBeTruthy();
+
+      await expect
+        .poll(async () => (await tabletSession(tablet)).session, { timeout: CONVERGE_MS })
+        .toBeNull();
+
+      const desk = await deskSnapshot(request, sessionId);
+      expect(desk.version, 'the desk visit is still open').toBeGreaterThanOrEqual(before.version);
     } finally {
       await tablet.dispose();
       await request.post('/api/kiosk/revoke', { data: { deviceId } }).catch(() => {});

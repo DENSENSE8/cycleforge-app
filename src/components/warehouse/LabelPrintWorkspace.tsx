@@ -44,8 +44,8 @@ export function LabelPrintWorkspace() {
               </p>
               <p className="mt-0.5 text-role-caption text-blue-700">
                 Special bins (RETURNS-TEST, TECH-PARTS, UNSORTED) print as 2×1
-                from the Bins grid. Structured location labels use the 3×2
-                printer below — step through each queued bin.
+                from the Bins grid. Structured location labels use the 2×1
+                printer below — same sticker as Unbox.
               </p>
             </div>
             <Button

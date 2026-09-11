@@ -111,8 +111,8 @@ export function stripCrossSurfaceParams(
     // `dir` pairs with `sort` — stripping one and not the other left a dangling
     // direction that re-applied itself to whatever sort Testing resolved next.
     next.delete('dir');
-    // Spreadsheet COLUMN sort. Testing mounts `ReceivingGridHost` too, so a
-    // column sort picked on a receiving surface would otherwise ride into
+    // Spreadsheet COLUMN sort. Testing mounts the receiving spreadsheet too, so
+    // a column sort picked on a receiving surface would otherwise ride into
     // /test and name a column Testing's list may not contain.
     next.delete(GRID_COLUMN_SORT_PARAM);
     next.delete(GRID_COLUMN_DIR_PARAM);

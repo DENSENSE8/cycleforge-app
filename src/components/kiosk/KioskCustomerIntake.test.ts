@@ -12,7 +12,7 @@ const read = (rel: string) => readFileSync(join(process.cwd(), rel), 'utf8');
 
 describe('kiosk customer intake — one form for every channel', () => {
   it('asks phone first (it is the lookup key), then name, then email', () => {
-    assert.deepEqual([...KIOSK_CUSTOMER_FIELDS], ['phone', 'name', 'email']);
+    assert.deepEqual([...KIOSK_CUSTOMER_FIELDS], ['phone', 'name', 'email', 'address']);
   });
 
   it('writes ONE phone shape so a lookup matches whichever channel typed it', () => {

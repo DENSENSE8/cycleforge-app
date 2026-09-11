@@ -113,6 +113,19 @@ test('wearing the desk chrome does NOT cost a desk its rail', () => {
   }
 });
 
+test('Locations Labels and Bays are rail-less; Rooms Bins Map keep the rail', () => {
+  // Callers: isRaillessSurface contract. No data schemas.
+  // User: "Ensure that the left sidebar component is actually removed."
+  assert.equal(isRaillessSurface('/inventory/locations', params()), true);
+  assert.equal(isRaillessSurface('/inventory/locations', params('tab=labels')), true);
+  assert.equal(isRaillessSurface('/inventory/locations', params('tab=bays')), true);
+  assert.equal(isRaillessSurface('/inventory/locations', params('tab=racks')), true);
+  assert.equal(isRaillessSurface('/warehouse', params()), true);
+  assert.equal(isRaillessSurface('/inventory/locations', params('tab=rooms')), false);
+  assert.equal(isRaillessSurface('/inventory/locations', params('tab=bins')), false);
+  assert.equal(isRaillessSurface('/inventory/locations', params('tab=map')), false);
+});
+
 test('rail-less is declared, never inferred from having tabs', () => {
   // Shipping is the only page that declares it today. If a fifth desk ever
   // reads `true` here, someone added `railless: true` on purpose — which is the

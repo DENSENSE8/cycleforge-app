@@ -1,7 +1,7 @@
 'use client';
 
 import type { FormEvent, ReactNode, Ref } from 'react';
-import { Barcode, MapPin, Package, Settings } from '@/components/Icons';
+import { MapPin, Package, ScanBarcode, Settings } from '@/components/Icons';
 import {
   StationScanModeRail,
   ThemedStationScanBar,
@@ -43,7 +43,7 @@ const SHIPPING_SCAN_MODES: readonly ShippingScanModeMeta[] = [
   {
     mode: 'serial',
     label: 'Serial',
-    Icon: Barcode,
+    Icon: ScanBarcode,
     armedClass: 'text-emerald-700',
     iconClass: 'text-emerald-600',
   },

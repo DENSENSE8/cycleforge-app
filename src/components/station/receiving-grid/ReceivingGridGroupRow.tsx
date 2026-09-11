@@ -8,7 +8,10 @@ import type { ReceivingGridColumn } from '@/lib/receiving/receiving-grid-layout'
 import type { ReceivingActivityAxis } from '@/components/station/receiving-lines-table-helpers';
 import type { CustomFieldDef } from '@/lib/custom-fields/types';
 import { ReceivingGridRow } from './ReceivingGridRow';
-import { SlotTableGroupParentRow } from '@/components/tables/compound/SlotTableGroupParentRow';
+import {
+  SlotTableGroupFold,
+  SlotTableGroupParentRow,
+} from '@/components/tables/compound/SlotTableGroupParentRow';
 import { orderCarrierBoxes } from '@/lib/orders/order-group-identity';
 import { receivingGroupIdentity } from '@/lib/receiving/receiving-group-identity';
 
@@ -152,7 +155,7 @@ export function ReceivingGridGroupRow({
   };
 
   return (
-    <>
+    <SlotTableGroupFold multi={multi}>
       {multi && columns ? (
         <SlotTableGroupParentRow
           identity={identity}
@@ -175,6 +178,6 @@ export function ReceivingGridGroupRow({
         />
       ) : null}
       {folded ? null : group.rows.map((row, i) => renderLeaf(row, baseStripeIndex + i))}
-    </>
+    </SlotTableGroupFold>
   );
 }

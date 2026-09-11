@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, type ReactNode, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { useVirtualizer, defaultRangeExtractor, type Range } from '@tanstack/react-virtual';
 import { DateGroupHeader } from '@/components/ui/DateGroupHeader';
 import { GridSectionHeader } from '@/design-system/components/grid/GridSectionHeader';
@@ -20,6 +20,11 @@ import {
   LEDGER_GRID_OVERSCAN,
   LEDGER_GRID_ROW_ESTIMATE_PX,
 } from '@/design-system/components/grid/grid-paint';
+import { slotTableScrollItemMatches } from '@/lib/tables/slot-table-find';
+import {
+  compoundRowDetailEstimatePx,
+  subscribeCompoundRowDetailOpen,
+} from '@/components/tables/compound/useCompoundRowDetail';
 
 /**
  * `VirtualGroupedSections<T>` — DS SoT windowed renderer for date-ordered
@@ -105,6 +110,16 @@ interface VirtualGroupedSectionsProps<T> {
   /** First-paint size estimates; real heights measured on mount. */
   headerEstimate?: number;
   rowEstimate?: number;
+  /**
+   * Per-item first-paint size. Use when a leaf can expand (compound detail band
+   * → 96px). Falls back to {@link rowEstimate} / headerEstimate by kind.
+   * `measureElement` still corrects after paint.
+   */
+  estimateItemSize?: (args: {
+    key: string;
+    kind: 'header' | 'group' | 'row';
+    index: number;
+  }) => number;
   /** Row `getRowKey` value to scroll into view (deep-link / keyboard focus). The
    *  virtualizer scrolls to that item whenever this changes — works even when the
    *  target isn't currently windowed (unlike a DOM `scrollIntoView`). */
@@ -124,11 +139,15 @@ interface VirtualGroupedSectionsProps<T> {
    */
   showDayHeaders?: boolean;
   /**
-   * Band key → SECTION label. A band listed here renders a sticky
+   * Band key → SECTION label. A band listed here renders an in-flow
    * {@link GridSectionHeader} and an outline around its rows, independent of
-   * `showDayHeaders` — that flag governs CIVIL DAY bands, and a surface with a
-   * per-row Date column (the outbound spreadsheet) keeps it off while still
-   * needing to fence off "Added today".
+   * `showDayHeaders` — that flag governs CIVIL DAY bands (the only sticky
+   * pin), and a surface with a per-row Date column (the outbound spreadsheet)
+   * keeps it off while still fencing off "Added today".
+   *
+   * Section bands must not join the sticky pin: on ancestor page-Y desks they
+   * would dock under the column header for the whole queue. They stay in the
+   * virtualizer stream and are only on screen while that run of rows is.
    *
    * Keys not present here are unaffected, so a surface can name one band and
    * leave the rest of the table exactly as it was.
@@ -150,6 +169,7 @@ export function VirtualGroupedSections<T>({
   useAncestorScroll = false,
   headerEstimate = HEADER_ESTIMATE,
   rowEstimate = ROW_ESTIMATE,
+  estimateItemSize,
   scrollToKey,
   stickyHeaderTop = '0',
   showDayHeaders = true,
@@ -235,22 +255,26 @@ export function VirtualGroupedSections<T>({
     return flat;
   }, [orderGroupsByDate, daySections, getRowKey, showDayHeaders, sectionHeaders]);
 
-  // Indices of the band headers — candidates for the sticky pin. Day bands and
-  // named sections both emit a `header` item, so this covers a surface that has
-  // only sections (`showDayHeaders={false}` + `sectionHeaders`) without the flag
-  // having to lie about day banding.
+  // Civil DAY headers only — candidates for the sticky pin. Named section
+  // bands (`label`) stay in-flow so "Added today" cannot dock as a second
+  // chrome row under the column header for the rest of the queue.
   const stickyIndexes = useMemo(
     () =>
       items.reduce<number[]>(
-        (acc, it, i) => (it.kind === 'header' ? (acc.push(i), acc) : acc),
+        (acc, it, i) =>
+          (it.kind === 'header' && it.label === undefined ? (acc.push(i), acc) : acc),
         [],
       ),
     [items],
   );
 
+  // Re-estimate when a compound leaf detail band opens/closes (48 → 96).
+  const [detailEpoch, setDetailEpoch] = useState(0);
+  useEffect(() => subscribeCompoundRowDetailOpen(() => setDetailEpoch((n) => n + 1)), []);
+
   // The header currently pinned to the top of the viewport, updated inside
   // `rangeExtractor` (runs on every scroll) so the visible day's label stays stuck.
-  const activeStickyIndexRef = useRef(0);
+  const activeStickyIndexRef = useRef(-1);
 
   // Stacked-lane case: window against a shared ancestor scroll region (see V0).
   const innerRef = useRef<HTMLDivElement>(null);
@@ -258,21 +282,38 @@ export function VirtualGroupedSections<T>({
     enabled: useAncestorScroll,
     scrollParentRef,
     innerRef,
-    deps: [items],
+    deps: [items, detailEpoch],
   });
 
   const virtualizer = useVirtualizer({
     count: items.length,
     getScrollElement: () => scrollParentRef.current,
-    estimateSize: (index) => (items[index].kind === 'header' ? headerEstimate : rowEstimate),
+    estimateSize: (index) => {
+      void detailEpoch;
+      const item = items[index];
+      if (estimateItemSize) {
+        return estimateItemSize({
+          key: item.key,
+          kind: item.kind,
+          index,
+        });
+      }
+      if (item.kind === 'header') return headerEstimate;
+      return compoundRowDetailEstimatePx(item.key, rowEstimate);
+    },
     overscan: LEDGER_GRID_OVERSCAN,
     getItemKey: (index) => items[index].key,
     rangeExtractor: useCallback(
       (range: Range) => {
         if (stickyIndexes.length === 0) {
+          activeStickyIndexRef.current = -1;
           return defaultRangeExtractor(range);
         }
-        const active = [...stickyIndexes].reverse().find((i) => range.startIndex >= i) ?? 0;
+        const active = [...stickyIndexes].reverse().find((i) => range.startIndex >= i);
+        if (active == null) {
+          activeStickyIndexRef.current = -1;
+          return defaultRangeExtractor(range);
+        }
         activeStickyIndexRef.current = active;
         const next = new Set([active, ...defaultRangeExtractor(range)]);
         return [...next].sort((a, b) => a - b);
@@ -282,14 +323,39 @@ export function VirtualGroupedSections<T>({
     scrollMargin,
   });
 
+  useEffect(() => {
+    virtualizer.measure();
+  }, [detailEpoch, virtualizer]);
+
   // Deep-link / keyboard focus: scroll the target row into view even when it is
   // outside the current window (DOM scrollIntoView can't reach an unmounted row).
   useEffect(() => {
     if (!scrollToKey) return;
-    const idx = items.findIndex((it) => it.key === `r:${scrollToKey}`);
+    const idx = items.findIndex((it) => {
+      if (it.kind === 'header') return false;
+      if (it.kind === 'row') {
+        const id =
+          it.record && typeof it.record === 'object' && 'id' in it.record
+            ? String(it.record.id)
+            : undefined;
+        return slotTableScrollItemMatches(scrollToKey, {
+          key: it.key,
+          rowIds: id ? [id] : undefined,
+        });
+      }
+      const rowIds = it.group.rows.flatMap((record) => {
+        if (record && typeof record === 'object' && 'id' in record) {
+          return [String(record.id)];
+        }
+        return [];
+      });
+      return slotTableScrollItemMatches(scrollToKey, {
+        key: it.key,
+        groupKey: it.group.key,
+        rowIds,
+      });
+    });
     if (idx >= 0) virtualizer.scrollToIndex(idx, { align: 'center' });
-    // Intentionally keyed on `scrollToKey` only — scroll on focus/deep-link change,
-    // not on every data re-render (which would fight the user's scroll position).
   }, [scrollToKey]);
 
   const virtualRows = virtualizer.getVirtualItems();
@@ -299,7 +365,10 @@ export function VirtualGroupedSections<T>({
       {virtualRows.map((vRow) => {
         const item = items[vRow.index];
         const header = item.kind === 'header';
-        const pinned = header && activeStickyIndexRef.current === vRow.index;
+        const pinned =
+          header &&
+          item.label === undefined &&
+          activeStickyIndexRef.current === vRow.index;
         return (
           <div
             key={vRow.key}

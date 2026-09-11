@@ -41,6 +41,7 @@ export const SLOT_TABLE_ENGINE = {
   queueDisplaySort: 'src/utils/queue-display-sort.ts',
   headerSortLaw: 'src/lib/tables/slot-table-header-sort.ts',
   ledgerGridColumnHeader: 'src/design-system/components/grid/LedgerGridColumnHeader.tsx',
+  ledgerGrid: 'src/design-system/components/grid/LedgerGrid.tsx',
   lineQty: 'src/lib/tables/slot-table-line-qty.ts',
   lineMoney: 'src/lib/tables/slot-table-line-money.ts',
   sessionLaws: 'src/lib/tables/slot-table-session-laws.ts',
@@ -49,7 +50,12 @@ export const SLOT_TABLE_ENGINE = {
   receivingCatalog: 'src/lib/tables/field-catalog/receiving.ts',
   ordersLayout: 'src/lib/dashboard-order-row-layout.ts',
   ordersQueueRow: 'src/components/dashboard/orders-queue/OrdersQueueTableRow.tsx',
+  morphingRowActionMenu: 'src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx',
   compoundColumns: 'src/components/tables/compound/compound-columns.ts',
+  compoundCell: 'src/components/tables/compound/CompoundCell.tsx',
+  compoundGridCell: 'src/components/tables/compound/CompoundGridCell.tsx',
+  compoundRowDetailBand: 'src/components/tables/compound/CompoundRowDetailBand.tsx',
+  slotTableGroupParentRow: 'src/components/tables/compound/SlotTableGroupParentRow.tsx',
   graphSymbols: [
     'CompoundItem',
     'CompoundState',
@@ -69,6 +75,7 @@ export const SLOT_TABLE_ENGINE = {
     'pinLineMoneyAfterQty',
     'ordersCompoundColumnsFor',
     'COMPOUND_COLUMN_KEYS',
+    'MorphingRowActionMenu',
   ] as const,
   critiqueFiles: [
     'src/components/tables/compound/CompoundCells.tsx',
@@ -81,8 +88,21 @@ export const SLOT_TABLE_ENGINE = {
     'src/utils/external-item-url.ts',
     'src/components/tables/DataTable.tsx',
     'src/design-system/components/grid/LedgerGridColumnHeader.tsx',
+    'src/components/tables/compound/CompoundCell.tsx',
+    'src/components/tables/compound/CompoundGridCell.tsx',
+    'src/components/tables/compound/CompoundRowDetailBand.tsx',
+    'src/components/tables/compound/SlotTableGroupParentRow.tsx',
+    'src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx',
+    'src/design-system/components/grid/LedgerGrid.tsx',
   ] as const,
 } as const;
+
+/** Staff people pickers that must mount StageStaffAssignPopover, never SearchableSelectField. */
+export const STAFF_COMBOBOX_HOSTS = [
+  'src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx',
+  'src/components/shipped/stacks/MarkAsShippedForm.tsx',
+  'src/components/dashboard/BulkAssignDialog.tsx',
+] as const;
 
 /**
  * Layout hooks that wrap {@link useSlotTableLayout}. Shrink-only for "missing"
@@ -94,10 +114,6 @@ export const SLOT_TABLE_ENGINE_LAYOUT_HOOKS: readonly {
 }[] = [
   { tableId: 'orders', path: 'src/components/dashboard/orders-queue/useOrdersTableLayout.ts' },
   { tableId: 'orders-import', path: 'src/components/outbound/orders/import-staging/useOrdersImportTableLayout.ts' },
-  {
-    tableId: 'shortage-coverage-import',
-    path: 'src/components/outbound/orders/shortage-coverage-staging/useShortageCoverageImportTableLayout.ts',
-  },
   { tableId: 'receiving', path: 'src/components/station/receiving-grid/useReceivingTableLayout.ts' },
   { tableId: 'incoming', path: 'src/components/station/incoming-grid/useIncomingTableLayout.ts' },
   { tableId: 'ready', path: 'src/components/outbound/ready/grid/useReadyTableLayout.ts' },
@@ -112,22 +128,25 @@ export const SLOT_TABLE_ENGINE_LAYOUT_HOOKS: readonly {
     tableId: 'inventory-events',
     path: 'src/components/inventory/events-grid/useInventoryEventsTableLayout.ts',
   },
-  { tableId: 'audit-log', path: 'src/components/settings/audit/useAuditLogTableLayout.ts' },
-  { tableId: 'auth-sessions', path: 'src/components/settings/sessions/useAuthSessionsTableLayout.ts' },
-  { tableId: 'kiosk-devices', path: 'src/components/settings/kiosk-devices/useKioskDevicesTableLayout.ts' },
-  { tableId: 'staff-directory', path: 'src/components/settings/staff-table/useStaffDirectoryTableLayout.ts' },
-  { tableId: 'ai-usage', path: 'src/components/settings/ai-usage/useAiUsageTableLayout.ts' },
-  { tableId: 'compatibility', path: 'src/components/admin/sourcing/compatibility/useCompatibilityTableLayout.ts' },
   { tableId: 'repair', path: 'src/components/repair/repair-grid/useRepairTableLayout.ts' },
   { tableId: 'warranty', path: 'src/components/warranty/grid/useWarrantyTableLayout.ts' },
   { tableId: 'tech-all', path: 'src/components/tech/all/useTechAllTableLayout.ts' },
   { tableId: 'tracking-exceptions', path: 'src/components/tracking-exceptions/grid/useTrackingExceptionsTableLayout.ts' },
   { tableId: 'tasks', path: 'src/features/tasks/grid/useTasksTableLayout.ts' },
-  { tableId: 'sessions', path: 'src/features/reports/sessions/useSessionsTableLayout.ts' },
-  { tableId: 'sku-velocity', path: 'src/features/reports/metrics/useSkuVelocityTableLayout.ts' },
-  { tableId: 'dead-stock', path: 'src/features/reports/metrics/useDeadStockTableLayout.ts' },
   { tableId: 'daily', path: 'src/features/home/grid/useDailyTableLayout.ts' },
   { tableId: 'my-day', path: 'src/features/my-day/grid/useMyDayTableLayout.ts' },
+  {
+    tableId: 'kiosk-devices',
+    path: 'src/components/settings/kiosk-devices/useKioskDevicesTableLayout.ts',
+  },
+  {
+    tableId: 'kiosk-slot-events',
+    path: 'src/components/settings/kiosk-slot-events/useKioskSlotEventsTableLayout.ts',
+  },
+  {
+    tableId: 'walk-in-sales',
+    path: 'src/components/walk-in/grid/useWalkInSalesTableLayout.ts',
+  },
 ] as const;
 
 /**
@@ -139,7 +158,6 @@ export const SLOT_TABLE_ENGINE_LAYOUT_HOOKS: readonly {
 export const SLOT_TABLE_GRID_ROW_ALLOWLIST = [
   'src/components/inventory/units-grid/UnitsGridRow.tsx',
   'src/components/outbound/orders/import-staging/CsvImportStagingGridRow.tsx',
-  'src/components/outbound/orders/shortage-coverage-staging/ShortageCoverageStagingGridRow.tsx',
   'src/components/outbound/ready/grid/ReadyGridRow.tsx',
   'src/components/products/catalog/catalog-grid/CatalogGridRow.tsx',
   'src/components/receiving/unfound/grid/UnfoundGridRow.tsx',
@@ -210,8 +228,16 @@ export const SLOT_TABLE_ENGINE_CONTRACT = {
   compoundSkeletonNoAmount: /A money `amount`/,
   datesGridLabelDates: /gridLabel:\s*'Dates'/,
   datesDueHover: /COMPOUND_DATES_DUE_HOVER = 'Due date'/,
+  datesStartHover: /COMPOUND_DATES_START_HOVER = 'Start date'/,
+  datesStartedHoverField: /startedHover\?:/,
   incomingPriceField: /id:\s*'incoming\.price'/,
   receivingPriceField: /id:\s*'receiving\.price'/,
+  groupParentSelectStack: /COMPOUND_TWO_LINE_CLASS/,
+  leafDetailSelectStack: /data-row-detail/,
+  leafDetailBand: /data-compound-row-detail/,
+  compoundTwoLineClass: /export const COMPOUND_TWO_LINE_CLASS/,
+  headerActionRow: /data-slot-table-action-row/,
+  headerActionRowGuest: /empty:hidden/,
 } as const;
 
 export type SlotTableEngineContractName = keyof typeof SLOT_TABLE_ENGINE_CONTRACT;
@@ -249,11 +275,24 @@ export function slotTableEngineContractSource(name: SlotTableEngineContractName)
     case 'datesGridLabelDates':
       return SLOT_TABLE_ENGINE.compoundColumns;
     case 'datesDueHover':
+    case 'datesStartHover':
+    case 'datesStartedHoverField':
       return SLOT_TABLE_ENGINE.compoundRowModel;
     case 'incomingPriceField':
       return SLOT_TABLE_ENGINE.incomingCatalog;
     case 'receivingPriceField':
       return SLOT_TABLE_ENGINE.receivingCatalog;
+    case 'groupParentSelectStack':
+      return SLOT_TABLE_ENGINE.slotTableGroupParentRow;
+    case 'leafDetailSelectStack':
+      return SLOT_TABLE_ENGINE.compoundGridCell;
+    case 'leafDetailBand':
+      return SLOT_TABLE_ENGINE.compoundRowDetailBand;
+    case 'compoundTwoLineClass':
+      return SLOT_TABLE_ENGINE.compoundCell;
+    case 'headerActionRow':
+    case 'headerActionRowGuest':
+      return SLOT_TABLE_ENGINE.ledgerGrid;
     default:
       return SLOT_TABLE_ENGINE.compoundCells;
   }
@@ -284,6 +323,7 @@ export const SLOT_TABLE_GRAPH_SYMBOL_FILES = {
   pinLineMoneyAfterQty: SLOT_TABLE_ENGINE.lineMoney,
   ordersCompoundColumnsFor: SLOT_TABLE_ENGINE.ordersLayout,
   COMPOUND_COLUMN_KEYS: SLOT_TABLE_ENGINE.compoundColumns,
+  MorphingRowActionMenu: SLOT_TABLE_ENGINE.morphingRowActionMenu,
 } as const satisfies Record<SlotTableGraphSymbol, string>;
 
 export function slotTableGraphSymbolFile(symbol: SlotTableGraphSymbol): string {
@@ -326,7 +366,6 @@ export function slotTableEvalManifest(): SlotTableEvalManifest {
       // the descriptor has grown a behaviour hook. Same cohort because it is
       // the same SoT: a forked action plane forks the table a page later.
       'src/lib/tables/table-engine-law.test.ts',
-      'src/lib/eval/find-freshness.test.ts',
     ],
   };
 }
@@ -340,7 +379,7 @@ export const SLOT_TABLE_PAINT_LAW = {
   shipBy:
     'STATUS delay line: DateRangePickerField variant=compact when editable (no X, no year, no presets/Apply, click commits one day). Always a face. Write through useOptimisticMutation (useOrderAssignment). Form compact mounts keep the default calendar.',
   dates:
-    'Dates COLUMN header stays Dates on every table (`COMPOUND_TRACKS`). Do not rename it per page. Top line is the start fact (Hash / Order date); bottom line is the deadline (CalendarClock / Due date). One glyph each; ink follows the age face — no swap when late. Hover always names the line via compoundDatesHoverLabel so MorphCursorLayer carries the chip. CSV/import may still say Ship by date. Operator 2026-09-05.',
+    'Dates COLUMN header stays Dates on every table (`COMPOUND_TRACKS`). Do not rename it per page. Top line is the start fact (Hash / Start date); bottom line is the deadline (CalendarClock / Due date) OR a secondary temporal face via CompoundDelay.faceLabel when the family has no warehouse deadline (kiosk dwell, enrolled) — never leave `--` on the Calendar line while stuffing that fact into the Hash tip. One glyph each; ink follows the age / faceLabel face — no swap when late. Hover names the line via compoundDatesHoverLabel; portable defaults are Start date / Due date. Family tips that already name the line (Last seen, Enrolled, Ordered, Imported, Opened, Raised, Dwell) own the chip — never prefix Order date. Hash SoT is CompoundRowView.startedHover (parallel to delayTip). CSV/import may still say Ship by date / Order date. Operator 2026-09-11.',
   filter:
     'Toolbar funnel: DataTableFilterMenu always mounts beside SearchField (DATA_TABLE_FILTER_IDLE when a family has no facets). Job verbs (`actions`) paint immediately after the funnel — search · filter · actions · sort · views · date. Never FilterRefinementBar, never a hunt-tile strip, never a funnel inside SearchField. Unbox Queue/Viewed/History share ?ukpi= with KPI tiles via useReceivingTableChrome.',
   headerSort:
@@ -352,6 +391,14 @@ export const SLOT_TABLE_PAINT_LAW = {
   lineMoney:
     'Line price/amount is CompoundItem subtitle identity after qty. Catalog `{family}.amount` or `{family}.price` (money, subtitle) is pinned via ensureLineMoneySubtitle — every PRODUCT_TABLES peer, including a table added later. COMPOUND_COLUMN_KEYS has no amount track. Occupancy (sku-velocity.stock, dead-stock.stock) is not line money. catalog.cost is not a line price. Face: COMPOUND_MONEY_TONE_CLASS, widthCh 8, empty `$-` (lineMoneySubtitlePart). Org cannot unbind it. A green Amount column while Unbox still has one is a cohort fail — the 2026-09-04 Orders-only drop was the hole. Operator 2026-09-05.',
   ordersActions:
-    'No standing ⋮ on the compound skeleton (`COMPOUND_COLUMN_KEYS` has no actions; `ordersCompoundColumnsFor` never remounts that track). No Amount track on the shared skeleton (`COMPOUND_COLUMN_KEYS` has no amount). Copy order / copy tracking live on CompoundFulfillment chips (click); other row verbs ride the title hover and the checkbox Morphing menu. Selecting a row ALWAYS opens that left manifold on every outbound OrdersGridHost lane (To-ship AND Shipped — `queueMode` must not disable Morphing). Do not remount the actions column, a Copy order number row menu, or rowMenuActions on OrdersQueueTableRow. Exceptions: no DataTable `actions=` — Resolve is DeskHeaderAction; Paste item # morphs the checkbox menu (`commitExceptionsItemPaste`). Operator 2026-09-04.',
+    'No standing ⋮ on the compound skeleton (`COMPOUND_COLUMN_KEYS` has no actions; `ordersCompoundColumnsFor` never remounts that track). No Amount track on the shared skeleton (`COMPOUND_COLUMN_KEYS` has no amount). Copy order / copy tracking live on CompoundFulfillment chips (click); other row verbs ride the title hover and the checkbox Morphing overlay. Selecting a row ALWAYS opens a sticky action row BELOW the column header (`data-slot-table-action-row` empty:hidden — delete far right, ⋮ more actions) on every outbound OrdersGridHost lane (To-ship AND Shipped — `queueMode` must not disable Morphing). Do not cover or remove the column labels. The guest grows and pushes the sheet; idle it collapses. Click-off to either side does not dismiss it; it stays pinned under the header while the sheet scrolls until the selection is empty. Notes on desktop morphs that row into a one-row composer (`notes-view` + OrderNotesTrail `variant="strip"` — Back + field, no four-row trail). `BottomSheet` `forceVariant="sheet"` + compact trail only on a mobile URL (`/m/` via `isMorphingMobileUrl`). Out of stock morphs the strip (`oos-line` / `oos-kind` / `oos-part` / `oos-confirm`) — shortage identity from listing or kit composition (`/composition`: sku_relationships then sku_kit_parts, never Zoho -P); toast View Pending → `/shipping/shortage`. Paste item # stays Back + SearchField. Do not remount the actions column, a Copy order number row menu, or rowMenuActions on OrdersQueueTableRow. Exceptions: no DataTable `actions=` — Resolve is DeskHeaderAction; Paste item # morphs the checkbox menu (`commitExceptionsItemPaste`). Operator 2026-09-10.',
+  groupParentSelect:
+    'Multi-line fold parent: select check sits in the top COMPOUND_TWO_LINE_CLASS track (same pt-1 16px face as every leaf, aligned with the order-id chip). Fold chevron sits in the bottom track, same 16px column, aligned with "2 boxes". Shared with CompoundCell. Never flex-col justify-center the stack. Engine: SlotTableGroupParentRow — To-ship QueueGroupRow and Unbox ReceivingGridGroupRow both mount it. Operator 2026-09-10.',
+  leafDetailSelect:
+    'Compound leaf select gutter: when view.detail is present, paint COMPOUND_TWO_LINE_CLASS (check top, detail chevron bottom, data-row-detail — not data-group-fold). Chevron expands a second COMPOUND_ROW_PX detail band (serial / location / view unit) under the leaf — never grow the 48px CompoundItem cell, never a third CompoundFulfillment chip. Parent multi-line fold chevron stays cardinality-only. Mobile /m uses BottomSheet with the same facts. Virtualizer first-paint uses compoundRowDetailEstimatePx (48 vs 96) + measureElement. Operator 2026-09-11.',
+  personFace:
+    'displayType person paints StaffAvatar (profile mark) + staff name. Resolver returns kind:person { staffId, name }. Never Staff #id, never bare numeric staff id as the face text. Empty when neither name nor id. CompoundSlotCell mounts StaffAvatar size xs beside a truncated name. Every PRODUCT_TABLES peer that binds a person field inherits this face — kiosk-devices.enrolled_by, tracking-exceptions.staff, and any later person binding. Operator 2026-09-11.',
+  staffCombo:
+    'Every staff combobox is AssigneeCombobox via StageStaffAssignPopover. Rows paint StaffAvatar (profile mark) + name (leading). Never SearchableSelectField for people — that list is name + role meta, no PFP. role=all + onCommit is full-roster assign (scan-out strip). role=all without onCommit is roster switches. Operator 2026-09-11.',
   scope: 'Engine paint for every PRODUCT_TABLES peer — not To-ship alone.',
 } as const;

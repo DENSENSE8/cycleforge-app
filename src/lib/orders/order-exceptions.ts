@@ -259,9 +259,14 @@ export async function listOrderExceptions(
     // COALESCE, not a bare `o.release_state = 'caged'`: that comparison is NULL
     // for every legacy row, and `DESC` in Postgres is NULLS FIRST — which sorted
     // 4,000 un-caged orders ahead of the caged ones and pushed the entire review
-    // set past the LIMIT. The queue looked empty while holding 22 rows.
+    // set past the LIMIT. After that, missing item number then pair-once fan-out
+    // — same axis as {@link sortExceptionQueueRows}.
     `${EXCEPTION_SELECT} ${where}
-      ORDER BY (COALESCE(o.release_state, '') = 'caged') DESC, o.id DESC
+      ORDER BY
+        (COALESCE(o.release_state, '') = 'caged') DESC,
+        CASE WHEN NULLIF(TRIM(COALESCE(o.item_number, '')), '') IS NULL THEN 0 ELSE 1 END ASC,
+        ${SIBLING_UNPAIRED_SQL} DESC,
+        o.id DESC
       LIMIT $${params.length}`,
     params,
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { getCurrentPSTDateKey, toPSTDateKey } from '@/utils/date';
+import { toPSTDateKey } from '@/utils/date';
 import { flattenRenderOrder, groupRowsBy, type RowGroup } from '@/lib/group-rows';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
 import {
@@ -10,29 +10,14 @@ import {
   type QueueDisplaySortDir,
 } from '@/utils/queue-display-sort';
 import {
-  isShippedByLatestStatus,
   queueRowBandDateSource,
   type OrdersQueueMode,
   type OrdersQueueSort,
 } from './helpers';
-import { compareQueueColumnRows } from './queue-row-compare';
-
-/**
- * Band key for the day's intake section.
- *
- * A key, not the label — band keys elsewhere in `orderGroupsByDate` are PST
- * date keys, and a human string sitting among them is what let the old
- * `'Just added'` band read as a date to anything that parsed keys. The label
- * the operator sees is {@link ADDED_TODAY_LABEL}, supplied to the grid through
- * `sectionHeaders`, so the key can stay opaque.
- */
-export const ADDED_TODAY_BAND = '__added_today__';
-
-/** Section caption for {@link ADDED_TODAY_BAND}. Sentence case (operator, 2026-08-31). */
-export const ADDED_TODAY_LABEL = 'Added today';
+import { compareQueueColumnRows, compareUrgentPin } from './queue-row-compare';
 
 export interface OrdersQueueRows {
-  /** Records still in the queue (already-shipped rows filtered out). */
+  /** Feed rows this mount was given — the table paints all of them. */
   visibleRecords: ShippedOrder[];
   /**
    * Date bands → folded order groups, in canonical render order — a
@@ -64,7 +49,7 @@ export interface OrdersQueueRows {
    * every record is reachable.
    */
   displayedRecords: ShippedOrder[];
-  /** Count of dated, visible records. */
+  /** Leaf count of {@link displayedRecords} — same number the pager totals. */
   totalCount: number;
 }
 
@@ -77,149 +62,86 @@ export interface UseOrdersQueueRowsOptions {
 }
 
 /**
- * Derives the date-banded (or flat column-sorted), order-grouped view of the
- * queue from the raw records. Filters already-shipped rows, bands by
- * deadline/created date (composites) or sorts globally (column sorts), then
- * folds lines that share an order number into one group.
- *
- * `displayedRecords` is flattened from the SAME grouped order — via
- * `flattenRenderOrder`, the one implementation of that walk — so the row model
- * and a shift-range select can never disagree with the render order about which
- * rows lie between two clicks.
- *
- * It is deliberately **fold-blind**. The docblock here used to claim it "lines
- * up with exactly what's on screen"; it never did (`QueueGroupRow` collapses a
- * multi-line order while this walk keeps all of its children), and reading it
- * as the visible order is what let ↓ step three times into rows nobody could
- * see — plan §2.2. See `OrdersQueueRows.displayedRecords` for who needs the
- * full set and who answers the visible-order question instead.
+ * Date-banded (or flat column-sorted), order-grouped view of the queue.
+ * Every feed row is painted. Missing ship-by/created lands in `Unknown`.
  */
-export function useOrdersQueueRows({
+export function buildOrdersQueueRows({
   records,
   sort,
   dir = null,
   queueMode,
 }: UseOrdersQueueRowsOptions): OrdersQueueRows {
-  return useMemo(() => {
-    const visibleRecords = records.filter((record) => !isShippedByLatestStatus(record));
+  const visibleRecords = records;
 
-    // The day's intake, as its own section at the top of the queue. The window
-    // was 30 minutes and unlabelled — invisible, because the outbound
-    // spreadsheet renders no band keys (`showDayHeaders={false}`). A civil PST
-    // day is the window the operator actually asks for ("what came in today"),
-    // it survives a reload the way a rolling clock window cannot, and it reads
-    // the same whether the order arrived by Sheets sync, CSV or hand entry —
-    // one word covers every intake path, which is why this is not "imported".
-    const todayKey = getCurrentPSTDateKey();
-    const isAddedToday = (record: ShippedOrder) => {
-      if (record.created_at) {
-        try {
-          return toPSTDateKey(record.created_at) === todayKey;
-        } catch {
-          return false;
-        }
-      }
-      // A row with NO date at all has no band to fall into — the banding walk
-      // below drops it when `queueRowBandDateSource` returns null. It rides
-      // here so it stays visible, as it did under the old window. In practice
-      // it is a just-inserted row whose `created_at` missed the projection.
-      return !record.deadline_at && !record.ship_by_date;
+  if (isQueueColumnSort(sort)) {
+    const resolvedDir = dir ?? defaultDirForQueueSort(sort) ?? 'asc';
+    const sorted = [...visibleRecords].sort((a, b) =>
+      compareQueueColumnRows(a, b, sort, resolvedDir, queueMode),
+    );
+    const groups = groupRowsBy(sorted, (r) => String(r.order_id || '').trim() || `id:${r.id}`);
+    const orderGroupsByDate: [string, RowGroup<ShippedOrder>[]][] = [['', groups]];
+    const displayedRecords = flattenRenderOrder(orderGroupsByDate);
+    return {
+      visibleRecords,
+      orderGroupsByDate,
+      displayedRecords,
+      totalCount: displayedRecords.length,
     };
+  }
 
-    const addedToday =
-      queueMode === 'fulfillment'
-        ? visibleRecords.filter(isAddedToday).sort((a, b) => Number(b.id) - Number(a.id))
-        : [];
-    const bandRecords =
-      addedToday.length > 0
-        ? visibleRecords.filter((record) => !addedToday.some((row) => Number(row.id) === Number(record.id)))
-        : visibleRecords;
+  const deadlineTime = (r: ShippedOrder) => new Date(r.deadline_at || r.created_at || 0).getTime();
+  const urgentRecords = visibleRecords
+    .filter((record) => Boolean(record.is_urgent))
+    .sort((a, b) => deadlineTime(a) - deadlineTime(b));
+  const urgentIds = new Set(urgentRecords.map((record) => Number(record.id)));
+  const bandRecords = visibleRecords.filter((record) => !urgentIds.has(Number(record.id)));
 
-    // Column sorts: one flat global order (single synthetic band — LedgerGrid
-    // hides day headers). Include rows even when ship-by/created is missing.
-    if (isQueueColumnSort(sort)) {
-      const resolvedDir = dir ?? defaultDirForQueueSort(sort) ?? 'asc';
-      const sorted = [...visibleRecords].sort((a, b) =>
-        compareQueueColumnRows(a, b, sort, resolvedDir),
-      );
-      const groups = groupRowsBy(sorted, (r) => String(r.order_id || '').trim() || `id:${r.id}`);
-      const orderGroupsByDate: [string, RowGroup<ShippedOrder>[]][] = [['', groups]];
-      const displayedRecords = flattenRenderOrder(orderGroupsByDate);
-      return {
-        visibleRecords,
-        orderGroupsByDate,
-        displayedRecords,
-        totalCount: sorted.length,
-      };
-    }
-
-    const groupedRecords: Record<string, ShippedOrder[]> = {};
-    bandRecords.forEach((record) => {
-      // `newest` bands by when the order was added; otherwise by its deadline.
-      const dateSource = queueRowBandDateSource(record, sort);
-      if (!dateSource) return;
-
-      let date = '';
+  const groupedRecords: Record<string, ShippedOrder[]> = {};
+  bandRecords.forEach((record) => {
+    const dateSource = queueRowBandDateSource(record, sort);
+    let date = 'Unknown';
+    if (dateSource) {
       try {
         date = toPSTDateKey(dateSource) || 'Unknown';
       } catch {
         date = 'Unknown';
       }
+    }
+    if (!groupedRecords[date]) groupedRecords[date] = [];
+    groupedRecords[date].push(record);
+  });
 
-      if (!groupedRecords[date]) groupedRecords[date] = [];
-      groupedRecords[date].push(record);
+  const sortDayRecords = (dayRecords: ShippedOrder[]): ShippedOrder[] =>
+    [...dayRecords].sort((a, b) => {
+      const pin = compareUrgentPin(a, b);
+      if (pin !== 0) return pin;
+      if (sort === 'newest') {
+        const ta = new Date(a.created_at || a.deadline_at || 0).getTime();
+        const tb = new Date(b.created_at || b.deadline_at || 0).getTime();
+        return tb - ta;
+      }
+      return deadlineTime(a) - deadlineTime(b);
     });
 
-    // One canonical per-day ordering, shared by the rendered rows AND the flat
-    // `displayedRecords` (row model, awaiting worklist, shift-range select) so
-    // the range a shift-click spans matches the order the grid paints.
-    const deadlineTime = (r: ShippedOrder) => new Date(r.deadline_at || r.created_at || 0).getTime();
-    const sortDayRecords = (dayRecords: ShippedOrder[]): ShippedOrder[] =>
-      [...dayRecords].sort((a, b) => {
-        if (sort === 'newest') {
-          const ta = new Date(a.created_at || a.deadline_at || 0).getTime();
-          const tb = new Date(b.created_at || b.deadline_at || 0).getTime();
-          return tb - ta;
-        }
-        // `deadline` (and every other composite besides newest) is soonest
-        // ship-by first — no tested-before-pending grouping. That grouping
-        // lived on retired `priority` and is gone with the menu row.
-        return deadlineTime(a) - deadlineTime(b);
-      });
+  const sortedGroupedEntries = Object.entries(groupedRecords)
+    .sort((a, b) => (sort === 'newest' ? b[0].localeCompare(a[0]) : a[0].localeCompare(b[0])))
+    .map(([date, dayRecords]) => [date, sortDayRecords(dayRecords)] as [string, ShippedOrder[]]);
 
-    const sortedGroupedEntries = Object.entries(groupedRecords)
-      // `newest` shows the most recent day band first; ship-by shows soonest.
-      .sort((a, b) => (sort === 'newest' ? b[0].localeCompare(a[0]) : a[0].localeCompare(b[0])))
-      .map(([date, dayRecords]) => [date, sortDayRecords(dayRecords)] as [string, ShippedOrder[]]);
+  const foldKey = (r: ShippedOrder) => String(r.order_id || '').trim() || `id:${r.id}`;
+  const orderGroupsByDate: [string, RowGroup<ShippedOrder>[]][] = [
+    ...(urgentRecords.length > 0
+      ? ([['__urgent__', groupRowsBy(urgentRecords, foldKey)]] as [string, RowGroup<ShippedOrder>[]][])
+      : []),
+    ...sortedGroupedEntries.map(
+      ([date, dayRecords]) =>
+        [date, groupRowsBy(dayRecords, foldKey)] as [string, RowGroup<ShippedOrder>[]],
+    ),
+  ];
 
-    // Within each day, fold the lines that share ONE order number into a single
-    // group → a multi-product order renders as one expandable header; the common
-    // single-line case stays a plain row. groupRowsBy preserves the per-day sort
-    // order.
-    const orderGroupsByDate: [string, RowGroup<ShippedOrder>[]][] = [
-      ...(addedToday.length > 0
-        ? ([
-            [
-              ADDED_TODAY_BAND,
-              groupRowsBy(addedToday, (r) => String(r.order_id || '').trim() || `id:${r.id}`),
-            ],
-          ] as [string, RowGroup<ShippedOrder>[]][])
-        : []),
-      ...sortedGroupedEntries.map(
-        ([date, dayRecords]) =>
-          [
-            date,
-            groupRowsBy(dayRecords, (r) => String(r.order_id || '').trim() || `id:${r.id}`),
-          ] as [string, RowGroup<ShippedOrder>[]],
-      ),
-    ];
+  const displayedRecords = flattenRenderOrder(orderGroupsByDate);
+  return { visibleRecords, orderGroupsByDate, displayedRecords, totalCount: displayedRecords.length };
+}
 
-    const displayedRecords = flattenRenderOrder(orderGroupsByDate);
-
-    const totalCount =
-      addedToday.length +
-      Object.values(groupedRecords).reduce((sum, dayRecords) => sum + dayRecords.length, 0);
-
-    return { visibleRecords, orderGroupsByDate, displayedRecords, totalCount };
-  }, [records, sort, dir, queueMode]);
+export function useOrdersQueueRows(options: UseOrdersQueueRowsOptions): OrdersQueueRows {
+  return useMemo(() => buildOrdersQueueRows(options), [options.records, options.sort, options.dir, options.queueMode]);
 }

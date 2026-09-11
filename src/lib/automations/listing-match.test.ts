@@ -136,6 +136,10 @@ describe('selectActionsForTrigger', () => {
       ['PACK'],
     );
   });
+
+  it('drops TEST and PACK on identification.completed', () => {
+    assert.deepEqual(selectActionsForTrigger(actions, 'identification.completed'), []);
+  });
 });
 
 describe('shouldPassAllocate', () => {

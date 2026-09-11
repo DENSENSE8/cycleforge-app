@@ -1,19 +1,9 @@
 /**
- * /m/triage — Mobile Arrival Station (door scan → photos → classify).
- *
- * Server component: the arrival feed is seeded into the first HTML (see
- * `/m/home` for why).
+ * /m/triage — retired as a named Arrival station. Identification lives on /m/scan.
  */
 
-import MobileArrivalStation from '@/components/mobile/receiving/MobileArrivalStation';
-import { ShellQuerySeed } from '@/components/providers/ShellQuerySeed';
-import { seedMobileReceivingFeed } from '@/lib/queries/mobile-feed-seed.server';
+import { redirect } from 'next/navigation';
 
-export default async function MobileTriageScanPage() {
-  const seed = await seedMobileReceivingFeed('triage');
-  return (
-    <ShellQuerySeed state={seed}>
-      <MobileArrivalStation />
-    </ShellQuerySeed>
-  );
+export default function MobileTriageRedirectPage() {
+  redirect('/m/scan');
 }

@@ -42,8 +42,19 @@ interface BottomSheetProps {
    * the body) stay put. Used by long pickers (switch-staff).
    */
   scrollBody?: boolean;
+  /**
+   * Override the scrollBody max-height class (dialog + sheet). Default
+   * `max-h-[min(36rem,calc(100vh-2rem))]`. Dense canvases (print-run) pass a
+   * taller clamp so a sticky footer stays in view.
+   */
+  scrollBodyMaxHeightClass?: string;
   /** Force a specific variant regardless of viewport. */
   forceVariant?: Variant;
+  /**
+   * Tight padding + smaller title — a chip sheet (order notes from Morphing),
+   * not a four-row picker. Default padding stays for long pickers.
+   */
+  compact?: boolean;
   /**
    * Stacking level. 0 = base (z-index 200). Each level adds 10 so a
    * confirmation sheet can sit cleanly on top of an action sheet. The scrim
@@ -55,6 +66,8 @@ interface BottomSheetProps {
 
 const DESKTOP_BREAKPOINT = '(min-width: 768px)';
 
+const DEFAULT_SCROLL_BODY_MAX_H = 'max-h-[min(36rem,calc(100vh-2rem))]';
+
 export function BottomSheet({
   open,
   onClose,
@@ -63,8 +76,10 @@ export function BottomSheet({
   maxWidth = '28rem',
   fixedWidth = false,
   scrollBody = false,
+  scrollBodyMaxHeightClass = DEFAULT_SCROLL_BODY_MAX_H,
   forceVariant = 'auto',
   level = 0,
+  compact = false,
   children,
 }: BottomSheetProps) {
   const reduceMotion = useReducedMotion();
@@ -131,7 +146,9 @@ export function BottomSheet({
               maxWidth={maxWidth}
               fixedWidth={fixedWidth}
               scrollBody={scrollBody}
+              scrollBodyMaxHeightClass={scrollBodyMaxHeightClass}
               reduceMotion={!!reduceMotion}
+              compact={compact}
               onClose={onClose}
             >
               {children}
@@ -142,6 +159,7 @@ export function BottomSheet({
               maxWidth={maxWidth}
               fixedWidth={fixedWidth}
               scrollBody={scrollBody}
+              scrollBodyMaxHeightClass={scrollBodyMaxHeightClass}
               reduceMotion={!!reduceMotion}
               onClose={onClose}
             >
@@ -164,12 +182,25 @@ interface SheetPanelProps {
   maxWidth: string;
   fixedWidth: boolean;
   scrollBody: boolean;
+  scrollBodyMaxHeightClass: string;
   reduceMotion: boolean;
+  compact: boolean;
   onClose: () => void;
   children: React.ReactNode;
 }
 
-function SheetPanel({ title, dragDisabled, maxWidth, fixedWidth, scrollBody, reduceMotion, onClose, children }: SheetPanelProps) {
+function SheetPanel({
+  title,
+  dragDisabled,
+  maxWidth,
+  fixedWidth,
+  scrollBody,
+  scrollBodyMaxHeightClass,
+  reduceMotion,
+  compact,
+  onClose,
+  children,
+}: SheetPanelProps) {
   return (
     <div className="absolute inset-x-0 bottom-0 flex justify-center">
       <motion.div
@@ -189,7 +220,7 @@ function SheetPanel({ title, dragDisabled, maxWidth, fixedWidth, scrollBody, red
         }}
         className={cn(
           'w-full overflow-hidden rounded-t-[28px] bg-surface-card shadow-[0_-12px_48px_-16px_rgba(0,0,0,0.25)]',
-          scrollBody && 'flex max-h-[min(36rem,calc(100vh-2rem))] flex-col',
+          scrollBody && cn('flex min-h-0 flex-col', scrollBodyMaxHeightClass),
         )}
         style={{
           maxWidth,
@@ -198,18 +229,30 @@ function SheetPanel({ title, dragDisabled, maxWidth, fixedWidth, scrollBody, red
         }}
       >
         {!dragDisabled && (
-          <div className="flex justify-center pt-3 pb-1">
+          <div className={cn('flex justify-center', compact ? 'pt-2 pb-0.5' : 'pt-3 pb-1')}>
             <div className="h-1.5 w-12 rounded-full bg-surface-strong" />
           </div>
         )}
         {title && (
-          <div className="px-6 pt-2 pb-1 text-center">
-            <h3 className="text-base font-semibold tracking-tight text-text-default">
+          <div className={cn('text-center', compact ? 'px-3 pt-1 pb-0.5' : 'px-6 pt-2 pb-1')}>
+            <h3
+              className={cn(
+                'font-semibold tracking-tight text-text-default',
+                compact ? 'text-role-caption' : 'text-base',
+              )}
+            >
               {title}
             </h3>
           </div>
         )}
-        <div className={cn('px-6 pb-6 pt-2', scrollBody && 'flex min-h-0 flex-1 flex-col overflow-hidden')}>{children}</div>
+        <div
+          className={cn(
+            compact ? 'px-3 pb-3 pt-1' : 'px-6 pb-6 pt-2',
+            scrollBody && 'flex min-h-0 flex-1 flex-col overflow-hidden',
+          )}
+        >
+          {children}
+        </div>
       </motion.div>
     </div>
   );
@@ -222,12 +265,22 @@ interface DialogPanelProps {
   maxWidth: string;
   fixedWidth: boolean;
   scrollBody: boolean;
+  scrollBodyMaxHeightClass: string;
   reduceMotion: boolean;
   onClose: () => void;
   children: React.ReactNode;
 }
 
-function DialogPanel({ title, maxWidth, fixedWidth, scrollBody, reduceMotion, onClose, children }: DialogPanelProps) {
+function DialogPanel({
+  title,
+  maxWidth,
+  fixedWidth,
+  scrollBody,
+  scrollBodyMaxHeightClass,
+  reduceMotion,
+  onClose,
+  children,
+}: DialogPanelProps) {
   // The flex host covers the full viewport *above* the scrim, so click-off
   // never reached the scrim's onClick. Dismiss here; stop inside the card.
   const stop = (e: React.MouseEvent) => e.stopPropagation();
@@ -250,7 +303,7 @@ function DialogPanel({ title, maxWidth, fixedWidth, scrollBody, reduceMotion, on
         }
         className={cn(
           'w-full overflow-hidden rounded-3xl border border-border-hairline bg-surface-card shadow-[0_24px_64px_-12px_rgba(0,0,0,0.25),0_0_0_1px_rgba(0,0,0,0.02)]',
-          scrollBody && 'flex max-h-[min(36rem,calc(100vh-2rem))] flex-col',
+          scrollBody && cn('flex min-h-0 flex-col', scrollBodyMaxHeightClass),
         )}
         style={{ maxWidth, width: fixedWidth ? `min(${maxWidth}, 100%)` : undefined }}
       >

@@ -27,7 +27,7 @@ export function getOrgLetterhead(org: { name: string; settings: OrgSettings }): 
   };
 }
 
-/** `{org.name} Warehouse Location` / `Warehouse Rack` — the warehouse label eyebrow. */
-export function orgWarehouseLabel(orgName: string, suffix: 'Location' | 'Rack'): string {
+/** `{org.name} Warehouse Location` / `Warehouse Bay` — the warehouse label eyebrow. */
+export function orgWarehouseLabel(orgName: string, suffix: 'Location' | 'Bay'): string {
   return `${orgName} Warehouse ${suffix}`;
 }

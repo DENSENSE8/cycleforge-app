@@ -84,10 +84,7 @@ export function RepairTable({ filter }: RepairTableProps) {
 
   // Cardinality decides the body: 1 → inspect panel; 2+ → batch shell (panel off).
   useEffect(() => {
-    if (selectedRows.length === 1) {
-      const row = selectedRows[0]!;
-      setSelectedRepair((prev) => (prev?.id === row.id ? prev : row));
-    } else if (selectedRows.length >= 2) {
+    if (selectedRows.length >= 2) {
       setSelectedRepair(null);
     }
   }, [selectedRows]);

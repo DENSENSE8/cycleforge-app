@@ -21,13 +21,13 @@
 
 import type { ComponentType } from 'react';
 import {
-  Barcode,
   Camera,
   Image as ImageIcon,
   Images,
   Package,
   PackageOpen,
   Printer,
+  ScanBarcode,
   SlidersHorizontal,
   Tag,
   Tags,
@@ -57,7 +57,7 @@ const FACES: Record<string, StepFace> = {
   contents: { Icon: Images },
   condition: { Icon: Tags },
   item_photos: { Icon: ImageIcon },
-  serial: { Icon: Barcode },
+  serial: { Icon: ScanBarcode },
   // `Tag` is already the shipping-label shot's glyph; `Printer` says "this is
   // the face about to come out of the printer".
   label: { Icon: Printer },

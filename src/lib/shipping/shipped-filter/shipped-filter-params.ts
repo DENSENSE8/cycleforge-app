@@ -47,3 +47,41 @@ export function parseISODate(raw: string | null): Date | undefined {
 export function toISODate(d: Date | undefined): string | null {
   return localDateToDateKey(d);
 }
+
+/** Intentional "no date window" — Clear on the week chip; blocks current-week seed. */
+export const SHIPPED_ALL_DATES_PARAM = 'allDates';
+
+export function readShippedAllDates(searchParams: ParamReader): boolean {
+  const raw = String(searchParams.get(SHIPPED_ALL_DATES_PARAM) || '').toLowerCase();
+  return raw === '1' || raw === 'true';
+}
+
+/**
+ * The fetch window for Shipped. Default is this warehouse week. `allDates=1`
+ * (or a carrier/status/exception facet) is all-time. An explicit `dateFrom`/`dateTo`
+ * wins over the week seed.
+ */
+export function shippedEffectiveDateWindow(args: {
+  allDates: boolean;
+  dateFrom: string;
+  dateTo: string;
+  anyCarrierFilter: boolean;
+  weekStart: string;
+  weekEnd: string;
+}): { start: string; end: string } {
+  if (args.allDates || args.anyCarrierFilter) return { start: '', end: '' };
+  if (/^\d{4}-\d{2}-\d{2}$/.test(args.dateFrom)) {
+    const end = /^\d{4}-\d{2}-\d{2}$/.test(args.dateTo) ? args.dateTo : args.dateFrom;
+    return { start: args.dateFrom, end };
+  }
+  return { start: args.weekStart, end: args.weekEnd };
+}
+
+/** Default week seed is an active filter the operator can clear. */
+export function shippedWeekFilterActive(args: {
+  allDates: boolean;
+  hasDateRange: boolean;
+  anyCarrierFilter: boolean;
+}): boolean {
+  return !args.allDates && !args.hasDateRange && !args.anyCarrierFilter;
+}

@@ -35,7 +35,8 @@ export function DataTableFullscreenToggle({ className }: { className?: string })
       data-testid="desk-fullscreen-toggle"
       className={cn(
         'ds-raw-button inline-flex h-6 w-6 shrink-0 items-center justify-center',
-        'text-text-muted transition-colors duration-100 ease-out hover:bg-surface-hover hover:text-text-default',
+        'transition-colors duration-100 ease-out',
+        'text-text-muted hover:bg-surface-hover hover:text-text-default',
         DATA_TABLE_TOOLBAR_CORNER,
         focusRing('control'),
         className,

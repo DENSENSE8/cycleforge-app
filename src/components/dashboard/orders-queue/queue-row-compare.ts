@@ -9,7 +9,14 @@ import { resolveMarketplacePlatformMeta } from '@/lib/marketplace-order-id';
 import { getDaysLateNullable } from '@/utils/date';
 import type { QueueDisplaySortColumn, QueueDisplaySortDir } from '@/utils/queue-display-sort';
 import { queueCarrierPin, queueChannelPin } from '@/utils/queue-display-sort';
-import type { QueueRowRecord } from './helpers';
+import {
+  nonSentinelTimestamp,
+  queueRowPackedAtRaw,
+  queueRowTestedAtRaw,
+  resolveRowStatus,
+  type OrdersQueueMode,
+  type QueueRowRecord,
+} from './helpers';
 
 function deadlineTime(r: ShippedOrder): number {
   return new Date(r.deadline_at || r.created_at || 0).getTime();
@@ -43,6 +50,19 @@ function pickerName(record: QueueRowRecord): string {
 
 function packerName(record: QueueRowRecord): string {
   return personName(record, ['packed_by_name', 'packer_name']);
+}
+
+function amountValue(record: QueueRowRecord): number | null {
+  const n = Number(record.sale_amount);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Instant ms for a wire stamp (`2026-09-08 14:40:00+00` or ISO). */
+function instantMs(raw: string | null): number | null {
+  if (!raw) return null;
+  const normalized = raw.includes('T') ? raw : raw.replace(' ', 'T');
+  const t = Date.parse(normalized);
+  return Number.isFinite(t) ? t : null;
 }
 
 /**
@@ -88,6 +108,20 @@ function daysLateValue(record: ShippedOrder, dir: QueueDisplaySortDir): number {
 }
 
 /**
+ * Expedite pin — urgent rows stay at the top of every queue sort.
+ * Same contract as a carrier pin: rank never follows `dir`.
+ */
+export function compareUrgentPin(
+  a: { is_urgent?: boolean | null },
+  b: { is_urgent?: boolean | null },
+): number {
+  const ua = Boolean(a.is_urgent);
+  const ub = Boolean(b.is_urgent);
+  if (ua === ub) return 0;
+  return ua ? -1 : 1;
+}
+
+/**
  * Compare two queue rows for a column sort. Returns negative if `a` should
  * sort before `b` under the given direction (ASC: smaller first).
  */
@@ -96,7 +130,10 @@ export function compareQueueColumnRows(
   b: ShippedOrder,
   column: QueueDisplaySortColumn,
   dir: QueueDisplaySortDir,
+  queueMode: OrdersQueueMode = 'fulfillment',
 ): number {
+  const urgent = compareUrgentPin(a, b);
+  if (urgent !== 0) return urgent;
   const sign = dir === 'asc' ? 1 : -1;
   const ra = a as QueueRowRecord;
   const rb = b as QueueRowRecord;
@@ -134,19 +171,48 @@ export function compareQueueColumnRows(
       break;
     }
     case 'picked': {
-      const na = pickerName(ra);
-      const nb = pickerName(rb);
-      const blank = compareBlankLast(!na, !nb);
+      const ta = instantMs(queueRowTestedAtRaw(ra));
+      const tb = instantMs(queueRowTestedAtRaw(rb));
+      const blank = compareBlankLast(ta == null, tb == null);
       if (blank !== null) return blank;
-      primary = na.localeCompare(nb, undefined, { sensitivity: 'base' });
+      primary = (ta as number) - (tb as number);
+      if (primary === 0) {
+        primary = pickerName(ra).localeCompare(pickerName(rb), undefined, { sensitivity: 'base' });
+      }
       break;
     }
     case 'packed': {
-      const na = packerName(ra);
-      const nb = packerName(rb);
-      const blank = compareBlankLast(!na, !nb);
+      const ta = instantMs(queueRowPackedAtRaw(ra));
+      const tb = instantMs(queueRowPackedAtRaw(rb));
+      const blank = compareBlankLast(ta == null, tb == null);
       if (blank !== null) return blank;
-      primary = na.localeCompare(nb, undefined, { sensitivity: 'base' });
+      primary = (ta as number) - (tb as number);
+      if (primary === 0) {
+        primary = packerName(ra).localeCompare(packerName(rb), undefined, { sensitivity: 'base' });
+      }
+      break;
+    }
+    case 'status':
+      primary = (resolveRowStatus(ra, queueMode)?.label ?? '').localeCompare(
+        resolveRowStatus(rb, queueMode)?.label ?? '',
+        undefined,
+        { sensitivity: 'base' },
+      );
+      break;
+    case 'amount': {
+      const na = amountValue(ra);
+      const nb = amountValue(rb);
+      const blank = compareBlankLast(na == null, nb == null);
+      if (blank !== null) return blank;
+      primary = (na as number) - (nb as number);
+      break;
+    }
+    case 'scanned_out': {
+      const sa = instantMs(nonSentinelTimestamp(ra.ship_confirmed_at));
+      const sb = instantMs(nonSentinelTimestamp(rb.ship_confirmed_at));
+      const blank = compareBlankLast(sa == null, sb == null);
+      if (blank !== null) return blank;
+      primary = (sa as number) - (sb as number);
       break;
     }
     case 'carrier': {

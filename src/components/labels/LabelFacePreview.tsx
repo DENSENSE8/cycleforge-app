@@ -52,15 +52,19 @@ export function LabelFacePreview({
   model,
   embedded,
   fit = 'capped',
+  maxScale,
   slotHits,
 }: {
   model: LabelFaceModel;
   embedded?: boolean;
   /**
-   * `capped` — scale up to {@link MAX_SCALE_CAPPED} (popover / nested).
+   * `capped` — scale up to {@link MAX_SCALE_CAPPED} (popover / nested), or
+   * `maxScale` when set (dense grids).
    * `host` — fill the measured host width (Unbox centre under PO lines).
    */
   fit?: 'capped' | 'host';
+  /** Cap for `fit="capped"` only. Defaults to {@link MAX_SCALE_CAPPED}. */
+  maxScale?: number;
   /** Pinpoint hits on the scaled sticker. Omit when the Label band is shut. */
   slotHits?: LabelFaceSlotHandlers;
 }) {
@@ -71,6 +75,7 @@ export function LabelFacePreview({
   const [scale, setScale] = useState(1);
 
   const matrixValue = model.matrix.value?.trim() ?? '';
+  const cappedMax = maxScale ?? MAX_SCALE_CAPPED;
 
   // Full print-shell rebuild — matrix / kind identity only. Text slots patch
   // in place below so dock typing does not flash the iframe.
@@ -124,14 +129,14 @@ export function LabelFacePreview({
       const next =
         fit === 'host'
           ? fitScale
-          : Math.min(MAX_SCALE_CAPPED, fitScale);
+          : Math.min(cappedMax, fitScale);
       setScale(Math.max(0.5, next));
     };
     update();
     const ro = new ResizeObserver(update);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [fit]);
+  }, [fit, cappedMax]);
 
   if (!matrixValue) return null;
 

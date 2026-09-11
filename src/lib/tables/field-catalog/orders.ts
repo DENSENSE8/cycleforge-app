@@ -30,7 +30,7 @@ export const ORDERS_FIELD_CATALOG: FieldCatalog = [
     paths: { orderId: 'order_id', tracking: 'shipping_tracking_number' },
   },
   {
-    // Pick = inventory → pack handoff (industry WMS). Distinct from Packed
+    // Pick = inventory → pack handoff (industry WMS). Distinct from Pack
     // (cartonize) and from Testing QC (`/test`). Feed stamps still ride the
     // legacy tester/test_date columns until a dedicated pick projection lands;
     // the SLOT id and verbs are Pick so org layouts speak the right language.
@@ -51,7 +51,7 @@ export const ORDERS_FIELD_CATALOG: FieldCatalog = [
   {
     id: 'orders.packed',
     family: 'orders',
-    label: 'Packed',
+    label: 'Pack',
     displayType: 'stage_event',
     slotKinds: ['status'],
     iconKey: 'packed',

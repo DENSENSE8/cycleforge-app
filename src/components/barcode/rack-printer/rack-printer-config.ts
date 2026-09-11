@@ -9,6 +9,7 @@
  * `organizations.settings.gs1.gln` — the value the print ladder, the interop
  * projections and Settings all read. The GLN now comes from `useOrgGs1()`.
  */
+import { LOCATION_BAY_LABEL } from '@/lib/barcode-routing';
 
 export interface PrinterConfig {
   maxAisles: number;
@@ -29,7 +30,7 @@ export type Step = 'zone' | 'aisle' | 'bay' | 'level';
 export const STEPS: { id: Step; label: string }[] = [
   { id: 'zone',  label: 'Zone' },
   { id: 'aisle', label: 'Aisle' },
-  { id: 'bay',   label: 'Bay' },
+  { id: 'bay',   label: LOCATION_BAY_LABEL },
   { id: 'level', label: 'Level' },
 ];
 

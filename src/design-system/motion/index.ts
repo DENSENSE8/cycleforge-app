@@ -39,6 +39,7 @@ export {
   Reorder,
   useReducedMotion,
   useAnimationControls,
+  useAnimationFrame,
   useMotionValue,
   useTransform,
 } from './framer';

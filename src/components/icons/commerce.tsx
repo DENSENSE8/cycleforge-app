@@ -3,6 +3,7 @@
 // Re-exported verbatim through ../Icons.tsx — do not change export names.
 
 import {
+  Barcode as LucideBarcode,
   Box as LucideBox,
   PackageCheck as LucidePackageCheck,
   PackageSearch as LucidePackageSearch,
@@ -87,10 +88,9 @@ export const Archive = ({ className = "w-6 h-6" }: { className?: string }) => (
     </svg>
 );
 
+/** Scan / identifier mark. Lucide bars — not an `h.01` dot grid (vanishes at 16px on some GPUs). */
 export const Barcode = ({ className = "w-6 h-6" }: { className?: string }) => (
-    <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h.01M7 11h.01M7 15h.01M7 19h.01M7 21h.01M10 3h.01M10 7h.01M10 11h.01M10 15h.01M10 19h.01M10 21h.01M14 3h.01M14 7h.01M14 11h.01M14 15h.01M14 19h.01M14 21h.01M17 3h.01M17 7h.01M17 11h.01M17 15h.01M17 19h.01M17 21h.01" />
-    </svg>
+    <LucideBarcode className={className} />
 );
 
 /** Hash — order IDs / numeric references */

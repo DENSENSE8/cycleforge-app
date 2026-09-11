@@ -97,10 +97,11 @@ export function KioskAttractMediaCard({
     <div className="space-y-3 rounded-none border border-border-hairline bg-surface-sunken/40 p-4">
       <div>
         <h4 className="text-xs font-semibold uppercase tracking-wide text-text-muted">
-          Kiosk screensaver
+          Counter lock-screen media
         </h4>
         <p className="mt-1 text-role-caption text-text-soft">
-          Shown full-screen on the front-desk kiosk after idle. Video plays muted and loops.
+          Kept for a future staff lock. The consult tablet does not play this
+          after idle — there is no idle timeout.
         </p>
       </div>
 
@@ -108,7 +109,7 @@ export function KioskAttractMediaCard({
         <div className="overflow-hidden rounded-none border border-border-soft bg-surface-inverse">
           {video ? (
             <div className="flex h-36 items-center justify-center px-4 text-center text-sm text-white/80">
-              Video ready — plays muted on the kiosk attract loop
+              Video ready — muted loop if staff lock is turned on later
             </div>
           ) : (
             // eslint-disable-next-line @next/next/no-img-element

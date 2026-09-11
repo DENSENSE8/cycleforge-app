@@ -20,6 +20,13 @@
  * fork of this file that could drift from it on every axis. A combobox that
  * fetches is still a combobox; the difference is who filters, and that is one
  * prop, not a second component.
+ *
+ * Callers: `ProductSelector` kiosk-split, `KioskCommandMenu` (KioskTopChrome),
+ * `ConsultStanceControls` header, `OrderIntakeForm`, `ExceptionCatalogPairing`.
+ * Affected API: none. Schemas: `IntakeComboboxOption`.
+ * User: "execute now" / "ensure icons for the repair sales buy back and more" /
+ * "work show verify should be word and drop downs" / "access the kisok from
+ * the bottom left side or the top right of the global header"
  */
 
 import * as React from 'react';
@@ -51,6 +58,11 @@ export interface IntakeComboboxOption {
    * channel) stay text-only.
    */
   imageUrl?: string | null;
+  /**
+   * Leading glyph (kiosk command / stance). Prefer over `imageUrl` when both
+   * are set. When any option carries an icon, every option reserves the slot.
+   */
+  icon?: React.ReactNode;
 }
 
 function CatalogOptionThumb({
@@ -108,6 +120,7 @@ export function IntakeCombobox({
   footer,
   optionTestId,
   contentClassName,
+  triggerVariant = 'outline',
 }: {
   value: string | null;
   onChange: (value: string) => void;
@@ -138,11 +151,17 @@ export function IntakeCombobox({
    * on the panel is what makes the child take the corner.
    */
   contentClassName?: string;
+  /**
+   * `ghost` = label + chevron, no outline, shrink-to-content (kiosk All products).
+   * Default `outline` = full-width field (order intake).
+   */
+  triggerVariant?: 'outline' | 'ghost';
 }) {
   const [open, setOpen] = React.useState(false);
   const async = typeof onQueryChange === 'function';
   const selected = options.find((o) => o.value === value) ?? null;
-  const showThumbs = options.some((o) => Boolean(o.imageUrl));
+  const showIcons = options.some((o) => o.icon != null);
+  const showThumbs = !showIcons && options.some((o) => Boolean(o.imageUrl));
 
   const groups = React.useMemo(() => {
     const order: string[] = [];
@@ -163,16 +182,26 @@ export function IntakeCombobox({
       <PopoverTrigger asChild>
         <Button
           id={triggerId}
-          variant="outline"
+          variant={triggerVariant === 'ghost' ? 'ghost' : 'outline'}
           role="combobox"
           aria-expanded={open}
           aria-label={ariaLabel ?? placeholder}
           disabled={disabled}
           data-testid={testId}
-          className={cn('h-9 w-full justify-between px-3 font-normal', className)}
+          className={cn(
+            'h-9 font-normal',
+            triggerVariant === 'ghost'
+              ? 'w-auto max-w-full shrink-0 justify-start gap-1.5 px-0'
+              : 'w-full justify-between px-3',
+            className,
+          )}
         >
           <span className={cn('flex min-w-0 items-center gap-2', selected ? 'text-text-default' : 'text-text-faint')}>
-            {selected?.imageUrl ? (
+            {showIcons && selected?.icon ? (
+              <span className="flex h-4 w-4 shrink-0 items-center justify-center text-text-soft" aria-hidden>
+                {selected.icon}
+              </span>
+            ) : selected?.imageUrl ? (
               <CatalogOptionThumb imageUrl={selected.imageUrl} size="trigger" />
             ) : null}
             <span className="truncate">{selected ? selected.label : placeholder}</span>
@@ -184,7 +213,10 @@ export function IntakeCombobox({
         align="start"
         // Full var() form — the bare `--var` arbitrary-value shorthand does
         // not compile in this Tailwind setup, which left the panel widthless.
-        className={cn('w-[var(--radix-popover-trigger-width)] p-0', contentClassName)}
+        className={cn(
+          triggerVariant === 'ghost' ? 'w-72 min-w-72 p-0' : 'w-[var(--radix-popover-trigger-width)] p-0',
+          contentClassName,
+        )}
       >
         <Command shouldFilter={!async}>
           <CommandInput
@@ -211,7 +243,11 @@ export function IntakeCombobox({
                       setOpen(false);
                     }}
                   >
-                    {showThumbs ? (
+                    {showIcons ? (
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center text-text-soft" aria-hidden>
+                        {opt.icon}
+                      </span>
+                    ) : showThumbs ? (
                       <CatalogOptionThumb imageUrl={opt.imageUrl} size="option" />
                     ) : null}
                     <span className="min-w-0 flex-1">

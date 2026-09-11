@@ -1,4 +1,10 @@
 import type { WorkOrderRow } from '@/components/work-orders/types';
+import { getIdentificationJob } from '@/lib/identification';
+import {
+  EMPTY_META_DASH,
+  conditionGradeTableLabel,
+  conditionLabel,
+} from '@/lib/conditions';
 
 export type MobileToShipTab = 'all' | 'assigned' | 'unassigned';
 
@@ -26,9 +32,10 @@ export function filterToShipByTab(
   return rows.filter((row) => !isAssignedToShipRow(row));
 }
 
-/** Per-order processing surface — pick/pack the carton. */
+/** Per-order identification claim — pick JobFace, then the picker session. */
 export function mobileProcessOrderHref(row: Pick<WorkOrderRow, 'entityId'>): string {
-  return `/m/pick/${row.entityId}`;
+  const pick = getIdentificationJob('pick');
+  return pick?.claimPath(String(row.entityId)) ?? `/m/id/pick/${row.entityId}`;
 }
 
 /** Marketplace order id for last-8 chips — never the internal numeric pk. */
@@ -67,24 +74,53 @@ export function isToShipOutOfStock(row: Pick<WorkOrderRow, 'outOfStock'>): boole
   return Boolean(String(row.outOfStock || '').trim());
 }
 
-/** Find an order by title, marketplace id, tracking, SKU, or item number. */
+function conditionSearchText(condition: string | null | undefined): string {
+  const raw = String(condition ?? '').trim();
+  if (!raw) return '';
+  const labels = [
+    conditionGradeTableLabel(raw),
+    conditionLabel(raw, 'full'),
+    conditionLabel(raw, 'compact'),
+    conditionLabel(raw, 'pill'),
+    conditionLabel(raw, 'label'),
+    conditionLabel(raw, 'option'),
+  ].filter((label) => label && label !== EMPTY_META_DASH);
+  return [raw, ...labels].join('\n');
+}
+
+/** Find an order by product, category, condition, identifiers, or assignee. */
 export function filterToShipByQuery(
   rows: readonly WorkOrderRow[],
   query: string | null | undefined,
+  resolveName?: (id: number) => string,
 ): WorkOrderRow[] {
   const needle = query?.trim().toLowerCase() ?? '';
   if (!needle) return [...rows];
   return rows.filter((row) => {
-    const hay = [
+    const fields = [
       row.title,
+      row.catalogCategory ?? '',
+      row.serialNumber ?? '',
+      row.notes ?? '',
+      row.accountSource ?? '',
+      row.quantity ?? '',
+      conditionSearchText(row.condition),
       toShipOrderId(row),
       toShipTrackingNumber(row) ?? '',
       row.sku ?? '',
       row.itemNumber ?? '',
-    ]
-      .join('\n')
-      .toLowerCase();
-    return hay.includes(needle);
+      toShipPickerLabel(row, resolveName) ?? '',
+      toShipPackerLabel(row, resolveName) ?? '',
+    ].map((value) => value.toLowerCase());
+    if (needle.length === 1) {
+      return fields.some((value) =>
+        value
+          .split('\n')
+          .map((part) => part.trim())
+          .includes(needle),
+      );
+    }
+    return fields.some((value) => value.includes(needle));
   });
 }
 

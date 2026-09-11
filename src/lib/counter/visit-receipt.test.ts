@@ -92,7 +92,7 @@ function squareTransaction(
 }
 
 function customer(overrides: Partial<CounterVisitCustomer> = {}): CounterVisitCustomer {
-  return { id: 1, name: 'Jane Doe', phone: '555-111-2222', email: 'jane@example.com', ...overrides };
+  return { id: 1, name: 'Jane Doe', phone: '555-111-2222', email: 'jane@example.com', address: '12 Main St', ...overrides };
 }
 
 function visit(overrides: Partial<CounterVisit> = {}): CounterVisit {
@@ -281,7 +281,12 @@ describe('buildVisitReceipt', () => {
   it('carries the customer through untouched', () => {
     const v = visit({ customer: customer() });
     const r = buildVisitReceipt(v, letterhead());
-    assert.deepEqual(r.customer, { name: 'Jane Doe', phone: '555-111-2222', email: 'jane@example.com' });
+    assert.deepEqual(r.customer, {
+      name: 'Jane Doe',
+      phone: '555-111-2222',
+      email: 'jane@example.com',
+      address: '12 Main St',
+    });
   });
 
   it('a repair visit gets the warranty note in the footer; a retail-only visit does not', () => {

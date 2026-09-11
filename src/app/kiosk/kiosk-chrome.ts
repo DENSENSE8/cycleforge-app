@@ -1,13 +1,17 @@
 /**
- * Kiosk V2 pane chrome — shared header hairline Y + far-left command spine +
- * persistent right cart ledger.
+ * Kiosk V2 pane chrome — shared header hairline Y on one trail row.
+ *
+ * Callers: `KioskShell`, `KioskTopChrome`, `ProductSelector`, `ConsultStanceControls`.
+ * Affected API: none. Schemas: `KioskServiceId`.
+ * User: "Converting the left sidebar into just a top left drop down so repair
+ * or sales or more and then an exit button so you can exit out of the kiosk
+ * mode. The right sidebar should also be removed as well and everything placed
+ * into the top header, the cart, the paperwork, the work, show, verify, etc."
  *
  * Catalog and detail headers compose the same band so the top hairline reads
- * as one continuous seam across columns. Hosts stay `p-0`.
- *
- * Command selection is a two-state spine (`KioskModeSpine`): collapsed icon
- * rail (~56px) or expanded Search + named commands (~256px). Commands swap
- * the center work surface only — they never clear the cart session.
+ * as one continuous seam. Hosts stay `p-0`. Command selection is the ghost
+ * dropdown on that trail; cart, paperwork, and stance sit on the same row.
+ * Commands swap the center work surface only.
  * Live law: `AGENTS.md` + docs/todo/kiosk-pos-modernization-HANDOFF.md.
  */
 
@@ -118,7 +122,7 @@ export const KIOSK_PILL = cn(
   cornerClass('pill'),
 );
 
-/** Selected pill — accent wash (Square chip selected). Pair with a Check glyph. */
+/** Selected pill — accent wash (Square chip selected). Pair with a trailing Check overlay. */
 export const KIOSK_PILL_ACTIVE = 'bg-surface-accent text-text-default';
 
 /** Idle pill — quiet sunken chip, hover wash. */
@@ -204,18 +208,17 @@ export const KIOSK_CART_COL_PX = 320;
 /** Live line-count badge riding the cart glyph. */
 export const KIOSK_CART_COUNT_BADGE = cn(
   'absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center px-1',
-  'bg-blue-600 text-role-micro leading-none text-white tabular-nums',
+  'bg-fill-info text-role-micro leading-none text-white tabular-nums',
   cornerClass('pill'),
 );
 
 /**
  * Right utility spine — the mirror of the left command spine.
  *
- * Always-visible ~56px glyph column at the FAR RIGHT: cart on top, paperwork
- * under it, and room for further checkout-context slots below. Selecting a
- * glyph pushes its panel open to the LEFT of the rail; selecting it again
- * closes it. The rail itself never collapses — it is how the operator gets
- * back to the cart.
+ * Always-visible ~56px glyph column at the FAR RIGHT: cart then paperwork at
+ * the top; Work · Show · Verify pinned to the bottom of the same column.
+ * Selecting a checkout glyph swaps the center stage; selecting it again
+ * closes it. Stance glyphs never open a panel — they change consult face.
  */
 export const KIOSK_UTILITY_SPINE_FACE = cn(
   'flex h-full w-14 shrink-0 flex-col items-center gap-0 bg-surface-card py-0',
@@ -229,7 +232,7 @@ export const KIOSK_UTILITY_SPINE_ROW = cn(
 );
 
 /**
- * Utility panel face — cart / paperwork / triage mounted in the CENTER stage.
+ * Utility panel face — cart / paperwork mounted in the CENTER stage.
  *
  * These are NOT a drawer and NOT a slide-out column: selecting a rail glyph
  * swaps the center work surface, exactly like the left command spine swaps it.
@@ -253,3 +256,4 @@ export const KIOSK_CART_LINE_ROW =
 export const KIOSK_CUSTOMER_FACE = cn(
   'flex h-full w-full flex-col bg-surface-card text-text-default',
 );
+

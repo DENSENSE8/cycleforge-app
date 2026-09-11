@@ -13,6 +13,8 @@ import { usePhoneScanBridge } from '@/hooks/usePhoneScanBridge';
 import { useGlobalWedgeScanner } from '@/hooks/useGlobalWedgeScanner';
 import { useCommandAliasHydration } from '@/hooks/useCommandAliasHydration';
 
+export { StaffPrintBridgeMount } from '@/hooks/useStaffPrintBridgeHost';
+
 /**
  * Subscribes to phone-originated scans on `phone:{staffId}` for the signed-in
  * user and echoes lookups back on `staffstation:{staffId}`. Runs on both desktop

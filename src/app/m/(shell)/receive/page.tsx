@@ -1,20 +1,10 @@
 /**
- * /m/receive — deprecated Arrival alias. Prefer `/m/triage`.
- *
- * Server component: the arrival feed is seeded into the first HTML (see
- * `/m/home` for why).
+ * /m/receive — deprecated alias. Identification lives on /m/scan.
  */
 
-import MobileArrivalStation from '@/components/mobile/receiving/MobileArrivalStation';
-import { ShellQuerySeed } from '@/components/providers/ShellQuerySeed';
-import { seedMobileReceivingFeed } from '@/lib/queries/mobile-feed-seed.server';
+import { redirect } from 'next/navigation';
 
-/** @deprecated Prefer `/m/triage` — kept for deep links. */
-export default async function MobileReceivePage() {
-  const seed = await seedMobileReceivingFeed('triage');
-  return (
-    <ShellQuerySeed state={seed}>
-      <MobileArrivalStation />
-    </ShellQuerySeed>
-  );
+/** @deprecated Prefer `/m/scan`. */
+export default function MobileReceivePage() {
+  redirect('/m/scan');
 }

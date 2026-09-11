@@ -8,6 +8,8 @@ import {
   type Gs1AiTree,
 } from '@/lib/scan-resolver';
 import { routeScan } from '@/lib/barcode-routing';
+import { classifyIdentificationScan } from '@/lib/identification/compile-grammar';
+import { loadPublishedIdentificationMethods } from '@/lib/identification/load-published';
 import { normalizeTrackingKey18 } from '@/lib/tracking-format';
 import { query } from '@/lib/neon-client';
 import { tenantQuery } from '@/lib/tenancy/db';
@@ -26,6 +28,7 @@ import { CACHE_NS, CACHE_TAGS } from '@/lib/cache/tags';
  *   0. Anything this app PRINTS — via `routeScan`, the one decoder. Carton /
  *      line / unit / handling-unit handles AND location labels, in every form
  *      (bare handle, flat code, GS1 AI, absolute URL).
+ *   0.5 Tenant identification grammar (compiled Zod). After print-handles.
  *   1. Multi-AI GS1 Data Matrix (FNC1 or parenthesized form)
  *   2. GS1 Digital Link URL or internal /l|/p|/o|/s|/q prefix
  *   3. Pattern classify — tracking | FNSKU | serial_full | serial_partial
@@ -478,6 +481,37 @@ async function resolve(input: string, organizationId: string, staffId: number, d
       organizationId, staffId, rawValue: trimmed, kind, routedTo: handleRoute.redirect,
     });
     return result;
+  }
+
+  // 0.5 Tenant identification grammar (Studio-compiled Zod). After printed
+  //     handles, before PO / GS1 / classifyInput. No LLM.
+  {
+    const methods = await loadPublishedIdentificationMethods(organizationId);
+    const hit = classifyIdentificationScan(trimmed, methods);
+    if (hit) {
+      const method = methods.find((m) => m.record.id === hit.jobId);
+      const route = method?.record.claimPath(hit.entityId) ?? null;
+      if (route) {
+        const result: ResolveResponse = {
+          ...base,
+          kind: 'order',
+          source: 'pattern',
+          entity: { identificationJob: hit.jobId, value: hit.entityId },
+          matches: [],
+          matchOutcome: 'single',
+          mobileRoute: route,
+        };
+        await logScanEvent({
+          organizationId, staffId, raw: trimmed, normalized: hit.entityId, kind: 'order',
+          carrier: null, matches: [], outcome: 'single', routedTo: route,
+          parsedAis: null, device,
+        });
+        void publishScanLog({
+          organizationId, staffId, rawValue: trimmed, kind: 'order', routedTo: route,
+        });
+        return result;
+      }
+    }
   }
 
   // 0b. Plain PO number (no `R-` prefix) — look it up in `receiving_carton` and

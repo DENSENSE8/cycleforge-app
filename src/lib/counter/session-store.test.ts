@@ -29,6 +29,9 @@ import {
   DEFAULT_CLAIM_LEASE_MS,
   getSession,
   holdsLease,
+  bindSessionDevice,
+  setConsultStance,
+  setConsultPresentation,
   releaseSession,
   setSessionStatus,
   signLine,
@@ -61,6 +64,8 @@ const NOW = 1_700_000_000_000;
 interface Fake {
   deps: CounterSessionDeps;
   state: CounterSessionSnapshot;
+  /** Another open visit holding a tablet — used to assert DEVICE_BUSY. */
+  foreignOpen: { deviceId: number; sessionId: number } | null;
   /** Every CounterTransactionInput the orchestrator was handed. */
   submitted: Array<{ customer: { phone: string }; retailLines?: unknown[]; clientEventId: string }>;
   terminalCalls: Array<{ deviceId: string; orderId: string; idempotencyKey: string }>;
@@ -74,6 +79,7 @@ interface Fake {
 function fakeDeps(overrides: Partial<CounterSessionSnapshot> = {}): Fake {
   const fake: Fake = {
     state: { ...emptySessionSnapshot(SESSION_ID), ...overrides },
+    foreignOpen: null,
     submitted: [],
     terminalCalls: [],
     stagedOrderId: 'sq-order-1',
@@ -140,6 +146,8 @@ function fakeDeps(overrides: Partial<CounterSessionSnapshot> = {}): Fake {
       if (patch.status) next.status = patch.status;
       if (patch.activeCommand) next.activeCommand = patch.activeCommand;
       if (patch.face) next.face = patch.face;
+      if (patch.consultStance) next.consultStance = patch.consultStance;
+      if (patch.presentation) next.presentation = patch.presentation;
       if (patch.customer) next.customer = { ...patch.customer };
       if (patch.counterTransactionId !== undefined) {
         next.counterTransactionId = patch.counterTransactionId;
@@ -181,6 +189,9 @@ function fakeDeps(overrides: Partial<CounterSessionSnapshot> = {}): Fake {
     async findOpenSessionIdForDevice(_tx, _orgId, deviceId) {
       // Mirrors ux_counter_sessions_open_device: at most one open session per
       // bound device, so the tablet never has to be told a session id.
+      if (fake.foreignOpen && fake.foreignOpen.deviceId === deviceId) {
+        return fake.foreignOpen.sessionId;
+      }
       if (fake.state.status !== 'open') return null;
       return fake.state.kioskDeviceId === deviceId ? fake.state.sessionId : null;
     },
@@ -711,6 +722,167 @@ describe('createSession', () => {
     assert.equal(f.state.claimedByStaffId, 11);
     assert.equal(f.state.kioskDeviceId, 3);
     assert.equal(f.state.version, 0);
+  });
+});
+
+describe('bindSessionDevice', () => {
+  it('puts the visit on a tablet and publishes session.device_bound', async () => {
+    const f = fakeDeps();
+    const result = await bindSessionDevice(
+      ORG,
+      DESK,
+      SESSION_ID,
+      { expectedVersion: 0, kioskDeviceId: 3 },
+      f.deps,
+    );
+    assert.equal(result.ok, true);
+    assert.equal(f.state.kioskDeviceId, 3);
+    assert.equal(result.ok && result.event.type, 'session.device_bound');
+    assert.equal(result.ok && result.event.type === 'session.device_bound' && result.event.kioskDeviceId, 3);
+  });
+
+  it('hands the tablet back with null — the iPad falls off this visit', async () => {
+    const f = fakeDeps({ kioskDeviceId: 3 });
+    const result = await bindSessionDevice(
+      ORG,
+      DESK,
+      SESSION_ID,
+      { expectedVersion: 0, kioskDeviceId: null },
+      f.deps,
+    );
+    assert.equal(result.ok, true);
+    assert.equal(f.state.kioskDeviceId, null);
+  });
+
+  it('refuses DEVICE_BUSY when another open visit already holds that tablet', async () => {
+    const f = fakeDeps();
+    f.foreignOpen = { deviceId: 3, sessionId: 99 };
+    const result = await bindSessionDevice(
+      ORG,
+      DESK,
+      SESSION_ID,
+      { expectedVersion: 0, kioskDeviceId: 3 },
+      f.deps,
+    );
+    assert.equal(refusal(result), 'DEVICE_BUSY');
+    assert.equal(f.state.kioskDeviceId, null);
+    assert.equal(f.bumps, 0);
+  });
+
+  it('lets this visit re-bind its own tablet without DEVICE_BUSY', async () => {
+    const f = fakeDeps({ kioskDeviceId: 3 });
+    const result = await bindSessionDevice(
+      ORG,
+      DESK,
+      SESSION_ID,
+      { expectedVersion: 0, kioskDeviceId: 3 },
+      f.deps,
+    );
+    assert.equal(result.ok, true);
+    assert.equal(f.state.kioskDeviceId, 3);
+  });
+
+  it('returns VERSION_CONFLICT and writes nothing when the bump loses', async () => {
+    const f = fakeDeps();
+    f.raceOnNextBump();
+    const result = await bindSessionDevice(
+      ORG,
+      DESK,
+      SESSION_ID,
+      { expectedVersion: 0, kioskDeviceId: 3 },
+      f.deps,
+    );
+    assert.equal(refusal(result), 'VERSION_CONFLICT');
+    assert.equal(f.state.kioskDeviceId, null);
+  });
+
+  it('refuses a tablet principal — naming a session is a desk verb', async () => {
+    const f = fakeDeps();
+    const result = await bindSessionDevice(
+      ORG,
+      KIOSK,
+      SESSION_ID,
+      { expectedVersion: 0, kioskDeviceId: 3 },
+      f.deps,
+    );
+    assert.equal(refusal(result), 'DEVICE_FORBIDDEN');
+    assert.equal(f.state.kioskDeviceId, null);
+  });
+});
+
+describe('setConsultStance', () => {
+  it('does not mutate lines when the desk flips Work → Show → Verify → Work', async () => {
+    const f = fakeDeps();
+    await addLine(ORG, DESK, SESSION_ID, { expectedVersion: 0, line: retailLine() }, f.deps);
+
+    const show = await setConsultStance(
+      ORG,
+      DESK,
+      SESSION_ID,
+      { expectedVersion: f.state.version, consultStance: 'show' },
+      f.deps,
+    );
+    assert.equal(show.ok, true);
+    assert.equal(f.state.consultStance, 'show');
+    assert.equal(f.state.face, 'customer');
+    assert.equal(f.state.lines.length, 1);
+    assert.equal(f.state.lines[0].title, 'Case');
+    assert.equal(f.state.activeCommand, 'retail');
+
+    const verify = await setConsultStance(
+      ORG,
+      DESK,
+      SESSION_ID,
+      { expectedVersion: f.state.version, consultStance: 'verify' },
+      f.deps,
+    );
+    assert.equal(verify.ok, true);
+    assert.equal(f.state.consultStance, 'verify');
+    assert.equal(f.state.lines[0].title, 'Case');
+
+    const work = await setConsultStance(
+      ORG,
+      DESK,
+      SESSION_ID,
+      { expectedVersion: f.state.version, consultStance: 'work' },
+      f.deps,
+    );
+    assert.equal(work.ok, true);
+    assert.equal(f.state.consultStance, 'work');
+    assert.equal(f.state.face, 'staff');
+    assert.equal(f.state.lines.length, 1);
+  });
+
+  it('lets the tablet publish stance so dual-device can converge', async () => {
+    const f = fakeDeps();
+    const result = await setConsultStance(
+      ORG,
+      KIOSK,
+      SESSION_ID,
+      { expectedVersion: 0, consultStance: 'verify' },
+      f.deps,
+    );
+    assert.equal(result.ok, true);
+    assert.equal(f.state.consultStance, 'verify');
+    assert.equal(result.ok && result.event.type, 'session.face_changed');
+  });
+});
+
+describe('setConsultPresentation', () => {
+  it('does not mutate lines when staff points Show at a cart line', async () => {
+    const f = fakeDeps();
+    await addLine(ORG, DESK, SESSION_ID, { expectedVersion: 0, line: retailLine() }, f.deps);
+    const result = await setConsultPresentation(
+      ORG,
+      DESK,
+      SESSION_ID,
+      { expectedVersion: f.state.version, presentation: { lineId: f.state.lines[0].id, catalog: null } },
+      f.deps,
+    );
+    assert.equal(result.ok, true);
+    assert.equal(f.state.presentation.lineId, f.state.lines[0].id);
+    assert.equal(f.state.lines[0].title, 'Case');
+    assert.equal(result.ok && result.event.type, 'session.presentation_changed');
   });
 });
 

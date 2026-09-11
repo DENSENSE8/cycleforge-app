@@ -22,6 +22,14 @@ import {
   deleteShipmentTrackingLink,
 } from '@/lib/neon/orders-tracking-queries';
 import { linkShipment } from '@/lib/shipping/shipment-links';
+import {
+  catalogChildShortageIdentity,
+  catalogOtherShortageIdentity,
+  kitPartShortageIdentity,
+  listingShortageIdentity,
+  type OrderShortageIdentity,
+} from '@/lib/orders/order-shortage-identity';
+import { clearOrderLineShortages, upsertOrderLineShortage } from '@/lib/orders/order-line-shortage';
 
 /**
  * POST /api/orders/assign
@@ -57,6 +65,14 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       productTitle,
       sku,
       skuCatalogId,
+      oosKind,
+      oosSku,
+      oosSkuCatalogId,
+      oosKitPartId,
+      oosQtyShort,
+      oosTitle,
+      oosZohoItemId,
+      oosItemId,
       performedByStaffId,
       actorStaffId,
       staffId,
@@ -216,6 +232,56 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         }
         updates.push(`is_out_of_stock = $${paramCount++}`);
         values.push(outOfStockValueBoolean);
+
+        // Shortage identity rides the hold. Cleared when the hold flips off.
+        if (outOfStockValueBoolean) {
+          const kind =
+            oosKind === 'kit_part' || oosKind === 'catalog_child' || oosKind === 'catalog_other'
+              ? oosKind
+              : 'listing';
+          updates.push(`oos_kind = $${paramCount++}`);
+          values.push(kind);
+          if (oosSku !== undefined) {
+            updates.push(`oos_sku = $${paramCount++}`);
+            values.push(String(oosSku || '').trim() || null);
+          }
+          if (oosSkuCatalogId !== undefined) {
+            updates.push(`oos_sku_catalog_id = $${paramCount++}`);
+            values.push(oosSkuCatalogId == null ? null : Number(oosSkuCatalogId));
+          }
+          if (oosKitPartId !== undefined) {
+            updates.push(`oos_kit_part_id = $${paramCount++}`);
+            values.push(oosKitPartId == null ? null : Number(oosKitPartId));
+          }
+          if (oosQtyShort !== undefined) {
+            updates.push(`oos_qty_short = $${paramCount++}`);
+            const qty = Number(oosQtyShort);
+            values.push(Number.isFinite(qty) && qty > 0 ? qty : 1);
+          }
+          if (oosTitle !== undefined) {
+            updates.push(`oos_title = $${paramCount++}`);
+            values.push(String(oosTitle || '').trim() || null);
+          }
+          if (oosZohoItemId !== undefined) {
+            updates.push(`oos_zoho_item_id = $${paramCount++}`);
+            values.push(String(oosZohoItemId || '').trim() || null);
+          }
+        } else {
+          updates.push(`oos_kind = $${paramCount++}`);
+          values.push(null);
+          updates.push(`oos_sku = $${paramCount++}`);
+          values.push(null);
+          updates.push(`oos_sku_catalog_id = $${paramCount++}`);
+          values.push(null);
+          updates.push(`oos_kit_part_id = $${paramCount++}`);
+          values.push(null);
+          updates.push(`oos_qty_short = $${paramCount++}`);
+          values.push(null);
+          updates.push(`oos_title = $${paramCount++}`);
+          values.push(null);
+          updates.push(`oos_zoho_item_id = $${paramCount++}`);
+          values.push(null);
+        }
       }
       if (isUrgent !== undefined) {
         updates.push(`is_urgent = $${paramCount++}`);
@@ -259,12 +325,60 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
         );
       }
 
+      if (outOfStockChanged) {
+        for (const lineId of idsToUpdate) {
+          if (outOfStockValueBoolean) {
+            await upsertOrderLineShortage(client, {
+              orgId,
+              orderId: lineId,
+              identity: assignShortageIdentity({
+                oosKind,
+                oosSku,
+                oosSkuCatalogId,
+                oosKitPartId,
+                oosQtyShort,
+                oosTitle,
+                oosZohoItemId,
+                oosItemId,
+                sku,
+                productTitle,
+                skuCatalogId,
+              }),
+              createdBy: 'staff',
+            });
+          } else {
+            await clearOrderLineShortages(client, {
+              orgId,
+              orderId: lineId,
+              clearedBy: 'staff',
+            });
+          }
+        }
+      }
+
       const changedFields: Record<string, unknown> = {};
       if (testerId !== undefined) changedFields.testerId = testerId;
       if (packerId !== undefined) changedFields.packerId = packerId;
       if (orderNumber !== undefined) changedFields.orderNumber = orderNumber;
       if (shipByDate !== undefined) changedFields.shipByDate = shipByDate;
-      if (outOfStock !== undefined || isOutOfStock !== undefined) changedFields.isOutOfStock = outOfStockValueBoolean;
+      if (outOfStock !== undefined || isOutOfStock !== undefined) {
+        changedFields.isOutOfStock = outOfStockValueBoolean;
+        if (outOfStockValueBoolean) {
+          if (oosKind !== undefined) changedFields.oosKind = oosKind;
+          if (oosSku !== undefined) changedFields.oosSku = oosSku;
+          if (oosSkuCatalogId !== undefined) changedFields.oosSkuCatalogId = oosSkuCatalogId;
+          if (oosKitPartId !== undefined) changedFields.oosKitPartId = oosKitPartId;
+          if (oosQtyShort !== undefined) changedFields.oosQtyShort = oosQtyShort;
+          if (oosTitle !== undefined) changedFields.oosTitle = oosTitle;
+        } else {
+          changedFields.oosKind = null;
+          changedFields.oosSku = null;
+          changedFields.oosSkuCatalogId = null;
+          changedFields.oosKitPartId = null;
+          changedFields.oosQtyShort = null;
+          changedFields.oosTitle = null;
+        }
+      }
       if (isUrgent !== undefined) changedFields.isUrgent = Boolean(isUrgent);
       if (shippingTrackingNumber !== undefined) changedFields.shippingTrackingNumber = shippingTrackingNumber;
       if (Array.isArray(trackingLinkEdits) && trackingLinkEdits.length > 0) changedFields.trackingLinkEdits = trackingLinkEdits;
@@ -329,11 +443,13 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     }
 
     if (process.env.FEATURE_REPLENISHMENT === 'true' && outOfStockChanged) {
+      const shortSku = String(oosSku || '').trim();
+      const replenishReason = shortSku ? `Out of stock · ${shortSku}` : 'Out of stock';
       for (const orderId of idsToUpdate) {
         if (outOfStockValueBoolean) {
           await ensureReplenishmentForOrder({
             orderId,
-            reason: 'Out of stock',
+            reason: replenishReason,
             changedBy: 'staff',
             forceFullQuantity: true,
           }, ctx.organizationId);
@@ -396,3 +512,40 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
     );
   }
 }, { permission: 'orders.create' });
+
+function assignShortageIdentity(args: {
+  oosKind?: string | null;
+  oosSku?: string | null;
+  oosSkuCatalogId?: number | null;
+  oosKitPartId?: number | null;
+  oosQtyShort?: number | null;
+  oosTitle?: string | null;
+  oosZohoItemId?: string | null;
+  oosItemId?: string | null;
+  sku?: string | null;
+  productTitle?: string | null;
+  skuCatalogId?: number | null;
+}): OrderShortageIdentity {
+  const base = {
+    sku: args.oosSku ?? args.sku,
+    skuCatalogId: args.oosSkuCatalogId ?? args.skuCatalogId,
+    title: args.oosTitle ?? args.productTitle,
+    qtyShort: args.oosQtyShort,
+    zohoItemId: args.oosZohoItemId,
+    itemId: args.oosItemId,
+  };
+  if (args.oosKind === 'kit_part') {
+    return kitPartShortageIdentity({
+      ...base,
+      title: base.title || 'Kit part',
+      kitPartId: args.oosKitPartId,
+    });
+  }
+  if (args.oosKind === 'catalog_child') {
+    return catalogChildShortageIdentity({ ...base, title: base.title || 'Component' });
+  }
+  if (args.oosKind === 'catalog_other') {
+    return catalogOtherShortageIdentity({ ...base, title: base.title || 'Inventory item' });
+  }
+  return listingShortageIdentity(base);
+}

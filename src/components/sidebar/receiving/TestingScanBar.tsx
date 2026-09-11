@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, type FormEvent } from 'react';
-import { Barcode, MapPin, Hash, Pencil } from '@/components/Icons';
+import { Hash, MapPin, Pencil, ScanBarcode } from '@/components/Icons';
 import {
   StationScanModeRail,
   ThemedStationScanBar,
@@ -42,7 +42,7 @@ export const TESTING_SCAN_MODES: readonly TestingScanModeMeta[] = [
   {
     mode: 'serial',
     label: 'Serial',
-    Icon: Barcode,
+    Icon: ScanBarcode,
     armedClass: 'text-emerald-700',
     iconClass: 'text-emerald-600',
   },

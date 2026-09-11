@@ -11,14 +11,13 @@
  *   the triage station. This is the same job's page-agnostic dialog form. It
  *   forks NO waist: the catalog and its writes come from {@link useLocations},
  *   minting goes through `registerLocations` (the bin-label-printer door), and
- *   the sticker is the same {@link PrintLabel} card on the same 3in × 2in
- *   `@page` — so a printed address stays the one flat format
- *   `extractArrivalLocationBarcode` can decode.
+ *   the sticker is the shared 2×1 {@link printLocationLabelsJob} face — so a
+ *   printed address stays the one flat format `extractArrivalLocationBarcode`
+ *   can decode.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Loader2, MapPin, Pencil, Plus, Printer, Search, Trash2 } from '@/components/Icons';
-import { PrintLabel } from '@/components/barcode/bin-label-printer';
 import { registerLocations } from '@/components/barcode/bin-label-printer/bin-printer-api';
 import {
   Dialog,
@@ -31,7 +30,9 @@ import { Button, IconButton } from '@/design-system/primitives';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { useLocations } from '@/hooks/useLocations';
 import { useOrgGs1 } from '@/hooks/useOrgGs1';
+import { useAuth } from '@/contexts/AuthContext';
 import { locationCode, type LocationSegments } from '@/lib/barcode-routing';
+import { printLocationLabelsJob } from '@/lib/print/printLocationLabel';
 import {
   buildUpdateLocationBody,
   filterLocations,
@@ -115,14 +116,13 @@ export function LocationCrudDialog({
     refetch,
   } = useLocations();
   const { identity: orgGs1 } = useOrgGs1();
+  const { user } = useAuth();
 
   const [mode, setMode] = useState<Mode>('browse');
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [form, setForm] = useState<LocationFormValues | null>(null);
   const [original, setOriginal] = useState<LocationFormValues | null>(null);
-  const [printSegments, setPrintSegments] = useState<LocationSegments | null>(null);
-  const [printRoom, setPrintRoom] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   // New-bin address state.
@@ -150,7 +150,6 @@ export function LocationCrudDialog({
     setMode('browse');
     setQuery('');
     setConfirmDelete(false);
-    setPrintSegments(null);
     const code = (initialBarcode || '').trim();
     const match = code ? rows.find((r) => (r.barcode || '').trim() === code) : null;
     setSelectedId(match?.id ?? null);
@@ -174,15 +173,17 @@ export function LocationCrudDialog({
     const segments = locationPrintSegments(row);
     if (!segments) {
       toast.error(
-        'This bin has no printable rack address — only scannable codes can be printed.',
+        'This bin has no printable bay address — only scannable codes can be printed.',
       );
       return;
     }
-    setPrintSegments(segments);
-    setPrintRoom((row.room || '').trim());
-    // Let the print zone paint before the browser snapshots the page.
-    requestAnimationFrame(() => window.print());
-  }, []);
+    void printLocationLabelsJob({
+      segments: [segments],
+      roomName: (row.room || '').trim(),
+      gln: orgGs1?.gln ?? '',
+      orgSlug: user?.organizationSlug,
+    });
+  }, [orgGs1?.gln, user?.organizationSlug]);
 
   const saveEdit = useCallback(async () => {
     if (!selected || !form || !original) return;
@@ -271,16 +272,19 @@ export function LocationCrudDialog({
         name: (minted as { name?: string | null } | undefined)?.name ?? null,
       });
       refetch();
-      setPrintSegments(segments);
-      setPrintRoom(room);
-      requestAnimationFrame(() => window.print());
+      await printLocationLabelsJob({
+        segments: [segments],
+        roomName: room,
+        gln: orgGs1?.gln ?? '',
+        orgSlug: user?.organizationSlug,
+      });
       setMode('browse');
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Could not create location');
     } finally {
       setBusy(false);
     }
-  }, [newRoom, rooms, aisle, bay, level, locations, onCreated, refetch]);
+  }, [newRoom, rooms, aisle, bay, level, locations, onCreated, refetch, orgGs1?.gln, user?.organizationSlug]);
 
   const working = busy || binMutating;
 
@@ -513,17 +517,6 @@ export function LocationCrudDialog({
             </div>
           </div>
         )}
-
-        {/* Print zone — hidden on screen, fills the 3in × 2in page on print. */}
-        <div className="label-print-zone">
-          {printSegments ? (
-            <PrintLabel
-              segments={printSegments}
-              roomName={printRoom}
-              gln={orgGs1?.gln ?? ''}
-            />
-          ) : null}
-        </div>
       </DialogContent>
     </Dialog>
   );

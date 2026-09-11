@@ -5,10 +5,10 @@
  * Shared by bin labels and rack labels. Do not fork a printer-local twin.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from '@/design-system/motion';
-import { Check, ChevronDown, ChevronUp } from '@/components/Icons';
-import { IconButton } from '@/design-system/primitives';
+import { ChevronDown, ChevronUp } from '@/components/Icons';
+import { Button, IconButton } from '@/design-system/primitives';
 import { noPad, pad2 } from '@/lib/barcode-routing';
 import {
   LABEL_BUILDER_NUMPAD,
@@ -26,6 +26,9 @@ interface NumericStepProps {
   onPick: (n: number) => void;
   renderTag?: (n: number) => string | null;
   customLabel?: string;
+  /** When true, the selected tile toggles off (bin position is optional on the sticker). */
+  allowClear?: boolean;
+  onClear?: () => void;
   /** Optional one-line explainer rendered between title and the tile grid. */
   hint?: string;
   /** When true, tile labels are unpadded ("1", "2", …) — matches the level
@@ -44,6 +47,8 @@ export function NumericStep({
   renderTag,
   hint,
   unpadded,
+  allowClear,
+  onClear,
   customLabel = 'Custom #',
 }: NumericStepProps) {
   const format = unpadded ? noPad : pad2;
@@ -57,23 +62,39 @@ export function NumericStep({
   const [custom, setCustom] = useState('');
   const customNum = parseInt(custom, 10);
   const customValid = Number.isFinite(customNum) && customNum >= 1 && customNum <= 99;
+  const shown = custom !== '' ? custom : isCustomSelected ? String(selected) : '';
 
-  const confirmCustom = () => {
-    if (!customValid) return;
-    onPick(customNum);
-    setCustom('');
+  useEffect(() => {
+    if (selected == null || selected <= 9) setCustom('');
+  }, [selected]);
+
+  const commitCustom = (raw: string) => {
+    setCustom(raw);
+    if (raw === '' && allowClear) {
+      onClear?.();
+      return;
+    }
+    const n = parseInt(raw, 10);
+    // Live-commit 10–99 so the tile does not need a check. 1–9 stay on the
+    // quick-picks so typing "1" of "12" does not steal the 01 pad.
+    if (Number.isFinite(n) && n >= 10 && n <= 99) onPick(n);
   };
 
   // Stepper buttons. First tap on either arrow with an empty field always
   // lands on 10 (one past the quick-pick range), so the user discovers the
-  // custom range without overshooting. Subsequent taps step from there.
+  // custom range without overshooting. Subsequent taps pick immediately.
   const stepBy = (delta: number) => {
-    if (!customValid) {
-      setCustom('10');
-      return;
-    }
-    const next = Math.min(99, Math.max(1, customNum + delta));
+    const base = customValid
+      ? customNum
+      : isCustomSelected && selected != null
+        ? selected
+        : 10;
+    const next =
+      customValid || isCustomSelected
+        ? Math.min(99, Math.max(10, base + delta))
+        : 10;
     setCustom(String(next));
+    onPick(next);
   };
 
   return (
@@ -101,7 +122,10 @@ export function NumericStep({
               <button
                 key={n}
                 type="button"
-                onClick={() => onPick(n)}
+                onClick={() => {
+                  if (allowClear && isSelected) onClear?.();
+                  else onPick(n);
+                }}
                 className={`ds-raw-button ${LABEL_BUILDER_NUMPAD.tile} ${
                   isSelected
                     ? LABEL_BUILDER_SELECTED.solid
@@ -125,9 +149,8 @@ export function NumericStep({
             );
           })}
 
-          {/* 10th tile = inline custom input with stepper + checkmark.
-              Subsumes the separate "Custom #" row that used to live below
-              the grid. */}
+          {/* 10th tile = inline custom input + stepper. Typing 10–99 or
+              tapping the arrows commits — no checkmark that ate the digits. */}
           <div
             className={`${LABEL_BUILDER_NUMPAD.customTile} ${
               isCustomSelected
@@ -139,12 +162,11 @@ export function NumericStep({
             <input
               type="number"
               inputMode="numeric"
-              min={1}
+              min={10}
               max={99}
-              value={custom}
-              onChange={(e) => setCustom(e.target.value)}
+              value={shown}
+              onChange={(e) => commitCustom(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') confirmCustom();
                 if (e.key === 'ArrowUp') {
                   e.preventDefault();
                   stepBy(1);
@@ -175,17 +197,16 @@ export function NumericStep({
                 icon={<ChevronDown className="h-3 w-3" />}
               />
             </div>
-
-            <IconButton
-              type="button"
-              onClick={confirmCustom}
-              disabled={!customValid}
-              ariaLabel={`Confirm ${customLabel.toLowerCase()}`}
-              className={`ml-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${LABEL_BUILDER_SELECTED.confirm}`}
-              icon={<Check className="h-3.5 w-3.5" />}
-            />
           </div>
         </div>
+
+        {allowClear && selected != null && (
+          <div className="mt-2">
+            <Button type="button" variant="secondary" size="sm" onClick={() => onClear?.()}>
+              Leave off the sticker
+            </Button>
+          </div>
+        )}
       </motion.div>
     </AnimatePresence>
   );

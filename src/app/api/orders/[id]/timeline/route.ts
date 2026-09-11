@@ -50,6 +50,20 @@ import {
 /** Photo-spine fan-out cap: enough for every real order, bounded for bulk ones. */
 const PHOTO_SPINE_UNIT_CAP = 20;
 
+type TimelineTx =
+  | { notFound: true }
+  | {
+      notFound: false;
+      result: { rows: unknown[] };
+      alloc: { rows: Array<{ serial_unit_id: number }> };
+      stationEvents: { rows: unknown[] };
+      pickSessions: { rows: unknown[] };
+      packEvents: { rows: unknown[] };
+      packerLogs: { rows: unknown[] };
+      shipmentId: number | null;
+      marketplaceOrderId: string;
+    };
+
 function parseId(raw: string): number | null {
   const id = Number(raw);
   return Number.isFinite(id) && id > 0 ? id : null;
@@ -80,15 +94,20 @@ export async function GET(
     // We select `before_data` conditionally rather than nulling it after the
     // fact so a non-admin's snapshot never enters this process's memory.
     const canViewAudit = gate.ctx.permissions.has('admin.view_logs');
-    const txResult = await withTenantTransaction(orgId, async (client) => {
-      const owner = await client.query<{ organization_id: string | null; shipment_id: number | null }>(
-        `SELECT organization_id, shipment_id FROM orders WHERE id = $1 AND organization_id = $2`,
+    const txResult = await withTenantTransaction(orgId, async (client): Promise<TimelineTx> => {
+      const owner = await client.query<{
+        organization_id: string | null;
+        shipment_id: number | null;
+        order_id: string | null;
+      }>(
+        `SELECT organization_id, shipment_id, order_id FROM orders WHERE id = $1 AND organization_id = $2`,
         [id, orgId],
       );
       if (owner.rows.length === 0 || owner.rows[0].organization_id !== orgId) {
         return { notFound: true as const };
       }
       const shipmentId = owner.rows[0].shipment_id;
+      const marketplaceOrderId = String(owner.rows[0].order_id ?? '').trim();
 
       // The three trails below are independent (they key on order id / shipment id,
       // not on each other), so fan them out in one round-trip group instead of
@@ -98,7 +117,7 @@ export async function GET(
       // order-anchored and the scan_out audit is shipment-anchored, so it never
       // double-counts here. PACK station stays excluded (audit_logs owns
       // PACK_COMPLETED, avoiding a duplicate "Packed").
-      const [result, alloc, stationEvents] = await Promise.all([
+      const [result, alloc, stationEvents, pickSessions, packEvents, packerLogs] = await Promise.all([
         client.query(
           `SELECT al.id, al.created_at, al.action, al.after_data, al.metadata,
                   ${canViewAudit ? 'al.before_data' : 'NULL::jsonb AS before_data'},
@@ -114,12 +133,32 @@ export async function GET(
         // Tech verdict lives on the unit, not the order. Resolve the order's
         // allocated units so we can pull their TEST_* lifecycle rows below.
         client.query<{ serial_unit_id: number }>(
-          `SELECT DISTINCT serial_unit_id
-             FROM order_unit_allocations
-            WHERE order_id = $1
-              AND organization_id = $2
+          `SELECT DISTINCT serial_unit_id FROM (
+              SELECT oua.serial_unit_id
+                FROM order_unit_allocations oua
+               WHERE oua.order_id = $1
+                 AND oua.organization_id = $2
+                 AND oua.serial_unit_id IS NOT NULL
+              UNION
+              SELECT tsn.serial_unit_id
+                FROM tech_serial_numbers tsn
+               WHERE tsn.serial_unit_id IS NOT NULL
+                 AND (
+                   tsn.order_id = $1
+                   OR (
+                     $3::bigint IS NOT NULL
+                     AND tsn.shipment_id = $3
+                     AND NOT EXISTS (
+                       SELECT 1 FROM orders o2
+                        WHERE o2.shipment_id = $3
+                          AND o2.organization_id = $2
+                          AND o2.id <> $1
+                     )
+                   )
+                 )
+            ) units
             LIMIT 200`,
-          [id, orgId],
+          [id, orgId, shipmentId],
         ),
         shipmentId != null
           ? client.query(
@@ -150,20 +189,104 @@ export async function GET(
               [shipmentId, ['TECH', 'OUTBOUND'], orgId],
             )
           : Promise.resolve({ rows: [] as any[] }),
+        client.query(
+          `SELECT ps.id, ps.ended_at, s.name AS actor_name
+             FROM picking_sessions ps
+             JOIN orders o ON o.id = ps.order_id AND o.organization_id = $2
+             LEFT JOIN staff s ON s.id = ps.picker_staff_id
+            WHERE ps.order_id = $1
+              AND ps.ended_at IS NOT NULL
+              AND COALESCE(ps.abandoned, FALSE) = FALSE
+            ORDER BY ps.ended_at DESC
+            LIMIT 50`,
+          [id, orgId],
+        ),
+        client.query(
+          `SELECT sal.id, sal.created_at, sal.station, sal.activity_type, sal.scan_ref,
+                  sal.tech_serial_number_id, sal.metadata,
+                  COALESCE(
+                    NULLIF(BTRIM(tsn.serial_number), ''),
+                    NULLIF(BTRIM(sal.metadata->>'serial'), '')
+                  ) AS serial_number,
+                  tsn.serial_type,
+                  s.name AS actor_name, sal.staff_id AS actor_staff_id
+             FROM station_activity_logs sal
+             LEFT JOIN staff s ON s.id = sal.staff_id
+             LEFT JOIN tech_serial_numbers tsn
+               ON tsn.id = sal.tech_serial_number_id
+            WHERE sal.organization_id = $2
+              AND sal.activity_type IN ('PACK_COMPLETED', 'PACK_SCAN')
+              AND (
+                ($3::bigint IS NOT NULL AND sal.shipment_id = $3)
+                OR (
+                  (sal.metadata->>'order_row_id') ~ '^[0-9]+$'
+                  AND (sal.metadata->>'order_row_id')::int = $1
+                )
+                OR (
+                  $4 <> ''
+                  AND sal.metadata->>'order_id' IS NOT NULL
+                  AND sal.metadata->>'order_id' = $4
+                )
+              )
+            ORDER BY sal.created_at DESC, sal.id DESC
+            LIMIT 200`,
+          [id, orgId, shipmentId, marketplaceOrderId],
+        ),
+        shipmentId != null
+          ? client.query(
+              `SELECT pl.id, pl.created_at, 'PACK'::text AS station,
+                      'PACK_COMPLETED'::text AS activity_type,
+                      COALESCE(stn.tracking_number_raw, pl.scan_ref) AS scan_ref,
+                      NULL::int AS tech_serial_number_id,
+                      NULL::jsonb AS metadata,
+                      NULL::text AS serial_number,
+                      NULL::text AS serial_type,
+                      s.name AS actor_name, pl.packed_by AS actor_staff_id
+                 FROM packer_logs pl
+                 LEFT JOIN shipping_tracking_numbers stn ON stn.id = pl.shipment_id
+                 LEFT JOIN staff s ON s.id = pl.packed_by
+                WHERE pl.organization_id = $2
+                  AND pl.shipment_id = $1
+                ORDER BY pl.created_at DESC, pl.id DESC
+                LIMIT 50`,
+              [shipmentId, orgId],
+            )
+          : Promise.resolve({ rows: [] as any[] }),
       ]);
 
-      return { notFound: false as const, result, alloc, stationEvents, shipmentId };
+      return {
+        notFound: false as const,
+        result,
+        alloc,
+        stationEvents,
+        pickSessions,
+        packEvents,
+        packerLogs,
+        shipmentId,
+        marketplaceOrderId,
+      };
     });
 
     if (txResult.notFound) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
-    const { result, alloc, stationEvents, shipmentId } = txResult;
+    const {
+      result,
+      alloc,
+      stationEvents,
+      pickSessions,
+      packEvents,
+      packerLogs,
+      shipmentId,
+      marketplaceOrderId,
+    } = txResult;
 
     // TEST_* spine needs the resolved unit ids from the allocation query above,
     // so it runs after that group resolves. Degrades to [] for orders with no
     // serialized allocations.
-    const serialUnitIds = alloc.rows.map((r) => Number(r.serial_unit_id)).filter(Number.isFinite);
+    const serialUnitIds = alloc.rows
+      .map((r: { serial_unit_id: number }) => Number(r.serial_unit_id))
+      .filter(Number.isFinite);
     // Pull the FULL unit lifecycle for the order's allocated serials (not just
     // TEST_* verdicts), so the order timeline is the per-unit chronological
     // history acceptance requires — receiving → test → putaway → pick → pack →
@@ -172,7 +295,7 @@ export async function GET(
     // also surface via `audit_logs`/SAL are de-duplicated client-side in
     // `OrderTimelineSection`. Org-scoped so a guessed order id can't leak a
     // foreign tenant's unit events.
-    const lifecycle = serialUnitIds.length
+    let lifecycle = serialUnitIds.length
       ? await readInventorySpine(
           {
             serialUnitIds,
@@ -182,6 +305,43 @@ export async function GET(
           orgId,
         )
       : [];
+
+    const hasPickOrPackLifecycle = lifecycle.some((row) => {
+      const type = String(row.event_type ?? '').trim();
+      return type === 'PICKED' || type === 'PACKED';
+    });
+    if (!hasPickOrPackLifecycle) {
+      try {
+        const payloadSpine = await withTenantTransaction(orgId, (client) =>
+          client.query(
+            `SELECT ie.id, ie.occurred_at, ie.event_type, ie.notes, ie.prev_status, ie.next_status,
+                    ie.station, s.name AS actor_name, su.serial_number, ie.sku,
+                    NULL::text AS bin_name, NULL::text AS bin_barcode
+               FROM inventory_events ie
+               LEFT JOIN staff s ON s.id = ie.actor_staff_id
+               LEFT JOIN serial_units su ON su.id = ie.serial_unit_id
+              WHERE ie.organization_id = $1
+                AND ie.event_type IN ('PICKED', 'PACKED')
+                AND (
+                  ($3 <> '' AND ie.payload->>'order_id' = $3)
+                  OR (
+                    (ie.payload->>'order_row_id') ~ '^[0-9]+$'
+                    AND (ie.payload->>'order_row_id')::int = $2
+                  )
+                )
+              ORDER BY ie.occurred_at DESC
+              LIMIT 100`,
+            [orgId, id, marketplaceOrderId],
+          ),
+        );
+        lifecycle = [...lifecycle, ...payloadSpine.rows];
+      } catch (payloadErr: any) {
+        console.warn('[GET /api/orders/[id]/timeline] pick/pack payload spine degraded:', payloadErr?.message);
+      }
+    }
+
+    const packEventRows =
+      packEvents.rows.length > 0 ? packEvents.rows : packerLogs.rows;
 
     // Photo evidence spine — the stage photo buckets per allocated unit, flat
     // (each row carries the unit's serial from the query's serial_units join,
@@ -292,6 +452,8 @@ export async function GET(
       carrierEvents,
       rmaEvents,
       unitPhotos,
+      pickSessions: pickSessions.rows,
+      packEvents: packEventRows,
     });
   } catch (error: any) {
     console.error('[GET /api/orders/[id]/timeline] error:', error);

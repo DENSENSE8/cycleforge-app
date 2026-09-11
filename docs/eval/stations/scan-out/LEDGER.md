@@ -44,7 +44,7 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station scan-out` for full g
 ## Design critique (latest)
 
 <!-- eval-ledger:auto:design-critique -->
-- `src/components/outbound/workspaces/ScanOutWorkspace.tsx` — snapshot `docs/eval/stations/scan-out/snapshots/2026-09-01-critique-ScanOutWorkspace.txt`
+- `src/components/outbound/workspaces/ScanOutWorkspace.tsx` — snapshot `docs/eval/stations/scan-out/snapshots/2026-09-11-critique-ScanOutWorkspace.txt`
 ```
 {
   "file": "src/components/outbound/workspaces/ScanOutWorkspace.tsx",
@@ -53,7 +53,7 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station scan-out` for full g
     {
       "severity": "no-system-usage",
 ```
-- `src/components/outbound/scan-out/ScanOutComposerDock.tsx` — snapshot `docs/eval/stations/scan-out/snapshots/2026-09-01-critique-ScanOutComposerDock.txt`
+- `src/components/outbound/scan-out/ScanOutComposerDock.tsx` — snapshot `docs/eval/stations/scan-out/snapshots/2026-09-11-critique-ScanOutComposerDock.txt`
 ```
 {
   "file": "src/components/outbound/scan-out/ScanOutComposerDock.tsx",
@@ -62,7 +62,7 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station scan-out` for full g
   "design_system_used": [
     "CopyChip"
 ```
-- `src/components/composer/ComposerModeRow.tsx` — snapshot `docs/eval/stations/scan-out/snapshots/2026-09-01-critique-ComposerModeRow.txt`
+- `src/components/composer/ComposerModeRow.tsx` — snapshot `docs/eval/stations/scan-out/snapshots/2026-09-11-critique-ComposerModeRow.txt`
 ```
 {
   "file": "src/components/composer/ComposerModeRow.tsx",
@@ -76,11 +76,11 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station scan-out` for full g
 ## Graph impact (shared symbols)
 
 <!-- eval-ledger:auto:graph-impact -->
-- **ScanOutWorkspace** — 1 files, 1 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-01-impact-ScanOutWorkspace.json`)
-- **StationComposerHost** — 2 files, 2 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-01-impact-StationComposerHost.json`)
-- **ComposerModeRow** — 3 files, 3 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-01-impact-ComposerModeRow.json`)
-- **ScanStationProgressRing** — 1 files, 2 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-01-impact-ScanStationProgressRing.json`)
-- **useOverlaySwapHardCut** — 10 files, 12 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-01-impact-useOverlaySwapHardCut.json`)
+- **ScanOutWorkspace** — 1 files, 1 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-11-impact-ScanOutWorkspace.json`)
+- **StationComposerHost** — 18 files, 18 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-11-impact-StationComposerHost.json`)
+- **ComposerModeRow** — 11 files, 11 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-11-impact-ComposerModeRow.json`)
+- **ScanStationProgressRing** — 1 files, 2 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-11-impact-ScanStationProgressRing.json`)
+- **useOverlaySwapHardCut** — 10 files, 12 symbols (`docs/eval/stations/scan-out/snapshots/2026-09-11-impact-useOverlaySwapHardCut.json`)
 <!-- /eval-ledger:auto:graph-impact -->
 
 ## Regression tripwires
@@ -94,5 +94,5 @@ _Skipped verify (--skip-verify). Run `pnpm run eval:station scan-out` for full g
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-01T10:05:38.439Z · station `scan-out`_
+_Updated 2026-09-11T03:31:56.454Z · station `scan-out`_
 <!-- /eval-ledger:auto:last-run -->

@@ -20,20 +20,32 @@ import { ORDERS_COMPOUND_COLUMNS } from '@/lib/dashboard-order-row-layout';
 test('the compound tracks that carry a sortable fact resolve to it', () => {
   assert.equal(queueSortForColumnKey('fulfillment'), 'order');
   assert.equal(queueSortForColumnKey('item'), 'title');
+  assert.equal(queueSortForColumnKey('dates'), 'age');
+  assert.equal(queueSortForColumnKey('state'), 'status');
 });
 
 test('a flat sort value still resolves to itself', () => {
   // `?sort=` values in live bookmarks are facts, and must keep working.
-  for (const fact of ['title', 'age', 'qty', 'order', 'tracking', 'picked', 'packed', 'carrier'] as const) {
+  for (const fact of [
+    'title',
+    'age',
+    'qty',
+    'order',
+    'tracking',
+    'picked',
+    'packed',
+    'status',
+    'amount',
+    'scanned_out',
+    'carrier',
+  ] as const) {
     assert.ok(isQueueColumnSort(fact));
     assert.equal(queueSortForColumnKey(fact), fact);
   }
 });
 
 test('tracks with no sortable fact stay unsortable', () => {
-  // `state` and `amount` had no column sort in the flat model either — leaving
-  // them out preserves shipped behaviour rather than inventing an ordering.
-  for (const key of ['state', 'amount', 'select', 'thumb', 'actions', '_fill']) {
+  for (const key of ['select', 'thumb', 'actions', '_fill']) {
     assert.equal(queueSortForColumnKey(key), null, `${key} must not sort`);
     assert.equal(isQueueSortableColumnKey(key), false);
   }
@@ -57,7 +69,7 @@ test('every mapped fact is a real sort value', () => {
 test('a slot field id maps onto the sort fact, so a rebind still sorts', () => {
   assert.equal(queueSortForColumnKey('status:1', 'orders.picked'), 'picked');
   assert.equal(queueSortForColumnKey('status:2', 'orders.packed'), 'packed');
-  assert.equal(queueSortForColumnKey('status:1', 'orders.qty'), null);
+  assert.equal(queueSortForColumnKey('status:1', 'orders.notes'), null);
   assert.equal(isQueueSortableColumnKey('status:1', 'orders.picked'), true);
   assert.equal(isQueueSortableColumnKey('status:1'), false);
 });

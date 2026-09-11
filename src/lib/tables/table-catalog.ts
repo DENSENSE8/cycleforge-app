@@ -59,6 +59,10 @@ export const PRODUCT_TABLES: readonly ProductTable[] = [
   { tableId: 'tech-all', label: 'Tech · All' },
   { tableId: 'tracking-exceptions', label: 'Tracking exceptions' },
   { tableId: 'bins', label: 'Warehouse bins' },
+  { tableId: 'inventory-events', label: 'Inventory ledger activity' },
   { tableId: 'warranty', label: 'Warranty claims' },
   { tableId: 'my-day', label: 'Home · Today' },
+  { tableId: 'kiosk-devices', label: 'Kiosk devices' },
+  { tableId: 'kiosk-slot-events', label: 'Kiosk slot history' },
+  { tableId: 'walk-in-sales', label: 'Sales · Walk-in' },
 ] as const;

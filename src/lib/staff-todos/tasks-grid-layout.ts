@@ -35,8 +35,8 @@ export type TasksGridColumnKey =
   | 'thumb'
   | 'item'
   | 'fulfillment'
+  | 'dates'
   | 'state'
-  | 'amount'
   | 'actions'
   | '_fill'
   /** Materialized slot tracks — keys are slot indices, never field ids. */
@@ -177,10 +177,10 @@ export const TASKS_COMPOUND_COLUMNS: readonly TasksGridColumn[] =
  * `repair-display-sort` reason: a bookmarked `?colsort=updated` must keep
  * meaning `updated` after a rebind moves that fact to another slot index.
  */
-export type TasksSortFact = 'task' | 'status' | 'kind' | 'station' | 'due' | 'updated';
+export type TasksSortFact = 'task' | 'status' | 'kind' | 'station' | 'due' | 'updated' | 'order';
 
 const TASKS_SORT_FACTS: readonly TasksSortFact[] = [
-  'task', 'status', 'kind', 'station', 'due', 'updated',
+  'task', 'status', 'kind', 'station', 'due', 'updated', 'order',
 ];
 
 /**
@@ -190,8 +190,10 @@ const TASKS_SORT_FACTS: readonly TasksSortFact[] = [
  * is worse than one that never offered.
  */
 const TASKS_TRACK_SORT_FACTS: Readonly<Record<string, TasksSortFact>> = {
+  dates: 'due',
   item: 'task',
   state: 'status',
+  fulfillment: 'order',
 };
 
 /**
@@ -252,6 +254,7 @@ export const TASKS_SORT_FACT_TYPES: Readonly<Record<TasksSortFact, ColumnType>> 
   station: 'text',
   due: 'date',
   updated: 'date',
+  order: 'text',
 };
 
 /**

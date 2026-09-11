@@ -9,7 +9,7 @@ import type {
   AutomationRuleCreateBody,
   AutomationRuleUpdateBody,
 } from '@/lib/schemas/automations';
-import { AUTOMATION_TRIGGER_KEYS } from '@/lib/schemas/automations';
+import { LISTING_AUTOMATION_TRIGGER_KEYS } from '@/lib/schemas/automations';
 
 export type AutomationRuleDto = {
   id: number;
@@ -72,7 +72,7 @@ function normalizeWhen(when: Record<string, unknown>): Record<string, unknown> {
   return out;
 }
 
-const DEFAULT_TRIGGERS = [...AUTOMATION_TRIGGER_KEYS];
+const DEFAULT_TRIGGERS = [...LISTING_AUTOMATION_TRIGGER_KEYS];
 
 export async function listAutomationRules(
   organizationId: OrgId,

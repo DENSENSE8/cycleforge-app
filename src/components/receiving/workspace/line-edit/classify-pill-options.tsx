@@ -160,7 +160,6 @@ export function platformClassifyOptions(args: {
   return [
     ...unfound,
     ...catalogOptions.map((o) => {
-      const meta = sourcePlatformMeta(o.value);
       const brandDot = catalogIdentityDot({
         kind: 'platform',
         value: o.value,
@@ -170,7 +169,6 @@ export function platformClassifyOptions(args: {
       return {
         value: o.value,
         label: o.label,
-        shortLabel: meta.mark || o.label.slice(0, 2),
         title: o.label,
         face: (
           <span

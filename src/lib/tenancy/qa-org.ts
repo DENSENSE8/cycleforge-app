@@ -316,7 +316,7 @@ export const QA_FIXTURE_SUPPORT = {
 export const QA_FIXTURE_CUSTOM_FIELD = {
   entityType: 'RECEIVING',
   key: 'qa_rack_slot',
-  label: 'QA Rack Slot',
+  label: 'QA Bay Slot',
   type: 'number',
   /** The grid column key the def merges in as (`custom:<key>`). */
   columnKey: 'custom:qa_rack_slot',

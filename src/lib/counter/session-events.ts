@@ -36,6 +36,14 @@
 import type { KioskCartLine } from '@/lib/kiosk/cart-line';
 import { isBuybackPayload, isRepairPayload } from '@/lib/kiosk/cart-line';
 import type { KioskCommandId } from '@/lib/kiosk/kiosk-session-store';
+import {
+  consultStanceFromFace,
+  EMPTY_CONSULT_PRESENTATION,
+  type ConsultPresentation,
+  type ConsultStance,
+} from '@/lib/counter/consult-stance';
+
+export type { ConsultStance };
 
 // ── Session shape ───────────────────────────────────────────────────────────
 
@@ -104,6 +112,7 @@ export interface CounterSessionCustomer {
   phone: string;
   name: string;
   email: string;
+  address?: string;
 }
 
 export interface CounterSessionSnapshot {
@@ -119,6 +128,10 @@ export interface CounterSessionSnapshot {
   claimExpiresAtMs: number | null;
   activeCommand: KioskCommandId;
   face: CounterSessionFace;
+  /** Work · Show · Verify. Face is the projection; this tells Show from Verify. */
+  consultStance: ConsultStance;
+  /** What Show paints — a cart line id and/or a catalog row not yet a line. */
+  presentation: ConsultPresentation;
   customer: CounterSessionCustomer;
   lines: CounterSessionLine[];
   counterTransactionId: number | null;
@@ -130,7 +143,12 @@ export interface CounterSessionSnapshot {
   awaitingCardSinceMs: number | null;
 }
 
-export const EMPTY_CUSTOMER: CounterSessionCustomer = { phone: '', name: '', email: '' };
+export const EMPTY_CUSTOMER: CounterSessionCustomer = {
+  phone: '',
+  name: '',
+  email: '',
+  address: '',
+};
 
 /** A fresh, unclaimed, empty session — the SSR / pre-hydrate snapshot. */
 export function emptySessionSnapshot(sessionId: number): CounterSessionSnapshot {
@@ -144,6 +162,8 @@ export function emptySessionSnapshot(sessionId: number): CounterSessionSnapshot 
     claimExpiresAtMs: null,
     activeCommand: 'retail',
     face: 'staff',
+    consultStance: 'work',
+    presentation: { ...EMPTY_CONSULT_PRESENTATION },
     customer: { ...EMPTY_CUSTOMER },
     lines: [],
     counterTransactionId: null,
@@ -167,6 +187,16 @@ export type CounterSessionEvent = CounterSessionEventBase &
     /** The resync. Carries the whole truth, so it is exempt from the +1 rule. */
     | { type: 'session.snapshot'; snapshot: CounterSessionSnapshot }
     | { type: 'session.claimed'; staffId: number; staffName: string; claimExpiresAtMs: number }
+    /**
+     * Which tablet this visit drives (P5). `null` hands the tablet back.
+     *
+     * The bind is a header change like any other, so it takes a version — two
+     * desks racing for the same iPad cannot both win. The tablet itself learns
+     * from its own `GET /api/kiosk/session` poll rather than from this event:
+     * at bind time it has no snapshot to fold an event into, and at unbind
+     * time the fan-out has no channel left to publish on.
+     */
+    | { type: 'session.device_bound'; kioskDeviceId: number | null }
     | { type: 'session.released'; reason: 'done' | 'takeover' | 'expired' }
     | { type: 'line.added'; line: CounterSessionLine }
     | { type: 'line.updated'; line: CounterSessionLine }
@@ -179,7 +209,13 @@ export type CounterSessionEvent = CounterSessionEventBase &
       }
     | { type: 'session.customer_changed'; customer: CounterSessionCustomer }
     | { type: 'session.command_changed'; activeCommand: KioskCommandId }
-    | { type: 'session.face_changed'; face: CounterSessionFace }
+    | {
+        type: 'session.face_changed';
+        face: CounterSessionFace;
+        /** Present on new writes; omitted on legacy events (inferred from `face`). */
+        consultStance?: ConsultStance;
+      }
+    | { type: 'session.presentation_changed'; presentation: ConsultPresentation }
     | { type: 'session.status_changed'; status: CounterSessionStatus }
     | { type: 'session.submitted'; counterTransactionId: number }
     | {
@@ -194,6 +230,7 @@ export type CounterSessionEvent = CounterSessionEventBase &
 export const COUNTER_SESSION_EVENTS = [
   'session.snapshot',
   'session.claimed',
+  'session.device_bound',
   'session.released',
   'line.added',
   'line.updated',
@@ -201,6 +238,7 @@ export const COUNTER_SESSION_EVENTS = [
   'session.customer_changed',
   'session.command_changed',
   'session.face_changed',
+  'session.presentation_changed',
   'session.status_changed',
   'session.submitted',
   'session.payment_changed',
@@ -278,6 +316,10 @@ export function applySessionEvent(
       next.claimExpiresAtMs = event.claimExpiresAtMs;
       break;
 
+    case 'session.device_bound':
+      next.kioskDeviceId = event.kioskDeviceId;
+      break;
+
     case 'session.released':
       next.claimedByStaffId = null;
       next.claimedByStaffName = null;
@@ -318,6 +360,14 @@ export function applySessionEvent(
 
     case 'session.face_changed':
       next.face = event.face;
+      next.consultStance = event.consultStance ?? consultStanceFromFace(event.face);
+      break;
+
+    case 'session.presentation_changed':
+      next.presentation = {
+        lineId: event.presentation.lineId,
+        catalog: event.presentation.catalog ? { ...event.presentation.catalog } : null,
+      };
       break;
 
     case 'session.status_changed':
@@ -347,6 +397,10 @@ function cloneSnapshot(snapshot: CounterSessionSnapshot): CounterSessionSnapshot
   return {
     ...snapshot,
     customer: { ...snapshot.customer },
+    presentation: {
+      lineId: snapshot.presentation.lineId,
+      catalog: snapshot.presentation.catalog ? { ...snapshot.presentation.catalog } : null,
+    },
     lines: snapshot.lines.map((l) => ({ ...l })),
   };
 }
@@ -369,6 +423,8 @@ export interface DeviceSessionProjection {
   status: CounterSessionStatus;
   activeCommand: KioskCommandId;
   face: CounterSessionFace;
+  consultStance: ConsultStance;
+  presentation: ConsultPresentation;
   /** Wire-shape lines (D9) — voided lines and internal payload fields removed. */
   lines: KioskCartLine[];
   customerName: string;
@@ -403,6 +459,8 @@ export function projectForDevicePrincipal(
     status: snapshot.status,
     activeCommand: snapshot.activeCommand,
     face: snapshot.face,
+    consultStance: snapshot.consultStance ?? consultStanceFromFace(snapshot.face),
+    presentation: snapshot.presentation ?? { ...EMPTY_CONSULT_PRESENTATION },
     lines: visible.map(projectLine),
     customerName: snapshot.customer.name,
     customerPhoneMasked: maskPhone(snapshot.customer.phone),

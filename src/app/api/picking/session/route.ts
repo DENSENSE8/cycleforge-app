@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { startSession } from '@/lib/picking/sessions';
+import { emitIdentificationCompleted } from '@/lib/automations/emit-identification-completed';
+import { identificationFromPick } from '@/lib/identification';
 
 /**
  * POST /api/picking/session
@@ -35,6 +37,25 @@ export const POST = withAuth(async (request, ctx) => {
       deviceId: deviceIdRaw || null,
     }, ctx.organizationId);
     if (!result.ok) return NextResponse.json(result, { status: result.status });
+    if (!result.reopen) {
+      try {
+        const ident = identificationFromPick({
+          source: 'claim',
+          organizationId: ctx.organizationId,
+          clientEventId: `session:pick:${orderId}`,
+          json: { ok: true, orderId, tasks: [{ currentState: 'ALLOCATED' }] },
+        });
+        void emitIdentificationCompleted({
+          organizationId: ctx.organizationId,
+          result: ident,
+          actorStaffId,
+        }).catch((err) => {
+          console.error('[POST /api/picking/session] identification.completed', err);
+        });
+      } catch (err) {
+        console.error('[POST /api/picking/session] identification map', err);
+      }
+    }
     return NextResponse.json(result);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'session start failed';

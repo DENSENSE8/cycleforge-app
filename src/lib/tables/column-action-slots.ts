@@ -37,6 +37,10 @@ export function columnKeyForSelectionAction(
       const packed = columns.find((c) => c.fieldId === 'orders.packed');
       return packed?.key ?? null;
     }
+    case 'scan-out': {
+      const scanned = columns.find((c) => c.fieldId === 'orders.scanned_out');
+      return scanned?.key ?? null;
+    }
     case 'flag':
       return has('actions') ? 'actions' : null;
     default:

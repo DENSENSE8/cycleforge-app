@@ -25,9 +25,11 @@ import {
 
 interface KioskPickupPaneProps {
   onReset?: () => void;
+  /** Shell already painted the trail (toggle + title). */
+  hideHeader?: boolean;
 }
 
-export function KioskPickupPane({ onReset }: KioskPickupPaneProps) {
+export function KioskPickupPane({ onReset, hideHeader = false }: KioskPickupPaneProps) {
   const session = useKioskSession();
   const actions = useKioskSessionActions();
   const [orderNumber, setOrderNumber] = useState('');
@@ -121,9 +123,11 @@ export function KioskPickupPane({ onReset }: KioskPickupPaneProps) {
   if (collected && summary) {
     return (
       <div className="flex h-full flex-col" data-testid="kiosk-pickup-pane">
-        <div className={KIOSK_PANE_HEADER_BAND}>
-          <h2 className={KIOSK_PANE_HEADER_TITLE}>Pickup</h2>
-        </div>
+        {hideHeader ? null : (
+          <div className={KIOSK_PANE_HEADER_BAND}>
+            <h2 className={KIOSK_PANE_HEADER_TITLE}>Pickup</h2>
+          </div>
+        )}
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 px-6 text-center">
           <span
             className={cn(
@@ -155,15 +159,17 @@ export function KioskPickupPane({ onReset }: KioskPickupPaneProps) {
 
   return (
     <div className="flex h-full flex-col" data-testid="kiosk-pickup-pane">
+      {hideHeader ? null : (
       <div className={KIOSK_PANE_HEADER_BAND}>
         <h2 className={KIOSK_PANE_HEADER_TITLE}>Pickup</h2>
       </div>
+      )}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex w-full flex-col divide-y divide-border-hairline">
           <KioskCustomerIntake
             heading="Find your order"
             fields={['phone']}
-            value={{ phone, name: '', email: '' }}
+            value={{ phone, name: '', email: '', address: '' }}
             onChange={(next) => {
               setPhone(next.phone);
               actions.setCustomer({ phone: next.phone });

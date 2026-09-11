@@ -6,6 +6,7 @@ import {
   appWashClass,
 } from '@/design-system/tokens/app-surface';
 import { NAV_ICON_STROKE_CLASS } from '@/components/icons/nav-weight';
+import { HEADER_ICON_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 
 /** Inner bottom hairline shared by receiving sidebar + workspace chrome (not outer border-b). */
@@ -208,7 +209,7 @@ export const appContentShellClass = cn(
  * height so hover / open washes meet the band edges (never a floated
  * h-8 island inside the nav beam).
  */
-export const HEADER_ICON_WRAP = 'relative flex h-full min-h-0 w-8 shrink-0 items-stretch justify-center';
+export const HEADER_ICON_WRAP = 'relative flex h-full min-h-0 w-8 shrink-0 items-center justify-center';
 
 /**
  * Equal-fill hit-box formerly used by the MasterNav spine top pin band.
@@ -279,6 +280,21 @@ export const HEADER_ICON_GAP = 'gap-0';
 export const HEADER_ICON_CLUSTER = `flex h-full shrink-0 items-stretch ${HEADER_ICON_GAP}`;
 
 /**
+ * Leading inset for the top-chrome NAV cluster — the show/hide control and
+ * Search beside it. `pl-2` (8px) plus the 32px {@link HEADER_ICON_WRAP}
+ * centering a 16px glyph lands that glyph's left edge at **16px**, which is
+ * where every spine row icon starts. Applied to BOTH mounts — the spine's top
+ * band while open, GlobalHeader's nav cluster while closed.
+ */
+export const TOP_CHROME_NAV_LEAD = 'pl-2';
+/**
+ * Gap between the beam's ZONES (nav cluster · scan dock · page context).
+ * `gap-0.5` (2px) matches one cell's leftover air so zone boundaries share
+ * the same rhythm as pill-to-pill.
+ */
+export const TOP_CHROME_ZONE_GAP = 'gap-0.5';
+
+/**
  * Glyph BOX for top-chrome icons — 16px, and nothing else. Shared beyond the
  * header (condition pills, inline notices), so it must stay size-only.
  */
@@ -305,11 +321,10 @@ export const TOP_CHROME_ICON_GLYPH = 'h-4 w-4';
 export const TOP_CHROME_ICON_FACE = cn(TOP_CHROME_ICON_GLYPH, NAV_ICON_STROKE_CLASS);
 
 /**
- * Shared IconButton chrome for GlobalHeader — square hit wash filling the beam
- * cell (never a circle, never a floated h-8 island), sunken hover.
- * `h-full w-full` overrides IconButton `size="md"` box so the wash meets the
- * header hairlines. Page identity uses this wash inside a fixed
- * {@link HEADER_PAGE_FACE_WIDTH} chip, not a beam-filling flex child.
+ * Shared IconButton chrome for GlobalHeader — a 28px hover wash inside the
+ * 32px beam cell, sunken on hover, {@link HEADER_ICON_CORNER} (`rounded-lg`).
+ * Same 8px control rung as main's `cornerClass('control')` on this face.
+ * IconButton defaults to flush; this class wins via `cn` / twMerge.
  *
  * **Ink is `text-text-default` (2026-08-16), not the previous mute tone.**
  * `HeaderPageSwitcher`'s `PAGE_FACE_CLASS` had already overridden this same
@@ -337,8 +352,10 @@ export const HEADER_PAGE_FACE_WIDTH = 'w-[11rem]';
 export const HEADER_PAGE_MENU_SCROLL_CLASS =
   'max-h-[calc(100dvh-theme(spacing.20))] overflow-y-auto overscroll-contain scroll-pb-8';
 
-export const HEADER_ICON_BTN_CLASS =
-  'h-full min-h-8 w-full rounded-none text-text-default hover:bg-surface-sunken';
+export const HEADER_ICON_BTN_CLASS = cn(
+  'h-7 w-7 min-h-0 text-text-default transition-colors hover:bg-surface-sunken',
+  HEADER_ICON_CORNER,
+);
 
 /** Pressed / open fill for header icon toggles. */
 export const HEADER_ICON_BTN_OPEN_CLASS = 'bg-surface-sunken';

@@ -81,6 +81,12 @@ describe('registered bindings — every row says what it opens', () => {
             assertRealReason(plane.keyedByRecord, id, 'keyedByRecord');
           }
           break;
+        case 'stage-overlay':
+          // reason is optional on the type; when present it must be a real reason.
+          if (plane.reason !== undefined) {
+            assertRealReason(plane.reason, id, plane.kind);
+          }
+          break;
         case 'station':
         case 'navigate':
         case 'dialog':

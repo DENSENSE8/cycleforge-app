@@ -1,10 +1,28 @@
 import { z } from 'zod';
 
-export const AUTOMATION_TRIGGER_KEYS = [
+/** Listing→staff defaults and to-ship upserts. Do not add identification here. */
+export const LISTING_AUTOMATION_TRIGGER_KEYS = [
   'order.imported',
   'order.item_number_set',
   'unit.test_passed',
 ] as const;
+
+/**
+ * Identification writers (scan-out POST, pick session start). P3 then-actions
+ * subscribe here. Listing upserts must not include this key or TEST would fire
+ * on every dock scan via selectActionsForTrigger's listing branch.
+ */
+export const IDENTIFICATION_AUTOMATION_TRIGGER_KEYS = ['identification.completed'] as const;
+
+export const AUTOMATION_TRIGGER_KEYS = [
+  ...LISTING_AUTOMATION_TRIGGER_KEYS,
+  ...IDENTIFICATION_AUTOMATION_TRIGGER_KEYS,
+] as const;
+
+export type ListingAutomationTriggerKey = (typeof LISTING_AUTOMATION_TRIGGER_KEYS)[number];
+export type IdentificationAutomationTriggerKey =
+  (typeof IDENTIFICATION_AUTOMATION_TRIGGER_KEYS)[number];
+export type AutomationTriggerKey = (typeof AUTOMATION_TRIGGER_KEYS)[number];
 
 export const AutomationAssignAction = z
   .object({

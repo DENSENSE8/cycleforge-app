@@ -45,6 +45,7 @@ import { getExternalUrlByItemNumber, getPlatformKeyByItemNumber } from '@/utils/
 import { columnsToClassification, classificationToColumns } from '@/lib/receiving/intake-classification';
 import { tapWorkflow } from '@/lib/workflow/tap';
 import { emitEntitySignalSafe } from '@/lib/surfaces/record-entity-signal';
+import { returnOrderLineFill } from '@/lib/receiving/return-order-imported';
 
 // ─── Shared types ────────────────────────────────────────────────────────────
 
@@ -74,6 +75,8 @@ export interface ReturnLinkageOrder {
   orderId: string;
   itemNumber: string | null;
   accountSource: string | null;
+  productTitle?: string | null;
+  sku?: string | null;
 }
 
 export interface ReturnLinkagePersisted {
@@ -83,6 +86,8 @@ export interface ReturnLinkagePersisted {
   listingUrl: string | null;
   returnPlatform: string | null;
   sourcePlatform: string | null;
+  productTitle?: string | null;
+  sku?: string | null;
   /** The line's workflow_status AFTER the guarded advance (null if not eligible). */
   workflowStatus: string | null;
 }
@@ -101,6 +106,9 @@ export interface ReturnLinkageLinePatch {
   carton_intake_type: 'RETURN';
   receiving_source: 'zoho_po';
   zoho_purchaseorder_number: string;
+  source_order_id?: string;
+  item_name?: string;
+  sku?: string | null;
   source_platform?: string | null;
   receiving_listing_url?: string | null;
   workflow_status?: string | null;
@@ -118,13 +126,23 @@ function buildReturnLinkagePatch(
   persisted: ReturnLinkagePersisted,
 ): ReturnLinkageLinePatch | null {
   if (!persisted.eligible) return null;
+  const fill = returnOrderLineFill({
+    orderId,
+    productTitle: persisted.productTitle,
+    sku: persisted.sku,
+    platform: persisted.sourcePlatform,
+  });
   const patch: ReturnLinkageLinePatch = {
     id: receivingLineId,
     receiving_type: 'RETURN',
     carton_intake_type: 'RETURN',
     receiving_source: 'zoho_po',
-    zoho_purchaseorder_number: orderId,
+    zoho_purchaseorder_number: fill.zoho_purchaseorder_number,
+    source_order_id: fill.source_order_id,
   };
+  if (fill.item_name) patch.item_name = fill.item_name;
+  if (fill.sku) patch.sku = fill.sku;
+  if (fill.source_platform) patch.source_platform = fill.source_platform;
   if (persisted.sourcePlatform) patch.source_platform = persisted.sourcePlatform;
   if (persisted.listingUrl) patch.receiving_listing_url = persisted.listingUrl;
   if (persisted.workflowStatus) patch.workflow_status = persisted.workflowStatus;
@@ -211,10 +229,7 @@ export async function persistReturnLinkage(
     carton = cr.rows[0];
   }
   const isRealPo = !!carton && carton.source === 'zoho_po' && !!carton.zoho_purchaseorder_id;
-  const eligible = receivingId != null && !!carton && !isRealPo;
-  if (!eligible) {
-    return { eligible: false, promotedToFound: false, listingUrl, returnPlatform, sourcePlatform, workflowStatus: null };
-  }
+  const cartonEligible = receivingId != null && !!carton && !isRealPo;
 
   // Per-line source order linkage (lights up the existing RETURN UI). The
   // linkage UPDATE deliberately does NOT list workflow_status, so the coarse
@@ -228,10 +243,22 @@ export async function persistReturnLinkage(
             receiving_type    = 'RETURN',
             listing_url       = COALESCE(listing_url, $4),
             listing_reference = COALESCE(listing_reference, $5),
+            item_name         = COALESCE($7, item_name),
+            sku               = COALESCE($8, sku),
+            source_platform   = COALESCE(source_platform, $3),
             updated_at        = NOW()
       WHERE id = $1 AND organization_id = $6
       RETURNING workflow_status::text AS workflow_status`,
-    [receivingLineId, order.orderId, sourcePlatform, listingUrl, order.itemNumber, orgId],
+    [
+      receivingLineId,
+      order.orderId,
+      sourcePlatform,
+      listingUrl,
+      order.itemNumber,
+      orgId,
+      order.productTitle?.trim() || null,
+      order.sku?.trim() || null,
+    ],
   );
   const currentStatus = lineUpd.rows[0]?.workflow_status ?? null;
 
@@ -271,6 +298,10 @@ export async function persistReturnLinkage(
     txDeps,
   );
 
+  if (!cartonEligible) {
+    return { eligible: true, promotedToFound: false, listingUrl, returnPlatform, sourcePlatform, productTitle: order.productTitle ?? null, sku: order.sku ?? null, workflowStatus };
+  }
+
   // Promote the carton: flag the return + platform + type, flip an unmatched
   // carton to zoho_po with the order# as the DISPLAY representative
   // (zoho_purchaseorder_id stays NULL → no unique-index collision). COALESCE so a
@@ -304,7 +335,7 @@ export async function persistReturnLinkage(
   // Clear the open NO_PO / carrier-mismatch exception → leaves the Unfound queue.
   await deps.resolveReceivingExceptionsByReceivingId(receivingId, client);
 
-  return { eligible: true, promotedToFound, listingUrl, returnPlatform, sourcePlatform, workflowStatus };
+  return { eligible: true, promotedToFound, listingUrl, returnPlatform, sourcePlatform, productTitle: order.productTitle ?? null, sku: order.sku ?? null, workflowStatus };
 }
 
 // ─── Entry 1: serial scan ───────────────────────────────────────────────────────
@@ -405,7 +436,8 @@ export async function linkReturnedSerial(
     // No prior order — still a return (unit was SHIPPED); flag an eligible carton
     // but nothing to import / promote. Guard skips a real Zoho-PO carton.
     if (!prior || !prior.orderId) {
-      if (input.receivingId != null) {
+      const knownReturn = input.priorStatus === 'SHIPPED';
+      if (knownReturn && input.receivingId != null) {
         await client.query(
           `UPDATE receiving_carton SET is_return = true, updated_at = NOW()
             WHERE id = $1 AND organization_id = $2
@@ -427,6 +459,8 @@ export async function linkReturnedSerial(
           orderId: prior.orderId,
           itemNumber: prior.itemNumber,
           accountSource: prior.accountSource,
+          productTitle: prior.productTitle,
+          sku: prior.sku,
         },
         reason,
         actorStaffId: input.staffId ?? null,
@@ -488,15 +522,14 @@ export async function linkReturnedSerial(
     };
   });
 
+  const knownReturn = result.linked || input.priorStatus === 'SHIPPED';
   // Studio tap (Tap 1, §7.1 of the returns-unification plan): fired after the
   // transaction commits, never inside it — the tap opens its own connection
   // and advances engine state, so it must only run once the RETURNED write is
-  // durably persisted, not while it could still roll back. Fires for BOTH
-  // outcomes above (linked and unmatched-order): the unit's status was
-  // already flipped to RETURNED by the attach upsert before this function
-  // ever runs (see the RETURNED-event comment above) — a physical return
-  // happened either way, only the sales-order match differs. No disposition
-  // yet, so the `returns` node parks the unit rather than routing it.
+  // durably persisted, not while it could still roll back. First-seen serials
+  // with no prior outbound are ordinary inbound scans — do not tap or flag
+  // RETURN_NO_ORDER. A SHIPPED→RECEIVED unit with no order still taps.
+  if (knownReturn) {
   await deps.tap({
     serialUnitId: input.serialUnitId,
     event: 'return_received',
@@ -504,12 +537,14 @@ export async function linkReturnedSerial(
     staffId: input.staffId ?? null,
     source: 'scan',
   });
+  }
 
   // "Why" signal (plan §2.3 emitter #1 — return reasons, incl. the matched-
   // order context). Post-commit like the tap, for the same durability reason;
   // fires for both outcomes (a physical return happened either way — the
   // sales-order match just enriches meta). Never fails the scan.
-  await (deps.emitSignal ?? emitEntitySignalSafe)({
+  if (knownReturn) {
+    await (deps.emitSignal ?? emitEntitySignalSafe)({
     organizationId: orgId,
     entityType: 'SERIAL_UNIT',
     entityId: input.serialUnitId,
@@ -525,13 +560,14 @@ export async function linkReturnedSerial(
       matchedVia: result.matchedOrder?.via ?? null,
     },
   });
+  }
 
   // A physical return with NO matching sales order — record a line-level
   // "investigate" exception so it surfaces in the Unfound/triage queue (this is
   // the "log & investigate, not a hard wall" path: the serial already attached,
   // the carton is already flagged is_return). Post-commit + best-effort: a
   // failure here must never fail the scan.
-  if (!result.linked) {
+  if (knownReturn && !result.linked) {
     try {
       await (deps.recordException ?? recordReceivingException)(orgId, {
         receivingLineId: input.receivingLineId,
@@ -651,6 +687,8 @@ export async function importSalesOrderByNumber(
           orderId: o.order_id,
           itemNumber: o.item_number,
           accountSource: o.account_source,
+          productTitle: o.product_title,
+          sku: o.sku,
         },
         reason,
         actorStaffId: input.staffId ?? null,

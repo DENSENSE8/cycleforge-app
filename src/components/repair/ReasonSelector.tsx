@@ -71,16 +71,20 @@ export function ReasonSelector({
                 onClick={() => toggleReason(reason)}
                 className={cn(
                   KIOSK_PILL,
+                  'relative',
                   isSelected ? KIOSK_PILL_ACTIVE_ISSUE : KIOSK_PILL_IDLE,
                 )}
                 aria-pressed={isSelected}
               >
-                {isSelected && (
-                  <Check className="h-4 w-4 shrink-0 text-amber-800" aria-hidden />
-                )}
-                <span className={cn('min-w-0 flex-1 truncate font-semibold', KIOSK_META, 'text-inherit')}>
+                <span className={cn('min-w-0 flex-1 truncate pr-6 font-semibold', KIOSK_META, 'text-inherit')}>
                   {reason}
                 </span>
+                {isSelected ? (
+                  <Check
+                    className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-800"
+                    aria-hidden
+                  />
+                ) : null}
               </button>
             );
           })}

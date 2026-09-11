@@ -203,6 +203,7 @@ export function CounterIntakeForm({ onClose, onSubmit, apiBasePath }: CounterInt
               phone: draft.phone,
               name: draft.name || null,
               email: draft.email || null,
+              address: draft.address.trim() || null,
             },
             retailLines: draft.retailLines,
             services: draft.service
@@ -367,6 +368,12 @@ export function CounterIntakeForm({ onClose, onSubmit, apiBasePath }: CounterInt
                   onChange={(v) => patch({ email: v })}
                   inputMode="email"
                   autoComplete="email"
+                />
+                <TextField
+                  label="Address (optional)"
+                  value={draft.address}
+                  onChange={(v) => patch({ address: v })}
+                  autoComplete="street-address"
                 />
 
                 {/* Deterministic only: no customer list, no search. The device

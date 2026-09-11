@@ -36,6 +36,21 @@ describe('Button semantic intents (2a)', () => {
     assert.match(BUTTON_VARIANTS.warning, /hover:bg-amber-500/);
   });
 
+  it('dangerSoft is the rose outline face of danger, matching primarySoft', () => {
+    assert.ok('dangerSoft' in BUTTON_VARIANTS);
+    assert.match(BUTTON_VARIANTS.dangerSoft, /bg-rose-50/);
+    assert.match(BUTTON_VARIANTS.dangerSoft, /text-rose-700/);
+    assert.match(BUTTON_VARIANTS.dangerSoft, /ring-1/);
+    assert.match(BUTTON_VARIANTS.primarySoft, /ring-1/);
+  });
+
+  it('yellow is a filled yellow pill, not amber', () => {
+    assert.ok('yellow' in BUTTON_VARIANTS);
+    assert.match(BUTTON_VARIANTS.yellow, /bg-yellow-400/);
+    assert.doesNotMatch(BUTTON_VARIANTS.yellow, /amber/);
+    assert.doesNotMatch(BUTTON_VARIANTS.yellow, /ring-1/, 'filled pill, not outline');
+  });
+
   it('every variant is a non-empty class string', () => {
     for (const [name, classes] of Object.entries(BUTTON_VARIANTS)) {
       assert.ok(typeof classes === 'string' && classes.length > 8, `${name} fill is empty`);

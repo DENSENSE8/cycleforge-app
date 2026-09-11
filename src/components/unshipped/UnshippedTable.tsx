@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState, useDeferredValue, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { getOrdersChannelName, safeChannelName } from '@/lib/realtime/channels';
 import type { DashboardSearchSectionProps } from '@/components/dashboard/DashboardSearchSectionProps';
 import { DataTable, downloadDataTableCsv, type DataTableExport } from '@/components/tables/DataTable';
+import { SLOT_TABLE_PAGE_SIZES } from '@/lib/tables/slot-table-page';
 import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
 import { OrderStatusTrailStage } from '@/components/orders/OrderStatusTrailOverlay';
 import { useToShipChrome } from '@/components/unshipped/useToShipChrome';
@@ -177,20 +178,14 @@ export function UnshippedTable({
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const orgId = user?.organizationId;
-  const searchQuery = String(searchParams.get('search') || '').trim();
-  // Non-scan-critical: keep the prior list paintable while the typed query catches up.
-  const deferredSearchQuery = useDeferredValue(searchQuery);
   // Fulfillment queue stages: pending (not tested) and tested (packing now).
   const stageParam = String(searchParams.get('stage') || 'all').toLowerCase();
 
   // Legacy `?stage=awaiting` → Outbound · Labels (awaiting moved off Unshipped).
   useEffect(() => {
     if (stageParam !== 'awaiting') return;
-    const params = new URLSearchParams();
-    if (searchQuery) params.set('q', searchQuery);
-    const qs = params.toString();
-    router.replace(qs ? `${SHIPPING_PATH}?${qs}` : SHIPPING_PATH, { scroll: false });
-  }, [stageParam, searchQuery, router]);
+    router.replace(SHIPPING_PATH, { scroll: false });
+  }, [stageParam, router]);
 
   const stageFilter: 'all' | 'pending' | 'tested' | 'packed' =
     stageParam === 'pending' ? 'pending'
@@ -239,15 +234,12 @@ export function UnshippedTable({
     parseOrdersDeskContext(searchParams.get(ORDERS_DESK_CONTEXT_KEY)) ===
     ORDERS_DESK_SUPPORT_CONTEXT;
 
-  // Phase 2 pagination — a growing row ceiling. "Load more" bumps it; any filter
-  // change resets it. A search stays unbounded (results are already the matches).
-  const [rowLimit, setRowLimit] = useState(200);
+  const fetchWindow: number = SLOT_TABLE_PAGE_SIZES[SLOT_TABLE_PAGE_SIZES.length - 1];
+  const [rowLimit, setRowLimit] = useState(fetchWindow);
   useEffect(() => {
-    setRowLimit(200);
+    setRowLimit(fetchWindow);
   }, [
     stageFilter,
-    staffId,
-    searchQuery,
     statusFilter,
     urgentOnly,
     lateOnly,
@@ -259,15 +251,14 @@ export function UnshippedTable({
 
   const query = useQuery({
     ...unshippedOrdersQuery({
-      searchQuery: deferredSearchQuery,
       packedBy,
       testedBy,
       staffId,
       strictSearchScope,
       // Coarse stage facet now filtered SERVER-side (Phase 1). Absent = all.
       stage: stageFilter === 'all' ? undefined : stageFilter,
-      // Bounded page (Phase 2); search stays unbounded.
-      limit: deferredSearchQuery ? undefined : rowLimit,
+      // Bounded page (Phase 2). Find-bar filters the painted page client-side.
+      limit: rowLimit,
       // A desk locked to BLOCKED asks the server for the blocked scope — the
       // To-ship scope would never hand it a label-less blocked row to filter.
       blockedOnly: lockedFulfillmentState === 'BLOCKED',
@@ -332,7 +323,6 @@ export function UnshippedTable({
   // "Load more" affordance without downloading extra rows. Dedupes with the sidebar.
   const { data: queueCounts } = useQuery({
     ...unshippedQueueCountsQuery({ staffId }),
-    enabled: !deferredSearchQuery,
   });
 
   const ordersChannelName = safeChannelName(() => getOrdersChannelName(orgId!));
@@ -427,16 +417,6 @@ export function UnshippedTable({
     invalidateUnshippedCounts(queryClient);
   });
 
-  // Stable across renders: both callbacks feed `useOrdersSpreadsheet`, which is
-  // where the grouped row model is built. A fresh closure per render there is the
-  // same defeat-the-memo problem as an unmemoized `records`.
-  const clearSearch = useCallback(() => {
-    const params = new URLSearchParams(searchParams.toString());
-    params.delete('search');
-    const nextSearch = params.toString();
-    const nextPath = pathname || '/shipping/orders';
-    router.replace(nextSearch ? `${nextPath}?${nextSearch}` : nextPath);
-  }, [searchParams, pathname, router]);
 
   const handleOpenRecord = useCallback(
     (record: ShippedOrder) => {
@@ -709,7 +689,6 @@ export function UnshippedTable({
   const isIdleEmpty =
     !query.isLoading &&
     allRecords.length === 0 &&
-    !searchQuery &&
     !statusFilter &&
     !urgentOnly &&
     stageFilter === 'all' &&
@@ -725,6 +704,28 @@ export function UnshippedTable({
     // state honest on its own terms.
     !queueError &&
     isIdleEmpty;
+
+  // Labels / export hooks MUST sit above the empty/awaiting/degraded early
+  // returns. Callers: DashboardOrdersView / Pack embeds mount UnshippedTable.
+  // Affected API: toggleLabelsWalk, runExport refs. Schema: none.
+  // User: "Rendered fewer hooks… Still getting this on the two ship page."
+  // Loading → first-run empty skipped these hooks and crashed the route.
+  const onToShipDesk =
+    pathname === SHIPPING_ORDERS_PATH && !isSupportContext && !cagedOnly;
+  const toggleLabelsWalk = useCallback(() => {
+    if (paperworkId != null) {
+      closePaperworkWalk();
+      return;
+    }
+    openLabelsWalk();
+  }, [closePaperworkWalk, openLabelsWalk, paperworkId]);
+  const copyExportRef = useRef(copyExport);
+  copyExportRef.current = copyExport;
+  const recordsRef = useRef(records);
+  recordsRef.current = records;
+  const runExport = useCallback(() => {
+    downloadDataTableCsv(copyExportRef.current, recordsRef.current, 'to-ship.csv');
+  }, []);
 
   if (awaitingMessage && (isIdleEmpty || (query.isError && allRecords.length === 0))) {
     return (
@@ -786,25 +787,9 @@ export function UnshippedTable({
   // denominator than the bar's — two answers to "how many are left", stacked.
   // It also mounted after first paint, shoving the last data row down while the
   // operator was already reading.
-  const showLoadMore = !cagedOnly && !searchQuery && stageTotal > rowLimit;
-  const onLoadMore = showLoadMore ? () => setRowLimit((n) => n + 200) : undefined;
+  const showLoadMore = !cagedOnly && stageTotal > rowLimit;
+  const onLoadMore = showLoadMore ? () => setRowLimit((n) => n + fetchWindow) : undefined;
 
-  const onToShipDesk =
-    pathname === SHIPPING_ORDERS_PATH && !isSupportContext && !cagedOnly;
-  const toggleLabelsWalk = useCallback(() => {
-    if (paperworkId != null) {
-      closePaperworkWalk();
-      return;
-    }
-    openLabelsWalk();
-  }, [closePaperworkWalk, openLabelsWalk, paperworkId]);
-  const copyExportRef = useRef(copyExport);
-  copyExportRef.current = copyExport;
-  const recordsRef = useRef(records);
-  recordsRef.current = records;
-  const runExport = useCallback(() => {
-    downloadDataTableCsv(copyExportRef.current, recordsRef.current, 'to-ship.csv');
-  }, []);
   const labelsCta = onToShipDesk ? (
     <OrdersDeskLabelsAction
       incompleteCount={queueCounts?.paperworkIncomplete ?? 0}
@@ -843,11 +828,9 @@ export function UnshippedTable({
         <UnshippedSheet
           records={records}
           loading={cagedOnly ? cagedQuery.isLoading : query.isLoading}
-          searchValue={searchQuery}
           selectMode={selectMode}
           railSelection={railSelection}
           onOpenRecord={handleOpenRecord}
-          onClearSearch={clearSearch}
           searchEmptyTitle={searchEmptyTitle}
           searchResultLabel={searchResultLabel}
           clearSearchLabel={clearSearchLabel}
@@ -925,9 +908,7 @@ function QueueStaleBand({ onRetry }: { onRetry: () => void }) {
 function UnshippedSheet({
   records,
   loading,
-  searchValue,
   onOpenRecord,
-  onClearSearch,
   searchEmptyTitle = 'No orders found',
   searchResultLabel = 'orders to ship',
   clearSearchLabel = 'Show All Pending Orders',
@@ -943,9 +924,7 @@ function UnshippedSheet({
 }: {
   records: ShippedOrder[];
   loading: boolean;
-  searchValue: string;
   onOpenRecord: (record: ShippedOrder) => void;
-  onClearSearch: () => void;
   searchEmptyTitle?: string;
   searchResultLabel?: string;
   clearSearchLabel?: string;
@@ -965,16 +944,17 @@ function UnshippedSheet({
   /** Pending (ex-Shortage) desk — coverage column, blocked chrome total. */
   shortageDesk?: boolean;
 }) {
+  const chrome = useToShipChrome({ blockedQueue: shortageDesk });
   const sheet = useOrdersSpreadsheet({
     ariaLabel: shortageDesk ? 'Pending out-of-stock orders' : 'Shelved unshipped orders',
     records,
     loading,
-    searchValue,
+    searchValue: chrome.search.value,
     onOpenRecord,
     onCloseRecord: () => {
       dispatchCloseShippedDetails();
     },
-    onClearSearch,
+    onClearSearch: () => chrome.search.onChange(''),
     selectMode,
     selectionScope: DASHBOARD_ORDERS_SELECTION_SCOPE,
     railSelection,
@@ -986,7 +966,6 @@ function UnshippedSheet({
     onOpenLabels,
     'data-testid': 'pending-grid-body',
   });
-  const chrome = useToShipChrome({ blockedQueue: shortageDesk });
 
   // The spreadsheet hook publishes the cursor (it owns grouping + folds);
   // this lane only turns the keyboard on.

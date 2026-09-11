@@ -1,24 +1,26 @@
 /**
  * Home → Daily task table — the column model.
  *
+ * Callers: HomeDailyMode, daily-table-definition, daily-grid-descriptor,
+ * slot-table-cohort / field-catalog daily tests. KEEP mount:
+ * DAILY_COMPOUND_COLUMNS (dailyCompoundColumnsFor). Schema: DailyFieldCatalog /
+ * SlotLayout. User: "Make that contract green… Allowed: … KEEP rows." Discover
+ * DELETE id hand-grid-export:daily:DAILY_GRID_COLUMNS — remove unmounted flat.
+ *
  * Daily was a Reminders-shaped list on a white sheet; it is now a LedgerGrid
  * like every other operator collection, so the shift checklist reads as ROWS
  * with a name, a status and a team column instead of prose bullets.
  *
  * Facts are content-hard and trailing `_fill` owns the sole `1fr` — the
- * Receiving/Orders law, from the one declaration (`GRID_FILL_COLUMN`). Nothing
- * here re-derives geometry: track sums, sticky offsets and the header's
- * text-vs-glyph answer all come from the shared helpers.
+ * Receiving/Orders law. Nothing here re-derives geometry: track sums, sticky
+ * offsets and the header's text-vs-glyph answer all come from the shared
+ * helpers.
  */
 
 import { compoundColumnsFor } from '@/components/tables/compound/compound-columns';
 import { DAILY_FIELD_CATALOG, DAILY_PRODUCT_LAYOUT } from '@/lib/tables/field-catalog/daily';
 import { materializeTracks, type SlotTrackFields } from '@/lib/tables/materialize-tracks';
 import type { SlotLayout } from '@/lib/tables/slot-layout-core';
-import {
-  GRID_FILL_COLUMN,
-} from '@/design-system/components/grid';
-
 
 import type { ColumnType } from '@/lib/tables/table-columns';
 import type { GridSortDir } from '@/design-system/components/grid/grid-sort-dir';
@@ -33,8 +35,8 @@ export type DailyGridColumnKey =
   | 'thumb'
   | 'item'
   | 'fulfillment'
+  | 'dates'
   | 'state'
-  | 'amount'
   | 'actions'
   | '_fill'
   /** Materialized slot tracks — keys are slot indices, never field ids. */
@@ -56,59 +58,6 @@ export interface DailyGridColumn extends SlotTrackFields {
   resizable?: boolean;
   omitCellIcon?: boolean;
 }
-
-/**
- * Canonical Daily columns, in scan order.
- *
- * `select` is not decoration here — ticking the box IS the daily action, so the
- * gutter carries the surface's primary verb rather than a selection it would
- * otherwise have no use for.
- *
- * `team` is the roster denominator (`3/5`), the one fact a checklist row cannot
- * answer on its own: whether *I* did it is `status`, whether the SHIFT did it
- * is a different question and gets a different track.
- */
-export const DAILY_GRID_COLUMNS: readonly DailyGridColumn[] = [
-  { key: 'select', width: 'minmax(2rem, 2rem)', sortable: false, frozen: true },
-  {
-    key: 'task',
-    frozen: true,
-    // Content-hard, never `1fr` — a flex track inside the FROZEN pane puts every
-    // following frozen cell's sticky `left` out by the difference.
-    width: 'minmax(18rem, 18rem)',
-    label: 'Task',
-    type: 'text',
-    resizable: true,
-    labelFitRem: 8,
-  },
-  {
-    key: 'status',
-    width: 'minmax(6rem, 6rem)',
-    label: 'Status',
-    type: 'tag',
-    hideKey: 'status',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'team',
-    width: 'minmax(5rem, 5rem)',
-    label: 'Team',
-    type: 'number',
-    align: 'end',
-    hideKey: 'team',
-    labelFitRem: 4.5,
-  },
-  {
-    key: 'marked',
-    width: 'minmax(6.5rem, 6.5rem)',
-    label: 'Checked',
-    type: 'date',
-    hideKey: 'marked',
-    tier: 'optional',
-    labelFitRem: 4.5,
-  },
-  GRID_FILL_COLUMN,
-] as const;
 
 /**
  * COMPOUND (two-row) Daily columns.
@@ -156,7 +105,7 @@ export const DAILY_COMPOUND_COLUMNS: readonly DailyGridColumn[] =
  * `repair-display-sort` rule: a bookmarked `?colsort=marked` must keep meaning
  * `marked` after a rebind moves that fact to a different slot index.
  */
-export type DailySortFact = 'task' | 'status' | 'team' | 'marked';
+export type DailySortFact = 'task' | 'status' | 'team' | 'marked' | 'dates' | 'order';
 
 /**
  * Compound track → the fact it carries.
@@ -169,8 +118,10 @@ export type DailySortFact = 'task' | 'status' | 'team' | 'marked';
  * offer to.
  */
 const DAILY_TRACK_SORT_FACTS: Readonly<Record<string, DailySortFact>> = {
+  dates: 'dates',
   item: 'task',
   state: 'status',
+  fulfillment: 'order',
 };
 
 /**
@@ -195,7 +146,7 @@ export function dailySortFactFor(
 }
 
 export function isDailySortFact(raw: string): raw is DailySortFact {
-  return raw === 'task' || raw === 'status' || raw === 'team' || raw === 'marked';
+  return raw === 'task' || raw === 'status' || raw === 'team' || raw === 'marked' || raw === 'dates' || raw === 'order';
 }
 
 /**
@@ -203,15 +154,17 @@ export function isDailySortFact(raw: string): raw is DailySortFact {
  *
  * On the FACT rather than read off a column, because the desk needs it for a
  * fact that may be bound into any slot — or, on this family's product layout,
- * into none at all. It used to be `DAILY_GRID_COLUMNS.find(c => c.key ===
- * sort)?.type`, which returned `undefined` for every compound track and quietly
- * sorted everything as the default shape.
+ * into none at all. The retired flat `DAILY_GRID_COLUMNS` looked up type by
+ * track key and returned `undefined` for every compound track, quietly sorting
+ * everything as the default shape.
  */
 export const DAILY_SORT_FACT_TYPES: Readonly<Record<DailySortFact, ColumnType>> = {
   task: 'text',
+  dates: 'date',
   status: 'tag',
   team: 'number',
   marked: 'date',
+  order: 'text',
 };
 
 /** Header keys that sort — the descriptor's `isSortable` for this family. */

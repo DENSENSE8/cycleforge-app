@@ -51,8 +51,8 @@ export interface FetchPackerLogRowsResult {
   cacheHit: boolean;
 }
 
-// v7: enriched read path falls back to live order_match when projection row is missing.
-const CACHE_NAMESPACE = 'api:packing-logs-v7';
+// v8: Shipped desk requires SHIP_CONFIRM with staff (packed-only rows stay off it).
+const CACHE_NAMESPACE = 'api:packing-logs-v8';
 const CACHE_TAGS = ['packing-logs'];
 
 // Set once if `packer_log_enrichment` is absent (a DB that hasn't run the
@@ -117,10 +117,20 @@ export async function fetchPackerLogRows(
   const params: any[] = [];
   const conditions: string[] = [`sal.station = 'PACK'`];
 
-  // Tenant scope — bounds the whole page CTE (and therefore both the legacy and
-  // enriched queries, which share these conditions) to the caller's org.
   params.push(orgId);
   conditions.push(`sal.organization_id = $${params.length}`);
+
+  // Shipped desk membership: a dock scan-out with staff + time. Packed-only
+  // (IN STAGING) stays on To-ship until SHIP_CONFIRM.
+  conditions.push(`EXISTS (
+    SELECT 1 FROM station_activity_logs so
+    WHERE so.activity_type = 'SHIP_CONFIRM'
+      AND so.staff_id IS NOT NULL
+      AND so.staff_id > 0
+      AND so.shipment_id IS NOT NULL
+      AND so.shipment_id = sal.shipment_id
+      AND so.organization_id = sal.organization_id
+  )`);
 
   if (opts.packerId != null && !Number.isNaN(opts.packerId)) {
     params.push(opts.packerId);

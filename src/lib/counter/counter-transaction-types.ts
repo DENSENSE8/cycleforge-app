@@ -88,6 +88,8 @@ export interface CounterCustomerInput {
   phone: string;
   name?: string | null;
   email?: string | null;
+  /** Callers: submitCounterTransaction, POST /api/kiosk/intake. Schema: customers.shipping_address_1. User: "intake their information like name, email address, phone number, address". */
+  address?: string | null;
 }
 
 /**

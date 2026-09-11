@@ -1,6 +1,5 @@
 import { headers } from 'next/headers';
-import { getOrganizationBySlug } from '@/lib/tenancy/organizations';
-import { getPublicLandingUrl } from '@/lib/tenancy/settings';
+import { getPublicQrBrand } from '@/lib/tenancy/public-qr-brand';
 import { PublicQrInterstitial } from '@/components/qr/PublicQrInterstitial';
 
 /**
@@ -15,6 +14,9 @@ import { PublicQrInterstitial } from '@/components/qr/PublicQrInterstitial';
  * Tenant comes from the slug host (`x-tenant-slug`, set by the proxy). Fail
  * closed: an unknown or absent slug still renders the shell, unbranded and
  * with no CTA, rather than leaking a default tenant's website.
+ *
+ * Brand fields are Next Data Cache (`getPublicQrBrand`); org-settings writes
+ * bust the tag via `invalidateOrgCache`.
  */
 async function resolvePublicQrLanding(args: {
   /** What was scanned — e.g. "Receiving carton", "Product". */
@@ -27,29 +29,13 @@ async function resolvePublicQrLanding(args: {
   scanLabel: string;
   publicLandingUrl: string;
 }> {
-  const fallback = {
-    brandName: 'Cycle Forge',
-    logoUrl: null,
-    scanLabel: args.scanLabel,
-    publicLandingUrl: '',
-  };
-
   let slug = (args.slug ?? '').trim().toLowerCase();
   if (!slug) {
     const hdrs = await headers();
     slug = (hdrs.get('x-tenant-slug') || '').trim().toLowerCase();
   }
-  if (!slug) return fallback;
-
-  const org = await getOrganizationBySlug(slug);
-  if (!org) return fallback;
-
-  return {
-    brandName: (org.settings.brand?.name || '').trim() || org.name || slug,
-    logoUrl: (org.settings.brand?.logoUrl || '').trim() || null,
-    scanLabel: args.scanLabel,
-    publicLandingUrl: getPublicLandingUrl(org.settings),
-  };
+  const brand = await getPublicQrBrand(slug);
+  return { ...brand, scanLabel: args.scanLabel };
 }
 
 /** Render the anonymous landing for a scanned platform Digital Link. */

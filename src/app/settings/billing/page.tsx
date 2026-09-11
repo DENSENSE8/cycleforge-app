@@ -9,13 +9,15 @@
  */
 
 import { requirePermission } from '@/lib/auth/page-guard';
-import { PageHeader } from '@/components/ui/pane-header';
+import { SettingsSectionHeader } from '@/components/settings/SettingsSectionHeader';
+import { SETTINGS_FLOOR_CLASS } from '@/components/settings/settings-sections';
 import { getOrganization } from '@/lib/tenancy/organizations';
 import { getSubscription } from '@/lib/billing/subscriptions';
 import { entitlementsForPlan, PLAN_PRICE_IDS } from '@/lib/billing/plans';
 import type { PlatformPlan } from '@/lib/tenancy/constants';
 import { BillingActions, UpgradeButton } from './BillingActions';
 import { Panel } from '@/design-system/primitives';
+import { cn } from '@/utils/_cn';
 
 
 const PLAN_LABELS: Record<PlatformPlan, { label: string; tagline: string }> = {
@@ -48,8 +50,8 @@ export default async function BillingPage() {
 
   return (
     <Shell>
-      <PageHeader eyebrow="Settings" value="Billing" maxWidth="5xl" />
       <div className="mx-auto max-w-5xl space-y-6 px-6 py-6">
+        <SettingsSectionHeader title="Billing" />
         <p className="text-role-caption text-text-soft">Workspace: <span className="font-medium text-text-muted">{org.name}</span></p>
 
         <Card>
@@ -82,7 +84,7 @@ export default async function BillingPage() {
           <ul className="mt-3 grid grid-cols-2 gap-y-1.5 text-role-caption text-text-muted sm:grid-cols-3">
             {Object.entries(ent.features).map(([key, on]) => (
               <li key={key} className="flex items-center gap-2">
-                <span className={`inline-block h-1.5 w-1.5 rounded-full ${on ? 'bg-emerald-500' : 'bg-surface-strong'}`} />
+                <span className={`inline-block h-1.5 w-1.5 rounded-full ${on ? 'bg-fill-success' : 'bg-surface-strong'}`} />
                 <span className={on ? 'text-text-default' : 'text-text-faint'}>{key}</span>
               </li>
             ))}
@@ -104,7 +106,12 @@ export default async function BillingPage() {
               return (
                 <div
                   key={plan}
-                  className={`rounded-2xl border p-4 ${current ? 'border-border-strong bg-surface-canvas' : 'border-border-soft bg-surface-card'}`}
+                  className={cn(
+                    'rounded-2xl border p-4',
+                    current
+                      ? 'border-border-default bg-surface-card'
+                      : 'border-border-soft bg-surface-card',
+                  )}
                 >
                   <div className="text-role-body font-semibold text-text-default">{labels.label}</div>
                   <p className="mt-0.5 text-role-caption text-text-soft">{labels.tagline}</p>
@@ -142,5 +149,5 @@ function Card({ children }: { children: React.ReactNode }) {
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-screen bg-surface-canvas antialiased">{children}</div>;
+  return <div className={cn('min-h-screen antialiased', SETTINGS_FLOOR_CLASS)}>{children}</div>;
 }

@@ -1,3 +1,10 @@
+import {
+  DROPDOWN_ITEM_CORNER,
+  DROPDOWN_SHELL_CORNER,
+  SPINE_ROW_CORNER,
+} from '@/design-system/tokens/radius';
+import { cn } from '@/utils/_cn';
+
 /**
  * Sidebar spine geometry — the ONE place the column width lives.
  *
@@ -54,25 +61,32 @@ export const SIDEBAR_SPINE_RESIZE = {
   maxWidthPx: 360,
 } as const;
 
+/** Inset of the collapsed hover-peek card from the viewport edge (px). */
+export const SIDEBAR_SPINE_PEEK_INSET_PX = 8;
+
 /**
  * Chrome for MasterNav **identity menus** (org/workspace switch + staff ⋯ menu).
  *
- * The ⋯ panel is the shadcn/ui Popover (`radix-popover`), anchored to the
- * footer row so width tracks the spine. Flush industrial chrome
- * (`rounded-none` · `shadow-md`) + caption type — peer of `HeaderChromeMenu`,
- * never a chunkier twin of the band. Never fork `w-[260px]` / `w-[280px]` (or
- * any wider literal) — guard: `header-mode.guard.test.ts`.
+ * Sole consumer today: {@link StaffAccountFooter}. The ⋯ panel is the
+ * shadcn/ui Popover (`radix-popover`), anchored to the footer row so width
+ * tracks the spine. Soft shell ({@link DROPDOWN_SHELL_CORNER}) + caption type
+ * — peer of dropdown menus, not a flush industrial plate. Never fork
+ * `w-[260px]` / `w-[280px]` (or any wider literal) — guard:
+ * `header-mode.guard.test.ts`.
+ *
+ * Gate: importers = StaffAccountFooter; API = class-string tokens only (no
+ * schemas). User: account-details three-dots menu display (corners + motion).
  */
 export const SIDEBAR_SPINE_MENU_PANEL_CLASS =
-  'w-full overflow-hidden rounded-none border border-border-soft bg-surface-card shadow-md';
+  `w-full overflow-hidden ${DROPDOWN_SHELL_CORNER} border border-border-soft bg-surface-card shadow-md`;
 
 /** Dense header strip inside an identity menu (current workspace / staff card). */
 export const SIDEBAR_SPINE_MENU_HEADER_CLASS =
-  'flex min-w-0 items-center gap-2 border-b border-border-hairline px-2 py-1.5';
+  'flex min-w-0 items-center gap-2 border-b border-border-hairline px-3 py-2.5';
 
 /** Dense action row inside an identity menu. */
 export const SIDEBAR_SPINE_MENU_ACTION_CLASS =
-  'flex w-full items-center gap-2 rounded-none px-2 py-1 text-left transition hover:bg-surface-hover';
+  `flex w-full items-center gap-2.5 ${DROPDOWN_ITEM_CORNER} px-2.5 py-2 text-left transition hover:bg-surface-hover`;
 
 /** Primary name inside an identity menu (org or staff). */
 export const SIDEBAR_SPINE_MENU_TITLE_CLASS =
@@ -145,8 +159,24 @@ export const SPINE_ROW_ICON_CLASS = 'h-4 w-4 shrink-0';
 export const SPINE_LABEL_CLASS = 'text-role-body font-normal';
 
 /**
- * The one row shell every spine destination shares: flush, full-width, dense.
- * Compose it with a `SPINE_ACCENT` state class; never restate the geometry.
+ * The one row shell every spine destination shares: dense, full-width, and
+ * softly cornered. Compose it with a `SPINE_ACCENT` state class; never restate
+ * the geometry. Open-spine labelled Search uses this same shell so hover wash
+ * follows {@link SPINE_ROW_CORNER} (main: `cornerClass('chip')` → 4px).
+ *
+ * `overflow-hidden` rides with the radius so a square fill cannot poke the
+ * corners.
  */
-export const SPINE_ROW_SHELL_CLASS =
-  'ds-raw-button group flex w-full items-center gap-2 rounded-none px-2 text-left transition-colors duration-150';
+export const SPINE_ROW_SHELL_CLASS = cn(
+  'ds-raw-button group flex w-full items-center gap-2 overflow-hidden px-2 text-left transition-colors duration-150',
+  SPINE_ROW_CORNER,
+);
+
+/**
+ * Sticky section caption (Stations / Workspaces) — same plane as the spine
+ * chrome so rows scrolling under it do not show through. Flush, not a card.
+ */
+export const SPINE_SECTION_LABEL_STICKY_CLASS = 'sticky top-0 z-10 bg-surface-card';
+
+/** Scrollport thumb — same recipe as the ledger grid. */
+export const SPINE_SCROLLPORT_SCROLLBAR_CLASS = 'cf-grid-scrollbar';

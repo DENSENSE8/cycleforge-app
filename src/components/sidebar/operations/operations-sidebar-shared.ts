@@ -10,7 +10,7 @@
  * Pure data only — no JSX.
  */
 
-import { Barcode, MapPin, PackageCheck } from '@/components/Icons';
+import { MapPin, PackageCheck, ScanBarcode } from '@/components/Icons';
 import type { HorizontalSliderItem } from '@/components/ui/HorizontalButtonSlider';
 import type { JourneyDimension } from '@/lib/timeline/journey';
 
@@ -80,7 +80,7 @@ export function parseOperationsModeWire(raw: string): string | null {
 /** Journey grouping dimension — one band per order / serial / tracking number. */
 export const JOURNEY_DIMENSION_ITEMS: HorizontalSliderItem[] = [
   { id: 'order', label: 'Order', icon: PackageCheck },
-  { id: 'serial', label: 'Serial', icon: Barcode },
+  { id: 'serial', label: 'Serial', icon: ScanBarcode },
   { id: 'tracking', label: 'Tracking', icon: MapPin },
 ];
 

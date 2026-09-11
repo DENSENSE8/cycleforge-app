@@ -15,8 +15,9 @@
  *
  * Not "a title in a RailRowBody" — the SAME anatomy `ReceivingRowMain` builds
  * for the unbox / testing recent rail: status dot in the frame's own leftmost
- * track, title on the anchor line, quantity on the meta line under it, in that
- * line's uppercase tracked-out `text-text-soft`. Handing `RailRowBody` a title
+ * track, title on the anchor line, pair-once fan-out (else quantity) on the
+ * meta line under it, in that line's uppercase tracked-out `text-text-soft`.
+ * Handing `RailRowBody` a title
  * and nothing else technically used the primitive while producing a row that
  * looked like no other rail in the app — the exact failure the primitive
  * exists to prevent.
@@ -35,6 +36,8 @@ import { SidebarRailScrollport } from '@/components/sidebar/rail-shell/SidebarRa
 import type { RailPeekFact } from '@/components/sidebar/rail-shell/RailPeekIdentityFacts';
 import {
   ORDER_EXCEPTION_BLOCKER_LABEL,
+  exceptionRailMetaCount,
+  sortExceptionQueueRows,
   type OrderExceptionRow,
 } from '@/lib/orders/order-exception-types';
 
@@ -80,12 +83,6 @@ export function exceptionKeyMismatch(row: OrderExceptionRow): string | null {
   return item;
 }
 
-/** Order quantity for the rail meta line — `1` when the column is empty. */
-function exceptionQuantity(row: OrderExceptionRow): string {
-  const n = Number(row.quantity);
-  return String(Number.isFinite(n) && n > 0 ? n : 1);
-}
-
 function exceptionTitle(row: OrderExceptionRow): string {
   return row.productTitle || row.catalogTitle || row.orderNumber || `#${row.id}`;
 }
@@ -108,9 +105,10 @@ export function ExceptionsRecentRail({
    * when the workbench's query settles — the same handoff
    * `ProductLabelsRecentRail` uses to filter client-side.
    */
-  const version = useMemo(() => rows.map((r) => r.id).join('|'), [rows]);
+  const ordered = useMemo(() => sortExceptionQueueRows(rows), [rows]);
+  const version = useMemo(() => ordered.map((r) => r.id).join('|'), [ordered]);
   const queryKey = useMemo(() => ['order-exceptions.rail', version] as const, [version]);
-  const fetchFn = useCallback(async () => rows, [rows]);
+  const fetchFn = useCallback(async () => ordered, [ordered]);
 
   const select = useCallback((row: OrderExceptionRow) => onSelect(row.id), [onSelect]);
 
@@ -121,9 +119,11 @@ export function ExceptionsRecentRail({
         fetchFn={fetchFn}
         selectedId={selectedId}
         limit={EXCEPTIONS_RAIL_LIMIT}
-        // The API already orders the queue; a client re-sort would fight it, and
-        // there is no activity stamp on the row to sort by in the first place.
+        // SQL + {@link sortExceptionQueueRows} share one axis: missing item
+        // number, then pair-once fan-out. Do not hoist the selected row — that
+        // would unpin the urgent cluster.
         preserveServerOrder
+        pinSelectedLead={false}
         eyebrowTitle="Order exceptions"
         emptyText={loading ? 'Loading exceptions…' : 'No orders are blocked in this scope'}
         getId={(row) => row.id}
@@ -149,13 +149,12 @@ export function ExceptionsRecentRail({
                 title: exceptionTitle(row),
                 titleAttr: exceptionTitle(row),
                 titleAccessory: ctx.pkgChip,
-                // The same meta line ReceivingRowMain builds: quantity, in the
-                // rail's uppercase tracked-out soft ink. Copied as a SHAPE — if
-                // that line changes on the unbox rail, this is the call site
-                // that follows it.
+                // Same Unbox meta SHAPE (uppercase tracked-out soft ink). The
+                // number is the banner's sibling fan-out when pairing clears
+                // other orders; otherwise this row's quantity.
                 meta: (
                   <span className="flex min-w-0 items-center gap-1 font-semibold uppercase tracking-widest text-text-soft">
-                    <span className="truncate text-text-muted">{exceptionQuantity(row)}</span>
+                    <span className="truncate text-text-muted">{exceptionRailMetaCount(row)}</span>
                   </span>
                 ),
               }}

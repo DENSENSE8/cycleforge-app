@@ -7,8 +7,8 @@ import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchSelectLine } from '@/components/station/receiving-lines-table-helpers';
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 import { useReceivingRowSelection } from '@/components/station/useReceivingRowSelection';
-import { ReceivingGridHost } from '@/components/station/receiving-grid/ReceivingGridHost';
-import { RECEIVING_GRID_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
+import { ReceivingSpreadsheet } from '@/components/station/receiving-grid/useReceivingSpreadsheet';
+import { RECEIVING_COMPOUND_COLUMNS } from '@/lib/receiving/receiving-grid-layout';
 import { StationPipelineBoard } from '@/components/station/StationPipelineBoard';
 import { STATION_PIPELINE_BOARDS } from '@/lib/station/flags';
 import {
@@ -268,13 +268,10 @@ export function TestingHistoryList({
 
   const gridBody = (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <ReceivingGridHost
-        // The FLAT spreadsheet — this desk's own model, named here rather than
-        // inherited from the binding by silence. `receiving.browse`'s canonical
-        // columns are the compound materialization the three station desks
-        // mount; this history plane is a second mount of the same definition
-        // and says so. (Plan §03 wave 1.3: it still owes its own layout id.)
-        columns={RECEIVING_GRID_COLUMNS}
+      <ReceivingSpreadsheet
+        // Compound slot materialization — same tracks Unbox/History mount.
+        // Own tableId `testing` keeps Fields prefs from fighting receiving.
+        columns={RECEIVING_COMPOUND_COLUMNS}
         daySections={daySections}
         loading={isLoading && rows.length === 0}
         emptyMessage={emptyMessage}
@@ -288,6 +285,7 @@ export function TestingHistoryList({
         handleToggleRow={handleToggleRow}
         activityAxis={activityAxis}
         isHistory={mode === 'history'}
+        tableId="testing"
         selectionScope={TESTING_SELECTION_SCOPE}
         testId="testing-grid-body"
         search={{ value: search, onChange: setSearch, placeholder: 'Filter tests…' }}

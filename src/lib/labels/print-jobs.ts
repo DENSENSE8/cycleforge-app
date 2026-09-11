@@ -11,7 +11,7 @@ import type { OrgId } from '@/lib/tenancy/constants';
  * retry of the same print is a no-op that returns the original row.
  */
 
-export type LabelJobType = 'UNIT' | 'MANIFEST' | 'HANDLING_UNIT' | 'REPRINT';
+export type LabelJobType = 'UNIT' | 'MANIFEST' | 'HANDLING_UNIT' | 'REPRINT' | 'LOCATION';
 
 export interface LabelPrintJobInput {
   jobType: LabelJobType;

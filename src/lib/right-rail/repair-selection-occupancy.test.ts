@@ -12,24 +12,15 @@ test('empty selection mounts nothing', () => {
   assert.deepEqual(resolveRepairRailOccupancy([]), { kind: 'none' });
 });
 
-test('one repair inspects; two-plus batches', () => {
+test('checkbox selection never claims the right rail', () => {
   const one = resolveRepairRailOccupancy([10]);
-  assert.equal(one.kind, 'inspect');
-  if (one.kind === 'inspect') {
-    assert.equal(one.occupantId, REPAIR_RAIL_OCCUPANT_ID.inspect);
-    assert.equal(one.repairId, 10);
-    assert.deepEqual([...one.repairIds], [10]);
-  }
-  assert.equal(isRepairRailInspectActive(one), true);
+  assert.equal(one.kind, 'none');
+  assert.equal(isRepairRailInspectActive(one), false);
   assert.equal(isRepairRailBatchActive(one), false);
 
   const many = resolveRepairRailOccupancy([10, 11]);
-  assert.equal(many.kind, 'attention');
-  if (many.kind === 'attention') {
-    assert.equal(many.occupantId, REPAIR_RAIL_OCCUPANT_ID.attention);
-    assert.deepEqual([...many.repairIds], [10, 11]);
-  }
-  assert.equal(isRepairRailBatchActive(many), true);
+  assert.equal(many.kind, 'none');
+  assert.equal(isRepairRailBatchActive(many), false);
   assert.equal(isRepairRailInspectActive(many), false);
 });
 

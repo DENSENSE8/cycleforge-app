@@ -62,11 +62,11 @@ export function KioskCustomerFace() {
     return () => window.clearInterval(id);
   }, [session.awaitingCardSinceMs]);
 
-  // Esc returns to staff — manual override so orientation won't flip back.
+  // Esc returns to Work — manual override so orientation won't flip back.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        actions.setFace('staff', { manual: true });
+        actions.setConsultStance('work', { manual: true });
       }
     };
     window.addEventListener('keydown', onKey);

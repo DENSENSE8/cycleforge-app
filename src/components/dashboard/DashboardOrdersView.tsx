@@ -19,7 +19,6 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
-import { OrderRailCompare } from '@/components/dashboard/rail/OrderRailCompare';
 import { OrdersViewControlsRail } from '@/components/outbound/orders/OrdersViewControlsRail';
 import { useOrdersViewChrome } from '@/components/outbound/orders/orders-view-chrome-context';
 import { useRailActionSnapshot } from '@/components/dashboard/rail/OrderRailActions';
@@ -40,6 +39,8 @@ interface DashboardOrdersViewProps {
   selectionEnabled: boolean;
   /** Modal surfaces the bulk actions open (assignment carousel, ship-by picker). */
   selectionOverlays?: ReactNode;
+  /** Center Lock L2 — order record plane stacked on the table stage. */
+  stageOverlay?: ReactNode;
   /** Primary queue has paintable rows (for SSR stand-in handoff). */
   onPrimaryPainted?: () => void;
 }
@@ -48,6 +49,7 @@ export function DashboardOrdersView({
   selectMode,
   selectionEnabled,
   selectionOverlays,
+  stageOverlay,
   onPrimaryPainted,
 }: DashboardOrdersViewProps) {
   const searchParams = useSearchParams();
@@ -97,7 +99,6 @@ export function DashboardOrdersView({
 
   const overlays = showCsvStaging ? null : selectionEnabled ? (
     <>
-      <OrderRailCompare />
       <OrdersViewControlsRail />
       {selectionOverlays}
     </>
@@ -117,6 +118,7 @@ export function DashboardOrdersView({
       */}
       {body}
       {overlays}
+      {stageOverlay}
     </div>
   );
 }

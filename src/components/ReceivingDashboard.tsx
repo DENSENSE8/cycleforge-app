@@ -30,8 +30,6 @@ import { useReceivingWorkspacePane } from '@/components/receiving/useReceivingWo
 import { useReceivingDetailOverlays } from '@/components/receiving/useReceivingDetailOverlays';
 import { ReceivingRightPane } from '@/components/receiving/ReceivingRightPane';
 import { ReceivingDashboardOverlays } from '@/components/receiving/ReceivingDashboardOverlays';
-import { incomingDetailsTargetFromRow } from '@/lib/receiving/incoming-details-target';
-import { toast } from '@/lib/toast';
 
 /** Copy line for a receiving carton/line: PO • SKU • tracking. */
 function formatReceivingCopyRow(r: ReceivingLineRow): string {
@@ -95,7 +93,6 @@ export default function ReceivingDashboard() {
     if (!isIncomingMode) return;
     if (selectedRows.length === 0) {
       blockedInspectToastRowIdRef.current = null;
-      if (incomingDetails) setIncomingDetails(null);
       return;
     }
     if (selectedRows.length >= 2) {
@@ -103,27 +100,7 @@ export default function ReceivingDashboard() {
       if (incomingDetails) setIncomingDetails(null);
       return;
     }
-    const row = selectedRows[0];
-    if (!row) return;
-    const resolved = incomingDetailsTargetFromRow(row);
-    if (!resolved.ok) {
-      if (blockedInspectToastRowIdRef.current !== row.id) {
-        blockedInspectToastRowIdRef.current = row.id;
-        toast.info(resolved.toast);
-      }
-      if (incomingDetails) setIncomingDetails(null);
-      return;
-    }
-    blockedInspectToastRowIdRef.current = null;
-    const next = resolved.target;
-    const same =
-      incomingDetails &&
-      incomingDetails.poId === next.poId &&
-      incomingDetails.shipmentId === next.shipmentId &&
-      incomingDetails.receivingId === next.receivingId &&
-      incomingDetails.receivingLineId === next.receivingLineId &&
-      incomingDetails.inboundSourceOrderId === next.inboundSourceOrderId;
-    if (!same) setIncomingDetails(next);
+    return;
   }, [isIncomingMode, selectedRows, incomingDetails, setIncomingDetails]);
 
   // History triage (1-row inspect) yields to the batch shell at 2+ checks.

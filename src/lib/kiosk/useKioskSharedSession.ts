@@ -50,6 +50,8 @@ const BRIDGE_EVENTS = [
   'session.submitted',
   // The card prompt — the one event whose whole purpose is the customer's screen.
   'session.payment_changed',
+  'session.face_changed',
+  'session.presentation_changed',
 ] as const;
 
 export interface KioskSharedSessionState {
@@ -70,6 +72,8 @@ function snapshotFromProjection(p: DeviceSessionProjection): CounterSessionSnaps
     status: p.status,
     activeCommand: p.activeCommand,
     face: p.face,
+    consultStance: p.consultStance,
+    presentation: p.presentation,
     customer: { phone: '', name: p.customerName, email: '' },
     lines: p.lines.map((l, i) => ({
       ...l,
@@ -104,6 +108,8 @@ function mirror(
     awaitingSignatureLineIds: awaiting,
     activeCommand: snapshot.activeCommand,
     awaitingCardSinceMs,
+    consultStance: snapshot.consultStance,
+    presentation: snapshot.presentation,
   });
 }
 
@@ -151,6 +157,10 @@ function makeWriter(getVersion: () => number, onWrote: () => void) {
       // back rather than a control that quietly did nothing.
       onWrote();
     },
+    setConsultStance: (consultStance: string) =>
+      send('/api/kiosk/session/stance', 'POST', { consultStance }),
+    setPresentation: (presentation: unknown) =>
+      send('/api/kiosk/session/presentation', 'POST', { presentation }),
   };
 }
 
@@ -258,6 +268,8 @@ export function useKioskSharedSession(): KioskSharedSessionState {
   useAblyChannel(channel, BRIDGE_EVENTS[4], onEvent, enabled, { coalesce: 'frame' });
   useAblyChannel(channel, BRIDGE_EVENTS[5], onEvent, enabled, { coalesce: 'frame' });
   useAblyChannel(channel, BRIDGE_EVENTS[6], onEvent, enabled, { coalesce: 'frame' });
+  useAblyChannel(channel, BRIDGE_EVENTS[7], onEvent, enabled, { coalesce: 'frame' });
+  useAblyChannel(channel, BRIDGE_EVENTS[8], onEvent, enabled, { coalesce: 'frame' });
 
   return { sessionId, live };
 }

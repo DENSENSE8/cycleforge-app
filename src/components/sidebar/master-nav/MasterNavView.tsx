@@ -3,13 +3,13 @@
 import type { SidebarPageNav } from '@/lib/sidebar-navigation';
 import { cn } from '@/utils/_cn';
 import { SidebarNavList } from './SidebarNavList';
+import { SpineNavChrome } from './SpineNavChrome';
 
 /**
  * The **sidebar spine** — page map in a resident push column.
  *
- * Home · Media Library stay structural; Scan Stations is one parent drill;
- * everything else is a staff-ordered list (hold the title row to reorder).
- * Settings lives in the account ⋯ menu.
+ * Home · Media Library stay structural; Stations and Workspaces collapse in
+ * place; remaining L1 is staff-ordered. Settings lives in the account ⋯ menu.
  */
 export function MasterNavView({
   activePage,
@@ -17,8 +17,6 @@ export function MasterNavView({
   otherPages,
   onNavigate,
   onRowHover,
-  drillId,
-  onDrillChange,
   spineOrder,
   onSpineOrderChange,
   className,
@@ -28,22 +26,19 @@ export function MasterNavView({
   otherPages: SidebarPageNav[];
   onNavigate: (pageId: string, childId?: string) => void;
   onRowHover?: (page: SidebarPageNav) => void;
-  drillId: string | null;
-  onDrillChange: (id: string | null) => void;
   spineOrder: string[];
   onSpineOrderChange: (ids: string[]) => void;
   className?: string;
 }) {
   return (
     <div className={cn('isolate flex h-full min-h-0 flex-col font-spine', className)}>
+      <SpineNavChrome />
       <SidebarNavList
         activePage={activePage}
         activeChildId={activeChildId}
         otherPages={otherPages}
         onNavigate={onNavigate}
         onRowHover={onRowHover}
-        drillId={drillId}
-        onDrillChange={onDrillChange}
         spineOrder={spineOrder}
         onSpineOrderChange={onSpineOrderChange}
       />

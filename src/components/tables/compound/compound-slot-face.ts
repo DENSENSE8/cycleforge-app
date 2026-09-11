@@ -67,7 +67,7 @@ export function compoundSlotInstantFace(instant: string): string | null {
  * `plain` is the default and the honest answer for most facts — the header
  * already says what the fact IS, so the cell only has to say what it says.
  */
-export type CompoundSlotFace = 'age' | 'tag' | 'code' | 'plain';
+export type CompoundSlotFace = 'age' | 'tag' | 'code' | 'person' | 'plain';
 
 export function compoundSlotFaceFor(displayType: FieldDisplayType | undefined): CompoundSlotFace {
   switch (displayType) {
@@ -78,6 +78,8 @@ export function compoundSlotFaceFor(displayType: FieldDisplayType | undefined): 
     case 'id':
     case 'tracking':
       return 'code';
+    case 'person':
+      return 'person';
     default:
       return 'plain';
   }

@@ -39,8 +39,11 @@ import { cn } from '@/utils/_cn';
  * not this shell.
  *
  * Design invariants:
- *  • **One sticky layer, measured** — header docks at `top-0`; ResizeObserver
- *    publishes `--cf-grid-header-h` for day-band sticky offset.
+ *  • **One sticky layer, measured** — header docks at `top-0`. Row verbs
+ *    sit in an in-flow `empty:hidden` guest (`data-slot-table-action-row`)
+ *    under the column labels so the headers stay visible; armed, the guest
+ *    grows and pushes the rows. ResizeObserver publishes `--cf-grid-header-h`
+ *    (header) and `--cf-grid-chrome-h` (header + prefix) for day-band offset.
  *  • **Per-surface `scrollX`** — frozen identity pane vs clipped board.
  *  • **Sticky bottom X gutter** — when `scrollX`, a synced visible scrollbar
  *    sits at the bottom of the visible sheet (self-scroll flex) or sticks to
@@ -62,9 +65,9 @@ interface LedgerGridProps<T> {
    */
   showDayHeaders?: boolean;
   /**
-   * Band key → SECTION label. Names one band with a sticky
+   * Band key → SECTION label. Names one band with an in-flow
    * {@link GridSectionHeader} + outline WITHOUT turning on day banding —
-   * see {@link VirtualGroupedSections}.
+   * see {@link VirtualGroupedSections}. Not a sticky page banner.
    */
   sectionHeaders?: Record<string, string>;
   /** Horizontal scroll (flat spreadsheet). `false` clips overflow (vertical board). */
@@ -170,6 +173,7 @@ export function LedgerGrid<T>({
   // Self-scroll virtualizer / onScroll / caller bodyRef target.
   const scrollPortRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
+  const prefixRef = useRef<HTMLDivElement>(null);
   const xScrollRef = useRef<HTMLDivElement>(null);
 
   // Empty means NO ROWS — not "no bands". Testing the band count made a surface
@@ -255,17 +259,26 @@ export function LedgerGrid<T>({
   });
 
   // Publish the column header's REAL rendered height as `--cf-grid-header-h` on
-  // the scroll surface so day bands (when enabled) dock beneath it.
+  // the scroll surface. The Morphing guest lives in the prefix, so picking a
+  // row grows `--cf-grid-chrome-h` (header + prefix) and pushes the rows —
+  // the column labels keep their own height.
   useLayoutEffect(() => {
     const header = headerRef.current;
     const surface = surfaceRef.current;
     if (!header || !surface) return;
-    const publish = () => surface.style.setProperty('--cf-grid-header-h', `${header.offsetHeight}px`);
+    const publish = () => {
+      const headerH = header.offsetHeight;
+      const prefixH = prefixRef.current?.offsetHeight ?? 0;
+      surface.style.setProperty('--cf-grid-header-h', `${headerH}px`);
+      surface.style.setProperty('--cf-grid-chrome-h', `${headerH + prefixH}px`);
+    };
     publish();
     const ro = new ResizeObserver(publish);
     ro.observe(header);
+    const prefix = prefixRef.current;
+    if (prefix) ro.observe(prefix);
     return () => ro.disconnect();
-  }, []);
+  }, [Boolean(bodyPrefix)]);
 
   // When Y lives on an ancestor, depth under the sticky header follows that port.
   useLayoutEffect(() => {
@@ -377,9 +390,10 @@ export function LedgerGrid<T>({
       sectionHeaders={sectionHeaders}
       // Self-scroll keeps the column header OUTSIDE the Y port — day bands
       // dock at the port top, not under a co-scrolled sticky band height.
+      // Section captions ("Added today") are in-flow, not pinned.
       stickyHeaderTop={
-        (showDayHeaders || sectionHeaders) && !selfScrollX
-          ? 'var(--cf-grid-header-h, 0px)'
+        showDayHeaders && !selfScrollX
+          ? 'var(--cf-grid-chrome-h, var(--cf-grid-header-h, 0px))'
           : '0'
       }
     />
@@ -408,6 +422,28 @@ export function LedgerGrid<T>({
       )}
     >
       {columnHeader}
+    </div>
+  );
+
+  // Morphing portals into `data-slot-table-action-row` here — in-flow under
+  // the column header, `empty:hidden` when idle. An overflow-x port captures
+  // `position: sticky` on both axes, so a prefix in that box would scroll
+  // away with the rows — keep this band pinned with the header.
+  const pinnedPrefix = (
+    <div
+      ref={prefixRef}
+      data-slot-table-prefix=""
+      className={cn(
+        'relative z-sticky isolate w-full min-w-0 shrink-0 bg-surface-card',
+        !selfScrollX && 'sticky top-[var(--cf-grid-header-h,0px)]',
+      )}
+    >
+      <div
+        data-slot-table-action-row=""
+        data-testid="slot-table-action-row"
+        className="min-w-0 w-full overflow-hidden empty:hidden"
+      />
+      {bodyPrefix}
     </div>
   );
 
@@ -480,6 +516,7 @@ export function LedgerGrid<T>({
       ) : splitX ? (
         <>
           {headerBand}
+          {pinnedPrefix}
           <div
             ref={xScrollRef}
             data-testid={dataTestId}
@@ -487,7 +524,6 @@ export function LedgerGrid<T>({
             onWheel={onWheelShiftX}
             onScroll={(e) => syncSplitScroll(e.currentTarget)}
           >
-            {bodyPrefix}
             {body}
           </div>
           {stickyGutter}
@@ -495,6 +531,7 @@ export function LedgerGrid<T>({
       ) : selfScrollX ? (
         <>
           {headerBand}
+          {pinnedPrefix}
           <div
             ref={scrollPortRef}
             data-testid={dataTestId}
@@ -518,7 +555,6 @@ export function LedgerGrid<T>({
               surfaceRef.current?.classList.toggle('cf-grid-scrolled-y', el.scrollTop > 0);
             }}
           >
-            {bodyPrefix}
             {body}
           </div>
           {stickyGutter}
@@ -526,7 +562,7 @@ export function LedgerGrid<T>({
       ) : (
         <>
           {headerBand}
-          {bodyPrefix}
+          {pinnedPrefix}
           {body}
         </>
       )}

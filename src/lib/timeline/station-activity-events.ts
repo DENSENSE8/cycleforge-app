@@ -40,6 +40,11 @@ function pretty(activityType: string): string {
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 }
 
+/** FIND / timeline face title. Station names stay captions, not titles. */
+export function stationActivityTitle(activityType: string): string {
+  return ACTIVITY_MAP[activityType]?.title ?? pretty(activityType);
+}
+
 function serialSourceSubtitle(row: StationActivityRow): string | undefined {
   if (row.activity_type !== 'SERIAL_ADDED') return undefined;
 

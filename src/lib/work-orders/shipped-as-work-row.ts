@@ -42,9 +42,13 @@ export function shippedOrderAsWorkRow(row: ShippedOrder): WorkOrderRow {
     itemNumber: row.item_number ?? null,
     sku: row.sku ?? null,
     condition: row.condition ?? null,
+    catalogCategory: row.catalog_category ?? null,
+    serialNumber: String(row.serial_number || '').trim() || null,
     shipmentId: row.shipment_id ?? null,
     accountSource: row.account_source ?? null,
     quantity: row.quantity ?? null,
+    saleAmount: row.sale_amount ?? null,
+    currency: row.currency ?? null,
     imageUrl: String(row.catalog_image_url || '').trim() || null,
     outOfStock: isOutOfStock(row) ? 'Out of stock' : null,
   };

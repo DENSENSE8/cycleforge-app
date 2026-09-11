@@ -6,7 +6,9 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   ordersCompoundView,
+  ordersEdgeMark,
   ordersIdentityLine,
+  ordersItemStatus,
   ordersStateTone,
 } from '@/lib/orders/orders-compound-view';
 import { formatCompoundStageStepLine } from '@/components/tables/compound/compound-row-model';
@@ -237,5 +239,42 @@ describe('ordersCompoundView', () => {
     assert.equal(view.delay?.dateLabel, null);
     assert.equal(view.delay?.dateKey, null);
     assert.equal(view.delayTip, undefined);
+  });
+});
+
+describe('ordersEdgeMark', () => {
+  it('urgent is the order-level yellow rail', () => {
+    assert.deepEqual(ordersEdgeMark({ is_urgent: true, is_out_of_stock: true, has_exception: true }), {
+      label: 'Urgent',
+      barClass: 'bg-yellow-400',
+      pulse: true,
+      tickClass: 'bg-yellow-100',
+    });
+  });
+
+  it('does not steal the rail for exception or out of stock', () => {
+    assert.equal(ordersEdgeMark({ is_urgent: false, is_out_of_stock: true, has_exception: true }), null);
+  });
+});
+
+describe('ordersItemStatus', () => {
+  it('exception wins over out of stock on the item', () => {
+    assert.equal(
+      ordersItemStatus({ has_exception: true, is_out_of_stock: true })?.label,
+      'Exception',
+    );
+  });
+
+  it('out of stock is a product chip with a shortage card', () => {
+    const status = ordersItemStatus({
+      has_exception: false,
+      is_out_of_stock: true,
+      oos_sku: 'SKU',
+      oos_kind: 'listing',
+      product_title: 'Title',
+      sku: 'SKU',
+    });
+    assert.equal(status?.label, 'Out of stock');
+    assert.equal(status?.card?.sku, 'SKU');
   });
 });

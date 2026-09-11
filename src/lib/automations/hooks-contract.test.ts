@@ -44,4 +44,42 @@ describe('listing automation hooks (source contract)', () => {
     assert.match(body, /upsert-order-assignment/);
     assert.match(body, /upsertOrderAssignment/);
   });
+
+  it('scan-out POST and pick session start fire identification.completed; GET claim does not', () => {
+    const scanOut = src('src/app/api/shipped/scan-out/route.ts');
+    assert.match(scanOut, /emitIdentificationCompleted/);
+    assert.match(scanOut, /identificationFromScanOut/);
+    const scanOutGet = scanOut.slice(scanOut.indexOf('export const GET'));
+    assert.doesNotMatch(scanOutGet, /emitIdentificationCompleted/);
+
+    const pickSession = src('src/app/api/picking/session/route.ts');
+    assert.match(pickSession, /emitIdentificationCompleted/);
+    assert.match(pickSession, /identificationFromPick/);
+
+    const pickTasks = src('src/app/api/orders/[id]/pick-tasks/route.ts');
+    assert.doesNotMatch(pickTasks, /emitIdentificationCompleted/);
+
+    const jobGet = src('src/app/api/identification/jobs/[jobId]/route.ts');
+    assert.doesNotMatch(jobGet, /emitIdentificationCompleted/);
+  });
+
+  it('scan/resolve runs routeScan print-handles before tenant classifyIdentificationScan', () => {
+    const body = src('src/app/api/scan/resolve/route.ts');
+    const print = body.indexOf('const handleRoute = routeScan(trimmed)');
+    const tenant = body.indexOf('classifyIdentificationScan(trimmed, methods)');
+    assert.ok(print >= 0, 'routeScan print-handle step missing');
+    assert.ok(tenant > print, 'tenant classify must run after routeScan');
+    assert.match(body, /0\.5 Tenant identification grammar/);
+    assert.doesNotMatch(body, /openai|anthropic|generateText/);
+    assert.doesNotMatch(body, /identification\/author/);
+    assert.doesNotMatch(body, /authorIdentificationGrammar/);
+  });
+
+  it('identification author lives on methods/author, not the gun resolve path', () => {
+    const author = src('src/app/api/identification/methods/author/route.ts');
+    assert.match(author, /authorIdentificationGrammar/);
+    const resolve = src('src/app/api/scan/resolve/route.ts');
+    assert.doesNotMatch(resolve, /authorIdentificationGrammar/);
+    assert.doesNotMatch(resolve, /methods\/author/);
+  });
 });

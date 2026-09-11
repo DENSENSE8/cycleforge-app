@@ -1,28 +1,29 @@
 'use client';
 
 /**
- * Rack Label Printer — four-step location builder (zone → aisle → bay → level)
- * that outputs a QR-only thermal label identifying a whole rack column on one
- * level. Sibling of {@link BinLabelPrinter}; same room/zone source of truth and
- * GS1 Digital Link envelope, but no position segment. Every rack label is stored
- * as a `LocationSegments` row with `position: 0` — the sentinel scan routing uses
- * to tell a rack scan from a bin scan (see `isRackCode`).
+ * Rack Label Printer — Single mode = one face; Bulk = LabelPrintRunPanel.
  *
- * Thin composition layer — state/logic live in `./rack-printer/`.
+ * Callers: RackLabelWorkspace, WarehouseSidebarPanel. No data schemas.
+ * User: single/bulk toggle; remove configure; reset away from slider.
  */
 
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Printer } from '@/components/Icons';
-import { WorkspaceCard, StickyActionBar } from '@/design-system/components';
-import { rackCode } from '@/lib/barcode-routing';
+import { StickyActionBar } from '@/design-system/components';
 import { LABEL_BUILDER } from './label-builder-layout';
 import { LabelRoomSidebar } from './LabelRoomSidebar';
 import { useRackLabelPrinter } from './rack-printer/useRackLabelPrinter';
 import { RackBuilderMobile } from './rack-printer/RackBuilderMobile';
 import { RackBuilderDesktop } from './rack-printer/RackBuilderDesktop';
-import { LivePreviewBody } from './rack-printer/LivePreviewBody';
-import { ConfigSheet } from './rack-printer/ConfigSheet';
-import { RackPrintLabel } from './rack-printer/RackPrintLabel';
+import { GiantRackPreviewPanel } from './rack-printer/GiantRackPreviewPanel';
 import type { RackPrinterVariant } from './rack-printer/rack-printer-types';
+import {
+  LabelPrintRunPanel,
+  type LabelPrintRunFreeze,
+} from '@/components/labels/LabelPrintRunPanel';
+import type { LabelPrintWorkMode } from './LabelPrinterWorkHeader';
+import type { ExpandedPrintRunRow } from '@/lib/locations/expand-print-run';
+import { pad2, type RackSegments } from '@/lib/barcode-routing';
 
 export type { RackPrinterVariant } from './rack-printer/rack-printer-types';
 
@@ -32,89 +33,155 @@ interface RackLabelPrinterProps {
 
 export function RackLabelPrinter({ variant = 'main' }: RackLabelPrinterProps) {
   const c = useRackLabelPrinter();
+  const [printMode, setPrintMode] = useState<LabelPrintWorkMode>('single');
+  const [runSelected, setRunSelected] = useState<ExpandedPrintRunRow[]>([]);
+  const [runAcked, setRunAcked] = useState(false);
 
-  // ── Sidebar variant — rooms list only ──────────────────────────────────
+  const canOpenRun =
+    !!c.selectedRoom &&
+    !!c.zoneLetter &&
+    c.aisle != null &&
+    !c.missingLetter;
+
+  useEffect(() => {
+    setRunAcked(false);
+  }, [c.selectedRoom, c.zoneLetter, c.aisle]);
+
+  const freeze: LabelPrintRunFreeze | null = useMemo(() => {
+    if (!c.selectedRoom || !c.zoneLetter || c.aisle == null) return null;
+    return {
+      roomName: c.selectedRoom,
+      zoneLetter: c.zoneLetter,
+      aisle: c.aisle,
+      bay: c.bay,
+      level: c.level,
+      rack: true,
+    };
+  }, [c.selectedRoom, c.zoneLetter, c.aisle, c.bay, c.level]);
+
+  const handleSelectionChange = useCallback((rows: ExpandedPrintRunRow[]) => {
+    setRunSelected(rows);
+  }, []);
+
+  const handleAckChange = useCallback((acked: boolean) => {
+    setRunAcked(acked);
+  }, []);
+
+  const handlePrintRun = useCallback(async () => {
+    if (!runAcked || runSelected.length === 0) return;
+    const racks: RackSegments[] = runSelected.map((r) => ({
+      zone: r.segments.zone,
+      aisle: r.segments.aisle,
+      bay: r.segments.bay,
+      level: r.segments.level,
+    }));
+    await c.printRun(racks);
+  }, [c, runAcked, runSelected]);
+
+  const runCount = runSelected.length;
+  const bulkActive = printMode === 'bulk';
+  const printFromRun = bulkActive && canOpenRun && runCount > 0 && runAcked;
+  const seedVary = c.bay != null ? ('level' as const) : ('bay' as const);
+
   if (variant === 'sidebar') {
     return (
-      <>
-        <LabelRoomSidebar
-          rooms={c.allRoomNames}
-          zoneMap={c.zoneMap}
-          loading={c.loading}
-          selectedRoom={c.selectedRoom}
-          zoneLetter={c.zoneLetter}
-          onSelect={c.pickRoom}
-          emptySubtitle="Then drill into aisle, bay, and level on the right."
-        />
-        <ConfigSheet open={c.configOpen} onClose={() => c.setConfigOpen(false)} config={c.config} onSave={c.handleConfigSave} />
-      </>
+      <LabelRoomSidebar
+        rooms={c.allRoomNames}
+        zoneMap={c.zoneMap}
+        loading={c.loading}
+        selectedRoom={c.selectedRoom}
+        zoneLetter={c.zoneLetter}
+        onSelect={c.pickRoom}
+        emptySubtitle="Then drill into aisle, bay, and level on the right."
+      />
     );
   }
 
-  // ── Main-pane variant ───────────────────────────────────────────────────
   return (
-    // flex-1 + min-h-0 lets this fill the RackLabelWorkspace height; mt-auto on
-    // the StickyActionBar pins it to the bottom of the page.
     <div className={`flex min-h-0 flex-1 flex-col ${LABEL_BUILDER.stackGap}`}>
       <div className={`lg:hidden ${LABEL_BUILDER.contentShell}`}>
-        <RackBuilderMobile c={c} variant={variant} />
+        <RackBuilderMobile
+          c={c}
+          variant={variant}
+          printMode={printMode}
+          onPrintModeChange={setPrintMode}
+        />
       </div>
 
-      {(c.selectedRoom || c.aisle != null) && (
-        <WorkspaceCard label="Live preview" className={`lg:hidden ${LABEL_BUILDER.contentShell}`}>
-          <LivePreviewBody
+      {!bulkActive ? (
+        <div className={`lg:hidden ${LABEL_BUILDER.contentShell}`}>
+          <GiantRackPreviewPanel
             zoneLetter={c.zoneLetter}
-            roomName={c.selectedRoom}
             aisle={c.aisle}
             bay={c.bay}
             level={c.level}
             gln={c.gln}
+            roomName={c.selectedRoom}
           />
-        </WorkspaceCard>
-      )}
+        </div>
+      ) : null}
 
       <div className="hidden lg:block">
-        <RackBuilderDesktop c={c} />
+        <RackBuilderDesktop
+          c={c}
+          showGiantPreview={!bulkActive}
+          printMode={printMode}
+          onPrintModeChange={setPrintMode}
+        />
       </div>
 
+      {bulkActive && canOpenRun && freeze ? (
+        <div className={LABEL_BUILDER.contentShell}>
+          <LabelPrintRunPanel
+            freeze={freeze}
+            seedVary={seedVary}
+            seedThrough={c.config.maxLevels}
+            seedMaxBays={c.config.maxBays}
+            seedOddLevels={c.config.maxLevels}
+            seedEvenLevels={c.config.maxLevels}
+            gln={c.gln}
+            printing={c.isPrinting}
+            onSelectionChange={handleSelectionChange}
+            onAckChange={handleAckChange}
+          />
+        </div>
+      ) : null}
+
       <StickyActionBar
-        // Bleed bar chrome to the scroll-container edges; inner CTAs stay on
-        // LABEL_BUILDER.contentMax so they align with the builder column.
-        className="mt-auto -mx-4 -mb-5 sm:-mx-6"
+        className={`mt-auto ${LABEL_BUILDER.actionBleed}`}
         maxWidth={LABEL_BUILDER.contentMax}
         density="compact"
+        actionRowClassName="flex-nowrap"
         primary={{
           label: c.isPrinting
-            ? 'Printing…'
+            ? c.printProgress
+              ? `Printing ${c.printProgress.done}/${c.printProgress.total}`
+              : 'Printing…'
             : c.missingLetter
               ? 'Assign a zone letter first'
-              : !c.allSelected
-                ? 'Complete the steps'
-                : 'Print rack label',
-          onClick: c.handlePrintOne,
-          disabled: !c.allSelected || c.isPrinting || c.missingLetter,
+              : bulkActive && canOpenRun && runCount > 0
+                ? `Print ${runCount} label${runCount === 1 ? '' : 's'} · Aisle ${pad2(c.aisle ?? 0)}`
+                : bulkActive && !canOpenRun
+                  ? 'Pick an aisle for bulk'
+                  : !c.allSelected
+                    ? 'Complete the steps'
+                    : 'Print bay label',
+          onClick: printFromRun ? () => void handlePrintRun() : c.handlePrintOne,
+          disabled: printFromRun
+            ? c.isPrinting || runCount === 0 || !runAcked
+            : bulkActive
+              ? true
+              : !c.allSelected || c.isPrinting || c.missingLetter,
           isLoading: c.isPrinting,
           tone: 'blue',
           icon: <Printer className="h-4 w-4" />,
         }}
-        secondary={
-          c.selectedRoom && c.aisle != null && c.bay != null
-            ? {
-                label: `Print bay (×${c.config.maxLevels} levels)`,
-                onClick: c.handlePrintBay,
-                icon: <Printer className="h-4 w-4" />,
-                disabled: c.isPrinting || c.missingLetter,
-              }
-            : undefined
+        hints={
+          printFromRun || (!bulkActive && c.allSelected)
+            ? [{ key: '⌘P', label: 'Print' }]
+            : []
         }
-        hints={c.allSelected ? [{ key: '⌘P', label: 'Print' }] : []}
       />
-
-      <div className="label-print-zone">
-        {c.bulkLabels?.map((seg, i) => (
-          <RackPrintLabel key={`${rackCode(seg)}-${i}`} segments={seg} roomName={c.selectedRoom ?? ''} gln={c.gln} />
-        ))}
-      </div>
     </div>
   );
 }

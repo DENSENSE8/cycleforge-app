@@ -1,23 +1,22 @@
 'use client';
 
 /**
- * GlobalHeader sidebar toggle — click opens/closes the MasterNav spine.
- *
- * Click-only. When collapsed, Home · Media Library are ordinary map rows
- * once the spine opens — no hover peek from this control.
- * Hover/focus still warms the spine chunk so the first open lands warm.
+ * GlobalHeader sidebar toggle — the ONE door onto the MasterNav spine while
+ * the spine is closed. Open, {@link SpineNavChrome} paints the same glyph at
+ * the same screen corner.
  */
 
 import { useCallback } from 'react';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
 import { warmSpineChunk } from '@/components/sidebar/preload-spine';
-import { cn } from '@/utils/_cn';
 import {
   HEADER_ICON_BTN_CLASS,
+  HEADER_ICON_BTN_OPEN_CLASS,
   HEADER_ICON_WRAP,
   TOP_CHROME_ICON_FACE,
 } from './header-shell';
+import { cn } from '@/utils/_cn';
 
 const SidebarGlyph = (
   <svg
@@ -36,31 +35,42 @@ const SidebarGlyph = (
 );
 
 export function SidebarCollapseControl({
-  sidebarCollapsed,
-  onToggleSidebar,
+  navOpen,
+  onToggleNav,
+  peeking = false,
+  peekTriggerProps,
 }: {
-  sidebarCollapsed: boolean;
-  onToggleSidebar: () => void;
+  navOpen: boolean;
+  onToggleNav: () => void;
+  peeking?: boolean;
+  peekTriggerProps?: { onMouseEnter?: () => void; onMouseLeave?: () => void };
 }) {
-  const onPointerEnter = useCallback(() => warmSpineChunk(), []);
+  const onPointerEnter = useCallback(() => {
+    warmSpineChunk();
+  }, []);
+  const onMouseLeave = useCallback(() => {
+    peekTriggerProps?.onMouseLeave?.();
+  }, [peekTriggerProps]);
   const onFocus = useCallback(() => warmSpineChunk(), []);
 
-  // Noun = navigation (MasterNav spine) — not the context-rail "sidebar" that
-  // owns ⌘B. Spine stays click-only; never advertise a layout chord here.
-  const label = sidebarCollapsed ? 'Show navigation' : 'Hide navigation';
+  const label = navOpen ? 'Hide navigation' : 'Show navigation';
 
   return (
-    <div className={cn(HEADER_ICON_WRAP, '-ml-px')} data-testid="sidebar-collapse-control">
-      <HoverTooltip label={label} asChild>
+    <div
+      className={HEADER_ICON_WRAP}
+      data-testid="sidebar-collapse-control"
+      onMouseLeave={onMouseLeave}
+    >
+      <HoverTooltip label={label} asChild disabled={peeking}>
         <IconButton
           size="md"
-          onClick={onToggleSidebar}
+          onClick={onToggleNav}
           onPointerEnter={onPointerEnter}
           onFocus={onFocus}
           ariaLabel={label}
-          aria-pressed={!sidebarCollapsed}
-          aria-expanded={!sidebarCollapsed}
-          className={HEADER_ICON_BTN_CLASS}
+          aria-pressed={navOpen}
+          aria-expanded={navOpen || peeking}
+          className={cn(HEADER_ICON_BTN_CLASS, (navOpen || peeking) && HEADER_ICON_BTN_OPEN_CLASS)}
           icon={SidebarGlyph}
         />
       </HoverTooltip>

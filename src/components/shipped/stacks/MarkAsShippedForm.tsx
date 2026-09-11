@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { getStaffName } from '@/utils/staff';
 import { Button } from '@/design-system/primitives';
 import { FILTER_DROPDOWN_LABEL_CLASS } from '@/design-system/components/FilterDropdownSelect';
 import { DateTimePickerField } from '@/design-system/components/DateTimePickerField';
-import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
+import { StaffAvatar } from '@/components/identity';
+import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
 import { type StaffRecipient } from '@/components/quick-access/StaffRecipientList';
 import { safeRandomUUID } from '@/lib/safe-uuid';
 
@@ -25,6 +26,8 @@ export function MarkAsShippedForm({
   const [packedAt, setPackedAt] = useState<Date | undefined>(() => new Date());
   const [isMarkingShipped, setIsMarkingShipped] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [packerOpen, setPackerOpen] = useState(false);
+  const packerRef = useRef<HTMLButtonElement>(null);
 
   const handleConfirm = async () => {
     setError(null);
@@ -62,19 +65,45 @@ export function MarkAsShippedForm({
     }
   };
 
+  const packerName =
+    selectedPackerId != null
+      ? packerOptions.find((p) => p.id === selectedPackerId)?.name ?? getStaffName(selectedPackerId)
+      : '';
+
   return (
     <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 space-y-2.5">
       <div>
         <span className={FILTER_DROPDOWN_LABEL_CLASS}>Packer</span>
-        <SearchableSelectField
-          value={selectedPackerId}
-          onChange={(v) => setSelectedPackerId(v == null ? null : Number(v))}
-          options={packerOptions.map((p) => ({ value: p.id, label: p.name, meta: p.role }))}
-          placeholder={packerOptions.length ? 'Select a packer…' : 'No staff available'}
-          searchPlaceholder="Search staff…"
-          emptyMessage="No staff match"
-          tone="emerald"
+        <Button
+          ref={packerRef}
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="w-full justify-start"
+          aria-haspopup="listbox"
+          aria-expanded={packerOpen}
           ariaLabel="Select packer"
+          onClick={() => setPackerOpen(true)}
+        >
+          {selectedPackerId != null ? (
+            <span className="flex min-w-0 items-center gap-2">
+              <StaffAvatar staffId={selectedPackerId} name={packerName} size="sm" colorRing alt="" />
+              <span className="truncate">{packerName}</span>
+            </span>
+          ) : packerOptions.length ? (
+            'Select a packer…'
+          ) : (
+            'No staff available'
+          )}
+        </Button>
+        <StageStaffAssignPopover
+          open={packerOpen}
+          onClose={() => setPackerOpen(false)}
+          anchorRef={packerRef}
+          label="Select packer"
+          role="packer"
+          selectedStaffId={selectedPackerId}
+          onCommit={(staffId) => setSelectedPackerId(staffId)}
         />
       </div>
 

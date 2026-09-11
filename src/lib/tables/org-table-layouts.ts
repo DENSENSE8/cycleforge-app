@@ -24,6 +24,10 @@ import {
 } from '@/lib/tables/field-catalog/catalog-link';
 import { BINS_FIELD_CATALOG, BINS_TABLE_LAYOUT_ID } from '@/lib/tables/field-catalog/bins';
 import {
+  INVENTORY_EVENTS_FIELD_CATALOG,
+  INVENTORY_EVENTS_TABLE_LAYOUT_ID,
+} from '@/lib/tables/field-catalog/inventory-events';
+import {
   CATALOG_FIELD_CATALOG,
   CATALOG_TABLE_LAYOUT_ID,
 } from '@/lib/tables/field-catalog/catalog';
@@ -58,6 +62,18 @@ import {
   WARRANTY_FIELD_CATALOG,
   WARRANTY_TABLE_LAYOUT_ID,
 } from '@/lib/tables/field-catalog/warranty';
+import {
+  KIOSKDEVICES_FIELD_CATALOG,
+  KIOSKDEVICES_TABLE_LAYOUT_ID,
+} from '@/lib/tables/field-catalog/kiosk-devices';
+import {
+  KIOSKSLOTEVENTS_FIELD_CATALOG,
+  KIOSKSLOTEVENTS_TABLE_LAYOUT_ID,
+} from '@/lib/tables/field-catalog/kiosk-slot-events';
+import {
+  WALKINSALES_FIELD_CATALOG,
+  WALKINSALES_TABLE_LAYOUT_ID,
+} from '@/lib/tables/field-catalog/walk-in-sales';
 import type { FieldCatalog } from '@/lib/tables/field-catalog/types';
 import { readStoredSlotLayout, type SlotLayout } from '@/lib/tables/slot-layout-core';
 
@@ -115,6 +131,10 @@ export const SLOT_LAYOUT_TABLES: Readonly<
   // never another units-only header.
   [UNITS_TABLE_LAYOUT_ID]: { catalog: UNITS_FIELD_CATALOG, morphs: ['sheet'] },
   [BINS_TABLE_LAYOUT_ID]: { catalog: BINS_FIELD_CATALOG, morphs: ['sheet'] },
+  [INVENTORY_EVENTS_TABLE_LAYOUT_ID]: {
+    catalog: INVENTORY_EVENTS_FIELD_CATALOG,
+    morphs: ['compound'],
+  },
   [WARRANTY_TABLE_LAYOUT_ID]: { catalog: WARRANTY_FIELD_CATALOG, morphs: ['sheet'] },
   [CATALOG_TABLE_LAYOUT_ID]: { catalog: CATALOG_FIELD_CATALOG, morphs: ['sheet'] },
   [TECH_ALL_TABLE_LAYOUT_ID]: { catalog: TECH_ALL_FIELD_CATALOG, morphs: ['sheet'] },
@@ -130,6 +150,22 @@ export const SLOT_LAYOUT_TABLES: Readonly<
   [ORDERS_IMPORT_TABLE_LAYOUT_ID]: {
     catalog: ORDERS_IMPORT_FIELD_CATALOG,
     morphs: ['sheet'],
+  },
+  // Settings › Kiosk devices — compound only (no sheet paint on this mount).
+  [KIOSKDEVICES_TABLE_LAYOUT_ID]: {
+    catalog: KIOSKDEVICES_FIELD_CATALOG,
+    morphs: ['compound'],
+  },
+  // Settings › Kiosk slot history — compound read map; no Revoke.
+  [KIOSKSLOTEVENTS_TABLE_LAYOUT_ID]: {
+    catalog: KIOSKSLOTEVENTS_FIELD_CATALOG,
+    morphs: ['compound'],
+  },
+  // Dashboard › Sales — KEEP catalog on the engine. The desk still paints
+  // WalkInFeedPane (no paint change this session).
+  [WALKINSALES_TABLE_LAYOUT_ID]: {
+    catalog: WALKINSALES_FIELD_CATALOG,
+    morphs: ['compound'],
   },
   // Later ports (receiving, customers, …) add one entry each, per the plan's
   // adoption checklist.

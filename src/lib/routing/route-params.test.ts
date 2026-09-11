@@ -11,6 +11,7 @@ import {
   buildRouteUrl,
   isRouteParamsClean,
   parseRouteParams,
+  paramCanonical,
   paramEnum,
   paramPositiveInt,
   paramRoundTrip,
@@ -77,6 +78,13 @@ test('paramRoundTrip accepts only what the house parser returns unchanged', () =
   const schema = paramRoundTrip((raw) => (raw === 'newest' ? raw : null));
   assert.equal(schema.safeParse('newest').success, true);
   assert.equal(schema.safeParse('oldest').success, false);
+});
+
+test('paramCanonical rewrites aliases and rejects unknown tokens', () => {
+  const schema = paramCanonical((raw) => (raw === 'racks' ? 'bays' : raw === 'bays' ? 'bays' : null));
+  assert.deepEqual(schema.safeParse('racks'), { success: true, data: 'bays' });
+  assert.deepEqual(schema.safeParse('bays'), { success: true, data: 'bays' });
+  assert.equal(schema.safeParse('shelves').success, false);
 });
 
 test('paramText trims and rejects an empty or oversized value', () => {
@@ -215,6 +223,31 @@ test('default-omit mode wires survive hygiene (review/pack/locations/sourcing/ho
       `${path}?${key}=${wire} must survive hygiene`,
     );
   }
+});
+
+test('Locations ?tab=racks hygiene rewrites to bays', () => {
+  for (const path of ['/inventory/locations', '/warehouse']) {
+    const spec = routeParamsFor(path);
+    assert.ok(spec, `${path} must resolve a route spec`);
+    assert.equal(
+      parseRouteParams(spec!, new URLSearchParams('tab=racks')).get('tab'),
+      'bays',
+      `${path}?tab=racks must canonicalize to bays`,
+    );
+  }
+});
+
+test('special-bin print page keeps barcode + count', () => {
+  const spec = routeParamsFor('/inventory/locations/print/special-bin');
+  assert.ok(spec);
+  assert.equal(spec.route, '/inventory/locations/print/special-bin');
+  const kept = parseRouteParams(
+    spec,
+    new URLSearchParams('barcode=RETURNS-TEST&count=12&tab=bins'),
+  );
+  assert.equal(kept.get('barcode'), 'RETURNS-TEST');
+  assert.equal(kept.get('count'), '12');
+  assert.equal(kept.get('tab'), null);
 });
 
 test('closed outbound vocabularies survive hygiene (fbaMode / rtab / etype)', () => {

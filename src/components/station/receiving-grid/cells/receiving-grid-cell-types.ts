@@ -65,6 +65,8 @@ export type ReceivingGridCellCtx = {
   stageTip: string;
   dateCell: ReceivingActivityDateCell;
   poValue: string;
+  /** Fold parent already spoke the PO — dash it on this leaf. */
+  quietIdentity?: boolean;
   /** Catalog-resolved source-platform label for the order-id hover value. */
   platformLabel: string;
   /**

@@ -141,6 +141,17 @@ export function queueRowTestedAtRaw(record: QueueRowRecord): string | null {
 }
 
 /**
+ * Pack-lane stamp — same ladder the Pack cell paints (`packed_at`, then
+ * `pack_activity_at`). Column sort reads this instant, not the packer name.
+ */
+export function queueRowPackedAtRaw(record: QueueRowRecord): string | null {
+  return (
+    nonSentinelTimestamp(record.packed_at) ??
+    nonSentinelTimestamp(record.pack_activity_at)
+  );
+}
+
+/**
  * TESTED-lane tester name from wire fields only — scan actor first
  * (`tested_by_name`), then assignee (`tester_name`). Staff-id fallback
  * (`getStaffName`) + `normalizePersonName` stay in the view layer (hooks).

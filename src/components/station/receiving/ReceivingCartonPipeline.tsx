@@ -5,6 +5,7 @@ import type { ReceivingDetailsLog } from '@/components/station/receiving-details
 import type { CartonReadiness } from '@/lib/receiving/carton-readiness';
 import {
   MilestonePipeline,
+  StatusStrip,
   type Milestone,
   type MilestoneScan,
 } from '@/design-system/components/milestone-pipeline';
@@ -38,9 +39,11 @@ function resolveStaffLabel(
 export function ReceivingCartonPipeline({
   log,
   readiness,
+  face = 'station',
 }: {
   log: ReceivingDetailsLog;
   readiness: CartonReadiness;
+  face?: 'station' | 'strip';
 }) {
   const { getStaffName } = useStaffNameMap();
 
@@ -101,6 +104,10 @@ export function ReceivingCartonPipeline({
   // A received carton has, by definition, been unboxed — keep the run honest
   // even when the distinct unbox step was folded into the receive.
   void readiness;
+
+  if (face === 'strip') {
+    return <StatusStrip milestones={milestones} ariaLabel="Carton progress" className="w-full" />;
+  }
 
   return <MilestonePipeline milestones={milestones} ariaLabel="Carton progress" className="w-full" />;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { normalizeShippedSearchField } from '@/lib/shipped-search';
 import {
@@ -9,10 +9,12 @@ import {
 } from '@/utils/dashboard-preferences';
 import { getWeekRangeForOffset } from '@/lib/dashboard-week-range';
 import {
+  readShippedAllDates,
   readShippedCarrierFilter,
   readShippedExceptionsFilter,
   readShippedStatusFilter,
-} from '@/components/shipping/ShippedFilterToolbar';
+  shippedEffectiveDateWindow,
+} from '@/lib/shipping/shipped-filter/shipped-filter-params';
 import { deriveShippedRecord } from '@/lib/shipped-records';
 import type { PackerRecord } from '@/hooks/usePackerLogs';
 import type { OutboundState } from '@/lib/outbound-state';
@@ -104,10 +106,21 @@ export function useShippedTableFilters({
     /^\d{4}-\d{2}-\d{2}$/.test(dateFrom) && /^\d{4}-\d{2}-\d{2}$/.test(dateTo);
 
   const anyCarrierFilter = exceptionsOnly || !!carrierFilter || !!statusFilter;
-  const effectiveWeekStart = hasDateRange ? dateFrom : anyCarrierFilter ? '' : weekRange.startStr;
-  const effectiveWeekEnd = hasDateRange ? dateTo : anyCarrierFilter ? '' : weekRange.endStr;
+  const allDates = readShippedAllDates(searchParams);
+  const dateWindow = shippedEffectiveDateWindow({
+    allDates,
+    dateFrom,
+    dateTo,
+    anyCarrierFilter,
+    weekStart: weekRange.startStr,
+    weekEnd: weekRange.endStr,
+  });
+  const effectiveWeekStart = dateWindow.start;
+  const effectiveWeekEnd = dateWindow.end;
 
-  const search = searchParams.get('search') || '';
+  // Free-text search is local to the mounted table. Keep URL state for durable
+  // facets/date/sort, but never navigate once per typed character.
+  const [search, setSearchState] = useState('');
   const normalizedSearch = search.trim().toLowerCase();
 
   // Dashboard Shipped is list-only flat spreadsheet. Board layout URL is ignored.
@@ -153,20 +166,11 @@ export function useShippedTableFilters({
   );
 
   const clearSearch = useCallback(() => {
-    replaceParams((params) => { params.delete('search'); });
-  }, [replaceParams]);
+    setSearchState('');
+  }, []);
 
-  /** The find field writes here — same param the rest of the desk reads. */
-  const setSearch = useCallback(
-    (next: string) => {
-      replaceParams((params) => {
-        const trimmed = next.trim();
-        if (trimmed) params.set('search', trimmed);
-        else params.delete('search');
-      });
-    },
-    [replaceParams],
-  );
+  /** The find field writes local state; it must not navigate the desk. */
+  const setSearch = useCallback((next: string) => setSearchState(next), []);
 
   const applyShippedFilter = useCallback(
     (filter: string) => {
@@ -194,6 +198,7 @@ export function useShippedTableFilters({
       replaceParams((params) => {
         params.delete('dateFrom');
         params.delete('dateTo');
+        params.delete('allDates');
         if (offset <= 0) params.delete('shippedWeekOffset');
         else params.set('shippedWeekOffset', String(offset));
       });
@@ -205,6 +210,7 @@ export function useShippedTableFilters({
     (from: string, to: string) => {
       replaceParams((params) => {
         params.delete('shippedWeekOffset');
+        params.delete('allDates');
         params.set('dateFrom', from);
         params.set('dateTo', to);
       });
@@ -217,6 +223,7 @@ export function useShippedTableFilters({
       params.delete('dateFrom');
       params.delete('dateTo');
       params.delete('shippedWeekOffset');
+      params.set('allDates', '1');
     });
   }, [replaceParams]);
 
@@ -236,6 +243,7 @@ export function useShippedTableFilters({
     dateFrom,
     dateTo,
     hasDateRange,
+    allDates,
     anyCarrierFilter,
     effectiveWeekStart,
     effectiveWeekEnd,

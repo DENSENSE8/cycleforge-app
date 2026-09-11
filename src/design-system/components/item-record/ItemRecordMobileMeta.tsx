@@ -5,18 +5,18 @@ import { cn } from '@/utils/_cn';
 import { ITEM_RECORD_MOBILE_META } from '@/design-system/tokens/item-record-mobile';
 
 /**
- * Phone item-record facts under the title — qty · condition · notes as one
- * cluster. Mount via `ds_tokens({ axis: 'item-record' })`. Do not split these
- * into independent chips, and do not add SKU / serial / price here (that is
- * {@link ItemRecordMetaGrid} on the desk).
+ * Phone item-record facts under the title — qty · price · condition · notes
+ * as one typographic row, same order as the desk compound Item cell.
  */
 export function ItemRecordMobileMeta({
   qty,
+  price,
   condition,
   notes,
   className,
 }: {
   qty: ReactNode;
+  price?: ReactNode;
   condition?: ReactNode;
   notes?: ReactNode;
   className?: string;
@@ -27,10 +27,30 @@ export function ItemRecordMobileMeta({
       className={cn(ITEM_RECORD_MOBILE_META.cluster, className)}
     >
       <span className={ITEM_RECORD_MOBILE_META.qty}>{qty}</span>
-      {condition ? (
-        <span className={ITEM_RECORD_MOBILE_META.condition}>{condition}</span>
+      {price ? (
+        <>
+          <span className={ITEM_RECORD_MOBILE_META.sep} aria-hidden>
+            ·
+          </span>
+          <span className={ITEM_RECORD_MOBILE_META.price}>{price}</span>
+        </>
       ) : null}
-      {notes}
+      {condition ? (
+        <>
+          <span className={ITEM_RECORD_MOBILE_META.sep} aria-hidden>
+            ·
+          </span>
+          <span className={ITEM_RECORD_MOBILE_META.condition}>{condition}</span>
+        </>
+      ) : null}
+      {notes ? (
+        <>
+          <span className={ITEM_RECORD_MOBILE_META.sep} aria-hidden>
+            ·
+          </span>
+          {notes}
+        </>
+      ) : null}
     </span>
   );
 }

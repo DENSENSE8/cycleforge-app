@@ -33,15 +33,13 @@ _Prioritized. Agent implements **one** per session._
 ## Machine gates
 
 <!-- eval-ledger:auto:machine-gates -->
-| Date | Gate | Result | Snapshot |
-|------|------|--------|----------|
-| 2026-09-01 | verify:fast | pass | `docs/eval/stations/shipping/snapshots/2026-09-01-verify-fast.log` |
+_Skipped verify (--skip-verify). Run `pnpm run eval:station shipping` for full gate._
 <!-- /eval-ledger:auto:machine-gates -->
 
 ## Design critique (latest)
 
 <!-- eval-ledger:auto:design-critique -->
-- `src/components/tech/TechRightPane.tsx` — snapshot `docs/eval/stations/shipping/snapshots/2026-09-01-critique-TechRightPane.txt`
+- `src/components/tech/TechRightPane.tsx` — snapshot `docs/eval/stations/shipping/snapshots/2026-09-11-critique-TechRightPane.txt`
 ```
 {
   "file": "src/components/tech/TechRightPane.tsx",
@@ -55,8 +53,8 @@ _Prioritized. Agent implements **one** per session._
 ## Graph impact (shared symbols)
 
 <!-- eval-ledger:auto:graph-impact -->
-- **TechRightPane** — 2 files, 2 symbols (`docs/eval/stations/shipping/snapshots/2026-09-01-impact-TechRightPane.json`)
-- **useOverlaySwapHardCut** — 10 files, 12 symbols (`docs/eval/stations/shipping/snapshots/2026-09-01-impact-useOverlaySwapHardCut.json`)
+- **TechRightPane** — 2 files, 2 symbols (`docs/eval/stations/shipping/snapshots/2026-09-11-impact-TechRightPane.json`)
+- **useOverlaySwapHardCut** — 10 files, 12 symbols (`docs/eval/stations/shipping/snapshots/2026-09-11-impact-useOverlaySwapHardCut.json`)
 <!-- /eval-ledger:auto:graph-impact -->
 
 ## Regression tripwires
@@ -68,5 +66,5 @@ _Prioritized. Agent implements **one** per session._
 ---
 
 <!-- eval-ledger:auto:last-run -->
-_Updated 2026-09-01T19:22:22.243Z · station `shipping`_
+_Updated 2026-09-11T22:25:20.255Z · station `shipping`_
 <!-- /eval-ledger:auto:last-run -->

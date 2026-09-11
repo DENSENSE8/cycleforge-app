@@ -23,8 +23,8 @@ export interface UseBarcodeScanner {
   resumeScanning: () => void;
   /** Signal that the caller accepted the last scan — cooldown prevents re-fire. */
   acceptScan: () => void;
-  /** Clear lastScannedValue back to null. */
-  resetLastScan: () => void;
+  /** Clear lastScannedValue back to null. `keepDedup` leaves the decode window armed. */
+  resetLastScan: (opts?: { keepDedup?: boolean }) => void;
   /** True while camera is actively scanning (not paused or stopped). */
   isScanning: boolean;
   /** Error message if camera fails to start. */
@@ -258,9 +258,11 @@ export function useBarcodeScanner(options: UseBarcodeOptions = {}): UseBarcodeSc
     cooldownUntilRef.current = Date.now() + acceptCooldownMs;
   }, [acceptCooldownMs]);
 
-  const resetLastScan = useCallback(() => {
+  const resetLastScan = useCallback((opts?: { keepDedup?: boolean }) => {
     setLastScannedValue(null);
-    lastDecodedRef.current = null;
+    if (!opts?.keepDedup) {
+      lastDecodedRef.current = null;
+    }
   }, []);
 
   // ── Torch ──

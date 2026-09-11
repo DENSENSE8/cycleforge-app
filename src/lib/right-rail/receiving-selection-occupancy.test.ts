@@ -12,33 +12,24 @@ test('empty selection mounts nothing on either surface', () => {
   assert.deepEqual(resolveReceivingRailOccupancy([], 'lines'), { kind: 'none' });
 });
 
-test('Incoming: one inspects, two-plus batches', () => {
+test('Incoming: checkbox selection never claims the right rail', () => {
   const one = resolveReceivingRailOccupancy([10], 'incoming');
-  assert.equal(one.kind, 'inspect');
-  if (one.kind === 'inspect') {
-    assert.equal(one.occupantId, RECEIVING_RAIL_OCCUPANT_ID.inspect);
-    assert.deepEqual([...one.lineIds], [10]);
-  }
+  assert.equal(one.kind, 'none');
   assert.equal(isReceivingRailBatchActive(one), false);
 
   const many = resolveReceivingRailOccupancy([10, 11], 'incoming');
-  assert.equal(many.kind, 'attention');
-  if (many.kind === 'attention') {
-    assert.equal(many.occupantId, RECEIVING_RAIL_OCCUPANT_ID.attention);
-  }
-  assert.equal(isReceivingRailBatchActive(many), true);
+  assert.equal(many.kind, 'none');
+  assert.equal(isReceivingRailBatchActive(many), false);
 });
 
-test('Unbox/History lines: any non-empty set batches (no compare)', () => {
+test('Unbox/History lines: checkbox selection never claims the batch rail', () => {
   const one = resolveReceivingRailOccupancy([42], 'lines');
-  assert.equal(one.kind, 'attention');
-  assert.equal(isReceivingRailBatchActive(one), true);
+  assert.equal(one.kind, 'none');
+  assert.equal(isReceivingRailBatchActive(one), false);
 
   const many = resolveReceivingRailOccupancy([42, 43, 44], 'lines');
-  assert.equal(many.kind, 'attention');
-  if (many.kind === 'attention') {
-    assert.deepEqual([...many.lineIds], [42, 43, 44]);
-  }
+  assert.equal(many.kind, 'none');
+  assert.equal(isReceivingRailBatchActive(many), false);
 });
 
 test('occupant ids are mode-stable — never fold a record id in', () => {

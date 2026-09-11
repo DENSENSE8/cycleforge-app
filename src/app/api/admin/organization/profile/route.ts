@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth } from '@/lib/auth/withAuth';
 import { getOrganization, updateOrgSettings } from '@/lib/tenancy/organizations';
-import { MAX_KIOSK_IDLE_PROMPT_S, MIN_KIOSK_IDLE_PROMPT_S } from '@/lib/kiosk/idle';
 import type { OrgSettings } from '@/lib/tenancy/settings';
 import type { OrgId } from '@/lib/tenancy/constants';
 
@@ -108,25 +107,6 @@ export const PATCH = withAuth(async (req: NextRequest, ctx) => {
       }
     }
     patch.brand = nextBrand;
-  }
-  // Kiosk BEHAVIOUR (idle timing) — separate from brand identity above.
-  if (b.kiosk != null && typeof b.kiosk === 'object' && !Array.isArray(b.kiosk)) {
-    const kiosk = b.kiosk as Record<string, unknown>;
-    const nextKiosk: NonNullable<OrgSettings['kiosk']> = {};
-    // null / '' clears back to the platform default; a value outside the band
-    // is refused rather than clamped, so the admin sees their number rejected
-    // instead of silently becoming a different one.
-    if (kiosk.idleTimeoutSeconds === null || kiosk.idleTimeoutSeconds === '') {
-      delete nextKiosk.idleTimeoutSeconds;
-    } else if (
-      typeof kiosk.idleTimeoutSeconds === 'number' &&
-      Number.isInteger(kiosk.idleTimeoutSeconds) &&
-      kiosk.idleTimeoutSeconds >= MIN_KIOSK_IDLE_PROMPT_S &&
-      kiosk.idleTimeoutSeconds <= MAX_KIOSK_IDLE_PROMPT_S
-    ) {
-      nextKiosk.idleTimeoutSeconds = kiosk.idleTimeoutSeconds;
-    }
-    patch.kiosk = nextKiosk;
   }
   if (b.letterhead != null && typeof b.letterhead === 'object' && !Array.isArray(b.letterhead)) {
     const lh = b.letterhead as Record<string, unknown>;

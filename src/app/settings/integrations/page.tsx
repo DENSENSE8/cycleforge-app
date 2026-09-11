@@ -15,7 +15,9 @@
 import { requirePermission } from '@/lib/auth/page-guard';
 import pool from '@/lib/db';
 import Link from 'next/link';
-import { PageHeader } from '@/components/ui/pane-header';
+import { SettingsSectionHeader } from '@/components/settings/SettingsSectionHeader';
+import { SETTINGS_FLOOR_CLASS } from '@/components/settings/settings-sections';
+import { cn } from '@/utils/_cn';
 import { getIntegrationCredentials, type IntegrationProvider } from '@/lib/integrations/credentials';
 import { isNangoConfigured } from '@/lib/integrations/nango';
 import { getConnector } from '@/lib/integrations/connectors/registry';
@@ -166,10 +168,10 @@ export default async function IntegrationsPage({
   const connectedCount = PROVIDER_CATALOG.filter((p) => buildState(p).status === 'connected').length;
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-surface-canvas antialiased">
-      <PageHeader eyebrow="Settings" value="Integrations" maxWidth="5xl" />
+    <div className={cn('flex h-full min-h-0 flex-col antialiased', SETTINGS_FLOOR_CLASS)}>
       <main className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-5xl space-y-6 px-6 py-6">
+        <SettingsSectionHeader title="Apps & integrations" />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-role-data text-text-soft">
             Connect this workspace to the marketplaces and services it runs on. Credentials are encrypted at rest in the workspace vault.

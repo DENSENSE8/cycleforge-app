@@ -3,10 +3,15 @@
 /**
  * /kiosk/v2 shell — cart is the session root.
  *
- * Left: command spine (Repair · Retail · Buyback · Pickup) — swaps center only.
- * Center: contextual work (catalog / repair details / buyback / pickup).
- * Right: persistent cart ledger.
- * Customer face overlays the same session (orientation 180 or Customer toggle).
+ * Trail: command dropdown (Repair · Sales · Buyback · Pickup · Exit), All
+ * products or pane title, cart · paperwork · Work/Show/Verify. No side rails.
+ * Center: catalog / repair details / buyback / pickup, or cart/paperwork swap.
+ *
+ * Callers: `/kiosk`, `/kiosk/v2`. Affected API: none.
+ * User: "Converting the left sidebar into just a top left drop down so repair
+ * or sales or more and then an exit button so you can exit out of the kiosk
+ * mode. The right sidebar should also be removed as well and everything placed
+ * into the top header, the cart, the paperwork, the work, show, verify, etc."
  */
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
@@ -31,23 +36,21 @@ import { classifyKioskScan } from '@/lib/kiosk/scan-classify';
 import { useWedgeScanner } from '@/hooks/useWedgeScanner';
 import { toast } from '@/lib/toast';
 import { cn } from '@/utils/_cn';
-import {
-  KIOSK_PANE_HEADER_BAND,
-  KIOSK_PANE_HEADER_TITLE,
-} from './kiosk-chrome';
-import { KioskModeSpine } from './KioskModeSpine';
+import { KIOSK_PANE_HEADER_TITLE } from './kiosk-chrome';
 import { KioskRepairPane } from './v2/KioskRepairPane';
 import { KioskPickupPane } from './v2/KioskPickupPane';
 import { KioskBuybackPane } from './v2/KioskBuybackPane';
 import { KioskCartLedger, type KioskCartFocus } from './v2/KioskCartLedger';
 import { KioskPaperworkPanel } from './v2/KioskPaperworkPanel';
-import { KioskTriagePanel } from './v2/KioskTriagePanel';
-import { countKioskBlockers, type KioskTriageItem } from '@/lib/kiosk/visit-triage';
 import {
-  KioskUtilitySpine,
+  KioskUtilityCluster,
+  KioskTopChrome,
+  KioskCommandMenu,
   type KioskUtilitySlotId,
-} from './KioskUtilitySpine';
+} from './KioskTopChrome';
 import { KioskCustomerFace } from './v2/KioskCustomerFace';
+import { KioskShowFace } from './v2/KioskShowFace';
+import { catalogRefFromPick } from '@/lib/kiosk/consult-proposal';
 
 /** Catalog API prefix per command — repair = `-RS`; retail = non-`-RS`. */
 function catalogBasePath(command: KioskCommandId): string {
@@ -76,13 +79,8 @@ export function KioskShell() {
   const [selectedProduct, setSelectedProduct] = useState<ProductSelection | null>(null);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [servicePrice, setServicePrice] = useState('');
-  const [spineExpanded, setSpineExpanded] = useState(false);
-  // Right utility spine: the glyph rail is always visible and no panel is open
-  // at rest; the first line added opens the cart so an operator never adds into
-  // an unseen cart.
   const [utilitySlot, setUtilitySlot] = useState<KioskUtilitySlotId | null>(null);
-  const [cartFocus, setCartFocus] = useState<KioskCartFocus | null>(null);
-  const focusNonce = useRef(0);
+  const [cartFocus] = useState<KioskCartFocus | null>(null);
   const hadLinesRef = useRef(false);
   const [catalogSearch, setCatalogSearch] = useState('');
 
@@ -96,14 +94,13 @@ export function KioskShell() {
 
   const handleCommandSwitch = (mode: KioskServiceId) => {
     const command = serviceIdToCommand(mode);
-    if (command === session.activeCommand) return;
     const tile = liveModes.find((s) => s.id === mode);
     if (!tile) return;
+    // Choosing a command (even the current one) means work, not a parked panel.
+    setUtilitySlot(null);
+    if (command === session.activeCommand) return;
     // Command switch never clears the cart — only resets browse chrome.
     resetBrowseState();
-    // Choosing a command means "I want to work now": the centre goes back to
-    // the work surface rather than leaving a utility panel covering it.
-    setUtilitySlot(null);
     actions.setActiveCommand(command);
   };
 
@@ -115,9 +112,9 @@ export function KioskShell() {
     const syncOrientation = () => {
       if (session.faceManualOverride) return;
       if (orientationIsCustomerFacing()) {
-        actions.setFace('customer');
-      } else if (session.face === 'customer') {
-        actions.setFace('staff');
+        actions.setConsultStance('verify');
+      } else if (session.consultStance !== 'work') {
+        actions.setConsultStance('work');
       }
     };
     syncOrientation();
@@ -127,49 +124,13 @@ export function KioskShell() {
       window.removeEventListener('orientationchange', syncOrientation);
       window.screen?.orientation?.removeEventListener?.('change', syncOrientation);
     };
-  }, [session.faceManualOverride, session.face, actions]);
+  }, [session.faceManualOverride, session.consultStance, actions]);
 
   useEffect(() => {
     const hasLines = !cartIsEmpty(session.lines);
     if (hasLines && !hadLinesRef.current) setUtilitySlot('cart');
     hadLinesRef.current = hasLines;
   }, [session.lines]);
-
-  const blockerCount = useMemo(
-    () =>
-      countKioskBlockers({
-        lines: session.lines,
-        customerPhone: session.customerPhone,
-        customerName: session.customerName,
-        customerEmail: session.customerEmail,
-      }),
-    [
-      session.lines,
-      session.customerPhone,
-      session.customerName,
-      session.customerEmail,
-    ],
-  );
-
-  /**
-   * Triage row → the fix. A line issue opens the cart with that line's editor
-   * on the failing field; a customer/ticket issue just opens the cart, where
-   * the identity block and the lines both live.
-   */
-  const resolveTriageItem = useCallback((item: KioskTriageItem) => {
-    if (item.target === 'line' && item.lineId) {
-      focusNonce.current += 1;
-      setCartFocus({
-        lineId: item.lineId,
-        field:
-          item.field === 'phone' ? undefined : (item.field as KioskCartFocus['field']),
-        nonce: focusNonce.current,
-      });
-    } else {
-      setCartFocus(null);
-    }
-    setUtilitySlot('cart');
-  }, []);
 
   // Global HID wedge — classify → cart / command, never drop focus.
   const onWedgeScan = useCallback(
@@ -194,11 +155,12 @@ export function KioskShell() {
             toast('No retail item matched that barcode.');
             return;
           }
-          actions.addRetail({
+          const added = actions.addRetail({
             title: product.name,
             unitAmountCents: Math.round((product.price ?? 0) * 100),
             payload: { variationId: product.id, sku: product.sku },
           });
+          actions.setPresentation({ lineId: added.id, catalog: null });
           actions.setActiveCommand('retail');
           toast(`Added ${product.name}`);
         } catch {
@@ -236,7 +198,21 @@ export function KioskShell() {
 
   const onSelectProduct = useCallback((product: ProductSelection | null) => {
     setSelectedProduct(product);
-  }, []);
+    if (!product) return;
+    const title = [product.type, product.model].filter(Boolean).join(' ').trim();
+    if (!title) return;
+    const dollars = Number.parseFloat(servicePrice);
+    const cents = Number.isFinite(dollars) ? Math.round(dollars * 100) : 0;
+    actions.setPresentation({
+      lineId: null,
+      catalog: catalogRefFromPick({
+        title,
+        lineType: session.activeCommand === 'repair' ? 'REPAIR' : 'RETAIL',
+        sku: product.sourceSku,
+        unitAmountCents: cents,
+      }),
+    });
+  }, [actions, session.activeCommand, servicePrice]);
 
   const openRepairDetails = useCallback(() => {
     setCatalogPhase('checkout');
@@ -257,11 +233,12 @@ export function KioskShell() {
           (l.payload as { variationId: string | null }).variationId === item.id,
       );
       if (already) continue;
-      actions.addRetail({
+      const added = actions.addRetail({
         title: item.name,
         unitAmountCents: Math.round((item.price ?? 0) * 100),
         payload: { variationId: item.id, sku: item.sku },
       });
+      actions.setPresentation({ lineId: added.id, catalog: null });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- picker selection only
   }, [selectedItems]);
@@ -277,40 +254,74 @@ export function KioskShell() {
       </div>
     ) : null;
 
-  const catalogSearchLabel =
-    session.activeCommand === 'repair' ? 'Search repairs' : 'Search items';
+  const onStanceChange = useCallback(
+    (s: typeof session.consultStance) => actions.setConsultStance(s, { manual: true }),
+    [actions],
+  );
+
+  const commandMenu = (
+    <KioskCommandMenu activeMode={activeServiceId} onModeSwitch={handleCommandSwitch} />
+  );
+  const utilityCluster = (
+    <KioskUtilityCluster
+      activeSlot={utilitySlot}
+      onSelect={setUtilitySlot}
+      cartCount={session.lines.length}
+      consultStance={session.consultStance}
+      onConsultStance={onStanceChange}
+    />
+  );
 
   if (session.face === 'customer') {
-    return <KioskCustomerFace />;
+    return (
+      <div
+        className="flex h-full w-full flex-col overflow-hidden bg-surface-card text-text-default"
+        data-testid="kiosk-consult-stance"
+        data-kiosk-consult-stance={session.consultStance}
+      >
+        <KioskTopChrome
+          activeMode={activeServiceId}
+          onModeSwitch={handleCommandSwitch}
+          activeSlot={null}
+          onSelect={() => {}}
+          cartCount={session.lines.length}
+          consultStance={session.consultStance}
+          onConsultStance={onStanceChange}
+          showCheckoutSlots={false}
+        />
+        <div className="min-h-0 min-w-0 flex-1">
+          {session.consultStance === 'show' ? <KioskShowFace /> : <KioskCustomerFace />}
+        </div>
+      </div>
+    );
   }
 
   return (
     <div
-      className="flex h-full w-full overflow-hidden bg-surface-card text-text-default"
+      className="relative flex h-full w-full flex-col overflow-hidden bg-surface-card text-text-default"
+      data-testid="kiosk-consult-stance"
+      data-kiosk-consult-stance={session.consultStance}
+    >
+    <div
+      className="flex min-h-0 w-full flex-1 flex-col overflow-hidden"
       data-testid="kiosk-shell"
       data-cart-empty={cartIsEmpty(session.lines) ? 'true' : 'false'}
     >
-      <KioskModeSpine
-        activeMode={activeServiceId}
-        onModeSwitch={handleCommandSwitch}
-        expanded={spineExpanded}
-        onExpandedChange={setSpineExpanded}
-        searchValue={catalogSearch}
-        onSearchChange={setCatalogSearch}
-        searchLabel={catalogSearchLabel}
-      />
-
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:flex-row">
-        {/*
-          The utility panels mount HERE — in the center stage, the same slot the
-          command panes use. Never a drawer or a slide-out over the work: the
-          rail glyph swaps the center, exactly like the command spine does.
-          The work surface stays MOUNTED behind it (`hidden`, not unmounted) so
-          the catalog does not refetch and lose scroll on every peek at the cart.
-        */}
+      {utilitySlot !== null ? (
+        <KioskTopChrome
+          activeMode={activeServiceId}
+          onModeSwitch={handleCommandSwitch}
+          activeSlot={utilitySlot}
+          onSelect={setUtilitySlot}
+          cartCount={session.lines.length}
+          consultStance={session.consultStance}
+          onConsultStance={onStanceChange}
+        />
+      ) : null}
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <div
           className={cn(
-            'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:flex-row',
+            'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden',
             utilitySlot !== null && 'hidden',
           )}
           data-testid="kiosk-work-surface"
@@ -325,6 +336,8 @@ export function KioskShell() {
             hideManualEntry
             hideCartTray
             flowInPage
+            sidebarHeader={commandMenu}
+            trailEnd={utilityCluster}
             catalogPhase={
               session.activeCommand === 'repair' ? catalogPhase : 'browse'
             }
@@ -337,36 +350,43 @@ export function KioskShell() {
             onPriceChange={setServicePrice}
             searchQuery={catalogSearch}
             onSearchQueryChange={setCatalogSearch}
-            hideBrowseSearch={spineExpanded}
-            sidebarHeader={
-              <div className={KIOSK_PANE_HEADER_BAND}>
-                <h2 className={KIOSK_PANE_HEADER_TITLE}>Catalog</h2>
-              </div>
-            }
             stageContent={checkoutStage}
           />
         ) : session.activeCommand === 'buyback' ? (
           <div className="flex min-h-0 flex-1 flex-col bg-surface-card">
-            <KioskBuybackPane />
+            <KioskTopChrome
+              activeMode={activeServiceId}
+              onModeSwitch={handleCommandSwitch}
+              center={<h2 className={KIOSK_PANE_HEADER_TITLE}>Buyback</h2>}
+              activeSlot={utilitySlot}
+              onSelect={setUtilitySlot}
+              cartCount={session.lines.length}
+              consultStance={session.consultStance}
+              onConsultStance={onStanceChange}
+            />
+            <KioskBuybackPane hideHeader />
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col bg-surface-card">
-            <KioskPickupPane onReset={resetBrowseState} />
+            <KioskTopChrome
+              activeMode={activeServiceId}
+              onModeSwitch={handleCommandSwitch}
+              center={<h2 className={KIOSK_PANE_HEADER_TITLE}>Pickup</h2>}
+              activeSlot={utilitySlot}
+              onSelect={setUtilitySlot}
+              cartCount={session.lines.length}
+              consultStance={session.consultStance}
+              onConsultStance={onStanceChange}
+            />
+            <KioskPickupPane hideHeader onReset={resetBrowseState} />
           </div>
         )}
         </div>
 
         {utilitySlot === 'cart' && <KioskCartLedger focus={cartFocus} />}
         {utilitySlot === 'paperwork' && <KioskPaperworkPanel />}
-        {utilitySlot === 'triage' && <KioskTriagePanel onResolve={resolveTriageItem} />}
       </div>
-
-      <KioskUtilitySpine
-        activeSlot={utilitySlot}
-        onSelect={setUtilitySlot}
-        cartCount={session.lines.length}
-        blockerCount={blockerCount}
-      />
+    </div>
     </div>
   );
 }

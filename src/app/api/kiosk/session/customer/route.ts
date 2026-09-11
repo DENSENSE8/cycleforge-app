@@ -21,6 +21,8 @@ const BodySchema = z.object({
   phone: z.string().trim().max(32).default(''),
   name: z.string().trim().max(120).default(''),
   email: z.string().trim().max(200).default(''),
+  // Callers: kioskSessionStore.setCustomer via PATCH. Schema: CounterSessionCustomer. User: "intake their information like name, email address, phone number, address"
+  address: z.string().trim().max(400).default(''),
 });
 
 export const PATCH = withKioskAuth(async (req: NextRequest, ctx) => {

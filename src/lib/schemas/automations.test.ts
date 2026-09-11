@@ -38,6 +38,16 @@ describe('AutomationRuleCreateBody', () => {
       }),
     );
   });
+
+  it('accepts identification.completed on the create-body enum', () => {
+    const parsed = AutomationRuleCreateBody.parse({
+      name: 'After identify',
+      triggerKeys: ['identification.completed'],
+      when: { item_number: '9M52B2C4' },
+      then: [{ type: 'assign_work', work_type: 'TEST', staff_id: 7 }],
+    });
+    assert.deepEqual(parsed.triggerKeys, ['identification.completed']);
+  });
 });
 
 describe('AutomationRuleUpdateBody', () => {

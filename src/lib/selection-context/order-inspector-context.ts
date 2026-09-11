@@ -41,24 +41,6 @@ export type OrderInspectorDocumentsMode = 'preview' | 'manage' | 'hidden';
 /** Record-plane hand-offs the inspector may offer (deep-links, never mutations). */
 export type OrderInspectorRecordCta = 'assign' | 'open_testing' | 'open_pack' | 'open_labels';
 
-/** Bulk-action keys, matching `SelectionAction.key` in `useDashboardBulkSelection`. */
-export type OrderBulkActionKey =
-  | 'download-photos'
-  | 'copy'
-  | 'assign'
-  | 'assign-pick'
-  | 'assign-pack'
-  | 'condition'
-  | 'qty'
-  | 'notes'
-  | 'listing-rule'
-  | 'ship-by'
-  | 'print'
-  | 'print-shipping'
-  | 'flag'
-  | 'export'
-  | 'delete';
-
 export interface OrderInspectorContext {
   /** Tab the inspector opens on, and re-seeds to on record change. */
   defaultTab: ShippedActiveSection;
@@ -204,36 +186,4 @@ export function resolveOrderInspectorContext({
   return journeyFirst ? { ...base, defaultTab: 'timeline', openOnIndex: false } : base;
 }
 
-/**
- * Bulk-action keys a dashboard lane supports — the SoT the selection bar reads.
- *
- * Pre-pack lanes prep the unit (assign a tester, set a date, print the SKU
- * label); post-pack lanes reprint the shipping document that now exists.
- * `copy` / `export` / `delete` read the rows themselves, so they hold on every
- * lane. `flag` holds on every lane too: a shipped order can still be Damaged,
- * and a triage tag is an annotation on the record rather than a step in the
- * pipeline.
- */
-export function orderBulkActionKeys(orderView: DashboardOrderView): readonly OrderBulkActionKey[] {
-  const isPostPack = orderView === 'packed' || orderView === 'shipped';
-  return isPostPack
-    ? ['download-photos', 'copy', 'notes', 'print-shipping', 'flag', 'export', 'delete']
-    : [
-        'download-photos',
-        'copy',
-        'assign-pick',
-        'assign-pack',
-        'condition',
-        'qty',
-        'notes',
-        'listing-rule',
-        'ship-by',
-        'print',
-        'flag',
-        'export',
-        'delete',
-      ];
-}
 
-/** Pending / To Ship — named so specs assert against the registry, not a literal. */
-export const PENDING_BULK_ACTION_KEYS = orderBulkActionKeys('unshipped');

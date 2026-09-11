@@ -56,6 +56,8 @@ test.describe('Order exceptions workbench', () => {
     await expect(editor.getByTestId('exception-item-number')).toBeVisible();
     await expect(editor.getByTestId('exception-sku')).toBeVisible();
     await expect(editor.getByTestId('exception-title')).toBeVisible();
+    await expect(page.getByTestId('exceptions-rail-resize')).toHaveCount(1);
+    await expect(page.getByTestId('exceptions-rail-subtitle')).toHaveCount(0);
     // Paperwork (tracking, docs, labels, Release) is To-ship — not this form.
     await expect(editor.getByTestId('exception-tracking')).toHaveCount(0);
     await expect(editor.getByTestId('exception-save-status')).toBeVisible();
@@ -69,7 +71,7 @@ test.describe('Order exceptions workbench', () => {
     await expect(page.getByTestId('order-exceptions-grid-body')).toBeVisible();
   });
 
-  test('the CTA opens the full-screen form — rail beside the record', async ({ page }) => {
+  test('Resolve opens the SKU pairing record — rail beside the editor', async ({ page }) => {
     const probe = await page.request.get('/api/orders/queue-counts');
     test.skip(!probe.ok(), 'no QA session');
 
@@ -83,7 +85,9 @@ test.describe('Order exceptions workbench', () => {
     await expect(grid).toBeVisible({ timeout: 30_000 });
     await expect(page.getByTestId('exceptions-rail')).toHaveCount(0);
 
-    // The CTA is the way into the form display.
+    // Resolve lives in the desk header (SKU pairing). Fullscreen is only the
+    // table toolbar glyph — never a second expand button above the grid.
+    await expect(page.getByTestId('desk-fullscreen-toggle')).toHaveCount(1);
     const cta = page.getByTestId('exceptions-open-form');
     const enabled = await cta.isEnabled();
     test.skip(!enabled, 'no caged orders in this environment — nothing to triage');

@@ -37,9 +37,12 @@ export function orgNavQuery() {
   };
 }
 
-export function useOrgNavItems(opts: GetSidebarNavItemsOpts = {}): SidebarNavItem[] {
+export function useOrgNavDefinition(): NavDefinition | null {
   const { data } = useQuery(orgNavQuery());
-  // getSidebarNavItems is cheap + already permission/mobile-filtered; the merge
-  // only hides/renames/reorders the visible items.
-  return mergeOrgNav(getSidebarNavItems(opts), data ?? null);
+  return data ?? null;
+}
+
+export function useOrgNavItems(opts: GetSidebarNavItemsOpts = {}): SidebarNavItem[] {
+  const definition = useOrgNavDefinition();
+  return mergeOrgNav(getSidebarNavItems(opts), definition);
 }

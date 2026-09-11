@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/lib/toast';
+import { returnOrderImportedCopy } from '@/lib/receiving/return-order-imported';
 import type { AssignedBox } from '@/components/receiving/workspace/CartonAddPopover';
 import {
   inferPlatformFromOrderId,
@@ -435,11 +436,13 @@ export function useUnmatchedItems({
           },
           line: onLinkedLine,
         });
-        toast.success(
-          matchedOrder?.product_title
-            ? `Matched return: ${matchedOrder.product_title}`
-            : 'Return matched',
-        );
+        const copy = returnOrderImportedCopy({
+          orderId: orderNo,
+          productTitle: matchedOrder?.product_title,
+          sku: matchedOrder?.sku,
+          platform: platform,
+        });
+        toast.success(copy.title, { description: copy.description });
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Match failed');
         setLines((prev) => rollbackOptimisticReturnLine(prev, tempLineId));

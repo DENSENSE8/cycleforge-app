@@ -28,10 +28,12 @@ export type ImportExceptionGridColumnKey =
   | 'thumb'
   | 'item'
   | 'fulfillment'
+  | 'dates'
   | 'state'
-  | 'amount'
   | 'actions'
   | '_fill'
+  /** Legacy URL `?colsort=amount` bookmark — not a chrome track. */
+  | 'amount'
   /** Materialized slot tracks — keys are slot indices, never field ids. */
   | `status:${number}`
   | `subtitle:${number}`;
@@ -143,13 +145,13 @@ export const IMPORT_EXCEPTION_COMPOUND_COLUMNS: readonly ImportExceptionGridColu
   importExceptionCompoundColumnsFor(IMPORT_EXCEPTION_PRODUCT_LAYOUT);
 
 const IMPORT_EXCEPTION_GRID_SORTABLE_KEYS: readonly ImportExceptionGridColumnKey[] = [
-  ...IMPORT_EXCEPTION_GRID_COLUMNS.filter((c) => c.sortable !== false && c.key !== 'select').map(
+  ...IMPORT_EXCEPTION_GRID_COLUMNS.filter((c) => c.sortable !== false).map(
     (c) => c.key,
   ),
   'item',
   'fulfillment',
+  'dates',
   'state',
-  'amount',
 ];
 
 export function isImportExceptionGridSortable(key: string): key is ImportExceptionGridColumnKey {
@@ -167,6 +169,7 @@ export function isImportExceptionGridSortable(key: string): key is ImportExcepti
  * bookmarks carry, the track keys are what the mounted header emits.
  */
 export const IMPORT_EXCEPTION_SORT_TYPES: Readonly<Record<string, ColumnType>> = {
+  dates: 'date',
   item: 'text',
   order: 'id',
   fulfillment: 'id',
@@ -174,7 +177,6 @@ export const IMPORT_EXCEPTION_SORT_TYPES: Readonly<Record<string, ColumnType>> =
   tracking: 'tracking',
   sheet: 'number',
   seen: 'number',
-  amount: 'number',
   first: 'date',
   last: 'date',
   state: 'date',
@@ -183,7 +185,7 @@ export const IMPORT_EXCEPTION_SORT_TYPES: Readonly<Record<string, ColumnType>> =
 export function defaultDirForImportExceptionGridSort(
   key: ImportExceptionGridColumnKey,
 ): GridSortDir {
-  return key === 'last' || key === 'first' || key === 'seen' || key === 'amount' || key === 'state'
+  return key === 'last' || key === 'first' || key === 'seen' || key === 'state'
     ? 'desc'
     : 'asc';
 }

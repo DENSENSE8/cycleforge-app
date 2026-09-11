@@ -17,7 +17,8 @@ import { test, expect, type Page } from '@playwright/test';
  */
 
 const NAV_COLUMN = '[data-sidebar-nav-column]';
-const SIDEBAR_TOGGLE = 'header button';
+const SIDEBAR_TOGGLE =
+  '[data-testid="sidebar-collapse-control"] button, [data-spine-nav-toggle]';
 const SECTION_MAP = `${NAV_COLUMN} [role="group"][aria-label="Sections"]`;
 const RESULTS = `${NAV_COLUMN} [role="listbox"][aria-label="Matching destinations"]`;
 const FILTER = `${NAV_COLUMN} input`;

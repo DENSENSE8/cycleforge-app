@@ -18,6 +18,13 @@
 export const COMPOUND_ROW_PX = 48;
 
 /**
+ * Expanded leaf = product row + detail band (two {@link COMPOUND_ROW_PX} boxes).
+ * Idle compound face stays 48; only the inserted detail leaf adds the second 48.
+ * Callers: CompoundRowDetailBand / VirtualGroupedSections estimate when open.
+ */
+export const COMPOUND_ROW_DETAIL_EXPANDED_PX = COMPOUND_ROW_PX * 2;
+
+/**
  * The GUTTER track — `select` and `thumb` — in rem. **A SQUARE of the row box.**
  *
  * The PHOTO gutter. This was one constant for both gutters until 2026-09-04,
@@ -73,3 +80,14 @@ export const COMPOUND_SELECT_TRACK_REM = 1.5;
  * the cell stops being exactly square; the image still fills it.)
  */
 export const COMPOUND_GUTTER_PX = COMPOUND_ROW_PX;
+
+/**
+ * Envelope around a multi-line fold (parent band + leaves).
+ *
+ * An INSET ring, never a `border`: a border shrinks the grid and shears
+ * frozen columns off the header. Flush — ops chrome is square
+ * (`cornerClass('row')` is `rounded-none`). Vertical margin is the air that
+ * makes adjacent orders read as separate objects instead of one sheet.
+ */
+export const SLOT_TABLE_GROUP_FOLD_CLASS =
+  'relative my-1 ring-1 ring-inset ring-border-soft';

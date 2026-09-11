@@ -2,8 +2,8 @@
 
 import { motion } from '@/design-system/motion';
 import {
-  AlertTriangle, Barcode, Calendar, Camera, ChevronRight, ExternalLink, FileText, Hash,
-  Image as ImageIcon, Layers, Package, Sparkles, Tag, Truck, User,
+  AlertTriangle, Calendar, Camera, ChevronRight, ExternalLink, FileText, Hash,
+  Image as ImageIcon, Layers, Package, ScanBarcode, Sparkles, Tag, Truck, User,
 } from '../../Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { IconButton } from '@/design-system/primitives';
@@ -229,7 +229,7 @@ export function PhotoContextPanel({
             </Field>
           ) : null}
           {serials.length > 0 ? (
-            <Field icon={<Barcode className="h-3.5 w-3.5" />} label={serials.length > 1 ? 'Serials' : 'Serial'}>
+            <Field icon={<ScanBarcode className="h-3.5 w-3.5" />} label={serials.length > 1 ? 'Serials' : 'Serial'}>
               <div className="flex flex-wrap gap-1">
                 {serials.map((s) => (
                   <span

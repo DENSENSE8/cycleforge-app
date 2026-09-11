@@ -38,6 +38,13 @@ interface BinStockNumpadSheetProps {
   invalidateKey: readonly unknown[];
   /** Open the secondary details screen (rename / change SKU). */
   onOpenDetails?: () => void;
+  /**
+   * Opening mode. Default `minus` (pull). First-pair / putaway opens as `plus`
+   * so the keypad starts ready to add stock.
+   */
+  defaultMode?: Mode;
+  /** Fired after a successful put/take so a host can refresh occupancy. */
+  onSuccess?: (nextQty: number) => void;
 }
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -69,11 +76,13 @@ export function BinStockNumpadSheet({
   row,
   invalidateKey,
   onOpenDetails,
+  defaultMode = 'minus',
+  onSuccess,
 }: BinStockNumpadSheetProps) {
   const { user } = useAuth();
   const staffId = user?.staffId ?? 0;
   const queryClient = useQueryClient();
-  const [mode, setMode] = useState<Mode>('minus');
+  const [mode, setMode] = useState<Mode>(defaultMode);
   const [draft, setDraft] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +94,7 @@ export function BinStockNumpadSheet({
 
   useEffect(() => {
     if (!open) return;
-    setMode('minus');
+    setMode(defaultMode);
     setDraft('');
     setError(null);
     setFlash(null);
@@ -93,7 +102,7 @@ export function BinStockNumpadSheet({
     setNoteDraft('');
     setPendingShots([]);
     setCameraOpen(false);
-  }, [open, row?.sku]);
+  }, [open, row?.sku, defaultMode]);
 
   // Reset reason when the direction toggles — the picker will auto-pick the
   // canonical default for the new direction.
@@ -232,6 +241,9 @@ export function BinStockNumpadSheet({
         }
       });
       setPendingShots([]);
+      const nextQty =
+        typeof data?.binQty === 'number' ? Number(data.binQty) : projected;
+      onSuccess?.(nextQty);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Update failed');
     } finally {
@@ -244,7 +256,9 @@ export function BinStockNumpadSheet({
     mode,
     noteDraft,
     numericDraft,
+    onSuccess,
     pendingShots,
+    projected,
     queryClient,
     reason,
     row,

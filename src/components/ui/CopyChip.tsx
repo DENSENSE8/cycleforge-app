@@ -13,7 +13,7 @@
  */
 import React, { MouseEvent } from 'react';
 import { isEmptyDisplayValue } from '@/utils/empty-display-value';
-import { Barcode, ExternalLink, MapPin, Package, Pencil, Receipt, Tags, Ticket } from '../Icons';
+import { ExternalLink, MapPin, Package, Pencil, Receipt, ScanBarcode, Tags, Ticket } from '../Icons';
 import { IconButton } from '@/design-system/primitives';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { chipText, monoValue } from '@/design-system/tokens/typography/presets';
@@ -74,7 +74,7 @@ export const HashIcon = () => (
  *
  *   id        gray / hash       internal order ids, PO#s, source order #s
  *   tracking  blue / map-pin    outbound carrier tracking numbers ONLY
- *   serial    emerald / barcode device/unit serial numbers
+ *   serial    emerald / scan-barcode  device/unit serial numbers
  *   sku       yellow / pencil   SKU-driven values (static scan refs, sku-table serials)
  *   fnsku     purple / package  Amazon FNSKUs scanned at FBA intake ONLY
  *   ticket    orange / hash     support ticket ids
@@ -101,7 +101,7 @@ export const CHIP_TONES = {
     dot: 'bg-blue-500',
   },
   serial: {
-    icon: <Barcode className="h-4 w-4 shrink-0" />,
+    icon: <ScanBarcode className="h-4 w-4 shrink-0" />,
     iconClass: 'inline-flex items-center justify-center text-emerald-500',
     dot: 'bg-emerald-500',
   },
@@ -870,7 +870,7 @@ export function TrackingOrSkuScanChip({
 }
 
 /**
- * Device / unit serial number. Emerald / Barcode icon.
+ * Device / unit serial number. Emerald / lucide scan-barcode icon.
  *
  * The label is derived internally from `value` via {@link resolveSerialDisplay},
  * so callers pass only the serial (or a comma-joined CSV) — no `getLast8Serial`
@@ -897,7 +897,7 @@ export const SerialChip = ({
    *  longer disambiguating suffix. */
   display?: string;
   /** Tailwind width utilities on the wrapper; default is a fixed width sized
-   *  for the Barcode icon + 8-char mono value. Table rows pass a content-fit
+   *  for the ScanBarcode icon + 8-char mono value. Table rows pass a content-fit
    *  width so the serial column hugs its value like the other id chips. */
   width?: string;
   disableTooltip?: boolean;
@@ -909,7 +909,7 @@ export const SerialChip = ({
   /** Default true — peek spreads PEEK_FACE; keep shrink-wrap for tables. */
   fitDisplayWidth?: boolean;
   /**
-   * Omit the leading Barcode glyph — the same switch {@link OrderIdChip} has.
+   * Omit the leading ScanBarcode glyph — the same switch {@link OrderIdChip} has.
    * SERIAL was the last identity chip with no way to go icon-less, so it was
    * the one Sheets cell that could not honour its column's `omitCellIcon` and
    * kept a body glyph while ORDER / TRACKING / PRICE beside it had dropped
@@ -949,7 +949,7 @@ export const SerialChip = ({
 );
 
 /**
- * Loading placeholder for a {@link SerialChip}. Emerald Barcode glyph + a pulsing
+ * Loading placeholder for a {@link SerialChip}. Emerald ScanBarcode glyph + a pulsing
  * bar in the mono-value slot, carrying the same emerald tone and default
  * ~120px footprint so the PO-line meta row does not reflow when the real serial
  * streams in from the per-carton serials query. Reads as "serial loading", not

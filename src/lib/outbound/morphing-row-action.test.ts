@@ -2,10 +2,14 @@
  *   npx tsx --test src/lib/outbound/morphing-row-action.test.ts
  */
 
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
   applyMorphingGutterClick,
+  isMorphingMobileUrl,
   morphingAssignedName,
   morphingFilterRoster,
   morphingGutterClick,
@@ -136,6 +140,16 @@ describe('morphingAssignedName', () => {
   });
 });
 
+describe('isMorphingMobileUrl', () => {
+  it('is only the phone app path', () => {
+    assert.equal(isMorphingMobileUrl('/m'), true);
+    assert.equal(isMorphingMobileUrl('/m/pick/1'), true);
+    assert.equal(isMorphingMobileUrl('/shipping/orders'), false);
+    assert.equal(isMorphingMobileUrl('/'), false);
+    assert.equal(isMorphingMobileUrl(null), false);
+  });
+});
+
 describe('morphingNotesHint', () => {
   it('prefers the trail count over the legacy scalar', () => {
     assert.equal(morphingNotesHint({ note_count: 3, notes: 'old' }), '3 notes');
@@ -156,21 +170,21 @@ describe('morphingGutterClick — checkbox always toggles', () => {
     });
   });
 
-  it('UNSELECTS and closes the menu on a checked row', () => {
+  it('unselects without unmounting the menu so bulk stays up', () => {
     assert.deepEqual(morphingGutterClick({ isChecked: true, shiftKey: false }), {
       extend: false,
-      menu: 'close',
+      menu: 'keep',
     });
   });
 
-  it('shift-click is the range walk — never opens the menu', () => {
+  it('shift-click is the range walk and keeps the menu', () => {
     assert.deepEqual(morphingGutterClick({ isChecked: false, shiftKey: true }), {
       extend: true,
-      menu: 'close',
+      menu: 'keep',
     });
     assert.deepEqual(morphingGutterClick({ isChecked: true, shiftKey: true }), {
       extend: true,
-      menu: 'close',
+      menu: 'keep',
     });
   });
 
@@ -185,6 +199,79 @@ describe('morphingGutterClick — checkbox always toggles', () => {
       onCloseMenu: () => menus.push('close'),
     });
     assert.deepEqual(toggles, [{ shiftKey: false }]);
-    assert.deepEqual(menus, ['close']);
+    assert.deepEqual(menus, []);
+  });
+});
+
+describe('Morphing paints a sticky top overlay, not a left popover', () => {
+  const here = dirname(fileURLToPath(import.meta.url));
+  const menu = readFileSync(
+    join(here, '../../components/outbound/orders/to-ship/MorphingRowActionMenu.tsx'),
+    'utf8',
+  );
+  const table = readFileSync(
+    join(here, '../../components/tables/DataTable.tsx'),
+    'utf8',
+  );
+
+  it('portals into the slot under the column header', () => {
+    assert.match(menu, /SLOT_TABLE_ACTION_ROW_ATTR/);
+    assert.match(menu, /SLOT_TABLE_OVERLAY_HOST_ATTR/);
+    assert.match(table, /SLOT_TABLE_OVERLAY_HOST_ATTR/);
+    assert.doesNotMatch(menu, /placement=["']left-start["']/);
+    assert.doesNotMatch(menu, /absolute inset-x-0 top-0/);
+    assert.doesNotMatch(
+      menu,
+      /document\.addEventListener\(['"]mousedown['"]/,
+      'click-off must not dismiss the bar while a row is selected',
+    );
+    const grid = readFileSync(
+      join(here, '../../design-system/components/grid/LedgerGrid.tsx'),
+      'utf8',
+    );
+    assert.match(grid, /data-slot-table-action-row/);
+    assert.match(grid, /empty:hidden/);
+    assert.match(grid, /data-slot-table-prefix/);
+    assert.match(grid, /sticky top-\[var\(--cf-grid-header-h/);
+    assert.match(grid, /\{pinnedPrefix\}/);
+  });
+
+  it('desktop bar is not a child of a virtualized row', () => {
+    const row = readFileSync(
+      join(here, '../../components/dashboard/orders-queue/OrdersQueueTableRow.tsx'),
+      'utf8',
+    );
+    const sheet = readFileSync(
+      join(here, '../../components/dashboard/orders-queue/useOrdersSpreadsheet.tsx'),
+      'utf8',
+    );
+    assert.doesNotMatch(row, /<MorphingRowActionMenu/);
+    assert.match(sheet, /OrdersMorphingHost/);
+    assert.match(menu, /export function OrdersMorphingHost/);
+    assert.match(menu, /inline = false/);
+  });
+
+  it('keeps delete isolated on the right and overflow behind ⋮', () => {
+    assert.match(menu, /morphing-row-more-actions/);
+    assert.match(menu, /morphing-row-delete/);
+    assert.match(menu, /MoreHorizontal/);
+  });
+
+  it('desktop Notes morphs the action row; BottomSheet is /m/ only', () => {
+    assert.match(menu, /notes-view/);
+    assert.match(menu, /variant=["']strip["']/);
+    assert.match(menu, /isMorphingMobileUrl/);
+    assert.match(menu, /forceVariant=["']sheet["']/);
+  });
+
+  it('urgent and out of stock lead; listing rule replaces assign', () => {
+    assert.match(menu, /Mark urgent[\s\S]*Out of stock[\s\S]*Create rule/);
+    assert.doesNotMatch(menu, /Assign picker/);
+    assert.doesNotMatch(menu, /Assign packer/);
+    assert.match(menu, /morphing-create-rule/);
+    assert.match(menu, /morphing-scan-out/);
+    assert.match(menu, /morphing-upload-docs/);
+    assert.match(menu, /\/api\/shipped\/scan-out/);
+    assert.match(menu, /documents\/upload/);
   });
 });

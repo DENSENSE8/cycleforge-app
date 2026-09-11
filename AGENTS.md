@@ -11,6 +11,22 @@ design system **before** implementation:
 4. Project hooks deny UI writes under `src/**/*.{tsx,jsx,css}` without a fresh
    design-mcp session stamp.
 
+## Mobile-first (repo-wide)
+
+**Every operator verb must be completable on `/m/*` first.** Desktop desks,
+stations, and kiosk faces consume that SoT (phone-width frame + gutters /
+compact recents) — they do not invent a second IA phones cannot run. Scope is
+the whole product, not Warehouse OS alone.
+
+Callers: all agents. No API/schemas.
+User: "span repo-wide" / "do everything on the mobile app first."
+
+- Law: [`docs/mobile-first/SURFACE_LAW.md`](docs/mobile-first/SURFACE_LAW.md)
+- Cursor: `.cursor/rules/mobile-first-surface.mdc` (`alwaysApply`)
+- Checklist: `src/lib/mobile/mobile-first-surface.ts`
+- Start Pick: `/m/pick` · session `/m/pick/[orderId]` · Orders `/m/work`
+- Refuse “desktop-only; mobile later” and desktop-shrunk desks called mobile-first.
+
 ## Composer / station mouth naming
 
 - "Omni Composer", "station composer", "station mouth" → **StationComposerHost**.
@@ -33,6 +49,13 @@ Slot-table ship-by, due date, or pick-a-date-in-a-cell is
 `mount`). Not `variant="range"` (filter: presets + Apply + X + year). Not a
 native `input type=date`. Not `InlineEditableValue`. Graph: `CompoundState` +
 `DateRangePickerField`. Eval: `pnpm run eval:cohort slot-table`.
+
+## Staff combobox
+
+Every people picker is `AssigneeCombobox` via `StageStaffAssignPopover`. Rows
+paint `StaffAvatar` + name. Never `SearchableSelectField` for staff (name + role
+meta, no profile mark). Graph: `AssigneeCombobox` + `StageStaffAssignPopover`.
+Eval: `pnpm run eval:cohort slot-table`.
 
 ## Code graph (Garisek-OS)
 

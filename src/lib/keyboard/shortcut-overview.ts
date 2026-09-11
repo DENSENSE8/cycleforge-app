@@ -22,14 +22,21 @@ const overviewListeners = new Set<Listener>();
 
 const extraGroups = new Map<string, ShortcutOverviewGroup>();
 const groupListeners = new Set<Listener>();
-let groupsCache: ShortcutOverviewGroup[] = [];
+
+/** Stable SSR snapshots — fresh `[]` each call trips React getServerSnapshot. */
+const SERVER_OVERVIEW_OPEN = false;
+const SERVER_OVERVIEW_GROUPS: ShortcutOverviewGroup[] = [];
+
+/** Client cache — idle identity must match the server snapshot. */
+let groupsCache: ShortcutOverviewGroup[] = SERVER_OVERVIEW_GROUPS;
 
 function emitOverview() {
   for (const l of overviewListeners) l();
 }
 
 function emitGroups() {
-  groupsCache = [...extraGroups.values()].sort((a, b) => a.id.localeCompare(b.id));
+  const next = [...extraGroups.values()].sort((a, b) => a.id.localeCompare(b.id));
+  groupsCache = next.length === 0 ? SERVER_OVERVIEW_GROUPS : next;
   for (const l of groupListeners) l();
 }
 
@@ -45,7 +52,7 @@ export function getShortcutOverviewOpen(): boolean {
 }
 
 export function getServerShortcutOverviewOpen(): boolean {
-  return false;
+  return SERVER_OVERVIEW_OPEN;
 }
 
 export function setShortcutOverviewOpen(next: boolean): void {
@@ -78,7 +85,7 @@ export function listShortcutOverviewGroups(): ShortcutOverviewGroup[] {
 }
 
 export function getServerShortcutOverviewGroups(): ShortcutOverviewGroup[] {
-  return [];
+  return SERVER_OVERVIEW_GROUPS;
 }
 
 /**

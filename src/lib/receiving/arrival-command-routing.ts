@@ -14,6 +14,7 @@
  */
 
 import { routeScan } from '@/lib/barcode-routing';
+import { LOCATIONS_BAY_CODE_RE } from '@/lib/inventory/locations-path';
 import {
   ARRIVAL_CMD_BATCH_SORT,
   ARRIVAL_CMD_DEFAULT,
@@ -63,10 +64,9 @@ export function extractArrivalLocationBarcode(raw: string): string | null {
     const code = decodeURIComponent(bin[1]).trim();
     return code || null;
   }
-  const rack =
-    /^\/(?:warehouse|inventory\/locations)\?tab=racks&code=(.+)$/.exec(route.redirect);
-  if (rack) {
-    const code = decodeURIComponent(rack[1]).trim();
+  const bay = LOCATIONS_BAY_CODE_RE.exec(route.redirect);
+  if (bay) {
+    const code = decodeURIComponent(bay[1]).trim();
     return code || null;
   }
   return null;

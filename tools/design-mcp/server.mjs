@@ -465,6 +465,15 @@ const NAMED_CORNER_USE = {
   SEGMENTED_CONTROL_FACE_CORNER:
     'The two faces inside SEGMENTED_CONTROL_CORNER: 8px track - p-0.5 = 6px. ' +
     'Import it; never hand-write rounded-md on a segmented face.',
+  HEADER_ICON_CORNER:
+    'GlobalHeader / spine-top icon faces (sidebar toggle, Search, Pins). ' +
+    'Main paints these with cornerClass(\'control\') -> rounded-lg. Prod control ' +
+    'stays flush; this named 8px exemption is HEADER_ICON_BTN_CLASS. Not a ' +
+    'licence to round ops CTAs. Import HEADER_ICON_CORNER or HEADER_ICON_BTN_CLASS.',
+  SPINE_ROW_CORNER:
+    'MasterNav rows and open-spine labelled Search. Main uses cornerClass(\'chip\') ' +
+    '-> rounded (4px). Prod chip stays flush; SPINE_ROW_SHELL_CLASS imports this. ' +
+    'Not a licence to round ops chips.',
 }
 
 const GENERIC_CORNER_USE = (name) =>

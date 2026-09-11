@@ -16,7 +16,8 @@
 
 import { requirePermission } from '@/lib/auth/page-guard';
 import pool from '@/lib/db';
-import { PageHeader } from '@/components/ui/pane-header';
+import { SettingsSectionHeader } from '@/components/settings/SettingsSectionHeader';
+import { SETTINGS_FLOOR_CLASS } from '@/components/settings/settings-sections';
 import { Button } from '@/design-system/primitives';
 import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
 import { focusRing } from '@/design-system/tokens/focus-ring';
@@ -140,9 +141,9 @@ export default async function AuditPage({ searchParams }: PageProps) {
   const isSearching = Boolean(source || action);
 
   return (
-    <div className="min-h-screen bg-surface-canvas antialiased">
-      <PageHeader title="Audit log" maxWidth="5xl" />
+    <div className={cn('min-h-screen antialiased', SETTINGS_FLOOR_CLASS)}>
       <div className="mx-auto max-w-5xl space-y-4 px-6 py-6">
+        <SettingsSectionHeader title="Audit log" />
         <p className="text-sm text-text-soft">
           Every privileged write, every permission denial. Last {PAGE_SIZE} rows{source || action ? ' matching filter' : ''}.
         </p>

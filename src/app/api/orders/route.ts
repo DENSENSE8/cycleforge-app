@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import pool from '@/lib/db';
 import { tenantQuery } from '@/lib/tenancy/db';
 import { createCacheLookupKey, getCachedJson, setCachedJson } from '@/lib/cache/upstash-cache';
-import { normalizeTrackingKey18 } from '@/lib/tracking-format';
+import {
+  ordersSearchLast8,
+  ordersSearchLikePattern,
+  ordersSearchNeedle,
+  ordersSearchTrackingKey18,
+} from '@/lib/orders/orders-search';
 import { logRouteMetric } from '@/lib/route-metrics';
 import { SHIPPED_BY_CARRIER_SQL } from '@/lib/sql-fragments';
 import { SHIPMENT_STATUS_CATEGORIES } from '@/lib/order-lifecycle';
@@ -27,6 +32,31 @@ function isDatabaseUnavailable(error: unknown) {
     : '';
   const message = `${error.message} ${causeMessage}`;
   return /ENOTFOUND|ECONNREFUSED|connect_timeout|connection terminated|timeout/i.test(message);
+}
+
+let shortageSchemaCheck: { value: boolean; checkedAt: number } | null = null;
+
+async function hasShortageSchema(): Promise<boolean> {
+  if (shortageSchemaCheck && Date.now() - shortageSchemaCheck.checkedAt < 60_000) {
+    return shortageSchemaCheck.value;
+  }
+  try {
+    const result = await pool.query(
+      `SELECT EXISTS (
+         SELECT 1 FROM information_schema.tables
+         WHERE table_schema = 'public' AND table_name = 'order_line_shortages'
+       ) AS present`,
+    );
+    const value = Boolean(result.rows[0]?.present);
+    shortageSchemaCheck = { value, checkedAt: Date.now() };
+    return value;
+  } catch (error) {
+    if (isDatabaseUnavailable(error)) {
+      shortageSchemaCheck = { value: false, checkedAt: Date.now() };
+      return false;
+    }
+    throw error;
+  }
 }
 
 async function hasReplenishmentSchema(): Promise<boolean> {
@@ -202,6 +232,22 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
     }
 
     const hasReplenishment = await hasReplenishmentSchema();
+    const hasShortage = await hasShortageSchema();
+    const shortageLinkSelect = hasShortage
+      ? `(
+          SELECT sil.link_status
+            FROM order_line_shortages ols
+            JOIN shortage_inbound_links sil
+              ON sil.shortage_id = ols.id
+             AND sil.organization_id = ols.organization_id
+           WHERE ols.order_id = o.id
+             AND ols.organization_id = o.organization_id
+             AND ols.status <> 'cleared'
+             AND sil.link_status <> 'released'
+           ORDER BY sil.updated_at DESC
+           LIMIT 1
+        ) AS shortage_link_status,`
+      : `NULL::text AS shortage_link_status,`;
     const replenishmentSelect = hasReplenishment
       ? `
         rr.id AS replenishment_request_id,
@@ -446,6 +492,14 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         COALESCE(sc.sku, o.sku) AS sku,
         o.condition,
         o.is_out_of_stock,
+        o.oos_kind,
+        o.oos_sku,
+        o.oos_sku_catalog_id,
+        o.oos_kit_part_id,
+        o.oos_qty_short,
+        o.oos_title,
+        ${hasShortage ? 'o.oos_zoho_item_id,' : 'NULL::text AS oos_zoho_item_id,'}
+        ${shortageLinkSelect}
         o.status,
         o.notes,
         /*
@@ -797,25 +851,35 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       }
     }
 
-    const trimmedQuery = query.trim();
-    const normalizedDigits = trimmedQuery.replace(/\D/g, '');
-    const last8 = normalizedDigits.length >= 8 ? normalizedDigits.slice(-8) : '';
-    const key18 = normalizeTrackingKey18(trimmedQuery);
+    const trimmedQuery = ordersSearchNeedle(query);
+    const likeValue = ordersSearchLikePattern(query);
+    const last8 = ordersSearchLast8(query);
+    const key18 = ordersSearchTrackingKey18(query);
 
-    if (trimmedQuery) {
-      const likeValue = `%${trimmedQuery}%`;
+    if (likeValue) {
+      const likeParam = paramCount;
       sql += ` AND (
-        o.product_title ILIKE $${paramCount}
-        OR COALESCE(o.sku, '') ILIKE $${paramCount}
-        OR COALESCE(o.order_id, '') ILIKE $${paramCount}
-        OR COALESCE(o.item_number, '') ILIKE $${paramCount}
-        OR COALESCE(stn.tracking_number_raw, '') ILIKE $${paramCount}
-        OR COALESCE(o.status, '') ILIKE $${paramCount}
-        OR COALESCE(o.notes, '') ILIKE $${paramCount}
-        OR COALESCE(o.account_source, '') ILIKE $${paramCount}
-        OR COALESCE(o.quantity, '') ILIKE $${paramCount}
-        OR COALESCE(o.customer_id::text, '') ILIKE $${paramCount}
-        OR o.id::text ILIKE $${paramCount}
+        o.product_title ILIKE $${likeParam}
+        OR COALESCE(sc.product_title, '') ILIKE $${likeParam}
+        OR COALESCE(sc.sku, '') ILIKE $${likeParam}
+        OR COALESCE(sc.category, '') ILIKE $${likeParam}
+        OR COALESCE(sc.upc, '') ILIKE $${likeParam}
+        OR COALESCE(sc.ean, '') ILIKE $${likeParam}
+        OR COALESCE(sc.gtin, '') ILIKE $${likeParam}
+        OR COALESCE(o.sku, '') ILIKE $${likeParam}
+        OR COALESCE(o.condition, '') ILIKE $${likeParam}
+        OR COALESCE(staff_test_assignee.name, '') ILIKE $${likeParam}
+        OR COALESCE(staff_pack_assignee.name, '') ILIKE $${likeParam}
+        OR COALESCE(staff_packed_by.name, '') ILIKE $${likeParam}
+        OR COALESCE(o.order_id, '') ILIKE $${likeParam}
+        OR COALESCE(o.item_number, '') ILIKE $${likeParam}
+        OR COALESCE(stn.tracking_number_raw, '') ILIKE $${likeParam}
+        OR COALESCE(o.status, '') ILIKE $${likeParam}
+        OR COALESCE(o.notes, '') ILIKE $${likeParam}
+        OR COALESCE(o.account_source, '') ILIKE $${likeParam}
+        OR COALESCE(o.quantity, '') ILIKE $${likeParam}
+        OR COALESCE(o.customer_id::text, '') ILIKE $${likeParam}
+        OR o.id::text ILIKE $${likeParam}
       `;
       params.push(likeValue);
       paramCount++;
@@ -843,7 +907,28 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
         paramCount++;
       }
 
-      sql += `)`;
+      sql += `
+        OR (
+          NULLIF(BTRIM(o.order_id), '') IS NOT NULL
+          AND EXISTS (
+            SELECT 1 FROM orders om
+            LEFT JOIN sku_catalog scm ON scm.id = om.sku_catalog_id
+            LEFT JOIN shipping_tracking_numbers stnm ON stnm.id = om.shipment_id
+            WHERE om.organization_id = o.organization_id
+              AND om.order_id = o.order_id
+              AND (
+                om.product_title ILIKE $${likeParam}
+                OR COALESCE(scm.product_title, '') ILIKE $${likeParam}
+                OR COALESCE(scm.sku, '') ILIKE $${likeParam}
+                OR COALESCE(om.sku, '') ILIKE $${likeParam}
+                OR COALESCE(om.order_id, '') ILIKE $${likeParam}
+                OR COALESCE(om.item_number, '') ILIKE $${likeParam}
+                OR COALESCE(stnm.tracking_number_raw, '') ILIKE $${likeParam}
+                OR om.id::text ILIKE $${likeParam}
+              )
+          )
+        )
+      )`;
     }
 
     if (singleOrderMode) {

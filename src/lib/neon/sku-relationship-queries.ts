@@ -91,6 +91,38 @@ export async function getChildren(skuId: number, orgId?: OrgId): Promise<SkuRela
   return result.rows;
 }
 
+/**
+ * Direct children for many parents — one round-trip for order-table kit faces.
+ * Returns Map parent_sku_id → edges (empty arrays omitted).
+ */
+export async function getChildrenForParents(
+  parentSkuIds: readonly number[],
+  orgId?: OrgId,
+): Promise<Map<number, SkuRelationshipEdgeView[]>> {
+  const ids = [...new Set(parentSkuIds.filter((id) => Number.isFinite(id) && id > 0))];
+  const out = new Map<number, SkuRelationshipEdgeView[]>();
+  if (ids.length === 0) return out;
+
+  type Row = SkuRelationshipEdgeView & { parent_sku_id: number };
+  const sql = `SELECT r.parent_sku_id, r.id AS relationship_id, r.qty, r.notes, ${NODE_SELECT}
+       FROM sku_relationships r
+       JOIN sku_catalog c ON c.id = r.child_sku_id${orgId ? ' AND c.organization_id = $2' : ''}
+       ${NODE_STOCK_JOIN}
+      WHERE r.parent_sku_id = ANY($1::int[])${orgId ? ' AND r.organization_id = $2' : ''}
+      ORDER BY r.parent_sku_id, c.product_title, c.sku`;
+  const result = orgId
+    ? await tenantQuery<Row>(orgId, sql, [ids, orgId])
+    : await pool.query<Row>(sql, [ids]);
+
+  for (const row of result.rows) {
+    const parentId = Number(row.parent_sku_id);
+    const list = out.get(parentId) ?? [];
+    list.push(row);
+    out.set(parentId, list);
+  }
+  return out;
+}
+
 /** Fetch enriched catalog nodes for a set of ids (one query). */
 export async function getGraphNodes(skuIds: number[], orgId?: OrgId): Promise<SkuGraphNode[]> {
   if (skuIds.length === 0) return [];

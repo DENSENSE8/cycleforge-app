@@ -98,15 +98,16 @@ const SKIP_DIR = new Set(['node_modules', '.git', 'dist', '.next']);
  * Known live debt as of 2026-09-01. Shrink-only: remove an id in the same
  * change that deletes the smell. Never append without an operator ruling
  * (new dual-SoT is a fail, not a baseline bump).
+ *
+ * Callers: slot-table-discover.test + eval:discover. Affected API:
+ * SLOT_TABLE_KNOWN_DEBT. Schema: none. User: "Make that contract green…
+ * Allowed: … KEEP rows." Ratchet: drop hand-grid-export:daily:DAILY_GRID_COLUMNS.
  */
 export const SLOT_TABLE_KNOWN_DEBT: readonly string[] = [
   'catalog-orphan:fba:FBA_FIELD_CATALOG',
-  'flat-mount:receiving:TestingHistoryList',
   'grid-default:incoming:IncomingGridRow',
   'grid-default:incoming:incoming-grid-descriptor',
   'grid-default:receiving:ReceivingGridRow',
-  'hand-grid-export:catalog-link:CATALOG_LINK_GRID_COLUMNS',
-  'hand-grid-export:daily:DAILY_GRID_COLUMNS',
   'hand-grid-export:import-exception:IMPORT_EXCEPTION_GRID_COLUMNS',
   'hand-grid-export:incoming:INCOMING_GRID_COLUMNS',
   'hand-grid-export:receiving:RECEIVING_GRID_COLUMNS',
@@ -223,9 +224,9 @@ function scanFlatMounts(files: { rel: string; src: string }[]): SlotTableFinding
         symbol: 'RECEIVING_GRID_COLUMNS',
         path: f.rel,
         refs: ['src/lib/receiving/receiving-grid-layout.ts'],
-        why: '/test Testing History is a second mount of receiving.browse that still paints the FLAT hand model. Kill-list 07 Wave 3b: this desk owes its own layout id so it does not fight Unbox/History/Testing compound.',
-        keep: 'ReceivingGridHost, RECEIVING_TABLE_BINDING, RECEIVING_COMPOUND_COLUMNS, useReceivingTableLayout',
-        next: 'Give Testing History its own tableId + SlotLayout (or mount RECEIVING_COMPOUND_COLUMNS). Then delete RECEIVING_GRID_COLUMNS.',
+        why: '/test Testing History is on the engine (tableId `testing` + RECEIVING_COMPOUND_COLUMNS via ReceivingSpreadsheet). A flat RECEIVING_GRID_COLUMNS mount here is a regression to the closed dual-SoT.',
+        keep: 'RECEIVING_TABLE_BINDING, RECEIVING_COMPOUND_COLUMNS, useReceivingTableLayout',
+        next: 'Drop the flat columns prop and mount RECEIVING_COMPOUND_COLUMNS like Unbox/History do.',
         blockedBy: [],
       });
     }
@@ -499,6 +500,11 @@ function keepInventory(root: string): SlotTableKeepItem[] {
       id: 'engine:DateRangePickerField',
       path: SLOT_TABLE_ENGINE.dateRangePickerField,
       why: 'STATUS ship-by / inline civil date. variant=compact in the cell (no X, no year, click commits). variant=range is the filter. Do not hand-roll type=date.',
+    },
+    {
+      id: 'engine:CompoundRowDetailBand',
+      path: SLOT_TABLE_ENGINE.compoundRowDetailBand,
+      why: 'Leaf detail band under the 48px product row (serial / location / view unit). data-compound-row-detail. Never grow CompoundItem. Not FilterRefinementBar.',
     },
     {
       id: 'engine:CompoundState',

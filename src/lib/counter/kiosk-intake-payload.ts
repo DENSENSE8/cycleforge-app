@@ -61,6 +61,7 @@ export function buildKioskSalesIntakeBody(
         phone: draft.phone,
         name: draft.name || null,
         email: draft.email || null,
+        address: draft.address.trim() || null,
       },
       retailLines: draft.retailLines,
       services: service

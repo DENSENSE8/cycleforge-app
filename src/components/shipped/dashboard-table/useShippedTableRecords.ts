@@ -8,7 +8,6 @@ import { fetchShippedHydration } from '@/lib/dashboard-table-data';
 import { useShippedWeekBuckets } from './useShippedWeekBuckets';
 import { getRecentWeekBuckets } from '@/lib/dashboard-week-range';
 import { toPSTDateKey } from '@/utils/date';
-import { useShippedSearch } from '@/hooks/useShippedSearch';
 import { isStalled } from '@/components/shipping/ShipmentStatusBadge';
 import {
   dedupeShippedRecords,
@@ -17,10 +16,9 @@ import {
   isSkuPackerRecord,
   hasLinkedOrder,
   isExceptionPackerRecord,
+  isShippedDeskRow,
   type DerivedPackerRecord,
 } from '@/lib/shipped-records';
-import { toSearchResultRecord } from '@/components/shipped/shipped-record-mappers';
-import type { PackerRecord } from '@/hooks/usePackerLogs';
 import type { ShippedTableFilters } from './useShippedTableFilters';
 import { useRefreshSignal } from '@/lib/refresh/bus';
 
@@ -48,9 +46,6 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     effTestedBy,
     effStaffId,
     shippedFilter,
-    shippedSearchField,
-    search,
-    normalizedSearch,
     exceptionsOnly,
     carrierFilter,
     statusFilter,
@@ -74,7 +69,7 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
   const fetchLimit = pageMultiplier * SHIPPED_WEEK_PAGE_SIZE;
   useEffect(() => {
     setPageMultiplier(1);
-  }, [effectiveWeekStart, effectiveWeekEnd, effPackedBy, effTestedBy, effStaffId, shippedFilter, normalizedSearch]);
+  }, [effectiveWeekStart, effectiveWeekEnd, effPackedBy, effTestedBy, effStaffId, shippedFilter]);
   const loadMore = useCallback(() => setPageMultiplier((m) => m + 1), []);
 
   const weekBuckets = useShippedWeekBuckets({
@@ -84,7 +79,7 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     testedBy: effTestedBy,
     staffId: effStaffId ?? undefined,
     shippedFilter,
-    enabled: !normalizedSearch && !allTimeMode,
+    enabled: !allTimeMode,
     limit: fetchLimit,
     phase: SHIPPED_PHASE,
   });
@@ -100,7 +95,7 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
       limit: fetchLimit,
       phase: SHIPPED_PHASE,
     }),
-    enabled: !normalizedSearch && allTimeMode,
+    enabled: allTimeMode,
     placeholderData: (previousData) => previousData,
   });
 
@@ -122,7 +117,6 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
   // ~7 extra cold queries a user rarely scrolls back to. Older weeks still warm
   // lazily on first navigation (and then cache at staleTime: Infinity).
   useEffect(() => {
-    if (normalizedSearch) return undefined;
     const warm = () => {
       for (const { weekStart, weekEnd } of getRecentWeekBuckets(2)) {
         void queryClient.prefetchQuery(
@@ -148,16 +142,8 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     }
     const id = window.setTimeout(warm, 300);
     return () => window.clearTimeout(id);
-  }, [normalizedSearch, effPackedBy, effTestedBy, effStaffId, shippedFilter, queryClient]);
+  }, [effPackedBy, effTestedBy, effStaffId, shippedFilter, queryClient]);
 
-  const searchResult = useShippedSearch({
-    query: search,
-    shippedFilter,
-    searchField: shippedSearchField,
-    packedBy: effPackedBy,
-    testedBy: effTestedBy,
-    staffId: effStaffId ?? undefined,
-  });
 
   // Refresh events from form submits / cross-pane mutations → invalidate.
   useRefreshSignal('orders.outbound', () => {
@@ -221,32 +207,10 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     });
   }, [typeFilteredRecords, exceptionsOnly, carrierFilter, statusFilter, obStatus, matchesOutbound]);
 
-  const searchRecords = useMemo<PackerRecord[]>(
-    () => (searchResult.data?.records ?? []).map(toSearchResultRecord),
-    [searchResult.data],
-  );
-  const searchFilteredRecords = useMemo(() => {
-    if (!exceptionsOnly && !carrierFilter && !statusFilter && !obStatus) return searchRecords;
-    return searchRecords.filter((r) => {
-      if (!matchesOutbound(r)) return false;
-      if (carrierFilter && String(r.carrier ?? '').toUpperCase() !== carrierFilter) return false;
-      if (statusFilter && String(r.latest_status_category ?? '').toUpperCase() !== statusFilter) return false;
-      if (exceptionsOnly) {
-        const hasEx = Boolean(r.has_exception);
-        const stalled = isStalled({
-          isTerminal: r.is_terminal ?? null,
-          category: r.latest_status_category ?? null,
-          latestEventAt: r.latest_event_at ?? null,
-        });
-        if (!hasEx && !stalled) return false;
-      }
-      return true;
-    });
-  }, [searchRecords, exceptionsOnly, carrierFilter, statusFilter, obStatus, matchesOutbound]);
 
   const records = useMemo(
-    () => (normalizedSearch ? searchFilteredRecords : carrierFilteredRecords),
-    [normalizedSearch, searchFilteredRecords, carrierFilteredRecords],
+    () => carrierFilteredRecords.filter(isShippedDeskRow),
+    [carrierFilteredRecords],
   );
 
   // Attach the derived outbound state (packed-time vs left-warehouse-time) once,
@@ -288,17 +252,15 @@ export function useShippedTableRecords(filters: ShippedTableFilters) {
     });
   }, [derivedRecords, hydrationQuery.data]);
 
-  const searchMeta = searchResult.data?.meta ?? null;
-  const isResolvingSearch = searchResult.isFetching && normalizedSearch.length > 0;
+  const searchMeta = null;
+  const isResolvingSearch = false;
 
-  // Truncation surfacing (non-search only): a week/all-time fetch that filled its
+  // Truncation surfacing: a week/all-time fetch that filled its
   // ceiling has more rows on the server. Expose it + a loader so the table can
   // offer an explicit "Load more" instead of silently dropping the older tail.
-  const isTruncated = normalizedSearch
-    ? false
-    : allTimeMode
-      ? (allTimeQuery.data?.length ?? 0) >= fetchLimit
-      : weekBuckets.truncated;
+  const isTruncated = allTimeMode
+    ? (allTimeQuery.data?.length ?? 0) >= fetchLimit
+    : weekBuckets.truncated;
   const pagination = {
     isTruncated,
     loadMore,

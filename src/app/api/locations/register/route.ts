@@ -65,7 +65,7 @@ export const POST = withAuth(async (req: NextRequest, ctx) => {
       // by the Rack Label Printer). Bin labels use 1..99.
       if (!Number.isFinite(position) || position < 0 || position > 99) {
         return NextResponse.json(
-          { error: 'position must be 0 (rack label) or 1..99 (bin label)' },
+          { error: 'position must be 0 (bay label) or 1..99 (bin label)' },
           { status: 400 },
         );
       }

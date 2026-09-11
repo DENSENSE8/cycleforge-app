@@ -18,7 +18,9 @@
 
 import Link from 'next/link';
 import { requirePermission } from '@/lib/auth/page-guard';
-import { PageHeader } from '@/components/ui/pane-header';
+import { SettingsSectionHeader } from '@/components/settings/SettingsSectionHeader';
+import { SETTINGS_FLOOR_CLASS } from '@/components/settings/settings-sections';
+import { cn } from '@/utils/_cn';
 import { resolveOrgAiChain, type OrgAiConfig } from '@/lib/ai/org-provider';
 import { resolveAiProviderOrderForOrg } from '@/lib/ai/provider-order-deps';
 import { getAiUsageMarginPercent, summarizeAiUsage, type AiUsageSummaryRow } from '@/lib/ai/usage';
@@ -146,9 +148,9 @@ export default async function AiSettingsPage() {
   const unknownRateCalls = summary.reduce((sum, r) => sum + r.unknownRateCalls, 0);
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-y-auto bg-surface-canvas">
-      <PageHeader title="AI & Search" maxWidth="5xl" />
+    <div className={cn('flex h-full min-h-0 flex-col overflow-y-auto', SETTINGS_FLOOR_CLASS)}>
       <div className="mx-auto w-full max-w-5xl space-y-6 px-6 py-6">
+        <SettingsSectionHeader title="AI & search" />
         {/* Active providers */}
         <section className="space-y-3">
           <div className="flex items-center justify-between">

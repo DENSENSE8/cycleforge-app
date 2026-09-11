@@ -26,7 +26,6 @@ import { forwardRef, useRef, useState, type ComponentType, type HTMLAttributes, 
 import Image from 'next/image';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
-  AlertCircle,
   AlertTriangle,
   Check,
   ChevronRight,
@@ -60,6 +59,8 @@ import {
   type GridSelectGutterChrome,
 } from '@/components/ui/GridRowCheckbox';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
+import { OutOfStockHoverCard } from '@/components/tables/compound/OutOfStockHoverCard';
+import { KitCompositionHoverCard } from '@/components/tables/compound/KitCompositionHoverCard';
 import {
   CopyChipHoverMenu,
   type CopyChipHoverMenuItem,
@@ -72,6 +73,7 @@ import { platformMetaBrandDot } from '@/lib/source-platform';
 import { marketplaceOrderUrl } from '@/utils/order-platform';
 import { copyToClipboard } from '@/utils/_dom';
 import { cn } from '@/utils/_cn';
+import { CompoundEdgeRail } from './CompoundEdgeRail';
 import { useSlotLayoutReorder } from '@/components/tables/SlotLayoutReorderContext';
 import { useSubtitlePointerReorder } from './useSubtitlePointerReorder';
 import { CompoundSubtitleTextEditor } from './CompoundSubtitleTextEditor';
@@ -187,29 +189,6 @@ export function CompoundThumb({ view }: { view: CompoundRowView }) {
  * Incoming and To-Ship; "this task is done" on Tasks. Same control, same
  * picture, different handler.
  */
-/**
- * The row's LEADING EDGE RAIL — 3px, full height, hard against the left edge.
- *
- * Rides INSIDE the select gutter rather than in a track of its own: see
- * {@link CompoundRowView.edgeMark} for why a flag column was refused. The
- * checkbox centres in the same cell and the rail sits outside its box, so the
- * two never compete for the same pixels — the control keeps the middle, the
- * signal keeps the edge.
- *
- * `aria-hidden` with a `title`: the WORD reaches assistive tech through the
- * row's own facts (the status pill, the urgent binding), and a second
- * announcement of "Urgent" on every row is noise. The title serves the mouse.
- */
-function CompoundEdgeRail({ mark }: { mark: NonNullable<CompoundRowView['edgeMark']> }) {
-  return (
-    <HoverTooltip label={mark.label} asChild focusable={false}><span
-      className={cn('absolute inset-y-0 left-0 w-[3px] shrink-0', mark.barClass)}
-     
-      data-edge-mark={mark.label}
-      aria-hidden
-    /></HoverTooltip>
-  );
-}
 
 export function CompoundSelect({
   checked,
@@ -716,7 +695,31 @@ export function CompoundItem({
     </HoverTooltip>
   ) : null;
 
+  const kitFace = view.kitFace ?? null;
+  const kitFaceLine = kitFace ? (
+    <HoverTooltip label={<KitCompositionHoverCard face={kitFace} />} focusable={false} asChild>
+      <span
+        className="inline-flex h-3 max-w-full items-center truncate text-role-micro font-medium text-text-muted"
+        data-testid="kit-face-chip"
+        onPointerDown={(event) => event.stopPropagation()}
+        onMouseDown={(event) => event.stopPropagation()}
+        onClick={(event) => event.stopPropagation()}
+      >
+        {kitFace.label}
+      </span>
+    </HoverTooltip>
+  ) : null;
+
+  const secondaryLine =
+    noteLine || kitFaceLine ? (
+      <span className="flex min-w-0 flex-col items-start gap-0.5">
+        {noteLine}
+        {kitFaceLine}
+      </span>
+    ) : null;
+
   const flagMark = view.flagMark ?? null;
+  const itemStatus = view.itemStatus ?? null;
   const titleActions: CopyChipHoverMenuItem[] = [];
   if (itemNumberEdit) {
     titleActions.push({
@@ -776,20 +779,44 @@ export function CompoundItem({
   return (
     <CompoundCell
       primary={
-        flagMark ? (
-          <span className="flex min-w-0 items-center gap-1.5">
+        <>
+          {itemStatus ? (
+            <HoverTooltip
+              label={
+                itemStatus.card ? (
+                  <OutOfStockHoverCard
+                    thumbUrl={itemStatus.card.thumbUrl}
+                    sku={itemStatus.card.sku}
+                    title={itemStatus.card.title}
+                    qtyShort={itemStatus.card.qtyShort}
+                    kind={itemStatus.card.kind}
+                    rollupSkus={itemStatus.card.rollupSkus}
+                    pipelineLabel={itemStatus.card.pipelineLabel}
+                  />
+                ) : (
+                  itemStatus.tip
+                )
+              }
+              focusable={false}
+              asChild
+            >
+              <span className="inline-flex size-[1em] shrink-0 items-center justify-center text-rose-600">
+                <AlertTriangle className="size-full" aria-hidden />
+                <span className="sr-only">{itemStatus.label}</span>
+              </span>
+            </HoverTooltip>
+          ) : null}
+          {flagMark ? (
             <HoverTooltip label={flagMark.tip} focusable={false}>
               <span className={cn('h-2 w-2 shrink-0 rounded-full', flagMark.dotClass)}>
                 <span className="sr-only">{`Flagged ${flagMark.label}`}</span>
               </span>
             </HoverTooltip>
-            {titleWithActions}
-          </span>
-        ) : (
-          titleWithActions
-        )
+          ) : null}
+          {titleWithActions}
+        </>
       }
-      secondary={noteLine}
+      secondary={secondaryLine}
     />
   );
 }
@@ -822,43 +849,6 @@ export function CompoundItem({
  * ({@link PaperworkWalkHost} over the mounted table), it does not paint a
  * second chip or an in-row band.
  */
-
-function CompoundIdentityMarks({ view }: { view: CompoundRowView }) {
-  const label = view.edgeMark?.label ?? '';
-  const marks: Array<{
-    key: string;
-    name: string;
-    className: string;
-    Icon: typeof AlertTriangle;
-  }> = [];
-  if (label === 'Exception') {
-    marks.push({ key: 'exception', name: 'Exception', className: 'text-rose-600', Icon: AlertTriangle });
-  }
-  if (label === 'Out of stock') {
-    marks.push({ key: 'oos', name: 'Out of stock', className: 'text-amber-600', Icon: Package });
-  }
-  if (label === 'Urgent') {
-    marks.push({ key: 'urgent', name: 'Urgent', className: 'text-violet-600', Icon: AlertCircle });
-  }
-  if (view.stateTone === 'done') {
-    marks.push({ key: 'fulfilled', name: 'Fulfilled', className: 'text-emerald-600', Icon: Check });
-  }
-  if (marks.length === 0) return null;
-  return (
-    <span
-      className="flex h-full w-4 shrink-0 flex-col items-center justify-center gap-0.5"
-      data-row-marks=""
-    >
-      {marks.map((mark) => (
-        <HoverTooltip key={mark.key} label={mark.name} asChild focusable={false}>
-          <span className={cn('inline-flex', mark.className)}>
-            <mark.Icon className="h-3 w-3" aria-hidden />
-          </span>
-        </HoverTooltip>
-      ))}
-    </span>
-  );
-}
 
 export function CompoundFulfillment({
   view,
@@ -893,67 +883,63 @@ export function CompoundFulfillment({
       ]
     : undefined;
 
+  const trackingFace =
+    leafTracking && carrierDot ? (
+      <span className="inline-flex min-w-0 items-center gap-1.5">
+        <BrandIdentityDot
+          className={carrierDot.className}
+          style={carrierDot.style}
+          variant="ring"
+        />
+        <TrackingNumberMenuChip
+          value={leafTracking}
+          carrierHint={view.carrier}
+          showIcon={false}
+          dense
+          extraItems={labelItems}
+        />
+      </span>
+    ) : onOpenLabels && labelItems ? (
+      <CopyChipHoverMenu
+        menuLabel="Tracking actions"
+        items={labelItems}
+        denseLabel
+      >
+        <GridCellDash />
+      </CopyChipHoverMenu>
+    ) : (
+      <GridCellDash />
+    );
+
   if (view.quietIdentity) {
     return (
       <CompoundCell
-        primary={<GridCellDash />}
+        primary={trackingFace}
         secondary={<GridCellDash />}
       />
     );
   }
 
   return (
-    <div className="flex h-full min-w-0 w-full items-stretch">
-      <div className="min-w-0 flex-1">
-        <CompoundCell
-          primary={
-            view.orderId ? (
-              <span className="inline-flex min-w-0 items-center gap-1.5">
-                <BrandIdentityDot className={platformDot.className} style={platformDot.style} />
-                <OrderNumberMenuChip
-                  value={view.orderId}
-                  platformLabel={orderMeta.value ? orderMeta.label : null}
-                  openHref={orderOpenHref}
-                  plain
-                  dense
-                />
-              </span>
-            ) : (
-              <GridCellDash />
-            )
-          }
-          secondary={
-            leafTracking && carrierDot ? (
-              <span className="inline-flex min-w-0 items-center gap-1.5">
-                <BrandIdentityDot
-                  className={carrierDot.className}
-                  style={carrierDot.style}
-                  variant="ring"
-                />
-                <TrackingNumberMenuChip
-                  value={leafTracking}
-                  carrierHint={view.carrier}
-                  showIcon={false}
-                  dense
-                  extraItems={labelItems}
-                />
-              </span>
-            ) : onOpenLabels && labelItems ? (
-              <CopyChipHoverMenu
-                menuLabel="Tracking actions"
-                items={labelItems}
-                denseLabel
-              >
-                <GridCellDash />
-              </CopyChipHoverMenu>
-            ) : (
-              <GridCellDash />
-            )
-          }
-        />
-      </div>
-      <CompoundIdentityMarks view={view} />
-    </div>
+    <CompoundCell
+      primary={
+        view.orderId ? (
+          <span className="inline-flex min-w-0 items-center gap-1.5">
+            <BrandIdentityDot className={platformDot.className} style={platformDot.style} />
+            <OrderNumberMenuChip
+              value={view.orderId}
+              platformLabel={orderMeta.value ? orderMeta.label : null}
+              openHref={orderOpenHref}
+              plain
+              dense
+            />
+          </span>
+        ) : (
+          <GridCellDash />
+        )
+      }
+      secondary={trackingFace}
+    />
   );
 }
 
@@ -986,8 +972,9 @@ const STATE_TONE_CLASS: Record<CompoundStateTone, { pill: string; dot: string }>
  * the same month grid, click-to-commit. Glyphs name WHICH date: `Hash` on the
  * order line, `CalendarClock` on the deadline. The deadline glyph does not
  * swap when a row goes late — `currentColor` follows {@link formatCompoundDelayAgeFace}.
- * Hover always names the line (`Order date` / `Due date`) via HoverTooltip
- * so MorphCursorLayer carries the chip on every PRODUCT_TABLES peer. The top line
+ * Hover always names the line (`Start date` / `Due date`, or a family tip that
+ * already owns the name) via HoverTooltip so MorphCursorLayer carries the chip
+ * on every PRODUCT_TABLES peer. The top line
  * used to be plain text beside a picker, and two dates in one cell wearing two
  * different faces read as two different kinds of fact — which they are not
  * (operator 2026-09-04: *"must use the exact same display for the days date the
@@ -1044,13 +1031,16 @@ export function CompoundDates({
       // the thing being triaged on.
       toneClass="text-text-muted"
       onCommit={orderedAtEdit?.onCommit}
-      label="Order date"
+      label="Start date"
       glyph={Hash}
     />
   );
 
   const startedWrapped = (
-    <HoverTooltip label={compoundDatesHoverLabel('order', view.orderedAt?.tip)} asChild>
+    <HoverTooltip
+      label={compoundDatesHoverLabel('start', view.startedHover ?? view.orderedAt?.tip)}
+      asChild
+    >
       {startedNode}
     </HoverTooltip>
   );
@@ -1468,6 +1458,27 @@ export function CompoundSlotCell({
         Icon={Icon}
         facts={facts}
         assign={assign}
+      />
+    );
+  }
+  if (displayType === 'person' || value?.kind === 'person') {
+    const person = value?.kind === 'person' ? value : null;
+    const name = String(person?.name ?? '').trim() || null;
+    const staffId = person?.staffId ?? null;
+    if (!name && staffId == null) {
+      return <CompoundCell primary={<GridCellDash />} secondary={null} />;
+    }
+    return (
+      <CompoundCell
+        primary={
+          <span className="inline-flex min-w-0 max-w-full items-center gap-1.5">
+            <StaffAvatar staffId={staffId} name={name} size="xs" alt="" />
+            <HoverTooltip label={name ?? 'Staff'} asChild>
+              <CompoundLine className="min-w-0 truncate">{name ?? '—'}</CompoundLine>
+            </HoverTooltip>
+          </span>
+        }
+        secondary={null}
       />
     );
   }

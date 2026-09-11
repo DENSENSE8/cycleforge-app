@@ -64,6 +64,8 @@ export interface VisitReceiptCustomer {
   name: string | null;
   phone: string | null;
   email: string | null;
+  /** Callers: customerHtml. User: "print out a receipt including everything" + "intake ... address" */
+  address: string | null;
 }
 
 export interface VisitReceiptPayment {
@@ -180,7 +182,7 @@ function footerFor(visit: CounterVisit): string {
 
 function toCustomer(customer: CounterVisitCustomer | null): VisitReceiptCustomer | null {
   if (!customer) return null;
-  return { name: customer.name, phone: customer.phone, email: customer.email };
+  return { name: customer.name, phone: customer.phone, email: customer.email, address: customer.address };
 }
 
 /** Build the printable document model for a loaded counter visit. Pure — no I/O. */

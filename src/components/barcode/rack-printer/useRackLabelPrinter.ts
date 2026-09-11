@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { useLocations } from '@/hooks/useLocations';
 import { useOrgGs1 } from '@/hooks/useOrgGs1';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   useRackPrinterStore,
   patchRackPrinterState,
@@ -18,16 +19,19 @@ import {
   type Step,
 } from './rack-printer-config';
 import { registerRackLocations } from './rack-printer-api';
+import { printRackLabelRun } from '@/lib/print/printLabelRun';
 
 /**
  * Controller for the rack label printer. Owns the four-step location builder
  * (zone → aisle → bay → level), the per-warehouse config, and the
- * register-then-print flow for single and bulk (whole-bay) labels. The
- * zone/aisle/bay/level selection lives in the shared `useRackPrinterStore` so it
+ * register-then-print flow. Bulk ranges open LabelPrintRunSheet; confirm calls printRun.
+ * The zone/aisle/bay/level selection lives in the shared `useRackPrinterStore` so it
  * survives across the sidebar ↔ main-pane variants; everything else is local.
  *
  * Returns one bag consumed by the layout components (mobile picker, desktop
  * builder, sidebar) so the views stay presentational.
+ *
+ * Callers: RackLabelPrinter. User: implement print-run plan — wire printRackLabelRun.
  */
 export function useRackLabelPrinter() {
   const { rooms, roomNames, loading } = useLocations();
@@ -39,6 +43,7 @@ export function useRackLabelPrinter() {
   // Resolved, so a placeholder or malformed value on file arrives here as ''
   // and the label falls back to the bare rack code.
   const { identity: orgGs1 } = useOrgGs1();
+  const { user } = useAuth();
 
   const stored = useRackPrinterStore();
   const selectedRoom = stored.room;
@@ -46,8 +51,11 @@ export function useRackLabelPrinter() {
   const bay = stored.bay;
   const level = stored.level;
 
-  const [bulkLabels, setBulkLabels] = useState<RackSegments[] | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [printProgress, setPrintProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
   const [overrideStep, setOverrideStep] = useState<Step | null>(null);
 
   useEffect(() => {
@@ -146,50 +154,49 @@ export function useRackLabelPrinter() {
 
   const missingLetter = !!selectedRoom && !zoneLetter;
 
-  // Register the rack row (position=0) before window.print() so scans of the
+  // Register the rack row (position=0) before the 2×1 print job so scans of the
   // printed QR resolve to a real row in the locations table.
-  const triggerPrint = useCallback(async (labels: RackSegments[]) => {
-    if (labels.length === 0) return;
-    if (!selectedRoom) {
-      toast.error('Pick a room first.');
-      return;
-    }
-    setIsPrinting(true);
-    try {
-      await registerRackLocations(selectedRoom, labels);
-    } catch (err: any) {
-      setIsPrinting(false);
-      toast.error(err?.message || 'Could not register rack for printing');
-      return;
-    }
-
-    setBulkLabels(labels);
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        window.print();
-        setTimeout(() => {
-          setBulkLabels(null);
-          setIsPrinting(false);
-          toast.success(`Printed ${labels.length} rack label${labels.length === 1 ? '' : 's'}`);
-        }, 250);
-      });
-    });
-  }, [selectedRoom]);
+  const printRun = useCallback(
+    async (labels: RackSegments[]): Promise<boolean> => {
+      if (labels.length === 0) return false;
+      if (!selectedRoom) {
+        toast.error('Pick a room first.');
+        return false;
+      }
+      setIsPrinting(true);
+      setPrintProgress(null);
+      try {
+        const result = await printRackLabelRun({
+          roomName: selectedRoom,
+          racks: labels,
+          gln: orgGs1.gln,
+          orgSlug: user?.organizationSlug,
+          register: registerRackLocations,
+          onProgress: (done, total) => setPrintProgress({ done, total }),
+        });
+        if (result.status === 'register_failed') {
+          toast.error(result.error || 'Could not register bay for printing');
+          return false;
+        }
+        if (result.status === 'printed') {
+          toast.success(
+            `Printed ${result.count} bay label${result.count === 1 ? '' : 's'}`,
+          );
+          return true;
+        }
+        return false;
+      } finally {
+        setIsPrinting(false);
+        setPrintProgress(null);
+      }
+    },
+    [orgGs1.gln, selectedRoom, user?.organizationSlug],
+  );
 
   const handlePrintOne = useCallback(() => {
     if (!currentSegments) return;
-    triggerPrint([currentSegments]);
-  }, [currentSegments, triggerPrint]);
-
-  // Bulk: print every level of the picked bay as a separate rack label.
-  const handlePrintBay = useCallback(() => {
-    if (!zoneLetter || aisle == null || bay == null) return;
-    const labels: RackSegments[] = [];
-    for (let lv = 1; lv <= config.maxLevels; lv += 1) {
-      labels.push({ zone: zoneLetter, aisle, bay, level: lv });
-    }
-    triggerPrint(labels);
-  }, [zoneLetter, aisle, bay, config.maxLevels, triggerPrint]);
+    void printRun([currentSegments]);
+  }, [currentSegments, printRun]);
 
   const handleConfigSave = useCallback((next: PrinterConfig) => {
     setConfig(next);
@@ -229,8 +236,8 @@ export function useRackLabelPrinter() {
     allSelected,
     missingLetter,
     currentSegments,
-    bulkLabels,
     isPrinting,
+    printProgress,
     // config sheet
     configOpen,
     setConfigOpen,
@@ -244,7 +251,7 @@ export function useRackLabelPrinter() {
     resetAll,
     handlePillClick,
     handlePrintOne,
-    handlePrintBay,
+    printRun,
   };
 }
 

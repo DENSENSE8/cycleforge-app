@@ -81,6 +81,8 @@ export interface CounterVisitCustomer {
   name: string | null;
   phone: string | null;
   email: string | null;
+  /** Callers: visit-receipt toCustomer. Schema: customers.shipping_address_1. User: "intake their information like name, email address, phone number, address" */
+  address: string | null;
 }
 
 export interface CounterVisitDevice {
@@ -293,7 +295,8 @@ const defaultDeps: ReadVisitDeps = {
                 NULLIF(TRIM(CONCAT_WS(' ', first_name, last_name)), '')
               ) AS name,
               COALESCE(phone, mobile) AS phone,
-              email
+              email,
+              NULLIF(shipping_address_1, '') AS address
          FROM customers
         WHERE organization_id = $1 AND id = $2
         LIMIT 1`,
@@ -306,6 +309,7 @@ const defaultDeps: ReadVisitDeps = {
       name: (row.name as string | null) ?? null,
       phone: (row.phone as string | null) ?? null,
       email: (row.email as string | null) ?? null,
+      address: (row.address as string | null) ?? null,
     };
   },
 

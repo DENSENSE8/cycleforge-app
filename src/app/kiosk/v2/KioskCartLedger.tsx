@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/design-system/primitives';
 import { KioskCustomerIntake } from '@/components/kiosk/KioskCustomerIntake';
 import { KioskCartLineEditor } from '@/components/kiosk/KioskCartLineEditor';
+import { KioskCartSwipeRow } from '@/components/kiosk/KioskCartSwipeRow';
 import { CompoundRow } from '@/components/tables/compound/CompoundRow';
 import { cartLineCompoundView } from '@/lib/kiosk/cart-compound-view';
 import { CART_COMPOUND_COLUMNS } from '@/lib/kiosk/cart-grid-layout';
@@ -116,12 +117,14 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
         customerPhone: session.customerPhone,
         customerName: session.customerName,
         customerEmail: session.customerEmail,
+        customerAddress: session.customerAddress,
       }),
     [
       session.lines,
       session.customerPhone,
       session.customerName,
       session.customerEmail,
+      session.customerAddress,
     ],
   );
 
@@ -142,6 +145,7 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
                 phone: session.customerPhone,
                 name: session.customerName || null,
                 email: session.customerEmail || null,
+                address: session.customerAddress || null,
               },
               retailLines,
               services,
@@ -227,13 +231,42 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
             {result.repairs.length === 1
               ? `Service ${result.repairs[0].rsNumber} checked in.`
               : result.repairs.length > 1
-                ? // Name every device: "two of your things are here" is the fact
-                  // the customer is standing there to confirm.
-                  `${result.repairs.length} services checked in — ${result.repairs
+                ? `${result.repairs.length} services checked in — ${result.repairs
                     .map((r) => r.rsNumber)
                     .join(', ')}.`
                 : 'Sale staged at the register.'}
           </p>
+          {/* Callers: this success face. API: GET /api/kiosk/visit/[id]/receipt. User: "print out a receipt including everything" + "give internal staff as an internal record". */}
+          <div className="flex w-full max-w-sm flex-col gap-2">
+            <Button
+              variant="secondary"
+              className={cn('w-full', cornerClass('surface'))}
+              data-testid="kiosk-print-customer-receipt"
+              onClick={() => {
+                window.open(
+                  `/api/kiosk/visit/${result.counterTransactionId}/receipt?print=1`,
+                  '_blank',
+                  'noopener,noreferrer',
+                );
+              }}
+            >
+              Print customer receipt
+            </Button>
+            <Button
+              variant="ghost"
+              className={cn('w-full', cornerClass('surface'))}
+              data-testid="kiosk-print-staff-receipt"
+              onClick={() => {
+                window.open(
+                  `/api/kiosk/visit/${result.counterTransactionId}/receipt?print=1&copy=staff`,
+                  '_blank',
+                  'noopener,noreferrer',
+                );
+              }}
+            >
+              Print staff record
+            </Button>
+          </div>
         </div>
         <div className={KIOSK_PANE_FOOTER_BAND}>
           <Button
@@ -283,7 +316,7 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
       </div>
 
       <KioskCustomerIntake
-        fields={['phone', 'name']}
+        fields={['phone', 'name', 'email', 'address']}
         heading={null}
         className="mx-auto w-full max-w-3xl shrink-0 border-b border-border-hairline"
       />
@@ -308,7 +341,15 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
           </p>
         ) : (
           session.lines.map((line) => (
-            <div key={line.id}>
+            <KioskCartSwipeRow
+              key={line.id}
+              canVoid={session.sharedSessionId === null}
+              onEdit={() => {
+                actions.setPresentation({ lineId: line.id, catalog: null });
+                setEditingLineId(line.id);
+              }}
+              onVoid={() => actions.removeLine(line.id)}
+            >
               <CompoundRow
                 data-cart-line-id={line.id}
                 data-testid="kiosk-cart-line"
@@ -319,12 +360,14 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
                 className="group/row cursor-pointer"
                 // The row IS the edit affordance (tap to correct) — the same
                 // gesture the hand-rolled row had, kept.
-                onClick={() =>
-                  setEditingLineId((prev) => (prev === line.id ? null : line.id))
-                }
+                onClick={() => {
+                  actions.setPresentation({ lineId: line.id, catalog: null });
+                  setEditingLineId((prev) => (prev === line.id ? null : line.id));
+                }}
                 onKeyDown={(event: React.KeyboardEvent<HTMLDivElement>) => {
                   if (event.key === 'Enter' || event.key === ' ') {
                     event.preventDefault();
+                    actions.setPresentation({ lineId: line.id, catalog: null });
                     setEditingLineId((prev) => (prev === line.id ? null : line.id));
                   }
                 }}
@@ -365,7 +408,7 @@ export function KioskCartLedger({ focus }: { focus?: KioskCartFocus | null } = {
                   onDone={() => setEditingLineId(null)}
                 />
               )}
-            </div>
+            </KioskCartSwipeRow>
           ))
         )}
       </div>

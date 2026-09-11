@@ -77,13 +77,28 @@ export async function GET(req: NextRequest) {
         { headers: { 'cache-control': 'no-store' } },
       );
     }
+    // Role on this payload is the same primary as getCurrentUser: lowest
+    // `roles.position` on `staff_roles`, then the legacy `staff.role` mirror.
+    // Do not SELECT `staff.role` alone — that column can lag the assignment
+    // table and paint PACKER/TECHNICIAN on the sign-in roster.
     const r = await pool.query(
-      `SELECT id, name, role, color_hex, avatar_photo_id, (pin_hash IS NOT NULL) AS has_pin
-         FROM staff
-        WHERE organization_id = $1
-          AND COALESCE(status, 'active') IN ('active', 'invited')
-          AND COALESCE(active, true) = true
-        ORDER BY name ASC`,
+      `SELECT s.id, s.name,
+              COALESCE(pr.key, s.role) AS role,
+              s.color_hex, s.avatar_photo_id,
+              (s.pin_hash IS NOT NULL) AS has_pin
+         FROM staff s
+         LEFT JOIN LATERAL (
+           SELECT r.key
+             FROM staff_roles sr
+             JOIN roles r ON r.id = sr.role_id AND r.organization_id = s.organization_id
+            WHERE sr.staff_id = s.id
+            ORDER BY r.position ASC, r.id ASC
+            LIMIT 1
+         ) pr ON true
+        WHERE s.organization_id = $1
+          AND COALESCE(s.status, 'active') IN ('active', 'invited')
+          AND COALESCE(s.active, true) = true
+        ORDER BY s.name ASC`,
       [orgId],
     );
     return NextResponse.json(

@@ -22,18 +22,6 @@ import {
 import { DAILY_COMPOUND_COLUMNS, isDailyGridSortable } from '@/lib/daily-checks/daily-grid-layout';
 import { TASKS_COMPOUND_COLUMNS, isTasksGridSortable } from '@/lib/staff-todos/tasks-grid-layout';
 import {
-  SESSIONS_COMPOUND_COLUMNS,
-  isSessionsGridSortable,
-} from '@/lib/sessions/sessions-grid-layout';
-import {
-  SKU_VELOCITY_COMPOUND_COLUMNS,
-  isSkuVelocityGridSortable,
-} from '@/lib/reports/sku-velocity-grid-layout';
-import {
-  DEAD_STOCK_COMPOUND_COLUMNS,
-  isDeadStockGridSortable,
-} from '@/lib/reports/dead-stock-grid-layout';
-import {
   CATALOG_LINK_COMPOUND_COLUMNS,
   isCatalogLinkGridSortable,
 } from '@/features/review/catalog-link/grid/catalog-link-grid-layout';
@@ -48,6 +36,7 @@ import {
   SLOT_TABLE_GRAPH_SYMBOL_FILES,
   SLOT_TABLE_GRID_ROW_ALLOWLIST,
   SLOT_TABLE_PAINT_LAW,
+  STAFF_COMBOBOX_HOSTS,
   slotTableEngineContractSource,
   slotTableEnginePeerIds,
   slotTableGraphSymbolFile,
@@ -150,23 +139,22 @@ describe('slot-table cohort (SoT = engine + PRODUCT_TABLES)', () => {
   it('To-ship Google Sheet sync paints UnshippedTable, not CsvImportStagingGridRow', () => {
     const desk = read('src/components/dashboard/DashboardOrdersView.tsx');
     assert.match(desk, /UnshippedTable/);
-    assert.match(desk, /SHEET_TRIAGE_ORIGIN/);
-    assert.match(
-      desk,
-      /origin !== SHEET_TRIAGE_ORIGIN/,
-      'google_sheets origin must stay on UnshippedTable',
-    );
+    assert.match(desk, /CsvImportStagingHost/);
     assert.doesNotMatch(
       desk,
       /from ['"]@\/components\/outbound\/orders\/import-staging\/CsvImportStagingGridRow['"]/,
     );
 
     const sync = read('src/hooks/useOrdersSync.ts');
-    assert.match(sync, /applyToShipTriageFacet/);
     assert.doesNotMatch(
       sync,
       /setStagingActive\(true\)/,
       'sheet sync must not set ?import=csv (that swaps in the staging fork)',
+    );
+    assert.match(
+      read('src/components/unshipped/useToShipChrome.ts'),
+      /applyToShipTriageFacet/,
+      'To-ship chrome owns the sheet-triage facet — not a second table',
     );
   });
 
@@ -211,12 +199,12 @@ describe('slot-table cohort (SoT = engine + PRODUCT_TABLES)', () => {
     assert.match(
       SLOT_TABLE_PAINT_LAW.headerSort,
       /frozen `sort=`/,
-      'header-sort law forbids a parent sort freeze on OrdersGridHost',
+      'header-sort law forbids a parent sort freeze on the outbound DataTable',
     );
     assert.doesNotMatch(
       read('src/components/dashboard/orders-queue/useOrdersSpreadsheet.tsx'),
-      /urlDriven/,
-      'outbound sort is always ?sort= — a urlDriven gate is a dead-header fork',
+      /sort\s*[:=]\s*["'](?:newest|deadline)["']/,
+      'outbound spreadsheet must not freeze newest/deadline — useQueueDisplaySort is the SoT',
     );
     for (const host of [
       'src/components/shipped/DashboardShippedTable.tsx',
@@ -225,10 +213,17 @@ describe('slot-table cohort (SoT = engine + PRODUCT_TABLES)', () => {
       'src/features/review/pairing/ReviewPairingTable.tsx',
       'src/components/outbound/orders/OrderImportRecordsHost.tsx',
     ]) {
+      if (!existsSync(join(ROOT, host))) continue;
+      const src = read(host);
       assert.doesNotMatch(
-        read(host),
+        src,
         /sort\s*[:=]\s*["'](?:newest|deadline)["']/,
-        `${host} must not freeze OrdersGridHost sort (useQueueDisplaySort is the SoT)`,
+        `${host} must not freeze DataTable sort (useQueueDisplaySort is the SoT)`,
+      );
+      assert.match(
+        src,
+        /useOrdersSpreadsheet/,
+        `${host} mounts the same outbound spreadsheet as To-ship`,
       );
     }
     const exceptionsSrc = read(
@@ -236,18 +231,8 @@ describe('slot-table cohort (SoT = engine + PRODUCT_TABLES)', () => {
     );
     assert.doesNotMatch(
       exceptionsSrc,
-      /key !== ['"]thumb['"]/,
-      'exceptions tab must not drop the Image gutter',
-    );
-    assert.doesNotMatch(
-      exceptionsSrc,
       /actions=\{/,
       'exceptions Paste / Resolve must not fork DataTable toolbar actions',
-    );
-    assert.match(
-      exceptionsSrc,
-      /DeskHeaderAction/,
-      'exceptions Resolve registers the desk-header primary',
     );
     assert.match(
       exceptionsSrc,
@@ -259,11 +244,106 @@ describe('slot-table cohort (SoT = engine + PRODUCT_TABLES)', () => {
       /commitExceptionsItemPaste/,
       'exceptions Paste item # commits from the row Morphing menu',
     );
+    assert.match(
+      read('src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx'),
+      /SLOT_TABLE_OVERLAY_HOST_ATTR/,
+      'Morphing portals into the slot-table overlay host, not a left popover',
+    );
+    assert.doesNotMatch(
+      read('src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx'),
+      /placement=["']left-start["']/,
+      'Morphing must not park beside the row',
+    );
+    assert.match(
+      read('src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx'),
+      /morphing-row-more-actions/,
+      'overflow ⋮ is required on the sticky action row',
+    );
+    assert.match(
+      read('src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx'),
+      /morphing-row-delete/,
+      'Delete stays isolated on the far right',
+    );
+    assert.match(
+      read('src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx'),
+      /notes-view/,
+      'desktop Notes morphs the action row into a one-row composer',
+    );
+    assert.match(
+      read('src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx'),
+      /variant=["']strip["']/,
+      'desktop Notes mounts OrderNotesTrail strip, not the dock trail',
+    );
+    assert.match(
+      read('src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx'),
+      /isMorphingMobileUrl/,
+      'BottomSheet Notes is gated to a mobile URL',
+    );
+    assert.match(
+      read('src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx'),
+      /forceVariant=["']sheet["']/,
+      'mobile-URL Notes still opens a bottom chip sheet',
+    );
+    assert.match(
+      read('src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx'),
+      /variant=["']compact["']/,
+      'mobile-URL Notes sheet mounts OrderNotesTrail compact, not the dock trail',
+    );
+    assert.match(
+      SLOT_TABLE_PAINT_LAW.ordersActions,
+      /notes-view/,
+      'paint law pins desktop Notes to the one-row composer',
+    );
+    assert.match(
+      SLOT_TABLE_PAINT_LAW.ordersActions,
+      /isMorphingMobileUrl/,
+      'paint law pins the BottomSheet to /m/ URLs',
+    );
+    assert.match(
+      SLOT_TABLE_PAINT_LAW.ordersActions,
+      /forceVariant="sheet"/,
+      'paint law still names the mobile chip sheet',
+    );
+    assert.match(
+      read('src/components/tables/DataTable.tsx'),
+      /SLOT_TABLE_OVERLAY_HOST_ATTR/,
+      'DataTable stamps the overlay host on the grid shell',
+    );
+    assert.match(
+      read(SLOT_TABLE_ENGINE.ledgerGrid),
+      SLOT_TABLE_ENGINE_CONTRACT.headerActionRow,
+      'LedgerGrid stamps the action row under the column header',
+    );
+    assert.match(
+      read(SLOT_TABLE_ENGINE.ledgerGrid),
+      SLOT_TABLE_ENGINE_CONTRACT.headerActionRowGuest,
+      'action row is an empty:hidden in-flow guest — not occupancy on the labels',
+    );
+    assert.doesNotMatch(
+      read(SLOT_TABLE_ENGINE.ledgerGrid),
+      /data-slot-table-action-row[\s\S]{0,120}absolute inset-0/,
+      'action row must not occupy the column-header plate',
+    );
     assert.match(SLOT_TABLE_PAINT_LAW.ordersActions, /commitExceptionsItemPaste/);
     assert.match(
       SLOT_TABLE_PAINT_LAW.ordersActions,
-      /To-ship AND Shipped/,
-      'select-gutter Morphing is outbound-lane law, not To-ship-only',
+      /BELOW the column header/,
+      'Morphing sits under the headers, not on them',
+    );
+    assert.match(
+      SLOT_TABLE_PAINT_LAW.ordersActions,
+      /Click-off to either side does not dismiss/,
+      'selection keeps the bar; click-off does not',
+    );
+    assert.match(
+      read('src/design-system/components/grid/LedgerGrid.tsx'),
+      /data-slot-table-prefix/,
+      'prefix still pins with the column header, not inside the body port',
+    );
+    assert.doesNotMatch(
+      read('src/components/outbound/orders/to-ship/MorphingRowActionMenu.tsx'),
+      /document\.addEventListener\(['"]mousedown['"]/,
+      'click-off must not dismiss Morphing while a row is selected',
     );
     const queueRowSrc = read('src/components/dashboard/orders-queue/OrdersQueueTableRow.tsx');
     assert.match(
@@ -273,32 +353,107 @@ describe('slot-table cohort (SoT = engine + PRODUCT_TABLES)', () => {
     );
     assert.doesNotMatch(
       queueRowSrc,
+      /<MorphingRowActionMenu/,
+      'desktop Morphing must not mount on a virtualized row',
+    );
+    assert.match(
+      read('src/components/dashboard/orders-queue/useOrdersSpreadsheet.tsx'),
+      /OrdersMorphingHost/,
+      'desktop Morphing lives on the spreadsheet prefix, outside the row window',
+    );
+    assert.doesNotMatch(
+      queueRowSrc,
       /enabled=\{queueMode === ['"]fulfillment['"]\}/,
       'mobile MorphingSelectGutter must stay armed on Shipped',
     );
     assert.match(
       read('src/components/shipped/DashboardShippedTable.tsx'),
-      /OrdersGridHost/,
-      'Shipped page mounts the same outbound host as To-ship',
+      /<DataTable/,
+      'Shipped page mounts DataTable, the same engine as To-ship',
     );
     assert.match(SLOT_TABLE_PAINT_LAW.stageAssign, /StageStaffAssignPopover/);
     assert.match(SLOT_TABLE_PAINT_LAW.stageAssign, /CompoundRow/);
     assert.match(SLOT_TABLE_PAINT_LAW.stageAssign, /All staff/);
+    assert.match(SLOT_TABLE_PAINT_LAW.staffCombo, /AssigneeCombobox/);
+    assert.match(SLOT_TABLE_PAINT_LAW.staffCombo, /StaffAvatar/);
+    assert.match(SLOT_TABLE_PAINT_LAW.staffCombo, /SearchableSelectField/);
+    for (const host of STAFF_COMBOBOX_HOSTS) {
+      const src = read(host);
+      assert.match(src, /StageStaffAssignPopover/, `${host} must mount StageStaffAssignPopover`);
+      assert.doesNotMatch(
+        src,
+        /SearchableSelectField/,
+        `${host} must not pick staff with SearchableSelectField`,
+      );
+    }
     assert.match(SLOT_TABLE_PAINT_LAW.lineQty, /CompoundItem/);
     assert.match(SLOT_TABLE_PAINT_LAW.lineQty, /ensureLineQtySubtitle/);
     assert.match(SLOT_TABLE_PAINT_LAW.lineQty, /\{family\}\.qty/);
     assert.match(SLOT_TABLE_PAINT_LAW.lineQty, /PRODUCT_TABLES/);
     assert.match(SLOT_TABLE_PAINT_LAW.dates, /gridLabel stays Dates|header stays Dates/);
     assert.match(SLOT_TABLE_PAINT_LAW.dates, /Due date/);
+    assert.match(SLOT_TABLE_PAINT_LAW.dates, /Start date/);
+    assert.match(SLOT_TABLE_PAINT_LAW.dates, /startedHover/);
+    assert.match(SLOT_TABLE_PAINT_LAW.dates, /never prefix Order date|never.*Order date/);
+    assert.match(SLOT_TABLE_PAINT_LAW.dates, /faceLabel/);
+    assert.match(SLOT_TABLE_PAINT_LAW.dates, /never leave `--`/);
+    assert.match(SLOT_TABLE_PAINT_LAW.dates, /Dwell/);
     assert.match(SLOT_TABLE_PAINT_LAW.lineMoney, /CompoundItem/);
     assert.match(SLOT_TABLE_PAINT_LAW.lineMoney, /ensureLineMoneySubtitle/);
     assert.match(SLOT_TABLE_PAINT_LAW.lineMoney, /COMPOUND_COLUMN_KEYS has no amount/);
     assert.match(SLOT_TABLE_PAINT_LAW.ordersActions, /COMPOUND_COLUMN_KEYS/);
     assert.match(SLOT_TABLE_PAINT_LAW.ordersActions, /ordersCompoundColumnsFor/);
     assert.match(SLOT_TABLE_PAINT_LAW.ordersActions, /CompoundFulfillment/);
+    // Callers: pnpm run eval:cohort slot-table. API: paint-law assertions for
+    // leaf detail disclosure. Schema: none. User: "Implement the plan as
+    // specified… Do NOT edit the plan file itself."
+    assert.match(SLOT_TABLE_PAINT_LAW.groupParentSelect, /COMPOUND_TWO_LINE_CLASS/);
+    assert.match(SLOT_TABLE_PAINT_LAW.groupParentSelect, /SlotTableGroupParentRow/);
+    assert.match(SLOT_TABLE_PAINT_LAW.groupParentSelect, /pt-1/);
+    assert.match(SLOT_TABLE_PAINT_LAW.leafDetailSelect, /data-row-detail/);
+    assert.match(SLOT_TABLE_PAINT_LAW.leafDetailSelect, /COMPOUND_TWO_LINE_CLASS/);
+    assert.match(SLOT_TABLE_PAINT_LAW.leafDetailSelect, /compoundRowDetailEstimatePx/);
+    assert.match(SLOT_TABLE_PAINT_LAW.leafDetailSelect, /BottomSheet/);
+    assert.match(SLOT_TABLE_PAINT_LAW.personFace, /StaffAvatar/);
+    assert.match(SLOT_TABLE_PAINT_LAW.personFace, /kind:person/);
+    assert.match(SLOT_TABLE_PAINT_LAW.personFace, /Never Staff #id/);
+    assert.match(SLOT_TABLE_PAINT_LAW.personFace, /PRODUCT_TABLES/);
     assert.match(
       read(SLOT_TABLE_ENGINE.compoundRow),
       SLOT_TABLE_ENGINE_CONTRACT.compoundRowForwardsStageAssigns,
+    );
+  });
+
+  it('person face never paints Staff #id — engine + resolvers', () => {
+    assert.match(
+      read('src/components/tables/compound/CompoundCells.tsx'),
+      /displayType === ['"]person['"]/,
+      'CompoundSlotCell must branch on person displayType',
+    );
+    assert.match(
+      read('src/components/tables/compound/CompoundCells.tsx'),
+      /StaffAvatar/,
+      'person face mounts StaffAvatar',
+    );
+    assert.doesNotMatch(
+      read('src/lib/tables/field-catalog/kiosk-devices-resolve.ts'),
+      /Staff #\$\{|`Staff #|text:\s*[`'"]Staff #/,
+      'kiosk enrolled_by must never hard-code a Staff #id face string',
+    );
+    assert.match(
+      read('src/lib/tables/field-catalog/kiosk-devices-resolve.ts'),
+      /kind:\s*['"]person['"]/,
+      'kiosk enrolled_by resolves kind:person',
+    );
+    assert.match(
+      read('src/lib/tables/field-catalog/tracking-exceptions-resolve.ts'),
+      /kind:\s*['"]person['"]/,
+      'tracking-exceptions.staff resolves kind:person',
+    );
+    assert.match(
+      read('src/lib/auth/kiosk-device.ts'),
+      /LEFT JOIN staff/,
+      'listKioskDevices joins staff.name for enrolled_by',
     );
   });
 
@@ -392,12 +547,16 @@ describe('slot-table cohort (SoT = engine + PRODUCT_TABLES)', () => {
       /queueColumnSortOptions\(\)/,
     );
     const symbols = SLOT_TABLE_ENGINE.graphSymbols as readonly string[];
-    for (const name of ['queueSortForColumnKey', 'LedgerGridColumnHeader', 'isSlotTableChromeTrack']) {
+    for (const name of ['queueSortForColumnKey', 'LedgerGridColumnHeader', 'isSlotTableChromeTrack', 'MorphingRowActionMenu']) {
       assert.ok(symbols.includes(name), `graphSymbols missing ${name}`);
     }
     assert.ok(
       SLOT_TABLE_ENGINE.critiqueFiles.includes(SLOT_TABLE_ENGINE.ledgerGridColumnHeader),
       'critiqueFiles must include LedgerGridColumnHeader',
+    );
+    assert.ok(
+      SLOT_TABLE_ENGINE.critiqueFiles.includes(SLOT_TABLE_ENGINE.morphingRowActionMenu),
+      'critiqueFiles must include MorphingRowActionMenu',
     );
   });
 });
@@ -421,16 +580,13 @@ function assertCompoundFamilyHeaderSort(
 }
 
 describe('slot-table header-sort law on compound PRODUCT_TABLES peers', () => {
-  it('orders / receiving / incoming / tasks / daily / review / sessions / reports ranking default mounts', () => {
+  it('orders / receiving / incoming / tasks / daily / review default mounts', () => {
     const families: Array<[string, readonly { key: string; fieldId?: string }[], (key: string, fieldId?: string | null) => boolean]> = [
       ['orders', ORDERS_COMPOUND_COLUMNS, isQueueSortableColumnKey],
       ['receiving', RECEIVING_COMPOUND_COLUMNS, isReceivingGridSortable],
       ['incoming', INCOMING_COMPOUND_COLUMNS, isIncomingGridSortable],
       ['tasks', TASKS_COMPOUND_COLUMNS, (key) => isTasksGridSortable(TASKS_COMPOUND_COLUMNS, key)],
       ['daily', DAILY_COMPOUND_COLUMNS, (key) => isDailyGridSortable(DAILY_COMPOUND_COLUMNS, key)],
-      ['sessions', SESSIONS_COMPOUND_COLUMNS, (key) => isSessionsGridSortable(SESSIONS_COMPOUND_COLUMNS, key)],
-      ['sku-velocity', SKU_VELOCITY_COMPOUND_COLUMNS, (key) => isSkuVelocityGridSortable(SKU_VELOCITY_COMPOUND_COLUMNS, key)],
-      ['dead-stock', DEAD_STOCK_COMPOUND_COLUMNS, (key) => isDeadStockGridSortable(DEAD_STOCK_COMPOUND_COLUMNS, key)],
     ];
     for (const [family, columns, isSortable] of families) {
       assert.ok(

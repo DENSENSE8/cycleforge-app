@@ -84,6 +84,8 @@ export async function createRepairCustomer(params: {
   name: string;
   phone: string;
   email?: string;
+  /** Callers: submitCounterTransaction.createCustomer. Schema: customers.shipping_address_1. User: "intake their information like name, email address, phone number, address" */
+  address?: string;
   repairId?: number;
 }, orgId?: OrgId): Promise<CustomerRecord> {
   const parts = params.name.trim().split(/\s+/);
@@ -95,9 +97,9 @@ export async function createRepairCustomer(params: {
       const result = await client.query<CustomerRecord>(
         `INSERT INTO customers (
           customer_name, display_name, first_name, last_name,
-          phone, email, contact_type, entity_type, entity_id,
+          phone, email, shipping_address_1, contact_type, entity_type, entity_id,
           organization_id, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, 'repair_customer', $7, $8, $9, NOW(), NOW())
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'repair_customer', $8, $9, $10, NOW(), NOW())
         RETURNING id, customer_name, display_name, first_name, last_name, email, phone,
                   contact_type, entity_type, entity_id`,
         [
@@ -107,6 +109,7 @@ export async function createRepairCustomer(params: {
           lastName,
           params.phone || null,
           params.email || null,
+          params.address?.trim() || null,
           params.repairId ? 'REPAIR' : null,
           params.repairId ?? null,
           orgId,

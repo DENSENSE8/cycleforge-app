@@ -180,7 +180,7 @@ describe('loadCounterVisit', () => {
         subtotalCents: 4999,
         totalCents: 4999,
         customerId: 7,
-        customer: { id: 7, name: 'Jamie Retail', phone: '5551234567', email: null },
+        customer: { id: 7, name: 'Jamie Retail', phone: '5551234567', email: null, address: null },
         squareTransaction: {
           id: 'sq-1',
           squareOrderId: 'order-10',

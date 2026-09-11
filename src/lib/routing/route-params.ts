@@ -66,6 +66,23 @@ export function paramRoundTrip(
     .pipe(z.string().refine((value) => parse(value) === value));
 }
 
+/**
+ * House parser that may rewrite aliases. Hygiene writes the canonical token
+ * (`racks` → `bays`) so the address bar matches the UI.
+ */
+export function paramCanonical(
+  parse: (raw: string) => string | null | undefined,
+): ParamSchema {
+  return z.string().transform((raw, ctx) => {
+    const next = parse(raw.trim());
+    if (next == null || next === '') {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'invalid' });
+      return z.NEVER;
+    }
+    return next;
+  });
+}
+
 /** A positive integer id, kept as its canonical string form. */
 export const paramPositiveInt: ParamSchema = z
   .string()
@@ -210,7 +227,7 @@ export const SHARED_OWNED_KEYS: Readonly<Record<string, string>> = {
   openRepair: 'A focused repair order id. Same id space on `/repair`, which renders it, and on `/walk-in`, which only reads it to forward the legacy deep-link to `/pickup?job=repair` — the hand-off is the reason the key is deliberately identical on both sides.',
   tab: 'Sub-tab within the surface, shared by `/repair`, `/walk-in` (redirect shell), `/dashboard` (sales), and Inventory Locations / `/warehouse` orphans BY DESIGN. Vocabularies stay per-route.',
   room: 'Selected warehouse room. Same facet on `/inventory/locations` and legacy `/warehouse` orphan routes.',
-  code: 'Focused rack / bin code. Same id space on Locations and `/warehouse` orphans.',
+  code: 'Focused bay / bin code. Same id space on Locations and `/warehouse` orphans.',
   showEmpty: 'Map empty-bin toggle. Same question on Locations and `/warehouse` orphans.',
   edit: 'Edit-form toggle for a location record. Same question on Locations and `/warehouse` orphans.',
   stage: 'A pipeline-stage facet over the surface\'s own list — Support\'s ticket stage and the To-ship desk\'s unshipped board stage. One question, per-route vocabularies.',
@@ -224,6 +241,10 @@ export const SHARED_OWNED_KEYS: Readonly<Record<string, string>> = {
   c3: 'Compare pane-3 recipe; shares its owner set with `clayout`.',
   composerMode:
     'Station composer destination (unbox|ticket). Same question on Unbox, Arrival, and Testing — independent scan stations that cannot both be current. Legacy `label` aliases to unbox.',
+  sel: 'FIND confirmation identity (`order:123`). Same question on `/search` and `/m/search` — one case-file, two pathnames.',
+  etype: 'FIND browse entity-type refine. Same question on `/search` and `/m/search`.',
+  hstat: 'FIND browse status refine. Same question on `/search` and `/m/search`.',
+  chan: 'FIND browse channel refine. Same question on `/search` and `/m/search`.',
 };
 
 /** One route's param contract. */

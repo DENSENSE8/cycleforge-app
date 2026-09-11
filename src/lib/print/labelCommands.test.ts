@@ -6,6 +6,7 @@ import { resolvePaperSize } from '@/lib/print/browserPrint';
 import {
   buildReceivingLabelCommands,
   packMonochromeBitmap,
+  wrapTsplBitmapJob,
 } from '@/lib/print/labelCommands';
 
 const payload: ReceivingLabelPayload = {
@@ -27,6 +28,18 @@ test('TSPL receiving labels use exact 2x1 geometry at 203 DPI', () => {
   assert.match(commands, /\r\nDMATRIX 225,10,171,171,"R-1234"\r\n/);
   assert.match(commands, /\r\nPRINT 1,1\r\n$/);
   assert.equal(commands.includes('\n') && !commands.includes('\r\n'), false);
+});
+
+test('wrapTsplBitmapJob emits PRINT N in one silent job', () => {
+  const commands = wrapTsplBitmapJob(
+    new Uint8Array([0x00]),
+    8,
+    1,
+    resolvePaperSize('2x1'),
+    12,
+  );
+  const text = new TextDecoder().decode(commands);
+  assert.match(text, /\r\nPRINT 12,1\r\n$/);
 });
 
 test('monochrome bitmap packing uses the CX418 inverse raster polarity', () => {

@@ -1,24 +1,24 @@
 'use client';
 
 /**
- * Phone to-ship card — catalog thumb flush left, title, then the item-record
- * meta cluster (qty · condition · notes) and Pick / Packed colour marks.
- * Names live on the order sheet. One action row: Out of stock · Listing · Ship.
+ * Phone to-ship card — two rows only. Photo stretches the card height.
+ * Title; qty · price · condition + listing + Ship.
  */
 
 import { useCallback, useRef } from 'react';
-import { FileText, AlertTriangle, ExternalLink, Truck } from '@/components/Icons';
+import { ExternalLink, Truck } from '@/components/Icons';
 import { OrderIdChip, TrackingChip, getLast8 } from '@/components/ui/CopyChip';
-import { Button, Panel } from '@/design-system/primitives';
+import { Button, IconButton, Panel } from '@/design-system/primitives';
 import { BUTTON_VARIANTS } from '@/design-system/primitives/button-variants';
 import {
   ItemRecordQtyBadge,
   ItemRecordThumb,
-  ITEM_RECORD_FACE,
   ItemRecordMobileMeta,
-  ItemRecordMobileStage,
 } from '@/design-system/components/item-record';
-import { ITEM_RECORD_MOBILE_META } from '@/design-system/tokens/item-record-mobile';
+import {
+  ITEM_RECORD_MOBILE_THUMB,
+  ITEM_RECORD_MOBILE_TITLE,
+} from '@/design-system/tokens/item-record-mobile';
 import {
   animate,
   motion,
@@ -32,13 +32,12 @@ import type { WorkOrderRow } from '@/components/work-orders/types';
 import {
   isToShipOutOfStock,
   toShipOrderId,
-  toShipPackerLabel,
-  toShipPickerLabel,
   toShipTrackingNumber,
 } from '@/lib/work-orders/to-ship-assignment';
-import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 import { conditionGradeTableLabel, conditionTextColor, EMPTY_META_DASH } from '@/lib/conditions';
 import { conditionGradeTextClass } from '@/lib/condition-tone';
+import { formatSalePrice } from '@/lib/dashboard/orders-queue-helpers';
+import { getExternalUrlByItemNumber } from '@/hooks/useExternalItemUrl';
 
 const SWIPE_REVEAL_PX = 88;
 const SWIPE_COMMIT_PX = 64;
@@ -94,21 +93,20 @@ export function ToShipConditionFace({ row }: { row: WorkOrderRow }) {
   );
 }
 
-/** Qty · condition · notes as one item-record cluster. Names are the sheet. */
+export function ToShipPriceFace({ row }: { row: WorkOrderRow }) {
+  const face = formatSalePrice(row.saleAmount, row.currency);
+  if (!face) return null;
+  return <span data-testid="to-ship-price">{face}</span>;
+}
+
+/** Desk order: qty · amount · condition. */
 export function ToShipSlotSubtitle({ row }: { row: WorkOrderRow }) {
-  const note = row.notes?.trim() || '';
   return (
     <span data-testid="to-ship-slot-subtitle" className="min-w-0 flex-1">
       <ItemRecordMobileMeta
         qty={<ToShipQtyFace row={row} />}
+        price={<ToShipPriceFace row={row} />}
         condition={<ToShipConditionFace row={row} />}
-        notes={
-          note ? (
-            <span className={ITEM_RECORD_MOBILE_META.notes}>{note}</span>
-          ) : (
-            <FileText className={ITEM_RECORD_MOBILE_META.notesIdle} aria-hidden />
-          )
-        }
       />
     </span>
   );
@@ -116,24 +114,19 @@ export function ToShipSlotSubtitle({ row }: { row: WorkOrderRow }) {
 
 export function MobileToShipRow({
   row,
-  resolveName,
   blocked = false,
   onOpen,
   onProcess,
-  onOutOfStock,
 }: {
   row: WorkOrderRow;
   resolveName: (id: number) => string;
   blocked?: boolean;
   onOpen: (row: WorkOrderRow) => void;
   onProcess: (row: WorkOrderRow) => void;
-  onOutOfStock: (row: WorkOrderRow) => void;
 }) {
   const reduceMotion = useReducedMotion();
   const x = useMotionValue(0);
   const dragging = useRef(false);
-  const picker = toShipPickerLabel(row, resolveName);
-  const packer = toShipPackerLabel(row, resolveName);
   const isBlocked = blocked || isToShipOutOfStock(row);
   const listingHref = getExternalUrlByItemNumber(row.itemNumber || row.sku);
 
@@ -172,13 +165,13 @@ export function MobileToShipRow({
       padding="none"
       radius="xl"
       elevation="raised"
-      className="relative overflow-hidden bg-surface-card"
+      className="relative overflow-hidden rounded-2xl bg-surface-card"
     >
       <div
         aria-hidden
         className={cn(
           BUTTON_VARIANTS.primary,
-          'pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center text-role-eyebrow font-semibold',
+          'pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center text-base font-semibold',
           isBlocked && 'opacity-50',
         )}
         style={{ width: SWIPE_REVEAL_PX }}
@@ -216,72 +209,56 @@ export function MobileToShipRow({
           }
         }}
       >
-        <div className={cn('grid min-w-0 items-start', ITEM_RECORD_FACE.thumbGrid)}>
-          <ItemRecordThumb
-            imageUrl={row.imageUrl}
-            className={cn(ITEM_RECORD_FACE.hw, 'self-start')}
-          />
-          <div className="flex min-w-0 flex-col gap-1 px-2 py-2">
-            <span className="line-clamp-2 text-role-title font-semibold leading-snug text-text-default">
+        <div className={cn('grid min-w-0 items-stretch', ITEM_RECORD_MOBILE_THUMB.grid)}>
+          <div className={ITEM_RECORD_MOBILE_THUMB.column}>
+            <ItemRecordThumb
+              imageUrl={row.imageUrl}
+              className={cn(
+                ITEM_RECORD_MOBILE_THUMB.face,
+                ITEM_RECORD_MOBILE_THUMB.corner,
+                '!bg-surface-card bg-none text-text-muted shadow-none',
+              )}
+            />
+          </div>
+          <div className={ITEM_RECORD_MOBILE_TITLE.band}>
+            <span className={cn(ITEM_RECORD_MOBILE_TITLE.face, 'min-w-0')}>
               {row.title}
             </span>
-            <div className="flex min-w-0 items-center">
+            <div className={ITEM_RECORD_MOBILE_TITLE.foot}>
               <ToShipSlotSubtitle row={row} />
-              <ItemRecordMobileStage
-                pick={{
-                  staffId: row.techId,
-                  name: picker,
-                  colorHex: row.techColorHex ?? null,
-                }}
-                packed={{
-                  staffId: row.packerId,
-                  name: packer,
-                  colorHex: row.packerColorHex ?? null,
-                }}
-              />
+              <div
+                className="ml-auto flex shrink-0 items-center gap-1"
+                onPointerDown={(event) => event.stopPropagation()}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <IconButton
+                  size="xs"
+                  radius="pill"
+                  tone="accent"
+                  ariaLabel="Listing"
+                  data-testid="to-ship-listing"
+                  disabled={!listingHref}
+                  icon={<ExternalLink className="h-3.5 w-3.5" />}
+                  onClick={() => {
+                    if (!listingHref) return;
+                    window.open(listingHref, '_blank', 'noopener,noreferrer');
+                  }}
+                />
+                <Button
+                  variant="primary"
+                  size="sm"
+                  radius="pill"
+                  icon={<Truck />}
+                  ariaLabel="Ship"
+                  disabled={isBlocked}
+                  className="min-w-16 px-3"
+                  onClick={process}
+                >
+                  Ship
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-        <div
-          className="flex w-full items-stretch gap-1.5 px-2 pb-2"
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(event) => event.stopPropagation()}
-        >
-          <Button
-            variant="warning"
-            size="sm"
-            radius="surface"
-            icon={<AlertTriangle />}
-            ariaLabel="Out of stock"
-            disabled={isBlocked}
-            className="ds-allow-control-size min-h-11 min-w-0 flex-1 px-0"
-            onClick={() => onOutOfStock(row)}
-          />
-          <Button
-            variant="primarySoft"
-            size="sm"
-            radius="surface"
-            icon={<ExternalLink />}
-            ariaLabel="Listing"
-            disabled={!listingHref}
-            className="ds-allow-control-size min-h-11 min-w-0 flex-1 px-0"
-            onClick={() => {
-              if (!listingHref) return;
-              window.open(listingHref, '_blank', 'noopener,noreferrer');
-            }}
-          />
-          <Button
-            variant="primary"
-            size="sm"
-            radius="surface"
-            icon={<Truck />}
-            ariaLabel="Ship"
-            disabled={isBlocked}
-            className="ds-allow-control-size min-h-11 min-w-0 flex-[4]"
-            onClick={process}
-          >
-            Ship
-          </Button>
         </div>
       </motion.div>
     </Panel>

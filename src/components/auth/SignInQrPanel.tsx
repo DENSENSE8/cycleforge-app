@@ -1,5 +1,13 @@
 'use client';
 
+/**
+ * Desktop companion QR for phone scan → authorize this computer.
+ * Never mount on `/m/signin` — a phone cannot scan a QR on itself
+ * (WhatsApp Web / Discord / QRAuth mobile pattern).
+ *
+ * Callers: `/signin` AuthCard qrPanel only when NOT mobileSignInFace.
+ */
+
 import { useEffect, useState, useRef, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { Smartphone, RefreshCw, CheckCircle2 } from 'lucide-react';
@@ -66,12 +74,12 @@ export function SignInQrPanel({ onSuccess, className }: SignInQrPanelProps) {
       setUrl(data.url);
       setState('active');
 
-      const complete = (data: QrAuthSuccessData) => {
+      const complete = (payload: QrAuthSuccessData) => {
         clearPolling();
         setState('completed');
-        setStaffName(data.staffName || null);
+        setStaffName(payload.staffName || null);
         setTimeout(() => {
-          if (onSuccessRef.current) onSuccessRef.current(data);
+          if (onSuccessRef.current) onSuccessRef.current(payload);
         }, 500);
       };
       const expire = () => {
@@ -79,10 +87,6 @@ export function SignInQrPanel({ onSuccess, className }: SignInQrPanelProps) {
         setState('expired');
       };
 
-      // Poll status. With the websocket live this is the 10s SAFETY NET (a
-      // dropped push must never strand a logged-in phone); without one it is
-      // the 1.5s primary. Poll interval tightens only after the subscribe
-      // lands, so a failed Ably connect keeps the old responsiveness.
       const poll = async () => {
         if (!mountedRef.current || !data.token) return;
         try {
@@ -93,18 +97,19 @@ export function SignInQrPanel({ onSuccess, className }: SignInQrPanelProps) {
           if (!statusRes.ok) return;
           const statusData = (await statusRes.json()) as QrAuthSuccessData & { status: string };
           if (statusData.status === 'completed') complete(statusData);
-          else if (statusData.status === 'expired' || statusData.status === 'consumed' || statusData.status === 'already_consumed') expire();
+          else if (
+            statusData.status === 'expired' ||
+            statusData.status === 'consumed' ||
+            statusData.status === 'already_consumed'
+          ) {
+            expire();
+          }
         } catch {
           // ignore transient poll error
         }
       };
       timerRef.current = setInterval(() => void poll(), 1500);
 
-      // The push leg: subscribe-only token on this session's anonymous
-      // channel (qr-auth:<hash>, minted by begin). The phone's approval
-      // publishes `session.authorized` and this completes in <50ms instead
-      // of the next poll tick. Every failure path falls back to polling —
-      // push is an acceleration, never a dependency.
       if (data.ably?.token && data.ably.channel) {
         void import('ably').then(({ Realtime }) => {
           if (!mountedRef.current) return;
@@ -112,11 +117,6 @@ export function SignInQrPanel({ onSuccess, className }: SignInQrPanelProps) {
           const channel = client.channels.get(data.ably!.channel);
           channel.subscribe((msg) => {
             if (msg.name === 'session.authorized') {
-              // The push is a NUDGE, never a completion. Only the status
-              // route performs the claim that mints THIS browser's session
-              // cookie; completing straight from the push navigated with no
-              // cookie and the auth middleware bounced the desktop right
-              // back to /signin (2026-09-08). One completion path: the poll.
               client.close();
               void poll();
             }
@@ -128,7 +128,7 @@ export function SignInQrPanel({ onSuccess, className }: SignInQrPanelProps) {
           channel.once('attached', tighten);
           client.connection.on('failed', () => client.close());
         }).catch(() => {
-          /* no ably package or blocked — polling stays primary */
+          /* polling stays primary */
         });
       }
     } catch {
@@ -151,11 +151,6 @@ export function SignInQrPanel({ onSuccess, className }: SignInQrPanelProps) {
         <h2 className="text-role-title text-text-default text-base font-semibold">Log in with QR Code</h2>
       </div>
 
-      {/* The code, unwrapped. react-qr-code grounds itself white (scanners
-          need the contrast); the old 156px bordered tile + inner white box
-          double-boxed it and the corners sat off the column edge. The
-          relative wrapper is positioning for the expired overlay only — it
-          paints nothing. */}
       <div className="relative flex items-center justify-center">
         {state === 'loading' && (
           <div className="flex h-[156px] w-[156px] flex-col items-center justify-center space-y-1 rounded-lg bg-surface-sunken animate-pulse">
@@ -168,63 +163,63 @@ export function SignInQrPanel({ onSuccess, className }: SignInQrPanelProps) {
 
         {state === 'expired' && (
           <>
-          {/* Footprint: the overlay is absolute; without an in-flow box the
-              relative wrapper collapses to 0x0 and the overlay content spills
-              onto the caption below (operator screenshot 2026-09-08). */}
-          <div className="h-[156px] w-[156px] rounded-lg bg-surface-sunken" aria-hidden />
-          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-surface-card/95 p-4 text-center backdrop-blur-sm">
-            <p className="text-sm font-medium text-text-default mb-2">QR Code Expired</p>
-            <Button
-              variant="brand"
-              size="sm"
-              icon={<RefreshCw className="h-3.5 w-3.5" />}
-              onClick={() => void begin()}
-            >
-              Refresh
-            </Button>
-          </div>
+            <div className="h-[156px] w-[156px] rounded-lg bg-surface-sunken" aria-hidden />
+            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-surface-card/95 p-4 text-center backdrop-blur-sm">
+              <p className="mb-2 text-sm font-medium text-text-default">QR Code Expired</p>
+              <Button
+                variant="brand"
+                size="sm"
+                icon={<RefreshCw className="h-3.5 w-3.5" />}
+                onClick={() => void begin()}
+              >
+                Refresh
+              </Button>
+            </div>
           </>
         )}
 
         {state === 'completed' && (
           <>
-          <div className="h-[156px] w-[156px] rounded-lg bg-surface-sunken" aria-hidden />
-          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-surface-card/95 p-4 text-center">
-            <CheckCircle2 className="h-12 w-12 text-text-success animate-in zoom-in-75 duration-300" />
-            <p className="text-sm font-semibold text-text-default mt-2">Authorized!</p>
-            <p className="text-xs text-text-soft truncate max-w-[170px]">
-              {staffName ? `Logging in as ${staffName}` : 'Logging you in...'}
-            </p>
-          </div>
+            <div className="h-[156px] w-[156px] rounded-lg bg-surface-sunken" aria-hidden />
+            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-surface-card/95 p-4 text-center">
+              <CheckCircle2 className="h-12 w-12 animate-in zoom-in-75 text-text-success duration-300" />
+              <p className="mt-2 text-sm font-semibold text-text-default">Authorized!</p>
+              <p className="max-w-[170px] truncate text-xs text-text-soft">
+                {staffName ? `Logging in as ${staffName}` : 'Logging you in...'}
+              </p>
+            </div>
           </>
         )}
 
         {state === 'error' && (
           <>
-          <div className="h-[156px] w-[156px] rounded-lg bg-surface-sunken" aria-hidden />
-          <div className="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-surface-card p-4 text-center">
-            <p className="text-xs text-text-danger mb-2">Could not generate QR</p>
-            <Button variant="secondary" size="sm" onClick={() => void begin()}>
-              Retry
-            </Button>
-          </div>
+            <div className="h-[156px] w-[156px] rounded-lg bg-surface-sunken" aria-hidden />
+            <div className="absolute inset-0 flex flex-col items-center justify-center rounded-lg bg-surface-card p-4 text-center">
+              <p className="mb-2 text-xs text-text-danger">Could not generate QR</p>
+              <Button variant="secondary" size="sm" onClick={() => void begin()}>
+                Retry
+              </Button>
+            </div>
           </>
         )}
       </div>
 
-      {/* The one microcopy line — the live dot carries the state. */}
       <div className="flex items-center justify-center gap-2 text-role-caption text-text-soft">
         <span className="relative flex h-2 w-2">
-          <span className={cn(
-            'absolute inline-flex h-full w-full rounded-full opacity-75',
-            state === 'active' ? 'bg-status-success animate-ping' : 'bg-text-faint'
-          )} />
-          <span className={cn(
-            'relative inline-flex h-2 w-2 rounded-full',
-            state === 'active' ? 'bg-status-success' : 'bg-text-faint'
-          )} />
+          <span
+            className={cn(
+              'absolute inline-flex h-full w-full rounded-full opacity-75',
+              state === 'active' ? 'animate-ping bg-status-success' : 'bg-text-faint',
+            )}
+          />
+          <span
+            className={cn(
+              'relative inline-flex h-2 w-2 rounded-full',
+              state === 'active' ? 'bg-status-success' : 'bg-text-faint',
+            )}
+          />
         </span>
-        <span>Scan with your phone</span>
+        <span>Scan with your phone — authorize this computer</span>
       </div>
     </div>
   );

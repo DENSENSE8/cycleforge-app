@@ -32,6 +32,8 @@ import {
   formatQueueRowDateCell,
   nonSentinelTimestamp,
 } from '@/components/dashboard/orders-queue/helpers';
+import { shortageIdentityFromRow } from '@/lib/orders/order-shortage-identity';
+import { shortagePipelineFrom } from '@/lib/orders/shortage-pipeline';
 
 /**
  * Fulfillment lane → the three-tone vocabulary.
@@ -104,6 +106,11 @@ export interface OrdersCompoundParts {
    * Omitted ⇒ `getCurrentPSTDateKey()` (tests pass it so the face is stable).
    */
   todayKey?: string;
+  /**
+   * Bundle / kit chip under the item title (from batch composition map).
+   * Absent / null ⇒ flat listing title only.
+   */
+  kitFace?: CompoundRowView['kitFace'];
 }
 
 /**
@@ -259,36 +266,141 @@ export function ordersOrderedAt(
 }
 
 /**
- * The row's LEADING EDGE RAIL — urgent first, then blocked.
- *
- * ## Why these two, in this order
- *
- * URGENT has no other carrier. It is the operator's expedite claim, it now
- * decides the QUEUE ORDER (`queueUrgentRank`), and until this rail the only way
- * to see it was to bind the `orders.urgent` column or filter the board — so a
- * row that jumped the queue arrived at the top with nothing on it saying why.
- * A rank the eye cannot verify reads as a broken sort.
- *
- * BLOCKED is second because it already has a carrier: the state pill says
- * BLOCKED in the alert tone, and it has a desk of its own. The rail repeats it
- * only when the row is NOT urgent, so the leftmost mark is never spent on the
- * weaker of two signals.
- *
- * Everything below that — the five org row flags — stays on the row WASH and
- * the mark beside the title. One rail, two meanings, is already the ceiling: a
- * rail that can mean seven things is a colour key nobody memorises.
- *
- * The tones are the flag vocabulary's own (`order-row-flags`): rose for the
- * exception class, violet for pull-this-forward. No blue — blue is selection on
- * this surface.
+ * ORDER-LEVEL rail — urgent only. Exception and out-of-stock are product
+ * facts and paint on {@link ordersItemStatus}.
  */
 export function ordersEdgeMark(
   record: Pick<ShippedOrder, 'is_urgent' | 'is_out_of_stock' | 'has_exception'>,
 ): CompoundRowView['edgeMark'] {
-  if (record.has_exception) return { label: 'Exception', barClass: 'bg-rose-500' };
-  if (record.is_urgent) return { label: 'Urgent', barClass: 'bg-violet-500' };
-  if (record.is_out_of_stock) return { label: 'Out of stock', barClass: 'bg-amber-500' };
+  if (record.is_urgent) {
+    return { label: 'Urgent', barClass: 'bg-yellow-400', pulse: true, tickClass: 'bg-yellow-100' };
+  }
   return null;
+}
+
+/**
+ * PRODUCT-LEVEL mark on the item track. Exception wins over out of stock.
+ * The cell paints an alert icon; this only names the fact. OOS tip is a
+ * product-card fact blob — CompoundCells mounts the hover card from `card`.
+ */
+export function ordersItemStatus(
+  record: Pick<
+    ShippedOrder,
+    | 'is_out_of_stock'
+    | 'has_exception'
+    | 'oos_kind'
+    | 'oos_sku'
+    | 'oos_qty_short'
+    | 'oos_title'
+    | 'oos_zoho_item_id'
+    | 'sku'
+    | 'product_title'
+    | 'catalog_image_url'
+    | 'quantity'
+    | 'replenishment_status'
+    | 'replenishment_po_number'
+    | 'shortage_link_status'
+  >,
+): CompoundRowView['itemStatus'] {
+  if (record.has_exception) {
+    return {
+      label: 'Exception',
+      tip: 'This item is on the exceptions desk — it cannot ship as-is.',
+    };
+  }
+  if (record.is_out_of_stock) {
+    const identity = shortageIdentityFromRow(record);
+    const sku = identity?.sku || String(record.sku || '').trim() || null;
+    const title =
+      identity?.title ||
+      String(record.product_title || '').trim() ||
+      (sku ? sku : 'Out of stock');
+    const qtyRaw = Number(identity?.qtyShort ?? record.quantity ?? 1);
+    const qtyShort = Number.isFinite(qtyRaw) && qtyRaw > 0 ? qtyRaw : 1;
+    const kind =
+      identity?.kind === 'kit_part' || identity?.kind === 'catalog_child'
+        ? 'kit_part'
+        : 'listing';
+    const pipeline = shortagePipelineFrom({
+      isOutOfStock: true,
+      replenishmentStatus: record.replenishment_status,
+      poNumber: record.replenishment_po_number,
+      linkStatus: record.shortage_link_status,
+      qtyShort,
+    });
+    const pipelineLabel = pipeline && pipeline.stage !== 'open' ? pipeline.label : null;
+    return {
+      label: pipelineLabel || 'Out of stock',
+      tip: pipelineLabel || (sku ? `Out of stock · ${sku}` : 'Out of stock'),
+      card: {
+        thumbUrl: String(record.catalog_image_url || '').trim() || null,
+        sku,
+        title,
+        qtyShort,
+        kind,
+        pipelineLabel,
+      },
+    };
+  }
+  return null;
+}
+
+/** Parent fold rollup — one triangle when any child is short. */
+export function ordersGroupItemStatus(
+  rows: readonly Pick<
+    ShippedOrder,
+    | 'is_out_of_stock'
+    | 'has_exception'
+    | 'oos_sku'
+    | 'oos_title'
+    | 'sku'
+    | 'product_title'
+    | 'catalog_image_url'
+    | 'replenishment_status'
+    | 'replenishment_po_number'
+    | 'shortage_link_status'
+  >[],
+): CompoundRowView['itemStatus'] {
+  if (rows.some((row) => Boolean(row.has_exception))) {
+    return {
+      label: 'Exception',
+      tip: 'This item is on the exceptions desk — it cannot ship as-is.',
+    };
+  }
+  const short = rows.filter((row) => Boolean(row.is_out_of_stock));
+  if (short.length === 0) return null;
+  const skus = short
+    .map((row) => String(row.oos_sku || row.sku || '').trim())
+    .filter(Boolean);
+  const lead = short[0]!;
+  const pipeline = shortagePipelineFrom({
+    isOutOfStock: true,
+    replenishmentStatus: lead.replenishment_status,
+    poNumber: lead.replenishment_po_number,
+    linkStatus: lead.shortage_link_status,
+    qtyShort: short.length,
+  });
+  const names = short
+    .map((row) => String(row.oos_title || row.product_title || row.oos_sku || row.sku || '').trim())
+    .filter(Boolean);
+  return {
+    label: pipeline && pipeline.stage !== 'open' ? pipeline.label : 'Out of stock',
+    tip: `${short.length} of ${rows.length} short${pipeline && pipeline.stage !== 'open' ? ` · ${pipeline.label}` : ''}`,
+    card: {
+      thumbUrl: String(lead.catalog_image_url || '').trim() || null,
+      sku: skus[0] || null,
+      title:
+        short.length === 1
+          ? String(lead.oos_title || lead.product_title || skus[0] || 'Out of stock')
+          : names.length > 0
+            ? names.join(' · ')
+            : `${short.length} of ${rows.length} short`,
+      qtyShort: short.length,
+      kind: 'rollup',
+      rollupSkus: skus,
+      pipelineLabel: pipeline && pipeline.stage !== 'open' ? pipeline.label : null,
+    },
+  };
 }
 
 export function ordersCompoundView(
@@ -337,6 +449,7 @@ export function ordersCompoundView(
     titleHref: getExternalUrlByItemNumber(record.item_number) ?? null,
     note: secondary,
     flagMark: parts.flagMark ?? null,
+    itemStatus: ordersItemStatus(record),
     edgeMark: ordersEdgeMark(record),
     orderId: String(record.order_id || '').trim() || null,
     tracking: tracking || null,
@@ -371,5 +484,19 @@ export function ordersCompoundView(
     amount: null,
     slots: parts.slots,
     subtitleParts: parts.subtitleParts,
+    kitFace: parts.kitFace ?? null,
+    detail: (() => {
+      const serials = String(record.serial_number || '')
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean);
+      const location = String(record.pack_location_name || '').trim() || null;
+      return {
+        serials,
+        location,
+        unitRef: serials[0] ?? null,
+        sku: String(record.sku || '').trim() || null,
+      };
+    })(),
   };
 }

@@ -56,7 +56,7 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
     Number.isFinite(Number(techId)) && Number(techId) > 0 ? Number(techId) : null,
   );
 
-  const { activeOrderPane, setActiveOrderPane, previewOrder, setPreviewOrder } = useTechOrderPanes();
+  const { activeOrderPane, setActiveOrderPane, previewSel, setPreviewSel } = useTechOrderPanes();
 
   const {
     repairPanel,
@@ -84,14 +84,14 @@ export default function TechDashboard({ techId }: TechDashboardProps) {
               onCloseActiveOrder={() => {
                 dispatchTechCloseActiveOrder();
                 setActiveOrderPane(null);
-                setPreviewOrder(null);
+                setPreviewSel(null);
               }}
               onActiveOrderChange={(next) =>
                 setActiveOrderPane((prev) => (prev ? { ...prev, activeOrder: next } : null))
               }
-              previewOrder={previewOrder}
+              previewSel={previewSel}
               onClosePreview={() => {
-                setPreviewOrder(null);
+                setPreviewSel(null);
                 dispatchUpNextPreview(null);
                 dispatchCloseShippedDetails();
               }}

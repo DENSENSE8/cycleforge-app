@@ -3,7 +3,7 @@
 import type React from 'react';
 import { LocationDataMatrix } from '../LocationDataMatrix';
 import {
-  bayHand,
+  formatLocationBayFace,
   locationCode,
   noPad,
   pad2,
@@ -39,7 +39,7 @@ export function PrintLabel({ segments, roomName, gln }: PrintLabelProps) {
         <div style={labelCodeStyle}>{code}</div>
         {roomName && <div style={labelRoomStyle}>{roomName}</div>}
         <div style={labelHumanStyle}>
-          Aisle {pad2(segments.aisle)} · Bay {pad2(segments.bay)} ({bayHand(segments.bay)})
+          Aisle {pad2(segments.aisle)} · {formatLocationBayFace(segments.bay)}
           <br />
           Level {noPad(segments.level)} · Position {pad2(segments.position)}
         </div>

@@ -1,3 +1,8 @@
+import {
+  DROPDOWN_ITEM_CORNER,
+  DROPDOWN_SHELL_CORNER,
+} from '@/design-system/tokens/radius';
+
 /**
  * Sidebar spine geometry — the ONE place the column width lives.
  *
@@ -57,22 +62,20 @@ export const SIDEBAR_SPINE_RESIZE = {
 /**
  * Chrome for MasterNav **identity menus** (org/workspace switch + staff ⋯ menu).
  *
- * The ⋯ panel is the shadcn/ui Popover (`radix-popover`), anchored to the
- * footer row so width tracks the spine. Flush industrial chrome
- * (`rounded-none` · `shadow-md`) + caption type — peer of `HeaderChromeMenu`,
- * never a chunkier twin of the band. Never fork `w-[260px]` / `w-[280px]` (or
- * any wider literal) — guard: `header-mode.guard.test.ts`.
+ * Keep in lockstep with `src/components/sidebar/sidebar-spine.ts`. Soft shell
+ * ({@link DROPDOWN_SHELL_CORNER}) + caption type — peer of dropdown menus.
+ * Never fork `w-[260px]` / `w-[280px]` — guard: `header-mode.guard.test.ts`.
  */
 export const SIDEBAR_SPINE_MENU_PANEL_CLASS =
-  'w-full overflow-hidden rounded-none border border-border-soft bg-surface-card shadow-md';
+  `w-full overflow-hidden ${DROPDOWN_SHELL_CORNER} border border-border-soft bg-surface-card shadow-md`;
 
 /** Dense header strip inside an identity menu (current workspace / staff card). */
 export const SIDEBAR_SPINE_MENU_HEADER_CLASS =
-  'flex min-w-0 items-center gap-2 border-b border-border-hairline px-2 py-1.5';
+  'flex min-w-0 items-center gap-2 border-b border-border-hairline px-3 py-2.5';
 
 /** Dense action row inside an identity menu. */
 export const SIDEBAR_SPINE_MENU_ACTION_CLASS =
-  'flex w-full items-center gap-2 rounded-none px-2 py-1 text-left transition hover:bg-surface-hover';
+  `flex w-full items-center gap-2.5 ${DROPDOWN_ITEM_CORNER} px-2.5 py-2 text-left transition hover:bg-surface-hover`;
 
 /** Primary name inside an identity menu (org or staff). */
 export const SIDEBAR_SPINE_MENU_TITLE_CLASS =

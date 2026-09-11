@@ -43,7 +43,7 @@ function unshippedCountsKey() {
   return ['dashboard-table', 'unshipped-counts', { staffId: null }] as const;
 }
 
-async function fetchUnshippedRows(): Promise<ShippedOrder[]> {
+async function fetchUnshippedRows(): Promise<ShippedOrder[] | null> {
   // Must match `fetchUnshippedOrdersData` (inWarehouse), not fulfillmentScope.
   // fulfillmentScope ignores dock SHIP_CONFIRM, so a seed of never-packed rows
   // painted hundreds of already-scanned-out orders against a queue-counts
@@ -55,7 +55,13 @@ async function fetchUnshippedRows(): Promise<ShippedOrder[]> {
   });
   const res = await serverSelfFetch(`/api/orders?${params.toString()}`);
   if (!res.ok) {
-    throw new Error(`unshipped seed failed: ${res.status}`);
+    // 401/403: no session on the self-fetch (sign-in / cold cookie). Soft miss —
+    // do not throw; throwing still surfaces in Next's error overlay via
+    // allSettled → console.error even though the page keeps working.
+    if (res.status !== 401 && res.status !== 403) {
+      console.warn(`seedUnshippedQueue list soft-fail: ${res.status}`);
+    }
+    return null;
   }
   const data = (await res.json()) as { orders?: unknown[] };
   return normalizeUnshippedOrdersPayload(data.orders || []);
@@ -102,10 +108,12 @@ export async function seedUnshippedQueue(): Promise<UnshippedQueueSeed> {
   ]);
 
   if (listResult.status === 'fulfilled') {
-    rows = listResult.value;
-    queryClient.setQueryData(unshippedListKey(), rows);
+    if (listResult.value != null) {
+      rows = listResult.value;
+      queryClient.setQueryData(unshippedListKey(), rows);
+    }
   } else {
-    console.error('seedUnshippedQueue list failed; client will fetch', listResult.reason);
+    console.warn('seedUnshippedQueue list failed; client will fetch', listResult.reason);
   }
 
   if (countsResult.status === 'fulfilled') {
@@ -113,7 +121,7 @@ export async function seedUnshippedQueue(): Promise<UnshippedQueueSeed> {
       queryClient.setQueryData(unshippedCountsKey(), countsResult.value);
     }
   } else {
-    console.error('seedUnshippedQueue counts failed; client will fetch', countsResult.reason);
+    console.warn('seedUnshippedQueue counts failed; client will fetch', countsResult.reason);
   }
 
   return { state: dehydrate(queryClient), rows };

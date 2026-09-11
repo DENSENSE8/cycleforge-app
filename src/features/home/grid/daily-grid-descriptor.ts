@@ -1,10 +1,16 @@
+/**
+ * Callers: HomeDailyMode (capabilities), daily-table-definition. Affected API:
+ * makeDailyGridDescriptor, DAILY_GRID_CAPABILITIES. Schema: none. Dropped
+ * DAILY_GRID_COLUMNS re-export (Discover DELETE). User: "Make that contract
+ * green… Do not change paint."
+ */
+
 import {
   makeGridSurfaceDescriptor,
   type GridSurfaceCapabilities,
   type GridSurfaceDescriptor,
 } from '@/design-system/components/grid/grid-surface-descriptor';
 import {
-  DAILY_GRID_COLUMNS,
   dailySortFactFor,
   defaultDirForDailyGridSort,
   type DailyGridColumn,
@@ -54,5 +60,3 @@ export function makeDailyGridDescriptor(
     DAILY_GRID_CAPABILITIES,
   );
 }
-
-export { DAILY_GRID_COLUMNS };

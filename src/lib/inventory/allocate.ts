@@ -21,6 +21,7 @@ import {
   pickableSerialUnitsWhereClause,
 } from '@/lib/inventory/pickability';
 import { transition } from '@/lib/inventory/state-machine';
+import { allocateShortageUnits } from '@/lib/orders/shortage-inbound';
 
 const VALID_GRADES = ['BRAND_NEW', 'LIKE_NEW', 'REFURBISHED', 'USED_A', 'USED_B', 'USED_C', 'PARTS'] as const;
 export type ConditionGrade = (typeof VALID_GRADES)[number];
@@ -231,6 +232,12 @@ async function allocateOrderInTx(
     }
     allocated.push({ unitId: unit.id, allocationId, eventId: t.eventId });
   }
+
+  await allocateShortageUnits(client, {
+    orgId,
+    orderId: input.orderId,
+    units: allocated.map((row) => ({ unitId: row.unitId })),
+  });
 
   return {
     ok: true,

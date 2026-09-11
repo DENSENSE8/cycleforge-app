@@ -16,9 +16,9 @@
  * RowTitle + RowMetaColumns + last-8 OrderIdChip, law Q4) so every mobile
  * feed reads as one surface. Header lives in the shell.
  *
- * Tap: ORDER rows deep-link into the picker (`/m/pick/{entityId}` — the picker
- * wants the numeric orders row id); other entity types follow their desktop
- * sourcePath.
+ * Tap: ORDER rows deep-link into the pick JobFace (`/m/id/pick/{entityId}`);
+ * Start pick continues to `/m/pick/{entityId}`. Other entity types follow
+ * their desktop sourcePath.
  */
 
 import { useEffect, useMemo } from 'react';
@@ -139,7 +139,7 @@ export default function RedesignedMobileMyWork() {
     if (row.entityType === 'ORDER') {
       // The mobile picker route takes the numeric orders row id (it fetches
       // /api/orders/{id}/pick-tasks) — entityId IS that id for ORDER rows.
-      router.push(`/m/pick/${row.entityId}`);
+      router.push(`/m/id/pick/${row.entityId}`);
       return;
     }
     router.push(row.sourcePath);

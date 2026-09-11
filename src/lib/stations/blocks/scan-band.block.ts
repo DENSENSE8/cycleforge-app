@@ -18,7 +18,7 @@ export function registerScanBandBlock(): void {
   registerBlock({
     type: 'scan_band',
     label: 'Scan bar',
-    icon: 'Barcode',
+    icon: 'ScanBarcode',
     category: 'trigger',
     slots: ['trigger'],
     accepts: 'none',

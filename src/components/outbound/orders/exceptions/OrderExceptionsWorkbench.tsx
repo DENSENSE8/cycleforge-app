@@ -32,15 +32,11 @@
  * `src/design-system/pinned.json` so `ds_contract` says it before the next
  * agent writes a line.
  *
- * ## Without a photo
+ * ## Image gutter
  *
- * The `thumb` track is dropped from the mounted column list. An exception is a
- * held ORDER, not a received unit — there is no image to match against a box in
- * an operator's hands, and the alternative is a 48px `Package` placeholder
- * repeated down every row, which is chrome saying "no photo" 200 times. The
- * geometry survives it: `item` is still present, so `isCompoundColumnModel` and
- * the 48px `compoundRowEstimateFor` both still resolve, and the frozen pane is
- * still a contiguous leading prefix (now `select` alone).
+ * Tabs fork row data only — never the thumb track. An exception row may have
+ * no photo; the shared Image chrome still mounts. Dropping `thumb` here was the
+ * skeleton-cut fork the header-sort law forbids.
  *
  * ## The record is a PAGE, beside a persistent queue rail
  *
@@ -94,14 +90,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { DataTable } from '@/components/tables/DataTable';
 import { ExceptionsRecentRail } from './ExceptionsRecentRail';
-import { Button } from '@/components/ui/button';
-import { Maximize2 } from '@/components/Icons';
-import { useDeskStageOptional } from '@/design-system/components/DeskStageContext';
-import { triagePanelControl } from '@/design-system/tokens/triage-panel';
+import {
+  DeskActionSlotRegistrar,
+  DeskHeaderAction,
+} from '@/design-system/components/DeskActionSlot';
 import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
 import { exceptionRowToQueueRow } from '@/lib/queries/caged-orders-queries';
 import { SHIPPING_EXCEPTIONS_PATH } from '@/lib/shipping/orders-desk';
-import type { OrderExceptionRow } from '@/lib/orders/order-exception-types';
+import { sortExceptionQueueRows, type OrderExceptionRow } from '@/lib/orders/order-exception-types';
 import type { ShippedOrder } from '@/types/orders';
 import { ExceptionEditor } from './ExceptionEditor';
 
@@ -161,7 +157,10 @@ export function OrderExceptionsWorkbench() {
     staleTime: 0,
   });
 
-  const exceptions = useMemo(() => query.data?.exceptions ?? [], [query.data]);
+  const exceptions = useMemo(
+    () => sortExceptionQueueRows(query.data?.exceptions ?? []),
+    [query.data],
+  );
   const selected = exceptions.find((r) => r.id === selectedId) ?? null;
 
   // Memoized: this list is the input to the grouped row model, so an
@@ -198,8 +197,6 @@ export function OrderExceptionsWorkbench() {
     [query, selectedId, closeRecord],
   );
 
-  const stage = useDeskStageOptional();
-
   const sheet = useOrdersSpreadsheet({
     records,
     loading: query.isLoading,
@@ -219,35 +216,36 @@ export function OrderExceptionsWorkbench() {
     tableId: 'orders',
   });
 
-  // See the docblock — an exception has no photo, so the track is not mounted.
-  const columns = useMemo(
-    () => sheet.columns?.filter((c) => c.key !== 'thumb'),
-    [sheet.columns],
-  );
-
   /**
-   * The CTA the operator asked for: one control that takes them from the small
-   * table into the full-screen FORM — fullscreen stage plus an open record, so
-   * the rail and the editor arrive together.
-   *
-   * It opens the row they have picked, or the first in the queue when they have
-   * picked none, because "open the form" with nothing selected has to mean
-   * something and the top of a worklist is the only non-arbitrary answer.
-   *
-   * `useDeskStageOptional` is optional for a reason: this surface only gained a
-   * stage when the route moved inside the `(desk)` group. Outside it the hook
-   * returns null and the CTA still opens the record — it just cannot expand,
-   * which is the honest degradation rather than a dead button.
+   * Header verb: open the SKU-pairing record. Fullscreen stays on the table
+   * toolbar ({@link DataTableFullscreenToggle}) — a second expand control
+   * above the grid is the duplicate the operator refused.
    */
-  const openFullScreenForm = useCallback(() => {
+  const openResolveForm = useCallback(() => {
     const target = selectedId ?? exceptions[0]?.id ?? null;
     if (!target) return;
-    if (stage && !stage.fullscreen) stage.toggleFullscreen();
     patchParams({ order: String(target) });
-  }, [exceptions, patchParams, selectedId, stage]);
+  }, [exceptions, patchParams, selectedId]);
+
+  const resolveControl = useMemo(
+    () => (
+      <DeskHeaderAction
+        type="button"
+        variant="primary"
+        size="sm"
+        disabled={exceptions.length === 0}
+        onClick={openResolveForm}
+        data-testid="exceptions-open-form"
+      >
+        Resolve
+      </DeskHeaderAction>
+    ),
+    [exceptions.length, openResolveForm],
+  );
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col bg-surface-canvas">
+      <DeskActionSlotRegistrar role="primary">{resolveControl}</DeskActionSlotRegistrar>
       {query.isError ? (
         <div
           className="border-b border-border-danger bg-surface-danger px-6 py-2 text-role-caption font-semibold text-text-danger"
@@ -258,57 +256,26 @@ export function OrderExceptionsWorkbench() {
       ) : null}
 
       {selected ? (
-        // The FORM display: rail beside the record. `min-h-0` is load-bearing —
-        // TriageScrollLayout's scrollport will not scroll without a
-        // height-constrained flex parent.
-        <div className="flex min-h-0 min-w-0 flex-1">
-          <aside
-            className="flex w-[22rem] shrink-0 flex-col border-r border-border-hairline bg-surface-card"
-            aria-label="Exception queue"
-            data-testid="exceptions-rail"
-          >
+        // Record walk: Unbox-width queue rail beside the pairing form.
+        <ExceptionEditor
+          key={selected.id}
+          row={selected}
+          onChanged={handleChanged}
+          onExit={closeRecord}
+          queue={
             <ExceptionsRecentRail
               rows={exceptions}
               selectedId={selectedId}
               onSelect={(id) => patchParams({ order: String(id) })}
               loading={query.isLoading}
             />
-          </aside>
-          <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface-card">
-            <ExceptionEditor
-              key={selected.id}
-              row={selected}
-              onChanged={handleChanged}
-              onExit={closeRecord}
-            />
-          </div>
-        </div>
+          }
+        />
       ) : (
         // The TABLE display, small by default now that the route has a stage.
         <div className="flex min-h-0 min-w-0 flex-1 flex-col" data-testid="exceptions-queue">
-          {/*
-            One control, right-aligned, no band: not a title, not a count, not a
-            second row of chrome saying what the table already says. The find
-            row, filter, fields picker and the stage's own fullscreen toggle all
-            live inside DataTable — this is the only thing that surface does not
-            already offer.
-          */}
-          <div className="flex shrink-0 justify-end px-4 pt-3">
-            <Button
-              variant="outline"
-              size="md"
-              onClick={openFullScreenForm}
-              disabled={exceptions.length === 0}
-              className={triagePanelControl()}
-              data-testid="exceptions-open-form"
-            >
-              <Maximize2 className="h-3.5 w-3.5" aria-hidden />
-              Open full-screen form
-            </Button>
-          </div>
           <DataTable
             {...sheet}
-            columns={columns}
             search={{
               value: search,
               onChange: (value) => patchParams({ search: value || null }),

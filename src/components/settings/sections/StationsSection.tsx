@@ -148,7 +148,7 @@ export function StationsSection() {
         <p className="mt-1 text-sm text-text-soft">
           Give each station the name your team actually says out loud. The nickname is
           what shows on To-ship, Ready to Pack, and the bench filter — the warehouse
-          name underneath it never changes, so barcodes and rack labels keep working.
+          name underneath it never changes, so barcodes and bay labels keep working.
         </p>
       </header>
 

@@ -101,6 +101,13 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
     turbopack: {},
+    // Vercel sets this on platform builds. Explicit so Skew Protection can
+    // pin framework-managed assets/RSC to the deployment that served the
+    // page (floor stations stay open across a ship). Do not remove the
+    // Workbox precache exclusion below — that is a different bug (hashed
+    // `/_next/static` in a committed SW). Function region is `iad1` in
+    // vercel.json (Neon us-east-1).
+    deploymentId: process.env.VERCEL_DEPLOYMENT_ID,
     // Optional build-output override so a production build/serve (e.g. the
     // Lighthouse audit runbook) can coexist with a running `next dev` in the
     // same checkout — dev clobbers `.next`. Unset ⇒ default `.next`.

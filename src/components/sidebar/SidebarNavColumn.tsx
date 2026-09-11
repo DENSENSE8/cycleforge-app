@@ -1,20 +1,32 @@
 'use client';
 
 import {
-  useCallback,
   useEffect,
+  useLayoutEffect,
+  useRef,
   useState,
-  type KeyboardEvent as ReactKeyboardEvent,
-  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
-import { appCanvasClass } from '@/design-system/tokens/app-surface';
-import { SIDEBAR_SPINE_RESIZE } from '@/components/sidebar/sidebar-spine';
-import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
+import { appChromeClass } from '@/design-system/tokens/app-surface';
 import {
-  EDGE_RESIZE_COLLAPSE_SLACK_PX,
+  SIDEBAR_SPINE_PEEK_INSET_PX,
+  SIDEBAR_SPINE_RESIZE,
+} from '@/components/sidebar/sidebar-spine';
+import { HorizontalEdgeResizeHandle } from '@/design-system/components/HorizontalEdgeResizeHandle';
+import { TOP_CHROME_ROW_PX } from '@/components/layout/header-shell';
+import { cornerClass } from '@/design-system/tokens/radius';
+import { elevationClass } from '@/design-system/tokens/shadows';
+import { zIndex } from '@/design-system/tokens/z-index';
+import { motion, useAnimationControls } from '@/design-system/motion';
+import { framerPresence, framerTransition } from '@/design-system/foundations/motion-framer';
+import {
+  useMotionPresence,
+  useMotionTransition,
+} from '@/design-system/foundations/motion-framer-hooks';
+import {
   useHorizontalEdgeResize,
 } from '@/design-system/hooks/useHorizontalEdgeResize';
+import { hasOpenOverlay } from '@/lib/overlay-stack/store';
 import { cn } from '@/utils/_cn';
 
 /**
@@ -47,11 +59,12 @@ import { cn } from '@/utils/_cn';
  *
  * ## Mechanism
  *
- * A flex sibling of the header+content column that sets its **own width** to 0
- * or the live drag width (see "Drag to resize / collapse" below). The inner
- * `<aside>` mirrors that same width and is left-anchored inside the outer
- * box, so the rows are clipped rather than reflowed — they never lay out at
- * an intermediate width.
+ * A flex sibling of the header+content column that sets its **own width** to
+ * the rail width or the live drag width (see "Drag to resize / collapse"
+ * below). The inner `<aside>` mirrors the OPEN width and drops to 0 when
+ * collapsed, left-anchored inside the outer box, so the rows are clipped
+ * rather than reflowed — they never lay out at an intermediate width, and the
+ * collapsed rail is never painted over by them.
  *
  * **The OPEN ↔ CLOSED snap does not animate** (2026-08-08). It used to tween
  * 240ms on `motionRole.push.rail`, claiming the sanctioned deliberate-toggle
@@ -81,15 +94,34 @@ import { cn } from '@/utils/_cn';
  *   maxWidthPx]`); dragging past the floor collapses the column instead of
  *   flooring at `minWidthPx` (`onCollapseBeyondMin` → `onOpenChange(false)`) —
  *   the same drag-past-min park the context rail already does.
- * - **Closed**: a persistent thin strip sits at the column's edge — it is
- *   `left-0` inside the outer box but the outer stays `overflow-visible` so
- *   the strip renders even while that box is `width: 0`. Click opens at the
- *   last-known width; press-and-drag opens AND resizes in the same gesture
- *   (`onPointerDown` calls `onOpenChange(true)` before handing off to the
- *   resize hook's own pointer handling, so the drag continues live from
- *   there). The GlobalHeader toggle (`SidebarCollapseControl`) is untouched
- *   and still opens/closes with a single click — the strip is a second door
- *   onto the same `onOpenChange`, not a replacement.
+ * - **Closed**: a persistent thin strip sits at the column's left edge
+ *   (`left-0` — at `width: 0` the box's leading and trailing edges are the
+ *   same line). Click opens at the last-known width; press-and-drag opens AND
+ *   resizes in the same gesture (`onPointerDown` calls `onOpenChange(true)`
+ *   before handing off to the resize hook's own pointer handling, so the drag
+ *   continues live from there). **This strip is the only door back in
+ *   (2026-09-08)**: the GlobalHeader show/hide toggle and this column's own
+ *   top-band twin were both deleted — one control mounted twice, in the slot
+ *   the header now gives to Search — so the strip is no longer a second door
+ *   onto `onOpenChange`, it is the door. It is click/drag/Enter only and does
+ *   not peek; the hover-peek that used to hang off the header toggle has no
+ *   trigger left.
+ *
+ * **Two states: open, or gone (operator ruling 2026-09-05, final).** Closed is
+ * `width: 0` — the column charges the frame nothing when the operator has put
+ * it away, and there is no collapsed face.
+ *
+ * A 48px glyph rail was built earlier the same day and is deleted. The case
+ * for it was that `/` is the assistant surface now, so the operator lives at
+ * the frame's left edge and jumps between the assistant and a bench all day,
+ * paying a re-open each time. What it actually cost: 48px of every page's
+ * frame on every route, permanently, to paint glyph-only destinations with no
+ * labels, no group headers and no drill — and it removed the state the
+ * operator was asking for, because a navigator that is always on screen
+ * cannot be put away. Two states, and the closed one is empty.
+ *
+ * The doors back both reopen at the remembered width: the edge strip below,
+ * and ⌘K for anything the map would have been used to reach.
  *
  * The clipping geometry (outer box + absolute inner `<aside>`) was built FOR
  * the old tween and is kept anyway: with no tween — and now with a drag that
@@ -112,20 +144,23 @@ import { cn } from '@/utils/_cn';
  * The mobile drawer is untouched: it keeps the real overlay contract
  * (scrim + scroll lock) it always had, in `ResponsiveLayout`.
  */
+type PeekHoverHandlers = {
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
+};
+
 export function SidebarNavColumn({
   open,
-  onOpenChange,
+  peeking = false,
+  peekSurfaceProps,
+  onPeekDismiss,
   children,
 }: {
   open: boolean;
-  /**
-   * Direct setter (not a toggle) — the drag-open strip and the drag-past-min
-   * collapse both need to force a SPECIFIC state, not flip whatever it
-   * currently is. `ResponsiveLayout` passes its `setNavOpen` here directly;
-   * the GlobalHeader toggle keeps its own `toggleNav` wrapper for the click
-   * case, since a toggle is the right shape for a single button.
-   */
-  onOpenChange: (open: boolean) => void;
+  /** Collapsed hover thumbnail — overlay, does not push the frame. */
+  peeking?: boolean;
+  peekSurfaceProps?: PeekHoverHandlers & { 'data-hover-surface'?: '' };
+  onPeekDismiss?: () => void;
   children: ReactNode;
 }) {
   /**
@@ -169,8 +204,8 @@ export function SidebarNavColumn({
    */
   const [everOpened, setEverOpened] = useState(open);
   useEffect(() => {
-    if (open) setEverOpened(true);
-  }, [open]);
+    if (open || peeking) setEverOpened(true);
+  }, [open, peeking]);
   useEffect(() => {
     if (everOpened) return;
     const ric = (window as typeof window & {
@@ -185,10 +220,12 @@ export function SidebarNavColumn({
     return () => window.clearTimeout(t);
   }, [everOpened]);
 
-  // Same splitter grammar as the context rail — see "Drag to resize /
-  // collapse" above. `onCollapseBeyondMin` fires `onOpenChange(false)`
-  // instead of flooring the live width at `minWidthPx`, so dragging past the
-  // threshold parks the column rather than squeezing it unreadably thin.
+  // Same splitter grammar as the context rail, with ONE deliberate difference:
+  // no `onCollapseBeyondMin`. Dragging the sash past the min floor used to
+  // park the column; as of 2026-09-08 the header toggle is the only door, so
+  // the sash resizes and nothing else. A gesture that closes a panel is not
+  // discoverable, and having two ways to close it meant the operator could not
+  // predict which one a given drag would do.
   const { width, edgeHandleProps, isDragging, collapseArmed } = useHorizontalEdgeResize({
     storageKey: SIDEBAR_SPINE_RESIZE.storageKey,
     defaultWidth: SIDEBAR_SPINE_RESIZE.defaultWidthPx,
@@ -197,88 +234,174 @@ export function SidebarNavColumn({
     edge: 'trailing',
     label: 'Resize sidebar',
     testId: 'sidebar-spine-resize',
-    collapseBelowPx: SIDEBAR_SPINE_RESIZE.minWidthPx - EDGE_RESIZE_COLLAPSE_SLACK_PX,
-    onCollapseBeyondMin: () => onOpenChange(false),
   });
 
-  /**
-   * Grab-to-open — the closed-state strip's `onPointerDown`. Opens FIRST
-   * (synchronously, before the resize hook's own handler runs), so the very
-   * same pointer-down that reveals the column also starts its drag session:
-   * a press-and-drag on the collapsed edge opens AND resizes in one gesture,
-   * continuing live from whatever width the column last remembered. A plain
-   * click (no move before pointerup) just opens at that remembered width —
-   * `useHorizontalEdgeResize`'s own `stopDrag` no-ops when nothing moved.
-   */
-  const onOpenStripPointerDown = useCallback(
-    (e: ReactPointerEvent<HTMLDivElement>) => {
-      onOpenChange(true);
-      edgeHandleProps.onPointerDown(e);
-    },
-    [onOpenChange, edgeHandleProps],
-  );
-  const onOpenStripKeyDown = useCallback(
-    (e: ReactKeyboardEvent<HTMLDivElement>) => {
-      if (e.key !== 'Enter' && e.key !== ' ') return;
-      e.preventDefault();
-      onOpenChange(true);
-    },
-    [onOpenChange],
-  );
+  const peekOverlay = peeking && !open;
+  const navVisible = open || peeking;
+
+  const peekPresence = useMotionPresence(framerPresence.navPeekCorner);
+  const peekTransition = useMotionTransition(framerTransition.navPeekCorner);
+  const peekControls = useAnimationControls();
+  const [peekFace, setPeekFace] = useState(peekOverlay);
+  const peekOverlayRef = useRef(peekOverlay);
+  peekOverlayRef.current = peekOverlay;
+  const peekPresenceRef = useRef(peekPresence);
+  peekPresenceRef.current = peekPresence;
+  const peekTransitionRef = useRef(peekTransition);
+  peekTransitionRef.current = peekTransition;
+
+  useLayoutEffect(() => {
+    if (peekOverlay) setPeekFace(true);
+  }, [peekOverlay]);
+
+  useLayoutEffect(() => {
+    if (!peekFace) return undefined;
+    const presence = peekPresenceRef.current;
+    const transition = peekTransitionRef.current;
+    if (open) {
+      void peekControls.set({ opacity: 1, scale: 1 });
+      setPeekFace(false);
+      return undefined;
+    }
+    if (peekOverlay) {
+      void peekControls.set(presence.initial);
+      void peekControls.start({
+        ...presence.animate,
+        transition,
+      });
+      return undefined;
+    }
+    let cancelled = false;
+    void peekControls
+      .start({
+        ...(presence.exit ?? presence.initial),
+        transition,
+      })
+      .then(() => {
+        if (!cancelled && !peekOverlayRef.current) setPeekFace(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, peekFace, peekOverlay, peekControls]);
+
+  const peekLayout = peekFace && !open;
+
+  useEffect(() => {
+    if (!peekOverlay || !onPeekDismiss) return undefined;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      // Anything stacked above the peek (a dialog, a route overlay) owns
+      // Escape first — the peek is the bottom of the stack, not a peer.
+      if (hasOpenOverlay()) return;
+      onPeekDismiss();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [peekOverlay, onPeekDismiss]);
 
   return (
     <div
       data-sidebar-nav-column
       data-open={open ? 'true' : 'false'}
-      // Width snaps open ↔ closed. There is no tween (2026-08-08) and no
-      // motion import left in this file — see "Mechanism" above for the full
-      // history and why the resize DRAG below is not a re-litigation of it.
+      data-peeking={peekOverlay ? 'true' : 'false'}
+      // Width snaps open ↔ closed. There is no tween (2026-08-08) and the
+      // only motion import in this file is the peek card's own presence — see
+      // "Mechanism" above for the full history and why the resize DRAG below
+      // is not a re-litigation of it.
+      //
+      // Closed is 0, not a rail width. The inner `<aside>` writes the same 0,
+      // so the open spine's clipped rows cannot paint into a gutter that is
+      // not there.
       //
       // `overflow-visible` (was `overflow-hidden` — 2026-08-16, with the
       // drag-open strip): the inner `<aside>` still clips its OWN content via
-      // its own `overflow-hidden`, so nothing leaks when closed. What the
-      // outer's `overflow-hidden` used to ALSO do was hide the open strip
-      // below — which must stay visible/hittable at `left-0` even while this
-      // box is `width: 0`, or there is nothing to grab to reopen by drag.
+      // its own `overflow-hidden`, and at width 0 the reopen strip is the only
+      // thing allowed to paint outside the box.
       className="relative h-full shrink-0 overflow-visible"
       style={{ width: open ? width : 0 }}
-      // The spine stays mounted once opened, so a collapsed column would
-      // otherwise leave every nav row in the tab order at zero width.
-      inert={!open}
     >
       {everOpened && (
-        <aside
+        <motion.aside
           // NOT `role="dialog" aria-modal` — it installs no focus trap and
           // blocks nothing. What it is, in the only state it has, is the
           // navigator.
           role="navigation"
           aria-label="Sidebar"
+          data-testid={peekLayout ? 'sidebar-spine-peek' : undefined}
+          data-spine-peek={peekLayout ? 'true' : undefined}
+          // The spine stays mounted once opened, so a closed column would
+          // otherwise leave every nav row in the tab order with nothing on
+          // screen. `inert` sits HERE, on the rows — not on the host box, which
+          // also contains the reopen strip. Putting it on the host once put the
+          // only drag-open door inside an inert subtree and killed it (found by
+          // pointer hit-test 2026-09-05).
+          inert={!navVisible && !peekFace}
+          initial={false}
+          animate={peekControls}
+          {...(peekLayout ? peekSurfaceProps : undefined)}
           className={cn(
-            // Left-anchored, `overflow-hidden` clips its own content — the
-            // outer box no longer needs to (see the style comment above).
-            'absolute inset-y-0 left-0 flex flex-col overflow-hidden',
-            'border-r border-border-soft',
-            // The spine sits ONE PLANE BELOW the work surface (2026-08-08) —
-            // canvas here, card white beside it, one hairline at the seam.
-            //
-            // It is load-bearing, not decoration: the navigator's selected row
-            // fills to `bg-surface-card`, so it reads as the row RISING to meet
-            // the surface it opens. On a white spine that fill would have had
-            // to press DOWN into `surface-strong`, which at 28px reads as a
-            // pressed button rather than a location. Same direction Linear
-            // uses — its dark sidebar selects lighter — inverted only because
-            // this theme is light. Every value is a token, so dark themes flip
-            // on their own.
-            appCanvasClass,
+            'flex flex-col overflow-hidden',
+            peekLayout
+              ? cn(
+                  'h-auto origin-top-left border border-border-soft bg-surface-card',
+                  cornerClass('surface'),
+                  elevationClass('overlay'),
+                  'shadow-elev-overlay-right',
+                  // The head's toggle + Search row is CHROME, not map. While
+                  // peeking, the GlobalHeader cluster is still on screen at the
+                  // same corner (the spine is not open, so the header keeps it),
+                  // so painting it here too put a second sidebar button and a
+                  // second Search two inches from the first. The peek shows the
+                  // NAVIGATOR; the doors stay in the header.
+                  '[&_[data-spine-head-chrome]]:hidden',
+                  '[&_[data-spine-account-footer]]:hidden',
+                  '[&_[data-staff-account-footer]]:hidden',
+                  '[&_[data-spine-nav]]:h-auto [&_[data-spine-nav]]:min-h-0',
+                  // The card hugs short lists (`h-auto` shell) but is capped by
+                  // maxHeight below — so the scrollport must be able to SHRINK,
+                  // or a full destination list is clipped by the shell's
+                  // `overflow-hidden` instead of scrolling.
+                  '[&_[data-spine-scrollport]]:min-h-0 [&_[data-spine-scrollport]]:flex-1 [&_[data-spine-scrollport]]:overflow-y-auto [&_[data-spine-scrollport]]:overscroll-contain',
+                  '[&_[data-spine-drill-pad]]:pb-0',
+                )
+              : cn(
+                  'absolute inset-y-0 left-0',
+                  // The seam belongs to an OPEN column. At `width: 0` a
+                  // `border-r` is still 1px of box, which is how a "zero
+                  // width" spine measured 1px wide (2026-09-05) — invisible,
+                  // but a lie in the geometry and in every probe that reads
+                  // it. Closed means closed.
+                  open ? 'border-r border-border-soft' : null,
+                  // The navigator is CHROME, not a work canvas (app-surface
+                  // SoT: "Sidebar, GlobalHeader, body frame … theme
+                  // background-surface"). It painted `appCanvasClass` here,
+                  // which only stayed invisible on the hosts that cover the
+                  // plane with a white `SidebarShell`; on the session surface
+                  // MasterNavView is `bg-transparent`, so the canvas grey
+                  // leaked through and the open column read as a different
+                  // material from the header above it and the peek card that
+                  // replaces it. One ground: white, same as `--sidebar`, which
+                  // the sticky section labels already paint.
+                  appChromeClass,
+                ),
           )}
-          // Width lives inline now (was the static `SIDEBAR_SPINE_WIDTH`
-          // class) — it has to track the same live/persisted number as the
-          // outer box every drag frame, and a Tailwind class cannot be
-          // interpolated per frame.
-          style={{ width: open ? width : 0 }}
+          style={
+            peekLayout
+              ? {
+                  position: 'fixed',
+                  top: TOP_CHROME_ROW_PX + SIDEBAR_SPINE_PEEK_INSET_PX,
+                  left: SIDEBAR_SPINE_PEEK_INSET_PX,
+                  width,
+                  maxHeight: `calc(100dvh - ${TOP_CHROME_ROW_PX + SIDEBAR_SPINE_PEEK_INSET_PX * 2}px)`,
+                  zIndex: zIndex.navPeek,
+                  transformOrigin: '0 0',
+                }
+              : { width: open ? width : 0, transformOrigin: '0 0' }
+          }
         >
-          {children}
-        </aside>
+          <div className="flex min-h-0 flex-1 flex-col">{children}</div>
+        </motion.aside>
       )}
       {open ? (
         // Trailing-edge sash — identical grammar to the context rail's own
@@ -293,22 +416,7 @@ export function SidebarNavColumn({
           armed={collapseArmed}
           tooltipLabel="Resize sidebar"
         />
-      ) : (
-        // Grab-to-open strip — the closed twin of the resize sash above,
-        // occupying the same edge. Renders even though the outer box is
-        // `width: 0` (see the `overflow-visible` note above). Click opens at
-        // the remembered width; press-and-drag opens and resizes live in one
-        // gesture (`onOpenStripPointerDown`).
-        <div
-          role="button"
-          tabIndex={0}
-          aria-label="Show sidebar"
-          data-testid="sidebar-spine-open-strip"
-          className="absolute inset-y-0 left-0 z-sticky w-1.5 cursor-col-resize touch-none bg-transparent transition-colors duration-150 hover:bg-border-default"
-          onPointerDown={onOpenStripPointerDown}
-          onKeyDown={onOpenStripKeyDown}
-        />
-      )}
+      ) : null}
     </div>
   );
 }

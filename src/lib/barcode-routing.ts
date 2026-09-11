@@ -13,7 +13,12 @@
  *   - Anything else falls back to SKU lookup (safer default).
  */
 
-import { inventoryLocationsHref } from '@/lib/inventory/locations-path';
+import { inventoryLocationsHref, LOCATIONS_BAY_CODE_RE } from '@/lib/inventory/locations-path';
+import {
+  detectCarrierFromTracking,
+  toDisplayCarrier,
+  type DisplayCarrier,
+} from '@/utils/carrier-patterns';
 
 export type ScanType =
   | 'sku'
@@ -23,13 +28,18 @@ export type ScanType =
   | 'serial-unit'      // U-class — one physical unit
   | 'handling-unit'    // H-class — a license-plated box/tray (LPN)
   | 'manifest'         // KIT-class — a preboxed kit master label (label_manifests)
-  | 'support-ticket';   // T-class — provider ticket id → /support?ticket=
+  | 'support-ticket'   // T-class — provider ticket id → /support?ticket=
+  | 'carrier-tracking'
+  | 'sscc'
+  | 'bin-paired-order';
 
 export interface ScanRoute {
   type: ScanType;
   value: string;
   /** When set, callers should navigate here (relative path within the app). */
   redirect?: string;
+  carrier?: DisplayCarrier;
+  orderRef?: string;
 }
 
 // The one shared answer to "is this GLN real?" — see the note where
@@ -84,6 +94,39 @@ const LOCATION_FLAT_RE = /^[A-Z]\d{7,8}$/i;
 // cannot be mistaken for the `/m/` path segment.
 const FLATTENED_MOBILE_LINK_RE = /^https?.*m([rluh])(\d+)$/i;
 
+function normalizeForeignLabel(value: string): string {
+  return value.replace(/[\s-]/g, '').toUpperCase();
+}
+
+const SSCC_PARENS_RE = /^\(00\)(\d{18})$/;
+const SSCC_FNC1_RE = /^\x1D00(\d{18})$/;
+const SSCC_BARE_RE = /^(\d{18})$/;
+
+const CARRIER_TRACKING_SHAPES: ReadonlyArray<RegExp> = [
+  /^1Z[A-Z0-9]{16}$/,
+  /^\d{10}$/,
+  /^\d{12}$/,
+  /^\d{15}$/,
+  /^\d{20}$/,
+  /^\d{22}$/,
+];
+
+export function scannedSscc(raw: string): string | null {
+  const v = normalizeForeignLabel(String(raw ?? '').trim());
+  if (!v) return null;
+  const m = SSCC_PARENS_RE.exec(v) ?? SSCC_FNC1_RE.exec(v) ?? SSCC_BARE_RE.exec(v);
+  return m ? m[1] : null;
+}
+
+export function scannedCarrierTracking(
+  raw: string,
+): { tracking: string; carrier: DisplayCarrier } | null {
+  const v = normalizeForeignLabel(String(raw ?? '').trim());
+  if (!v) return null;
+  if (!CARRIER_TRACKING_SHAPES.some((re) => re.test(v))) return null;
+  return { tracking: v, carrier: toDisplayCarrier(detectCarrierFromTracking(v)) };
+}
+
 function pathToRoute(path: string, value: string): ScanRoute | null {
   const m = MOBILE_PATH_RE.exec(path);
   if (m) {
@@ -121,7 +164,7 @@ function pathToRoute(path: string, value: string): ScanRoute | null {
       return {
         type: 'bin',
         value: code,
-        redirect: inventoryLocationsHref({ tab: 'racks', extra: { code } }),
+        redirect: inventoryLocationsHref({ tab: 'bays', extra: { code } }),
       };
     }
     return { type: 'bin', value: code, redirect: `/inventory?bin=${code}` };
@@ -148,7 +191,7 @@ function routeLocationCode(value: string, code: string): ScanRoute {
     return {
       type: 'bin',
       value: normalized,
-      redirect: inventoryLocationsHref({ tab: 'racks', extra: { code: normalized } }),
+      redirect: inventoryLocationsHref({ tab: 'bays', extra: { code: normalized } }),
     };
   }
   return { type: 'bin', value: normalized, redirect: `/inventory?bin=${normalized}` };
@@ -324,6 +367,13 @@ export function routeScan(raw: string): ScanRoute | null {
   // 6. Bin (legacy fallback): starts with a letter.
   if (/^[A-Za-z]/.test(value)) return { type: 'bin', value };
 
+  const sscc = scannedSscc(value);
+  if (sscc) return { type: 'sscc', value: sscc };
+  const tracking = scannedCarrierTracking(value);
+  if (tracking) {
+    return { type: 'carrier-tracking', value: tracking.tracking, carrier: tracking.carrier };
+  }
+
   // 7. Default fallback → SKU.
   return { type: 'sku', value };
 }
@@ -331,6 +381,21 @@ export function routeScan(raw: string): ScanRoute | null {
 /** Back-compat shim for callers that only need the type. */
 export function detectScanType(raw: string): ScanType {
   return routeScan(raw)?.type ?? 'sku';
+}
+
+export interface BinPairingLookup {
+  (binCode: string): string | null | undefined;
+}
+
+export function routeScanPaired(
+  raw: string,
+  lookup: BinPairingLookup,
+): ScanRoute | null {
+  const route = routeScan(raw);
+  if (!route || route.type !== 'bin') return route;
+  const orderRef = lookup(route.value);
+  if (!orderRef) return route;
+  return { ...route, type: 'bin-paired-order', orderRef };
 }
 
 /**
@@ -393,9 +458,8 @@ function scannedLocationCode(raw: string): string | null {
   // the barcode.
   const bin = /^\/inventory\?bin=(.+)$/.exec(redirect);
   if (bin) return decodeURIComponent(bin[1]).trim() || null;
-  const rack =
-    /^\/(?:warehouse|inventory\/locations)\?tab=racks&code=(.+)$/.exec(redirect);
-  if (rack) return decodeURIComponent(rack[1]).trim() || null;
+  const bay = LOCATIONS_BAY_CODE_RE.exec(redirect);
+  if (bay) return decodeURIComponent(bay[1]).trim() || null;
   return null;
 }
 
@@ -701,6 +765,17 @@ export function parseLocationCodeFlat(flat: string): LocationSegments | null {
 export function bayHand(bay: number | string): 'Left' | 'Right' {
   const n = typeof bay === 'string' ? parseInt(bay, 10) : bay;
   return Number.isFinite(n) && n % 2 === 0 ? 'Right' : 'Left';
+}
+
+/**
+ * Operator face for the bay segment (internal UI + printed stickers).
+ * The address field stays `bay`; the floor word is Bay.
+ */
+export const LOCATION_BAY_LABEL = 'Bay';
+export const LOCATION_BAY_LABEL_PLURAL = 'Bays';
+
+export function formatLocationBayFace(bay: number | string): string {
+  return `${LOCATION_BAY_LABEL} ${pad2(bay)} (${bayHand(bay)})`;
 }
 
 /**

@@ -1,14 +1,16 @@
 'use client';
 
 /**
- * Review · Packing — outbound spreadsheet (OrdersGridHost) with Packed / Shipped /
+ * Review · Packing — outbound spreadsheet (DataTable) with Packed / Shipped /
  * History tabs. Selection writes `?packerLogId=` / `?orderId=` for the overlay.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
+import { DataTable } from '@/components/tables/DataTable';
+import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
+import { OrderStatusTrailStage } from '@/components/orders/OrderStatusTrailOverlay';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import { packedOrdersQuery, dashboardShippedQuery } from '@/lib/queries/dashboard-queries';
 import { usePackReviewQueue } from '@/features/review/usePackReviewQueue';
@@ -44,13 +46,13 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
   const router = useRouter();
   const searchParams = useSearchParams();
   const tab = parseReviewPackingTab(searchParams.get('rtab'));
-  const searchQuery = String(searchParams.get('search') || '').trim();
+  const [searchQuery, setSearchQuery] = useState('');
   const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
 
   const week = useMemo(() => getWeekRangeForOffset(0), []);
 
   const packedQuery = useQuery({
-    ...packedOrdersQuery({ searchQuery, staffId }),
+    ...packedOrdersQuery({ staffId }),
     enabled: tab === 'packed',
   });
 
@@ -104,15 +106,6 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
     if (staffId != null) {
       rows = rows.filter((r) => Number(r.packer_id) === staffId || Number(r.packed_by) === staffId);
     }
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase();
-      rows = rows.filter(
-        (r) =>
-          String(r.order_id || '').toLowerCase().includes(q) ||
-          String(r.product_title || '').toLowerCase().includes(q) ||
-          String(r.shipping_tracking_number || '').toLowerCase().includes(q),
-      );
-    }
     return rows;
   }, [
     tab,
@@ -120,7 +113,6 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
     shippedQuery.data,
     historyQuery.data,
     staffId,
-    searchQuery,
     outcomeByPackerLog,
   ]);
 
@@ -144,18 +136,8 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
     [pathname, router, searchParams],
   );
 
-  const setSearch = useCallback(
-    (next: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      const trimmed = next.trim();
-      if (trimmed) params.set('search', trimmed);
-      else params.delete('search');
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
-    [pathname, router, searchParams],
-  );
-  const clearSearch = useCallback(() => setSearch(''), [setSearch]);
+  const setSearch = useCallback((next: string) => setSearchQuery(next), []);
+  const clearSearch = useCallback(() => setSearchQuery(''), []);
 
   const emptyCopy =
     tab === 'packed'
@@ -164,31 +146,36 @@ export function ReviewPackingTable({ onOpenRow, onCloseRow }: ReviewPackingTable
         ? 'No shipped orders this week'
         : 'No review history yet';
 
+  const sheet = useOrdersSpreadsheet({
+    ariaLabel: 'Orders awaiting packing review',
+    records: records as ShippedOrder[],
+    loading,
+    searchValue: searchQuery,
+    onClearSearch: clearSearch,
+    emptyMessage: emptyCopy,
+    searchEmptyTitle: `No ${tab} rows found`,
+    searchResultLabel: `${tab} orders`,
+    clearSearchLabel: 'Clear search',
+    queueMode: tab === 'packed' ? 'staged' : 'fulfillment',
+    selectionScope: DASHBOARD_ORDERS_SELECTION_SCOPE,
+    'data-testid': 'review-packing-grid-body',
+    onOpenRecord: (record) => onOpenRow(record as ReviewTableOrder),
+    onCloseRecord: () => onCloseRow(),
+  });
+
   return (
     <div className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-surface-canvas">
       <DashboardScrollShell className="h-full">
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-          <OrdersGridHost
-            tabs={PACKING_TABS.filter((t) => t.id !== 'packed')}
-            activeTab={tab === 'packed' ? undefined : tab}
-            onTabChange={(id) => setTab(id === tab ? 'packed' : id)}
-            search={{ value: searchQuery, onChange: setSearch, placeholder: 'Filter order #, SKU, tracking…' }}
-            ariaLabel="Orders awaiting packing review"
-            records={records as ShippedOrder[]}
-            loading={loading}
-            searchValue={searchQuery}
-            onClearSearch={clearSearch}
-            emptyMessage={emptyCopy}
-            searchEmptyTitle={`No ${tab} rows found`}
-            searchResultLabel={`${tab} orders`}
-            clearSearchLabel="Clear search"
-            queueMode={tab === 'packed' ? 'staged' : 'fulfillment'}
-            sort="newest"
-            selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
-            data-testid="review-packing-grid-body"
-            onOpenRecord={(record) => onOpenRow(record as ReviewTableOrder)}
-            onCloseRecord={() => onCloseRow()}
-          />
+          <OrderStatusTrailStage>
+            <DataTable
+              {...sheet}
+              tabs={PACKING_TABS.filter((t) => t.id !== 'packed')}
+              activeTab={tab === 'packed' ? undefined : tab}
+              onTabChange={(id) => setTab(id === tab ? 'packed' : id)}
+              search={{ value: searchQuery, onChange: setSearch, placeholder: 'Filter order #, SKU, tracking…' }}
+            />
+          </OrderStatusTrailStage>
         </div>
       </DashboardScrollShell>
     </div>

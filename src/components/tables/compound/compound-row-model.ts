@@ -47,6 +47,13 @@ export interface CompoundDelay {
    * rather than inventing a countdown.
    */
   daysUntil?: number | null;
+  /**
+   * Non-deadline secondary temporal face for the Calendar line (dwell, enrolled,
+   * …). When set, paints THIS string instead of the ship-by age vocabulary —
+   * so a family without a warehouse deadline still uses both DATES lines
+   * instead of leaving `--` and stuffing the fact into the Hash tip.
+   */
+  faceLabel?: string | null;
 }
 
 /**
@@ -112,28 +119,59 @@ export interface CompoundRowView {
     dotClass: string;
   } | null;
   /**
+   * PRODUCT-LEVEL status on the item track — exception / out of stock.
+   * Icon only beside the title; the word is the tooltip + sr-only.
+   * Order-level expedite is {@link edgeMark}, never this.
+   * OOS may carry a structured {@link card} for the product hover (not a note).
+   */
+  itemStatus?: {
+    label: string;
+    /** Plain-text fallback / exception tip. */
+    tip: string;
+    /** Structured shortage card — CompoundCells mounts OutOfStockHoverCard. */
+    card?: {
+      thumbUrl: string | null;
+      sku: string | null;
+      title: string;
+      qtyShort: number;
+      kind: 'listing' | 'kit_part' | 'rollup';
+      rollupSkus?: readonly string[];
+      pipelineLabel?: string | null;
+    } | null;
+  } | null;
+  /**
+   * Shopify-like bundle / kit face under the item title.
+   * Present when the listing's sku_catalog has composition components
+   * (sku_relationships preferred, else sku_kit_parts). Never Zoho `-P`.
+   */
+  kitFace?: {
+    label: string;
+    source: 'catalog_edge' | 'kit_part';
+    components: readonly {
+      key: string;
+      title: string;
+      sku: string | null;
+      qty: number;
+      thumbUrl: string | null;
+    }[];
+  } | null;
+  /**
    * LEADING EDGE RAIL — a full-height bar at the row's left edge, inside the
-   * select gutter.
-   *
-   * The answer to "where does an urgent / blocked mark go so staff see it
-   * first" (operator 2026-09-04). It is leftmost and at a FIXED x, so it scans
-   * down a column the way a mark beside the title cannot — but it is not a
-   * TRACK: a dedicated flag column would spend width on every row for a fact
-   * that is absent on almost all of them, and the desk is already at the dense
-   * ceiling (`MAX_DEFAULT_VISIBLE_TRACKS`). It is also not a glyph inside the
-   * select gutter: that 24px track holds a 16px control, and a second mark in
-   * it is the "two faces for one control" fork this grid has already paid for
-   * twice.
+   * select gutter. ORDER-LEVEL only (urgent). Product facts (exception, OOS)
+   * paint on {@link itemStatus}.
    *
    * Colour is an ACCELERATOR, never the fact — `label` is the accessible name
-   * and the hover word, so the rail is legible without the hue (the badge rule:
-   * meaning never rides on colour alone).
+   * and the hover word.
    */
   edgeMark?: {
-    /** Operator word — "Urgent", "Out of stock". The fact, not the paint. */
+    /** Operator word — "Urgent". The fact, not the paint. */
     label: string;
     /** Solid background class for the 3px bar, from the family's SoT. */
     barClass: string;
+    /** Slow 1px traveler on `y`. Any slot-table family may set this. */
+    pulse?: boolean;
+    /** Lighter fill for the 1px traveler. Required when `pulse`. */
+    tickClass?: string;
   } | null;
 
   /** Column 3 top — the fulfillment handle (order #, PO). */
@@ -146,9 +184,9 @@ export interface CompoundRowView {
    */
   trackings?: readonly string[] | null;
   /**
-   * True when a multi-line order parent already painted the ids. The leaf
-   * fulfillment cell stays quiet (dashes) so the same order # is not printed
-   * once per SKU.
+   * True when a multi-line parent already painted the order/PO. The leaf
+   * fulfillment cell keeps the BOX (tracking) as its primary face so one
+   * line still has an identity, and dashes the order number the parent spoke.
    */
   quietIdentity?: boolean;
   /** Raw source-platform value — resolved to the ORDER identity brand dot. */
@@ -177,6 +215,16 @@ export interface CompoundRowView {
     /** `YYYY-MM-DD` — seeds the calendar and is what an edit commits against. */
     dateKey?: string | null;
   } | null;
+
+  /**
+   * Hover SoT for the DATES Hash (start) line — parallel to {@link delayTip}.
+   *
+   * When set, {@link CompoundDates} prefers this over `orderedAt.tip` so a
+   * family can name the chip (`Last seen · Enrolled`) without fighting the
+   * portable default {@link COMPOUND_DATES_START_HOVER}. Pass the tip through
+   * {@link compoundDatesHoverLabel} so empty still gets `Start date`.
+   */
+  startedHover?: string;
 
   /** Column 5 top — the state pill. */
   stateLabel: string;
@@ -274,6 +322,32 @@ export interface CompoundRowView {
    * view model names the paint, the adapter names the meaning.
    */
   subtitleParts?: readonly CompoundSubtitlePart[];
+
+  /**
+   * Shallow product facts for the leaf detail band (serial / location / unit).
+   * Present (even with empty serials) ⇒ the select gutter paints a disclosure
+   * chevron. Absent ⇒ no disclosure (Units already uses serial as identity).
+   * Strings only — never JSX.
+   */
+  detail?: CompoundRowDetail | null;
+}
+
+/**
+ * Extra facts under a compound leaf — copy serial, bin/location, jump to unit.
+ * Not a third identity chip and not the full More-information inspector.
+ */
+export interface CompoundRowDetail {
+  /** Attached unit serials, first-seen order. Empty = honest dash. */
+  serials: readonly string[];
+  /** Staging / pack / pick location label. */
+  location: string | null;
+  /**
+   * Handle for `/search?sel=unit:…` — serial number, unit_uid, or serial_units id.
+   * Null hides "View unit".
+   */
+  unitRef: string | null;
+  /** Listing / catalog SKU when useful beside location. */
+  sku: string | null;
 }
 
 /**
@@ -435,7 +509,12 @@ export interface CompoundOrderedAtEdit {
  */
 export type CompoundSlotValue =
   | ({ kind: 'stage_event' } & CompoundStageStepFacts)
-  | { kind: 'value'; text: string | null };
+  | { kind: 'value'; text: string | null }
+  /**
+   * Person face — staff id drives {@link StaffAvatar}; name is the visible
+   * label. Never paint a bare staff id or `Staff #N` as the face.
+   */
+  | { kind: 'person'; staffId: number | null; name: string | null };
 
 /**
  * Facts for one lifecycle step column (`tested`, later `packed` / `scannedOut`).
@@ -593,6 +672,18 @@ export function formatCompoundDelayAgeFace(
   options: { missingText?: string } = {},
 ): { text: string; toneClass: string } {
   const missing = options.missingText ?? '--';
+  // Secondary temporal face (dwell, enrolled, …) — not a ship-by age. Wins
+  // over the deadline vocabulary so families without a warehouse deadline
+  // still paint the Calendar line instead of `--`.
+  const faceLabel = String(delay?.faceLabel ?? '').trim();
+  if (faceLabel) {
+    return {
+      text: faceLabel,
+      toneClass: delay?.overdue
+        ? 'font-semibold text-text-danger'
+        : 'text-text-muted',
+    };
+  }
   if (delay?.overdue && delay.days > 0) {
     return {
       text: `${formatDayGap(delay.days)} late`,
@@ -611,28 +702,47 @@ export function formatCompoundDelayAgeFace(
   return { text: missing, toneClass: 'text-text-faint' };
 }
 
-/** DATES hover — always these words, so Hash / CalendarClock are labeled. */
-export const COMPOUND_DATES_ORDER_HOVER = 'Order date';
+/**
+ * DATES Hash hover — portable START fact across PRODUCT_TABLES.
+ * Not Orders-only "Order date" (kiosk last-seen, tasks opened, POs raised, …).
+ */
+export const COMPOUND_DATES_START_HOVER = 'Start date';
+/**
+ * @deprecated Alias of {@link COMPOUND_DATES_START_HOVER} — kept so older
+ * imports/tests keep compiling while session law pins the Start date string.
+ */
+export const COMPOUND_DATES_ORDER_HOVER = COMPOUND_DATES_START_HOVER;
 /** Deadline line — portable across PRODUCT_TABLES (orders ship-by, tasks due, …). */
 export const COMPOUND_DATES_DUE_HOVER = 'Due date';
 
 /**
- * Hover copy for one DATES line. The field name always leads so every
- * PRODUCT_TABLES peer (not just Orders) names the line. Family detail (civil
- * day, Ordered vs Imported, lateness in words) rides after ` · ` when present.
+ * Tips that already name the Hash (start) line — return as-is, never prefix
+ * `Start date · …` (same escape hatch as Dwell on the Calendar line).
+ */
+const DATES_START_TIP_OWNS_NAME =
+  /^(Start date|Last seen|Enrolled|Ordered|Imported|Opened|Raised)\b/i;
+
+/**
+ * Hover copy for one DATES line. Portable defaults (`Start date` / `Due date`)
+ * lead when the tip is empty or anonymous. Family tips that already name the
+ * line (`Last seen`, `Dwell`, `Ordered`, …) own the chip verbatim.
  *
  * Short enough to ride {@link MorphCursorLayer} when there is no extra; a long
  * family tip falls back to the anchored bubble via HoverTooltip.
  */
 export function compoundDatesHoverLabel(
-  kind: 'order' | 'due',
+  kind: 'start' | 'due' | 'order',
   detail?: string | null,
 ): string {
-  const name = kind === 'order' ? COMPOUND_DATES_ORDER_HOVER : COMPOUND_DATES_DUE_HOVER;
+  const start = kind === 'start' || kind === 'order';
+  const name = start ? COMPOUND_DATES_START_HOVER : COMPOUND_DATES_DUE_HOVER;
   const extra = (detail ?? '').trim();
   if (!extra) return name;
   if (extra === name || extra.startsWith(`${name} ·`)) return extra;
-  if (kind === 'due' && /^(Ship by|Due date)\b/i.test(extra)) {
+  if (start && DATES_START_TIP_OWNS_NAME.test(extra)) return extra;
+  if (!start && /^(Ship by|Due date|Dwell)\b/i.test(extra)) {
+    // Ship by → Due date rename; Dwell (and peers) already name the line.
+    if (/^Dwell\b/i.test(extra)) return extra;
     return extra.replace(/^(Ship by|Due date)/i, name);
   }
   return `${name} · ${extra}`;
@@ -652,6 +762,12 @@ export interface CompoundRowAction {
   /** `'danger'` paints destructive (void, delete). Default is ordinary. */
   tone?: 'default' | 'danger';
   disabled?: boolean;
+  /**
+   * Where the verb paints. Default `'menu'` rides the title-hover ⋮.
+   * `'trailing'` paints a sticky control in the `_fill` slack track (credential
+   * verbs like Revoke) — never remounts a compound `actions` column.
+   */
+  face?: 'menu' | 'trailing';
 }
 
 /**

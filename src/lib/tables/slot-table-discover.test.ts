@@ -80,14 +80,23 @@ describe('slot-table discover (delete vs keep)', () => {
     assert.ok(SLOT_TABLE_KNOWN_DEBT.length >= 1);
   });
 
-  it('names the live receiving dual-SoT (Testing History + hand GRID)', () => {
-    const ids = new Set(report.delete.map((f) => f.id));
-    assert.ok(ids.has('hand-grid-export:receiving:RECEIVING_GRID_COLUMNS'));
-    const mount = report.judgment.find((f) => f.id === 'flat-mount:receiving:TestingHistoryList');
-    assert.ok(mount, 'Testing History mount is a human layout-id choice, not a silent GRID delete');
-    const hand = report.delete.find((f) => f.id === 'hand-grid-export:receiving:RECEIVING_GRID_COLUMNS');
-    assert.ok(hand);
-    assert.deepEqual(hand.blockedBy, ['flat-mount:receiving:TestingHistoryList']);
+  it('Testing History is on the engine — the receiving dual-SoT is closed', () => {
+    const flat = [...report.delete, ...report.judgment].find(
+      (f) => f.id === 'flat-mount:receiving:TestingHistoryList',
+    );
+    assert.ok(
+      !flat,
+      'Testing History regressed to the flat RECEIVING_GRID_COLUMNS mount — remount RECEIVING_COMPOUND_COLUMNS (tableId `testing`)',
+    );
+    const hand = report.delete.find(
+      (f) => f.id === 'hand-grid-export:receiving:RECEIVING_GRID_COLUMNS',
+    );
+    assert.ok(hand, 'the flat array still exists — Wave B owes its delete');
+    assert.deepEqual(
+      hand.blockedBy,
+      [],
+      'flat-mount blocker is gone; RECEIVING_GRID_COLUMNS is unblocked for Wave B',
+    );
   });
 
   it('next unblocked delete is mechanical (not judgment)', () => {
@@ -105,7 +114,7 @@ describe('slot-table discover (delete vs keep)', () => {
 
   it('FBA catalog and station-history are judgment — not auto-delete', () => {
     const j = new Set(report.judgment.map((f) => f.id));
-    assert.ok(j.has('flat-mount:receiving:TestingHistoryList'));
+    assert.ok(j.has('catalog-orphan:fba:FBA_FIELD_CATALOG'));
     assert.ok(j.has('out-of-waist-hand-model:station-history:STATION_HISTORY_COLUMNS'));
     assert.ok(!report.delete.some((f) => f.symbol === 'FBA_FIELD_CATALOG'));
     assert.ok(!report.delete.some((f) => f.symbol === 'STATION_HISTORY_COLUMNS'));

@@ -4,14 +4,17 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight } from '../Icons';
 import { Button, IconButton, TextField } from '@/design-system/primitives';
 import { SearchField } from '@/design-system/primitives/SearchField';
-import { KIOSK_BAND_SEARCH_ROW } from '@/app/kiosk/kiosk-chrome';
+import { IntakeCombobox } from '@/components/outbound/orders/intake/IntakeCombobox';
 import { StackedRowIdentity } from '@/components/ui/StackedRowIdentity';
-import { cornerClass } from '@/design-system/tokens/radius';
+import { cornerClass, HEADER_ICON_CORNER } from '@/design-system/tokens/radius';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
+  KIOSK_BAND_SEARCH_ROW,
   KIOSK_META,
+  KIOSK_MODE_SPINE_ICON,
+  KIOSK_MODE_SPINE_ROW_IDLE,
   KIOSK_PANE_FOOTER_BAND,
   KIOSK_PANE_HEADER_BAND,
-  KIOSK_PANE_HEADER_TITLE,
   KIOSK_TILE_TITLE,
 } from '@/app/kiosk/kiosk-chrome';
 import {
@@ -27,12 +30,8 @@ import {
   KIOSK_POS_CATEGORY,
   KIOSK_POS_CATEGORY_ACTIVE,
   KIOSK_POS_CATEGORY_IDLE,
-  KIOSK_POS_CATEGORY_LABEL,
-  KIOSK_POS_CATEGORY_STACK,
   KIOSK_POS_GRID,
   KIOSK_POS_IMAGE_WELL,
-  KIOSK_POS_SIDEBAR,
-  KIOSK_POS_SIDEBAR_BODY,
 } from '@/app/kiosk/kiosk-pos-surface';
 import { cn } from '@/utils/_cn';
 import {
@@ -85,9 +84,8 @@ interface ProductSelectorProps {
   appearance?: 'default' | 'flush';
   /**
    * `stacked` = staff / legacy single column.
-   * `kiosk-split` = left category sidebar · right browse (or `stageContent`)
-   * with flush POS chrome (`kiosk-pos-surface`). Cart ledger lives on the
-   * shell's right column when `hideCartTray` is set.
+   * `kiosk-split` = trail row (optional spine toggle + All products combobox),
+   * then command rail under that row beside search + products.
    */
   layout?: 'stacked' | 'kiosk-split';
   /** Browse vs checkout — checkout replaces the products stage with `stageContent`. */
@@ -96,8 +94,14 @@ interface ProductSelectorProps {
   onContinue?: () => void;
   /** Return to browse without clearing the cart (kiosk-split). */
   onAddAnotherItem?: () => void;
-  /** Pane header for the left sidebar (spine toggle + title). */
+  /**
+   * Lead of the catalog trail (kiosk-split) — command dropdown.
+   */
   sidebarHeader?: React.ReactNode;
+  /**
+   * Trailing trail cluster (kiosk-split) — cart, paperwork, Work/Show/Verify.
+   */
+  trailEnd?: React.ReactNode;
   /** Checkout detail pane — mounts in the right stage when phase is checkout. */
   stageContent?: React.ReactNode;
   /** Optional title band for the browse stage (right). */
@@ -164,12 +168,8 @@ interface ProductsResponse {
 }
 
 const PRODUCT_PAGE_SIZE = 10;
-/** Cache key for the top category level (`fetchCategoryLevel(null)`). */
-const CATEGORY_ROOT_KEY = '__root__';
-
-function categoryLevelKey(parentId: string | null): string {
-  return parentId ?? CATEGORY_ROOT_KEY;
-}
+/** Combobox sentinel — not an Ecwid id. Clears the category filter. */
+const KIOSK_ALL_PRODUCTS_VALUE = 'all-products';
 
 export function ProductSelector({
   onSelect, selectedProduct, onPriceChange, fillHeight,
@@ -181,11 +181,12 @@ export function ProductSelector({
   onContinue,
   onAddAnotherItem,
   sidebarHeader,
+  trailEnd = null,
   stageContent,
-  browseHeader,
+  browseHeader: _browseHeader,
   searchQuery,
   onSearchQueryChange,
-  hideBrowseSearch = false,
+  hideBrowseSearch: _hideBrowseSearch,
   hideCartTray = false,
 }: ProductSelectorProps) {
   const kioskSplit = layout === 'kiosk-split';
@@ -227,13 +228,6 @@ export function ProductSelector({
   // drilled into the right category, which is backwards for a front-desk flow.
   const [rootSearchPool, setRootSearchPool] = useState<EcwidProduct[] | null>(null);
   const [loadingRootSearch, setLoadingRootSearch] = useState(false);
-  /**
-   * Per-parent category rows — kept across drills so selecting a category does
-   * not wipe sibling tabs from the sidebar. Key = {@link categoryLevelKey}.
-   */
-  const [categoryLevelsByParent, setCategoryLevelsByParent] = useState<
-    Record<string, CategoryNode[]>
-  >({});
   const searchInputHostRef = useRef<HTMLDivElement | null>(null);
   /** After first category hydrate, never swap the sidebar for a Loading… block. */
   const categoriesHydratedRef = useRef(false);
@@ -284,11 +278,6 @@ export function ProductSelector({
       setCategories(rows);
       setCurrentCategoryId(payload.currentParentId ?? null);
       setBreadcrumbs(Array.isArray(payload.breadcrumbs) ? payload.breadcrumbs : []);
-      // Merge — never clear other levels; siblings stay mounted in the accordion.
-      setCategoryLevelsByParent((prev) => ({
-        ...prev,
-        [categoryLevelKey(parentId)]: rows,
-      }));
       const alreadyHydrated = categoriesHydratedRef.current;
       categoriesHydratedRef.current = true;
 
@@ -487,6 +476,13 @@ export function ProductSelector({
   const loading = loadingCategories;
 
   const goBackOneLevel = () => {
+    if (kioskSplit) {
+      if (breadcrumbs.length === 0) return;
+      void fetchCategoryLevel(
+        breadcrumbs.length <= 1 ? null : breadcrumbs[breadcrumbs.length - 2].id,
+      );
+      return;
+    }
     if (showAllProducts) {
       setShowAllProducts(false);
       setProducts([]);
@@ -518,21 +514,6 @@ export function ProductSelector({
               : 'rounded-xl border border-border-soft bg-surface-card p-3.5 hover:border-blue-300 hover:bg-blue-50 active:bg-blue-100',
           ),
     );
-
-  const filterLevelCategories = (rows: CategoryNode[]) => {
-    // Kiosk left rail is navigation chrome — search filters the product stage
-    // only. Filtering siblings here empties the accordion and reads as "the
-    // catalog disappeared." Staff stacked still narrows category chips by query.
-    if (kioskSplit || !search.trim()) return rows;
-    const q = search.toLowerCase();
-    return rows.filter(
-      (c) => c.name.toLowerCase().includes(q) || c.fullPath.toLowerCase().includes(q),
-    );
-  };
-
-  /** Ids on the current trail — used to keep sibling tabs visible under expansion. */
-  const pathIdSet = new Set(breadcrumbs.map((b) => b.id));
-  if (currentCategoryId) pathIdSet.add(currentCategoryId);
 
   const renderCategoryChildren = (nested: boolean) => (
     <>
@@ -569,116 +550,6 @@ export function ProductSelector({
     </>
   );
 
-  /**
-   * Nested sibling level for the kiosk accordion. Selecting one category expands
-   * its children underneath — siblings at this level stay mounted (never removed).
-   */
-  const renderAccordionSiblingLevel = (parentKey: string, depth: number): React.ReactNode => {
-    const siblings = filterLevelCategories(categoryLevelsByParent[parentKey] ?? []);
-    if (siblings.length === 0 && !(parentKey === CATEGORY_ROOT_KEY && depth === 0)) {
-      return null;
-    }
-
-    return (
-      <div
-        className={cn(
-          pos
-            ? cn(KIOSK_POS_CATEGORY_STACK, depth > 0 && 'pl-2')
-            : cn(
-                'divide-y divide-border-hairline',
-                depth > 0 && 'border-t border-border-hairline bg-surface-sunken/40',
-              ),
-        )}
-      >
-        {siblings.map((cat) => {
-          const onPath = pathIdSet.has(cat.id);
-          const isCurrent = currentCategoryId === cat.id;
-          const childKey = cat.id;
-          const hasCachedChildren = (categoryLevelsByParent[childKey]?.length ?? 0) > 0;
-          return (
-            <div key={cat.id} className={pos ? KIOSK_POS_CATEGORY_STACK : undefined}>
-              {/* ds-raw-button: accordion sibling tab — stays visible when another sibling is selected */}
-              <button
-                type="button"
-                onClick={() => void fetchCategoryLevel(cat.id)}
-                className={categoryRowClass({ active: onPath || isCurrent })}
-                style={
-                  depth > 0 && !pos
-                    ? { paddingLeft: `${16 + depth * 12}px` }
-                    : depth > 0 && pos
-                      ? { paddingLeft: `${12 + depth * 12}px` }
-                      : undefined
-                }
-              >
-                <span
-                  className={
-                    pos
-                      ? KIOSK_POS_CATEGORY_LABEL
-                      : cn('min-w-0 flex-1 truncate text-text-default', 'text-xs font-semibold')
-                  }
-                >
-                  {cat.name}
-                </span>
-                {(onPath || hasCachedChildren) && (
-                  <ChevronRight
-                    className={cn(
-                      'h-4 w-4 flex-shrink-0 text-text-faint',
-                      onPath && 'rotate-90',
-                    )}
-                  />
-                )}
-                {!onPath && !hasCachedChildren && (
-                  <ChevronRight className="h-4 w-4 flex-shrink-0 text-text-faint" />
-                )}
-              </button>
-              {onPath && renderAccordionSiblingLevel(childKey, depth + 1)}
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  /** Path accordion — selected trail expands; sibling tabs at each level stay visible. */
-  const renderCategoryAccordion = () => (
-    <div className={pos ? KIOSK_POS_CATEGORY_STACK : 'gap-0'} data-kiosk-catalog-sidebar>
-      <div
-        className={cn(
-          pos
-            ? KIOSK_POS_CATEGORY_STACK
-            : 'divide-y divide-border-hairline border-b border-border-hairline',
-        )}
-      >
-        {/* Root always visible — tap resets to top level; does not clear the sibling cache */}
-        {/* ds-raw-button: accordion ancestor row */}
-        <button
-          type="button"
-          onClick={() => void fetchCategoryLevel(null)}
-          className={categoryRowClass({
-            // Kiosk root keeps the all-products stage; treat that as selected.
-            active: isAtRoot && (!showAllProducts || kioskSplit),
-          })}
-        >
-          <span
-            className={
-              pos
-                ? KIOSK_POS_CATEGORY_LABEL
-                : cn('min-w-0 flex-1 truncate text-text-default', 'text-xs font-semibold')
-            }
-          >
-            {rootName}
-          </span>
-          {(breadcrumbs.length > 1 || Object.keys(categoryLevelsByParent).length > 0) && (
-            <ChevronRight className="h-4 w-4 flex-shrink-0 rotate-90 text-text-faint" />
-          )}
-        </button>
-
-        {/* Sibling tabs always stay mounted — selection expands under the active row. */}
-        {renderAccordionSiblingLevel(CATEGORY_ROOT_KEY, 0)}
-      </div>
-    </div>
-  );
-
   const renderStackedCategories = () => (
     <div className={flush ? 'gap-0' : 'space-y-1.5'}>
       <p
@@ -706,11 +577,13 @@ export function ProductSelector({
     </div>
   );
 
-  const searchLabel = showAllProducts
-    ? 'Search all repairs'
-    : isAtRoot
-      ? 'Search repairs or categories'
-      : 'Search products';
+  const searchLabel = pos
+    ? 'Search'
+    : showAllProducts
+      ? 'Search all repairs'
+      : isAtRoot
+        ? 'Search repairs or categories'
+        : 'Search products';
 
   const chromeFindBar = (
     <SearchField
@@ -718,7 +591,6 @@ export function ProductSelector({
       value={search}
       onChange={setSearch}
       className="min-w-0 flex-1"
-      data-testid={pos ? 'kiosk-catalog-search' : undefined}
         />
   );
 
@@ -1217,106 +1089,167 @@ export function ProductSelector({
     );
   };
 
-  // ─── Kiosk split: left sidebar (categories + cart) · right stage (browse | checkout)
+  // ─── Kiosk: trail (command · All products · cart/paperwork/stance)
+  // Callers: KioskShell `/kiosk` + `/kiosk/v2`. Affected API: none.
+  // User: "The top header component should not be another header navigation, it
+  // should be included in the same row as the all products."
   if (kioskSplit) {
-    const isSalesCatalog = apiBasePath.includes('/sales');
-    const browseTitle =
-      currentCategoryId && breadcrumbs.length > 0
-        ? breadcrumbs[breadcrumbs.length - 1]?.name ??
-          (isSalesCatalog ? 'All items' : 'All repairs')
-        : isSalesCatalog
-          ? 'All items'
-          : 'All repairs';
-
-    return (
-      <div
-        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden md:flex-row"
-        data-kiosk-catalog-split
-      >
-        <aside
-          className={cn(
-            'flex min-h-0 flex-col border-border-soft',
-            KIOSK_POS_CANVAS,
-            KIOSK_POS_SIDEBAR,
-          )}
-        >
-          {sidebarHeader}
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            {/* Categories always stay on screen — cart/footer may not eat the whole column. */}
+    const canGoBack =
+      !(loading && !categoriesHydratedRef.current) && breadcrumbs.length > 0;
+    const kioskSearchPlaceholder = isAtRoot
+      ? 'Search all products'
+      : `Search in ${breadcrumbs[breadcrumbs.length - 1]?.name ?? 'this category'}`;
+    const catalogTrail = (
+            <div className={cn(KIOSK_PANE_HEADER_BAND, 'gap-2 pl-2 pr-3')} data-testid="kiosk-catalog-trail">
+              {sidebarHeader}
+              {canGoBack ? (
+                <button
+                  type="button"
+                  aria-label="Go back"
+                  disabled={loading}
+                  onClick={goBackOneLevel}
+                  className={cn(
+                    'flex h-9 w-9 shrink-0 items-center justify-center',
+                    HEADER_ICON_CORNER,
+                    focusRing('control', 'neutral'),
+                    KIOSK_MODE_SPINE_ROW_IDLE,
+                  )}
+                >
+                  <ChevronLeft className={cn(KIOSK_MODE_SPINE_ICON, 'text-text-soft')} />
+                </button>
+              ) : null}
+              <nav
+                className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-2 text-sm font-semibold text-text-soft"
+                aria-label="Browse path"
+              >
+                {breadcrumbs.length > 0 ? (
+                  <>
+                    <button
+                      type="button"
+                      data-testid="kiosk-catalog-all-products"
+                      onClick={() => void fetchCategoryLevel(null)}
+                      className="ds-raw-button shrink-0 px-2 py-1 text-left font-medium text-text-faint transition-colors hover:text-text-accent"
+                    >
+                      All products
+                    </button>
+                    {breadcrumbs.slice(0, -1).map((crumb) => (
+                      <React.Fragment key={crumb.id}>
+                        <ChevronRight className="h-3 w-3 shrink-0 text-text-faint" />
+                        <button
+                          type="button"
+                          onClick={() => void fetchCategoryLevel(crumb.id)}
+                          className="ds-raw-button shrink-0 px-2 py-1 text-left transition-colors hover:text-text-accent"
+                        >
+                          {crumb.name}
+                        </button>
+                      </React.Fragment>
+                    ))}
+                    <ChevronRight className="h-3 w-3 shrink-0 text-text-faint" />
+                  </>
+                ) : null}
+                <IntakeCombobox
+                  testId="kiosk-catalog-category"
+                  ariaLabel="Category"
+                  triggerVariant="ghost"
+                  value={currentCategoryId ?? KIOSK_ALL_PRODUCTS_VALUE}
+                  placeholder="All products"
+                  searchPlaceholder="Search categories"
+                  emptyMessage="No categories match"
+                  disabled={loading && !categoriesHydratedRef.current}
+                  className={cn('font-medium text-text-default', focusRing('control', 'neutral'))}
+                  contentClassName={cn('min-w-72 overflow-hidden', HEADER_ICON_CORNER)}
+                  options={[
+                    { value: KIOSK_ALL_PRODUCTS_VALUE, label: 'All products' },
+                    ...(currentCategoryId && breadcrumbs.length > 0
+                      ? [
+                          {
+                            value: currentCategoryId,
+                            label: breadcrumbs[breadcrumbs.length - 1]?.name ?? 'This category',
+                          },
+                        ]
+                      : []),
+                    ...filteredCategories
+                      .filter((cat) => cat.id !== currentCategoryId)
+                      .map((cat) => ({
+                        value: cat.id,
+                        label: cat.name,
+                      })),
+                  ]}
+                  onChange={(next) => {
+                    if (next === KIOSK_ALL_PRODUCTS_VALUE) {
+                      void fetchCategoryLevel(null);
+                      return;
+                    }
+                    if (next === currentCategoryId) {
+                      goBackOneLevel();
+                      return;
+                    }
+                    void fetchCategoryLevel(next);
+                  }}
+                />
+              </nav>
+              {trailEnd}
+            </div>
+    );
+    const browseColumn = (
+          <>
             <div
-              className={cn(
-                'min-h-0 flex-1 overflow-y-auto [min-height:9rem]',
-                KIOSK_POS_SIDEBAR_BODY,
-              )}
+              ref={searchInputHostRef}
+              className={KIOSK_BAND_SEARCH_ROW}
+              data-testid="kiosk-catalog-search"
             >
-              {/* Cold start only — never replace a hydrated accordion with Loading… */}
+              <SearchField
+                fillHost
+                hideUnderline
+                placeholder={kioskSearchPlaceholder}
+                value={search}
+                onChange={setSearch}
+                className="min-w-0 flex-1 px-4"
+              />
+            </div>
+            <div className={KIOSK_POS_BROWSE_SCROLL}>
               {loading && !categoriesHydratedRef.current && (
                 <div className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-faint">
                   Loading...
                 </div>
               )}
               {error && (
-                <div className="rounded-lg bg-red-50 px-4 py-3.5 text-xs font-semibold text-red-700">
-                  {error}
-                </div>
+                <div className="bg-red-50 px-4 py-3.5 text-xs font-semibold text-red-700">{error}</div>
               )}
-              {(categoriesHydratedRef.current || !loading) && !error && renderCategoryAccordion()}
+              {renderProductsGrid()}
             </div>
-            {!hideCartTray &&
-              (selectedItems.length > 0 || catalogPhase === 'checkout') &&
-              renderCartTray({ withActions: true })}
-          </div>
-        </aside>
-
-        <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col', KIOSK_POS_CANVAS)}>
-          {catalogPhase === 'checkout' && stageContent ? (
-            stageContent
-          ) : (
-            <>
-              {browseHeader ?? (
-                <div className={KIOSK_PANE_HEADER_BAND}>
-                  <h2 className={KIOSK_PANE_HEADER_TITLE}>{browseTitle}</h2>
-                </div>
-              )}
-              {!hideBrowseSearch ? (
-                /*
-                 * The kiosk band, NOT a desk chrome row.
-                 *
-                 * That component is desk chrome: it carries `gap-2`, `pr-0.5`,
-                 * a `border-r`, a `shadow-sm` and the `h-7`
-                 * PRIMARY_CHROME_ROW_FACE. On the counter that reads as a gap
-                 * between the find bar and the right rail — and it blended two
-                 * region contracts on one surface (`kinetic-ledger.md`: one
-                 * contract per region). The `className="pr-0"` patch that used
-                 * to sit here was treating the symptom.
-                 *
-                 * KIOSK_BAND_SEARCH_ROW is full-bleed (`px-0`) at the 56px band
-                 * height, so the search runs edge-to-edge into the rail seam.
-                 */
-                <div className={KIOSK_BAND_SEARCH_ROW}>{chromeFindBar}</div>
-              ) : null}
-              <div className={KIOSK_POS_BROWSE_SCROLL}>
-                {renderProductsGrid()}
+            {hideCartTray && selectedItems.length > 0 && onContinue ? (
+              <div className={KIOSK_PANE_FOOTER_BAND} data-kiosk-footer-band>
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="lg"
+                  onClick={onContinue}
+                  className={cn('h-full min-h-0 w-full flex-1 rounded-none', cornerClass('flush'))}
+                  data-kiosk-continue
+                >
+                  {selectedItems.length > 1
+                    ? `Continue · ${selectedItems.length} services`
+                    : 'Continue'}
+                </Button>
               </div>
-              {hideCartTray && selectedItems.length > 0 && onContinue ? (
-                <div className={KIOSK_PANE_FOOTER_BAND} data-kiosk-footer-band>
-                  <Button
-                    type="button"
-                    variant="primary"
-                    size="lg"
-                    onClick={onContinue}
-                    className={cn('h-full min-h-0 w-full flex-1 rounded-none', cornerClass('flush'))}
-                    data-kiosk-continue
-                  >
-                    {selectedItems.length > 1
-                      ? `Continue · ${selectedItems.length} services`
-                      : 'Continue'}
-                  </Button>
-                </div>
-              ) : null}
-            </>
-          )}
+            ) : null}
+          </>
+    );
+    return (
+      <div
+        className={cn('flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden', KIOSK_POS_CANVAS)}
+        data-kiosk-catalog-split
+      >
+        {catalogTrail}
+        <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            {catalogPhase === 'checkout' && stageContent ? stageContent : browseColumn}
+          </div>
         </div>
+        {!hideCartTray &&
+          (selectedItems.length > 0 || catalogPhase === 'checkout') &&
+          renderCartTray({ withActions: true })}
       </div>
     );
   }

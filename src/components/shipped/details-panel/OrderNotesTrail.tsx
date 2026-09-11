@@ -20,8 +20,10 @@
  * → Order note grain.
  *
  * Mounted on the desk order inspector dock (`ShippedPanelEditorDock` with
- * `showNotes`) and the support orders workspace. One component so they can
- * never drift into two note UIs. Write path: `order_notes` via
+ * `showNotes`) as `variant="dock"`. Morphing desktop uses `variant="strip"`
+ * (one composer row in the action bar). Morphing on a `/m/` URL uses
+ * `variant="compact"` inside a BottomSheet. One component so they can never
+ * drift into two note UIs. Write path: `order_notes` via
  * `POST /api/orders/[id]/notes`.
  */
 
@@ -39,11 +41,14 @@ export function OrderNotesTrail({
   legacyNote,
   className,
   autoFocus = false,
+  variant = 'dock',
 }: {
   orderId: number;
   legacyNote?: string | null;
   className?: string;
   autoFocus?: boolean;
+  /** `strip` = Morphing desktop one-row composer. `compact` = /m/ chip sheet. */
+  variant?: 'dock' | 'compact' | 'strip';
 }) {
   const [draft, setDraft] = useState('');
 
@@ -61,6 +66,76 @@ export function OrderNotesTrail({
 
   const notes = useMemo(() => notesQuery.data ?? [], [notesQuery.data]);
   const legacy = String(legacyNote ?? '').trim();
+  const fieldClass = cn(
+    'w-full resize-none rounded-lg border border-border-soft bg-surface-card inset-field text-role-caption text-text-default placeholder:text-text-faint',
+    focusRing('field', 'accent'),
+  );
+
+  const composer = (
+    <div className="flex min-w-0 flex-nowrap items-center gap-1.5">
+      <input
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            submitNote();
+          }
+        }}
+        placeholder="Add a note…"
+        aria-label="Add an order note"
+        autoFocus={autoFocus}
+        className={cn(fieldClass, 'min-w-0 flex-1')}
+      />
+      <Button
+        size="sm"
+        radius="pill"
+        onClick={submitNote}
+        disabled={!draft.trim() || addNote.isPending}
+        loading={addNote.isPending}
+      >
+        Add
+      </Button>
+    </div>
+  );
+
+  if (variant === 'strip') {
+    return (
+      <div className={cn('min-w-0 flex-1', className)} data-testid="morphing-notes-strip">
+        {composer}
+      </div>
+    );
+  }
+
+  if (variant === 'compact') {
+    return (
+      <div className={cn('flex flex-col gap-2', className)} data-testid="morphing-notes-sheet">
+        {composer}
+        {notesQuery.isPending ? (
+          <p className="flex items-center gap-1.5 text-role-micro text-text-soft">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> Loading…
+          </p>
+        ) : notesQuery.isError ? (
+          <p className="text-role-micro text-text-danger">Notes unavailable.</p>
+        ) : notes.length > 0 ? (
+          <ul className="max-h-28 divide-y divide-border-hairline overflow-y-auto">
+            {notes.map((note) => (
+              <li key={note.id} className="py-1.5">
+                <p className="truncate text-role-caption text-text-default">{note.noteText}</p>
+                <p className="truncate text-role-micro text-text-soft">
+                  {note.authorName ?? 'Unknown staff'} · {formatDateTimePST(note.createdAt)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {legacy ? (
+          <p className="truncate text-role-micro text-text-muted">Legacy · {legacy}</p>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <div className={cn('space-y-1', className)}>
@@ -86,10 +161,8 @@ export function OrderNotesTrail({
           rows={2}
           placeholder="Add a note for this order…"
           aria-label="Add an order note"
-          className={cn(
-            'w-full resize-none rounded-lg border border-border-soft bg-surface-card inset-field text-role-caption text-text-default placeholder:text-text-faint',
-            focusRing('field', 'accent'),
-          )}
+          autoFocus={autoFocus}
+          className={fieldClass}
         />
         <div className="flex justify-end">
           <Button

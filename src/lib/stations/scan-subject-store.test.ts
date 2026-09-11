@@ -15,6 +15,14 @@ describe('scan-subject-store', () => {
     __resetScanSubjectForTests();
   });
 
+  it('holds the last order scanned for scan-out', () => {
+    setScanSubject('order', ' 42 ');
+    assert.deepEqual(
+      { kind: getScanSubject()?.kind, value: getScanSubject()?.value },
+      { kind: 'order', value: '42' },
+    );
+  });
+
   it('holds the last unit scanned', () => {
     setScanSubject('unit', ' CN1A2B3XYZ ');
     assert.deepEqual(
@@ -30,6 +38,7 @@ describe('scan-subject-store', () => {
   });
 
   it('expires past the TTL', () => {
+    assert.equal(SUBJECT_TTL_MS, 120_000);
     // A subject with no expiry is a loaded gun on a shared bench: scan a unit,
     // walk away, and someone else's verdict sticker lands on it.
     let now = 1_000_000;

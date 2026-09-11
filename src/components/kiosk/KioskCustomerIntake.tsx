@@ -22,24 +22,28 @@
 import type { ReactNode } from 'react';
 import { TextField } from '@/design-system/primitives';
 import { KIOSK_SECTION_LABEL_ROW } from '@/app/kiosk/kiosk-chrome';
+import { counterCorner } from '@/app/kiosk/kiosk-counter-surface';
+import { cn } from '@/utils/_cn';
 import {
   useKioskSession,
   useKioskSessionActions,
 } from '@/lib/kiosk/kiosk-session-store';
 
-type KioskCustomerField = 'phone' | 'name' | 'email';
+type KioskCustomerField = 'phone' | 'name' | 'email' | 'address';
 
-/** Every channel asks in this order — phone leads (it is the lookup key). */
+/** Every channel asks in this order — phone leads (it is the lookup key). Callers: KioskCartLedger + panes. User: "intake their information like name, email address, phone number, address". */
 export const KIOSK_CUSTOMER_FIELDS: readonly KioskCustomerField[] = [
   'phone',
   'name',
   'email',
+  'address',
 ];
 
 interface KioskCustomerValue {
   phone: string;
   name: string;
   email: string;
+  address?: string;
 }
 
 /**
@@ -91,6 +95,7 @@ export function KioskCustomerIntake({
         phone: session.customerPhone,
         name: session.customerName,
         email: session.customerEmail,
+        address: session.customerAddress,
       };
 
   const patch = (next: Partial<KioskCustomerValue>) => {
@@ -121,7 +126,7 @@ export function KioskCustomerIntake({
             inputMode="tel"
             autoComplete="tel"
             maxLength={12}
-            inputClassName="rounded-none"
+            inputClassName={cn(counterCorner('field'))}
             data-testid="kiosk-customer-phone"
           />
         )}
@@ -131,7 +136,7 @@ export function KioskCustomerIntake({
             value={current.name}
             onChange={(v) => patch({ name: v })}
             autoComplete="name"
-            inputClassName="rounded-none"
+            inputClassName={cn(counterCorner('field'))}
             data-testid="kiosk-customer-name"
           />
         )}
@@ -143,8 +148,18 @@ export function KioskCustomerIntake({
             type="email"
             inputMode="email"
             autoComplete="email"
-            inputClassName="rounded-none lowercase"
+            inputClassName={cn(counterCorner('field'), 'lowercase')}
             data-testid="kiosk-customer-email"
+          />
+        )}
+        {show('address') && (
+          <TextField
+            label="Address"
+            value={current.address ?? ''}
+            onChange={(v) => patch({ address: v })}
+            autoComplete="street-address"
+            inputClassName={cn(counterCorner('field'))}
+            data-testid="kiosk-customer-address"
           />
         )}
         {extras}

@@ -359,11 +359,18 @@ export async function findShippedOrderByTsnSerial(
             t.created_at            AS allocated_at,
             t.serial_number         AS serial_number
        FROM tech_serial_numbers t
-       JOIN orders o ON o.shipment_id = t.shipment_id
-                    AND t.organization_id = o.organization_id
+       JOIN orders o ON (
+              (t.order_id IS NOT NULL AND o.id = t.order_id)
+              OR (
+                t.order_id IS NULL
+                AND t.shipment_id IS NOT NULL
+                AND o.shipment_id = t.shipment_id
+              )
+            )
+            AND t.organization_id = o.organization_id
        LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
       WHERE UPPER(t.serial_number) = $1
-        AND t.shipment_id IS NOT NULL
+        AND (t.order_id IS NOT NULL OR t.shipment_id IS NOT NULL)
         AND t.organization_id = $2::uuid
         AND ($2::uuid IS NULL OR o.organization_id = $2::uuid)
       ORDER BY t.created_at DESC, o.id ASC
@@ -388,10 +395,17 @@ export async function findShippedOrderByTsnSerial(
             t.created_at            AS allocated_at,
             t.serial_number         AS serial_number
        FROM tech_serial_numbers t
-       JOIN orders o ON o.shipment_id = t.shipment_id
+       JOIN orders o ON (
+              (t.order_id IS NOT NULL AND o.id = t.order_id)
+              OR (
+                t.order_id IS NULL
+                AND t.shipment_id IS NOT NULL
+                AND o.shipment_id = t.shipment_id
+              )
+            )
        LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
       WHERE UPPER(t.serial_number) = $1
-        AND t.shipment_id IS NOT NULL
+        AND (t.order_id IS NOT NULL OR t.shipment_id IS NOT NULL)
         AND ($2::uuid IS NULL OR o.organization_id = $2::uuid)
       -- Most recent ship event first (a re-sold serial pairs with its latest
       -- trip), then o.id ASC: one shipment can join MULTIPLE sales orders, and

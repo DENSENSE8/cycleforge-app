@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Barcode } from '@/components/Icons';
+import { ScanBarcode } from '@/components/Icons';
 import type { BlockProps } from '@/lib/stations/contract';
 import { classifyUnboxScan } from '@/lib/receiving/classify-unbox-scan';
 import { isSurfaceKey, type SurfaceKey } from '@/lib/stations/surface-keys';
@@ -67,7 +67,7 @@ export function ScanBandBlock({ display }: BlockProps) {
         submit(value);
       }}
     >
-      <Barcode className="h-4 w-4 shrink-0 text-text-faint" />
+      <ScanBarcode className="h-4 w-4 shrink-0 text-text-faint" />
       <input
         ref={inputRef}
         value={value}

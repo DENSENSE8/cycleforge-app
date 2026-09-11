@@ -191,8 +191,8 @@ const config = {
                 // dense chrome, not for the family.
                 condensed: ['var(--ds-font-condensed)', 'IBM Plex Sans Condensed', 'Inter', 'system-ui', 'sans-serif'],
                 // Master-nav spine only (`font-spine` on MasterNavView). Not a
-                // fourth app cut — eyebrows / micro stay `--ds-font-condensed`.
-                spine: ['var(--font-spine)', 'Overpass', 'Inter', 'system-ui', 'sans-serif'],
+                // fourth app cut — it resolves to the app sans (no Overpass load).
+                spine: ['var(--ds-font-sans)', 'Inter', 'system-ui', 'sans-serif'],
                 mono: ['var(--ds-font-mono)', 'IBM Plex Mono', 'ui-monospace', 'monospace'],
             },
             fontSize: {
@@ -313,8 +313,8 @@ const config = {
                 ".text-role-micro": { fontFamily: "var(--ds-font-condensed)" },
                 // Spine-local: intrinsic eyebrow/micro family would otherwise
                 // keep Plex Condensed on search-result context inside the map.
-                ".font-spine .text-role-eyebrow": { fontFamily: "var(--font-spine)" },
-                ".font-spine .text-role-micro": { fontFamily: "var(--font-spine)" },
+                ".font-spine .text-role-eyebrow": { fontFamily: "var(--ds-font-sans)" },
+                ".font-spine .text-role-micro": { fontFamily: "var(--ds-font-sans)" },
                 ".text-role-display": { fontVariantNumeric: "tabular-nums" },
                 ".text-role-title": { fontVariantNumeric: "tabular-nums" },
                 ".text-role-data": { fontVariantNumeric: "tabular-nums" },

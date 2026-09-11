@@ -63,8 +63,8 @@ export type ReceivingGridColumnKey =
   | 'thumb'
   | 'item'
   | 'fulfillment'
+  | 'dates'
   | 'state'
-  | 'amount'
   | 'actions'
   | '_fill'
   /** Materialized slot tracks — keys are slot indices, never field ids. */
@@ -261,7 +261,7 @@ const RECEIVING_GRID_LOCKED_KEYS: readonly ReceivingGridColumnKey[] = gridFrozen
 
 /** Data columns that support click-to-sort (excludes select / paint chrome / `_fill`). */
 const RECEIVING_GRID_SORTABLE_KEYS: readonly ReceivingGridColumnKey[] = RECEIVING_GRID_COLUMNS.filter(
-  (c) => c.sortable !== false && c.key !== 'select' && c.key !== '_fill',
+  (c) => c.sortable !== false && c.key !== '_fill',
 ).map((c) => c.key);
 
 /**
@@ -303,9 +303,11 @@ const RECEIVING_GRID_SORTABLE_KEYS: readonly ReceivingGridColumnKey[] = RECEIVIN
  * is a product decision rather than a restoration.
  */
 const RECEIVING_TRACK_SORT_FACTS: Readonly<Record<string, ReceivingGridColumnKey>> = {
+  dates: 'date',
   fulfillment: 'order',
   item: 'title',
   amount: 'price',
+  state: 'status',
 };
 
 /**
@@ -388,8 +390,8 @@ export type IncomingGridColumnKey =
   | 'thumb'
   | 'item'
   | 'fulfillment'
+  | 'dates'
   | 'state'
-  | 'amount'
   | 'actions'
   | '_fill'
   /** Materialized slot tracks — keys are slot indices, never field ids. */
@@ -549,7 +551,7 @@ export const INCOMING_GRID_LOCKED_KEYS: readonly IncomingGridColumnKey[] = gridF
 
 /** Data columns that support click-to-sort (excludes select). */
 export const INCOMING_GRID_SORTABLE_KEYS: readonly IncomingGridColumnKey[] = INCOMING_GRID_COLUMNS.filter(
-  (c) => c.sortable !== false && c.key !== 'select',
+  (c) => c.sortable !== false,
 ).map((c) => c.key);
 
 /**
@@ -562,6 +564,7 @@ export const INCOMING_GRID_SORTABLE_KEYS: readonly IncomingGridColumnKey[] = INC
  * inbound POS line has no money track to sort.
  */
 const INCOMING_TRACK_SORT_FACTS: Readonly<Record<string, IncomingGridColumnKey>> = {
+  dates: 'date',
   fulfillment: 'order',
   item: 'title',
   state: 'status',

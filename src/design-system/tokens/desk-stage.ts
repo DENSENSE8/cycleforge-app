@@ -114,12 +114,14 @@ export const DESK_PAGE_HEADER_ROW_CLASS = 'py-3';
 /**
  * The **tab row**, on its own line under the header.
  *
- * No full-width hairline (operator 2026-09-04). Selection is the active tab's
- * own underline on {@link DeskTab}, not a dash sitting on a page-wide rule.
- * Do not restore `border-b` here — that was the seam the operator asked to
- * kill. Do not add an `overflow-*` to the row or its tablist.
+ * Full-width bottom hairline (`border-border-hairline`) is the seam under
+ * Pending · To ship · Amazon Prep · … — one rule across the whole band, not
+ * a dash only under the active tab. Each tab's own `border-b` + `-mb-px`
+ * (DeskPageChrome) lands on this pixel so the active tab's dark segment
+ * replaces the soft rule instead of stacking a second line. Do not add an
+ * `overflow-*` to the row or its tablist.
  */
-export const DESK_TAB_ROW_CLASS = 'h-9';
+export const DESK_TAB_ROW_CLASS = 'h-9 border-b border-border-hairline';
 
 /**
  * Shared tab-list geometry for every desk page. The list remains a normal

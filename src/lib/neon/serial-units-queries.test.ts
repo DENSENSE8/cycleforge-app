@@ -108,6 +108,22 @@ test('RMA disposition reverse-links inbound returns and flips the allocation', (
   );
 });
 
+test('TSN fallback joins tech_serial_numbers.order_id before shipment_id', () => {
+  const src = read('./serial-units-queries.ts');
+  ok(/o\.id = t\.order_id/.test(src), 'TSN resolve must join orders.id = tech_serial_numbers.order_id');
+  ok(/t\.order_id IS NULL/.test(src), 'shipment_id join is only the null-order_id fallback');
+});
+
+test('scan-serial autolink is not gated on is_return', () => {
+  const src = read('../../app/api/receiving/scan-serial/route.ts');
+  ok(/linkReturnedSerial/.test(src), 'scan-serial must call linkReturnedSerial');
+  ok(/isReceivingReturnAutolink\(\)/.test(src), 'autolink stays flag-gated');
+  ok(
+    src.includes('isReceivingReturnAutolink()') && !src.includes('is_return && isReceivingReturnAutolink'),
+    'a first-seen serial with a TSN order must still autolink',
+  );
+});
+
 test('migration admits RETURNED and treats it as a closed allocation state', () => {
   const sql = read('../migrations/2026-06-06_close_return_loop.sql');
   ok(

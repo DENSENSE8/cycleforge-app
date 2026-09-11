@@ -1,0 +1,156 @@
+# Mobile-first surface law (repo-wide)
+
+<!--
+  Callers: AGENTS.md, CLAUDE.md, .cursor/rules/mobile-first-surface.mdc,
+  src/lib/mobile/mobile-first-surface.ts, all agents building UI.
+  No data schemas / API.
+  User: "contract into laws plus components must … span repo-wide. You must
+  be able to do everything on the mobile app first."
+-->
+
+**Status:** binding · **Scope:** entire CycleForge app (Inventory, Shipping,
+Receiving, Support, Admin, Studio, Search, …) — not Warehouse OS alone.  
+**Operator:** 2026-09-10 — “contract into laws plus components must … span
+repo-wide. You must be able to do everything on the mobile app first.”
+
+This is the product SoT for **how we design and ship UI**. Desktop desks,
+scan stations, and kiosk faces remain real surfaces; they **consume** the
+mobile-first job tree — they do not invent a second IA that phones cannot run.
+
+---
+
+## 1. Non-negotiable product rule
+
+**Every operator verb that exists in the product must be completable on the
+mobile web app (`/m/*`) first.**
+
+- If a verb has no `/m` path, the feature is **incomplete**, not “desktop-only.”
+- Desktop may add density (tables, multi-pane, wedge scan, hotkeys) **after**
+  the mobile happy path exists and is triageable.
+- “Desktop-first, then squeeze” is **refused** for new work and for ports.
+
+Exception (narrow): **public GS1 resolvers** and pure print-only hardware
+bridges that have no operator session. Everything else is in scope.
+
+---
+
+## 2. Definitions
+
+| Term | Meaning |
+|---|---|
+| **Job** | One verb the operator came to do (pick confirm, print labels, scan arrival, …). |
+| **Surface** | Shell that owns chrome: `/m/*` phone, desk (`DeskPageChrome`), scan station, kiosk. |
+| **Mobile SoT** | The phone layout + step machine under `/m/…` for that job. |
+| **Desktop frame** | Same SoT tree shown in a fixed phone-width column with thick side gutters; optional compact recents top-left — **not** a second desktop IA. |
+| **Token family** | One control grammar per job class (see §5). |
+| **Triageable** | Cold open → done in a short thumb path; primary CTA sticky; no hover-only. |
+
+---
+
+## 3. Surface classes (every feature is classified)
+
+| Class | Shell | When |
+|---|---|---|
+| **A — Floor / single-task** | `/m/(shell)/…` or `/m/(immersive)/…` | Scan, pick, print, photo, put-away, triage one carton |
+| **B — Phone browse** | `/m` + sheets/lists | Queues, history, search results on phone |
+| **C — Dense desk** | Desk chrome + tables | Multi-column ops after A exists |
+| **D — Station / kiosk** | Station overlay / kiosk face | Wedge + large flush targets; still must not be the *only* way to do the job |
+
+**Port rule:** design **A** (or B) first; C/D arrange the same jobs wider or denser.
+
+---
+
+## 4. Desktop display of mobile-first (frame law)
+
+When showing mobile SoT on a large viewport:
+
+1. **Center column** = phone width (`max-w-sm` / `max-w-md` — use DS radius/spacing tokens, not invented px sprawl).
+2. **Left / right** = thick empty gutters **or** compact **recents** (top-left, small rows) — never a full desk rail that the phone lacks.
+3. **No dual interactive trees** (`lg:hidden` full flow + `hidden lg:block` full flow both live). One step machine; optional layout variants only.
+4. Desk URLs may **embed** the `/m` frame; they must not fork a separate click path.
+
+---
+
+## 5. Token families (use case → mount)
+
+| Job class | Mount | Do not |
+|---|---|---|
+| Desk / page facet tabs | `TableTabs` (underline) | Pill path chips |
+| Binary / small mode (e.g. Single \| Bulk) | `TabSwitch` segmented | Path chips; desk underline tabs |
+| Ordered path (Zone → …) | Path chips (`LABEL_BUILDER_STEP` or successor) | `TabSwitch` faces |
+| Primary commit | Sticky `Button` / sticky bar | Buried under long lists |
+| Secondary / wipe (Reset, Change) | Outlined `Button secondary` (or danger) | Ghost next to mode switch |
+| Recents | Compact recent rows / strip | Full context rail on phone SoT |
+| Lists on phone | Cards + `BottomSheet` detail | Full `DataTable` as SoT |
+
+Call `ds_contract` / `ds_tokens` / `ds_critique` before UI writes. Prefer existing
+`/m` redesign primitives (`MobileShell`, item-record mobile, `BottomSheet`,
+`IconButton size="touch"`).
+
+---
+
+## 6. Hard rules (R1–R10)
+
+1. **One job per screen** (first viewport).
+2. **One primary CTA**, sticky, thumb zone (≥44px hit via DS).
+3. **Token family = use case** (§5).
+4. **Progressive disclosure** — current step body; path chips are status/jump-back.
+5. **No hover-only**; no dual active trees.
+6. **Touch ladder** via `UIModeProvider` / `IconButton size="touch"` — not random taller classes.
+7. **Search only when the list is the product** (long queues), not ~10-item pickers.
+8. **Secondary actions collapse** (⋯ / sheet); toolbar ≤2 trailing icons on phone.
+9. **Disabled CTAs name what’s missing**.
+10. **Device intent before layout** — floor verbs are class A under `/m`.
+
+Pass/fail: fail any of R1–R4 on the mobile SoT → not done.
+
+---
+
+## 7. Component kit (build toward; share repo-wide)
+
+| Component | Responsibility |
+|---|---|
+| `MobilePhoneFrame` | Fixed max-width column + side gutters on `lg+`; hosts SoT |
+| `MobileRecentStrip` | Top-left compact recents / back MRU |
+| `MobileStepShell` | Title + optional path status + body + sticky CTA slot |
+| `MobileQueueShell` | Search + banded list + row → sheet (Pick / Work pattern) |
+| Existing | `RedesignedMobileShell`, `BottomSheet`, item-record mobile faces, Pick `_picker/*` |
+
+New jobs **compose** these; they do not invent a parallel mobile design system.
+
+---
+
+## 8. Route map (extend as verbs land)
+
+Canonical phone entrypoints (non-exhaustive; grow this table, don’t fork):
+
+| Verb area | Mobile SoT |
+|---|---|
+| Pick queue | `/m/pick` |
+| Pick session | `/m/pick/[orderId]` |
+| Orders / to-ship | `/m/work` |
+| Home | `/m/home` |
+| Unbox / receive / scan / pack | `/m/unbox`, `/m/receive`, `/m/scan`, `/m/pack`, … |
+| Locations / labels (port target) | `/m/…` TBD — must exist before desk Labels is “done” |
+
+Machine checklist: `src/lib/mobile/mobile-first-surface.ts`.
+
+---
+
+## 9. Agent / eval obligations
+
+- Cursor rule: `.cursor/rules/mobile-first-surface.mdc` (`alwaysApply`).
+- `AGENTS.md` / `CLAUDE.md` point here.
+- Before claiming a **new** product verb done: `/m` path exists and passes §6.
+- Design-mcp before UI. Graph impact before shared `/m` shell edits.
+- Future: `eval:cohort mobile-first` when peer routes are listed in the cohort file.
+
+---
+
+## 10. Refusals
+
+- “Desktop-only for now; mobile later.”
+- Shrinking a desk page and calling it mobile-first.
+- A second control grammar that phones don’t share.
+- Recents as a full left warehouse rail on the phone SoT.
+- Marketing/landing taste skills as law for ops surfaces (out of scope for those skills).

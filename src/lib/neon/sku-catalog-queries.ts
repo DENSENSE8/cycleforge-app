@@ -878,6 +878,34 @@ export async function getKitParts(
 }
 
 /**
+ * Kit parts for many catalog parents — batch for order-table kit faces.
+ * Condition filter omitted (all parts); pack-time gating stays on getKitParts.
+ */
+export async function getKitPartsForCatalogIds(
+  skuCatalogIds: readonly number[],
+  orgId?: OrgId,
+): Promise<Map<number, SkuKitPartRow[]>> {
+  const ids = [...new Set(skuCatalogIds.filter((id) => Number.isFinite(id) && id > 0))];
+  const out = new Map<number, SkuKitPartRow[]>();
+  if (ids.length === 0) return out;
+
+  const sql = `SELECT * FROM sku_kit_parts
+     WHERE sku_catalog_id = ANY($1::int[])${orgId ? '\n       AND organization_id = $2' : ''}
+     ORDER BY sku_catalog_id, sort_order, id`;
+  const result = orgId
+    ? await tenantQuery<SkuKitPartRow>(orgId, sql, [ids, orgId])
+    : await pool.query<SkuKitPartRow>(sql, [ids]);
+
+  for (const row of result.rows) {
+    const parentId = Number(row.sku_catalog_id);
+    const list = out.get(parentId) ?? [];
+    list.push(row);
+    out.set(parentId, list);
+  }
+  return out;
+}
+
+/**
  * Create one kit part (BOM row) under a SKU. Mirrors createQcCheck: when orgId
  * is provided the INSERT stamps organization_id and runs inside one
  * withTenantTransaction (GUC set), and attaching a part reactivates a retired

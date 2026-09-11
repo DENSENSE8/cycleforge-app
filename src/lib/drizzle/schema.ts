@@ -833,6 +833,50 @@ export const replenishmentOrderLines = pgTable('replenishment_order_lines', {
   requestOrderUnique: uniqueIndex('rol_request_order_unique').on(table.replenishmentRequestId, table.orderId),
 }));
 
+export const orderLineShortages = pgTable('order_line_shortages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: orgIdCol(),
+  orderId: integer('order_id').notNull().references(() => orders.id, { onDelete: 'cascade' }),
+  commercialOrderId: text('commercial_order_id'),
+  zohoItemId: text('zoho_item_id').notNull(),
+  itemId: uuid('item_id').references(() => items.id, { onDelete: 'set null' }),
+  skuCatalogId: integer('sku_catalog_id'),
+  kitPartId: integer('kit_part_id'),
+  kind: text('kind').notNull(),
+  qtyShort: numeric('qty_short', { precision: 12, scale: 2 }).notNull().default('1'),
+  title: text('title'),
+  sku: text('sku'),
+  status: text('status').notNull().default('open'),
+  replenishmentRequestId: uuid('replenishment_request_id').references(() => replenishmentRequests.id, { onDelete: 'set null' }),
+  createdBy: text('created_by'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  clearedAt: timestamp('cleared_at', { withTimezone: true }),
+  clearedBy: text('cleared_by'),
+}, (table) => ({
+  orgOrderIdx: index('idx_order_line_shortages_org_order').on(table.organizationId, table.orderId),
+  openItemUx: uniqueIndex('ux_order_line_shortages_open_item')
+    .on(table.organizationId, table.orderId, table.zohoItemId)
+    .where(sql`${table.status} <> 'cleared'`),
+}));
+
+export const shortageInboundLinks = pgTable('shortage_inbound_links', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organizationId: orgIdCol(),
+  shortageId: uuid('shortage_id').notNull().references(() => orderLineShortages.id, { onDelete: 'cascade' }),
+  sourceKind: text('source_kind').notNull(),
+  replenishmentRequestId: uuid('replenishment_request_id').references(() => replenishmentRequests.id, { onDelete: 'set null' }),
+  zohoPoId: text('zoho_po_id'),
+  zohoPoLineId: text('zoho_po_line_id'),
+  receivingLineId: integer('receiving_line_id').references(() => receivingLines.id, { onDelete: 'set null' }),
+  serialUnitId: integer('serial_unit_id'),
+  qty: numeric('qty', { precision: 12, scale: 2 }).notNull().default('1'),
+  linkStatus: text('link_status').notNull().default('reserved'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  shortageIdx: index('idx_shortage_inbound_links_shortage').on(table.organizationId, table.shortageId),
+}));
+
 export const itemStockCache = pgTable('item_stock_cache', {
   id: uuid('id').primaryKey().defaultRandom(),
   zohoItemId: text('zoho_item_id').notNull().unique(),
@@ -1084,6 +1128,17 @@ export const orders = pgTable('orders', {
   /** Operator-toggled out-of-stock / blocked flag (Pending BLOCKED lane).
    *  Replaces retired free-text `out_of_stock`. Migration 2026-07-23b. */
   isOutOfStock: boolean('is_out_of_stock').notNull().default(false),
+  /**
+   * Shortage identity beside the hold — listing SKU or kit part that is short.
+   * Cleared when `is_out_of_stock` flips false. Migration 2026-09-10c.
+   */
+  oosKind: text('oos_kind'),
+  oosSku: text('oos_sku'),
+  oosSkuCatalogId: integer('oos_sku_catalog_id'),
+  oosKitPartId: integer('oos_kit_part_id'),
+  oosQtyShort: numeric('oos_qty_short', { precision: 12, scale: 2 }).default('1'),
+  oosTitle: text('oos_title'),
+  oosZohoItemId: text('oos_zoho_item_id'),
   notes: text('notes'),
   /** Operator-toggled urgent / expedited flag (dashboard queue quick-actions Zap).
    *  Tier-0 semantics for the future "Expedited" filter. Migration 2026-07-14. */
@@ -3359,14 +3414,14 @@ export const serialUnits = pgTable('serial_units', {
  * migration 2026-07-06a). One row per PHYSICAL label print; reprints append a
  * new row (isReprint=true) pointing at the same unitUid — identity is never
  * re-minted. `jobType` is a CHECK-constrained discriminator:
- * 'UNIT' | 'MANIFEST' | 'HANDLING_UNIT' | 'REPRINT'. `manifestId`'s FK to
+ * 'UNIT' | 'MANIFEST' | 'HANDLING_UNIT' | 'REPRINT' | 'LOCATION'. `manifestId`'s FK to
  * label_manifests is added in Phase 3 (the table doesn't exist yet). RLS +
  * org-default installed by enforce_tenant_isolation() in the migration.
  */
 export const labelPrintJobs = pgTable('label_print_jobs', {
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   organizationId: uuid('organization_id').notNull(),
-  /** Discriminator: 'UNIT' | 'MANIFEST' | 'HANDLING_UNIT' | 'REPRINT'. */
+  /** Discriminator: 'UNIT' | 'MANIFEST' | 'HANDLING_UNIT' | 'REPRINT' | 'LOCATION'. */
   jobType: text('job_type').notNull(),
   serialUnitId: integer('serial_unit_id'),
   manifestId: bigint('manifest_id', { mode: 'number' }),

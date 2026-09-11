@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {
   applyCompoundRowPlaneGutterClick,
   compoundRowPlaneGutterClick,
+  rememberRowPlaneOpen,
 } from './compound-row-plane';
 import { ORDERS_DEFAULT_TABLE_BINDING } from '@/components/dashboard/orders-queue/orders-table-definition';
 
@@ -20,18 +21,33 @@ describe('the CYC-82 gutter rule, now engine-owned', () => {
       extend: false,
       menu: 'open',
     });
+  });
+
+  it('keeps the plane up when unselecting — other rows may still be in the set', () => {
     assert.deepEqual(compoundRowPlaneGutterClick({ isChecked: true, shiftKey: false }), {
       extend: false,
-      menu: 'close',
+      menu: 'keep',
     });
   });
 
-  it('shift is the range walk and never opens the plane — triage is not interrupted', () => {
+  it('shift is the range walk and keeps the plane — bulk is a cardinality', () => {
     for (const isChecked of [true, false]) {
       assert.deepEqual(compoundRowPlaneGutterClick({ isChecked, shiftKey: true }), {
         extend: true,
-        menu: 'close',
+        menu: 'keep',
       });
+    }
+  });
+
+  it('a second select keeps the live plane instead of remounting it', () => {
+    rememberRowPlaneOpen(true);
+    try {
+      assert.deepEqual(compoundRowPlaneGutterClick({ isChecked: false, shiftKey: false }), {
+        extend: false,
+        menu: 'keep',
+      });
+    } finally {
+      rememberRowPlaneOpen(false);
     }
   });
 
@@ -45,6 +61,18 @@ describe('the CYC-82 gutter rule, now engine-owned', () => {
       onCloseMenu: () => calls.push('close'),
     });
     assert.deepEqual(calls, ['toggle', 'open']);
+  });
+
+  it('apply on a checked row toggles and does not close the plane', () => {
+    const calls: string[] = [];
+    applyCompoundRowPlaneGutterClick({
+      isChecked: true,
+      shiftKey: false,
+      onToggle: () => calls.push('toggle'),
+      onOpenMenu: () => calls.push('open'),
+      onCloseMenu: () => calls.push('close'),
+    });
+    assert.deepEqual(calls, ['toggle']);
   });
 });
 

@@ -107,6 +107,29 @@ describe('the select gutter is the shared cell, under a compound model only', ()
     assert.match(html, /h-full w-full/);
   });
 
+  it('keeps hover chrome when the leaf also has a detail chevron', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(
+        React.Fragment,
+        null,
+        renderCompoundGridCell({
+          col: COMPOUND_TRACKS.find((c) => c.key === 'select')!,
+          columns: COMPOUND_TRACKS,
+          rule: true,
+          view: VIEW,
+          select: {
+            checked: false,
+            onToggle: () => {},
+            label: 'Select row',
+            detail: { open: false, onToggle: () => {}, label: 'A thing' },
+          },
+        }),
+      ),
+    );
+    assert.match(html, /data-select-chrome="hover"/);
+    assert.match(html, /data-row-detail/);
+  });
+
   it('refuses `select` when a FLAT model is mounted', () => {
     // Every spreadsheet in the repo has a `select` column. Claiming the key
     // unconditionally would hand the 48px compound gutter to Pickup, Catalog

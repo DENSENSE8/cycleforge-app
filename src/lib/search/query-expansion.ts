@@ -125,6 +125,7 @@ export const SEARCH_SYNONYMS: Readonly<Record<string, readonly string[]>> = {
 
   // Locations
   shelf: ['location', 'bin'],
+  bay: ['location', 'bin'],
   rack: ['location', 'bin'],
   tote: ['location', 'bin'],
   slot: ['location', 'bin'],

@@ -27,7 +27,7 @@
  */
 
 import type { ReactNode } from 'react';
-import { GlobalWedgeScannerMount, PhoneScanBridgeMount } from '@/components/layout/scan-mounts';
+import { GlobalWedgeScannerMount, PhoneScanBridgeMount, StaffPrintBridgeMount } from '@/components/layout/scan-mounts';
 import { ReceivingPhoneBridgeMount } from '@/components/mobile/receiving/ReceivingPhoneBridgeMount';
 import { RightRailHost } from '@/components/right-rail/RightRailHost';
 
@@ -38,6 +38,7 @@ export function MobileRouteShell({ children }: { children: ReactNode }) {
           user is signed in on can service the lookup. */}
       <PhoneScanBridgeMount />
       <ReceivingPhoneBridgeMount />
+      <StaffPrintBridgeMount />
 
       {/* Same wedge scanner listener as desktop — works for HID-over-USB on
           tablets and Bluetooth ring scanners paired to a phone. */}

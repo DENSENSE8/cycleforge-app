@@ -86,10 +86,29 @@ export interface ShippedOrder {
   is_shipped?: boolean;
   /** Operator blocked the line — `orders.is_out_of_stock`. */
   is_out_of_stock?: boolean;
+  /** Shortage kind — listing / kit / catalog child / other Zoho item. */
+  oos_kind?: 'listing' | 'kit_part' | 'catalog_child' | 'catalog_other' | null;
+  /** Short SKU (listing or component). */
+  oos_sku?: string | null;
+  oos_sku_catalog_id?: number | null;
+  /** `sku_kit_parts.id` when `oos_kind === 'kit_part'`. */
+  oos_kit_part_id?: number | null;
+  oos_qty_short?: number | string | null;
+  /** Hover-card title — listing title or component name. */
+  oos_title?: string | null;
+  /** Zoho `items.zoho_item_id` for the short product (denorm of order_line_shortages). */
+  oos_zoho_item_id?: string | null;
+  replenishment_status?: string | null;
+  replenishment_po_number?: string | null;
+  shortage_link_status?: string | null;
   /** Operator-marked urgent. */
   is_urgent?: boolean;
+  /** Catalog FK — present on the live `/api/orders` queue projection. */
+  sku_catalog_id?: number | null;
   /** Catalog listing image from `sku_catalog.image_url` (orders queue join). */
   catalog_image_url?: string | null;
+  /** Catalog product family from `sku_catalog.category` (orders queue join). */
+  catalog_category?: string | null;
   shipment_status?: string | null;
   latest_status_code?: string | null;
   latest_status_label?: string | null;

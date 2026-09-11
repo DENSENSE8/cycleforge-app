@@ -105,7 +105,7 @@ test('Scan Stations lists benches as a flat map — no Receiving / Walk-In chrom
   assert.equal(qc && qc.type === 'page' ? qc.label : null, 'Quality Control');
   const rtp = floor!.rows.find((r) => r.type === 'page' && r.id === 'ready-to-pack');
   assert.ok(rtp);
-  assert.equal(rtp && rtp.type === 'page' ? rtp.label : null, 'Ready to Pack');
+  assert.equal(rtp && rtp.type === 'page' ? rtp.label : null, 'Picker');
   assert.equal(
     floor!.rows.some((r) => r.type === 'page' && r.id === 'tech'),
     false,

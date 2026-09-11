@@ -2,13 +2,15 @@
 
 /**
  * Review · Pairing — outbound orders in flight (staged + awaiting label) with
- * allocate-serial detail overlay. Uses existing allocate API + OrdersGridHost.
+ * allocate-serial detail overlay. Uses existing allocate API + DataTable.
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
+import { useSearchParams } from 'next/navigation';
+import { DataTable } from '@/components/tables/DataTable';
+import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
+import { OrderStatusTrailStage } from '@/components/orders/OrderStatusTrailOverlay';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import { packedOrdersQuery } from '@/lib/queries/dashboard-queries';
 import { awaitingLabelsQuery } from '@/lib/queries/outbound-queries';
@@ -22,18 +24,15 @@ interface ReviewPairingTableProps {
 }
 
 export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingTableProps) {
-  const pathname = usePathname();
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const searchQuery = String(searchParams.get('search') || '').trim();
+  const [searchQuery, setSearchQuery] = useState('');
   const staffId = parseStaffParam(searchParams.get('staff')) ?? undefined;
 
-
   const stagedQuery = useQuery({
-    ...packedOrdersQuery({ searchQuery, staffId }),
+    ...packedOrdersQuery({ staffId }),
   });
   const awaitingQuery = useQuery({
-    ...awaitingLabelsQuery({ searchQuery }),
+    ...awaitingLabelsQuery(),
   });
 
   const records = useMemo(() => {
@@ -49,41 +48,36 @@ export function ReviewPairingTable({ onOpenOrder, onCloseOrder }: ReviewPairingT
 
   const loading = stagedQuery.isLoading || awaitingQuery.isLoading;
 
-  const setSearch = useCallback(
-    (next: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      const trimmed = next.trim();
-      if (trimmed) params.set('search', trimmed);
-      else params.delete('search');
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
-    [pathname, router, searchParams],
-  );
-  const clearSearch = useCallback(() => setSearch(''), [setSearch]);
+  const setSearch = useCallback((next: string) => setSearchQuery(next), []);
+  const clearSearch = useCallback(() => setSearchQuery(''), []);
+
+  const sheet = useOrdersSpreadsheet({
+    ariaLabel: 'Orders awaiting pairing review',
+    records,
+    loading,
+    searchValue: searchQuery,
+    onClearSearch: clearSearch,
+    emptyMessage: 'No outbound orders needing serial/SKU pairing',
+    searchEmptyTitle: 'No matching orders',
+    searchResultLabel: 'orders',
+    clearSearchLabel: 'Clear search',
+    queueMode: 'staged',
+    selectionScope: DASHBOARD_ORDERS_SELECTION_SCOPE,
+    'data-testid': 'review-pairing-grid-body',
+    onOpenRecord: onOpenOrder,
+    onCloseRecord: () => onCloseOrder(),
+  });
 
   return (
     <div className="relative flex h-full min-w-0 flex-1 overflow-hidden bg-surface-canvas">
       <DashboardScrollShell className="h-full">
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
-          <OrdersGridHost
-            search={{ value: searchQuery, onChange: setSearch, placeholder: 'Filter order #, SKU, title…' }}
-            ariaLabel="Orders awaiting pairing review"
-            records={records}
-            loading={loading}
-            searchValue={searchQuery}
-            onClearSearch={clearSearch}
-            emptyMessage="No outbound orders needing serial/SKU pairing"
-            searchEmptyTitle="No matching orders"
-            searchResultLabel="orders"
-            clearSearchLabel="Clear search"
-            queueMode="staged"
-            sort="newest"
-            selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
-            data-testid="review-pairing-grid-body"
-            onOpenRecord={onOpenOrder}
-            onCloseRecord={() => onCloseOrder()}
-          />
+          <OrderStatusTrailStage>
+            <DataTable
+              {...sheet}
+              search={{ value: searchQuery, onChange: setSearch, placeholder: 'Filter order #, SKU, title…' }}
+            />
+          </OrderStatusTrailStage>
         </div>
       </DashboardScrollShell>
     </div>

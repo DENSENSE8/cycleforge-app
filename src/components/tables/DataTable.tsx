@@ -35,9 +35,12 @@
  *    object of *data* is the difference between one display and thirty.
  *    `renderRow` / `renderGroup` remain render props because a CELL is domain
  *    code (see `table-surface-binding.ts`) — a row is content, not chrome.
- * 3. **The URL stays the state.** Search, filters, the active tab and sort are
- *    controlled by the caller, which parks them in the URL. That is the
- *    deep-link contract every existing bookmark depends on.
+ * 3. **Search is session-local. Filters / tabs / sort may stay in the URL.**
+ *    The find field is controlled by the caller as `{ value, onChange }` data.
+ *    Parking it in `?search=` / `?q=` is a soft navigation per keystroke and
+ *    remounts the table. Orders filter painted rows via
+ *    `filterShippedOrdersByQuery`; other families filter in
+ *    `useCompoundSpreadsheet`. Facets, stage, and `?sort=` remain URL state.
  * 4. **Selection is the only interaction.** A checkbox gutter, a select-all and
  *    a count. Copy acts on the selection (below); row-open comes back when it
  *    is asked for.
@@ -81,13 +84,13 @@
  * the interaction budget (`AGENTS.md`).
  */
 
-import { Fragment, useCallback, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { Fragment, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from 'react';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from '@/design-system/primitives/radix-popover';
-import { ArrowUpDown, Check, Download, Filter, SlidersHorizontal } from '@/components/Icons';
+import { ArrowUpDown, Check, ChevronDown, Download, Filter, SlidersHorizontal } from '@/components/Icons';
 import type { SlotFieldOption } from '@/lib/tables/layout-edit';
 import { Button, SearchField } from '@/design-system/primitives';
 import { DateRangePickerField } from '@/design-system/components/DateRangePickerField';
@@ -115,7 +118,20 @@ import { dropSlotColumns } from '@/lib/tables/slot-column-reorder';
 import { PRIMARY_CHROME_ROW_FACE } from '@/components/layout/header-shell';
 import { TableStatusBar, type DataTableTab } from '@/components/tables/TableStatusBar';
 import { useTableSelection } from '@/hooks/useTableSelection';
-import type { RowGroup } from '@/lib/group-rows';
+import { flattenRenderOrder, type RowGroup } from '@/lib/group-rows';
+import {
+  SLOT_TABLE_PAGE_SIZE,
+  SLOT_TABLE_PAGE_SIZES,
+  isSlotTablePageSize,
+  pageGroupedRenderOrder,
+  pageIndexForRowId,
+  readSlotTablePageSize,
+  writeSlotTablePageSize,
+  type SlotTablePageSize,
+} from '@/lib/tables/slot-table-page';
+import { slotTableFindHighlightId } from '@/lib/tables/slot-table-find';
+import { clearSlotTableVisibleIds, publishSlotTableVisibleIds } from '@/lib/tables/slot-table-visible';
+import { emitSelectionTotal } from '@/lib/selection/table-selection';
 import { MenuBrandIdentity } from '@/components/ui/grid-cells';
 import { WorkbenchViewsMenu } from '@/components/saved-views/WorkbenchViewsMenu';
 import {
@@ -129,6 +145,9 @@ import {
 } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { DESK_TABLE_SURFACE_CLASS } from '@/design-system/tokens/desk-stage';
+import {
+  SLOT_TABLE_OVERLAY_HOST_ATTR,
+} from '@/components/tables/slot-table-overlay-host';
 import { cn } from '@/utils/_cn';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 
@@ -1109,6 +1128,68 @@ function DataTableSortMenu({
   );
 }
 
+function DataTablePageSizeMenu({
+  pageSize,
+  pageSizes,
+  onPageSizeChange,
+}: {
+  pageSize: number;
+  pageSizes: readonly number[];
+  onPageSizeChange: (size: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const listId = useId();
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          data-testid="data-table-page-size"
+          aria-haspopup="listbox"
+          aria-controls={open ? listId : undefined}
+          aria-label={`Rows per page, ${pageSize}`}
+          aria-expanded={open}
+          className={cn(
+            'ds-raw-button inline-flex shrink-0 items-center justify-center gap-1 px-1.5 text-role-caption',
+            'transition-colors duration-100 ease-out',
+            PRIMARY_CHROME_ROW_FACE,
+            DATA_TABLE_TOOLBAR_CORNER,
+            focusRing('control'),
+            'text-text-muted hover:bg-surface-hover hover:text-text-default',
+          )}
+        >
+          <span className="tabular-nums">{pageSize}</span>
+          <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        sideOffset={2}
+        data-testid="data-table-page-size-menu"
+        className={cn(DROPDOWN_SHELL_CORNER, 'w-36 overflow-hidden p-0.5', focusRing('field', 'accent'))}
+      >
+        <ul id={listId} role="listbox" aria-label="Rows per page" className="flex flex-col">
+          {pageSizes.map((size, index) => (
+            <li key={size}>
+              <ToolbarListboxOption
+                index={index}
+                selected={size === pageSize}
+                checkAlign="end"
+                onClick={() => {
+                  onPageSizeChange(size);
+                  setOpen(false);
+                }}
+              >
+                <span className="tabular-nums">{size}</span>
+              </ToolbarListboxOption>
+            </li>
+          ))}
+        </ul>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 /**
  * The **+** Fields picker — bind/unbind catalog facts into the surface's slot
  * bands, via the house shadcn Popover (`@/design-system/primitives/radix-popover`).
@@ -1325,7 +1406,6 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
   tabs,
   activeTab,
   onTabChange,
-  totalCount,
   dateMenu,
   onReorderColumn,
   onResizeColumn,
@@ -1355,6 +1435,59 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
 }: DataTableProps<Row, K, C>) {
   const selectedRows = useTableSelection<Row>(selectionScope ?? '__idle__');
   const selectedCount = selectionScope ? selectedRows.length : 0;
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState<SlotTablePageSize>(SLOT_TABLE_PAGE_SIZE);
+  useEffect(() => {
+    setPageSize(readSlotTablePageSize());
+  }, []);
+  useEffect(() => {
+    setPageIndex(0);
+  }, [search.value, pageSize]);
+  const paged = useMemo(
+    () => pageGroupedRenderOrder(orderGroupsByDate, pageIndex, pageSize),
+    [orderGroupsByDate, pageIndex, pageSize],
+  );
+  useEffect(() => {
+    if (pageIndex > paged.pageCount - 1) setPageIndex(Math.max(0, paged.pageCount - 1));
+  }, [pageIndex, paged.pageCount]);
+  const visibleIds = useMemo(() => {
+    return flattenRenderOrder(paged.order)
+      .map((row) => {
+        if (getRowId) return Number(getRowId(row));
+        if (row && typeof row === 'object' && 'id' in row) return Number(row.id);
+        return NaN;
+      })
+      .filter((id) => Number.isFinite(id) && id > 0);
+  }, [paged.order, getRowId]);
+  useEffect(() => {
+    if (!selectionScope) return;
+    publishSlotTableVisibleIds(selectionScope, visibleIds);
+    emitSelectionTotal(selectionScope, visibleIds.length);
+    return () => clearSlotTableVisibleIds(selectionScope);
+  }, [selectionScope, visibleIds]);
+  const paintedRowIds = useMemo(
+    () =>
+      flattenRenderOrder(orderGroupsByDate).map((row) => {
+        if (getRowId) return getRowId(row);
+        if (row && typeof row === 'object' && 'id' in row) return String(row.id);
+        return '';
+      }).filter(Boolean),
+    [orderGroupsByDate, getRowId],
+  );
+  const findScrollToKey = scrollToKey ?? slotTableFindHighlightId({
+    query: search.value,
+    paintedRowIds,
+  });
+  useEffect(() => {
+    if (!findScrollToKey || !getRowId) return;
+    const next = pageIndexForRowId(
+      orderGroupsByDate,
+      pageSize,
+      findScrollToKey,
+      getRowId,
+    );
+    if (next != null && next !== pageIndex) setPageIndex(next);
+  }, [findScrollToKey, getRowId, orderGroupsByDate, pageIndex, pageSize]);
   const gridHostRef = useRef<HTMLDivElement>(null);
 
   // Sortability is a property of the DESCRIPTOR, not of the page: TanStack's
@@ -1584,9 +1717,18 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           </div>
         ) : null}
         {dateMenu ? <DataTableDateMenuControl {...dateMenu} /> : null}
+        <DataTablePageSizeMenu
+          pageSize={pageSize}
+          pageSizes={SLOT_TABLE_PAGE_SIZES}
+          onPageSizeChange={(size) => {
+            if (!isSlotTablePageSize(size)) return;
+            writeSlotTablePageSize(size);
+            setPageSize(size);
+          }}
+        />
         {/*
           The order, left to right (operator ruling 2026-09-01, verbs 2026-09-04):
-          search · filter · actions · sort · views · date — gap — columns · zoom · fullscreen.
+          search · filter · actions · sort · views · date · page size — gap — columns · zoom · fullscreen.
           Job verbs that belong to the PAGE (exceptions Paste / Resolve) register
           DeskHeaderAction. DataTable `actions` is for in-sheet jobs that are not
           the desk primary (Review catalog-link paste). Export is a page-level
@@ -1612,7 +1754,11 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
       </div> : null}
 
       {/* ── The grid ───────────────────────────────────────────────────────── */}
-      <div ref={gridHostRef} className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+      <div
+        ref={gridHostRef}
+        {...{ [SLOT_TABLE_OVERLAY_HOST_ATTR]: '' }}
+        className="relative isolate flex min-h-0 min-w-0 flex-1 flex-col"
+      >
         <NonlinearTableHost<Row, K, C>
           binding={binding}
           ariaLabel={ariaLabel}
@@ -1622,7 +1768,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           sectionHeaders={sectionHeaders}
           shellRef={shellRef}
           rows={rows}
-          orderGroupsByDate={orderGroupsByDate}
+          orderGroupsByDate={paged.order}
           getRowId={getRowId}
           loading={loading}
           emptyMessage={emptyMessage}
@@ -1638,7 +1784,7 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
           renderRow={renderRow}
           scrollRef={scrollRef}
           scrollParentRef={scrollParentRef}
-          scrollToKey={scrollToKey}
+          scrollToKey={findScrollToKey}
           bodyPrefix={bodyPrefix}
         />
       </div>
@@ -1647,9 +1793,23 @@ export function DataTable<Row, K extends string, C extends LedgerGridColumnModel
         tabs={tabs}
         activeTab={activeTab}
         onTabChange={onTabChange}
-        shown={rows.length}
-        total={totalCount}
+        shown={paged.shown}
+        total={paged.total}
         selected={selectedCount}
+        pager={{
+          pageIndex: paged.pageIndex,
+          pageCount: paged.pageCount,
+          onPrev: () => setPageIndex((i) => Math.max(0, i - 1)),
+          onNext: () => {
+            if (paged.pageIndex < paged.pageCount - 1) {
+              setPageIndex(paged.pageIndex + 1);
+              return;
+            }
+            onLoadMore?.();
+            setPageIndex(paged.pageIndex + 1);
+          },
+          nextDisabled: paged.pageIndex >= paged.pageCount - 1 && !onLoadMore,
+        }}
         onLoadMore={onLoadMore}
       />
     </div>

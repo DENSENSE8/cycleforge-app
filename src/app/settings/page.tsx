@@ -1,69 +1,56 @@
-'use client';
+import { redirect } from 'next/navigation';
+import { SettingsLanding } from '@/components/settings/SettingsLanding';
+import {
+  SETTINGS_FLOOR_CLASS,
+  SETTINGS_SECTION_OPTIONS,
+  settingsSectionRoute,
+} from '@/components/settings/settings-sections';
+import { cn } from '@/utils/_cn';
 
-import { useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { HardwareSection } from '@/components/settings/sections/HardwareSection';
-import { WorkstationSection } from '@/components/settings/sections/WorkstationSection';
-import { QuickAccessSection } from '@/components/settings/sections/QuickAccessSection';
-import { AppearanceSection } from '@/components/settings/sections/AppearanceSection';
-import { KeyboardSection } from '@/components/settings/sections/KeyboardSection';
-import { AboutSection } from '@/components/settings/sections/AboutSection';
-import { SecuritySection } from '@/components/settings/sections/SecuritySection';
-import { SessionsSection } from '@/components/settings/sections/SessionsSection';
-import { KioskDevicesSection } from '@/components/settings/sections/KioskDevicesSection';
-import { CatalogSection } from '@/components/settings/sections/CatalogSection';
-import { StationsSection } from '@/components/settings/sections/StationsSection';
-import { LegalSection } from '@/components/settings/sections/LegalSection';
-import { SettingsPanel } from '@/components/settings/SettingsPanel';
-import { getActiveSettingsSection } from '@/components/settings/settings-sections';
-
-const LEGACY_REDIRECTS: Record<string, string> = {
-  staff: '/settings/staff',
-  team: '/settings/staff',
-  billing: '/settings/billing',
-  integrations: '/settings/integrations',
-  audit: '/settings/audit',
-  organization: '/settings/organization',
-  roles: '/settings/roles',
-  access: '/settings/access',
-  'operations-log': '/admin?section=logs',
+/**
+ * `/settings` — the landing (2026-09-06 rail removal): a grouped card grid.
+ * Personal sections collapse into the "Your setup" card → `/settings/me`;
+ * org sections group into category clusters, permission-gated per row.
+ *
+ * `?section=<id>` (the old inline-tab addressing) still resolves — DERIVED
+ * from the registry (personal → `/settings/me#<anchor>`, org → its route) plus
+ * the legacy spellings the registry cannot express.
+ */
+const LEGACY_SECTION_ALIASES: Record<string, string> = {
+  staff: 'team',
+  'operations-log': '/operations?mode=logs',
 };
 
-export default function SettingsPage() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const rawSection = searchParams?.get('section');
-  const active = getActiveSettingsSection(rawSection);
+function sectionRoute(id: string): string | null {
+  const legacy = LEGACY_SECTION_ALIASES[id];
+  if (legacy) return legacy.startsWith('/') ? legacy : sectionRoute(legacy);
+  const known = SETTINGS_SECTION_OPTIONS.some((s) => s.id === id);
+  if (!known) return null;
+  const def = SETTINGS_SECTION_OPTIONS.find((s) => s.id === id)!;
+  return def.group === 'Personal'
+    ? `/settings/me#${def.id}`
+    : settingsSectionRoute(def.id);
+}
 
-  useEffect(() => {
-    if (!rawSection) return;
-    const target = LEGACY_REDIRECTS[rawSection.toLowerCase()];
-    if (target) router.replace(target);
-  }, [rawSection, router]);
-
-  if (rawSection && LEGACY_REDIRECTS[rawSection.toLowerCase()]) {
-    return null;
+export default async function SettingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ section?: string | string[] }>;
+}) {
+  const raw = await searchParams;
+  const section = String(Array.isArray(raw.section) ? raw.section[0] : raw.section || '')
+    .trim()
+    .toLowerCase();
+  if (section) {
+    redirect(sectionRoute(section) ?? '/settings');
   }
-
   return (
-    <div className="flex h-full min-h-0 w-full flex-col bg-surface-canvas">
-      <main className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-3xl px-6 py-8 sm:px-10">
-          {active === 'hardware' && <HardwareSection />}
-          {active === 'workstation' && <WorkstationSection />}
-          {active === 'quick-access' && <QuickAccessSection />}
-          {active === 'appearance' && <AppearanceSection />}
-          {active === 'keyboard' && <KeyboardSection />}
-          {active === 'receiving' && <SettingsPanel page="receiving" />}
-          {active === 'security' && <SecuritySection />}
-          {active === 'sessions' && <SessionsSection />}
-          {active === 'devices' && <KioskDevicesSection />}
-          {active === 'catalog' && <CatalogSection />}
-          {active === 'stations' && <StationsSection />}
-          {active === 'about' && <AboutSection />}
-          {active === 'legal' && <LegalSection />}
-        </div>
-      </main>
+    <div className={cn('flex h-full min-h-0 w-full flex-col', SETTINGS_FLOOR_CLASS)}>
+      {/* Title is painted inside SettingsLanding (top-left of the scroll
+          body) — not a PageHeader band that reads like global chrome. */}
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <SettingsLanding />
+      </div>
     </div>
   );
 }

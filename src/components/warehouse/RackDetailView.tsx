@@ -3,8 +3,8 @@
 /**
  * Mobile-first rack detail view.
  *
- * Reached by scanning a rack QR (which routes to
- * `/warehouse?tab=racks&code={flat}`) or by tapping a rack cell on the
+ * Reached by scanning a bay QR (which routes to
+ * `/inventory/locations?tab=bays&code={flat}`) or by tapping a bay cell on the
  * warehouse map. Shows the "rack face" — every position on the picked
  * level laid out horizontally as fill-coded tiles — with an expander
  * that surfaces the other levels of the same bay for cross-level
@@ -25,6 +25,7 @@ import { ChevronDown, ChevronLeft, Layers, Printer } from '@/components/Icons';
 import { Button, IconButton } from '@/design-system/primitives';
 import { PaneHeader, PaneHeaderStatusPill } from '@/components/ui/pane-header';
 import {
+  LOCATION_BAY_LABEL,
   bayHand,
   noPad,
   pad2,
@@ -92,20 +93,20 @@ export function RackDetailView({ code }: RackDetailViewProps) {
   const back = () => {
     const params = new URLSearchParams(searchParams.toString());
     params.delete('code');
-    params.set('tab', 'racks');
-    router.replace(`/warehouse?${params.toString()}`);
+    params.set('tab', 'bays');
+    router.replace(`/inventory/locations?${params.toString()}`);
   };
 
   if (!segments) {
     return (
       <div className="rounded-none border border-amber-200 bg-amber-50 p-5 text-sm text-amber-800">
-        <p className="font-semibold">Unrecognized rack code.</p>
+        <p className="font-semibold">Unrecognized bay code.</p>
         <p className="mt-1 text-amber-700">
-          The link <span className="font-mono">{code}</span> doesn't match the rack
-          label format. Scan again or pick a rack from the printer below.
+          The link <span className="font-mono">{code}</span> doesn't match the bay
+          label format. Scan again or pick a bay from the printer below.
         </p>
         <Button variant="secondary" size="sm" icon={<ChevronLeft />} onClick={back} className="mt-3">
-          Back to rack printer
+          Back to bay printer
         </Button>
       </div>
     );
@@ -132,7 +133,7 @@ export function RackDetailView({ code }: RackDetailViewProps) {
           <>
             <IconButton
               onClick={back}
-              ariaLabel="Back to rack printer"
+              ariaLabel="Back to bay printer"
               className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border-soft bg-surface-card hover:bg-surface-hover"
               icon={<ChevronLeft className="h-4 w-4" />}
             />
@@ -146,7 +147,7 @@ export function RackDetailView({ code }: RackDetailViewProps) {
           <div className="flex flex-wrap items-center gap-1.5 border-t border-border-hairline px-3 py-2 sm:px-5">
             {roomName && <PaneHeaderStatusPill tone="neutral">{roomName}</PaneHeaderStatusPill>}
             <PaneHeaderStatusPill tone="neutral">Aisle {pad2(segments.aisle)}</PaneHeaderStatusPill>
-            <PaneHeaderStatusPill tone="neutral">Bay {pad2(segments.bay)}</PaneHeaderStatusPill>
+            <PaneHeaderStatusPill tone="neutral">{LOCATION_BAY_LABEL} {pad2(segments.bay)}</PaneHeaderStatusPill>
             <PaneHeaderStatusPill tone={bayHand(segments.bay) === 'Left' ? 'blue' : 'purple'}>
               {bayHand(segments.bay)}
             </PaneHeaderStatusPill>
@@ -223,7 +224,7 @@ export function RackDetailView({ code }: RackDetailViewProps) {
           </p>
           <p className="mt-1 text-role-caption text-text-soft">
             Print bin-level labels from the <span className="font-semibold">Labels</span> tab to
-            populate this rack. Bin labels auto-register their location row.
+            populate this bay. Bin labels auto-register their location row.
           </p>
         </div>
       )}

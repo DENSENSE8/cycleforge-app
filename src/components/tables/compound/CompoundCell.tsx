@@ -26,6 +26,13 @@
 import type { ReactNode } from 'react';
 import { cn } from '@/utils/_cn';
 
+/**
+ * Two equal tracks inside the 48px compound row. The parent select stack
+ * (checkbox over fold chevron) must paint this same grid so the check sits
+ * on the order-id line and the chevron sits on "2 boxes".
+ */
+export const COMPOUND_TWO_LINE_CLASS = 'grid h-full grid-rows-2 gap-0';
+
 export interface CompoundCellProps {
   /** Top line — the identifying fact. */
   primary: ReactNode;
@@ -55,7 +62,7 @@ export function CompoundCell({
       // bottom rule eats a pixel of it, would overflow the box it is supposed to
       // fit — which is the shape of the bug that made every compound row paint
       // 61px against a 48px constant.
-      className={cn('grid h-full grid-rows-2 items-center gap-0 min-w-0', className)}
+      className={cn(COMPOUND_TWO_LINE_CLASS, 'items-center min-w-0', className)}
     >
       <div
         className={cn(

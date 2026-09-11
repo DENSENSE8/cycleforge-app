@@ -1,0 +1,194 @@
+/**
+ * FIND case-file view-model — timeline kinds, outline, dossier.
+ *
+ * Adapters (Phase 1+) map entity APIs onto this shape. The frame paints one
+ * chrome tree; `entityType` is content, not a layout switch. Tracking is a
+ * carrier hop / bind on an order, never a `?sel=` type.
+ *
+ * Callers: FIND dossier adapters (`SearchOrderDossier` and peers) and unit tests.
+ */
+
+import type { SearchHitEntityType } from '@/lib/search/search-hit';
+import type {
+  SearchDossierFact,
+  SearchDossierFinding,
+  SearchDossierHandoff,
+} from '@/lib/search/search-dossier-model';
+
+/** Stream faces. Station names are hop captions, not kinds. */
+export const FIND_EVENT_KINDS = [
+  'status',
+  'qty',
+  'hop',
+  'evidence',
+  'exception',
+  'bind',
+  'carrier',
+  'note',
+] as const;
+
+export type FindEventKind = (typeof FIND_EVENT_KINDS)[number];
+
+export interface FindQtyLedger {
+  ordered?: number;
+  received?: number;
+  packed?: number;
+  shipped?: number;
+}
+
+export interface FindBind {
+  sku?: string;
+  serial?: string;
+  tracking?: string;
+}
+
+export interface FindEvent {
+  id: string;
+  kind: FindEventKind;
+  /** ISO-8601. */
+  at: string;
+  title: string;
+  body?: string;
+  /** Workplace name on a hop — caption only. */
+  stationCaption?: string;
+  /** Staff who wrote the hop. Omit when unknown — never invent a name. */
+  actor?: string;
+  qty?: FindQtyLedger;
+  evidenceUrls?: readonly string[];
+  bind?: FindBind;
+  /** Exception resolution. FIND does not write this. */
+  resolved?: boolean;
+  /** Workplace deep-link. Click is handoff, never an inline write. */
+  href?: string;
+  /** Carrier sub-events nested under a shipment hop. */
+  children?: readonly FindEvent[];
+}
+
+export interface FindOutlineEntry {
+  kind: FindEventKind;
+  count: number;
+}
+
+export interface FindDossier {
+  entityType: SearchHitEntityType;
+  id: number;
+  title: string;
+  status: string;
+  facts: SearchDossierFact[];
+  outline: FindOutlineEntry[];
+  events: FindEvent[];
+  findings: SearchDossierFinding[];
+  handoffs: SearchDossierHandoff[];
+}
+
+export function isFindEventKind(value: string): value is FindEventKind {
+  return (FIND_EVENT_KINDS as readonly string[]).includes(value);
+}
+
+/** Outline chip labels — investigation kinds, not station names. */
+export const FIND_OUTLINE_LABEL: Record<FindEventKind, string> = {
+  status: 'Status',
+  qty: 'Qty',
+  hop: 'Hops',
+  evidence: 'Evidence',
+  exception: 'Exceptions',
+  bind: 'Binds',
+  carrier: 'Carrier',
+  note: 'Notes',
+};
+
+/**
+ * Phase-1 outline from adapter counts (no fake hops). Zero counts omitted.
+ * Callers: FIND dossiers until the chronology APIs land in Phase 2.
+ */
+export function adapterOutline(counts: Partial<Record<FindEventKind, number>>): FindOutlineEntry[] {
+  const outline: FindOutlineEntry[] = [];
+  for (const kind of FIND_EVENT_KINDS) {
+    const count = counts[kind] ?? 0;
+    if (count > 0) outline.push({ kind, count });
+  }
+  return outline;
+}
+
+function walkEvents(events: readonly FindEvent[], visit: (event: FindEvent) => void): void {
+  for (const event of events) {
+    visit(event);
+    if (event.children && event.children.length > 0) walkEvents(event.children, visit);
+  }
+}
+
+/** Kind counts from the stream. Zero counts are omitted. Catalog order. */
+export function outlineFromEvents(events: readonly FindEvent[]): FindOutlineEntry[] {
+  const counts = new Map<FindEventKind, number>();
+  walkEvents(events, (event) => {
+    counts.set(event.kind, (counts.get(event.kind) ?? 0) + 1);
+  });
+  const outline: FindOutlineEntry[] = [];
+  for (const kind of FIND_EVENT_KINDS) {
+    const count = counts.get(kind) ?? 0;
+    if (count > 0) outline.push({ kind, count });
+  }
+  return outline;
+}
+
+function byNewest(a: FindEvent, b: FindEvent): number {
+  const delta = Date.parse(b.at) - Date.parse(a.at);
+  if (delta !== 0) return delta;
+  return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+}
+
+function sortTree(events: readonly FindEvent[]): FindEvent[] {
+  return events
+    .map((event) =>
+      event.children && event.children.length > 0
+        ? { ...event, children: sortTree(event.children) }
+        : event,
+    )
+    .sort(byNewest);
+}
+
+export function eventsNewestFirst(events: readonly FindEvent[]): FindEvent[] {
+  return sortTree(events);
+}
+
+/**
+ * Overview (`kind` omitted) returns the full newest-first stream.
+ * A kind filter keeps matching rows only; nested hops under a carrier are
+ * lifted so outline counts stay truthful.
+ */
+export function filterEventsByKind(
+  events: readonly FindEvent[],
+  kind: FindEventKind | null,
+): FindEvent[] {
+  const sorted = eventsNewestFirst(events);
+  if (kind == null) return sorted;
+  const out: FindEvent[] = [];
+  for (const event of sorted) {
+    const childHits =
+      event.children && event.children.length > 0
+        ? filterEventsByKind(event.children, kind)
+        : [];
+    if (event.kind === kind) {
+      out.push(
+        childHits.length > 0 ? { ...event, children: childHits } : { ...event, children: undefined },
+      );
+    } else {
+      out.push(...childHits);
+    }
+  }
+  return out;
+}
+
+export type FindDossierDraft = Omit<FindDossier, 'outline' | 'events'> & {
+  events: readonly FindEvent[];
+};
+
+/** Sort the stream newest-first and derive the outline. Adapters call this. */
+export function presentFindDossier(draft: FindDossierDraft): FindDossier {
+  const events = eventsNewestFirst(draft.events);
+  return {
+    ...draft,
+    events,
+    outline: outlineFromEvents(events),
+  };
+}

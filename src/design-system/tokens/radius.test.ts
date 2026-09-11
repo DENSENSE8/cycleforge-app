@@ -6,6 +6,8 @@ import {
   cornerClass,
   DROPDOWN_ITEM_CORNER,
   DROPDOWN_SHELL_CORNER,
+  HEADER_ICON_CORNER,
+  SPINE_ROW_CORNER,
   nestedCorner,
   nestedCornerClass,
   radius,
@@ -64,6 +66,18 @@ describe('radius SoT', () => {
     assert.equal(DROPDOWN_SHELL_CORNER, 'rounded-lg');
     assert.equal(DROPDOWN_SHELL_CORNER, SEGMENTED_CONTROL_CORNER);
     assert.equal(cornerClass('control'), 'rounded-none');
+  });
+
+  it('header / spine icon faces are the 8px control rung — ladder stays flush', () => {
+    assert.equal(HEADER_ICON_CORNER, 'rounded-lg');
+    assert.equal(HEADER_ICON_CORNER, DROPDOWN_SHELL_CORNER);
+    assert.equal(cornerClass('control'), 'rounded-none');
+  });
+
+  it('spine rows and labelled Search are the 4px chip rung — ladder stays flush', () => {
+    assert.equal(SPINE_ROW_CORNER, 'rounded');
+    assert.equal(SPINE_ROW_CORNER, DROPDOWN_ITEM_CORNER);
+    assert.equal(cornerClass('chip'), 'rounded-none');
   });
 
   it('dropdown rows nest inside the 8px shell padded p-1', () => {

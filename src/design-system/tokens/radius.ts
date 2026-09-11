@@ -191,6 +191,32 @@ export const SEGMENTED_CONTROL_CORNER = 'rounded-lg';
 export const SEGMENTED_CONTROL_FACE_CORNER = 'rounded-md';
 
 /**
+ * GlobalHeader / spine-top icon faces — sidebar toggle, Search, and every
+ * other HEADER_ICON_BTN_CLASS glyph.
+ *
+ * Main worktree paints these with `cornerClass('control')` → `rounded-lg`
+ * (8px). Prod's `control` role stays flush (ops ladder). This named
+ * exemption is that 8px rung, once, so the nav cluster cannot disagree
+ * with main while `cornerClass('control')` keeps industrial square on
+ * fields and workbench chrome.
+ *
+ * Not a licence to round an ops CTA or a table cell. Import this (or
+ * HEADER_ICON_BTN_CLASS); never hand-write `rounded-lg` on a header icon.
+ */
+export const HEADER_ICON_CORNER = 'rounded-lg';
+
+/**
+ * MasterNav destination rows and the open-spine labelled Search face.
+ *
+ * Main worktree paints these with `cornerClass('chip')` → `rounded` (4px)
+ * plus overflow clip so the hover wash follows the radius. Prod's `chip`
+ * role stays flush (ops labels). This named exemption is that 4px rung
+ * on {@link SPINE_ROW_SHELL_CLASS} only — not a licence to round a ledger
+ * cell or a photo chip.
+ */
+export const SPINE_ROW_CORNER = 'rounded';
+
+/**
  * Floating menu / dropdown / popover panel — the 8px control rung the scale
  * already names for "soft menus / dropdown chrome".
  *
@@ -250,6 +276,13 @@ export const DATA_TABLE_TOOLBAR_CORNER = 'rounded-lg';
  * `rounded-lg`. It is not a licence to round ops chrome that is not.
  */
 export const TRIAGE_PANEL_INNER_CORNER = 'rounded-lg';
+
+/** Handheld scan capture lip — square so overlay chrome shares a full-width rail. */
+export const MOBILE_SCAN_WINDOW_CORNER = 'rounded-none';
+/** Focus card on the mobile scan tape. */
+export const MOBILE_SCAN_CARD_CORNER = 'rounded-2xl';
+/** History row on the mobile scan tape. */
+export const MOBILE_SCAN_ROW_CORNER = 'rounded-xl';
 
 /**
  * Concentric inner corner: **inner = outer − padding**.

@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import type { ShortPickResult } from '@/components/mobile/picker/ShortPickSheet';
 import { matchScanToTask, type PickOrder, type PickTask } from './picker-shared';
+import { setScanSubject } from '@/lib/stations/scan-subject-store';
 
 /**
  * Owns the mobile picker session: auth bounce, camera lifecycle, the bootstrap
@@ -31,6 +32,7 @@ export function useMobilePicker() {
   const [confirming, setConfirming] = useState(false);
   const [detailsExpanded, setDetailsExpanded] = useState(false);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [scanMatched, setScanMatched] = useState(false);
 
   // ── Bounce to signin
   useEffect(() => {
@@ -82,6 +84,7 @@ export function useMobilePicker() {
           tasks: tasks.tasks,
         });
         setSessionId(session.sessionId);
+        setScanSubject('order', String(orderId));
         // Skip already-PICKED rows when reopening a session.
         const firstOpen = tasks.tasks.findIndex(
           (t: PickTask) => t.currentState !== 'PICKED' && t.currentState !== 'PACKED' && t.currentState !== 'SHIPPED',
@@ -115,6 +118,11 @@ export function useMobilePicker() {
   // ── Confirm pick (POST /api/picking/session/:id/confirm-pick)
   const handleConfirmPick = useCallback(async () => {
     if (!currentTask || sessionId == null) return;
+    const serialGate = Boolean(currentTask.serialNumber?.trim());
+    if (serialGate && !scanMatched) {
+      setScanError('Scan this unit first.');
+      return;
+    }
     setConfirming(true);
     // Optimistic — mark done, advance, reconcile on rejection.
     const allocationId = currentTask.allocationId;
@@ -154,7 +162,7 @@ export function useMobilePicker() {
     } finally {
       setConfirming(false);
     }
-  }, [currentTask, sessionId, currentIndex, totalTasks, advance]);
+  }, [currentTask, sessionId, currentIndex, totalTasks, advance, scanMatched]);
 
   // ── Record short pick (POST /api/picking/session/:id/short-pick)
   const handleShortPick = useCallback(
@@ -195,9 +203,8 @@ export function useMobilePicker() {
     [currentTask, sessionId, advance],
   );
 
-  // ── Scan-gate. Validate the scan identifies the right unit/bin/sku
-  //    before confirming. Rejects mismatches with error feedback so
-  //    accidental scans of nearby items don't false-confirm a pick.
+  // ── Scan-gate. Optional confirm: a matching scan arms the dock.
+  //    Serial-bearing units still require that match before confirm-pick.
   const handleScanDecode = useCallback(
     (value: string) => {
       if (!currentTask || confirming) return;
@@ -207,6 +214,7 @@ export function useMobilePicker() {
           currentTask.bin ? `bin ${currentTask.bin}` : null,
           currentTask.serialNumber ? `serial ${currentTask.serialNumber}` : null,
         ].filter(Boolean);
+        setScanMatched(false);
         setScanError(
           expectedBits.length > 0
             ? `Scanned "${value.trim()}" — expected ${expectedBits.join(' or ')}.`
@@ -215,14 +223,15 @@ export function useMobilePicker() {
         return;
       }
       setScanError(null);
-      void handleConfirmPick();
+      setScanMatched(true);
     },
-    [currentTask, confirming, handleConfirmPick],
+    [currentTask, confirming],
   );
 
   // Clear stale error whenever the user moves to a new task.
   useEffect(() => {
     setScanError(null);
+    setScanMatched(false);
   }, [currentTask?.allocationId]);
 
   return {
@@ -233,6 +242,8 @@ export function useMobilePicker() {
     confirming,
     detailsExpanded, setDetailsExpanded,
     scanError,
+    scanRequired: Boolean(currentTask?.serialNumber?.trim()),
+    scanMatched,
     scanner,
     currentTask, totalTasks, doneCount, allDone,
     handleConfirmPick, handleShortPick, handleScanDecode,

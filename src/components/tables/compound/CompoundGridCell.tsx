@@ -40,6 +40,8 @@ import {
   LEDGER_GRID_FROZEN_CELL,
 } from '@/design-system/components/grid';
 import { gridFrozenLeft } from '@/design-system/components/grid/grid-column-geometry';
+import { ChevronDown, ChevronRight } from '@/components/Icons';
+import { focusRing } from '@/design-system/tokens/focus-ring';
 import { cn } from '@/utils/_cn';
 import type { FieldDisplayType } from '@/lib/tables/field-catalog/types';
 import {
@@ -52,6 +54,7 @@ import {
   CompoundState,
   CompoundThumb,
 } from './CompoundCells';
+import { COMPOUND_TWO_LINE_CLASS } from './CompoundCell';
 import { isCompoundColumnModel } from './compound-columns';
 import { COMPOUND_ROW_PX } from './compound-row-chrome';
 import type {
@@ -124,6 +127,17 @@ export interface CompoundGridCellParams<C extends CompoundCellColumn> {
     onToggle?: (event: { shiftKey: boolean }) => void;
     label: string;
     disabled?: boolean;
+    /**
+     * Leaf detail disclosure — same chrome as parent fold chevron, different
+     * verb (`data-row-detail`, not `data-group-fold`). Present ⇒ two-line
+     * select stack (check over chevron).
+     */
+    detail?: {
+      open: boolean;
+      onToggle: () => void;
+      /** Accessible stem — product title or "this line". */
+      label: string;
+    };
   };
   /**
    * In-place SELECT editors for bound subtitle parts (matched by part key).
@@ -280,6 +294,18 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
   };
 
   if (gutterSelect) {
+    const detail = select?.detail;
+    const selectFace = select ? (
+      <CompoundSelect
+        checked={select.checked}
+        onToggle={select.onToggle}
+        label={select.label}
+        disabled={select.disabled}
+        edgeMark={view.edgeMark}
+        chrome="hover"
+      />
+    ) : null;
+
     return (
       <div
         data-col="select"
@@ -302,17 +328,48 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
         // warning in prose: "the ROW click still ticks the box, so this stays a
         // painted indicator and must not swallow the click that does the
         // ticking."
-        onClick={select?.onToggle ? (event) => event.stopPropagation() : undefined}
+        onClick={
+          select?.onToggle || detail
+            ? (event) => event.stopPropagation()
+            : undefined
+        }
       >
-        {select ? (
-          <CompoundSelect
-            checked={select.checked}
-            onToggle={select.onToggle}
-            label={select.label}
-            disabled={select.disabled}
-            edgeMark={view.edgeMark}
-          />
-        ) : null}
+        {detail ? (
+          <div
+            className={cn(COMPOUND_TWO_LINE_CLASS, 'w-full min-h-0')}
+            data-leaf-detail-stack=""
+          >
+            <div className="flex min-h-0 min-w-0 items-stretch">{selectFace}</div>
+            <button
+              type="button"
+              className={cn(
+                'ds-raw-button flex h-full w-full min-h-0 items-center justify-center text-text-soft',
+                focusRing('control', 'neutral'),
+              )}
+              aria-expanded={detail.open}
+              aria-label={
+                detail.open
+                  ? `Hide extra details for ${detail.label}`
+                  : `Show more about ${detail.label}`
+              }
+              data-row-detail=""
+              onClick={(event) => {
+                event.stopPropagation();
+                detail.onToggle();
+              }}
+            >
+              <span className="flex h-4 w-4 items-center justify-center">
+                {detail.open ? (
+                  <ChevronDown className="h-3 w-3" aria-hidden />
+                ) : (
+                  <ChevronRight className="h-3 w-3" aria-hidden />
+                )}
+              </span>
+            </button>
+          </div>
+        ) : (
+          selectFace
+        )}
       </div>
     );
   }
@@ -361,13 +418,15 @@ export function renderCompoundGridCell<C extends CompoundCellColumn>({
             onReorderSubtitle={onReorderSubtitle}
             extraTitleActions={[
               ...(onOpen ? [{ id: 'open', label: 'Open', onSelect: onOpen }] : []),
-              ...(actions ?? []).map((action) => ({
-                id: action.key,
-                label: action.label,
-                tone: action.tone,
-                disabled: action.disabled,
-                onSelect: action.onSelect,
-              })),
+              ...(actions ?? [])
+                .filter((action) => action.face !== 'trailing')
+                .map((action) => ({
+                  id: action.key,
+                  label: action.label,
+                  tone: action.tone,
+                  disabled: action.disabled,
+                  onSelect: action.onSelect,
+                })),
             ]}
           />
         </div>

@@ -4,17 +4,17 @@ import type { OrgId } from '@/lib/tenancy/constants';
 import Link from 'next/link';
 import { PageHeader } from '@/components/ui/pane-header';
 import { Button } from '@/design-system/primitives';
-import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
+import type { PulseEventRow } from '@/components/inventory/types';
+import { EventsExplorerTable } from './EventsExplorerTable';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * /admin/inventory/events — Global inventory_events explorer.
  *
- * Server-rendered table with URL-query filters. All filters narrow the
- * same base query so they compose: event_type+station+date range works
- * the same as just date range. Pagination is offset-based via ?page=N
- * (zero-indexed). Page size is fixed at 100 to keep the page small.
+ * Server-rendered filters with URL-query composition. The grid is the same
+ * `inventory-events` family Pulse mounts — this page is a second FEED, not a
+ * second table. Pagination is offset-based via ?page=N (zero-indexed).
  *
  * Query params:
  *   event_type   one of the canonical event_type values
@@ -26,16 +26,8 @@ export const dynamic = 'force-dynamic';
  *   actor        staff.id (numeric)
  *   page         zero-indexed page number
  *
- * Filters round-trip via a single <form> using GET so deep-link sharing
- * just works.
- *
  * Tenant scoping: every read goes through `tenantQuery(orgId, …)` with an
- * explicit `organization_id` predicate, and `orgId` comes from the auth ctx
- * (`requirePermission` → `user.organizationId`) — never from a query param.
- * None of these filters is org-bearing (event type, station, SKU, unit id and
- * staff id all collide across tenants), so a bare owner-pool read returned
- * every tenant's event log to any authenticated admin — RLS does not bite on
- * the owner pool. That was live here for both loaders until 2026-08-21.
+ * explicit `organization_id` predicate, and `orgId` comes from the auth ctx.
  */
 
 const PAGE_SIZE = 100;
@@ -53,23 +45,55 @@ const STATIONS = ['RECEIVING', 'TECH', 'PACK', 'SHIP', 'MOBILE', 'SYSTEM'] as co
 
 interface EventRow {
   id: number;
-  occurred_at: Date;
+  occurred_at: Date | string;
   event_type: string;
   station: string | null;
   sku: string | null;
+  product_title: string | null;
   serial_unit_id: number | null;
+  serial_number: string | null;
   prev_status: string | null;
   next_status: string | null;
   actor_staff_id: number | null;
   actor_name: string | null;
+  receiving_id: number | null;
   receiving_line_id: number | null;
   bin_id: number | null;
   bin_name: string | null;
+  prev_bin_id: number | null;
+  prev_bin_name: string | null;
   notes: string | null;
-  client_event_id: string | null;
+  payload: Record<string, unknown> | null;
 }
 
 interface StaffOption { id: number; name: string }
+
+function toPulseEvent(row: EventRow): PulseEventRow {
+  const occurred =
+    row.occurred_at instanceof Date ? row.occurred_at.toISOString() : String(row.occurred_at);
+  return {
+    id: row.id,
+    occurred_at: occurred,
+    event_type: row.event_type,
+    actor_staff_id: row.actor_staff_id,
+    actor_name: row.actor_name,
+    station: row.station,
+    sku: row.sku,
+    product_title: row.product_title,
+    serial_unit_id: row.serial_unit_id,
+    serial_number: row.serial_number,
+    bin_id: row.bin_id,
+    bin_name: row.bin_name,
+    prev_bin_id: row.prev_bin_id,
+    prev_bin_name: row.prev_bin_name,
+    prev_status: row.prev_status,
+    next_status: row.next_status,
+    notes: row.notes,
+    payload: row.payload && typeof row.payload === 'object' ? row.payload : {},
+    receiving_id: row.receiving_id,
+    receiving_line_id: row.receiving_line_id,
+  };
+}
 
 async function loadStaff(orgId: OrgId): Promise<StaffOption[]> {
   try {
@@ -98,8 +122,6 @@ async function loadEvents(opts: {
   page: number;
   orgId: OrgId;
 }): Promise<{ rows: EventRow[]; total: number }> {
-  // The org predicate is always $1 — it is not optional, so it seeds both the
-  // filter list and the param list before any user-supplied filter is appended.
   const filters: string[] = ['ie.organization_id = $1'];
   const params: unknown[] = [opts.orgId];
 
@@ -144,15 +166,20 @@ async function loadEvents(opts: {
 
     const rowsSql = `
       SELECT ie.id, ie.occurred_at, ie.event_type, ie.station,
-             ie.sku, ie.serial_unit_id,
+             ie.sku, sc.product_title,
+             ie.serial_unit_id, su.serial_number,
              ie.prev_status, ie.next_status,
              ie.actor_staff_id, s.name AS actor_name,
-             ie.receiving_line_id,
+             ie.receiving_id, ie.receiving_line_id,
              ie.bin_id, l.name AS bin_name,
-             ie.notes, ie.client_event_id
+             ie.prev_bin_id, pl.name AS prev_bin_name,
+             ie.notes, ie.payload
         FROM inventory_events ie
         LEFT JOIN staff s ON s.id = ie.actor_staff_id AND s.organization_id = $1
         LEFT JOIN locations l ON l.id = ie.bin_id AND l.organization_id = $1
+        LEFT JOIN locations pl ON pl.id = ie.prev_bin_id AND pl.organization_id = $1
+        LEFT JOIN serial_units su ON su.id = ie.serial_unit_id AND su.organization_id = $1
+        LEFT JOIN sku_catalog sc ON sc.sku = ie.sku AND sc.organization_id = $1
         ${whereSql}
        ORDER BY ie.occurred_at DESC, ie.id DESC
        LIMIT $${params.length - 1} OFFSET $${params.length}
@@ -236,95 +263,7 @@ export default async function EventsExplorerPage({
   const isFiltering = Boolean(
     eventType || station || sku || unitId != null || actorId != null || since || until,
   );
-
-  const eventColumns: AdminTableColumn<EventRow>[] = [
-    {
-      key: 'when',
-      header: 'When',
-      type: 'date',
-      cell: (e) => (
-        <span className="whitespace-nowrap text-xs text-text-soft">
-          {new Date(e.occurred_at).toLocaleString()}
-        </span>
-      ),
-    },
-    {
-      key: 'event',
-      header: 'Event',
-      type: 'tag',
-      cell: (e) => <span className="font-mono text-xs">{e.event_type}</span>,
-    },
-    {
-      key: 'station',
-      header: 'Station',
-      type: 'text',
-      cell: (e) => <span className="text-xs text-text-muted">{e.station ?? '—'}</span>,
-    },
-    {
-      key: 'unit',
-      header: 'Unit',
-      type: 'id',
-      cell: (e) =>
-        e.serial_unit_id ? (
-          <Link
-            href={`/admin/inventory/units/${e.serial_unit_id}`}
-            className="font-mono text-xs text-blue-600 hover:underline"
-          >
-            #{e.serial_unit_id}
-          </Link>
-        ) : (
-          '—'
-        ),
-    },
-    {
-      key: 'sku',
-      header: 'SKU',
-      type: 'id',
-      cell: (e) =>
-        e.sku ? (
-          <Link
-            href={`/admin/inventory/sku/${encodeURIComponent(e.sku)}`}
-            className="font-mono text-xs text-blue-600 hover:underline"
-          >
-            {e.sku}
-          </Link>
-        ) : (
-          '—'
-        ),
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      type: 'tag',
-      cell: (e) => (
-        <span className="text-xs text-text-muted">
-          {e.prev_status && e.next_status
-            ? `${e.prev_status} → ${e.next_status}`
-            : (e.next_status ?? '—')}
-        </span>
-      ),
-    },
-    {
-      key: 'bin',
-      header: 'Bin',
-      type: 'text',
-      cell: (e) => (
-        <span className="text-xs text-text-muted">
-          {e.bin_name ?? (e.bin_id ? `#${e.bin_id}` : '—')}
-        </span>
-      ),
-    },
-    {
-      key: 'actor',
-      header: 'Actor',
-      type: 'text',
-      cell: (e) => (
-        <span className="text-xs text-text-muted">
-          {e.actor_name ?? (e.actor_staff_id ? `#${e.actor_staff_id}` : 'system')}
-        </span>
-      ),
-    },
-  ];
+  const events = rows.map(toPulseEvent);
 
   return (
     <div className="min-h-screen bg-surface-canvas">
@@ -399,13 +338,9 @@ export default async function EventsExplorerPage({
               </nav>
             ) : null}
           </header>
-          <AdminTable
-            columns={eventColumns}
-            rows={rows}
-            rowKey={(e) => e.id}
-            isSearching={isFiltering}
-            searchEmptyMessage="No events match the current filters."
-            emptyMessage="No events yet."
+          <EventsExplorerTable
+            events={events}
+            emptyMessage={isFiltering ? 'No events match the current filters.' : 'No events yet.'}
           />
         </section>
       </div>

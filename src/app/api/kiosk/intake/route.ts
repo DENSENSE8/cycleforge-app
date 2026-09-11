@@ -86,6 +86,8 @@ const BodySchema = z.object({
       phone: z.string().trim().min(1),
       name: z.string().trim().nullable().optional(),
       email: z.string().trim().nullable().optional(),
+      // Callers: KioskCartLedger. API: POST /api/kiosk/intake. Schema: CounterCustomerInput. User: "intake their information like name, email address, phone number, address"
+      address: z.string().trim().max(400).nullable().optional(),
     })
     .optional(),
   retailLines: z.array(RetailLineSchema).max(200).optional(),
@@ -186,6 +188,7 @@ export const POST = withKioskAuth(async (req: NextRequest, ctx) => {
         phone: parsed.data.customer!.phone,
         name: parsed.data.customer!.name ?? null,
         email: parsed.data.customer!.email ?? null,
+        address: parsed.data.customer!.address ?? null,
       },
       retailLines: parsed.data.retailLines ?? [],
       services: parsed.data.serviceLines ?? [],

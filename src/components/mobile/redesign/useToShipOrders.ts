@@ -10,7 +10,7 @@
 
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { unshippedOrdersQuery } from '@/lib/queries/dashboard-queries';
+import { pendingOrdersQuery, unshippedOrdersQuery } from '@/lib/queries/dashboard-queries';
 import {
   bandWorkOrderRows,
   type DeadlineBandGroup,
@@ -21,12 +21,16 @@ import type { WorkOrderRow } from '@/components/work-orders/types';
 /** Phone list ceiling — the desk paginates; this is one scroll of the queue. */
 export const MOBILE_TO_SHIP_LIST_LIMIT = 150;
 
+export type MobileToShipFeed = 'unshipped' | 'pending';
+
 export function useToShipOrders({
   enabled,
   searchQuery = '',
+  feed = 'unshipped',
 }: {
   enabled: boolean;
   searchQuery?: string;
+  feed?: MobileToShipFeed;
 }): {
   rows: WorkOrderRow[];
   groups: DeadlineBandGroup[];
@@ -35,13 +39,19 @@ export function useToShipOrders({
   isFetching: boolean;
 } {
   const q = searchQuery.trim();
-  const { data, isPending, isError, isFetching } = useQuery({
+  const unshipped = useQuery({
     ...unshippedOrdersQuery({
       searchQuery: q,
       limit: q ? undefined : MOBILE_TO_SHIP_LIST_LIMIT,
     }),
-    enabled,
+    enabled: enabled && feed === 'unshipped',
   });
+  const pending = useQuery({
+    ...pendingOrdersQuery({ searchQuery: q }),
+    enabled: enabled && feed === 'pending',
+  });
+  const active = feed === 'pending' ? pending : unshipped;
+  const { data, isPending, isError, isFetching } = active;
 
   const rows = useMemo(() => shippedOrdersAsWorkRows(data ?? []), [data]);
   const groups = useMemo(() => bandWorkOrderRows(rows), [rows]);

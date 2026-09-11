@@ -14,7 +14,6 @@ import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-sys
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
 import { PackerTable } from '@/components/PackerTable';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
-import { OrderRailCompare } from '@/components/dashboard/rail/OrderRailCompare';
 import { useOrderRailSelection } from '@/hooks/useOrderRailSelection';
 import { usePackWorkspaceTab } from '@/hooks/usePackWorkspaceTab';
 import { useNewOrderParam } from '@/hooks/useNewOrderParam';
@@ -106,12 +105,7 @@ export function PackWorkspaceView({ packerId }: { packerId: number }) {
           </AnimatePresence>
         </div>
 
-        {queueActive && selectionEnabled ? (
-          <>
-            <OrderRailCompare />
-            {selectionOverlays}
-          </>
-        ) : null}
+        {queueActive && selectionEnabled ? selectionOverlays : null}
       </DashboardScrollShell>
       <NewOrderEntryOverlay open={newOpen} onClose={closeNew} />
     </div>

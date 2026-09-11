@@ -4,6 +4,7 @@ import { Barcode, Box, ShieldCheck } from '@/components/Icons';
 import { ShippedOrder } from '@/lib/neon/orders-queries';
 import {
   MilestonePipeline,
+  StatusStrip,
   type Milestone,
   type MilestoneScan,
 } from '@/design-system/components/milestone-pipeline';
@@ -27,7 +28,14 @@ const GLYPH = 'h-[15px] w-[15px]';
  * lives here: which timestamps count as a stamp, who the actor is for each
  * stage, and what that station actually read.
  */
-export function OrderPipelineSection({ shipped }: { shipped: ShippedOrder }) {
+export function OrderPipelineSection({
+  shipped,
+  face = 'station',
+}: {
+  shipped: ShippedOrder;
+  /** `strip` is the FIND confirmation face. Station benches keep avatars. */
+  face?: 'station' | 'strip';
+}) {
   const meta = deriveShippingDisplayMeta(shipped, serialNumberRowsFromShipped(shipped));
   const row = shipped as ShippedOrder & {
     tester_id?: number | null;
@@ -50,11 +58,6 @@ export function OrderPipelineSection({ shipped }: { shipped: ShippedOrder }) {
       : stamp(row.test_activity_at) === testedAt
         ? 'Station scan'
         : 'Test event';
-  const packedVia = !packedAt
-    ? null
-    : stamp(shipped.pack_activity_at) === packedAt
-      ? 'Station scan'
-      : 'Packer log';
 
   const serials = String(shipped.serial_number || '')
     .split(',')
@@ -62,7 +65,6 @@ export function OrderPipelineSection({ shipped }: { shipped: ShippedOrder }) {
     .filter(Boolean);
   const tracking = String(shipped.shipping_tracking_number || '').trim();
   const carrier = shipped.carrier ?? null;
-  const noted = (via: string | null): MilestoneScan[] => (via ? [{ kind: 'note', value: via }] : []);
   const trackingScan: MilestoneScan[] = tracking
     ? [{ kind: 'tracking', value: tracking, carrier }]
     : [];
@@ -80,7 +82,7 @@ export function OrderPipelineSection({ shipped }: { shipped: ShippedOrder }) {
       scans:
         testedVia === 'Serial scan' && serials.length > 0
           ? serials.map((value) => ({ kind: 'serial', value }))
-          : noted(testedVia),
+          : [],
       readyLabel: 'Ready to test',
     },
     {
@@ -89,9 +91,7 @@ export function OrderPipelineSection({ shipped }: { shipped: ShippedOrder }) {
       icon: <Box className={GLYPH} />,
       at: packedAt,
       actor: { staffId: row.packed_by ?? null, name: meta.packerNameDisplay },
-      // The pack bench works against the LABEL it produced. With no label yet,
-      // say how it was stamped rather than assert a scan that did not happen.
-      scans: trackingScan.length > 0 ? trackingScan : noted(packedVia),
+      scans: trackingScan,
       readyLabel: 'Ready to pack',
     },
     {
@@ -100,14 +100,16 @@ export function OrderPipelineSection({ shipped }: { shipped: ShippedOrder }) {
       icon: <Barcode className={GLYPH} />,
       at: scannedOutAt,
       actor: { staffId: row.shipped_out_by ?? null, name: meta.scannedOutByDisplay ?? '' },
-      // SHIP_CONFIRM at the dock is a label read — always the tracking number.
-      scans: trackingScan.length > 0 ? trackingScan : noted('Dock scan'),
+      scans: trackingScan,
       readyLabel: 'Ready to ship',
     },
   ];
 
+  if (face === 'strip') {
+    return <StatusStrip milestones={milestones} ariaLabel="Order progress" className="w-full" />;
+  }
+
   return (
-    // `px-4` — the run must not sit flush against the column rules.
     <section className="px-4 py-1">
       <MilestonePipeline milestones={milestones} ariaLabel="Order progress" className="w-full" />
     </section>

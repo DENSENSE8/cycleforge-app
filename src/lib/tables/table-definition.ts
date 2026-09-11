@@ -101,6 +101,12 @@ const TABLE_ENTITY_FAMILIES = [
   'tracking-exceptions',
   'unfound',
   'bins',
+  /**
+   * Inventory › Ledger activity feed. Its own family, never `inventory-units`:
+   * a unit is a THING and an event is something that HAPPENED to one, so the
+   * two share neither a row shape nor a prefs bucket.
+   */
+  'inventory-events',
   'my-day',
   'tech-all',
   // Home → Daily shift checklist.
@@ -119,6 +125,19 @@ const TABLE_ENTITY_FAMILIES = [
   'station-history',
   'fba',
   'units',
+  /** Settings › Kiosk devices — enrolled tablets; catalog in field-catalog/kiosk-devices.ts. */
+  'kiosk-devices',
+  /**
+   * Settings › Kiosk slot history — one row = one lane state transition.
+   * Filter/export only; never Revoke (credential verb stays on kiosk-devices).
+   * Catalog: field-catalog/kiosk-slot-events.ts.
+   */
+  'kiosk-slot-events',
+  /**
+   * Dashboard › Sales completed visits. Catalog: field-catalog/walk-in-sales.ts.
+   * KEEP — family union so the field catalog typechecks; not a feed engine.
+   */
+  'walk-in-sales',
 ] as const;
 
 /**

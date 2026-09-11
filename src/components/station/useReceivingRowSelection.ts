@@ -24,7 +24,8 @@
  * (emitSelection / emitSelectionTotal / onToggleAll). Refs let the handlers and
  * listeners read current values without stale closures.
  *
- * **Every table that renders `ReceivingGridHost` selects through THIS hook.**
+ * **Every receiving-family table (Unbox / History / Testing — the
+ * `ReceivingSpreadsheet` → `DataTable` mounts) selects through THIS hook.**
  * Testing History kept a private re-implementation until 2026-08-01, differing
  * only in the selection-bus scope (now the `selectionScope` arg) — and that copy
  * still carried the pre-split `selectMode swallows the click` early return, so
@@ -35,6 +36,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { emitSelection, emitSelectionTotal, onToggleAll } from '@/lib/selection/table-selection';
+import { slotTableSelectableIds } from '@/lib/tables/slot-table-visible';
 import {
   dispatchSelectLine,
   RECEIVING_SELECTION_SCOPE,
@@ -88,8 +90,8 @@ interface UseReceivingRowSelectionArgs {
    * Which selection bus this table broadcasts on
    * (`src/lib/selection/table-selection.ts`). Defaults to receiving.
    *
-   * Testing History passes `TESTING_SELECTION_SCOPE`: it renders the same
-   * `ReceivingGridHost` over the same `ReceivingLineRow`, but its bulk bar is
+   * Testing History passes `TESTING_SELECTION_SCOPE`: it mounts the same
+   * `ReceivingSpreadsheet` over the same `ReceivingLineRow`, but its bulk bar is
    * the tech dashboard's, not the receiving pane's. The scope was the ONLY
    * thing its private copy of this hook varied — every handler and every bus
    * effect below was a byte-level duplicate that then missed the two-plane
@@ -264,17 +266,26 @@ export function useReceivingRowSelection({
     emitSelection(selectionScope, []);
   }, [selectMode, selectionScope]);
 
-  // Header "Select all" / "Clear" → toggle every currently-visible row.
   useEffect(() => {
     return onToggleAll(selectionScope, (toggle) => {
-      setSelectedIds(toggle === 'all' ? new Set(orderedVisibleRows.map((r) => r.id)) : new Set());
+      const ids = slotTableSelectableIds(
+        selectionScope,
+        orderedVisibleRows.map((r) => r.id),
+      );
+      setSelectedIds(toggle === 'all' ? new Set(ids) : new Set());
     });
   }, [orderedVisibleRows, selectionScope]);
 
-  // Publish the selectable total so the action bar's select-all ring can fill.
-  // Zero outside select mode so a stale "all selected" never lingers.
   useEffect(() => {
-    emitSelectionTotal(selectionScope, selectMode ? orderedVisibleRows.length : 0);
+    emitSelectionTotal(
+      selectionScope,
+      selectMode
+        ? slotTableSelectableIds(
+            selectionScope,
+            orderedVisibleRows.map((r) => r.id),
+          ).length
+        : 0,
+    );
   }, [selectMode, orderedVisibleRows, selectionScope]);
 
   return {

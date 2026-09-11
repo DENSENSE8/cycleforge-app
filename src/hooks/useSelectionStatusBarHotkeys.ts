@@ -54,6 +54,7 @@ export const SELECTION_STATUS_BAR_META: Record<
   'ship-by': { label: 'Ship-by', variant: 'warning', hotkey: 'b' },
   print: { label: 'Product labels', variant: 'secondary', hotkey: 'p' },
   'print-shipping': { label: 'Shipping labels', variant: 'secondary', hotkey: 's' },
+  'scan-out': { label: 'Scan out', variant: 'success', hotkey: 'x' },
   flag: { label: 'Flag', variant: 'primarySoft', hotkey: 'f' },
   'download-photos': { label: 'Download', variant: 'secondary', hotkey: 'i' },
   delete: { label: 'Delete', variant: 'danger', hotkey: 'd' },
@@ -103,6 +104,11 @@ export function toggleSelectionInlineHotkeys(): void {
 
 export function getSelectionInlineHotkeysRevealed(): boolean {
   return revealed;
+}
+
+/** Subscribe to `?` reveal without binding a second letter surface. */
+export function useSelectionInlineHotkeysRevealed(): boolean {
+  return useSyncExternalStore(subscribeReveal, getRevealed, getServerRevealed);
 }
 
 export function setSelectionInlineHotkeysRevealed(next: boolean): void {

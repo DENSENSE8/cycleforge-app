@@ -92,6 +92,8 @@ export type TableId =
   | 'ready'
   /** Warehouse › Bins overview spreadsheet (`BINS_GRID_COLUMNS`). */
   | 'bins'
+  /** Inventory › Ledger activity feed (slot-materialized). */
+  | 'inventory-events'
   /** Admin › PO Mailbox / Unfound triage (`UNFOUND_GRID_COLUMNS`). */
   | 'unfound'
   /** Home › Today task spreadsheet (`MY_DAY_GRID_COLUMNS`). */
@@ -113,6 +115,12 @@ export type TableId =
   | 'support-tickets'
   /** Inventory › Units browse spreadsheet (`UNITS_GRID_COLUMNS`). */
   | 'inventory-units'
+  /** Settings › Kiosk devices (slot-materialized). */
+  | 'kiosk-devices'
+  /** Settings › Kiosk slot history (slot-materialized; filter/export only). */
+  | 'kiosk-slot-events'
+  /** Dashboard › Sales completed visits (slot-materialized; KEEP catalog). */
+  | 'walk-in-sales'
   /**
    * To-Ship CSV import staging (`CSV_IMPORT_STAGING_GRID_COLUMNS`) — its OWN
    * bucket, never `orders`: hiding a column while triaging a file must not
@@ -277,6 +285,14 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
    */
   bins: [],
   /**
+   * Inventory ledger activity — **deliberately empty**, slot-born. The Ledger
+   * feed never had a hide-key registry to inherit: it was a hand-rolled card
+   * list until the slot port, so hiding an event fact is unbinding it from a
+   * slot and always was. The KEY stays because `TableId`'s runtime vocabulary
+   * derives from this record's keys.
+   */
+  'inventory-events': [],
+  /**
    * Inventory units — **deliberately empty** since the wave 1.4 slot port.
    * Hiding a unit fact is now unbinding it from a slot, not a per-staff
    * `hideKey` in this third registry. The KEY stays because `TableId`'s runtime
@@ -366,6 +382,21 @@ export const TABLE_COLUMNS: Record<TableId, TableColumnSpec[]> = {
     GRID_COL('ticket', 'Ticket', 'id'),
     GRID_COL('updated', 'Updated', 'date'),
   ],
+  /**
+   * Kiosk devices — **deliberately empty**, slot-born. Hiding a device fact is
+   * unbinding it from a slot. The KEY stays for the `TableId` union.
+   */
+  'kiosk-devices': [],
+  /**
+   * Kiosk slot history — **deliberately empty**, slot-born. Same rule as
+   * kiosk-devices: hide by unbinding, never by a hideKey list here.
+   */
+  'kiosk-slot-events': [],
+  /**
+   * Walk-in sales history — **deliberately empty**, slot-born. Hide by
+   * unbinding a catalog fact. The KEY stays for the `TableId` union.
+   */
+  'walk-in-sales': [],
 };
 
 export function tableColumnsFor(tableId: TableId): TableColumnSpec[] {

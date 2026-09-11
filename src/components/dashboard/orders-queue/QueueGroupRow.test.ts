@@ -52,11 +52,13 @@ function paint(rows: ShippedOrder[]) {
 }
 
 describe('QueueGroupRow — always-open parent chrome', () => {
-  it('paints a parent above a multi-line fold and keeps leaf identity', () => {
+  it('paints a fold envelope and quiets leaf order identity', () => {
     const { html, quiet } = paint([
       line({ id: 1, tracking_numbers: ['1ZAAA'], quantity: 1, sale_amount: 19 }),
       line({ id: 2, tracking_numbers: ['1ZBBB'], quantity: 2, sale_amount: 19 }),
     ]);
+    assert.match(html, /data-slot-table-fold/);
+    assert.match(html, /role="rowgroup"/);
     assert.match(html, /data-order-group-parent/);
     assert.match(html, /data-group-fold/);
     assert.match(html, /aria-expanded="true"/);
@@ -68,7 +70,23 @@ describe('QueueGroupRow — always-open parent chrome', () => {
     assert.doesNotMatch(html, /\d+ tracking/);
     assert.match(html, /aria-label="[^"]*1ZAAA, 1ZBBB[^"]*"/);
     assert.doesNotMatch(html, /data-col="actions"/);
-    assert.deepEqual(quiet, [false, false]);
+    assert.deepEqual(quiet, [true, true]);
+  });
+
+  it('aligns the parent check with the order id on the two-line tracks', () => {
+    const { html } = paint([
+      line({ id: 1, tracking_numbers: ['1ZAAA'] }),
+      line({ id: 2, tracking_numbers: ['1ZBBB'] }),
+    ]);
+    const select = html.match(/data-col="select"[\s\S]*?data-col="/)?.[0] ?? '';
+    assert.match(select, /grid-rows-2/, 'parent select uses the compound two-line tracks');
+    assert.doesNotMatch(
+      select,
+      /flex-col items-center justify-center/,
+      'parent check must not sit in a centered stack',
+    );
+    assert.match(select, /items-start justify-center/);
+    assert.match(select, /\bpt-1\b/);
   });
 
   it('rolls commercial qty and money across the fold', () => {
@@ -114,6 +132,7 @@ describe('QueueGroupRow — always-open parent chrome', () => {
   it('skips the parent on a singleton — the leaf is the order', () => {
     const { html, quiet } = paint([line()]);
     assert.doesNotMatch(html, /data-order-group-parent/);
+    assert.doesNotMatch(html, /data-slot-table-fold/);
     assert.match(html, /data-leaf="1"/);
     assert.deepEqual(quiet, [false]);
   });

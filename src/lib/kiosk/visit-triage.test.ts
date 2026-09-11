@@ -14,7 +14,8 @@ function session(over: Partial<KioskTriageSession> = {}): KioskTriageSession {
     lines: [],
     customerPhone: '503-555-0142',
     customerName: 'Pat Doe',
-    customerEmail: '',
+    customerEmail: 'pat@example.com',
+    customerAddress: '12 Main St',
     ...over,
   };
 }
@@ -62,11 +63,13 @@ function buybackLine(over: Record<string, unknown> = {}): KioskCartLine {
 
 describe('kiosk visit triage', () => {
   it('an empty cart with no customer blocks on both, cart first', () => {
-    const items = collectKioskTriage(session({ lines: [], customerPhone: '', customerName: '' }));
+    const items = collectKioskTriage(
+      session({ lines: [], customerPhone: '', customerName: '', customerEmail: '', customerAddress: '' }),
+    );
     assert.equal(items[0].id, 'cart:empty');
     assert.equal(items[1].id, 'customer:phone');
-    // The name warning must not outrank a blocker.
-    assert.equal(items.at(-1)?.id, 'customer:name');
+    // Identity warnings must not outrank a blocker.
+    assert.equal(items.at(-1)?.id, 'customer:address');
   });
 
   it('a complete visit is clear — no blockers, no gate', () => {

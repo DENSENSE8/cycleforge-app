@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
-import { compareQueueColumnRows } from './queue-row-compare';
+import { compareQueueColumnRows, compareUrgentPin } from './queue-row-compare';
 
 function row(partial: Partial<ShippedOrder> & { id: number }): ShippedOrder {
   return {
@@ -17,6 +17,14 @@ function row(partial: Partial<ShippedOrder> & { id: number }): ShippedOrder {
 }
 
 describe('compareQueueColumnRows', () => {
+  it('pins urgent rows above non-urgent regardless of title sort', () => {
+    const urgent = row({ id: 2, is_urgent: true, product_title: 'Zebra' });
+    const calm = row({ id: 1, is_urgent: false, product_title: 'Alpha' });
+    assert.equal(compareUrgentPin(urgent, calm), -1);
+    assert.ok(compareQueueColumnRows(urgent, calm, 'title', 'asc') < 0);
+    assert.ok(compareQueueColumnRows(calm, urgent, 'title', 'asc') > 0);
+    assert.ok(compareQueueColumnRows(urgent, calm, 'title', 'desc') < 0);
+  });
   it('sorts product title A–Z / Z–A', () => {
     const a = row({ id: 1, product_title: 'Alpha Camera' });
     const b = row({ id: 2, product_title: 'Zebra Lens' });
@@ -62,22 +70,59 @@ describe('compareQueueColumnRows', () => {
     assert.ok(compareQueueColumnRows(a, b, 'title', 'asc') < 0);
   });
 
-  it('sorts by packer name A–Z; blanks last in both directions', () => {
-    const alex = row({ id: 1, packed_by_name: 'Alex' });
-    const zoe = row({ id: 2, packed_by_name: 'Zoe' });
-    const nobody = row({ id: 3 });
-    assert.ok(compareQueueColumnRows(alex, zoe, 'packed', 'asc') < 0);
-    assert.ok(compareQueueColumnRows(alex, zoe, 'packed', 'desc') > 0);
-    assert.ok(compareQueueColumnRows(alex, nobody, 'packed', 'asc') < 0);
-    assert.ok(compareQueueColumnRows(alex, nobody, 'packed', 'desc') < 0);
+  it('sorts Pack by packed_at, not packer name or ship-by — Sep 8 stays before Sep 9', () => {
+    const sep8 = row({
+      id: 1,
+      packed_by_name: 'TU',
+      packed_at: '2026-09-08T21:40:00.000Z',
+      deadline_at: '2026-09-10T00:00:00.000Z',
+    });
+    const sep9 = row({
+      id: 2,
+      packed_by_name: 'TU',
+      packed_at: '2026-09-09T17:10:00.000Z',
+      deadline_at: '2026-09-01T00:00:00.000Z',
+    });
+    assert.ok(compareQueueColumnRows(sep8, sep9, 'packed', 'asc') < 0);
+    assert.ok(compareQueueColumnRows(sep8, sep9, 'packed', 'desc') > 0);
+    const sorted = [sep9, sep8].sort((a, b) => compareQueueColumnRows(a, b, 'packed', 'asc'));
+    assert.deepEqual(sorted.map((r) => r.id), [1, 2]);
   });
 
-  it('sorts by picker name A–Z; blanks last in both directions', () => {
-    const alex = row({ id: 1, tested_by_name: 'Alex' });
-    const zoe = row({ id: 2, tested_by_name: 'Zoe' });
-    const nobody = row({ id: 3 });
-    assert.ok(compareQueueColumnRows(alex, zoe, 'picked', 'asc') < 0);
-    assert.ok(compareQueueColumnRows(alex, nobody, 'picked', 'desc') < 0);
+  it('sorts Pack times within a day by the stamp, not the 12-hour face', () => {
+    const tenAm = row({
+      id: 1,
+      packed_by_name: 'TU',
+      packed_at: '2026-09-08T17:10:00.000Z',
+    });
+    const twoPm = row({
+      id: 2,
+      packed_by_name: 'TU',
+      packed_at: '2026-09-08T21:40:00.000Z',
+    });
+    assert.ok(compareQueueColumnRows(tenAm, twoPm, 'packed', 'asc') < 0);
+  });
+
+  it('puts unstamped Pack rows last in both directions', () => {
+    const stamped = row({ id: 1, packed_by_name: 'TU', packed_at: '2026-09-08T21:40:00.000Z' });
+    const nobody = row({ id: 2, packed_by_name: 'TU' });
+    assert.ok(compareQueueColumnRows(stamped, nobody, 'packed', 'asc') < 0);
+    assert.ok(compareQueueColumnRows(stamped, nobody, 'packed', 'desc') < 0);
+  });
+
+  it('sorts Pick by the test stamp, not picker name', () => {
+    const earlier = row({
+      id: 1,
+      tested_by_name: 'TU',
+      test_date_time: '2026-09-08T17:00:00.000Z',
+    });
+    const later = row({
+      id: 2,
+      tested_by_name: 'TU',
+      test_date_time: '2026-09-09T17:00:00.000Z',
+    });
+    assert.ok(compareQueueColumnRows(earlier, later, 'picked', 'asc') < 0);
+    assert.ok(compareQueueColumnRows(earlier, later, 'picked', 'desc') > 0);
   });
 
   it('sorts carriers A–Z with no hardcoded pin; blanks last in both directions', () => {

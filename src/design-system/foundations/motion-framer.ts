@@ -11,7 +11,9 @@ export const motionBezier = {
   easeOut: [0.22, 1, 0.36, 1] as const,
   /** Height / layout — softer than easeOut */
   layout: [0.25, 0.1, 0.25, 1] as const,
-} as const;
+  /** Slow in, slow out — edge-mark traveler */
+  easeInOut: [0.42, 0, 0.58, 1] as const,
+};
 
 /** Durations in seconds — pair with `motionBezier` */
 export const framerDuration = {
@@ -34,6 +36,8 @@ export const framerDuration = {
   captureStackRowExit: 0.18,
   /** Capture-stack fresh-arrival ring pulse (one shot, expanded row only) */
   captureStackFreshPulse: 1.8,
+  /** Slot-table edge-mark 1px traveler — slow ease-in-out bob. */
+  edgeMarkPulse: 4.2,
   /** Modal scrim fade — aligns with CSS `motionDurations.fast` */
   overlayScrim: 0.15,
   /**
@@ -376,6 +380,12 @@ export const framerTransition = {
    */
   commandBarDialog: springSnappy,
 
+  /**
+   * MasterNav collapsed hover-peek — scale from the top-left origin.
+   * Physics = `springSnappy`. Pair with `framerPresence.navPeekCorner`.
+   */
+  navPeekCorner: springSnappy,
+
   /** Horizontal slide between rows inside the modal — `springSnappy` */
   workOrderSlideSpring: springSnappy,
 
@@ -523,6 +533,16 @@ export const framerTransition = {
     duration: framerDuration.scanBandGlowPulse,
     ease: motionBezier.easeOut,
     times: [0, 0.4, 1],
+  } satisfies Transition,
+
+  /**
+   * Slot-table edge-mark 1px traveler — slow ease-in-out bob with a trail.
+   * Transform-only (`y`). Pair with {@link CompoundEdgeRail} when `edgeMark.pulse`.
+   */
+  edgeMarkPulse: {
+    duration: framerDuration.edgeMarkPulse,
+    ease: motionBezier.easeInOut,
+    repeat: Infinity,
   } satisfies Transition,
 
   /** Auth card shell mount — pair with `framerPresence.signInCard` */
@@ -734,6 +754,16 @@ export const framerPresence = {
     initial: { opacity: 0, y: -4 },
     animate: { opacity: 1, y: 0 },
     exit: { opacity: 0, y: -6 },
+  },
+  /**
+   * Collapsed MasterNav hover-peek — grows from the top-left corner.
+   * Host MUST pin `style.transformOrigin: '0 0'`. Pair with
+   * `framerTransition.navPeekCorner`. No `x`/`y`.
+   */
+  navPeekCorner: {
+    initial: { opacity: 0, scale: 0.92 },
+    animate: { opacity: 1, scale: 1 },
+    exit: { opacity: 0, scale: 0.92 },
   },
   /** Sidebar section — height expand/collapse */
   sidebarSection: {
@@ -1209,6 +1239,11 @@ export const framerVariants: Record<string, Variants> = {
     initial: framerPresence.dropdownPanel.initial,
     animate: framerPresence.dropdownPanel.animate,
     exit: framerPresence.dropdownPanel.exit,
+  },
+  navPeekCorner: {
+    initial: framerPresence.navPeekCorner.initial,
+    animate: framerPresence.navPeekCorner.animate,
+    exit: framerPresence.navPeekCorner.exit,
   },
   sidebarSection: {
     initial: framerPresence.sidebarSection.initial,

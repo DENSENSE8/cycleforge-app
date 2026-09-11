@@ -16,7 +16,10 @@
  * empty state instead of failing the page.
  */
 
+import { SettingsSectionHeader } from '@/components/settings/SettingsSectionHeader';
+import { SETTINGS_FLOOR_CLASS } from '@/components/settings/settings-sections';
 import Link from 'next/link';
+import { cn } from '@/utils/_cn';
 import { requirePermission } from '@/lib/auth/page-guard';
 import pool from '@/lib/db';
 import { listConnections } from '@/lib/integrations/connectors/connections';
@@ -167,9 +170,14 @@ export default async function IntegrationsDiagnosticsPage() {
   const errored = connections.filter((c) => c.state === 'error').length;
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-surface-canvas antialiased">
+    <div className={cn('flex h-full min-h-0 flex-col antialiased', SETTINGS_FLOOR_CLASS)}>
       <main className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-5xl space-y-6 px-6 py-6">
+          <SettingsSectionHeader
+            title="Connection diagnostics"
+            backHref="/settings/integrations"
+            backAriaLabel="Back to Apps & integrations"
+          />
           <div className="flex flex-wrap items-center justify-between gap-2">
             <p className="text-role-caption text-text-soft">
               Read-only diagnostics for this workspace&apos;s integrations — connection states, credential usage, and
@@ -186,12 +194,6 @@ export default async function IntegrationsDiagnosticsPage() {
                   {denied24h} denied credential use{denied24h === 1 ? '' : 's'} · 24h
                 </span>
               )}
-              <Link
-                href="/settings/integrations"
-                className="rounded-full bg-surface-sunken px-2.5 py-1 text-role-caption font-semibold text-text-muted transition-colors hover:text-text-default"
-              >
-                ← Integrations
-              </Link>
             </div>
           </div>
 

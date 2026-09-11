@@ -105,7 +105,8 @@ export function trackGeometryFor(displayType: FieldDisplayType): {
     case 'date':
       return { width: 'minmax(7rem, 7rem)', type: 'date', labelFitRem: 4.5, resizable: false };
     case 'person':
-      return { width: 'minmax(5.5rem, 5.5rem)', type: 'text', labelFitRem: 4.5, resizable: false };
+      // Avatar mark + truncated name — wider than a plain tag chip.
+      return { width: 'minmax(8rem, 9rem)', type: 'text', align: 'start', labelFitRem: 5, resizable: true };
     case 'number':
       return { width: 'minmax(3.5rem, 3.5rem)', type: 'number', labelFitRem: 3.5, resizable: false };
     case 'money':

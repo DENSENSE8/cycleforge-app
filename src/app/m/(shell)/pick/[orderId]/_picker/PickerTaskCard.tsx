@@ -101,7 +101,8 @@ export function PickerTaskCard({
             aim at; the in-place error appears if a wrong code decodes. */}
         <div className="mt-5">
           <p className="mb-2 text-xs font-semibold text-text-soft">
-            Scan{' '}
+            Scan to verify
+            {currentTask.serialNumber ? ' this unit, then confirm' : ', or confirm below'}{' '}
             {currentTask.bin && (
               <span className="font-mono font-semibold text-text-muted">{currentTask.bin}</span>
             )}

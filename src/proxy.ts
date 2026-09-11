@@ -32,6 +32,11 @@ import {
   kioskPathDogfoodActive,
   staffKioskRedirectOrigin,
 } from '@/lib/tenancy/kiosk-host';
+import {
+  VDPL_COOKIE,
+  VDPL_MAX_AGE_SEC,
+  skewPinDecision,
+} from '@/lib/vercel/skew-pin';
 
 // Inlined (not imported) to keep the Edge bundle free of node:crypto / pg.
 // Must stay in sync with `src/lib/auth/session.ts` (SESSION_COOKIE_NAME +
@@ -49,9 +54,12 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/m\/signin(?:$|\/)/,
   /^\/m\/qr-auth(?:$|\/)/,              // workstation QR auth page - anon phone with a token must land here,
                                           // not bounce to /signin (authorize route enforces session-or-PIN).
+  /^\/m\/claim(?:$|\/)/,                // desk→phone handoff claim — token in query IS the capability
   /^\/not-authorized(?:$|\/)/,
   /^\/m\/enroll\//,
   /^\/kiosk(?:$|\/)/,                    // customer-facing kiosk (device-token principal; no staff session)
+  // Callers: kiosk/tablet pages. API: POST /api/kiosk/dev-autopair. User: auto-connect org one, no pairing.
+  /^\/api\/kiosk\/dev-autopair(?:$|\/)/,
   /^\/api\/kiosk\/pair(?:$|\/)/,         // tablet exchanges a pairing code for a device token (code IS the capability)
   /^\/api\/kiosk\/intake(?:$|\/)/,       // device-authed intake write (gated by withKioskAuth inside the handler)
   /^\/api\/kiosk\/repair(?:$|\/)/,       // device-authed headless repair intake (withKioskAuth; NOT the staff enroll/revoke/devices siblings)
@@ -59,6 +67,7 @@ const PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/api\/kiosk\/settings(?:$|\/)/,     // device-authed brand/settings (withKioskAuth)
   /^\/api\/kiosk\/staff-for-stepup(?:$|\/)/, // device-authed PIN step-up roster (withKioskAuth)
   /^\/api\/kiosk\/pickup(?:$|\/)/,       // device-authed order pickup lookup/collect (withKioskAuth)
+  /^\/api\/kiosk\/visit(?:$|\/)/,        // device-authed visit receipt (withKioskAuth)
   /^\/api\/kiosk\/session(?:$|\/)/,      // device-authed counter-session mirror: read + set-customer + signature (withKioskAuth)
   /^\/api\/realtime\/kiosk-token(?:$|\/)/, // device-principal Ably token (withKioskAuth) — the STAFF token route stays gated
   /^\/invite\/[A-Za-z0-9_-]+(?:$|\/)/,  // org invitation accept (unauthenticated)
@@ -587,7 +596,29 @@ const PERMISSIONS_POLICY = [
   'interest-cohort=()',
 ].join(', ');
 
-function applySecurityHeaders(res: NextResponse): NextResponse {
+function applySkewPinCookie(req: NextRequest, res: NextResponse): void {
+  const decision = skewPinDecision({
+    skewProtectionEnabled: process.env.VERCEL_SKEW_PROTECTION_ENABLED,
+    deploymentId: process.env.VERCEL_DEPLOYMENT_ID,
+    existingVdpl: req.cookies.get(VDPL_COOKIE)?.value,
+    hasStaffSession: Boolean(
+      req.cookies.get(SESSION_COOKIE_NAME)?.value ||
+        req.cookies.get(LEGACY_SESSION_COOKIE_NAME)?.value,
+    ),
+    isKioskHost: isKioskHost(req.headers.get('host')),
+  });
+  if (!decision.pin) return;
+  res.cookies.set(VDPL_COOKIE, decision.deploymentId, {
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.VERCEL === '1' || req.nextUrl.protocol === 'https:',
+    maxAge: VDPL_MAX_AGE_SEC,
+  });
+}
+
+function applySecurityHeaders(req: NextRequest, res: NextResponse): NextResponse {
+  applySkewPinCookie(req, res);
   res.headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
@@ -617,7 +648,7 @@ export function proxy(req: NextRequest): NextResponse {
   // Hard isolation: only the intake UI + device-authed kiosk APIs. Staff
   // enroll/revoke/devices and every other app path → 404 (no chrome leak).
   if (isBareKioskPlatformHost(hostHeader)) {
-    return applySecurityHeaders(
+    return applySecurityHeaders(req, 
       pathname.startsWith('/api/')
         ? NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 })
         : new NextResponse('Not Found', { status: 404 }),
@@ -626,7 +657,7 @@ export function proxy(req: NextRequest): NextResponse {
 
   if (isKioskHost(hostHeader)) {
     if (!isKioskHostAllowedPath(pathname)) {
-      return applySecurityHeaders(
+      return applySecurityHeaders(req, 
         pathname.startsWith('/api/')
           ? NextResponse.json({ error: 'NOT_FOUND' }, { status: 404 })
           : new NextResponse('Not Found', { status: 404 }),
@@ -646,12 +677,12 @@ export function proxy(req: NextRequest): NextResponse {
     if (pathname === '/') {
       const url = req.nextUrl.clone();
       url.pathname = '/kiosk';
-      return applySecurityHeaders(
+      return applySecurityHeaders(req, 
         NextResponse.rewrite(url, { request: { headers: requestHeaders } }),
       );
     }
 
-    return applySecurityHeaders(
+    return applySecurityHeaders(req, 
       NextResponse.next({ request: { headers: requestHeaders } }),
     );
   }
@@ -695,14 +726,14 @@ export function proxy(req: NextRequest): NextResponse {
     if (kioskDest) {
       // Preserve path so staff same-origin preview `/kiosk/v2` lands on the
       // tenant kiosk shell, not the kiosk root.
-      return applySecurityHeaders(NextResponse.redirect(new URL(`${kioskDest}${pathname}`), 308));
+      return applySecurityHeaders(req, NextResponse.redirect(new URL(`${kioskDest}${pathname}`), 308));
     }
     if (process.env.NODE_ENV === 'production') {
       const url = req.nextUrl.clone();
       url.pathname = '/signin';
       url.searchParams.set('next', '/kiosk');
       url.searchParams.set('reason', 'kiosk-workspace');
-      return applySecurityHeaders(NextResponse.redirect(url));
+      return applySecurityHeaders(req, NextResponse.redirect(url));
     }
   }
 
@@ -710,9 +741,9 @@ export function proxy(req: NextRequest): NextResponse {
     if (rewriteTarget) {
       const url = req.nextUrl.clone();
       url.pathname = rewriteTarget;
-      return applySecurityHeaders(NextResponse.rewrite(url, { request: { headers: requestHeaders } }));
+      return applySecurityHeaders(req, NextResponse.rewrite(url, { request: { headers: requestHeaders } }));
     }
-    return applySecurityHeaders(NextResponse.next({ request: { headers: requestHeaders } }));
+    return applySecurityHeaders(req, NextResponse.next({ request: { headers: requestHeaders } }));
   };
 
   // Normalize legacy receiving-surface URLs to their first-class routes
@@ -734,7 +765,7 @@ export function proxy(req: NextRequest): NextResponse {
       resolveShippingSurfaceRedirect(req.nextUrl) ??
       resolveTestingHistoryViewRedirect(req.nextUrl);
     if (surfaceRedirect) {
-      return applySecurityHeaders(NextResponse.redirect(surfaceRedirect));
+      return applySecurityHeaders(req, NextResponse.redirect(surfaceRedirect));
     }
   }
 
@@ -746,12 +777,12 @@ export function proxy(req: NextRequest): NextResponse {
   if (!hasCookie && isAuthV2Enabled()) {
     const isApi = pathname.startsWith('/api/');
     if (isApi) {
-      return applySecurityHeaders(NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 }));
+      return applySecurityHeaders(req, NextResponse.json({ error: 'UNAUTHENTICATED' }, { status: 401 }));
     }
     const url = req.nextUrl.clone();
     url.pathname = '/signin';
     url.searchParams.set('next', pathname);
-    return applySecurityHeaders(NextResponse.redirect(url));
+    return applySecurityHeaders(req, NextResponse.redirect(url));
   }
 
   return applyRewriteOrNext();

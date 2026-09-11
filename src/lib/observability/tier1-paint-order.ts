@@ -117,7 +117,7 @@ export const TIER1_PAINT_ORDER: readonly Tier1PaintRoute[] = [
     lcpHosts: [
       'src/app/search/page.tsx',
       'src/components/search/SearchPrimaryPaintShell.tsx',
-      'src/components/search/station/SearchOrderStationPane.tsx',
+      'src/components/search/dossier/SearchOrderDossier.tsx',
       'src/components/layout/GlobalHeaderSearch.tsx',
     ],
     markRoute: 'search',

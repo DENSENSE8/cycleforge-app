@@ -3,10 +3,13 @@
  *   Returns staff info for the enrollment page to render. Does NOT consume.
  *
  * POST /api/auth/enroll/[token]
- *   Body: { pin: string }
- *   Sets the staff PIN, marks the staff row 'active', consumes the token,
- *   creates a phone-scoped session, sets cookie. Passkey registration is a
- *   separate optional follow-up step (see /api/auth/passkey/register/*).
+ *   Body: { pin?: string }
+ *   Completes enrollment: consumes the token, marks staff active, creates a
+ *   phone session. Passkey is registered first on the phone (enrollmentToken
+ *   on /api/auth/passkey/register/*). PIN is optional (station fallback).
+ *   Completing without a PIN requires at least one staff_passkeys row.
+ *
+ * Callers: /m/enroll/[token] page. User: Enroll passkey first, PIN optional.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -50,16 +53,32 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
 
   try {
     const body = await req.json().catch(() => ({} as Record<string, unknown>));
-    const pin = String((body as { pin?: unknown }).pin ?? '');
-    if (!pin) return NextResponse.json({ error: 'INVALID_REQUEST', field: 'pin' }, { status: 400 });
+    const pinRaw = (body as { pin?: unknown }).pin;
+    const pin = pinRaw != null && String(pinRaw).trim() !== '' ? String(pinRaw) : '';
 
-    // Validate shape before consuming so a bad PIN doesn't burn the token.
-    try { await hashPin(pin); }
-    catch (err) {
-      if (err instanceof PinError) {
-        return NextResponse.json({ error: err.code }, { status: 400 });
+    if (pin) {
+      // Validate shape before consuming so a bad PIN doesn't burn the token.
+      try {
+        await hashPin(pin);
+      } catch (err) {
+        if (err instanceof PinError) {
+          return NextResponse.json({ error: err.code }, { status: 400 });
+        }
+        throw err;
       }
-      throw err;
+    } else {
+      // Passkey-only completion: Face ID must already be on this staff row.
+      const peek = await loadEnrollment(token);
+      if (!peek) {
+        return NextResponse.json({ error: 'INVALID_ENROLLMENT' }, { status: 404 });
+      }
+      const pk = await pool.query(
+        `SELECT 1 FROM staff_passkeys WHERE staff_id = $1 LIMIT 1`,
+        [peek.staffId],
+      );
+      if (pk.rowCount === 0) {
+        return NextResponse.json({ error: 'PASSKEY_REQUIRED' }, { status: 400 });
+      }
     }
 
     const enr = await consumeEnrollment(token);
@@ -67,24 +86,27 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
       return NextResponse.json({ error: 'INVALID_ENROLLMENT' }, { status: 404 });
     }
 
-    await setStaffPin(enr.staffId, pin);
+    if (pin) {
+      await setStaffPin(enr.staffId, pin);
+    }
     await pool.query(`UPDATE staff SET status = 'active' WHERE id = $1 AND status = 'invited'`, [enr.staffId]);
 
-    // "Keep me signed in": NOT persistent, and deliberately so even though the
-    // other link-mint flows could arguably go either way — a 'phone' session is
-    // a 4-hour handoff window on purpose (it matches the Ably token TTL), and
-    // making it indefinite would contradict the device kind, not just the
-    // absent checkbox.
+    // Phone session: 4-hour handoff window (matches Ably token TTL).
     const session = await createSession({
       staffId: enr.staffId,
       deviceKind: 'phone',
       deviceLabel: 'Enrollment phone',
-      ip, userAgent: ua,
+      ip,
+      userAgent: ua,
     });
     await audit({
-      staffId: enr.staffId, sid: session.sid,
-      event: 'enrollment.consumed', result: 'ok',
-      ip, userAgent: ua, detail: { token: token.slice(0, 6) + '…' },
+      staffId: enr.staffId,
+      sid: session.sid,
+      event: 'enrollment.consumed',
+      result: 'ok',
+      ip,
+      userAgent: ua,
+      detail: { token: token.slice(0, 6) + '…', hasPin: Boolean(pin) },
     });
 
     const res = NextResponse.json({
@@ -93,8 +115,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ token: str
       session: { sid: session.sid, deviceKind: session.deviceKind, expiresAt: session.expiresAt },
     });
     res.cookies.set(SESSION_COOKIE_NAME, session.sid, {
-      httpOnly: true, secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax', path: '/', maxAge: cookieMaxAgeForSession(session),
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: cookieMaxAgeForSession(session),
     });
     return res;
   } catch (err) {

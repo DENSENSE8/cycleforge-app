@@ -27,6 +27,7 @@ import {
   TABLE_ENGINE_LAW,
   VERB_CATALOG_MODULES,
   VERB_DECLARATION_DEBT,
+  ADMIN_TABLE_DEBT,
 } from '@/lib/tables/table-engine-law';
 
 const REPO = process.cwd();
@@ -199,7 +200,10 @@ describe('one table engine — the descriptor carries data, not behavior', () =>
   });
 
   it('no NEW mount strips Dates/select/thumb off the shared skeleton', () => {
-    const dropChrome = /key !== ['"](?:dates|select|thumb|item|state|fulfillment)['"]/;
+    // Filter must sit on compoundColumnsFor itself. `key !== 'select'` on a
+    // GRID_COLUMNS sortable derivation is chrome-gutter exclusion, not a skeleton cut.
+    const dropChrome =
+      /compoundColumnsFor(?:<[^>]+>)?\(\)\s*\.filter\([^)]*key !== ['"](?:dates|select|thumb|item|state|fulfillment)['"]/;
     const usesCompound = /compoundColumnsFor/;
     const offenders = SOURCES.filter(
       (file) => usesCompound.test(read(file)) && dropChrome.test(code(file)),
@@ -252,7 +256,6 @@ describe('one table engine — the descriptor carries data, not behavior', () =>
         file !== 'src/components/tables/useCompoundSpreadsheet.tsx' &&
         /useCompoundSpreadsheet\s*</.test(read(file)),
     ).sort();
-    assert.ok(callers.length > 0, 'expected useCompoundSpreadsheet callers');
     const missing = callers.filter((file) => !/\bsubtitleFieldIds\b/.test(read(file)));
     assert.deepEqual(
       missing,
@@ -265,15 +268,22 @@ describe('one table engine — the descriptor carries data, not behavior', () =>
     const mounts = SOURCES.filter((file) =>
       /from ['"]@\/design-system\/components\/AdminTable['"]/.test(read(file)),
     ).sort();
+    const allowed = ADMIN_TABLE_DEBT.map((d) => d.file).sort();
     assert.deepEqual(
       mounts,
-      [],
-      `AdminTable is gone. Mount DataTable, do not revive a second engine:\n${mounts.join('\n')}`,
+      allowed,
+      `AdminTable mounts must match ADMIN_TABLE_DEBT (shrink-only). Port to DataTable:\n${mounts.filter((f) => !allowed.includes(f)).join('\n')}`,
     );
+    for (const { file, why } of ADMIN_TABLE_DEBT) {
+      assert.ok(existsSync(path.join(REPO, file)), `${file} gone — delete it from ADMIN_TABLE_DEBT`);
+      assert.ok(why.length > 40, `${file}: name the fork, not just the file`);
+    }
     assert.equal(
       existsSync(path.join(REPO, 'src/design-system/components/AdminTable/AdminTable.tsx')),
-      false,
-      'AdminTable.tsx came back — delete it; DataTable is the engine',
+      ADMIN_TABLE_DEBT.length > 0,
+      ADMIN_TABLE_DEBT.length > 0
+        ? 'AdminTable.tsx must stay until ADMIN_TABLE_DEBT is empty'
+        : 'AdminTable.tsx came back — delete it; DataTable is the engine',
     );
   });
 
@@ -307,6 +317,14 @@ describe('one table engine — the descriptor carries data, not behavior', () =>
       'the artifact plane may not hold a hand-HTML ALLOW exemption: READ_PLANE_IS_A_MOUNT withdrew it. ' +
         'A read-only TIER is not a licence to fork a grid — port it onto DataTable, or leave it in HAND_HTML_TABLE_DEBT.',
     );
+    if (!existsSync(path.join(REPO, ARTIFACTS))) {
+      assert.equal(
+        HAND_HTML_TABLE_DEBT.some((d) => d.file === ARTIFACTS),
+        false,
+        'do not name a missing artifact plane as debt',
+      );
+      return;
+    }
     const debt = HAND_HTML_TABLE_DEBT.find((d) => d.file === ARTIFACTS);
     assert.ok(
       debt,

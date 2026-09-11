@@ -13,7 +13,6 @@ import type { PhotoAspect } from '@/lib/photos/photo-aspects';
 import { type SectionTab } from '@/design-system/components';
 import { buildSectionTabs } from '@/components/station/workbench';
 import {
-  Barcode,
   ClipboardList,
   ExternalLink,
   Images,
@@ -21,6 +20,7 @@ import {
   MapPin,
   Boxes,
   Package,
+  ScanBarcode,
   Tag,
   Ticket,
 } from '@/components/Icons';
@@ -394,7 +394,7 @@ export function buildUnboxSideTabs(input: BuildUnboxTabsInput): SectionTab[] {
     {
       id: 'units',
       label: 'Units',
-      icon: Barcode,
+      icon: ScanBarcode,
       count: serialCount,
       visible: hasUnits,
       content: (

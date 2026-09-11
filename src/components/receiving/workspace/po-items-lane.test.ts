@@ -5,11 +5,9 @@ import { readFileSync } from 'node:fs';
 /**
  * The PO-items lane decision is LAW, not per-station taste.
  *
- * Unbox, Testing and `/search` each used to route matched-vs-unfound
- * themselves, and Testing's copy omitted the lineless-real-PO probe — so a real
- * PO carton whose lines had not landed yet offered the add / pair path on two
- * stations and read as a dead end on the third. Nothing could notice, because
- * the disagreement lived in two files that never mentioned each other.
+ * Unbox and Testing each used to route matched-vs-unfound themselves.
+ * `/search` is FIND now — it confirms carton contents and hands off to Unbox,
+ * it does not mount PoItemsSection.
  *
  * These read source text, which is normally the wrong way to pin anything
  * (AGENTS.md). They are here for the one claim a mounted test cannot make:
@@ -19,7 +17,6 @@ import { readFileSync } from 'node:fs';
 const CALLERS = {
   unbox: 'src/components/receiving/workspace/line-edit/LinePoItemsSection.tsx',
   testing: 'src/components/tech/testing-panel/TestingPoItemsSection.tsx',
-  search: 'src/components/search/station/SearchReceivingPoItems.tsx',
 } as const;
 
 const read = (p: string) => readFileSync(p, 'utf8');

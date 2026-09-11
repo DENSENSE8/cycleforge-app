@@ -80,7 +80,7 @@ describe('filterToShipByTab', () => {
 
 describe('mobileProcessOrderHref', () => {
   it('opens the per-order pick/pack surface', () => {
-    assert.equal(mobileProcessOrderHref({ entityId: 42 }), '/m/pick/42');
+    assert.equal(mobileProcessOrderHref({ entityId: 42 }), '/m/id/pick/42');
   });
 });
 
@@ -164,6 +164,25 @@ describe('filterToShipByQuery / isToShipOutOfStock', () => {
       [9],
     );
     assert.equal(filterToShipByQuery([hit, miss], 'nope').length, 0);
+  });
+
+  it('matches product family, condition grade, serial, and picker name', () => {
+    const hit = row({
+      entityId: 9,
+      title: 'Stem',
+      catalogCategory: 'Bikes',
+      condition: 'USED_A',
+      serialNumber: 'SN-4411',
+      techName: 'Alex Pick',
+      techId: 4,
+    });
+    const miss = row({ entityId: 8, title: 'Zebra Frame', orderId: '99-000', condition: 'USED_B' });
+    assert.deepEqual(filterToShipByQuery([hit, miss], 'bikes').map((r) => r.entityId), [9]);
+    assert.deepEqual(filterToShipByQuery([hit, miss], 'used a').map((r) => r.entityId), [9]);
+    assert.deepEqual(filterToShipByQuery([hit, miss], 'USED_A').map((r) => r.entityId), [9]);
+    assert.deepEqual(filterToShipByQuery([hit, miss], 'A').map((r) => r.entityId), [9]);
+    assert.deepEqual(filterToShipByQuery([hit, miss], 'sn-4411').map((r) => r.entityId), [9]);
+    assert.deepEqual(filterToShipByQuery([hit, miss], 'alex').map((r) => r.entityId), [9]);
   });
 
   it('treats a non-empty outOfStock face as blocked', () => {

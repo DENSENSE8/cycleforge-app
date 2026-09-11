@@ -15,6 +15,9 @@ import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRo
 import { ledgerRowFillClass } from '@/components/ui/queue-row-chrome';
 import { RECEIVING_GRID_CAPABILITIES } from '@/components/station/receiving-grid/receiving-grid-descriptor';
 import { ignoreRowSelectFromSubtitle } from '@/components/tables/compound/useSubtitlePointerReorder';
+import { CompoundRowDetailHost } from '@/components/tables/compound/CompoundRowDetailHost';
+import { useCompoundRowDetail } from '@/components/tables/compound/useCompoundRowDetail';
+import { isCompoundColumnModel } from '@/components/tables/compound/compound-columns';
 import { usePlatformMeta } from '@/hooks/useCatalog';
 import type { CustomFieldDef } from '@/lib/custom-fields/types';
 import {
@@ -40,6 +43,7 @@ import { cn } from '@/utils/_cn';
 import type { GridSelectGutterChrome } from '@/components/ui/GridRowCheckbox';
 import {
   displayReceivingProductTitle,
+  receivingCompoundRowView,
   receivingStageTooltip,
   renderReceivingGridCell,
   type ReceivingGridCellCtx,
@@ -135,7 +139,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
   onOpenWorkspace,
   historyTriageMenu = false,
   rowFillHex = null,
-  quietIdentity: _quietIdentity = false,
+  quietIdentity = false,
   selectGutterChrome = 'always',
   customFieldDefs,
   subtitleFieldIds: _subtitleFieldIds,
@@ -144,6 +148,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
   const resolvePlatformMeta = usePlatformMeta();
   /** A gutter handler IS the signal that this surface split the two planes. */
   const splitPlanes = Boolean(onToggle) && !clickSelect;
+  const detailState = useCompoundRowDetail(String(row.id));
 
   if (isMobile) {
     return (
@@ -203,6 +208,7 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
     stageTip: stageStamp ? receivingStageTooltip(row, stageStamp, activityAxis) : '',
     dateCell: receivingActivityDateCell(stageStamp?.instant),
     poValue,
+    quietIdentity,
     platformLabel,
     platformMeta,
     isPickup: isLocalPickupFulfillment(row),
@@ -227,11 +233,23 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
   };
 
   const selected = isOpen || isChecked;
+  const compound = isCompoundColumnModel(columns);
+  const compoundView = compound ? receivingCompoundRowView(ctx) : null;
+  const detailChrome =
+    compoundView?.detail != null
+      ? {
+          open: detailState.open,
+          onToggle: detailState.toggle,
+          label: compoundView.title.trim() || 'this line',
+        }
+      : undefined;
+
   const rowEl = (
     <div
       data-line-row-id={row.id}
       data-order-row-id={String(row.id)}
       data-receiving-id={row.receiving_id ?? undefined}
+      data-group-child={quietIdentity ? '' : undefined}
       // Click-select: row IS the checkbox. Split planes: body opens (button).
       // Legacy single-gesture: checkbox role on the row.
       role={clickSelect ? 'checkbox' : splitPlanes ? 'button' : selectMode ? 'checkbox' : 'button'}
@@ -332,11 +350,24 @@ export const ReceivingGridRow = memo(function ReceivingGridRow({
     >
       {columns.map((col, i) => (
         <Fragment key={col.key}>
-          {renderReceivingGridCell(col, i === columns.length - 1, ctx)}
+          {renderReceivingGridCell(col, i === columns.length - 1, ctx, detailChrome)}
         </Fragment>
       ))}
     </div>
   );
 
-  return rowEl;
+  if (!compoundView?.detail) return rowEl;
+
+  return (
+    <CompoundRowDetailHost
+      rowId={String(row.id)}
+      detail={compoundView.detail}
+      title={compoundView.title}
+      columns={columns}
+      detailOpen={detailState.open}
+      onCloseDetail={detailState.close}
+    >
+      {rowEl}
+    </CompoundRowDetailHost>
+  );
 });

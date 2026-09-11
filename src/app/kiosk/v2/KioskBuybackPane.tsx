@@ -3,6 +3,10 @@
 /**
  * Buyback evaluate — center work for the Buyback command.
  * Captures IMEI + offer; appends a negative BUYBACK line to the session cart.
+ *
+ * Callers: `KioskShell`. Affected API: none. Schemas: none.
+ * User: "The left sidebar must make room for it, so it must display the rows
+ * down further."
  */
 
 import { useEffect, useState } from 'react';
@@ -22,7 +26,7 @@ import {
   KIOSK_SECTION_LABEL_ROW,
 } from '@/app/kiosk/kiosk-chrome';
 
-export function KioskBuybackPane() {
+export function KioskBuybackPane({ hideHeader = false }: { hideHeader?: boolean }) {
   const session = useKioskSession();
   const actions = useKioskSessionActions();
   const [imei, setImei] = useState('');
@@ -67,9 +71,11 @@ export function KioskBuybackPane() {
 
   return (
     <div className="flex h-full flex-col" data-testid="kiosk-buyback-pane">
+      {hideHeader ? null : (
       <div className={KIOSK_PANE_HEADER_BAND}>
         <h2 className={KIOSK_PANE_HEADER_TITLE}>Buyback</h2>
       </div>
+      )}
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="flex w-full flex-col divide-y divide-border-hairline">
           <section>

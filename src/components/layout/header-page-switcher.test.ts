@@ -37,7 +37,7 @@ test('Unbox switcher lists every Scan Stations bench, not Arrival/Unbox only', (
       'Local Pickup',
       'Repair Service',
       'Quality Control',
-      'Ready to Pack',
+      'Picker',
       'Packing',
       'Scan out',
     ],

@@ -61,19 +61,31 @@ export function useShippingPreviewOpen() {
     const res = await fetch(`/api/orders/lookup/${encodeURIComponent(raw)}`, {
       cache: 'no-store',
     });
-    if (res.status === 404) {
-      toast.warning('Nothing on file for that value');
-      return null;
+    if (res.ok) {
+      const json = (await res.json()) as { order?: LookupOrder | null };
+      const order = json.order ?? null;
+      if (order?.id) {
+        const preview = lookupToPreviewOrder(order);
+        dispatchUpNextPreview({ kind: 'find', sel: { entityType: 'order', id: preview.id } });
+        return preview;
+      }
+    } else if (res.status !== 404) {
+      throw new Error(`orders-lookup ${res.status}`);
     }
-    if (!res.ok) throw new Error(`orders-lookup ${res.status}`);
-    const json = (await res.json()) as { order?: LookupOrder | null };
-    const order = json.order ?? null;
-    if (!order) {
-      toast.warning('Nothing on file for that value');
-      return null;
+
+    const unitRes = await fetch(`/api/serial-units/${encodeURIComponent(raw)}?include=full`, {
+      cache: 'no-store',
+    });
+    if (unitRes.ok) {
+      const unitJson = (await unitRes.json()) as { serial_unit?: { id?: number } };
+      const unitId = Number(unitJson.serial_unit?.id);
+      if (Number.isFinite(unitId) && unitId > 0) {
+        dispatchUpNextPreview({ kind: 'find', sel: { entityType: 'unit', id: unitId } });
+        return null;
+      }
     }
-    const preview = lookupToPreviewOrder(order);
-    dispatchUpNextPreview({ kind: 'order', order: preview });
-    return preview;
+
+    toast.warning('Nothing on file for that value');
+    return null;
   }, []);
 }

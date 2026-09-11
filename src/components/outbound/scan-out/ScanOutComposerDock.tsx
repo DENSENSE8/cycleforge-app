@@ -33,6 +33,7 @@ const FEEDBACK_TONE: Record<ActiveScanOut['status'], string> = {
   ok: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
   dup: 'bg-amber-50 text-amber-700 ring-amber-200',
   exc: 'bg-amber-50 text-amber-700 ring-amber-200',
+  blk: 'bg-surface-danger text-text-danger ring-border-danger',
   pending: 'bg-surface-canvas text-text-muted ring-border-soft',
   miss: 'bg-rose-50 text-rose-700 ring-rose-200',
   err: 'bg-rose-50 text-rose-700 ring-rose-200',
@@ -41,7 +42,7 @@ const FEEDBACK_TONE: Record<ActiveScanOut['status'], string> = {
 function ringProgressForStatus(status: ActiveScanOut['status'] | null): number {
   if (status === 'ok' || status === 'dup') return 100;
   if (status === 'pending') return 40;
-  if (status === 'exc' || status === 'err' || status === 'miss') return 15;
+  if (status === 'exc' || status === 'err' || status === 'miss' || status === 'blk') return 15;
   return 0;
 }
 

@@ -32,13 +32,30 @@ test('dashboard and outbound table search setters do not navigate', () => {
   assert.match(outbound, /const setQ = useCallback\(\s*\(value: string\) => setLocalQ\(value\),/);
 });
 
-test('specialized table searches remain out of browser URL state', () => {
+test('orders slot-table search stays out of browser URL state', () => {
   const unshippedSidebar = source('components/unshipped/UnshippedSidebar.tsx');
-  const unfoundToolbar = source('components/receiving/unfound/UnfoundQueueSidebarToolbar.tsx');
-  const receiving = source('components/station/ReceivingLinesTable.tsx');
+  const unshippedTable = source('components/unshipped/UnshippedTable.tsx');
+  const shipped = source('components/shipped/dashboard-table/useShippedTableFilters.ts');
+  const packing = source('features/review/ReviewPackingTable.tsx');
+  const pairing = source('features/review/pairing/ReviewPairingTable.tsx');
 
   assert.doesNotMatch(unshippedSidebar, /params\.set\('q'/);
-  assert.doesNotMatch(unfoundToolbar, /uf_q/);
-  assert.doesNotMatch(receiving, /RECEIVING_SEARCH_PARAM_KEY/);
-  assert.match(receiving, /onChange: setReceivingSearchValue/);
+  assert.doesNotMatch(unshippedTable, /searchParams\.get\('search'\)/);
+  assert.doesNotMatch(shipped, /params\.set\('search'/);
+  assert.match(shipped, /const \[search, setSearchState\] = useState\(''\)/);
+  assert.doesNotMatch(packing, /params\.set\('search'/);
+  assert.doesNotMatch(pairing, /params\.set\('search'/);
+  assert.match(packing, /useState\(''\)/);
+  assert.match(pairing, /useState\(''\)/);
+});
+
+test('receiving slot-table search stays out of browser URL state', () => {
+  const receiving = source('components/station/ReceivingLinesTable.tsx');
+  const spreadsheet = source('components/station/receiving-grid/useReceivingSpreadsheet.tsx');
+
+  assert.match(receiving, /const \[receivingSearchValue, setReceivingSearchValue\] = useState\(''\)/);
+  assert.doesNotMatch(receiving, /params\.set\(RECEIVING_SEARCH_PARAM_KEY/);
+  assert.doesNotMatch(receiving, /searchParams\.get\(RECEIVING_SEARCH_PARAM_KEY/);
+  assert.match(spreadsheet, /receivingLineMatchesQuery/);
+  assert.doesNotMatch(spreadsheet, /from ['"]next\/navigation['"]/);
 });

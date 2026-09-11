@@ -11,8 +11,10 @@
 
 import { requirePermission } from '@/lib/auth/page-guard';
 import pool from '@/lib/db';
-import { PageHeader } from '@/components/ui/pane-header';
+import { SettingsSectionHeader } from '@/components/settings/SettingsSectionHeader';
+import { SETTINGS_FLOOR_CLASS } from '@/components/settings/settings-sections';
 import { StaffTable } from './StaffTable';
+import { cn } from '@/utils/_cn';
 
 interface StaffRow {
   id: number;
@@ -46,9 +48,9 @@ export default async function StaffPage() {
   );
 
   return (
-    <div className="min-h-screen bg-surface-canvas antialiased">
-      <PageHeader eyebrow="Settings" value="Team" maxWidth="5xl" />
+    <div className={cn('min-h-screen antialiased', SETTINGS_FLOOR_CLASS)}>
       <div className="mx-auto max-w-5xl space-y-6 px-6 py-6">
+        <SettingsSectionHeader title="Team" />
         <p className="text-role-caption text-text-soft">
           Invite teammates, change roles, deactivate access. Active sessions are revoked the moment you deactivate.
         </p>

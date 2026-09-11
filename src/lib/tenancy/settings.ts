@@ -39,12 +39,14 @@ const BrandSchema = z.object({
 });
 
 // Counter-tablet BEHAVIOUR, kept out of `brand` on purpose: brand is identity
-// (name, logo, colour, attract media) and this is how the screen acts. Bounds
-// + fallback resolve in src/lib/kiosk/idle.ts — the schema states the range,
-// the resolver is what the shell and the prompt countdown both read.
+// (name, logo, colour, lock-screen media). Consult idle is off in
+// `resolveKioskIdleTiming` — a leftover number here cannot turn it back on.
 const KioskSchema = z.object({
-  /** Inactivity seconds before the "still there?" prompt. Unset ⇒ 60. */
-  idleTimeoutSeconds: z.number().int().min(15).max(3600).optional(),
+  /**
+   * Leftover tenant JSON. The consult shell ignores this — idle/attract are
+   * off (`resolveKioskIdleTiming`). Kept so existing org bags still parse.
+   */
+  idleTimeoutSeconds: z.number().int().optional(),
 });
 
 // Tenant letterhead — drives the company block on printed repair paper and

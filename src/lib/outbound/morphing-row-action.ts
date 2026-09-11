@@ -97,6 +97,12 @@ export const MORPHING_MORE_INFO_HOTKEY = 'I';
 /** Standing letter on the gutter Notes row — same letter as the inspector dock. */
 export const MORPHING_NOTES_HOTKEY = 'N';
 
+/** Phone app routes (`/m`, `/m/…`). Desktop desks never count as mobile. */
+export function isMorphingMobileUrl(pathname: string | null | undefined): boolean {
+  if (!pathname) return false;
+  return pathname === '/m' || pathname.startsWith('/m/');
+}
+
 /** Count (or legacy scalar) so the Notes verb can show it already has a trail. */
 export function morphingNotesHint(record: {
   note_count?: number | null;

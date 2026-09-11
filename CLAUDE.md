@@ -17,6 +17,11 @@ The repo is mid-refactor into a Warehouse OS shell. Read
 [`docs/warehouse-os/`](docs/warehouse-os/) before building UI — it is the plan of
 record. The old house-law corpus was deleted 2026-08-21; do not reconstruct it.
 
+**Mobile-first is repo-wide** (not warehouse-only): every operator verb must be
+doable on `/m/*` first. Law: [`docs/mobile-first/SURFACE_LAW.md`](docs/mobile-first/SURFACE_LAW.md).
+Cursor: `.cursor/rules/mobile-first-surface.mdc`.
+User: "span repo-wide" / "do everything on the mobile app first."
+
 ## Garisek graph + eval (non-UI edits / task completion)
 
 - **Code graph:** `find_symbol` → `impact_analysis` before shared component edits.

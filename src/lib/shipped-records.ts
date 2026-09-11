@@ -41,6 +41,20 @@ export function isExceptionPackerRecord(record: { row_source?: string | null; ex
 }
 
 /**
+ * Shipped-tab membership. A row belongs here only when a dock scan-out stamped
+ * a staff id AND a real timestamp. Packed-in-staging is To-ship / Scan-out,
+ * never history.
+ */
+export function isShippedDeskRow(row: {
+  ship_confirmed_at?: string | null;
+  shipped_out_by?: number | null;
+}): boolean {
+  const at = String(row.ship_confirmed_at ?? '').trim();
+  if (!at || at === '1') return false;
+  const staff = Number(row.shipped_out_by);
+  return Number.isFinite(staff) && staff > 0;
+}
+/**
  * Collapse duplicate scans of the SAME package, while keeping a multi-package
  * order as one row PER package (they ship at different times). Shared by the
  * table and the scan-out sidebar so both count/show the same set.

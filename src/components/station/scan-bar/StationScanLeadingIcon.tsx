@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Barcode, Search } from '@/components/Icons';
+import { ScanBarcode, Search } from '@/components/Icons';
 import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { STATION_SCAN_BAR_DEFAULT_ICON_CLASS } from './tokens';
 import type { StationScanStance } from './scan-stance';
@@ -50,7 +50,7 @@ export function StationScanLeadingIcon({
       <Search className={`${STATION_SCAN_BAR_DEFAULT_ICON_CLASS} transition-colors`} />
     ) : (
       (scanIcon ?? (
-        <Barcode className={`${STATION_SCAN_BAR_DEFAULT_ICON_CLASS} transition-colors`} />
+        <ScanBarcode className={`${STATION_SCAN_BAR_DEFAULT_ICON_CLASS} transition-colors`} />
       ))
     );
 

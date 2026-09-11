@@ -117,8 +117,9 @@ export interface TableSurfaceBinding<Row, C extends LedgerGridColumnModel> {
    */
   readonly recordPlane: TableRecordPlane;
   /**
-   * The ROW-ANCHORED action plane — what opens beside a row when it is picked
-   * in the select gutter (To-ship's CYC-82 assign manifold).
+   * The ROW action plane — sticky in-flow guest under the column header when a
+   * row is picked in the select gutter (To-ship's CYC-82 assign manifold).
+   * It does not cover or replace the column labels.
    *
    * ## Why it is declared HERE
    *
@@ -150,9 +151,8 @@ export interface TableRowPlaneProps<Row> {
   open: boolean;
   onClose: () => void;
   /**
-   * The ROW element. Anchor to this, never to the gutter cell: anchoring to the
-   * cell parks the panel on top of the columns the operator is reading, while
-   * the row anchor puts it in the page margin beside the row it acts on.
+   * The ROW element. The plane uses it to find the table overlay host and to
+   * ignore gutter clicks when dismissing the sticky action row.
    */
   anchorRef: RefObject<HTMLElement | null>;
 }

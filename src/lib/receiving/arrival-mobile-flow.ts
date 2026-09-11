@@ -28,7 +28,7 @@ export function parseArrivalReceivingId(
   return Number.isFinite(n) && n > 0 ? n : null;
 }
 
-/** Classify host URL on `/m/triage`. */
+/** Classify host URL on `/m/scan`. */
 export function mobileArrivalClassifyHref(
   receivingId: number,
   step: ArrivalClassifyStep = 'platform',
@@ -37,7 +37,7 @@ export function mobileArrivalClassifyHref(
     rid: String(receivingId),
     step,
   });
-  return `/m/triage?${params.toString()}`;
+  return `/m/scan?${params.toString()}`;
 }
 
 /**

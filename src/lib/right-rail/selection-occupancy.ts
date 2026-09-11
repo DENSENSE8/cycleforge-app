@@ -1,13 +1,12 @@
 /**
  * Rail selection occupancy — which right-rail body a grid selection resolves to.
  *
- * On the dashboard orders grid the right rail IS the selection plane: the bottom
- * `ContextualSelectionBar` capsule is gone, and selecting rows is what mounts the
- * rail. **Cardinality decides the body** — one record inspects, two compare;
- * three or more keep the selection on the table foot strip (no roster rail).
- * That is the whole rule, and it lives here as a pure function so the registrar,
- * the compare shell, the specs, and the guard all read one answer instead of
- * four copies of `ids.length === 2`.
+ * Slot-table desks keep selection **on the table** (sticky row plane / status-bar
+ * verbs). Checkbox cardinality must not claim `RightRailHost`: the 2-row compare
+ * pane and the 1-row inspect-from-checks both parked a column over the sheet.
+ * This resolver still owns the rule so the registrar, the compare shell, the
+ * specs, and the guard all read one answer instead of four copies of
+ * `ids.length === 2` — it simply never returns a body.
  *
  * WHY A MODULE AND NOT AN INLINE TERNARY
  * The grid carried two independent selection channels — `?openOrderId=` (row-body
@@ -111,44 +110,21 @@ export function normalizeRailSelection(
  *
  * | selected | kind |
  * |---|---|
- * | 0 | `none` — the rail does not mount |
- * | 1 | `inspect` |
- * | 2 | `compare` |
- * | 3+ | `none` — batch verbs live on the table foot strip; no roster rail |
+ * | any | `none` — the rail does not mount |
  *
- * Callers pass the raw selection; normalization happens here so a caller cannot
- * skip it. Safe to call on every render — pure, allocation-light, no I/O.
+ * Callers still pass the raw selection and normalization still runs so a
+ * caller cannot skip hygiene. Safe to call on every render — pure,
+ * allocation-light, no I/O.
  *
- * Operator 2026-08-31: the 3+ `attention` roster (`detail:order-batch`) was
- * retired — it duplicated the status-bar CTAs. The kind / occupant id stay in
- * the type map so old docs and dead registrars do not invent a fourth id; this
- * resolver simply never returns that kind.
+ * Occupant ids (`inspect` / `compare` / retired `attention`) stay in the type
+ * map so old docs and dead registrars do not invent a fourth id; this resolver
+ * simply never returns those kinds. Record open is the table's `recordPlane`
+ * (Center Lock stage overlay on Orders), not a checkbox cardinality.
  */
 export function resolveRailOccupancy(
   ids: readonly (number | string | null | undefined)[],
 ): RailOccupancy {
-  const orderIds = normalizeRailSelection(ids);
-
-  if (orderIds.length === 0) return { kind: 'none' };
-
-  if (orderIds.length === 1) {
-    return {
-      kind: 'inspect',
-      occupantId: RAIL_OCCUPANT_ID.inspect,
-      orderId: orderIds[0]!,
-      orderIds: [orderIds[0]!],
-    };
-  }
-
-  if (orderIds.length === COMPARE_SELECTION_SIZE) {
-    return {
-      kind: 'compare',
-      occupantId: RAIL_OCCUPANT_ID.compare,
-      orderIds: [orderIds[0]!, orderIds[1]!],
-    };
-  }
-
-  // 3+: selection stays on the table; no rail body.
+  normalizeRailSelection(ids);
   return { kind: 'none' };
 }
 

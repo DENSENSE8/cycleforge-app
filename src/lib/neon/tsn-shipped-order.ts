@@ -38,19 +38,29 @@ export const FIND_SHIPPED_ORDER_BY_TSN_SQL = `SELECT o.id                    AS 
             t.created_at            AS allocated_at,
             t.serial_number         AS serial_number
        FROM tech_serial_numbers t
-       JOIN orders o ON o.shipment_id = t.shipment_id
+       JOIN orders o ON (
+              (t.order_id IS NOT NULL AND o.id = t.order_id)
+              OR (
+                t.order_id IS NULL
+                AND t.shipment_id IS NOT NULL
+                AND o.shipment_id = t.shipment_id
+              )
+            )
        LEFT JOIN shipping_tracking_numbers stn ON stn.id = o.shipment_id
       WHERE UPPER(t.serial_number) = $1
-        AND t.shipment_id IS NOT NULL
+        AND (t.order_id IS NOT NULL OR t.shipment_id IS NOT NULL)
         AND ($2::uuid IS NULL OR t.organization_id = $2::uuid)
         AND ($2::uuid IS NULL OR o.organization_id = $2::uuid)
-        AND NOT EXISTS (
+        AND (
+          t.order_id IS NOT NULL
+          OR NOT EXISTS (
           SELECT 1
             FROM station_activity_logs pack
            WHERE pack.shipment_id = t.shipment_id
              AND pack.activity_type = 'PACK_COMPLETED'
              AND ($2::uuid IS NULL OR pack.organization_id = $2::uuid)
              AND ${TSN_ATTACH_INSTANT_SQL} > pack.created_at
+        )
         )
       ORDER BY t.created_at DESC, o.id ASC
       LIMIT 1`;

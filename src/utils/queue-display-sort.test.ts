@@ -12,6 +12,7 @@ import {
   QUEUE_DISPLAY_SORT_OPTIONS,
   queueCarrierSortOptions,
   queueChannelSortOptions,
+  queueColumnSortOptions,
   queueDisplaySortFace,
 } from '@/utils/queue-display-sort';
 
@@ -179,5 +180,14 @@ describe('queue-display-sort', () => {
     const usps = queueDisplaySortFace('carrier:USPS');
     assert.equal(usps.shortLabel, 'USPS');
     assert.equal(usps.identity?.kind, 'carrier');
+    assert.equal(queueDisplaySortFace('packed').shortLabel, 'Pack');
+    assert.equal(queueDisplaySortFace('picked').shortLabel, 'Pick');
+  });
+
+  it('lists Pack / Status / Amount as toolbar column-sort facts', () => {
+    const ids = queueColumnSortOptions().map((o) => o.id);
+    for (const fact of ['status', 'amount', 'packed', 'picked', 'age'] as const) {
+      assert.ok(ids.includes(fact), `toolbar sort menu lists ${fact}`);
+    }
   });
 });

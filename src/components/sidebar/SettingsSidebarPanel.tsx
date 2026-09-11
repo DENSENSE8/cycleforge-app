@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import {
   SETTINGS_SECTION_OPTIONS,
   resolveSettingsSectionFromPath,
+  settingsSectionRoute,
   type SettingsSection,
 } from '@/components/settings/settings-sections';
 import { AccessSidebarPanel } from '@/components/admin/AccessSidebarPanel';
@@ -212,16 +213,9 @@ export function SettingsSidebar() {
 
   const navigateSection = useCallback(
     (section: SettingsSection) => {
-      const def = SETTINGS_SECTION_OPTIONS.find((s) => s.id === section);
-      if (def?.href) {
-        router.replace(def.href);
-        return;
-      }
-      const params = new URLSearchParams(searchParams?.toString());
-      params.set('section', section);
-      router.replace(`/settings?${params.toString()}`);
+      router.replace(settingsSectionRoute(section));
     },
-    [router, searchParams],
+    [router],
   );
 
   const sectionLabel = SETTINGS_SECTION_OPTIONS.find((s) => s.id === active)?.label ?? '';

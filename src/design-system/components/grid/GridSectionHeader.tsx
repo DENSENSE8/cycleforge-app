@@ -29,8 +29,10 @@
  * (owned by {@link VirtualGroupedSections}, since a virtualized list positions
  * every row absolutely and cannot wrap a subset in a box).
  *
- * Stickiness is likewise the virtualizer shell's: it pins the active header and
- * this paints flat, exactly as `DateGroupHeader` is used with `sticky={false}`.
+ * Stickiness is the virtualizer shell's, and only for civil {@link DateGroupHeader}
+ * day bands. This caption paints in-flow — "Added today" must not dock as a
+ * second chrome row under the column header. It is on screen only while that
+ * run of table rows is.
  */
 
 import { cn } from '@/utils/_cn';

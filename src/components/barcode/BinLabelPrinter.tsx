@@ -1,23 +1,30 @@
 'use client';
 
 /**
- * Location (bin) Label Printer. Five-step location builder (zone → aisle → bay →
- * level → position) that outputs a QR-only thermal label. Lives inside
- * LabelPrintWorkspace; rooms are a read-only input (CRUD lives in RoomsBoard).
+ * Location (bin) Label Printer. Five-step location builder that outputs a 2×1
+ * thermal sticker. Single mode = one face; Bulk = LabelPrintRunPanel.
  *
- * Thin composition layer — state/logic live in `./bin-label-printer`.
+ * Callers: LabelPrintWorkspace, WarehouseSidebarPanel. No data schemas.
+ * User: single/bulk toggle; remove configure; reset away from slider.
  */
 
+import { useCallback, useMemo, useState } from 'react';
 import { Printer } from '@/components/Icons';
-import { WorkspaceCard, StickyActionBar } from '@/design-system/components';
-import { locationCode } from '@/lib/barcode-routing';
+import { StickyActionBar } from '@/design-system/components';
 import { LABEL_BUILDER } from './label-builder-layout';
 import { LabelRoomSidebar } from './LabelRoomSidebar';
-import { ConfigSheet, PrintLabel, type LabelPrinterVariant } from './bin-label-printer';
+import { type LabelPrinterVariant } from './bin-label-printer';
 import { useBinLabelPrinter } from './bin-label-printer/useBinLabelPrinter';
 import { BinBuilderMobile } from './bin-label-printer/BinBuilderMobile';
 import { BinBuilderDesktop } from './bin-label-printer/BinBuilderDesktop';
-import { LivePreviewBody } from './bin-label-printer/LivePreviewBody';
+import { GiantPreviewPanel } from './bin-label-printer/GiantPreviewPanel';
+import {
+  LabelPrintRunPanel,
+  type LabelPrintRunFreeze,
+} from '@/components/labels/LabelPrintRunPanel';
+import type { LabelPrintWorkMode } from './LabelPrinterWorkHeader';
+import { seedPrintRunVary } from '@/lib/locations/expand-print-run';
+import type { ExpandedPrintRunRow } from '@/lib/locations/expand-print-run';
 
 export type { LabelPrinterVariant } from './bin-label-printer';
 
@@ -27,91 +34,152 @@ interface BinLabelPrinterProps {
 
 export function BinLabelPrinter({ variant = 'main' }: BinLabelPrinterProps) {
   const c = useBinLabelPrinter();
+  const [printMode, setPrintMode] = useState<LabelPrintWorkMode>('single');
+  const [runSelected, setRunSelected] = useState<ExpandedPrintRunRow[]>([]);
 
-  // ── Sidebar variant — rooms list only ──────────────────────────────────
+  const canOpenRun =
+    !!c.selectedRoom &&
+    !!c.zoneLetter &&
+    c.aisle != null &&
+    !c.missingLetter;
+
+  const freeze: LabelPrintRunFreeze | null = useMemo(() => {
+    if (!c.selectedRoom || !c.zoneLetter || c.aisle == null) return null;
+    return {
+      roomName: c.selectedRoom,
+      zoneLetter: c.zoneLetter,
+      aisle: c.aisle,
+      bay: c.bay,
+      level: c.level,
+      position: c.position,
+    };
+  }, [c.selectedRoom, c.zoneLetter, c.aisle, c.bay, c.level, c.position]);
+
+  const seedVary = seedPrintRunVary({
+    aisle: c.aisle,
+    bay: c.bay,
+    level: c.level,
+  });
+
+  const seedThrough = useMemo(() => {
+    if (seedVary === 'position') return c.config.maxPositions;
+    if (seedVary === 'level') return c.config.maxLevels;
+    return c.config.maxBays;
+  }, [seedVary, c.config.maxPositions, c.config.maxLevels, c.config.maxBays]);
+
+  const handleSelectionChange = useCallback((rows: ExpandedPrintRunRow[]) => {
+    setRunSelected(rows);
+  }, []);
+
+  const handlePrintRun = useCallback(async () => {
+    if (runSelected.length === 0) return;
+    await c.printRun(runSelected.map((r) => r.segments));
+  }, [c, runSelected]);
+
+  const runCount = runSelected.length;
+  const bulkActive = printMode === 'bulk';
+  const printFromRun = bulkActive && canOpenRun && runCount > 0;
+
   if (variant === 'sidebar') {
     return (
-      <>
-        <LabelRoomSidebar
-          rooms={c.allRoomNames}
-          zoneMap={c.zoneMap}
-          loading={c.loading}
-          selectedRoom={c.selectedRoom}
-          zoneLetter={c.zoneLetter}
-          onSelect={c.pickRoom}
-          emptySubtitle="Then build the bin code on the right."
-        />
-        <ConfigSheet open={c.configOpen} onClose={() => c.setConfigOpen(false)} config={c.config} onSave={c.handleConfigSave} />
-      </>
+      <LabelRoomSidebar
+        rooms={c.allRoomNames}
+        zoneMap={c.zoneMap}
+        loading={c.loading}
+        selectedRoom={c.selectedRoom}
+        zoneLetter={c.zoneLetter}
+        onSelect={c.pickRoom}
+        emptySubtitle="Then build the bin code on the right."
+      />
     );
   }
 
-  // ── Main-pane variant ───────────────────────────────────────────────────
   return (
-    // flex-1 + min-h-0 lets this column fill the LabelPrintWorkspace height;
-    // mt-auto on the StickyActionBar pins it to the bottom of the page.
     <div className={`flex min-h-0 flex-1 flex-col ${LABEL_BUILDER.stackGap}`}>
       <div className={`lg:hidden ${LABEL_BUILDER.contentShell}`}>
-        <BinBuilderMobile c={c} variant={variant} />
+        <BinBuilderMobile
+          c={c}
+          variant={variant}
+          printMode={printMode}
+          onPrintModeChange={setPrintMode}
+        />
       </div>
 
-      {(c.selectedRoom || c.aisle != null) && (
-        <WorkspaceCard label="Live preview" className={`lg:hidden ${LABEL_BUILDER.contentShell}`}>
-          <LivePreviewBody
+      {!bulkActive ? (
+        <div className={`lg:hidden ${LABEL_BUILDER.contentShell}`}>
+          <GiantPreviewPanel
             zoneLetter={c.zoneLetter}
-            roomName={c.selectedRoom}
             aisle={c.aisle}
             bay={c.bay}
             level={c.level}
             position={c.position}
             gln={c.gln}
+            roomName={c.selectedRoom}
           />
-        </WorkspaceCard>
-      )}
+        </div>
+      ) : null}
 
       <div className="hidden lg:block">
-        <BinBuilderDesktop c={c} />
+        <BinBuilderDesktop
+          c={c}
+          showGiantPreview={!bulkActive}
+          printMode={printMode}
+          onPrintModeChange={setPrintMode}
+        />
       </div>
 
+      {bulkActive && canOpenRun && freeze ? (
+        <div className={LABEL_BUILDER.contentShell}>
+          <LabelPrintRunPanel
+            freeze={freeze}
+            seedVary={seedVary}
+            seedThrough={seedThrough}
+            seedMaxBays={c.config.maxBays}
+            seedOddLevels={c.config.maxLevels}
+            seedEvenLevels={c.config.maxLevels}
+            gln={c.gln}
+            showPartsPreset
+            printing={c.isPrinting}
+            onSelectionChange={handleSelectionChange}
+          />
+        </div>
+      ) : null}
+
       <StickyActionBar
-        // Bleed bar chrome to the scroll-container edges; inner CTAs stay on
-        // LABEL_BUILDER.contentMax so they align with the builder column.
-        className="mt-auto -mx-4 -mb-5 sm:-mx-6"
+        className={`mt-auto ${LABEL_BUILDER.actionBleed}`}
         maxWidth={LABEL_BUILDER.contentMax}
         density="compact"
+        actionRowClassName="flex-nowrap"
         primary={{
           label: c.isPrinting
-            ? 'Printing…'
+            ? c.printProgress
+              ? `Printing ${c.printProgress.done}/${c.printProgress.total}`
+              : 'Printing…'
             : c.missingLetter
               ? 'Assign a zone letter first'
-              : !c.allSelected
-                ? 'Complete the steps'
-                : 'Print bin label',
-          onClick: c.handlePrintOne,
-          disabled: !c.allSelected || c.isPrinting || c.missingLetter,
+              : printFromRun
+                ? `Print ${runCount} label${runCount === 1 ? '' : 's'}`
+                : bulkActive && !canOpenRun
+                  ? 'Pick an aisle for bulk'
+                  : !c.allSelected
+                    ? 'Complete the steps'
+                    : 'Print bin label',
+          onClick: printFromRun ? () => void handlePrintRun() : c.handlePrintOne,
+          disabled: printFromRun
+            ? c.isPrinting || runCount === 0
+            : bulkActive
+              ? true
+              : !c.allSelected || c.isPrinting || c.missingLetter,
           isLoading: c.isPrinting,
           tone: 'blue',
           icon: <Printer className="h-4 w-4" />,
         }}
-        secondary={
-          c.allSelected
-            ? {
-                label: `Print level (×${c.config.maxPositions})`,
-                onClick: c.handlePrintBulk,
-                icon: <Printer className="h-4 w-4" />,
-                disabled: c.isPrinting || c.missingLetter,
-              }
-            : undefined
+        hints={
+          printFromRun || (!bulkActive && c.allSelected)
+            ? [{ key: '⌘P', label: 'Print' }]
+            : []
         }
-        hints={c.allSelected ? [{ key: '⌘P', label: 'Print' }] : []}
       />
-
-      {/* Print zone — hidden on screen, fills page on print */}
-      <div className="label-print-zone">
-        {c.bulkLabels?.map((seg, i) => (
-          <PrintLabel key={`${locationCode(seg)}-${i}`} segments={seg} roomName={c.selectedRoom ?? ''} gln={c.gln} />
-        ))}
-      </div>
     </div>
   );
 }

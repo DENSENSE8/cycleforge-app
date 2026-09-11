@@ -7,10 +7,14 @@
  */
 
 import { test } from 'node:test';
-import { strictEqual, ok } from 'node:assert';
+import { strictEqual, ok, deepStrictEqual } from 'node:assert';
 
 import {
   routeScan,
+  routeScanPaired,
+  decodedHandle,
+  scannedCarrierTracking,
+  scannedSscc,
   type ScanType,
   receivingHandle,
   receivingLineHandle,
@@ -26,6 +30,11 @@ import {
   type LocationSegments,
 } from './barcode-routing';
 import { encodePrintMatrix } from '@/lib/qr/platform-link';
+import {
+  LOCATIONS_BAY_CODE_RE,
+  parseLocationsTab,
+  parseLocationsTabWire,
+} from '@/lib/inventory/locations-path';
 
 test('every generated handle round-trips to its entity type (not bin/sku fallback)', () => {
   const cases: Array<[string, string]> = [
@@ -154,7 +163,7 @@ const WILD_PAYLOAD_FORMS: WildForm[] = [
       encodePrintMatrix({ kind: 'location', orgSlug: SLUG, segments: RACK, gln: LICENSED_GLN }).value,
     value: `https://usav.app.cycleforge.ai/414/${LICENSED_GLN}/254/A0101100`,
     type: 'bin',
-    redirect: '/inventory/locations?tab=racks&code=A0101100',
+    redirect: '/inventory/locations?tab=bays&code=A0101100',
   },
   {
     what: 'legacy location Digital Link — pre-DataMatrix printer, borrowed GLN',
@@ -164,7 +173,7 @@ const WILD_PAYLOAD_FORMS: WildForm[] = [
     mint: null,
     value: `/414/${PLACEHOLDER_GLN}/254/A0101100`,
     type: 'bin',
-    redirect: '/inventory/locations?tab=racks&code=A0101100',
+    redirect: '/inventory/locations?tab=bays&code=A0101100',
   },
 
   // ── Rung 2 · GS1 element string (licensed key, no host to resolve it) ─────
@@ -199,7 +208,7 @@ const WILD_PAYLOAD_FORMS: WildForm[] = [
     mint: null, // the SCANNER produces this shape, not us
     value: `414${PLACEHOLDER_GLN}${FNC1}254A0101100`,
     type: 'bin',
-    redirect: '/inventory/locations?tab=racks&code=A0101100',
+    redirect: '/inventory/locations?tab=bays&code=A0101100',
   },
   {
     what: 'FNC1 form — unit',
@@ -265,7 +274,7 @@ const WILD_PAYLOAD_FORMS: WildForm[] = [
     mint: () => encodePrintMatrix({ kind: 'location', orgSlug: SLUG, segments: RACK }).value,
     value: 'A0101100',
     type: 'bin',
-    redirect: '/inventory/locations?tab=racks&code=A0101100',
+    redirect: '/inventory/locations?tab=bays&code=A0101100',
   },
   {
     what: 'bare handle — carton (no tenant slug)',
@@ -586,7 +595,7 @@ test('both label forms scan back to the SAME destination — rack (position=00)'
   const gs1 = locationLabelPayload(RACK, { gln: LICENSED_GLN });
   const a = routeScan(bare.value);
   const b = routeScan(gs1.value);
-  strictEqual(a?.redirect, '/inventory/locations?tab=racks&code=A0101100');
+  strictEqual(a?.redirect, '/inventory/locations?tab=bays&code=A0101100');
   strictEqual(a?.redirect, b?.redirect);
 });
 
@@ -605,11 +614,11 @@ test('labels ALREADY on the racks keep scanning — all three legacy forms', () 
   );
   strictEqual(
     routeScan(`414${PLACEHOLDER_GLN}${FNC1}254A0101100`)?.redirect,
-    '/inventory/locations?tab=racks&code=A0101100',
+    '/inventory/locations?tab=bays&code=A0101100',
   );
   strictEqual(
     routeScan(`/414/${PLACEHOLDER_GLN}/254/A0101100`)?.redirect,
-    '/inventory/locations?tab=racks&code=A0101100',
+    '/inventory/locations?tab=bays&code=A0101100',
   );
 });
 
@@ -627,4 +636,86 @@ test('the flat-code branch does not swallow other printed handles', () => {
   strictEqual(routeScan('H-12')?.type, 'handling-unit');
   strictEqual(routeScan('T-9395')?.type, 'support-ticket');
   strictEqual(routeScan('IPH13-128-BLU-2601-000042')?.type, 'serial-unit');
+});
+
+test('Locations bay tab is bays; legacy ?tab=racks still parses and unwraps', () => {
+  strictEqual(parseLocationsTab('racks'), 'bays');
+  strictEqual(parseLocationsTab('bays'), 'bays');
+  strictEqual(parseLocationsTabWire('racks'), 'bays');
+  strictEqual(parseLocationsTabWire('bays'), 'bays');
+  ok(LOCATIONS_BAY_CODE_RE.test('/inventory/locations?tab=racks&code=A0101100'));
+  ok(LOCATIONS_BAY_CODE_RE.test('/inventory/locations?tab=bays&code=A0101100'));
+});
+
+test('a carrier tracking number classes as carrier-tracking, with its carrier', () => {
+  const ups = routeScan('1Z 999 AA1 01 2345 4471');
+  strictEqual(ups?.type, 'carrier-tracking');
+  strictEqual(ups?.value, '1Z999AA10123454471', 'normalised — the key a caller stores');
+  strictEqual(ups?.carrier, 'UPS');
+
+  strictEqual(routeScan('123456789012')?.carrier, 'FedEx', '12-digit FedEx Express');
+  strictEqual(routeScan('1234567890')?.type, 'carrier-tracking', '10-digit DHL Express');
+  strictEqual(routeScan('9400111899223197428490')?.type, 'carrier-tracking', '22-digit USPS');
+  strictEqual(routeScan('92612345678901234567')?.type, 'carrier-tracking', '20-digit FedEx');
+
+  strictEqual(routeScan('123456789012345')?.type, 'carrier-tracking');
+  strictEqual(scannedCarrierTracking('123456789012345')?.carrier, 'Unknown');
+});
+
+test('a GS1 SSCC classes as sscc in all three printed forms', () => {
+  const digits = '123456789012345678';
+  strictEqual(routeScan(`(00)${digits}`)?.type, 'sscc');
+  strictEqual(routeScan(`${FNC1}00${digits}`)?.type, 'sscc');
+  strictEqual(routeScan(digits)?.type, 'sscc');
+  strictEqual(routeScan(`(00)${digits}`)?.value, digits);
+  strictEqual(scannedSscc(`  (00)${digits}  `), digits);
+});
+
+test('an 18-digit run is a licence plate, not a tracking number', () => {
+  strictEqual(routeScan('940011189922319742')?.type, 'sscc');
+  strictEqual(scannedCarrierTracking('940011189922319742'), null);
+});
+
+test('neither foreign class carries a redirect — decodedHandle still refuses them', () => {
+  strictEqual(routeScan('1Z999AA10123454471')?.redirect, undefined);
+  strictEqual(decodedHandle('1Z999AA10123454471'), null);
+  strictEqual(decodedHandle('123456789012345678'), null);
+});
+
+test('bin-paired-order comes ONLY from the injected lookup, never from the bytes', () => {
+  strictEqual(routeScan('A12')?.type, 'bin');
+  strictEqual(routeScanPaired('A12', () => null)?.type, 'bin');
+
+  const paired = routeScanPaired('A12', (code) => (code === 'A12' ? '04-1234' : null));
+  strictEqual(paired?.type, 'bin-paired-order');
+  strictEqual(paired?.value, 'A12');
+  strictEqual(paired?.orderRef, '04-1234');
+
+  strictEqual(routeScanPaired('H-12', () => '04-1234')?.type, 'handling-unit');
+  strictEqual(routeScanPaired('T-9395', () => '04-1234')?.type, 'support-ticket');
+  strictEqual(routeScanPaired('', () => '04-1234'), null);
+
+  const seen: string[] = [];
+  routeScanPaired('a0101101', (code) => { seen.push(code); return null; });
+  deepStrictEqual(seen, ['A0101101']);
+});
+
+test('the eight installed classes answer exactly what they answered before', () => {
+  const unchanged: Array<[string, ScanType]> = [
+    ['1809:A03', 'sku'],
+    ['A12', 'bin'],
+    ['R-1234', 'receiving'],
+    ['L-567', 'receiving-line'],
+    ['U-CN1A2B3', 'serial-unit'],
+    ['H-12', 'handling-unit'],
+    ['KIT-SKU1-2601-000042', 'manifest'],
+    ['T-9395', 'support-ticket'],
+    ['A0101101', 'bin'],
+    [`(01)${GTIN}(21)SN123`, 'serial-unit'],
+    ['00098-2621-000142', 'serial-unit'],
+    ['12345', 'sku'],
+  ];
+  for (const [payload, type] of unchanged) {
+    strictEqual(routeScan(payload)?.type, type, `${payload} → ${type}`);
+  }
 });

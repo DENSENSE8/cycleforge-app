@@ -8,6 +8,8 @@ test('TSN ship lookup ignores serials hung on a tracking after PACK_COMPLETED', 
   match(FIND_SHIPPED_ORDER_BY_TSN_SQL, /SERIAL_ADDED/);
   match(FIND_SHIPPED_ORDER_BY_TSN_SQL, /NOT EXISTS/);
   match(FIND_SHIPPED_ORDER_BY_TSN_SQL, /from tech_serial_numbers/i);
+  match(FIND_SHIPPED_ORDER_BY_TSN_SQL, /o\.id = t\.order_id/);
+  match(FIND_SHIPPED_ORDER_BY_TSN_SQL, /t\.order_id IS NULL/);
 });
 
 test('findShippedOrderByTsnSerial runs the post-pack-filtered query', async () => {

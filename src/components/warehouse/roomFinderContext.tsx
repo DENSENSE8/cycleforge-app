@@ -6,7 +6,7 @@
  * The sidebar's top search bar (rendered in the header band by
  * WarehouseSidebarPanel) writes here; the rooms list below it
  * (RoomsSidebarList for the Rooms tab; LabelRoomSidebar for the Labels/
- * Racks tabs) reads here. One bar drives the whole surface so there's a
+ * Bays tabs) reads here. One bar drives the whole surface so there's a
  * single, accessible search entry point per tab — no nested duplicates.
  */
 

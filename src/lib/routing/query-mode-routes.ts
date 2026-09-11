@@ -30,6 +30,7 @@ import { parseHomeModeWire } from '@/features/home/home-modes';
 import { parseReviewModeWire } from '@/features/review/review-mode';
 import { parseDashboardModeWire } from '@/lib/dashboard/dashboard-domains';
 import { parseLocationsTabWire } from '@/lib/inventory/locations-path';
+import { parseLabelCopiesWire } from '@/lib/print/labelCopies';
 import {
   RECEIVING_HISTORY_URL_PARAMS,
   parseReceivingHistorySearchFieldWire,
@@ -54,6 +55,7 @@ import {
   paramFlag,
   paramPositiveInt,
   paramPresence,
+  paramCanonical,
   paramRoundTrip,
   paramText,
   type RouteParamsSpec,
@@ -499,7 +501,7 @@ export const INVENTORY_ROUTE_PARAMS = defineRouteParams({
 });
 
 /**
- * `/inventory/locations` — Bin Tags · Racks · Rooms · Bins · Map (former `/warehouse` desk).
+ * `/inventory/locations` — Bin Tags · Bays · Rooms · Bins · Map (former `/warehouse` desk).
  *
  * Longer prefix than `/inventory`, so location facets (`tab`, map `view`, bin
  * filters) do not collide with Ledger/Graph ownership of `view` / `q` on the
@@ -509,7 +511,7 @@ const INVENTORY_LOCATIONS_ROUTE_PARAMS = defineRouteParams({
   route: '/inventory/locations',
   owns: {
     /** Bin Tags is the default and rides the bare URL. */
-    tab: paramRoundTrip(parseLocationsTabWire),
+    tab: paramCanonical(parseLocationsTabWire),
     room: paramText,
     code: paramText,
     q: paramText,
@@ -520,8 +522,16 @@ const INVENTORY_LOCATIONS_ROUTE_PARAMS = defineRouteParams({
     serial: paramText,
     new: paramEnum(['true'] as const),
     edit: paramFlag,
-    /** Special-bin 2×1 print page (`/inventory/locations/print/special-bin`). */
+  },
+  carries: WORKBENCH_CARRIES,
+});
+
+const SPECIAL_BIN_PRINT_ROUTE_PARAMS = defineRouteParams({
+  route: '/inventory/locations/print/special-bin',
+  owns: {
     barcode: paramText,
+    /** Bulk copies — silent USB sends TSPL PRINT N in one job. Default 1 omitted. */
+    count: paramRoundTrip(parseLabelCopiesWire),
   },
   carries: WORKBENCH_CARRIES,
 });
@@ -592,7 +602,7 @@ const PACK_ROUTE_PARAMS = defineRouteParams({
 export const WAREHOUSE_ROUTE_PARAMS = defineRouteParams({
   route: '/warehouse',
   owns: {
-    tab: paramRoundTrip(parseLocationsTabWire),
+    tab: paramCanonical(parseLocationsTabWire),
     room: paramText,
     code: paramText,
     q: paramText,
@@ -650,6 +660,12 @@ const SEARCH_ROUTE_PARAMS = defineRouteParams({
   carries: ['staff', 'colsort', 'coldir'],
 });
 
+const MOBILE_SEARCH_ROUTE_PARAMS = defineRouteParams({
+  route: '/m/search',
+  owns: SEARCH_ROUTE_PARAMS.owns,
+  carries: SEARCH_ROUTE_PARAMS.carries,
+});
+
 /** Every still-query-mode surface with a declared spec. */
 export const QUERY_MODE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   SUPPORT_ROUTE_PARAMS,
@@ -660,11 +676,13 @@ export const QUERY_MODE_ROUTE_PARAMS: readonly RouteParamsSpec[] = [
   TEST_ROUTE_PARAMS,
   WALK_IN_ROUTE_PARAMS,
   INVENTORY_ROUTE_PARAMS,
+  SPECIAL_BIN_PRINT_ROUTE_PARAMS,
   INVENTORY_LOCATIONS_ROUTE_PARAMS,
   REVIEW_ROUTE_PARAMS,
   PACK_ROUTE_PARAMS,
   WAREHOUSE_ROUTE_PARAMS,
   SEARCH_ROUTE_PARAMS,
+  MOBILE_SEARCH_ROUTE_PARAMS,
   FORGE_ROUTE_PARAMS,
   // `/` is the shortest prefix in the registry, so it must never shadow another
   // route — the registry sorts longest-first, which keeps it last in practice.

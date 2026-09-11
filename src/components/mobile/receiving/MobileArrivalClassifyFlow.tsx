@@ -55,7 +55,7 @@ export function MobileArrivalClassifyFlow({
   const [pickedType, setPickedType] = useState<string | null>(null);
 
   const goList = useCallback(() => {
-    router.replace('/m/triage');
+    router.replace('/m/scan');
   }, [router]);
 
   const goStep = useCallback(
@@ -238,7 +238,7 @@ export function MobileArrivalClassifyFlow({
         />
         <div className="min-w-0 flex-1">
           <p className="text-role-micro uppercase tracking-widest text-text-muted">
-            Arrival · classify
+            Classify
           </p>
           <p className="truncate text-sm font-semibold text-text-primary">
             {trackingLabel?.trim() || `RCV-${receivingId}`}
@@ -253,7 +253,7 @@ export function MobileArrivalClassifyFlow({
 
       <div className="flex flex-1 flex-col items-center justify-end px-4 pb-6 pt-8">
         <Button variant="ghost" size="sm" onClick={goList} className="mb-3 text-text-muted">
-          Back to arrivals
+          Back to scan
         </Button>
       </div>
 

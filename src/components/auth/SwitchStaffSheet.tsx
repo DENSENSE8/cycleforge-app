@@ -119,7 +119,7 @@ export function SwitchStaffSheet() {
               autoFocus
             />
           </div>
-          <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
+          <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain p-0.5 [scrollbar-gutter:stable]">
             <StaffPickerList
               recent={recent}
               recentReady={recentReady}

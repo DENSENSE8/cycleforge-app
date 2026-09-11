@@ -15,7 +15,6 @@ import { AnimatePresence, motion, motionRole, useMotionRole } from '@/design-sys
 import { UnshippedTable } from '@/components/unshipped/UnshippedTable';
 import { DashboardScrollShell } from '@/components/dashboard/DashboardScrollShell';
 import { TechAllTriageTable } from '@/components/tech/all/TechAllTriageTable';
-import { OrderRailCompare } from '@/components/dashboard/rail/OrderRailCompare';
 import { useOrderRailSelection } from '@/hooks/useOrderRailSelection';
 import { useShippingWorkspaceTab } from '@/hooks/useShippingWorkspaceTab';
 import { useNewOrderParam } from '@/hooks/useNewOrderParam';
@@ -127,12 +126,7 @@ export function ShippingWorkspaceView({ techId }: ShippingWorkspaceViewProps) {
           </AnimatePresence>
         </div>
 
-        {queueTab && selectionEnabled ? (
-          <>
-            <OrderRailCompare />
-            {selectionOverlays}
-          </>
-        ) : null}
+        {queueTab && selectionEnabled ? selectionOverlays : null}
       </DashboardScrollShell>
       <NewOrderEntryOverlay open={newOpen} onClose={closeNew} />
     </div>

@@ -3,6 +3,7 @@ import {
   getSquareTransactions,
   softDeleteSquareTransaction,
 } from '@/lib/neon/square-transaction-queries';
+import { listCounterSalesAsSaleRows } from '@/lib/counter/list-counter-sales';
 import { isAllowedAdminOrigin } from '@/lib/security/allowed-origin';
 import { withAuth } from '@/lib/auth/withAuth';
 
@@ -31,8 +32,19 @@ export const GET = withAuth(async (req: NextRequest, ctx) => {
       { search, status, weekStart, weekEnd, orderSource, limit },
       ctx.organizationId,
     );
+    const squareOrderIds = new Set(
+      rows.map((r) => r.square_order_id).filter((id): id is string => Boolean(id)),
+    );
+    const counterRows = await listCounterSalesAsSaleRows(
+      ctx.organizationId,
+      limit,
+      squareOrderIds,
+    );
+    const merged = [...rows, ...counterRows]
+      .sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)))
+      .slice(0, limit);
 
-    return NextResponse.json({ rows });
+    return NextResponse.json({ rows: merged });
   } catch (error: unknown) {
     console.error('GET /api/walk-in/sales error:', error);
     return NextResponse.json(

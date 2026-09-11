@@ -320,7 +320,7 @@ export function Gs1ComplianceCard() {
         <p className="max-w-lg text-xs text-text-soft">
           A GLN identifies a physical <em>place</em>, not a product. You only need one if an EDI or
           EPCIS trading partner asks for it — it is not what Amazon checks, so the questions above
-          don&rsquo;t gate it. When set, warehouse bin and rack labels print as a GS1 DataMatrix
+          don&rsquo;t gate it. When set, warehouse bin and bay labels print as a GS1 DataMatrix
           carrying <span className="font-mono">(414)</span>.
         </p>
       </div>

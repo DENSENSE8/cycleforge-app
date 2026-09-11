@@ -119,6 +119,21 @@ export const STATION_GROUPS = [
 }>;
 
 /**
+ * MasterNav parent for pointer desks — the Scan Stations twin, not a domain.
+ *
+ * Wave 2 paints this as an in-place collapsible on the spine.
+ */
+export type DeskGroupId = 'desks';
+
+export const DESK_GROUPS = [
+  { id: 'desks', label: 'Workspaces', icon: LayoutDashboard },
+] as const satisfies ReadonlyArray<{
+  id: DeskGroupId;
+  label: string;
+  icon: SidebarIconComponent;
+}>;
+
+/**
  * Main category ids under the spine — Operations, then Studio and Admin at the
  * end of the map.
  *
@@ -136,7 +151,7 @@ export type MainGroupId = 'monitor' | 'studio' | 'admin';
  */
 export const MAIN_GROUPS = [
   { id: 'monitor', label: 'Operations', icon: ChartPie },
-  { id: 'studio', label: 'Operations Studio', icon: Workflow },
+  { id: 'studio', label: 'Automations', icon: Workflow },
   { id: 'admin', label: 'Admin', icon: ShieldCheck },
 ] as const satisfies ReadonlyArray<{
   id: MainGroupId;
@@ -249,7 +264,7 @@ export const SPINE_SECTIONS = [
   DOMAIN_GROUPS[4], // Sourcing
   DOMAIN_GROUPS[5], // Products
   DOMAIN_GROUPS[6], // Inventory
-  MAIN_GROUPS[1], // Operations Studio
+  MAIN_GROUPS[1], // Automations
   MAIN_GROUPS[2], // Admin
 ] as const;
 
@@ -288,12 +303,26 @@ type SidebarNavItemFields = {
    */
   requires?: string;
   /**
+   * Extra terms that should find this page in ⌘K, beyond its label and href.
+   * Not a synonym dump: every entry is a word someone would really type.
+   */
+  keywords?: string[];
+  /**
    * `kind: 'top'` only. When `false`, the pin stays in the registry (⌘K,
    * dest search, deep links) but is not painted as a spine map row.
    * Omit / `true` = paint Home / Media Library at the top of the map.
    * Parked surfaces (Search, Plans, Chat, Settings) use `false`.
    */
   spineBand?: boolean;
+  /**
+   * Render this L1 as a single flat map row even though it declares `children`.
+   * Children stay live for ⌘K, the header Mode switcher and deep links.
+   */
+  spineFlat?: boolean;
+  /**
+   * Hide unless the active organization is a sandbox tenant.
+   */
+  sandboxOnly?: boolean;
 };
 
 /**
@@ -382,7 +411,7 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // {@link isSidebarTopPinActive} if the glyph returns.
   { id: 'home',              label: 'Home',           href: '/',                   icon: Home,            kind: 'top' },
   { id: 'search',            label: 'Search',         href: '/search',             icon: Search,          kind: 'top', spineBand: false },
-  { id: 'ops-photos',        label: 'Media Library',  href: '/ops/photos',         icon: Images,          kind: 'top', requires: 'photos.view' },
+  { id: 'ops-photos',        label: 'Media Library',  href: '/ops/photos',         icon: Images,          kind: 'top', requires: 'photos.view', keywords: ['photos', 'photo library', 'images', 'assets', 'gallery'] },
   // Plans — live master-plan console (Home forge). Same landing as `/forge`.
   { id: 'plans-live',        label: 'Plans',          href: '/?mode=forge&view=live', icon: Zap,           kind: 'top', spineBand: false, requires: 'operations.plans.view' },
   // Chat — streaming assistant workspace; `/ai` shares it.
@@ -400,7 +429,7 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // Quality Control + Ready to Pack are first-class Scan Stations rows (no
   // parent Testing). Route key still resolves to `tech` for the shared panel.
   { id: 'testing',           label: 'Quality Control', href: '/test?view=testing', icon: TECH_NAV_ICONS.testing,  kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view' },
-  { id: 'ready-to-pack',     label: 'Ready to Pack',   href: '/test',               icon: TECH_NAV_ICONS.shipping, kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view' },
+  { id: 'ready-to-pack',     label: 'Picker',          href: '/test?ship=urgent',    icon: TECH_NAV_ICONS.shipping, kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view' },
   // Points at the first-class Pack surface (`/pack`) so the primary nav lands on
   // the canonical URL without a redirect hop. Route key still resolves to
   // 'packer' (reuses the packer panel), so the item stays active on /pack + /packer.
@@ -444,10 +473,10 @@ export const APP_SIDEBAR_NAV: SidebarNavItem[] = [
   // stations do, and stays desktop-only (mobile-restricted).
   { id: 'support',           label: 'Support',     href: '/support',            icon: AlertCircle,     kind: 'domain', domainGroup: 'support', requires: 'integrations.zendesk' },
   // ── End of map (was footer pins) ──────────────────────────────────────────
-  // Workflow Studio — canvas definition graph. Catalog sub-route is an L2
-  // child in SIDEBAR_PAGE_NAV (⌘K / header Mode / URL). Desktop-only
-  // (pan/zoom canvas); MOBILE_RESTRICTED_SIDEBAR_IDS enforces.
-  { id: 'studio',            label: 'Operations Studio', href: '/studio',         icon: Workflow,        kind: 'main', mainGroup: 'studio', requires: 'studio.view' },
+  // Automations (href stays /studio). Catalog sub-route is an L2 child in
+  // SIDEBAR_PAGE_NAV (⌘K / header Mode / URL). Desktop-only (pan/zoom canvas);
+  // MOBILE_RESTRICTED_SIDEBAR_IDS enforces.
+  { id: 'studio',            label: 'Automations', href: '/studio',         icon: Workflow,        kind: 'main', mainGroup: 'studio', requires: 'studio.view', spineFlat: true },
   // Audit Log is no longer a top-level sidebar row — it lives under Admin › Logs
   // (AdminLogsTab, with the Audit filter). The /settings/audit and /audit-log/*
   // routes still resolve directly; only the nav row was removed.
@@ -467,10 +496,12 @@ export interface GetSidebarNavItemsOpts {
    * is applied — preserves legacy behavior for the rollout window.
    */
   permissions?: ReadonlySet<string>;
+  /** Active org environment. Sandbox-only items hide unless this is 'sandbox'. */
+  organizationEnvironment?: 'sandbox' | 'customer' | null;
 }
 
 export function getSidebarNavItems(opts: GetSidebarNavItemsOpts = {}): SidebarNavItem[] {
-  const { mobileRestricted = false, permissions } = opts;
+  const { mobileRestricted = false, permissions, organizationEnvironment } = opts;
   let items: SidebarNavItem[] = APP_SIDEBAR_NAV;
   if (mobileRestricted) {
     items = items.filter((item) => !isSidebarRouteMobileRestricted(item.id as SidebarRouteKey));
@@ -482,6 +513,7 @@ export function getSidebarNavItems(opts: GetSidebarNavItemsOpts = {}): SidebarNa
   if (permissions) {
     items = items.filter((item) => !item.requires || permissions.has(item.requires));
   }
+  items = items.filter((item) => !item.sandboxOnly || organizationEnvironment === 'sandbox');
   return items;
 }
 
@@ -561,6 +593,23 @@ export function isRaillessSurface(
   ) {
     return true;
   }
+  // Locations Labels + Bays: room pick is inline in the main builder — no left
+  // context rail (operator 2026-09-10). Rooms / Bins / Map keep the rail.
+  // Callers: ContextPanelLayout via useIsRaillessSurface. No data schemas.
+  // User: "Ensure that the left sidebar component is actually removed. It's
+  // still showing usavsolutions inv"
+  if (
+    pathname === '/inventory/locations' ||
+    pathname.startsWith('/inventory/locations/') ||
+    pathname === '/warehouse' ||
+    pathname.startsWith('/warehouse/')
+  ) {
+    const tab = String(searchParams?.get('tab') ?? '').trim().toLowerCase();
+    // Default tab is labels when `?tab=` is omitted (parseLocationsTab).
+    if (!tab || tab === 'labels' || tab === 'bays' || tab === 'racks') {
+      return true;
+    }
+  }
   // Support keeps ONE left column: Tickets recents. Voicemail / Calls /
   // Warranty / Issues pick from the stage itself (same as the <md path).
   if (pathname === '/support' || pathname.startsWith('/support/')) {
@@ -625,7 +674,9 @@ const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
   'operations',
   'studio',
   'ai-chat',
-  'settings',
+  // `settings` DROPPED 2026-09-10 — Pattern E card landing + /settings/me.
+  // Roles/Access still need their picker rails; those paths are special-cased
+  // in hasSidebarContextPanel below (the route key stays `settings`).
   'audit-log',
   'fba',
   'inventory',
@@ -650,6 +701,9 @@ const CONTEXT_PANEL_ROUTE_KEYS = new Set<SidebarRouteKey>([
 
 /** True when this route's spine holds a context panel — see {@link CONTEXT_PANEL_ROUTE_KEYS}. */
 export function hasSidebarContextPanel(pathname: string | null): boolean {
+  // Roles / Access still mount picker sidebars; overview settings is railless.
+  if (pathname === '/settings/roles' || pathname?.startsWith('/settings/roles/')) return true;
+  if (pathname === '/settings/access' || pathname?.startsWith('/settings/access/')) return true;
   return CONTEXT_PANEL_ROUTE_KEYS.has(getSidebarRouteKey(pathname));
 }
 
@@ -781,6 +835,41 @@ export function getSidebarNavPageId(
   return getSidebarRouteKey(pathname);
 }
 
+/**
+ * MasterNav L1 row ({@link APP_SIDEBAR_NAV}) for a page id.
+ * Desk children and legacy `SIDEBAR_PAGE_NAV` family pages (`tech`, `receiving`)
+ * are not faces — Recents, Pins, and chrome titles must use this, not a
+ * parallel title map.
+ */
+export function getMasterNavItem(pageId: string): SidebarNavItem | undefined {
+  if (!pageId || pageId === 'unknown') return undefined;
+  return APP_SIDEBAR_NAV.find((item) => item.id === pageId);
+}
+
+export function masterNavItemForPath(
+  pathname: string | null,
+  searchParams?: Pick<URLSearchParams, 'get'> | null,
+): SidebarNavItem | undefined {
+  return getMasterNavItem(getSidebarNavPageId(pathname, searchParams ?? null));
+}
+
+/** Path + query → live MasterNav L1 label (`Shipping`, `Scan out`, `Media Library`). */
+export function masterNavLabelForPath(
+  pathname: string | null,
+  searchParams?: Pick<URLSearchParams, 'get'> | null,
+): string {
+  return masterNavItemForPath(pathname, searchParams)?.label ?? 'Home';
+}
+
+export function masterNavItemForHref(href: string): SidebarNavItem | undefined {
+  try {
+    const url = new URL(href, 'http://local');
+    return masterNavItemForPath(url.pathname, url.searchParams);
+  } catch {
+    return undefined;
+  }
+}
+
 function getFirstPathSegment(path: string): string {
   const [segment = ''] = path.split('/').filter(Boolean);
   // Normalize the Packing surface aliases (`/pack`, `/packer`, `/packers`) to a
@@ -844,6 +933,23 @@ export function isSidebarTopPinActive(
  */
 export function isSpineMapTopRow(item: SidebarNavItem): boolean {
   return item.kind === 'top' && item.spineBand !== false;
+}
+
+/**
+ * Pointer desk on the MasterNav map — domain rows plus Operations (monitor).
+ * Floor benches, Studio, and Admin are not desks.
+ */
+export function isSpineDeskItem(
+  item: Pick<SidebarNavItem, 'kind'> & { mainGroup?: MainGroupId },
+): boolean {
+  if (item.kind === 'domain') return true;
+  return item.kind === 'main' && item.mainGroup === 'monitor';
+}
+
+/** Section ids that belong in the Workspaces family (not Scan Stations / Studio / Admin). */
+export function isDeskSpineSection(id: SpineSectionId | null): boolean {
+  if (!id || id === 'floor' || id === 'studio' || id === 'admin') return false;
+  return true;
 }
 
 /** @deprecated Prefer {@link isSpineMapTopRow} — the spine band icons are gone. */
@@ -1227,7 +1333,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view',
   },
   {
-    id: 'ready-to-pack', label: 'Ready to Pack', href: TECH, icon: TECH_NAV_ICONS.shipping,
+    id: 'ready-to-pack', label: 'Picker', href: `${TECH}?ship=urgent`, icon: TECH_NAV_ICONS.shipping,
     kind: 'station', stationGroup: 'floor', stationSubgroup: 'testing', requires: 'tech.view',
   },
   // ── Inbound (Manage Inbound) ──────────────────────────────────────────────
@@ -1519,7 +1625,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       { id: 'pulse',     label: 'Pulse',     icon: TrendingUp, to: () => ({ pathname: `${INVENTORY}/pulse`, params: {} }) },
       { id: 'graph',     label: 'Graph',     icon: Layers,     to: () => ({ pathname: `${INVENTORY}/graph`, params: {} }) },
       { id: 'replenish', label: 'Replenish', icon: History,    to: () => ({ pathname: INVENTORY, params: { section: 'replenish' } }) },
-      // Former Locations L1 (`/warehouse`) — nested Bin Tags · Racks · Rooms · Bins · Map.
+      // Former Locations L1 (`/warehouse`) — nested Bin Tags · Bays · Rooms · Bins · Map.
       { id: 'locations', label: 'Locations', icon: Warehouse,  to: () => ({ pathname: `${INVENTORY}/locations`, params: {} }) },
     ],
     resolveChild: ({ pathname, params }) => {
@@ -1551,7 +1657,7 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
     id: 'tech', label: 'Testing', href: TECH, icon: STATION_PAGE_ICONS.tech, kind: 'station', stationGroup: 'floor', requires: 'tech.view',
     children: [
       { id: 'testing',  label: 'Quality Control', icon: TECH_NAV_ICONS.testing,  to: () => ({ pathname: TECH, params: { view: 'testing' } }) },
-      { id: 'shipping', label: 'Ready to Pack',   icon: TECH_NAV_ICONS.shipping, to: () => ({ pathname: TECH, params: { view: null } }) },
+      { id: 'shipping', label: 'Picker',          icon: TECH_NAV_ICONS.shipping, to: () => ({ pathname: TECH, params: { view: null, ship: 'urgent' } }) },
     ],
     resolveChild: ({ params }) =>
       params.get('view') === 'testing' || params.get('view') === 'testing-history'
@@ -1643,16 +1749,16 @@ export const SIDEBAR_PAGE_NAV: SidebarPageNav[] = [
       return 'tickets';
     },
   },
-  // ── Operations Studio (map L1) ────────────────────────────────────────────
+  // ── Automations (map L1) ──────────────────────────────────────────────────
   // Studio is an ordinary map row (2026-08-29). `/studio/catalog` stays a named
   // L2 child for ⌘K, the header Mode switcher, and the URL. Face matches
-  // SIDEBAR_TITLES.studio.
+  // SIDEBAR_TITLES.studio. Href stays /studio (not /automations).
   //
   // Modes are SUB-PATHS, not `?params`, so `to()` names a pathname and sets no
   // delta — `/studio` and `/studio/catalog` are two routes, not two views of one.
   {
-    id: 'studio', label: 'Operations Studio', href: '/studio', icon: Workflow,
-    kind: 'main', mainGroup: 'studio', requires: 'studio.view',
+    id: 'studio', label: 'Automations', href: '/studio', icon: Workflow,
+    kind: 'main', mainGroup: 'studio', requires: 'studio.view', spineFlat: true,
     children: [
       { id: 'graph',   label: 'Studio',  icon: Share2,  to: () => ({ pathname: '/studio' }) },
       { id: 'catalog', label: 'Catalog', icon: Layers,  to: () => ({ pathname: '/studio/catalog' }) },
@@ -1674,7 +1780,7 @@ export function getSidebarPageNav(pageId: string): SidebarPageNav | undefined {
 
 /**
  * Ordered first-class Scan Stations benches — the same flat map MasterNav
- * drills into and the header page switcher lists.
+ * lists under the Stations disclosure and the header page switcher lists.
  *
  * Pass a pre-filtered page list (e.g. permission-scoped floor pages). When
  * omitted, members are {@link SIDEBAR_PAGE_NAV} ∩ {@link APP_SIDEBAR_NAV} in

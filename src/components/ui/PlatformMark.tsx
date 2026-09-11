@@ -1,39 +1,32 @@
 /**
- * Fixed-width platform mark — listing chrome uses this instead of the
- * variable-width platform name so PO# / tracking chips stay aligned across
- * marketplaces. Mark resolution (all from {@link sourcePlatformMeta} or a
- * catalog-aware {@link meta} override):
- *   1. optional brand tile (`SourcePlatformMeta.tileSrc`) when `preferBrandTile`;
- *   2. 1–2 char lettermark.
- * Identity color in menus and order columns is {@link BrandIdentityDot}, not
- * this glyph. There is no SVG brand-path layer.
+ * Fixed-width platform identity — a colored {@link BrandIdentityDot}-shaped
+ * fill, never EB / AM / az lettermarks and never a brand tile.
  *
+ * Same 20px footprint as the old glyph so PO# / tracking chips stay aligned.
  * Label lives in tooltip / aria — the mark itself is always `aria-hidden`.
+ *
+ * Cannot import {@link BrandIdentityDot} from `grid-cells` (that file imports
+ * this). Paint is the same 6px rounded fill via {@link platformMetaBrandDot}.
  */
 
 import { cn } from '@/utils/_cn';
 import {
-  platformMetaIconTone,
+  platformMetaBrandDot,
   sourcePlatformMeta,
   type SourcePlatformMeta,
 } from '@/lib/source-platform';
-import { platformPaintFromHex } from '@/lib/color-contrast';
 
-/** Shared transparent footprint — tile / lettermark all center here. */
-const MARK_BOX =
-  'inline-flex h-5 w-5 shrink-0 items-center justify-center text-role-micro uppercase leading-none tracking-tight';
-
-/** Inner mark footprint — ~16px so tiles stay scannable without extra pad. */
-const MARK_INNER = 'h-4 w-4 shrink-0';
+/** Shared footprint — callers sized around the old 20px glyph box. */
+const MARK_BOX = 'inline-flex h-5 w-5 shrink-0 items-center justify-center';
 
 export function PlatformMark({
   platformValue,
   meta: metaOverride,
   className,
-  textClassName,
-  borderClassName,
+  textClassName: _textClassName,
+  borderClassName: _borderClassName,
   empty = false,
-  preferBrandTile = false,
+  preferBrandTile: _preferBrandTile = false,
 }: {
   /** Stored `source_platform` value (or empty for unknown / unbound). */
   platformValue?: string | null;
@@ -43,57 +36,26 @@ export function PlatformMark({
    */
   meta?: SourcePlatformMeta;
   className?: string;
-  /** Override tone — when the listing has no openable target, pass faint tones. */
+  /** Kept for call-site stability. Ink now comes from {@link platformMetaBrandDot}. */
   textClassName?: string;
   borderClassName?: string;
   /** Unbound listing placeholder (no platform yet). */
   empty?: boolean;
-  /**
-   * Prefer full-color {@link SourcePlatformMeta.tileSrc} when present (carton
-   * listing). Grids omit this and keep the lettermark.
-   */
+  /** Kept for call-site stability. Tiles are gone; identity is a colored dot. */
   preferBrandTile?: boolean;
 }) {
   const meta = metaOverride ?? sourcePlatformMeta(platformValue);
-  const iconTone = platformMetaIconTone(meta);
-  const paint = meta.accentHex ? platformPaintFromHex(meta.accentHex) : null;
-  // ds-allow-hex: org platform accent from platforms.color_hex — ink via color-contrast SoT.
+  const brandDot =
+    empty || !meta.value
+      ? { className: 'bg-border-emphasis' as const, style: undefined }
+      : platformMetaBrandDot(meta);
 
-  if (empty || !meta.value) {
-    return (
-      <span className={cn(MARK_BOX, 'text-text-faint', className)} aria-hidden>
-        <span className="border-b-2 border-border-default pb-px">—</span>
-      </span>
-    );
-  }
-  if (preferBrandTile && meta.tileSrc) {
-    return (
-      <span className={cn(MARK_BOX, className)} aria-hidden>
-        {/* eslint-disable-next-line @next/next/no-img-element -- static public brand tile */}
-        <img
-          src={meta.tileSrc}
-          alt=""
-          width={16}
-          height={16}
-          className={cn(MARK_INNER, 'rounded-sm object-cover')}
-          draggable={false}
-        />
-      </span>
-    );
-  }
-  const toneClass = textClassName ?? iconTone.className;
   return (
-    <span
-      className={cn(MARK_BOX, paint || iconTone.style ? undefined : toneClass, className)}
-      style={paint ? { color: paint.accent } : iconTone.style}
-      aria-hidden
-    >
+    <span className={cn(MARK_BOX, className)} aria-hidden>
       <span
-        className={cn('border-b-2 pb-px', paint ? undefined : (borderClassName ?? meta.border))}
-        style={paint ? { borderColor: paint.border } : undefined}
-      >
-        {meta.mark}
-      </span>
+        className={cn('inline-block h-1.5 w-1.5 shrink-0 rounded-full', brandDot.className)}
+        style={brandDot.style}
+      />
     </span>
   );
 }

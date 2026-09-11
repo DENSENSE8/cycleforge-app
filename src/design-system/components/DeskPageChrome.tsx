@@ -273,25 +273,23 @@ export function DeskPageChrome({
               )}
             >
               {/*
-                First tab is `pl-0` so its LABEL shares the title's left edge
-                without pulling the tablist off the row. A `-ml-3` on this
-                tablist used to cancel `px-3`, but the active tab's `border-b`
-                is on the HIT box — so the selection hung 12px left of the
-                row's hairline (operator 2026-08-31).
+                Every tab keeps `px-3` — padding lives INSIDE the name, so the
+                active underline (the hit box's `border-b`) has air on both
+                sides of the letters. `first:pl-0` flushed Counter against the
+                rule. Do not pull the tablist with `-ml-3` to fake title
+                alignment: that hung the selection 12px left of the row
+                hairline (operator 2026-08-31).
               */}
               {/*
                 Same-axis overflow, abutting the tablist with no gap — it reads
                 as the head of the tab vocabulary rather than a control beside
-                it. When present it also takes the row's left edge, so the
-                first tab drops its `first:pl-0` alignment claim to the lead.
+                it. When present it takes the row's left edge; tabs still
+                keep their own `px-3`.
               */}
               {tabsLead}
               <div
                 role="tablist"
-                className={cn(
-                  'flex min-w-0 flex-1 items-stretch gap-1',
-                  tabsLead && '[&>button:first-child]:pl-3',
-                )}
+                className="flex min-w-0 flex-1 items-stretch gap-1"
               >
                 {tabs.map((tab) => {
                   const active = tab.id === activeTab;
@@ -305,7 +303,7 @@ export function DeskPageChrome({
                       data-testid={`desk-tab-${tab.id}`}
                       data-active={active ? '' : undefined}
                       className={cn(
-                        'ds-raw-button inline-flex shrink-0 items-center gap-1 px-3 first:pl-0 text-role-caption',
+                        'ds-raw-button inline-flex shrink-0 items-center gap-1 px-3 text-role-caption',
                         /*
                           Selection IS the rule, not a bar above it.
                           `DESK_TAB_ROW_CLASS` draws the full-width hairline on

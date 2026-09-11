@@ -56,15 +56,26 @@ export function useKeyboard(options: UseKeyboardOptions = {}) {
 
     baselineRef.current = window.innerHeight;
 
-    const handleResize = () => {
+    const measure = () => {
       const baseline = baselineRef.current;
+      const layoutHeight = window.innerHeight;
       const visible = vv.height;
-      const diff = baseline - visible;
-      const isOpen = diff > threshold;
+      // iOS often scrolls the visual viewport (`offsetTop`) without shrinking
+      // `innerHeight`. Ignoring it over-counts the obscured band and parks a
+      // `bottom: keyboardHeight` bar with a dead gap above the keys.
+      const obscured = Math.max(0, layoutHeight - visible - vv.offsetTop);
+      const layoutShrink = Math.max(0, baseline - layoutHeight);
+      // Overlay keyboards shrink the visual viewport; `resizes-content` shrinks
+      // the layout viewport instead. Either means the keys are up.
+      const isOpen = obscured > threshold || layoutShrink > threshold;
+      // Only the overlay inset is useful for `position: fixed; bottom: …`.
+      // When the layout itself resized, a bottom-anchored sheet is already flush
+      // — lifting by `layoutShrink` would double-count and leave a gap.
+      const keyboardHeight = obscured > threshold ? obscured : 0;
 
       setState({
         isKeyboardOpen: isOpen,
-        keyboardHeight: isOpen ? diff : 0,
+        keyboardHeight,
         visibleHeight: visible,
       });
 
@@ -87,18 +98,24 @@ export function useKeyboard(options: UseKeyboardOptions = {}) {
       }
     };
 
-    vv.addEventListener('resize', handleResize);
+    vv.addEventListener('resize', measure);
+    // Focus often scrolls the visual viewport without a resize — keep the bar
+    // glued to the keys while `offsetTop` moves.
+    vv.addEventListener('scroll', measure);
+    measure();
 
     // Recalculate baseline after orientation change (layout needs time to settle).
     const handleOrientation = () => {
       setTimeout(() => {
         baselineRef.current = window.innerHeight;
+        measure();
       }, 300);
     };
     window.addEventListener('orientationchange', handleOrientation);
 
     return () => {
-      vv.removeEventListener('resize', handleResize);
+      vv.removeEventListener('resize', measure);
+      vv.removeEventListener('scroll', measure);
       window.removeEventListener('orientationchange', handleOrientation);
     };
   }, [centerOnFocus, threshold]);

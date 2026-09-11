@@ -4,7 +4,8 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { History, Loader2, MapPin, Package } from '@/components/Icons';
 import { getLast8, SerialChip, SkuScanRefChip } from '@/components/ui/CopyChip';
-import { EventRow } from './EventRow';
+import { DataTable } from '@/components/tables/DataTable';
+import { useInventoryEventsSpreadsheet } from './events-grid/useInventoryEventsSpreadsheet';
 import { unitStatusBadgeClass } from '@/lib/unit-status';
 import type { PulseEventRow, PulseEventsResponse } from './types';
 import { cn } from '@/utils/_cn';
@@ -46,6 +47,15 @@ export function PulseWorkspace({ unitId }: PulseWorkspaceProps) {
     const productTitle = events.find((e) => e.product_title)?.product_title ?? null;
     const heroTitle = productTitle || serial || `Unit #${unitId}`;
 
+    // Above the early returns: the ledger's feed is a hook, and a hook may not
+    // sit behind a conditional.
+    const sheet = useInventoryEventsSpreadsheet({
+        events,
+        loading: isLoading,
+        emptyMessage: 'No recorded events for this unit yet.',
+        searchPlaceholder: "Filter this unit's events…",
+    });
+
     if (!unitId) {
         return (
             <div className="flex h-full w-full items-center justify-center bg-surface-canvas text-text-faint">
@@ -69,7 +79,7 @@ export function PulseWorkspace({ unitId }: PulseWorkspaceProps) {
     if (isError) {
         return (
             <div className="flex h-full w-full items-center justify-center bg-surface-canvas">
-                <div className="mx-6 rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                <div className="mx-6 rounded-md border border-border-danger bg-surface-danger px-4 py-3 text-sm text-text-danger">
                     {error instanceof Error ? error.message : 'Failed to load unit history.'}
                 </div>
             </div>
@@ -116,9 +126,9 @@ export function PulseWorkspace({ unitId }: PulseWorkspaceProps) {
                             <p className="text-role-micro uppercase tracking-[0.2em] text-text-faint">
                                 Last known location
                             </p>
-                            <div className="flex items-center gap-2 rounded-2xl border border-orange-100 bg-orange-50 px-4 py-2">
-                                <MapPin className="h-4 w-4 text-orange-600" />
-                                <span className="font-mono text-sm font-semibold text-orange-700">
+                            <div className="flex items-center gap-2 rounded-2xl border border-border-warning bg-surface-warning px-4 py-2">
+                                <MapPin className="h-4 w-4 text-text-warning" />
+                                <span className="font-mono text-sm font-semibold text-text-warning">
                                     {currentLocation}
                                 </span>
                             </div>
@@ -132,17 +142,9 @@ export function PulseWorkspace({ unitId }: PulseWorkspaceProps) {
                     <span className="font-semibold text-text-faint">· {events.length} events</span>
                 </h2>
 
-                {events.length === 0 ? (
-                    <div className="rounded-2xl border border-dashed border-border-soft bg-surface-canvas px-4 py-12 text-center text-sm text-text-faint">
-                        No recorded events for this unit yet.
-                    </div>
-                ) : (
-                    <ul role="list" className="overflow-hidden rounded-2xl border border-border-hairline">
-                        {events.map((event) => (
-                            <EventRow key={event.id} event={event} />
-                        ))}
-                    </ul>
-                )}
+                <div className="flex min-h-0 flex-1 flex-col">
+                    <DataTable {...sheet} />
+                </div>
             </div>
         </div>
     );

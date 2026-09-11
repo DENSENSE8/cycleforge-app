@@ -10,6 +10,8 @@
  * GLN now comes from `useOrgGs1()`; these counts stay local because a warehouse
  * layout genuinely is a property of the machine you build labels on.
  */
+import { LOCATION_BAY_LABEL } from '@/lib/barcode-routing';
+
 export interface PrinterConfig {
   maxAisles: number;
   maxBays: number;
@@ -38,7 +40,7 @@ export type Step = 'zone' | 'aisle' | 'bay' | 'level' | 'position';
 export const STEPS: { id: Step; label: string }[] = [
   { id: 'zone', label: 'Zone' },
   { id: 'aisle', label: 'Aisle' },
-  { id: 'bay', label: 'Bay' },
+  { id: 'bay', label: LOCATION_BAY_LABEL },
   { id: 'level', label: 'Level' },
   { id: 'position', label: 'Position' },
 ];

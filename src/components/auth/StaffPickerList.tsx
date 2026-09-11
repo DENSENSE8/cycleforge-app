@@ -186,11 +186,13 @@ export function StaffPickerList({ recent = [], recentReady = true, onPick, onMes
         </Group>
       )}
       {hasRecent && !showAll && otherRows.length > 0 && (
-        // ds-raw-button: inline disclosure to reveal the full staff roster
+        // ds-raw-button: inline disclosure to reveal the full staff roster.
+        // Outline is inset so a parent overflow-y-auto cannot clip it
+        // (CSS turns overflow-x to auto whenever overflow-y is not visible).
         <button
           type="button"
           onClick={() => setShowAll(true)}
-          className="ds-raw-button group flex w-full items-center justify-center gap-1.5 rounded-2xl border border-border-soft bg-surface-card/80 px-3.5 py-2.5 text-role-caption font-semibold text-text-soft shadow-sm shadow-gray-900/[0.03] backdrop-blur-sm transition hover:border-border-default hover:text-text-default"
+          className="ds-raw-button group flex w-full items-center justify-center gap-1.5 rounded-2xl bg-surface-card/80 px-3.5 py-2.5 text-role-caption font-semibold text-text-soft ring-1 ring-inset ring-border-soft backdrop-blur-sm transition hover:ring-border-default hover:text-text-default"
         >
           More
           <span className="text-text-faint">·</span>

@@ -1,5 +1,6 @@
 import type { ShippedOrder } from '@/types/orders';
 import type { Order } from '@/components/station/upnext/upnext-types';
+import type { SearchSelection } from '@/lib/search/search-selection';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import type { ReceivingDetailsLog } from '@/components/station/receiving-details-log';
 import { emitReceiving } from '@/components/receiving/receiving-events';
@@ -127,6 +128,7 @@ export function dispatchSkuStockDesktopScanner(): void {
  */
 export type UpNextPreviewPayload =
   | { kind: 'order'; order: Order }
+  | { kind: 'find'; sel: SearchSelection }
   | null;
 
 export function dispatchUpNextPreview(payload: UpNextPreviewPayload): void {

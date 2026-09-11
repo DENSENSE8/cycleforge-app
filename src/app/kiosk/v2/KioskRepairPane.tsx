@@ -248,6 +248,7 @@ export function KioskRepairPane({ selectedProduct, price, onBack }: KioskRepairP
                   phone: formData.customer.phone,
                   name: formData.customer.name,
                   email: formData.customer.email,
+                  address: '',
                 }}
                 onChange={(next) => {
                   updateCustomer('phone', next.phone);

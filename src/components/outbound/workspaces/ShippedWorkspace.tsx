@@ -45,10 +45,8 @@ export function ShippedWorkspace() {
   }, []);
 
   return (
-    <div className="flex min-h-0 w-full flex-1">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <DashboardShippedTable />
-      </div>
+    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">
+      <DashboardShippedTable />
       <DashboardOrderDetails
         detailsEnabled
         selectedShipped={selectedShipped}

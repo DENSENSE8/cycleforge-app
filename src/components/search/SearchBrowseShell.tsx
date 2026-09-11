@@ -130,7 +130,7 @@ export function SearchBrowseShell({
   /**
    * Alias-seed the numeric pk key once a token resolves. This is NOT part of
    * the waist — it is the same cross-key write `GlobalFindCombobox` does, and
-   * it is what lets `SearchOrderStationPane` (keyed by `sel=order:{pk}`, a
+   * it is what lets `SearchOrderDossier` (keyed by `sel=order:{pk}`, a
    * different token than the operator typed) paint from memory instead of
    * re-fetching the order it was just handed.
    */

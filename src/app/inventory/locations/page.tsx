@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { LocationsWorkspace } from '@/components/warehouse/LocationsWorkspace';
 import { LoadingSpinner } from '@/components/ui/LoadingSpinner';
 
-/** `/inventory/locations` — Bin Tags · Racks · Rooms · Bins · Map (former `/warehouse`). */
+/** `/inventory/locations` — Bin Tags · Bays · Rooms · Bins · Map (former `/warehouse`). */
 export default function InventoryLocationsPage() {
   return (
     <div className="flex h-full min-h-0 flex-col">

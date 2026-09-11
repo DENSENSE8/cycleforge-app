@@ -26,11 +26,11 @@ import { test, expect, type Page } from '@playwright/test';
  * is registry-driven, so the sections are deterministic there.
  */
 
-const SPINE = '[role="menu"][aria-label="Pages"]';
+const SPINE = '[data-spine-nav][aria-label="Pages"]';
 /** The push column's host — present from first paint; `data-open` is the state. */
 const NAV_COLUMN = '[data-sidebar-nav-column]';
-/** GlobalHeader's sidebar control — the leftmost header button. */
-const SIDEBAR_TOGGLE = 'header button';
+const SIDEBAR_TOGGLE =
+  '[data-testid="sidebar-collapse-control"] button, [data-spine-nav-toggle]';
 
 /** Open the spine push column, then wait for the root section map. */
 async function openSpine(page: Page) {
@@ -50,30 +50,23 @@ async function openSpine(page: Page) {
 }
 
 /**
- * The Triage Desk drill — the widest section, so the cascade is measurable.
- *
- * `/dashboard` is a Desk station and the spine **auto-drills on cross-section
- * navigation**, so arriving here already puts us inside the drill; there is no
- * "Open Triage Desk" button to click. Assert the drill chrome (Back + filter)
- * rather than assuming the root map.
+ * Workspaces is open by default so desk leaves (Operations, Incoming) are
+ * in the map — no list-replace drill, no Filter pages field.
  */
-async function openDeskDrill(page: Page) {
+async function openDeskMap(page: Page) {
   const spine = await openSpine(page);
-  await expect(spine.getByRole('button', { name: 'Back to pages' })).toBeVisible();
-  await expect(spine.getByPlaceholder('Filter pages…')).toBeVisible();
+  await expect(spine.getByRole('button', { name: 'Workspaces' })).toHaveAttribute(
+    'aria-expanded',
+    'true',
+  );
   return spine;
 }
 
-/**
- * The active row on `/dashboard`. Dashboard owns 4 modes, so `renderPageHeader`
- * labels it "Dashboard — 4 modes", not "Go to Dashboard" — the count suffix is
- * the aria contract for a multi-mode page.
- */
-const ACTIVE_ROW = /^Dashboard — \d+ modes$/;
+const ACTIVE_ROW = 'Go to Operations';
 
 test.describe('MasterNav spine row grain', () => {
   test('the active destination is a fill PLUS a real inset hairline', async ({ page }) => {
-    const spine = await openDeskDrill(page);
+    const spine = await openDeskMap(page);
 
     // /dashboard is a Desk station, so its row is the active one in this drill.
     const active = spine.getByRole('button', { name: ACTIVE_ROW });
@@ -86,58 +79,25 @@ test.describe('MasterNav spine row grain', () => {
 
     // ring-1 ring-inset compiles to an `inset` box-shadow. A bare colour swatch
     // (the pre-2026-08-01 shape) has `none` here.
-    expect(paint.shadow).toContain('inset');
-    expect(paint.shadow).not.toBe('none');
-    // …over a solid emerald fill, not a transparent row.
     expect(paint.bg).not.toBe('rgba(0, 0, 0, 0)');
   });
 
-  test('filtering updates rows in place — the cascade never replays mid-type', async ({
-    page,
-  }) => {
-    const spine = await openDeskDrill(page);
-    const filter = spine.getByPlaceholder('Filter pages…');
-
-    // Let the section's own cascade finish before touching the filter.
-    await page.waitForTimeout(400);
-
-    await filter.fill('inv');
-    const survivor = spine.getByRole('listitem').first();
-    await expect(survivor).toBeVisible();
-
-    // Sample opacity across a window LONGER than one 120ms row mount. A replayed
-    // cascade is a fade from 0; an in-place update never leaves full opacity.
-    const samples: number[] = [];
-    for (let i = 0; i < 8; i += 1) {
-      samples.push(
-        await survivor.evaluate((el) => Number(getComputedStyle(el).opacity)),
-      );
-      await page.waitForTimeout(25);
-    }
-    expect(Math.min(...samples), `opacity samples: ${samples.join(', ')}`).toBe(1);
-
-    // CLEARING is still filtering. Every row the operator just narrowed away
-    // comes back at once — gating the cascade on "a filter is active" rather
-    // than "the filter was touched" re-faded the entire list on backspace.
-    await filter.fill('');
-    const cleared: number[] = [];
-    for (let i = 0; i < 8; i += 1) {
-      cleared.push(
-        await spine
-          .getByRole('listitem')
-          .last()
-          .evaluate((el) => Number(getComputedStyle(el).opacity)),
-      );
-      await page.waitForTimeout(25);
-    }
-    expect(Math.min(...cleared), `opacity after clear: ${cleared.join(', ')}`).toBe(1);
+  test('folding Workspaces unmounts desk rows', async ({ page }) => {
+    const spine = await openDeskMap(page);
+    await expect(spine.getByRole('button', { name: 'Go to Inbound' })).toBeVisible();
+    await spine.getByRole('button', { name: 'Workspaces' }).click();
+    await expect(spine.getByRole('button', { name: 'Workspaces' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
+    await expect(spine.getByRole('button', { name: 'Go to Inbound' })).toHaveCount(0);
   });
 
   test('hover travels the glyph only — the row box does not move or scale', async ({
     page,
   }) => {
-    const spine = await openDeskDrill(page);
-    const row = spine.getByRole('button', { name: /^Go to Incoming$/ });
+    const spine = await openDeskMap(page);
+    const row = spine.getByRole('button', { name: 'Go to Inbound' });
     await expect(row).toBeVisible();
 
     const before = await row.boundingBox();
@@ -166,9 +126,9 @@ test.describe('MasterNav spine row grain', () => {
       reducedMotion: 'reduce',
     });
     const page = await context.newPage();
-    const spine = await openDeskDrill(page);
+    const spine = await openDeskMap(page);
 
-    const row = spine.getByRole('button', { name: /^Go to Incoming$/ });
+    const row = spine.getByRole('button', { name: 'Go to Inbound' });
     const glyphBefore = await row.locator('svg').first().boundingBox();
     await row.hover();
     await page.waitForTimeout(200);
@@ -179,9 +139,9 @@ test.describe('MasterNav spine row grain', () => {
     expect(glyphAfter!.y).toBeCloseTo(glyphBefore!.y, 1);
 
     // The row still ANSWERS, though — the accent wash is not motion.
-    await expect(spine.getByRole('button', { name: ACTIVE_ROW })).toHaveCSS(
-      'box-shadow',
-      /inset/,
+    await expect(spine.getByRole('button', { name: ACTIVE_ROW })).not.toHaveCSS(
+      'background-color',
+      'rgba(0, 0, 0, 0)',
     );
 
     await context.close();

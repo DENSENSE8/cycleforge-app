@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { OrdersGridHost } from '@/components/dashboard/orders-queue/OrdersGridHost';
+import { DataTable } from '@/components/tables/DataTable';
+import { useOrdersSpreadsheet } from '@/components/dashboard/orders-queue/useOrdersSpreadsheet';
+import { OrderStatusTrailStage } from '@/components/orders/OrderStatusTrailOverlay';
 import { cn } from '@/utils/_cn';
 import { OrdersFirstRunEmptyState } from '@/components/dashboard/OrdersFirstRunEmptyState';
 import { stagedOrdersQuery } from '@/lib/queries/outbound-queries';
@@ -24,14 +26,14 @@ interface StagedQueueTableProps {
 }
 
 export function StagedQueueTable({
-  searchQuery,
+  searchQuery: _searchQuery,
   onOpenOrder,
   onCloseOrder,
   disableBackfill = false,
 }: StagedQueueTableProps) {
   const queryClient = useQueryClient();
-  const { setQ } = useOutboundUrlState();
-  const query = useQuery(stagedOrdersQuery({ searchQuery }));
+  const { q, setQ } = useOutboundUrlState();
+  const query = useQuery(stagedOrdersQuery());
   const records = useMemo(() => query.data ?? [], [query.data]);
   const backfillStarted = useRef(false);
 
@@ -61,32 +63,37 @@ export function StagedQueueTable({
       .catch(() => undefined);
   }, [queryClient, disableBackfill]);
 
+  const sheet = useOrdersSpreadsheet({
+    ariaLabel: 'Orders staged for scan-out',
+    records,
+    queueMode: 'staged',
+    loading: query.isLoading,
+    searchValue: q,
+    onClearSearch: () => setQ(''),
+    emptyMessage: 'No packages staged at the dock',
+    firstRunEmpty: (
+      <OrdersFirstRunEmptyState
+        title="Nothing staged to ship"
+        description="Packages staged at the dock appear here. Connect a sales channel so orders flow into fulfillment."
+      />
+    ),
+    searchEmptyTitle: 'No matching staged packages',
+    searchResultLabel: 'staged packages',
+    clearSearchLabel: 'Show all staged',
+    selectionScope: DASHBOARD_ORDERS_SELECTION_SCOPE,
+    'data-testid': 'staged-grid-body',
+    onOpenRecord: (record) => onOpenOrder(record),
+    onCloseRecord: () => onCloseOrder(),
+  });
+
   return (
     <div className={cn('relative flex min-h-0 min-w-0 flex-1 flex-col', 'flex h-full min-h-0 min-w-0 flex-1 flex-col')}>
-      <OrdersGridHost
-        search={{ value: searchQuery, onChange: setQ, placeholder: 'Filter staged…' }}
-        ariaLabel="Orders staged for scan-out"
-        records={records}
-        queueMode="staged"
-        loading={query.isLoading}
-        searchValue={searchQuery}
-        onClearSearch={() => undefined}
-        emptyMessage="No packages staged at the dock"
-        firstRunEmpty={
-          <OrdersFirstRunEmptyState
-            title="Nothing staged to ship"
-            description="Packages staged at the dock appear here. Connect a sales channel so orders flow into fulfillment."
-          />
-        }
-        searchEmptyTitle="No matching staged packages"
-        searchResultLabel="staged packages"
-        clearSearchLabel="Show all staged"
-        sort="deadline"
-        selectionScope={DASHBOARD_ORDERS_SELECTION_SCOPE}
-        data-testid="staged-grid-body"
-        onOpenRecord={(record) => onOpenOrder(record)}
-        onCloseRecord={() => onCloseOrder()}
-      />
+      <OrderStatusTrailStage>
+        <DataTable
+          {...sheet}
+          search={{ value: q, onChange: setQ, placeholder: 'Filter staged…' }}
+        />
+      </OrderStatusTrailStage>
     </div>
   );
 }

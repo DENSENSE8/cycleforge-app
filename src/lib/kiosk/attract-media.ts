@@ -26,6 +26,9 @@ export const ATTRACT_ACCEPT =
 export const ATTRACT_IMAGE_MAX_BYTES = 8 * 1024 * 1024;
 export const ATTRACT_VIDEO_MAX_BYTES = 50 * 1024 * 1024;
 
+/** Public Blob CDN + browser cache. Keys include a timestamp, so replace = new URL. */
+export const ATTRACT_BLOB_CACHE_MAX_AGE_SEC = 60 * 60 * 24 * 365;
+
 export function isAttractVideoMime(mime: string): boolean {
   return ATTRACT_VIDEO_MIME.has(mime);
 }

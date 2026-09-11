@@ -13,8 +13,8 @@
  *   - useReceivingTableNavigation . arrow/chevron + detail-overlay nav
  *   - useReceivingDeepLink ........ ?recvId/?lineId auto-select
  *   - useReceivingAutoWeek ........ History empty-week back-jump
- *   - Incoming POS (inline) → LedgerGrid spreadsheet
- *   - ReceivingGridHost ........... Unbox / History → LedgerGrid spreadsheet
+ *   - Incoming POS (inline) → DataTable
+ *   - ReceivingSpreadsheet ... Unbox / History → DataTable
  *
  * Types + dispatchers live in leaf modules — import those, never this file,
  * unless you are mounting the table:
@@ -42,6 +42,7 @@ import {
 } from '@/lib/tables/import/staging-store';
 import {
   incomingCompoundColumnsFor,
+  receivingCompoundColumnsFor,
   defaultDirForIncomingGridSort,
   isIncomingGridSortable,
   type IncomingGridColumn,
@@ -70,7 +71,6 @@ import {
   receivingHistoryExportFilename,
 } from '@/lib/receiving/history-export-csv';
 import { DataTable } from '@/components/tables/DataTable';
-import { RECEIVING_SEARCH_PARAM_KEY } from '@/lib/receiving/receiving-modes';
 
 import { useReceivingModeContext } from '@/components/station/useReceivingModeContext';
 import { useReceivingLinesData } from '@/components/station/useReceivingLinesData';
@@ -81,8 +81,7 @@ import { useReceivingDeepLink } from '@/components/station/useReceivingDeepLink'
 import { useReceivingAutoWeek } from '@/components/station/useReceivingAutoWeek';
 import { ReceivingLineOrderRow } from '@/components/station/ReceivingLineOrderRow';
 import { GridDegradedBox } from '@/design-system/components/grid';
-import { ReceivingGridHost } from '@/components/station/receiving-grid/ReceivingGridHost';
-import { receivingCompoundColumnsFor } from '@/lib/receiving/receiving-grid-layout';
+import { ReceivingSpreadsheet, receivingLineMatchesQuery } from '@/components/station/receiving-grid/useReceivingSpreadsheet';
 import { useReceivingTableLayout } from '@/components/station/receiving-grid/useReceivingTableLayout';
 import { useIncomingTableLayout } from '@/components/station/incoming-grid/useIncomingTableLayout';
 import { useIncomingTableChrome } from '@/components/station/incoming-grid/useIncomingTableChrome';
@@ -205,6 +204,7 @@ export default function ReceivingLinesTable({
 
   // History week is a query facet (`?weekOffset=`); other modes keep session-local.
   const [localWeekOffset, setLocalWeekOffset] = useState(0);
+  const [receivingSearchValue, setReceivingSearchValue] = useState('');
   const weekOffsetFromUrl = Math.max(0, parseWeekOffset(searchParams.get(WEEK_OFFSET_PARAM)));
   const weekOffset = isHistoryMode ? weekOffsetFromUrl : localWeekOffset;
   const setWeekOffset = useCallback(
@@ -582,9 +582,12 @@ export default function ReceivingLinesTable({
     return po || `line:${row.id}`;
   };
   const { incomingGroups, incomingFlatRows } = useMemo(() => {
-    const flat = Object.values(filteredGroupedRecords).flatMap((day) =>
+    const all = Object.values(filteredGroupedRecords).flatMap((day) =>
       day.flatMap((g) => g.rows),
     );
+    const flat = receivingSearchValue.trim()
+      ? all.filter((row) => receivingLineMatchesQuery(row, receivingSearchValue))
+      : all;
     // Column sort: one flat global order (single synthetic band — LedgerGrid has
     // no day headers). Otherwise day-band the PO groups.
     if (incomingColumnSort && incomingSortDir) {
@@ -599,6 +602,15 @@ export default function ReceivingLinesTable({
         incomingFlatRows: sorted,
       };
     }
+    if (receivingSearchValue.trim()) {
+      return {
+        incomingGroups: [['', groupRowsBy(flat, incomingFoldKey)]] as [
+          string,
+          RowGroup<ReceivingLineRow>[],
+        ][],
+        incomingFlatRows: flat,
+      };
+    }
     const banded: [string, RowGroup<ReceivingLineRow>[]][] = Object.entries(filteredGroupedRecords)
       .sort((a, b) => b[0].localeCompare(a[0]))
       .map(([date, dayGroups]) => {
@@ -609,14 +621,14 @@ export default function ReceivingLinesTable({
       });
     return { incomingGroups: banded, incomingFlatRows: flat };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filteredGroupedRecords, mode.serverSorted, incomingColumnSort, incomingSortDir]);
+  }, [filteredGroupedRecords, mode.serverSorted, incomingColumnSort, incomingSortDir, receivingSearchValue]);
 
   /**
    * Inline note commit for an Incoming row.
    *
    * An Incoming row IS a `receiving_line`, so its note is the same scalar
    * working field Unbox edits and it writes through the same helper — not a
-   * second commit path. Optimistic with a rollback toast: `ReceivingGridHost`
+   * second commit path. Optimistic with a rollback toast: `ReceivingSpreadsheet`
    * makes exactly this call for its own lanes.
    */
   const queryClient = useQueryClient();
@@ -707,12 +719,12 @@ export default function ReceivingLinesTable({
     );
   }
 
-  // Unbox / History spreadsheet body — LedgerGrid via ReceivingGridHost (same
+  // Unbox / History spreadsheet body — ReceivingSpreadsheet → DataTable (same
   // family as the Incoming grid). Date is a per-row column; no sticky day bands.
   // The drill pane went with the display teardown (2026-08-29) — the folded
   // list is the only History body now.
   const weekCount = getWeekCount();
-  /** The one find field for every receiving body — the URL is the state. */
+  /** The one find field for every receiving body — session-local; typing never writes the URL. */
   // The effective slot layout (staff ?? org ?? product) materialized into the
   // compound tracks — one document for every receiving rail, because Unbox,
   // History and Testing are the same table read at different moments.
@@ -733,15 +745,8 @@ export default function ReceivingLinesTable({
   );
 
   const receivingSearch = {
-    value: searchParams.get(RECEIVING_SEARCH_PARAM_KEY) ?? '',
-    onChange: (next: string) => {
-      const params = new URLSearchParams(searchParams.toString());
-      const trimmed = next.trim();
-      if (trimmed) params.set(RECEIVING_SEARCH_PARAM_KEY, trimmed);
-      else params.delete(RECEIVING_SEARCH_PARAM_KEY);
-      const qs = params.toString();
-      router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
-    },
+    value: receivingSearchValue,
+    onChange: setReceivingSearchValue,
     placeholder: isIncomingMode ? 'Filter incoming…' : 'Filter cartons…',
   };
   const incomingChrome = useIncomingTableChrome();
@@ -758,7 +763,7 @@ export default function ReceivingLinesTable({
     // the shared compound skeleton plus whatever facts the organization has
     // bound, which before this port took a new React column.
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-      <ReceivingGridHost
+      <ReceivingSpreadsheet
         search={receivingSearch}
         filter={isUnboxWorkbench ? receivingChrome.filter : undefined}
         columns={receivingColumns}

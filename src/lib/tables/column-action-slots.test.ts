@@ -10,6 +10,7 @@ const COLUMNS = [
   { key: 'state' },
   { key: 'status:1', fieldId: 'orders.picked' },
   { key: 'status:2', fieldId: 'orders.packed' },
+  { key: 'status:3', fieldId: 'orders.scanned_out' },
   { key: 'actions' },
   { key: '_fill' },
 ] as const;
@@ -25,6 +26,7 @@ describe('columnKeyForSelectionAction', () => {
     assert.equal(columnKeyForSelectionAction('assign', COLUMNS), 'status:1');
     assert.equal(columnKeyForSelectionAction('assign-pick', COLUMNS), 'status:1');
     assert.equal(columnKeyForSelectionAction('assign-pack', COLUMNS), 'status:2');
+    assert.equal(columnKeyForSelectionAction('scan-out', COLUMNS), 'status:3');
     assert.equal(columnKeyForSelectionAction('flag', COLUMNS), 'actions');
   });
 

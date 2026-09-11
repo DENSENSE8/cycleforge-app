@@ -42,7 +42,10 @@ import {
   type LedgerGridColumnModel,
 } from '@/design-system/components/grid';
 import { gridTemplate } from '@/design-system/components/grid/grid-column-geometry';
+import { Button } from '@/design-system/primitives/Button';
+import { cn } from '@/utils/_cn';
 import { renderCompoundGridCell } from './CompoundGridCell';
+import { COMPOUND_ROW_PX } from './compound-row-chrome';
 import type { FieldDisplayType } from '@/lib/tables/field-catalog/types';
 import type {
   CompoundOrderedAtEdit,
@@ -54,6 +57,8 @@ import type {
   CompoundSubtitleEdit,
   CompoundSubtitleSelect,
 } from './compound-row-model';
+import { CompoundRowDetailHost } from './CompoundRowDetailHost';
+import { useCompoundRowDetail } from './useCompoundRowDetail';
 
 /** Structural — every family's column interface satisfies it. */
 interface CompoundRowColumn extends LedgerGridColumnModel {
@@ -83,7 +88,7 @@ export interface CompoundRowProps<C extends CompoundRowColumn>
   onOpen?: () => void;
   /** Present ⇒ STATUS opens the carrier trail. */
   onStateOpen?: () => void;
-  /** Extra verbs for this row's title hover, after "Open". */
+  /** Extra verbs for this row. Menu face → title hover; trailing → `_fill`. */
   actions?: readonly CompoundRowAction[];
   /**
    * Stage-lane assign, keyed by catalog field id. Presence on a bound
@@ -192,6 +197,20 @@ export function CompoundRow<C extends CompoundRowColumn>({
   // The org-shared column formatting for this sheet. Read HERE — one component
   // that every compound family already mounts — rather than threaded as a prop
 
+  const detailState = useCompoundRowDetail(view.id);
+  const detailLabel = view.title.trim() || 'this line';
+  const selectWithDetail =
+    select && view.detail
+      ? {
+          ...select,
+          detail: {
+            open: detailState.open,
+            onToggle: detailState.toggle,
+            label: detailLabel,
+          },
+        }
+      : select;
+
   const renderCell = (col: C, last: boolean): ReactNode => {
     const rule = !last;
     const cell = renderCompoundGridCell({
@@ -199,7 +218,7 @@ export function CompoundRow<C extends CompoundRowColumn>({
       columns,
       rule,
       view,
-      select,
+      select: selectWithDetail,
       onOpen,
       onStateOpen,
       actions,
@@ -216,6 +235,40 @@ export function CompoundRow<C extends CompoundRowColumn>({
     });
     if (cell) return cell;
 
+    // Trailing credential verbs (Revoke) paint in `_fill` slack — never a
+    // remounted compound `actions` track (cohort law: no standing ⋮ column).
+    if (col.key === '_fill') {
+      const trailing = (actions ?? []).filter((a) => a.face === 'trailing');
+      if (trailing.length > 0) {
+        return (
+          <div
+            data-col="_fill"
+            data-trailing-verbs
+            className={cn(
+              gridDataCellClass(col, { rule: false, inset: 'grid' }),
+              'justify-end gap-1',
+            )}
+            style={{ height: COMPOUND_ROW_PX }}
+            onClick={(event) => event.stopPropagation()}
+          >
+            {trailing.map((action) => (
+              <Button
+                key={action.key}
+                type="button"
+                size="sm"
+                variant={action.tone === 'danger' ? 'dangerSoft' : 'secondary'}
+                disabled={action.disabled}
+                tabIndex={-1}
+                onClick={() => action.onSelect()}
+              >
+                {action.label}
+              </Button>
+            ))}
+          </div>
+        );
+      }
+    }
+
     // `_fill` and anything the compound renderer does not own: an empty cell
     // that still carries the track's chrome, so the row's rules stay unbroken.
     return (
@@ -228,7 +281,7 @@ export function CompoundRow<C extends CompoundRowColumn>({
     );
   };
 
-  return (
+  const leaf = (
     <LedgerGridLeafRow
       {...rowProps}
       className={className}
@@ -244,5 +297,20 @@ export function CompoundRow<C extends CompoundRowColumn>({
     >
       {plane}
     </LedgerGridLeafRow>
+  );
+
+  if (!view.detail) return leaf;
+
+  return (
+    <CompoundRowDetailHost
+      rowId={view.id}
+      detail={view.detail}
+      title={view.title}
+      columns={columns}
+      detailOpen={detailState.open}
+      onCloseDetail={detailState.close}
+    >
+      {leaf}
+    </CompoundRowDetailHost>
   );
 }

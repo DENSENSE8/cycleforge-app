@@ -7,6 +7,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   ATTRACT_ALLOWED_MIME,
+  ATTRACT_BLOB_CACHE_MAX_AGE_SEC,
   ATTRACT_IMAGE_MAX_BYTES,
   ATTRACT_VIDEO_MAX_BYTES,
   attractBlobKey,
@@ -32,6 +33,10 @@ test('size ceilings: 8MB images, 50MB video', () => {
   assert.equal(attractMediaMaxBytes('video/mp4'), ATTRACT_VIDEO_MAX_BYTES);
   assert.ok(isAttractVideoMime('video/webm'));
   assert.equal(isAttractVideoMime('image/png'), false);
+});
+
+test('attract blob cache is one year (unique timestamped keys)', () => {
+  assert.equal(ATTRACT_BLOB_CACHE_MAX_AGE_SEC, 60 * 60 * 24 * 365);
 });
 
 test('blob key is org-scoped under kiosk-attract', () => {

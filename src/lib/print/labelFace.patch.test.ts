@@ -95,6 +95,27 @@ test('patchLabelFaceDocument updates product title slot', () => {
   assert.equal(ptitle.textContent, 'New title');
 });
 
+test('patchLabelFaceDocument updates location code slot', () => {
+  const lcode = stubNode('C-01-01-1');
+  const doc = makeDoc({
+    '.lcode': lcode,
+    '.hri': stubNode('C-01-01-1'),
+  });
+
+  patchLabelFaceDocument(doc, {
+    kind: 'location',
+    topLeft: '',
+    topRight: '',
+    center: 'C-01-01-1-01',
+    bottomLeft: '',
+    bottomRight: '',
+    matrix: { value: 'loc', symbology: 'gs1datamatrix' },
+    hri: 'C-01-01-1-01',
+  });
+
+  assert.equal(lcode.textContent, 'C-01-01-1-01');
+});
+
 test('patchLabelFaceDocument creates HRI when it appears', () => {
   const qrcol = stubNode();
   const doc = makeDoc({ '.qrcol': qrcol });

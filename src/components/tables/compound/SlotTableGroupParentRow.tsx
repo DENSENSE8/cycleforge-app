@@ -55,16 +55,18 @@
  *
  * Unbox's other reason for dropping its summary was that it "duplicated Order /
  * PO already on every leaf". The answer is `quietIdentity`: a surface that
- * mounts this band must dash the identity on its leaves so the fold speaks it
- * ONCE. Mounting the parent without quieting the leaves re-creates exactly the
- * noise that got the old summary deleted.
+ * mounts this band must stop repeating the order/PO on its leaves so the fold
+ * speaks it ONCE. The leaf keeps the BOX identity (tracking) as its primary
+ * face — that is what distinguishes one line from the next. Dashing both
+ * lines re-hides the box. Mounting the parent without quieting the order
+ * number re-creates the noise that got the old summary deleted.
  */
 
-import { cloneElement, isValidElement } from 'react';
-import { CompoundCell } from '@/components/tables/compound/CompoundCell';
+import { cloneElement, isValidElement, type ReactNode } from 'react';
+import { CompoundCell, COMPOUND_TWO_LINE_CLASS } from '@/components/tables/compound/CompoundCell';
 import { CompoundSelect } from '@/components/tables/compound/CompoundCells';
 import { renderCompoundGridCell } from '@/components/tables/compound/CompoundGridCell';
-import { COMPOUND_ROW_PX } from '@/components/tables/compound/compound-row-chrome';
+import { COMPOUND_ROW_PX, SLOT_TABLE_GROUP_FOLD_CLASS } from '@/components/tables/compound/compound-row-chrome';
 import type { CompoundRowView } from '@/components/tables/compound/compound-row-model';
 import { ChevronDown, ChevronRight } from '@/components/Icons';
 import { gridDataCellClass, LEDGER_GRID_FROZEN_CELL } from '@/design-system/components/grid';
@@ -124,7 +126,7 @@ export interface SlotTableGroupParentRowProps {
    * gesture acts on. The row's own face still says boxes.
    */
   selectCount: number;
-  /** When set, the select gutter paints a chevron under the checkbox to fold children. */
+  /** When set, the select gutter paints a chevron on the subtitle track (aligned with "2 boxes"). */
   folded?: boolean;
   onToggleFold?: () => void;
   /** First-child compound view — title, dates, pick/pack, photo. Not grayed. */
@@ -134,6 +136,32 @@ export interface SlotTableGroupParentRowProps {
 /** Cells that are chrome, not data — no inset, stretch to the gutter edges. */
 function isGutterColumn(key: string): boolean {
   return key === 'select' || key === 'thumb';
+}
+
+/**
+ * The one visual group around a multi-line fold. Singletons pass through —
+ * the leaf IS the order, and wrapping it would draw a box around every row.
+ *
+ * `role="rowgroup"` is load-bearing: the virtualizer shell is
+ * `role="presentation"`, so this is what the table sees as the fold.
+ */
+export function SlotTableGroupFold({
+  multi,
+  children,
+}: {
+  multi: boolean;
+  children: ReactNode;
+}) {
+  if (!multi) return children;
+  return (
+    <div
+      role="rowgroup"
+      data-slot-table-fold=""
+      className={SLOT_TABLE_GROUP_FOLD_CLASS}
+    >
+      {children}
+    </div>
+  );
 }
 
 export function SlotTableGroupParentRow({
@@ -196,25 +224,25 @@ export function SlotTableGroupParentRow({
               style={style}
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="flex h-full w-full flex-col items-center justify-center gap-0">
-                <div className="flex h-5 w-full items-center justify-center">
-                  <CompoundSelect
-                    checked={checked}
-                    chrome="always"
-                    edgeMark={view?.edgeMark ?? undefined}
-                    onToggle={onToggle}
-                    label={
-                      checked === true
-                        ? `Deselect ${selectLabel} in ${face || noun}`
-                        : `Select ${selectLabel} in ${face || noun}`
-                    }
-                  />
-                </div>
-                {onToggleFold ? (
+              {onToggleFold ? (
+                <div className={cn(COMPOUND_TWO_LINE_CLASS, 'w-full min-h-0')}>
+                  <div className="flex min-h-0 min-w-0 items-stretch">
+                    <CompoundSelect
+                      checked={checked}
+                      chrome="always"
+                      edgeMark={view?.edgeMark ?? undefined}
+                      onToggle={onToggle}
+                      label={
+                        checked === true
+                          ? `Deselect ${selectLabel} in ${face || noun}`
+                          : `Select ${selectLabel} in ${face || noun}`
+                      }
+                    />
+                  </div>
                   <button
                     type="button"
                     className={cn(
-                      'ds-raw-button flex h-4 w-full items-center justify-center text-text-soft',
+                      'ds-raw-button flex h-full w-full min-h-0 items-center justify-center text-text-soft',
                       focusRing('control', 'neutral'),
                     )}
                     aria-expanded={!folded}
@@ -229,14 +257,28 @@ export function SlotTableGroupParentRow({
                       onToggleFold();
                     }}
                   >
-                    {folded ? (
-                      <ChevronRight className="h-3 w-3" aria-hidden />
-                    ) : (
-                      <ChevronDown className="h-3 w-3" aria-hidden />
-                    )}
+                    <span className="flex h-4 w-4 items-center justify-center">
+                      {folded ? (
+                        <ChevronRight className="h-3 w-3" aria-hidden />
+                      ) : (
+                        <ChevronDown className="h-3 w-3" aria-hidden />
+                      )}
+                    </span>
                   </button>
-                ) : null}
-              </div>
+                </div>
+              ) : (
+                <CompoundSelect
+                  checked={checked}
+                  chrome="always"
+                  edgeMark={view?.edgeMark ?? undefined}
+                  onToggle={onToggle}
+                  label={
+                    checked === true
+                      ? `Deselect ${selectLabel} in ${face || noun}`
+                      : `Select ${selectLabel} in ${face || noun}`
+                  }
+                />
+              )}
             </div>
           );
         }

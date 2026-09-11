@@ -3,6 +3,8 @@
 /**
  * Staff adapter over {@link AssigneeCombobox} for Pick / Packed / All staff.
  * Lane filter and floor-role persist stay here; the panel is the SoT.
+ * `role="all"` + `onCommit` is a full-roster assign (scan-out, mark shipped).
+ * `role="all"` without `onCommit` stays roster (Picker/Packer switches).
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -55,7 +57,7 @@ export function StageStaffAssignPopover({
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(() => !warm);
   const [rosterMode, setRosterMode] = useState(false);
-  const rosterAll = role === 'all';
+  const rosterAll = role === 'all' && !onCommit;
   const canRoster = Boolean(onSetLaneRole);
   const inRoster = rosterAll || (canRoster && rosterMode);
   const faces = staffLaneRosterFaces(role);

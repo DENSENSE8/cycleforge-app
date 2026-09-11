@@ -103,6 +103,14 @@ export function receivingCompoundView(
   row: ReceivingLineRow,
   parts: ReceivingCompoundParts,
 ): CompoundRowView {
+  const serials = (row.serials ?? [])
+    .map((s) => String(s.serial_number || '').trim())
+    .filter(Boolean);
+  const primary =
+    serials[serials.length - 1] ||
+    String(row.serials?.[row.serials.length - 1]?.unit_uid || '').trim() ||
+    null;
+
   return {
     id: String(row.id),
     thumbUrl: row.image_url || null,
@@ -123,5 +131,11 @@ export function receivingCompoundView(
       parts.delayDays == null ? null : { days: parts.delayDays, overdue: parts.delayDays > 0 },
     delayTip: parts.delayTip,
     ...lineMoney(row),
+    detail: {
+      serials,
+      location: String(row.staging_location_label || '').trim() || null,
+      unitRef: primary,
+      sku: String(row.sku || '').trim() || null,
+    },
   };
 }

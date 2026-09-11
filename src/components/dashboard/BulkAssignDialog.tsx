@@ -3,13 +3,11 @@
 /**
  * One-shot pick / pack assignment for the table-foot selection strip.
  *
- * Searchable staff comboboxes (full active roster — no present / role filter).
- * Selecting a person (click or Enter) commits that lane onto every selected
- * order immediately via the caller's optimistic `useOrderAssignment` write.
- * No WorkOrder / StaffButtonGrid chrome.
+ * Staff combobox is {@link StageStaffAssignPopover} (AssigneeCombobox + StaffAvatar).
+ * Selecting a person commits that lane onto every selected order immediately.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -18,11 +16,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/design-system/components/Dialog';
-import { SearchableSelectField } from '@/design-system/components/SearchableSelectField';
 import { Button } from '@/design-system/primitives';
 import { StaffAvatar } from '@/components/identity';
-import { Check } from '@/components/Icons';
-import { cn } from '@/utils/_cn';
+import { StageStaffAssignPopover } from '@/components/tables/compound/StageStaffAssignPopover';
+import { getStaffName } from '@/utils/staff';
 
 export type BulkAssignChoice = {
   testerId?: number;
@@ -47,35 +44,6 @@ interface BulkAssignDialogProps {
   onConfirm: (choice: BulkAssignChoice) => void;
 }
 
-function staffSelectOptions(staff: BulkAssignStaffOption[]) {
-  return staff.map((s) => ({
-    value: s.id,
-    label: s.name,
-    data: s,
-  }));
-}
-
-function StaffOptionFace({
-  id,
-  name,
-  active,
-}: {
-  id: number;
-  name: string;
-  active: boolean;
-}) {
-  return (
-    <>
-      <StaffAvatar staffId={id} name={name} size="sm" colorRing alt="" />
-      <span className="min-w-0 flex-1 truncate text-role-micro font-medium">{name}</span>
-      <Check
-        className={cn('h-3.5 w-3.5 shrink-0', active ? 'opacity-100' : 'opacity-0')}
-        aria-hidden
-      />
-    </>
-  );
-}
-
 export function BulkAssignDialog({
   open,
   count,
@@ -86,13 +54,18 @@ export function BulkAssignDialog({
 }: BulkAssignDialogProps) {
   const [testerId, setTesterId] = useState<number | null>(null);
   const [packerId, setPackerId] = useState<number | null>(null);
+  const [pickOpen, setPickOpen] = useState(false);
+  const [packOpen, setPackOpen] = useState(false);
+  const pickRef = useRef<HTMLButtonElement>(null);
+  const packRef = useRef<HTMLButtonElement>(null);
   const roster = Array.isArray(staffOptions) ? staffOptions : [];
-  const options = staffSelectOptions(roster);
 
   useEffect(() => {
     if (!open) {
       setTesterId(null);
       setPackerId(null);
+      setPickOpen(false);
+      setPackOpen(false);
     }
   }, [open]);
 
@@ -102,22 +75,9 @@ export function BulkAssignDialog({
     onCancel();
   };
 
-  const commitPick = (id: string | number | null) => {
-    if (id == null || saving) return;
-    const staffId = Number(id);
-    const name = roster.find((s) => s.id === staffId)?.name;
-    if (!Number.isFinite(staffId) || !name) return;
-    setTesterId(staffId);
-    onConfirm({ testerId: staffId, testerName: name });
-  };
-
-  const commitPack = (id: string | number | null) => {
-    if (id == null || saving) return;
-    const staffId = Number(id);
-    const name = roster.find((s) => s.id === staffId)?.name;
-    if (!Number.isFinite(staffId) || !name) return;
-    setPackerId(staffId);
-    onConfirm({ packerId: staffId, packerName: name });
+  const nameOf = (id: number | null) => {
+    if (id == null) return '';
+    return roster.find((s) => s.id === id)?.name || getStaffName(id);
   };
 
   return (
@@ -127,50 +87,89 @@ export function BulkAssignDialog({
           <DialogTitle>Assign pick / pack</DialogTitle>
           <DialogDescription>
             {count === 1
-              ? 'Search a name and press Enter — applies to 1 selected order.'
-              : `Search a name and press Enter — applies to all ${count} selected orders.`}
+              ? 'Search a name — applies to 1 selected order.'
+              : `Search a name — applies to all ${count} selected orders.`}
           </DialogDescription>
         </DialogHeader>
 
         <div className="flex flex-col gap-4">
-          <SearchableSelectField
-            label="Pick"
-            value={testerId}
-            onChange={commitPick}
-            options={options}
-            placeholder="Search staff…"
-            searchPlaceholder="Type a name…"
-            emptyMessage={roster.length === 0 ? 'No staff' : 'No matches'}
-            disabled={saving}
-            ariaLabel="Assign pick"
-            testId="bulk-assign-pick"
-            renderOption={(opt, { active }) => (
-              <StaffOptionFace
-                id={Number(opt.value)}
-                name={opt.label}
-                active={active || testerId === Number(opt.value)}
-              />
-            )}
-          />
-          <SearchableSelectField
-            label="Pack"
-            value={packerId}
-            onChange={commitPack}
-            options={options}
-            placeholder="Search staff…"
-            searchPlaceholder="Type a name…"
-            emptyMessage={roster.length === 0 ? 'No staff' : 'No matches'}
-            disabled={saving}
-            ariaLabel="Assign pack"
-            testId="bulk-assign-pack"
-            renderOption={(opt, { active }) => (
-              <StaffOptionFace
-                id={Number(opt.value)}
-                name={opt.label}
-                active={active || packerId === Number(opt.value)}
-              />
-            )}
-          />
+          <div className="flex flex-col gap-1">
+            <span className="text-role-eyebrow uppercase tracking-wider text-text-muted">Pick</span>
+            <Button
+              ref={pickRef}
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="w-full justify-start"
+              disabled={saving}
+              aria-haspopup="listbox"
+              aria-expanded={pickOpen}
+              ariaLabel="Assign pick"
+              data-testid="bulk-assign-pick"
+              onClick={() => setPickOpen(true)}
+            >
+              {testerId != null ? (
+                <span className="flex min-w-0 items-center gap-2">
+                  <StaffAvatar staffId={testerId} name={nameOf(testerId)} size="sm" colorRing alt="" />
+                  <span className="truncate">{nameOf(testerId)}</span>
+                </span>
+              ) : (
+                'Search staff…'
+              )}
+            </Button>
+            <StageStaffAssignPopover
+              open={pickOpen}
+              onClose={() => setPickOpen(false)}
+              anchorRef={pickRef}
+              label="Assign pick"
+              role="technician"
+              selectedStaffId={testerId}
+              onCommit={(staffId, staffName) => {
+                if (staffId == null || saving) return;
+                setTesterId(staffId);
+                onConfirm({ testerId: staffId, testerName: staffName ?? nameOf(staffId) });
+              }}
+            />
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <span className="text-role-eyebrow uppercase tracking-wider text-text-muted">Pack</span>
+            <Button
+              ref={packRef}
+              type="button"
+              variant="secondary"
+              size="sm"
+              className="w-full justify-start"
+              disabled={saving}
+              aria-haspopup="listbox"
+              aria-expanded={packOpen}
+              ariaLabel="Assign pack"
+              data-testid="bulk-assign-pack"
+              onClick={() => setPackOpen(true)}
+            >
+              {packerId != null ? (
+                <span className="flex min-w-0 items-center gap-2">
+                  <StaffAvatar staffId={packerId} name={nameOf(packerId)} size="sm" colorRing alt="" />
+                  <span className="truncate">{nameOf(packerId)}</span>
+                </span>
+              ) : (
+                'Search staff…'
+              )}
+            </Button>
+            <StageStaffAssignPopover
+              open={packOpen}
+              onClose={() => setPackOpen(false)}
+              anchorRef={packRef}
+              label="Assign pack"
+              role="packer"
+              selectedStaffId={packerId}
+              onCommit={(staffId, staffName) => {
+                if (staffId == null || saving) return;
+                setPackerId(staffId);
+                onConfirm({ packerId: staffId, packerName: staffName ?? nameOf(staffId) });
+              }}
+            />
+          </div>
         </div>
 
         <DialogFooter>

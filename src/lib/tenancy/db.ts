@@ -25,8 +25,23 @@
  */
 
 import type { PoolClient, QueryResult, QueryResultRow } from 'pg';
-import { tenantPool } from '@/lib/db';
+import pool, { tenantPool as configuredTenantPool } from '@/lib/db';
+import { resolveTenantAppDatabaseUrl } from '@/lib/env-utils';
 import { DOGFOOD_ORG_ID, type OrgId } from './constants';
+
+/**
+ * Tenant-runtime pool, but only when TENANT_APP_DATABASE_URL is the same Neon
+ * compute as DATABASE_URL. A lane `.env` that inherited production's tenant
+ * DSN would otherwise run `tenantQuery` against a different schema than the
+ * owner pool — `/api/orders` 500'd with `column o.oos_kind does not exist`
+ * while the lane branch already had the column.
+ */
+const tenantPool = resolveTenantAppDatabaseUrl(
+  process.env.DATABASE_URL || '',
+  process.env.TENANT_APP_DATABASE_URL,
+)
+  ? configuredTenantPool
+  : pool;
 
 function assertOrgId(orgId: OrgId): void {
   if (!orgId || typeof orgId !== 'string') {

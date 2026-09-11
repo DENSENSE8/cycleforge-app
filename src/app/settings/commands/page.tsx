@@ -1,4 +1,6 @@
 import { CommandBookSheet } from '@/components/stations/CommandBookSheet';
+import { SETTINGS_FLOOR_CLASS } from '@/components/settings/settings-sections';
+import { cn } from '@/utils/_cn';
 
 /**
  * `/settings/commands` — the scan command book.
@@ -9,5 +11,9 @@ import { CommandBookSheet } from '@/components/stations/CommandBookSheet';
  * the same table.
  */
 export default function CommandBookPage() {
-  return <CommandBookSheet />;
+  return (
+    <div className={cn('min-h-full', SETTINGS_FLOOR_CLASS)}>
+      <CommandBookSheet />
+    </div>
+  );
 }

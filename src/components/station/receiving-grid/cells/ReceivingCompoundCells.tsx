@@ -77,6 +77,7 @@ function viewFor(ctx: ReceivingGridCellCtx): CompoundRowView {
     tracking: (ctx.trackingValue || '').trim() || null,
     orderId: ctx.poValue || null,
     }),
+    quietIdentity: ctx.quietIdentity === true,
   };
 }
 
@@ -93,13 +94,21 @@ function viewFor(ctx: ReceivingGridCellCtx): CompoundRowView {
  * - **split planes** (row body opens the record, gutter ticks): a real
  *   checkbox, hit plane the full 48px cell.
  */
-function selectFor(ctx: ReceivingGridCellCtx) {
+function selectFor(
+  ctx: ReceivingGridCellCtx,
+  detail?: {
+    open: boolean;
+    onToggle: () => void;
+    label: string;
+  },
+) {
   return {
     checked: ctx.isChecked,
     onToggle: ctx.clickSelect ? undefined : ctx.onToggle,
     label: ctx.isChecked
       ? `Deselect receiving line ${ctx.row.id}`
       : `Select receiving line ${ctx.row.id} for bulk actions`,
+    detail,
   };
 }
 
@@ -114,41 +123,28 @@ export function renderReceivingCompoundCell(
   col: ReceivingGridCellColumn,
   rule: boolean,
   ctx: ReceivingGridCellCtx,
+  detail?: {
+    open: boolean;
+    onToggle: () => void;
+    label: string;
+  },
 ): ReactNode {
   const columns = ctx.columns ?? [col];
+  const view = viewFor(ctx);
   return renderCompoundGridCell({
     col,
     columns,
     rule,
-    // Only the five view tracks need the adapter run; the gutter does not, and
-    // this is called once per visible cell.
-    view: col.key === 'select' ? EMPTY_VIEW : viewFor(ctx),
+    view,
     onOpen: ctx.onOpenRecord,
-    select: selectFor(ctx),
+    select: selectFor(ctx, detail ?? undefined),
   });
 }
 
-/**
- * Placeholder for the one track that reads nothing off the row.
- *
- * `renderCompoundGridCell` takes the view as a value rather than a thunk (it is
- * a pure mapper and every other track needs it), so the select cell hands it a
- * constant instead of paying for an adapter call it will not read.
- */
-const EMPTY_VIEW: CompoundRowView = {
-  id: '',
-  thumbUrl: null,
-  title: '',
-  note: null,
-  orderId: null,
-  tracking: null,
-  platformValue: null,
-  carrier: null,
-  stateLabel: '',
-  stateTone: 'neutral',
-  delay: null,
-  amount: null,
-};
+/** Row → view for the shell (detail band + disclosure). */
+export function receivingCompoundRowView(ctx: ReceivingGridCellCtx): CompoundRowView {
+  return viewFor(ctx);
+}
 
 /** Does this family's dispatcher own the key under the MOUNTED model? */
 export function claimsCompoundCell(

@@ -188,7 +188,6 @@ export function DocumentSlideOver({
             tabs={tabs}
             activeTab={active?.id ?? firstId}
             onTabChange={setActiveId}
-            variant="solid"
             solidTone="accent"
             countStyle="plain"
             scrollable

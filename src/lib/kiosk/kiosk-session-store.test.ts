@@ -218,3 +218,59 @@ describe('detach — the next customer must not see the last one’s basket', ()
     assert.equal(kioskSessionStore.getSnapshot().lines.length, 1, 'a local cart is not swept away');
   });
 });
+
+describe('consult stance', () => {
+  it('keeps lines, phone, and command across Work → Show → Verify → Work', () => {
+    kioskSessionStore.addRetail({
+      title: 'Case',
+      unitAmountCents: 1999,
+      payload: { variationId: null, sku: 'CASE-1' },
+    });
+    kioskSessionStore.setCustomer({ phone: '5551234567', name: 'Dana' });
+    kioskSessionStore.setActiveCommand('repair');
+
+    kioskSessionStore.setConsultStance('show', { manual: true });
+    kioskSessionStore.setConsultStance('verify', { manual: true });
+    kioskSessionStore.setConsultStance('work', { manual: true });
+
+    const snap = kioskSessionStore.getSnapshot();
+    assert.equal(snap.consultStance, 'work');
+    assert.equal(snap.face, 'staff');
+    assert.equal(snap.lines.length, 1);
+    assert.equal(snap.lines[0].title, 'Case');
+    assert.equal(snap.customerPhone, '5551234567');
+    assert.equal(snap.activeCommand, 'repair');
+  });
+
+  it('does not reset stance or clear lines on a command switch', () => {
+    kioskSessionStore.addRetail({
+      title: 'Case',
+      unitAmountCents: 1999,
+      payload: { variationId: null, sku: 'CASE-1' },
+    });
+    kioskSessionStore.setConsultStance('show', { manual: true });
+    kioskSessionStore.setActiveCommand('repair');
+    kioskSessionStore.setActiveCommand('retail');
+
+    const snap = kioskSessionStore.getSnapshot();
+    assert.equal(snap.consultStance, 'show');
+    assert.equal(snap.face, 'customer');
+    assert.equal(snap.lines.length, 1);
+    assert.equal(snap.activeCommand, 'retail');
+  });
+
+  it('setPresentation does not mutate lines', () => {
+    kioskSessionStore.addRetail({
+      title: 'Case',
+      unitAmountCents: 1999,
+      payload: { variationId: null, sku: 'CASE-1' },
+    });
+    const before = kioskSessionStore.getSnapshot().lines[0];
+    kioskSessionStore.setPresentation({ lineId: before.id, catalog: null });
+    const snap = kioskSessionStore.getSnapshot();
+    assert.equal(snap.presentation.lineId, before.id);
+    assert.equal(snap.lines[0].title, before.title);
+    assert.equal(snap.lines[0].unitAmountCents, before.unitAmountCents);
+  });
+});
+

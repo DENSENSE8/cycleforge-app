@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Barcode, ChevronDown } from '@/components/Icons';
+import { ChevronDown, ScanBarcode } from '@/components/Icons';
 import {
   ConditionGradeChip,
   EmptySkuChipFace,
@@ -168,7 +168,7 @@ export function ItemRecordRow({
         : '—';
   const serialFace = (
     <>
-      <Barcode className="h-3 w-3 shrink-0 text-emerald-500" aria-hidden />
+      <ScanBarcode className="h-3 w-3 shrink-0 text-emerald-500" aria-hidden />
       <span className="min-w-0 whitespace-nowrap tabular-nums normal-case tracking-normal">
         {serialText}
       </span>

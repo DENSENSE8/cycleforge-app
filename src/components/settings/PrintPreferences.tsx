@@ -40,6 +40,10 @@ import { cn } from '@/utils/_cn';
 
 interface PrintPreferencesProps {
   onClose?: () => void;
+  /** `/m/print` printer step — one column, no settings heading. */
+  embedded?: boolean;
+  /** Fired after pair / route / silent so the staff-ID host can republish. */
+  onStoreChange?: () => void;
 }
 
 const FIELD_CLS =
@@ -57,7 +61,7 @@ const LANGUAGES: { id: LabelLanguage; label: string }[] = [
  * Per-workstation switch: print labels silently (no dialog) vs. hand them to
  * the browser print dialog. Mirrors the app's house switch markup.
  */
-function SilentPrintToggle() {
+function SilentPrintToggle({ onStoreChange }: { onStoreChange?: () => void }) {
   const [on, setOn] = useState(true);
   useEffect(() => {
     setOn(isSilentPrintEnabled());
@@ -65,6 +69,7 @@ function SilentPrintToggle() {
   const setSilent = (next: boolean) => {
     setOn(next);
     setSilentPrintEnabled(next);
+    onStoreChange?.();
   };
   return (
     <div className="mb-4 flex items-center gap-3 rounded-none border border-border-soft bg-surface-canvas px-4 py-3">
@@ -86,36 +91,44 @@ function SilentPrintToggle() {
   );
 }
 
-export function PrintPreferences({ onClose }: PrintPreferencesProps) {
+export function PrintPreferences({ onClose, embedded, onStoreChange }: PrintPreferencesProps) {
   const webAvail = isBrowserPrintSupported();
 
   return (
-    <div className="rounded-none border border-border-soft bg-surface-card p-5 shadow-sm">
-      <div className="mb-4 flex items-start justify-between">
-        <div>
-          <h3 className="text-base font-semibold text-text-default">Print preferences</h3>
-          <p className="text-xs text-text-soft">Profiles apply to this workstation only.</p>
+    <div
+      className={
+        embedded
+          ? 'space-y-4'
+          : 'rounded-none border border-border-soft bg-surface-card p-5 shadow-sm'
+      }
+    >
+      {!embedded && (
+        <div className="mb-4 flex items-start justify-between">
+          <div>
+            <h3 className="text-base font-semibold text-text-default">Print preferences</h3>
+            <p className="text-xs text-text-soft">Profiles apply to this workstation only.</p>
+          </div>
+          {onClose && (
+            <IconButton
+              type="button"
+              onClick={onClose}
+              ariaLabel="Close"
+              className="rounded-xl border border-border-default bg-surface-card px-2 py-1.5 text-xs text-text-muted hover:bg-surface-hover"
+              icon={<span aria-hidden>✕</span>}
+            />
+          )}
         </div>
-        {onClose && (
-          <IconButton
-            type="button"
-            onClick={onClose}
-            ariaLabel="Close"
-            className="rounded-xl border border-border-default bg-surface-card px-2 py-1.5 text-xs text-text-muted hover:bg-surface-hover"
-            icon={<span aria-hidden>✕</span>}
-          />
-        )}
-      </div>
+      )}
 
-      <SilentPrintToggle />
+      {!embedded && <SilentPrintToggle onStoreChange={onStoreChange} />}
 
       {webAvail ? (
-        <BrowserProfiles />
-      ) : (
+        <BrowserProfiles embedded={embedded} onStoreChange={onStoreChange} />
+      ) : embedded ? null : (
         <div className="rounded-none border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-          <p className="font-semibold">Silent printing isn&rsquo;t available in this browser.</p>
+          <p className="font-semibold">Wired printers pair in Chrome or Edge on the computer.</p>
           <p className="mt-1 text-amber-800">
-            Use Chrome or Edge to pair wired label printers on Windows or macOS.
+            Open this page on Windows or macOS to pair a USB or serial printer.
           </p>
         </div>
       )}
@@ -126,7 +139,13 @@ export function PrintPreferences({ onClose }: PrintPreferencesProps) {
 // ---------------------------------------------------------------------------
 // Browser — multiple printer profiles (label / paper / receipt)
 // ---------------------------------------------------------------------------
-function BrowserProfiles() {
+function BrowserProfiles({
+  embedded,
+  onStoreChange,
+}: {
+  embedded?: boolean;
+  onStoreChange?: () => void;
+}) {
   const [profiles, setProfiles] = useState<PrinterProfile[]>([]);
   const [routing, setRouting] = useState<Partial<Record<PrinterRole, string>>>({});
   const [status, setStatus] = useState('');
@@ -149,9 +168,10 @@ function BrowserProfiles() {
     };
   }, []);
 
-  function reload() {
+  function reload(notify = false) {
     setProfiles(listProfiles());
     setRouting(getRouting());
+    if (notify) onStoreChange?.();
   }
 
   async function pair(kind: 'usb' | 'serial') {
@@ -173,7 +193,7 @@ function BrowserProfiles() {
         copies: 1,
       };
       upsertProfile(profile);
-      reload();
+      reload(true);
       setStatus(
         kind === 'usb'
           ? `Paired: ${profile.name}. If its Test says “Access denied”, this USB printer is driver-owned — pair it as a serial port instead.`
@@ -198,22 +218,32 @@ function BrowserProfiles() {
       copies: 1,
     };
     upsertProfile(profile);
-    reload();
+    reload(true);
     setStatus('Added a paper/office profile — set its name to the OS printer.');
   }
 
   return (
     <div className="space-y-4">
       <div className="rounded-none border border-border-soft bg-surface-canvas px-3 py-2 text-xs text-text-muted">
-        Pair a printer for each role. Labels &amp; receipts print silently from the browser (raw
-        TSPL/ZPL/ESC-POS).{' '}
-        {isDesktopHost()
-          ? 'Paper/office printers print silently through the desktop app.'
-          : 'Paper/office printers use the browser print dialog.'}
-        <span className="mt-1 block text-text-soft">
-          If a vendor driver already owns the USB printer, WebUSB can’t reach it (“Access denied”).
-          Pair it as a <strong>serial port</strong> for reliable silent printing, or remove the driver to use USB.
-        </span>
+        {embedded ? (
+          <>
+            Pair a printer for each role. If a vendor driver already owns the USB printer, WebUSB
+            can&rsquo;t reach it (“Access denied”). Pair it as a serial port, or remove the driver to
+            use USB.
+          </>
+        ) : (
+          <>
+            Pair a printer for each role. Labels &amp; receipts print silently from the browser (raw
+            TSPL/ZPL/ESC-POS).{' '}
+            {isDesktopHost()
+              ? 'Paper/office printers print silently through the desktop app.'
+              : 'Paper/office printers use the browser print dialog.'}
+            <span className="mt-1 block text-text-soft">
+              If a vendor driver already owns the USB printer, WebUSB can’t reach it (“Access denied”).
+              Pair it as a <strong>serial port</strong> for reliable silent printing, or remove the driver to use USB.
+            </span>
+          </>
+        )}
       </div>
 
       {profiles.length === 0 ? (
@@ -226,18 +256,19 @@ function BrowserProfiles() {
             <ProfileCard
               key={p.id}
               profile={p}
+              stack={embedded}
               isDefaultForRole={routing[p.role] === p.id}
               onChange={(next) => {
                 upsertProfile(next);
-                reload();
+                reload(true);
               }}
               onMakeDefault={() => {
                 setRoute(p.role, p.id);
-                reload();
+                reload(true);
               }}
               onRemove={() => {
                 deleteProfile(p.id);
-                reload();
+                reload(true);
               }}
               onStatus={setStatus}
               osPrinters={osPrinters}
@@ -268,6 +299,7 @@ function BrowserProfiles() {
 
 function ProfileCard({
   profile,
+  stack,
   isDefaultForRole,
   onChange,
   onMakeDefault,
@@ -276,6 +308,7 @@ function ProfileCard({
   osPrinters,
 }: {
   profile: PrinterProfile;
+  stack?: boolean;
   isDefaultForRole: boolean;
   onChange: (p: PrinterProfile) => void;
   onMakeDefault: () => void;
@@ -315,7 +348,7 @@ function ProfileCard({
         <span className="shrink-0 text-role-caption text-text-faint">{profileSummary(profile)}</span>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+      <div className={cn('grid gap-2', stack ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3')}>
         <label className="block">
           <span className="mb-1 block text-role-caption font-medium text-text-muted">Role</span>
           <select value={profile.role} onChange={(e) => set('role', e.target.value as PrinterRole)} className={FILTER_DROPDOWN_SELECT_CLASS}>

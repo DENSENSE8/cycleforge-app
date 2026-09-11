@@ -6,6 +6,12 @@ import { useStaffNameMap } from '@/hooks/useStaffNameMap';
 import { useUIModeOptional } from '@/design-system/providers/UIModeProvider';
 import { OrderSearchEmptyState } from '@/components/dashboard/OrderSearchEmptyState';
 import type { ShippedOrder } from '@/lib/neon/orders-queries';
+import { filterShippedOrdersByQuery } from '@/lib/orders/filter-painted-orders';
+import { slotTableFindHighlightId } from '@/lib/tables/slot-table-find';
+import {
+  ORDER_EXPORT_COLUMNS,
+  buildOrderExportRow,
+} from '@/lib/dashboard/order-export-csv';
 import type { DataTableProps } from '@/components/tables/DataTable';
 import type { TableId } from '@/lib/tables/table-columns';
 import { useQueueDisplaySort } from '@/hooks/useQueueDisplaySort';
@@ -17,6 +23,7 @@ import {
 import { useOrdersTableLayout } from './useOrdersTableLayout';
 import { ORDERS_GRID_CAPABILITIES } from '@/components/dashboard/orders-queue/orders-queue-descriptor';
 import { ORDERS_DEFAULT_TABLE_BINDING } from './orders-table-definition';
+import { OrdersMorphingHost } from '@/components/outbound/orders/to-ship/MorphingRowActionMenu';
 import { outboundSavedViewsConfig } from '@/components/unshipped/outbound-sidebar-shared';
 import {
   COMPOUND_TRACK_SORT_KEYS,
@@ -27,25 +34,26 @@ import {
   isQueueSortableColumnKey,
   queueCarrierSortOptions,
   queueChannelSortOptions,
+  queueColumnSortOptions,
   queueDisplaySortFace,
   queueSortForColumnKey,
   type QueueDisplaySort,
-  type QueueDisplaySortDir,
 } from '@/utils/queue-display-sort';
 import {
   normalizePersonName,
   resolveRowStatus,
   type OrdersQueueMode,
-  type OrdersQueueSort,
   type QueueRowRecord,
 } from './helpers';
 import { OrdersQueueTableRow } from './OrdersQueueTableRow';
 import { QueueGroupRow } from './QueueGroupRow';
+import { useOrdersQueueRows } from './useOrdersQueueRows';
 import {
-  ADDED_TODAY_BAND,
-  ADDED_TODAY_LABEL,
-  useOrdersQueueRows,
-} from './useOrdersQueueRows';
+  catalogIdsFromOrderRecords,
+  emptyKitCompositionMap,
+  kitFaceForCatalogId,
+  useKitCompositionMap,
+} from '@/hooks/useKitCompositionMap';
 import { useOrdersQueuePlane } from './useOrdersQueuePlane';
 import { AddTrackingPopover } from '@/components/outbound/labels/AddTrackingPopover';
 import { useOrderAssignment } from '@/hooks/useOrderAssignment';
@@ -130,11 +138,6 @@ export interface UseOrdersSpreadsheetOptions {
    */
   tableId?: TableId;
   /**
-   * Sort for row order / Date-column banding keys. When omitted, reads `?sort=`
-   * via {@link useQueueDisplaySort} (Pending / To Ship).
-   */
-  sort?: OrdersQueueSort;
-  /**
    * Accessible name for the table — REQUIRED. `LedgerGrid` exposes
    * `role="table"`; one shared grid serves every outbound lane, so the lane must
    * name itself ("Packed orders", "Labels queue") or a screen reader announces
@@ -180,7 +183,7 @@ export interface UseOrdersSpreadsheetOptions {
  */
 export type OrdersSpreadsheetFeed = Omit<
   DataTableProps<ShippedOrder, OrdersQueueColumnKey, OrdersQueueColumn>,
-  'search' | 'filter' | 'tabs' | 'activeTab' | 'onTabChange' | 'totalCount' | 'copyExport'
+  'search' | 'filter' | 'tabs' | 'activeTab' | 'onTabChange' | 'totalCount'
 >;
 
 /**
@@ -219,7 +222,6 @@ export function useOrdersSpreadsheet({
   railSelection = false,
   queueMode = 'fulfillment',
   tableId = 'orders',
-  sort: sortProp,
   ariaLabel,
   className,
   'data-testid': dataTestId = 'orders-grid-body',
@@ -233,11 +235,7 @@ export function useOrdersSpreadsheet({
   const todayKey = getCurrentPSTDateKey();
   const { isMobile } = useUIModeOptional();
   const { getStaffName } = useStaffNameMap();
-  const { sort: urlSort, dir: urlDir, setSort } = useQueueDisplaySort();
-  // Parent-supplied sort (Labels / Packed) owns row order — no URL column sort.
-  const urlDriven = sortProp === undefined;
-  const sort = sortProp ?? urlSort;
-  const dir: QueueDisplaySortDir | null = urlDriven ? urlDir : null;
+  const { sort, dir, setSort } = useQueueDisplaySort();
 
   // ONE Orders binding (Wave-1 hand-model kill). `?ustatus=TESTED` narrows
   // ROWS (`UnshippedTable`'s lane predicate) — it never swaps column models;
@@ -252,12 +250,23 @@ export function useOrdersSpreadsheet({
     [effectiveLayout, queueMode],
   );
 
+  const painted = useMemo(
+    () => filterShippedOrdersByQuery(records, searchValue),
+    [records, searchValue],
+  );
   const { orderGroupsByDate, displayedRecords } = useOrdersQueueRows({
-    records,
+    records: painted,
     sort,
     dir,
     queueMode,
   });
+
+  const kitCatalogIds = useMemo(
+    () => catalogIdsFromOrderRecords(displayedRecords),
+    [displayedRecords],
+  );
+  const { data: kitCompositionMap } = useKitCompositionMap(kitCatalogIds);
+  const compositionMap = kitCompositionMap ?? emptyKitCompositionMap();
 
   const getTableRowId = useCallback((r: ShippedOrder) => String(r.id), []);
 
@@ -389,7 +398,6 @@ export function useOrdersSpreadsheet({
 
   const handleSortChange = useCallback(
     (key: OrdersQueueColumnKey, nextDir: 'asc' | 'desc') => {
-      if (!urlDriven) return;
       // Resolve through the compound map: the header's key is a TRACK
       // (`fulfillment`, `item`, `status:1`), and the `?sort=` vocabulary is in
       // FACTS (`order`, `title`, `picked`). Slot tracks resolve via fieldId.
@@ -398,12 +406,11 @@ export function useOrdersSpreadsheet({
       if (!resolved) return;
       setSort(resolved, nextDir);
     },
-    [urlDriven, setSort, compoundColumns],
+    [setSort, compoundColumns],
   );
 
   const handleSortMenuSelect = useCallback(
     (id: string) => {
-      if (!urlDriven) return;
       const next = id as QueueDisplaySort;
       // A name pin is a face, not a direction. Re-selecting "Amazon" must
       // keep Amazon on top — flipping would bury the name the operator chose.
@@ -417,11 +424,16 @@ export function useOrdersSpreadsheet({
         setSort(next);
       }
     },
-    [urlDriven, sort, dir, setSort],
+    [sort, dir, setSort],
   );
 
   const sortMenuOptions = useMemo(
-    () => [...QUEUE_DISPLAY_SORT_OPTIONS, ...queueChannelSortOptions(), ...queueCarrierSortOptions()],
+    () => [
+      ...QUEUE_DISPLAY_SORT_OPTIONS,
+      ...queueColumnSortOptions(),
+      ...queueChannelSortOptions(),
+      ...queueCarrierSortOptions(),
+    ],
     [],
   );
 
@@ -440,10 +452,10 @@ export function useOrdersSpreadsheet({
     compoundColumns.find((c) => queueSortForColumnKey(c.key, c.fieldId) === sort)?.key ??
     Object.entries(COMPOUND_TRACK_SORT_KEYS).find(([, fact]) => fact === sort)?.[0];
   const columnSort =
-    urlDriven && isQueueColumnSort(sort) && !isQueueNamePinSort(sort)
+    isQueueColumnSort(sort) && !isQueueNamePinSort(sort)
       ? ((sortedTrack ?? sort) as OrdersQueueColumnKey)
       : null;
-  const columnSortDir = urlDriven && columnSort ? dir : null;
+  const columnSortDir = columnSort ? dir : null;
 
   const renderLeaf = useCallback(
     (
@@ -474,7 +486,7 @@ export function useOrdersSpreadsheet({
           opaqueStripe
           gridSkin
           clickSelect={clickSelect}
-          selectGutterChrome="always"
+          selectGutterChrome="hover"
           rowFillHex={rowFillHex}
           rowIndex={rowIndex}
           onToggleSelect={handleToggleSelect}
@@ -483,6 +495,7 @@ export function useOrdersSpreadsheet({
           selectMode={selectMode}
           isChecked={selectedIds.has(Number(record.id))}
           quietIdentity={quietIdentity}
+          kitFace={kitFaceForCatalogId(compositionMap, r.sku_catalog_id)}
           isMobile={isMobile}
           useAlternateStripe={stripeIndex % 2 === 1}
           testerDisplay={normalizePersonName(testerName)}
@@ -547,11 +560,23 @@ export function useOrdersSpreadsheet({
       clickSelect,
       fillsById,
       subtitleFieldIds,
+      compositionMap,
     ],
   );
+  const findScrollToKey = selectedRecord
+    ? String(selectedRecord.id)
+    : slotTableFindHighlightId({
+        query: searchValue,
+        paintedRowIds: painted.map((row) => String(row.id)),
+      });
+
 
   return {
     binding,
+    copyExport: {
+      columns: [...ORDER_EXPORT_COLUMNS],
+      toRow: (row: ShippedOrder) => buildOrderExportRow(row),
+    },
     // COMPOUND (two-row) layout — the one row shape across every table,
     // MATERIALIZED from the effective slot layout (staff ?? org ?? product).
     // Passed as the host's column override rather than swapped into the
@@ -565,30 +590,21 @@ export function useOrdersSpreadsheet({
     onResizeColumn: handleResizeColumn,
     ariaLabel,
     orderGroupsByDate,
-    /**
-     * The ONE named band on this table. Day banding stays off — absolute civil
-     * date is a per-row column here — but the day's intake gets an outlined,
-     * sticky-captioned section at the top of the queue so "what came in today"
-     * is answered without a filter, a second tab, or a strip above the rows
-     * (the last of which the operator ruled out on 2026-08-31).
-     */
-    sectionHeaders: { [ADDED_TODAY_BAND]: ADDED_TODAY_LABEL },
     rows: displayedRecords,
     getRowId: getTableRowId,
+    scrollToKey: findScrollToKey,
     sort: columnSort && isQueueSortableColumnKey(columnSort, compoundColumns.find((c) => c.key === columnSort)?.fieldId)
       ? columnSort
       : null,
     dir: columnSortDir,
     onSortChange: handleSortChange,
-    sortMenu: urlDriven
-      ? {
+    sortMenu: {
           options: sortMenuOptions,
           active: sort,
           hot: sort !== 'deadline',
           onSelect: handleSortMenuSelect,
           activeFace: queueDisplaySortFace(sort),
-        }
-      : undefined,
+        },
     views:
       queueMode === 'fulfillment'
         ? {
@@ -613,6 +629,7 @@ export function useOrdersSpreadsheet({
     className,
     testId: dataTestId,
     selectionScope,
+    bodyPrefix: <OrdersMorphingHost records={displayedRecords} selectedIds={selectedIds} />,
     // A header key on the compound row is a TRACK; the sort vocabulary is in
     // FACTS. `queueSortForColumnKey` bridges them, and this predicate is what
     // keeps the header offering the sorts the engine will actually perform.
@@ -620,7 +637,7 @@ export function useOrdersSpreadsheet({
       const col = compoundColumns.find((c) => c.key === key);
       return isQueueSortableColumnKey(key, col?.fieldId);
     },
-    selectGutterChrome: 'always' as const,
+    selectGutterChrome: 'hover' as const,
     // `rowIndex` is the group's first-leaf ARIA index and MUST be forwarded:
     // `OrdersQueueTableRow` derives `inTable` from it, so without it every
     // grouped row claims `role="checkbox"` instead of `role="row"` and the

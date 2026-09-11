@@ -49,8 +49,8 @@ import { withLookDisplayTabs } from './look-display-tab';
 /**
  * ONE icon-chrome token, shared with the 40px nav beam.
  *
- * `HEADER_ICON_BTN_CLASS` is the GlobalHeader / spine-top-pin face: square,
- * edge-to-edge, `hover:bg-surface-sunken` — the hover DEPTH reads as a plane
+ * `HEADER_ICON_BTN_CLASS` is the GlobalHeader / spine-top-pin face:
+ * HEADER_ICON_CORNER (`rounded-lg`), `hover:bg-surface-sunken` — the hover DEPTH reads as a plane
  * step behind the glyph rather than a tint on it. A hand-rolled `h-7 w-7` cell
  * with its own hover (the first draft of this file) was a second answer to a
  * question the header already answers, and it left a 2px gutter either side so

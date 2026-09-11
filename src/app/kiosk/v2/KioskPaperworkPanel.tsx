@@ -21,8 +21,8 @@
 
 import { RepairPaperworkCanvas } from '@/components/repair/RepairPaperworkCanvas';
 import RepairServiceForm from '@/components/repair/RepairServiceForm';
-import { isBuybackPayload, isRepairPayload } from '@/lib/kiosk/cart-line';
-import type { KioskCartLine } from '@/lib/kiosk/cart-line';
+import { isRepairPayload } from '@/lib/kiosk/cart-line';
+import { lineIdentification } from '@/lib/kiosk/line-identification';
 import { useKioskSession } from '@/lib/kiosk/kiosk-session-store';
 import {
   KIOSK_UTILITY_PANEL_FACE,
@@ -38,26 +38,7 @@ function formatCents(cents: number): string {
   return `${sign}$${(Math.abs(cents) / 100).toFixed(2)}`;
 }
 
-/**
- * The identifier a line is claimed by — serial for a repair, IMEI for a
- * buyback, SKU for retail. Every printed row carries one, so a customer can
- * point at the paper and say which of their things it is.
- */
-export function lineIdentification(line: KioskCartLine): {
-  label: string;
-  value: string;
-} {
-  if (isRepairPayload(line.payload)) {
-    return {
-      label: 'Serial',
-      value: line.payload.serialNumber?.trim() || line.payload.imei?.trim() || '—',
-    };
-  }
-  if (isBuybackPayload(line.payload)) {
-    return { label: 'IMEI', value: line.payload.imei?.trim() || '—' };
-  }
-  return { label: 'SKU', value: line.payload.sku?.trim() || '—' };
-}
+export { lineIdentification } from '@/lib/kiosk/line-identification';
 
 export function KioskPaperworkPanel() {
   const session = useKioskSession();
@@ -82,13 +63,17 @@ export function KioskPaperworkPanel() {
           <dl className="space-y-1 px-4 py-3">
             <div className="flex items-baseline justify-between gap-3">
               <dt className={KIOSK_META}>Name</dt>
-              <dd className="truncate text-sm font-semibold">
+              <dd className="truncate text-xs font-semibold">
                 {session.customerName || '—'}
               </dd>
             </div>
             <div className="flex items-baseline justify-between gap-3">
               <dt className={KIOSK_META}>Contact</dt>
-              <dd className="truncate text-sm font-semibold tabular-nums">{contact}</dd>
+              <dd className="truncate text-xs font-semibold tabular-nums">{contact}</dd>
+            </div>
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className={KIOSK_META}>Address</dt>
+              <dd className="truncate text-xs font-semibold">{session.customerAddress || '—'}</dd>
             </div>
           </dl>
         </section>

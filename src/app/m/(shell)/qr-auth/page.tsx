@@ -1,5 +1,14 @@
 'use client';
 
+/**
+ * Phone QR companion — signed-in phone session authorizes the desktop.
+ *
+ * Callers / importers: Next.js route `/m/qr-auth`; desktop SignInQrPanel QR URL.
+ * Affected API: GET /api/auth/session; POST /api/auth/qr/authorize body `{ token }`.
+ * Schemas: session user; qr_login_sessions.
+ * User instruction: auth desktop button, not Face ID; phone session binds desk.
+ */
+
 import { Suspense, useEffect, useState, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Shield, CheckCircle2, AlertCircle, Smartphone } from 'lucide-react';
@@ -7,7 +16,12 @@ import { Button } from '@/design-system/primitives/Button';
 import { Panel } from '@/design-system/primitives/Panel';
 import { StaffChoiceRowButton } from '@/components/auth/StaffChoiceRowButton';
 
-type QrAuthState = 'loading' | 'ready_signed_in' | 'authorizing' | 'success' | 'error';
+type QrAuthState =
+  | 'loading'
+  | 'ready_signed_in'
+  | 'authorizing'
+  | 'success'
+  | 'error';
 
 interface CurrentUserResponse {
   staffId: number;
@@ -34,10 +48,6 @@ function QrAuthContent() {
 
     async function init() {
       try {
-        // The session envelope AuthContext uses: always 200, `user: null`
-        // when signed out. The old `/api/auth/me` fetch 404'd on every tree,
-        // which sent signed-in phones into a qr-auth -> signin -> next loop
-        // (the infinite "Checking session..." fix, 2026-09-09).
         const meRes = await fetch('/api/auth/session', {
           credentials: 'include',
           cache: 'no-store',
@@ -52,9 +62,8 @@ function QrAuthContent() {
           }
         }
 
-        // Not signed in on phone: redirect to the existing signin page with next URL
         const nextUrl = `/m/qr-auth?token=${encodeURIComponent(token)}`;
-        window.location.href = `/signin?next=${encodeURIComponent(nextUrl)}`;
+        window.location.href = `/m/signin?next=${encodeURIComponent(nextUrl)}`;
       } catch (err) {
         console.error('[qr-auth] init failed:', err);
         setErrorMessage('Failed to initialize authorization session.');
@@ -73,10 +82,11 @@ function QrAuthContent() {
     try {
       const res = await fetch('/api/auth/qr/authorize', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token }),
       });
-      const data = await res.json() as { ok?: boolean; staffName?: string; error?: string };
+      const data = (await res.json()) as { ok?: boolean; staffName?: string; error?: string };
 
       if (!res.ok || !data.ok) {
         throw new Error(data.error || 'Authorization failed.');
@@ -85,21 +95,26 @@ function QrAuthContent() {
       setAuthorizedStaffName(data.staffName || currentUser.name);
       setState('success');
     } catch (err) {
-      setErrorMessage(err instanceof Error ? err.message : 'Could not authorize workstation.');
+      const msg = err instanceof Error ? err.message : 'Could not authorize workstation.';
+      setErrorMessage(msg);
       setState('error');
     }
   }, [token, currentUser]);
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center bg-surface-canvas p-4 text-text-default">
-      <Panel radius="2xl" padding="lg" className="w-full max-w-sm space-y-6 text-center border border-border-soft bg-surface-card shadow-lg">
+      <Panel
+        radius="2xl"
+        padding="lg"
+        className="w-full max-w-sm space-y-6 border border-border-soft bg-surface-card text-center shadow-lg"
+      >
         <div className="flex flex-col items-center space-y-2">
           <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-primary/10 text-brand-primary">
             <Smartphone className="h-6 w-6" />
           </div>
           <h1 className="text-role-title text-text-default">Workstation Sign-In</h1>
           <p className="text-role-body-sm text-text-soft">
-            Authorize your desktop login from this mobile device.
+            Authorize this computer to sign in with your phone session.
           </p>
         </div>
 
@@ -115,7 +130,9 @@ function QrAuthContent() {
             <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-status-danger/10 text-status-danger">
               <AlertCircle className="h-6 w-6" />
             </div>
-            <p className="text-role-body text-status-danger">{errorMessage || 'Authorization encountered an error.'}</p>
+            <p className="text-role-body text-status-danger">
+              {errorMessage || 'Authorization encountered an error.'}
+            </p>
             <Button
               variant="secondary"
               className="w-full"
@@ -147,9 +164,9 @@ function QrAuthContent() {
               size="lg"
               className="w-full"
               icon={<Shield className="h-4 w-4" />}
-              onClick={handleAuthorize}
+              onClick={() => void handleAuthorize()}
             >
-              Authorize Desktop Login
+              Authorize desktop login
             </Button>
           </div>
         )}
@@ -157,7 +174,7 @@ function QrAuthContent() {
         {state === 'authorizing' && (
           <div className="py-8 text-center text-text-soft">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-2 border-brand-primary border-t-transparent" />
-            <p className="mt-3 text-sm font-medium">Authorizing workstation...</p>
+            <p className="mt-3 text-sm font-medium">Authorizing desktop…</p>
           </div>
         )}
 

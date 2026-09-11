@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 
 import { Printer } from '@/components/Icons';
+import { SettingsSectionHeader } from '@/components/settings/SettingsSectionHeader';
 import { Button } from '@/design-system/primitives';
 import { Gs1DataMatrix } from '@/components/barcode/Gs1DataMatrix';
 import { printStationCommandLabel } from '@/lib/print/printStationCommandLabel';
@@ -95,14 +96,18 @@ export function CommandBookSheet() {
 
   return (
     <div className="mx-auto w-full max-w-3xl px-6 py-8">
-      <header className="mb-6 flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <h1 className="text-role-title font-bold text-text-strong">Scan command book</h1>
-          <p className="mt-1 text-role-body text-text-soft">
-            {total} codes. Print this page, bind it, and scan straight off the paper.
-            Every code here is the exact string the scanner reads — nothing is
-            abbreviated for the page.
-          </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <SettingsSectionHeader
+            title="Scan command book"
+            belowSlot={
+              <p className="text-role-body text-text-soft">
+                {total} codes. Print this page, bind it, and scan straight off the paper.
+                Every code here is the exact string the scanner reads — nothing is
+                abbreviated for the page.
+              </p>
+            }
+          />
         </div>
         <Button
           variant="primary"
@@ -112,7 +117,7 @@ export function CommandBookSheet() {
           <Printer className="h-4 w-4" />
           Print book
         </Button>
-      </header>
+      </div>
 
       {sections.map((section) => (
         <section key={section.family} className="mb-10 break-inside-avoid-page">

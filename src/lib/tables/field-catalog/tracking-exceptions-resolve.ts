@@ -47,7 +47,11 @@ export function resolveTrackingExceptionSlotValue(
     case 'tracking-exceptions.source':
       return { kind: 'value', text: str(row.source_station) };
     case 'tracking-exceptions.staff':
-      return { kind: 'value', text: str(row.staff_display_name) ?? str(row.staff_name) };
+      return {
+        kind: 'person',
+        staffId: row.staff_id,
+        name: str(row.staff_display_name) ?? str(row.staff_name),
+      };
     case 'tracking-exceptions.retries':
       // Never retried is the ordinary state and says nothing — blank rather
       // than a 0, so the column carries signal about the STUCK rows.

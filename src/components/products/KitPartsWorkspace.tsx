@@ -117,8 +117,7 @@ export function KitPartsWorkspace() {
         </span>
       </div>
 
-      {/* Editor */}
-      <div className="mx-auto w-full max-w-2xl px-6 py-6">
+      <div className="mx-auto w-full max-w-2xl space-y-6 px-6 py-6">
         <KitPartsSection
           catalogId={catalog.id}
           kitParts={parts}

@@ -117,10 +117,10 @@ describe('directOpenForTypedHandle', () => {
     assert.equal(directOpenForTypedHandle('A-01-01-1-01')?.href, '/inventory?bin=A0101101');
   });
 
-  it('routes a rack code (position 00) to the rack view, not the bin view', () => {
+  it('routes a bay code (position 00) to the bays view, not the bin view', () => {
     const rack = directOpenForTypedHandle('A-01-01-1-00');
     assert.ok(rack);
-    assert.match(rack.href, /tab=racks/);
+    assert.match(rack.href, /tab=bays/);
     assert.match(rack.href, /code=A0101100/);
   });
 

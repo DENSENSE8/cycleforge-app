@@ -32,6 +32,7 @@ const CLIENT_PUBLIC_PATHS: ReadonlyArray<RegExp> = [
   /^\/m\/signin(?:$|\/)/,
   /^\/m\/qr-auth(?:$|\/)/,             // workstation QR auth - chromeless + exempt from the anon redirect;
                                         // mirrors proxy.ts PUBLIC_PATHS.
+  /^\/m\/claim(?:$|\/)/,               // desk→phone handoff claim — mirrors proxy.ts PUBLIC_PATHS.
   /^\/not-authorized(?:$|\/)/,
   /^\/m\/enroll\//,
   /^\/kiosk(?:$|\/)/,                    // customer-facing kiosk — chromeless, no staff nav (must match proxy.ts)

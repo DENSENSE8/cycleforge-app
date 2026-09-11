@@ -98,3 +98,38 @@ test('registry: staff-scope settings declare no permission/entitlement', () => {
 test('settingByKey round-trips for every entry', () => {
   for (const s of SETTINGS) assert.equal(settingByKey(s.key)?.key, s.key);
 });
+
+const SENTENCE_CASE_ACRONYMS = new Set(['AI', 'PIN', 'DPA', 'NAS', 'SKU', 'GS1', 'API']);
+
+/** First word capitalised; later words lowercase unless a known acronym. */
+function assertSentenceCaseChrome(label: string, where: string) {
+  const words = label.split(/[\s·]+/).filter((w) => w !== '&');
+  assert.ok(words.length > 0, `${where}: empty label`);
+  for (let i = 0; i < words.length; i++) {
+    const w = words[i]!.replace(/[.,]/g, '');
+    if (SENTENCE_CASE_ACRONYMS.has(w)) continue;
+    if (i === 0) {
+      assert.match(w, /^[A-Z0-9]/, `${where}: "${label}" should start with a capital`);
+      continue;
+    }
+    const titleCased = w[0] === w[0]!.toUpperCase() && /[a-z]/.test(w.slice(1)) && w.slice(1) === w.slice(1).toLowerCase();
+    assert.equal(titleCased, false, `${where}: "${label}" is title case — use sentence case`);
+  }
+}
+
+test('settings landing chrome is sentence case', async () => {
+  const {
+    SETTINGS_CATEGORY_LABELS,
+    SETTINGS_FLOOR_CLASS,
+    SETTINGS_SECTION_OPTIONS,
+  } = await import('@/components/settings/settings-sections');
+  for (const [id, label] of Object.entries(SETTINGS_CATEGORY_LABELS)) {
+    assertSentenceCaseChrome(label, `category ${id}`);
+  }
+  for (const s of SETTINGS_SECTION_OPTIONS) {
+    assertSentenceCaseChrome(s.label, `section ${s.id}`);
+  }
+  const billing = SETTINGS_SECTION_OPTIONS.find((s) => s.id === 'billing');
+  assert.equal(billing?.tone, 'success', 'billing icon tone is success — not a green card wrap');
+  assert.equal(SETTINGS_FLOOR_CLASS, 'bg-surface-accent', 'settings ground is accent wash, not gray canvas');
+});

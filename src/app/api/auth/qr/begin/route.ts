@@ -7,9 +7,9 @@ import { hashQrToken, qrAuthCapability, qrAuthChannelName } from '@/lib/realtime
 
 export const runtime = 'nodejs';
 
+/** Mint the phone auth URL on this request host (tenant or apex). */
 function origin(req: NextRequest): string {
-  return process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL ||
-    `${req.nextUrl.protocol}//${req.nextUrl.host}`;
+  return req.nextUrl.origin;
 }
 
 let ablyRestClient: Ably.Rest | null = null;

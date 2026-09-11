@@ -4,10 +4,7 @@ import {
   type GridSurfaceDescriptor,
 } from '@/design-system/components/grid/grid-surface-descriptor';
 import type { CatalogLinkChoreRow } from '@/features/review/catalog-link/types';
-import {
-  CATALOG_LINK_GRID_COLUMNS,
-  type CatalogLinkGridColumn,
-} from './catalog-link-grid-layout';
+import type { CatalogLinkGridColumn } from './catalog-link-grid-layout';
 
 /**
  * Listing match is a QUEUE, not a checklist:
@@ -36,5 +33,3 @@ export function makeCatalogLinkGridDescriptor(
     CATALOG_LINK_GRID_CAPABILITIES,
   );
 }
-
-export { CATALOG_LINK_GRID_COLUMNS };

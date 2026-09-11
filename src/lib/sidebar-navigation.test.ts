@@ -18,6 +18,12 @@ import {
   stationSubgroupMembers,
   floorStationPages,
   hasDeskPageChrome,
+  getMasterNavItem,
+  masterNavLabelForPath,
+  masterNavItemForHref,
+  isSpineDeskItem,
+  isDeskSpineSection,
+  DESK_GROUPS,
 } from '@/lib/sidebar-navigation';
 import { routeParamsFor } from '@/lib/routing/registry';
 
@@ -559,7 +565,7 @@ test('resolver matches existing panel derivations for known deep-links', () => {
   // a facet narrows a queue and these rows are not in the queue at all.
   assert.deepEqual(
     getSidebarPageNav('outbound')?.children?.map((c) => c.id),
-    ['orders', 'fba', 'shipped', 'exceptions'],
+    ['shortage', 'orders', 'fba', 'shipped', 'exceptions'],
   );
   assert.ok(
     getSidebarPageNav('operations')?.children?.some((c) => c.id === 'packing-review'),
@@ -691,6 +697,17 @@ test('/search declares its own route key and is rail-less', () => {
   assert.equal(getSidebarRouteKey('/no-such-route'), 'unknown');
 });
 
+test('Settings overview is rail-less; Roles and Access keep pickers', () => {
+  assert.equal(getSidebarRouteKey('/settings'), 'settings');
+  assert.equal(getSidebarRouteKey('/settings/me'), 'settings');
+  assert.equal(getSidebarRouteKey('/settings/roles'), 'settings');
+  assert.equal(hasSidebarContextPanel('/settings'), false);
+  assert.equal(hasSidebarContextPanel('/settings/me'), false);
+  assert.equal(hasSidebarContextPanel('/settings/organization'), false);
+  assert.equal(hasSidebarContextPanel('/settings/roles'), true);
+  assert.equal(hasSidebarContextPanel('/settings/access'), true);
+});
+
 test('isSidebarNavActive is pathname-only (query strings do not change the match)', () => {
   assert.equal(isSidebarNavActive('/', '/'), true);
   assert.equal(isSidebarNavActive('/search', '/search'), true);
@@ -758,7 +775,7 @@ test('floorStationPages is the flat Scan Stations map for the header switcher', 
       ['pickup', 'Local Pickup'],
       ['repair', 'Repair Service'],
       ['testing', 'Quality Control'],
-      ['ready-to-pack', 'Ready to Pack'],
+      ['ready-to-pack', 'Picker'],
       ['packer', 'Packing'],
       ['scan-out', 'Scan out'],
     ],
@@ -770,7 +787,7 @@ test('Testing L1 benches are Quality Control and Ready to Pack', () => {
     stationSubgroupMembers('testing').map((p) => [p.id, p.label]),
     [
       ['testing', 'Quality Control'],
-      ['ready-to-pack', 'Ready to Pack'],
+      ['ready-to-pack', 'Picker'],
     ],
   );
   const tech = getSidebarPageNav('tech');
@@ -779,7 +796,91 @@ test('Testing L1 benches are Quality Control and Ready to Pack', () => {
     tech.children.map((child) => [child.id, child.label]),
     [
       ['testing', 'Quality Control'],
-      ['shipping', 'Ready to Pack'],
+      ['shipping', 'Picker'],
     ],
   );
+});
+
+test('Picker navigation enters its visible Urgent tab', () => {
+  assert.equal(getSidebarPageNav('ready-to-pack')?.href, '/test?ship=urgent');
+  const tech = getSidebarPageNav('tech');
+  assert.ok(tech?.children);
+  assert.deepEqual(tech.children.find((child) => child.id === 'shipping')?.to(), {
+    pathname: '/test',
+    params: { view: null, ship: 'urgent' },
+  });
+  assert.equal(
+    APP_SIDEBAR_NAV.find((item) => item.id === 'ready-to-pack')?.href,
+    '/test?ship=urgent',
+  );
+});
+
+test('Wave 1 catalog forks: Home paints, studio stays /studio, admin stays, no automations href', () => {
+  const home = APP_SIDEBAR_NAV.find((item) => item.id === 'home');
+  assert.equal(home?.kind, 'top');
+  assert.equal(home?.spineBand, undefined);
+  assert.equal(isSpineMapTopRow(home!), true);
+
+  const studio = APP_SIDEBAR_NAV.find((item) => item.id === 'studio');
+  assert.equal(studio?.href, '/studio');
+  assert.equal(studio?.label, 'Automations');
+
+  const plans = APP_SIDEBAR_NAV.find((item) => item.id === 'plans-live');
+  assert.equal(plans?.href, '/?mode=forge&view=live');
+
+  assert.ok(APP_SIDEBAR_NAV.some((item) => item.id === 'admin'));
+  assert.equal(
+    APP_SIDEBAR_NAV.some((item) => item.href === '/automations'),
+    false,
+  );
+  assert.equal(
+    APP_SIDEBAR_NAV.some((item) => item.id === 'new-conversation'),
+    false,
+  );
+});
+
+test('desk family helpers: domains + Operations are desks; Studio, Admin, benches, Home are not', () => {
+  const items = getSidebarNavItems();
+  const incoming = items.find((item) => item.id === 'incoming');
+  const operations = items.find((item) => item.id === 'operations');
+  const studio = items.find((item) => item.id === 'studio');
+  const admin = items.find((item) => item.id === 'admin');
+  const receive = items.find((item) => item.id === 'receive');
+  const home = items.find((item) => item.id === 'home');
+  const media = items.find((item) => item.id === 'ops-photos');
+
+  assert.equal(incoming ? isSpineDeskItem(incoming) : false, true);
+  assert.equal(operations ? isSpineDeskItem(operations) : false, true);
+  assert.equal(studio ? isSpineDeskItem(studio) : true, false);
+  assert.equal(admin ? isSpineDeskItem(admin) : true, false);
+  assert.equal(receive ? isSpineDeskItem(receive) : true, false);
+  assert.equal(home ? isSpineDeskItem(home) : true, false);
+  assert.equal(media?.kind, 'top');
+  assert.equal(isSpineMapTopRow(media!), true);
+
+  assert.equal(isDeskSpineSection('fulfillment'), true);
+  assert.equal(isDeskSpineSection('monitor'), true);
+  assert.equal(isDeskSpineSection('floor'), false);
+  assert.equal(isDeskSpineSection('studio'), false);
+  assert.equal(isDeskSpineSection('admin'), false);
+  assert.equal(DESK_GROUPS[0]?.id, 'desks');
+  assert.equal(DESK_GROUPS[0]?.label, 'Workspaces');
+});
+
+test('masterNavLabelForPath uses APP_SIDEBAR_NAV L1, never desk tabs', () => {
+  assert.equal(masterNavLabelForPath('/shipping/orders'), 'Shipping');
+  assert.equal(masterNavLabelForPath('/shipping/scan-out'), 'Scan out');
+  assert.equal(masterNavLabelForPath('/ops/photos'), 'Media Library');
+  assert.equal(
+    masterNavLabelForPath('/test', new URLSearchParams('view=testing')),
+    'Quality Control',
+  );
+  assert.equal(masterNavLabelForPath('/test'), 'Picker');
+  assert.equal(masterNavLabelForPath('/unbox'), 'Unbox');
+  assert.equal(masterNavLabelForPath('/incoming'), 'Inbound');
+  assert.equal(masterNavLabelForPath('/studio'), 'Automations');
+  assert.equal(masterNavLabelForPath('/admin'), 'Admin');
+  assert.equal(getMasterNavItem('outbound')?.label, 'Shipping');
+  assert.equal(getMasterNavItem('scan-out')?.label, 'Scan out');
+  assert.equal(masterNavItemForHref('/pack')?.id, 'packer');
 });

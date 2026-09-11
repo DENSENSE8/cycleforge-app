@@ -56,9 +56,12 @@ import { REPAIR_TABLE_BINDING } from '@/components/repair/repair-grid/repair-tab
 import { TECH_ALL_TABLE_BINDING } from '@/components/tech/all/tech-all-table-definition';
 import { TRACKING_EXCEPTIONS_TABLE_BINDING } from '@/components/tracking-exceptions/grid/tracking-exceptions-table-definition';
 import { BINS_TABLE_BINDING } from '@/components/warehouse/bins-grid/bins-table-definition';
+import { INVENTORY_EVENTS_TABLE_BINDING } from '@/components/inventory/events-grid/inventory-events-table-definition';
 import { WARRANTY_TABLE_BINDING } from '@/components/warranty/grid/warranty-table-definition';
 import { MY_DAY_TABLE_BINDING } from '@/features/my-day/grid/my-day-table-definition';
-
+import { KIOSKDEVICES_TABLE_BINDING } from '@/components/settings/kiosk-devices/kiosk-devices-table-definition';
+import { KIOSKSLOTEVENTS_TABLE_BINDING } from '@/components/settings/kiosk-slot-events/kiosk-slot-events-table-definition';
+import { WALKINSALES_TABLE_BINDING } from '@/components/walk-in/grid/walk-in-sales-table-definition';
 
 export const REGISTERED_BINDINGS = [
   // Unbox / History / Testing — the golden spreadsheet.
@@ -114,9 +117,17 @@ export const REGISTERED_BINDINGS = [
   TRACKING_EXCEPTIONS_TABLE_BINDING,
   // Warehouse › Bins overview.
   BINS_TABLE_BINDING,
+  // Inventory › Ledger activity — the event feed that used to be a card list.
+  INVENTORY_EVENTS_TABLE_BINDING,
   // Support › Warranty claims.
   WARRANTY_TABLE_BINDING,
   // Home › Today. Sibling of `home.daily`, never a merge with it — two stores
   // answering two questions.
   MY_DAY_TABLE_BINDING,
+  // Settings › Kiosk devices — enroll / revoke tablets (off AdminTable).
+  KIOSKDEVICES_TABLE_BINDING,
+  // Settings › Kiosk slot history — filter/export only; never Revoke.
+  KIOSKSLOTEVENTS_TABLE_BINDING,
+  // Dashboard › Sales walk-in history — completed visits as a slot peer.
+  WALKINSALES_TABLE_BINDING,
 ] as const;

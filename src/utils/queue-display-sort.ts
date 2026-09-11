@@ -19,10 +19,16 @@ export type QueueDisplaySortColumn =
   | 'qty'
   | 'order'
   | 'tracking'
-  /** Pick step — who picked, blanks last. */
+  /** Pick step — event stamp, blanks last; name is the tiebreak. */
   | 'picked'
-  /** Packed step — packer name, blanks last. */
+  /** Pack step — event stamp, blanks last; name is the tiebreak. */
   | 'packed'
+  /** Status pill label (queue-mode aware). */
+  | 'status'
+  /** Sale amount. */
+  | 'amount'
+  /** Scan-out stamp (`ship_confirmed_at`), blanks last. */
+  | 'scanned_out'
   /** Carrier A–Z (no pin). A pin is `carrier:<DisplayCarrier label>`. */
   | 'carrier'
   /** Pin one carrier (tracking-ring face). */
@@ -34,6 +40,9 @@ export type QueueDisplaySort = QueueDisplaySortComposite | QueueDisplaySortColum
 
 /** Group heading for Order-column marketplace dots — Amazon, eBay, … */
 export const QUEUE_CHANNEL_SORT_GROUP = 'Platform';
+
+/** Group heading for header-click DATA facts — Order, Pack, … */
+export const QUEUE_COLUMN_SORT_GROUP = 'Columns';
 
 /** Group heading for the tracking-ring names — USPS, UPS, … */
 export const QUEUE_CARRIER_SORT_GROUP = 'Carriers';
@@ -48,6 +57,9 @@ const QUEUE_COLUMN_SORTS: readonly QueueDisplaySortColumn[] = [
   'tracking',
   'picked',
   'packed',
+  'status',
+  'amount',
+  'scanned_out',
   'carrier',
 ] as const;
 
@@ -130,15 +142,15 @@ export function isQueueColumnSort(sort: string): sort is QueueDisplaySortColumn 
  * product title (`title`). Mapping them re-connects existing comparators —
  * `queue-row-compare.ts` needs no new case.
  *
- * `state` and `amount` are deliberately ABSENT. Neither had a column sort in the
- * flat model either (`QUEUE_COLUMN_SORTS` never listed `status` or `amount`), so
- * leaving them out preserves the shipped behaviour exactly rather than inventing
- * an ordering nobody has asked for. Adding one later means adding a comparator
- * case too, which is the point at which it is a product decision.
+ * `select` / `actions` / `_fill` / `thumb` stay unmapped — they are chrome, not facts.
+ * Every painted DATA track (`dates`, `state`, and bound `status:N` fields)
+ * maps onto a comparator in `queue-row-compare.ts`.
  */
 export const COMPOUND_TRACK_SORT_KEYS: Readonly<Record<string, QueueDisplaySortColumn>> = {
   fulfillment: 'order',
   item: 'title',
+  dates: 'age',
+  state: 'status',
 };
 
 /**
@@ -149,6 +161,9 @@ export const COMPOUND_TRACK_SORT_KEYS: Readonly<Record<string, QueueDisplaySortC
 export const SLOT_FIELD_SORT_FACTS: Readonly<Record<string, QueueDisplaySortColumn>> = {
   'orders.picked': 'picked',
   'orders.packed': 'packed',
+  'orders.scanned_out': 'scanned_out',
+  'orders.qty': 'qty',
+  'orders.amount': 'amount',
 };
 
 /** The `?sort=` value a header key drives, or null when it does not sort. */
@@ -179,7 +194,7 @@ function isQueueCompositeSort(sort: string): sort is QueueDisplaySortComposite {
  */
 export function defaultDirForQueueSort(sort: QueueDisplaySort): QueueDisplaySortDir | null {
   if (!isQueueColumnSort(sort)) return null;
-  if (sort === 'age') return 'desc';
+  if (sort === 'age' || sort === 'amount' || sort === 'scanned_out') return 'desc';
   return 'asc';
 }
 
@@ -207,7 +222,20 @@ export type QueueDisplaySortFace = {
 };
 
 const QUEUE_COLUMN_SORT_FACES: Readonly<
-  Record<'title' | 'age' | 'qty' | 'order' | 'tracking' | 'picked' | 'packed' | 'carrier', QueueDisplaySortFace>
+  Record<
+    | 'title'
+    | 'age'
+    | 'qty'
+    | 'order'
+    | 'tracking'
+    | 'picked'
+    | 'packed'
+    | 'status'
+    | 'amount'
+    | 'scanned_out'
+    | 'carrier',
+    QueueDisplaySortFace
+  >
 > = {
   title: { label: 'Product title', shortLabel: 'Product' },
   age: { label: 'Days late', shortLabel: 'Days late' },
@@ -215,9 +243,47 @@ const QUEUE_COLUMN_SORT_FACES: Readonly<
   order: { label: 'Order number', shortLabel: 'Order' },
   tracking: { label: 'Tracking number', shortLabel: 'Tracking' },
   picked: { label: 'Pick', shortLabel: 'Pick' },
-  packed: { label: 'Packer', shortLabel: 'Packer' },
+  packed: { label: 'Pack', shortLabel: 'Pack' },
+  status: { label: 'Status', shortLabel: 'Status' },
+  amount: { label: 'Amount', shortLabel: 'Amount' },
+  scanned_out: { label: 'Scanned out', shortLabel: 'Scanned out' },
   carrier: { label: 'Carrier', shortLabel: 'Carrier' },
 };
+
+const QUEUE_COLUMN_SORT_MENU_ORDER: readonly (keyof typeof QUEUE_COLUMN_SORT_FACES)[] = [
+  'order',
+  'title',
+  'status',
+  'picked',
+  'packed',
+  'scanned_out',
+  'qty',
+  'amount',
+  'age',
+  'tracking',
+  'carrier',
+];
+
+/**
+ * DATA-column facts for the toolbar sort list — same ids as header click / `?sort=`.
+ * View composites and platform/carrier pins stay in their own bands.
+ */
+export function queueColumnSortOptions(): readonly {
+  id: keyof typeof QUEUE_COLUMN_SORT_FACES;
+  label: string;
+  shortLabel: string;
+  group: typeof QUEUE_COLUMN_SORT_GROUP;
+}[] {
+  return QUEUE_COLUMN_SORT_MENU_ORDER.map((id) => {
+    const face = QUEUE_COLUMN_SORT_FACES[id];
+    return {
+      id,
+      label: face.label,
+      shortLabel: face.shortLabel,
+      group: QUEUE_COLUMN_SORT_GROUP,
+    };
+  });
+}
 
 /** Exact trigger paint for the active sort, whether or not it is in the menu. */
 export function queueDisplaySortFace(sort: QueueDisplaySort): QueueDisplaySortFace {

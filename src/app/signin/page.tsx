@@ -82,6 +82,14 @@ const SetPinPad = dynamic(
   () => import('@/components/auth/SetPinPad').then((m) => m.SetPinPad),
   { ssr: false },
 );
+/**
+ * GateGuard: /signin + /m/signin re-export. No API. User asked for Sign in with
+ * QR below identity providers on mobile, rounded scan popover.
+ */
+const MobileSignInQrChooser = dynamic(
+  () => import('@/components/auth/SignInQrScanDialog').then((m) => m.MobileSignInQrChooser),
+  { ssr: false },
+);
 import { BootSplash } from '@/components/boot/BootSplash';
 import { armBootSplash } from '@/lib/boot-flag';
 // Deep paths, NOT the `@/design-system/primitives` barrel. The barrel
@@ -91,6 +99,7 @@ import { armBootSplash } from '@/lib/boot-flag';
 // `optimizePackageImports`, so the whole engine rode into the one public
 // route's critical graph behind three unrelated primitives. Deep imports are
 // the established house shape here (108 existing call sites).
+import { Fingerprint } from 'lucide-react';
 import { Button } from '@/design-system/primitives/Button';
 import { Panel } from '@/design-system/primitives/Panel';
 import { RadiantLines } from '@/components/ui/radiant-lines';
@@ -101,6 +110,7 @@ import {
   DialogTitle,
 } from '@/design-system/components/Dialog';
 import { elevationClass } from '@/design-system/tokens/shadows';
+import { COMPOSER_SHELL_CORNER } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
 import { LastUsedMarker, ProviderSignInButton } from '@/components/auth/ProviderSignInButton';
 import type { PlatformProvider } from '@/lib/auth/platform-oauth-types';
@@ -249,16 +259,14 @@ export default function SignInPage() {
   const [lastMethod, setLastMethod] = useState<SigninMethod | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
 
-  // Platform passkey availability (Face ID / Touch ID / Windows Hello). This
-  // decides HIERARCHY, not capability: where a platform authenticator exists,
-  // the passkey is the prominent primary — the most consistent, reliable,
-  // one-gesture sign-in this page can offer — and leaves the drawer; elsewhere
-  // the old order stands instead of promising a Face ID the device cannot show.
+  // Desk Face ID CTA is intentionally absent — shared stations use QR; the
+  // phone authorizes the desk from its existing session (/m/qr-auth).
+  // Phone /m sign-in may still offer Face ID for signing into the phone.
   const [platformPasskey, setPlatformPasskey] = useState(false);
   useEffect(() => {
-    window.PublicKeyCredential?.isUserVerifyingPlatformAuthenticatorAvailable?.()
-      .then(setPlatformPasskey)
-      .catch(() => setPlatformPasskey(false));
+    void import('@/lib/auth/webauthn-client').then(({ browserSupportsWebAuthn }) => {
+      setPlatformPasskey(browserSupportsWebAuthn());
+    });
   }, []);
   // Holds the deferred finish while the upgrade question is answered.
   const [passkeyPrompt, setPasskeyPrompt] = useState<{ proceed: () => void; saving: boolean } | null>(null);
@@ -281,6 +289,22 @@ export default function SignInPage() {
   const [recentReady, setRecentReady] = useState(false);
   const [pinless, setPinless] = useState(false);
   const [showPhoneQr, setShowPhoneQr] = useState(false);
+  // Phone /m shell or UA-CH mobile → no desk companion QR (phone cannot scan
+  // itself). Detect path on first client paint so /m/signin never mounts the QR.
+  const [mobileSignInFace, setMobileSignInFace] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.location.pathname.startsWith('/m');
+  });
+  const [showDeskQr, setShowDeskQr] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !window.location.pathname.startsWith('/m');
+  });
+  useEffect(() => {
+    const onMobilePath = window.location.pathname.startsWith('/m');
+    const mobile = onMobilePath || isMobileDevice();
+    setMobileSignInFace(mobile);
+    setShowDeskQr(!mobile);
+  }, []);
   const [signingIn, setSigningIn] = useState(false);
 
   useEffect(() => { setRecent(readRecentSignins()); setRecentReady(true); }, []);
@@ -461,27 +485,22 @@ export default function SignInPage() {
     } catch (e) {
       // A cancelled or timed-out ceremony is a CHOICE, not a failure — and
       // the browser's raw message quotes the WebAuthn spec at the operator.
-      // Quiet right-side toast: nothing happened, nothing is wrong. Real
-      // failures still take the inline error, where they are actionable.
       const name = e instanceof Error ? e.name : '';
       if (name === 'NotAllowedError' || name === 'AbortError' || name === 'SecurityError') {
         toast('Passkey cancelled — nothing happened. Any sign-in way still works.');
         return;
       }
-      setError(e instanceof Error ? e.message : 'Passkey sign-in failed.');
+      const { humanizeWebAuthnError } = await import('@/lib/auth/webauthn-client');
+      setError(humanizeWebAuthnError(e));
     } finally {
       setBusy(false);
     }
   }, [completeAccountPasskey]);
 
-  // WebAuthn Conditional UI: arm the autofill bar once on mount. Where the
-  // platform has a passkey-capable authenticator, the browser can offer saved
-  // passkeys directly in the email field's autofill — one tap, no button. The
-  // ceremony runs in the background; if nobody uses it, it dies silently with
-  // the page, and every rejection (user ignored the bar, navigated, or no
-  // discoverable credential exists) is a no-op, never an error on screen.
+  // Conditional UI only on the phone face — never on a shared desk (avoids a
+  // sudden WebAuthn / Face ID prompt where QR is the companion path).
   useEffect(() => {
-    if (!platformPasskey) return;
+    if (!mobileSignInFace || !platformPasskey) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -499,7 +518,7 @@ export default function SignInPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [platformPasskey, completeAccountPasskey]);
+  }, [mobileSignInFace, platformPasskey, completeAccountPasskey]);
 
   // Redirect flows record on *attempt* — we navigate away before the outcome is
   // known, and this is only ever a display hint on the next visit.
@@ -689,12 +708,11 @@ export default function SignInPage() {
     if (!workspace?.emailFirstSignin) {
       opts.push({ key: 'station', label: 'Sign in on a shared station', onSelect: () => setStationOpen(true) });
     }
-    // Where the platform authenticator exists, the passkey leaves the drawer
-    // entirely — it renders as the landing primary instead, and a second door
-    // to the same gesture is one more thing to learn.
-    if (platformPasskey) return opts.filter((o) => o.key !== 'passkey');
+    // Desk: never list passkey in More — QR is the phone handoff.
+    // Phone: Face ID is a primary row when available, so keep it out of More.
+    if (!mobileSignInFace || platformPasskey) return opts.filter((o) => o.key !== 'passkey');
     return opts;
-  }, [submitMagicLink, submitAccountPasskey, workspace?.emailFirstSignin, email, platformPasskey]);
+  }, [submitMagicLink, submitAccountPasskey, workspace?.emailFirstSignin, email, platformPasskey, mobileSignInFace]);
 
   // Exactly one option gets lifted out of the drawer — the one that worked here last.
   const promotedOption = useMemo(
@@ -784,29 +802,31 @@ export default function SignInPage() {
               No staff members yet. Add your team in Settings, then come back to pick a name.
             </div>
           ) : (
-            <div className="-mr-1 max-h-[22rem] space-y-4 overflow-y-auto pr-1">
-              {recentStaff.length > 0 && (
-                <div className="space-y-1.5">
-                  <p className="px-1 text-role-caption uppercase text-text-soft">Recent</p>
-                  {recentStaff.map((s) => (
-                    <StaffChoiceRowButton key={s.id} staffId={s.id} name={s.name} role={s.role} colorHex={s.color_hex} disabled={busy} onPick={() => actAsStaff(s)} isRecent />
-                  ))}
-                </div>
-              )}
+            <div className="space-y-3">
+              <div className="max-h-[22rem] space-y-4 overflow-y-auto p-px">
+                {recentStaff.length > 0 && (
+                  <div className="space-y-1.5">
+                    <p className="px-1 text-role-caption uppercase text-text-soft">Recent</p>
+                    {recentStaff.map((s) => (
+                      <StaffChoiceRowButton key={s.id} staffId={s.id} name={s.name} role={s.role} colorHex={s.color_hex} disabled={busy} onPick={() => actAsStaff(s)} isRecent />
+                    ))}
+                  </div>
+                )}
 
-              {(recentStaff.length === 0 || showAllStaff) && otherStaff.length > 0 && (
-                <div className="space-y-1.5">
-                  {recentStaff.length > 0 && (
-                    <p className="px-1 text-role-caption uppercase text-text-soft">All staff</p>
-                  )}
-                  {otherStaff.map((s) => (
-                    <StaffChoiceRowButton key={s.id} staffId={s.id} name={s.name} role={s.role} colorHex={s.color_hex} disabled={busy} onPick={() => actAsStaff(s)} />
-                  ))}
-                </div>
-              )}
+                {(recentStaff.length === 0 || showAllStaff) && otherStaff.length > 0 && (
+                  <div className="space-y-1.5">
+                    {recentStaff.length > 0 && (
+                      <p className="px-1 text-role-caption uppercase text-text-soft">All staff</p>
+                    )}
+                    {otherStaff.map((s) => (
+                      <StaffChoiceRowButton key={s.id} staffId={s.id} name={s.name} role={s.role} colorHex={s.color_hex} disabled={busy} onPick={() => actAsStaff(s)} />
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {recentStaff.length > 0 && !showAllStaff && otherStaff.length > 0 && (
-                <Button variant="secondary" size="sm" className="w-full" onClick={() => setShowAllStaff(true)}>
+                <Button variant="secondary" size="sm" className="w-full ring-inset" onClick={() => setShowAllStaff(true)}>
                   Show {otherStaff.length} more
                 </Button>
               )}
@@ -906,16 +926,22 @@ export default function SignInPage() {
       )}
       <AuthCard
         qrPanel={
-          <SignInQrPanel
-            onSuccess={(data) => {
-              finish(
-                data?.staffId ?? null,
-                data?.role ?? null,
-                data?.defaultHomePath ?? null,
-                data?.defaultHomePathMobile ?? null,
-              );
-            }}
-          />
+          // Desk-only: companion QR is scanned BY the phone. Never on /m/signin
+          // (WhatsApp Web / Discord / QRAuth — QR on phone is a dead-end).
+          showDeskQr
+            ? (
+              <SignInQrPanel
+                onSuccess={(data) => {
+                  finish(
+                    data?.staffId ?? null,
+                    data?.role ?? null,
+                    data?.defaultHomePath ?? null,
+                    data?.defaultHomePathMobile ?? null,
+                  );
+                }}
+              />
+            )
+            : undefined
         }
       >
         <SignInTitle workspaceName={workspaceName} />
@@ -926,12 +952,9 @@ export default function SignInPage() {
 <div className="flex min-h-0 flex-1 flex-col justify-center gap-4 py-2">
 
 
-        {/* Tier 1 — identity providers lead. One "or" total on the face:
-            federated → or → email → passkey. The passkey closed the face
-            before and read as the primary over Google/Apple, which it is not
-            for a first sign-in — it is the fastest RETURN, so it sits under
-            email as the quiet third path (still full-width, still first for
-            the thumb on the way back once they know it). */}
+        {/* Tier 1 — identity providers lead. Desk: federated → or → email;
+            QR lives in the side panel (phone scans → authorize desktop).
+            Phone /m: federated → Sign in with QR code → Face ID → or → email. */}
         {authStep === 'choose' && workspace === null && (
           <div className="space-y-2.5" aria-label="Loading sign-in providers" data-testid="provider-skeleton">
             {[0, 1].map((i) => (
@@ -963,12 +986,48 @@ export default function SignInPage() {
                 {lastMethod === 'sso' && <LastUsedMarker />}
               </Button>
             )}
+            {mobileSignInFace ? <MobileSignInQrChooser disabled={busy} /> : null}
+            {mobileSignInFace && platformPasskey ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="lg"
+                className={lastMethod === 'passkey' ? 'relative w-full px-10' : 'w-full'}
+                disabled={busy}
+                icon={<Fingerprint className="h-4 w-4" />}
+                onClick={() => void submitAccountPasskey()}
+              >
+                Sign in with Face ID
+                {lastMethod === 'passkey' && <LastUsedMarker />}
+              </Button>
+            ) : null}
           </div>
         )}
 
+        {/* No federated providers: still offer desk QR scan on mobile, above email. */}
+        {authStep === 'choose' && workspace !== null && !hasFederated && mobileSignInFace ? (
+          <div key="mobile-qr" className="space-y-2.5">
+            <MobileSignInQrChooser disabled={busy} />
+            {platformPasskey ? (
+              <Button
+                type="button"
+                variant="secondary"
+                size="lg"
+                className={lastMethod === 'passkey' ? 'relative w-full px-10' : 'w-full'}
+                disabled={busy}
+                icon={<Fingerprint className="h-4 w-4" />}
+                onClick={() => void submitAccountPasskey()}
+              >
+                Sign in with Face ID
+                {lastMethod === 'passkey' && <LastUsedMarker />}
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+
         {authStep === 'choose' && (
           <div key="choose" className="space-y-2.5">
-            {hasFederated && <Divider>or</Divider>}
+            {(hasFederated || (mobileSignInFace && workspace !== null)) && <Divider>or</Divider>}
             <Button
               type="button"
               variant="primary"
@@ -983,19 +1042,6 @@ export default function SignInPage() {
             >
               Sign in with email
             </Button>
-            {platformPasskey && (
-              <Button
-                type="button"
-                variant="secondary"
-                size="lg"
-                className={lastMethod === 'passkey' ? 'relative w-full px-10' : 'w-full'}
-                disabled={busy}
-                onClick={() => void submitAccountPasskey()}
-              >
-                Sign in with a passkey
-                {lastMethod === 'passkey' && <LastUsedMarker />}
-              </Button>
-            )}
           </div>
         )}
 
@@ -1203,9 +1249,9 @@ function TextLink({ onClick, children }: { onClick: () => void; children: React.
 }
 
 /**
- * Phone hand-off QR. Composes the DS `Dialog` (Radix) so focus trap, focus
- * restore on close, Escape, scroll lock, and `aria-modal` come from the SoT —
- * this used to hand-roll a `fixed inset-0` scrim and had none of them.
+ * Phone deep-link QR (`/m/signin`) — opens the mobile site; does not mint a
+ * pairing token. Real desk pairing is {@link SignInQrPanel}. Composes the DS
+ * `Dialog` so focus trap / Escape / scroll lock come from the SoT.
  */
 function PhoneSigninQrDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [url, setUrl] = useState<string>('');
@@ -1216,9 +1262,9 @@ function PhoneSigninQrDialog({ open, onClose }: { open: boolean; onClose: () => 
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose(); }}>
-      <DialogContent className="max-w-sm">
+      <DialogContent className={cn('max-w-sm overflow-hidden', COMPOSER_SHELL_CORNER)}>
         <DialogHeader>
-          <DialogTitle>Scan to sign in on your phone</DialogTitle>
+          <DialogTitle>Scan to open on your phone</DialogTitle>
         </DialogHeader>
         <div className="flex justify-center">
           {/* Grounds itself white — scanners need the contrast; no wrapper

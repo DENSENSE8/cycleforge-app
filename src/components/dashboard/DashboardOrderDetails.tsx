@@ -1,16 +1,20 @@
 'use client';
 
 /**
- * The dashboard's right-side details panel. A selected order opens either the
- * Unshipped (queue) editor or the Shipped details panel depending on its
- * context; the choice + selection live in useDashboardSelectedOrder. Wrapped in
- * AnimatePresence for the slide in/out. Extracted from the dashboard page.
+ * To-ship / shipped-archive order record plane — Center Lock L2 on the desk stage.
+ *
+ * Selected row / gutter "More information" opens {@link DeskStageOverlay}
+ * `fill="stage"` over the queue (table stays mounted). Walk chrome (k of n,
+ * prev/next) reads the published record cursor; body topics stay in
+ * {@link ShippedDetailsPanel} / {@link UnshippedDetailsPanel}.
  */
 
-import { AnimatePresence } from '@/design-system/motion';
 import dynamic from 'next/dynamic';
 import type { ShippedOrder } from '@/types/orders';
 import type { ShippedDetailsContext } from '@/utils/events';
+import { DeskStageOverlay } from '@/design-system/components/DeskStageOverlay';
+import { deriveShippedHeaderMeta } from '@/components/shipped/details-panel/shipped-details-logic';
+import { useRecordCursor } from '@/lib/record-cursor/useRecordCursor';
 
 // Phase 4 (bundle deferral): the detail panels load on FIRST open (a row click),
 // not in the initial dashboard bundle. `ssr: false` — they're client-only
@@ -39,13 +43,43 @@ export function DashboardOrderDetails({
   onClose,
   onUpdate,
 }: DashboardOrderDetailsProps) {
+  const cursor = useRecordCursor('record');
+  const open = detailsEnabled && Boolean(selectedShipped);
+  const meta = selectedShipped ? deriveShippedHeaderMeta(selectedShipped) : null;
+  const handleClose = cursor.onClose ?? onClose;
+
+  const indexLabel =
+    cursor.available && cursor.position != null
+      ? `${cursor.position} of ${cursor.total}`
+      : undefined;
+
   return (
-    <AnimatePresence>
-      {detailsEnabled && selectedShipped && (
+    <DeskStageOverlay
+      open={open}
+      onClose={handleClose}
+      title={meta ? `Order ${meta.orderIdDisplay} details` : 'Order details'}
+      subtitle={selectedShipped?.product_title?.trim() || undefined}
+      indexLabel={indexLabel}
+      onPrev={cursor.onPrev ?? undefined}
+      onNext={cursor.onNext ?? undefined}
+      prevDisabled={cursor.prevDisabled}
+      nextDisabled={cursor.nextDisabled}
+      fill="stage"
+      closeOnScrim={false}
+      testId="desk-order-stage-overlay"
+    >
+      {selectedShipped ? (
         selectedContext === 'queue' ? (
-          <UnshippedDetailsPanel shipped={selectedShipped} onClose={onClose} onUpdate={onUpdate} />
+          <UnshippedDetailsPanel
+            key={selectedShipped.id}
+            shipped={selectedShipped}
+            onClose={handleClose}
+            onUpdate={onUpdate}
+            surface="stage"
+          />
         ) : (
           <ShippedDetailsPanel
+            key={selectedShipped.id}
             shipped={selectedShipped}
             context={
               selectedContext === 'shipped'
@@ -54,11 +88,12 @@ export function DashboardOrderDetails({
                   ? 'packed'
                   : 'dashboard'
             }
-            onClose={onClose}
+            onClose={handleClose}
             onUpdate={onUpdate}
+            surface="stage"
           />
         )
-      )}
-    </AnimatePresence>
+      ) : null}
+    </DeskStageOverlay>
   );
 }

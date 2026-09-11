@@ -32,6 +32,8 @@ export interface CounterDraft {
   phone: string;
   name: string;
   email: string;
+  /** Street / mailing address for the visit (optional on retail-only). */
+  address: string;
   /** Optional prior-order reveal. Requires the phone too — two keys or nothing. */
   priorOrderNumber: string;
   retailLines: CounterRetailLine[];
@@ -46,6 +48,7 @@ export function emptyCounterDraft(): CounterDraft {
     phone: '',
     name: '',
     email: '',
+    address: '',
     priorOrderNumber: '',
     retailLines: [],
     service: null,

@@ -70,13 +70,13 @@ export function useRailHeaderActions(): PaneHeaderActionBarAction[] {
     .filter((action) => action.key !== 'delete')
     .map((action) => ({ action, resolved: resolveSelectionAction(action, rows) }))
     .filter(({ resolved }) => !resolved.disabled)
-    .map(({ action }) => ({
+    .map(({ action, resolved }) => ({
       key: `rail-${action.key}`,
-      label: action.label,
+      label: resolved.label,
       icon: action.icon,
-      title: action.label,
+      title: resolved.reason ? `${resolved.label} — ${resolved.reason}` : resolved.label,
       onClick: () => {
-        void action.run(rows);
+        void action.run(rows, resolved.direction ? { direction: resolved.direction } : undefined);
       },
     }));
 }
@@ -95,16 +95,16 @@ export function useRailStatusBarActions(): TableStatusSelectionAction[] {
     .filter((action) => action.key !== 'export')
     .map((action) => ({ action, resolved: resolveSelectionAction(action, rows) }))
     .filter(({ resolved }) => !resolved.disabled)
-    .map(({ action }) => {
+    .map(({ action, resolved }) => {
       const meta = SELECTION_STATUS_BAR_META[action.key];
       return {
         key: action.key,
-        label: meta?.label ?? action.label,
+        label: resolved.direction ? resolved.label : (meta?.label ?? action.label),
         icon: action.icon,
         variant: meta?.variant ?? 'secondary',
         hotkey: meta?.hotkey,
         onClick: () => {
-          void action.run(rows);
+          void action.run(rows, resolved.direction ? { direction: resolved.direction } : undefined);
         },
       };
     })
@@ -201,12 +201,12 @@ export function RailActionRegion({ className }: { className?: string }) {
 
   // Bands in declaration order; the unnamed one leads so an ungrouped lane is
   // byte-identical to what it rendered before.
-  const ordinaryBands: { key: string; actions: typeof ordinary[number]['action'][] }[] = [];
-  for (const { action } of ordinary) {
-    const key = action.group ?? '';
+  const ordinaryBands: { key: string; actions: typeof ordinary }[] = [];
+  for (const entry of ordinary) {
+    const key = entry.action.group ?? '';
     const band = ordinaryBands.find((b) => b.key === key);
-    if (band) band.actions.push(action);
-    else ordinaryBands.push({ key, actions: [action] });
+    if (band) band.actions.push(entry);
+    else ordinaryBands.push({ key, actions: [entry] });
   }
 
   return (
@@ -230,19 +230,23 @@ export function RailActionRegion({ className }: { className?: string }) {
             </p>
           ) : null}
           <div className="flex flex-wrap items-center gap-2">
-            {band.actions.map((action) => (
+            {band.actions.map(({ action, resolved }) => (
               <Button
                 key={action.key}
                 type="button"
                 variant={action.primary ? 'primary' : 'secondary'}
                 size="sm"
                 icon={action.icon}
-                aria-label={action.label}
+                aria-label={resolved.label}
+                title={resolved.reason ? `${resolved.label} — ${resolved.reason}` : undefined}
                 onClick={() => {
-                  void action.run(rows);
+                  void action.run(
+                    rows,
+                    resolved.direction ? { direction: resolved.direction } : undefined,
+                  );
                 }}
               >
-                {action.label}
+                {resolved.label}
               </Button>
             ))}
           </div>
@@ -250,19 +254,22 @@ export function RailActionRegion({ className }: { className?: string }) {
       ))}
       {danger.length > 0 ? (
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-border-soft pt-3">
-          {danger.map(({ action }) => (
+          {danger.map(({ action, resolved }) => (
             <Button
               key={action.key}
               type="button"
               variant="danger"
               size="sm"
               icon={action.icon}
-              aria-label={action.label}
+              aria-label={resolved.label}
               onClick={() => {
-                void action.run(rows);
+                void action.run(
+                  rows,
+                  resolved.direction ? { direction: resolved.direction } : undefined,
+                );
               }}
             >
-              {action.label}
+              {resolved.label}
             </Button>
           ))}
         </div>

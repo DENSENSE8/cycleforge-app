@@ -1,32 +1,43 @@
 'use client';
 
 /**
- * /settings?section=devices — enroll, list, and revoke customer-facing kiosk
- * tablets (FOH/BOH surface split, doc 06). Manager-only (`walk_in.enroll_kiosk`).
+ * /settings/devices — enroll, list, and revoke customer-facing kiosk tablets
+ * (FOH/BOH surface split, doc 06). Manager-only (`walk_in.enroll_kiosk`).
  *
  * Enrolling mints a ONE-TIME pairing code shown once here; the manager carries
  * it to the tablet dogfood URL (`/kiosk/v2` on the staff app host until
  * subdomain DNS J7b). Only hashes live server-side — this surface never sees a token.
+ *
+ * List paint is the slot DataTable (`kiosk-devices` PRODUCT_TABLES peer) on md+,
+ * and a stackable card face of the same feed below md. Revoke opens a
+ * stage-overlay confirm plane — never window.confirm.
+ *
+ * Phase 2 `kiosk-slot-events` is a sibling PRODUCT_TABLES peer. The page
+ * {@link KioskDevicesWorkspace} switches peers with TabSwitch + `?view=` —
+ * this section paints ONE table (never both stacked). See KIOSK_DEVICES_PAGE_LAW.
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button } from '@/design-system/primitives';
-import { AdminTable, type AdminTableColumn } from '@/design-system/components/AdminTable';
-import { focusRing } from '@/design-system/tokens/focus-ring';
+import { TextField } from '@/design-system/primitives/TextField';
+import { DataTable } from '@/components/tables/DataTable';
+import { StaffAvatar } from '@/components/identity';
+import { useKioskDevicesSpreadsheet } from '@/components/settings/kiosk-devices/useKioskDevicesSpreadsheet';
+import { resolveKioskDeviceRowActions } from '@/components/settings/kiosk-devices/kiosk-devices-verbs';
+import { KioskDeviceRevokePlane } from '@/components/settings/kiosk-devices/KioskDeviceRevokePlane';
+import { useKioskSlotEventsSpreadsheet } from '@/components/settings/kiosk-slot-events/useKioskSlotEventsSpreadsheet';
+import type { CompoundRowAction } from '@/components/tables/compound/compound-row-model';
+import {
+  formatDwellFace,
+  hardwareStatusLabel,
+} from '@/lib/kiosk/kiosk-device-derived';
+import type { KioskDeviceTableRow } from '@/lib/kiosk/kiosk-device-row';
+import type { KioskSlotEventTableRow } from '@/lib/kiosk/kiosk-slot-event-row';
+import type { KioskDevicesPageView } from '@/lib/kiosk/kiosk-devices-page-law';
+import { cornerClass } from '@/design-system/tokens/radius';
 import { useAuth } from '@/contexts/AuthContext';
 import { resolveKioskDogfoodUrl } from '@/lib/tenancy/kiosk-host';
 import { cn } from '@/utils/_cn';
-
-interface KioskDeviceRow {
-  id: number;
-  label: string;
-  status: 'enrolled' | 'active' | 'revoked';
-  lastSeenAt: string | null;
-  createdAt: string;
-  enrolledByStaffId: number | null;
-  /** Square Terminal paired to this lane; null = cash / payment-link only. */
-  squareTerminalDeviceId: string | null;
-}
 
 interface FreshCode {
   deviceId: number;
@@ -34,39 +45,26 @@ interface FreshCode {
   expiresAt: string;
 }
 
-const STATUS_TONE: Record<KioskDeviceRow['status'], string> = {
-  active: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  enrolled: 'bg-amber-50 text-amber-700 ring-amber-200',
-  revoked: 'bg-surface-sunken text-text-muted ring-border-soft',
-};
-
-const STATUS_LABEL: Record<KioskDeviceRow['status'], string> = {
+const STATUS_LABEL: Record<KioskDeviceTableRow['status'], string> = {
   active: 'Paired',
   enrolled: 'Awaiting pairing',
   revoked: 'Revoked',
 };
 
-function fmtRelative(when: string | null): string {
-  if (!when) return '—';
-  const ms = Date.now() - new Date(when).getTime();
-  const s = Math.floor(ms / 1000);
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.floor(h / 24)}d ago`;
-}
-
-export function KioskDevicesSection() {
+export function KioskDevicesSection({ view = 'devices' }: { view?: KioskDevicesPageView }) {
   const { user } = useAuth();
-  const [rows, setRows] = useState<KioskDeviceRow[]>([]);
+  const [rows, setRows] = useState<KioskDeviceTableRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
   const [label, setLabel] = useState('');
   const [enrolling, setEnrolling] = useState(false);
   const [freshCode, setFreshCode] = useState<FreshCode | null>(null);
+  const [revokeTarget, setRevokeTarget] = useState<KioskDeviceTableRow | null>(null);
+  const [revoking, setRevoking] = useState(false);
+  const [events, setEvents] = useState<KioskSlotEventTableRow[]>([]);
+  const [eventsLoading, setEventsLoading] = useState(true);
 
+  const isFleet = view === 'devices';
   const kioskUrl = useMemo(() => resolveKioskDogfoodUrl(), [user?.organizationId]);
 
   const refresh = useCallback(async () => {
@@ -78,14 +76,32 @@ export function KioskDevicesSection() {
         setErr(r.status === 401 || r.status === 403 ? "You don't have access to this." : 'Could not load devices.');
         return;
       }
-      const data = (await r.json()) as { devices: KioskDeviceRow[] };
+      const data = (await r.json()) as { devices: KioskDeviceTableRow[] };
       setRows(data.devices || []);
     } finally {
       setLoading(false);
     }
   }, []);
 
+  const refreshEvents = useCallback(async () => {
+    setEventsLoading(true);
+    try {
+      const r = await fetch('/api/kiosk/slot-events', { credentials: 'include', cache: 'no-store' });
+      if (!r.ok) {
+        setEvents([]);
+        return;
+      }
+      const data = (await r.json()) as { events: KioskSlotEventTableRow[] };
+      setEvents(data.events || []);
+    } catch {
+      setEvents([]);
+    } finally {
+      setEventsLoading(false);
+    }
+  }, []);
+
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { void refreshEvents(); }, [refreshEvents]);
 
   const enroll = useCallback(async () => {
     const trimmed = label.trim();
@@ -120,15 +136,25 @@ export function KioskDevicesSection() {
     }
   }, [label, refresh]);
 
-  const revoke = useCallback(async (id: number) => {
-    if (!confirm('Revoke this tablet? Its access dies immediately.')) return;
-    await fetch('/api/kiosk/revoke', {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ deviceId: id }),
-    });
-    await refresh();
+  const confirmRevoke = useCallback(async (row: KioskDeviceTableRow) => {
+    setRevoking(true);
+    setErr(null);
+    try {
+      const r = await fetch('/api/kiosk/revoke', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ deviceId: row.id }),
+      });
+      if (!r.ok) {
+        setErr('Could not revoke this tablet.');
+        return;
+      }
+      setRevokeTarget(null);
+      await refresh();
+    } finally {
+      setRevoking(false);
+    }
   }, [refresh]);
 
   /**
@@ -155,130 +181,200 @@ export function KioskDevicesSection() {
     [refresh],
   );
 
-  const deviceColumns: AdminTableColumn<KioskDeviceRow>[] = [
-    {
-      key: 'tablet',
-      header: 'Tablet',
-      type: 'text',
-      cell: (row) => <span className="font-medium text-text-default">{row.label}</span>,
-    },
-    {
-      key: 'status',
-      header: 'Status',
-      type: 'tag',
-      cell: (row) => (
-        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold uppercase tracking-widest ring-1 ring-inset ${STATUS_TONE[row.status]}`}>
-          {STATUS_LABEL[row.status]}
-        </span>
-      ),
-    },
-    {
-      key: 'terminal',
-      header: 'Card reader',
-      type: 'text',
-      cell: (row) =>
-        row.status === 'revoked' ? null : (
-          <button
-            type="button"
-            onClick={() => void pairTerminal(row.id, row.squareTerminalDeviceId)}
-            className="ds-raw-button text-xs text-text-soft underline-offset-2 hover:text-text-default hover:underline"
-          >
-            {row.squareTerminalDeviceId ? (
-              <span className="font-mono">{row.squareTerminalDeviceId}</span>
-            ) : (
-              // Honest absence: this lane takes cash or a payment link.
-              'No reader'
-            )}
-          </button>
-        ),
-    },
-    {
-      key: 'last_seen',
-      header: 'Last seen',
-      type: 'date',
-      cell: (row) => <span className="text-xs text-text-soft">{fmtRelative(row.lastSeenAt)}</span>,
-    },
-    {
-      key: 'actions',
-      header: 'Actions',
-      align: 'right',
-      cell: (row) =>
-        row.status !== 'revoked' ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            type="button"
-            onClick={() => void revoke(row.id)}
-            className="border border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-          >
-            Revoke
-          </Button>
-        ) : null,
-    },
-  ];
+  const rowActions = useCallback(
+    (row: KioskDeviceTableRow): readonly CompoundRowAction[] =>
+      resolveKioskDeviceRowActions(row, {
+        onPairTerminal: (r) => void pairTerminal(r.id, r.squareTerminalDeviceId),
+        onRevoke: (r) => setRevokeTarget(r),
+      }),
+    [pairTerminal],
+  );
+
+  const sheet = useKioskDevicesSpreadsheet({ rows, loading, rowActions });
+  const historySheet = useKioskSlotEventsSpreadsheet({
+    events,
+    loading: eventsLoading,
+  });
 
   return (
-    <section className="space-y-5">
-      <header>
-        <h1 className="sr-only">Kiosk devices</h1>
+    <section className="relative flex min-h-0 flex-1 flex-col gap-5">
+      <header className="shrink-0">
         <p className="text-sm text-text-soft">
-          Customer-facing intake tablets (
-          <code className="rounded bg-surface-sunken px-1 break-all">{kioskUrl}</code>
-          ). Each authenticates as a device, never a staff account. Enroll one to get a one-time pairing code.
+          {isFleet ? (
+            <>
+              Customer-facing intake tablets
+              {kioskUrl ? (
+                <>
+                  {' '}
+                  (
+                  <code className="rounded bg-surface-sunken px-1 break-all">{kioskUrl}</code>
+                  )
+                </>
+              ) : null}
+              . Each authenticates as a device, never a staff account.
+            </>
+          ) : (
+            <>
+              Lane state transitions on enrolled tablets. Filter and export only — revoke stays on
+              Devices.
+            </>
+          )}
         </p>
       </header>
 
-      {err && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</div>}
+      {err && isFleet ? (
+        <div className="shrink-0 rounded-lg bg-surface-danger px-3 py-2 text-sm text-text-danger">{err}</div>
+      ) : null}
 
-      {/* Enroll */}
-      <div className="rounded-none border border-border-soft bg-surface-card p-4">
-        <p className="text-role-caption font-semibold uppercase tracking-widest text-text-soft">Enroll a tablet</p>
-        <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-          <input
-            value={label}
-            onChange={(e) => setLabel(e.target.value)}
-            placeholder="Tablet name (e.g. Front counter iPad)"
-            maxLength={120}
-            className={cn(
-              'flex-1 rounded-lg border border-border-soft bg-surface-canvas px-3 py-2 text-sm',
-              focusRing('field', 'accent'),
-            )}
-          />
-          <Button type="button" onClick={() => void enroll()} disabled={enrolling}>
-            {enrolling ? 'Enrolling…' : 'Generate code'}
-          </Button>
-        </div>
-
-        {freshCode && (
-          <div className="mt-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-3">
-            <p className="text-role-caption font-semibold uppercase tracking-widest text-emerald-700">
-              Pairing code — shown once
-            </p>
-            <p className="mt-1 select-all font-mono text-xl font-semibold tracking-widest text-emerald-800">
-              {freshCode.code}
-            </p>
-            <p className="mt-1 text-xs font-semibold text-emerald-700">
-              On the tablet, open{' '}
-              {kioskUrl ? (
-                <code className="rounded bg-emerald-100/80 px-1 break-all">{kioskUrl}</code>
-              ) : (
-                <>the workspace kiosk URL</>
-              )}{' '}
-              → “Set up this tablet” and enter this code before{' '}
-              {new Date(freshCode.expiresAt).toLocaleString()} (single-use; becomes a year-long device cookie once paired).
-            </p>
+      {isFleet ? (
+        <div className="shrink-0 rounded-none border border-border-soft bg-surface-card p-4">
+          <p className="text-role-caption font-semibold uppercase tracking-widest text-text-soft">
+            Enroll a tablet
+          </p>
+          <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <TextField
+              label="Tablet name"
+              value={label}
+              onChange={setLabel}
+              maxLength={120}
+              className="h-11 flex-1"
+            />
+            <Button
+              type="button"
+              size="lg"
+              radius="surface"
+              className="h-11 shrink-0"
+              onClick={() => void enroll()}
+              disabled={enrolling}
+            >
+              {enrolling ? 'Enrolling…' : 'Generate code'}
+            </Button>
           </div>
-        )}
-      </div>
 
-      {/* List */}
-      <AdminTable
-        columns={deviceColumns}
-        rows={rows}
-        rowKey={(row) => row.id}
-        loading={loading}
-        emptyMessage="No kiosk tablets enrolled yet."
-      />
+          {freshCode && (
+            <div className="mt-3 rounded-lg border border-border-success bg-surface-success px-3 py-3">
+              <p className="text-role-caption font-semibold uppercase tracking-widest text-text-success">
+                Pairing code — shown once
+              </p>
+              <p className="mt-1 select-all font-mono text-xl font-semibold tracking-widest text-text-success">
+                {freshCode.code}
+              </p>
+              <p className="mt-1 text-xs font-semibold text-text-success">
+                On the tablet, open{' '}
+                {kioskUrl ? (
+                  <code className="rounded bg-surface-success px-1 break-all">{kioskUrl}</code>
+                ) : (
+                  <>the workspace kiosk URL</>
+                )}{' '}
+                → “Set up this tablet” and enter this code before{' '}
+                {new Date(freshCode.expiresAt).toLocaleString()} (single-use; becomes a year-long
+                device cookie once paired).
+              </p>
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {isFleet ? (
+        <>
+          {/* Mobile — same binding feed as a card stack; sticky Revoke on each card. */}
+          <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto md:hidden">
+            {loading && rows.length === 0 ? (
+              <p className="text-sm text-text-soft">Loading devices…</p>
+            ) : rows.length === 0 ? (
+              <p className="text-sm text-text-soft">No kiosk devices enrolled.</p>
+            ) : (
+              rows.map((row) => {
+                const dwell = formatDwellFace(row.dwellSeconds);
+                const terminal = String(row.squareTerminalDeviceId ?? '').trim();
+                return (
+                  <article
+                    key={row.id}
+                    className={cn(
+                      'border border-border-soft bg-surface-card p-4',
+                      cornerClass('surface'),
+                    )}
+                  >
+                    <header className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-text-default">{row.label}</p>
+                        <p className="text-role-caption text-text-soft">Device {row.id}</p>
+                      </div>
+                      <span className="shrink-0 text-role-caption font-semibold uppercase tracking-wide text-text-soft">
+                        {STATUS_LABEL[row.status]}
+                      </span>
+                    </header>
+                    <dl className="mt-3 space-y-1 text-role-data text-text-soft">
+                      <div>
+                        Last seen{' '}
+                        {row.lastSeenAt ? new Date(row.lastSeenAt).toLocaleDateString() : '—'}
+                        {' · '}
+                        Enrolled {new Date(row.createdAt).toLocaleDateString()}
+                      </div>
+                      <div>
+                        {dwell ? `Dwell ${dwell}` : 'Dwell —'}
+                        {' · '}
+                        {hardwareStatusLabel(row.hardwareStatus)}
+                      </div>
+                      <div>{terminal ? `Reader ${terminal}` : 'No reader'}</div>
+                      {row.enrolledByStaffId != null || row.enrolledByName ? (
+                        <div className="flex items-center gap-1.5 pt-1">
+                          <StaffAvatar
+                            staffId={row.enrolledByStaffId}
+                            name={row.enrolledByName}
+                            size="xs"
+                            alt=""
+                          />
+                          <span>{row.enrolledByName ?? '—'}</span>
+                        </div>
+                      ) : null}
+                    </dl>
+                    {row.status !== 'revoked' ? (
+                      <footer className="mt-3 flex justify-end gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          onClick={() => void pairTerminal(row.id, row.squareTerminalDeviceId)}
+                        >
+                          {terminal ? 'Change reader' : 'Pair reader'}
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="danger"
+                          onClick={() => setRevokeTarget(row)}
+                        >
+                          Revoke
+                        </Button>
+                      </footer>
+                    ) : null}
+                  </article>
+                );
+              })
+            )}
+          </div>
+
+          <div className="hidden min-h-0 min-w-0 flex-1 flex-col md:flex">
+            <DataTable {...sheet} totalCount={rows.length} />
+          </div>
+        </>
+      ) : (
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+          <DataTable {...historySheet} totalCount={events.length} />
+        </div>
+      )}
+
+      {isFleet ? (
+        <KioskDeviceRevokePlane
+          row={revokeTarget}
+          busy={revoking}
+          onClose={() => {
+            if (!revoking) setRevokeTarget(null);
+          }}
+          onConfirm={(row) => void confirmRevoke(row)}
+        />
+      ) : null}
     </section>
   );
 }

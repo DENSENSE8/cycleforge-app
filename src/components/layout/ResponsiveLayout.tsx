@@ -14,10 +14,12 @@ import { isMobileAllowedPath } from '@/lib/sidebar-navigation';
 import { SIDEBAR_SPINE_WIDTH } from '@/components/sidebar/sidebar-spine';
 import { ContextPanelLayout } from '@/components/sidebar/ContextPanelLayout';
 import { RightRailHost } from '@/components/right-rail/RightRailHost';
-import { GlobalWedgeScannerMount, PhoneScanBridgeMount } from '@/components/layout/scan-mounts';
+import { GlobalWedgeScannerMount, PhoneScanBridgeMount, StaffPrintBridgeMount } from '@/components/layout/scan-mounts';
 import { setRightRailFrameWidth } from '@/lib/right-rail/frame';
 import { isClientPublicPath } from '@/contexts/AuthContext';
 import { GlobalHeader } from '@/components/layout/GlobalHeader';
+import { MASTER_NAV_TOGGLE_EVENT } from '@/lib/app-events';
+import { useHoverSurface } from '@/hooks/useHoverSurface';
 import { appContentShellClass } from '@/components/layout/header-shell';
 import { appChromeClass } from '@/design-system/tokens/app-surface';
 import { cn } from '@/utils/_cn';
@@ -160,12 +162,19 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
   // It is a PUSH column (`SidebarNavColumn`), so it does not auto-close: it
   // covers nothing, and a navigator that collapsed on the first row you clicked
   // would reflow the frame twice per jump for no gain. Closing is the toggle
-  // (and nothing else). Reopen paths: GlobalHeader toggle, or ⌘K. The toggle is
-  // click-only — no collapsed hover peek of top destinations.
-  // (The spine pre-expands the active page's modes on every route change, so
-  // staying open stays coherent with where you are.)
+  // (and nothing else). Reopen paths: GlobalHeader / spine-head click, or ⌘K.
+  // Hover does not open or peek the spine (`SidebarNavColumn` from main).
   const [navOpen, setNavOpen] = useState(false);
   const toggleNav = useCallback(() => setNavOpen((prev) => !prev), []);
+  useEffect(() => {
+    const toggle = () => setNavOpen((v) => !v);
+    window.addEventListener(MASTER_NAV_TOGGLE_EVENT, toggle);
+    return () => window.removeEventListener(MASTER_NAV_TOGGLE_EVENT, toggle);
+  }, []);
+  const navPeek = useHoverSurface({
+    id: 'master-nav-spine-peek',
+    disabled: true,
+  });
   const drawerRef = useRef<HTMLDivElement>(null);
   // The CONTENT ROW, measured for the right rail's push/overlay decision. This
   // element and not a descendant: its width is invariant under everything the
@@ -344,6 +353,7 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
       <div className="flex min-h-0 w-full flex-1 overflow-hidden">
         <GlobalWedgeScannerMount />
         <PhoneScanBridgeMount />
+        <StaffPrintBridgeMount />
 
         {/* The nav spine — the page list, and only the page list. It is a flex
             SIBLING of the header+content column, so opening it moves the frame
@@ -352,7 +362,12 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
         {!chromeless && (
           <ErrorBoundary label="sidebar-nav-column" fallback={() => null}>
             <Suspense fallback={null}>
-              <SidebarNavColumn open={navOpen} onOpenChange={setNavOpen}>
+              <SidebarNavColumn
+                open={navOpen}
+                peeking={navPeek.isOpen}
+                peekSurfaceProps={navPeek.surfaceProps}
+                onPeekDismiss={navPeek.close}
+              >
                 <DashboardSidebar />
               </SidebarNavColumn>
             </Suspense>
@@ -362,9 +377,10 @@ export function ResponsiveLayout({ children, kioskHost = false }: ResponsiveLayo
         <div className={cn('relative flex h-full min-w-0 flex-1 flex-col overflow-hidden', appChromeClass)}>
           {!chromeless && (
           <GlobalHeader
-            canCollapseSidebar
-            sidebarCollapsed={!navOpen}
-            onToggleSidebar={toggleNav}
+            navOpen={navOpen}
+            onToggleNav={toggleNav}
+            peeking={navPeek.isOpen}
+            peekTriggerProps={navPeek.triggerProps}
           />
           )}
           <main className={cn(chromeless ? 'flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden' : appContentShellClass)}>

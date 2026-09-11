@@ -20,6 +20,7 @@ import { useCallback, useRef, useState, type RefObject } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { unwrapScannedSerial } from '@/lib/barcode-routing';
 import { toast } from '@/lib/toast';
+import { returnOrderImportedCopy, returnOrderLineFill } from '@/lib/receiving/return-order-imported';
 import type { ReceivingLineRow } from '@/components/station/receiving-line-row';
 import { dispatchUnboxRailLineUpdated } from '@/components/sidebar/receiving/unbox-rail-events';
 import {
@@ -256,7 +257,40 @@ export function useLineSerials({
         // Light up the return match band straight from the scan response — works
         // on ANY line (not just a pre-typed RETURN) and needs no extra round-trip,
         // since the server resolves + persists the originating order on the scan.
-        if (data.is_return) {
+        const matchedOrder = data.matched_order as
+          | {
+              order_id?: string | null;
+              product_title?: string | null;
+              sku?: string | null;
+              account_source?: string | null;
+            }
+          | null
+          | undefined;
+        if (matchedOrder?.order_id) {
+          const copy = returnOrderImportedCopy({
+            orderId: String(matchedOrder.order_id),
+            productTitle: matchedOrder.product_title,
+            sku: matchedOrder.sku,
+            platform: matchedOrder.account_source,
+          });
+          toast.success(copy.title, { description: copy.description });
+          const fill = returnOrderLineFill({
+            orderId: String(matchedOrder.order_id),
+            productTitle: matchedOrder.product_title,
+            sku: matchedOrder.sku,
+            platform: matchedOrder.account_source,
+          });
+          dispatchUnboxRailLineUpdated({ id: data.line_state.id as number, ...fill });
+          const rid = row.receiving_id;
+          if (rid != null && Number.isFinite(rid) && fill.item_name) {
+            patchUnboxRailTitleByCarton(queryClient, rid, {
+              item_name: fill.item_name,
+              sku: fill.sku ?? null,
+              zoho_purchaseorder_number: fill.zoho_purchaseorder_number,
+            });
+          }
+        }
+        if (data.is_return || matchedOrder?.order_id) {
           const su = data.serial_unit;
           serialLookup.applyResult({
             serial,

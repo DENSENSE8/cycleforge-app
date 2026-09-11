@@ -599,8 +599,7 @@ export function CartonContextCard({
         options={platformOptions}
         value={platformValue}
         onSelect={onPlatformSelect}
-        collapsedLabel={classifyCompact ? (platformOptions.find((o) => o.value === platformValue)?.shortLabel) : undefined}
-        collapsedFace={classifyFace}
+        collapsedFace="dot"
         presentation="menu"
         open={openPicker === 'platform'}
         onOpenChange={(o) => setClassifyMenu('platform', o)}

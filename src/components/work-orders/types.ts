@@ -40,9 +40,15 @@ export interface WorkOrderRow {
   itemNumber?: string | null;
   sku?: string | null;
   condition?: string | null;
+  /** `sku_catalog.category` — bikes, frames, parts, … */
+  catalogCategory?: string | null;
+  serialNumber?: string | null;
   shipmentId?: number | string | null;
   accountSource?: string | null;
   quantity?: string | null;
+  /** Line sale — desk `orders.amount` under the title. */
+  saleAmount?: string | number | null;
+  currency?: string | null;
   /** Catalog listing image — phone to-ship thumb. Absent = package placeholder. */
   imageUrl?: string | null;
   /** Assigned picker `staff.color_hex` — phone Pick mark fill. */

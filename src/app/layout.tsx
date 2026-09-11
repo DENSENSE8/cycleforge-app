@@ -31,7 +31,7 @@ import { DeferredWebTelemetry } from "@/components/analytics/DeferredWebTelemetr
 import { PaintTimingHud } from "@/components/dev/PaintTimingHud";
 import { maybeSeedShell } from "@/lib/queries/unbox-shell-seed.server";
 import { PRODUCT_NAME } from "@/lib/branding/constants";
-import { cfSans, cfSansItalic, ibmPlexMono, ibmPlexSansCondensed, overpass } from "@/lib/fonts";
+import { cfSans, cfSansItalic, ibmPlexMono, ibmPlexSansCondensed } from "@/lib/fonts";
 import { appChromeClass } from "@/design-system/tokens/app-surface";
 
 export default async function RootLayout({
@@ -87,7 +87,7 @@ export default async function RootLayout({
     return (
         <html
             lang="en"
-            className={`${cfSans.variable} ${cfSansItalic.variable} ${ibmPlexSansCondensed.variable} ${ibmPlexMono.variable} ${overpass.variable} h-full overflow-hidden`}
+            className={`${cfSans.variable} ${cfSansItalic.variable} ${ibmPlexSansCondensed.variable} ${ibmPlexMono.variable} h-full overflow-hidden`}
             suppressHydrationWarning
         >
             <head>

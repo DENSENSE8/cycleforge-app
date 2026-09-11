@@ -76,7 +76,7 @@ test.describe('⌘K palette', () => {
   }) => {
     await boot(page);
     // The sidebar filter is a real input an operator is routinely typing in.
-    await page.locator('header button').first().click();
+    await page.getByTestId('sidebar-collapse-control').locator('button').click();
     await expect(page.locator('[data-sidebar-nav-column][data-open="true"]')).toBeVisible();
     const filter = page.locator('[data-sidebar-nav-column] input');
     await filter.click();

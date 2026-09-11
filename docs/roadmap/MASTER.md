@@ -53,10 +53,7 @@ Before touching any UI:
   ```
   resolvers pending)
   ```
-- [ ] SKU graph UI: build Cytoscape visualization (backend `/api/sku-catalog/graph` is done,
-  ```
-  migration unapplied — apply first, then wire frontend)
-  ```
+- [x] SKU graph UI — Cytoscape at `/inventory/graph` (Relationships + Parts Zoho); CRUD via `/api/sku-catalog/graph` + `sku_relationships`
 - [ ] Unshipped rail badges: add count badges to rail pills
 - [ ] DashboardManagementPanel deduplication (follow-up from Unshipped+Pending merge)
 - [ ] Station builder: wire drag-and-drop for block reordering (click-to-add is live, DND pending)
@@ -238,4 +235,4 @@ Before touching any UI:
 - [x] Detail-panel timelines shared across Shipped/Incoming/Tech
 - [x] Operations Studio /studio page skeleton (semantic zoom, 5 lenses, StudioWorkspaceProvider)
 - [x] Platform/account/type catalog — migration + CRUD API + hooks (read-side resolvers pending → Section 2)
-- [x] SKU graph backend CRUD (`/api/sku-catalog/graph`, sku_relationships table — UI pending → Section 2)
+- [x] SKU graph backend + UI (`/api/sku-catalog/graph`, `sku_relationships`, `/inventory/graph`)

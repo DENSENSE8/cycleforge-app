@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { toast } from '@/lib/toast';
 import { useLocations } from '@/hooks/useLocations';
 import { useOrgGs1 } from '@/hooks/useOrgGs1';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   useLabelPrinterStore,
   patchLabelPrinterState,
@@ -12,16 +13,19 @@ import {
 import type { LocationSegments } from '@/lib/barcode-routing';
 import { DEFAULT_CONFIG, loadConfig, saveConfig, type PrinterConfig, type Step } from './index';
 import { registerLocations } from './bin-printer-api';
+import { printBinLabelRun } from '@/lib/print/printLabelRun';
 
 /**
  * Controller for the bin (location) label printer. Owns the five-step builder
- * (zone → aisle → bay → level → position), the per-warehouse config, and the
- * register-then-print flow for single and bulk (whole-level) labels. The
- * selection lives in the shared `useLabelPrinterStore` so the main-pane preview
+ * (zone → aisle → bay → level → optional position), the per-warehouse config, and the
+ * register-then-print flow. Bulk ranges open LabelPrintRunSheet; confirm calls printRun.
+ * The selection lives in the shared `useLabelPrinterStore` so the main-pane preview
  * stays in lock-step with the sidebar picker.
  *
  * Returns one bag consumed by the layout components so the views stay
  * presentational.
+ *
+ * Callers: BinLabelPrinter. User: implement print-run plan — wire printBinLabelRun.
  */
 export function useBinLabelPrinter() {
   const { rooms, roomNames, loading } = useLocations();
@@ -33,6 +37,7 @@ export function useBinLabelPrinter() {
   // placeholder or malformed value on file arrives here as '' and the label
   // falls back to the bare location code.
   const { identity: orgGs1 } = useOrgGs1();
+  const { user } = useAuth();
 
   const stored = useLabelPrinterStore();
   const selectedRoom = stored.room;
@@ -41,8 +46,11 @@ export function useBinLabelPrinter() {
   const level = stored.level;
   const position = stored.position;
 
-  const [bulkLabels, setBulkLabels] = useState<LocationSegments[] | null>(null);
   const [isPrinting, setIsPrinting] = useState(false);
+  const [printProgress, setPrintProgress] = useState<{
+    done: number;
+    total: number;
+  } | null>(null);
   const [overrideStep, setOverrideStep] = useState<Step | null>(null);
 
   useEffect(() => {
@@ -78,7 +86,7 @@ export function useBinLabelPrinter() {
   // ─── Selection handlers ─────────────────────────────────────────────────
   const pickRoom = useCallback((name: string) => {
     if (selectedRoom !== name) {
-      patchLabelPrinterState({ room: name, aisle: undefined, bay: undefined, level: undefined, position: 1 });
+      patchLabelPrinterState({ room: name, aisle: undefined, bay: undefined, level: undefined, position: undefined });
     } else {
       patchLabelPrinterState({ room: name });
     }
@@ -87,7 +95,7 @@ export function useBinLabelPrinter() {
 
   const pickAisle = useCallback((n: number) => {
     if (aisle !== n) {
-      patchLabelPrinterState({ aisle: n, bay: undefined, level: undefined, position: 1 });
+      patchLabelPrinterState({ aisle: n, bay: undefined, level: undefined, position: undefined });
     } else {
       patchLabelPrinterState({ aisle: n });
     }
@@ -96,7 +104,7 @@ export function useBinLabelPrinter() {
 
   const pickBay = useCallback((n: number) => {
     if (bay !== n) {
-      patchLabelPrinterState({ bay: n, level: undefined, position: 1 });
+      patchLabelPrinterState({ bay: n, level: undefined, position: undefined });
     } else {
       patchLabelPrinterState({ bay: n });
     }
@@ -105,7 +113,7 @@ export function useBinLabelPrinter() {
 
   const pickLevel = useCallback((n: number) => {
     if (level !== n) {
-      patchLabelPrinterState({ level: n, position: 1 });
+      patchLabelPrinterState({ level: n, position: undefined });
     } else {
       patchLabelPrinterState({ level: n });
     }
@@ -113,7 +121,16 @@ export function useBinLabelPrinter() {
   }, [level]);
 
   const pickPosition = useCallback((n: number) => {
-    patchLabelPrinterState({ position: n });
+    if (position === n) {
+      patchLabelPrinterState({ position: undefined });
+    } else {
+      patchLabelPrinterState({ position: n });
+    }
+    setOverrideStep(null);
+  }, [position]);
+
+  const clearPosition = useCallback(() => {
+    patchLabelPrinterState({ position: undefined });
     setOverrideStep(null);
   }, []);
 
@@ -140,64 +157,66 @@ export function useBinLabelPrinter() {
       level: level != null,
       position: position != null,
     };
-    if (!done[step] && step !== computedStep) return;
+    const positionReady = step === 'position' && level != null;
+    if (!done[step] && step !== computedStep && !positionReady) return;
     if (step === activeStep) return;
     setOverrideStep(step);
   }, [selectedRoom, aisle, bay, level, position, computedStep, activeStep]);
 
+  // Zone + aisle + bay + level is enough to print. Position is optional —
+  // omitted encodes as `position: 0` so the 2×1 face has no slot suffix.
   const allSelected =
-    selectedRoom != null && aisle != null && bay != null && level != null && position != null;
+    selectedRoom != null && aisle != null && bay != null && level != null;
   const zoneLetter = selectedRoom ? zoneMap[selectedRoom] : undefined;
 
   const currentSegments: LocationSegments | null = allSelected && zoneLetter
-    ? { zone: zoneLetter, aisle: aisle!, bay: bay!, level: level!, position: position! }
+    ? { zone: zoneLetter, aisle: aisle!, bay: bay!, level: level!, position: position ?? 0 }
     : null;
 
   const missingLetter = !!selectedRoom && !zoneLetter;
 
-  // Register every label before window.print(); abort the print on failure.
-  const triggerPrint = useCallback(async (labels: LocationSegments[]) => {
-    if (labels.length === 0) return;
-    if (!selectedRoom) {
-      toast.error('Pick a room first.');
-      return;
-    }
-    setIsPrinting(true);
-    try {
-      await registerLocations(selectedRoom, labels);
-    } catch (err: any) {
-      setIsPrinting(false);
-      toast.error(err?.message || 'Could not register location for printing');
-      return;
-    }
-
-    setBulkLabels(labels);
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        window.print();
-        setTimeout(() => {
-          setBulkLabels(null);
-          setIsPrinting(false);
-          toast.success(`Printed ${labels.length} label${labels.length === 1 ? '' : 's'}`);
-        }, 250);
-      });
-    });
-  }, [selectedRoom]);
+  // Register every label before the 2×1 print job; abort the print on failure.
+  const printRun = useCallback(
+    async (labels: LocationSegments[]): Promise<boolean> => {
+      if (labels.length === 0) return false;
+      if (!selectedRoom) {
+        toast.error('Pick a room first.');
+        return false;
+      }
+      setIsPrinting(true);
+      setPrintProgress(null);
+      try {
+        const result = await printBinLabelRun({
+          roomName: selectedRoom,
+          segments: labels,
+          gln: orgGs1.gln,
+          orgSlug: user?.organizationSlug,
+          register: registerLocations,
+          onProgress: (done, total) => setPrintProgress({ done, total }),
+        });
+        if (result.status === 'register_failed') {
+          toast.error(result.error || 'Could not register location for printing');
+          return false;
+        }
+        if (result.status === 'printed') {
+          toast.success(
+            `Printed ${result.count} label${result.count === 1 ? '' : 's'}`,
+          );
+          return true;
+        }
+        return false;
+      } finally {
+        setIsPrinting(false);
+        setPrintProgress(null);
+      }
+    },
+    [orgGs1.gln, selectedRoom, user?.organizationSlug],
+  );
 
   const handlePrintOne = useCallback(() => {
     if (!currentSegments) return;
-    triggerPrint([currentSegments]);
-  }, [currentSegments, triggerPrint]);
-
-  // Bulk: print every position of the picked level as a separate bin label.
-  const handlePrintBulk = useCallback(() => {
-    if (!zoneLetter || aisle == null || bay == null || level == null) return;
-    const labels: LocationSegments[] = [];
-    for (let p = 1; p <= config.maxPositions; p += 1) {
-      labels.push({ zone: zoneLetter, aisle, bay, level, position: p });
-    }
-    triggerPrint(labels);
-  }, [zoneLetter, aisle, bay, level, config.maxPositions, triggerPrint]);
+    void printRun([currentSegments]);
+  }, [currentSegments, printRun]);
 
   const handleConfigSave = useCallback((next: PrinterConfig) => {
     setConfig(next);
@@ -235,8 +254,8 @@ export function useBinLabelPrinter() {
     activeStep,
     allSelected,
     missingLetter,
-    bulkLabels,
     isPrinting,
+    printProgress,
     configOpen,
     setConfigOpen,
     handleConfigSave,
@@ -246,10 +265,11 @@ export function useBinLabelPrinter() {
     pickBay,
     pickLevel,
     pickPosition,
+    clearPosition,
     resetAll,
     handlePillClick,
     handlePrintOne,
-    handlePrintBulk,
+    printRun,
   };
 }
 

@@ -8,13 +8,16 @@
  * Absent / null / [] → full catalog in registry order (not an empty slate).
  * Saved order wins; any new catalog ids the staffer can see append at the end.
  *
- * Scan Stations (`floor`) is one slot — individual benches are not reorderable
- * on the root map; they live behind the list-replace drill.
+ * Stations (`floor`) and Workspaces (`desks`) are one slot each — benches and
+ * pointer desks are not reorderable as individual L1 rows; they list under
+ * standing group labels. Home · Media Library stay structural above both.
  */
 
 import {
+  isSpineDeskItem,
   isSpineMapTopRow,
   type SidebarNavItem,
+  type SpineSectionId,
 } from '@/lib/sidebar-navigation';
 
 /** Cap matches the Zod max on `staff_preferences.spineSlots`. */
@@ -23,6 +26,18 @@ export const SPINE_SLOTS_MAX = 40;
 /** Synthetic spine slot for the Scan Stations enter row / drill. */
 export const SPINE_STATIONS_SLOT_ID = 'floor';
 
+/** Synthetic spine slot for the Workspaces group (Wave 2 collapsible). */
+export const SPINE_DESKS_SLOT_ID = 'desks';
+
+/**
+ * Default-order generation. Prod does not hoist Automations above Home —
+ * that marketplace-first order is the main worktree's session IA, not this
+ * map. v1 stamps grouping of Stations + Workspaces.
+ */
+export const SPINE_SLOTS_VERSION = 1;
+
+export const SPINE_HOISTED_TOP_ROW_ID = 'studio';
+
 /** True when this catalog row participates in staff reorder as its own L1. */
 export function isSpineSlottable(item: SidebarNavItem): boolean {
   // Home / Media Library stay structural. Parked tops (Search, Plans, Chat,
@@ -30,6 +45,8 @@ export function isSpineSlottable(item: SidebarNavItem): boolean {
   if (item.kind === 'top') return false;
   // Floor benches collapse into {@link SPINE_STATIONS_SLOT_ID}.
   if (item.kind === 'station') return false;
+  // Pointer desks collapse into {@link SPINE_DESKS_SLOT_ID}.
+  if (isSpineDeskItem(item)) return false;
   return true;
 }
 
@@ -39,19 +56,23 @@ function stationIdSet(allowed: readonly SidebarNavItem[]): Set<string> {
   );
 }
 
-/** Default order = slottable pages + one Scan Stations slot at first-bench position. */
+function deskIdSet(allowed: readonly SidebarNavItem[]): Set<string> {
+  return new Set(
+    allowed.filter((item) => isSpineDeskItem(item)).map((item) => item.id),
+  );
+}
+
+/** Default order: Stations, Workspaces, then remaining L1 (Studio, Admin). */
 export function defaultSpineOrder(allowed: readonly SidebarNavItem[]): string[] {
   const out: string[] = [];
-  let insertedFloor = false;
+  if (allowed.some((item) => item.kind === 'station')) {
+    out.push(SPINE_STATIONS_SLOT_ID);
+  }
+  if (allowed.some((item) => isSpineDeskItem(item))) {
+    out.push(SPINE_DESKS_SLOT_ID);
+  }
   for (const item of allowed) {
-    if (item.kind === 'top') continue;
-    if (item.kind === 'station') {
-      if (!insertedFloor) {
-        out.push(SPINE_STATIONS_SLOT_ID);
-        insertedFloor = true;
-      }
-      continue;
-    }
+    if (!isSpineSlottable(item)) continue;
     out.push(item.id);
     if (out.length >= SPINE_SLOTS_MAX) break;
   }
@@ -61,8 +82,8 @@ export function defaultSpineOrder(allowed: readonly SidebarNavItem[]): string[] 
 /**
  * Apply a prefs id list onto the allowed catalog. Empty prefs → full default
  * order. Known ids keep staff order; new catalog ids append; unknown / gated
- * ids drop. Legacy prefs that stored individual station page ids collapse to
- * a single {@link SPINE_STATIONS_SLOT_ID}.
+ * ids drop. Legacy prefs that stored individual station or desk page ids
+ * collapse to {@link SPINE_STATIONS_SLOT_ID} / {@link SPINE_DESKS_SLOT_ID}.
  */
 export function hydrateSpineSlots(
   raw: readonly string[] | null | undefined,
@@ -71,6 +92,7 @@ export function hydrateSpineSlots(
   const defaults = defaultSpineOrder(allowed);
   const allow = new Set(defaults);
   const stations = stationIdSet(allowed);
+  const desks = deskIdSet(allowed);
   if (!raw || raw.length === 0) {
     return defaults.slice(0, SPINE_SLOTS_MAX);
   }
@@ -79,7 +101,11 @@ export function hydrateSpineSlots(
   const seen = new Set<string>();
   for (const id of raw) {
     if (typeof id !== 'string' || !id) continue;
-    const resolved = stations.has(id) ? SPINE_STATIONS_SLOT_ID : id;
+    const resolved = stations.has(id)
+      ? SPINE_STATIONS_SLOT_ID
+      : desks.has(id)
+        ? SPINE_DESKS_SLOT_ID
+        : id;
     if (seen.has(resolved) || !allow.has(resolved)) continue;
     seen.add(resolved);
     out.push(resolved);
@@ -94,9 +120,39 @@ export function hydrateSpineSlots(
   return out;
 }
 
+/** Groups render inline — no list-replace parent remains. */
+export function spineParentDrillId(_section: SpineSectionId | null): string | null {
+  return null;
+}
+
+export interface SpineSlotsMigration {
+  slots: string[];
+  stamp: { spineSlots: string[]; spineSlotsVersion: number } | null;
+}
+
 /**
- * Resolve ordered ids to page rows. Skips the Scan Stations slot and any id
- * missing from the allowed list — callers that need the enter row use
+ * Roll a saved order onto the current default generation without overwriting
+ * the operator's arrangement. Prod does not float Automations to the front.
+ */
+export function migrateSpineSlots(
+  raw: readonly string[] | null | undefined,
+  allowed: readonly SidebarNavItem[],
+  savedVersion: number | null | undefined,
+): SpineSlotsMigration {
+  const slots = hydrateSpineSlots(raw, allowed);
+  if (!raw || raw.length === 0) return { slots, stamp: null };
+  if (allowed.length === 0 || slots.length === 0) return { slots, stamp: null };
+  if ((savedVersion ?? 0) >= SPINE_SLOTS_VERSION) return { slots, stamp: null };
+
+  return {
+    slots,
+    stamp: { spineSlots: slots, spineSlotsVersion: SPINE_SLOTS_VERSION },
+  };
+}
+
+/**
+ * Resolve ordered ids to page rows. Skips Stations / Workspaces slots and any
+ * id missing from the allowed list — callers that need the group entries use
  * {@link resolveSpineMapEntries}.
  */
 export function resolveSpineSlotPages<T extends { id: string }>(
@@ -106,7 +162,7 @@ export function resolveSpineSlotPages<T extends { id: string }>(
   const byId = new Map(allowed.map((page) => [page.id, page]));
   const out: T[] = [];
   for (const id of slotIds) {
-    if (id === SPINE_STATIONS_SLOT_ID) continue;
+    if (id === SPINE_STATIONS_SLOT_ID || id === SPINE_DESKS_SLOT_ID) continue;
     const page = byId.get(id);
     if (page) out.push(page);
   }
@@ -115,26 +171,38 @@ export function resolveSpineSlotPages<T extends { id: string }>(
 
 export type SpineMapEntry<T extends { id: string; kind?: string }> =
   | { kind: 'stations'; id: typeof SPINE_STATIONS_SLOT_ID }
+  | { kind: 'desks'; id: typeof SPINE_DESKS_SLOT_ID }
   | { kind: 'page'; id: string; page: T };
 
+function isDeskLike(page: { kind?: string; mainGroup?: string }): boolean {
+  return isSpineDeskItem(page as SidebarNavItem);
+}
+
 /**
- * Ordered root-map entries for MasterNav — pages plus one Scan Stations slot
- * when the catalog has floor benches.
+ * Ordered root-map entries for MasterNav — remaining L1 pages plus Stations
+ * and Workspaces slots when the catalog has those families.
  */
-export function resolveSpineMapEntries<T extends { id: string; kind?: string }>(
+export function resolveSpineMapEntries<
+  T extends { id: string; kind?: string; mainGroup?: string },
+>(
   slotIds: readonly string[],
   allowed: readonly T[],
 ): SpineMapEntry<T>[] {
   const byId = new Map(allowed.map((page) => [page.id, page]));
   const hasStations = allowed.some((page) => page.kind === 'station');
+  const hasDesks = allowed.some((page) => isDeskLike(page));
   const out: SpineMapEntry<T>[] = [];
   for (const id of slotIds) {
     if (id === SPINE_STATIONS_SLOT_ID) {
       if (hasStations) out.push({ kind: 'stations', id: SPINE_STATIONS_SLOT_ID });
       continue;
     }
+    if (id === SPINE_DESKS_SLOT_ID) {
+      if (hasDesks) out.push({ kind: 'desks', id: SPINE_DESKS_SLOT_ID });
+      continue;
+    }
     const page = byId.get(id);
-    if (!page || page.kind === 'station') continue;
+    if (!page || page.kind === 'station' || isDeskLike(page)) continue;
     out.push({ kind: 'page', id: page.id, page });
   }
   return out;

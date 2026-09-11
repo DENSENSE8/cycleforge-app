@@ -6,6 +6,12 @@ back into committed docs so the next agent session compounds.
 Two **sibling** cohorts under one CLI (`pnpm run eval:cohort <name>`).
 **Display SoT is slot-table only.** Overlay is not a display cohort.
 
+Repo-wide **mobile-first** product law (not a display cohort yet):
+[`docs/mobile-first/SURFACE_LAW.md`](../mobile-first/SURFACE_LAW.md) — every
+operator verb must be doable on `/m/*` first. Checklist:
+`src/lib/mobile/mobile-first-surface.ts`. Future: `eval:cohort mobile-first`.
+User: "span repo-wide" / "do everything on the mobile app first."
+
 | Cohort | SoT | Ledger |
 |--------|-----|--------|
 | `slot-table` | Slot engine + every `PRODUCT_TABLES` peer (`slot-table-cohort.ts`) — **the only display eval** | [`cohorts/slot-table/LEDGER.md`](cohorts/slot-table/LEDGER.md) |

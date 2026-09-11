@@ -1,20 +1,20 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   APP_SIDEBAR_NAV,
   filterPageChildren,
   getSidebarPageNav,
   isSidebarPageReachable,
-  spineSectionIdForPage,
   type SidebarNavItem,
   type SidebarPageNav,
 } from '@/lib/sidebar-navigation';
-import { useOrgNavItems } from '@/hooks/useOrgNavItems';
+import { applyOrgNavToPage } from '@/lib/nav/org-nav';
+import { useOrgNavDefinition, useOrgNavItems } from '@/hooks/useOrgNavItems';
 import { useStaffPreferences } from '@/hooks/useStaffPreferences';
 import { prefetchNavData } from '@/lib/nav/nav-data-prefetch';
-import { hydrateSpineSlots, SPINE_STATIONS_SLOT_ID } from '@/lib/nav/spine-slots';
+import { hydrateSpineSlots } from '@/lib/nav/spine-slots';
 import { useActiveSidebarChild } from './useActiveSidebarChild';
 import { useSidebarChildNav } from './useSidebarChildNav';
 import { MasterNavView } from './MasterNavView';
@@ -22,13 +22,15 @@ import { MasterNavView } from './MasterNavView';
 /** Merge a flat nav item with its child-page metadata (if the page has any). */
 function toPageNav(item: SidebarNavItem): SidebarPageNav {
   const page = getSidebarPageNav(item.id);
-  return page ? { ...page, icon: item.icon, label: item.label } : item;
+  return page
+    ? { ...page, icon: item.icon, label: item.label, spineFlat: item.spineFlat ?? page.spineFlat }
+    : item;
 }
 
 /**
  * Router-wired master nav. Org hide/rename via {@link useOrgNavItems}; staff
- * `prefs.spineSlots` only reorders the map (Scan Stations is one slot).
- * Absent prefs → full catalog order. Scan Stations list-replaces into benches.
+ * `prefs.spineSlots` reorders Stations / Workspaces / remaining L1.
+ * Absent prefs → Stations, Workspaces, then Studio / Admin.
  */
 export function MasterNav({
   permissions,
@@ -44,17 +46,17 @@ export function MasterNav({
   const { pageId, childId } = useActiveSidebarChild();
   const navigate = useSidebarChildNav();
   const { prefs, update: updatePrefs } = useStaffPreferences();
-
-  const [drillId, setDrillId] = useState<string | null>(null);
+  const orgNav = useOrgNavDefinition();
 
   const navItems = useOrgNavItems({ permissions, mobileRestricted });
   const pages = useMemo(
     () =>
       navItems
         .map(toPageNav)
+        .map((page) => applyOrgNavToPage(page, orgNav))
         .map((page) => filterPageChildren(page, permissions))
         .filter(isSidebarPageReachable),
-    [navItems, permissions],
+    [navItems, permissions, orgNav],
   );
 
   const spineOrder = useMemo(
@@ -79,21 +81,6 @@ export function MasterNav({
     return getSidebarPageNav(pageId) ?? pages[0]!;
   }, [pages, pageId]);
 
-  const activeSection = spineSectionIdForPage(activePage);
-
-  // Enter Scan Stations when navigating onto a floor bench from another
-  // section. Manual Back leaves the root map while the URL can stay on a
-  // bench — do not force-reopen until the next cross-section floor entry.
-  const prevSectionRef = useRef<typeof activeSection>(null);
-  useEffect(() => {
-    if (activeSection === 'floor' && activeSection !== prevSectionRef.current) {
-      setDrillId(SPINE_STATIONS_SLOT_ID);
-    } else if (activeSection !== 'floor') {
-      setDrillId((current) => (current === SPINE_STATIONS_SLOT_ID ? null : current));
-    }
-    prevSectionRef.current = activeSection;
-  }, [activeSection]);
-
   const handleNavigate = useCallback(
     (nextPageId: string, nextChildId?: string) => {
       navigate(nextPageId, nextChildId);
@@ -117,8 +104,6 @@ export function MasterNav({
       otherPages={pages}
       onNavigate={handleNavigate}
       onRowHover={handleRowHover}
-      drillId={drillId}
-      onDrillChange={setDrillId}
       spineOrder={spineOrder}
       onSpineOrderChange={handleSpineOrderChange}
       className={className}

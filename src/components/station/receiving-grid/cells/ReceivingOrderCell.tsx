@@ -20,7 +20,7 @@ import {
  * verbs as TRACK via {@link OrderNumberMenuChip}. Empty → {@link GridCellDash}.
  */
 export function ReceivingOrderCell({ col, rule, ctx }: ReceivingGridCellProps) {
-  const { poValue, platformLabel, platformMeta, row, onEditOrder } = ctx;
+  const { poValue, platformLabel, platformMeta, row, onEditOrder, quietIdentity } = ctx;
   const empty = isEmptyDisplayValue(poValue);
   const brandMeta = resolveMarketplacePlatformMeta(poValue, platformMeta);
   const brandDot = platformMetaBrandDot(brandMeta);
@@ -32,7 +32,7 @@ export function ReceivingOrderCell({ col, rule, ctx }: ReceivingGridCellProps) {
       style={receivingDataCellStyle(col, ctx)}
       {...receivingFrozenEdgeProps(col)}
     >
-      {empty ? (
+      {empty || quietIdentity ? (
         <GridCellDash />
       ) : (
         <span className="inline-flex min-w-0 items-center gap-1.5">

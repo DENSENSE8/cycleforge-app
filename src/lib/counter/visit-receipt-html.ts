@@ -155,8 +155,9 @@ function totalsHtml(receipt: VisitReceipt): string {
 
 function customerHtml(receipt: VisitReceipt): string {
   if (!receipt.customer) return '';
-  const { name, phone, email } = receipt.customer;
-  const lines = [name, phone, email].filter(Boolean).map((v) => escapeHtml(String(v)));
+  const { name, phone, email, address } = receipt.customer;
+  // Callers: renderVisitReceiptHtml. User: "print out a receipt including everything" + "intake ... address"
+  const lines = [name, phone, email, address].filter(Boolean).map((v) => escapeHtml(String(v)));
   if (lines.length === 0) return '';
   return `<p class="customer">${lines.join(' · ')}</p>`;
 }
@@ -166,6 +167,8 @@ function customerHtml(receipt: VisitReceipt): string {
 export interface RenderVisitReceiptOptions {
   /** Fires `window.print()` on load — the `?print=1` path. Plain GET renders without it. */
   autoPrint?: boolean;
+  /** Callers: GET /api/kiosk/visit/[id]/receipt. User: "give internal staff as an internal record" */
+  copy?: 'customer' | 'staff';
 }
 
 /** Render a `VisitReceipt` to a self-contained HTML page. No external references — see module doc. */
@@ -183,6 +186,10 @@ export function renderVisitReceiptHtml(
     : '';
   const svg = barcodeSvg(receipt.barcodeValue);
   const statusLabel = STATUS_LABEL[receipt.payment.status];
+  const copyBanner =
+    opts.copy === 'staff'
+      ? '<p class="staff-copy">STAFF RECORD — keep with the till</p>'
+      : '';
   const printScript = opts.autoPrint
     ? '<script>window.onload = function () { window.print(); };</script>'
     : '';
@@ -205,26 +212,27 @@ export function renderVisitReceiptHtml(
     margin: 0 auto;
     padding: 16px 12px 24px;
   }
-  h1 { font-size: 15px; text-align: center; margin-bottom: 2px; }
-  .shop p { font-size: 11px; text-align: center; color: #333; }
-  .rule { border-top: 1px dashed #000; margin: 10px 0; }
-  .meta-row { display: flex; justify-content: space-between; font-size: 11px; margin: 2px 0; }
-  .customer { font-size: 11px; text-align: center; margin: 6px 0; }
-  table.items { width: 100%; border-collapse: collapse; font-size: 11px; margin: 8px 0; }
+  h1 { font-size: 12px; text-align: center; margin-bottom: 2px; }
+  .shop p { font-size: 9px; text-align: center; color: #333; }
+  .rule { border-top: 1px dashed #000; margin: 8px 0; }
+  .meta-row { display: flex; justify-content: space-between; font-size: 9px; margin: 1px 0; }
+  .customer { font-size: 9px; text-align: center; margin: 4px 0; }
+  table.items { width: 100%; border-collapse: collapse; font-size: 9px; margin: 6px 0; }
   table.items th { text-align: left; border-bottom: 1px solid #000; padding: 2px 0; font-weight: bold; }
   table.items td { padding: 3px 0; vertical-align: top; }
   table.items td.desc { max-width: 160px; word-break: break-word; }
   table.items th.num, table.items td.num { text-align: right; white-space: nowrap; padding-left: 6px; }
   .meta { color: #555; font-size: 10px; }
   .tag { color: #555; font-size: 10px; }
-  .totals-row { display: flex; justify-content: space-between; font-size: 12px; padding: 1px 0; }
-  .totals-row.total { font-weight: bold; font-size: 13px; border-top: 1px solid #000; margin-top: 4px; padding-top: 4px; }
+  .totals-row { display: flex; justify-content: space-between; font-size: 10px; padding: 1px 0; }
+  .totals-row.total { font-weight: bold; font-size: 11px; border-top: 1px solid #000; margin-top: 4px; padding-top: 4px; }
   .totals-row.due { font-weight: bold; color: #b00000; }
   .status { text-align: center; font-size: 12px; font-weight: bold; margin: 10px 0 4px; }
   .barcode { text-align: center; margin: 12px 0; }
   .barcode svg { max-width: 100%; height: auto; }
   .receipt-link { text-align: center; font-size: 10px; word-break: break-all; margin-top: 4px; }
   .footer { text-align: center; font-size: 10px; color: #333; margin-top: 14px; line-height: 1.4; }
+  .staff-copy { text-align: center; font-size: 9px; font-weight: bold; letter-spacing: 0.08em; margin-bottom: 6px; }
 
   @media print {
     html, body { width: 80mm; max-width: 80mm; }
@@ -242,6 +250,7 @@ export function renderVisitReceiptHtml(
 ${printScript}
 </head>
 <body>
+  ${copyBanner}
   <h1>${shopName}</h1>
   <div class="shop">${addressLines}${phone}</div>
 

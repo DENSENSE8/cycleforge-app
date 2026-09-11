@@ -3,6 +3,7 @@
   "git": {
     "deploymentEnabled": false
   },
+  "regions": ["iad1"],
   "installCommand": "pnpm install --frozen-lockfile",
   "buildCommand": "pnpm run build",
   "ignoreCommand": "node scripts/vercel-should-build.mjs",

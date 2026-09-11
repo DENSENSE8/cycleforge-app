@@ -15,6 +15,7 @@ import pool from '@/lib/db';
 import { parseOrgSettings, type OrgSettings } from './settings';
 import { seedOrgCatalog } from '@/lib/neon/catalog-queries';
 import type { OrgId, OrgStatus, PlatformPlan } from './constants';
+import { revalidatePublicQrBrandCache } from './public-qr-brand-tag';
 
 export interface OrganizationRow {
   id: OrgId;
@@ -119,11 +120,13 @@ export function invalidateOrgCache(orgId?: OrgId): void {
   if (!orgId) {
     orgCache.clear();
     slugCache.clear();
+    revalidatePublicQrBrandCache();
     return;
   }
   const existing = orgCache.get(orgId);
   if (existing) slugCache.delete(existing.org.slug);
   orgCache.delete(orgId);
+  revalidatePublicQrBrandCache();
 }
 
 export interface CreateOrganizationInput {
