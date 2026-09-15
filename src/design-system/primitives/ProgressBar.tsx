@@ -11,6 +11,14 @@ interface ProgressBarProps {
   showPercentage?: boolean;
   showRemaining?: boolean;
   variant?: 'default' | 'success';
+  /**
+   * Segmented face (PG12): N discrete increments instead of one continuous
+   * fill — the touch/mobile-first reading, where "how far along" must be
+   * legible at arm's length without text. Suppresses the percentage/remaining
+   * stats row (the segments ARE the count; compose an external `n/N` for the
+   * numeric form). Each segment fills with the same M1-legal scaleX transform.
+   */
+  segments?: number;
   className?: string;
 }
 
@@ -21,6 +29,7 @@ export function ProgressBar({
   showPercentage = true,
   showRemaining = true,
   variant = 'default',
+  segments,
   className = '',
 }: ProgressBarProps) {
   const reduceMotion = useReducedMotion();
@@ -28,6 +37,46 @@ export function ProgressBar({
   const remaining = Math.max(0, goal - current);
   const isComplete = current >= goal;
   const barColor = variant === 'success' || isComplete ? 'bg-emerald-500' : 'bg-blue-500';
+
+  if (segments && segments > 0) {
+    return (
+      <div
+        className={className}
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={goal}
+        aria-valuenow={current}
+        aria-label={label ?? 'Progress'}
+      >
+        <div className="flex items-center gap-1">
+          {Array.from({ length: segments }, (_, i) => {
+            // Segment i covers [i, i+1) of the goal: full below `current`,
+            // fractional when straddling it, empty above. The fraction feeds
+            // the SAME scaleX fill as the continuous face — one motion law.
+            const fill = Math.max(0, Math.min(1, current - i));
+            return (
+              <div
+                key={i}
+                className="h-2 flex-1 overflow-hidden rounded-full bg-surface-sunken"
+              >
+                <motion.div
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: fill }}
+                  transition={
+                    reduceMotion
+                      ? { duration: 0 }
+                      : { duration: framerDuration.progressFill, ease: motionBezier.easeOut }
+                  }
+                  style={{ transformOrigin: 'left' }}
+                  className={`h-full w-full rounded-full ${barColor}`}
+                />
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={className}>

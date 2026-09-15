@@ -29,6 +29,17 @@ export interface KioskServiceTile {
    */
   welcome: boolean;
   icon: KioskServiceIcon;
+  /**
+   * Command ink — ONE semantic text token per command, so the glyph reads as
+   * that command everywhere it mounts (dropdown trigger, dropdown option, any
+   * future rail) without a per-call-site colour.
+   *
+   * Operator 2026-09-14: "repair orange and sales green and more colors for
+   * other". Mapped onto the theme's semantic ink, never a raw hex — these
+   * resolve per theme (`src/design-system/themes/registry.ts`) so the commands
+   * stay legible on dark / ember / cyberpunk too.
+   */
+  iconTone: string;
   /** Dense sentence-case command label for the v2 rail. */
   commandLabel: string;
 }
@@ -42,6 +53,8 @@ export const KIOSK_SERVICES: ReadonlyArray<KioskServiceTile> = [
     status: 'live',
     welcome: true,
     icon: ReceivingModeRepair,
+    // Orange/amber. Same ink `StatCard` already gives the repair lane.
+    iconTone: 'text-text-warning',
   },
   {
     id: 'sales',
@@ -51,6 +64,8 @@ export const KIOSK_SERVICES: ReadonlyArray<KioskServiceTile> = [
     status: 'live',
     welcome: true,
     icon: SalesPrice,
+    // Green — money in.
+    iconTone: 'text-text-success',
   },
   {
     id: 'buyback',
@@ -60,6 +75,8 @@ export const KIOSK_SERVICES: ReadonlyArray<KioskServiceTile> = [
     status: 'live',
     welcome: false,
     icon: RefreshCw,
+    // Blue — the inbound/appraise direction, opposite the green sale.
+    iconTone: 'text-text-info',
   },
   {
     id: 'pickup',
@@ -71,6 +88,9 @@ export const KIOSK_SERVICES: ReadonlyArray<KioskServiceTile> = [
     // PackageCheck — collect a ready order. ShoppingCart is reserved for the
     // right utility Cart slot; leave ReceivingModePickup alone for receiving.
     icon: PackageCheck,
+    // Violet — pickup hands over a READY OUTBOUND order, which is the ink the
+    // outbound/ready grid already uses for that work.
+    iconTone: 'text-text-fulfillment',
   },
 ];
 

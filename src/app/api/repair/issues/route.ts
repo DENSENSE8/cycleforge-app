@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getIssuesForFavorite, createIssueTemplate } from '@/lib/neon/repair-issue-queries';
+import { isMissingRelationError } from '@/lib/repair/sku-reasons';
 import { withAuth, type AuthContext } from '@/lib/auth/withAuth';
 import type { OrgId } from '@/lib/tenancy/constants';
-
-function isMissingRelationError(error: unknown): boolean {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'code' in error &&
-    (error as { code?: string }).code === '42P01'
-  );
-}
 
 export const GET = withAuth(async (req: NextRequest, ctx: AuthContext) => {
   try {

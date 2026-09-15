@@ -16,16 +16,23 @@
  */
 
 import { cornerClass } from '@/design-system/tokens/radius';
-import type { KioskServiceId } from '@/lib/kiosk/services';
 import { cn } from '@/utils/_cn';
 
-/** Expanded-rail short name — prefers `commandLabel` grammar (Repair / Retail…). */
-export function kioskSpineShortLabel(id: KioskServiceId): string {
-  if (id === 'repair') return 'Repair';
-  if (id === 'sales') return 'Retail';
-  if (id === 'buyback') return 'Buyback';
-  return 'Pickup';
-}
+// (kioskSpineShortLabel deleted 2026-09-14, Phase 0 — expanded-rail grammar,
+// zero consumers since the spines came down. See the Phase 0 ledger below.)
+
+/** Shared command-cell chrome — touch-tall, flush. Sole consumer today:
+ * ProductSelector's trail back button; folds into KioskPaneForm in Phase 1. */
+export const KIOSK_MODE_SPINE_ROW = cn(
+  'ds-raw-button flex w-full shrink-0 transition-colors duration-150',
+  'min-h-14',
+);
+
+export const KIOSK_MODE_SPINE_ROW_IDLE =
+  'text-text-soft hover:bg-surface-hover hover:text-text-default';
+
+/** Spine glyph — smaller than the old 24px MasterNav-scale icon. */
+export const KIOSK_MODE_SPINE_ICON = 'h-5 w-5 shrink-0';
 
 /**
  * Touch-friendly pane title row (~56px). Taller than desk
@@ -54,23 +61,10 @@ export const KIOSK_PANE_HEADER_TITLE =
   // In-band type inset only — the host band stays edge-to-edge with column seams.
   'min-w-0 flex-1 px-3 text-lg font-semibold tracking-tight text-text-default';
 
-/**
- * THE band search row — one face for every search that sits in a top band.
- *
- * Extracted 2026-08-20 because the two search rows on this screen had drifted
- * apart: the command spine's row carried `border-border-hairline` while the
- * pane bands beside it carried `border-border-soft`, and the repairs search
- * (ProductSelector, flush) was built at `h-11` — 44px in a 56px system, on a
- * `bg-surface-sunken` plane. Three different answers to "what does a row at the
- * top of this screen look like", visible side by side.
- *
- * Full-bleed like every other band: the host stays `px-0` and the content owns
- * its inset. Anything mounting a search in a top band composes THIS.
- */
-export const KIOSK_BAND_SEARCH_ROW = cn(
-  'flex h-14 shrink-0 items-stretch gap-0 bg-surface-card px-0',
-  'border-b border-border-soft',
-);
+// (KIOSK_BAND_SEARCH_ROW deleted 2026-09-14 — zero consumers since the trail
+// search moved into the glass dock's inline field; recorded in the Phase 0
+// ledger above.)
+
 
 /**
  * In-body section label row — the `KIOSK_SECTION_LABEL` + divider + inset
@@ -136,100 +130,35 @@ export const KIOSK_PILL_IDLE =
 export const KIOSK_PILL_ACTIVE_ISSUE =
   'bg-amber-50 text-amber-900 ring-1 ring-amber-200';
 
-/**
- * Collapsed icon rail — icons stay on-screen (~56px / `w-14`).
- * Never 0 (off-screen) and never a locked labeled 96/`w-24` column.
- */
-export const KIOSK_MODE_SPINE_COLLAPSED_W = 'w-14';
+// (Spine tokens deleted 2026-09-14, Phase 0 of the kiosk DS unification —
+// the command/utility spines came down 2026-09-13 and these were their
+// orphaned chrome: COLLAPSED_W/_PX, EXPANDED_W/_PX, FACE, ROW_COLLAPSED,
+// ROW_EXPANDED, LABEL, SEARCH_ROW, UTILITY_SPINE_FACE, and
+// kioskSpineShortLabel all had ZERO consumers. Kept ROW + ROW_IDLE + ICON:
+// ProductSelector's trail back button still wears them; they fold into
+// KioskPaneForm's back affordance in Phase 1.)
 
-/** Numeric twin of {@link KIOSK_MODE_SPINE_COLLAPSED_W}. */
-export const KIOSK_MODE_SPINE_COLLAPSED_W_PX = 56;
+// (KIOSK_CART_COL / _PX deleted 2026-09-14, Phase 0 — the fixed cart column
+// died with the right utility spine; the ledger is a center-stage panel now.)
 
-/**
- * Expanded named rail — Search row + icon-leading labels (~256px / `w-64`).
- * Width is animated on the host via `motionRole.push.rail`; do not snap
- * Tailwind width classes on the column.
- */
-export const KIOSK_MODE_SPINE_EXPANDED_W = 'w-64';
-
-/** Numeric twin of {@link KIOSK_MODE_SPINE_EXPANDED_W}. */
-export const KIOSK_MODE_SPINE_EXPANDED_W_PX = 256;
-
-/** Outer face of the command spine column (card plane + trailing hairline). */
-export const KIOSK_MODE_SPINE_FACE = cn(
-  'flex h-full flex-col bg-surface-card',
-  'border-r border-border-soft',
-);
 
 /**
- * Shared command-cell chrome — touch-tall, flush (no rounded-xl).
+ * Live line-count badge riding the cart glyph (one-symbol).
+ * Position against a button-sized `relative` wrap — not the trail’s
+ * `HEADER_ICON_WRAP` (h-full), or -top-* parks in the band gutter.
+ * Callers: KioskTopChrome (~line 145). API: none. Schemas: none.
+ * User: "ensure the qty for the cart is properly on the cart icon" /
+ * "cart glyph with a one-symbol count badge top-right"
  */
-export const KIOSK_MODE_SPINE_ROW = cn(
-  'ds-raw-button flex w-full shrink-0 transition-colors duration-150',
-  'min-h-14',
-);
-
-/** Collapsed cell — centered glyph, no visible label. */
-export const KIOSK_MODE_SPINE_ROW_COLLAPSED =
-  'flex-col items-center justify-center px-1 py-3';
-
-/** Expanded cell — icon-leading + short name. */
-export const KIOSK_MODE_SPINE_ROW_EXPANDED =
-  'flex-row items-center gap-3 px-3 py-3 text-left';
-
-export const KIOSK_MODE_SPINE_ROW_ACTIVE = 'bg-surface-accent text-text-default';
-export const KIOSK_MODE_SPINE_ROW_IDLE =
-  'text-text-soft hover:bg-surface-hover hover:text-text-default';
-
-/** Short name next to the spine icon (expanded only). */
-export const KIOSK_MODE_SPINE_LABEL = 'min-w-0 truncate text-sm font-semibold leading-tight';
-
-/** Spine glyph — smaller than the old 24px MasterNav-scale icon. */
-export const KIOSK_MODE_SPINE_ICON = 'h-5 w-5 shrink-0';
-
-/**
- * Expanded Search row — first row of the named rail (edge-to-edge, no gutter).
- *
- * Composes {@link KIOSK_BAND_SEARCH_ROW} as of 2026-08-20. It used to carry its
- * own `border-border-hairline`, which put a lighter seam on the rail than the
- * pane band it sits flush against — the two read as different weights across
- * one continuous Y.
- */
-export const KIOSK_MODE_SPINE_SEARCH_ROW = cn(KIOSK_BAND_SEARCH_ROW, 'items-center');
-
-/**
- * Right cart ledger panel — ~320px / `w-80` so the center work surface stays
- * the elastic absorber. It opens LEFT of the utility spine, which is what
- * toggles it (the spine's cart glyph is the one control).
- */
-export const KIOSK_CART_COL = 'w-80';
-export const KIOSK_CART_COL_PX = 320;
-
-/** Live line-count badge riding the cart glyph. */
 export const KIOSK_CART_COUNT_BADGE = cn(
-  'absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center px-1',
+  'pointer-events-none absolute -right-1 -top-1 z-10 flex h-4 min-w-4 items-center justify-center px-1',
   'bg-fill-info text-role-micro leading-none text-white tabular-nums',
   cornerClass('pill'),
 );
 
-/**
- * Right utility spine — the mirror of the left command spine.
- *
- * Always-visible ~56px glyph column at the FAR RIGHT: cart then paperwork at
- * the top; Work · Show · Verify pinned to the bottom of the same column.
- * Selecting a checkout glyph swaps the center stage; selecting it again
- * closes it. Stance glyphs never open a panel — they change consult face.
- */
-export const KIOSK_UTILITY_SPINE_FACE = cn(
-  'flex h-full w-14 shrink-0 flex-col items-center gap-0 bg-surface-card py-0',
-  'border-l border-border-soft',
-);
+// (KIOSK_UTILITY_SPINE_FACE deleted 2026-09-14, Phase 0 — right spine chrome,
+// zero consumers. See the Phase 0 ledger at the top of the spine block.)
 
-/** Utility glyph cell — same touch height + states as the command spine row. */
-export const KIOSK_UTILITY_SPINE_ROW = cn(
-  'ds-raw-button relative flex h-14 w-14 shrink-0 items-center justify-center',
-  'transition-colors duration-150',
-);
 
 /**
  * Utility panel face — cart / paperwork mounted in the CENTER stage.
@@ -243,10 +172,9 @@ export const KIOSK_UTILITY_PANEL_FACE = cn(
   'flex h-full min-h-0 w-full min-w-0 flex-col bg-surface-card',
 );
 
-export const KIOSK_CART_FACE = cn(
-  'flex h-full w-80 shrink-0 flex-col bg-surface-card',
-  'border-l border-border-soft',
-);
+// (KIOSK_CART_FACE deleted 2026-09-14, Phase 0 — the fixed w-80 cart column
+// face; the cart renders as a center-stage panel via KIOSK_UTILITY_PANEL_FACE.)
+
 
 /** Cart line row — horizontal hairline only, no inner card padding balloon. */
 export const KIOSK_CART_LINE_ROW =

@@ -84,3 +84,34 @@ export function elevationClass(
   if (role === 'raised') return ELEVATION_CLASS.raised[intensity];
   return ELEVATION_CLASS[role];
 }
+
+/**
+ * Hover lift — literal `hover:` variants of the raised rung.
+ *
+ * These exist because a call site CANNOT build them: `hover:${elevationClass
+ * ('raised')}` composes the string at runtime, Tailwind's scanner only reads
+ * source text, and `shadow-elev-*` is not in the config safelist — so the
+ * utility is never generated and the lift silently does nothing. Any new
+ * state variant of an elevation role belongs here as a literal, for the same
+ * reason.
+ */
+export const ELEVATION_HOVER_CLASS = {
+  soft: 'hover:shadow-elev-soft',
+  raised: 'hover:shadow-elev-raised',
+} as const;
+
+/**
+ * The 3px a pressed control's face travels.
+ *
+ * This is the whole press now. It was one half of a pair: the other was a hard
+ * 4px "lip" (`--ds-elev-tactile`) the face collapsed into, the physical-key
+ * idiom. That lip was removed by operator ruling once the kiosk CTA dock went
+ * transparent — hard ink with nothing solid beneath it stops reading as the
+ * control's own thickness and starts reading as a drop shadow on whatever is
+ * behind. Travel alone survives because it needs no ground to read against.
+ *
+ * Pair it with an explicit `shadow-none` on a control whose variant might
+ * carry a shadow, and neutralise any competing `active:scale-*`: a shrink and
+ * a drop are two motions describing one press.
+ */
+export const TACTILE_PRESS_TRAVEL_CLASS = 'active:translate-y-[3px]';

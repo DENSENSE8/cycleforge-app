@@ -66,6 +66,26 @@ export function isContactFieldValid(field: ContactFieldKey, data: RepairFormData
   }
 }
 
+/**
+ * The kiosk pane's three touch steps (Issue · Information · Authorization) as
+ * satisfied/unsatisfied gates.
+ *
+ * Feeds `StepProgressHeader` (PG6: progression is a COUNT of satisfied
+ * required units, never the index of the step in view — a pointer parked on
+ * step 3 with nothing filled reads 0/3, not 3/3). Each gate is evaluated
+ * independently so back-editing an earlier step un-fills its segment.
+ */
+export function repairStepGates(
+  data: RepairFormData,
+  hasSignature: boolean,
+): readonly [boolean, boolean, boolean] {
+  return [
+    hasRepairIssue(data),
+    !!data.serialNumber.trim() && data.customer.phone.replace(/\D/g, '').length >= 7,
+    canSubmitRepairIntake(data, hasSignature),
+  ] as const;
+}
+
 /** Seed the form state from optional initial data.
  *  Price starts empty — the catalog projection (or staff override) must supply it.
  *  An invented default like `130` is an audit smell and is intentionally gone. */

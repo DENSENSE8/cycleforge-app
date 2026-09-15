@@ -391,3 +391,74 @@ export async function deleteFavoriteSku(id: number, workspaceKey: FavoriteWorksp
     return true;
   });
 }
+
+/** Postgres unique_violation, narrowed (no cast) off a thrown value. */
+function isUniqueViolation(error: unknown): boolean {
+  if (!error || typeof error !== 'object' || !('code' in error)) return false;
+  return error.code === '23505';
+}
+
+/** Resolve a SKU string to its org-scoped `favorite_skus.id`, or null. */
+export async function findFavoriteSkuIdBySku(sku: string, orgId: OrgId): Promise<number | null> {
+  const normalized = normalizeSkuForLookup(String(sku || ''));
+  if (!normalized) return null;
+
+  const result = await withTenantConnection(orgId, (client) =>
+    client.query<{ id: number }>(
+      `SELECT id FROM favorite_skus
+       WHERE organization_id = $1 AND sku_normalized = $2
+       LIMIT 1`,
+      [orgId, normalized],
+    ),
+  );
+  return result.rows.length > 0 ? Number(result.rows[0].id) : null;
+}
+
+/**
+ * SKU IDENTITY anchor, not curation.
+ *
+ * `repair_issue_templates.favorite_sku_id` FKs to `favorite_skus`, so a
+ * per-SKU repair reason needs a row there — but the kiosk repair catalog is
+ * the whole Ecwid repair tree, not the staff favorites list, so most SKUs a
+ * customer picks were never favorited. This returns the existing id when the
+ * SKU is already known, else inserts a `favorite_skus` row with NO
+ * `favorite_sku_workspaces` membership: {@link listFavoriteSkus} INNER JOINs
+ * workspaces, so an anchor never shows up in a staff quick-pick list. It is a
+ * SKU the org has said something about, nothing more.
+ *
+ * No `ON CONFLICT` clause on purpose — the natural key moved from a global
+ * `sku_normalized` unique to per-org `(organization_id, sku_normalized)`
+ * (2026-06-16_favorite_skus_per_org_unique.sql), and naming either one here
+ * would break on the DBs that have the other. A concurrent insert loses the
+ * race, catches 23505, and re-reads.
+ */
+export async function ensureFavoriteSkuAnchor(
+  input: { sku: string; label?: string | null },
+  orgId: OrgId,
+): Promise<number> {
+  const sku = String(input.sku || '').trim();
+  const normalized = normalizeSkuForLookup(sku);
+  if (!sku || !normalized) throw new Error('SKU is required');
+  const label = String(input.label || '').trim() || sku;
+
+  const existing = await findFavoriteSkuIdBySku(sku, orgId);
+  if (existing !== null) return existing;
+
+  try {
+    const inserted = await withTenantConnection(orgId, (client) =>
+      client.query<{ id: number }>(
+        `INSERT INTO favorite_skus (sku, sku_normalized, label, organization_id, updated_at)
+         VALUES ($1, $2, $3, $4, NOW())
+         RETURNING id`,
+        [sku, normalized, label, orgId],
+      ),
+    );
+    return Number(inserted.rows[0].id);
+  } catch (error: unknown) {
+    if (!isUniqueViolation(error)) throw error;
+    // Lost an insert race (two tablets, same new SKU) — the row exists now.
+    const raced = await findFavoriteSkuIdBySku(sku, orgId);
+    if (raced === null) throw error;
+    return raced;
+  }
+}

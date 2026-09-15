@@ -9,16 +9,13 @@
  * mode. The right sidebar should also be removed as well and everything placed
  * into the top header, the cart, the paperwork, the work, show, verify, etc."
  *
- * One trail row (command ghost + All products + utility slots) then search.
+ * One trail row: command ghost, search glyph, All-products ghost, utilities.
  * Server-safe — no `'use client'`.
  */
 
 import { cn } from '@/utils/_cn';
 import { HEADER_ICON_CLUSTER, HEADER_ICON_WRAP } from '@/components/layout/header-shell';
-import {
-  KIOSK_BAND_SEARCH_ROW,
-  KIOSK_PANE_HEADER_BAND,
-} from './kiosk-chrome';
+import { KIOSK_PANE_HEADER_BAND } from './kiosk-chrome';
 import { KIOSK_POS_CANVAS } from './kiosk-pos-surface';
 
 export function KioskCatalogFirstPaint({ className }: { className?: string }) {
@@ -46,6 +43,8 @@ export function KioskCatalogFirstPaint({ className }: { className?: string }) {
               <path d="m6 9 6 6 6-6" />
             </svg>
           </span>
+          {/* Search glyph square — the collapsed find-bar slot, second. */}
+          <span className={HEADER_ICON_WRAP} aria-hidden />
           <span className="flex h-9 w-auto shrink-0 items-center gap-1.5 text-sm font-medium text-text-default">
             All products
             <svg
@@ -69,7 +68,6 @@ export function KioskCatalogFirstPaint({ className }: { className?: string }) {
             <span className={HEADER_ICON_WRAP} />
           </div>
         </div>
-        <div className={cn(KIOSK_BAND_SEARCH_ROW, 'px-4')} />
       </div>
     </div>
   );

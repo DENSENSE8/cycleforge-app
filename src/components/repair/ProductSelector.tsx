@@ -1,7 +1,12 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight } from '../Icons';
+import { ChevronLeft, ChevronRight, X } from '../Icons';
+import {
+  HEADER_ICON_BTN_CLASS,
+  HEADER_ICON_BTN_OPEN_CLASS,
+  TOP_CHROME_ICON_FACE,
+} from '@/components/layout/header-shell';
 import { Button, IconButton, TextField } from '@/design-system/primitives';
 import { SearchField } from '@/design-system/primitives/SearchField';
 import { IntakeCombobox } from '@/components/outbound/orders/intake/IntakeCombobox';
@@ -9,29 +14,35 @@ import { StackedRowIdentity } from '@/components/ui/StackedRowIdentity';
 import { cornerClass, HEADER_ICON_CORNER } from '@/design-system/tokens/radius';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import {
-  KIOSK_BAND_SEARCH_ROW,
   KIOSK_META,
   KIOSK_MODE_SPINE_ICON,
   KIOSK_MODE_SPINE_ROW_IDLE,
   KIOSK_PANE_FOOTER_BAND,
-  KIOSK_PANE_HEADER_BAND,
   KIOSK_TILE_TITLE,
 } from '@/app/kiosk/kiosk-chrome';
 import {
+  KIOSK_POS_CTA,
+  KIOSK_POS_ACTION_BAR,
+  KIOSK_POS_TOP_DOCK,
+  KIOSK_POS_TOP_DOCK_INTERACTIVE,
+  KIOSK_POS_BROWSE_SCROLL_TOP_CLEARANCE,
   KIOSK_POS_BROWSE_SCROLL,
+  KIOSK_POS_BROWSE_SCROLL_CTA_CLEARANCE,
   KIOSK_POS_CANVAS,
   KIOSK_POS_CARD,
   KIOSK_POS_CARD_CAPTION,
   KIOSK_POS_CARD_SELECTED,
   KIOSK_POS_CARD_SELECTED_FRAME,
   KIOSK_POS_CARD_SELECT_DOT,
-  KIOSK_POS_CARD_SELECT_DOT_OFF,
   KIOSK_POS_CARD_SELECT_DOT_ON,
   KIOSK_POS_CATEGORY,
   KIOSK_POS_CATEGORY_ACTIVE,
   KIOSK_POS_CATEGORY_IDLE,
   KIOSK_POS_GRID,
   KIOSK_POS_IMAGE_WELL,
+  KIOSK_POS_TRAIL_BAND,
+  KIOSK_POS_TRAIL_CONTROL,
+  KIOSK_POS_TRAIL_ICON,
 } from '@/app/kiosk/kiosk-pos-surface';
 import { cn } from '@/utils/_cn';
 import {
@@ -39,6 +50,12 @@ import {
   resolveCatalogProductPool,
   shouldHydrateRootSearchPool,
 } from './catalog-search-pool';
+import {
+  isSearchableCatalogQuery,
+  resolveStockState,
+  stockBadgeLabel,
+  type CatalogAvailability,
+} from '@/lib/kiosk/catalog-search-pure';
 
 export interface ProductSelection {
   type: string;
@@ -92,6 +109,13 @@ interface ProductSelectorProps {
   catalogPhase?: 'browse' | 'checkout';
   /** Continue to checkout when the cart has items (kiosk-split). */
   onContinue?: () => void;
+  /**
+   * Override the kiosk CTA's copy. REPAIR keeps the default "Continue" (there
+   * IS a next step); RETAIL passes "Review cart · N items", because a tapped
+   * retail item is already a cart line and the only forward move is the cart.
+   * A key that says Continue and continues nowhere is the bug this replaces.
+   */
+  continueLabel?: string;
   /** Return to browse without clearing the cart (kiosk-split). */
   onAddAnotherItem?: () => void;
   /**
@@ -119,6 +143,20 @@ interface ProductSelectorProps {
    * Default false so staff stacked + legacy split keep the tray.
    */
   hideCartTray?: boolean;
+  /**
+   * Where a find-bar query is answered.
+   *
+   * `server` sends `?q=` and paints exactly what SQL ranked — the whole
+   * projection is searchable, so a match that sorts 4000th by name is still
+   * found, and the row carries stock + bin location. Requires a route that
+   * supports `?q=` (the `/api/kiosk/*` twins do).
+   *
+   * `client` (default) keeps the legacy in-memory filter over a 100-row root
+   * pool. That is all `/api/repair/ecwid-products` can serve today — it walks
+   * the live storefront and has no query parameter — so staff surfaces stay on
+   * it until that route is ported too.
+   */
+  catalogSearchMode?: 'client' | 'server';
 }
 
 interface CategoryNode {
@@ -139,6 +177,12 @@ interface EcwidProduct {
   thumbnailUrl: string | null;
   enabled: boolean;
   inStock: boolean;
+  /**
+   * On-hand + bin location, joined server-side. Present only on routes that
+   * answer through `searchKioskCatalog`; absent elsewhere, and the card simply
+   * omits the line rather than claiming "out of stock".
+   */
+  availability?: CatalogAvailability | null;
 }
 
 export interface SelectedItem {
@@ -167,9 +211,74 @@ interface ProductsResponse {
   hasMore?: boolean;
 }
 
-const PRODUCT_PAGE_SIZE = 10;
+/**
+ * Rows per catalog page. 24 fills the kiosk grid on a landscape iPad without a
+ * scroll; the old 10 made "Load 10 more" the primary way to see the catalog.
+ */
+const PRODUCT_PAGE_SIZE = 24;
+/** Keystroke settle before a server search fires. */
+const CATALOG_SEARCH_DEBOUNCE_MS = 180;
 /** Combobox sentinel — not an Ecwid id. Clears the category filter. */
 const KIOSK_ALL_PRODUCTS_VALUE = 'all-products';
+
+/**
+ * The availability line on a product card — "12 in stock" over "Z1-A-03 +1".
+ *
+ * This is what a walk-in actually asks for, and the reason the kiosk search
+ * joins `bin_contents`: a price alone does not tell the staffer whether to walk
+ * to the shelf, offer to order it, or check the back.
+ *
+ * Renders NOTHING when there is nothing to say — no availability at all (staff
+ * client-mode routes) or an untracked SKU. Printing a placeholder on the
+ * majority of tiles is noise the eye has to skip past on every card.
+ */
+function ProductAvailabilityLine({
+  availability,
+  muted,
+}: {
+  availability: CatalogAvailability | null | undefined;
+  muted: boolean;
+}) {
+  if (!availability) return null;
+  const label = stockBadgeLabel(availability);
+  if (label == null) return null;
+  const state = resolveStockState(availability);
+  const bin = availability.bin;
+  const extraBins = availability.binCount - 1;
+  return (
+    // Stacked, not side-by-side: at the 148px card floor two labels on one row
+    // truncate each other into "9 in sto…" / "G010120…", which answers neither
+    // question. Vertical space on a tall card is the cheap axis.
+    <div className="flex flex-col leading-tight">
+      <span
+        className={cn(
+          'truncate text-role-eyebrow font-semibold',
+          muted
+            ? 'text-blue-200'
+            : state === 'out'
+              ? 'text-rose-600'
+              : state === 'low'
+                ? 'text-amber-600'
+                : 'text-emerald-600',
+        )}
+      >
+        {label}
+      </span>
+      {bin ? (
+        <span
+          className={cn(
+            'truncate text-role-eyebrow font-semibold tabular-nums',
+            muted ? 'text-blue-200' : 'text-text-faint',
+          )}
+          title={extraBins > 0 ? `${availability.binCount} bins hold this SKU` : undefined}
+        >
+          {bin.label}
+          {extraBins > 0 ? ` +${extraBins}` : ''}
+        </span>
+      ) : null}
+    </div>
+  );
+}
 
 export function ProductSelector({
   onSelect, selectedProduct, onPriceChange, fillHeight,
@@ -179,6 +288,7 @@ export function ProductSelector({
   layout = 'stacked',
   catalogPhase = 'browse',
   onContinue,
+  continueLabel,
   onAddAnotherItem,
   sidebarHeader,
   trailEnd = null,
@@ -188,6 +298,7 @@ export function ProductSelector({
   onSearchQueryChange,
   hideBrowseSearch: _hideBrowseSearch,
   hideCartTray = false,
+  catalogSearchMode = 'client',
 }: ProductSelectorProps) {
   const kioskSplit = layout === 'kiosk-split';
   /** Flush POS chrome — only the kiosk-split catalog path. */
@@ -208,6 +319,24 @@ export function ProductSelector({
   const setSearch = (value: string) => {
     if (!searchControlled) setInternalSearch(value);
     onSearchQueryChange?.(value);
+  };
+
+  // Kiosk-split: the find bar is a COLLAPSED glyph riding the trail's lead,
+  // right of the command dropdown, that expands in place (the global-header
+  // pattern). Open/close is picker chrome; the QUERY stays the controlled
+  // searchQuery/session state it always was.
+  const [searchOpen, setSearchOpen] = useState(false);
+  const openCatalogSearch = () => {
+    setSearchOpen(true);
+    requestAnimationFrame(() => {
+      searchInputHostRef.current?.querySelector('input')?.focus();
+    });
+  };
+  /** Closing also clears the query — a live query behind a closed field is a
+   * filtered grid whose reason the operator cannot see. */
+  const closeCatalogSearch = () => {
+    setSearchOpen(false);
+    setSearch('');
   };
   const [internalItems, setInternalItems] = useState<SelectedItem[]>([]);
   const selectedItems = controlledItems ?? internalItems;
@@ -233,6 +362,13 @@ export function ProductSelector({
   const categoriesHydratedRef = useRef(false);
   /** Ignore stale category responses when the operator drills faster than the network. */
   const categoryFetchGen = useRef(0);
+  /** Ignore stale search responses when the operator types faster than the network. */
+  const searchFetchGen = useRef(0);
+  // ── Server-side catalog search ────────────────────────────────────────────
+  const serverSearch = catalogSearchMode === 'server';
+  const searchable = isSearchableCatalogQuery(search);
+  /** True while a server query — not a category drill — is painting the grid. */
+  const searchDroveGridRef = useRef(false);
 
   const deriveSourceSku = (items: SelectedItem[]): string | null => {
     const candidate = items
@@ -344,8 +480,51 @@ export function ProductSelector({
     }
   };
 
+  /**
+   * Whole-catalog server search. Unlike `fetchProducts` / `fetchAllProducts`
+   * this is NOT scoped to the drilled category: someone asking "do you have a
+   * Wave Radio" does not care which category the staffer was browsing, and
+   * scoping the query to it was the defect the 100-row client pool papered over.
+   */
+  const fetchSearchProducts = async (query: string, offset = 0, append = false) => {
+    const gen = ++searchFetchGen.current;
+    if (append) setLoadingMoreProducts(true);
+    else setLoadingRootSearch(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `${apiBasePath}/ecwid-products?q=${encodeURIComponent(query)}&limit=${PRODUCT_PAGE_SIZE}&offset=${offset}`,
+      );
+      const payload = (await response.json()) as ProductsResponse;
+      if (gen !== searchFetchGen.current) return;
+      if (!response.ok || !payload.success) throw new Error(payload.error || 'Failed to search products');
+      const rows = Array.isArray(payload.products) ? payload.products : [];
+      setProducts((prev) => (append ? [...prev, ...rows] : rows));
+      setProductsOffset(offset + rows.length);
+      setHasMoreProducts(Boolean(payload.hasMore));
+    } catch (err) {
+      if (gen !== searchFetchGen.current) return;
+      if (!append) {
+        setProducts([]);
+        setError(err instanceof Error ? err.message : 'Failed to search products');
+      }
+      setHasMoreProducts(false);
+    } finally {
+      if (gen === searchFetchGen.current) {
+        if (append) setLoadingMoreProducts(false);
+        else setLoadingRootSearch(false);
+      }
+    }
+  };
+
   const loadMoreProducts = () => {
     if (loadingProducts || loadingMoreProducts || !hasMoreProducts) return;
+    // A server search owns the grid while it is active — page the QUERY, not
+    // the category the operator happened to be in when they started typing.
+    if (serverSearch && searchable) {
+      void fetchSearchProducts(search, productsOffset, true);
+      return;
+    }
     if (showAllProducts) {
       void fetchAllProducts(productsOffset, true);
       return;
@@ -372,7 +551,10 @@ export function ProductSelector({
     kioskSplit,
   });
   useEffect(() => {
+    // Server mode answers the query in SQL; the in-memory pool is the
+    // client-mode path only, and hydrating it would fetch 100 rows nobody reads.
     if (
+      serverSearch ||
       !shouldHydrateRootSearchPool({
         isAtRootLevel,
         search,
@@ -395,7 +577,29 @@ export function ProductSelector({
     return () => {
       cancelled = true;
     };
-  }, [isAtRootLevel, search, rootSearchPool, apiBasePath]);
+  }, [isAtRootLevel, search, rootSearchPool, apiBasePath, serverSearch]);
+
+  useEffect(() => {
+    if (!serverSearch) return;
+
+    if (!searchable) {
+      // Query cleared. Only re-fetch if a search was actually driving the grid,
+      // otherwise every keystroke under the floor would refetch the browse page.
+      if (!searchDroveGridRef.current) return;
+      searchDroveGridRef.current = false;
+      searchFetchGen.current += 1;
+      if (currentCategoryId) void fetchProducts(currentCategoryId, 0, false);
+      else void fetchAllProducts(0, false);
+      return;
+    }
+
+    const handle = setTimeout(() => {
+      searchDroveGridRef.current = true;
+      void fetchSearchProducts(search, 0, false);
+    }, CATALOG_SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchers are stable per render; re-running on their identity would refetch every keystroke
+  }, [serverSearch, searchable, search, currentCategoryId]);
 
   // Sync selection + price to parent after state settles (avoids setState-during-render)
   const isInitialMount = useRef(true);
@@ -426,11 +630,15 @@ export function ProductSelector({
     products,
   });
 
-  const filteredProducts = productPool.filter((p) => {
-    if (!search.trim()) return true;
-    const q = search.toLowerCase();
-    return p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
-  });
+  // Server mode is already filtered AND ranked by SQL. Re-filtering here would
+  // drop the rows the trigram arm matched on a typo — the whole point of it.
+  const filteredProducts = serverSearch
+    ? products
+    : productPool.filter((p) => {
+        if (!search.trim()) return true;
+        const q = search.toLowerCase();
+        return p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
+      });
 
   const notifyParent = (items: SelectedItem[]) => {
     const model = items.map((i) => i.name).join(', ');
@@ -458,17 +666,13 @@ export function ProductSelector({
     onSelect({ type: 'Other', model: value, sourceSku: null });
     setSelectedItems([]);
     setOtherModelText('');
-    setShowOther(false);
   };
 
   const handleAddAnotherItem = () => {
     onAddAnotherItem?.();
-    // Keep cart + category path; focus browse search when returning to / already on browse.
-    requestAnimationFrame(() => {
-      const host = searchInputHostRef.current;
-      const input = host?.querySelector('input');
-      input?.focus();
-    });
+    // Keep cart + category path; the browse find-bar opens focused on return
+    // (opens the collapsed kiosk glyph; focuses the stacked staff row).
+    openCatalogSearch();
   };
 
   const isSelected = (id: string) => selectedItems.some((i) => i.id === id);
@@ -740,15 +944,17 @@ export function ProductSelector({
                         </div>
                       )}
 
-                      {/* Kiosk POS: circular pick indicator, top-left of the cell. */}
-                      {pos && (
+                      {/*
+                        Kiosk POS pick indicator — ONLY once picked. An empty
+                        outline on every tile put a ring over every product
+                        photo and made "selected" a fill-change on an always-
+                        present dot rather than something appearing. The card
+                        already reads as tappable from the accent wash and
+                        frame; affordance does not need a permanent decal.
+                      */}
+                      {pos && selected && (
                         <span
-                          className={cn(
-                            KIOSK_POS_CARD_SELECT_DOT,
-                            selected
-                              ? KIOSK_POS_CARD_SELECT_DOT_ON
-                              : KIOSK_POS_CARD_SELECT_DOT_OFF,
-                          )}
+                          className={cn(KIOSK_POS_CARD_SELECT_DOT, KIOSK_POS_CARD_SELECT_DOT_ON)}
                           aria-hidden
                         >
                           <svg
@@ -766,7 +972,7 @@ export function ProductSelector({
                         <div
                           className={cn(
                             'absolute right-1.5 top-1.5 flex h-6 w-6 items-center justify-center bg-blue-600',
-                            flush ? cornerClass('flush') : 'rounded-full',
+                            flush ? cornerClass('flush') : cornerClass('pill'),
                           )}
                         >
                           <svg className="h-3.5 w-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -794,23 +1000,27 @@ export function ProductSelector({
                             </span>
                           )}
                         </div>
+                        <ProductAvailabilityLine availability={product.availability} muted={false} />
                       </div>
                     ) : (
                       <div className={`flex flex-1 flex-col justify-between gap-1.5 p-2.5 ${selected ? 'bg-blue-600' : 'bg-surface-card'}`}>
                         <p className={`text-xs font-semibold leading-tight ${selected ? 'text-white' : 'text-text-default'}`}>
                           {product.name}
                         </p>
-                        <div className="flex items-end justify-between gap-1">
-                          <span className={`text-sm font-semibold ${
-                            selected ? 'text-blue-100' : product.price !== null ? 'text-emerald-600' : 'text-text-faint'
-                          }`}>
-                            {product.price !== null ? `$${product.price.toFixed(2)}` : '--'}
-                          </span>
-                          {product.sku && (
-                            <span className={`max-w-[55%] truncate text-right text-role-eyebrow font-semibold ${selected ? 'text-blue-200' : 'text-text-faint'}`}>
-                              {product.sku}
+                        <div className="flex flex-col gap-0.5">
+                          <div className="flex items-end justify-between gap-1">
+                            <span className={`text-sm font-semibold ${
+                              selected ? 'text-blue-100' : product.price !== null ? 'text-emerald-600' : 'text-text-faint'
+                            }`}>
+                              {product.price !== null ? `$${product.price.toFixed(2)}` : '--'}
                             </span>
-                          )}
+                            {product.sku && (
+                              <span className={`max-w-[55%] truncate text-right text-role-eyebrow font-semibold ${selected ? 'text-blue-200' : 'text-text-faint'}`}>
+                                {product.sku}
+                              </span>
+                            )}
+                          </div>
+                          <ProductAvailabilityLine availability={product.availability} muted={selected} />
                         </div>
                       </div>
                     )}
@@ -846,7 +1056,7 @@ export function ProductSelector({
           className={cn(
             'text-xs font-semibold text-amber-700',
             pos
-              ? 'rounded-xl bg-amber-50 px-4 py-3.5'
+              ? cn(cornerClass('flush'), 'bg-amber-50 px-4 py-3.5')
               : flush
                 ? 'border-b border-border-hairline bg-amber-50 px-4 py-3.5'
                 : 'rounded-xl border border-amber-200 bg-amber-50 p-4',
@@ -1100,8 +1310,73 @@ export function ProductSelector({
       ? 'Search all products'
       : `Search in ${breadcrumbs[breadcrumbs.length - 1]?.name ?? 'this category'}`;
     const catalogTrail = (
-            <div className={cn(KIOSK_PANE_HEADER_BAND, 'gap-2 pl-2 pr-3')} data-testid="kiosk-catalog-trail">
+              <div className={cn(KIOSK_POS_TRAIL_BAND, 'pl-2 pr-3', KIOSK_POS_TOP_DOCK_INTERACTIVE)} data-testid="kiosk-catalog-trail">
+              {/* Command dropdown LEADS the row (mode identity: Repair /
+                  Sales / Buyback / Pickup), search glyph second. The glyph
+                  is a TOGGLE — same vocabulary as the paperwork/cart icons
+                  trailing the row: press to open, press again to close
+                  (aria-pressed carries the state, label stays stable).
+                  While open the field owns the row's flexible middle — the
+                  browse path is hidden, not crushed — and the dropdown +
+                  utilities hold their shrink-0 ground at both ends. The
+                  in-field X stays: a trailing close where the thumb is on
+                  a wide field. Both affordances run closeCatalogSearch,
+                  which also clears the query. */}
               {sidebarHeader}
+              <IconButton
+                icon={
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4"
+                    aria-hidden
+                  >
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="m20 20-3.5-3.5" />
+                  </svg>
+                }
+                ariaLabel="Search products"
+                aria-pressed={searchOpen}
+                size="md"
+                onClick={searchOpen ? closeCatalogSearch : openCatalogSearch}
+                className={cn(
+                  HEADER_ICON_BTN_CLASS,
+                  KIOSK_POS_TRAIL_ICON,
+                  searchOpen && HEADER_ICON_BTN_OPEN_CLASS,
+                )}
+                data-testid="kiosk-search-toggle"
+              />
+              {searchOpen ? (
+                <div
+                  ref={searchInputHostRef}
+                  className="flex min-w-0 flex-1 items-center gap-2"
+                  data-testid="kiosk-catalog-search"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') closeCatalogSearch();
+                  }}
+                >
+                  <SearchField
+                    fillHost
+                    hideUnderline
+                    placeholder={kioskSearchPlaceholder}
+                    value={search}
+                    onChange={setSearch}
+                    className="min-w-0 flex-1"
+                  />
+                  <IconButton
+                    icon={<X className={TOP_CHROME_ICON_FACE} aria-hidden />}
+                    ariaLabel="Close search"
+                    size="md"
+                    onClick={closeCatalogSearch}
+                    className={cn(HEADER_ICON_BTN_CLASS, KIOSK_POS_TRAIL_ICON)}
+                    data-testid="kiosk-search-close"
+                  />
+                </div>
+              ) : null}
               {canGoBack ? (
                 <button
                   type="button"
@@ -1110,7 +1385,7 @@ export function ProductSelector({
                   onClick={goBackOneLevel}
                   className={cn(
                     'flex h-9 w-9 shrink-0 items-center justify-center',
-                    HEADER_ICON_CORNER,
+                    KIOSK_POS_TRAIL_ICON,
                     focusRing('control', 'neutral'),
                     KIOSK_MODE_SPINE_ROW_IDLE,
                   )}
@@ -1118,6 +1393,7 @@ export function ProductSelector({
                   <ChevronLeft className={cn(KIOSK_MODE_SPINE_ICON, 'text-text-soft')} />
                 </button>
               ) : null}
+              {!searchOpen && (
               <nav
                 className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-2 text-sm font-semibold text-text-soft"
                 aria-label="Browse path"
@@ -1154,9 +1430,8 @@ export function ProductSelector({
                   value={currentCategoryId ?? KIOSK_ALL_PRODUCTS_VALUE}
                   placeholder="All products"
                   searchPlaceholder="Search categories"
-                  emptyMessage="No categories match"
+                  className={cn(KIOSK_POS_TRAIL_CONTROL, 'shrink-0 font-medium text-text-default', focusRing('control', 'neutral'))}
                   disabled={loading && !categoriesHydratedRef.current}
-                  className={cn('font-medium text-text-default', focusRing('control', 'neutral'))}
                   contentClassName={cn('min-w-72 overflow-hidden', HEADER_ICON_CORNER)}
                   options={[
                     { value: KIOSK_ALL_PRODUCTS_VALUE, label: 'All products' },
@@ -1188,60 +1463,60 @@ export function ProductSelector({
                   }}
                 />
               </nav>
+              )}
               {trailEnd}
             </div>
     );
+    const showKioskCta = hideCartTray && selectedItems.length > 0 && !!onContinue;
     const browseColumn = (
-          <>
-            <div
-              ref={searchInputHostRef}
-              className={KIOSK_BAND_SEARCH_ROW}
-              data-testid="kiosk-catalog-search"
+      // `relative` anchors every floating dock: the glass header (top) and the
+      // key (bottom). The product field is the ONLY in-flow element — both
+      // chrome units overlay it.
+      <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div className={KIOSK_POS_TOP_DOCK}>{catalogTrail}</div>
+        <div
+          className={cn(
+            KIOSK_POS_BROWSE_SCROLL,
+            KIOSK_POS_BROWSE_SCROLL_TOP_CLEARANCE,
+            // Only while the key is mounted — a permanent reserve would
+            // leave dead space at the foot of every browse.
+            showKioskCta && KIOSK_POS_BROWSE_SCROLL_CTA_CLEARANCE,
+          )}
+        >
+          {loading && !categoriesHydratedRef.current && (
+            <div className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-faint">
+              Loading...
+            </div>
+          )}
+          {error && (
+            <div className="bg-red-50 px-4 py-3.5 text-xs font-semibold text-red-700">{error}</div>
+          )}
+          {renderProductsGrid()}
+        </div>
+        {showKioskCta ? (
+          <div className={KIOSK_POS_ACTION_BAR} data-kiosk-footer-band>
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              onClick={onContinue}
+              className={KIOSK_POS_CTA}
+              data-kiosk-continue
             >
-              <SearchField
-                fillHost
-                hideUnderline
-                placeholder={kioskSearchPlaceholder}
-                value={search}
-                onChange={setSearch}
-                className="min-w-0 flex-1 px-4"
-              />
-            </div>
-            <div className={KIOSK_POS_BROWSE_SCROLL}>
-              {loading && !categoriesHydratedRef.current && (
-                <div className="px-4 py-3.5 text-xs font-semibold uppercase tracking-wide text-text-faint">
-                  Loading...
-                </div>
-              )}
-              {error && (
-                <div className="bg-red-50 px-4 py-3.5 text-xs font-semibold text-red-700">{error}</div>
-              )}
-              {renderProductsGrid()}
-            </div>
-            {hideCartTray && selectedItems.length > 0 && onContinue ? (
-              <div className={KIOSK_PANE_FOOTER_BAND} data-kiosk-footer-band>
-                <Button
-                  type="button"
-                  variant="primary"
-                  size="lg"
-                  onClick={onContinue}
-                  className={cn('h-full min-h-0 w-full flex-1 rounded-none', cornerClass('flush'))}
-                  data-kiosk-continue
-                >
-                  {selectedItems.length > 1
-                    ? `Continue · ${selectedItems.length} services`
-                    : 'Continue'}
-                </Button>
-              </div>
-            ) : null}
-          </>
+              {continueLabel ??
+                (selectedItems.length > 1
+                  ? `Continue · ${selectedItems.length} services`
+                  : 'Continue')}
+            </Button>
+          </div>
+        ) : null}
+      </div>
     );
     return (
       <div
         className={cn('flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden', KIOSK_POS_CANVAS)}
         data-kiosk-catalog-split
       >
-        {catalogTrail}
         <div className="flex min-h-0 min-w-0 flex-1 overflow-hidden">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             {catalogPhase === 'checkout' && stageContent ? stageContent : browseColumn}

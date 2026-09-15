@@ -14,19 +14,14 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
-import { HoverTooltip } from '@/components/ui/HoverTooltip';
 import { Button } from '@/design-system/primitives';
 import { IntakeCombobox } from '@/components/outbound/orders/intake/IntakeCombobox';
 import { elevationClass } from '@/design-system/tokens/shadows';
 import { focusRing } from '@/design-system/tokens/focus-ring';
 import { HEADER_ICON_CORNER } from '@/design-system/tokens/radius';
+import { KIOSK_POS_TRAIL_CONTROL } from '@/app/kiosk/kiosk-pos-surface';
 import { cn } from '@/utils/_cn';
 import { CONSULT_STANCES, type ConsultStance } from '@/lib/counter/consult-stance';
-import {
-  KIOSK_MODE_SPINE_ROW_ACTIVE,
-  KIOSK_MODE_SPINE_ROW_IDLE,
-  KIOSK_UTILITY_SPINE_ROW,
-} from '@/app/kiosk/kiosk-chrome';
 
 export const CONSULT_STANCE_LABELS: Record<ConsultStance, string> = {
   work: 'Work',
@@ -34,9 +29,13 @@ export const CONSULT_STANCE_LABELS: Record<ConsultStance, string> = {
   verify: 'Verify',
 };
 
-function stanceLetter(stance: ConsultStance): string {
-  return CONSULT_STANCE_LABELS[stance].slice(0, 1);
-}
+
+/*
+ * `layout="rail"` (56px KIOSK_MODE_SPINE_* glyph cells) was deleted 2026-09-13:
+ * zero callers since the spines came down, and its tokens were the last
+ * consumers keeping a SECOND icon vocabulary alive beside the header-shell one
+ * paperwork/cart use. Header + inline remain.
+ */
 
 export function ConsultStanceControls({
   value,
@@ -45,7 +44,7 @@ export function ConsultStanceControls({
 }: {
   value: ConsultStance;
   onChange: (stance: ConsultStance) => void;
-  layout?: 'rail' | 'inline' | 'header';
+  layout?: 'inline' | 'header';
 }) {
   if (layout === 'header') {
     return (
@@ -55,6 +54,10 @@ export function ConsultStanceControls({
         aria-label="Consult stance"
         data-testid="kiosk-consult-stance-rail"
       >
+        {/* Same ghost-combobox chrome as the command menu and All-products —
+            ONE vocabulary for every word-control on the kiosk row. The old
+            `rail` layout (56px spine cells via KIOSK_MODE_SPINE_*) died with
+            the deleted spines; its tokens went with it. */}
         <IntakeCombobox
           testId="kiosk-consult-stance-menu"
           ariaLabel="Consult stance"
@@ -63,48 +66,15 @@ export function ConsultStanceControls({
           placeholder="Work"
           searchPlaceholder="Search stance"
           emptyMessage="No stance match"
-          className={cn('font-medium text-text-default', focusRing('control', 'neutral'))}
           contentClassName={cn('min-w-40 overflow-hidden', HEADER_ICON_CORNER)}
-          optionTestId={(opt) => `kiosk-consult-stance-${opt.value}`}
+          className={cn(KIOSK_POS_TRAIL_CONTROL, 'shrink-0 font-medium text-text-default', focusRing('control', 'neutral'))}
           options={CONSULT_STANCES.map((stance) => ({
             value: stance,
             label: CONSULT_STANCE_LABELS[stance],
           }))}
+          optionTestId={(o) => `kiosk-consult-stance-${o.value}`}
           onChange={(next) => onChange(next as ConsultStance)}
         />
-      </div>
-    );
-  }
-
-  if (layout === 'rail') {
-    return (
-      <div
-        className="mt-auto flex flex-col"
-        role="group"
-        aria-label="Consult stance"
-        data-testid="kiosk-consult-stance-rail"
-      >
-        {CONSULT_STANCES.map((stance) => {
-          const active = value === stance;
-          const label = CONSULT_STANCE_LABELS[stance];
-          return (
-            <HoverTooltip key={stance} label={label} placement="left">
-              <button
-                type="button"
-                aria-label={label}
-                aria-pressed={active}
-                data-testid={`kiosk-consult-stance-${stance}`}
-                onClick={() => onChange(stance)}
-                className={cn(
-                  KIOSK_UTILITY_SPINE_ROW,
-                  active ? KIOSK_MODE_SPINE_ROW_ACTIVE : KIOSK_MODE_SPINE_ROW_IDLE,
-                )}
-              >
-                <span className="text-sm font-semibold leading-none">{stanceLetter(stance)}</span>
-              </button>
-            </HoverTooltip>
-          );
-        })}
       </div>
     );
   }

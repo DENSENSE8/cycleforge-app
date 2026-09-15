@@ -11,7 +11,6 @@ import {
   KIOSK_PILL,
   KIOSK_PILL_ACTIVE_ISSUE,
   KIOSK_PILL_IDLE,
-  KIOSK_SECTION_LABEL,
 } from '@/app/kiosk/kiosk-chrome';
 import { cornerClass } from '@/design-system/tokens/radius';
 import { cn } from '@/utils/_cn';
@@ -58,9 +57,9 @@ export function ReasonSelector({
   if (pills) {
     return (
       <div className="flex flex-col gap-0">
-        <p className={cn('border-b border-border-hairline px-4 py-2', KIOSK_SECTION_LABEL)}>
-          Reason for repair
-        </p>
+        {/* No section label here: the step's bold display header already says
+            "Reason for repair" (operator 2026-09-14 — one header per step, no
+            duplicate text above the pills). */}
         <div className="flex flex-col gap-1.5 bg-surface-card px-3 py-3">
           {reasons.map((reason) => {
             const isSelected = selectedReasons.includes(reason);
